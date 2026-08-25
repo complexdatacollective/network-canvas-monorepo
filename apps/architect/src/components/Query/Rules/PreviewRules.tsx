@@ -9,7 +9,6 @@ import ArrayField, {
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 
 import RulePreview from './PreviewRule';
-import { Join } from './PreviewText';
 import type { RuleTypeOption } from './ruleCodebook';
 import RuleEditor, { type EditableRule } from './RuleEditor';
 import type { Rule } from './validateRule';
@@ -18,10 +17,6 @@ import { getRuleDisplayOptions } from './withDisplayOptions';
 type RuleListContextValue = {
   codebook: Record<string, unknown>;
   ruleTypes: RuleTypeOption[];
-  /** How the committed rules combine, or undefined while nothing says yet. */
-  join?: string;
-  /** How many rules are committed — a row being added is not one of them. */
-  ruleCount: number;
 };
 
 const RuleListContext = createContext<RuleListContextValue | null>(null);
@@ -48,7 +43,6 @@ const toRule = (item: Record<string, unknown> | undefined): EditableRule => {
 
 const RuleListItem = ({
   item,
-  committedIndex,
   isBeingEdited,
   onEdit,
   onDelete,
@@ -56,7 +50,7 @@ const RuleListItem = ({
   disabled,
   readOnly,
 }: ArrayFieldItemProps<EditableRule>) => {
-  const { codebook, join, ruleCount } = useRuleListContext();
+  const { codebook } = useRuleListContext();
   const rule = toRule(item);
   const textId = useId();
   const editActionId = useId();
@@ -67,18 +61,6 @@ const RuleListItem = ({
   // matches every other dialog-edited ArrayField and gives the shared layout
   // animation a single source and destination rather than two copies.
   if (isBeingEdited || !rule.type) return null;
-
-  /*
-    How this rule combines with the next one, between the two of them.
-
-    The "Rule Matching" control below the list sets this, but a researcher
-    reading three cards down the page should not have to reach the bottom of
-    the list to learn whether they were asking for all of them or any of them.
-    Keyed on the COMMITTED position: a row still being added has no committed
-    index, and it is not something the rules before it combine with yet.
-  */
-  const showJoin =
-    !!join && committedIndex !== undefined && committedIndex < ruleCount - 1;
 
   return (
     <>
@@ -129,7 +111,6 @@ const RuleListItem = ({
             />
           </div>
         </div>
-        {showJoin ? <Join value={join} variant="list" /> : null}
       </div>
     </>
   );
@@ -200,8 +181,6 @@ type PreviewRulesProps = {
   ruleTypes: RuleTypeOption[];
   addButtonLabel: string;
   onChange: (rules: Rule[]) => void;
-  /** How the rules combine — shown between them. See `RuleListItem`. */
-  join?: string;
   hasError?: boolean;
 };
 
@@ -220,12 +199,9 @@ const PreviewRules = ({
   ruleTypes,
   addButtonLabel,
   onChange,
-  join,
   hasError = false,
 }: PreviewRulesProps) => (
-  <RuleListContext.Provider
-    value={{ codebook, ruleTypes, join, ruleCount: rules.length }}
-  >
+  <RuleListContext.Provider value={{ codebook, ruleTypes }}>
     <ArrayField<EditableRule>
       value={rules as EditableRule[]}
       onChange={(nextRules) => onChange(nextRules ?? [])}

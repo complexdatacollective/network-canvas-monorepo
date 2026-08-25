@@ -49,36 +49,18 @@ const formatValue = (value: string | number | boolean): string | number =>
 
 type JoinProps = {
   value?: string;
-  /**
-   * Required, and exactly the two layouts that render one. There was a third,
-   * `'default'`, left behind when the rule builder moved to the shared
-   * editable list — unreachable code that read as the live path because it was
-   * the fallback the other two branched away from.
-   */
-  variant: 'list' | 'summary';
 };
 
 /**
- * The separator between two rules, reading how they combine ("and"/"or").
- *
- * A labelled divider — a rule either side of the word. This was a
- * `<fieldset>`/`<legend>`, borrowed for the way a legend cuts a gap in the
- * border, which announced a form group containing no controls to every screen
- * reader, once per join. The geometry is unchanged: the line runs along the
- * top of the word, with the same gap around it and the same space beneath.
+ * The printable-summary separator between two rules, reading how they combine
+ * ("and"/"or"). The editable rule list keeps this information in its Rule
+ * Matching field instead of repeating it between cards.
  */
-export const Join = ({ value = '', variant }: JoinProps) =>
-  variant === 'summary' ? (
-    <div className="w-full py-5 text-center text-current/70 uppercase italic">
-      {value.toLowerCase()}
-    </div>
-  ) : (
-    <span className="flex w-full items-center gap-3 py-2.5 text-sm font-semibold tracking-wide text-current/60 uppercase">
-      <span className="h-0 flex-1 border-t border-current/20" />
-      <span>{value.toLowerCase()}</span>
-      <span className="h-0 flex-1 border-t border-current/20" />
-    </span>
-  );
+export const Join = ({ value = '' }: JoinProps) => (
+  <div className="w-full py-5 text-center text-current/70 uppercase italic">
+    {value.toLowerCase()}
+  </div>
+);
 
 /*
  * A rule reads as one sentence. Its entity chips are presentational because
@@ -89,12 +71,6 @@ export const Join = ({ value = '', variant }: JoinProps) =>
  * summary's attribute pill lost the text that says what kind of attribute it
  * is, leaving a coloured chip with nothing to read.
  */
-
-type VariableProps = {
-  children?: ReactNode;
-};
-
-const Variable = ({ children = '' }: VariableProps) => <span>{children}</span>;
 
 const RuleSubject = ({ children }: { children: ReactNode }) => (
   <span data-rule-part="subject" className="inline">
@@ -323,13 +299,18 @@ const describeRule = (
     };
   }
 
-  // An alter rule whose operand has not been chosen yet reads with the
-  // attribute itself as the object of the sentence.
+  // Attribute-presence operators take no operand. The attribute is still a
+  // codebook variable, so it uses the same typed pill as value-bearing rules.
   if (!isEgo && isNil(options.value)) {
     return {
       subject: entity,
       operator: <Operator value={options.operator} />,
-      value: <Variable>{options.attribute}</Variable>,
+      value: (
+        <AttributePill
+          label={options.attribute ?? ''}
+          type={options.variableType}
+        />
+      ),
       columns: false,
     };
   }

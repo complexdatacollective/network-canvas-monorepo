@@ -126,7 +126,6 @@ const Rules = ({
         ruleTypes={ruleTypes}
         addButtonLabel={addRuleLabel}
         onChange={updateRules}
-        join={join}
         hasError={!!ariaInvalid}
       />
 

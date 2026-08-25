@@ -70,7 +70,16 @@ test('skip-logic rule cards carry valid, distinct semantics', async ({
       };
     }),
   ).toEqual({ role: 'group', required: 'true' });
-  await expect(rules.getByRole('list').getByRole('listitem')).toHaveCount(2);
+  const ruleItems = rules.getByRole('list').getByRole('listitem');
+  await expect(ruleItems).toHaveCount(2);
+
+  for (const item of await ruleItems.all()) {
+    await expect(item.getByText('or', { exact: true })).toHaveCount(0);
+    await expect(item.getByText('and', { exact: true })).toHaveCount(0);
+  }
+  await expect(
+    section.getByRole('radio', { name: 'Any rule can match', exact: true }),
+  ).toBeChecked();
 
   for (const sentence of [FLAGGED_RULE, HIGHLIGHTED_RULE]) {
     await expect(
