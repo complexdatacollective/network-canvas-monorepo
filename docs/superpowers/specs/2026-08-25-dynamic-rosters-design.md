@@ -645,3 +645,11 @@ sequence (one plan, PRs may be combined): (1) schema 9 + migration +
 validation + shared helpers, (2) interview runtime + retry UX, (3) Architect
 authoring + preview, (4) hosts + CSP + docs. E2E suite selection follows from
 the workspace dependency closure as usual.
+
+Sequencing constraint: the schema-8 corrections work (2026-08-25 — post-release
+tightenings that stay in schema 8 as validation errors, with its own spec in
+its corrective PR) merges **first**. The 8→9 move then carries the corrected
+tree, so schema 9 is born with the corrections rather than racing them. That
+work's scope rule and this one are complementary: corrections of flaws in a
+released schema stay in that schema; a new capability is a contract change and
+bumps the version.
