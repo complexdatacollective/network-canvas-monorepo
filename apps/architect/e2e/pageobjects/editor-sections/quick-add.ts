@@ -9,7 +9,7 @@ import { createVariableViaSpotlight } from './variables.js';
 // `validation: { required: true }` onto the codebook entry
 // (QuickAdd.tsx `handleCreateVariable(value, 'text', 'quickAdd', { required:
 // true })`); the canonical sample-protocol `name` variable has no validation,
-// so this helper then toggles OFF the Validation subsection that mounts under
+// so this helper then toggles OFF the nested Validation section that mounts under
 // the picker — ValidationSection dispatches `validation: null`, and
 // CodebookVariableValidationSection's `updateVariableAsync` with
 // `replaceProperties: ['validation']` deletes the key from the codebook

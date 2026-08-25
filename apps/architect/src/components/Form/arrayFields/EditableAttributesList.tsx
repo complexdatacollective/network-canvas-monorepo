@@ -97,7 +97,7 @@ type EditableAttributesListProps = {
    */
   addButtonLabel: string;
   /**
-   * Accessible name for the list. The surrounding Subsection carries the
+   * Accessible name for the list. The surrounding nested Section carries the
    * visible heading, so this is hidden by default (see plan §2.10).
    */
   label?: string;

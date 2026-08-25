@@ -128,9 +128,6 @@ vi.mock('~/selectors/indexes', async (importOriginal) => {
 vi.mock('~/components/EditorLayout', () => ({
   default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   Section: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  Subsection: ({ children }: { children: ReactNode }) => (
-    <section>{children}</section>
-  ),
 }));
 
 // Leaf controls only — `ArchitectField`/`ArchitectArrayField` stay real so

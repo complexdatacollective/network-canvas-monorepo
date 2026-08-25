@@ -12,9 +12,6 @@ import Form from '@codaco/fresco-ui/form/Form';
 // be asserted absent.
 vi.mock('~/components/EditorLayout', () => ({
   Section: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  Subsection: ({ children }: { children: ReactNode }) => (
-    <section>{children}</section>
-  ),
 }));
 vi.mock('~/components/Form/ArchitectField', () => ({
   default: ({ name }: { name: string }) => (

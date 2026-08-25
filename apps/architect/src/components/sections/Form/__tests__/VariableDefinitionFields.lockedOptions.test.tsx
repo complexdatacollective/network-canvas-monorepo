@@ -11,9 +11,6 @@ import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/shared-consts';
 // it is handed is the whole point of this file.
 vi.mock('~/components/EditorLayout', () => ({
   Section: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  Subsection: ({ children }: { children: ReactNode }) => (
-    <section>{children}</section>
-  ),
 }));
 vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
   VariablePickerControl: () => <div data-testid="variable-picker" />,

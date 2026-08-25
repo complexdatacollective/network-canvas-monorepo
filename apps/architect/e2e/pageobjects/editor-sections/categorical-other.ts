@@ -3,7 +3,7 @@ import { type Page } from '@playwright/test';
 import { type StageEditor } from '../stage-editor.js';
 import { createVariableViaSpotlight } from './variables.js';
 
-// CategoricalBin prompt dialog's follow-up other-option subsection
+// CategoricalBin prompt dialog's follow-up other-option nested section
 // (sections/CategoricalBinPrompts/PromptFields.tsx). Facts verified against
 // source:
 // - The toggleable region and its switch are both named "Follow-up other

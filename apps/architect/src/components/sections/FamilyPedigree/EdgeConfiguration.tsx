@@ -278,7 +278,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
     <>
       <Section
         title="Relationship data"
-        description="Choose the edge type used to store family relationships."
+        description="Choose the edge type and map the attributes used to store family relationships."
       >
         <IssueAnchor fieldName="edgeConfig.type" description="Edge type" />
         <ArchitectField
@@ -290,95 +290,97 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
           label="Edge type"
           initialValue={edgeTypeInitial}
         />
-      </Section>
 
-      {edgeType && (
-        <Section
-          title="Relationship attributes"
-          description="Map the edge attributes used to describe family relationships and support inheritance tracing."
-        >
-          <IssueAnchor
-            fieldName="edgeConfig.relationshipTypeVariable"
-            description="Relationship type attribute"
-          />
-          <ArchitectField
-            name="edgeConfig.relationshipTypeVariable"
-            label="Relationship type"
-            hint="Stores the relationship category between family members, such as biological, social, donor, surrogate, adoptive, or partner."
-            component={VariablePickerControl}
-            validation={{
-              required: true,
-              crossClassPick: makeSlotValidator('relationshipTypeVariable'),
-            }}
-            initialValue={relationshipTypeVariableInitial}
-            entity="edge"
-            type={edgeType}
-            options={relationshipTypeVariableOptions}
-            onCreateOption={handleNewRelationshipTypeVariable}
-            inline
-          />
-          <IssueAnchor
-            fieldName="edgeConfig.isActiveVariable"
-            description="Active status attribute"
-          />
-          <ArchitectField
-            name="edgeConfig.isActiveVariable"
-            label="Active status"
-            hint="A boolean attribute indicating whether the relationship is currently active."
-            component={VariablePickerControl}
-            validation={{
-              required: true,
-              crossClassPick: makeSlotValidator('isActiveVariable'),
-            }}
-            initialValue={isActiveVariableInitial}
-            entity="edge"
-            type={edgeType}
-            options={isActiveVariableOptions}
-            onCreateOption={handleNewIsActiveVariable}
-            inline
-          />
-          <IssueAnchor
-            fieldName="edgeConfig.isGestationalCarrierVariable"
-            description="Gestational carrier attribute"
-          />
-          <ArchitectField
-            name="edgeConfig.isGestationalCarrierVariable"
-            label="Gestational carrier"
-            hint="A boolean attribute indicating whether a parent is a gestational carrier. Used only for parent relationships."
-            component={VariablePickerControl}
-            validation={{
-              required: true,
-              crossClassPick: makeSlotValidator('isGestationalCarrierVariable'),
-            }}
-            initialValue={isGestationalCarrierVariableInitial}
-            entity="edge"
-            type={edgeType}
-            options={isGestationalCarrierVariableOptions}
-            onCreateOption={handleNewGestationalCarrierVariable}
-            inline
-          />
-          <IssueAnchor
-            fieldName="edgeConfig.gameteRoleVariable"
-            description="Gamete role attribute"
-          />
-          <ArchitectField
-            name="edgeConfig.gameteRoleVariable"
-            label="Gamete role"
-            hint="Stores whether a parent contributed the egg or sperm. The interface uses this fixed value set to trace biological inheritance."
-            component={VariablePickerControl}
-            validation={{
-              required: true,
-              crossClassPick: makeSlotValidator('gameteRoleVariable'),
-            }}
-            initialValue={gameteRoleVariableInitial}
-            entity="edge"
-            type={edgeType}
-            options={gameteRoleVariableOptions}
-            onCreateOption={handleNewGameteRoleVariable}
-            inline
-          />
-        </Section>
-      )}
+        {edgeType && (
+          <Section
+            title="Relationship attributes"
+            description="Map the edge attributes used to describe family relationships and support inheritance tracing."
+          >
+            <IssueAnchor
+              fieldName="edgeConfig.relationshipTypeVariable"
+              description="Relationship type attribute"
+            />
+            <ArchitectField
+              name="edgeConfig.relationshipTypeVariable"
+              label="Relationship type"
+              hint="Stores the relationship category between family members, such as biological, social, donor, surrogate, adoptive, or partner."
+              component={VariablePickerControl}
+              validation={{
+                required: true,
+                crossClassPick: makeSlotValidator('relationshipTypeVariable'),
+              }}
+              initialValue={relationshipTypeVariableInitial}
+              entity="edge"
+              type={edgeType}
+              options={relationshipTypeVariableOptions}
+              onCreateOption={handleNewRelationshipTypeVariable}
+              inline
+            />
+            <IssueAnchor
+              fieldName="edgeConfig.isActiveVariable"
+              description="Active status attribute"
+            />
+            <ArchitectField
+              name="edgeConfig.isActiveVariable"
+              label="Active status"
+              hint="A boolean attribute indicating whether the relationship is currently active."
+              component={VariablePickerControl}
+              validation={{
+                required: true,
+                crossClassPick: makeSlotValidator('isActiveVariable'),
+              }}
+              initialValue={isActiveVariableInitial}
+              entity="edge"
+              type={edgeType}
+              options={isActiveVariableOptions}
+              onCreateOption={handleNewIsActiveVariable}
+              inline
+            />
+            <IssueAnchor
+              fieldName="edgeConfig.isGestationalCarrierVariable"
+              description="Gestational carrier attribute"
+            />
+            <ArchitectField
+              name="edgeConfig.isGestationalCarrierVariable"
+              label="Gestational carrier"
+              hint="A boolean attribute indicating whether a parent is a gestational carrier. Used only for parent relationships."
+              component={VariablePickerControl}
+              validation={{
+                required: true,
+                crossClassPick: makeSlotValidator(
+                  'isGestationalCarrierVariable',
+                ),
+              }}
+              initialValue={isGestationalCarrierVariableInitial}
+              entity="edge"
+              type={edgeType}
+              options={isGestationalCarrierVariableOptions}
+              onCreateOption={handleNewGestationalCarrierVariable}
+              inline
+            />
+            <IssueAnchor
+              fieldName="edgeConfig.gameteRoleVariable"
+              description="Gamete role attribute"
+            />
+            <ArchitectField
+              name="edgeConfig.gameteRoleVariable"
+              label="Gamete role"
+              hint="Stores whether a parent contributed the egg or sperm. The interface uses this fixed value set to trace biological inheritance."
+              component={VariablePickerControl}
+              validation={{
+                required: true,
+                crossClassPick: makeSlotValidator('gameteRoleVariable'),
+              }}
+              initialValue={gameteRoleVariableInitial}
+              entity="edge"
+              type={edgeType}
+              options={gameteRoleVariableOptions}
+              onCreateOption={handleNewGameteRoleVariable}
+              inline
+            />
+          </Section>
+        )}
+      </Section>
       <NewVariableWindow {...variableWindowProps} />
     </>
   );

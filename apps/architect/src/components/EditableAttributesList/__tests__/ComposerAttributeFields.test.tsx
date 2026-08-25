@@ -8,18 +8,6 @@ vi.mock('~/components/EditorLayout', () => ({
   Section: ({ children }: { children: ReactNode }) => (
     <div data-testid="section">{children}</div>
   ),
-  Subsection: ({
-    children,
-    title,
-  }: {
-    children: ReactNode;
-    title?: ReactNode;
-  }) => (
-    <section data-testid="subsection">
-      {title && <h3>{title}</h3>}
-      {children}
-    </section>
-  ),
 }));
 
 // Surface each rendered field's `name` so the test can assert which fields

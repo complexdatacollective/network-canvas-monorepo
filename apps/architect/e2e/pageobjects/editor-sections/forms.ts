@@ -32,7 +32,7 @@ import { createVariableViaSpotlight } from './variables.js';
 //   duplicating that field label.
 // - `component` ("Input control"): a real native `<select>`
 //   (fresco-ui's `NativeSelectField`), so `selectOption` works directly.
-//   Its Subsection is `disabled={!variable}` (FieldFields.tsx) — i.e. it
+//   Its nested Section is `disabled={!variable}` (FieldFields.tsx) — i.e. it
 //   doesn't even mount until a variable is selected, which is why the
 //   variable step must run first.
 // - The submit button reads "Add" for a brand-new field

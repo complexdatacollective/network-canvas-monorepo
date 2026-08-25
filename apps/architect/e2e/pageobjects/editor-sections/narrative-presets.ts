@@ -8,7 +8,7 @@ import { createVariableViaSpotlight } from './variables.js';
 // source (sections/NarrativePresets/*, sections/NarrativeBehaviours.tsx):
 // - The preset dialog ('Edit Preset') exposes a visible "Preset label" field,
 //   layoutVariable (VariablePicker; typing an existing variable's exact name
-//   Enter-selects it), and three toggleable subsections — Node grouping
+//   Enter-selects it), and three toggleable nested sections — Node grouping
 //   (disallowCreation picker), Displayed edges and Node highlighting (checkbox
 //   groups whose accessible names are the codebook entity/variable names;
 //   arrays fill in click order).

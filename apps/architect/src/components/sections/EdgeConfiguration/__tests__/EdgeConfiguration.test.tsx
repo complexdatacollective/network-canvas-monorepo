@@ -23,18 +23,6 @@ vi.mock('~/components/EditorLayout', () => ({
       {children}
     </div>
   ),
-  Subsection: ({
-    children,
-    title,
-  }: {
-    children: ReactNode;
-    title?: ReactNode;
-  }) => (
-    <section data-testid="subsection">
-      {title && <h3>{title}</h3>}
-      {children}
-    </section>
-  ),
   Row: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
@@ -129,14 +117,11 @@ describe('EdgeConfiguration', () => {
     expect(screen.getByTestId('edge-type-multiselect')).toBeInTheDocument();
   });
 
-  it('renders the multi-select under the connection-types subsection heading', () => {
+  it('renders the multi-select under the nested connection-types heading', () => {
     renderSection({ edges: [] });
     expect(
       screen.getByRole('heading', { name: /connection types/i }),
     ).toBeInTheDocument();
-    expect(screen.getByTestId('subsection')).toContainElement(
-      screen.getByTestId('edge-type-multiselect'),
-    );
   });
 
   it('renders only the multi-select when no edge types are selected', () => {
@@ -225,7 +210,7 @@ describe('EdgeConfiguration', () => {
     expect(new Set(labels).size).toBe(labels.length);
   });
 
-  it('wraps each edge attributes list in an "Editable attributes" subsection', () => {
+  it('wraps each edge attributes list in a nested "Editable attributes" section', () => {
     renderSection({
       edges: [
         { id: 'a', subject: { entity: 'edge', type: 'knows' } },

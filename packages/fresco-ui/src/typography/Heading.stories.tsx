@@ -113,9 +113,9 @@ export const LevelCombinations: Story = {
       <Paragraph>
         Section headings use h2 level (text-2xl) to organize major sections.
       </Paragraph>
-      <Heading level="h3">Subsection Heading</Heading>
+      <Heading level="h3">Nested Section Heading</Heading>
       <Paragraph>
-        Subsections use h3 level (text-xl) for nested content.
+        Nested sections use h3 level (text-xl) for nested content.
       </Paragraph>
       <Heading level="h4">Minor Heading</Heading>
       <Paragraph>

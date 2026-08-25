@@ -558,7 +558,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
     <>
       <Section
         title="Family member data"
-        description="Choose the node type used to represent family members."
+        description="Choose the node type and map the attributes used to represent family members."
       >
         <IssueAnchor fieldName="nodeConfig.type" description="Node type" />
         <ArchitectField
@@ -571,103 +571,103 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
           label="Node type"
           initialValue={nodeTypeInitial}
         />
-      </Section>
 
-      {nodeType && (
-        <Section
-          title="Family member attributes"
-          description="Map the node attributes used to label family members and store pedigree relationships."
-        >
-          <IssueAnchor
-            fieldName="nodeConfig.nodeLabelVariable"
-            description="Display label attribute"
-          />
-          <ArchitectField
-            name="nodeConfig.nodeLabelVariable"
-            label="Display label"
-            hint="A text attribute used to store the display label for each family member other than the participant."
-            component={VariablePickerControl}
-            validation={{
-              required: true,
-              crossClassPick: nodeLabelCrossClassValidate,
-            }}
-            initialValue={nodeLabelVariableInitial}
-            entity="node"
-            type={nodeType}
-            options={nodeLabelVariableOptions}
-            onCreateOption={handleNewNodeLabelVariable}
-            inline
-          />
-          {nodeLabelDraft && (
-            <CodebookVariableValidationSection
+        {nodeType && (
+          <Section
+            title="Family member attributes"
+            description="Map the node attributes used to label family members and store pedigree relationships."
+          >
+            <IssueAnchor
               fieldName="nodeConfig.nodeLabelVariable"
+              description="Display label attribute"
+            />
+            <ArchitectField
+              name="nodeConfig.nodeLabelVariable"
+              label="Display label"
+              hint="A text attribute used to store the display label for each family member other than the participant."
+              component={VariablePickerControl}
+              validation={{
+                required: true,
+                crossClassPick: nodeLabelCrossClassValidate,
+              }}
+              initialValue={nodeLabelVariableInitial}
               entity="node"
               type={nodeType}
-              variableId={nodeLabelDraft}
+              options={nodeLabelVariableOptions}
+              onCreateOption={handleNewNodeLabelVariable}
+              inline
             />
-          )}
-          <IssueAnchor
-            fieldName="nodeConfig.egoVariable"
-            description="Participant identifier attribute"
-          />
-          <ArchitectField
-            name="nodeConfig.egoVariable"
-            label="Participant identifier"
-            hint="A boolean attribute used to identify which node represents the participant in the family pedigree."
-            component={VariablePickerControl}
-            validation={{
-              required: true,
-              crossClassPick: makeSlotValidator('egoVariable'),
-            }}
-            initialValue={egoVariableInitial}
-            entity="node"
-            type={nodeType}
-            options={egoVariableOptions}
-            onCreateOption={handleNewEgoVariable}
-            inline
-          />
-          <IssueAnchor
-            fieldName="nodeConfig.relationshipVariable"
-            description="Relationship to participant attribute"
-          />
-          <ArchitectField
-            name="nodeConfig.relationshipVariable"
-            label="Relationship to participant"
-            hint="Stores each person's relationship to the participant, such as mother, uncle, or daughter. The family pedigree interface calculates this value automatically."
-            component={VariablePickerControl}
-            validation={{
-              required: true,
-              crossClassPick: makeSlotValidator('relationshipVariable'),
-            }}
-            initialValue={relationshipVariableInitial}
-            entity="node"
-            type={nodeType}
-            options={relationshipVariableOptions}
-            onCreateOption={handleNewRelationshipVariable}
-            inline
-          />
-          <IssueAnchor
-            fieldName="nodeConfig.biologicalSexVariable"
-            description="Biological sex attribute"
-          />
-          <ArchitectField
-            name="nodeConfig.biologicalSexVariable"
-            label="Biological sex"
-            hint="Stores each family member's sex recorded at birth for sex-linked inheritance."
-            component={VariablePickerControl}
-            validation={{
-              required: true,
-              crossClassPick: makeSlotValidator('biologicalSexVariable'),
-            }}
-            initialValue={biologicalSexVariableInitial}
-            entity="node"
-            type={nodeType}
-            options={biologicalSexVariableOptions}
-            onCreateOption={handleNewBiologicalSexVariable}
-            inline
-          />
-        </Section>
-      )}
+            {nodeLabelDraft && (
+              <CodebookVariableValidationSection
+                fieldName="nodeConfig.nodeLabelVariable"
+                entity="node"
+                type={nodeType}
+                variableId={nodeLabelDraft}
+              />
+            )}
+            <IssueAnchor
+              fieldName="nodeConfig.egoVariable"
+              description="Participant identifier attribute"
+            />
+            <ArchitectField
+              name="nodeConfig.egoVariable"
+              label="Participant identifier"
+              hint="A boolean attribute used to identify which node represents the participant in the family pedigree."
+              component={VariablePickerControl}
+              validation={{
+                required: true,
+                crossClassPick: makeSlotValidator('egoVariable'),
+              }}
+              initialValue={egoVariableInitial}
+              entity="node"
+              type={nodeType}
+              options={egoVariableOptions}
+              onCreateOption={handleNewEgoVariable}
+              inline
+            />
+            <IssueAnchor
+              fieldName="nodeConfig.relationshipVariable"
+              description="Relationship to participant attribute"
+            />
+            <ArchitectField
+              name="nodeConfig.relationshipVariable"
+              label="Relationship to participant"
+              hint="Stores each person's relationship to the participant, such as mother, uncle, or daughter. The family pedigree interface calculates this value automatically."
+              component={VariablePickerControl}
+              validation={{
+                required: true,
+                crossClassPick: makeSlotValidator('relationshipVariable'),
+              }}
+              initialValue={relationshipVariableInitial}
+              entity="node"
+              type={nodeType}
+              options={relationshipVariableOptions}
+              onCreateOption={handleNewRelationshipVariable}
+              inline
+            />
+            <IssueAnchor
+              fieldName="nodeConfig.biologicalSexVariable"
+              description="Biological sex attribute"
+            />
+            <ArchitectField
+              name="nodeConfig.biologicalSexVariable"
+              label="Biological sex"
+              hint="Stores each family member's sex recorded at birth for sex-linked inheritance."
+              component={VariablePickerControl}
+              validation={{
+                required: true,
+                crossClassPick: makeSlotValidator('biologicalSexVariable'),
+              }}
+              initialValue={biologicalSexVariableInitial}
+              entity="node"
+              type={nodeType}
+              options={biologicalSexVariableOptions}
+              onCreateOption={handleNewBiologicalSexVariable}
+              inline
+            />
+          </Section>
+        )}
+      </Section>
 
       {nodeType && (
         <Section

@@ -28,7 +28,9 @@ vi.mock('~/components/EditorLayout', () => ({
 }));
 vi.mock('@codaco/fresco-ui/Section', () => ({
   default: ({ children, title }: { children: ReactNode; title: string }) => (
-    <section aria-label={title}>{children}</section>
+    <section aria-label={title} data-component="Section">
+      {children}
+    </section>
   ),
 }));
 vi.mock('~/components/IssueAnchor', () => ({ default: () => null }));
@@ -221,12 +223,18 @@ const renderComponent = ({
 };
 
 describe('FamilyPedigree EdgeConfiguration slot picker exclusions', () => {
-  it('groups the attribute mappings in their own Section with inline fields', () => {
+  it('groups the attribute mappings in a nested Section with inline fields', () => {
     renderComponent({ protocol: protocolWith([]) });
 
-    expect(
-      screen.getByRole('region', { name: 'Relationship attributes' }),
-    ).toBeInTheDocument();
+    const relationshipData = screen.getByRole('region', {
+      name: 'Relationship data',
+    });
+    const attributes = screen.getByRole('region', {
+      name: 'Relationship attributes',
+    });
+
+    expect(attributes).toHaveAttribute('data-component', 'Section');
+    expect(relationshipData).toContainElement(attributes);
     expect(capturedFields['edgeConfig.relationshipTypeVariable']).toMatchObject(
       {
         label: 'Relationship type',

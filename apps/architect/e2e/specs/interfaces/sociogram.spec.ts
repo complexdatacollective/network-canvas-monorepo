@@ -90,7 +90,7 @@ test('creates a valid Sociogram stage from scratch', async ({
   // shape as every other prompts array in this suite). Inside the dialog,
   // PromptFields.tsx renders the shared `PromptText` component first (label
   // "Prompt text", same as name-generator.spec.ts) followed by
-  // PromptFieldsLayout.tsx's "Node layout" subsection, whose `layout.layoutVariable`
+  // PromptFieldsLayout.tsx's nested "Node layout" section, whose `layout.layoutVariable`
   // `VariablePicker` is the ONLY variable picker open at this point (no
   // scoping needed — matches the single-picker call sites already proven by
   // categorical-bin.spec.ts / name-generator-quick-add.spec.ts). Its

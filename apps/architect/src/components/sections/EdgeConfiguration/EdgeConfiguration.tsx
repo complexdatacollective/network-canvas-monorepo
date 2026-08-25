@@ -2,7 +2,6 @@ import { useCallback, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
 import Section from '@codaco/fresco-ui/Section';
-import { Subsection } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import EditableAttributesList from '~/components/Form/arrayFields/EditableAttributesList';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -96,9 +95,9 @@ const EdgeAttributeBlock = ({
       title={title}
       description="Configure the attributes collected for this connection type."
     >
-      <Subsection
+      <Section
         title="Editable attributes"
-        summary="The attributes shown in the side panel when an edge is selected, so they can be edited during the interview. Each attribute is paired with the input control used to collect it."
+        description="The attributes shown in the side panel when an edge is selected, so they can be edited during the interview. Each attribute is paired with the input control used to collect it."
       >
         <EditableAttributesList
           fieldName={fieldName}
@@ -114,7 +113,7 @@ const EdgeAttributeBlock = ({
           value={fields}
           onChange={handleChange}
         />
-      </Subsection>
+      </Section>
     </Section>
   );
 };
@@ -166,9 +165,9 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
         title="Edge configuration"
         description="Define the connection types participants can draw and the attributes collected for each type."
       >
-        <Subsection
+        <Section
           title="Connection types"
-          summary="Select the edge types participants can create on the canvas. Each selected type gets its own set of editable attributes below."
+          description="Select the edge types participants can create on the canvas. Each selected type gets its own set of editable attributes below."
         >
           <ArchitectField
             name="edges"
@@ -176,7 +175,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
             component={EdgeTypeMultiSelectField}
             initialValue={initialEdges}
           />
-        </Subsection>
+        </Section>
       </Section>
       {edges.map((edge, index) => (
         <EdgeAttributeBlock

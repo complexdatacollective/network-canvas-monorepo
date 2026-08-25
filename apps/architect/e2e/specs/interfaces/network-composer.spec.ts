@@ -23,7 +23,7 @@ test('creates a valid NetworkComposer stage from scratch', async ({
   await selectOrCreateNodeType(architectPage, 'person');
 
   // NodeConfiguration.tsx renders THREE `VariablePicker`s inside one always-
-  // visible `Section` (no per-subsection toggle/collapse): "Quick add
+  // visible `Section` (no per-nested-section toggle/collapse): "Quick add
   // variable" (`quickAdd`), "Node positions" (`layoutVariable`), and "Group
   // hulls" (`convexHullVariable`) — all showing the picker's unselected-state
   // "Select variable" button simultaneously once `subject.type` is set

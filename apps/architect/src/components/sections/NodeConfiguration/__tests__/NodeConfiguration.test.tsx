@@ -124,7 +124,7 @@ describe('NodeConfiguration', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders each field area under its own subsection heading', () => {
+  it('renders each field area under its own nested section heading', () => {
     renderSection();
     expect(
       screen.getByRole('heading', { name: /quick add attribute/i }),

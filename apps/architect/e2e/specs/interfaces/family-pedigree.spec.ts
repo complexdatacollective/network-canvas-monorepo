@@ -57,7 +57,7 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
   //     variables set `initialValues.type` (text/boolean) with no
   //     `lockedOptions` — NewVariableWindow.tsx disables "Variable type"
   //     whenever `initialValues?.type` is set, and neither type is
-  //     ordinal/categorical, so the Options subsection never renders at all.
+  //     ordinal/categorical, so the nested Options section never renders at all.
   //   - categorical variables (`biologicalSexVariable`, matching
   //     `BIOLOGICAL_SEX_OPTIONS`; `relationshipTypeVariable`, matching
   //     `RELATIONSHIP_TYPE_OPTIONS`; `gameteRoleVariable`, matching

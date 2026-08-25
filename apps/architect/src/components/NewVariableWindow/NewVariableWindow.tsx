@@ -12,13 +12,13 @@ import Section from '@codaco/fresco-ui/Section';
 import type { Variable, VariableOption } from '@codaco/protocol-validation';
 import { ensureError } from '@codaco/shared-consts';
 import DialogForm from '~/components/DialogForm/DialogForm';
-import { Subsection } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import Options, {
   optionsValidation,
   type OptionValue,
 } from '~/components/Form/arrayFields/Options';
+import IssueAnchor from '~/components/IssueAnchor';
 import LockedOptions from '~/components/Options/LockedOptions';
 import {
   isOrdinalOrCategoricalType,
@@ -27,7 +27,6 @@ import {
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { createVariableAsync } from '~/ducks/modules/protocol/codebook';
 import { getVariablesForSubject } from '~/selectors/codebook';
-import { getFieldId } from '~/utils/issues';
 import safeName from '~/utils/safeName';
 
 const FORM_ID = 'create-new-variable';
@@ -101,7 +100,8 @@ const NewVariableFields = ({
       title="Attribute definition"
       description="Define the attribute's identity, data type, and available values."
     >
-      <Subsection id={getFieldId('name')} title="Identity">
+      <Section title="Identity">
+        <IssueAnchor fieldName="name" description="Attribute name" />
         <ArchitectField
           name="name"
           label="Attribute name"
@@ -119,8 +119,9 @@ const NewVariableFields = ({
             allowedVariableName: true,
           }}
         />
-      </Subsection>
-      <Subsection id={getFieldId('type')} title="Data type">
+      </Section>
+      <Section title="Data type">
+        <IssueAnchor fieldName="type" description="Attribute type" />
         <ArchitectField
           name="type"
           label="Attribute type"
@@ -139,9 +140,10 @@ const NewVariableFields = ({
           disabled={typeLocked}
           validation={{ required: true }}
         />
-      </Subsection>
+      </Section>
       {isOrdinalOrCategoricalType(variableType) && (
-        <Subsection id={getFieldId('options')} title="Allowed values">
+        <Section title="Allowed values">
+          <IssueAnchor fieldName="options" description="Allowed values" />
           {lockedOptions ? (
             <LockedOptions options={lockedOptions} />
           ) : (
@@ -155,7 +157,7 @@ const NewVariableFields = ({
               validation={optionsValidation}
             />
           )}
-        </Subsection>
+        </Section>
       )}
     </Section>
   );

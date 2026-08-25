@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Section from '@codaco/fresco-ui/Section';
-import { Subsection } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import EditableAttributesList from '~/components/Form/arrayFields/EditableAttributesList';
 import IssueAnchor from '~/components/IssueAnchor';
@@ -284,9 +283,9 @@ export const NodeConfigurationComponent = ({
       }
       disabled={disabled}
     >
-      <Subsection
+      <Section
         title="Quick add attribute"
-        summary="The attribute populated by the inline quick-add field when a node is added from the toolbar — typically a name or label."
+        description="The attribute populated by the inline quick-add field when a node is added from the toolbar — typically a name or label."
       >
         <IssueAnchor fieldName="quickAdd" description="Quick Add Attribute" />
         <ArchitectField
@@ -315,11 +314,11 @@ export const NodeConfigurationComponent = ({
             variableId={quickAddVariable}
           />
         )}
-      </Subsection>
+      </Section>
 
-      <Subsection
+      <Section
         title="Node positions"
-        summary="Stores each node's position on the canvas. Reusing the same attribute across stages preserves positions as the participant moves between tasks."
+        description="Stores each node's position on the canvas. Reusing the same attribute across stages preserves positions as the participant moves between tasks."
       >
         <IssueAnchor
           fieldName="layoutVariable"
@@ -338,11 +337,11 @@ export const NodeConfigurationComponent = ({
             handleCreateVariable(value, 'layout', 'layoutVariable')
           }
         />
-      </Subsection>
+      </Section>
 
-      <Subsection
+      <Section
         title="Automatic layout"
-        summary="When on, nodes are arranged by a force-directed layout. Participants can toggle this during the interview; this sets the starting state."
+        description="When on, nodes are arranged by a force-directed layout. Participants can toggle this during the interview; this sets the starting state."
       >
         <IssueAnchor
           fieldName="behaviours.automaticLayout"
@@ -355,11 +354,11 @@ export const NodeConfigurationComponent = ({
           inline
           initialValue={initialAutomaticLayout ?? true}
         />
-      </Subsection>
+      </Section>
 
-      <Subsection
+      <Section
         title="Group hulls"
-        summary="Draw shaded outlines around groups of nodes that share a value of a categorical attribute. Choose (or create) the attribute whose values participants can group nodes into — by tapping nodes with the Groups tool, or by lasso-selecting several at once."
+        description="Draw shaded outlines around groups of nodes that share a value of a categorical attribute. Choose (or create) the attribute whose values participants can group nodes into — by tapping nodes with the Groups tool, or by lasso-selecting several at once."
       >
         <IssueAnchor
           fieldName="convexHullVariable"
@@ -381,11 +380,11 @@ export const NodeConfigurationComponent = ({
             )
           }
         />
-      </Subsection>
+      </Section>
 
-      <Subsection
+      <Section
         title="Editable attributes"
-        summary="The attributes shown in the side panel when a node is selected, so they can be edited during the interview. Each attribute is paired with the input control used to collect it."
+        description="The attributes shown in the side panel when a node is selected, so they can be edited during the interview. Each attribute is paired with the input control used to collect it."
       >
         <EditableAttributesList
           fieldName="nodeForm.fields"
@@ -399,7 +398,7 @@ export const NodeConfigurationComponent = ({
           handleChangeFields={handleChangeFields}
           siblingUnvalidatedVariableIds={siblingUnvalidatedVariableIds}
         />
-      </Subsection>
+      </Section>
 
       <NewVariableWindow
         // eslint-disable-next-line react/jsx-props-no-spreading
