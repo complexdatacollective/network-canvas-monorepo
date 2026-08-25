@@ -582,6 +582,15 @@ export type AsyncBatchOptions = {
    * yields after every session.
    */
   sliceMs?: number;
+  /**
+   * Stop drawing.
+   *
+   * Checked between sessions, where the batch is already pausing, and honoured
+   * by throwing the signal's own reason. A host whose surface has gone — a
+   * dialog closed, a page navigated away from — otherwise keeps a whole
+   * batch's worth of work running for a result nobody will ever read.
+   */
+  signal?: AbortSignal;
 };
 
 /**
@@ -607,6 +616,7 @@ export const generateInterviewsAsync = async (
   {
     yieldControl = macrotask,
     sliceMs = YIELD_SLICE_MS,
+    signal,
   }: AsyncBatchOptions = {},
 ): Promise<SyntheticInterviewResult[]> => {
   const batch = prepareBatch(protocol, userOptions, assetData);
@@ -615,6 +625,12 @@ export const generateInterviewsAsync = async (
 
   let held = Date.now();
   const breathe = async () => {
+    // Between sessions is the one place a batch can be stopped: a session is
+    // drawn in a single synchronous piece, so there is nothing to interrupt
+    // inside one. Checked on every pass rather than only where the thread is
+    // actually handed back, so a cheap protocol stops as promptly as a costly
+    // one.
+    signal?.throwIfAborted();
     if (Date.now() - held < sliceMs) return;
     await yieldControl();
     held = Date.now();

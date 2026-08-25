@@ -1,5 +1,6 @@
 import {
   collectInterfaceImpliedRules,
+  type InterfaceImpliedRules,
   syntheticSubjectKey,
   type EffectiveVariableRules,
 } from '@codaco/protocol-validation';
@@ -42,26 +43,50 @@ export const NO_IMPLIED_RULES: VariableImpliedRules = {
 };
 
 /**
- * The implied rules for one variable of one subject, with the stages that
- * imply them.
+ * One walk of the whole protocol, held so many variables can be answered from
+ * it.
+ *
+ * `collectInterfaceImpliedRules` walks every stage and every reference in the
+ * document, which is the right cost to pay ONCE for a surface asking about one
+ * variable and the wrong cost to pay per row: the Codebook's synthetic list
+ * renders a row per attribute, so asking each of them separately re-walked the
+ * protocol as many times as the type has attributes, on every render, and every
+ * synthetic edit did it again. Hoist this above the list and read each variable
+ * out of it with {@link impliedRulesIn}.
+ */
+export type CollectedImpliedRules = {
+  rules: InterfaceImpliedRules;
+  stages: unknown[];
+} | null;
+
+export const collectImpliedRules = (
+  protocol: unknown,
+): CollectedImpliedRules =>
+  isRecord(protocol)
+    ? {
+        rules: collectInterfaceImpliedRules(protocol),
+        stages: Array.isArray(protocol.stages) ? protocol.stages : [],
+      }
+    : null;
+
+/**
+ * One variable's implied rules, read out of a walk that has already happened.
  *
  * `variableId` is the codebook key rather than the name, which is how every
  * writer in the protocol references it.
  */
-export const variableImpliedRules = (
-  protocol: unknown,
+export const impliedRulesIn = (
+  collected: CollectedImpliedRules,
   subject: { entity: 'node' | 'edge' | 'ego'; type?: string | undefined },
   variableId: string | undefined,
 ): VariableImpliedRules => {
-  if (!isRecord(protocol) || variableId === undefined) return NO_IMPLIED_RULES;
+  if (collected === null || variableId === undefined) return NO_IMPLIED_RULES;
 
   const key = syntheticSubjectKey(subject);
-  const collected = collectInterfaceImpliedRules(protocol);
-  const rules = collected.get(key)?.get(variableId) ?? {};
-  const binOnly = collected.binOnlyVariables.get(key)?.has(variableId) === true;
-
-  const stages = Array.isArray(protocol.stages) ? protocol.stages : [];
-  const sources = collected.impliedRuleSources.get(key)?.get(variableId) ?? [];
+  const { rules: walked, stages } = collected;
+  const rules = walked.get(key)?.get(variableId) ?? {};
+  const binOnly = walked.binOnlyVariables.get(key)?.has(variableId) === true;
+  const sources = walked.impliedRuleSources.get(key)?.get(variableId) ?? [];
 
   return {
     rules,
@@ -78,6 +103,18 @@ export const variableImpliedRules = (
     ),
   };
 };
+
+/**
+ * The implied rules for one variable of one subject, walk included — for a
+ * surface asking about exactly one. A surface asking about many pairs
+ * {@link collectImpliedRules} with {@link impliedRulesIn} instead.
+ */
+export const variableImpliedRules = (
+  protocol: unknown,
+  subject: { entity: 'node' | 'edge' | 'ego'; type?: string | undefined },
+  variableId: string | undefined,
+): VariableImpliedRules =>
+  impliedRulesIn(collectImpliedRules(protocol), subject, variableId);
 
 // ---------------------------------------------------------------------------
 // The sentences a disabled control shows

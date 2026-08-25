@@ -102,6 +102,13 @@ export type GenerateSyntheticExportOptions = {
    * exactly as its label promises. Threaded to both of the engine's flags.
    */
   respectSkipLogic: boolean;
+  /**
+   * Stop the run. Honoured by the engine between sessions and by the exporter
+   * while it writes, so a batch whose surface has gone — a dialog closed, a
+   * page navigated away from — stops rather than spending the rest of a
+   * thousand sessions and an archive nobody will read.
+   */
+  signal?: AbortSignal;
   onProgress?: (progress: SyntheticExportProgress) => void;
 };
 
@@ -194,6 +201,7 @@ export async function generateSyntheticExport({
   startWindow: pinnedStartWindow,
   simulateDropOut,
   respectSkipLogic,
+  signal,
   onProgress,
 }: GenerateSyntheticExportOptions): Promise<SyntheticExportSummary> {
   onProgress?.({ phase: 'preparing' });
@@ -239,6 +247,7 @@ export async function generateSyntheticExport({
     },
     assetData,
     (current, total) => onProgress?.({ phase: 'generating', current, total }),
+    ...(signal ? [{ signal }] : []),
   );
 
   // Hashed from the SAVED document, never from the parse of it.
@@ -275,6 +284,7 @@ export async function generateSyntheticExport({
       },
     },
     options: syntheticExportOptions(),
+    ...(signal ? { signal } : {}),
     onEvent: (event) => {
       if (event.type === 'stage') {
         // Progress is stage-local: carrying the previous stage's counts

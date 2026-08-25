@@ -79,10 +79,19 @@ export function useSyntheticGeneration({
   // two batches — two archives, two seeds, one of them a surprise.
   const inFlight = useRef(false);
   const mounted = useRef(true);
+  /**
+   * The run's stop switch, so an unmount ENDS it rather than merely ignoring
+   * it. Suppressing the state updates was never enough: the interview loop and
+   * the export pipeline carried on drawing a thousand sessions and building an
+   * archive for a surface that had gone — a researcher who navigates away
+   * mid-run left the tab paying for a file nobody will ever read.
+   */
+  const running = useRef<AbortController | null>(null);
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
+      running.current?.abort();
     };
   }, []);
 
@@ -124,6 +133,8 @@ export function useSyntheticGeneration({
         return;
       }
       inFlight.current = true;
+      const controller = new AbortController();
+      running.current = controller;
       publish({ status: 'running', progress: { phase: 'preparing' } });
       try {
         // Loaded on demand. The generation engine, the export pipeline and its
@@ -142,12 +153,17 @@ export function useSyntheticGeneration({
           ...request.pinned,
           simulateDropOut: request.simulateDropOut,
           respectSkipLogic: request.respectSkipLogic,
+          signal: controller.signal,
           onProgress: (progress) => {
             if (mounted.current) setState({ status: 'running', progress });
           },
         });
         publish({ status: 'done', summary, saved: false });
       } catch (error) {
+        // The run was stopped because its surface went. Nothing failed and
+        // nobody is waiting on it, so there is no fault to report and nothing
+        // to send to error reporting.
+        if (controller.signal.aborted) return;
         // A refusal is the engine telling the researcher which of their own
         // rules cannot all hold. It is not a fault, it is the answer — and it
         // is rendered in the researcher's words, not paraphrased.
@@ -167,6 +183,7 @@ export function useSyntheticGeneration({
         });
       } finally {
         inFlight.current = false;
+        if (running.current === controller) running.current = null;
       }
     },
     [protocol, protocolId, publish],

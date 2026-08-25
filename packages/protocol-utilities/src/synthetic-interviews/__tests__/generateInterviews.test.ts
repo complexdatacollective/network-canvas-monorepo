@@ -1497,6 +1497,30 @@ describe('generateInterviewsAsync', () => {
     );
   });
 
+  it('stops drawing when the caller withdraws', async () => {
+    // A host whose surface has gone — a dialog closed, a page navigated away
+    // from — otherwise keeps drawing a whole batch for a result nobody will
+    // read. Suppressing its state updates was never enough.
+    const controller = new AbortController();
+    let drawn = 0;
+
+    await expect(
+      generateInterviewsAsync(
+        FULL_PROTOCOL,
+        { ...options, count: 20, simulateDropOut: false },
+        {},
+        () => {
+          drawn += 1;
+          if (drawn === 3) controller.abort();
+        },
+        { sliceMs: 0, signal: controller.signal },
+      ),
+    ).rejects.toThrow();
+
+    // Stopped where it was asked to, not merely somewhere before the end.
+    expect(drawn).toBe(3);
+  });
+
   it('refuses an impossible protocol before drawing anything, as its sibling does', async () => {
     // The pre-seed gate belongs to the preparation both drivers share, so a
     // refusal has to arrive here as a rejection rather than as an empty batch.

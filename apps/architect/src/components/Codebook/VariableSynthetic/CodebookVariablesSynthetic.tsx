@@ -4,7 +4,7 @@ import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import type { VariableSynthetic } from '@codaco/protocol-validation';
 
 import { asSyntheticVariableDraft } from './draft';
-import { variableImpliedRules } from './impliedRules';
+import { collectImpliedRules, impliedRulesIn } from './impliedRules';
 import { VariableSyntheticProvider } from './VariableSyntheticProvider';
 import { VariableSyntheticSection } from './VariableSyntheticSection';
 
@@ -74,6 +74,12 @@ export function CodebookVariablesSynthetic({
     [entity, type],
   );
 
+  // One walk of the protocol for the whole list. Asked per row, the collector
+  // re-walked every stage and every reference in the document once per
+  // attribute, on every render — and each synthetic edit replaces `variables`,
+  // so editing got slower the more attributes the type had.
+  const collected = useMemo(() => collectImpliedRules(protocol), [protocol]);
+
   if (entries.length === 0) {
     return (
       <p className="text-text/70">
@@ -89,7 +95,7 @@ export function CodebookVariablesSynthetic({
         <li key={id} className="min-w-0">
           <VariableSyntheticProvider
             variable={draft}
-            implied={variableImpliedRules(protocol, subject, id)}
+            implied={impliedRulesIn(collected, subject, id)}
             namePrefix={`variables.${id}.synthetic`}
             optionWeightsHost="inline"
             onChange={(next) => {

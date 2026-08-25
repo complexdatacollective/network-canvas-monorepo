@@ -37,6 +37,33 @@ import { StageFormContext } from '~/components/StageEditor/stageFormContext';
  */
 const PROSPECTIVE_VARIABLE_ID = '__architect-prospective-attribute__';
 
+/**
+ * That same id, made true of THIS stage rather than merely improbable.
+ *
+ * The claim above is what the whole reading rests on: rules collected for the
+ * placeholder are the rules of the slot it was written into, and of nothing
+ * else. A stage that already mentioned the placeholder somewhere — an imported
+ * document whose author chose that literal string as an attribute key — would
+ * have its own writer for it grouped with the inserted one, and the dialog
+ * would offer settings for rules no new attribute is actually held to.
+ *
+ * Costs one serialisation of a single stage, and only where a mention is
+ * actually found does it lengthen the id. A draft that cannot be serialised is
+ * one no protocol could hold, and falls back to the plain id, which is where
+ * this started.
+ */
+const placeholderFor = (stage: OwningStageDraft): string => {
+  let written: string;
+  try {
+    written = JSON.stringify(stage) ?? '';
+  } catch {
+    return PROSPECTIVE_VARIABLE_ID;
+  }
+  let candidate = PROSPECTIVE_VARIABLE_ID;
+  while (written.includes(candidate)) candidate = `${candidate}_`;
+  return candidate;
+};
+
 /** The stage as its editor holds it, mid-edit. */
 export type OwningStageDraft = Record<string, unknown>;
 
@@ -103,13 +130,10 @@ export const prospectiveImpliedRules = (
 ): VariableImpliedRules => {
   if (!stage || !slotPath) return NO_IMPLIED_RULES;
 
+  const placeholder = placeholderFor(stage);
   // Cloned because the draft handed in is the editor's live form values, and
   // `set` writes through every object on the path.
-  const occupied = set(cloneDeep(stage), slotPath, PROSPECTIVE_VARIABLE_ID);
+  const occupied = set(cloneDeep(stage), slotPath, placeholder);
 
-  return variableImpliedRules(
-    { stages: [occupied] },
-    subject,
-    PROSPECTIVE_VARIABLE_ID,
-  );
+  return variableImpliedRules({ stages: [occupied] }, subject, placeholder);
 };
