@@ -1,10 +1,27 @@
 /* eslint-disable no-console */
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
   CurrentProtocolSchema,
   hashProtocol,
   migrateProtocol,
 } from '@codaco/protocol-validation';
 import { Prisma } from '~/lib/db/generated/client';
+
+/**
+ * The version every stored protocol is brought up to: whatever the embedded
+ * `@codaco/interview` runtime can execute. Nothing in this script names a
+ * schema version directly, so a bump of that constant moves the whole deploy
+ * migration with it.
+ */
+const TARGET_SCHEMA_VERSION = COMPATIBLE_PROTOCOL_SCHEMA_VERSION;
+
+/**
+ * The version the non-conformant-row normalization below re-migrates *from*.
+ * Deliberately pinned rather than derived: it identifies the migration chain
+ * whose transforms mechanically coerce the legacy field shapes those rows
+ * carry, and it is the oldest version this deployment accepts at all.
+ */
+const NORMALIZATION_SOURCE_VERSION = 7;
 
 type ProtocolAssetRow = {
   assetId: string;
@@ -15,10 +32,11 @@ type ProtocolAssetRow = {
 
 /**
  * Rebuild a protocol's `assetManifest` from its linked Asset rows. Fresco stores
- * assets in a separate table rather than inline on the protocol, but v8 validation
- * resolves NameGeneratorRoster/Geospatial asset references against the manifest, so
- * it must be present for migration to validate. The manifest is excluded from the
- * protocol hash, so reconstructing it here does not affect the computed hash.
+ * assets in a separate table rather than inline on the protocol, but whole-protocol
+ * validation resolves NameGeneratorRoster/Geospatial asset references against the
+ * manifest, so it must be present for migration to validate. The manifest is
+ * excluded from the protocol hash, so reconstructing it here does not affect the
+ * computed hash.
  */
 export function buildAssetManifest(assets: ProtocolAssetRow[]) {
   const manifest: Record<
@@ -62,10 +80,10 @@ type ProtocolRow = {
  * result extension applies on every read (lib/db/index.ts). Mirrors that
  * reconstruction so a protocol this returns `true` for cannot make a read throw.
  */
-function isConformantV8(row: ProtocolRow): boolean {
+function isConformant(row: ProtocolRow): boolean {
   return CurrentProtocolSchema.safeParse({
     name: row.name.replace(/\.netcanvas$/i, ''),
-    schemaVersion: 8,
+    schemaVersion: TARGET_SCHEMA_VERSION,
     stages: row.stages,
     codebook: row.codebook,
     experiments: row.experiments ?? {},
@@ -124,7 +142,9 @@ async function migrateOneProtocol(
 
   let migrated: ReturnType<typeof migrateProtocol>;
   try {
-    migrated = migrateProtocol(reconstructed, 8, { name: cleanName });
+    migrated = migrateProtocol(reconstructed, TARGET_SCHEMA_VERSION, {
+      name: cleanName,
+    });
   } catch (err) {
     const cause = err instanceof Error ? err.message : String(err);
     throw new Error(
@@ -138,7 +158,7 @@ async function migrateOneProtocol(
     prisma,
     row,
     {
-      schemaVersion: 8,
+      schemaVersion: TARGET_SCHEMA_VERSION,
       // Branded EntityAttributeReference fields are compile-time-only; erase
       // the brand at the Prisma JSON boundary.
       stages: migrated.stages as Prisma.InputJsonValue,
@@ -155,43 +175,49 @@ async function migrateOneProtocol(
 }
 
 /**
- * Normalize a protocol stored as schemaVersion 8 whose body fails the strict
- * read-time schema (e.g. dev-era rows still carrying pre-v8 field shapes such
- * as object-form `automaticLayout`). Schema 8 was never released, so the
- * current schema is the only schema 8 that exists; a non-conformant row is
- * simply invalid data and is mechanically coerced by re-running the v7→v8
- * migration. Throws if the content is genuinely invalid and cannot be
- * migrated.
+ * Normalize a protocol already stored at the target version whose body fails
+ * the strict read-time schema.
+ *
+ * This is a one-time cleanup for rows persisted before the current validation
+ * rules shipped: they were written when the stored shape was accepted, and
+ * still carry field shapes the migration chain mechanically rewrites (for
+ * example object-form `automaticLayout`, or `iconVariant` in place of `icon`).
+ * Re-running the migration from `NORMALIZATION_SOURCE_VERSION` applies exactly
+ * those rewrites; it does not repair content, so a row whose body genuinely
+ * violates the schema throws here and is left in place by the caller.
  */
-async function normalizeMislabelledV8(
+async function normalizeNonConformantProtocol(
   prisma: Prisma.TransactionClient,
   row: ProtocolRow,
 ): Promise<void> {
   const cleanName = row.name.replace(/\.netcanvas$/i, '');
 
-  const asV7 = {
+  const asSourceVersion = {
     name: cleanName,
-    schemaVersion: 7,
+    schemaVersion: NORMALIZATION_SOURCE_VERSION,
     stages: row.stages,
     codebook: row.codebook,
     assetManifest: buildAssetManifest(row.assets),
   };
 
-  const migrated = migrateProtocol(asV7, 8, { name: cleanName });
+  const migrated = migrateProtocol(asSourceVersion, TARGET_SCHEMA_VERSION, {
+    name: cleanName,
+  });
 
-  // The hash is derived from stages + codebook only, so re-normalizing to v8
-  // gives the same hash the import flow would now compute for this protocol.
+  // The hash is derived from stages + codebook only, so re-normalizing gives
+  // the same hash the import flow would now compute for this protocol.
   const newHash = hashProtocol(migrated);
 
   await writeMigratedProtocol(
     prisma,
     row,
     {
-      schemaVersion: 8,
+      schemaVersion: TARGET_SCHEMA_VERSION,
       stages: migrated.stages as Prisma.InputJsonValue,
       codebook: migrated.codebook,
-      // Preserve the protocol's existing v8-only experiments; a v7→v8 migration
-      // has no knowledge of them and would otherwise reset them to its default.
+      // Preserve the protocol's existing experiments; a migration chain
+      // starting below the version that introduced them has no knowledge of
+      // them and would otherwise reset them to its default.
       experiments: row.experiments ?? Prisma.JsonNull,
       hash: newHash,
     },
@@ -199,31 +225,31 @@ async function normalizeMislabelledV8(
   );
 
   console.log(
-    `Normalized mislabelled v8 protocol "${row.name}" (id=${row.id})... ok (new hash: ${newHash.slice(0, 8)}...)`,
+    `Normalized non-conformant protocol "${row.name}" (id=${row.id})... ok (new hash: ${newHash.slice(0, 8)}...)`,
   );
 }
 
 /**
- * Bring every Protocol row into conformance with the strict v8 schema the app
- * applies on read.
+ * Bring every Protocol row up to `TARGET_SCHEMA_VERSION` and into conformance
+ * with the strict schema the app applies on read.
  *
  * Two classes of protocol need work:
- * - schemaVersion < 8: migrated up to v8 (hard-fails the deploy on error, since
- *   the new interview module cannot read pre-v8 data at all).
- * - schemaVersion 8 but non-conformant: schema 8 was never released, so these
- *   are invalid dev-era rows (e.g. still carrying pre-v8 field shapes) that
- *   are mechanically re-normalized through the v7→v8 migration. If a
- *   protocol's content is genuinely invalid and cannot be migrated, it is
- *   logged and left in place — the read path degrades gracefully rather than
- *   crashing, so one bad protocol must not abort the deploy.
+ * - below the target version: migrated up to it (hard-fails the deploy on
+ *   error, since the interview runtime cannot read older data at all).
+ * - at the target version but non-conformant: rows persisted before the
+ *   current validation rules shipped, mechanically re-normalized through the
+ *   migration chain (see `normalizeNonConformantProtocol`). If a protocol's
+ *   content is genuinely invalid and cannot be migrated, it is logged and left
+ *   in place — the read path degrades gracefully rather than crashing, so one
+ *   bad protocol must not abort the deploy.
  *
- * Idempotent: conformant v8 protocols are skipped.
+ * Idempotent: conformant protocols at the target version are skipped.
  */
-export async function migrateProtocolsToV8(
+export async function migrateProtocolsToCompatibleVersion(
   prisma: Prisma.TransactionClient,
 ): Promise<void> {
   const protocols = await prisma.protocol.findMany({
-    where: { schemaVersion: { lte: 8 } },
+    where: { schemaVersion: { lte: TARGET_SCHEMA_VERSION } },
     select: {
       id: true,
       name: true,
@@ -242,18 +268,18 @@ export async function migrateProtocolsToV8(
   let skipped = 0;
 
   for (const row of protocols) {
-    if (row.schemaVersion < 8) {
+    if (row.schemaVersion < TARGET_SCHEMA_VERSION) {
       await migrateOneProtocol(prisma, row);
       migrated += 1;
       continue;
     }
 
-    if (isConformantV8(row)) {
+    if (isConformant(row)) {
       continue;
     }
 
     try {
-      await normalizeMislabelledV8(prisma, row);
+      await normalizeNonConformantProtocol(prisma, row);
       normalized += 1;
     } catch (err) {
       skipped += 1;
@@ -266,7 +292,8 @@ export async function migrateProtocolsToV8(
   }
 
   console.log(
-    `Protocol migration complete: ${migrated} migrated from <v8, ` +
-      `${normalized} non-conformant v8 normalized, ${skipped} left in place.`,
+    `Protocol migration complete: ${migrated} migrated up to schema version ` +
+      `${TARGET_SCHEMA_VERSION}, ${normalized} non-conformant normalized, ` +
+      `${skipped} left in place.`,
   );
 }

@@ -1,4 +1,7 @@
-import type { ColorReference } from '@codaco/protocol-validation';
+import {
+  type ColorReference,
+  CURRENT_SCHEMA_VERSION,
+} from '@codaco/protocol-validation';
 
 // Color palette sizes, they follow the pattern: ord-color-seq-1...ord-color-seq-n
 // Node/edge sizes must not exceed the schema's Node/EdgeColorSequence (8 each):
@@ -97,8 +100,23 @@ export const getColorSwatchName = (color: ColorReference): string => {
   return name ?? `Color ${index}`;
 };
 
-// Target protocol schema version. Used to determine compatibility & migration
-export const APP_SCHEMA_VERSION = 8 as const;
+/**
+ * The protocol schema version this build of Architect authors and edits.
+ *
+ * DERIVED, never written as a literal. Architect implements the
+ * `@codaco/protocol-validation` contract directly (unlike Interviewer and
+ * Fresco, whose compatibility comes from the `@codaco/interview` runtime they
+ * embed), so the package that owns the schema is the only thing that may say
+ * which version is current. A literal here could silently disagree with the
+ * schemas Architect actually validates against, and every compatibility
+ * decision — open, migrate, refuse — is made against this number.
+ *
+ * Typed as the package's own literal (currently `8`) rather than widened to
+ * `number`, so it stays assignable to `SchemaVersion` and every protocol-type
+ * derivation keeps flowing through it.
+ */
+export const APP_SCHEMA_VERSION: typeof CURRENT_SCHEMA_VERSION =
+  CURRENT_SCHEMA_VERSION;
 
 // Product limit on a protocol name, counted in graphemes (see
 // `~/utils/countGraphemes`) rather than UTF-16 code units. Stage labels are

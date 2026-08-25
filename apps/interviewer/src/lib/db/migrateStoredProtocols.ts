@@ -1,0 +1,259 @@
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
+import {
+  type CurrentProtocol,
+  hashProtocol,
+  migrateProtocol,
+  validateProtocol,
+} from '@codaco/protocol-validation';
+
+import { db } from './db';
+import {
+  decryptAsset,
+  decryptProtocol,
+  encryptAsset,
+  encryptProtocol,
+  type StoredAssetRow,
+  type StoredProtocolRow,
+} from './recordCrypto';
+import type { StoredProtocol } from './types';
+
+// Bring stored protocols up to the schema version this build's interview
+// runtime executes (`COMPATIBLE_PROTOCOL_SCHEMA_VERSION`, read from the
+// embedded `@codaco/interview` package rather than written down here).
+//
+// Why this has to be one transaction: a protocol is stored under its own
+// content hash (`id` === `hash`), every session points at its protocol by that
+// hash, and every asset row is keyed `${protocolHash}::${assetId}`. Migrating a
+// protocol changes its content, so it changes its hash — the protocol row, its
+// assets, and its sessions all have to move to the new hash together. Doing
+// those writes separately is exactly what would orphan a session or an asset,
+// so they happen in a single Dexie read-write transaction over all three
+// tables. A row whose migration or validation fails never opens a transaction
+// at all, so it and its sessions are left untouched and the sweep continues.
+//
+// This is a no-op for every library in the field today: the only schema version
+// Interviewer has ever stored is the current one. It ships built and tested so
+// that the release which introduces a new schema version cannot orphan the
+// sessions of a protocol it migrates.
+//
+// Two properties of a migration are what make repointing sessions sufficient,
+// and protocol-validation's migration module states both as binding invariants:
+// a migration never adds, removes, or reorders stages (so a session's
+// `currentStep` still names the same stage), and never changes the shape of a
+// collected answer (so `network` needs no rewriting). A future migration rule
+// that breaks either one forces this file to be redesigned in the same change.
+//
+// Transaction-liveness rule: Dexie auto-commits an open transaction the moment
+// the body awaits a non-Dexie promise. Every `crypto.subtle` await (decrypt /
+// re-encrypt) and every validation await therefore happens BEFORE the
+// transaction opens; the transaction body performs Dexie reads and writes only.
+
+export type MigratedStoredProtocol = {
+  name: string;
+  fromVersion: number;
+  toVersion: number;
+  previousHash: string;
+  hash: string;
+};
+
+export type FailedStoredProtocolMigration = {
+  name: string;
+  hash: string;
+  reason: string;
+};
+
+export type StoredProtocolMigrationResult = {
+  migrated: MigratedStoredProtocol[];
+  failed: FailedStoredProtocolMigration[];
+};
+
+function describeFailure(cause: unknown): string {
+  return cause instanceof Error ? cause.message : String(cause);
+}
+
+// Asset ciphertext is bound (as AAD) to the asset row's id, and that id carries
+// the protocol hash — so an asset cannot simply be re-keyed, it has to be
+// decrypted under the old id and re-encrypted under the new one. Sequential by
+// design: a protocol's assets can include large video, and decrypting them all
+// concurrently would hold every plaintext copy in memory at once.
+async function rekeyAssets(
+  previousHash: string,
+  hash: string,
+): Promise<StoredAssetRow[]> {
+  const rows = await db.assets
+    .where('protocolHash')
+    .equals(previousHash)
+    .toArray();
+  const rekeyed: StoredAssetRow[] = [];
+  for (const row of rows) {
+    const asset = await decryptAsset(row);
+    rekeyed.push(
+      await encryptAsset({
+        ...asset,
+        id: `${hash}::${asset.assetId}`,
+        protocolHash: hash,
+      }),
+    );
+  }
+  return rekeyed;
+}
+
+async function migrateStoredProtocolRow(
+  row: StoredProtocolRow,
+): Promise<MigratedStoredProtocol> {
+  const previousHash = row.hash;
+  const fromVersion = row.schemaVersion;
+
+  const stored = await decryptProtocol(row);
+
+  // The `name` dependency: v7 and below have no protocol name of their own, so
+  // the migration is told the one this library already displays for the row.
+  const migrated = migrateProtocol(
+    stored.protocol,
+    COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+    { name: stored.name },
+  );
+
+  const validation = await validateProtocol(migrated);
+  if (!validation.success) throw validation.error;
+  // `VersionedProtocol` is a schemaVersion-discriminated union, so this
+  // comparison is also what narrows the validated document to the shape the
+  // interview runtime executes.
+  if (validation.data.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION) {
+    throw new Error(
+      `Migration produced schema version ${validation.data.schemaVersion}, not ${COMPATIBLE_PROTOCOL_SCHEMA_VERSION}.`,
+    );
+  }
+  const validated: CurrentProtocol = validation.data;
+  const hash = hashProtocol(validated);
+
+  const nextStored: StoredProtocol = {
+    ...stored,
+    id: hash,
+    hash,
+    name: validated.name,
+    schemaVersion: validated.schemaVersion,
+    lastModified: validated.lastModified,
+    description: validated.description,
+    codebook: validated.codebook,
+    protocol: validated,
+    // `importedAt` is deliberately carried over from `...stored`: the protocol
+    // entered this library when the researcher imported it, and the deck orders
+    // cards by that timestamp.
+  };
+  const protocolRow = await encryptProtocol(nextStored);
+
+  // The hash covers a protocol's structure (codebook + stages) only, so a
+  // migration that changed nothing structural — an empty protocol, say — keeps
+  // the row's key. Nothing moves: rewrite the row in place and leave sessions
+  // and assets alone.
+  if (hash === previousHash) {
+    await db.protocols.put(protocolRow);
+    return {
+      name: nextStored.name,
+      fromVersion,
+      toVersion: validated.schemaVersion,
+      previousHash,
+      hash,
+    };
+  }
+
+  // Two different protocols migrating onto one hash means they share a
+  // structure, and storage is content-addressed: keep the row that is already
+  // there rather than overwriting it (and its assets, which are keyed under the
+  // same hash), and move this row's sessions onto it. Checked here so the
+  // asset re-encryption below is skipped in that case, and checked again inside
+  // the transaction, which is what actually decides.
+  const collides =
+    (await db.protocols.where('hash').equals(hash).first()) !== undefined;
+  const assetRows = collides ? [] : await rekeyAssets(previousHash, hash);
+
+  await db.transaction('rw', db.protocols, db.sessions, db.assets, async () => {
+    const existing = await db.protocols.where('hash').equals(hash).first();
+    if (!existing) {
+      await db.protocols.put(protocolRow);
+      if (assetRows.length > 0) await db.assets.bulkPut(assetRows);
+    }
+    // Query the sessions by primary key rather than by the `protocolHash`
+    // index we are about to rewrite: Dexie leaves the result undefined when a
+    // `modify` changes the very index it is iterating.
+    const sessionIds = await db.sessions
+      .where('protocolHash')
+      .equals(previousHash)
+      .primaryKeys();
+    if (sessionIds.length > 0) {
+      await db.sessions
+        .where('id')
+        .anyOf(sessionIds)
+        .modify({ protocolHash: hash });
+    }
+    await db.assets.where('protocolHash').equals(previousHash).delete();
+    await db.protocols.delete(row.id);
+  });
+
+  return {
+    name: nextStored.name,
+    fromVersion,
+    toVersion: validated.schemaVersion,
+    previousHash,
+    hash,
+  };
+}
+
+/**
+ * Migrate every stored protocol below the runtime's compatible schema version,
+ * repointing its sessions and assets onto the recomputed hash.
+ *
+ * Never rejects. A row that cannot be migrated or validated is reported in
+ * `failed` and left exactly as it was — the caller surfaces that, and the app
+ * still launches. Safe to re-run: a row already at the compatible version is
+ * not looked at.
+ */
+export async function migrateStoredProtocols(): Promise<StoredProtocolMigrationResult> {
+  const migrated: MigratedStoredProtocol[] = [];
+  const failed: FailedStoredProtocolMigration[] = [];
+
+  let outdatedIds: string[];
+  try {
+    // Streamed rather than `toArray()`d: `schemaVersion` is not indexed, so the
+    // scan has to read the rows, and there is no reason to hold every stored
+    // protocol in memory to answer a question about one field of each.
+    const ids: string[] = [];
+    await db.protocols.each((row) => {
+      if (row.schemaVersion < COMPATIBLE_PROTOCOL_SCHEMA_VERSION) {
+        ids.push(row.id);
+      }
+    });
+    outdatedIds = ids;
+  } catch (cause) {
+    console.error(
+      'Could not read stored protocols to check their schema version',
+      cause,
+    );
+    return { migrated, failed };
+  }
+
+  for (const id of outdatedIds) {
+    // The read is inside the try with everything else: this function's contract
+    // is that it never rejects, and its caller holds the app's first paint on
+    // that promise resolving.
+    let row: StoredProtocolRow | undefined;
+    try {
+      // Re-read rather than reuse the streamed row: nothing else writes during
+      // launch, but a fresh read is what makes each row's work self-contained.
+      row = await db.protocols.get(id);
+      if (!row) continue;
+      migrated.push(await migrateStoredProtocolRow(row));
+    } catch (cause) {
+      const name = row?.name ?? id;
+      console.error(`Could not migrate stored protocol "${name}"`, cause);
+      failed.push({
+        name,
+        hash: row?.hash ?? id,
+        reason: describeFailure(cause),
+      });
+    }
+  }
+
+  return { migrated, failed };
+}

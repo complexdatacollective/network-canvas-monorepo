@@ -94,6 +94,16 @@ COPY --from=builder --chown=nextjs:nodejs /app/tsconfig ./tsconfig
 # repeat rebuilds skip re-downloading; only /tmp scratch is removed in-layer.
 # (Replaces a `pnpm add --force` that baked a 3.6GB pnpm store + a redundant
 # 1.7GB node_modules copy into the image.)
+#
+# `@codaco/interview` is unpacked rather than installed. The startup scripts
+# import exactly one of its entries — the standalone `protocol-schema-version`
+# bundle naming the schema version this build's interview runtime executes —
+# and that bundle's only runtime import is `@codaco/protocol-validation`,
+# installed above. The package's own dependencies (mapbox-gl, posthog-js,
+# lucide-react, the Redux stack) exist for the interview UI, which these
+# scripts never load, and would add ~250MB to a ~44MB runtime tree. If a
+# startup script ever imports another entry of this package, install it
+# properly instead.
 COPY --from=builder /app/package.json /tmp/package.json
 RUN --mount=type=cache,target=/root/.npm \
     set -e; \
@@ -109,9 +119,14 @@ RUN --mount=type=cache,target=/root/.npm \
       "zod@$(V zod)" \
       "@t3-oss/env-nextjs@$(V @t3-oss/env-nextjs)" \
       "@codaco/protocol-validation@$(V @codaco/protocol-validation)"; \
+    npm pack --silent --pack-destination /tmp "@codaco/interview@$(V @codaco/interview)"; \
+    mkdir -p /tmp/interview-pack /tmp/runtime/node_modules/@codaco; \
+    tar xzf /tmp/codaco-interview-*.tgz -C /tmp/interview-pack; \
+    mv /tmp/interview-pack/package /tmp/runtime/node_modules/@codaco/interview; \
     ( cd /tmp/runtime/node_modules && tar cf - . ) | ( cd /app/node_modules && tar xf - ); \
     chown -R nextjs:nodejs /app/node_modules; \
-    cd /app && rm -rf /tmp/runtime /root/.cache /tmp/package.json
+    cd /app && rm -rf /tmp/runtime /root/.cache /tmp/package.json \
+      /tmp/interview-pack /tmp/codaco-interview-*.tgz
 
 # Switch to non-root user
 USER nextjs

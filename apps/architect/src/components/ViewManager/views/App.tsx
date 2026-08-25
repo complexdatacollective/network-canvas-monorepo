@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useLocation } from 'wouter';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { useToast } from '@codaco/fresco-ui/Toast';
 import { AppUpdateProvider } from '~/components/AppUpdate/AppUpdateProvider';
 import BackgroundLights from '~/components/BackgroundLights';
 import InstallBanner from '~/components/InstallBanner';
@@ -28,8 +29,12 @@ import {
   takeLaunchReadFailures,
 } from '~/utils/fileLaunchQueue';
 import {
-  subscribeStartupProtocolValidationFailures,
-  takeStartupProtocolValidationFailures,
+  subscribeProtocolUpgrades,
+  takeProtocolUpgrades,
+} from '~/utils/protocolUpgradeQueue';
+import {
+  subscribeStartupProtocolFailures,
+  takeStartupProtocolFailures,
 } from '~/utils/startupProtocolFailureQueue';
 
 const FileLaunchFailureReporter = () => {
@@ -88,17 +93,43 @@ const StartupProtocolFailureReporter = () => {
 
   useEffect(() => {
     const reportFailures = () => {
-      for (const message of takeStartupProtocolValidationFailures()) {
-        void showProtocolOpenResultDialog({
-          result: { status: 'validation-error', message },
-          openDialog,
-        });
+      for (const refusal of takeStartupProtocolFailures()) {
+        void showProtocolOpenResultDialog({ result: refusal, openDialog });
       }
     };
 
     reportFailures();
-    return subscribeStartupProtocolValidationFailures(reportFailures);
+    return subscribeStartupProtocolFailures(reportFailures);
   }, [openDialog]);
+
+  return null;
+};
+
+/**
+ * Announces a protocol that was brought up to date while being opened.
+ *
+ * A toast, not a dialog: nothing went wrong and there is nothing to decide —
+ * the protocol opened, and this only explains why the copy in the library is
+ * no longer byte-identical to the one the researcher last saved. The other
+ * reporters here interrupt because they describe work that did NOT happen.
+ */
+const ProtocolUpgradeToaster = () => {
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const announceUpgrades = () => {
+      for (const { name } of takeProtocolUpgrades()) {
+        toast({
+          variant: 'info',
+          title: 'Protocol updated',
+          description: `"${name}" was made with an older version of Architect. It has been updated to open here, and the copy in your library has been replaced.`,
+        });
+      }
+    };
+
+    announceUpgrades();
+    return subscribeProtocolUpgrades(announceUpgrades);
+  }, [toast]);
 
   return null;
 };
@@ -158,6 +189,7 @@ const AppContents = () => {
       <FileLaunchFailureReporter />
       <AutosaveFailureReporter />
       <StartupProtocolFailureReporter />
+      <ProtocolUpgradeToaster />
       <LaunchedProtocolOpener />
       <ProtocolValidationDialogReporter />
       {/* Mounted app-wide, not inside the stage editor: a nested editor can be

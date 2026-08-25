@@ -2,6 +2,7 @@ import { DateTime } from 'luxon';
 import { useContext } from 'react';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import { APP_SCHEMA_VERSION } from '~/config';
 import networkCanvasLogo from '~/images/NC-Mark.svg';
 
 import ProtocolCard from './ProtocolCard';
@@ -36,7 +37,7 @@ const Cover = () => {
         name={protocolName}
         description={protocol.description ?? ''}
         lastModified={lastModifiedFormatted}
-        schemaVersion={protocol.schemaVersion ?? 8}
+        schemaVersion={protocol.schemaVersion ?? APP_SCHEMA_VERSION}
       />
       <br />
       <br />

@@ -1,3 +1,4 @@
+import { Toast } from '@base-ui/react/toast';
 import { configureStore } from '@reduxjs/toolkit';
 import { render } from '@testing-library/react';
 import { Provider } from 'react-redux';
@@ -38,9 +39,13 @@ const mockStore = configureStore({
 
 describe('<App />', () => {
   it('renders main app components', () => {
+    // `main.tsx` mounts the toast provider above `AppView`; `App` reads it to
+    // announce a protocol upgraded on open.
     const { getByTestId } = render(
       <Provider store={mockStore}>
-        <App />
+        <Toast.Provider>
+          <App />
+        </Toast.Provider>
       </Provider>,
     );
 
