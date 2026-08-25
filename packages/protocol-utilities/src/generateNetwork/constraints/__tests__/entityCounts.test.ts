@@ -502,7 +502,7 @@ describe('worstCaseEntityCounts', () => {
         {
           id: 'condition',
           label: 'Condition',
-          color: '#000000',
+          color: 'node-color-seq-1',
           variable: 'condition',
           inheritancePattern: 'xLinkedRecessive',
         },
@@ -568,7 +568,7 @@ describe('worstCaseEntityCounts', () => {
         {
           id: 'condition',
           label: 'Condition',
-          color: '#000000',
+          color: 'node-color-seq-1',
           variable: 'condition',
           inheritancePattern: 'xLinkedRecessive',
         },
@@ -643,7 +643,7 @@ describe('worstCaseEntityCounts', () => {
         {
           id: 'condition',
           label: 'Condition',
-          color: '#000000',
+          color: 'node-color-seq-1',
           variable: 'condition',
           inheritancePattern: 'xLinkedRecessive',
         },

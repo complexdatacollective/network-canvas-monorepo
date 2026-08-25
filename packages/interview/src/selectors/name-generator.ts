@@ -17,6 +17,7 @@ import {
   getNetworkEgo,
   getNetworkNodesForOtherPrompts,
   getNetworkNodesForPrompt,
+  getStageNodeCount,
   getSubjectType,
 } from './session';
 import { notInSet } from './utils';
@@ -43,6 +44,30 @@ export const getNodeIconName: (
       : 'add-a-person';
 
     return nodeIcon;
+  },
+);
+
+// Whether the stage's remaining `maxNodes` allowance is more than one node,
+// which is what decides if a quick-add box can promise to stay open for
+// another entry. `disabled` only covers the allowance already being spent.
+//
+// Explicit signature: the enlarged stage union makes the inferred selector
+// type too large for TS to serialize (TS7056).
+export const getCanAddMultipleNodes: (
+  state: RootState,
+  currentStep: number,
+) => boolean = createSelector(
+  getCurrentStage,
+  getStageNodeCount,
+  (stage, stageNodeCount) => {
+    const maxNodes =
+      stage.type === 'NameGenerator' ||
+      stage.type === 'NameGeneratorQuickAdd' ||
+      stage.type === 'NameGeneratorRoster'
+        ? (stage.behaviours?.maxNodes ?? Number.POSITIVE_INFINITY)
+        : Number.POSITIVE_INFINITY;
+
+    return maxNodes - stageNodeCount > 1;
   },
 );
 

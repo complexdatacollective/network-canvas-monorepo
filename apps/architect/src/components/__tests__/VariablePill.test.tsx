@@ -203,6 +203,48 @@ describe('ConnectedVariablePill', () => {
 });
 
 describe('VariablePill', () => {
+  it('keeps a wide name editor inside the viewport', async () => {
+    render(
+      <VariablePill
+        className="max-w-full"
+        editable
+        label="subject_var"
+        type="text"
+      />,
+    );
+    const pill = screen.getByRole('button', {
+      name: 'Edit attribute name: subject_var',
+    });
+    vi.spyOn(pill, 'getBoundingClientRect').mockReturnValue({
+      bottom: 148,
+      height: 48,
+      left: 100,
+      right: 900,
+      top: 100,
+      width: 800,
+      x: 100,
+      y: 100,
+      toJSON: () => ({}),
+    });
+
+    fireEvent.click(pill);
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Edit attribute name',
+    });
+    const editor = dialog.querySelector<HTMLElement>('.variable-pill');
+    if (!editor) throw new Error('variable pill editor did not render');
+
+    const frameLeft = Number.parseFloat(dialog.style.left);
+    const frameWidth = Number.parseFloat(dialog.style.width);
+    const editorWidth = Number.parseFloat(editor.style.width);
+
+    // The frame keeps a 16px viewport gutter, and the 1.5x pill plus its 24px
+    // padding on each side fits inside that frame instead of overflowing it.
+    expect(frameLeft).toBeGreaterThanOrEqual(16);
+    expect(frameLeft + frameWidth).toBeLessThanOrEqual(window.innerWidth - 16);
+    expect(editorWidth * 1.5 + 48).toBeLessThanOrEqual(frameWidth);
+  });
+
   it('uses a data element and a static border for a non-interactive reference', () => {
     const { container } = render(
       <VariablePill label="subject_var" type="text" />,

@@ -19,6 +19,7 @@ import { OperatorsByVariableType } from './filters/index.ts';
 
 // Re-export all the split schemas
 export * from './assets/index.ts';
+export * from './color-reference.ts';
 export * from './codebook/index.ts';
 export * from './common/index.ts';
 export * from './entity-attribute-reference.ts';

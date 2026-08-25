@@ -4,7 +4,7 @@ import { icons } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import { Provider } from 'react-redux';
 import { action } from 'storybook/actions';
-import { fn } from 'storybook/test';
+import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import Form from '@codaco/fresco-ui/form/Form';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
@@ -16,9 +16,12 @@ const customIconOptions = ['add-a-person', 'add-a-place'];
 
 const iconOptions = [...customIconOptions, ...Object.keys(icons)];
 
-type StoryArgs = ComponentProps<typeof QuickAddField> & { icon: string };
+type StoryArgs = ComponentProps<typeof QuickAddField> & {
+  icon: string;
+  maxNodes: number;
+};
 
-const buildMockProtocol = (icon: string) => ({
+const buildMockProtocol = (icon: string, maxNodes: number) => ({
   id: 'test-protocol',
   codebook: {
     node: {
@@ -45,6 +48,7 @@ const buildMockProtocol = (icon: string) => ({
         entity: 'node',
         type: 'person',
       },
+      ...(maxNodes > 0 ? { behaviours: { maxNodes } } : {}),
       prompts: [
         {
           id: 'prompt-1',
@@ -72,8 +76,8 @@ const mockSession = {
   },
 };
 
-const createMockStore = (icon: string) => {
-  const mockProtocol = buildMockProtocol(icon);
+const createMockStore = (icon: string, maxNodes: number) => {
+  const mockProtocol = buildMockProtocol(icon, maxNodes);
 
   const mockProtocolState = {
     id: 'test-protocol-id',
@@ -113,9 +117,12 @@ const createMockStore = (icon: string) => {
 
 const ReduxDecorator = (
   Story: React.ComponentType,
-  context: { args: { icon?: string } },
+  context: { args: { icon?: string; maxNodes?: number } },
 ) => {
-  const store = createMockStore(context.args.icon ?? 'add-a-person');
+  const store = createMockStore(
+    context.args.icon ?? 'add-a-person',
+    context.args.maxNodes ?? 0,
+  );
   return (
     <Provider store={store}>
       <div className="relative flex h-[400px] w-[700px] items-end justify-end bg-slate-900 p-6">
@@ -134,6 +141,7 @@ const meta: Meta<StoryArgs> = {
   },
   args: {
     icon: 'add-a-person',
+    maxNodes: 0,
   },
   argTypes: {
     icon: {
@@ -153,6 +161,11 @@ const meta: Meta<StoryArgs> = {
     disabled: {
       control: 'boolean',
       description: 'Whether the field is disabled',
+    },
+    maxNodes: {
+      control: 'number',
+      description:
+        "The stage's `maxNodes` allowance (story-only — drives the redux stage mock; 0 means unlimited). The usage hint only promises that the box stays open while more than one node can still be added.",
     },
     onShowInput: {
       action: 'input-shown',
@@ -211,7 +224,7 @@ export const Default: Story = {
     placeholder: 'Type a name and press enter...',
     disabled: false,
   },
-  render: ({ icon: _icon, ...args }) => (
+  render: ({ icon: _icon, maxNodes: _maxNodes, ...args }) => (
     <QuickAddFieldWrapper {...args} onFormSubmit={formSubmitAction} />
   ),
   parameters: {
@@ -231,7 +244,7 @@ export const WithLucideIcon: Story = {
     disabled: false,
     icon: 'Smartphone',
   },
-  render: ({ icon: _icon, ...args }) => (
+  render: ({ icon: _icon, maxNodes: _maxNodes, ...args }) => (
     <QuickAddFieldWrapper {...args} onFormSubmit={formSubmitAction} />
   ),
   parameters: {
@@ -253,7 +266,7 @@ export const WithValidation: Story = {
     minLength: 2,
     maxLength: 50,
   },
-  render: ({ icon: _icon, ...args }) => (
+  render: ({ icon: _icon, maxNodes: _maxNodes, ...args }) => (
     <QuickAddFieldWrapper {...args} onFormSubmit={formSubmitAction} />
   ),
   parameters: {
@@ -266,13 +279,85 @@ export const WithValidation: Story = {
   },
 };
 
+// Opens the quick-add input and waits out the 5s usage-hint timer, then waits
+// for the tooltip's spring to finish. Motion clears its inline transform on
+// completion, so `transform: none` is the terminal state — asserting it keeps
+// Chromatic from capturing a half-animated frame.
+async function showSettledHint(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  await userEvent.click(canvas.getByTestId('quick-add-toggle'));
+
+  const hint = await screen.findByRole('tooltip', {}, { timeout: 10000 });
+
+  await waitFor(() => {
+    const style = getComputedStyle(hint);
+    expect(style.opacity).toBe('1');
+    expect(style.transform).toBe('none');
+  });
+
+  return hint;
+}
+
+export const MultiEntryHint: Story = {
+  args: {
+    name: 'name',
+    placeholder: 'Type a name and press enter...',
+    disabled: false,
+    maxNodes: 0,
+  },
+  render: ({ icon: _icon, maxNodes: _maxNodes, ...args }) => (
+    <QuickAddFieldWrapper {...args} onFormSubmit={formSubmitAction} />
+  ),
+  play: async ({ canvasElement }) => {
+    const hint = await showSettledHint(canvasElement);
+
+    await expect(hint).toHaveTextContent(
+      'Press Enter when you are finished. The box will stay open so you can quickly enter multiple names in a row.',
+    );
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'A stage with room for more than one more node keeps the full hint, including the promise that the box stays open. Paired with `SingleEntryHint` so the two copy variants can be compared visually.',
+      },
+    },
+  },
+};
+
+export const SingleEntryHint: Story = {
+  args: {
+    name: 'name',
+    placeholder: 'Type a name and press enter...',
+    disabled: false,
+    maxNodes: 1,
+  },
+  render: ({ icon: _icon, maxNodes: _maxNodes, ...args }) => (
+    <QuickAddFieldWrapper {...args} onFormSubmit={formSubmitAction} />
+  ),
+  play: async ({ canvasElement }) => {
+    const hint = await showSettledHint(canvasElement);
+
+    await expect(hint).toHaveTextContent('Press Enter when you are finished.');
+    await expect(hint).not.toHaveTextContent('multiple names in a row');
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'A stage whose remaining `maxNodes` allowance is a single node closes the box on the next successful add, so the usage hint drops its promise that the box stays open.',
+      },
+    },
+  },
+};
+
 export const Disabled: Story = {
   args: {
     name: 'name',
     placeholder: 'Type a name...',
     disabled: true,
   },
-  render: ({ icon: _icon, ...args }) => (
+  render: ({ icon: _icon, maxNodes: _maxNodes, ...args }) => (
     <QuickAddFieldWrapper {...args} onFormSubmit={formSubmitAction} />
   ),
   parameters: {

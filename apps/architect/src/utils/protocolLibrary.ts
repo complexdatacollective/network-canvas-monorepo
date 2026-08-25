@@ -71,47 +71,6 @@ export const putStoredProtocol = async ({
   }
 };
 
-/**
- * Writes a protocol only if the stored row is still the one the caller read.
- *
- * `putStoredProtocol` replaces the whole row and compares nothing, which is
- * right for the tab that owns the protocol — its own buffer is the newest
- * thing there is. It is wrong for a write derived from a snapshot taken before
- * some slow, asynchronous work: another tab holding this protocol autosaves
- * into the same row, so a blind write lands the stale snapshot on top of
- * whatever that tab has saved since, and the researcher loses those edits with
- * nothing on screen to say so.
- *
- * Reports `false` rather than throwing when the row has moved on, because
- * "someone else got there first" is an outcome the caller has to explain, not
- * a fault. Deliberately not last-write-wins and deliberately not a merge:
- * neither can be done honestly here.
- *
- * Same shape as `markStoredProtocolValidated`'s guard, for the same reason —
- * the comparison and the write have to be one transaction, or a peer save can
- * land between them.
- */
-export const putStoredProtocolIfUnchanged = async (
-  expected: StoredProtocolRow,
-  input: UpsertProtocolInput,
-): Promise<boolean> =>
-  // `assets` joins the transaction because `putStoredProtocol` garbage-collects
-  // orphaned blobs as part of the durable commit.
-  assetDb.transaction('rw', assetDb.protocols, assetDb.assets, async () => {
-    const current = await assetDb.protocols.get(expected.id);
-    if (!current) return false;
-    if (
-      current.updatedAt !== expected.updatedAt ||
-      current.schemaVersion !== expected.schemaVersion ||
-      !isEqual(current.protocol, expected.protocol)
-    ) {
-      return false;
-    }
-
-    await putStoredProtocol(input);
-    return true;
-  });
-
 export const markStoredProtocolValidated = async (
   expected: StoredProtocolRow,
 ): Promise<void> => {

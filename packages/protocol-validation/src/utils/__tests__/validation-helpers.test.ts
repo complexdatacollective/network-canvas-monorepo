@@ -736,7 +736,7 @@ describe('Validation Helpers', () => {
         node: {
           person: {
             name: 'Person',
-            color: '#ff0000',
+            color: 'node-color-seq-1',
             variables: {
               // biome-ignore lint/suspicious/noExplicitAny: Testing malformed data
               malformed: 'not an object' as any,

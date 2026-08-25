@@ -302,33 +302,41 @@ export const VariablePill = ({
     }
 
     const availableWidth = window.innerWidth - EDITOR_FRAME_GUTTER;
-    const targetPillWidth = Math.max(
+    const availablePillWidth =
+      (availableWidth - EDITOR_FRAME_PADDING * 2) / EDIT_MODE_SCALE;
+    const targetPillWidth = Math.min(editorAnchor.maxWidth, availablePillWidth);
+    const initialPillWidth = Math.min(
       editorAnchor.width,
-      Math.min(
-        editorAnchor.maxWidth,
-        (availableWidth - EDITOR_FRAME_PADDING * 2) / EDIT_MODE_SCALE,
-      ),
+      availableWidth - EDITOR_FRAME_PADDING * 2,
     );
     const frameWidth = Math.min(
       availableWidth,
       Math.max(
         EDITOR_FRAME_MIN_WIDTH,
+        initialPillWidth + EDITOR_FRAME_PADDING * 2,
         targetPillWidth * EDIT_MODE_SCALE + EDITOR_FRAME_PADDING * 2,
       ),
     );
+    const centeredLeft =
+      editorAnchor.left + editorAnchor.width / 2 - frameWidth / 2;
+    const left = Math.min(
+      window.innerWidth - EDITOR_FRAME_GUTTER / 2 - frameWidth,
+      Math.max(EDITOR_FRAME_GUTTER / 2, centeredLeft),
+    );
 
     return {
+      initialPillWidth,
       targetPillWidth,
       style: {
-        left: editorAnchor.left + editorAnchor.width / 2 - frameWidth / 2,
+        left,
         top: editorAnchor.top - EDITOR_FRAME_PADDING,
         width: frameWidth,
       } satisfies React.CSSProperties,
       pillStyle: {
         ...style,
         width: `${targetPillWidth}px`,
-        minWidth: `${editorAnchor.width}px`,
-        maxWidth: `${targetPillWidth}px`,
+        minWidth: `${Math.min(initialPillWidth, targetPillWidth)}px`,
+        maxWidth: `${Math.max(initialPillWidth, targetPillWidth)}px`,
       } satisfies VariablePillStyle,
     };
   }, [editorAnchor, style]);
@@ -404,7 +412,9 @@ export const VariablePill = ({
           >
             <motion.div
               initial={
-                reduceMotion ? false : { scale: 1, width: editorAnchor?.width }
+                reduceMotion
+                  ? false
+                  : { scale: 1, width: editorFrame.initialPillWidth }
               }
               animate={{
                 scale: reduceMotion ? 1 : EDIT_MODE_SCALE,
@@ -412,7 +422,7 @@ export const VariablePill = ({
               }}
               exit={{
                 scale: 1,
-                width: editorAnchor?.width,
+                width: editorFrame.initialPillWidth,
               }}
               transition={
                 reduceMotion ? { duration: 0 } : EDIT_MODE_LAYOUT_SPRING

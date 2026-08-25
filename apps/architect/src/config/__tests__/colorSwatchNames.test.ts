@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { COLOR_PALETTE_SWATCH_NAMES, getColorSwatchName } from '../index';
+import { COLOR_PALETTE_SWATCH_NAMES } from '../index';
 
 /**
  * The swatch names a researcher hears are only correct while the theme still
@@ -26,7 +26,7 @@ const readThemeHues = (): Map<string, string> => {
   const css = readFileSync(THEME_PATH, 'utf8');
   const hues = new Map<string, string>();
   const declaration =
-    /--((?:node|edge|ord)-\d+)\s*:\s*oklch\(var\(--([a-z-]+)\)\)/g;
+    /--((?:node|edge|ord|cat)-\d+)\s*:\s*oklch\(var\(--([a-z-]+)\)\)/g;
   let match = declaration.exec(css);
   while (match) {
     const [, token, hue] = match;
@@ -47,6 +47,7 @@ const THEME_PREFIX: Record<string, string> = {
   'node-color-seq': 'node',
   'edge-color-seq': 'edge',
   'ord-color-seq': 'ord',
+  'cat-color-seq': 'cat',
 };
 
 describe('protocol colour swatch names', () => {
@@ -88,16 +89,4 @@ describe('protocol colour swatch names', () => {
       );
     },
   );
-
-  it('falls back to the position for a colour the theme has no hue for', () => {
-    // A protocol can hold a sequence index past the end of its palette. It
-    // still has to be identifiable, or the researcher cannot say which swatch
-    // they are replacing.
-    expect(getColorSwatchName('node-color-seq-9')).toBe('Color 9');
-    expect(getColorSwatchName('unknown-palette-2')).toBe('Color 2');
-  });
-
-  it('passes through a colour that is not a sequence token', () => {
-    expect(getColorSwatchName('paradise-pink')).toBe('paradise-pink');
-  });
 });

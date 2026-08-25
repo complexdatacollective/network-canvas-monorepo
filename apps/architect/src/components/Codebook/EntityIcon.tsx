@@ -3,6 +3,7 @@ import Node, {
   type NodeColorSequence,
   type NodeShape,
 } from '@codaco/fresco-ui/Node';
+import type { ColorReference } from '@codaco/protocol-validation';
 import { cva } from '~/utils/cva';
 import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
 
@@ -10,7 +11,7 @@ type EntityIconSize = 'default' | 'small' | 'tiny';
 
 type EntityIconProps = {
   entity: string;
-  color?: string;
+  color?: ColorReference;
   shape?: NodeShape;
   label?: React.ReactNode;
   size?: EntityIconSize;
@@ -42,7 +43,7 @@ const graphicVariants = cva({
 
 const renderIcon = (
   entity: string,
-  color?: string,
+  color?: ColorReference,
   shape: NodeShape = 'circle',
   size: EntityIconSize = 'default',
 ) => {

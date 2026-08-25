@@ -8,6 +8,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import type { ColorReference } from '@codaco/protocol-validation';
 import { ensureError } from '@codaco/shared-consts';
 import NewVariableWindow from '~/components/NewVariableWindow/NewVariableWindow';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -42,7 +43,7 @@ type EntityTypeProps = {
   entity: Entity;
   type: string;
   name: string;
-  color: string;
+  color: ColorReference;
   shape?: NodeShape;
   usage: UsageItem[];
   inUse?: boolean;
