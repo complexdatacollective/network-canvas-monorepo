@@ -1,4 +1,5 @@
-import type { RelationshipType, VariableValue } from '@codaco/shared-consts';
+import type { RelationshipType } from '@codaco/protocol-validation';
+import type { VariableValue } from '@codaco/shared-consts';
 
 import type { CommitBatch, GameteRole, VariableConfig } from '../../../store';
 import { writeOwnAttribute } from '../../../utils/writeOwnAttributes';

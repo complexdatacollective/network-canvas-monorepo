@@ -2,7 +2,7 @@
 
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type { FramingId } from '@codaco/shared-consts';
+import type { FramingId } from '@codaco/protocol-validation';
 
 import { useFamilyPedigreeStore } from '../../FamilyPedigreeContext';
 import usePedigreeNodeForm from '../../hooks/usePedigreeNodeForm';

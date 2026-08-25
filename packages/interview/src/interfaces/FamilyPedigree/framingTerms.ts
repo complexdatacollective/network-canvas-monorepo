@@ -1,20 +1,19 @@
+import type { FramingId } from '@codaco/protocol-validation';
+
 /**
- * Framing identifiers and terminology for the FamilyPedigree interface.
+ * Participant-facing terminology for each pedigree framing.
+ *
+ * The framing *ids* are schema contract (they are what a protocol stores) and
+ * live in `@codaco/protocol-validation`. The words below are interview copy:
+ * they are only ever rendered, never persisted, so they belong here beside the
+ * screens that show them and can be revised without touching any schema.
  *
  * Two framings are supported: 'gamete' (biology-first language) and 'gendered'
- * (mother/father kinship terms). Gestational carrier and donor terms
- * are intentionally identical across both framings.
+ * (mother/father kinship terms). Gestational carrier and donor terms are
+ * intentionally identical across both framings.
  */
-export const FRAMING_IDS = ['gamete', 'gendered'] as const;
-export type FramingId = (typeof FRAMING_IDS)[number];
-
 type FramingLookup<Value> = {
   [Id in FramingId]: Value;
-};
-
-export const FRAMING_AUTHOR_LABELS: FramingLookup<string> = {
-  gamete: 'Gamete-based',
-  gendered: 'Gendered',
 };
 
 export type FramingTerms = {

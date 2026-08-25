@@ -4,8 +4,7 @@ import {
   BIOLOGICAL_SEX_OPTIONS,
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
-} from '@codaco/shared-consts';
-
+} from '../../schemas/8/family-pedigree-values.ts';
 import ProtocolSchemaV8 from '../../schemas/8/schema.ts';
 import { findExclusiveVariableConflicts } from '../findExclusiveVariableConflicts.ts';
 

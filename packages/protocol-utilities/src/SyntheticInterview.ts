@@ -1,12 +1,13 @@
 import { invariant } from 'es-toolkit';
 
-import type {
-  ComponentType,
-  Item,
-  Stage,
-  StageType,
-  StructuralCodebook,
-  VariableType,
+import {
+  type ComponentType,
+  CURRENT_SCHEMA_VERSION,
+  type Item,
+  type Stage,
+  type StageType,
+  type StructuralCodebook,
+  type VariableType,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -1649,7 +1650,7 @@ export class SyntheticInterview {
 
     return {
       id: `protocol-${this.seed}`,
-      schemaVersion: 8,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
       codebook,
       // Stage configs are built dynamically and satisfy the Stage schema
       // at runtime, but TypeScript can't verify this statically.

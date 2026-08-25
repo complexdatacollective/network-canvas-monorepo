@@ -132,4 +132,17 @@ describe('NewSessionForm offline warning', () => {
     await waitFor(() => expect(createSession).toHaveBeenCalledTimes(1));
     expect(openDialog).not.toHaveBeenCalled();
   });
+
+  it('refuses to start an interview on a protocol below the runtime schema version', () => {
+    // The launch-time migration left this row behind; a session created from
+    // it would be refused by the interview route, so no form is offered.
+    render(<Harness protocol={{ ...makeProtocol([]), schemaVersion: 7 }} />);
+
+    expect(screen.getByText(/could not be updated/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Case ID/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Start interview' }),
+    ).not.toBeInTheDocument();
+    expect(createSession).not.toHaveBeenCalled();
+  });
 });

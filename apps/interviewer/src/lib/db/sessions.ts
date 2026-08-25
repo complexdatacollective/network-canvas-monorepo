@@ -324,8 +324,19 @@ export function updateSession(
       lastUpdatedAt: new Date().toISOString(),
     };
     const row = await encryptSession(updated);
-    await db.sessions.put(row);
-    return updated;
+    // The read above happened before the crypto awaits, and the per-id chain
+    // only serialises THIS tab. In the gap, the launch-time protocol
+    // migration — possibly in another tab — may have repointed this session's
+    // `protocolHash`, or the session may have been deleted. `protocolHash` is
+    // never legitimately part of a session patch, so commit it from the
+    // freshest stored row, and drop the write entirely rather than resurrect
+    // a deleted session.
+    return db.transaction('rw', db.sessions, async () => {
+      const latest = await db.sessions.get(id);
+      if (!latest) return undefined;
+      await db.sessions.put({ ...row, protocolHash: latest.protocolHash });
+      return { ...updated, protocolHash: latest.protocolHash };
+    });
   });
 }
 

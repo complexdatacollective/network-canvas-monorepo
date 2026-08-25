@@ -2,7 +2,7 @@ import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { FRAMING_AUTHOR_LABELS, FRAMING_IDS } from '@codaco/shared-consts';
+import { FRAMING_IDS, type FramingId } from '@codaco/protocol-validation';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
@@ -14,6 +14,18 @@ const FRAMING_MODE_OPTIONS = [
   { value: 'fixed', label: 'Fixed framing' },
   { value: 'participantChoice', label: 'Let the participant choose' },
 ];
+
+/**
+ * Author-facing names for each framing. The framing ids are schema contract
+ * (`@codaco/protocol-validation`); these labels are editor copy, so they live
+ * with the editor that shows them. The participant-facing terminology each
+ * framing selects lives in the interview runtime.
+ */
+const FRAMING_AUTHOR_LABELS: Record<FramingId, string> = {
+  gamete: 'Gamete-based',
+  gendered: 'Gendered',
+};
+
 const FRAMING_VALUE_OPTIONS = FRAMING_IDS.map((value) => ({
   value,
   label: FRAMING_AUTHOR_LABELS[value],

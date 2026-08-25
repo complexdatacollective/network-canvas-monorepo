@@ -169,14 +169,21 @@ export default defineConfig({
     // is unaffected — no JS here imports `.css`; `src/styles.css` is copied
     // verbatim by cssCopyPlugin and consumed via the `./styles.css` export.
     lib: {
-      // Two entries: the main (React) public API, and a server-safe `contract`
-      // bundle re-exporting only React-free utilities/types. The React code
-      // (`Shell`, contexts) is reachable only from `index`, so it never lands
-      // in the `contract` bundle — letting server (RSC) code import the
-      // contract without evaluating any module-level `createContext`.
+      // Three entries: the main (React) public API, a server-safe `contract`
+      // bundle re-exporting only React-free utilities/types, and the standalone
+      // protocol schema compatibility constant. The React code (`Shell`,
+      // contexts) is reachable only from `index`, so it never lands in the
+      // `contract` bundle — letting server (RSC) code import the contract
+      // without evaluating any module-level `createContext`. The
+      // `protocol-schema-version` entry is its own bundle so a host's Node
+      // scripts can import just that constant.
       entry: {
-        index: resolve(__dirname, 'src/index.ts'),
-        contract: resolve(__dirname, 'src/contract/index.ts'),
+        'index': resolve(__dirname, 'src/index.ts'),
+        'contract': resolve(__dirname, 'src/contract/index.ts'),
+        'protocol-schema-version': resolve(
+          __dirname,
+          'src/protocolSchemaVersion.ts',
+        ),
       },
       formats: ['es'],
       fileName: (_format, entryName) => `${entryName}.js`,

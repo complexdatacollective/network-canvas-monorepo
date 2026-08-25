@@ -9,7 +9,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import type { FramingId } from '@codaco/shared-consts';
+import type { FramingId } from '@codaco/protocol-validation';
 
 vi.mock('../../../../../../hooks/useStageSelector', () => ({
   useStageSelector: () => undefined,

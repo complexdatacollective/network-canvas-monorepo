@@ -2,6 +2,8 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 
 import * as dexieSettings from './db';
+import { migrateStoredProtocols as dexieMigrateStoredProtocols } from './migrateStoredProtocols';
+import type { StoredProtocolMigrationResult } from './migrateStoredProtocols';
 import * as dexieProtocols from './protocols';
 import { reencryptAllRecords as dexieReencryptAllRecords } from './reencrypt';
 import type { ReencryptProgress, ReencryptResult } from './reencrypt';
@@ -43,6 +45,10 @@ export async function saveProtocol(
 
 export async function deleteProtocol(hash: string): Promise<void> {
   return dexieProtocols.deleteProtocol(hash);
+}
+
+export async function migrateStoredProtocols(): Promise<StoredProtocolMigrationResult> {
+  return dexieMigrateStoredProtocols();
 }
 
 export async function getProtocolAssets(hash: string): Promise<StoredAsset[]> {

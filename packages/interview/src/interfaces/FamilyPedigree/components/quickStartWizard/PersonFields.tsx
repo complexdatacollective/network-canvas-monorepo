@@ -2,7 +2,7 @@
 
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
-import type { BiologicalSex } from '@codaco/shared-consts';
+import type { BiologicalSex } from '@codaco/protocol-validation';
 
 import usePedigreeNodeForm from '../../hooks/usePedigreeNodeForm';
 import BiologicalSexField from '../BiologicalSexField';

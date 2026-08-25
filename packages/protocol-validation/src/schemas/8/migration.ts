@@ -3,7 +3,7 @@ import {
   type ProtocolDocument,
 } from '../../migration/index.ts';
 import { traverseAndTransform } from '../../utils/traverse-and-transform.ts';
-import { OrdinalColorSequence } from './color-reference.ts';
+import { NodeColorSequence, OrdinalColorSequence } from './color-reference.ts';
 import { duplicateFormFieldIndices } from './common/forms.ts';
 import { NON_RENDERABLE_VARIABLE_TYPES } from './variables/types.ts';
 import {
@@ -34,6 +34,19 @@ const CATEGORICAL_VALUE_OPERATORS = new Set([
 // V8 restricts an OrdinalBin prompt's color to the ten-value ord-color-seq
 // palette; any other legacy value is dropped during migration.
 const VALID_ORDINAL_PROMPT_COLORS = new Set<unknown>(OrdinalColorSequence);
+
+// A `node-color-seq-<position>` reference, captured so an out-of-range
+// position can be wrapped back onto v8's eight-colour node palette. Only node
+// definitions need this: Architect Classic's node palette offers ten positions
+// ('node-color-seq': 10 in its config) while `NodeColorReferenceSchema`
+// defines eight. Its edge and ordinal palettes both offer eight, which is
+// inside v8's ranges, and the disease palette is v8-only, so no v7 document
+// can carry an out-of-range value for any of those.
+// Exactly the two positions Classic could author and nothing more: a larger
+// position (`node-color-seq-11`, …) has no legacy interpretation — it can only
+// be hand-authored or corrupt — and must fail validation rather than be
+// silently recoloured.
+const LEGACY_NODE_COLOR_POSITION = /^node-color-seq-(9|10)$/;
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   typeof value === 'object' && value !== null
@@ -386,6 +399,7 @@ const migrationV7toV8 = createMigration({
 - Added 'name' property to protocol (required dependency for migration)
 - Renamed 'iconVariant' to 'icon' on node definitions.
 - Added 'shape' property with default 'circle' to all node definitions.
+- A node type's \`color\` is now restricted to the eight \`node-color-seq-1\`–\`node-color-seq-8\` palette values the interfaces can render. Older versions of Architect offered ten, so a node type using the ninth or tenth is moved back onto the palette (the ninth becomes the first, the tenth the second).
 - Added optional 'hint' property to form fields, allowing a markdown string to be displayed as additional guidance for participants.
 - Added optional 'showValidationHints' property to form fields, enabling automatic display of hints derived from validation rules.
 - Removed 'loop' property from Information stage items and video/audio assets. This property was never honoured by Interviewer.
@@ -988,13 +1002,16 @@ const migrationV7toV8 = createMigration({
           });
           // V8 rejects a form that names one variable twice
           // (`uniqueFormFieldVariables`), so repair the legacy protocols that
-          // carry that shape rather than failing their migration. The
-          // duplicate was never functional: every field registers under
-          // `field.variable`, so both rows already shared one form value and
-          // the later registration silently replaced the earlier — the second
-          // field collected nothing of its own. `duplicateFormFieldIndices` is
-          // the schema's own finder, so the migration keeps exactly the fields
-          // the schema accepts.
+          // carry that shape rather than failing their migration. Real
+          // archived protocols do carry it (the private regression corpus
+          // holds at least one), and import validates before anything is
+          // stored, so failing here would strand those files with no way to
+          // open them for repair. The duplicate was never functional: every
+          // field registers under `field.variable`, so both rows already
+          // shared one form value and the later registration silently
+          // replaced the earlier — the second field collected nothing of its
+          // own. `duplicateFormFieldIndices` is the schema's own finder, so
+          // the migration keeps exactly the fields the schema accepts.
           const repeats = new Set(duplicateFormFieldIndices(renderable));
           const deduplicated = renderable.filter(
             (_field, index) => !repeats.has(index),
@@ -1422,6 +1439,31 @@ const migrationV7toV8 = createMigration({
             delete typedStage.filter;
           }
           return stage;
+        },
+      },
+      {
+        // Wrap the two node palette positions Classic could author back onto
+        // v8's eight node colours. Architect Classic offered ten node palette
+        // positions, so a legitimately authored v7 node type can name
+        // `node-color-seq-9` or `node-color-seq-10`, which
+        // `NodeColorReferenceSchema` rejects — the protocol could not be
+        // imported at all. Wrapping (position 9 -> 1, position 10 -> 2) keeps
+        // the two authored positions distinct from one another and lands on a
+        // colour the interfaces can render; the alternative, dropping the
+        // value, is not available because a node definition's `color` is
+        // required. Nothing else is rewritten: positions beyond 10 have no
+        // legacy interpretation, and any other value is left for the schema
+        // to reject on its own terms.
+        paths: ['codebook.node.*'],
+        fn: <V>(entityDefinition: V) => {
+          const typedEntity = asRecord(entityDefinition);
+          if (typeof typedEntity?.color !== 'string') return entityDefinition;
+          const match = LEGACY_NODE_COLOR_POSITION.exec(typedEntity.color);
+          if (!match) return entityDefinition;
+          const position = Number(match[1]);
+          typedEntity.color =
+            NodeColorSequence[(position - 1) % NodeColorSequence.length];
+          return entityDefinition;
         },
       },
       {

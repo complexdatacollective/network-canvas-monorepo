@@ -2,8 +2,12 @@ import { type MouseEventHandler, type Ref, useMemo } from 'react';
 
 import { useDragSource } from '@codaco/fresco-ui/dnd/dnd';
 import Node from '@codaco/fresco-ui/Node';
-import { entityAttributesProperty } from '@codaco/shared-consts';
-import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
+import type { FramingId } from '@codaco/protocol-validation';
+import {
+  entityAttributesProperty,
+  type NcEdge,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import { useStageSelector } from '../../../../hooks/useStageSelector';
 import {

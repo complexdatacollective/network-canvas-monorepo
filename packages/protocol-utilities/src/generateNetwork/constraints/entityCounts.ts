@@ -1,10 +1,10 @@
 import {
   collectEntityAttributeReferences,
+  GAMETE_ROLES,
+  RELATIONSHIP_TYPES,
   type Stage,
 } from '@codaco/protocol-validation';
 import {
-  GAMETE_ROLES,
-  RELATIONSHIP_TYPES,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,

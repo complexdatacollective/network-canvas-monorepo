@@ -5,13 +5,8 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldGroup from '@codaco/fresco-ui/form/FieldGroup';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
-import type {
-  FramingId,
-  NcEdge,
-  NcNode,
-  RelationshipType,
-  VariableValue,
-} from '@codaco/shared-consts';
+import type { FramingId, RelationshipType } from '@codaco/protocol-validation';
+import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
 
 import type { OpenPedigreeDialog } from '../../familyPedigreeDialog';
 import { getNodeLabel } from '../../pedigree-layout/utils/getDisplayLabel';

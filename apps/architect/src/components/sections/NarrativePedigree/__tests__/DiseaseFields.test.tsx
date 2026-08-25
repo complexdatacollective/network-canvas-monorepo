@@ -5,7 +5,7 @@ import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
-import { INHERITANCE_PATTERNS } from '@codaco/shared-consts';
+import { INHERITANCE_PATTERNS } from '@codaco/protocol-validation';
 
 import DiseaseFields from '../DiseaseFields';
 

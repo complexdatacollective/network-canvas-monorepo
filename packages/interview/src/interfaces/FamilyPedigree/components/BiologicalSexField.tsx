@@ -3,11 +3,14 @@
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import {
-  BIOLOGICAL_SEX_HINT,
   BIOLOGICAL_SEX_OPTIONS,
-  BIOLOGICAL_SEX_QUESTION,
   type BiologicalSex,
-} from '@codaco/shared-consts';
+} from '@codaco/protocol-validation';
+
+import {
+  BIOLOGICAL_SEX_HINT,
+  BIOLOGICAL_SEX_QUESTION,
+} from '../biologicalSexCopy';
 
 type BiologicalSexFieldProps = {
   // Form field name; defaults to the pedigree node's biological-sex attribute.

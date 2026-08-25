@@ -5,11 +5,11 @@ import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
-import type { Stage } from '@codaco/protocol-validation';
 import {
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
-} from '@codaco/shared-consts';
+  type Stage,
+} from '@codaco/protocol-validation';
 import StageFormBridge from '~/components/StageEditor/StageFormBridge';
 import {
   type StageFormContextValue,

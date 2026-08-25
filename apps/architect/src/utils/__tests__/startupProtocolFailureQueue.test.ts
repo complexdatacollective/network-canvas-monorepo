@@ -1,27 +1,44 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  reportStartupProtocolValidationFailure,
-  subscribeStartupProtocolValidationFailures,
-  takeStartupProtocolValidationFailures,
+  reportStartupProtocolFailure,
+  subscribeStartupProtocolFailures,
+  takeStartupProtocolFailures,
 } from '../startupProtocolFailureQueue';
 
 describe('startupProtocolFailureQueue', () => {
   beforeEach(() => {
-    takeStartupProtocolValidationFailures();
+    takeStartupProtocolFailures();
   });
 
-  it('retains startup validation failures until the dialog reporter mounts', () => {
+  it('retains startup failures until the dialog reporter mounts', () => {
     const listener = vi.fn();
-    const unsubscribe = subscribeStartupProtocolValidationFailures(listener);
+    const unsubscribe = subscribeStartupProtocolFailures(listener);
 
-    reportStartupProtocolValidationFailure('Invalid legacy protocol');
+    reportStartupProtocolFailure({
+      status: 'validation-error',
+      message: 'Invalid legacy protocol',
+    });
 
     expect(listener).toHaveBeenCalledTimes(1);
-    expect(takeStartupProtocolValidationFailures()).toEqual([
-      'Invalid legacy protocol',
+    expect(takeStartupProtocolFailures()).toEqual([
+      { status: 'validation-error', message: 'Invalid legacy protocol' },
     ]);
-    expect(takeStartupProtocolValidationFailures()).toEqual([]);
+    expect(takeStartupProtocolFailures()).toEqual([]);
     unsubscribe();
+  });
+
+  // The queue carries the whole refusal, not a message, so a restored session
+  // that is too NEW for this build reaches the "upgrade Architect" dialog
+  // rather than being mis-reported as a validation failure.
+  it('carries a non-validation refusal through unchanged', () => {
+    reportStartupProtocolFailure({
+      status: 'app-upgrade-required',
+      protocolSchemaVersion: 9,
+    });
+
+    expect(takeStartupProtocolFailures()).toEqual([
+      { status: 'app-upgrade-required', protocolSchemaVersion: 9 },
+    ]);
   });
 });

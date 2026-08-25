@@ -3,7 +3,7 @@ import { startCase } from 'es-toolkit/compat';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import Section from '@codaco/fresco-ui/Section';
-import { INHERITANCE_PATTERNS } from '@codaco/shared-consts';
+import { INHERITANCE_PATTERNS } from '@codaco/protocol-validation';
 import ArchitectField from '~/components/Form/ArchitectField';
 import ColorPicker from '~/components/Form/Fields/ColorPicker';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';

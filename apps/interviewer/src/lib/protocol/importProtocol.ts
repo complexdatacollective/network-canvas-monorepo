@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
   type CurrentProtocol,
   describeProtocolFileError,
@@ -16,7 +17,10 @@ import {
 
 import { saveProtocol } from '../db/api';
 
-const APP_SCHEMA_VERSION = 8;
+// What this app can run is what the interview engine it embeds can run, so the
+// import pipeline's target version is read from `@codaco/interview` rather than
+// written down here. A release that upgrades the engine moves this with it.
+const APP_SCHEMA_VERSION = COMPATIBLE_PROTOCOL_SCHEMA_VERSION;
 
 export type ImportPhase = 'extracting' | 'saving';
 
@@ -163,9 +167,10 @@ async function importParsedProtocol(
     };
   }
 
-  // `VersionedProtocol` is a schemaVersion-discriminated union (v7 | v8);
-  // migration always targets `APP_SCHEMA_VERSION` (8), so a successful
-  // validation here is always the current (v8) shape.
+  // `VersionedProtocol` is a schemaVersion-discriminated union spanning every
+  // version the validator still accepts; migration above always targets
+  // `APP_SCHEMA_VERSION`, so this comparison is what narrows a validated
+  // document to the one shape the embedded interview engine can execute.
   if (validation.data.schemaVersion !== APP_SCHEMA_VERSION) {
     return {
       success: false,

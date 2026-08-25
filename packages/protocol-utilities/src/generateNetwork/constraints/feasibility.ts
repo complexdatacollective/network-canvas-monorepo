@@ -1,5 +1,6 @@
 import { resolveSkipLogicDestinationIndex } from '@codaco/network-query';
 import {
+  BIOLOGICAL_SEX_VALUES,
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
   type Stage,
@@ -7,11 +8,7 @@ import {
   type ValidationContradiction,
   type Variables,
 } from '@codaco/protocol-validation';
-import {
-  BIOLOGICAL_SEX_VALUES,
-  type NcNode,
-  type VariableValue,
-} from '@codaco/shared-consts';
+import type { NcNode, VariableValue } from '@codaco/shared-consts';
 
 import type { ResolvedGenerationConfig } from '../config';
 import { isContentStage } from '../contentStages';

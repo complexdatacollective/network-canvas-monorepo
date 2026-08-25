@@ -2,8 +2,11 @@ import { disarmInMemoryUnloadGuard } from '~/utils/beforeUnloadGuard';
 import { getStoredProtocol as readStoredProtocol } from '~/utils/protocolLibrary';
 import { reportError } from '~/utils/reportError';
 import { clearRememberedAppSession } from '~/utils/sessionStorageDriver';
-import { reportStartupProtocolValidationFailure } from '~/utils/startupProtocolFailureQueue';
-import { admitStoredProtocol as admitCanonicalProtocol } from '~/utils/storedProtocolAdmission';
+import { reportStartupProtocolFailure } from '~/utils/startupProtocolFailureQueue';
+import {
+  admitStoredProtocol as admitCanonicalProtocol,
+  type StoredProtocolRefusal,
+} from '~/utils/storedProtocolAdmission';
 
 import { timelineActions } from './middleware/timeline';
 import {
@@ -28,7 +31,7 @@ type RestoreDependencies = {
   getStoredProtocol?: typeof readStoredProtocol;
   replaceProtocolRoute?: () => void;
   onError?: (error: unknown) => void;
-  onInvalid?: (message: string) => void;
+  onInvalid?: (refusal: StoredProtocolRefusal) => void;
   admitStoredProtocol?: typeof admitCanonicalProtocol;
   clearRememberedSession?: () => void;
   /**
@@ -67,8 +70,10 @@ const clearRestoredSession = (store: RestoreStore): void => {
 
 // Restore only the active protocol identifier from sessionStorage. Protocol
 // content always comes from the canonical IndexedDB row; no session-stored body
-// can overwrite it. Provenance-marked rows open directly, while legacy rows
-// receive a one-time validation before they can seed an editor session.
+// can overwrite it. `admitStoredProtocol` decides what that row is allowed to
+// become: a row below this build's schema is upgraded in place, one above it is
+// refused, provenance-marked rows open directly, and legacy rows receive a
+// one-time validation before they can seed an editor session.
 export const restoreActiveProtocolFromLibrary = async (
   store: RestoreStore,
   dependencies: RestoreDependencies = {},
@@ -143,21 +148,23 @@ export const restoreActiveProtocolFromLibrary = async (
   if (!admission.success) {
     clearRestoredSession(store);
     blockProtocolRoute();
-    (dependencies.onInvalid ?? reportStartupProtocolValidationFailure)(
-      admission.error.message,
-    );
+    (dependencies.onInvalid ?? reportStartupProtocolFailure)(admission.refusal);
     return 'invalid';
   }
 
   store.dispatch(setStorageUnavailable(false));
   disarmInMemoryUnloadGuard();
+  // Seed from what admission returned, not from the row that was read: a row
+  // written under an older schema has been upgraded and re-saved by now, and
+  // the editor must hold the upgraded document rather than the stale one.
+  const { protocol } = admission;
   store.dispatch(
     dependencies.continuingSession
       ? {
-          ...setActiveProtocol(row.protocol),
+          ...setActiveProtocol(protocol),
           meta: { continuingSession: true },
         }
-      : setActiveProtocol(row.protocol),
+      : setActiveProtocol(protocol),
   );
   return 'restored';
 };

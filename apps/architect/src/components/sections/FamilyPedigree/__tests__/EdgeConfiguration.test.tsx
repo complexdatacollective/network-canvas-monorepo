@@ -7,13 +7,11 @@ import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import {
   INTERFACE_OWNED_OPTION_SETS,
   optionsMatchInterfaceOwnedSet,
+  RELATIONSHIP_TYPE_OPTIONS,
+  RELATIONSHIP_TYPES,
   type Stage,
   type VariableOptions,
 } from '@codaco/protocol-validation';
-import {
-  RELATIONSHIP_TYPE_OPTIONS,
-  RELATIONSHIP_TYPES,
-} from '@codaco/shared-consts';
 import {
   asStage,
   renderStageForm,

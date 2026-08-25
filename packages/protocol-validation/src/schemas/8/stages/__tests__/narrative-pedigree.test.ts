@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { NodeColorSequence } from '../../color-reference.ts';
 import ProtocolSchemaV8 from '../../schema.ts';
 import { narrativePedigreeStage } from '../narrative-pedigree.ts';
 
@@ -328,7 +329,19 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
     expect(result.success).toBe(false);
   });
 
-  it.each(['', '#ff0000', 'edge-color-seq-1', 'node-color-seq-9'])(
+  // A disease colours nodes in the pedigree, so it must name one of the eight
+  // node palette values the interface can render. `node-color-seq-9` and
+  // `node-color-seq-10` are the interesting rejections: Architect Classic
+  // offered those two positions, so they look plausible and are not — the
+  // v7→v8 migration wraps them, and anything still carrying one here was
+  // authored against this schema and has to be told.
+  it.each([
+    '',
+    '#ff0000',
+    'edge-color-seq-1',
+    'node-color-seq-9',
+    'node-color-seq-10',
+  ])(
     'rejects disease color %j because it is not a node color reference',
     (color) => {
       const result = narrativePedigreeStage.safeParse({
@@ -336,6 +349,16 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
         diseases: [{ ...validNarrativePedigreeStageShape.diseases[0], color }],
       });
       expect(result.success).toBe(false);
+      // The message has to list the colours that ARE allowed: the researcher
+      // is picking one, and "invalid" alone does not tell them from what.
+      expect(!result.success && result.error.issues).toContainEqual(
+        expect.objectContaining({
+          message: `Invalid option: expected one of ${NodeColorSequence.map(
+            (value) => `"${value}"`,
+          ).join('|')}`,
+          path: ['diseases', 0, 'color'],
+        }),
+      );
     },
   );
 

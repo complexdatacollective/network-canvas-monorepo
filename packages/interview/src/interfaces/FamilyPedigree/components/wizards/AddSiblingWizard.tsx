@@ -1,4 +1,5 @@
-import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
+import type { FramingId } from '@codaco/protocol-validation';
+import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
 import type { OpenPedigreeDialog } from '../../familyPedigreeDialog';
 import type { CommitBatch, VariableConfig } from '../../store';

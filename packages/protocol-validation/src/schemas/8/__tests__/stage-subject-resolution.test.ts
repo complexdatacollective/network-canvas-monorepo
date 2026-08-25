@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { collectEntityAttributeReferences } from '../../../utils/collectEntityAttributeReferences.ts';
+import { getEntityAttributeReferenceDescriptor } from '../entity-attribute-reference.ts';
 import {
   BIOLOGICAL_SEX_OPTIONS,
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
-} from '@codaco/shared-consts';
-
-import { collectEntityAttributeReferences } from '../../../utils/collectEntityAttributeReferences.ts';
-import { getEntityAttributeReferenceDescriptor } from '../entity-attribute-reference.ts';
+} from '../family-pedigree-values.ts';
 import ProtocolSchemaV8 from '../schema.ts';
 import { getStageSubjectResolution } from '../stage-subject-resolution.ts';
 import { stageSchema } from '../stages/index.ts';

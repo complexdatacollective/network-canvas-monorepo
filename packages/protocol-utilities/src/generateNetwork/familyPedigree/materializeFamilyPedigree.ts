@@ -1,12 +1,14 @@
 import { v4 as uuid } from 'uuid';
 
-import type { Stage } from '@codaco/protocol-validation';
 import {
   BIOLOGICAL_SEX_VALUES,
+  type BiologicalSex,
+  type Stage,
+} from '@codaco/protocol-validation';
+import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   isFamilyPedigreeStageMetadata,
-  type BiologicalSex,
   type NcEdge,
   type NcNode,
   type VariableValue,

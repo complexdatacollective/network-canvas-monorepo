@@ -1,6 +1,5 @@
-import { FRAMING_TERMS, type FramingTerms } from '@codaco/shared-consts';
-
 import { useFamilyPedigreeStore } from '../FamilyPedigreeContext';
+import { FRAMING_TERMS, type FramingTerms } from '../framingTerms';
 
 export function useFramedTerms(): FramingTerms | null {
   const framing = useFamilyPedigreeStore((s) => s.framing);

@@ -4,6 +4,7 @@ import { createId } from '@paralleldrive/cuid2';
 import { after } from 'next/server';
 
 import { createInitialNetwork } from '@codaco/interview/contract';
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { ensureError } from '@codaco/shared-consts';
 import type { InterviewsSearchParams } from '~/app/dashboard/_components/InterviewsTable/searchParams';
 import { addEvent } from '~/lib/activityFeed';
@@ -171,13 +172,26 @@ export async function createInterview(
     // when nothing else fails first.
     const protocol = await prisma.protocol.findUnique({
       where: { id: protocolId },
-      select: { id: true },
+      select: { id: true, schemaVersion: true },
     });
 
     if (!protocol) {
       return {
         errorType: 'no-protocol',
         error: 'Protocol not found',
+        createdInterviewId: null,
+      };
+    }
+
+    // A protocol the deploy-time migration left below the runtime's schema
+    // version cannot run an interview — the payload builder refuses it. Refuse
+    // here, before anything is persisted, so a recruitment link to such a
+    // protocol does not record a started-but-unusable interview per attempt.
+    if (protocol.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION) {
+      return {
+        errorType: 'incompatible-protocol',
+        error:
+          'Protocol is stored under a schema version this deployment cannot run. Repair it in Architect and upload it again.',
         createdInterviewId: null,
       };
     }

@@ -1,10 +1,10 @@
-import type { Stage } from '@codaco/protocol-validation';
 import {
   BIOLOGICAL_SEX_VALUES,
   GAMETE_ROLES,
   RELATIONSHIP_TYPES,
-  type VariableValue,
-} from '@codaco/shared-consts';
+  type Stage,
+} from '@codaco/protocol-validation';
+import type { VariableValue } from '@codaco/shared-consts';
 
 import {
   scopeKey,

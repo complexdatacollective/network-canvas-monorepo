@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
-} from '@codaco/shared-consts';
+} from '@codaco/protocol-validation';
 
 import { useCrossClassEditorValidate } from '../../useCrossClassEditorValidate';
 import {

@@ -74,7 +74,13 @@ export function migrateProtocol(
     dependencies,
   );
 
-  // Validate migrated document against target schema
+  // Validate the migrated document. This checks against the CURRENT schema
+  // whatever `targetVersion` asked for, which is harmless only because every
+  // registered migration targets the current version, so the two are always
+  // the same document shape. Adding a schema version past the current one
+  // makes that false — a caller migrating to an intermediate version would
+  // have its perfectly valid output rejected here — so a new version must
+  // bring per-target-version validation with it.
   const postValidationResult = CurrentProtocolSchema.safeParse(migrated);
   if (!postValidationResult.success) {
     throw new ValidationError(

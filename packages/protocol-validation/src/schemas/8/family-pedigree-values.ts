@@ -1,10 +1,24 @@
 /**
+ * Version-local schema contract definitions for the FamilyPedigree interface.
+ *
+ * These value sets ARE the schema 8 contract: a protocol is admissible only if
+ * its interface-owned variables carry exactly these members and labels, and its
+ * framing is one of these ids. They live inside the version directory — not in
+ * a shared constants package — so that editing shared code can never silently
+ * redefine the contract of a schema version that has already shipped.
+ *
+ * When a future schema version directory is created, COPY this file into it and
+ * edit the copy. Never import it from another version's directory, and never
+ * move it back out into cross-version shared code.
+ */
+
+/**
  * Canonical relationship-type values for the FamilyPedigree interface.
  *
  * These are the option values stored on the `relationshipType` edge variable
- * (the discriminant for the pedigree Edge union). They are shared so that
- * Architect (which locks them onto the categorical edge variable) and the
- * interview interface (which reads and branches on them) cannot drift apart.
+ * (the discriminant for the pedigree Edge union). Architect locks them onto the
+ * categorical edge variable and the interview interface reads and branches on
+ * them, so schema 8 pins them here.
  */
 export const RELATIONSHIP_TYPES = [
   'biological',
@@ -43,9 +57,7 @@ export const RELATIONSHIP_TYPE_OPTIONS: {
  * reproductive cell (gamete) a parent contributed to a child.
  *
  * Stored on the `gameteRole` categorical edge variable of genetic parent
- * edges. Shared so that Architect (which locks them onto the variable) and
- * the interview interface (which writes and branches on them) cannot drift
- * apart.
+ * edges.
  */
 export const GAMETE_ROLES = ['egg', 'sperm'] as const;
 
@@ -73,8 +85,7 @@ export const GAMETE_ROLE_OPTIONS: {
  * at birth, needed for sex-linked genetic transmission (X-linked, Y-linked,
  * mitochondrial). This is distinct from gender identity.
  *
- * Stored on the `biologicalSex` node variable. Shared so Architect and the
- * interview interface cannot drift apart. Only `female`/`male` drive
+ * Stored on the `biologicalSex` node variable. Only `female`/`male` drive
  * transmission; `intersex`, `unknown`, and `preferNotToSay` are stored
  * distinctly but all propagate as uncertainty in the genetics engine.
  */
@@ -110,21 +121,13 @@ export const BIOLOGICAL_SEX_OPTIONS: {
 }));
 
 /**
- * Participant-facing copy for the biological-sex question. Framing-invariant
- * (the mother/father vs egg/sperm framing never changes *this* question); only
- * the grammatical subject differs — the participant themselves, or a relative.
+ * Framing identifiers for the FamilyPedigree interface.
+ *
+ * Two framings are supported: 'gamete' (biology-first language) and 'gendered'
+ * (mother/father kinship terms). The stage's `framing` config stores one of
+ * these ids; the participant-facing terminology each id selects is interview
+ * copy and lives in the interview runtime.
  */
-export const BIOLOGICAL_SEX_QUESTION = {
-  self: 'What sex were you recorded as at birth?',
-  other: 'What sex was this person recorded as at birth?',
-} as const;
+export const FRAMING_IDS = ['gamete', 'gendered'] as const;
 
-export const BIOLOGICAL_SEX_HINT =
-  'If you’re not sure, choose “Don’t know” — please don’t guess.';
-
-/**
- * One-time explanation shown before the sex question is first asked, so the
- * participant understands it is about inheritance, not gender identity.
- */
-export const BIOLOGICAL_SEX_LEAD_IN =
-  'To understand how conditions can be passed down a family, we need the sex each person was recorded as at birth — not how they describe their gender.';
+export type FramingId = (typeof FRAMING_IDS)[number];

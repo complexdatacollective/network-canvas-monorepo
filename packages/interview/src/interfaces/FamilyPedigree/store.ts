@@ -2,17 +2,17 @@ import { enableMapSet } from 'immer';
 import { createStore } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
+import type {
+  FramingId,
+  GameteRole,
+  RelationshipType,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entitySecureAttributesMeta,
-} from '@codaco/shared-consts';
-import type {
-  FramingId,
-  GAMETE_ROLES,
-  NcEdge,
-  NcNode,
-  RelationshipType,
-  VariableValue,
+  type NcEdge,
+  type NcNode,
+  type VariableValue,
 } from '@codaco/shared-consts';
 
 import {
@@ -60,11 +60,11 @@ export type NodeMetadata = {
 
 /**
  * Which gamete a biological/donor parent contributed. Written to the network
- * as an edge attribute under `variableConfig.gameteRoleVariable`. Derived from
- * the canonical value set in shared-consts, which Architect locks onto the
+ * as an edge attribute under `variableConfig.gameteRoleVariable`. Re-exported
+ * from the canonical schema value set, which Architect locks onto the
  * categorical edge variable, so the two cannot drift apart.
  */
-export type GameteRole = (typeof GAMETE_ROLES)[number];
+export type { GameteRole };
 
 /** A pedigree edge. gameteRole is stored in `attributes[gameteRoleVariable]`. */
 export type FamilyEdge = NcEdge;
