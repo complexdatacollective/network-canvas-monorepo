@@ -37,6 +37,7 @@ type VariablePickerProps = CreateFormFieldProps<
  * surrounding field — pass it through `ArchitectField`'s `label`/`hint`.
  */
 export const VariablePickerControl = ({
+  className,
   id,
   name,
   value,
@@ -166,7 +167,7 @@ export const VariablePickerControl = ({
         data-name={name}
         onBlur={handleBlur}
         onFocus={onFocus}
-        className="flex w-full flex-col items-start gap-4"
+        className={cx('flex w-full flex-col items-start gap-4', className)}
       >
         <fieldset
           id={id}

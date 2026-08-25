@@ -595,6 +595,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
               type={nodeType}
               options={nodeLabelVariableOptions}
               onCreateOption={handleNewNodeLabelVariable}
+              className="@min-lg:w-[50cqw]"
               inline
             />
             {nodeLabelDraft && (
@@ -623,6 +624,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
               type={nodeType}
               options={egoVariableOptions}
               onCreateOption={handleNewEgoVariable}
+              className="@min-lg:w-[50cqw]"
               inline
             />
             <IssueAnchor
@@ -643,6 +645,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
               type={nodeType}
               options={relationshipVariableOptions}
               onCreateOption={handleNewRelationshipVariable}
+              className="@min-lg:w-[50cqw]"
               inline
             />
             <IssueAnchor
@@ -663,6 +666,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
               type={nodeType}
               options={biologicalSexVariableOptions}
               onCreateOption={handleNewBiologicalSexVariable}
+              className="@min-lg:w-[50cqw]"
               inline
             />
           </Section>

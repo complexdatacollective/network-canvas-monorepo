@@ -314,6 +314,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
               type={edgeType}
               options={relationshipTypeVariableOptions}
               onCreateOption={handleNewRelationshipTypeVariable}
+              className="@min-lg:w-[50cqw]"
               inline
             />
             <IssueAnchor
@@ -334,6 +335,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
               type={edgeType}
               options={isActiveVariableOptions}
               onCreateOption={handleNewIsActiveVariable}
+              className="@min-lg:w-[50cqw]"
               inline
             />
             <IssueAnchor
@@ -356,6 +358,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
               type={edgeType}
               options={isGestationalCarrierVariableOptions}
               onCreateOption={handleNewGestationalCarrierVariable}
+              className="@min-lg:w-[50cqw]"
               inline
             />
             <IssueAnchor
@@ -376,6 +379,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
               type={edgeType}
               options={gameteRoleVariableOptions}
               onCreateOption={handleNewGameteRoleVariable}
+              className="@min-lg:w-[50cqw]"
               inline
             />
           </Section>

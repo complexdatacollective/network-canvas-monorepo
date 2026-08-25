@@ -159,6 +159,22 @@ describe('VariablePicker', () => {
     ).toBeInTheDocument();
   });
 
+  it('applies a caller class name to the picker root', () => {
+    const { container } = renderPicker(
+      <ArchitectField
+        name="variable"
+        label="Attribute"
+        component={VariablePicker}
+        className="@min-lg:w-[50cqw]"
+        options={options}
+      />,
+    );
+
+    expect(container.querySelector('[data-name="variable"]')).toHaveClass(
+      '@min-lg:w-[50cqw]',
+    );
+  });
+
   it('renders label, hint and errors through the BaseField slots only', async () => {
     const { container } = renderPicker(
       <ArchitectField

@@ -23,6 +23,21 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
   await editor.createNew('FamilyPedigree');
   await editor.setStageName('Your Family');
 
+  const expectHalfWidthAttributePicker = async (fieldName: string) => {
+    const field = editor.field(fieldName);
+    const picker = field.locator(`[data-name="${fieldName}"]`);
+    const [fieldBox, pickerBox] = await Promise.all([
+      field.boundingBox(),
+      picker.boundingBox(),
+    ]);
+
+    if (!fieldBox || !pickerBox) {
+      throw new Error(`Could not measure the ${fieldName} attribute picker`);
+    }
+
+    expect(pickerBox.width / fieldBox.width).toBeCloseTo(0.5, 2);
+  };
+
   // StageEditor/Interfaces.tsx: `FamilyPedigree.sections = [FramingConfig,
   // BoundaryOptions, IntroScreen, FamilyPedigreeNodeConfiguration,
   // FamilyPedigreeEdgeConfiguration, CensusPrompt, NominationPrompts,
@@ -104,6 +119,8 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
     options: [],
   });
 
+  await expectHalfWidthAttributePicker('nodeConfig.egoVariable');
+
   // `nodeConfig.form` is optional. A new pedigree therefore leaves its
   // configuration collapsed and unregistered until the researcher enables it.
   await expect(
@@ -147,6 +164,8 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
     variableName: 'gameteRole',
     options: [],
   });
+
+  await expectHalfWidthAttributePicker('edgeConfig.relationshipTypeVariable');
 
   // CensusPrompt.tsx now lets its single RichText field own the visible label
   // instead of proxying it through a Section title.

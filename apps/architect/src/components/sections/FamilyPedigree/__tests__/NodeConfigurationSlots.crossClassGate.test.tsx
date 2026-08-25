@@ -56,6 +56,7 @@ vi.mock('~/components/sections/CodebookVariableValidationSection', () => ({
 }));
 
 type CapturedField = {
+  className?: string;
   hint?: ReactNode;
   inline?: boolean;
   label?: string;
@@ -66,6 +67,7 @@ const capturedFields: Record<string, CapturedField | undefined> = {};
 vi.mock('~/components/Form/ArchitectField', () => ({
   default: ({
     name,
+    className,
     hint,
     inline,
     label,
@@ -73,13 +75,21 @@ vi.mock('~/components/Form/ArchitectField', () => ({
     options,
   }: {
     name: string;
+    className?: string;
     hint?: ReactNode;
     inline?: boolean;
     label: string;
     validation?: Record<string, unknown>;
     options?: unknown;
   }) => {
-    capturedFields[name] = { hint, inline, label, validation, options };
+    capturedFields[name] = {
+      className,
+      hint,
+      inline,
+      label,
+      validation,
+      options,
+    };
     return <div data-testid={`field-${name}`} />;
   },
 }));
@@ -317,21 +327,26 @@ describe('FamilyPedigree NodeConfiguration slot picker exclusions', () => {
     expect(familyMemberData).toContainElement(formConfiguration);
     expect(attributes).not.toContainElement(formConfiguration);
     expect(capturedFields['nodeConfig.nodeLabelVariable']).toMatchObject({
+      className: '@min-lg:w-[50cqw]',
       label: 'Display label',
       inline: true,
     });
     expect(capturedFields['nodeConfig.egoVariable']).toMatchObject({
+      className: '@min-lg:w-[50cqw]',
       label: 'Participant identifier',
       inline: true,
     });
     expect(capturedFields['nodeConfig.relationshipVariable']).toMatchObject({
+      className: '@min-lg:w-[50cqw]',
       label: 'Relationship to participant',
       inline: true,
     });
     expect(capturedFields['nodeConfig.biologicalSexVariable']).toMatchObject({
+      className: '@min-lg:w-[50cqw]',
       label: 'Biological sex',
       inline: true,
     });
+    expect(capturedFields['nodeConfig.type']?.className).toBeUndefined();
   });
 
   it('edits the label as a node variable, preserving every text validation rule', () => {

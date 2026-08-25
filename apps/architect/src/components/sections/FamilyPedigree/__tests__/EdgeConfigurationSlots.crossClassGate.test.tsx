@@ -40,6 +40,7 @@ vi.mock('~/components/NewVariableWindow', () => ({
 }));
 
 type CapturedField = {
+  className?: string;
   hint?: ReactNode;
   inline?: boolean;
   label?: string;
@@ -50,6 +51,7 @@ const capturedFields: Record<string, CapturedField | undefined> = {};
 vi.mock('~/components/Form/ArchitectField', () => ({
   default: ({
     name,
+    className,
     hint,
     inline,
     label,
@@ -57,13 +59,21 @@ vi.mock('~/components/Form/ArchitectField', () => ({
     options,
   }: {
     name: string;
+    className?: string;
     hint?: ReactNode;
     inline?: boolean;
     label: string;
     validation?: Record<string, unknown>;
     options?: unknown;
   }) => {
-    capturedFields[name] = { hint, inline, label, validation, options };
+    capturedFields[name] = {
+      className,
+      hint,
+      inline,
+      label,
+      validation,
+      options,
+    };
     return <div data-testid={`field-${name}`} />;
   },
 }));
@@ -237,24 +247,29 @@ describe('FamilyPedigree EdgeConfiguration slot picker exclusions', () => {
     expect(relationshipData).toContainElement(attributes);
     expect(capturedFields['edgeConfig.relationshipTypeVariable']).toMatchObject(
       {
+        className: '@min-lg:w-[50cqw]',
         label: 'Relationship type',
         inline: true,
       },
     );
     expect(capturedFields['edgeConfig.isActiveVariable']).toMatchObject({
+      className: '@min-lg:w-[50cqw]',
       label: 'Active status',
       inline: true,
     });
     expect(
       capturedFields['edgeConfig.isGestationalCarrierVariable'],
     ).toMatchObject({
+      className: '@min-lg:w-[50cqw]',
       label: 'Gestational carrier',
       inline: true,
     });
     expect(capturedFields['edgeConfig.gameteRoleVariable']).toMatchObject({
+      className: '@min-lg:w-[50cqw]',
       label: 'Gamete role',
       inline: true,
     });
+    expect(capturedFields['edgeConfig.type']?.className).toBeUndefined();
   });
 
   it('drops a variable a form elsewhere already validates from every slot pool', () => {
