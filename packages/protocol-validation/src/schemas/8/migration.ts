@@ -4,6 +4,7 @@ import {
 } from '../../migration/index.ts';
 import { traverseAndTransform } from '../../utils/traverse-and-transform.ts';
 import { NodeColorSequence, OrdinalColorSequence } from './color-reference.ts';
+import { duplicateFormFieldIndices } from './common/forms.ts';
 import { NON_RENDERABLE_VARIABLE_TYPES } from './variables/types.ts';
 import {
   type ContradictionClass,
@@ -421,6 +422,7 @@ const migrationV7toV8 = createMigration({
 - An attribute's \`component\` (input control) must be one its type can render. An unrecognised or mismatched control is replaced with the type's standard control (for datetime, chosen by the shape of its \`parameters\`); layout attributes, which have no control, have it removed.
 - Ordinal and categorical option values must be strings or whole numbers; a fractional value is converted to its string form (as legacy boolean values already are), and a numeric option label becomes the same text it already displayed. A boolean attribute's option entry that is not a labelled true/false choice is removed; if no entries remain the attribute falls back to the standard Yes/No choices.
 - The CategoricalBin "other" input and the NameGenerator quick-add field now honour the referenced attribute's configured validation. Both previously required a response locally, so migration adds \`required: true\` to every attribute they reference while preserving its other validation rules.
+- A form may no longer collect the same attribute twice. Two fields naming one attribute always shared a single answer — whichever the participant filled in last overwrote the other — so the repeat was never collecting anything of its own. Only the first field for each attribute is kept.
 `,
   migrate: (doc, deps) => {
     const codebook = (doc as Record<string, unknown>).codebook;
@@ -994,8 +996,24 @@ const migrationV7toV8 = createMigration({
               !NON_RENDERABLE_VARIABLE_TYPES.has(type)
             );
           });
-          form.fields = renderable;
-          for (const field of renderable) {
+          // V8 rejects a form that names one variable twice
+          // (`uniqueFormFieldVariables`), so repair the legacy protocols that
+          // carry that shape rather than failing their migration. Real
+          // archived protocols do carry it (the private regression corpus
+          // holds at least one), and import validates before anything is
+          // stored, so failing here would strand those files with no way to
+          // open them for repair. The duplicate was never functional: every
+          // field registers under `field.variable`, so both rows already
+          // shared one form value and the later registration silently
+          // replaced the earlier — the second field collected nothing of its
+          // own. `duplicateFormFieldIndices` is the schema's own finder, so
+          // the migration keeps exactly the fields the schema accepts.
+          const repeats = new Set(duplicateFormFieldIndices(renderable));
+          const deduplicated = renderable.filter(
+            (_field, index) => !repeats.has(index),
+          );
+          form.fields = deduplicated;
+          for (const field of deduplicated) {
             const typedField = asRecord(field);
             if (!typedField) continue;
             if (

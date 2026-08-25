@@ -6271,18 +6271,13 @@ describe('Migration V7 to V8', () => {
     });
   });
 
-  describe('duplicate form fields are reported, not repaired', () => {
+  describe('duplicate form field repair', () => {
     // Taken from `alter-form-test.netcanvas` in the private test-protocol
     // corpus — the one protocol there whose AlterForm collects a single
-    // variable ("name") twice. V8's `uniqueFormFieldVariables` rejects that,
-    // and the migration deliberately does NOT drop the repeat: which of the
-    // two rows is the real one is a question about the researcher's intent,
-    // and the answer changes what the participant is asked. So the protocol
-    // fails post-migration validation with the schema's own message, naming
-    // the attribute and the field, and the researcher resolves it in the
-    // version of Architect that wrote the protocol. The stage, its ids and
-    // its field prompts are reproduced verbatim; only the unrelated codebook
-    // variable names are tidied.
+    // variable ("name") twice. V8's `uniqueFormFieldVariables` rejects that, so
+    // without this repair the whole migration throws and the protocol becomes
+    // unopenable. The stage, its ids and its field prompts are reproduced
+    // verbatim; only the unrelated codebook variable names are tidied.
     const NAME = '2e152396-75ea-40e9-887f-ee79ee0202e6';
     const SCALE = '5aa7d752-1c2a-4f89-8d72-84400003769b';
     const CATEGORICAL = '5f728f8f-658e-4d4b-8c67-2f6523f1a8cb';
@@ -6354,64 +6349,57 @@ describe('Migration V7 to V8', () => {
       lastModified: '2022-11-22T17:12:31.320Z',
     });
 
-    const migrateFields = (protocol: unknown) => {
-      const migratedRaw = migrationV7toV8.migrate(protocol as Protocol<7>, {
-        name: 'alter-form-test',
-      }) as { stages: { form?: { fields?: unknown } }[] };
-      return migratedRaw.stages[1]?.form?.fields;
-    };
-
     const migrateAndParse = (protocol: unknown) => {
       const migratedRaw = migrationV7toV8.migrate(protocol as Protocol<7>, {
         name: 'alter-form-test',
       });
-      return ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      const stage = parsed.data?.stages[1];
+      return stage && 'form' in stage ? stage.form?.fields : undefined;
     };
 
-    it('leaves both fields for the repeated variable in place', () => {
-      // Nothing is dropped: the migration carries the form through exactly as
-      // authored (the empty prompts backfill it does apply is untouched here,
-      // every prompt being non-empty already), so the schema below sees the
-      // same two rows the researcher wrote.
-      expect(migrateFields(alterFormTestProtocol())).toEqual([
+    it('migrates the real protocol to a valid V8 document', () => {
+      expect(migrateAndParse(alterFormTestProtocol())).toBeDefined();
+    });
+
+    it('keeps the first field for the repeated variable and drops the later one', () => {
+      // The first row survives, so the prompt the researcher wrote first is the
+      // one the participant sees; "sdfs\n" — the row that was already sharing
+      // its answer with the first — is gone.
+      expect(
+        migrateAndParse(alterFormTestProtocol())?.filter(
+          (field) => field.variable === NAME,
+        ),
+      ).toEqual([{ variable: NAME, prompt: 'sdfsdf\n' }]);
+    });
+
+    it('leaves every other field untouched and in order', () => {
+      expect(migrateAndParse(alterFormTestProtocol())).toEqual([
         { variable: NAME, prompt: 'sdfsdf\n' },
-        { variable: NAME, prompt: 'sdfs\n' },
         { variable: SCALE, prompt: 'sadasd\n' },
         { variable: CATEGORICAL, prompt: 'asd\n' },
       ]);
     });
 
-    it('fails validation at the repeated field, naming the attribute', () => {
-      const parsed = migrateAndParse(alterFormTestProtocol());
-      expect(parsed.success).toBe(false);
-      // The SECOND row is the one flagged — array order decides which field is
-      // the real one — and the message names the attribute it repeats.
-      expect(!parsed.success && parsed.error.issues).toContainEqual(
-        expect.objectContaining({
-          message: `Form fields contain duplicate attribute "${NAME}"`,
-          path: ['stages', 1, 'form', 'fields', 1, 'variable'],
-        }),
-      );
-    });
-
-    it('validates once the repeat is removed', () => {
-      // The control for the assertion above: the same fixture, minus the one
-      // repeated row, passes. So the failure is attributable to the duplicate
-      // and not to anything else in this protocol.
+    it('keeps only the first of three fields naming one variable', () => {
       const protocol = alterFormTestProtocol();
       protocol.stages[1]!.form!.fields = [
-        { variable: NAME, prompt: 'sdfsdf\n' },
+        { variable: NAME, prompt: 'first\n' },
+        { variable: NAME, prompt: 'second\n' },
         { variable: SCALE, prompt: 'sadasd\n' },
-        { variable: CATEGORICAL, prompt: 'asd\n' },
+        { variable: NAME, prompt: 'third\n' },
       ];
-      const parsed = migrateAndParse(protocol);
-      expect(
-        parsed.success,
-        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
-      ).toBe(true);
+      expect(migrateAndParse(protocol)).toEqual([
+        { variable: NAME, prompt: 'first\n' },
+        { variable: SCALE, prompt: 'sadasd\n' },
+      ]);
     });
 
-    it('reports a titled NameGenerator form the same way', () => {
+    it('repairs a titled NameGenerator form the same way', () => {
       const protocol = alterFormTestProtocol();
       protocol.stages[1] = {
         label: 'Add someone',
@@ -6433,33 +6421,19 @@ describe('Migration V7 to V8', () => {
         },
         id: 'b46363c0-6a6f-11ed-ad78-2704db7eea26',
       } as unknown as (typeof protocol.stages)[1];
-      const parsed = migrateAndParse(protocol);
-      expect(parsed.success).toBe(false);
-      expect(!parsed.success && parsed.error.issues).toContainEqual(
-        expect.objectContaining({
-          message: `Form fields contain duplicate attribute "${NAME}"`,
-          path: ['stages', 1, 'form', 'fields', 2, 'variable'],
-        }),
-      );
+      expect(migrateAndParse(protocol)).toEqual([
+        { variable: NAME, prompt: 'Their name?' },
+        { variable: SCALE, prompt: 'How close?' },
+      ]);
     });
 
-    it('makes migrateProtocol throw with the duplicate named', () => {
-      // What a host sees. `migrateProtocol` post-validates its output and
-      // throws, and the thrown message carries the schema's own wording — so
-      // Architect's fallback description tells the researcher which attribute
-      // is collected twice rather than "Protocol migration failed."
-      expect(() =>
-        migrateProtocol(alterFormTestProtocol(), undefined, {
-          name: 'alter-form-test',
-        }),
-      ).toThrow(/Migration resulted in invalid protocol/);
-      expect(() =>
-        migrateProtocol(alterFormTestProtocol(), undefined, {
-          name: 'alter-form-test',
-        }),
-      ).toThrow(
-        new RegExp(`Form fields contain duplicate attribute .*${NAME}`),
-      );
+    it('migrates the real protocol through migrateProtocol without throwing', () => {
+      // The exact call the corpus test makes, and the one that threw
+      // "Migration resulted in invalid protocol" before this repair.
+      const migrated = migrateProtocol(alterFormTestProtocol(), undefined, {
+        name: 'alter-form-test',
+      });
+      expect(migrated.schemaVersion).toBe(8);
     });
   });
 });

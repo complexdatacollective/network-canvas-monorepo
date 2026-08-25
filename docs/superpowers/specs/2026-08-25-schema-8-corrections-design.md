@@ -53,8 +53,13 @@ Changes to the v7→v8 migration:
 - **Add** a wrap for out-of-range codebook node colors, because Classic can
   author them: `node-color-seq-9` → `-1`, `node-color-seq-10` → `-2`. Record
   the wrap in the migration notes shown at import.
-- **Remove** the duplicate-form-field deduplication (added post-release).
-  Duplicates fail post-migration validation with a clear error.
+- **Keep** the duplicate-form-field deduplication when migrating a version 7
+  document. (Decision reversed 2026-08-25: the original ruling assumed no real
+  protocol carried this pattern, but the private regression corpus holds one —
+  `alter-form-test.netcanvas` — and import validates before storing, so
+  failing the migration would strand such files with no way to open them for
+  repair. The removal is lossless: a repeated field always shared its answer
+  with the first. Schema 8 still rejects duplicates in version 8 documents.)
 - **Drop** the `primary-color-seq` mappings entirely — no evidence in any
   corpus.
 
@@ -143,10 +148,11 @@ Deferred, with the trigger for revisiting stated:
 
 - Schema tests: for each correction, a fixture accepted by released 12.1.1
   and rejected now, asserting a precise, actionable error message.
-- v7→v8 tests: the node-color wrap (9 → 1, 10 → 2) from a v7 fixture; a
-  duplicate-form-field v7 fixture failing validation with a clear error; a
-  full migration run over the v1–v7 corpus in
-  `packages/protocols/documentation/protocols/`.
+- v7→v8 tests: the node-color wrap (9 → 1, 10 → 2) from a v7 fixture; the
+  duplicate-form-field deduplication reproduced from the corpus protocol that
+  carries it; a full migration run over the v1–v7 corpus in
+  `packages/protocols/documentation/protocols/`, and the private encrypted
+  corpus suite in CI.
 - Interviewer: a transaction test — stored lower-version protocol migrates,
   hash recomputed, sessions repointed, toast fired; failure rolls back both
   protocol and sessions.
