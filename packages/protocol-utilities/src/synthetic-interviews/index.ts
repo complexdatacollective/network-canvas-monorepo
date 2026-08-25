@@ -216,7 +216,13 @@ export const generateInterviews = (
       );
       invariant(
         promptIndex <= promptCeiling,
-        `stopAt.promptIndex ${promptIndex} is out of range: stage "${stage.id}" has ${promptCeiling === 1 && !('prompts' in stage) ? 'no prompts' : `${promptCeiling} prompts`}`,
+        `stopAt.promptIndex ${promptIndex} is out of range: stage "${stage.id}" has ${
+          !('prompts' in stage)
+            ? 'no prompts'
+            : promptCeiling === 1
+              ? '1 prompt'
+              : `${promptCeiling} prompts`
+        }`,
       );
     }
   }

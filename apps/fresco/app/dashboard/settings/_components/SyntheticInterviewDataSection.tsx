@@ -53,7 +53,17 @@ export default function SyntheticInterviewDataSection({
     total: number;
     phase: 'generating' | 'saving';
   }>({ current: 0, total: 0, phase: 'generating' });
+  // Optimistic while a batch runs, and reconciled the moment the server sends
+  // a fresh count: `router.refresh()` re-renders this section's server parent
+  // with the real figures, and holding the old state past that would leave the
+  // panel describing a population the database does not have.
   const [syntheticCounts, setSyntheticCounts] = useState(initialCounts);
+  const serverCounts = `${String(initialCounts.interviewCount)}:${String(initialCounts.participantCount)}`;
+  const [lastServerCounts, setLastServerCounts] = useState(serverCounts);
+  if (serverCounts !== lastServerCounts) {
+    setLastServerCounts(serverCounts);
+    setSyntheticCounts(initialCounts);
+  }
   const { toast } = useToast();
   const router = useRouter();
 
@@ -120,6 +130,7 @@ export default function SyntheticInterviewDataSection({
             current?: number;
             total?: number;
             created?: number;
+            participantsCreated?: number;
             seed?: number;
             batchToken?: string;
             message?: string;
@@ -139,9 +150,13 @@ export default function SyntheticInterviewDataSection({
             });
           } else if (data.type === 'complete' && data.created !== undefined) {
             const created = data.created;
+            // A replayed batch reconnects to the participants its first run
+            // created, so the route says how many people were actually added
+            // rather than this assuming one per interview.
+            const participantsCreated = data.participantsCreated ?? created;
             setSyntheticCounts((prev) => ({
               interviewCount: prev.interviewCount + created,
-              participantCount: prev.participantCount + created,
+              participantCount: prev.participantCount + participantsCreated,
             }));
             toast({
               title: 'Generation complete',

@@ -464,9 +464,19 @@ type StageExtent = 'full' | 'partial' | 'skipped';
  * One pass in stage order, because every question the gate asks is positional:
  * a census enumerates the people who exist WHEN IT RUNS, a form fills the
  * population standing in front of it, and a roster's pool is judged against the
- * stage that draws from it. Skip logic is deliberately not modelled — a skipped
- * stage produces fewer entities and fewer draws, never more, so reading every
- * stage as reached is the direction that cannot under-count.
+ * stage that draws from it.
+ *
+ * Skip logic is deliberately not modelled: every stage is read as reached. The
+ * price is real and is a REFUSAL, not an under-count — a stage the routing
+ * would always skip still contributes its demands, so a protocol whose
+ * unreachable stage is itself infeasible is refused before the walk can prove
+ * the stage never runs. Modelling it would take a second, static opinion about
+ * routing, where the walk resolves the route against the network it is
+ * building; a static verdict that disagreed with the live one on some seeds
+ * would turn a pre-seed refusal into the seed-dependent mid-walk failure this
+ * gate exists to make impossible (spec rules 1 and 5). Until reachability can
+ * be PROVEN from the walk's own routing rather than modelled beside it, the
+ * refusal stands.
  *
  * `stopAt` bounds the pass the way it bounds the walk: stages past the stop
  * are never run and contribute nothing, and the stop stage itself contributes

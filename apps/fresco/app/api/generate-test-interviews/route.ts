@@ -173,6 +173,21 @@ export async function POST(request: Request) {
 
         let created = 0;
 
+        // Which of this batch's participants the database already holds. A
+        // replayed batch reconnects to them rather than minting strangers, so
+        // counting one new participant per interview would tell the dashboard
+        // its test population had doubled when nobody was added at all.
+        const identifiers = results.map(({ session }) => `test-${session.id}`);
+        const alreadyPresent = new Set(
+          (
+            await prisma.participant.findMany({
+              where: { identifier: { in: identifiers } },
+              select: { identifier: true },
+            })
+          ).map((participant) => participant.identifier),
+        );
+        let participantsCreated = 0;
+
         for (const result of results) {
           const { session } = result;
           // Derived from the engine's own session id, which is drawn from the
@@ -181,6 +196,10 @@ export async function POST(request: Request) {
           // a reproduction. Replaying therefore CONNECTS to the participant
           // the first run created rather than minting a stranger.
           const participantIdentifier = `test-${session.id}`;
+          if (!alreadyPresent.has(participantIdentifier)) {
+            participantsCreated += 1;
+            alreadyPresent.add(participantIdentifier);
+          }
 
           await prisma.interview.create({
             data: {
@@ -234,6 +253,7 @@ export async function POST(request: Request) {
         send({
           type: 'complete',
           created,
+          participantsCreated,
           seed,
           startWindow,
           batchToken: formatSyntheticBatchToken(seed, startWindow),
