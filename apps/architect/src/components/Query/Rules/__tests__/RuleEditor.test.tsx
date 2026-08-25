@@ -403,6 +403,25 @@ describe('attribute rule structure', () => {
   });
 });
 
+describe('rule target structure', () => {
+  it.each([
+    { target: /^Node -/, picker: /Select node/ },
+    { target: /^Edge -/, picker: /Select edge/ },
+  ])(
+    'groups the entity type picker with the $target target',
+    async (testCase) => {
+      renderRules();
+      openEditor();
+      await chooseTarget(testCase.target);
+
+      const ruleTarget = screen.getByRole('region', { name: 'Rule target' });
+      expect(
+        within(ruleTarget).getByRole('button', { name: testCase.picker }),
+      ).toBeVisible();
+    },
+  );
+});
+
 describe('choices that depend on earlier choices', () => {
   it('uses the entity attribute picker with creation disabled', async () => {
     renderRules();

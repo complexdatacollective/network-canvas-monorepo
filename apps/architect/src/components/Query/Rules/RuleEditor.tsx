@@ -334,26 +334,6 @@ const EntityRuleFields = ({
 
   return (
     <>
-      <Section title={isNode ? 'Node type selection' : 'Edge type selection'}>
-        <ArchitectField
-          name={ENTITY_TYPE_FIELD}
-          label={isNode ? 'Node type' : 'Edge type'}
-          hint={
-            isNode
-              ? 'Choose a node type to base your rule on. Remember you can add multiple rules if you need to cover different types.'
-              : 'Choose an edge type to base your rule on. Remember you can add multiple rules if you need to cover different types.'
-          }
-          component={EntitySelectControl}
-          entityType={target}
-          allowCreation={false}
-          initialValue={
-            typeof seed.options?.type === 'string'
-              ? seed.options.type
-              : undefined
-          }
-          validation={{ required: true }}
-        />
-      </Section>
       <Section title="Rule basis" disabled={!entityTypeId}>
         <ArchitectField
           name={RULE_KIND_FIELD}
@@ -504,6 +484,26 @@ const RuleEditorFields = ({
           initialValue={typeof seed.type === 'string' ? seed.type : undefined}
           validation={{ required: true }}
         />
+        {(target === 'node' || target === 'edge') && (
+          <ArchitectField
+            name={ENTITY_TYPE_FIELD}
+            label={target === 'node' ? 'Node type' : 'Edge type'}
+            hint={
+              target === 'node'
+                ? 'Choose a node type to base your rule on. Remember you can add multiple rules if you need to cover different types.'
+                : 'Choose an edge type to base your rule on. Remember you can add multiple rules if you need to cover different types.'
+            }
+            component={EntitySelectControl}
+            entityType={target}
+            allowCreation={false}
+            initialValue={
+              typeof seed.options?.type === 'string'
+                ? seed.options.type
+                : undefined
+            }
+            validation={{ required: true }}
+          />
+        )}
       </Section>
 
       {target === 'ego' && <EgoRuleFields {...branchProps} />}

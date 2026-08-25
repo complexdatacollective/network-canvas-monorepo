@@ -144,8 +144,9 @@ async function addEntityRule(
   const dialog = ruleDialog(host);
 
   await host.getByRole('button', { name: addButtonLabel }).click();
-  await dialog.getByRole('radio', { name: /^Node -/ }).click();
-  await dialog
+  const ruleTarget = dialog.getByRole('region', { name: 'Rule target' });
+  await ruleTarget.getByRole('radio', { name: /^Node -/ }).click();
+  await ruleTarget
     .getByRole('radio', {
       name: `Select node ${spec.nodeTypeName}`,
       exact: true,
