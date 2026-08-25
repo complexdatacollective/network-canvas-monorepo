@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { act, render } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
@@ -27,7 +27,9 @@ vi.mock('~/components/EditorLayout', () => ({
   Row: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 vi.mock('@codaco/fresco-ui/Section', () => ({
-  default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  default: ({ children, title }: { children: ReactNode; title: string }) => (
+    <section aria-label={title}>{children}</section>
+  ),
 }));
 vi.mock('~/components/IssueAnchor', () => ({ default: () => null }));
 vi.mock('~/components/NewVariableWindow', () => ({
@@ -36,6 +38,9 @@ vi.mock('~/components/NewVariableWindow', () => ({
 }));
 
 type CapturedField = {
+  hint?: ReactNode;
+  inline?: boolean;
+  label?: string;
   validation?: Record<string, unknown>;
   options?: unknown;
 };
@@ -43,14 +48,20 @@ const capturedFields: Record<string, CapturedField | undefined> = {};
 vi.mock('~/components/Form/ArchitectField', () => ({
   default: ({
     name,
+    hint,
+    inline,
+    label,
     validation,
     options,
   }: {
     name: string;
+    hint?: ReactNode;
+    inline?: boolean;
+    label: string;
     validation?: Record<string, unknown>;
     options?: unknown;
   }) => {
-    capturedFields[name] = { validation, options };
+    capturedFields[name] = { hint, inline, label, validation, options };
     return <div data-testid={`field-${name}`} />;
   },
 }));
@@ -210,6 +221,34 @@ const renderComponent = ({
 };
 
 describe('FamilyPedigree EdgeConfiguration slot picker exclusions', () => {
+  it('groups the attribute mappings in their own Section with inline fields', () => {
+    renderComponent({ protocol: protocolWith([]) });
+
+    expect(
+      screen.getByRole('region', { name: 'Relationship attributes' }),
+    ).toBeInTheDocument();
+    expect(capturedFields['edgeConfig.relationshipTypeVariable']).toMatchObject(
+      {
+        label: 'Relationship type',
+        inline: true,
+      },
+    );
+    expect(capturedFields['edgeConfig.isActiveVariable']).toMatchObject({
+      label: 'Active status',
+      inline: true,
+    });
+    expect(
+      capturedFields['edgeConfig.isGestationalCarrierVariable'],
+    ).toMatchObject({
+      label: 'Gestational carrier',
+      inline: true,
+    });
+    expect(capturedFields['edgeConfig.gameteRoleVariable']).toMatchObject({
+      label: 'Gamete role',
+      inline: true,
+    });
+  });
+
   it('drops a variable a form elsewhere already validates from every slot pool', () => {
     renderComponent({ protocol: protocolWith([EDGE_FORM_STAGE]) });
     expect(
