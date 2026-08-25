@@ -1422,6 +1422,112 @@ describe('Migration V7 to V8', () => {
     });
   });
 
+  describe('node palette position wrap', () => {
+    // Architect Classic offered ten node palette positions; v8 defines eight.
+    // A protocol authored with the ninth or tenth is legitimate v7 data, and
+    // before the wrap it could not be imported at all — a node definition's
+    // `color` is required, so there is nothing to drop.
+    const v7WithNodeColors = (colors: Record<string, string>) =>
+      ({
+        schemaVersion: 7 as const,
+        codebook: {
+          node: Object.fromEntries(
+            Object.entries(colors).map(([type, color]) => [
+              type,
+              { name: type, color, variables: {} },
+            ]),
+          ),
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      }) as Protocol<7>;
+
+    const migrateColors = (colors: Record<string, string>) => {
+      const migratedRaw = migrationV7toV8.migrate(v7WithNodeColors(colors), {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      return Object.fromEntries(
+        Object.entries(parsed.data?.codebook.node ?? {}).map(
+          ([type, definition]) => [type, definition.color],
+        ),
+      );
+    };
+
+    it('wraps the ninth and tenth positions onto the first and second', () => {
+      expect(
+        migrateColors({
+          ninth: 'node-color-seq-9',
+          tenth: 'node-color-seq-10',
+        }),
+      ).toEqual({
+        ninth: 'node-color-seq-1',
+        tenth: 'node-color-seq-2',
+      });
+    });
+
+    it('leaves every in-range position exactly as authored', () => {
+      const inRange = Object.fromEntries(
+        Array.from({ length: 8 }, (_, index) => [
+          `type${index + 1}`,
+          `node-color-seq-${index + 1}`,
+        ]),
+      );
+      expect(migrateColors(inRange)).toEqual(inRange);
+    });
+
+    it('does not touch edge or ordinal palette references', () => {
+      // Classic's edge and ordinal palettes both offer eight positions, which
+      // is inside v8's ranges, so there is nothing to wrap there — and a wrap
+      // applied to a ten-value palette (ordinal) would silently recolour a
+      // valid protocol.
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {},
+          edge: { knows: { name: 'Knows', color: 'edge-color-seq-8' } },
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'ordinal-bin',
+            label: 'Sort',
+            type: 'OrdinalBin',
+            subject: { entity: 'node', type: 'person' },
+            prompts: [{ id: 'p1', text: 'Sort them', variable: 'closeness' }],
+          },
+        ],
+      } as Protocol<7>;
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      }) as {
+        codebook: { edge: Record<string, { color: string }> };
+        stages: { prompts: { color: string }[] }[];
+      };
+      expect(migratedRaw.codebook.edge.knows?.color).toBe('edge-color-seq-8');
+      // The OrdinalBin prompt's own colour backfill is unaffected: it still
+      // defaults to the first ordinal colour rather than a node one.
+      expect(migratedRaw.stages[0]?.prompts[0]?.color).toBe('ord-color-seq-1');
+    });
+
+    it('leaves a colour that is not a palette position for the schema to reject', () => {
+      // Not a repair path: only a `node-color-seq-<position>` reference is
+      // rewritten, and only its position. Anything else is a value the
+      // migration cannot interpret, and guessing one would hide the problem.
+      const migratedRaw = migrationV7toV8.migrate(
+        v7WithNodeColors({ person: '#ff0000' }),
+        { name: 'Test Protocol' },
+      ) as { codebook: { node: Record<string, { color: string }> } };
+      expect(migratedRaw.codebook.node.person?.color).toBe('#ff0000');
+      expect(ProtocolSchemaV8.safeParse(migratedRaw).success).toBe(false);
+    });
+  });
+
   describe('automaticLayout flatten', () => {
     const buildV7 = (
       stageType: 'Sociogram' | 'Narrative',
@@ -6165,13 +6271,18 @@ describe('Migration V7 to V8', () => {
     });
   });
 
-  describe('duplicate form field repair', () => {
+  describe('duplicate form fields are reported, not repaired', () => {
     // Taken from `alter-form-test.netcanvas` in the private test-protocol
     // corpus — the one protocol there whose AlterForm collects a single
-    // variable ("name") twice. V8's `uniqueFormFieldVariables` rejects that, so
-    // without this repair the whole migration throws and the protocol becomes
-    // unopenable. The stage, its ids and its field prompts are reproduced
-    // verbatim; only the unrelated codebook variable names are tidied.
+    // variable ("name") twice. V8's `uniqueFormFieldVariables` rejects that,
+    // and the migration deliberately does NOT drop the repeat: which of the
+    // two rows is the real one is a question about the researcher's intent,
+    // and the answer changes what the participant is asked. So the protocol
+    // fails post-migration validation with the schema's own message, naming
+    // the attribute and the field, and the researcher resolves it in the
+    // version of Architect that wrote the protocol. The stage, its ids and
+    // its field prompts are reproduced verbatim; only the unrelated codebook
+    // variable names are tidied.
     const NAME = '2e152396-75ea-40e9-887f-ee79ee0202e6';
     const SCALE = '5aa7d752-1c2a-4f89-8d72-84400003769b';
     const CATEGORICAL = '5f728f8f-658e-4d4b-8c67-2f6523f1a8cb';
@@ -6243,57 +6354,64 @@ describe('Migration V7 to V8', () => {
       lastModified: '2022-11-22T17:12:31.320Z',
     });
 
+    const migrateFields = (protocol: unknown) => {
+      const migratedRaw = migrationV7toV8.migrate(protocol as Protocol<7>, {
+        name: 'alter-form-test',
+      }) as { stages: { form?: { fields?: unknown } }[] };
+      return migratedRaw.stages[1]?.form?.fields;
+    };
+
     const migrateAndParse = (protocol: unknown) => {
       const migratedRaw = migrationV7toV8.migrate(protocol as Protocol<7>, {
         name: 'alter-form-test',
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
-      expect(
-        parsed.success,
-        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
-      ).toBe(true);
-      const stage = parsed.data?.stages[1];
-      return stage && 'form' in stage ? stage.form?.fields : undefined;
+      return ProtocolSchemaV8.safeParse(migratedRaw);
     };
 
-    it('migrates the real protocol to a valid V8 document', () => {
-      expect(migrateAndParse(alterFormTestProtocol())).toBeDefined();
-    });
-
-    it('keeps the first field for the repeated variable and drops the later one', () => {
-      // The first row survives, so the prompt the researcher wrote first is the
-      // one the participant sees; "sdfs\n" — the row that was already sharing
-      // its answer with the first — is gone.
-      expect(
-        migrateAndParse(alterFormTestProtocol())?.filter(
-          (field) => field.variable === NAME,
-        ),
-      ).toEqual([{ variable: NAME, prompt: 'sdfsdf\n' }]);
-    });
-
-    it('leaves every other field untouched and in order', () => {
-      expect(migrateAndParse(alterFormTestProtocol())).toEqual([
+    it('leaves both fields for the repeated variable in place', () => {
+      // Nothing is dropped: the migration carries the form through exactly as
+      // authored (the empty prompts backfill it does apply is untouched here,
+      // every prompt being non-empty already), so the schema below sees the
+      // same two rows the researcher wrote.
+      expect(migrateFields(alterFormTestProtocol())).toEqual([
         { variable: NAME, prompt: 'sdfsdf\n' },
+        { variable: NAME, prompt: 'sdfs\n' },
         { variable: SCALE, prompt: 'sadasd\n' },
         { variable: CATEGORICAL, prompt: 'asd\n' },
       ]);
     });
 
-    it('keeps only the first of three fields naming one variable', () => {
-      const protocol = alterFormTestProtocol();
-      protocol.stages[1]!.form!.fields = [
-        { variable: NAME, prompt: 'first\n' },
-        { variable: NAME, prompt: 'second\n' },
-        { variable: SCALE, prompt: 'sadasd\n' },
-        { variable: NAME, prompt: 'third\n' },
-      ];
-      expect(migrateAndParse(protocol)).toEqual([
-        { variable: NAME, prompt: 'first\n' },
-        { variable: SCALE, prompt: 'sadasd\n' },
-      ]);
+    it('fails validation at the repeated field, naming the attribute', () => {
+      const parsed = migrateAndParse(alterFormTestProtocol());
+      expect(parsed.success).toBe(false);
+      // The SECOND row is the one flagged — array order decides which field is
+      // the real one — and the message names the attribute it repeats.
+      expect(!parsed.success && parsed.error.issues).toContainEqual(
+        expect.objectContaining({
+          message: `Form fields contain duplicate attribute "${NAME}"`,
+          path: ['stages', 1, 'form', 'fields', 1, 'variable'],
+        }),
+      );
     });
 
-    it('repairs a titled NameGenerator form the same way', () => {
+    it('validates once the repeat is removed', () => {
+      // The control for the assertion above: the same fixture, minus the one
+      // repeated row, passes. So the failure is attributable to the duplicate
+      // and not to anything else in this protocol.
+      const protocol = alterFormTestProtocol();
+      protocol.stages[1]!.form!.fields = [
+        { variable: NAME, prompt: 'sdfsdf\n' },
+        { variable: SCALE, prompt: 'sadasd\n' },
+        { variable: CATEGORICAL, prompt: 'asd\n' },
+      ];
+      const parsed = migrateAndParse(protocol);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+    });
+
+    it('reports a titled NameGenerator form the same way', () => {
       const protocol = alterFormTestProtocol();
       protocol.stages[1] = {
         label: 'Add someone',
@@ -6315,19 +6433,33 @@ describe('Migration V7 to V8', () => {
         },
         id: 'b46363c0-6a6f-11ed-ad78-2704db7eea26',
       } as unknown as (typeof protocol.stages)[1];
-      expect(migrateAndParse(protocol)).toEqual([
-        { variable: NAME, prompt: 'Their name?' },
-        { variable: SCALE, prompt: 'How close?' },
-      ]);
+      const parsed = migrateAndParse(protocol);
+      expect(parsed.success).toBe(false);
+      expect(!parsed.success && parsed.error.issues).toContainEqual(
+        expect.objectContaining({
+          message: `Form fields contain duplicate attribute "${NAME}"`,
+          path: ['stages', 1, 'form', 'fields', 2, 'variable'],
+        }),
+      );
     });
 
-    it('migrates the real protocol through migrateProtocol without throwing', () => {
-      // The exact call the corpus test makes, and the one that threw
-      // "Migration resulted in invalid protocol" before this repair.
-      const migrated = migrateProtocol(alterFormTestProtocol(), undefined, {
-        name: 'alter-form-test',
-      });
-      expect(migrated.schemaVersion).toBe(8);
+    it('makes migrateProtocol throw with the duplicate named', () => {
+      // What a host sees. `migrateProtocol` post-validates its output and
+      // throws, and the thrown message carries the schema's own wording — so
+      // Architect's fallback description tells the researcher which attribute
+      // is collected twice rather than "Protocol migration failed."
+      expect(() =>
+        migrateProtocol(alterFormTestProtocol(), undefined, {
+          name: 'alter-form-test',
+        }),
+      ).toThrow(/Migration resulted in invalid protocol/);
+      expect(() =>
+        migrateProtocol(alterFormTestProtocol(), undefined, {
+          name: 'alter-form-test',
+        }),
+      ).toThrow(
+        new RegExp(`Form fields contain duplicate attribute .*${NAME}`),
+      );
     });
   });
 });

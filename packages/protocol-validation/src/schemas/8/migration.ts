@@ -3,8 +3,7 @@ import {
   type ProtocolDocument,
 } from '../../migration/index.ts';
 import { traverseAndTransform } from '../../utils/traverse-and-transform.ts';
-import { OrdinalColorSequence } from './color-reference.ts';
-import { duplicateFormFieldIndices } from './common/forms.ts';
+import { NodeColorSequence, OrdinalColorSequence } from './color-reference.ts';
 import { NON_RENDERABLE_VARIABLE_TYPES } from './variables/types.ts';
 import {
   type ContradictionClass,
@@ -34,6 +33,15 @@ const CATEGORICAL_VALUE_OPERATORS = new Set([
 // V8 restricts an OrdinalBin prompt's color to the ten-value ord-color-seq
 // palette; any other legacy value is dropped during migration.
 const VALID_ORDINAL_PROMPT_COLORS = new Set<unknown>(OrdinalColorSequence);
+
+// A `node-color-seq-<position>` reference, captured so an out-of-range
+// position can be wrapped back onto v8's eight-colour node palette. Only node
+// definitions need this: Architect Classic's node palette offers ten positions
+// ('node-color-seq': 10 in its config) while `NodeColorReferenceSchema`
+// defines eight. Its edge and ordinal palettes both offer eight, which is
+// inside v8's ranges, and the disease palette is v8-only, so no v7 document
+// can carry an out-of-range value for any of those.
+const NODE_COLOR_POSITION = /^node-color-seq-(\d+)$/;
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   typeof value === 'object' && value !== null
@@ -386,6 +394,7 @@ const migrationV7toV8 = createMigration({
 - Added 'name' property to protocol (required dependency for migration)
 - Renamed 'iconVariant' to 'icon' on node definitions.
 - Added 'shape' property with default 'circle' to all node definitions.
+- A node type's \`color\` is now restricted to the eight \`node-color-seq-1\`–\`node-color-seq-8\` palette values the interfaces can render. Older versions of Architect offered ten, so a node type using the ninth or tenth is moved back onto the palette (the ninth becomes the first, the tenth the second).
 - Added optional 'hint' property to form fields, allowing a markdown string to be displayed as additional guidance for participants.
 - Added optional 'showValidationHints' property to form fields, enabling automatic display of hints derived from validation rules.
 - Removed 'loop' property from Information stage items and video/audio assets. This property was never honoured by Interviewer.
@@ -412,7 +421,6 @@ const migrationV7toV8 = createMigration({
 - An attribute's \`component\` (input control) must be one its type can render. An unrecognised or mismatched control is replaced with the type's standard control (for datetime, chosen by the shape of its \`parameters\`); layout attributes, which have no control, have it removed.
 - Ordinal and categorical option values must be strings or whole numbers; a fractional value is converted to its string form (as legacy boolean values already are), and a numeric option label becomes the same text it already displayed. A boolean attribute's option entry that is not a labelled true/false choice is removed; if no entries remain the attribute falls back to the standard Yes/No choices.
 - The CategoricalBin "other" input and the NameGenerator quick-add field now honour the referenced attribute's configured validation. Both previously required a response locally, so migration adds \`required: true\` to every attribute they reference while preserving its other validation rules.
-- A form may no longer collect the same attribute twice. Two fields naming one attribute always shared a single answer — whichever the participant filled in last overwrote the other — so the repeat was never collecting anything of its own. Only the first field for each attribute is kept.
 `,
   migrate: (doc, deps) => {
     const codebook = (doc as Record<string, unknown>).codebook;
@@ -986,21 +994,8 @@ const migrationV7toV8 = createMigration({
               !NON_RENDERABLE_VARIABLE_TYPES.has(type)
             );
           });
-          // V8 rejects a form that names one variable twice
-          // (`uniqueFormFieldVariables`), so repair the legacy protocols that
-          // carry that shape rather than failing their migration. The
-          // duplicate was never functional: every field registers under
-          // `field.variable`, so both rows already shared one form value and
-          // the later registration silently replaced the earlier — the second
-          // field collected nothing of its own. `duplicateFormFieldIndices` is
-          // the schema's own finder, so the migration keeps exactly the fields
-          // the schema accepts.
-          const repeats = new Set(duplicateFormFieldIndices(renderable));
-          const deduplicated = renderable.filter(
-            (_field, index) => !repeats.has(index),
-          );
-          form.fields = deduplicated;
-          for (const field of deduplicated) {
+          form.fields = renderable;
+          for (const field of renderable) {
             const typedField = asRecord(field);
             if (!typedField) continue;
             if (
@@ -1422,6 +1417,35 @@ const migrationV7toV8 = createMigration({
             delete typedStage.filter;
           }
           return stage;
+        },
+      },
+      {
+        // Wrap a node definition's out-of-range palette position back onto
+        // v8's eight node colours. Architect Classic offered ten node palette
+        // positions, so a legitimately authored v7 node type can name
+        // `node-color-seq-9` or `node-color-seq-10`, which
+        // `NodeColorReferenceSchema` rejects — the protocol could not be
+        // imported at all. Wrapping (position 9 -> 1, position 10 -> 2) keeps
+        // the authored positions distinct from one another and lands on a
+        // colour the interfaces can render; the alternative, dropping the
+        // value, is not available because a node definition's `color` is
+        // required. Only the position is rewritten: a `color` that is not a
+        // `node-color-seq-<position>` reference at all is left for the schema
+        // to reject on its own terms.
+        paths: ['codebook.node.*'],
+        fn: <V>(entityDefinition: V) => {
+          const typedEntity = asRecord(entityDefinition);
+          if (typeof typedEntity?.color !== 'string') return entityDefinition;
+          const position = Number(
+            NODE_COLOR_POSITION.exec(typedEntity.color)?.[1],
+          );
+          if (!Number.isInteger(position) || position < 1) {
+            return entityDefinition;
+          }
+          if (position <= NodeColorSequence.length) return entityDefinition;
+          typedEntity.color =
+            NodeColorSequence[(position - 1) % NodeColorSequence.length];
+          return entityDefinition;
         },
       },
       {
