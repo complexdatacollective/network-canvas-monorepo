@@ -130,7 +130,12 @@ tree, §5.12):
 
 ```ts
 const dynamicNetworkAssetSchema = baseAssetSchema.extend({
-  type: z.enum(['dynamicnetwork']),
+  // z.literal, NOT z.enum: the reference walker matches discriminated-union
+  // branches only by ZodLiteral discriminators
+  // (collectEntityAttributeReferences.ts:350-359), and this is the first
+  // asset branch that itself carries references (valueAssetId below) — an
+  // enum discriminator would make them invisible to collectAssetReferences.
+  type: z.literal('dynamicnetwork'),
   /**
    * Stored sample response (canonical response shape, JSON), written by
    * Architect's "Send test request". Ships in the zip like any file asset;
@@ -138,6 +143,12 @@ const dynamicNetworkAssetSchema = baseAssetSchema.extend({
    * generation, and is never used during a real interview.
    */
   source: assetSourceSchema,
+  /**
+   * Hash (ohash, as in hashProtocol) of `request` at the moment the stored
+   * sample was accepted. A protocol whose sampleOf does not match its
+   * current request is invalid (§7): the sample must describe THIS request.
+   */
+  sampleOf: z.string().min(1),
   request: z.strictObject({
     /**
      * Template string. The origin (scheme://host[:port]) must be literal —
@@ -166,7 +177,12 @@ const dynamicNetworkAssetSchema = baseAssetSchema.extend({
 
 `source` is **required**: a dynamic roster asset is not valid until a test
 request has succeeded once. This is the guarantee that makes every authoring
-surface (columns, Preview, synthetic, CI) deterministic and offline.
+surface (columns, Preview, synthetic, CI) deterministic and offline. And the
+sample must be **fresh**: `sampleOf` binds the stored sample to the exact
+request configuration it was produced by, so editing the URL, method, headers,
+or body invalidates the sample at the protocol level — not merely in the
+editor UI — and hand-authored protocols cannot claim a sample they never
+proved (§5.8, §7).
 
 Because `source` is a real file in `assets/`, the whole existing file-asset
 machinery — zip extraction (`extractProtocol.ts`), the export bundler's
@@ -241,8 +257,14 @@ branches on asset type. For `dynamicnetwork` it does not call
 
 1. Build the request from the template and current context.
 2. `fetch(url, { method, headers, body, signal, referrerPolicy: 'no-referrer',
-credentials: 'omit' })`. POST bodies are sent with
+credentials: 'omit', cache: 'no-store' })`. POST bodies are sent with
    `Content-Type: application/json` (set by the app; not overridable).
+   `cache: 'no-store'` is load-bearing: without it a GET endpoint that sends
+   cacheable headers would be answered from the browser's HTTP cache, and a
+   revisited stage would silently see stale data — violating Decision 2's
+   fetch-on-each-entry rule from a layer no service-worker configuration
+   covers. Production builds additionally refuse any non-`https://` URL here
+   (the `http://localhost` allowance is development-only, §5.11/§6.3).
 3. Enforce: 30-second timeout via `AbortSignal.timeout`; `response.ok` (a
    non-2xx status is a typed error); a 20 MB response cap (checked against
    `Content-Length` when present and enforced while reading the stream); a
@@ -321,8 +343,15 @@ today, and the participant is never trapped.**
   with "empty".
 - When the device regains connectivity while an offline-caused error is
   showing, the fetch retries automatically once.
-- Navigation follows normal stage rules; there is no fetch-gated block.
-  Errors are captured to analytics under the existing `external-data`
+- Navigation follows normal stage rules, with one deliberate exception:
+  while the roster source is in the error state, the stage's
+  `behaviours.minNodes` forward-navigation gate (`useNodeLimits` /
+  `useStageValidation`) is suspended. Without this, a dead endpoint plus
+  `minNodes > 0` leaves the participant with zero cards to nominate and a
+  permanently blocked next arrow — exactly the trap Decision 8 forbids. The
+  suspension is announced (the error copy states the participant may
+  continue), and the analytics capture records that the minimum was waived.
+- Errors are captured to analytics under the existing `external-data`
   feature tag.
 
 ### 5.7 "Requires internet" derivation
@@ -359,8 +388,17 @@ and copy are extended to cover dynamic rosters.
   response against the canonical schema with per-error messages, and shows
   row count and columns. Accepting the result stores the response JSON as
   the asset's sample file (`source`, generated filename `<uuid>.json`) via
-  the existing asset-storage path. The asset cannot be saved without a
-  stored sample. Re-testing replaces the sample.
+  the existing asset-storage path, and writes `sampleOf` from the tested
+  request. The asset cannot be saved without a stored sample, **and any edit
+  to the request configuration disables save until a test of the edited
+  configuration succeeds** — otherwise columns and Preview would describe an
+  endpoint participants never call, failing only during collection. The
+  `sampleOf` refinement (§7) backs this at the protocol level.
+- **Development-URL alert.** A protocol whose dynamic roster targets an
+  `http://localhost` origin gets a timeline alert (the
+  `TestingMapboxTokenAlert` pattern): such a protocol only works in
+  development builds (§5.11) and must be pointed at a real TLS endpoint
+  before deployment.
 - **Stage editors.** The `ResourcePicker`/`DataSource` type filter for
   roster and panel data sources accepts `['network', 'dynamicnetwork']`.
   `useVariablesFromExternalData` reads the sample file for `dynamicnetwork`
@@ -398,13 +436,31 @@ therefore exercise roster stages deterministically and offline.
   endpoint config produces the same hash — the import path must still
   replace the stored protocol document (the existing `importedAt` bump
   handles asset refresh).
-- **Fresco.** `protocolImport` uploads the sample like any file asset (only
-  `apikey` is excluded from upload). `mapInterviewPayload` populates
-  `request` on the resolved asset from the stored protocol's manifest.
-  Fresco sets no CSP today; no change needed for egress.
-- **Architect preview.** `currentProtocolToPayload` passes `request`
-  through; the preview asset resolver serves the sample for
-  `collectRosterExternalData` as today.
+- **Fresco.** Fresco does not persist the asset manifest — its `Protocol`
+  row stores only `stages` and `codebook` JSON — so the request config
+  needs a home: the `Asset` model gains a nullable `request Json` column
+  (Prisma migration), the same pattern as `value` for `apikey` rows.
+  `protocolImport` uploads the sample like any file asset (only `apikey` is
+  excluded from upload) and persists `request` and `sampleOf` on the asset
+  row; the insert schema and `insertProtocol` carry them through;
+  `mapInterviewPayload` populates `request` on the resolved asset from the
+  asset row. Fresco sets no CSP today; no change needed for egress.
+  Fresco also needs the same same-hash story as Interviewer:
+  `useProtocolImport` currently rejects an import whose `hashProtocol`
+  matches an existing protocol ("delete the existing protocol first"), and
+  deleting is destructive to collected interviews — so an endpoint-only
+  edit could never be installed. Importing a protocol with a matching hash
+  becomes an in-place update (asset connections, request configs, name,
+  description, `lastModified`) behind a confirmation; same-hash means
+  codebook and stages are identical, so existing interviews are unaffected.
+- **Architect preview.** `currentProtocolToPayload` converts each
+  `dynamicnetwork` asset into a sample-backed static `network` asset
+  (type `'network'`, `source` = the sample file) and passes no `request`.
+  The runtime therefore has no preview-awareness and structurally cannot
+  contact the endpoint from Preview — which is what makes the §5.9 rule
+  true rather than aspirational. (Passing `request` through, as an earlier
+  draft did, would have made the preview's own `useExternalData` execute
+  the live endpoint.)
 
 ### 5.11 CSP changes
 
@@ -412,16 +468,23 @@ Architect (`vite.config.ts`) and Interviewer (`vite.renderer.config.ts`)
 `connect-src` changes from a closed host list to:
 
 ```
-connect-src 'self' blob: https: http://localhost:* http://127.0.0.1:* <existing entries as needed>
+connect-src 'self' blob: https: <existing entries as needed>
 ```
 
 The named Mapbox/GitHub/PostHog entries become redundant under `https:` and
 are removed; the explanatory comments are updated to state the new rule: the
 app's fetch egress is any TLS origin, because roster endpoints are
-researcher-configured and unknowable at build time. `http://localhost` exists
-solely so researchers can develop endpoints locally. All other directives
-(`script-src`, `default-src`, `object-src`, …) are unchanged. The tradeoff is
-acknowledged in §6.
+researcher-configured and unknowable at build time.
+
+`http://localhost:* http://127.0.0.1:*` is appended **only in development
+builds**. A production allowance would let any imported protocol issue simple
+GETs to arbitrary loopback ports on a participant's machine — CORS blocks
+reading the response but not sending the request, and local services that
+trust loopback need neither. Endpoint authors develop against the dev build
+or put a TLS tunnel in front of a local server; the production runtime
+enforces the same boundary (§5.4), and Architect warns on localhost URLs
+(§5.8). All other directives (`script-src`, `default-src`, `object-src`, …)
+are unchanged. The tradeoff is acknowledged in §6.
 
 ### 5.12 Schema version 9 and migration
 
@@ -467,9 +530,12 @@ Governing rules, in order of importance:
 2. **Substitution cannot inject structure.** URL values are percent-encoded;
    body substitution operates on the parsed JSON tree, never on JSON text
    (§5.2).
-3. **TLS only.** `https://` origins, with `http://localhost`/`127.0.0.1`
-   permitted for development. Enforced in the schema and again by the
-   runtime executor.
+3. **TLS only in production.** `https://` origins everywhere;
+   `http://localhost`/`127.0.0.1` is valid in the schema but honoured only
+   by development builds — the production CSP omits it (§5.11), the
+   production executor refuses it (§5.4), and Architect flags it (§5.8), so
+   a hostile protocol cannot use participants' browsers to probe loopback
+   services in the field.
 4. **Responses are data, never code.** Strict-schema JSON parsing, 20 MB
    cap, 30 s timeout, `response.ok` required, values through
    `VariableValueSchema`, names through `validateNames`. Nothing from a
@@ -520,10 +586,12 @@ Protocol-level refinements in `schemas/9/schema.ts`:
   new type makes the missing rule load-bearing, and the v8→v9 migration
   normalises pre-existing violations (§5.12).
 - On each `dynamicnetwork` asset: URL origin is literal, `https` (or
-  localhost); `body` present iff `method === 'POST'`; body template parses
-  as JSON; every placeholder path is in the registry; no object-valued
-  placeholder in the URL; header names are valid and not forbidden;
-  `valueAssetId` references an `apikey` asset.
+  localhost, development-only per §6.3); `body` present iff
+  `method === 'POST'`; body template parses as JSON; every placeholder path
+  is in the registry; no object-valued placeholder in the URL; header names
+  are valid and not forbidden; `valueAssetId` references an `apikey` asset;
+  `sampleOf` equals the hash of the current `request` object — a stale or
+  fabricated sample is a validation error, not just an editor state.
 
 Roster column references stay `existence: 'unchecked'` (issue #1392
 rationale applies identically to sample columns).
@@ -562,7 +630,8 @@ and fixtures re-saved at schema 9.
 - `src/utils/loadExternalData.ts` — accept an injected primary-key strategy
   (index-salted for files, content-only for dynamic).
 - `src/interfaces/NameGeneratorRoster/*`, `src/interfaces/NameGenerator/
-components/NodePanel.tsx` — retry UI + failure copy.
+components/NodePanel.tsx` — retry UI + failure copy; the roster stage
+  suspends its `useNodeLimits` minNodes gate in the error state (§5.6).
 - `src/components/GeospatialOfflineIndicator.tsx` — generalized predicate
   and copy.
 - `src/contract/rosterData.ts` — `collectRosterExternalData` accepts the
@@ -572,24 +641,31 @@ components/NodePanel.tsx` — retry UI + failure copy.
 `src/components/AssetBrowser/`), `assetManifest` duck action, `AssetBrowser`
 type filter + preview renderer, `ResourcePicker`/`DataSource` type lists,
 `useVariablesFromExternalData`, `PreviewHost/previewRosterData.ts`,
-`currentProtocolToPayload.ts`, `ProtocolInfoCard` (use shared helper),
-`vite.config.ts` CSP.
+`currentProtocolToPayload.ts` (sample-backed conversion, §5.10),
+a localhost-URL timeline alert (`TestingMapboxTokenAlert` pattern, §5.8),
+`ProtocolInfoCard` (use shared helper), `vite.config.ts` CSP (dev-gated
+localhost, §5.11).
 
 **Interviewer** — `lib/assets/assetResolver.ts` (`buildResolvedAssets`),
 `lib/protocol/protocolRequiresInternet.ts` (delegate to shared helper),
 `lib/synthetic/loadRosterData.ts`, `NewSessionForm` copy, `routes/
 Interview.tsx` (context prop), `vite.renderer.config.ts` CSP.
 
-**Fresco** — `mapInterviewPayload.ts`, `InterviewClient.tsx` (context prop).
+**Fresco** — `lib/db/schema.prisma` (`Asset.request`, `Asset.sampleOf`) +
+Prisma migration, `utils/protocolImport.tsx` + `schemas/protocol.ts` +
+`actions/protocols.ts` (persist request config; same-hash in-place update,
+§5.10), `hooks/useProtocolImport.tsx` (same-hash update flow),
+`mapInterviewPayload.ts`, `InterviewClient.tsx` (context prop).
 
 ## 9. Testing
 
 - **protocol-validation:** schema unit tests for the new asset (valid/invalid
   origins, method/body coupling, header rules, placeholder registry,
-  object-in-URL); refinement tests for roster + panel data sources
-  (including the newly closed panel gap); response-schema tests (empty
-  nodes valid, bad names rejected); `protocolRequiresInternet` cases;
-  `collectAssetReferences` picks up `valueAssetId`.
+  object-in-URL, `sampleOf` mismatch rejected); refinement tests for roster
+  - panel data sources
+    (including the newly closed panel gap); response-schema tests (empty
+    nodes valid, bad names rejected); `protocolRequiresInternet` cases;
+    `collectAssetReferences` picks up `valueAssetId`.
 - **migration:** a valid v8 protocol migrates to a valid v9 protocol
   changed only in `schemaVersion`; a v8 protocol with a dangling panel
   `dataSource` has that panel dropped and post-validates;
@@ -598,10 +674,14 @@ Interview.tsx` (context prop), `vite.renderer.config.ts` CSP.
 - **interview:** substitution unit tests (tree substitution, typed
   replacement, interpolation escaping, encoding, absent values); executor
   tests with a mocked `fetch` (timeout, non-2xx, oversize, invalid JSON,
-  offline); content-only hash stability under reorder and dedup across
-  refetch; `useExternalData` retry and auto-retry-on-reconnect; Storybook
-  stories for the roster error/retry states (loading, offline, server
-  failure) — Chromatic covers them.
+  offline, `cache: 'no-store'` set, production refusal of `http://`);
+  two stage entries produce two network requests (the HTTP-cache bypass is
+  observable, not assumed); content-only hash stability under reorder and
+  dedup across refetch; `useExternalData` retry and
+  auto-retry-on-reconnect; the minNodes gate is suspended in the error
+  state and restored on recovery; Storybook stories for the roster
+  error/retry states (loading, offline, server failure) — Chromatic covers
+  them.
 - **Interview e2e matrix:** the `verifying-an-interface-change` skill
   applies — NameGeneratorRoster and panels change behaviourally; add a
   matrix configuration with a dynamic source served by Playwright route
@@ -613,8 +693,10 @@ Interview.tsx` (context prop), `vite.renderer.config.ts` CSP.
 - **Interviewer:** session-gate dialog for a dynamic-roster protocol while
   offline; re-import test proving an endpoint-config-only change (same
   protocol hash) takes effect.
-- **Fresco:** `mapInterviewPayload` carries `request`; import stores the
-  sample.
+- **Fresco:** `mapInterviewPayload` carries `request` from the asset row;
+  import persists `request`/`sampleOf`; regression test for the same-hash
+  in-place update — an endpoint-only re-import takes effect without
+  deleting the protocol or its interviews.
 - **Oracle discipline:** every "fetch was not made" assertion (Preview,
   synthetic, sample paths) must fail when a fetch _is_ made — assert via
   route interception counters, not absence of visible change
@@ -640,7 +722,10 @@ Interview.tsx` (context prop), `vite.renderer.config.ts` CSP.
 Normal changeset lane, one changeset: `@codaco/protocol-validation` (**major**
 — `CURRENT_SCHEMA_VERSION` changes and every consumer's protocols migrate on
 next open/import), `@codaco/interview` (minor), `@codaco/shared-consts`
-(minor), Architect, Interviewer, Fresco (minor each). Suggested implementation
+(minor), Architect, Interviewer, Fresco (minor each). The §10 documentation
+pages ship as a **separate changeset in the Documentation lane** — the
+Documentation app is a separately gated product and `pnpm check:changesets`
+rejects mixing it into the normal lane. Suggested implementation
 sequence (one plan, PRs may be combined): (1) schema 9 + migration +
 validation + shared helpers, (2) interview runtime + retry UX, (3) Architect
 authoring + preview, (4) hosts + CSP + docs. E2E suite selection follows from
