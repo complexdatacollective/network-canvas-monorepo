@@ -149,6 +149,7 @@ async function clearAll(): Promise<void> {
   await db.sessions.clear();
   await db.protocols.clear();
   await db.assets.clear();
+  await db.protocolMigrations.clear();
 }
 
 describe.each([
@@ -334,6 +335,40 @@ describe.each([
     const assetRow = await db.assets.get(`${collisionHash}::key-1`);
     if (!assetRow) throw new Error('expected the existing asset to survive');
     expect((await decryptAsset(assetRow)).data).toBe('secret-key-1');
+  });
+
+  it('writes a durable re-keying record when a protocol changes hash', async () => {
+    await seedProtocol(storedRow('old-hash', 'Alpha Study', v7Document()));
+
+    const result = await migrateStoredProtocols();
+
+    const newHash = result.migrated[0]?.hash;
+    expect(newHash).toBeTruthy();
+    const record = await db.protocolMigrations.get('old-hash');
+    expect(record?.hash).toBe(newHash);
+  });
+
+  it('heals a session a legacy writer pointed back at a superseded hash', async () => {
+    // A tab still running the pre-update bundle wrote the session AFTER the
+    // migration deleted its protocol row: its updateSession predates the
+    // commit-time hash guard, so the stale hash landed. The next launch
+    // follows the durable record — including a chain of them — and repairs.
+    await db.protocolMigrations.bulkPut([
+      { previousHash: 'dead', hash: 'mid', migratedAt: '2026-01-01' },
+      { previousHash: 'mid', hash: 'live', migratedAt: '2026-02-01' },
+    ]);
+    await seedSession('stale-session', 'dead');
+    await seedSession('healthy-session', 'live');
+
+    await migrateStoredProtocols();
+
+    const sessions = await db.sessions.toArray();
+    expect(sessions.find((s) => s.id === 'stale-session')?.protocolHash).toBe(
+      'live',
+    );
+    expect(sessions.find((s) => s.id === 'healthy-session')?.protocolHash).toBe(
+      'live',
+    );
   });
 
   it('leaves a protocol it cannot migrate untouched and carries on with the rest', async () => {

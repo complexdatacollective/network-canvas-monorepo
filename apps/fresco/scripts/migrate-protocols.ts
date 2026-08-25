@@ -96,8 +96,16 @@ function isConformant(row: ProtocolRow): boolean {
 }
 
 /**
- * Persist a migrated protocol, translating a unique-hash collision (P2002) into
- * an actionable error that names both the migrated protocol and the colliding one.
+ * Persist a migrated protocol, detecting a unique-hash collision BEFORE the
+ * write and raising an actionable error naming both rows.
+ *
+ * The pre-check is load-bearing, not an optimization: everything here runs
+ * inside setup-database's single PostgreSQL transaction, and a constraint
+ * violation (P2002) would mark that whole transaction failed — every
+ * subsequent statement, including a per-row tolerance catch and any later
+ * data migration, then errors with "current transaction is aborted". Only a
+ * check that avoids raising the violation lets a collision be tolerated. The
+ * loop is single-threaded within the transaction, so the check is exact.
  */
 async function writeMigratedProtocol(
   prisma: Prisma.TransactionClient,
@@ -105,25 +113,17 @@ async function writeMigratedProtocol(
   data: Prisma.ProtocolUpdateInput,
   newHash: string,
 ): Promise<void> {
-  try {
-    await prisma.protocol.update({ where: { id: row.id }, data });
-  } catch (err) {
-    if (
-      err instanceof Prisma.PrismaClientKnownRequestError &&
-      err.code === 'P2002'
-    ) {
-      const collider = await prisma.protocol.findFirst({
-        where: { hash: newHash },
-        select: { id: true, name: true },
-      });
-      throw new Error(
-        `Hash collision migrating "${row.name}" (id=${row.id}): ` +
-          `migrated hash ${newHash} already exists on protocol "${collider?.name ?? '?'}" (id=${collider?.id ?? '?'})`,
-        { cause: err },
-      );
-    }
-    throw err;
+  const collider = await prisma.protocol.findFirst({
+    where: { hash: newHash, NOT: { id: row.id } },
+    select: { id: true, name: true },
+  });
+  if (collider) {
+    throw new Error(
+      `Hash collision migrating "${row.name}" (id=${row.id}): ` +
+        `migrated hash ${newHash} already exists on protocol "${collider.name}" (id=${collider.id})`,
+    );
   }
+  await prisma.protocol.update({ where: { id: row.id }, data });
 }
 
 async function migrateOneProtocol(

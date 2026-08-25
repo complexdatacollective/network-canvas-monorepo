@@ -486,7 +486,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
     warnSpy.mockRestore();
   });
 
-  it('wraps a P2002 hash collision with both protocol ids and names', async () => {
+  it('detects a hash collision before writing and names both protocols', async () => {
     const v7 = makeV7Protocol();
     const prisma = makeMockPrisma();
     prisma.protocol.findMany.mockResolvedValue([
@@ -503,15 +503,9 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       },
     ]);
 
-    // Simulate Prisma's P2002 unique-constraint error
-    const { Prisma } = await import('~/lib/db/generated/client');
-    const p2002 = new Prisma.PrismaClientKnownRequestError(
-      'Unique constraint failed on the fields: (`hash`)',
-      { code: 'P2002', clientVersion: 'test', meta: { target: ['hash'] } },
-    );
-    prisma.protocol.update.mockRejectedValue(p2002);
-
-    // The script will look up the colliding row by hash
+    // The pre-write check finds the colliding row by hash. Raising the actual
+    // constraint violation is not an option — inside setup-database's single
+    // PostgreSQL transaction it would poison every subsequent statement.
     prisma.protocol.findFirst.mockResolvedValue({
       id: 'cm-existing',
       name: 'Existing.netcanvas',
@@ -534,6 +528,9 @@ describe('migrateProtocolsToCompatibleVersion', () => {
     expect(logged).toMatch(/Colliding\.netcanvas/);
     expect(logged).toMatch(/cm-existing/);
     expect(logged).toMatch(/Existing\.netcanvas/);
+    // Detected BEFORE any write: the constraint violation itself would poison
+    // the surrounding PostgreSQL transaction.
+    expect(prisma.protocol.update).not.toHaveBeenCalled();
     errorSpy.mockRestore();
   });
 });

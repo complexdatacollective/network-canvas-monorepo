@@ -216,36 +216,51 @@ async function migrateStoredProtocolRow(
   }
   const assetRows = await rekeyAssets(previousHash, hash);
 
-  await db.transaction('rw', db.protocols, db.sessions, db.assets, async () => {
-    // The source must still be the revision that was read — another tab
-    // re-importing or deleting it in the gap wins, and this row waits for the
-    // next launch sweep.
-    const source = await db.protocols.get(row.id);
-    if (!sourceUnchanged(source, row)) {
-      throw new SourceChangedError(row.name);
-    }
-    const existing = await db.protocols.where('hash').equals(hash).first();
-    // A collider that appeared since the check above aborts the transaction,
-    // rolling back everything, and reports the refusal.
-    if (existing) throw collisionError();
-    await db.protocols.put(protocolRow);
-    if (assetRows.length > 0) await db.assets.bulkPut(assetRows);
-    // Query the sessions by primary key rather than by the `protocolHash`
-    // index we are about to rewrite: Dexie leaves the result undefined when a
-    // `modify` changes the very index it is iterating.
-    const sessionIds = await db.sessions
-      .where('protocolHash')
-      .equals(previousHash)
-      .primaryKeys();
-    if (sessionIds.length > 0) {
-      await db.sessions
-        .where('id')
-        .anyOf(sessionIds)
-        .modify({ protocolHash: hash });
-    }
-    await db.assets.where('protocolHash').equals(previousHash).delete();
-    await db.protocols.delete(row.id);
-  });
+  await db.transaction(
+    'rw',
+    db.protocols,
+    db.sessions,
+    db.assets,
+    db.protocolMigrations,
+    async () => {
+      // The source must still be the revision that was read — another tab
+      // re-importing or deleting it in the gap wins, and this row waits for
+      // the next launch sweep.
+      const source = await db.protocols.get(row.id);
+      if (!sourceUnchanged(source, row)) {
+        throw new SourceChangedError(row.name);
+      }
+      const existing = await db.protocols.where('hash').equals(hash).first();
+      // A collider that appeared since the check above aborts the
+      // transaction, rolling back everything, and reports the refusal.
+      if (existing) throw collisionError();
+      await db.protocols.put(protocolRow);
+      if (assetRows.length > 0) await db.assets.bulkPut(assetRows);
+      // The durable re-keying record: a writer still running the pre-update
+      // bundle can restore `previousHash` onto a session after this commit,
+      // and the next launch's heal pass follows this record to repair it.
+      await db.protocolMigrations.put({
+        previousHash,
+        hash,
+        migratedAt: new Date().toISOString(),
+      });
+      // Query the sessions by primary key rather than by the `protocolHash`
+      // index we are about to rewrite: Dexie leaves the result undefined when a
+      // `modify` changes the very index it is iterating.
+      const sessionIds = await db.sessions
+        .where('protocolHash')
+        .equals(previousHash)
+        .primaryKeys();
+      if (sessionIds.length > 0) {
+        await db.sessions
+          .where('id')
+          .anyOf(sessionIds)
+          .modify({ protocolHash: hash });
+      }
+      await db.assets.where('protocolHash').equals(previousHash).delete();
+      await db.protocols.delete(row.id);
+    },
+  );
 
   return {
     name: nextStored.name,
@@ -254,6 +269,49 @@ async function migrateStoredProtocolRow(
     previousHash,
     hash,
   };
+}
+
+/**
+ * Repoint any session still referencing a superseded protocol hash.
+ *
+ * The commit-time guard in `updateSession` protects writers running THIS
+ * bundle, but a tab still executing the pre-update bundle writes sessions
+ * unconditionally — and the PWA deliberately lets an interview tab keep its
+ * old bundle while other tabs update. Such a late write can restore a hash
+ * the migration deleted. Every launch therefore follows the durable
+ * re-keying records and repairs whatever a legacy writer left behind.
+ */
+async function healSupersededSessionReferences(): Promise<void> {
+  const records = await db.protocolMigrations.toArray();
+  if (records.length === 0) return;
+  const forward = new Map(
+    records.map((record) => [record.previousHash, record.hash]),
+  );
+  // A protocol migrated more than once leaves a chain of records; follow it
+  // to the live hash. The bound guards against a corrupt cycle looping.
+  const terminal = (start: string): string => {
+    let current = start;
+    for (let hop = 0; hop <= forward.size; hop += 1) {
+      const next = forward.get(current);
+      if (next === undefined) return current;
+      current = next;
+    }
+    return current;
+  };
+  await db.transaction('rw', db.sessions, async () => {
+    for (const previousHash of forward.keys()) {
+      const sessionIds = await db.sessions
+        .where('protocolHash')
+        .equals(previousHash)
+        .primaryKeys();
+      if (sessionIds.length === 0) continue;
+      const hash = terminal(previousHash);
+      await db.sessions
+        .where('id')
+        .anyOf(sessionIds)
+        .modify({ protocolHash: hash });
+    }
+  });
 }
 
 /**
@@ -268,6 +326,14 @@ async function migrateStoredProtocolRow(
 export async function migrateStoredProtocols(): Promise<StoredProtocolMigrationResult> {
   const migrated: MigratedStoredProtocol[] = [];
   const failed: FailedStoredProtocolMigration[] = [];
+
+  // Heal first, and on every launch — the legacy write this repairs can land
+  // long after the migration that re-keyed the protocol.
+  try {
+    await healSupersededSessionReferences();
+  } catch (cause) {
+    console.error('Could not heal superseded session references', cause);
+  }
 
   let outdatedIds: string[];
   try {

@@ -30,6 +30,19 @@ export type StoredProtocol = {
   protocol: CurrentProtocol;
 };
 
+/**
+ * A durable record that a schema migration re-keyed a stored protocol from
+ * `previousHash` to `hash`. Written in the same transaction as the re-keying;
+ * never deleted. The launch sweep follows these records to heal any session a
+ * legacy writer (a tab still running the pre-update bundle) pointed back at a
+ * superseded hash after the migration ran.
+ */
+export type StoredProtocolMigrationRecord = {
+  previousHash: string;
+  hash: string;
+  migratedAt: string;
+};
+
 export type StoredSession = {
   id: string;
   protocolHash: string;
