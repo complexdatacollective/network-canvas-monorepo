@@ -415,8 +415,17 @@ export const AuthoringARule: Story = {
     await userEvent.click(
       within(dialog).getByRole('radio', { name: /^Ego -/ }),
     );
+    const ruleStructure = await within(dialog).findByRole('region', {
+      name: 'Rule structure',
+    });
+    const structure = within(ruleStructure);
+    await expect(
+      structure.getByText(
+        'Choose an attribute, operator, and comparison value to define this rule.',
+      ),
+    ).toBeVisible();
     await userEvent.click(
-      await within(dialog).findByRole('button', { name: 'Select attribute' }),
+      await structure.findByRole('button', { name: 'Select attribute' }),
     );
     const attributeSearch = await page.findByRole('searchbox', {
       name: 'Find or create an attribute',
@@ -424,15 +433,13 @@ export const AuthoringARule: Story = {
     await userEvent.type(attributeSearch, 'Consent given');
     await userEvent.keyboard('{Enter}');
     await expect(
-      await within(dialog).findByRole('button', { name: 'Change attribute' }),
+      await structure.findByRole('button', { name: 'Change attribute' }),
     ).toBeVisible();
     await userEvent.selectOptions(
-      await within(dialog).findByRole('combobox', { name: /^Operator/ }),
+      await structure.findByRole('combobox', { name: /^Operator/ }),
       'EXACTLY',
     );
-    await userEvent.click(
-      await within(dialog).findByRole('radio', { name: 'Yes' }),
-    );
+    await userEvent.click(await structure.findByRole('radio', { name: 'Yes' }));
     await userEvent.click(
       within(dialog).getByRole('button', { name: 'Finish and Close' }),
     );

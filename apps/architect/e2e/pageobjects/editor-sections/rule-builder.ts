@@ -23,7 +23,7 @@ import { type Locator } from '@playwright/test';
 //   NOT_EXISTS → 'does not exist' .
 //   Presence operators render as radios; variable-rule operators are a native
 //   <select> named 'Operator'.
-// - Boolean 'Attribute Value' is a radiogroup. Its visible option labels come
+// - Boolean 'Attribute value' is a radiogroup. Its visible option labels come
 //   from the variable's authored markdown, while each radio exposes the stored
 //   boolean through `data-value`.
 // - Attribute rules use the standard entity-scoped attribute picker. Its
@@ -129,7 +129,7 @@ async function addEgoRule(
     .getByRole('combobox', { name: 'Operator' })
     .selectOption({ label: 'is exactly' });
   await dialog
-    .getByRole('radiogroup', { name: 'Attribute Value' })
+    .getByRole('radiogroup', { name: 'Attribute value' })
     .locator(`[role="radio"][data-value="${String(spec.value)}"]`)
     .click();
 
@@ -170,7 +170,7 @@ async function addEntityRule(
       .getByRole('combobox', { name: 'Operator' })
       .selectOption({ label: 'is exactly' });
     await dialog
-      .getByRole('radiogroup', { name: 'Attribute Value' })
+      .getByRole('radiogroup', { name: 'Attribute value' })
       .locator('[role="radio"][data-value="true"]')
       .click();
   }

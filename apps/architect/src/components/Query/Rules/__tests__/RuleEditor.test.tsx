@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -229,7 +235,7 @@ describe('the rule editor refuses an incomplete rule', () => {
     chooseOption(/^Operator/, 'EXACTLY');
 
     expect(
-      await screen.findByRole('textbox', { name: /Attribute Value/ }),
+      await screen.findByRole('textbox', { name: /Attribute value/ }),
     ).toBeVisible();
 
     finishRule();
@@ -313,7 +319,7 @@ describe('the option-count operand', () => {
     chooseOption(/^Operator/, 'OPTIONS_GREATER_THAN');
 
     const count = await screen.findByRole('spinbutton', {
-      name: /Selected Option Count/,
+      name: /Selected option count/,
     });
     expect(count).toHaveAttribute('step', '1');
     expect(count).toHaveAttribute('min', '0');
@@ -327,7 +333,7 @@ describe('the option-count operand', () => {
     chooseOption(/^Operator/, 'OPTIONS_EQUALS');
 
     const count = await screen.findByRole('spinbutton', {
-      name: /Selected Option Count/,
+      name: /Selected option count/,
     });
     finishRule();
     expect(await screen.findByText('This field is required.')).toBeVisible();
@@ -339,6 +345,61 @@ describe('the option-count operand', () => {
     expect(savedRules(onChange)[0]).toMatchObject({
       options: { operator: 'OPTIONS_EQUALS', value: 0 },
     });
+  });
+});
+
+describe('attribute rule structure', () => {
+  const expectStructure = (
+    attributeLabel: 'Ego attribute' | 'Node attribute' | 'Edge attribute',
+    valueRole: 'textbox' | 'spinbutton',
+  ) => {
+    const structure = screen.getByRole('region', { name: 'Rule structure' });
+    const fields = within(structure);
+
+    expect(structure).toHaveTextContent(
+      'Choose an attribute, operator, and comparison value to define this rule.',
+    );
+    expect(
+      fields.getByRole('combobox', { name: attributeLabel }),
+    ).toBeVisible();
+    expect(fields.getByRole('combobox', { name: 'Operator' })).toBeVisible();
+    expect(
+      fields.getByRole(valueRole, { name: 'Attribute value' }),
+    ).toBeVisible();
+  };
+
+  it('groups the ego attribute, operator, and value', async () => {
+    renderRules();
+    openEditor();
+    await chooseTarget(/^Ego -/);
+    chooseOption(/Ego attribute/, 'nickname');
+    chooseOption(/^Operator/, 'EXACTLY');
+
+    expectStructure('Ego attribute', 'textbox');
+  });
+
+  it('groups the node attribute, operator, and value', async () => {
+    renderRules();
+    openEditor();
+    await chooseTarget(/^Node -/);
+    fireEvent.click(await screen.findByRole('button', { name: /Select node/ }));
+    await chooseRuleKind(/^Attribute/);
+    chooseOption(/Node attribute/, 'age');
+    chooseOption(/^Operator/, 'GREATER_THAN');
+
+    expectStructure('Node attribute', 'spinbutton');
+  });
+
+  it('groups the edge attribute, operator, and value', async () => {
+    renderRules();
+    openEditor();
+    await chooseTarget(/^Edge -/);
+    fireEvent.click(await screen.findByRole('button', { name: /Select edge/ }));
+    await chooseRuleKind(/^Attribute/);
+    chooseOption(/Edge attribute/, 'closeness');
+    chooseOption(/^Operator/, 'GREATER_THAN');
+
+    expectStructure('Edge attribute', 'spinbutton');
   });
 });
 
@@ -359,7 +420,9 @@ describe('choices that depend on earlier choices', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Select node/ }));
     await chooseRuleKind(/^Attribute/);
 
-    const nodeAttribute = screen.getByRole('combobox', { name: 'Attribute' });
+    const nodeAttribute = screen.getByRole('combobox', {
+      name: 'Node attribute',
+    });
     expect(nodeAttribute).toHaveAttribute('data-variable-picker');
     expect(nodeAttribute).toHaveAttribute('data-entity', 'node');
     expect(nodeAttribute).toHaveAttribute('data-entity-type', 'person');
@@ -369,7 +432,9 @@ describe('choices that depend on earlier choices', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Select edge/ }));
     await chooseRuleKind(/^Attribute/);
 
-    const edgeAttribute = screen.getByRole('combobox', { name: 'Attribute' });
+    const edgeAttribute = screen.getByRole('combobox', {
+      name: 'Edge attribute',
+    });
     expect(edgeAttribute).toHaveAttribute('data-variable-picker');
     expect(edgeAttribute).toHaveAttribute('data-entity', 'edge');
     expect(edgeAttribute).toHaveAttribute('data-entity-type', 'friend');
@@ -406,7 +471,7 @@ describe('choices that depend on earlier choices', () => {
     chooseOption(/^Operator/, 'EXACTLY');
 
     fireEvent.change(
-      await screen.findByRole('textbox', { name: /Attribute Value/ }),
+      await screen.findByRole('textbox', { name: /Attribute value/ }),
       { target: { value: 'Dee' } },
     );
 
@@ -420,7 +485,7 @@ describe('choices that depend on earlier choices', () => {
     // The operator is gone, so the operand it called for is gone with it —
     // 'Dee' cannot survive into a comparison nobody has chosen yet.
     expect(
-      screen.queryByRole('textbox', { name: /Attribute Value/ }),
+      screen.queryByRole('textbox', { name: /Attribute value/ }),
     ).toBeNull();
   });
 
@@ -455,7 +520,7 @@ describe('choices that depend on earlier choices', () => {
     await chooseTarget(/^Node -/);
     fireEvent.click(await screen.findByRole('button', { name: /Select node/ }));
     await chooseRuleKind(/^Attribute/);
-    chooseOption(/^Attribute/, 'groups');
+    chooseOption(/Node attribute/, 'groups');
     chooseOption(/^Operator/, 'OPTIONS_EQUALS');
 
     await chooseTarget(/^Ego -/);
@@ -465,7 +530,7 @@ describe('choices that depend on earlier choices', () => {
     });
     await waitFor(() => expect(attribute).toHaveValue(''));
     expect(
-      screen.queryByRole('spinbutton', { name: /Selected Option Count/ }),
+      screen.queryByRole('spinbutton', { name: /Selected option count/ }),
     ).toBeNull();
   });
 });
@@ -504,7 +569,7 @@ describe('an existing rule', () => {
       'EXACTLY',
     );
     expect(
-      screen.getByRole('textbox', { name: /Attribute Value/ }),
+      screen.getByRole('textbox', { name: /Attribute value/ }),
     ).toHaveValue('Dee');
   });
 
@@ -534,7 +599,7 @@ describe('an existing rule', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^Edit rule:/ }));
     fireEvent.change(
-      await screen.findByRole('textbox', { name: /Attribute Value/ }),
+      await screen.findByRole('textbox', { name: /Attribute value/ }),
       { target: { value: 'Dennis' } },
     );
     finishRule();

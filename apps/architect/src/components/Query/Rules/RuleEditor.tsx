@@ -65,6 +65,8 @@ const OPERATOR_FIELD = 'options.operator';
 const RULE_KIND_FIELD = 'ruleKind';
 const VARIABLE_RULE = 'ALTER/VARIABLE';
 const TYPE_RULE = 'ALTER/TYPE';
+const RULE_STRUCTURE_DESCRIPTION =
+  'Choose an attribute, operator, and comparison value to define this rule.';
 
 /**
  * The rule's fields in the order each one constrains the next. A change to any
@@ -193,7 +195,7 @@ type OperandFieldsProps = {
  * rules: the only difference between them was copy, and a fork over copy is
  * how the ego branch came to be missing the integer option-count control.
  */
-const RuleOperandFields = ({
+const RuleOperandField = ({
   seed,
   operator,
   variableType,
@@ -204,46 +206,40 @@ const RuleOperandFields = ({
 
   if (operator && operatorsWithOptionCount.has(operator)) {
     return (
-      <Section title="Selection count">
-        <RuleCountField
-          label="Selected Option Count"
-          hint="Enter the number of options that must be selected for this rule to pass."
-          placeholder="Enter a value..."
-          initialValue={seedValue}
-        />
-      </Section>
+      <RuleCountField
+        label="Selected option count"
+        hint="Enter the number of options that must be selected for this rule to pass."
+        placeholder="Enter a value..."
+        initialValue={seedValue}
+      />
     );
   }
 
   if (operator && operatorsWithRegExp.has(operator)) {
     return (
-      <Section title="Pattern match">
-        <RuleValueField
-          label="Attribute Value"
-          hint={regExpHint}
-          placeholder="Enter a regular expression..."
-          variableType={variableType}
-          options={variableOptions}
-          initialValue={seedValue}
-          validation={{ required: true, validRegExp: true }}
-        />
-      </Section>
+      <RuleValueField
+        label="Attribute value"
+        hint={regExpHint}
+        placeholder="Enter a regular expression..."
+        variableType={variableType}
+        options={variableOptions}
+        initialValue={seedValue}
+        validation={{ required: true, validRegExp: true }}
+      />
     );
   }
 
   if (operator && operatorsWithValue.has(operator)) {
     return (
-      <Section title="Comparison value">
-        <RuleValueField
-          label="Attribute Value"
-          hint="Enter the value to compare against."
-          placeholder="Enter a value..."
-          variableType={variableType}
-          options={variableOptions}
-          initialValue={seedValue}
-          validation={{ required: true }}
-        />
-      </Section>
+      <RuleValueField
+        label="Attribute value"
+        hint="Enter the value to compare against."
+        placeholder="Enter a value..."
+        variableType={variableType}
+        options={variableOptions}
+        initialValue={seedValue}
+        validation={{ required: true }}
+      />
     );
   }
 
@@ -269,50 +265,46 @@ const EgoRuleFields = ({
   variableType,
   variableOptions,
 }: BranchProps) => (
-  <>
-    <Section title="Ego attribute selection">
+  <Section title="Rule structure" description={RULE_STRUCTURE_DESCRIPTION}>
+    <ArchitectField
+      name={ATTRIBUTE_FIELD}
+      label="Ego attribute"
+      hint="Select the ego attribute this rule will be based on."
+      component={VariablePickerControl}
+      entity="ego"
+      disallowCreation
+      options={variablesAsOptions}
+      initialValue={
+        typeof seed.options?.attribute === 'string'
+          ? seed.options.attribute
+          : undefined
+      }
+      validation={{ required: true }}
+    />
+    {attributeId && (
       <ArchitectField
-        name={ATTRIBUTE_FIELD}
-        label="Ego attribute"
-        hint="Select the ego attribute this rule will be based on."
-        component={VariablePickerControl}
-        entity="ego"
-        disallowCreation
-        options={variablesAsOptions}
+        name={OPERATOR_FIELD}
+        label="Operator"
+        hint="Select the operator that will be used to compare the ego attribute to the value."
+        component={NativeSelectField}
+        placeholder="Select an operator…"
+        options={operatorOptions}
         initialValue={
-          typeof seed.options?.attribute === 'string'
-            ? seed.options.attribute
+          typeof seed.options?.operator === 'string'
+            ? seed.options.operator
             : undefined
         }
         validation={{ required: true }}
       />
-    </Section>
-    {attributeId && (
-      <Section title="Ego comparison">
-        <ArchitectField
-          name={OPERATOR_FIELD}
-          label="Operator"
-          hint="Select the operator that will be used to compare the ego attribute to the value."
-          component={NativeSelectField}
-          placeholder="Select an operator…"
-          options={operatorOptions}
-          initialValue={
-            typeof seed.options?.operator === 'string'
-              ? seed.options.operator
-              : undefined
-          }
-          validation={{ required: true }}
-        />
-      </Section>
     )}
-    <RuleOperandFields
+    <RuleOperandField
       seed={seed}
       operator={operator}
       variableType={variableType}
       variableOptions={variableOptions}
       regExpHint="Enter the value to compare against. You can use a regular expression to match multiple values."
     />
-  </>
+  </Section>
 );
 
 type EntityBranchProps = BranchProps & {
@@ -393,10 +385,13 @@ const EntityRuleFields = ({
       )}
 
       {ruleKind === VARIABLE_RULE && entityTypeId && (
-        <Section title="Attribute selection">
+        <Section
+          title="Rule structure"
+          description={RULE_STRUCTURE_DESCRIPTION}
+        >
           <ArchitectField
             name={ATTRIBUTE_FIELD}
-            label="Attribute"
+            label={isNode ? 'Node attribute' : 'Edge attribute'}
             hint="Select an attribute to base this rule on."
             component={VariablePickerControl}
             entity={target}
@@ -410,36 +405,30 @@ const EntityRuleFields = ({
             }
             validation={{ required: true }}
           />
-        </Section>
-      )}
-
-      {ruleKind === VARIABLE_RULE && attributeId && (
-        <Section title="Attribute comparison">
-          <ArchitectField
-            name={OPERATOR_FIELD}
-            label="Operator"
-            hint="Select the operator that will be used to compare the attribute to the value."
-            component={NativeSelectField}
-            placeholder="Select an operator…"
-            options={operatorOptions}
-            initialValue={
-              typeof seed.options?.operator === 'string'
-                ? seed.options.operator
-                : undefined
-            }
-            validation={{ required: true }}
+          {attributeId && (
+            <ArchitectField
+              name={OPERATOR_FIELD}
+              label="Operator"
+              hint="Select the operator that will be used to compare the attribute to the value."
+              component={NativeSelectField}
+              placeholder="Select an operator…"
+              options={operatorOptions}
+              initialValue={
+                typeof seed.options?.operator === 'string'
+                  ? seed.options.operator
+                  : undefined
+              }
+              validation={{ required: true }}
+            />
+          )}
+          <RuleOperandField
+            seed={seed}
+            operator={operator}
+            variableType={variableType}
+            variableOptions={variableOptions}
+            regExpHint="Enter a regular expression to compare against."
           />
         </Section>
-      )}
-
-      {ruleKind === VARIABLE_RULE && (
-        <RuleOperandFields
-          seed={seed}
-          operator={operator}
-          variableType={variableType}
-          variableOptions={variableOptions}
-          regExpHint="Enter a regular expression to compare against."
-        />
       )}
     </>
   );
