@@ -429,4 +429,35 @@ describe('prefilled values the form’s validators reject', () => {
     expect(ages[0] as number).toBeGreaterThanOrEqual(18);
     expect(ages[1]).toBe(25);
   });
+
+  it('clears an invalid value the redraw declines to replace', () => {
+    // An optional field whose descriptor answers it as missing: the
+    // correction the participant made was to empty the box, and the runtime's
+    // own submit unsets every mounted field it was handed empty. Keeping the
+    // rejected value would hand back a slide the form would not advance over.
+    const missingAge = {
+      ...CODEBOOK,
+      node: {
+        ...CODEBOOK.node,
+        person: {
+          ...CODEBOOK.node.person,
+          variables: {
+            ...CODEBOOK.node.person.variables,
+            age: {
+              ...CODEBOOK.node.person.variables.age,
+              synthetic: { missingProbability: 1 },
+            },
+          },
+        },
+      },
+    };
+    const protocol = parseProtocol(missingAge, [priorStage, stageWith()]);
+    const harness = harnessFor(protocol, { seed: TEST_SEED });
+    harness.seedAlters(2, { currentStep: 0, attributes: () => ({ age: 5 }) });
+    runStage(harness);
+
+    for (const node of harness.nodes()) {
+      expect(node[entityAttributesProperty]).not.toHaveProperty('age');
+    }
+  });
 });

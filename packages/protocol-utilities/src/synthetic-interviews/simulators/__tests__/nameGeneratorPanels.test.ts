@@ -686,4 +686,45 @@ describe('the stage cap covers panel re-nominations', () => {
     expect(onStage).toHaveLength(3);
     expect(created(harness)).toHaveLength(2);
   });
+
+  it('charges a person re-nominated on a later prompt to the cap once', () => {
+    // The panel offers everyone it has not already put on the CURRENT prompt,
+    // so the same alter comes back on every later prompt. `useNodeLimits`
+    // counts DISTINCT nodes, so those repeats cost the cap nothing — a tally
+    // of nominations would spend the whole cap on one person and starve the
+    // last prompt of a creation the participant could still have made.
+    const harness = setUp({
+      priorAlters: 1,
+      stage: {
+        ...stageWith({
+          count: 3,
+          prompts: [
+            { id: 'p1', text: 'Who do you know?' },
+            { id: 'p2', text: 'Who else?' },
+            { id: 'p3', text: 'Anybody else?' },
+          ],
+          panels: [
+            {
+              id: 'e',
+              title: 'Previously',
+              dataSource: 'existing',
+              synthetic: { nominationProbability: 1 },
+            },
+          ],
+        }),
+        behaviours: { maxNodes: 4 },
+      },
+    });
+    runStage(harness);
+
+    const onStage = harness
+      .nodes()
+      .filter((node) =>
+        (node.promptIDs ?? []).some((id) => ['p1', 'p2', 'p3'].includes(id)),
+      );
+
+    // One creation per prompt, plus the prior alter, exactly filling the cap.
+    expect(created(harness)).toHaveLength(3);
+    expect(onStage).toHaveLength(4);
+  });
 });

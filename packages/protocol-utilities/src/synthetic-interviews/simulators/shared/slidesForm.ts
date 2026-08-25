@@ -117,26 +117,36 @@ export const simulateSlidesForm = ({
       }),
     );
 
-    write(item[entityPrimaryKeyProperty], {
-      set: resolveFormValues({
-        variables,
-        fields: unanswered,
-        constraints,
-        generation,
-        scope,
-        // The slide's position in the deck sequences one entity's draws
-        // against its neighbours', which is what lets a `unique` variable hand
-        // out a different value on every slide.
-        index,
-        existing: answered,
-      }),
-      // A field left blank is ABSENT from the patch rather than unset. The
-      // runtime submits it as an unset, and the two land in the same place:
-      // the only fields this leaves blank are ones the entity was not
-      // carrying, so the unset would delete a key that is not there. Modelling
-      // a participant who CLEARS an answer they already gave is what would
-      // make the difference visible, and no interface asks them to.
-      unset: [],
+    const set = resolveFormValues({
+      variables,
+      fields: unanswered,
+      constraints,
+      generation,
+      scope,
+      // The slide's position in the deck sequences one entity's draws
+      // against its neighbours', which is what lets a `unique` variable hand
+      // out a different value on every slide.
+      index,
+      existing: answered,
     });
+
+    // A field the entity was NOT carrying and the draw left blank is absent
+    // from the patch rather than unset: the runtime submits it as an unset,
+    // and the two land in the same place, because the unset would delete a key
+    // that is not there.
+    //
+    // A field whose value the form REJECTED is the other case, and it does
+    // need the unset. The participant is made to correct that field before the
+    // slide will advance, and where the correction the descriptor draws is
+    // itself blank — an optional field its `missingProbability` leaves
+    // unanswered — what they did was clear it. The runtime's own submit unsets
+    // every mounted field it was handed empty (`formValuesToAttributePatch`),
+    // so leaving it out here would hand back a session still carrying the
+    // value the form refused to advance over.
+    const cleared = [...unanswered].filter(
+      (id) => answered[id] !== undefined && !(id in set),
+    );
+
+    write(item[entityPrimaryKeyProperty], { set, unset: cleared });
   }
 };
