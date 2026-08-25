@@ -137,7 +137,8 @@ const ValidationSection = ({
   }
 
   return (
-    <div id={id} className="w-full">
+    <>
+      <div id={id} className="sr-only" />
       <Section
         title={label}
         description={summary}
@@ -148,7 +149,7 @@ const ValidationSection = ({
       >
         {validationEditor}
       </Section>
-    </div>
+    </>
   );
 };
 export default ValidationSection;

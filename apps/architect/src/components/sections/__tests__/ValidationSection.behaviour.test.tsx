@@ -202,6 +202,31 @@ describe('ValidationSection with a store-level validation error', () => {
       screen.queryByRole('group', { name: 'Requirements' }),
     ).not.toBeInTheDocument();
   });
+
+  it('renders its Section directly beside surrounding fields', () => {
+    render(
+      <AppForm onSubmit={() => ({ success: true })}>
+        <ValidationSection
+          entity="node"
+          variableType="datetime"
+          existingVariables={{}}
+          allVariables={allVariables}
+          currentVariableId="b"
+          initialValue={{}}
+        />
+        <button type="button">Following field</button>
+      </AppForm>,
+    );
+
+    const anchor = document.getElementById('field_validation');
+    const section = screen.getByRole('region', { name: 'Validation' });
+
+    expect(anchor).toBeEmptyDOMElement();
+    expect(anchor).not.toContainElement(section);
+    expect(section.parentElement?.nextElementSibling).toBe(
+      screen.getByRole('button', { name: 'Following field' }),
+    );
+  });
 });
 
 /**
