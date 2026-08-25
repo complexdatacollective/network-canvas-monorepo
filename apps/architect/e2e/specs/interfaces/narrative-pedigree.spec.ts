@@ -227,8 +227,9 @@ test('creates a valid NarrativePedigree stage from scratch', async ({
         variableName: 'hasConditionX',
       });
 
-      // "Inheritance pattern" (labelHidden FrescoStyledSelectField) — options
-      // are `startCase(INHERITANCE_PATTERNS[n])`; 'autosomalDominant' ->
+      // The visibly labelled "Inheritance pattern" field is grouped with the
+      // other disease mapping fields in "Disease details". Its options are
+      // `startCase(INHERITANCE_PATTERNS[n])`; 'autosomalDominant' becomes
       // "Autosomal Dominant".
       await architectPage
         .getByRole('combobox', { name: 'Inheritance pattern' })

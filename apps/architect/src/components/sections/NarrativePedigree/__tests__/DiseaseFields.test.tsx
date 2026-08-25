@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { startCase } from 'es-toolkit/compat';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
@@ -44,6 +44,27 @@ const renderFields = (nodeType = 'node-type-1') => {
 };
 
 describe('DiseaseFields', () => {
+  it('groups every field in one Disease details section', () => {
+    renderFields();
+
+    const section = screen.getByRole('region', { name: 'Disease details' });
+    expect(
+      within(section).getByText(
+        "Define how this disease appears, map it to the source pedigree's affected-status attribute, and choose how its inheritance is interpreted.",
+      ),
+    ).toBeVisible();
+    expect(
+      within(section).getByRole('textbox', { name: 'Disease label' }),
+    ).toBeInTheDocument();
+    expect(
+      within(section).getByRole('radiogroup', { name: 'Color' }),
+    ).toBeInTheDocument();
+    expect(within(section).getByText('Node attribute')).toBeVisible();
+    expect(
+      within(section).getByRole('combobox', { name: 'Inheritance pattern' }),
+    ).toBeInTheDocument();
+  });
+
   it('renders a visible label for the disease name field', () => {
     renderFields();
     const label = screen.getByText('Disease label');
@@ -103,6 +124,11 @@ describe('DiseaseFields', () => {
     expect(
       screen.getByRole('combobox', { name: 'Inheritance pattern' }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Choose how this disease is inherited. Mendelian patterns are used with biological relationships and recorded sex to infer carrier and possible at-risk statuses. Multifactorial and Unknown show affected status only and do not infer carrier or at-risk statuses.',
+      ),
+    ).toBeVisible();
   });
 
   it('renders all INHERITANCE_PATTERNS as options', () => {
