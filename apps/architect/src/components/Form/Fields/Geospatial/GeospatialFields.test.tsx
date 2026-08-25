@@ -9,6 +9,10 @@ vi.mock('~/components/Thumbnail/APIKey', () => ({
   default: ({ id }: { id: string }) => <span>Selected key {id}</span>,
 }));
 
+vi.mock('~/components/Thumbnail/GeoJSON', () => ({
+  default: ({ id }: { id: string }) => <span>Selected GeoJSON {id}</span>,
+}));
+
 vi.mock('./APIKeyBrowser', () => ({
   default: ({
     show,
@@ -57,6 +61,7 @@ vi.mock('./MapView', () => ({
 
 import ArchitectField from '../../ArchitectField';
 import GeoAPIKey from './GeoAPIKey';
+import GeoDataSource from './GeoDataSource';
 import MapSelection, { completeMapView } from './MapSelection';
 
 type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
@@ -125,5 +130,40 @@ describe('geospatial field adapters', () => {
     expect(completeMapView({ center: ['x', 'y'] })).toBe('Required');
     expect(completeMapView({ center: [Number.NaN, 2] })).toBe('Required');
     expect(completeMapView({ center: [1, 2] })).toBeUndefined();
+  });
+
+  it('uses the same picker presentation and plus action for API keys and layer data', () => {
+    render(
+      <Form onSubmit={() => ({ success: true })}>
+        <ArchitectField
+          name="apiKey"
+          label="Mapbox API key"
+          component={GeoAPIKey}
+          initialValue="api-key-1"
+        />
+        <ArchitectField
+          name="geojson"
+          label="Layer data source"
+          component={GeoDataSource}
+          initialValue="geojson-1"
+        />
+      </Form>,
+    );
+
+    const apiKeyGroup = screen.getByRole('group', {
+      name: 'Mapbox API key',
+    });
+    const layerDataGroup = screen.getByRole('group', {
+      name: 'Layer data source',
+    });
+    expect(apiKeyGroup.className).toBe(layerDataGroup.className);
+
+    for (const name of ['Update API key', 'Update resource']) {
+      expect(
+        screen
+          .getByRole('button', { name })
+          .querySelector('svg[aria-hidden="true"]'),
+      ).toBeInTheDocument();
+    }
   });
 });
