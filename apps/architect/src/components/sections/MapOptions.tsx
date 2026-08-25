@@ -150,9 +150,11 @@ const MapOptions = () => {
           palette={paletteName}
           paletteRange={paletteSize}
           label="Map outline and selection color"
+          hint="Choose the color used to outline selectable GeoJSON areas and highlight the area a participant selects. Use a color that remains easy to distinguish from the chosen Mapbox style."
         />
         <ArchitectField
           label="Mapbox style"
+          hint="Choose the Mapbox basemap displayed beneath the selectable GeoJSON areas. Consider the contrast between the basemap, the configured outline color, and any place labels participants need to read."
           component={FrescoNativeSelectField}
           name="mapOptions.style"
           initialValue={initialMapOptions?.style}
