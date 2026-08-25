@@ -264,8 +264,6 @@ const DEFAULT_ATTRIBUTE_TYPE: VariableType = 'text';
 type AttributePillProps = {
   label: string;
   type?: VariableType;
-  /** The summary's middle column gives the pill a column of its own. */
-  fill?: boolean;
 };
 
 /**
@@ -276,18 +274,12 @@ type AttributePillProps = {
  * component — when each layout owned its own copy, the printable summary's
  * went missing and its pill read as a bare name.
  */
-const AttributePill = ({ label, type, fill = false }: AttributePillProps) => (
+const AttributePill = ({ label, type }: AttributePillProps) => (
   <span
-    className={
-      fill ? 'flex min-w-0 flex-1' : 'inline-flex max-w-full align-middle'
-    }
+    className="inline-flex max-w-full align-middle"
     aria-label={`${type ?? DEFAULT_ATTRIBUTE_TYPE} attribute ${label}`}
   >
-    <VariablePill
-      label={label}
-      type={type ?? DEFAULT_ATTRIBUTE_TYPE}
-      {...(fill ? { minWidth: '0', width: '100%' } : {})}
-    />
+    <VariablePill label={label} type={type ?? DEFAULT_ATTRIBUTE_TYPE} />
   </span>
 );
 
@@ -349,7 +341,6 @@ const describeRule = (
         <AttributePill
           label={options.attribute ?? ''}
           type={options.variableType}
-          fill={fillPill}
         />
       </>
     ),

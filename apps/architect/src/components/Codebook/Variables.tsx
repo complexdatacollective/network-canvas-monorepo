@@ -100,12 +100,7 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
         ),
         sortingFn: caseInsensitiveSort,
         cell: ({ row }) => (
-          <ConnectedVariablePill
-            animated
-            editable
-            uuid={row.original.id}
-            width="25rem"
-          />
+          <ConnectedVariablePill animated editable uuid={row.original.id} />
         ),
       },
       {

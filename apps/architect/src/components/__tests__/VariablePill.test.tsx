@@ -109,6 +109,14 @@ describe('ConnectedVariablePill', () => {
     ).toBeInTheDocument();
   });
 
+  it('forwards Tailwind layout constraints', () => {
+    const { container } = render(
+      <ConnectedVariablePill className="max-w-64" uuid="node-subject" />,
+    );
+
+    expect(container.querySelector('data')).toHaveClass('max-w-64');
+  });
+
   it('describes the edit action in a tooltip on keyboard focus', async () => {
     render(<ConnectedVariablePill animated editable uuid="node-subject" />);
     const pill = screen.getByRole('button', {
@@ -125,9 +133,14 @@ describe('ConnectedVariablePill', () => {
   it('opens an autofocus modal editor with actions outside the pill', async () => {
     const input = await startEditing('node-subject');
 
-    expect(
-      screen.getByRole('dialog', { name: 'Edit attribute name' }),
-    ).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: 'Edit attribute name' });
+
+    expect(dialog).toBeInTheDocument();
+    // The trigger's default percentage max-width constrains its normal layout,
+    // but the viewport overlay must regain the internal editing width.
+    expect(dialog.querySelector('.variable-pill')).toHaveStyle({
+      width: '320px',
+    });
     expect(input).toHaveFocus();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
     const saveButton = screen.getByRole('button', { name: 'Save Changes' });
@@ -200,9 +213,28 @@ describe('VariablePill', () => {
     expect(pill).toHaveClass('bg-(--variable-pill-accent)');
     expect(pill).toHaveClass('cursor-default');
     expect(pill).toHaveClass('effect-shadow-sm');
+    expect(pill).toHaveClass('w-max', 'max-w-full', 'min-w-0');
+    expect(pill?.firstElementChild).toHaveClass(
+      'grid-cols-[3rem_minmax(0,auto)]',
+    );
+    expect(pill?.firstElementChild).not.toHaveClass('w-full');
     expect(pill).not.toHaveClass('hover:effect-shadow');
     expect(pill).not.toHaveClass('variable-pill-effect-border');
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('accepts Tailwind layout constraints through className', () => {
+    const { container } = render(
+      <VariablePill
+        className="max-w-[7cm]"
+        label="participant_neighbourhood_connection_frequency"
+        type="text"
+      />,
+    );
+    const pill = container.querySelector('data');
+
+    expect(pill).toHaveClass('w-max', 'max-w-[7cm]');
+    expect(pill).not.toHaveClass('max-w-full');
   });
 
   it('allows animation to be enabled independently of editability', () => {

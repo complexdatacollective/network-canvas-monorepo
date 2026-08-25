@@ -196,10 +196,10 @@ export const VariablePickerControl = ({
             <AnimatePresence mode="wait" initial={false}>
               {/* `w-full`, not shrink-to-fit. The fieldset is `items-start`,
                   so without an explicit width this wrapper takes the pill's
-                  own content width — and the pill's `max-width: min(20rem,
-                  100%)` then resolves 100% against a box the pill itself
-                  sized, which can never clamp anything. Filling the fieldset
-                  gives that percentage a real bound to resolve against. */}
+                  own content width — and the pill's `max-width: 100%` then
+                  resolves against a box the pill itself sized, which can
+                  never clamp anything. Filling the fieldset gives that
+                  percentage a real bound to resolve against. */}
               <motion.div
                 className="w-full min-w-0"
                 initial={{ opacity: 0 }}
