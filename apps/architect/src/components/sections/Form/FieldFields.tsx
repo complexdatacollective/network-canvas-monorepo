@@ -138,7 +138,7 @@ const FieldFields = ({
         // a real codebook id let the row offer a reference rule the dialog
         // then rejected on save.
         currentVariableId={!isNewVariable && variable ? variable : ''}
-        showHeading={false}
+        toggleable={false}
       />
     </>
   );

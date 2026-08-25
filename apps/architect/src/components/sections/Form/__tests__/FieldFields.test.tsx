@@ -43,15 +43,15 @@ vi.mock('~/components/ExternalLink', () => ({
 vi.mock('~/components/sections/ValidationSection', () => ({
   default: ({
     currentVariableId,
-    showHeading,
+    toggleable = true,
   }: {
     currentVariableId: string;
-    showHeading?: boolean;
+    toggleable?: boolean;
   }) => (
     <div
       data-testid="validation-section"
       data-current-variable-id={currentVariableId}
-      data-show-heading={showHeading}
+      data-toggleable={toggleable}
     />
   ),
 }));
@@ -123,7 +123,7 @@ describe('FieldFields validation identity', () => {
       );
     });
     expect(screen.getByTestId('validation-section')).toHaveAttribute(
-      'data-show-heading',
+      'data-toggleable',
       'false',
     );
   });

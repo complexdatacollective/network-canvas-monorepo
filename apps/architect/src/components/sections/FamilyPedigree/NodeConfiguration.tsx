@@ -33,6 +33,7 @@ import {
   isVariableUsedBySibling,
   sharedFormValidationView,
 } from '~/components/sections/Form/composerHelpers';
+import FieldEditorPreview from '~/components/sections/Form/FieldEditorPreview';
 import FieldFields from '~/components/sections/Form/FieldFields';
 import {
   CODEBOOK_PROPERTIES,
@@ -77,9 +78,10 @@ import {
   selectSlotPickerOptions,
 } from './slotWiring';
 
-// `FieldFields`/`NodeFormFieldPreview` carry their own specific prop types
-// rather than the array field's generic `Renderer` bag; DialogArrayField
-// spreads item values plus a `form` DOM-id string into whatever they declare
+// The form editor and its row/interactive previews carry their own specific
+// prop types rather than the array field's generic `Renderer` bag;
+// DialogArrayField spreads item values plus a `form` DOM-id string into
+// whatever they declare
 // (FieldFields' `PromptFields` still requires it, pre-Form-batch), so the
 // cast is safe.
 type Renderer = ComponentType<Record<string, unknown>>;
@@ -688,6 +690,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
               initialValue={nodeConfigFormInitial ?? []}
               addTitle="Edit Field"
               editorFieldsComponent={FieldFields as unknown as Renderer}
+              editorPreviewComponent={FieldEditorPreview as unknown as Renderer}
               editorProps={{
                 type: nodeType,
                 entity: 'node',

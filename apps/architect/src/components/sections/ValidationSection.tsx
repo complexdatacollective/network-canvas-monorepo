@@ -48,12 +48,8 @@ type ValidationSectionProps = {
    * to refuse a half-configured rule with.
    */
   commitsImmediately?: boolean;
-  /**
-   * Keep the validation editor inside its Section surface without rendering
-   * the legacy Section heading/toggle. Dialogs use the field's own label and
-   * hint instead; stage-editor consumers retain the toggleable heading.
-   */
-  showHeading?: boolean;
+  /** Whether the Section can be collapsed. Dialog editors keep it open. */
+  toggleable?: boolean;
   /** Allows external-state consumers to mirror an accepted close. */
   onOpenChange?: (open: boolean) => boolean | Promise<boolean>;
 };
@@ -69,7 +65,7 @@ const ValidationSection = ({
   currentVariableId,
   initialValue,
   commitsImmediately = false,
-  showHeading = true,
+  toggleable = true,
   onOpenChange,
 }: ValidationSectionProps) => {
   // Sibling draft values, read reactively off the SAME form `ValidationSection`
@@ -132,9 +128,9 @@ const ValidationSection = ({
     />
   );
 
-  if (!showHeading) {
-    return validationEditor;
-  }
+  const toggleProps = toggleable
+    ? { toggleable: true as const, defaultOpen: hasValidation, onOpenChange }
+    : {};
 
   return (
     <>
@@ -143,9 +139,7 @@ const ValidationSection = ({
         title={label}
         description={summary}
         disabled={disabled}
-        toggleable
-        defaultOpen={hasValidation}
-        onOpenChange={onOpenChange}
+        {...toggleProps}
       >
         {validationEditor}
       </Section>

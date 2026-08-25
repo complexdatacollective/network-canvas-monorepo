@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { act, render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -103,24 +103,33 @@ let capturedEditorValidate:
 // The picker's sibling list travels the other way, as `editorProps`, so a test
 // can prove the gate and the picker read the same rows.
 let capturedEditorProps: Record<string, unknown> | undefined;
+let capturedEditorPreviewComponent:
+  | ComponentType<Record<string, unknown>>
+  | undefined;
 vi.mock('~/components/Form/ArchitectArrayField', () => ({
   default: ({
     editorValidate,
     editorProps,
+    editorPreviewComponent,
   }: {
     editorValidate?: (
       values: Record<string, unknown>,
       props?: { editIndex?: number; initialValues?: unknown },
     ) => Record<string, unknown>;
     editorProps?: Record<string, unknown>;
+    editorPreviewComponent?: ComponentType<Record<string, unknown>>;
   }) => {
     if (typeof editorValidate === 'function') {
       capturedEditorValidate = editorValidate;
       capturedEditorProps = editorProps;
+      capturedEditorPreviewComponent = editorPreviewComponent;
     }
     return <div data-testid="field-array" />;
   },
 }));
+
+// eslint-disable-next-line import/first -- must follow the vi.mock calls above
+import FieldEditorPreview from '~/components/sections/Form/FieldEditorPreview';
 
 // eslint-disable-next-line import/first -- must follow the vi.mock calls above
 import NodeConfiguration from '../NodeConfiguration';
@@ -233,6 +242,7 @@ const renderComponent = ({
   capturedValidationSectionProps = undefined;
   capturedEditorValidate = undefined;
   capturedEditorProps = undefined;
+  capturedEditorPreviewComponent = undefined;
   const store = configureStore({
     reducer: {
       activeProtocol: (state = { present: protocol }) => state,
@@ -309,6 +319,12 @@ const currentEditorValidate = () => {
 const currentSiblingFields = () => capturedEditorProps?.siblingFields;
 
 describe('FamilyPedigree NodeConfiguration slot picker exclusions', () => {
+  it('uses the standard interactive preview in its form field editor', () => {
+    renderComponent({ protocol: protocolWith([]) });
+
+    expect(capturedEditorPreviewComponent).toBe(FieldEditorPreview);
+  });
+
   it('groups the attribute mappings in a nested Section with inline fields', () => {
     renderComponent({ protocol: protocolWith([]) });
 

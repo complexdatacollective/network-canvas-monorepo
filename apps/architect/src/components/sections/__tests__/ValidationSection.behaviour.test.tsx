@@ -120,14 +120,14 @@ describe('ValidationSection with a target-only contradiction', () => {
           allVariables={allVariables}
           currentVariableId="b"
           initialValue={{}}
-          showHeading={false}
+          toggleable={false}
         />
         <button type="submit">Save</button>
       </AppForm>,
     );
 
-    // Dialogs omit the surrounding toggleable Section, so the field stays
-    // registered even when the attribute has no rules of its own.
+    // Dialogs keep the surrounding Section open, so the field stays registered
+    // even when the attribute has no rules of its own.
     expect(
       screen.getByRole('group', { name: 'Requirements' }),
     ).toBeInTheDocument();
