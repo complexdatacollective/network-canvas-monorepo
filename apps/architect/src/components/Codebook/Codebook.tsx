@@ -128,7 +128,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
         {nodes.length === 0 ? (
           <Paragraph className="text-current/70">No node types yet.</Paragraph>
         ) : (
-          <div className="space-y-8">
+          <div>
             {nodes.map((node) => (
               <EntityType
                 key={node.type}
@@ -162,7 +162,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
         {edges.length === 0 ? (
           <Paragraph className="text-current/70">No edge types yet.</Paragraph>
         ) : (
-          <div className="space-y-8">
+          <div>
             {edges.map((edge) => (
               <EntityType
                 key={edge.type}

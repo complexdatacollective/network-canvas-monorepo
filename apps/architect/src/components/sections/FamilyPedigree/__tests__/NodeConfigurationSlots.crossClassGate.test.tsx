@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { act, render } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
@@ -27,7 +27,9 @@ vi.mock('~/components/EditorLayout', () => ({
   Row: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 vi.mock('@codaco/fresco-ui/Section', () => ({
-  default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  default: ({ children, title }: { children: ReactNode; title: string }) => (
+    <section aria-label={title}>{children}</section>
+  ),
 }));
 vi.mock('~/components/IssueAnchor', () => ({ default: () => null }));
 vi.mock('~/components/NewVariableWindow', () => ({
@@ -52,6 +54,9 @@ vi.mock('~/components/sections/CodebookVariableValidationSection', () => ({
 }));
 
 type CapturedField = {
+  hint?: ReactNode;
+  inline?: boolean;
+  label?: string;
   validation?: Record<string, unknown>;
   options?: unknown;
 };
@@ -59,14 +64,20 @@ const capturedFields: Record<string, CapturedField | undefined> = {};
 vi.mock('~/components/Form/ArchitectField', () => ({
   default: ({
     name,
+    hint,
+    inline,
+    label,
     validation,
     options,
   }: {
     name: string;
+    hint?: ReactNode;
+    inline?: boolean;
+    label: string;
     validation?: Record<string, unknown>;
     options?: unknown;
   }) => {
-    capturedFields[name] = { validation, options };
+    capturedFields[name] = { hint, inline, label, validation, options };
     return <div data-testid={`field-${name}`} />;
   },
 }));
@@ -286,6 +297,30 @@ const currentEditorValidate = () => {
 const currentSiblingFields = () => capturedEditorProps?.siblingFields;
 
 describe('FamilyPedigree NodeConfiguration slot picker exclusions', () => {
+  it('groups the attribute mappings in their own Section with inline fields', () => {
+    renderComponent({ protocol: protocolWith([]) });
+
+    expect(
+      screen.getByRole('region', { name: 'Family member attributes' }),
+    ).toBeInTheDocument();
+    expect(capturedFields['nodeConfig.nodeLabelVariable']).toMatchObject({
+      label: 'Display label',
+      inline: true,
+    });
+    expect(capturedFields['nodeConfig.egoVariable']).toMatchObject({
+      label: 'Participant identifier',
+      inline: true,
+    });
+    expect(capturedFields['nodeConfig.relationshipVariable']).toMatchObject({
+      label: 'Relationship to participant',
+      inline: true,
+    });
+    expect(capturedFields['nodeConfig.biologicalSexVariable']).toMatchObject({
+      label: 'Biological sex',
+      inline: true,
+    });
+  });
+
   it('edits the label as a node variable, preserving every text validation rule', () => {
     renderComponent({
       protocol: protocolWith([]),

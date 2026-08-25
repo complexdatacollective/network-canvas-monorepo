@@ -147,7 +147,7 @@ function NestedSectionsPreview() {
         toggleable
         defaultOpen
       >
-        <div className="grid gap-6">
+        <div>
           <Section title="Map provider credentials">
             <Field
               name="mapboxApiKey"
@@ -328,6 +328,19 @@ export const NestedSections: Story = {
     const nestedToggle = canvas.getByRole('switch', {
       name: 'Data source for map layers',
     });
+    const providerSection = canvas.getByRole('region', {
+      name: 'Map provider credentials',
+    });
+    const dataSourceSection = canvas.getByRole('region', {
+      name: 'Data source for map layers',
+    });
+
+    const providerBounds = providerSection.getBoundingClientRect();
+    const dataSourceBounds = dataSourceSection.getBoundingClientRect();
+    await expect(dataSourceBounds.top - providerBounds.bottom).toBeCloseTo(
+      40,
+      1,
+    );
 
     await expect(
       canvas.getByRole('heading', { name: 'Map configuration', level: 3 }),

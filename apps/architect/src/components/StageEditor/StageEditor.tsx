@@ -580,9 +580,7 @@ const StageEditor = (props: StageEditorProps) => {
               totalStages={totalStages}
               isNewStage={!isExistingStage}
             />
-            <div className="flex flex-col gap-10 pt-14">
-              {renderSections(sections)}
-            </div>
+            <div className="pt-14">{renderSections(sections)}</div>
           </div>
         </div>
       </div>

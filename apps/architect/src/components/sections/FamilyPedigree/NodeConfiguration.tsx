@@ -8,7 +8,6 @@ import {
 } from 'react';
 import { useSelector } from 'react-redux';
 
-import Surface from '@codaco/fresco-ui/layout/Surface';
 import Section from '@codaco/fresco-ui/Section';
 import {
   FAMILY_PEDIGREE_SLOTS,
@@ -116,77 +115,6 @@ type VariableWindowInitialProps = {
   lockedOptions: LockedVariableOptions | null;
 };
 
-type VariableRowProps = {
-  name: string;
-  label: string;
-  description: string;
-  entityType: string;
-  options: {
-    value: string;
-    label: string;
-    type?: string;
-  }[];
-  onCreateOption: (name: string) => void;
-  /**
-   * Save-time cross-class gate for this slot, in whichever direction its
-   * writer class demands (the node label validates; the structural slots do
-   * not): a sync field validator, so an invalid pick blocks the stage
-   * editor's save — the same field-level `crossClassPick` shape
-   * NetworkComposer's quickAdd uses.
-   */
-  crossClassPick: (value: unknown, allValues?: unknown) => string | undefined;
-};
-
-const VariableRow = ({
-  name,
-  label,
-  description,
-  entityType,
-  options,
-  onCreateOption,
-  crossClassPick,
-}: VariableRowProps) => {
-  const initialValue = useStageInitialValue<string>(name);
-
-  return (
-    /* Two equal columns are only readable while there is room for two. The row
-       measured 246px wide inside a 390px viewport, where `flex-1 basis-0` with
-       the default `min-width: auto` floored each column at its content width
-       and forced 550px of editor into a 390px box (#1388). A container query,
-       not a viewport breakpoint: this row is nested several layouts deep and
-       knows its own width, not the window's. Below the threshold it stacks —
-       and the flex sizing has to stack with it, because `basis-0` in a column
-       direction sizes HEIGHT and would collapse both rows to nothing. */
-    <div className="@container">
-      <div className="flex flex-col items-start gap-5 @min-[34rem]:flex-row">
-        <div className="flex w-full min-w-0 flex-col gap-1 @min-[34rem]:flex-1 @min-[34rem]:basis-0 @min-[34rem]:pt-2.5">
-          <span className="font-semibold">
-            {label}
-            <span className="text-destructive ms-1">*</span>
-          </span>
-          <span className="text-text/60 text-sm leading-snug">
-            {description}
-          </span>
-        </div>
-        <div className="relative w-full min-w-0 @min-[34rem]:flex-1 @min-[34rem]:basis-0">
-          <IssueAnchor fieldName={name} description={`${label} attribute`} />
-          <ArchitectField
-            name={name}
-            component={VariablePickerControl}
-            validation={{ required: true, crossClassPick }}
-            label={`${label} attribute`}
-            labelHidden
-            initialValue={initialValue}
-            entity="node"
-            type={entityType}
-            options={options}
-            onCreateOption={onCreateOption}
-          />
-        </div>
-      </div>
-    </div>
-  );
-};
 /** nodeConfig slots that write structural attributes without validation. */
 const UNVALIDATED_NODE_SLOT_FIELDS = [
   'egoVariable',
@@ -213,6 +141,18 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
   const setStageValue = useSetStageValue();
   const nodeType = useStageFormValue<string>('nodeConfig.type');
   const nodeTypeInitial = useStageInitialValue<string>('nodeConfig.type');
+  const nodeLabelVariableInitial = useStageInitialValue<string>(
+    'nodeConfig.nodeLabelVariable',
+  );
+  const egoVariableInitial = useStageInitialValue<string>(
+    'nodeConfig.egoVariable',
+  );
+  const relationshipVariableInitial = useStageInitialValue<string>(
+    'nodeConfig.relationshipVariable',
+  );
+  const biologicalSexVariableInitial = useStageInitialValue<string>(
+    'nodeConfig.biologicalSexVariable',
+  );
   const excludeStageId = stageId ?? undefined;
   const stages = useSelector(
     (state: RootState) => getProtocol(state)?.stages ?? [],
@@ -618,7 +558,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
     <>
       <Section
         title="Family member data"
-        description="Select the node type and configure attributes and form fields for family members."
+        description="Choose the node type used to represent family members."
       >
         <IssueAnchor fieldName="nodeConfig.type" description="Node type" />
         <ArchitectField
@@ -631,95 +571,137 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
           label="Node type"
           initialValue={nodeTypeInitial}
         />
-
-        {nodeType && (
-          <Surface
-            noContainer
-            spacing="sm"
-            shadow="none"
-            className="my-7 flex flex-col gap-7 overflow-visible!"
-          >
-            <VariableRow
-              name="nodeConfig.nodeLabelVariable"
-              label="Display label"
-              description="A text attribute used to store the display label for each family member other than the participant."
-              entityType={nodeType}
-              options={nodeLabelVariableOptions}
-              onCreateOption={handleNewNodeLabelVariable}
-              crossClassPick={nodeLabelCrossClassValidate}
-            />
-            {nodeLabelDraft && (
-              <CodebookVariableValidationSection
-                fieldName="nodeConfig.nodeLabelVariable"
-                entity="node"
-                type={nodeType}
-                variableId={nodeLabelDraft}
-              />
-            )}
-            <VariableRow
-              name="nodeConfig.egoVariable"
-              label="Participant identifier"
-              description="A boolean attribute to identify which node represents the participant (ego) in the family pedigree."
-              entityType={nodeType}
-              options={egoVariableOptions}
-              onCreateOption={handleNewEgoVariable}
-              crossClassPick={makeSlotValidator('egoVariable')}
-            />
-            <VariableRow
-              name="nodeConfig.relationshipVariable"
-              label="Relationship to participant"
-              description="Stores each person's relationship to the participant (e.g., mother, uncle, daughter). Automatically calculated by the family pedigree interface."
-              entityType={nodeType}
-              options={relationshipVariableOptions}
-              onCreateOption={handleNewRelationshipVariable}
-              crossClassPick={makeSlotValidator('relationshipVariable')}
-            />
-            <VariableRow
-              name="nodeConfig.biologicalSexVariable"
-              label="Biological sex"
-              description="Stores each family member’s sex recorded at birth (female/male/intersex/don’t know/prefer not to say), used for sex-linked inheritance."
-              entityType={nodeType}
-              options={biologicalSexVariableOptions}
-              onCreateOption={handleNewBiologicalSexVariable}
-              crossClassPick={makeSlotValidator('biologicalSexVariable')}
-            />
-          </Surface>
-        )}
-
-        {nodeType && (
-          <Section
-            title="Form configuration"
-            description="Add fields shown when participants add or edit family members."
-          >
-            <ArchitectArrayField
-              name="nodeConfig.form"
-              label="Form fields"
-              component={DialogArrayField}
-              addButtonLabel="Create new form field"
-              validation={{}}
-              initialValue={nodeConfigFormInitial ?? []}
-              addTitle="Edit Field"
-              editorFieldsComponent={FieldFields as unknown as Renderer}
-              editorProps={{
-                type: nodeType,
-                entity: 'node',
-                siblingFields: pedigreeFormFields,
-              }}
-              previewComponent={NodeFormFieldPreview as unknown as Renderer}
-              editorTitle="Edit Field"
-              editorValidate={editorValidate}
-              itemLabel="field"
-              sortable
-              onBeforeSave={handleChangeFields}
-              normalizeItem={(value: unknown) =>
-                normalizeField(value as Record<string, unknown>)
-              }
-              itemSelector={itemSelector('node', nodeType ?? null)}
-              requestedEditFormName="editable-list-form"
-            />
-          </Section>
-        )}
       </Section>
+
+      {nodeType && (
+        <Section
+          title="Family member attributes"
+          description="Map the node attributes used to label family members and store pedigree relationships."
+        >
+          <IssueAnchor
+            fieldName="nodeConfig.nodeLabelVariable"
+            description="Display label attribute"
+          />
+          <ArchitectField
+            name="nodeConfig.nodeLabelVariable"
+            label="Display label"
+            hint="A text attribute used to store the display label for each family member other than the participant."
+            component={VariablePickerControl}
+            validation={{
+              required: true,
+              crossClassPick: nodeLabelCrossClassValidate,
+            }}
+            initialValue={nodeLabelVariableInitial}
+            entity="node"
+            type={nodeType}
+            options={nodeLabelVariableOptions}
+            onCreateOption={handleNewNodeLabelVariable}
+            inline
+          />
+          {nodeLabelDraft && (
+            <CodebookVariableValidationSection
+              fieldName="nodeConfig.nodeLabelVariable"
+              entity="node"
+              type={nodeType}
+              variableId={nodeLabelDraft}
+            />
+          )}
+          <IssueAnchor
+            fieldName="nodeConfig.egoVariable"
+            description="Participant identifier attribute"
+          />
+          <ArchitectField
+            name="nodeConfig.egoVariable"
+            label="Participant identifier"
+            hint="A boolean attribute used to identify which node represents the participant in the family pedigree."
+            component={VariablePickerControl}
+            validation={{
+              required: true,
+              crossClassPick: makeSlotValidator('egoVariable'),
+            }}
+            initialValue={egoVariableInitial}
+            entity="node"
+            type={nodeType}
+            options={egoVariableOptions}
+            onCreateOption={handleNewEgoVariable}
+            inline
+          />
+          <IssueAnchor
+            fieldName="nodeConfig.relationshipVariable"
+            description="Relationship to participant attribute"
+          />
+          <ArchitectField
+            name="nodeConfig.relationshipVariable"
+            label="Relationship to participant"
+            hint="Stores each person's relationship to the participant, such as mother, uncle, or daughter. The family pedigree interface calculates this value automatically."
+            component={VariablePickerControl}
+            validation={{
+              required: true,
+              crossClassPick: makeSlotValidator('relationshipVariable'),
+            }}
+            initialValue={relationshipVariableInitial}
+            entity="node"
+            type={nodeType}
+            options={relationshipVariableOptions}
+            onCreateOption={handleNewRelationshipVariable}
+            inline
+          />
+          <IssueAnchor
+            fieldName="nodeConfig.biologicalSexVariable"
+            description="Biological sex attribute"
+          />
+          <ArchitectField
+            name="nodeConfig.biologicalSexVariable"
+            label="Biological sex"
+            hint="Stores each family member's sex recorded at birth for sex-linked inheritance."
+            component={VariablePickerControl}
+            validation={{
+              required: true,
+              crossClassPick: makeSlotValidator('biologicalSexVariable'),
+            }}
+            initialValue={biologicalSexVariableInitial}
+            entity="node"
+            type={nodeType}
+            options={biologicalSexVariableOptions}
+            onCreateOption={handleNewBiologicalSexVariable}
+            inline
+          />
+        </Section>
+      )}
+
+      {nodeType && (
+        <Section
+          title="Form configuration"
+          description="Add fields shown when participants add or edit family members."
+        >
+          <ArchitectArrayField
+            name="nodeConfig.form"
+            label="Form fields"
+            component={DialogArrayField}
+            addButtonLabel="Create new form field"
+            validation={{}}
+            initialValue={nodeConfigFormInitial ?? []}
+            addTitle="Edit Field"
+            editorFieldsComponent={FieldFields as unknown as Renderer}
+            editorProps={{
+              type: nodeType,
+              entity: 'node',
+              siblingFields: pedigreeFormFields,
+            }}
+            previewComponent={NodeFormFieldPreview as unknown as Renderer}
+            editorTitle="Edit Field"
+            editorValidate={editorValidate}
+            itemLabel="field"
+            sortable
+            onBeforeSave={handleChangeFields}
+            normalizeItem={(value: unknown) =>
+              normalizeField(value as Record<string, unknown>)
+            }
+            itemSelector={itemSelector('node', nodeType ?? null)}
+            requestedEditFormName="editable-list-form"
+          />
+        </Section>
+      )}
       <NewVariableWindow {...variableWindowProps} />
     </>
   );

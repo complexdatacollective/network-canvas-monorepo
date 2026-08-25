@@ -27,6 +27,25 @@ function NotifyRestoreButton() {
 }
 
 describe('Section', () => {
+  it('provides consistent spacing between sibling sections', () => {
+    render(
+      <div>
+        <Section title="First section">First content</Section>
+        <Section title="Second section">Second content</Section>
+      </div>,
+    );
+
+    const firstSection = screen.getByRole('region', {
+      name: 'First section',
+    });
+    const secondSection = screen.getByRole('region', {
+      name: 'Second section',
+    });
+
+    expect(firstSection.parentElement).toHaveClass('mb-10', 'last:mb-0');
+    expect(secondSection.parentElement).toHaveClass('mb-10', 'last:mb-0');
+  });
+
   it('unregisters and resets fields when collapsed', async () => {
     const onSubmit = vi.fn(() => Promise.resolve({ success: true as const }));
 

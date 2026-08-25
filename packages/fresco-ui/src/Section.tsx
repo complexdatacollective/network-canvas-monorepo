@@ -118,7 +118,7 @@ export default function Section({
       open={toggleable ? open : true}
       onOpenChange={(nextOpen) => void requestOpenChange(nextOpen)}
       disabled={disabled}
-      className="w-full"
+      className="mb-10 w-full last:mb-0"
     >
       <Surface
         as="section"
