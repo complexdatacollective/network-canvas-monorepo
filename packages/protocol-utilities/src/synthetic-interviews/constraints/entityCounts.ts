@@ -121,24 +121,18 @@ export type PopulationDemand = {
 };
 
 export type WalkEntityCounts = {
-  /** Counts by `scopeKey`, for the scopes the walk writes entities into. */
-  scopes: Map<string, ScopeCounts>;
   /**
-   * Scopes whose entity WINDOW this analysis does not fully model, keyed the
-   * same way.
+   * Counts by `scopeKey`, for the scopes the walk writes entities into.
    *
-   * FamilyPedigree is the whole of it: its size comes from a run-level
-   * population draw rather than from a `synthetic.count`, so the schema
-   * publishes no support for it and nothing here may invent one. A scope
-   * listed here still carries the counts every OTHER stage contributes — a
-   * name generator's own creations, the draws it makes — and the gate judges
-   * those known lower bounds exactly as it judges any scope: the pedigree can
-   * only ADD entities and draws, so a refusal the known writes already earn
-   * stands whatever the pedigree does. What the listing withholds is the
-   * claim of completeness — the windows here are floors of the truth, never
-   * the whole of it.
+   * Every window here is a FLOOR of the truth rather than the whole of it,
+   * because one stage type contributes entities this analysis cannot size:
+   * a FamilyPedigree's population comes from a run-level draw rather than
+   * from a `synthetic.count`, so the schema publishes no support for it and
+   * nothing here may invent one. That costs the gate nothing it was entitled
+   * to — a pedigree can only ADD entities and draws, so a refusal the known
+   * writes already earn stands whatever the pedigree does.
    */
-  unmodelled: Set<string>;
+  scopes: Map<string, ScopeCounts>;
   pairDemands: PairDemand[];
   rosterDemands: RosterDemand[];
   populationDemands: PopulationDemand[];
@@ -500,7 +494,6 @@ export const worstCaseEntityCounts = (
   },
 ): WalkEntityCounts => {
   const scopes = new Map<string, ScopeCounts>();
-  const unmodelled = new Set<string>();
   const pairDemands: PairDemand[] = [];
   const rosterDemands: RosterDemand[] = [];
   const populationDemands: PopulationDemand[] = [];
@@ -731,11 +724,12 @@ export const worstCaseEntityCounts = (
       return;
     }
 
-    if (stage.type === 'FamilyPedigree') {
-      unmodelled.add(scopeKey({ entity: 'node', type: stage.nodeConfig.type }));
-      unmodelled.add(scopeKey({ entity: 'edge', type: stage.edgeConfig.type }));
-      return;
-    }
+    // A pedigree's population is a run-level draw the schema publishes no
+    // support for, so it contributes nothing countable here. Its scopes keep
+    // whatever every other stage put in them: those are floors of the truth,
+    // and a refusal they already earn stands however many more the pedigree
+    // adds.
+    if (stage.type === 'FamilyPedigree') return;
 
     // The composer builds first and then describes everybody on the canvas —
     // its own additions included — so its counting follows the simulator's
@@ -868,5 +862,5 @@ export const worstCaseEntityCounts = (
     counts.entities.ceiling += 1;
   }
 
-  return { scopes, unmodelled, pairDemands, rosterDemands, populationDemands };
+  return { scopes, pairDemands, rosterDemands, populationDemands };
 };

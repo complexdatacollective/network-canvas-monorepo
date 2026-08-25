@@ -368,7 +368,7 @@ export const analyseFeasibility = ({
     // `scopeKey` is `ego`, `node:<type>`, or `edge:<type>`. Ego is skipped: one
     // holder can never exhaust a slot, and the schema forbids `unique` there.
     // A scope a pedigree also feeds stays IN: its counts are known floors of
-    // the truth (see `WalkEntityCounts.unmodelled`), and a refusal the known
+    // the truth (see `WalkEntityCounts.scopes`), and a refusal the known
     // writes already earn stands however many more the pedigree adds.
     const separator = key.indexOf(':');
     if (separator < 0) continue;
