@@ -1,4 +1,4 @@
-import { act, waitFor } from '@testing-library/react';
+import { act } from '@testing-library/react';
 import type { DragControls } from 'motion/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 

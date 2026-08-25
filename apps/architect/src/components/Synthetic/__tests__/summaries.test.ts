@@ -102,6 +102,9 @@ describe('resolved schema defaults (the spec rule-5 summary examples)', () => {
     // The parse fitted the default to the stage window, writing that window
     // into the count's min/max; passing the same window elides them, leaving
     // the parameters the author reasons about.
+    if (synthetic.count === undefined) {
+      throw new Error('the parse fitted no count to the stage');
+    }
     expect(
       formatSyntheticCount(synthetic.count, {
         window: { min: 0, max: MAX_SYNTHETIC_POPULATION },

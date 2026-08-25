@@ -238,24 +238,32 @@ describe('the block written for a change', () => {
     expect(block).toEqual({ responseBurden: 1.2 });
   });
 
-  it('adds the companion a node-creating descriptor requires', () => {
-    // `stageNodeSynthetic` requires a count, so a burden-only block is one the
-    // schema refuses — the resolved count comes with it rather than the author
-    // being handed a refusal they cannot act on.
-    const { block, issues } = syntheticBlockForChange(nameGenerator(), {
+  it('leaves a node-creating descriptor to derive its own count', () => {
+    // `stageNodeSynthetic` makes `count` optional and the name generators'
+    // `withResolvedSyntheticCount` transform derives an omitted one from the
+    // stage's `behaviours` window, so a burden-only block is minimal AND
+    // complete. The companion this used to write is the schema's own job now.
+    const draft = nameGenerator();
+    const { block, issues } = syntheticBlockForChange(draft, {
       responseBurden: 0.9,
     });
 
     expect(issues).toEqual([]);
-    expect(block).toEqual({
-      responseBurden: 0.9,
-      count: {
-        distribution: 'normal',
-        mean: 8,
-        sd: 3,
-        min: 0,
-        max: MAX_SYNTHETIC_POPULATION,
-      },
+    expect(block).toEqual({ responseBurden: 0.9 });
+
+    // Minimality is only safe while a block the schema ACCEPTS means what the
+    // editor is showing, so that is what is pinned rather than the block's
+    // shape alone: omitting the count here resolves the very count an
+    // unauthored stage resolves — unlike the composer's halves below, where
+    // omitting one means "creates none of those".
+    const written = resolveStageSynthetic({ ...draft, synthetic: block });
+    expect(written.count).toEqual(resolveStageSynthetic(draft).count);
+    expect(written.count).toEqual({
+      distribution: 'normal',
+      mean: 8,
+      sd: 3,
+      min: 0,
+      max: MAX_SYNTHETIC_POPULATION,
     });
   });
 

@@ -93,6 +93,13 @@ const variablesFor = (
  * its rows — is a protocol that would strand a real participant, which is the
  * same session the generator would have to invent; the refusal is
  * runtime-faithful rather than a generator limitation.
+ *
+ * Carries the STARVED stage's `stageId`, including where earlier stages
+ * sharing the roster are what starved it. That stage is the screen a
+ * participant is stranded on and the one whose gate, pool or position an
+ * author can change, so a surface routing refusals to a stage editor has one
+ * unambiguous place to show it. Only a demand summed over stages with no such
+ * screen — an exhausted `unique` slot — is left unowned.
  */
 const rosterConflicts = (
   codebook: StructuralCodebook,
@@ -114,6 +121,7 @@ const rosterConflicts = (
       entity: 'node' as const,
       entityType: demand.nodeType,
       ...(name === undefined ? {} : { entityTypeName: name }),
+      stageId: demand.stageId,
       variableIds: [],
       variableNames: [],
       rules: ['behaviours.minNodes'],

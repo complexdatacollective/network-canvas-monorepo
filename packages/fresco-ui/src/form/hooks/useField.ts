@@ -81,7 +81,9 @@ type UseFieldResult = {
     // (a slot button, a sibling radio…) does not validate prematurely. Nor
     // does opening an overlay from inside the field, or moving around within
     // one — a portal's events bubble through the tree that RENDERED it, so
-    // some of what arrives here is not this field's blur at all.
+    // some of what arrives here is not this field's blur at all. The move
+    // that RELEASES focus is: an overlay closing with nothing to hand focus
+    // to is the researcher leaving, and the only notice of it the field gets.
     'onBlur': (e: React.FocusEvent<HTMLElement>) => void;
   };
   fieldProps: {
@@ -418,14 +420,25 @@ export function useField(config: UseFieldConfig): UseFieldResult {
 
   const handleContainerBlur = useCallback(
     (e: React.FocusEvent<HTMLElement>) => {
-      // The focusout did not come from inside this field at all. React
-      // delivers a portal's events to the tree that RENDERED it rather than
-      // the one that contains it, so a control in this field that opens an
-      // overlay — an attribute picker, a menu — hands the field every focus
-      // move made INSIDE that overlay. None of them is this field's blur.
+      // The focusout did not come from inside this field, and focus went on
+      // somewhere else outside it. React delivers a portal's events to the
+      // tree that RENDERED it rather than the one that contains it, so a
+      // control in this field that opens an overlay — an attribute picker, a
+      // menu — hands the field every focus move made INSIDE that overlay.
+      // None of those is this field's blur: the researcher is still working in
+      // something the field put in front of them, whatever shape of portal it
+      // is rendered through and whether or not it announces an overlay role.
+      //
+      // The move that RELEASES focus is the exception, and is let through. A
+      // surface that closes having been answered leaves focus nowhere, and
+      // that focusout is the only one the field will ever receive for the
+      // departure — focus never came back, so no later event can come from
+      // inside it. Deferring that one too would leave a field the researcher
+      // finished with and left permanently unblurred, and a value they
+      // committed never validated until the save.
       if (
         !(e.target instanceof Element) ||
-        !e.currentTarget.contains(e.target)
+        (!e.currentTarget.contains(e.target) && e.relatedTarget !== null)
       ) {
         return;
       }

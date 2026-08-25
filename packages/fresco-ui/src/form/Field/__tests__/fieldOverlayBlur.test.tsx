@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { describe, expect, it } from 'vitest';
@@ -26,30 +26,62 @@ import Field from '../Field';
  */
 const TOO_SHORT_MESSAGE = 'Too short. Enter at least 10 characters.';
 
-/** A control whose button opens a portalled picker, as a real one does. */
+/**
+ * A control whose button opens a portalled picker, as a real one does.
+ *
+ * Two knobs, each standing for a real arrangement:
+ *
+ * - `surfaceRole` is what the surface announces itself as. `''` renders a
+ *   portal carrying no overlay role at all, which a library is free to do —
+ *   and which is how the field's deferral is shown to rest on the PORTAL
+ *   boundary rather than on a recognised role.
+ * - `quiet` keeps the OPENING focus move inside the control, exactly as
+ *   Architect's attribute picker does. Without a role to recognise, that move
+ *   is the field's own control losing focus and would blur it — so a surface
+ *   that spells itself differently has to keep its own opening quiet, and the
+ *   moves made INSIDE it are what the field must still defer on.
+ */
 function PickerControl({
   value,
   onChange,
+  surfaceRole = 'dialog',
+  quiet = false,
 }: {
   value?: string;
   onChange?: (value: string) => void;
+  surfaceRole?: string;
+  quiet?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)}>
-        {value ? 'Change attribute' : 'Select attribute'}
-      </button>
+      <div
+        onBlur={(event) => {
+          if (quiet && open) event.stopPropagation();
+        }}
+      >
+        <button type="button" onClick={() => setOpen(true)}>
+          {value ? 'Change attribute' : 'Select attribute'}
+        </button>
+      </div>
       {open &&
         createPortal(
-          <div role="dialog" aria-label="Attribute library">
+          <div
+            {...(surfaceRole === '' ? {} : { role: surfaceRole })}
+            aria-label="Attribute library"
+          >
             <input aria-label="Find an attribute" autoFocus />
             <button
               type="button"
-              onClick={() => {
+              onClick={(event) => {
                 onChange?.('close');
                 setOpen(false);
+                // A real popup emits a final focusout as it unmounts, with
+                // nothing to hand focus to. React has not re-rendered yet, so
+                // the surface is still mounted and jsdom sees the same
+                // answered-and-left boundary a browser produces.
+                event.currentTarget.blur();
               }}
             >
               Pick
@@ -61,7 +93,7 @@ function PickerControl({
   );
 }
 
-const setup = () =>
+const setup = (controlProps: Record<string, unknown> = {}) =>
   render(
     <Form onSubmit={() => ({ success: true })}>
       <Field
@@ -69,10 +101,24 @@ const setup = () =>
         label="Attribute"
         component={PickerControl}
         minLength={10}
+        {...controlProps}
       />
       <button type="button">Elsewhere</button>
     </Form>,
   );
+
+/**
+ * Let anything the last interaction started finish.
+ *
+ * Every assertion here that something did NOT happen needs this: validation is
+ * asynchronous, so querying immediately — or through a `waitFor` whose first
+ * attempt succeeds — passes against a field that validates a tick later, which
+ * is the failure these tests exist to catch.
+ */
+const settle = () =>
+  act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
 
 /** Opens the picker, picks, and closes it — the field is now dirty. */
 const pick = async () => {
@@ -96,15 +142,13 @@ describe('a field whose control opens an overlay', () => {
     // Focus is now in the picker's search box, which is where the researcher
     // is — not somewhere they went instead of finishing.
     await screen.findByRole('dialog', { name: 'Attribute library' });
-    await waitFor(() =>
-      expect(screen.queryByText(TOO_SHORT_MESSAGE)).toBeNull(),
-    );
+    await settle();
+    expect(screen.queryByText(TOO_SHORT_MESSAGE)).toBeNull();
 
     // Moving around inside the picker is not leaving the field either.
     screen.getByRole('button', { name: 'Pick' }).focus();
-    await waitFor(() =>
-      expect(screen.queryByText(TOO_SHORT_MESSAGE)).toBeNull(),
-    );
+    await settle();
+    expect(screen.queryByText(TOO_SHORT_MESSAGE)).toBeNull();
   });
 
   it('still validates when focus really leaves the field', async () => {
@@ -114,6 +158,62 @@ describe('a field whose control opens an overlay', () => {
     screen.getByRole('button', { name: 'Change attribute' }).focus();
     screen.getByRole('button', { name: 'Elsewhere' }).focus();
 
+    expect(await screen.findByText(TOO_SHORT_MESSAGE)).toBeInTheDocument();
+  });
+
+  it('defers on a portalled surface that announces no overlay role', async () => {
+    // Nothing here is a `dialog`, a `menu` or a `listbox` — just a portal —
+    // and it is still the researcher's place to be. Recognising a surface by
+    // role alone would validate the field the moment they moved around inside
+    // one that spells itself differently, which is the same defect in a
+    // different suit.
+    setup({ surfaceRole: '', quiet: true });
+
+    // Answer it once, so the field is dirty and has something to say.
+    const trigger = screen.getByRole('button', { name: 'Select attribute' });
+    trigger.focus();
+    trigger.click();
+    await screen.findByLabelText('Find an attribute');
+    screen.getByRole('button', { name: 'Pick' }).click();
+    await screen.findByRole('button', { name: 'Change attribute' });
+    expect(screen.queryByText(TOO_SHORT_MESSAGE)).toBeNull();
+
+    // Back in, and moving from one part of the surface to another.
+    const reopen = screen.getByRole('button', { name: 'Change attribute' });
+    reopen.focus();
+    reopen.click();
+    const search = await screen.findByLabelText('Find an attribute');
+    await waitFor(() => expect(search).toHaveFocus());
+    screen.getByRole('button', { name: 'Pick' }).focus();
+
+    // Settled, not merely early: validation is asynchronous, so an absence
+    // asserted straight away would pass against a field that validated a tick
+    // later. The flush is what makes the silence below an answer.
+    await settle();
+    expect(screen.queryByText(TOO_SHORT_MESSAGE)).toBeNull();
+  });
+
+  /**
+   * The overlay closing is the researcher LEAVING, and the only focusout the
+   * field will ever get for it: focus was released rather than handed
+   * anywhere, so nothing will later blur from inside the field. Deferring this
+   * one alongside the moves made inside the overlay would leave a field the
+   * researcher answered and walked away from permanently unblurred — never
+   * showing what it thinks of the value they committed until the save.
+   */
+  it('validates once the overlay closes having released focus', async () => {
+    setup();
+
+    const trigger = screen.getByRole('button', { name: 'Select attribute' });
+    trigger.focus();
+    trigger.click();
+    await screen.findByRole('dialog', { name: 'Attribute library' });
+
+    const confirm = screen.getByRole('button', { name: 'Pick' });
+    confirm.focus();
+    confirm.click();
+
+    await screen.findByRole('button', { name: 'Change attribute' });
     expect(await screen.findByText(TOO_SHORT_MESSAGE)).toBeInTheDocument();
   });
 });

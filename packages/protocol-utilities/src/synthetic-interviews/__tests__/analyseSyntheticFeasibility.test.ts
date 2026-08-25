@@ -108,8 +108,18 @@ const collectsClose = (count: number): Record<string, unknown> => ({
   prompts: [{ id: 'ng-p1', text: 'Who do you know?' }],
 });
 
-/** A roster stage gated by its own `behaviours.minNodes` floor. */
-const rosterStage = (minNodes: number): Record<string, unknown> => ({
+/**
+ * A roster stage drawing `count` people.
+ *
+ * Gated by default, at the same figure: `behaviours.minNodes` is the live
+ * interface's own floor, and whether a stage HAS one is what decides most of
+ * the roster refusals below. `gated: false` is a stage a participant may leave
+ * empty, which no pool can therefore fall short of.
+ */
+const rosterStage = (
+  count: number,
+  { gated = true }: { gated?: boolean } = {},
+): Record<string, unknown> => ({
   id: 'roster',
   type: 'NameGeneratorRoster',
   label: 'Colleagues',
@@ -117,10 +127,10 @@ const rosterStage = (minNodes: number): Record<string, unknown> => ({
   dataSource: 'colleagues',
   synthetic: {
     generatesData: true,
-    count: { distribution: 'constant', value: minNodes },
+    count: { distribution: 'constant', value: count },
   },
   prompts: [{ id: 'roster-p1', text: 'Who do you work with?' }],
-  behaviours: { minNodes },
+  ...(gated ? { behaviours: { minNodes: count } } : {}),
 });
 
 const rows = (howMany: number): NcNode[] =>
@@ -255,11 +265,17 @@ describe('analyseSyntheticFeasibility', () => {
     expect(results).toHaveLength(1);
   });
 
-  it('does not refuse a caller that took no part in the roster contract', () => {
+  it('does not refuse an ungated stage whose caller took no part in the roster contract', () => {
     // No `rosterNodes` map at all means the host never looked, which is
     // different from a source it looked for and could not resolve. Both the
     // analysis and generation read it that way: no refusal, an empty stage.
-    const protocol = parse([rosterStage(1)]);
+    //
+    // The opt-out reaches exactly as far as the interface does. A stage with a
+    // `behaviours.minNodes` floor is one a participant cannot leave empty, so
+    // an absent map there is refused as a host-resolution failure instead —
+    // pinned in `constraints/__tests__/feasibility.test.ts`, and the reason
+    // this fixture states no floor rather than the one it draws.
+    const protocol = parse([rosterStage(1, { gated: false })]);
 
     expect(analyse(protocol, {})).toEqual([]);
     const results = generateInterviews(

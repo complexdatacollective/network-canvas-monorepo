@@ -490,20 +490,26 @@ export type SyntheticWriteResult = {
  * "Authored = key present" (spec rule 4) is about the `synthetic` key, not
  * about writing every parameter: an author who only raises a Sociogram's
  * burden should not silently acquire a topology declaration. But some
- * descriptors REQUIRE a companion — a node-creating stage's block must carry a
- * `count`, a non-generating stage's must carry `generatesData: false`, a
- * composer's must declare a count or a topology — and a block missing one is a
- * block the schema refuses.
+ * descriptors REQUIRE a companion — a non-generating stage's block must carry
+ * `generatesData: false`, a composer's must declare a count or a topology —
+ * and a block missing one is a block the schema refuses.
  *
  * Which is which is not restated here. The minimal block is offered to the
  * schema first; only if the schema refuses it does the complete block — the
  * RESOLVED parameters, with the change applied over them — get built. So a
- * descriptor that gains a required companion later needs no change here.
+ * descriptor that gains or LOSES a required companion needs no change here: a
+ * name generator's `count` became optional in the input shape (the
+ * sibling-aware `withResolvedSyntheticCount` transform derives an omitted one
+ * from `behaviours`, exactly as it does for a stage with no block at all), and
+ * a burden-only write to one simply stopped needing completion.
  *
  * The one thing minimality cannot decide by parsing is the composer's pair of
  * optional halves: a block naming one of them PARSES, and means something the
- * author never said. That case is stated in full below, before the schema is
- * asked anything.
+ * author never said. Schema-accepts is not by itself means-what-the-editor-
+ * shows, and the two part company exactly there — an omitted count means the
+ * resolved default on a node-creating descriptor and "creates nobody" on a
+ * composer. That case is stated in full below, before the schema is asked
+ * anything.
  */
 export const syntheticBlockForChange = (
   draft: StageDraft,

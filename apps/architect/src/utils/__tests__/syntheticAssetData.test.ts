@@ -358,7 +358,7 @@ describe('collectSyntheticGeospatialData', () => {
         },
       },
     } as unknown as Partial<CurrentProtocol>);
-    const result = await collectPreviewGeospatialData(protocol, PROTOCOL_ID);
+    const result = await collectSyntheticGeospatialData(protocol, PROTOCOL_ID);
 
     expect(result['stage-geo']).toEqual(['North', 'South']);
   });

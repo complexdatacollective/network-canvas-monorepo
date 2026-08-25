@@ -6,7 +6,6 @@ import {
   DEFAULT_PANEL_NOMINATION_PROBABILITY,
   DEFAULT_RESPONSE_BURDEN,
   defaultNodeCount,
-  MAX_SYNTHETIC_POPULATION,
   stageSchema,
   type StageType,
 } from '@codaco/protocol-validation';
@@ -482,7 +481,11 @@ describe('authoring and reset', () => {
     expect(disclosure()).toHaveTextContent('Burden: 1.5');
   });
 
-  it('writes the count its descriptor requires alongside the burden', () => {
+  it('writes only the burden where the descriptor derives its own count', () => {
+    // A name generator's `count` is optional in the input shape, and the
+    // schema's own sibling-aware transform derives an omitted one — so the
+    // count this used to write alongside the burden is no longer the block's
+    // to carry. Raising the burden authors the burden and nothing else.
     const { getFormValues } = setup(NAME_GENERATOR);
     expand();
 
@@ -490,16 +493,13 @@ describe('authoring and reset', () => {
       target: { value: '0.9' },
     });
 
-    expect(syntheticValue(getFormValues)).toEqual({
-      responseBurden: 0.9,
-      count: {
-        distribution: 'normal',
-        mean: 8,
-        sd: 3,
-        min: 0,
-        max: MAX_SYNTHETIC_POPULATION,
-      },
-    });
+    expect(syntheticValue(getFormValues)).toEqual({ responseBurden: 0.9 });
+    // And the stage still creates the people it created before the edit. The
+    // row summarises the RESOLVED parameters, so a block that had quietly
+    // turned node generation off — the composer's reading of an absent half —
+    // would say so here.
+    expect(disclosure()).toHaveTextContent('Nodes: normal(mean 8, sd 3)');
+    expect(disclosure()).toHaveTextContent('Burden: 0.9');
   });
 
   it('removes the key entirely on reset', () => {
