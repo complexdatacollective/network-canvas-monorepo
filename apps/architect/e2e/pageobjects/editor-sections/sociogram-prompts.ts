@@ -11,9 +11,8 @@ import { createVariableViaSpotlight } from './variables.js';
 // - 'Node interaction' is toggleable and collapsed for a fresh prompt.
 //   Closing it discards its descendant fields, so a layout-only prompt leaves
 //   `highlight` absent.
-// - The behaviour radios carry long markdown accessible names — matched via
-//   a name REGEX (their labels are sibling <label> elements, so the radio
-//   buttons have no text content for hasText to match). 'Edge
+// - The interaction-type rich select exposes its choices as options with
+//   their label and description in the accessible name. 'Edge
 //   Creation' writes `highlight: { allowHighlighting: false }` as a side
 //   effect; selecting a create-edge auto-unions it into `edges.display`
 //   (PromptFieldsEdges mount effect), which also auto-expands the Display
@@ -60,11 +59,7 @@ export async function addSociogramPrompt(
         });
         await toggle.click();
         if (interaction.kind === 'createEdge') {
-          // The behaviour radios' long markdown labels are SIBLING <label>
-          // elements — the radio button itself has no text content, so
-          // .filter({hasText}) can never match. The accessible NAME includes
-          // the label, so a name regex is the right long-markdown matcher.
-          await section.getByRole('radio', { name: /Edge Creation/ }).click();
+          await section.getByRole('option', { name: /Edge creation/ }).click();
           if (interaction.createNewEdgeType) {
             await editor
               .field('edges.create')
@@ -85,7 +80,7 @@ export async function addSociogramPrompt(
           }
         } else {
           await section
-            .getByRole('radio', { name: /Attribute Toggling/ })
+            .getByRole('option', { name: /Attribute toggling/ })
             .click();
           await createVariableViaSpotlight(page, {
             variableName: interaction.variableName,

@@ -1,5 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { useContext, type ContextType } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
@@ -166,6 +172,28 @@ const HIGHLIGHT_PROMPT = {
 };
 
 describe('Sociogram prompt tap behavior', () => {
+  it('presents the interaction choices as a labelled rich select', async () => {
+    renderSection({
+      subject: { entity: 'node', type: 'person' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create new prompt' }));
+    fireEvent.click(sectionToggle('Node interaction'));
+
+    const interactionType = await screen.findByRole('listbox', {
+      name: 'Interaction type',
+    });
+    expect(within(interactionType).getAllByRole('option')).toHaveLength(2);
+    expect(
+      within(interactionType).getByRole('option', { name: /Edge creation/ }),
+    ).toBeVisible();
+    expect(
+      within(interactionType).getByRole('option', {
+        name: /Attribute toggling/,
+      }),
+    ).toBeVisible();
+  });
+
   // `highlight.allowHighlighting` is what the interview runtime gates the
   // tap-to-toggle branch on. A saved row carrying only `highlight.variable`
   // matches the schema's DISABLED variant and is a runtime no-op.
@@ -183,7 +211,7 @@ describe('Sociogram prompt tap behavior', () => {
     });
     fireEvent.click(sectionToggle('Node interaction'));
     fireEvent.click(
-      await screen.findByRole('radio', { name: /Attribute Toggling/ }),
+      await screen.findByRole('option', { name: /Attribute toggling/ }),
     );
     fireEvent.change(await screen.findByLabelText('highlight.variable'), {
       target: { value: 'flagged' },
@@ -238,7 +266,7 @@ describe('Sociogram prompt tap behavior', () => {
       target: { value: 'Tap to connect' },
     });
     fireEvent.click(
-      await screen.findByRole('radio', { name: /Edge Creation/ }),
+      await screen.findByRole('option', { name: /Edge creation/ }),
     );
     fireEvent.change(await screen.findByLabelText('edges.create'), {
       target: { value: 'friend' },
@@ -270,7 +298,7 @@ describe('Sociogram prompt tap behavior', () => {
     });
     fireEvent.click(sectionToggle('Node interaction'));
     fireEvent.click(
-      await screen.findByRole('radio', { name: /Edge Creation/ }),
+      await screen.findByRole('option', { name: /Edge creation/ }),
     );
     fireEvent.change(await screen.findByLabelText('edges.create'), {
       target: { value: 'friend' },

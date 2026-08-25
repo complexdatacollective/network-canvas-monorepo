@@ -2,7 +2,10 @@ import { useCallback, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
-import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
+import RichSelectGroupField, {
+  type RichSelectOption,
+} from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Section from '@codaco/fresco-ui/Section';
@@ -28,6 +31,21 @@ const TAP_BEHAVIOURS = {
   CREATE_EDGES: 'create edges',
   HIGHLIGHT_ATTRIBUTES: 'highlight attributes',
 };
+
+const TAP_BEHAVIOUR_OPTIONS: RichSelectOption[] = [
+  {
+    value: TAP_BEHAVIOURS.CREATE_EDGES,
+    label: 'Edge creation',
+    description:
+      'Clicking or tapping a node allows the participant to create an edge.',
+  },
+  {
+    value: TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES,
+    label: 'Attribute toggling',
+    description:
+      'Clicking or tapping a node toggles a boolean attribute between true and false.',
+  },
+];
 
 /**
  * `highlight.allowHighlighting` is what the interview runtime gates the
@@ -95,7 +113,9 @@ const TapBehaviour = ({
   const disableHighlighting = () =>
     setLocalFieldValue(ALLOW_HIGHLIGHTING_FIELD, false);
 
-  const handleChangeTapBehaviour = (behaviour: string | number | undefined) => {
+  const handleChangeTapBehaviour = (
+    behaviour: string | number | (string | number)[] | undefined,
+  ) => {
     const nextBehaviour = typeof behaviour === 'string' ? behaviour : null;
     setTapBehaviour(nextBehaviour);
     if (nextBehaviour === TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES) {
@@ -132,21 +152,13 @@ const TapBehaviour = ({
       toggleable
       defaultOpen={tapBehaviour !== null}
     >
-      <RadioGroupField
+      <UnconnectedField
+        name="interaction-type"
+        label="Interaction type"
+        component={RichSelectGroupField}
         onChange={handleChangeTapBehaviour}
         value={tapBehaviour ?? undefined}
-        options={[
-          {
-            value: TAP_BEHAVIOURS.CREATE_EDGES,
-            label:
-              '**Edge Creation**\n\nClicking or tapping a node will allow the participant to create an edge.',
-          },
-          {
-            value: TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES,
-            label:
-              '**Attribute Toggling**\n\nClicking or tapping a node will toggle a boolean attribute to true or false.',
-          },
-        ]}
+        options={TAP_BEHAVIOUR_OPTIONS}
       />
       {tapBehaviour === TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES && (
         <HiddenFieldValue name={ALLOW_HIGHLIGHTING_FIELD} initialValue />
