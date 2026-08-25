@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { COLOR_PALETTE_SWATCH_NAMES, getColorSwatchName } from '../index';
+import { COLOR_PALETTE_SWATCH_NAMES } from '../index';
 
 /**
  * The swatch names a researcher hears are only correct while the theme still
@@ -89,16 +89,4 @@ describe('protocol colour swatch names', () => {
       );
     },
   );
-
-  it('falls back to the position for a colour the theme has no hue for', () => {
-    // A protocol can hold a sequence index past the end of its palette. It
-    // still has to be identifiable, or the researcher cannot say which swatch
-    // they are replacing.
-    expect(getColorSwatchName('node-color-seq-9')).toBe('Color 9');
-    expect(getColorSwatchName('unknown-palette-2')).toBe('Color 2');
-  });
-
-  it('passes through a colour that is not a sequence token', () => {
-    expect(getColorSwatchName('paradise-pink')).toBe('paradise-pink');
-  });
 });

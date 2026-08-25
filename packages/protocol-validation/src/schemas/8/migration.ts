@@ -994,8 +994,7 @@ const migrationV7toV8 = createMigration({
           // the later registration silently replaced the earlier — the second
           // field collected nothing of its own. `duplicateFormFieldIndices` is
           // the schema's own finder, so the migration keeps exactly the fields
-          // the schema would accept — and the same ones Architect's
-          // `repairConfigurationConflicts` keeps for an already-v8 protocol.
+          // the schema accepts.
           const repeats = new Set(duplicateFormFieldIndices(renderable));
           const deduplicated = renderable.filter(
             (_field, index) => !repeats.has(index),

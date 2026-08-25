@@ -103,32 +103,19 @@ const Home = () => {
     },
     [dispatch, runAction],
   );
-  // A .netcanvas can need BOTH an upgrade and a configuration repair, and each
-  // approval has to carry the earlier one forward — re-opening the file with
-  // only the newest flag would ask for the upgrade all over again. Each
-  // approval callback is offered only while its own flag is still unset, so an
-  // approval always advances and can never re-present the dialog it came from.
   const handleOpenLocalFile = useCallback(
     async (file: File) => {
-      const open = async (approvals: {
-        migrationApproved?: boolean;
-        repairApproved?: boolean;
-      }): Promise<void> => {
+      const open = async (migrationApproved = false): Promise<void> => {
         const result = await runAction(() =>
-          dispatch(openLocalNetcanvas({ file, ...approvals })).unwrap(),
+          dispatch(openLocalNetcanvas({ file, migrationApproved })).unwrap(),
         );
         await showProtocolOpenResultDialog({
           result,
           openDialog,
-          onApproveMigration: approvals.migrationApproved
-            ? undefined
-            : () => open({ ...approvals, migrationApproved: true }),
-          onApproveRepair: approvals.repairApproved
-            ? undefined
-            : () => open({ ...approvals, repairApproved: true }),
+          onApproveMigration: migrationApproved ? undefined : () => open(true),
         });
       };
-      await open({});
+      await open();
     },
     [dispatch, openDialog, runAction],
   );
@@ -237,17 +224,6 @@ const Home = () => {
         await showProtocolOpenResultDialog({
           result,
           openDialog,
-          onApproveRepair: async () => {
-            const repairedResult = await runAction(() =>
-              dispatch(
-                openLibraryProtocol({ id, repairApproved: true }),
-              ).unwrap(),
-            );
-            await showProtocolOpenResultDialog({
-              result: repairedResult,
-              openDialog,
-            });
-          },
         });
       })();
     },

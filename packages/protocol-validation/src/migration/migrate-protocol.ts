@@ -13,7 +13,6 @@ import {
   SchemaVersionSchema,
   VersionedProtocolSchema,
 } from '../schemas/index.ts';
-import { repairLegacyColorReferences } from '../utils/repairLegacyColorReferences.ts';
 import { SchemaVersionDetectionError, ValidationError } from './errors.ts';
 import { type ProtocolDocument, protocolMigrations } from './index.ts';
 
@@ -50,16 +49,10 @@ export function migrateProtocol(
   dependencies: Record<string, unknown> = {},
 ): CurrentProtocol {
   const detectedVersion = detectSchemaVersion(document);
-  // Repair exact legacy colors generated or shipped by Network Canvas before
-  // strict pre-validation. The repair is deliberately bounded; arbitrary raw
-  // and custom values remain invalid.
-  const legacyColorRepair = repairLegacyColorReferences(document);
-  const migrationInput = legacyColorRepair.protocol;
 
   // Only pre-validate versions that have Zod schemas (7+)
   if (detectedVersion >= 7) {
-    const preValidationResult =
-      VersionedProtocolSchema.safeParse(migrationInput);
+    const preValidationResult = VersionedProtocolSchema.safeParse(document);
     if (!preValidationResult.success) {
       throw new ValidationError(
         `Invalid protocol document for version ${detectedVersion}: ${preValidationResult.error.message}`,
@@ -70,7 +63,7 @@ export function migrateProtocol(
 
   // Ensure schemaVersion is numeric before passing to migration chain
   const normalizedDocument = {
-    ...(migrationInput as Record<string, unknown>),
+    ...(document as Record<string, unknown>),
     schemaVersion: detectedVersion,
   };
 
