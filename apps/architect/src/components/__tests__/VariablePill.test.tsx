@@ -190,6 +190,53 @@ describe('ConnectedVariablePill', () => {
 });
 
 describe('VariablePill', () => {
+  it.each([
+    { anchorWidth: 192, expectedFrameWidth: '528px' },
+    { anchorWidth: 800, expectedFrameWidth: '848px' },
+  ])(
+    'keeps a $anchorWidth px display-only width out of the name editor sizing',
+    async ({ anchorWidth, expectedFrameWidth }) => {
+      render(
+        <VariablePill
+          editable
+          displayMaxWidth="100%"
+          label="subject_var"
+          type="text"
+          width="fit-content"
+        />,
+      );
+      const pill = screen.getByRole('button', {
+        name: 'Edit attribute name: subject_var',
+      });
+      vi.spyOn(pill, 'getBoundingClientRect').mockReturnValue({
+        bottom: 148,
+        height: 48,
+        left: 100,
+        right: 100 + anchorWidth,
+        top: 100,
+        width: anchorWidth,
+        x: 100,
+        y: 100,
+        toJSON: () => ({}),
+      });
+
+      expect(pill.style.getPropertyValue('--variable-pill-max-width')).toBe(
+        '100%',
+      );
+
+      fireEvent.click(pill);
+      const dialog = await screen.findByRole('dialog', {
+        name: 'Edit attribute name',
+      });
+      const editor = dialog.querySelector<HTMLElement>('.variable-pill');
+
+      expect(dialog).toHaveStyle({ width: expectedFrameWidth });
+      expect(editor?.style.getPropertyValue('--variable-pill-width')).toBe(
+        '320px',
+      );
+    },
+  );
+
   it('uses a data element and a static border for a non-interactive reference', () => {
     const { container } = render(
       <VariablePill label="subject_var" type="text" />,

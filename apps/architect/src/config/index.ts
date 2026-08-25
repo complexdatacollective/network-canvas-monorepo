@@ -6,6 +6,7 @@ export const COLOR_PALETTES = {
   'ord-color-seq': 8,
   'node-color-seq': 8,
   'edge-color-seq': 8,
+  'cat-color-seq': 10,
 };
 
 export const COLOR_PALETTE_BY_ENTITY = {
@@ -63,6 +64,18 @@ export const COLOR_PALETTE_SWATCH_NAMES: Record<string, readonly string[]> = {
     'Paradise Pink',
     'Mustard',
     'Purple Pizazz',
+    'Slate Blue',
+  ],
+  'cat-color-seq': [
+    'Sea Serpent',
+    'Purple Pizazz',
+    'Mustard',
+    'Paradise Pink',
+    'Kiwi',
+    'Cerulean Blue',
+    'Neon Carrot',
+    'Barbie Pink',
+    'Tomato',
     'Slate Blue',
   ],
 };

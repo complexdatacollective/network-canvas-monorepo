@@ -261,7 +261,7 @@ describe('Geospatial targetFeatureProperty (#674)', () => {
     center: [0, 0] as [number, number],
     initialZoom: 5,
     dataSourceAssetId: 'data',
-    color: 'node-color-seq-1',
+    color: 'ord-color-seq-1',
   };
 
   it('accepts a non-empty targetFeatureProperty', () => {

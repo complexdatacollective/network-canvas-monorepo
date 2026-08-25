@@ -124,7 +124,7 @@ const ThresholdItem = ({
 
   return (
     <>
-      <span className="text-muted text-xl">≥</span>
+      <span className="text-xl text-current/70">≥</span>
       <InputField
         type="number"
         step={config.step}
@@ -139,7 +139,7 @@ const ThresholdItem = ({
           onUpdate?.({ value: parseThresholdValue(draft) ?? value, shape })
         }
       />
-      <span className="text-muted text-xl">→</span>
+      <span className="text-xl text-current/70">→</span>
       <ShapePickerControl
         small
         nodeColor={nodeColor}
@@ -294,7 +294,7 @@ const ShapeMappingEditor = ({
           <Heading
             level="h4"
             margin="none"
-            className="text-muted mb-1 block text-sm font-semibold"
+            className="mb-1 block text-sm font-semibold text-current/70"
           >
             Shape for each value
           </Heading>
@@ -333,7 +333,7 @@ const ShapeMappingEditor = ({
             style={{ borderRadius: 14 }}
           >
             <span className="text-sm">Below first threshold</span>
-            <span className="text-muted text-xl">→</span>
+            <span className="text-xl text-current/70">→</span>
             <ShapePickerControl
               small
               disabled
@@ -342,7 +342,7 @@ const ShapeMappingEditor = ({
               value={defaultShape}
               aria-label="Default shape"
             />
-            <span className="text-muted ml-auto text-xs">
+            <span className="ml-auto text-xs text-current/70">
               uses default shape
             </span>
             <IconButton
@@ -438,7 +438,7 @@ const ShapeVariableMapping = ({
             onChange={handleToggle}
           />
         </div>
-        <Paragraph className="text-muted mt-1 text-sm">
+        <Paragraph className="mt-1 text-sm text-current/70">
           Override the default shape based on the value of a node&apos;s
           attribute.
         </Paragraph>

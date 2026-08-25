@@ -69,7 +69,7 @@ vi.mock('../TransitMap', () => ({ default: () => null }));
 import Home from '../Home';
 
 describe('<Home />', () => {
-  it('uses medium brand-colored call-to-action buttons', () => {
+  it('uses medium call-to-action buttons colored by role', () => {
     render(<Home />);
 
     const createButton = screen.getByRole('button', {
@@ -87,9 +87,8 @@ describe('<Home />', () => {
     );
     expect(openButton).toHaveClass('h-12', 'text-base');
     expect(openButton).toHaveClass(
-      '[--component-bg:var(--accent-contrast)]',
-      '[--component-text:var(--accent)]',
-      'focus:outline-accent',
+      '[--component-bg:var(--neutral-contrast)]',
+      '[--component-text:var(--neutral)]',
     );
   });
 

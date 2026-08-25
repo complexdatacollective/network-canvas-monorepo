@@ -10,7 +10,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
-import { clearFieldValue } from '~/components/Form/clearFieldValue';
 
 import Parameters from '../Parameters';
 import RelativeDatePicker from '../RelativeDatePicker';
@@ -176,7 +175,7 @@ describe('RelativeDatePicker after an input-control change', () => {
       rerender(<Harness component={component} />);
       const api = storeApi;
       if (!api) throw new Error('form store was not captured');
-      act(() => clearFieldValue(api, 'parameters'));
+      act(() => api.getState().clearValue('parameters'));
     };
 
     return { onSubmit, switchControlTo };

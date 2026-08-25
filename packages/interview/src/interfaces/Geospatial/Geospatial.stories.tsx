@@ -5,6 +5,7 @@ import SuperJSON from 'superjson';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { ProtocolBuilder } from '@codaco/protocol-utilities';
+import type { OrdinalColorReference } from '@codaco/protocol-validation';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
@@ -32,7 +33,7 @@ const AREA_COLORS = [
   'ord-color-seq-5',
   'ord-color-seq-6',
   'ord-color-seq-7',
-];
+] as const satisfies readonly OrdinalColorReference[];
 
 const REGIONS = {
   'chicago': {

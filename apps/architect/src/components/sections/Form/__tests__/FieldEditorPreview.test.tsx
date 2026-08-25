@@ -57,4 +57,18 @@ describe('FieldEditorPreview', () => {
 
     expect(screen.queryByText(existingVariableMessage)).not.toBeInTheDocument();
   });
+
+  it('previews the committed parameters before the editor registers any', () => {
+    // The dialog opens before the input-control section mounts, and the form
+    // holds `parameters` only as a tree of leaves — so until one of those
+    // leaves registers, the committed item is the only parameters there are.
+    renderPreview({
+      variable: 'satisfaction',
+      component: 'VisualAnalogScale',
+      parameters: { minLabel: 'Not at all', maxLabel: 'Completely' },
+    });
+
+    expect(screen.getByText('Not at all')).toBeVisible();
+    expect(screen.getByText('Completely')).toBeVisible();
+  });
 });

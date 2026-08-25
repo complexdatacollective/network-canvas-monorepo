@@ -26,7 +26,7 @@ const readThemeHues = (): Map<string, string> => {
   const css = readFileSync(THEME_PATH, 'utf8');
   const hues = new Map<string, string>();
   const declaration =
-    /--((?:node|edge|ord)-\d+)\s*:\s*oklch\(var\(--([a-z-]+)\)\)/g;
+    /--((?:node|edge|ord|cat)-\d+)\s*:\s*oklch\(var\(--([a-z-]+)\)\)/g;
   let match = declaration.exec(css);
   while (match) {
     const [, token, hue] = match;
@@ -47,6 +47,7 @@ const THEME_PREFIX: Record<string, string> = {
   'node-color-seq': 'node',
   'edge-color-seq': 'edge',
   'ord-color-seq': 'ord',
+  'cat-color-seq': 'cat',
 };
 
 describe('protocol colour swatch names', () => {

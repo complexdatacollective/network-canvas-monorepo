@@ -1,5 +1,5 @@
-import { get, isEqual, pickBy } from 'es-toolkit/compat';
-import { useMemo, useRef } from 'react';
+import { get, pickBy } from 'es-toolkit/compat';
+import { useMemo } from 'react';
 
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
@@ -80,34 +80,27 @@ const ValidationSection = ({
   // into its own isolated form from the committed variable. Either way this
   // is the `withStoreState` HOC's `formValueSelector(form)` reads collapsed
   // onto the one hook every field in this migration uses.
+  //
+  // `parameters` reaches this hook two different ways: in the field-editor
+  // dialog nothing registers that name at all — only its leaves do
+  // (`parameters.type`, `parameters.min`, …, shaped differently per input
+  // control) — while `CodebookVariableValidationSection` registers it whole as
+  // a hidden mirror field. The store reads a container name as the assembled
+  // container and a registered one as itself, and owns keeping the assembled
+  // object referentially stable, so neither needs anything special here.
   const {
     validation: liveValidation,
     options: draftOptions,
     component: draftComponent,
+    parameters: draftParameters,
     _createNewVariable: draftVariableName,
   } = useFormValue([
     'validation',
     'options',
     'component',
+    'parameters',
     '_createNewVariable',
   ] as const);
-  // `parameters` is never itself a registered field — only its leaves are
-  // (`parameters.type`, `parameters.min`, …, shaped differently per input
-  // component) — so `useFormValue(['parameters'])`'s direct `getFieldState`
-  // lookup is always `undefined`. `getFormValues()` assembles those leaves
-  // back into a `parameters` object the same way a save does, so read the
-  // draft through it instead. `getFormValues()` builds a fresh object on
-  // every call, so an `isEqual`-guarded cache (the same pattern
-  // `useStageFormValue` uses) keeps the result referentially stable across
-  // renders that don't actually change any leaf under `parameters`.
-  const draftParametersCache = useRef<unknown>(undefined);
-  const draftParameters = useFormStore((store) => {
-    const next = get(store.getFormValues(), 'parameters') as unknown;
-    if (!isEqual(draftParametersCache.current, next)) {
-      draftParametersCache.current = next;
-    }
-    return draftParametersCache.current;
-  });
   // `useFormValue` returns the field's raw `FieldValue`; this field's own
   // component always writes a `ValidationMap`.
   const hasValidation =

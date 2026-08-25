@@ -13,6 +13,9 @@ describe('resolveProtocolColor', () => {
     expect(resolveProtocolColor('ord-color-seq-8')).toBe(
       'var(--ord-8, var(--input-contrast))',
     );
+    expect(resolveProtocolColor('cat-color-seq-4')).toBe(
+      'var(--cat-4, var(--input-contrast))',
+    );
   });
 
   // The guard against an invisible chip is the DEFAULT, not an opt-in: a call

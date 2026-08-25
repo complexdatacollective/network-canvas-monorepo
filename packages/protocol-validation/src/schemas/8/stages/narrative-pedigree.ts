@@ -6,6 +6,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import { NodeColorReferenceSchema } from '../color-reference.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { withStageSubjectResolution } from '../stage-subject-resolution.ts';
 import { stageNoDataSynthetic } from '../synthetic/index.ts';
@@ -89,7 +90,7 @@ const narrativePedigreeStageShape = baseStageSchema.extend({
       z.strictObject({
         id: z.string(),
         label: z.string().min(1),
-        color: z.string().min(1),
+        color: NodeColorReferenceSchema,
         // Tagged as a writer even though this stage only renders: a disease
         // row DECLARES what the variable means ("who is affected by X"), and
         // the synthetic generator writes affected status through exactly this

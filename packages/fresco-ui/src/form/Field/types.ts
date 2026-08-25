@@ -18,6 +18,10 @@ type VariableComparisonParam = {
 
 /**
  * Type representing all possible values for a form field.
+ *
+ * A connected control declares a narrower value type than this union, but is
+ * handed the stored value verbatim and must render any shape of it without
+ * throwing — see the contract on `useField`'s `fieldProps.value`.
  */
 export type FieldValue =
   | string

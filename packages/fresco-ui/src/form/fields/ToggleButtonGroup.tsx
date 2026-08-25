@@ -143,7 +143,7 @@ export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
   const handleToggleOption = (optionValue: string | number) => {
     if (readOnly) return;
     if (onChange) {
-      const currentValues = value ?? [];
+      const currentValues = Array.isArray(value) ? value : [];
       const isSelected = currentValues.includes(optionValue);
       const newValues = isSelected
         ? currentValues.filter((v) => v !== optionValue)
@@ -154,7 +154,8 @@ export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
 
   // Determine if this is controlled or uncontrolled
   const isControlled = value !== undefined;
-  const currentValues = isControlled ? value : (defaultValue ?? []);
+  const suppliedValues = isControlled ? value : (defaultValue ?? []);
+  const currentValues = Array.isArray(suppliedValues) ? suppliedValues : [];
 
   const getCatColorIndex = (index: number) => {
     return ((index % 10) + 1) as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;

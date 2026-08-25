@@ -751,7 +751,7 @@ export class ProtocolBuilder {
           center: [-87.6298, 41.8781], // Chicago
           initialZoom: 11,
           dataSourceAssetId: 'geojson-data',
-          color: 'node-color-seq-1',
+          color: 'ord-color-seq-1',
           targetFeatureProperty: 'name',
         };
       }

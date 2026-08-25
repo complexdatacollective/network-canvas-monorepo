@@ -10,7 +10,6 @@ import {
 } from '@codaco/protocol-validation';
 import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
-import { clearFieldValue } from '~/components/Form/clearFieldValue';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import IssueAnchor from '~/components/IssueAnchor';
 import type {
@@ -164,7 +163,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
     // writes happens to be the last one to arm a debounce.
     draft.runGesture(() => {
       for (const field of EDGE_DEPENDENT_VARIABLE_FIELDS) {
-        clearFieldValue(storeApi, field);
+        storeApi.getState().clearValue(field);
       }
     });
   }, [draft, edgeType, restoreVersion, storeApi]);

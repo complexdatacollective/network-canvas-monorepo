@@ -7,8 +7,10 @@ import type { FieldValue } from '../Field/types';
 import {
   createObjectPathWriter,
   formatObjectPath,
+  getValue as readObjectPath,
   isSafeObjectPath,
   type ObjectPath,
+  omitValue,
   parseLegacyObjectPath,
   parseObjectPath,
 } from '../utils/objectPath';
@@ -29,16 +31,24 @@ const internalPathPrefix = '\u0000fresco-path:';
 const encodeObjectPath = (path: ObjectPath): string =>
   `${internalPathPrefix}${formatObjectPath(path)}`;
 
-const resolveFieldPath = (field: string): ObjectPath => {
+const parseFieldReference = (field: string): ObjectPath | null => {
   const path = field.startsWith(internalPathPrefix)
     ? parseObjectPath(field.slice(internalPathPrefix.length))
     : parseLegacyObjectPath(field);
 
-  if (!path || !isSafeObjectPath(path)) {
+  if (!path || !isSafeObjectPath(path)) return null;
+
+  return [...path];
+};
+
+const resolveFieldPath = (field: string): ObjectPath => {
+  const path = parseFieldReference(field);
+
+  if (!path) {
     throw new Error(`Unsafe form field path: ${field}`);
   }
 
-  return [...path];
+  return path;
 };
 
 const resolveFieldName = (field: string): string =>
@@ -79,16 +89,106 @@ const resolveRegisteredFieldName = (
   return aliases.size === 1 && alias ? alias : canonicalName;
 };
 
-const hasRegisteredAncestor = (
-  fields: Map<string, FieldState>,
-  path: ObjectPath,
+/**
+ * Whether `candidate` sits strictly beneath `containerPath`.
+ *
+ * Compared segment by segment rather than by string prefix, so a field whose
+ * NAME happens to read like a nested one — an opaque `parameters.type`, a
+ * single segment containing a dot — is not mistaken for a descendant of a
+ * container it has nothing to do with.
+ */
+const isDescendantPath = (
+  containerPath: ObjectPath,
+  candidate: ObjectPath,
+): boolean =>
+  candidate.length > containerPath.length &&
+  containerPath.every((segment, index) => candidate[index] === segment);
+
+const hasDescendantField = (
+  records: Map<string, FieldState>,
+  containerPath: ObjectPath,
 ): boolean => {
-  for (let length = 1; length < path.length; length += 1) {
-    if (fields.has(formatObjectPath(path.slice(0, length)))) return true;
+  for (const [fieldName, field] of records) {
+    if (
+      isDescendantPath(containerPath, resolveStoredFieldPath(fieldName, field))
+    ) {
+      return true;
+    }
   }
 
   return false;
 };
+
+const collectDescendantPaths = (
+  records: Map<string, FieldState>,
+  containerPath: ObjectPath,
+): ObjectPath[] => {
+  const paths: ObjectPath[] = [];
+  records.forEach((field, fieldName) => {
+    const path = resolveStoredFieldPath(fieldName, field);
+    if (isDescendantPath(containerPath, path)) paths.push(path);
+  });
+
+  return paths;
+};
+
+/**
+ * The NEAREST strict prefix of `path` registered as a field of its own, or
+ * `undefined` when no field sits above it.
+ *
+ * Looked up by key rather than scanned, which is sound only because
+ * `registerField` keys every record by `formatObjectPath` of its own path —
+ * the same formatting applied to a prefix here.
+ *
+ * Longest prefix first, because `getFormValues` replays nested fields
+ * shallowest-first: where a form registers both `parameters` and
+ * `parameters.bounds`, the deeper of the two is the one whose value the
+ * assembled output actually shows at a name beneath it.
+ */
+const findRegisteredAncestorPath = (
+  fields: Map<string, FieldState>,
+  path: ObjectPath,
+): ObjectPath | undefined => {
+  for (let length = path.length - 1; length >= 1; length -= 1) {
+    const ancestorPath = path.slice(0, length);
+    if (fields.has(formatObjectPath(ancestorPath))) return ancestorPath;
+  }
+
+  return undefined;
+};
+
+/**
+ * EVERY strict prefix of `path` registered as a field of its own, nearest
+ * first — not just the nearest one, which is all a clear used to reach.
+ *
+ * Overlapping registrations nest arbitrarily deep: `parameters`,
+ * `parameters.bounds`, and `parameters.bounds.min` can all be fields. Dropping
+ * a sub-path from only the nearest container leaves every container above it
+ * still holding that sub-path, and nothing shows it while the inner fields are
+ * mounted, because `getFormValues` replays deeper paths over shallower ones.
+ * The stale value surfaces later, when those fields unmount and stop
+ * overwriting it.
+ */
+const collectRegisteredAncestorPaths = (
+  fields: Map<string, FieldState>,
+  path: ObjectPath,
+): ObjectPath[] => {
+  const ancestorPaths: ObjectPath[] = [];
+  for (let length = path.length - 1; length >= 1; length -= 1) {
+    const ancestorPath = path.slice(0, length);
+    if (fields.has(formatObjectPath(ancestorPath))) {
+      ancestorPaths.push(ancestorPath);
+    }
+  }
+
+  return ancestorPaths;
+};
+
+/** Whether any strict prefix of `path` is registered as a field of its own. */
+const hasRegisteredAncestor = (
+  fields: Map<string, FieldState>,
+  path: ObjectPath,
+): boolean => findRegisteredAncestorPath(fields, path) !== undefined;
 
 /**
  * Helper to calculate form validity based on both field states and form-level errors.
@@ -299,6 +399,9 @@ type FieldOperations<Reference, Config> = {
   getFieldErrors: (fieldName: Reference) => string[] | null;
   validateField: (fieldName: Reference) => Promise<void>;
   resetField: (fieldName: Reference) => void;
+  getValue: (fieldName: Reference) => FieldValue;
+  hasValue: (fieldName: Reference) => boolean;
+  clearValue: (fieldName: Reference) => void;
 };
 
 type FieldPathOperations = FieldOperations<ObjectPath, InternalFieldConfig>;
@@ -417,6 +520,9 @@ export const createFormStore = (): FormStoreApi => {
   let formValidationToken = Symbol('form-validation');
   const fieldRecords = new Map<string, FieldState>();
   const dormantRecords = new Map<string, FieldState>();
+  // The last container value handed out per container name, so `getValue` can
+  // keep returning it by identity while it stays deep-equal. See `getValue`.
+  const containerValues = new Map<string, FieldValue>();
 
   const invalidateFormValidation = () => {
     formValidationToken = Symbol('form-validation');
@@ -481,6 +587,10 @@ export const createFormStore = (): FormStoreApi => {
           get().validateField(encodeObjectPath(fieldName)),
         resetField: (fieldName) =>
           get().resetField(encodeObjectPath(fieldName)),
+        getValue: (fieldName) => get().getValue(encodeObjectPath(fieldName)),
+        hasValue: (fieldName) => get().hasValue(encodeObjectPath(fieldName)),
+        clearValue: (fieldName) =>
+          get().clearValue(encodeObjectPath(fieldName)),
       },
 
       registerForm: (config) => {
@@ -494,6 +604,7 @@ export const createFormStore = (): FormStoreApi => {
         invalidateAllValidations();
         fieldRecords.clear();
         dormantRecords.clear();
+        containerValues.clear();
         set((state) => {
           state.fields.clear();
           state.dormantValues.clear();
@@ -827,6 +938,211 @@ export const createFormStore = (): FormStoreApi => {
           dormantRecords.get(fieldName) ??
           undefined
         );
+      },
+
+      /**
+       * The value at `fieldName`, from whichever of three places the form
+       * holds it: a field of its own, leaves registered BENEATH it, or a
+       * compound field registered at an ANCESTOR of it.
+       *
+       * The field maps are exact-string-keyed and carry no hierarchy, so the
+       * name a value is readable at and the name it is registered under come
+       * apart in both directions. A form that registers `parameters.type` and
+       * `parameters.min` never registers `parameters` at all; a form that
+       * registers `parameters` whole never registers `parameters.type`. Both
+       * names are nonetheless there in the form's own output, so a read that
+       * stopped at the exact key would report `undefined` for a value every
+       * other consumer can see — and a caller layering live values over
+       * committed ones would take that as "not in the form" and revive the
+       * committed one. A name with no field of its own therefore falls through
+       * to the assembled output whenever a registered field sits beneath it or
+       * above it. It is the whole-form assembly and not just the subtree,
+       * because both directions resolve against the same object. A field
+       * registered AT the name is still read as itself, on the terms every
+       * other value read uses — that is the value its own control is showing.
+       *
+       * The result is returned by IDENTITY while it stays deep-equal to the
+       * last one handed out, because `getFormValues` builds a fresh object
+       * every call: without that, a component selecting a container would
+       * re-render on every unrelated keystroke in the form, and any effect
+       * depending on the value would loop. Exact-name reads never reach any of
+       * this.
+       *
+       * REGISTERED fields above or below outrank a dormant field sitting at
+       * the name itself, because `getFormValues` is built from registered
+       * fields alone. `clearValue` is what makes that ordering load-bearing:
+       * clearing a container parks a dormant `undefined` at its name, and
+       * taking that ahead of the leaves would leave every later read of the
+       * container answering `undefined` — permanently, since nothing registers
+       * at a container name to displace it.
+       *
+       * DORMANT ancestors are excluded for the same reason dormant leaves are:
+       * an unmounted field contributes nothing to `getFormValues`, so there is
+       * no assembled object to read a sub-path out of.
+       */
+      getValue: (fieldReference) => {
+        const fieldName = resolveRegisteredFieldName(
+          fieldRecords,
+          dormantRecords,
+          fieldReference,
+        );
+        const registered = fieldRecords.get(fieldName);
+        if (registered) return registered.value;
+
+        const containerPath = parseFieldReference(fieldReference);
+        if (
+          containerPath &&
+          (hasDescendantField(fieldRecords, containerPath) ||
+            hasRegisteredAncestor(fieldRecords, containerPath))
+        ) {
+          // `getFormValues` assembles its output out of `FieldValue` leaves,
+          // so every node within it is itself a `FieldValue`.
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+          const assembled = readObjectPath(
+            get().getFormValues(),
+            containerPath,
+          ) as FieldValue;
+          const containerName = formatObjectPath(containerPath);
+
+          if (containerValues.has(containerName)) {
+            const previous = containerValues.get(containerName);
+            if (isEqual(previous, assembled)) return previous;
+          }
+
+          containerValues.set(containerName, assembled);
+          return assembled;
+        }
+
+        // Dormant leaves contribute nothing to `getFormValues`, so a container
+        // held only by them assembles to nothing at all.
+        return dormantRecords.get(fieldName)?.value;
+      },
+
+      /**
+       * Whether the form holds anything at `fieldName` — a registered field, a
+       * dormant one, leaves registered beneath it, or a registered field above
+       * it that owns the subtree the name sits in.
+       *
+       * Separate from `getValue` because a value read collapses "the form owns
+       * nothing here" and "the form owns `undefined` here" into the same
+       * answer, and a caller merging live values over committed ones has to
+       * tell those apart: before the leaves of a container register, the
+       * committed value is the only one there is. A registered ANCESTOR
+       * answers `true` whatever the assembled sub-path currently reads as —
+       * the form owns that subtree, so a sub-path missing from it is a value
+       * the person has emptied, not one the form has yet to hold.
+       *
+       * DORMANT ancestors are excluded, matching `getValue`: an unmounted
+       * field is not part of the form's output, so it owns no subtree here.
+       */
+      hasValue: (fieldReference) => {
+        if (get().getFieldState(fieldReference) !== undefined) return true;
+
+        const containerPath = parseFieldReference(fieldReference);
+        if (!containerPath) return false;
+
+        return (
+          hasDescendantField(fieldRecords, containerPath) ||
+          hasDescendantField(dormantRecords, containerPath) ||
+          hasRegisteredAncestor(fieldRecords, containerPath)
+        );
+      },
+
+      /**
+       * Clear `fieldName` everywhere the form holds it — the same three places
+       * `getValue` reads it from, resolved in the same order: a field of its
+       * own, the leaves registered BENEATH it, and the compound field
+       * registered at an ANCESTOR of it.
+       *
+       * The name resolves to a FIELD before it is read structurally, exactly
+       * as every other operation on this store resolves one. An opaque name is
+       * a single segment that happens to contain a dot (`favorite.color`, what
+       * `Field nameMode="opaque"` registers and publishes), so interpreting it
+       * structurally parks an `undefined` at a nested name nothing is
+       * registered under and leaves the field it actually names holding its
+       * value — readable through the alias, and still submitted.
+       *
+       * `setFieldValue(name, undefined)` clears nothing when the value is held
+       * as a tree of leaves rather than as one field, and DORMANT descendants
+       * have to go too: an unmounted field's parked value outranks
+       * `initialValue` when it next registers, so a leaf left behind here comes
+       * straight back the moment anything re-registers it.
+       *
+       * A name a registered ANCESTOR supplies is cleared INSIDE that
+       * ancestor's value — a fresh copy of it with the sub-path dropped,
+       * written through `setFieldValue` like any other value, so subscribers
+       * and dirty tracking see it as the change it is. Parking an `undefined`
+       * at the name alone would clear nothing at all, because the read takes
+       * the registered ancestor over a dormant field sitting at the name. An
+       * ancestor holding nothing at the sub-path — a string where the name
+       * expects an object, a key it never carried — is left exactly as it is
+       * rather than rebuilt around a value it never had.
+       *
+       * A REGISTERED field at the name gets this same ancestor write, not just
+       * its own value cleared: while it stays mounted, `getFormValues` replays
+       * it OVER its ancestor, so the ancestor's stale value is invisible either
+       * way. But the leaf can unmount later — a conditional field whose
+       * governing value just changed, which is exactly when clearing one
+       * matters — and an unmounted field contributes nothing to
+       * `getFormValues`. Skipping the ancestor write here would leave its
+       * stale sub-path to resurface the moment the leaf goes dormant, silently
+       * reviving data the person just cleared.
+       */
+      clearValue: (fieldReference) => {
+        const pathOperations = get().pathOperations;
+        const fieldName = resolveRegisteredFieldName(
+          fieldRecords,
+          dormantRecords,
+          fieldReference,
+        );
+        const existingField =
+          fieldRecords.get(fieldName) ?? dormantRecords.get(fieldName);
+        // A field of its own answers for its own name, whatever that name
+        // reads like structurally.
+        const containerPath = existingField
+          ? resolveStoredFieldPath(fieldName, existingField)
+          : parseFieldReference(fieldReference);
+
+        if (!containerPath || !pathOperations) {
+          get().setFieldValue(fieldReference, undefined);
+          return;
+        }
+
+        // A path can only be registered or dormant, never both, so the two
+        // passes cannot name the same field twice.
+        const descendants = [
+          ...collectDescendantPaths(fieldRecords, containerPath),
+          ...collectDescendantPaths(dormantRecords, containerPath),
+        ];
+        const ancestorPaths = collectRegisteredAncestorPaths(
+          fieldRecords,
+          containerPath,
+        );
+
+        get().setFieldValue(fieldReference, undefined);
+        descendants.forEach((path) => {
+          pathOperations.setFieldValue(path, undefined);
+        });
+
+        ancestorPaths.forEach((ancestorPath) => {
+          const ancestor = fieldRecords.get(formatObjectPath(ancestorPath));
+          if (!ancestor) return;
+
+          // A copy of a `FieldValue` with one sub-path dropped out of it is
+          // itself a `FieldValue`: `omitValue` only ever removes a key from a
+          // container it has already copied.
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+          const clearedAncestorValue = omitValue(
+            ancestor.value,
+            containerPath.slice(ancestorPath.length),
+          ) as FieldValue;
+          // Identity is `omitValue`'s report that the value held nothing at
+          // the sub-path. Writing anyway would mark a field dirty over a value
+          // the person never had.
+          if (clearedAncestorValue === ancestor.value) return;
+
+          pathOperations.setFieldValue(ancestorPath, clearedAncestorValue);
+        });
       },
 
       getFormValues: () => {

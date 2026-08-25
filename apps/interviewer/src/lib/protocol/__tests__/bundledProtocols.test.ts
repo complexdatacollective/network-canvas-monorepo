@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type VersionedProtocol } from '@codaco/protocol-validation';
+import developmentProtocol from '@codaco/protocols/development';
 
 import { resolveAssets } from '../bundledAssets';
 import { loadBundledSampleProtocol } from '../bundledProtocols';
@@ -15,6 +16,44 @@ const saveProtocol = vi.fn(async (..._args: unknown[]) => ({}) as never);
 vi.mock('../../db/api', () => ({
   saveProtocol: (...args: unknown[]) => saveProtocol(...args),
 }));
+
+type UnknownRecord = Record<string, unknown>;
+
+const isRecord = (value: unknown): value is UnknownRecord =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const developmentProtocolWithLegacyColors = (): unknown => {
+  const document: unknown = structuredClone(developmentProtocol);
+  if (!isRecord(document)) {
+    throw new Error('Development protocol fixture has no stages');
+  }
+  const stages = document.stages;
+  if (!Array.isArray(stages)) {
+    throw new Error('Development protocol fixture has no stages');
+  }
+
+  const findStage = (type: string): UnknownRecord => {
+    const stage = stages.find(
+      (candidate) => isRecord(candidate) && candidate.type === type,
+    );
+    if (!isRecord(stage)) throw new Error(`Missing ${type} fixture stage`);
+    return stage;
+  };
+
+  const narrative = findStage('NarrativePedigree');
+  if (!Array.isArray(narrative.diseases) || !isRecord(narrative.diseases[0])) {
+    throw new Error('Narrative Pedigree fixture has no disease');
+  }
+  narrative.diseases[0].color = '#cc0000';
+
+  const geospatial = findStage('Geospatial');
+  if (!isRecord(geospatial.mapOptions)) {
+    throw new Error('Geospatial fixture has no map options');
+  }
+  geospatial.mapOptions.color = '#3399ff';
+
+  return document;
+};
 
 describe('bundled sample protocol', () => {
   beforeEach(() => {
@@ -92,6 +131,33 @@ describe('bundled sample protocol', () => {
       );
     }
     expect(saveProtocol).not.toHaveBeenCalled();
+  });
+
+  it('repairs shipped colors before admitting a current-version protocol', async () => {
+    const result = await importBundledProtocol({
+      name: 'Legacy Development Protocol',
+      assets: [],
+      document: developmentProtocolWithLegacyColors(),
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      throw new Error(`Expected import success, received ${result.error}`);
+    }
+    expect(result.migrated).toBe(false);
+    const narrative = result.protocol.stages.find(
+      (stage) => stage.type === 'NarrativePedigree',
+    );
+    const geospatial = result.protocol.stages.find(
+      (stage) => stage.type === 'Geospatial',
+    );
+    expect(narrative).toMatchObject({
+      diseases: [{ color: 'node-color-seq-1' }],
+    });
+    expect(geospatial).toMatchObject({
+      mapOptions: { color: 'ord-color-seq-6' },
+    });
+    expect(saveProtocol).toHaveBeenCalledTimes(1);
   });
 });
 

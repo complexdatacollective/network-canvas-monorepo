@@ -65,7 +65,10 @@ export default function RadioMatrixField(props: RadioMatrixFieldProps) {
       ? rows.map((row) => ({ id: row.id, value: defaultOption }))
       : [],
   );
-  const current = isControlled ? (value ?? []) : internal;
+  // Rendering only: for one render the store can still hold the previous
+  // field's value (see the render-tolerance contract on `useField`), and
+  // anything but a row list renders as unanswered.
+  const current = isControlled ? (Array.isArray(value) ? value : []) : internal;
 
   const handleRowChange = (rowId: string, next: string) => {
     if (readOnly) return;
