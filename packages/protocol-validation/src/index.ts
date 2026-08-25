@@ -73,10 +73,6 @@ export {
   type InterfaceOwnedOptionBinding,
 } from './utils/findExclusiveVariableConflicts.ts';
 export {
-  type ConfigurationProblem,
-  repairConfigurationConflicts,
-} from './utils/repairConfigurationConflicts.ts';
-export {
   type BinOnlyVariables,
   collectInterfaceImpliedRules,
   declaresTextGenerator,
