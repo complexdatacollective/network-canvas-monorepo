@@ -13,6 +13,7 @@ import DialogForm, {
   type DialogFormProps,
 } from '~/components/DialogForm/DialogForm';
 import ArchitectField from '~/components/Form/ArchitectField';
+import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import { documentationLinks } from '~/utils/documentationLinks';
 
 import ExternalLink from '../../ExternalLink';
@@ -32,6 +33,7 @@ import {
   type RuleOptionItem,
   type RuleTargetType,
   type RuleTypeOption,
+  type RuleVariableOptionItem,
 } from './ruleCodebook';
 import {
   getEmptyRuleValue,
@@ -252,7 +254,7 @@ type BranchProps = {
   seed: EditableRule;
   attributeId: string | undefined;
   operator: string | undefined;
-  variablesAsOptions: RuleOptionItem[];
+  variablesAsOptions: RuleVariableOptionItem[];
   operatorOptions: RuleOptionItem[];
   variableType: string | undefined;
   variableOptions: RuleOptionItem[] | undefined;
@@ -273,8 +275,9 @@ const EgoRuleFields = ({
         name={ATTRIBUTE_FIELD}
         label="Ego attribute"
         hint="Select the ego attribute this rule will be based on."
-        component={NativeSelectField}
-        placeholder="Select an ego attribute…"
+        component={VariablePickerControl}
+        entity="ego"
+        disallowCreation
         options={variablesAsOptions}
         initialValue={
           typeof seed.options?.attribute === 'string'
@@ -395,8 +398,10 @@ const EntityRuleFields = ({
             name={ATTRIBUTE_FIELD}
             label="Attribute"
             hint="Select an attribute to base this rule on."
-            component={NativeSelectField}
-            placeholder="Select an attribute…"
+            component={VariablePickerControl}
+            entity={target}
+            type={entityTypeId}
+            disallowCreation
             options={variablesAsOptions}
             initialValue={
               typeof seed.options?.attribute === 'string'

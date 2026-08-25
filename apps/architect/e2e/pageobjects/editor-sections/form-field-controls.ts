@@ -1,4 +1,4 @@
-import { type Locator, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 import { typeInlineRun } from '../stage-editor.js';
 import {
@@ -32,8 +32,8 @@ import {
 //   key can never be removed once written — so: omit → never touch,
 //   explicit false on option one → click twice (on→off), explicit false on
 //   option two → click once (its default is true).
-// - Field dialogs render validation inline without a master section toggle;
-//   each rule, including 'Required', has its own switch.
+// - Field dialogs keep validation in an optional Section. Open that Section
+//   before interacting with an individual rule such as 'Required'.
 export type BooleanOptionSpec = {
   label: string;
   // 'omit' → never touch the toggle (option one only — option two defaults
@@ -51,6 +51,17 @@ export type FormFieldSpec = {
   dateMin?: string;
   required?: boolean;
 };
+
+export async function openValidationSection(dialog: Locator): Promise<void> {
+  const toggle = dialog.getByRole('switch', {
+    name: 'Validation',
+    exact: true,
+  });
+  if (!(await toggle.isChecked())) {
+    await toggle.click();
+  }
+  await expect(toggle).toBeChecked();
+}
 
 async function replaceRichTextContent(
   page: Page,
@@ -160,6 +171,7 @@ export async function addConfiguredFormField(
   }
 
   if (spec.required) {
+    await openValidationSection(dialog);
     await dialog.getByRole('switch', { name: 'Required', exact: true }).click();
   }
 

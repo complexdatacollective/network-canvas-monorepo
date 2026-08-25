@@ -30,4 +30,3 @@ export { default as SkipLogic } from './SkipLogic';
 export { default as SociogramPrompts } from './SociogramPrompts';
 export { default as SortOptionsForExternalData } from './SortOptionsForExternalData';
 export { default as TieStrengthCensusPrompts } from './TieStrengthCensusPrompts';
-export { default as Title } from './Title';

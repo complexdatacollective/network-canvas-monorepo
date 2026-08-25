@@ -97,13 +97,70 @@ export const VariablePickerSection = ({
  * that remain (section headings, the picker's hint, what each editor adds
  * around this) are props and surrounding markup, not a second implementation.
  */
-const VariableDefinitionFields = ({ item, fields }: SharedProps) => {
+export const InputControlFields = ({ item, fields }: SharedProps) => {
+  const { variable, variableType, isNewVariable, componentOptions } = fields;
+
+  return (
+    <>
+      <IssueAnchor fieldName="component" description="Input control" />
+      <ArchitectField
+        name="component"
+        label="Input control"
+        hint={
+          <>
+            How the answer is collected. For detailed information about these
+            options, see our{' '}
+            <ExternalLink href={documentationLinks.inputControls}>
+              documentation
+            </ExternalLink>
+            .
+          </>
+        }
+        component={NativeSelectField}
+        initialValue={asString(item.component)}
+        validation={{ required: true }}
+        placeholder="Select an input control"
+        disabled={!variable}
+        // A NEW variable keeps the authored order, which reads as a
+        // progression from simplest control to most involved. An existing
+        // variable's list is a lookup — the researcher knows what they want
+        // and is finding it — so it is alphabetised (within each group,
+        // since the list may still be grouped by type).
+        options={toSelectOptions(componentOptions, {
+          sorted: !isNewVariable,
+        })}
+      />
+      {isNewVariable && variableType && (
+        <Alert variant="info" className="my-7">
+          <AlertDescription>
+            The selected input control will cause this attribute to be defined
+            as type <strong>{variableType}</strong>. Once set, this cannot be
+            changed (although you may change the input control within this
+            type).
+          </AlertDescription>
+        </Alert>
+      )}
+      {!isNewVariable && variableType && (
+        <Alert variant="warning" className="my-7">
+          <AlertTitle>Attribute type is locked</AlertTitle>
+          <AlertDescription>
+            A pre-existing attribute is currently selected. You cannot change an
+            attribute type after it has been created, so only{' '}
+            <strong>{variableType}</strong> compatible input controls can be
+            selected above. If you would like to use a different input control
+            type, you will need to create a new attribute.
+          </AlertDescription>
+        </Alert>
+      )}
+    </>
+  );
+};
+
+export const VariableConfigurationFields = ({ item, fields }: SharedProps) => {
   const {
     variable,
     variableType,
-    isNewVariable,
     component,
-    componentOptions,
     existingVariables,
     interfaceOwnedOptionSet,
   } = fields;
@@ -115,66 +172,6 @@ const VariableDefinitionFields = ({ item, fields }: SharedProps) => {
 
   return (
     <>
-      <IssueAnchor fieldName="component" description="Input control" />
-      <Section
-        title="Answer control"
-        description={
-          variable
-            ? 'Choose how participants enter an answer for this attribute.'
-            : 'Select an attribute before choosing its input control.'
-        }
-        disabled={!variable}
-      >
-        <ArchitectField
-          name="component"
-          label="Input control"
-          hint={
-            <>
-              How the answer is collected. For detailed information about these
-              options, see our{' '}
-              <ExternalLink href={documentationLinks.inputControls}>
-                documentation
-              </ExternalLink>
-              .
-            </>
-          }
-          component={NativeSelectField}
-          initialValue={asString(item.component)}
-          validation={{ required: true }}
-          placeholder="Select an input control"
-          // A NEW variable keeps the authored order, which reads as a
-          // progression from simplest control to most involved. An existing
-          // variable's list is a lookup — the researcher knows what they want
-          // and is finding it — so it is alphabetised (within each group,
-          // since the list may still be grouped by type).
-          options={toSelectOptions(componentOptions, {
-            sorted: !isNewVariable,
-          })}
-        />
-        {isNewVariable && variableType && (
-          <Alert variant="info" className="my-7">
-            <AlertDescription>
-              The selected input control will cause this attribute to be defined
-              as type <strong>{variableType}</strong>. Once set, this cannot be
-              changed (although you may change the input control within this
-              type).
-            </AlertDescription>
-          </Alert>
-        )}
-        {!isNewVariable && variableType && (
-          <Alert variant="warning" className="my-7">
-            <AlertTitle>Attribute type is locked</AlertTitle>
-            <AlertDescription>
-              A pre-existing attribute is currently selected. You cannot change
-              an attribute type after it has been created, so only{' '}
-              <strong>{variableType}</strong> compatible input controls can be
-              selected above. If you would like to use a different input control
-              type, you will need to create a new attribute.
-            </AlertDescription>
-          </Alert>
-        )}
-      </Section>
-
       {isOrdinalOrCategoricalType(variableType) && (
         <>
           <IssueAnchor fieldName="options" description="Choice values" />
@@ -231,5 +228,22 @@ const VariableDefinitionFields = ({ item, fields }: SharedProps) => {
     </>
   );
 };
+
+const VariableDefinitionFields = (props: SharedProps) => (
+  <>
+    <Section
+      title="Answer control"
+      description={
+        props.fields.variable
+          ? 'Choose how participants enter an answer for this attribute.'
+          : 'Select an attribute before choosing its input control.'
+      }
+      disabled={!props.fields.variable}
+    >
+      <InputControlFields {...props} />
+    </Section>
+    <VariableConfigurationFields {...props} />
+  </>
+);
 
 export default VariableDefinitionFields;

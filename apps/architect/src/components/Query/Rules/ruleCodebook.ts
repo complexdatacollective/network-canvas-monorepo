@@ -7,6 +7,11 @@ import { operatorsAsOptions, operatorsByType, validTypes } from './options';
 export type RuleTargetType = 'node' | 'edge' | 'ego';
 
 export type RuleOptionItem = { value: string | number; label: string };
+export type RuleVariableOptionItem = {
+  value: string;
+  label: string;
+  type: string;
+};
 
 /** One choice of rule target, as offered by the editor's Entity control. */
 export type RuleTypeOption = { label: string; value: RuleTargetType };
@@ -55,7 +60,7 @@ export const getRuleVariables = (
 /** Only variable types a rule can actually compare are offered. */
 export const getVariablesAsOptions = (
   variables: Record<string, unknown>,
-): RuleOptionItem[] =>
+): RuleVariableOptionItem[] =>
   Object.entries(variables).flatMap(([variableId, definition]) => {
     const variable = asRecord(definition);
     const type = asNonEmptyString(variable?.type);
@@ -64,6 +69,7 @@ export const getVariablesAsOptions = (
       {
         value: variableId,
         label: asNonEmptyString(variable?.name) ?? variableId,
+        type,
       },
     ];
   });

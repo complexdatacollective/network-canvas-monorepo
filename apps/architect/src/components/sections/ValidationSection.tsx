@@ -1,6 +1,7 @@
 import { get, pickBy } from 'es-toolkit/compat';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Section from '@codaco/fresco-ui/Section';
 import type { Variable } from '@codaco/protocol-validation';
@@ -48,8 +49,6 @@ type ValidationSectionProps = {
    * to refuse a half-configured rule with.
    */
   commitsImmediately?: boolean;
-  /** Whether the Section can be collapsed. Dialog editors keep it open. */
-  toggleable?: boolean;
   /** Allows external-state consumers to mirror an accepted close. */
   onOpenChange?: (open: boolean) => boolean | Promise<boolean>;
 };
@@ -65,7 +64,6 @@ const ValidationSection = ({
   currentVariableId,
   initialValue,
   commitsImmediately = false,
-  toggleable = true,
   onOpenChange,
 }: ValidationSectionProps) => {
   // Sibling draft values, read reactively off the SAME form `ValidationSection`
@@ -103,6 +101,25 @@ const ValidationSection = ({
       ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion
         hasEntries(liveValidation as ValidationMap)
       : hasEntries(initialValue);
+  const hasValidationError = useFormStore(
+    (store) => (store.errors.fieldErrors.validation?.length ?? 0) > 0,
+  );
+  const hadValidationError = useRef(false);
+  const [validationErrorVersion, setValidationErrorVersion] = useState(0);
+
+  // A contradiction can be caused by changing an attribute that is only the
+  // target of another attribute's rule. Its own optional Validation Section is
+  // legitimately closed, but the save-time validator still reports the error
+  // against the validation field that owns the message. Remount the Section
+  // on each NEW standing error so it opens and registers that owning field.
+  // Clearing the error does not remount it again, so closing the Section still
+  // discards its rules and leaves it closed as requested.
+  useEffect(() => {
+    if (hasValidationError && !hadValidationError.current) {
+      setValidationErrorVersion((version) => version + 1);
+    }
+    hadValidationError.current = hasValidationError;
+  }, [hasValidationError]);
   const existingVariablesForType = useMemo(
     () =>
       pickBy(
@@ -128,18 +145,17 @@ const ValidationSection = ({
     />
   );
 
-  const toggleProps = toggleable
-    ? { toggleable: true as const, defaultOpen: hasValidation, onOpenChange }
-    : {};
-
   return (
     <>
       <div id={id} className="sr-only" />
       <Section
+        key={validationErrorVersion}
         title={label}
         description={summary}
         disabled={disabled}
-        {...toggleProps}
+        toggleable
+        defaultOpen={hasValidation || hasValidationError}
+        onOpenChange={onOpenChange}
       >
         {validationEditor}
       </Section>

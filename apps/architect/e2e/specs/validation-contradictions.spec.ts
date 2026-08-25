@@ -1,6 +1,7 @@
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
 import { readProtocolJson } from '../helpers/read-store.js';
+import { openValidationSection } from '../pageobjects/editor-sections/form-field-controls.js';
 import { createVariableViaSpotlight } from '../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../pageobjects/stage-editor.js';
 
@@ -44,12 +45,11 @@ test('the field editor blocks an inverted min/max validation pair', async ({
     .getByLabel('Input control')
     .selectOption({ label: 'Number Input' });
 
-  // Field dialogs render validation inline without a master Section toggle.
-  // Scope its individually named rule switches to the accessible dialog.
   const validationControls = page.getByRole('dialog', {
     name: 'Edit Field',
     exact: true,
   });
+  await openValidationSection(validationControls);
 
   const minValue = page.locator('input[name="validation-value-minValue"]');
   const maxValue = page.locator('input[name="validation-value-maxValue"]');
@@ -139,6 +139,7 @@ test('the field editor refuses to save an uncorrected min/max pair', async ({
     name: 'Edit Field',
     exact: true,
   });
+  await openValidationSection(validationControls);
   const minValue = page.locator('input[name="validation-value-minValue"]');
   const maxValue = page.locator('input[name="validation-value-maxValue"]');
 

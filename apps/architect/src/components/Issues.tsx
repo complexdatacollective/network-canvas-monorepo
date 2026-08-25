@@ -92,8 +92,8 @@ export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
       // re-validating after an edit replaced it. It now harvests to
       // "Page heading - …", because #1400 changed `ArchitectField`'s
       // `IssueAnchor` description from `startCase(name)` to the field's own
-      // `label` ("Page heading", sections/Title.tsx), so the panel and the
-      // control agree by construction and neither says "Title". Pinned by
+      // `label` ("Page heading", sections/ContentGrid/ContentGrid.tsx), so the
+      // panel and the control agree by construction and neither says "Title". Pinned by
       // e2e/specs/issues-panel.spec.ts. A ref callback cannot be early: it
       // runs when the element exists, whenever that turns out to be.
       harvestLabel(el, field);

@@ -34,7 +34,6 @@ import {
   SociogramPrompts,
   SortOptionsForExternalData,
   TieStrengthCensusPrompts,
-  Title,
 } from '~/components/sections';
 import EdgeConfiguration from '~/components/sections/EdgeConfiguration/EdgeConfiguration';
 import BoundaryOptions from '~/components/sections/FamilyPedigree/BoundaryOptions';
@@ -151,7 +150,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
     documentation: interfaceDocumentationUrl('ego-form'),
   },
   Information: {
-    sections: [Title, ContentGrid, SkipLogic, InterviewScript],
+    sections: [ContentGrid, SkipLogic, InterviewScript],
     documentation: interfaceDocumentationUrl('information'),
   },
   NameGenerator: {

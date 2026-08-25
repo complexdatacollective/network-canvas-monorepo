@@ -8,7 +8,9 @@ import IssueAnchor from '~/components/IssueAnchor';
 
 import ValidationSection from '../ValidationSection';
 import { asValidationMap } from './helpers';
-import VariableDefinitionFields, {
+import {
+  InputControlFields,
+  VariableConfigurationFields,
   VariablePickerSection,
 } from './VariableDefinitionFields';
 import {
@@ -73,11 +75,11 @@ const FieldFields = ({
         hint="Select an attribute"
       />
 
-      <IssueAnchor fieldName="prompt" description="Question text" />
       <Section
-        title="Participant prompt"
-        description="Write the question participants will answer in this form field."
+        title="Field configuration"
+        description="Write the participant-facing prompt and choose how the response is collected."
       >
+        <IssueAnchor fieldName="prompt" description="Question text" />
         <ArchitectField
           name="prompt"
           label="Question text"
@@ -88,11 +90,6 @@ const FieldFields = ({
           singleLine
           placeholder="What is this person's name?"
         />
-      </Section>
-      <Section
-        title="Answer guidance"
-        description="Add optional guidance and choose whether validation requirements are shown to participants."
-      >
         <ArchitectField
           name="hint"
           label="Hint text"
@@ -112,9 +109,15 @@ const FieldFields = ({
           initialValue={item.showValidationHints === true}
           validation={{}}
         />
+        <InputControlFields
+          entity={entity}
+          type={type}
+          item={item}
+          fields={fields}
+        />
       </Section>
 
-      <VariableDefinitionFields
+      <VariableConfigurationFields
         entity={entity}
         type={type}
         item={item}
@@ -138,7 +141,6 @@ const FieldFields = ({
         // a real codebook id let the row offer a reference rule the dialog
         // then rejected on save.
         currentVariableId={!isNewVariable && variable ? variable : ''}
-        toggleable={false}
       />
     </>
   );

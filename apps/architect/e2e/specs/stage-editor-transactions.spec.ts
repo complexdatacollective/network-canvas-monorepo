@@ -3,6 +3,7 @@ import type { CurrentProtocol, Variable } from '@codaco/protocol-validation';
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
 import { readProtocolJson } from '../helpers/read-store.js';
+import { openValidationSection } from '../pageobjects/editor-sections/form-field-controls.js';
 import { addFormField } from '../pageobjects/editor-sections/forms.js';
 import { StageEditor } from '../pageobjects/stage-editor.js';
 import { Timeline } from '../pageobjects/timeline.js';
@@ -117,8 +118,12 @@ test('discarding stage edits reverts a validation change to a shared variable', 
     .section('Form configuration')
     .getByRole('button', { name: 'Edit field' })
     .click();
-  await architectPage
-    .getByRole('dialog', { name: 'Edit Field', exact: true })
+  const fieldDialog = architectPage.getByRole('dialog', {
+    name: 'Edit Field',
+    exact: true,
+  });
+  await openValidationSection(fieldDialog);
+  await fieldDialog
     .getByRole('switch', { name: 'Required', exact: true })
     .click();
   await architectPage

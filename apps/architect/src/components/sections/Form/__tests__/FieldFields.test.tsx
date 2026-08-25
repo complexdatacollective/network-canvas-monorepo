@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -10,7 +10,11 @@ import { getFieldId } from '~/utils/issues';
 // which the stub below surfaces as a data attribute.
 vi.mock('@codaco/fresco-ui/Section', () => ({
   default: ({ children, title }: { children: ReactNode; title: ReactNode }) => (
-    <section data-testid="section" data-has-title={title != null}>
+    <section
+      data-testid="section"
+      data-has-title={title != null}
+      data-title={typeof title === 'string' ? title : undefined}
+    >
       {children}
     </section>
   ),
@@ -41,17 +45,10 @@ vi.mock('~/components/ExternalLink', () => ({
 
 // Surfaces the identity the ROW-level contradiction check is given.
 vi.mock('~/components/sections/ValidationSection', () => ({
-  default: ({
-    currentVariableId,
-    toggleable = true,
-  }: {
-    currentVariableId: string;
-    toggleable?: boolean;
-  }) => (
+  default: ({ currentVariableId }: { currentVariableId: string }) => (
     <div
       data-testid="validation-section"
       data-current-variable-id={currentVariableId}
-      data-toggleable={toggleable}
     />
   ),
 }));
@@ -114,18 +111,31 @@ describe('FieldFields validation identity', () => {
       expect(section).toHaveAttribute('data-has-title', 'true');
       expect(section.parentElement).toBe(form);
     });
-    ['variable', 'prompt', 'component'].forEach((fieldName) => {
+    const variableAnchor = document.getElementById(getFieldId('variable'));
+    expect(variableAnchor).toHaveClass('sr-only');
+    expect(variableAnchor?.nextElementSibling).toHaveAttribute(
+      'data-testid',
+      'section',
+    );
+
+    const fieldConfiguration = screen
+      .getAllByTestId('section')
+      .find((section) => section.dataset.title === 'Field configuration');
+    if (!fieldConfiguration) {
+      throw new Error('Expected a Field configuration Section');
+    }
+    const configuration = within(fieldConfiguration);
+    ['prompt', 'hint', 'showValidationHints', 'component'].forEach(
+      (fieldName) => {
+        expect(configuration.getByTestId(`field-${fieldName}`)).toBeVisible();
+      },
+    );
+    ['prompt', 'component'].forEach((fieldName) => {
       const anchor = document.getElementById(getFieldId(fieldName));
       expect(anchor).toHaveClass('sr-only');
-      expect(anchor?.nextElementSibling).toHaveAttribute(
-        'data-testid',
-        'section',
-      );
+      expect(fieldConfiguration).toContainElement(anchor);
     });
-    expect(screen.getByTestId('validation-section')).toHaveAttribute(
-      'data-toggleable',
-      'false',
-    );
+    expect(screen.getByTestId('validation-section')).toBeInTheDocument();
   });
 
   it.each([

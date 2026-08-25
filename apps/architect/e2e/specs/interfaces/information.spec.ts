@@ -20,14 +20,18 @@ test('creates a valid Information stage from scratch', async ({
   await editor.createNew('Information');
   await editor.setStageName('About This Study');
 
-  // Title.tsx's Page Heading field: `data-field-name="title"` wraps a plain
-  // `<input>` (fresco-ui InputField), UI-required even though the schema
-  // marks `title` optional (Title.tsx's `validation={{ required: true }}`).
-  await editor.field('title').getByRole('textbox').fill('Welcome');
+  const pageContent = editor.section('Page content');
+
+  // Page heading now belongs to the same Section as the content items. It is
+  // UI-required even though the schema marks `title` optional.
+  await pageContent
+    .locator('[data-field-name="title"]')
+    .getByRole('textbox')
+    .fill('Welcome');
 
   // The add button names what it adds, so it needs no section scoping to be
   // unambiguous — the whole point of #1391's rename.
-  await architectPage
+  await pageContent
     .getByRole('button', { name: 'Create new content item', exact: true })
     .click();
 

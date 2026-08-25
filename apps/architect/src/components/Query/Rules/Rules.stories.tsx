@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useId, useState } from 'react';
+import { Provider } from 'react-redux';
+import { createStore } from 'redux';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
@@ -7,6 +9,8 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 
 import Rules, { type RulesOuterProps } from './Rules';
 import type { Rule } from './validateRule';
+
+type RulesStoryArgs = Extract<RulesOuterProps, { type: 'query' }>;
 
 const ORDINAL_OPTIONS = [
   { value: 'never', label: 'Never' },
@@ -81,6 +85,11 @@ const CODEBOOK = {
     },
   },
 };
+
+const createStoryStore = () =>
+  createStore(() => ({
+    activeProtocol: { present: { codebook: CODEBOOK } },
+  }));
 
 /**
  * One example for every operator exposed by the rule editor, distributed
@@ -296,6 +305,13 @@ const meta = {
   title: 'Components/Form/Rules',
   component: Rules,
   tags: ['autodocs'],
+  decorators: [
+    (Story) => (
+      <Provider store={createStoryStore()}>
+        <Story />
+      </Provider>
+    ),
+  ],
   parameters: {
     layout: 'fullscreen',
     docs: {
@@ -336,7 +352,7 @@ the real dialog and form store behind it.
     onChange: { control: false },
   },
   render: (args) => <RuleFieldStory {...args} />,
-} satisfies Meta<RulesOuterProps>;
+} satisfies Meta<RulesStoryArgs>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -399,10 +415,17 @@ export const AuthoringARule: Story = {
     await userEvent.click(
       within(dialog).getByRole('radio', { name: /^Ego -/ }),
     );
-    await userEvent.selectOptions(
-      await within(dialog).findByRole('combobox', { name: /Ego attribute/ }),
-      'consent',
+    await userEvent.click(
+      await within(dialog).findByRole('button', { name: 'Select attribute' }),
     );
+    const attributeSearch = await page.findByRole('searchbox', {
+      name: 'Find or create an attribute',
+    });
+    await userEvent.type(attributeSearch, 'Consent given');
+    await userEvent.keyboard('{Enter}');
+    await expect(
+      await within(dialog).findByRole('button', { name: 'Change attribute' }),
+    ).toBeVisible();
     await userEvent.selectOptions(
       await within(dialog).findByRole('combobox', { name: /^Operator/ }),
       'EXACTLY',

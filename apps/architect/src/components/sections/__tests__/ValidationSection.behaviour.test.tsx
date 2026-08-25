@@ -107,7 +107,7 @@ const validate = (values: Record<string, unknown>) => {
 };
 
 describe('ValidationSection with a target-only contradiction', () => {
-  it('keeps dialog validation mounted so a target-only error blocks save', async () => {
+  it('opens the optional section when a target-only error blocks save', async () => {
     const onSubmit = vi.fn();
 
     render(
@@ -120,17 +120,17 @@ describe('ValidationSection with a target-only contradiction', () => {
           allVariables={allVariables}
           currentVariableId="b"
           initialValue={{}}
-          toggleable={false}
         />
         <button type="submit">Save</button>
       </AppForm>,
     );
 
-    // Dialogs keep the surrounding Section open, so the field stays registered
-    // even when the attribute has no rules of its own.
     expect(
-      screen.getByRole('group', { name: 'Requirements' }),
-    ).toBeInTheDocument();
+      screen.getByRole('switch', { name: 'Validation' }),
+    ).not.toBeChecked();
+    expect(
+      screen.queryByRole('group', { name: 'Requirements' }),
+    ).not.toBeInTheDocument();
 
     // The draft edit switches the picker to year resolution, breaking the
     // incoming full-resolution sameAs from `a`. fresco-ui's form-level
@@ -139,14 +139,15 @@ describe('ValidationSection with a target-only contradiction', () => {
       screen.getByRole('button', { name: 'Switch to year resolution' }),
     );
     expect(
-      screen.getByRole('group', { name: 'Requirements' }),
-    ).toBeInTheDocument();
+      screen.queryByRole('group', { name: 'Requirements' }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/different resolutions/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     const message = await screen.findByText(/different resolutions/);
     expect(message).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Validation' })).toBeChecked();
     expect(screen.getByTestId('validation-field-error')).toContainElement(
       message,
     );
@@ -175,7 +176,7 @@ describe('ValidationSection with a store-level validation error', () => {
     );
   };
 
-  it('stays collapsed while its field is unregistered', () => {
+  it('opens so its owning field can display the error', async () => {
     render(
       <AppForm onSubmit={() => ({ success: true })}>
         <SetErrorsButton />
@@ -198,9 +199,15 @@ describe('ValidationSection with a store-level validation error', () => {
       screen.getByRole('button', { name: 'Force a validation error' }),
     );
 
-    expect(
-      screen.queryByRole('group', { name: 'Requirements' }),
-    ).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByRole('group', { name: 'Requirements' }),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByRole('switch', { name: 'Validation' })).toBeChecked();
+    expect(screen.getByTestId('validation-field-error')).toHaveTextContent(
+      'Contradictory rules',
+    );
   });
 
   it('renders its Section directly beside surrounding fields', () => {
