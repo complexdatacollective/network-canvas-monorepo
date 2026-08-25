@@ -116,7 +116,7 @@ const narrativeStage = {
     {
       id: 'condition',
       label: 'Condition',
-      color: '#cc0000',
+      color: 'node-color-seq-1',
       variable: 'condition',
       inheritancePattern: 'autosomalDominant',
     },

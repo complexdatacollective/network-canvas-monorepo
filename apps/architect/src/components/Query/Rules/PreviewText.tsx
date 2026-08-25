@@ -4,7 +4,7 @@ import { Fragment, type CSSProperties, type ReactNode } from 'react';
 import Icon from '@codaco/fresco-ui/Icon';
 import Node, { NodeColors, type NodeShape } from '@codaco/fresco-ui/Node';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
-import type { VariableType } from '@codaco/protocol-validation';
+import type { ColorReference, VariableType } from '@codaco/protocol-validation';
 import { VariablePill } from '~/components/VariablePill';
 import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
 
@@ -216,7 +216,7 @@ const EgoEntity = () => (
 
 type RuleEntityProps = {
   type: string;
-  color: string;
+  color: ColorReference;
   shape?: NodeShape;
   label: string;
 };
@@ -316,7 +316,10 @@ const describeRule = (
   ) : (
     <RuleEntity
       type={type}
-      color={options.typeColor ?? ''}
+      color={
+        options.typeColor ??
+        (type === 'edge' ? 'edge-color-seq-1' : 'node-color-seq-1')
+      }
       shape={options.typeShape}
       label={options.typeLabel ?? ''}
     />
@@ -433,7 +436,7 @@ export type PreviewTextOptions = {
    * had, and which the pill rendered with the fallback colour and icon.
    */
   variableType?: VariableType;
-  typeColor?: string;
+  typeColor?: ColorReference;
   typeShape?: NodeShape;
   typeLabel?: string;
 };

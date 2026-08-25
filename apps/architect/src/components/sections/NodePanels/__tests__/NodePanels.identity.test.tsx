@@ -256,6 +256,40 @@ describe('NodePanels authored synthetic parameters', () => {
     });
   });
 
+  it('drops a stale block from a roster panel when a gesture rewrites the slots', async () => {
+    // `panelSchema` refuses a `synthetic` block on any panel whose dataSource
+    // is not 'existing', and this editor renders no control that could remove
+    // one — so a rewrite gesture must not carry the invalid pair forward (an
+    // imported protocol can arrive holding it). The existing-network panel's
+    // block must survive the same rewrite untouched.
+    const { getFormValues } = renderPanels([
+      panelWithSynthetic('panel-1', 'A', FIRST_SYNTHETIC),
+      {
+        id: 'panel-2',
+        title: 'B',
+        dataSource: 'asset-1',
+        filter: undefined,
+        synthetic: SECOND_SYNTHETIC,
+      },
+    ]);
+
+    await waitFor(() =>
+      expect(screen.getAllByTestId('node-panel')).toHaveLength(2),
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Move side panel 2 up' }),
+    );
+
+    await waitFor(() => {
+      const panels = panelsIn(getFormValues());
+      expect(panels?.[0]?.id).toBe('panel-2');
+      expect(panels?.[0]?.synthetic).toBeUndefined();
+      expect(panels?.[1]?.id).toBe('panel-1');
+      expect(panels?.[1]?.synthetic).toEqual(FIRST_SYNTHETIC);
+    });
+  });
+
   it('restores the block when a toggle-off is undone', async () => {
     const { getFormValues, getHistory } = renderWithSubject([
       panelWithSynthetic('panel-1', 'A', FIRST_SYNTHETIC),

@@ -1092,3 +1092,245 @@ describe('a stopped walk is a prefix of the full one (C5)', () => {
     }
   });
 });
+
+describe('a stop target the protocol does not have', () => {
+  it('refuses a stage index past the protocol', () => {
+    expect(() => run(FULL_PROTOCOL, { stopAt: { stageIndex: 99 } })).toThrow(
+      /stopAt\.stageIndex 99 is out of range/,
+    );
+  });
+
+  it('refuses a prompt bound past the stop stage', () => {
+    // Stage 4 is the ordinal bin, which has one prompt: a bound of 1 applies
+    // it whole, anything above describes prompts the stage does not have.
+    expect(() =>
+      run(FULL_PROTOCOL, { stopAt: { stageIndex: 4, promptIndex: 5 } }),
+    ).toThrow(/stopAt\.promptIndex 5 is out of range/);
+    expect(
+      run(FULL_PROTOCOL, { stopAt: { stageIndex: 4, promptIndex: 1 } })
+        .currentStep,
+    ).toBe(4);
+  });
+});
+
+describe('a dropout resumes the next stage at its first prompt', () => {
+  it('never pairs the resume step with the abandoned stage’s prompt', () => {
+    // A two-prompt bin whose burden makes abandonment all but certain the
+    // moment it completes: the walk reports the NEXT stage as the resume
+    // position, so the payload's prompt position must be the fresh stage's
+    // zero rather than the bin's final prompt — the runtime never persists a
+    // stale prompt index (its sync omits it and every host hydrates 0), and a
+    // consumer honouring one could index a prompt the next stage lacks.
+    const exhausting = parse(
+      [
+        {
+          ...ordinalBinStage,
+          prompts: [
+            ...ordinalBinStage.prompts,
+            {
+              id: 'ob-2',
+              text: 'And how do they feel?',
+              variable: 'mood',
+              color: 'ord-color-seq-2',
+            },
+          ],
+          synthetic: { generatesData: true, responseBurden: 100_000 },
+        },
+        informationStage,
+      ],
+      {
+        mood: {
+          name: 'mood',
+          type: 'ordinal',
+          component: 'LikertScale',
+          options: CLOSENESS,
+        },
+      },
+    );
+
+    const results = batch(exhausting, {
+      count: 6,
+      simulateDropOut: true,
+      minimumCompletedRatio: 0,
+    });
+    const dropped = results.filter((result) => result.droppedOut);
+    expect(dropped.length).toBeGreaterThan(0);
+    for (const result of dropped) {
+      expect(result.session.promptIndex).toBe(0);
+    }
+  });
+});
+
+describe('ignoring stage filters on request', () => {
+  const gated = parse([
+    quickAddStage({
+      generatesData: true,
+      count: { distribution: 'constant', value: 5 },
+    }),
+    {
+      ...ordinalBinStage,
+      filter: {
+        join: 'AND',
+        rules: [
+          {
+            id: 'rule-1',
+            type: 'node',
+            options: {
+              type: 'person',
+              attribute: 'closeness',
+              operator: 'EXISTS',
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  it('applies the filter by default: nobody qualifies, nobody is binned', () => {
+    const payload = session(gated);
+    for (const node of payload.network?.nodes ?? []) {
+      expect(node[entityAttributesProperty].closeness).toBeUndefined();
+    }
+  });
+
+  it('bins everyone when the run disables filtering', () => {
+    const payload = session(gated, { respectFiltering: false });
+    const nodes = payload.network?.nodes ?? [];
+    expect(nodes).toHaveLength(5);
+    for (const node of nodes) {
+      expect(node[entityAttributesProperty].closeness).toBeDefined();
+    }
+  });
+});
+
+describe('re-binning values a form already issued', () => {
+  it('releases each alter’s own value before its redraw', () => {
+    // Three people, three options, `unique`: the form spends the whole space,
+    // and the bin then re-asks every one of them. A participant can leave
+    // each alter in its current bin, so the stage must complete — a draw that
+    // did not hand back the alter's own value first would find the space
+    // empty and fail after the seed was already committed.
+    const alterFormStage = {
+      id: 'about-them',
+      type: 'AlterForm',
+      label: 'About them',
+      subject: { entity: 'node', type: 'person' },
+      introductionPanel: { title: 'About', text: 'A few questions.' },
+      form: {
+        fields: [{ variable: 'closeness', prompt: 'How close?' }],
+      },
+    };
+    const protocol = parse(
+      [
+        quickAddStage({
+          generatesData: true,
+          count: { distribution: 'constant', value: 3 },
+        }),
+        alterFormStage,
+        ordinalBinStage,
+      ],
+      {
+        closeness: {
+          name: 'closeness',
+          type: 'ordinal',
+          component: 'LikertScale',
+          options: CLOSENESS,
+          validation: { unique: true },
+        },
+      },
+    );
+
+    const payload = session(protocol);
+    const values = (payload.network?.nodes ?? []).map(
+      (node) => node[entityAttributesProperty].closeness,
+    );
+    expect(values).toHaveLength(3);
+    // Still distinct: the registry stayed honest through the re-bin.
+    expect(new Set(values).size).toBe(3);
+  });
+});
+
+describe('the fixture channel', () => {
+  const friendCodebook = {
+    ...codebook,
+    edge: {
+      friend: {
+        name: 'Friend',
+        color: 'edge-color-seq-1',
+        variables: {},
+      },
+    },
+  };
+  const filteredForm = {
+    id: 'about-linked',
+    type: 'AlterForm',
+    label: 'About the linked',
+    subject: { entity: 'node', type: 'person' },
+    introductionPanel: { title: 'Linked', text: 'About those with a tie.' },
+    form: { fields: [{ variable: 'closeness', prompt: 'How close?' }] },
+    filter: {
+      join: 'AND',
+      rules: [
+        {
+          id: 'rule-1',
+          type: 'edge',
+          options: { type: 'friend', operator: 'EXISTS' },
+        },
+      ],
+    },
+  };
+  const fixtureProtocol = CurrentProtocolSchema.parse({
+    name: 'Fixture protocol',
+    schemaVersion: 8,
+    codebook: friendCodebook,
+    stages: [quickAddStage(), filteredForm],
+  });
+
+  it('applies a ready edge before the stages that follow it', () => {
+    // The fixture edge joins two stage-one nodes, and the form that follows
+    // shows only people with a tie: the edge must exist by the time the
+    // form's filter runs, or the walk answers a network the relationship is
+    // falsely absent from.
+    const payload = session(fixtureProtocol, {
+      overrides: {
+        nodes: {
+          'quick-add': [
+            { type: 'person', uid: 'a', manual: true },
+            { type: 'person', uid: 'b', manual: true },
+          ],
+        },
+        edges: [{ type: 'friend', from: 'a', to: 'b', manual: true }],
+      },
+    });
+
+    expect(payload.network?.edges).toHaveLength(1);
+    for (const node of payload.network?.nodes ?? []) {
+      expect(node[entityAttributesProperty].closeness).toBeDefined();
+    }
+  });
+
+  it('refuses two entries claiming one explicit id', () => {
+    expect(() =>
+      session(fixtureProtocol, {
+        overrides: {
+          nodes: {
+            'quick-add': [
+              { type: 'person', uid: 'dup', manual: true },
+              { type: 'person', uid: 'dup', manual: true },
+            ],
+          },
+        },
+      }),
+    ).toThrow(/every explicit uid must be unique/);
+  });
+
+  it('refuses an entry whose type the codebook does not define', () => {
+    expect(() =>
+      session(fixtureProtocol, {
+        overrides: {
+          nodes: { 'quick-add': [{ type: 'martian', manual: true }] },
+        },
+      }),
+    ).toThrow(/codebook does not define/);
+  });
+});

@@ -1,5 +1,7 @@
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import {
+  type ColorReference,
+  ColorReferenceSchema,
   type VariableType,
   VariableTypesKeys,
 } from '@codaco/protocol-validation';
@@ -30,6 +32,11 @@ const asRecord = (value: unknown): Record<string, unknown> | undefined => {
 
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
+
+const asColorReference = (value: unknown): ColorReference | undefined => {
+  const result = ColorReferenceSchema.safeParse(value);
+  return result.success ? result.data : undefined;
+};
 
 /**
  * Walks a codebook path. Any missing segment — including a rule that names no
@@ -129,8 +136,9 @@ export const getRuleDisplayOptions = ({
       entityTypeId)
     : undefined; // noop for ego
   const typeColor = entityTypeId
-    ? (asString(readPath(codebook, [entityType, entityTypeId, 'color'])) ??
-      fallbackColor)
+    ? (asColorReference(
+        readPath(codebook, [entityType, entityTypeId, 'color']),
+      ) ?? fallbackColor)
     : fallbackColor; // noop for ego
   const shape = readPath(codebook, ['node', entityTypeId, 'shape', 'default']);
   // Only nodes have shapes.

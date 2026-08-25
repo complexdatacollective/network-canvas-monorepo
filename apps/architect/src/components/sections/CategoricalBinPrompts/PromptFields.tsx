@@ -11,7 +11,6 @@ import ArchitectField from '~/components/Form/ArchitectField';
 import Options, {
   optionsValidation,
 } from '~/components/Form/arrayFields/Options';
-import { useClearValue } from '~/components/Form/clearFieldValue';
 import RichTextField from '~/components/Form/Fields/RichText/Field';
 import NewVariableWindow, {
   type Entity,
@@ -76,7 +75,7 @@ const PromptFields = ({
   synthetic,
 }: PromptFieldsProps) => {
   const setFieldValue = useFormStore((state) => state.setFieldValue);
-  const clearValue = useClearValue();
+  const clearValue = useFormStore((state) => state.clearValue);
   const { variable: liveVariable, variableOptions: liveVariableOptions } =
     useFormValue(['variable', 'variableOptions'] as const);
   const currentVariable =

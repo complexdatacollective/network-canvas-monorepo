@@ -20,7 +20,13 @@ import type { FamilyPedigreeOptions } from './familyPedigree/options';
  */
 export type AssetData = {
   rosterNodes?: Record<string, NcNode[]>;
-  geojsonPropertyValues?: Record<string, string[]>;
+  /**
+   * The values a map tap can store, per Geospatial stage. Numbers appear
+   * verbatim where the GeoJSON's `targetFeatureProperty` carries them — the
+   * live click handler forwards the tapped feature's property value unchanged,
+   * so a numeric identifier is an answer real interviews record.
+   */
+  geojsonPropertyValues?: Record<string, (string | number)[]>;
 };
 
 /**
@@ -40,6 +46,14 @@ export type SimulationContext = {
   /** The session's own date (its startTime's day), for relative windows. */
   today: string;
   interfaceRules: InterfaceImpliedRules;
+  /**
+   * Whether stage-level network filters narrow what each stage shows
+   * (`stage.filter`). Off, every simulator reads the unfiltered network —
+   * the host's "ignore skip logic and filtering" mode, which trades
+   * runtime-faithfulness for fuller test data. Panel filters are untouched:
+   * they select candidates for a panel, not what a stage displays.
+   */
+  respectFiltering: boolean;
   /**
    * The descriptor-driven draw, seeded per session. Values are the one thing
    * NOT drawn from `streams`: the constraint machinery needs personas (names,

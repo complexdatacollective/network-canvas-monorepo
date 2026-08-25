@@ -91,6 +91,12 @@ const NodePanel = ({
     `${fieldName}.dataSource`,
   );
   const filter = useStageFormValue<PanelFilterInput>(`${fieldName}.filter`);
+  // Authored generation parameters. This editor renders no control for them
+  // (see NodePanels' registration), but the effect below must clear them when
+  // the panel stops drawing on the in-progress network.
+  const synthetic = useStageFormValue<Record<string, unknown> | undefined>(
+    `${fieldName}.synthetic`,
+  );
   const initialTitle = useStageInitialValue<string>(`${fieldName}.title`);
   const initialDataSource = useStageInitialValue<string | undefined>(
     `${fieldName}.dataSource`,

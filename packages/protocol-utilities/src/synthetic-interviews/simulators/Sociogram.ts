@@ -17,6 +17,7 @@ import {
   currentStepOf,
   generationFor,
   promptsWorked,
+  stageFilterOf,
 } from './shared/stageContext';
 import type { SimulationContext, StageSimulator } from './types';
 
@@ -124,6 +125,8 @@ export const simulateSociogram: StageSimulator<SociogramStage> = (
   const scope = { entity: 'node' as const, type: stage.subject.type };
   const constraints = context.entityConstraints.forScope(scope);
   const generation = generationFor(context);
+  // The stage's own filter, or nothing when the run ignores filtering.
+  const stageFilter = stageFilterOf(context, stage.filter);
 
   promptsWorked(stage.prompts, promptBound).forEach((prompt, promptIndex) => {
     if (promptIndex > 0) engine.updatePrompt({ promptIndex });
@@ -134,7 +137,7 @@ export const simulateSociogram: StageSimulator<SociogramStage> = (
     const eligible = nodesForStage(
       engine.draft.network,
       stage.subject.type,
-      stage.filter,
+      stageFilter,
     );
 
     const layoutVariable = String(prompt.layout.layoutVariable);

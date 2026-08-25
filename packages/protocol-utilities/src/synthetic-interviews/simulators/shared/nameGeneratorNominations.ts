@@ -140,6 +140,16 @@ export const simulateNameGeneratorNominations = ({
     streams,
   );
 
+  // The live interface's own gate: `useNodeLimits` counts every node carrying
+  // one of THIS stage's prompt ids — creations and panel re-nominations alike
+  // (`getStageNodeCount` intersects promptIDs) — and disables every way of
+  // adding once the count reaches `behaviours.maxNodes`. The schema already
+  // holds the sampled budget inside that window, but a panel's per-person
+  // nominations sit outside the budget, so the cap is enforced here across
+  // everything the stage adds, in the order the participant adds it.
+  const maxNodes = stage.behaviours?.maxNodes ?? Number.POSITIVE_INFINITY;
+  let stageNodeCount = 0;
+
   // Counts every person this stage fabricates, across prompts, so the
   // constraint engine sees a distinct index per entity.
   let created = 0;
@@ -168,7 +178,7 @@ export const simulateNameGeneratorNominations = ({
       stageId: stage.id,
       assetData,
       network: engine.draft.network,
-      wanted: rosterHere,
+      wanted: Math.min(rosterHere, Math.max(0, maxNodes - stageNodeCount)),
       chooseIndex: () => 0,
       nominate: (row) => {
         const fixed: Record<string, VariableValue> = {
@@ -198,11 +208,15 @@ export const simulateNameGeneratorNominations = ({
         return true;
       },
     });
+    stageNodeCount += fromRosterHere;
 
     // A row passed over for a value the network already holds leaves the
     // stage's count to be met by somebody the participant types in, exactly as
     // the G2 engine fell back to fabrication.
-    const newHere = share - fromRosterHere;
+    const newHere = Math.min(
+      share - fromRosterHere,
+      Math.max(0, maxNodes - stageNodeCount),
+    );
 
     for (let index = 0; index < newHere; index += 1) {
       const entityIndex = created;
@@ -218,14 +232,20 @@ export const simulateNameGeneratorNominations = ({
       });
       if (hasShared) claimFixedValues(handles, scope, shared);
     }
+    stageNodeCount += newHere;
 
-    // Nodes added from the existing network.
+    // Nodes added from the existing network. The panel invites a decision per
+    // person, but the interface stops honouring them at the stage's cap: a
+    // full stage disables the panel's drag sources, so a candidate met at the
+    // cap is one the participant could not have moved.
     for (const node of nominationsFromExistingPanels(
       stage,
       engine.draft.network,
       prompt.id,
       streams,
     )) {
+      if (stageNodeCount >= maxNodes) break;
+      stageNodeCount += 1;
       engine.addNodeToPrompt({
         nodeId: node[entityPrimaryKeyProperty],
         promptAttributes: shared,

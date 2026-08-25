@@ -4,11 +4,13 @@ import path from 'node:path';
 import { renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { hashProtocol } from '@codaco/protocol-validation';
+import {
+  CurrentProtocolSchema,
+  hashProtocol,
+} from '@codaco/protocol-validation';
 
 type InsertProtocolInput = {
-  protocol: { codebook: unknown; stages: unknown };
-  protocolHash: string;
+  protocolDocument: { codebook: unknown; stages: unknown };
   protocolName: string;
   newAssets: unknown[];
   existingAssetIds: string[];
@@ -174,23 +176,29 @@ describe('hash boundary (plan §1.3)', () => {
     vi.clearAllMocks();
   });
 
-  it("dedupe hash and stored hash agree and equal the raw document's", async () => {
+  it('ships the raw document, whose hash is the one the dedupe check used', async () => {
     await runImport(MINIMAL_PROTOCOL);
 
-    // One computation, threaded: the hash a duplicate is detected by and the
-    // hash a protocol is stored under must be the same number, and it must
-    // describe the document the researcher shipped rather than whatever
-    // defaults the current schema resolves onto it.
+    // The hash a duplicate is detected by must be the hash the protocol ends
+    // up stored under, and it must describe the document the researcher
+    // shipped rather than whatever defaults the current schema resolves onto
+    // it. The stored hash is derived by `insertProtocol` server-side, so the
+    // client-side half of that invariant is: the dedupe check ran against the
+    // hash of exactly the document the insert payload carries.
     const rawHash = hashProtocol(MINIMAL_PROTOCOL);
     expect(getProtocolByHash).toHaveBeenCalledWith(rawHash);
-    expect(insertProtocol.mock.calls[0]?.[0]?.protocolHash).toBe(rawHash);
 
-    // Paired with the equality above so neither half can pass vacuously: the
-    // parse output this protocol validates to is a different document, so a
-    // hash taken from it — at either site — would be a different number.
-    const parsed = insertProtocol.mock.calls[0]?.[0]?.protocol;
-    expect(parsed).toBeDefined();
-    if (!parsed) return;
+    const payload = insertProtocol.mock.calls[0]?.[0];
+    expect(payload).toBeDefined();
+    if (!payload) return;
+    expect(payload.protocolDocument).toEqual(MINIMAL_PROTOCOL);
+    expect(hashProtocol(payload.protocolDocument)).toBe(rawHash);
+
+    // Non-vacuity guard for the pair above: this fixture's parse output IS a
+    // different document (the schema resolves defaults onto it), so the
+    // assertions could not pass had the hook shipped the parse output — or
+    // hashed it — instead.
+    const parsed = CurrentProtocolSchema.parse(MINIMAL_PROTOCOL);
     expect(hashProtocol(parsed)).not.toBe(rawHash);
   });
 

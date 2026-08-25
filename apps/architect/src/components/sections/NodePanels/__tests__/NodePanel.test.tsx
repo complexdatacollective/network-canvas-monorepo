@@ -1,4 +1,4 @@
-import { act } from '@testing-library/react';
+import { act, waitFor } from '@testing-library/react';
 import type { DragControls } from 'motion/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -100,19 +100,18 @@ const itemProps: ArrayFieldItemProps<NodePanelValue> = {
   getAddTrigger: () => null,
 };
 
-const renderPanel = () =>
+const renderPanelWith = (panel: Record<string, unknown>) =>
   renderStageForm({
-    committedStage: asStage({
-      panels: [
-        {
-          id: 'panel-1',
-          title: 'Existing people',
-          dataSource: 'existing',
-          filter: EDGE_FILTER,
-        },
-      ],
-    }),
+    committedStage: asStage({ panels: [panel] }),
     children: <NodePanel {...itemProps} />,
+  });
+
+const renderPanel = () =>
+  renderPanelWith({
+    id: 'panel-1',
+    title: 'Existing people',
+    dataSource: 'existing',
+    filter: EDGE_FILTER,
   });
 
 const setDataSource = (

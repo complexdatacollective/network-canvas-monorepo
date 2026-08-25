@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  type OrdinalColorReference,
   asEntityAttributeReference,
   DEFAULT_RESPONSE_BURDEN,
   type Stage,
@@ -53,7 +54,9 @@ function geospatialStage(
       center: [-74, 40.7],
       initialZoom: 10,
       dataSourceAssetId: assetId,
-      color: '#3399ff',
+      // A legacy raw color the repair path rewrites; representable
+      // only by widening past the token union.
+      color: '#3399ff' as unknown as OrdinalColorReference,
       targetFeatureProperty,
     },
     prompts: [
@@ -122,13 +125,14 @@ describe('collectGeospatialPropertyValues', () => {
       .mockResolvedValue(resolved('regions'));
 
     const result = await collectGeospatialPropertyValues({
-      // `code` is a number on every feature, so it describes no answer this
-      // pool can carry.
+      // `code` is a number on every feature — an answer the live click
+      // handler stores verbatim (its `as string` is compile-time only), so
+      // the pool carries the numbers exactly as a tap would.
       stages: [geospatialStage('geo-1', 'regions', 'code')],
       resolveAsset,
     });
 
-    expect(result).toEqual({ 'geo-1': [] });
+    expect(result).toEqual({ 'geo-1': [12, 13, 14] });
   });
 
   it('emits an empty pool for a map with no selectable areas', async () => {

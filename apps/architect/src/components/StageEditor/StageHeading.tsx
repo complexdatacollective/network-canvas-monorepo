@@ -136,7 +136,7 @@ const StageHeading = ({
             level: 'label',
             variant: 'all-caps',
             margin: 'none',
-            className: 'text-muted',
+            className: 'text-current/70',
           })}
         >
           Stage {stageNumber} of {totalStages}

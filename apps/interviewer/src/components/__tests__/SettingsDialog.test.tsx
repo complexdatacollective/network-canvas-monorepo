@@ -148,7 +148,11 @@ beforeEach(() => {
   mockIsPersisted.mockResolvedValue(false);
   mockCountSyntheticSessions.mockResolvedValue(0);
   mockDeleteSyntheticSessions.mockResolvedValue(0);
-  mockGenerateSyntheticSessions.mockResolvedValue({ created: 0, seed: 1 });
+  mockGenerateSyntheticSessions.mockResolvedValue({
+    created: 0,
+    seed: 1,
+    startWindow: '2026-08-22T00:00:00.000Z',
+  });
   // Mirrors the real DialogProvider.handleConfirm just enough for these
   // tests: it runs onConfirm and swallows a rejection rather than letting it
   // reach handleDeleteSynthetic's `await confirm(...)` — the real provider
@@ -441,20 +445,71 @@ describe('SettingsDialog synthetic tab — batch options', () => {
     );
   });
 
-  it('reports the seed the batch ran on, which is what makes it repeatable', async () => {
+  it('reports the batch token it ran on, which is what makes it repeatable', async () => {
     mockGenerateSyntheticSessions.mockResolvedValueOnce({
       created: 3,
       seed: 987654,
+      startWindow: '2026-08-22T00:00:00.000Z',
     });
 
     await generateWithSelectedProtocol();
 
     await waitFor(() => expect(mockToastAdd).toHaveBeenCalled());
+    // Both halves of the identity: the seed pins the draws and the day pins
+    // the dates, so the seed alone would promise a replay the engine cannot
+    // deliver.
     expect(mockToastAdd).toHaveBeenLastCalledWith(
       expect.objectContaining({
         title: 'Generated 3 synthetic sessions',
-        description: 'Seed 987654',
+        description: 'Batch 987654-2026-08-22',
         variant: 'success',
+      }),
+    );
+  });
+
+  it('passes a full batch token through as seed and start window', async () => {
+    mockListProtocols.mockResolvedValue([makeProtocol('Protocol A', 'hash-1')]);
+    const user = userEvent.setup();
+    render(<SettingsDialog open onClose={vi.fn()} />);
+    await user.click(screen.getByRole('tab', { name: 'Synthetic data' }));
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Protocol' })).toHaveValue(
+        'hash-1',
+      );
+    });
+    await user.type(screen.getByTestId('synthetic-seed'), '4321-2026-08-22');
+    await user.click(screen.getByRole('button', { name: 'Generate' }));
+
+    await waitFor(() =>
+      expect(mockGenerateSyntheticSessions).toHaveBeenCalled(),
+    );
+    expect(mockGenerateSyntheticSessions).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        seed: 4321,
+        startWindow: '2026-08-22T00:00:00.000Z',
+      }),
+    );
+  });
+
+  it('refuses an unreadable token instead of generating a fresh batch', async () => {
+    mockListProtocols.mockResolvedValue([makeProtocol('Protocol A', 'hash-1')]);
+    const user = userEvent.setup();
+    render(<SettingsDialog open onClose={vi.fn()} />);
+    await user.click(screen.getByRole('tab', { name: 'Synthetic data' }));
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Protocol' })).toHaveValue(
+        'hash-1',
+      );
+    });
+    await user.type(screen.getByTestId('synthetic-seed'), 'not-a-token');
+    await user.click(screen.getByRole('button', { name: 'Generate' }));
+
+    await waitFor(() => expect(mockToastAdd).toHaveBeenCalled());
+    expect(mockGenerateSyntheticSessions).not.toHaveBeenCalled();
+    expect(mockToastAdd).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        title: 'Generation not started',
+        variant: 'destructive',
       }),
     );
   });
@@ -577,7 +632,7 @@ describe('SettingsDialog synthetic tab — count after a failed generation', () 
     mockCountSyntheticSessions.mockImplementation(async () => storedCount);
     mockGenerateSyntheticSessions.mockImplementation(async () => {
       storedCount = 10;
-      return { created: 10, seed: 1 };
+      return { created: 10, seed: 1, startWindow: '2026-08-22T00:00:00.000Z' };
     });
 
     await generateWithSelectedProtocol();
@@ -605,6 +660,7 @@ describe('SettingsDialog synthetic tab — post-generation refresh failure', () 
     mockGenerateSyntheticSessions.mockResolvedValueOnce({
       created: 5,
       seed: 1,
+      startWindow: '2026-08-22T00:00:00.000Z',
     });
     const onDataChange = vi.fn();
     mockListProtocols.mockResolvedValue([makeProtocol('Protocol A', 'hash-1')]);

@@ -30,6 +30,18 @@ import { useAssetResolver } from './useAssetResolver';
 const PAYLOAD_TIMEOUT_MS = 5000;
 const noopSync = async () => {};
 
+/**
+ * The fixed end of the synthetic start window every preview generates
+ * against. A preview promises that the same protocol previews the same way
+ * every time, and the seed alone cannot deliver that: `generateInterviews`
+ * anchors session dates — and every date-relative drawn value — to this
+ * instant, falling back to the wall clock when none is given. Pinning it
+ * alongside the fixed seed is what makes a rebuilt preview byte-identical to
+ * the one a researcher compared against yesterday. The date itself is
+ * arbitrary and visible only in generated timestamps and date answers.
+ */
+const PREVIEW_START_WINDOW = '2026-01-01T00:00:00.000Z';
+
 // Shown in the interview's finish confirmation instead of the participant
 // default ("…satisfied with your responses"), which is untrue in a preview:
 // nothing is stored, and confirming ends the run the researcher has been
@@ -88,8 +100,12 @@ async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
       stopAt: { stageIndex: payload.startStage },
       // Fixed, so the same protocol previews the same way every time: a
       // researcher comparing a change against what they saw a moment ago is
-      // comparing the change, not two different draws.
+      // comparing the change, not two different draws. The seed pins the
+      // draws and the start window pins the clock they are dated against —
+      // without the second, date-relative answers would drift with the wall
+      // clock even under a fixed seed.
       seed: DEFAULT_SYNTHETIC_SEED,
+      startWindow: PREVIEW_START_WINDOW,
     },
     assetData,
   );

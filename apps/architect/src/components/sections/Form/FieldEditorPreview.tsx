@@ -4,8 +4,10 @@ import { useSelector } from 'react-redux';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Form from '@codaco/fresco-ui/form/Form';
-import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
-import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
+import {
+  useFormHasValue,
+  useFormValue,
+} from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -89,18 +91,21 @@ const FieldEditorPreview = ({
 }: FieldEditorPreviewProps) => {
   const headingId = useId();
   const liveValues = useFormValue(PREVIEW_DRAFT_FIELDS);
-  const registeredFields = useFormStore((state) => state.fields);
-  const dormantFields = useFormStore((state) => state.dormantValues);
+  // A field the form has not registered yet has no live value to show — the
+  // dialog opens before its sections mount — so the committed `item` stands
+  // until it does. This is what separates that from a field the researcher has
+  // deliberately emptied, for the leaves and for `parameters` alike: the latter
+  // is a container the form only ever holds as a tree of leaves
+  // (`parameters.type`, `parameters.min`, …).
+  const hasLiveValue = useFormHasValue(PREVIEW_DRAFT_FIELDS);
 
   const draft = useMemo(() => {
     const values: Record<string, unknown> = { ...item };
     for (const name of PREVIEW_DRAFT_FIELDS) {
-      if (registeredFields.has(name) || dormantFields.has(name)) {
-        values[name] = liveValues[name];
-      }
+      if (hasLiveValue[name]) values[name] = liveValues[name];
     }
     return values;
-  }, [dormantFields, item, liveValues, registeredFields]);
+  }, [hasLiveValue, item, liveValues]);
 
   const subject = useMemo(
     () => ({ entity, type: type ?? undefined }),

@@ -99,6 +99,7 @@ export const harnessFor = (
     seed = TEST_SEED,
     index = 0,
     assetData = {},
+    respectFiltering = true,
     // Off by default so a harness run stays cheap; a test asserting WHICH
     // primitives were dispatched, in what order, turns it on. That is the only
     // oracle strong enough for "wrote nothing", since a write can be a no-op
@@ -108,6 +109,7 @@ export const harnessFor = (
     seed?: number;
     index?: number;
     assetData?: AssetData;
+    respectFiltering?: boolean;
     captureTrace?: boolean;
   } = {},
 ): Harness => {
@@ -142,6 +144,7 @@ export const harnessFor = (
     assetData,
     today,
     interfaceRules,
+    respectFiltering,
     valueGen,
     uniqueRegistry,
     entityConstraints,

@@ -85,6 +85,30 @@ type UseFieldResult = {
     'onBlur': (e: React.FocusEvent<HTMLElement>) => void;
   };
   fieldProps: {
+    /**
+     * The stored value, verbatim — which is NOT necessarily a value of the
+     * shape the control's own props declare.
+     *
+     * CONTRACT: a control connected through `Field`/`useField` MUST render
+     * without throwing for any `FieldValue` shape it is handed.
+     *
+     * The form store owns the value, and the resets that follow a change of
+     * type — an Architect rule swapping its attribute from boolean to
+     * categorical, a cascade clearing a dependent field — run as observer
+     * effects AFTER the render commits. So there is always a window of one
+     * render in which a control is holding the previous field's value. A
+     * control that throws during that render never commits it, the effect that
+     * would have replaced the value never runs, and the value stays foreign:
+     * the reset can only ever arrive behind a render that survived.
+     *
+     * Controls satisfy this by normalising for RENDERING alone —
+     * `Array.isArray(v) ? v : []`, `typeof v === 'string' ? v : ''` — and
+     * showing the empty/unselected state for that one pass. What `onChange`
+     * emits for a real interaction is unaffected.
+     *
+     * Enforced for every control in `form/fields/**` by
+     * `form/fields/__tests__/fieldValueContract.test.tsx`.
+     */
     'value': FieldValue;
     'onChange': (value: FieldValue) => void;
     'disabled': boolean;

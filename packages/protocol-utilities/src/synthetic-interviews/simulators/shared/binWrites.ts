@@ -71,6 +71,12 @@ export const uniqueSlotFor = (
  * claim that is not this node's — where two bin assignments collided,
  * releasing that value for the second node frees the first node's claim and
  * the draw can issue it a second time.
+ *
+ * A variable named in `issued` is the exception to all of that: its value came
+ * through the registry's own draw (`binValueFor` released the previous value
+ * and claimed this one), so the bookkeeping here would be a second copy of
+ * work already done. What remains for it is the record itself — the value IS
+ * the registry's now, so any earlier out-of-band mark comes off.
  */
 export const assignBinValue = ({
   engine,
@@ -81,6 +87,7 @@ export const assignBinValue = ({
   constraints,
   set,
   unset,
+  issued,
 }: {
   engine: SessionEngine;
   node: NcNode;
@@ -95,6 +102,8 @@ export const assignBinValue = ({
   constraints: EntityConstraints;
   set: Readonly<Record<string, VariableValue>>;
   unset: readonly string[];
+  /** Variables in `set` whose values the registry issued through the draw. */
+  issued?: ReadonlySet<string>;
 }): void => {
   const attributes = node[entityAttributesProperty];
   const displaced = new Map<string, VariableValue | undefined>();
@@ -112,6 +121,14 @@ export const assignBinValue = ({
   const written = outOfBandWrites.get(node) ?? new Set<string>();
 
   for (const [variableId, previous] of displaced) {
+    if (issued?.has(variableId)) {
+      // The registry released and claimed during the draw; recording the value
+      // as the registry's again is the whole of what is left to do.
+      written.delete(variableId);
+      if (written.size === 0) outOfBandWrites.delete(node);
+      else outOfBandWrites.set(node, written);
+      continue;
+    }
     const uniqueSlot = uniqueSlotFor(constraints, variableId);
     if (uniqueSlot === undefined) continue;
 

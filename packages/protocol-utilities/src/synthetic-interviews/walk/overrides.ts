@@ -207,6 +207,26 @@ export function refuseOverrideConflicts(
     }
   }
 
+  // A type the codebook does not declare, or an explicit id used twice, is a
+  // caller error the walk would otherwise discover only after it had begun —
+  // the engine's addNode/addEdge throw on the second id, and an unknown type
+  // materialises an entity no selector or export can describe. Refused here,
+  // before anything draws, like every other override contradiction. Nodes and
+  // edges keep separate id spaces, exactly as the network stores them.
+  const seenIds = { node: new Set<string>(), edge: new Set<string>() };
+  for (const [scope, entry] of entriesByScope(overrides)) {
+    invariant(
+      codebook[scope.entity]?.[scope.type] !== undefined,
+      `overrides declare a ${scope.entity} of type "${scope.type}", which the codebook does not define`,
+    );
+    if (entry.uid === undefined) continue;
+    invariant(
+      !seenIds[scope.entity].has(entry.uid),
+      `overrides declare two ${scope.entity}s with the id "${entry.uid}" — every explicit uid must be unique`,
+    );
+    seenIds[scope.entity].add(entry.uid);
+  }
+
   // Claims already spent, per scope and slot — a local tally rather than the
   // session registry, because this runs before anything has drawn.
   const spent = new Map<string, Set<string>>();
@@ -300,9 +320,15 @@ export type OverridesApplier = {
    */
   applyStage: (stage: Stage, promptBound: number | undefined) => boolean;
   /**
-   * Apply the predetermined relationships, once the walk is done. Entries
-   * whose endpoints never materialised — a stopAt run that ended before the
-   * owning stage — are skipped: the participant never made them.
+   * Apply every predetermined relationship whose endpoints have materialised
+   * and which has not been applied yet. The walk calls this after each stage
+   * it completes — a fixture edge exists from the moment both its people do,
+   * so the stage filters and skip logic that follow read a network where the
+   * relationship is present rather than one it is falsely absent from — and
+   * once more when the walk ends, which is what catches endpoints the final
+   * stage produced. Entries whose endpoints never materialise (a stopAt run
+   * that ended before the owning stage) are simply never applied: the
+   * participant never made them.
    */
   applyEdges: (currentStep: number) => void;
 };
@@ -422,29 +448,34 @@ export function createOverridesApplier(
       return true;
     },
 
-    applyEdges: (currentStep) => {
-      const materialised = new Set(
-        engine.draft.network.nodes.map(
-          (node) => node[entityPrimaryKeyProperty],
-        ),
-      );
-      for (const entry of overrides.edges ?? []) {
-        if (!materialised.has(entry.from) || !materialised.has(entry.to)) {
-          continue;
-        }
-        const { uid, attributes } = materialise(
-          { entity: 'edge', type: entry.type },
-          entry,
+    applyEdges: (() => {
+      const applied = new Set<EdgeOverrideEntry>();
+      return (currentStep: number) => {
+        const materialised = new Set(
+          engine.draft.network.nodes.map(
+            (node) => node[entityPrimaryKeyProperty],
+          ),
         );
-        engine.addEdge({
-          edgeType: entry.type,
-          uid,
-          from: entry.from,
-          to: entry.to,
-          attributeData: attributes,
-          currentStep,
-        });
-      }
-    },
+        for (const entry of overrides.edges ?? []) {
+          if (applied.has(entry)) continue;
+          if (!materialised.has(entry.from) || !materialised.has(entry.to)) {
+            continue;
+          }
+          applied.add(entry);
+          const { uid, attributes } = materialise(
+            { entity: 'edge', type: entry.type },
+            entry,
+          );
+          engine.addEdge({
+            edgeType: entry.type,
+            uid,
+            from: entry.from,
+            to: entry.to,
+            attributeData: attributes,
+            currentStep,
+          });
+        }
+      };
+    })(),
   };
 }

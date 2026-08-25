@@ -208,9 +208,18 @@ describe('generating synthetic interviews', () => {
     expect(options).toStrictEqual({
       count: 2,
       seed: 4242,
+      // Drawn day-quantised when the request pins none, so the reported
+      // token reconstructs it exactly.
+      startWindow: options.startWindow,
       simulateDropOut: true,
+      // The one request field threads to BOTH engine flags: the setting has
+      // always been labelled "skip logic and filtering".
       respectSkipLogic: true,
+      respectFiltering: true,
     });
+    expect(String(options.startWindow)).toMatch(
+      /^\d{4}-\d{2}-\d{2}T00:00:00\.000Z$/,
+    );
 
     // What it is handed is parse output, which is what the engine requires:
     // the stored columns carry no `synthetic` descriptors until re-parsed.
@@ -278,12 +287,22 @@ describe('generating synthetic interviews', () => {
       }),
     );
 
+    const [, options] = generateInterviews.mock.calls[0] as [
+      unknown,
+      { startWindow: string },
+    ];
     expect(events).toStrictEqual([
       { type: 'progress', phase: 'generating', current: 1, total: 2 },
       { type: 'progress', phase: 'generating', current: 2, total: 2 },
       { type: 'progress', phase: 'saving', current: 1, total: 2 },
       { type: 'progress', phase: 'saving', current: 2, total: 2 },
-      { type: 'complete', created: 2, seed: 99 },
+      {
+        type: 'complete',
+        created: 2,
+        seed: 99,
+        startWindow: options.startWindow,
+        batchToken: `99-${options.startWindow.slice(0, 10)}`,
+      },
     ]);
   });
 
@@ -299,16 +318,41 @@ describe('generating synthetic interviews', () => {
 
     const [, options] = generateInterviews.mock.calls[0] as [
       unknown,
-      { seed: number },
+      { seed: number; startWindow: string },
     ];
     const complete = events.at(-1);
 
     expect(Number.isInteger(options.seed)).toBe(true);
+    // The whole identity travels back — seed, anchor, and the one copyable
+    // token that carries both — because the seed alone cannot regenerate the
+    // batch: its dates, and every date-relative drawn value, follow the
+    // anchor.
     expect(complete).toStrictEqual({
       type: 'complete',
       created: 2,
       seed: options.seed,
+      startWindow: options.startWindow,
+      batchToken: `${String(options.seed)}-${options.startWindow.slice(0, 10)}`,
     });
+  });
+
+  it('replays a reported batch token as the batch it names', async () => {
+    await readEvents(
+      await postGenerate({
+        protocolId: PROTOCOL_ID,
+        count: 2,
+        simulateDropOut: false,
+        respectSkipLogicAndFiltering: false,
+        batchToken: '4242-2026-08-01',
+      }),
+    );
+
+    const [, options] = generateInterviews.mock.calls[0] as [
+      unknown,
+      { seed: number; startWindow: string },
+    ];
+    expect(options.seed).toBe(4242);
+    expect(options.startWindow).toBe('2026-08-01T00:00:00.000Z');
   });
 
   it('surfaces a constraint refusal as a structured error, writing nothing', async () => {

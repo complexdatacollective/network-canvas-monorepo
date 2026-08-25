@@ -52,6 +52,22 @@ export { stripManagedProperties } from './useArrayFieldItems';
 // Stable empty array to prevent infinite re-renders when value is undefined
 const EMPTY_ARRAY: never[] = [];
 
+/**
+ * A list this field can render: an array whose entries are objects.
+ *
+ * `useArrayFieldItems` keys its internal-id WeakMap on the item objects, so a
+ * primitive entry is not merely the wrong shape — it is not a legal WeakMap
+ * key at all. See the render-tolerance contract on `useField`.
+ */
+function isItemList<T extends Record<string, unknown>>(
+  value: unknown,
+): value is T[] {
+  return (
+    Array.isArray(value) &&
+    value.every((item) => typeof item === 'object' && item !== null)
+  );
+}
+
 const arrayFieldVariants = compose(
   controlVariants,
   inputControlVariants,
@@ -545,6 +561,11 @@ export default function ArrayField<T extends Record<string, unknown>>({
   // Props for getInputState - combines disabled/readOnly with aria props
   const inputStateProps = { disabled, readOnly, ...ariaProps };
 
+  // Rendering only: a stored value of another shape shows an empty list until
+  // the form's reset lands. Both branches are referentially stable across
+  // renders, which `useArrayFieldItems`' external-value sync depends on.
+  const itemValue = isItemList<T>(value) ? value : (EMPTY_ARRAY as T[]);
+
   // Track mount state to prevent initial animations when rendered inside
   // animated containers (e.g., dialogs with layoutId animations).
   // Using a ref instead of state to avoid triggering an extra render.
@@ -582,7 +603,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
     removeItem,
     updateItem,
     isDraft,
-  } = useArrayFieldItems(value, handleCommittedChange, { getId });
+  } = useArrayFieldItems(itemValue, handleCommittedChange, { getId });
 
   const editingIndex = editingItem
     ? items.findIndex((item) => item._internalId === editingItem._internalId)

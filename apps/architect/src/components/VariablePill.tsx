@@ -29,6 +29,8 @@ type VariablePillSizingProps = {
   width?: string;
   minWidth?: string;
   maxWidth?: string;
+  /** Overrides the resting pill bound without changing its edit-mode ceiling. */
+  displayMaxWidth?: string;
 };
 
 export type VariablePillProps = VariablePillSizingProps & {
@@ -82,6 +84,7 @@ const EDIT_MODE_LAYOUT_SPRING = {
   damping: 30,
   mass: 1.2,
 } as const;
+const MAX_WIDTH_PROPERTY = '--variable-pill-max-width';
 
 const getRawColorToken = (color: string) =>
   color.endsWith(DARK_COLOR_SUFFIX)
@@ -95,7 +98,7 @@ const getRawColorToken = (color: string) =>
  * it.
  *
  * The unreadable-value branch therefore falls back to the design maximum, not
- * to `currentWidth`. `max-width` is now `min(20rem, 100%)` — the `100%` is what
+ * to the resting width. `max-width` is now `min(20rem, 100%)` — the `100%` is what
  * keeps an inline pill inside its container (#1388) — and `Number.parseFloat`
  * cannot read a `min()`. Returning the element's current width there would
  * silently pin the editor to whatever the pill happened to be, which for a
@@ -103,42 +106,61 @@ const getRawColorToken = (color: string) =>
  */
 const getResolvedMaximumWidth = (
   element: HTMLElement,
-  currentWidth: number,
+  containingFallbackWidth: number,
+  editorMaxWidth: string,
 ) => {
-  const computedMaxWidth = window.getComputedStyle(element).maxWidth.trim();
-  const numericMaxWidth = Number.parseFloat(computedMaxWidth);
+  // `displayMaxWidth` can impose a container-relative resting bound without
+  // becoming the editor's design ceiling. Temporarily resolve the editor value
+  // through the same real element so CSS lengths (including percentages) keep
+  // their normal containing block, then restore the resting value before the
+  // browser can paint.
+  const displayMaxWidth = element.style.getPropertyValue(MAX_WIDTH_PROPERTY);
+  element.style.setProperty(MAX_WIDTH_PROPERTY, editorMaxWidth);
 
-  if (!Number.isFinite(numericMaxWidth)) {
-    const rootFontSize =
-      Number.parseFloat(
-        window.getComputedStyle(document.documentElement).fontSize,
-      ) || 16;
-    return Math.max(currentWidth, DEFAULT_MAX_WIDTH_REM * rootFontSize);
+  try {
+    const computedMaxWidth = window.getComputedStyle(element).maxWidth.trim();
+    const numericMaxWidth = Number.parseFloat(computedMaxWidth);
+
+    if (!Number.isFinite(numericMaxWidth)) {
+      const rootFontSize =
+        Number.parseFloat(
+          window.getComputedStyle(document.documentElement).fontSize,
+        ) || 16;
+      return DEFAULT_MAX_WIDTH_REM * rootFontSize;
+    }
+
+    if (computedMaxWidth.endsWith('%')) {
+      const containingWidth =
+        element.parentElement?.getBoundingClientRect().width ??
+        containingFallbackWidth;
+      return containingWidth * (numericMaxWidth / 100);
+    }
+
+    return numericMaxWidth;
+  } finally {
+    element.style.setProperty(MAX_WIDTH_PROPERTY, displayMaxWidth);
   }
-
-  if (computedMaxWidth.endsWith('%')) {
-    const containingWidth =
-      element.parentElement?.getBoundingClientRect().width ?? currentWidth;
-    return Math.max(currentWidth, containingWidth * (numericMaxWidth / 100));
-  }
-
-  return Math.max(currentWidth, numericMaxWidth);
 };
 
 const getVariablePillStyle = (
   type: VariableType,
   {
+    displayMaxWidth,
     width,
     minWidth,
     maxWidth,
-  }: Pick<VariablePillProps, 'width' | 'minWidth' | 'maxWidth'>,
+  }: Pick<
+    VariablePillProps,
+    'displayMaxWidth' | 'width' | 'minWidth' | 'maxWidth'
+  >,
 ): VariablePillStyle => {
   const accentColor = getRawColorToken(getColorForType(type));
   return {
     '--variable-pill-accent': `oklch(var(--${accentColor}))`,
     '--variable-pill-width': width ?? 'fit-content',
     '--variable-pill-min-width': minWidth ?? DEFAULT_MIN_WIDTH,
-    '--variable-pill-max-width': maxWidth ?? width ?? DEFAULT_MAX_WIDTH,
+    '--variable-pill-max-width':
+      displayMaxWidth ?? maxWidth ?? width ?? DEFAULT_MAX_WIDTH,
   };
 };
 
@@ -197,6 +219,7 @@ function VariablePillContents({
  */
 export const VariablePill = ({
   animated = false,
+  displayMaxWidth,
   editable = false,
   label,
   maxWidth,
@@ -257,7 +280,11 @@ export const VariablePill = ({
     setClosing(false);
     setEditorAnchor({
       left: triggerBounds.left,
-      maxWidth: getResolvedMaximumWidth(trigger, triggerBounds.width),
+      maxWidth: getResolvedMaximumWidth(
+        trigger,
+        triggerBounds.width,
+        maxWidth ?? width ?? DEFAULT_MAX_WIDTH,
+      ),
       top: triggerBounds.top,
       width: triggerBounds.width,
     });
@@ -326,40 +353,53 @@ export const VariablePill = ({
     }
   };
 
-  const style = getVariablePillStyle(type, { width, minWidth, maxWidth });
+  const style = getVariablePillStyle(type, {
+    displayMaxWidth,
+    width,
+    minWidth,
+    maxWidth,
+  });
   const editorFrame = useMemo(() => {
     if (!editorAnchor) {
       return null;
     }
 
     const availableWidth = window.innerWidth - EDITOR_FRAME_GUTTER;
-    const targetPillWidth = Math.max(
+    const availablePillWidth =
+      (availableWidth - EDITOR_FRAME_PADDING * 2) / EDIT_MODE_SCALE;
+    const targetPillWidth = Math.min(editorAnchor.maxWidth, availablePillWidth);
+    const initialPillWidth = Math.min(
       editorAnchor.width,
-      Math.min(
-        editorAnchor.maxWidth,
-        (availableWidth - EDITOR_FRAME_PADDING * 2) / EDIT_MODE_SCALE,
-      ),
+      availableWidth - EDITOR_FRAME_PADDING * 2,
     );
     const frameWidth = Math.min(
       availableWidth,
       Math.max(
         EDITOR_FRAME_MIN_WIDTH,
+        initialPillWidth + EDITOR_FRAME_PADDING * 2,
         targetPillWidth * EDIT_MODE_SCALE + EDITOR_FRAME_PADDING * 2,
       ),
     );
+    const centeredLeft =
+      editorAnchor.left + editorAnchor.width / 2 - frameWidth / 2;
+    const left = Math.min(
+      window.innerWidth - EDITOR_FRAME_GUTTER / 2 - frameWidth,
+      Math.max(EDITOR_FRAME_GUTTER / 2, centeredLeft),
+    );
 
     return {
+      initialPillWidth,
       targetPillWidth,
       style: {
-        left: editorAnchor.left + editorAnchor.width / 2 - frameWidth / 2,
+        left,
         top: editorAnchor.top - EDITOR_FRAME_PADDING,
         width: frameWidth,
       } satisfies React.CSSProperties,
       pillStyle: {
         ...style,
         '--variable-pill-width': `${targetPillWidth}px`,
-        '--variable-pill-min-width': `${editorAnchor.width}px`,
-        '--variable-pill-max-width': `${targetPillWidth}px`,
+        '--variable-pill-min-width': `${Math.min(initialPillWidth, targetPillWidth)}px`,
+        '--variable-pill-max-width': `${Math.max(initialPillWidth, targetPillWidth)}px`,
       } satisfies VariablePillStyle,
     };
   }, [editorAnchor, style]);
@@ -435,7 +475,9 @@ export const VariablePill = ({
           >
             <motion.div
               initial={
-                reduceMotion ? false : { scale: 1, width: editorAnchor?.width }
+                reduceMotion
+                  ? false
+                  : { scale: 1, width: editorFrame.initialPillWidth }
               }
               animate={{
                 scale: reduceMotion ? 1 : EDIT_MODE_SCALE,
@@ -443,7 +485,7 @@ export const VariablePill = ({
               }}
               exit={{
                 scale: 1,
-                width: editorAnchor?.width,
+                width: editorFrame.initialPillWidth,
               }}
               transition={
                 reduceMotion ? { duration: 0 } : EDIT_MODE_LAYOUT_SPRING
@@ -469,14 +511,13 @@ export const VariablePill = ({
             </motion.div>
 
             {validation && (
-              <div className="[&>div]:bg-destructive! [&>div]:text-destructive-contrast! [&>div]:px-4 [&>div]:py-2">
-                <FieldErrors
-                  id={validationId}
-                  name="variable-name"
-                  errors={[validation]}
-                  show
-                />
-              </div>
+              <FieldErrors
+                id={validationId}
+                name="variable-name"
+                errors={[validation]}
+                show
+                variant="box"
+              />
             )}
 
             <motion.div
@@ -522,6 +563,7 @@ export const VariablePill = ({
 
 const ConnectedVariablePillComponent = ({
   animated = false,
+  displayMaxWidth,
   editable = false,
   maxWidth,
   minWidth,
@@ -561,6 +603,7 @@ const ConnectedVariablePillComponent = ({
   return (
     <VariablePill
       animated={animated}
+      displayMaxWidth={displayMaxWidth}
       editable={editable}
       label={name ?? ''}
       maxWidth={maxWidth}

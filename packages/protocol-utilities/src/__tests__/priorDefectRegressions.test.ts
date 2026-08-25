@@ -651,8 +651,28 @@ describe('S3 — roster characteristics vs generation constraints', () => {
       },
     });
 
-    it('absent map: the caller opted out of the contract — generates', () => {
-      const result = run(floored, 42);
+    it('absent map with a min-nodes gate: refused as a host failure', () => {
+      // A roster stage nominates nobody without a pool, and a stage below its
+      // own `behaviours.minNodes` is one the live interface refuses to leave
+      // — so a caller that never resolved rosters cannot be handed a
+      // completed session the interface could not produce. The refusal names
+      // host resolution, not the document: the protocol is fine, the run is
+      // not.
+      expect(() => run(floored, 42)).toThrow(/resolved no roster data/i);
+    });
+
+    it('absent map without a gate: the caller opted out — generates empty', () => {
+      // Without `minNodes` an empty roster stage is a participant who
+      // nominated nobody, which the interface permits, so the opt-out
+      // survives exactly where the walk's result is a state a real interview
+      // can end in.
+      const ungated = rosterProtocol({
+        synthetic: {
+          generatesData: true,
+          count: { distribution: 'constant', value: 1 },
+        },
+      });
+      const result = run(ungated, 42);
       expect(result.session.network.nodes).toHaveLength(0);
     });
 

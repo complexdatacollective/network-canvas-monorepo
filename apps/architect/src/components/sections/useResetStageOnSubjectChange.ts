@@ -2,7 +2,6 @@ import { difference, get, isEqual, union } from 'es-toolkit/compat';
 import { useEffect, useRef } from 'react';
 
 import type { StageSubject, StageType } from '@codaco/protocol-validation';
-import { clearFieldValue } from '~/components/Form/clearFieldValue';
 import { getInterfaceTemplate } from '~/components/StageEditor/interfaceTemplates';
 import { requireStageFieldValue } from '~/components/StageEditor/requireStageFieldValue';
 import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
@@ -82,7 +81,7 @@ const useResetStageOnSubjectChange = (interfaceType: StageType): void => {
         // dormant value and never replaces the descendants a section actually
         // registers (`form.fields`, `background.image`) — which would then be
         // saved still carrying the previous subject's variable references.
-        clearFieldValue(storeApi, field);
+        storeApi.getState().clearValue(field);
 
         setStageValue(field, template[field]);
 

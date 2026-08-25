@@ -5,6 +5,7 @@ import {
   type CurrentProtocol,
   CurrentProtocolSchema,
   MAX_SYNTHETIC_PAIRS,
+  MAX_SYNTHETIC_POPULATION,
 } from '@codaco/protocol-validation';
 import {
   BIOLOGICAL_SEX_OPTIONS,
@@ -360,12 +361,23 @@ describe('a roster stage the run cannot get past (decision 18)', () => {
     ).toHaveLength(1);
   });
 
-  it('leaves a caller that resolved no rosters at all alone', () => {
+  it('refuses a gated roster when the host resolved no rosters at all', () => {
     // No `rosterNodes` map: the caller has not resolved rosters, which is a
-    // property of the host rather than of the document. Refusing here would
-    // blame the protocol for a fetch nobody attempted — and Architect's preview
-    // and the parity harness both run this way today.
-    expect(analyse(parse([rosterStage(3)]))).toEqual([]);
+    // property of the host rather than of the document — and the refusal says
+    // exactly that. What it cannot be is a completed session: a roster stage
+    // nominates nobody without a pool, and `behaviours.minNodes` is the gate
+    // the live interface refuses to advance below, so an absent map plus a
+    // gate is a run no faithful walk can finish.
+    const conflicts = analyse(parse([rosterStage(3)]));
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.reason).toMatch(/resolved no roster data/i);
+  });
+
+  it('leaves an ungated roster alone when the host resolved nothing', () => {
+    // Without a min-nodes gate the empty stage is a participant who nominated
+    // nobody, which the interface permits — the absent-map opt-out survives
+    // exactly there.
+    expect(analyse(parse([rosterStage(undefined)]))).toEqual([]);
   });
 
   it('leaves a roster with no min-nodes gate alone', () => {
@@ -654,5 +666,154 @@ describe('the verdict is a function of its arguments', () => {
       analyse(protocol, { rosterNodes: { roster: rows(2) } }),
     ).toHaveLength(1);
     expect(analyse(protocol, { rosterNodes: { roster: rows(3) } })).toEqual([]);
+  });
+});
+
+describe('known writes survive a pedigree over the same type', () => {
+  it('still refuses a name generator the known counts alone condemn', () => {
+    // Three family members drawing a two-value `unique` boolean is refused on
+    // its own; adding a pedigree over the same node type must not suppress
+    // that verdict. The pedigree's own contribution stays unmodelled — it can
+    // only ADD holders, so a refusal the known writes earn stands regardless.
+    const overfull = {
+      id: 'family-ng',
+      type: 'NameGenerator',
+      label: 'More family',
+      subject: { entity: 'node', type: 'family-member' },
+      form: {
+        title: 'About them',
+        fields: [{ variable: 'condition', prompt: 'Condition?' }],
+      },
+      synthetic: {
+        generatesData: true,
+        count: { distribution: 'constant', value: 3 },
+      },
+      prompts: [{ id: 'family-ng-p1', text: 'Who else?' }],
+    };
+    // The pedigree codebook's `condition` carries no input control (the
+    // pedigree needs none); this form does, so the test's codebook gives it
+    // one.
+    const familyCodebook = {
+      ...PEDIGREE_CODEBOOK,
+      node: {
+        'family-member': {
+          ...PEDIGREE_CODEBOOK.node['family-member'],
+          variables: {
+            ...PEDIGREE_CODEBOOK.node['family-member'].variables,
+            condition: {
+              name: 'condition',
+              type: 'boolean',
+              component: 'Toggle',
+              validation: { unique: true },
+            },
+          },
+        },
+      },
+    };
+    const conflicts = analyse(
+      parse([overfull, PEDIGREE_STAGE], familyCodebook),
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['unique']);
+    expect(conflicts[0]?.variableIds).toEqual(['condition']);
+  });
+});
+
+describe('a min-nodes gate no expressible count reaches', () => {
+  it('keeps the protocol valid and refuses generation instead', () => {
+    // `behaviours.minNodes` above MAX_SYNTHETIC_POPULATION was valid before
+    // generation parameters existed and stays valid — the schema clamps the
+    // derived count rather than rejecting the stage — so the refusal lands
+    // here, naming the generation ceiling.
+    const gated = {
+      id: 'quick',
+      type: 'NameGeneratorQuickAdd',
+      label: 'Quick add quick',
+      subject: { entity: 'node', type: 'person' },
+      quickAdd: 'name',
+      behaviours: { minNodes: MAX_SYNTHETIC_POPULATION + 50 },
+      prompts: [{ id: 'quick-p1', text: 'Who else?' }],
+    };
+    const conflicts = analyse(parse([gated]));
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['behaviours.minNodes']);
+    expect(conflicts[0]?.reason).toContain(
+      `at most ${MAX_SYNTHETIC_POPULATION}`,
+    );
+  });
+});
+
+describe('feasibility across every possible session day', () => {
+  const whenCodebook = {
+    node: {
+      person: {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        shape: { default: 'circle' },
+        variables: {
+          name: { name: 'name', type: 'text', component: 'Text' },
+          when: {
+            name: 'when',
+            type: 'datetime',
+            component: 'DatePicker',
+            parameters: { type: 'full', min: '2026-08-12' },
+            validation: { unique: true },
+          },
+        },
+      },
+    },
+  };
+
+  const analyseWindow = (
+    protocol: CurrentProtocol,
+    windowDays: number,
+  ): ReturnType<typeof analyseFeasibility> =>
+    analyseFeasibility({
+      protocol,
+      assetData: {},
+      today: TODAY,
+      interfaceRules: collectInterfaceImpliedRules(protocol),
+      windowDays,
+    });
+
+  it('refuses a window an earlier session day cannot hold', () => {
+    // On the anchor day (2026-08-14) the window [2026-08-12, today] holds
+    // three dates for two holders. A session starting a week earlier resolves
+    // its open ceiling against ITS day, before the authored minimum, and
+    // collapses to a single date — so the batch is refused before a seed
+    // could land a session there and exhaust mid-walk.
+    const protocol = parse([collects(['when'], 2)], whenCodebook);
+
+    expect(analyseWindow(protocol, 0)).toEqual([]);
+    const conflicts = analyseWindow(protocol, 7);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['unique']);
+    expect(conflicts[0]?.variableIds).toEqual(['when']);
+  });
+});
+
+describe('feasibility stops where the walk stops', () => {
+  it('does not refuse a preview over a stage the walk never reaches', () => {
+    // `collects(['band'], 3)` is refused outright: three holders, two values.
+    // A stopAt run that halts on arrival at that stage never draws there, so
+    // the earlier stage previews.
+    const protocol = parse([elicits(2), collects(['band'], 3, 'late')]);
+    const analyseStopped = (stopAt?: {
+      stageIndex: number;
+      promptIndex?: number;
+    }): ReturnType<typeof analyseFeasibility> =>
+      analyseFeasibility({
+        protocol,
+        assetData: {},
+        today: TODAY,
+        interfaceRules: collectInterfaceImpliedRules(protocol),
+        ...(stopAt ? { stopAt } : {}),
+      });
+
+    expect(analyseStopped()).toHaveLength(1);
+    expect(analyseStopped({ stageIndex: 1 })).toEqual([]);
+    expect(analyseStopped({ stageIndex: 1, promptIndex: 1 })).toHaveLength(1);
   });
 });

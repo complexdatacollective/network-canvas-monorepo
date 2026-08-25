@@ -62,7 +62,7 @@ const CODEBOOK = {
   edge: {
     partner: {
       name: 'Partner',
-      color: 'e',
+      color: 'edge-color-seq-1',
       variables: {
         relVar: { name: 'Relationship', type: 'text' },
         activeVar: { name: 'Active', type: 'boolean' },
@@ -70,7 +70,11 @@ const CODEBOOK = {
         gameteVar: { name: 'Gamete Role', type: 'text' },
       },
     },
-    marriage: { name: 'Marriage', color: 'm', variables: {} },
+    marriage: {
+      name: 'Marriage',
+      color: 'edge-color-seq-2',
+      variables: {},
+    },
   },
 };
 

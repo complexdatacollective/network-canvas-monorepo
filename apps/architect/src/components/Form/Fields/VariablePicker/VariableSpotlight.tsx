@@ -1,6 +1,7 @@
 import { get } from 'es-toolkit/compat';
 import { Info, Plus, Search, TriangleAlert } from 'lucide-react';
 import {
+  type FocusEvent,
   type KeyboardEvent,
   type ReactNode,
   useCallback,
@@ -76,6 +77,11 @@ type VariableSpotlightProps = {
   onCreateOption: (value: string) => void;
   options: VariableOption[];
   /**
+   * Whether the popup's final focusout represents a completed direct-field
+   * interaction and should reach the owning connected Field for validation.
+   */
+  shouldPropagateBlur?: () => boolean;
+  /**
    * Where focus RETURNS when the picker closes — the control in the parent
    * dialog that opened it. Without one, dismissing the picker left focus on
    * `<body>`, from where Tab walked out of the still-open parent dialog
@@ -101,6 +107,7 @@ const VariableSpotlight = ({
   options,
   disallowCreation = false,
   finalFocus,
+  shouldPropagateBlur,
 }: VariableSpotlightProps) => {
   const [filterTerm, setFilterTerm] = useState('');
 
@@ -253,6 +260,17 @@ const VariableSpotlight = ({
     setFilterTerm(value ?? '');
   }, []);
 
+  const handlePopupBlur = useCallback(
+    (event: FocusEvent<HTMLDivElement>) => {
+      // Portal events bubble through the React owner tree even though the popup
+      // is outside the field in the DOM. Internal moves and dismissal remain
+      // inside the picker; only a completed direct-field pick becomes the
+      // owning Field's final blur and validation boundary.
+      if (!shouldPropagateBlur?.()) event.stopPropagation();
+    },
+    [shouldPropagateBlur],
+  );
+
   const handleInputKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
       // Escape is deliberately NOT handled here. Closing the picker directly
@@ -347,6 +365,8 @@ const VariableSpotlight = ({
       />
       <ModalPopup
         key="variable-spotlight-popup"
+        data-variable-spotlight=""
+        onBlur={handlePopupBlur}
         finalFocus={finalFocus}
         className="fixed top-10 left-1/2 z-2000 w-xl max-w-[calc(100vw-3rem)] -translate-x-1/2 bg-transparent shadow-none outline-none"
       >

@@ -97,3 +97,31 @@ export const topologyTargetFromDraw = (
   const { min, max } = topologyTargetBounds(pairCount);
   return Math.min(Math.max(Math.round(target), min), max);
 };
+
+/**
+ * The most edges one realisation of this topology can select over `pairCount`
+ * pairs — the topology twin of `syntheticCountSupport`'s ceiling, and read for
+ * the same reason: feasibility must count the entities a stage CAN produce,
+ * and a sparse topology provably produces fewer than the full pair set.
+ *
+ * Derived through the same two resolvers every draw goes through — the
+ * largest value the declaration can return, turned into a target — so the
+ * bound cannot drift from what a realisation actually selects. A constant's
+ * one value IS its largest draw (the draw returns it untruncated); every
+ * other family is truncated into {@link topologyDrawWindow}, whose ceiling is
+ * therefore its largest. An open ceiling (a mean degree with no declared
+ * `max`) resolves to the pair count itself, which is the bound
+ * {@link topologyTargetBounds} already imposes on every target.
+ */
+export const topologyRealisedEdgeCeiling = (
+  topology: EdgeTopology,
+  pairCount: number,
+  nodeCount: number,
+): number => {
+  const declared = topology.distribution;
+  const maxDraw =
+    declared.distribution === 'constant'
+      ? declared.value
+      : topologyDrawWindow(topology).max;
+  return topologyTargetFromDraw(topology, maxDraw, pairCount, nodeCount);
+};

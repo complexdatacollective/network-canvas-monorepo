@@ -241,11 +241,19 @@ export const DEFAULT_NODE_COUNT: SyntheticCount = {
 
 /**
  * What a node-creating stage declares: how many people it produces.
+ *
+ * `count` is optional in this INPUT shape so a burden-only override —
+ * `synthetic: { responseBurden: 0.9 }` — is a valid authored block: every
+ * stage accepts `responseBurden`, and the name generators' own
+ * `withResolvedSyntheticCount` transform derives the omitted count from the
+ * stage's `behaviours` window exactly as it does for a stage with no block at
+ * all. The transform's return type is where `count` becomes required, which
+ * is the type generation reads.
  */
 export type StageNodeSynthetic = {
   generatesData: true;
   responseBurden: number;
-  count: SyntheticCount;
+  count?: SyntheticCount;
 };
 
 // Annotated rather than inferred due to TS7056. Naming the type keeps the union referring to an alias instead.
@@ -253,11 +261,11 @@ export const stageNodeSynthetic = (
   stageType: BurdenedStageType,
 ): z.ZodType<
   StageNodeSynthetic,
-  { generatesData?: true; responseBurden?: number; count: unknown }
+  { generatesData?: true; responseBurden?: number; count?: unknown }
 > =>
   syntheticStageBase(stageType).extend({
     generatesData: z.literal(true).default(true),
-    count: SyntheticCountSchema,
+    count: SyntheticCountSchema.optional(),
   });
 
 // ---------------------------------------------------------------------------

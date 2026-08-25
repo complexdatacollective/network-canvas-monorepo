@@ -113,6 +113,11 @@ export const walkSession = ({
       simulate(stage, context, promptBound);
     }
 
+    // Predetermined relationships land the moment both endpoints exist, so
+    // the route resolution and stage filters that follow this stage read a
+    // network the fixture edges are already part of.
+    overrides?.applyEdges(index);
+
     if (atStopStage) {
       // Arrived and (partially) worked, never left: no transition, no
       // dropout, resume position is this stage.
@@ -129,7 +134,14 @@ export const walkSession = ({
     if (simulateDropOut && determineDropout(completedStages, streams)) {
       // Abandoned after finishing this stage: the exit transition never
       // fires (the participant closed the app, not the stage), and the
-      // resume position is wherever the route now leads.
+      // resume position is wherever the route now leads. The prompt position
+      // is reset all the same, because the payload reports the NEXT stage as
+      // its resume step: a payload pairing that step with the abandoned
+      // stage's final prompt index describes a state the runtime never
+      // persists (its sync omits promptIndex and every host hydrates 0), and
+      // a consumer honouring it could index a prompt the next stage does not
+      // have — the exact crash `transitionStage`'s reset exists to prevent.
+      engine.updatePrompt({ promptIndex: 0 });
       const resume = nextStageIndex(
         stages,
         engine.draft.network,

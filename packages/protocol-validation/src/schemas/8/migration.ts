@@ -3,8 +3,8 @@ import {
   type ProtocolDocument,
 } from '../../migration/index.ts';
 import { traverseAndTransform } from '../../utils/traverse-and-transform.ts';
+import { OrdinalColorSequence } from './color-reference.ts';
 import { duplicateFormFieldIndices } from './common/forms.ts';
-import { ordinalColorSequence } from './common/prompts.ts';
 import { NON_RENDERABLE_VARIABLE_TYPES } from './variables/types.ts';
 import {
   type ContradictionClass,
@@ -33,7 +33,7 @@ const CATEGORICAL_VALUE_OPERATORS = new Set([
 
 // V8 restricts an OrdinalBin prompt's color to the ten-value ord-color-seq
 // palette; any other legacy value is dropped during migration.
-const VALID_ORDINAL_PROMPT_COLORS = new Set<unknown>(ordinalColorSequence);
+const VALID_ORDINAL_PROMPT_COLORS = new Set<unknown>(OrdinalColorSequence);
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   typeof value === 'object' && value !== null
@@ -912,7 +912,7 @@ const migrationV7toV8 = createMigration({
               delete typedPrompt.color;
             }
             if (!('color' in typedPrompt)) {
-              typedPrompt.color = ordinalColorSequence[0];
+              typedPrompt.color = OrdinalColorSequence[0];
             }
           }
           return stage;
@@ -994,8 +994,7 @@ const migrationV7toV8 = createMigration({
           // the later registration silently replaced the earlier — the second
           // field collected nothing of its own. `duplicateFormFieldIndices` is
           // the schema's own finder, so the migration keeps exactly the fields
-          // the schema would accept — and the same ones Architect's
-          // `repairConfigurationConflicts` keeps for an already-v8 protocol.
+          // the schema accepts.
           const repeats = new Set(duplicateFormFieldIndices(renderable));
           const deduplicated = renderable.filter(
             (_field, index) => !repeats.has(index),

@@ -7,6 +7,7 @@ import {
 } from '@codaco/shared-consts';
 
 import type { GenerationContext } from '../../constraints/context';
+import { ownRuleBroken } from '../../constraints/fixedValueRules';
 import type { EntityScopeRef } from '../../constraints/generateEntityAttributes';
 import type { EntityConstraints } from '../../constraints/types';
 import type { AttributePatch } from '../../session-engine/actions';
@@ -36,10 +37,21 @@ import { resolveFormValues } from './formValues';
  * relating one field to another resolves against the real session.
  *
  * Slides come in the order the deck lists them, which is the order the caller
- * resolved: the network's own, filtered to what the stage shows.
+ * derives: the network's own, filtered to what the stage shows. The deck is
+ * DERIVED LIVE, because the runtime's is: `useStageSelector` re-runs the
+ * stage filter after every submitted update, while the slide position is a
+ * bare local index whose forward test reads the length of the list captured
+ * BEFORE the submission (`SlidesForm.tsx` `beforeNext` closes over the
+ * pre-submit `items`). So when the stage's filter reacts to a field this form
+ * collects, submitting a slide shifts the remainder of the deck under a
+ * stationary index — the runtime genuinely skips the entity that slides into
+ * the submitted position — and this walk steps through exactly the same
+ * sequence rather than a snapshot the participant never saw. A stage without
+ * a filter derives the same deck every time, and walks it unchanged.
  */
 export const simulateSlidesForm = ({
-  items,
+  deriveItems,
+  live,
   fields,
   variables,
   constraints,
@@ -47,7 +59,10 @@ export const simulateSlidesForm = ({
   scope,
   write,
 }: {
-  items: readonly (NcNode | NcEdge)[];
+  /** The deck as the interface would derive it from the network right now. */
+  deriveItems: () => readonly (NcNode | NcEdge)[];
+  /** Whether this stage's own writes can change what `deriveItems` returns. */
+  live: boolean;
   /** The variable ids the form collects, in the order it declares them. */
   fields: readonly string[];
   variables: Variables | undefined;
@@ -58,11 +73,48 @@ export const simulateSlidesForm = ({
   write: (entityId: string, attributePatch: AttributePatch) => void;
 }): void => {
   const collected = new Set(fields);
+  let deck = deriveItems();
+  let submitted = 0;
 
-  items.forEach((item, index) => {
+  for (let activeIndex = 0; ; activeIndex += 1) {
+    if (deck.length === 0) break;
+    const item = deck[activeIndex];
+    // A deck that shrank past the index renders an empty slide with nothing
+    // to submit; the forward test below still decides whether the stage ends.
+    if (item !== undefined) {
+      submitSlide(item, submitted);
+      submitted += 1;
+    }
+
+    // The runtime's forward test reads the PRE-submit deck's length, so the
+    // decision to leave is taken against the list the participant was just
+    // shown; only the next slide itself comes off the refreshed one.
+    if (activeIndex >= deck.length - 1) break;
+    if (live) deck = deriveItems();
+  }
+
+  function submitSlide(item: NcNode | NcEdge, index: number): void {
     const answered = item[entityAttributesProperty];
+    // A field is generated where the entity holds no value — and where the
+    // value it holds is one the form's own validators reject. The form
+    // pre-fills each field and refuses to advance while one fails validation
+    // (an empty required name off a roster row, a number below `minValue`),
+    // so a participant reaching such a slide is MADE to correct it; keeping
+    // the invalid value would return a completed session the real form
+    // rejects. Judged by each variable's own effective rules — the same set
+    // the replacement is drawn against — while rules SPANNING two variables
+    // stay with the draw's comparator folding, which already resolves them
+    // against `existing`. The redraw's release-before-draw hands a displaced
+    // `unique` value back through the same path every regeneration uses.
     const unanswered = new Set(
-      [...collected].filter((id) => answered[id] === undefined),
+      [...collected].filter((id) => {
+        const held = answered[id];
+        if (held === undefined) return true;
+        const variable = constraints.get(id);
+        return (
+          variable !== undefined && ownRuleBroken(variable, held) !== undefined
+        );
+      }),
     );
 
     write(item[entityPrimaryKeyProperty], {
@@ -86,5 +138,5 @@ export const simulateSlidesForm = ({
       // make the difference visible, and no interface asks them to.
       unset: [],
     });
-  });
+  }
 };

@@ -653,3 +653,37 @@ describe('name generator panels', () => {
     });
   });
 });
+
+describe('the stage cap covers panel re-nominations', () => {
+  it('stops honouring nominations once maxNodes is reached', () => {
+    // `useNodeLimits` counts every node carrying one of the stage's prompt
+    // ids — created and re-nominated alike — and disables the panel's drag
+    // sources at `behaviours.maxNodes`. Six eager candidates at probability 1
+    // would blow a cap of three; the stage takes its two created people and
+    // exactly one nomination.
+    const harness = setUp({
+      priorAlters: 6,
+      stage: {
+        ...stageWith({
+          count: 2,
+          panels: [
+            {
+              id: 'e',
+              title: 'Previously',
+              dataSource: 'existing',
+              synthetic: { nominationProbability: 1 },
+            },
+          ],
+        }),
+        behaviours: { maxNodes: 3 },
+      },
+    });
+    runStage(harness);
+
+    const onStage = harness
+      .nodes()
+      .filter((node) => (node.promptIDs ?? []).includes('p1'));
+    expect(onStage).toHaveLength(3);
+    expect(created(harness)).toHaveLength(2);
+  });
+});

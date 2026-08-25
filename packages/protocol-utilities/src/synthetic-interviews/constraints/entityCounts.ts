@@ -1,6 +1,19 @@
-import { type Stage, syntheticCountSupport } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  type EdgeTopology,
+  MAX_SYNTHETIC_POPULATION,
+  type Stage,
+  syntheticCountSupport,
+  topologyRealisedEdgeCeiling,
+} from '@codaco/protocol-validation';
+import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
 
 import type { AssetData } from '../simulators/types';
+import type {
+  EdgeOverrideEntry,
+  NodeOverrideEntry,
+  SessionOverrides,
+} from '../walk/overrides';
 import { type EntityScopeRef, scopeKey } from './generateEntityAttributes';
 
 /**
@@ -69,7 +82,7 @@ export type PairDemand = {
   guaranteedPairs: number;
 };
 
-/** One roster stage measured against the rows the run was handed. */
+/** One roster stage measured against the rows the run can still offer it. */
 export type RosterDemand = {
   stageId: string;
   stageLabel: string;
@@ -78,23 +91,57 @@ export type RosterDemand = {
   minNodes: number;
   /** Rows the caller resolved for this stage. */
   poolSize: number;
+  /**
+   * The rows the stage is guaranteed to still be able to nominate on its
+   * LUCKIEST seed, after every earlier roster-backed stage sharing rows with
+   * it has taken its own guaranteed minimum. Equal to `poolSize` where no
+   * earlier stage shares a row.
+   */
+  guaranteedAvailable: number;
+  /**
+   * True where the caller supplied no roster map at all: the host never
+   * resolved rosters for this run, so the pool is not small — it is missing,
+   * and the refusal names host resolution rather than the document.
+   */
+  unresolved: boolean;
+};
+
+/**
+ * One name-generating stage whose own runtime gate demands more people than
+ * synthetic generation can build. `behaviours.minNodes` above
+ * `MAX_SYNTHETIC_POPULATION` keeps the protocol valid — the live interface
+ * has no such ceiling — but no count the schema can express reaches it, so
+ * the refusal belongs here, at the generation boundary.
+ */
+export type PopulationDemand = {
+  stageId: string;
+  stageLabel: string;
+  nodeType: string;
+  minNodes: number;
 };
 
 export type WalkEntityCounts = {
   /** Counts by `scopeKey`, for the scopes the walk writes entities into. */
   scopes: Map<string, ScopeCounts>;
   /**
-   * Scopes whose size this analysis does not model, keyed the same way.
+   * Scopes whose entity WINDOW this analysis does not fully model, keyed the
+   * same way.
    *
    * FamilyPedigree is the whole of it: its size comes from a run-level
    * population draw rather than from a `synthetic.count`, so the schema
-   * publishes no support for it and nothing here may invent one. A scope listed
-   * here is left alone rather than counted low — an under-count would refuse
-   * nothing while claiming it had checked.
+   * publishes no support for it and nothing here may invent one. A scope
+   * listed here still carries the counts every OTHER stage contributes — a
+   * name generator's own creations, the draws it makes — and the gate judges
+   * those known lower bounds exactly as it judges any scope: the pedigree can
+   * only ADD entities and draws, so a refusal the known writes already earn
+   * stands whatever the pedigree does. What the listing withholds is the
+   * claim of completeness — the windows here are floors of the truth, never
+   * the whole of it.
    */
   unmodelled: Set<string>;
   pairDemands: PairDemand[];
   rosterDemands: RosterDemand[];
+  populationDemands: PopulationDemand[];
 };
 
 /**
@@ -144,6 +191,13 @@ type NodeCreatingStage = Extract<
   }
 >;
 
+type NameGeneratingStage = Extract<
+  Stage,
+  {
+    type: 'NameGenerator' | 'NameGeneratorQuickAdd' | 'NameGeneratorRoster';
+  }
+>;
+
 type PairStage = Extract<
   Stage,
   {
@@ -163,6 +217,12 @@ const NODE_CREATING_TYPES: ReadonlySet<string> = new Set([
   'NetworkComposer',
 ]);
 
+const NAME_GENERATING_TYPES: ReadonlySet<string> = new Set([
+  'NameGenerator',
+  'NameGeneratorQuickAdd',
+  'NameGeneratorRoster',
+]);
+
 const PAIR_TYPES: ReadonlySet<string> = new Set([
   'DyadCensus',
   'NetworkComposer',
@@ -174,6 +234,9 @@ const PAIR_TYPES: ReadonlySet<string> = new Set([
 const isNodeCreating = (stage: Stage): stage is NodeCreatingStage =>
   NODE_CREATING_TYPES.has(stage.type);
 
+const isNameGenerating = (stage: Stage): stage is NameGeneratingStage =>
+  NAME_GENERATING_TYPES.has(stage.type);
+
 const isPairStage = (stage: Stage): stage is PairStage =>
   PAIR_TYPES.has(stage.type);
 
@@ -182,21 +245,45 @@ const formVariables = (
   form: { fields?: readonly { variable: string }[] } | undefined,
 ): string[] => (form?.fields ?? []).map((field) => field.variable);
 
-/** The edge types one stage can draw over its subject's pair set. */
-const edgeTypesOf = (stage: PairStage): string[] => {
+/**
+ * The edge types one stage can create, each with the number of separate
+ * topology REALISATIONS that can add edges of that type — one per prompt that
+ * creates it, or one per NetworkComposer edge entry. Two prompts sharing a
+ * type realise the topology twice, and each realisation can select pairs the
+ * other did not, so the type's ceiling scales with the realisation count
+ * (capped, as everything here is, at the pair set itself).
+ */
+const edgeRealisationsOf = (stage: PairStage): Map<string, number> => {
+  const realisations = new Map<string, number>();
+  const add = (edgeType: string | undefined): void => {
+    if (edgeType === undefined) return;
+    realisations.set(edgeType, (realisations.get(edgeType) ?? 0) + 1);
+  };
+
   switch (stage.type) {
     case 'DyadCensus':
     case 'OneToManyDyadCensus':
     case 'TieStrengthCensus':
-      return stage.prompts.map((prompt) => prompt.createEdge);
+      for (const prompt of stage.prompts) add(prompt.createEdge);
+      break;
     case 'Sociogram':
-      return stage.prompts
-        .map((prompt) => prompt.edges?.create)
-        .filter((type): type is string => type !== undefined);
+      for (const prompt of stage.prompts) add(prompt.edges?.create);
+      break;
     case 'NetworkComposer':
-      return (stage.edges ?? []).map((edge) => edge.subject.type);
+      for (const entry of stage.edges ?? []) add(entry.subject.type);
+      break;
   }
+
+  return realisations;
 };
+
+/**
+ * The topology a pair stage realises its edges through, or `undefined` for a
+ * NetworkComposer that declares none — whose `drawComposedEdges` then creates
+ * nothing at all.
+ */
+const topologyOf = (stage: PairStage): EdgeTopology | undefined =>
+  stage.synthetic.topology;
 
 /**
  * The variables a stage DRAWS onto an edge as it creates it, per edge type.
@@ -236,15 +323,17 @@ const edgeDrawsOf = (stage: PairStage): Map<string, string[]> => {
  * what the simulators collapse — rows present, empty array, and absent key all
  * leave `nominateFromRoster` with nothing to take — and it is what this pass
  * must keep, because the gate is the one place the difference is load-bearing.
- * A caller supplying no `rosterNodes` MAP has not resolved rosters at all, and
- * refusing its protocol would blame the document for a host that never looked;
- * a caller supplying one and omitting this stage's key is reporting a source it
+ * A caller supplying no `rosterNodes` MAP has not resolved rosters at all; a
+ * caller supplying one and omitting this stage's key is reporting a source it
  * could not resolve, which is an empty pool.
  */
-const poolFor = (stageId: string, assetData: AssetData): number | undefined => {
+const poolFor = (
+  stageId: string,
+  assetData: AssetData,
+): readonly { [entityPrimaryKeyProperty]: string }[] | undefined => {
   const { rosterNodes } = assetData;
   if (rosterNodes === undefined) return undefined;
-  return rosterNodes[stageId]?.length ?? 0;
+  return rosterNodes[stageId] ?? [];
 };
 
 const countsFor = (
@@ -283,9 +372,11 @@ const record = (
  * NameGeneratorQuickAdd build EXACTLY the count they draw — a roster row that
  * is passed over is replaced by a fabricated person — so both ends of the
  * support carry through. NameGeneratorRoster draws from a finite pool and
- * fabricates nobody, so both ends are held to it. A NetworkComposer's quick-add
- * variable may come back missing, which builds fewer people than the count
- * asked for, so its floor is nobody.
+ * fabricates nobody, so both ends are held to it. A NetworkComposer builds the
+ * count it draws too: its quick-add field is interface-implied `required` (the
+ * palette will not create a node from a blank name, so resolution zeroes any
+ * authored missingness), which means a valid draw always names somebody and
+ * the count's own floor carries through.
  */
 const nodesAdded = (
   stage: NodeCreatingStage,
@@ -294,8 +385,7 @@ const nodesAdded = (
   if (stage.type === 'NetworkComposer') {
     const composerCount = stage.synthetic.count;
     if (composerCount === undefined) return { floor: 0, ceiling: 0 };
-    const { ceiling } = syntheticCountSupport(composerCount);
-    return { floor: 0, ceiling };
+    return syntheticCountSupport(composerCount);
   }
 
   const { floor, ceiling } = syntheticCountSupport(stage.synthetic.count);
@@ -303,7 +393,10 @@ const nodesAdded = (
 
   const pool = poolFor(stage.id, assetData);
   if (pool === undefined) return { floor: 0, ceiling };
-  return { floor: Math.min(floor, pool), ceiling: Math.min(ceiling, pool) };
+  return {
+    floor: Math.min(floor, pool.length),
+    ceiling: Math.min(ceiling, pool.length),
+  };
 };
 
 /** The variables a stage draws onto the nodes it creates, as it creates them. */
@@ -324,6 +417,48 @@ const createdNodeVariables = (stage: NodeCreatingStage): string[] => {
 };
 
 /**
+ * The codebook variables an override entry lets the walk DRAW: the declared
+ * set minus what the caller fixed or suppressed. A `manual` entry draws
+ * nothing at all — its unset variables take neutral values.
+ */
+const overrideDrawnVariables = (
+  codebook: CurrentProtocol['codebook'],
+  scope: Extract<EntityScopeRef, { entity: 'node' | 'edge' }>,
+  entry: NodeOverrideEntry | EdgeOverrideEntry,
+): string[] => {
+  if (entry.manual) return [];
+  const declared = codebook[scope.entity]?.[scope.type]?.variables ?? {};
+  const settled = new Set(entry.suppress ?? []);
+  for (const [id, value] of Object.entries(entry.attributes ?? {})) {
+    if (id in declared) settled.add(id);
+    void value;
+  }
+  return Object.keys(declared).filter((id) => !settled.has(id));
+};
+
+/** One roster-backed stage's contribution to shared-pool depletion. */
+type RosterUse = {
+  uids: ReadonlySet<string>;
+  /** The rows the stage takes on EVERY seed, however the draws land. */
+  guaranteedTake: number;
+  /** The most rows the stage can take on any seed. */
+  ceilingTake: number;
+};
+
+const intersectionSize = (
+  a: ReadonlySet<string>,
+  b: ReadonlySet<string>,
+): number => {
+  const [small, large] = a.size <= b.size ? [a, b] : [b, a];
+  let count = 0;
+  for (const uid of small) if (large.has(uid)) count += 1;
+  return count;
+};
+
+/** How far the walk works one stage, under a `stopAt` bound. */
+type StageExtent = 'full' | 'partial' | 'skipped';
+
+/**
  * Everything the pre-seed gate needs to know about how big a session can get.
  *
  * One pass in stage order, because every question the gate asks is positional:
@@ -332,28 +467,292 @@ const createdNodeVariables = (stage: NodeCreatingStage): string[] => {
  * stage that draws from it. Skip logic is deliberately not modelled — a skipped
  * stage produces fewer entities and fewer draws, never more, so reading every
  * stage as reached is the direction that cannot under-count.
+ *
+ * `stopAt` bounds the pass the way it bounds the walk: stages past the stop
+ * are never run and contribute nothing, and the stop stage itself contributes
+ * nothing when its prompt bound is zero (arrived, did nothing — the preview
+ * default). A stop stage with a positive bound is counted WHOLE: the exact
+ * prompt-sliced arithmetic buys nothing a preview reads, and over-counting is
+ * the direction that cannot let the walk exhaust a slot the gate approved.
+ *
+ * `overrides` replaces a listed stage outright, exactly as the walk's applier
+ * does: the stage is not simulated, so nothing it would have created or drawn
+ * is counted — its predetermined entries are, one entity and one draw set per
+ * entry — and the override edges land once at the end, endpoints permitting.
  */
 export const worstCaseEntityCounts = (
   stages: readonly Stage[],
   assetData: AssetData,
+  options?: {
+    codebook?: CurrentProtocol['codebook'];
+    stopAt?: { stageIndex: number; promptIndex?: number };
+    overrides?: SessionOverrides;
+  },
 ): WalkEntityCounts => {
   const scopes = new Map<string, ScopeCounts>();
   const unmodelled = new Set<string>();
   const pairDemands: PairDemand[] = [];
   const rosterDemands: RosterDemand[] = [];
+  const populationDemands: PopulationDemand[] = [];
   /** Edge type -> the node types whose pairs can carry one. */
   const edgeSubjects = new Map<string, Set<string>>();
+  /** Roster-backed stages already passed, for shared-pool depletion. */
+  const rosterUses: RosterUse[] = [];
+
+  const stopAt = options?.stopAt;
+  const codebook = options?.codebook;
+  const overrides = options?.overrides;
+
+  const extentOf = (index: number): StageExtent => {
+    if (stopAt === undefined) return 'full';
+    if (index > stopAt.stageIndex) return 'skipped';
+    if (index < stopAt.stageIndex) return 'full';
+    return (stopAt.promptIndex ?? 0) === 0 ? 'skipped' : 'partial';
+  };
 
   const nodeCounts = (type: string): ScopeCounts =>
     countsFor(scopes, { entity: 'node', type });
   const edgeCounts = (type: string): ScopeCounts =>
     countsFor(scopes, { entity: 'edge', type });
 
-  for (const stage of stages) {
+  const recordOverrideEntry = (
+    scope: Extract<EntityScopeRef, { entity: 'node' | 'edge' }>,
+    entry: NodeOverrideEntry | EdgeOverrideEntry,
+    counts: ScopeCounts,
+  ): void => {
+    if (codebook !== undefined) {
+      record(counts, overrideDrawnVariables(codebook, scope, entry), 1, false);
+    }
+  };
+
+  const trackRosterStage = (
+    stage: NameGeneratingStage,
+    extent: StageExtent,
+  ): void => {
+    const pool = poolFor(stage.id, assetData);
+    const minNodes =
+      'behaviours' in stage ? stage.behaviours?.minNodes : undefined;
+
+    // A runtime gate no expressible count reaches: the count schemas cap
+    // every figure at the population ceiling, so a stage demanding more can
+    // never be generated faithfully however the rows resolve.
+    if (
+      extent === 'full' &&
+      minNodes !== undefined &&
+      minNodes > MAX_SYNTHETIC_POPULATION
+    ) {
+      populationDemands.push({
+        stageId: stage.id,
+        stageLabel: stage.label,
+        nodeType: stage.subject.type,
+        minNodes,
+      });
+    }
+
+    if (stage.type !== 'NameGeneratorRoster') {
+      // A name generator's roster PANEL consumes shared rows too, but is
+      // never forced to: its roster share draws from zero. It caps later
+      // stages' luck (ceiling) without guaranteeing anyone's depletion.
+      if (pool !== undefined && pool.length > 0) {
+        const { ceiling } = syntheticCountSupport(stage.synthetic.count);
+        rosterUses.push({
+          uids: new Set(pool.map((row) => row[entityPrimaryKeyProperty])),
+          guaranteedTake: 0,
+          ceilingTake: Math.min(ceiling, pool.length),
+        });
+      }
+      return;
+    }
+
+    // Judged only for a stage the walk completes: mid-stage, the interface's
+    // min-nodes gate has not yet been reached.
+    if (extent !== 'full') return;
+
+    if (pool === undefined) {
+      // The host never resolved rosters at all. Without `minNodes` the walk's
+      // empty stage is a participant who nominated nobody, which the
+      // interface permits; with it, the completed session would sit below the
+      // gate the interface refuses to advance past, so the run is refused as
+      // a host-resolution failure.
+      if (minNodes !== undefined && minNodes >= 1) {
+        rosterDemands.push({
+          stageId: stage.id,
+          stageLabel: stage.label,
+          nodeType: stage.subject.type,
+          minNodes,
+          poolSize: 0,
+          guaranteedAvailable: 0,
+          unresolved: true,
+        });
+      }
+      return;
+    }
+
+    const uids = new Set(pool.map((row) => row[entityPrimaryKeyProperty]));
+    const { floor, ceiling } = syntheticCountSupport(stage.synthetic.count);
+
+    // The rows this stage can still see on its LUCKIEST seed: every earlier
+    // roster-backed stage has taken at least its guaranteed minimum, and at
+    // least the part of that minimum its own pool forces into this one
+    // (rows it could not have avoided by preferring rows outside the
+    // overlap). Each earlier take lands on distinct rows — a taken row is in
+    // the network and cannot be taken again — so the guarantees sum.
+    let guaranteedDepletion = 0;
+    // The rows earlier stages can have taken on THIS stage's unluckiest
+    // seed, which is what bounds the take it is guaranteed to make.
+    let possibleDepletion = 0;
+    for (const use of rosterUses) {
+      const overlap = intersectionSize(use.uids, uids);
+      guaranteedDepletion += Math.max(
+        0,
+        use.guaranteedTake - (use.uids.size - overlap),
+      );
+      possibleDepletion += Math.min(use.ceilingTake, overlap);
+    }
+    const guaranteedAvailable = Math.max(
+      0,
+      pool.length - Math.min(guaranteedDepletion, pool.length),
+    );
+
+    if (minNodes !== undefined && guaranteedAvailable < minNodes) {
+      rosterDemands.push({
+        stageId: stage.id,
+        stageLabel: stage.label,
+        nodeType: stage.subject.type,
+        minNodes,
+        poolSize: pool.length,
+        guaranteedAvailable,
+        unresolved: false,
+      });
+    }
+
+    rosterUses.push({
+      uids,
+      guaranteedTake: Math.min(
+        floor,
+        Math.max(0, pool.length - Math.min(possibleDepletion, pool.length)),
+      ),
+      ceilingTake: Math.min(ceiling, pool.length),
+    });
+  };
+
+  const countPairStage = (stage: PairStage): void => {
+    const subjectType = stage.subject.type;
+    const nodes = nodeCounts(subjectType);
+    const realisations = edgeRealisationsOf(stage);
+    const pairs = pairCount(nodes.entities.ceiling);
+    const nodeCeiling = nodes.entities.ceiling;
+    const topology = topologyOf(stage);
+    const drawn = edgeDrawsOf(stage);
+
+    if (realisations.size > 0) {
+      pairDemands.push({
+        stageId: stage.id,
+        stageLabel: stage.label,
+        subjectType,
+        edgeTypes: [...realisations.keys()],
+        guaranteedNodes: nodes.entities.floor,
+        guaranteedPairs: pairCount(nodes.entities.floor),
+      });
+    }
+
+    for (const [edgeType, realisationCount] of realisations) {
+      const counts = edgeCounts(edgeType);
+      // What one realisation of the declared topology can select — the full
+      // pair set only where the topology can genuinely reach it. A stage
+      // realising the topology once per prompt (or per composer edge entry)
+      // can accumulate across realisations, never past the pair set itself;
+      // a composer with no topology creates no edges at all.
+      const perRealisation =
+        topology === undefined
+          ? 0
+          : topologyRealisedEdgeCeiling(topology, pairs, nodeCeiling);
+      const added = Math.min(pairs, perRealisation * realisationCount);
+
+      // Edges of one type live on one shared graph and are deduped by their
+      // pair, so a stage linking people an earlier stage already linked
+      // REACHES the same edges rather than making new ones — it re-grades
+      // them. That reuse only holds where this stage can SEE those edges: a
+      // stage filter hides edges from the interface's own selector, so a
+      // filtered census can answer yes for a pair whose edge exists but is
+      // invisible, and the runtime then adds a second edge of the type. A
+      // filtered stage is therefore counted as additive, and only an
+      // unfiltered one over an already-linked subject as reuse.
+      const filtered = 'filter' in stage && stage.filter !== undefined;
+      const onExisting =
+        !filtered && edgeSubjects.get(edgeType)?.has(subjectType) === true;
+      counts.entities.ceiling = onExisting
+        ? Math.max(counts.entities.ceiling, added)
+        : counts.entities.ceiling + added;
+      record(counts, drawn.get(edgeType) ?? [], added, onExisting);
+    }
+
+    for (const edgeType of realisations.keys()) {
+      const subjects = edgeSubjects.get(edgeType) ?? new Set<string>();
+      subjects.add(subjectType);
+      edgeSubjects.set(edgeType, subjects);
+    }
+  };
+
+  stages.forEach((stage, index) => {
+    const extent = extentOf(index);
+    if (extent === 'skipped') return;
+
+    // A stage the fixture channel claims is not simulated: its output is its
+    // entries, and nothing the stage would have elicited or drawn happens.
+    const entries = overrides?.nodes?.[stage.id];
+    if (entries !== undefined) {
+      const worked =
+        extent === 'partial'
+          ? entries.filter(
+              (entry) => (entry.promptIndex ?? 0) < (stopAt?.promptIndex ?? 0),
+            )
+          : entries;
+      for (const entry of worked) {
+        const counts = nodeCounts(entry.type);
+        recordOverrideEntry(
+          { entity: 'node', type: entry.type },
+          entry,
+          counts,
+        );
+        counts.entities.floor += 1;
+        counts.entities.ceiling += 1;
+      }
+      return;
+    }
+
     if (stage.type === 'FamilyPedigree') {
       unmodelled.add(scopeKey({ entity: 'node', type: stage.nodeConfig.type }));
       unmodelled.add(scopeKey({ entity: 'edge', type: stage.edgeConfig.type }));
-      continue;
+      return;
+    }
+
+    // The composer builds first and then describes everybody on the canvas —
+    // its own additions included — so its counting follows the simulator's
+    // order rather than the values-then-creations order below.
+    if (stage.type === 'NetworkComposer') {
+      const counts = nodeCounts(stage.subject.type);
+      const added = nodesAdded(stage, assetData);
+      record(counts, createdNodeVariables(stage), added.ceiling, false);
+      counts.entities.floor += added.floor;
+      counts.entities.ceiling += added.ceiling;
+
+      // The inspector fills its form over EVERY node the canvas lists,
+      // the ones just composed included (`fillInspectorForms` runs after
+      // `addComposedNodes`), so the draw reaches the population as it now
+      // stands.
+      record(
+        counts,
+        [
+          ...formVariables(stage.nodeForm),
+          stage.convexHullVariable && String(stage.convexHullVariable),
+        ],
+        counts.entities.ceiling,
+        true,
+      );
+
+      countPairStage(stage);
+      return;
     }
 
     // Values written onto whoever is already there, before this stage's own
@@ -386,7 +785,12 @@ export const worstCaseEntityCounts = (
             counts,
             [
               String(prompt.variable),
-              prompt.otherVariable && String(prompt.otherVariable),
+              // An other bin whose authored odds are exactly zero is never
+              // reached for — the simulator's coin can never land below 0 —
+              // so its free-text variable is never drawn here.
+              prompt.otherVariable && prompt.synthetic.otherBinProbability > 0
+                ? String(prompt.otherVariable)
+                : undefined,
             ],
             counts.entities.ceiling,
             true,
@@ -428,85 +832,31 @@ export const worstCaseEntityCounts = (
         record(counts, formVariables(stage.form), 1, true);
         break;
       }
-      case 'NetworkComposer': {
-        const counts = nodeCounts(stage.subject.type);
-        record(
-          counts,
-          [
-            ...formVariables(stage.nodeForm),
-            stage.convexHullVariable && String(stage.convexHullVariable),
-          ],
-          counts.entities.ceiling,
-          true,
-        );
-        break;
-      }
       default:
         break;
     }
 
-    if (isPairStage(stage)) {
-      const subjectType = stage.subject.type;
-      const nodes = nodeCounts(subjectType);
-      const edgeTypes = [...new Set(edgeTypesOf(stage))];
-      const pairs = pairCount(nodes.entities.ceiling);
-      const drawn = edgeDrawsOf(stage);
+    if (isPairStage(stage)) countPairStage(stage);
 
-      if (edgeTypes.length > 0) {
-        pairDemands.push({
-          stageId: stage.id,
-          stageLabel: stage.label,
-          subjectType,
-          edgeTypes,
-          guaranteedNodes: nodes.entities.floor,
-          guaranteedPairs: pairCount(nodes.entities.floor),
-        });
-      }
+    if (!isNodeCreating(stage)) return;
 
-      for (const edgeType of edgeTypes) {
-        const counts = edgeCounts(edgeType);
-        // Edges of one type live on one shared graph and are deduped by their
-        // pair, so a stage linking people an earlier stage already linked
-        // REACHES the same edges rather than making new ones — it re-grades
-        // them. A stage over a different node type brings a pair set of its
-        // own, and those edges are additional.
-        const onExisting =
-          edgeSubjects.get(edgeType)?.has(subjectType) === true;
-        counts.entities.ceiling = onExisting
-          ? Math.max(counts.entities.ceiling, pairs)
-          : counts.entities.ceiling + pairs;
-        record(counts, drawn.get(edgeType) ?? [], pairs, onExisting);
-      }
-
-      for (const edgeType of edgeTypes) {
-        const subjects = edgeSubjects.get(edgeType) ?? new Set<string>();
-        subjects.add(subjectType);
-        edgeSubjects.set(edgeType, subjects);
-      }
-    }
-
-    if (!isNodeCreating(stage)) continue;
-
-    if (stage.type === 'NameGeneratorRoster') {
-      const pool = poolFor(stage.id, assetData);
-      const minNodes = stage.behaviours?.minNodes;
-      if (pool !== undefined && minNodes !== undefined && pool < minNodes) {
-        rosterDemands.push({
-          stageId: stage.id,
-          stageLabel: stage.label,
-          nodeType: stage.subject.type,
-          minNodes,
-          poolSize: pool,
-        });
-      }
-    }
+    if (isNameGenerating(stage)) trackRosterStage(stage, extent);
 
     const added = nodesAdded(stage, assetData);
     const counts = nodeCounts(stage.subject.type);
     record(counts, createdNodeVariables(stage), added.ceiling, false);
     counts.entities.floor += added.floor;
     counts.entities.ceiling += added.ceiling;
+  });
+
+  // Predetermined relationships, applied by the walk as soon as both
+  // endpoints exist. Worst case, every one of them lands (a stopAt run may
+  // strand some short of their endpoints, which only produces fewer).
+  for (const entry of overrides?.edges ?? []) {
+    const counts = edgeCounts(entry.type);
+    recordOverrideEntry({ entity: 'edge', type: entry.type }, entry, counts);
+    counts.entities.ceiling += 1;
   }
 
-  return { scopes, unmodelled, pairDemands, rosterDemands };
+  return { scopes, unmodelled, pairDemands, rosterDemands, populationDemands };
 };

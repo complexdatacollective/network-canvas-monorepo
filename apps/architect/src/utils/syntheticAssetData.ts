@@ -30,21 +30,25 @@ type ResolvableAssetType = 'network' | 'geojson';
  * pool goes unresolved and the engine reads it as such, exactly as before
  * asset data was wired in.
  *
- * `assetType` is checked here because the manifest is the only place an asset's
- * kind is recorded — the contract collectors see nothing but a URL, so handing
- * an image to the roster parser would be indistinguishable from a corrupt CSV.
+ * `allowedTypes` is checked here because the manifest is the only place an
+ * asset's kind is recorded — the contract collectors see nothing but a URL, so
+ * handing an image to the roster parser would be indistinguishable from a
+ * corrupt CSV. Each collector passes exactly the types the schema's
+ * cross-reference checks let its stage field name: a roster `dataSource` must
+ * be a `network` asset, and a Geospatial map's `dataSourceAssetId` may be
+ * `geojson` or `network`.
  */
 export function makeAssetResolver(
   protocol: CurrentProtocol,
   protocolId: string,
-  assetType: ResolvableAssetType,
+  allowedTypes: readonly ResolvableAssetType[],
 ): ResolveRosterAsset {
   return async (assetId) => {
     try {
       const manifestEntry = protocol.assetManifest?.[assetId];
       if (!manifestEntry) return null;
       // Two steps: the first narrows the manifest union to the file-backed
-      // entries (the ones that carry a `source`), the second picks the kind
+      // entries (the ones that carry a `source`), the second picks the kinds
       // this resolver was built for.
       if (
         manifestEntry.type !== 'network' &&
@@ -52,7 +56,7 @@ export function makeAssetResolver(
       ) {
         return null;
       }
-      if (manifestEntry.type !== assetType || !manifestEntry.source) {
+      if (!allowedTypes.includes(manifestEntry.type) || !manifestEntry.source) {
         return null;
       }
 
@@ -96,7 +100,7 @@ export async function collectSyntheticRosterData(
     return await collectRosterExternalData({
       stages: protocol.stages,
       codebook: protocol.codebook,
-      resolveAsset: makeAssetResolver(protocol, protocolId, 'network'),
+      resolveAsset: makeAssetResolver(protocol, protocolId, ['network']),
     });
   } catch (error) {
     // eslint-disable-next-line no-console
@@ -107,17 +111,22 @@ export async function collectSyntheticRosterData(
 
 /**
  * Geospatial answer pools (keyed by stage id) for a synthetic run: the values
- * a map tap can store, read off each Geospatial stage's GeoJSON asset.
- * Soft-fails to {} for the same reason its roster sibling does.
+ * a map tap can store, read off each Geospatial stage's map data asset —
+ * manifest-typed `geojson` or `network`, the two kinds the schema lets
+ * `mapOptions.dataSourceAssetId` reference. Soft-fails to {} for the same
+ * reason its roster sibling does.
  */
 export async function collectSyntheticGeospatialData(
   protocol: CurrentProtocol,
   protocolId: string,
-): Promise<Record<string, string[]>> {
+): Promise<Record<string, (string | number)[]>> {
   try {
     return await collectGeospatialPropertyValues({
       stages: protocol.stages,
-      resolveAsset: makeAssetResolver(protocol, protocolId, 'geojson'),
+      resolveAsset: makeAssetResolver(protocol, protocolId, [
+        'geojson',
+        'network',
+      ]),
     });
   } catch (error) {
     // eslint-disable-next-line no-console

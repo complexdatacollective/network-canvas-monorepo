@@ -265,7 +265,9 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
     const isNamed = !nameWhenScrollableOnly || resolvedTabIndex >= 0;
 
     return (
-      <div className={cx('relative flex h-full min-h-0 flex-1', className)}>
+      <div
+        className={cx('relative isolate flex h-full min-h-0 flex-1', className)}
+      >
         <section
           ref={useMergeRefs({ viewportRef, ref })}
           tabIndex={resolvedTabIndex}

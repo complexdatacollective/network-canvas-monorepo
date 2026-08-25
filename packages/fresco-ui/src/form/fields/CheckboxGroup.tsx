@@ -67,7 +67,7 @@ export default function CheckboxGroupField(props: CheckboxGroupProps) {
 
   const handleChange = (optionValue: string | number, checked: boolean) => {
     if (readOnly) return;
-    const currentValues = value ?? [];
+    const currentValues = Array.isArray(value) ? value : [];
     const newValues = checked
       ? [...currentValues, optionValue]
       : currentValues.filter((v) => v !== optionValue);
@@ -76,7 +76,8 @@ export default function CheckboxGroupField(props: CheckboxGroupProps) {
 
   // Determine if this is controlled or uncontrolled
   const isControlled = value !== undefined;
-  const currentValues = isControlled ? value : (defaultValue ?? []);
+  const suppliedValues = isControlled ? value : (defaultValue ?? []);
+  const currentValues = Array.isArray(suppliedValues) ? suppliedValues : [];
 
   const optionIdPrefix = useId();
 

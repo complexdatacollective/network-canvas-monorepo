@@ -1,9 +1,12 @@
 import { z } from 'zod';
 
+import { OrdinalColorReferenceSchema } from '../color-reference.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
 import { SortOrderSchema } from '../filters/index.ts';
 import { CategoricalBinPromptSyntheticSchema } from '../synthetic/index.ts';
+
+export { OrdinalColorSequence as ordinalColorSequence } from '../color-reference.ts';
 
 export const promptSchema = z.strictObject({
   id: z.string(),
@@ -144,22 +147,6 @@ export const tieStrengthCensusPromptSchema = promptSchema.extend({
   negativeLabel: z.string().min(1),
 });
 
-// The ten palette values the OrdinalBin interface maps to CSS colour
-// variables (see the interview's OrdinalBinItem). Any other string is
-// silently ignored by the runtime, so the schema only admits these.
-export const ordinalColorSequence = [
-  'ord-color-seq-1',
-  'ord-color-seq-2',
-  'ord-color-seq-3',
-  'ord-color-seq-4',
-  'ord-color-seq-5',
-  'ord-color-seq-6',
-  'ord-color-seq-7',
-  'ord-color-seq-8',
-  'ord-color-seq-9',
-  'ord-color-seq-10',
-] as const;
-
 export const ordinalBinPromptSchema = promptSchema.extend({
   variable: entityAttributeReference({
     subject: 'stageSubject',
@@ -167,7 +154,7 @@ export const ordinalBinPromptSchema = promptSchema.extend({
   }),
   bucketSortOrder: SortOrderSchema.optional(),
   binSortOrder: SortOrderSchema.optional(),
-  color: z.enum(ordinalColorSequence),
+  color: OrdinalColorReferenceSchema,
 });
 
 const categoricalBinPromptFields = {

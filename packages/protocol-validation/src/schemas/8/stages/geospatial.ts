@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import { assetReference } from '../asset-reference.ts';
+import { ColorReferenceSchema } from '../color-reference.ts';
 import {
   geospatialPromptSchema,
   NodeStageSubjectSchema,
@@ -48,7 +49,7 @@ const mapOptions = z.strictObject({
     .min(0, { message: 'Zoom must be at least 0' })
     .max(22, { message: 'Zoom must be less than or equal to 22' }),
   dataSourceAssetId: assetReference(),
-  color: z.string(),
+  color: ColorReferenceSchema,
   targetFeatureProperty: z
     .string()
     .min(1, { message: 'Target feature property must not be empty' }), // property of geojson to select

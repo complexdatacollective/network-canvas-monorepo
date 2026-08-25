@@ -1,5 +1,5 @@
 ---
-'@codaco/protocol-validation': minor
+'@codaco/protocol-validation': major
 '@codaco/shared-consts': minor
 '@codaco/network-query': minor
 '@codaco/interview': major
@@ -25,6 +25,14 @@ parameter admits are exported along with their bounds — so an authoring surfac
 can offer exactly the choices the format accepts, and say which stage has
 already decided the rest. A demonstration protocol exercising the whole authored
 surface ships with the bundled protocols as `synthetic-showcase`.
+
+`@codaco/protocol-validation`'s published TypeScript surface changes shape:
+parsed `CurrentProtocol` stages now carry a required `synthetic` block (the
+schema resolves one during parsing), and `migrateProtocol` returns the wider
+`CurrentProtocolDocument` rather than `CurrentProtocol`. Consumers that
+construct `CurrentProtocol` values by hand, or assign a migration result to
+that type, must parse through `CurrentProtocolSchema` to recover the resolved
+type — which is why this release is a major.
 
 Two pieces of the interview contract move to the packages that own them.
 `SessionPayload` and `StageMetadataEntry` now live in `@codaco/shared-consts`,

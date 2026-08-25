@@ -370,3 +370,63 @@ describe('simulateAlterForm', () => {
     );
   });
 });
+
+describe('a filter that reacts to the form’s own answers', () => {
+  it('walks the deck the way the live index does over a shrinking list', () => {
+    // The stage shows only people without a nickname, and the form collects
+    // one: each submission removes its subject from the deck while the slide
+    // index — a bare local integer in the runtime — keeps counting. The
+    // second entity slides into the submitted position and is genuinely
+    // skipped, so of three people the form reaches exactly the first and the
+    // third, never a snapshot of all three.
+    const harness = setUp({
+      alters: 3,
+      stage: stageWith({
+        fields: [{ variable: 'nickname', prompt: 'What do you call them?' }],
+        filter: {
+          join: 'AND',
+          rules: [
+            {
+              id: 'rule-1',
+              type: 'node',
+              options: {
+                type: 'person',
+                attribute: 'nickname',
+                operator: 'NOT_EXISTS',
+              },
+            },
+          ],
+        },
+      }),
+    });
+    runStage(harness);
+
+    const nicknames = harness
+      .nodes()
+      .map((node) => node[entityAttributesProperty].nickname);
+    expect(nicknames[0]).toBeDefined();
+    expect(nicknames[1]).toBeUndefined();
+    expect(nicknames[2]).toBeDefined();
+  });
+});
+
+describe('prefilled values the form’s validators reject', () => {
+  it('regenerates an invalid value and keeps a valid one', () => {
+    // The form pre-fills each field from the entity and blocks advancing
+    // until every field validates, so a roster-supplied age below `minValue`
+    // is one the participant was made to correct — while a valid age is
+    // confirmed as it stands, never redrawn.
+    const harness = setUp({
+      alters: 2,
+      attributes: (index) => ({ age: index === 0 ? 5 : 25 }),
+    });
+    runStage(harness);
+
+    const ages = harness
+      .nodes()
+      .map((node) => node[entityAttributesProperty].age);
+    expect(typeof ages[0]).toBe('number');
+    expect(ages[0] as number).toBeGreaterThanOrEqual(18);
+    expect(ages[1]).toBe(25);
+  });
+});

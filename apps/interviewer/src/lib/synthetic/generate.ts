@@ -1,5 +1,8 @@
 import { getInterviewProgress } from '@codaco/interview';
-import { generateInterviews } from '@codaco/protocol-utilities';
+import {
+  freshBatchStartWindow,
+  generateInterviews,
+} from '@codaco/protocol-utilities';
 import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 import { StageMetadataSchema } from '@codaco/shared-consts';
 import {
@@ -28,16 +31,30 @@ type GenerateOptions = {
   protocolHash: string;
   count: number;
   simulateDropOut: boolean;
+  /**
+   * The settings dialog's combined toggle: skip logic AND stage filters
+   * together, exactly as its label promises. Threaded to both of the
+   * engine's flags.
+   */
   respectSkipLogic: boolean;
   /** Pin the batch. Omitted, a fresh random seed is drawn and reported back. */
   seed?: number;
+  /**
+   * Pin the batch's start-window anchor. Omitted, a fresh day-quantised
+   * anchor is drawn ({@link freshBatchStartWindow}) and reported back — the
+   * seed alone does not identify a batch, because session dates and every
+   * date-relative drawn value follow the anchor.
+   */
+  startWindow?: string;
   onProgress?: (progress: SyntheticGenerationProgress) => void;
 };
 
 export type SyntheticGenerationSummary = {
   created: number;
-  /** The seed the batch actually ran on, so it can be reproduced exactly. */
+  /** The seed the batch actually ran on. */
   seed: number;
+  /** The anchor it ran against; with the seed, the batch's whole identity. */
+  startWindow: string;
 };
 
 /**
@@ -88,16 +105,27 @@ export async function generateSyntheticSessions(
   const parsed = parseStoredProtocol(protocol);
   const assetData = await loadSyntheticAssetData(protocol);
   const seed = opts.seed ?? drawSeed();
+  const startWindow = opts.startWindow ?? freshBatchStartWindow();
 
   // Nothing is written yet, so a refusal here — the engine proves up front
   // that the protocol's validation rules cannot all be satisfied — leaves
   // storage untouched and needs no rollback. The completed floor and every
   // retry live inside the engine: it re-runs a dropped session on its own
   // substreams rather than drawing a fresh one, so the batch stays a pure
-  // function of `seed`.
+  // function of `seed` and `startWindow` together.
   const results = generateInterviews(
     parsed,
-    { count, seed, simulateDropOut, respectSkipLogic },
+    {
+      count,
+      seed,
+      startWindow,
+      simulateDropOut,
+      respectSkipLogic,
+      // One host toggle, both engine flags: the setting's label has always
+      // promised "skip logic and filtering", and stage filters are the
+      // second half of that promise.
+      respectFiltering: respectSkipLogic,
+    },
     assetData,
     (current, total) => onProgress?.({ phase: 'generating', current, total }),
   );
@@ -162,5 +190,5 @@ export async function generateSyntheticSessions(
     throw error;
   }
 
-  return { created: results.length, seed };
+  return { created: results.length, seed, startWindow };
 }

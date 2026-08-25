@@ -349,3 +349,55 @@ describe('simulateDyadCensus', () => {
     expect(() => runStage(harness)).toThrow(/node type "ghost"/);
   });
 });
+
+describe('a filter that reacts to the census’s own edges', () => {
+  it('continues the traversal over the list the participant can still see', () => {
+    // The stage shows only endpoints of a friend edge (the edge-rule
+    // semantics network-query gives EXISTS), so a No — which deletes the
+    // pair's visible edge — removes both endpoints from the live list,
+    // exactly as the runtime's selector re-derives it after each answer.
+    // Four linked people make six pairs; the first No collapses the list to
+    // the one remaining pair, which the index has already stepped past: one
+    // recorded answer, and the second couple's edge survives untouched
+    // because the participant was never shown their pair again.
+    const harness = setUp({
+      alters: 4,
+      stage: stageWith({
+        synthetic: constantDensity(0),
+        filter: {
+          join: 'AND',
+          rules: [
+            {
+              id: 'rule-1',
+              type: 'edge',
+              options: { type: 'friend', operator: 'EXISTS' },
+            },
+          ],
+        },
+      }),
+    });
+    const uids = harness.nodes().map((node) => node[entityPrimaryKeyProperty]);
+    const [a, b, c, d] = uids;
+    if (!a || !b || !c || !d) throw new Error('fixture needs four alters');
+    harness.engine.addEdge({
+      edgeType: 'friend',
+      uid: 'edge-ab',
+      from: a,
+      to: b,
+      currentStep: 0,
+    });
+    harness.engine.addEdge({
+      edgeType: 'friend',
+      uid: 'edge-cd',
+      from: c,
+      to: d,
+      currentStep: 0,
+    });
+    runStage(harness);
+
+    expect(edgesOfType(harness, 'friend').map((edge) => edge.from)).toEqual([
+      c,
+    ]);
+    expect(answers(harness)).toHaveLength(1);
+  });
+});

@@ -13,10 +13,12 @@ import {
 import { edgesForStage, nodesForStage } from '../utils/eligibleNodes';
 import { invariant } from '../utils/invariant';
 import { clearCensusAnswer, recordCensusAnswer } from './shared/censusMetadata';
+import { pairKeyOf, walkCensusPairs } from './shared/censusTraversal';
 import {
   currentStepOf,
   generationFor,
   promptsWorked,
+  stageFilterOf,
 } from './shared/stageContext';
 import type { StageSimulator } from './types';
 
@@ -58,6 +60,8 @@ export const simulateTieStrengthCensus: StageSimulator<
   const { engine, streams } = context;
   const currentStep = currentStepOf(context, stage);
   const generation = generationFor(context);
+  // The stage's own filter, or nothing when the run ignores filtering.
+  const stageFilter = stageFilterOf(context, stage.filter);
 
   // Sequences the values drawn for this stage's edges, so a `unique` edge
   // variable is handed a distinct one per edge rather than per prompt.
@@ -82,8 +86,12 @@ export const simulateTieStrengthCensus: StageSimulator<
     const eligible = nodesForStage(
       engine.draft.network,
       stage.subject.type,
-      stage.filter,
+      stageFilter,
     );
+    const derivePairs = () =>
+      unorderedPairs(
+        nodesForStage(engine.draft.network, stage.subject.type, stageFilter),
+      );
     const pairs = unorderedPairs(eligible);
     const linked = chooseLinkedPairs({
       topology: stage.synthetic.topology,
@@ -91,71 +99,86 @@ export const simulateTieStrengthCensus: StageSimulator<
       nodeCount: eligible.length,
       streams,
     });
+    // Keyed by the pair rather than its position: the traversal re-derives
+    // the list after each answer (the interface's selector does), so a
+    // position is not a stable identity, and a pair the filter only surfaces
+    // mid-stage was outside the realised set — it takes the decline card.
+    const linkedKeys = new Set(
+      [...linked].map((position) => {
+        const pair = pairs[position];
+        invariant(pair, 'a chosen pair position must exist');
+        return pairKeyOf(pair);
+      }),
+    );
 
-    pairs.forEach((pair, position) => {
-      // Existence is asked of the STAGE-FILTERED network, exactly as the
-      // interface's own selector reads it (`getNetworkEdges` applies the
-      // stage filter to the whole network): an edge the filter hides is one
-      // the participant cannot see, so a yes creates a second edge — the
-      // runtime's addEdge does not dedupe — and a no cannot delete it.
-      // Re-derived per pair because the census's own writes change the view.
-      const existing = edgeForPair(
-        {
-          ...engine.draft.network,
-          edges: edgesForStage(engine.draft.network, edgeType, stage.filter),
-        },
-        pair,
-        edgeType,
-      );
-
-      // Drawn only where the pair was chosen: an undrawn pair is one the
-      // participant never graded, and spending a draw on it would move every
-      // later value under the same seed.
-      const strength = linked.has(position)
-        ? generateEntityAttributes(constraints, generation, scope, answered, {
-            only: graded,
-            // What the edge already carries, so a rule relating this variable
-            // to another on the same edge resolves against it, and so a
-            // `unique` value being replaced is given back before the redraw.
-            ...(existing
-              ? { existing: existing[entityAttributesProperty] }
-              : {}),
-          })[edgeVariable]
-        : undefined;
-
-      if (strength === undefined) {
-        if (existing !== null) {
-          engine.deleteEdge({ edgeId: existing[entityPrimaryKeyProperty] });
-        }
-        recordCensusAnswer({
-          engine,
-          currentStep,
-          promptIndex,
+    walkCensusPairs({
+      derive: derivePairs,
+      live: stageFilter !== undefined,
+      answer: (pair) => {
+        // Existence is asked of the STAGE-FILTERED network, exactly as the
+        // interface's own selector reads it (`getNetworkEdges` applies the
+        // stage filter to the whole network): an edge the filter hides is one
+        // the participant cannot see, so a yes creates a second edge — the
+        // runtime's addEdge does not dedupe — and a no cannot delete it.
+        // Re-derived per pair because the census's own writes change the view.
+        const existing = edgeForPair(
+          {
+            ...engine.draft.network,
+            edges: edgesForStage(engine.draft.network, edgeType, stageFilter),
+          },
           pair,
-          present: false,
-        });
-        return;
-      }
-
-      answered += 1;
-      clearCensusAnswer({ engine, currentStep, promptIndex, pair });
-
-      if (existing === null) {
-        engine.addEdge({
           edgeType,
-          uid: streams.uuid(),
-          from: pair[0],
-          to: pair[1],
-          attributeData: { [edgeVariable]: strength },
-          currentStep,
-        });
-        return;
-      }
+        );
 
-      engine.updateEdge({
-        edgeId: existing[entityPrimaryKeyProperty],
-        attributePatch: { set: { [edgeVariable]: strength }, unset: [] },
-      });
+        // Drawn only where the pair was chosen: an undrawn pair is one the
+        // participant never graded, and spending a draw on it would move every
+        // later value under the same seed.
+        const strength = linkedKeys.has(pairKeyOf(pair))
+          ? generateEntityAttributes(constraints, generation, scope, answered, {
+              only: graded,
+              // What the edge already carries, so a rule relating this variable
+              // to another on the same edge resolves against it, and so a
+              // `unique` value being replaced is given back before the redraw.
+              ...(existing
+                ? { existing: existing[entityAttributesProperty] }
+                : {}),
+            })[edgeVariable]
+          : undefined;
+
+        if (strength === undefined) {
+          if (existing !== null) {
+            engine.deleteEdge({ edgeId: existing[entityPrimaryKeyProperty] });
+          }
+          recordCensusAnswer({
+            engine,
+            currentStep,
+            promptIndex,
+            pair,
+            present: false,
+          });
+          return;
+        }
+
+        answered += 1;
+        clearCensusAnswer({ engine, currentStep, promptIndex, pair });
+
+        if (existing === null) {
+          engine.addEdge({
+            edgeType,
+            uid: streams.uuid(),
+            from: pair[0],
+            to: pair[1],
+            attributeData: { [edgeVariable]: strength },
+            currentStep,
+          });
+          return;
+        }
+
+        engine.updateEdge({
+          edgeId: existing[entityPrimaryKeyProperty],
+          attributePatch: { set: { [edgeVariable]: strength }, unset: [] },
+        });
+      },
     });
   });
 };

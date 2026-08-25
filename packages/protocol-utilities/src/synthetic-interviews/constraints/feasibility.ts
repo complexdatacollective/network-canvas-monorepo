@@ -2,12 +2,14 @@ import {
   type CurrentProtocol,
   type InterfaceImpliedRules,
   MAX_SYNTHETIC_PAIRS,
+  MAX_SYNTHETIC_POPULATION,
   type Stage,
   type StructuralCodebook,
   type Variables,
 } from '@codaco/protocol-validation';
 
 import type { AssetData } from '../simulators/types';
+import type { SessionOverrides } from '../walk/overrides';
 import { collectBinOnlyVariables } from './binOnlyVariables';
 import { buildEntityConstraints, rulesForSubject } from './buildConstraints';
 import { resolveGenerationOrder } from './dependencyOrder';
@@ -33,11 +35,16 @@ import { valueSpaceSize } from './valueSpace';
  * exactly the seed-dependent failure rule 5 exists to forbid, and the C12
  * invariance test holds this file to it over 500 consecutive seeds.
  *
- * Three refusals, and only three. Each names a demand the protocol makes that
+ * Four refusals, and only four. Each names a demand the protocol makes that
  * no seed can meet:
  *
- *  - a roster stage whose resolved pool cannot reach its own min-nodes gate
- *    (decision 18), which would strand a real participant on that screen;
+ *  - a roster stage that cannot reach its own min-nodes gate on ANY seed —
+ *    its resolved pool is too small, the host resolved no rosters at all, or
+ *    the stages before it are guaranteed to have consumed too many of its
+ *    rows (decision 18) — which would strand a real participant;
+ *  - a name-generating stage whose `behaviours.minNodes` exceeds the
+ *    population one stage may build (`MAX_SYNTHETIC_POPULATION`), a gate no
+ *    expressible count reaches;
  *  - a `unique` slot with fewer distinct values than the entities the walk can
  *    build, which exhausts the registry on the seeds that reach that many;
  *  - a stage whose guaranteed pair set is larger than one stage may enumerate
@@ -57,6 +64,8 @@ type UniqueScope = {
   typeName: string | undefined;
   counts: ScopeCounts;
 };
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 const displayName = (
   codebook: StructuralCodebook,
@@ -79,13 +88,52 @@ const variablesFor = (
  *
  * `behaviours.minNodes` is the live interface's own gate: below it the stage
  * refuses to advance, and a roster interface fabricates nobody to make up the
- * difference. So a pool short of it is a protocol that would strand a real
- * participant, which is the same session the generator would have to invent —
- * and the refusal is runtime-faithful rather than a generator limitation.
+ * difference. So a stage that cannot reach it on any seed — a pool short of
+ * it, no pool resolved at all, or earlier stages guaranteed to have consumed
+ * its rows — is a protocol that would strand a real participant, which is the
+ * same session the generator would have to invent; the refusal is
+ * runtime-faithful rather than a generator limitation.
  */
 const rosterConflicts = (
   codebook: StructuralCodebook,
   demands: ReturnType<typeof worstCaseEntityCounts>['rosterDemands'],
+): ConstraintConflict[] =>
+  demands.map((demand) => {
+    const scope: EntityScopeRef = { entity: 'node', type: demand.nodeType };
+    const name = displayName(codebook, scope);
+    const reason = demand.unresolved
+      ? `stage "${demand.stageLabel}" must nominate at least ${demand.minNodes} from its roster, ` +
+        'and this run resolved no roster data at all — resolve the roster assets before generating'
+      : demand.guaranteedAvailable < demand.poolSize
+        ? `stage "${demand.stageLabel}" must nominate at least ${demand.minNodes} from its roster, ` +
+          `and of the ${demand.poolSize} rows resolved for it, earlier stages drawing on the same roster ` +
+          `leave it at most ${demand.guaranteedAvailable}`
+        : `stage "${demand.stageLabel}" must nominate at least ${demand.minNodes} from its roster, ` +
+          `and ${demand.poolSize === 0 ? 'no rows were resolved for it' : `only ${demand.poolSize} rows were resolved for it`}`;
+    return {
+      entity: 'node' as const,
+      entityType: demand.nodeType,
+      ...(name === undefined ? {} : { entityTypeName: name }),
+      variableIds: [],
+      variableNames: [],
+      rules: ['behaviours.minNodes'],
+      reason,
+    };
+  });
+
+/**
+ * A name-generating stage whose own runtime gate outsizes generation.
+ *
+ * `behaviours.minNodes` above `MAX_SYNTHETIC_POPULATION` keeps the protocol
+ * VALID — the live interface caps nothing there — but every count the schema
+ * can express tops out at the population ceiling, so no generated session can
+ * complete the stage the way a participant must. The refusal therefore lives
+ * here, at the generation boundary, rather than in the schema, where it would
+ * make a previously valid protocol impossible to import at all.
+ */
+const populationConflicts = (
+  codebook: StructuralCodebook,
+  demands: ReturnType<typeof worstCaseEntityCounts>['populationDemands'],
 ): ConstraintConflict[] =>
   demands.map((demand) => {
     const scope: EntityScopeRef = { entity: 'node', type: demand.nodeType };
@@ -99,8 +147,8 @@ const rosterConflicts = (
       variableNames: [],
       rules: ['behaviours.minNodes'],
       reason:
-        `stage "${demand.stageLabel}" must nominate at least ${demand.minNodes} from its roster, ` +
-        `and ${demand.poolSize === 0 ? 'no rows were resolved for it' : `only ${demand.poolSize} rows were resolved for it`}`,
+        `stage "${demand.stageLabel}" requires at least ${demand.minNodes} nominations, ` +
+        `and a generated stage can build at most ${MAX_SYNTHETIC_POPULATION} people`,
     };
   });
 
@@ -168,10 +216,19 @@ const pairConflicts = (
  * Carries no `stageId`, deliberately. The demand is the sum of every stage
  * that draws the slot, so no single stage is the one to change — which is why
  * it belongs to the protocol-level verdict rather than to any stage editor.
+ *
+ * Measured on EVERY day a session of the batch can start, not the window's
+ * anchor alone. A datetime window with an absolute bound and an open other
+ * end resolves against the session's own day, so its value space can differ
+ * across the start window — collapsing to a single date for a session that
+ * starts before an authored minimum — and a batch is refused when ANY of its
+ * possible days cannot hold the demand, because the seeds landing on that day
+ * would otherwise exhaust mid-walk. The smallest space across the days is
+ * what the refusal reports.
  */
 const uniqueConflicts = (
   scopes: readonly UniqueScope[],
-  today: string,
+  days: readonly string[],
   interfaceRules: InterfaceImpliedRules,
   binOnly: ReadonlyMap<string, ReadonlySet<string>>,
 ): ConstraintConflict[] => {
@@ -180,31 +237,68 @@ const uniqueConflicts = (
   for (const { scope, variables, typeName, counts } of scopes) {
     const unvalidated =
       scope.entity === 'node' ? binOnly.get(scope.type) : undefined;
-    const entity = buildEntityConstraints(
-      variables,
-      today,
-      unvalidated,
-      rulesForSubject(interfaceRules, scope),
-    );
-    const { membersOf } = resolveGenerationOrder(entity);
-    const groups = intersectGroupConstraints(entity, membersOf);
 
-    for (const [group, memberIds] of membersOf) {
-      const variable = groups.get(group);
+    // Group structure (members, uniqueness, holders) is date-independent;
+    // only the value SPACE moves with the day, so the days are folded into a
+    // per-group minimum and everything else is read off the last build.
+    const smallestSpace = new Map<string, number | 'unbounded'>();
+    let judged: {
+      entity: ReturnType<typeof buildEntityConstraints>;
+      membersOf: Map<string, string[]>;
+      groups: ReturnType<typeof intersectGroupConstraints>;
+    } | null = null;
+
+    for (const day of days) {
+      const entity = buildEntityConstraints(
+        variables,
+        day,
+        unvalidated,
+        rulesForSubject(interfaceRules, scope),
+      );
+      const { membersOf } = resolveGenerationOrder(entity);
+      const groups = intersectGroupConstraints(entity, membersOf);
+      judged = { entity, membersOf, groups };
+
+      for (const [group, memberIds] of membersOf) {
+        const variable = groups.get(group);
+        if (variable?.constraints.unique !== true) continue;
+
+        const holders = holdersOf(counts, memberIds);
+        if (holders === 0) continue;
+
+        const size = valueSpaceSize(variable, holders);
+        const held = smallestSpace.get(group);
+        if (
+          held === undefined ||
+          held === 'unbounded' ||
+          (size !== 'unbounded' && size < held)
+        ) {
+          smallestSpace.set(group, size);
+        }
+      }
+    }
+
+    if (judged === null) continue;
+    for (const [group, memberIds] of judged.membersOf) {
+      const variable = judged.groups.get(group);
       if (variable?.constraints.unique !== true) continue;
 
       const holders = holdersOf(counts, memberIds);
       if (holders === 0) continue;
 
-      const size = valueSpaceSize(variable, holders);
-      if (size === 'unbounded' || size >= holders) continue;
+      const size = smallestSpace.get(group);
+      if (size === undefined || size === 'unbounded' || size >= holders) {
+        continue;
+      }
 
       conflicts.push({
         entity: scope.entity,
         ...(scope.entity === 'ego' ? {} : { entityType: scope.type }),
         ...(typeName === undefined ? {} : { entityTypeName: typeName }),
         variableIds: [...memberIds],
-        variableNames: memberIds.map((id) => entity.get(id)?.entry.name ?? id),
+        variableNames: memberIds.map(
+          (id) => judged.entity.get(id)?.entry.name ?? id,
+        ),
         rules: ['unique'],
         reason:
           `only ${size} distinct values are possible` +
@@ -218,34 +312,70 @@ const uniqueConflicts = (
 };
 
 /**
+ * Every calendar day a session of this batch can start on: the anchor's own
+ * day and each of the `windowDays` before it. The instant exactly
+ * `windowDays` before the anchor is itself excluded by the clock's draw, but
+ * any later instant of that calendar day is reachable, so the day belongs in
+ * the set (its inclusion can only over-refuse by one midnight-anchored edge
+ * case, which is the conservative direction everything here leans).
+ */
+const sessionDays = (today: string, windowDays: number): string[] => {
+  const anchorMs = Date.parse(`${today}T00:00:00.000Z`);
+  if (Number.isNaN(anchorMs)) return [today];
+
+  const days: string[] = [];
+  for (let back = 0; back <= windowDays; back += 1) {
+    days.push(
+      new Date(anchorMs - back * MS_PER_DAY).toISOString().slice(0, 10),
+    );
+  }
+  return days;
+};
+
+/**
  * Every reason this protocol can never generate, or an empty list.
  *
  * `today` anchors the date windows the analysis measures, and comes from the
  * batch's own start-window anchor rather than a clock read of its own, so the
- * verdict is a function of the arguments and nothing else.
+ * verdict is a function of the arguments and nothing else. `windowDays` is
+ * how far before the anchor a session may start; the date-sensitive checks
+ * cover every day in that span. `stopAt` and `overrides` bound and replace
+ * stages exactly as they bound and replace the walk — see
+ * `worstCaseEntityCounts`.
  */
 export const analyseFeasibility = ({
   protocol,
   assetData,
   today,
   interfaceRules,
+  windowDays = 0,
+  stopAt,
+  overrides,
 }: {
   protocol: CurrentProtocol;
   assetData: AssetData;
   today: string;
   interfaceRules: InterfaceImpliedRules;
+  windowDays?: number;
+  stopAt?: { stageIndex: number; promptIndex?: number };
+  overrides?: SessionOverrides;
 }): ConstraintConflict[] => {
   const { codebook } = protocol;
   const stages: Stage[] = [...protocol.stages];
-  const counts = worstCaseEntityCounts(stages, assetData);
+  const counts = worstCaseEntityCounts(stages, assetData, {
+    codebook,
+    ...(stopAt ? { stopAt } : {}),
+    ...(overrides ? { overrides } : {}),
+  });
   const binOnly = collectBinOnlyVariables(stages);
 
   const uniqueScopes: UniqueScope[] = [];
   for (const [key, scopeCounts] of counts.scopes) {
-    if (counts.unmodelled.has(key)) continue;
-
     // `scopeKey` is `ego`, `node:<type>`, or `edge:<type>`. Ego is skipped: one
     // holder can never exhaust a slot, and the schema forbids `unique` there.
+    // A scope a pedigree also feeds stays IN: its counts are known floors of
+    // the truth (see `WalkEntityCounts.unmodelled`), and a refusal the known
+    // writes already earn stands however many more the pedigree adds.
     const separator = key.indexOf(':');
     if (separator < 0) continue;
     const entity = key.slice(0, separator);
@@ -263,8 +393,14 @@ export const analyseFeasibility = ({
 
   return [
     ...rosterConflicts(codebook, counts.rosterDemands),
+    ...populationConflicts(codebook, counts.populationDemands),
     ...pairConflicts(codebook, counts.pairDemands),
-    ...uniqueConflicts(uniqueScopes, today, interfaceRules, binOnly),
+    ...uniqueConflicts(
+      uniqueScopes,
+      sessionDays(today, windowDays),
+      interfaceRules,
+      binOnly,
+    ),
   ];
 };
 

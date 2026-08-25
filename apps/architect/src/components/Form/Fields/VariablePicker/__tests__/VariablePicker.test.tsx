@@ -1,44 +1,101 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { useContext, type ContextType, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 
+type MockVariablePillProps = {
+  displayMaxWidth?: string;
+  maxWidth?: string;
+  width?: string;
+};
+
 vi.mock('~/components/VariablePill', () => ({
-  ConnectedVariablePill: () => (
-    <div data-testid="connected-variable-pill">ConnectedVariablePill</div>
+  ConnectedVariablePill: ({
+    displayMaxWidth,
+    maxWidth,
+    width,
+  }: MockVariablePillProps) => (
+    <div
+      data-testid="connected-variable-pill"
+      data-editor-max-width={maxWidth}
+      style={{ maxWidth: displayMaxWidth, width }}
+    >
+      ConnectedVariablePill
+    </div>
   ),
-  VariablePill: () => <div data-testid="variable-pill">VariablePill</div>,
+  VariablePill: ({
+    displayMaxWidth,
+    maxWidth,
+    width,
+  }: MockVariablePillProps) => (
+    <div
+      data-testid="variable-pill"
+      data-editor-max-width={maxWidth}
+      style={{ maxWidth: displayMaxWidth, width }}
+    >
+      VariablePill
+    </div>
+  ),
 }));
 
 vi.mock('../VariableSpotlight', () => ({
   default: ({
     open,
     onSelect,
-    onCancel,
+    onOpenChange,
     onCreateOption,
+    shouldPropagateBlur,
   }: {
     open: boolean;
     onSelect: (value: string) => void;
-    onCancel: () => void;
+    onOpenChange: (open: boolean) => void;
     onCreateOption: (value: string) => void;
+    shouldPropagateBlur?: () => boolean;
   }) =>
-    open ? (
-      <div role="dialog" aria-label="Attribute library">
-        <button type="button" onClick={() => onSelect('age')}>
-          Choose age
-        </button>
-        <button type="button" onClick={() => onCreateOption('height')}>
-          Create new attribute called height
-        </button>
-        <button type="button" onClick={onCancel}>
-          Cancel selection
-        </button>
-      </div>
-    ) : null,
+    open
+      ? createPortal(
+          <div
+            role="dialog"
+            aria-label="Attribute library"
+            data-variable-spotlight=""
+            onBlur={(event) => {
+              if (!shouldPropagateBlur?.()) event.stopPropagation();
+            }}
+          >
+            <button
+              autoFocus
+              type="button"
+              onClick={(event) => {
+                onSelect('age');
+                // The real Base UI popup emits a final focusout as it unmounts.
+                // Keep the mock mounted until this handler returns so jsdom can
+                // exercise the same answered-selection boundary.
+                event.currentTarget.blur();
+              }}
+            >
+              Choose age
+            </button>
+            <button type="button" onClick={() => onCreateOption('height')}>
+              Create new attribute called height
+            </button>
+            <button type="button" onClick={() => onOpenChange(false)}>
+              Cancel selection
+            </button>
+          </div>,
+          document.body,
+        )
+      : null,
 }));
 
 import ArchitectField from '../../../ArchitectField';
@@ -164,7 +221,12 @@ describe('VariablePicker', () => {
   it('renders the selected variable using the appropriate pill', () => {
     setup('age');
 
-    expect(screen.getByTestId('connected-variable-pill')).toBeInTheDocument();
+    const pill = screen.getByTestId('connected-variable-pill');
+    expect(pill).toHaveStyle({
+      maxWidth: '100%',
+      width: 'fit-content',
+    });
+    expect(pill).not.toHaveAttribute('data-editor-max-width');
     expect(
       screen.getByRole('button', { name: 'Change attribute' }),
     ).toBeInTheDocument();
@@ -173,7 +235,12 @@ describe('VariablePicker', () => {
   it('renders an untyped selected variable using the unconnected pill', () => {
     setup('new-variable');
 
-    expect(screen.getByTestId('variable-pill')).toBeInTheDocument();
+    const pill = screen.getByTestId('variable-pill');
+    expect(pill).toHaveStyle({
+      maxWidth: '100%',
+      width: 'fit-content',
+    });
+    expect(pill).not.toHaveAttribute('data-editor-max-width');
   });
 
   it('persists a spotlight selection to the form store', () => {
@@ -184,6 +251,70 @@ describe('VariablePicker', () => {
 
     expect(getValue()).toBe('age');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('does not validate the field while focus moves into its portalled spotlight', async () => {
+    const { getValue } = setup();
+    if (!storeApi) throw new Error('form store was not captured');
+
+    // Mirrors a newly-added AssignAttributes row: the owning field is dirty
+    // before its picker opens, but the researcher has not left that field.
+    act(() => {
+      storeApi?.getState().setFieldValue('variable', '');
+    });
+
+    const selectAttribute = screen.getByRole('button', {
+      name: 'Select attribute',
+    });
+    selectAttribute.focus();
+    fireEvent.click(selectAttribute);
+    // Base UI can move focus through its guards while opening a nested modal,
+    // in which case the browser reports no related target for this blur. The
+    // picker's open state still makes it part of the same field interaction.
+    fireEvent.blur(selectAttribute, { relatedTarget: null });
+
+    const chooseAge = screen.getByRole('button', { name: 'Choose age' });
+    await waitFor(() => expect(chooseAge).toHaveFocus());
+    expect(screen.queryByTestId('variable-field-error')).toBeNull();
+
+    // The same interaction still commits the option and closes the picker on
+    // its first click.
+    fireEvent.click(chooseAge);
+    expect(getValue()).toBe('age');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(storeApi.getState().getFieldState('variable')?.meta.isBlurred).toBe(
+      true,
+    );
+  });
+
+  it('does not blur an owning array while a nested row is still incomplete', async () => {
+    const onArrayBlur = vi.fn();
+    const onChange = vi.fn();
+    render(
+      <div
+        data-field-name="additionalAttributes"
+        data-field-path="additionalAttributes"
+        onBlur={onArrayBlur}
+      >
+        <div data-field-name="additionalAttributes[0].variable">
+          <VariablePicker
+            name="additionalAttributes[0].variable"
+            value=""
+            onChange={onChange}
+            options={options}
+          />
+        </div>
+      </div>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select attribute' }));
+    const chooseAge = screen.getByRole('button', { name: 'Choose age' });
+    await waitFor(() => expect(chooseAge).toHaveFocus());
+    onArrayBlur.mockClear();
+    fireEvent.click(chooseAge);
+
+    expect(onChange).toHaveBeenCalledWith('age');
+    expect(onArrayBlur).not.toHaveBeenCalled();
   });
 
   /**
