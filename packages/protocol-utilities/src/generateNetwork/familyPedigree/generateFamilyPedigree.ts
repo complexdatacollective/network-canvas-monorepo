@@ -1,4 +1,7 @@
-import type { BiologicalSex, InheritancePattern } from '@codaco/shared-consts';
+import type {
+  BiologicalSex,
+  InheritancePattern,
+} from '@codaco/protocol-validation';
 
 import type { ValueGenerator } from '../../ValueGenerator';
 import type {

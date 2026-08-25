@@ -1,7 +1,11 @@
 import { useRef } from 'react';
 
-import { entityAttributesProperty } from '@codaco/shared-consts';
-import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
+import type { FramingId } from '@codaco/protocol-validation';
+import {
+  entityAttributesProperty,
+  type NcEdge,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { useStageSelector } from '../../hooks/useStageSelector';

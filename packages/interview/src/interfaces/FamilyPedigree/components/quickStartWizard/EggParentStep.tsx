@@ -4,9 +4,10 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { FRAMING_TERMS, type FramingId } from '@codaco/shared-consts';
+import type { FramingId } from '@codaco/protocol-validation';
 
 import { useFamilyPedigreeStore } from '../../FamilyPedigreeContext';
+import { FRAMING_TERMS } from '../../framingTerms';
 import usePedigreeNodeForm from '../../hooks/usePedigreeNodeForm';
 import PersonNameField from '../PersonNameField';
 

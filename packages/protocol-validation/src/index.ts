@@ -52,6 +52,27 @@ export {
 
 // Export schema types and constants (Protocol, Codebook, etc)
 export * from './schemas/index.ts';
+// Interface-owned value sets that are part of the current schema's contract.
+// They live in the schema version directory and are copied — never shared —
+// when a new version directory is created, so a host always reads the set the
+// version it targets defines.
+export {
+  BIOLOGICAL_SEX_OPTIONS,
+  BIOLOGICAL_SEX_VALUES,
+  type BiologicalSex,
+  FRAMING_IDS,
+  type FramingId,
+  GAMETE_ROLE_OPTIONS,
+  GAMETE_ROLES,
+  type GameteRole,
+  RELATIONSHIP_TYPE_OPTIONS,
+  RELATIONSHIP_TYPES,
+  type RelationshipType,
+} from './schemas/8/family-pedigree-values.ts';
+export {
+  INHERITANCE_PATTERNS,
+  type InheritancePattern,
+} from './schemas/8/narrative-pedigree-values.ts';
 export {
   findValidationContradictions,
   type ValidationContradiction,

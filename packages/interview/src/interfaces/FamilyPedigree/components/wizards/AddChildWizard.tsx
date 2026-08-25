@@ -1,6 +1,6 @@
+import type { FramingId } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
-  type FramingId,
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';

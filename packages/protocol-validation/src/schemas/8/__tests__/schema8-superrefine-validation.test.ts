@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
+import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import {
+  CategoricalColorSequence,
+  EdgeColorSequence,
+  NodeColorSequence,
+  OrdinalColorSequence,
+} from '../color-reference.ts';
 import {
   BIOLOGICAL_SEX_OPTIONS,
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
-} from '@codaco/shared-consts';
-
-import { createBaseProtocol } from '../../../utils/test-utils.ts';
+} from '../family-pedigree-values.ts';
 import ProtocolSchemaV8 from '../schema.ts';
 
 /**
@@ -2380,14 +2385,43 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       expect(result.success).toBe(true);
     });
 
-    it.each(['#3399ff', 'primary-color-seq-1', 'ord-color-seq-11'])(
-      'rejects Geospatial stage color %s',
+    it.each(['', '#3399ff', 'primary-color-seq-1', 'ord-color-seq-11'])(
+      'rejects Geospatial stage color %j',
       (color) => {
         const protocol = createGeospatialProtocol({ color });
         const result = ProtocolSchemaV8.safeParse(protocol);
         expect(result.success).toBe(false);
       },
     );
+
+    it('rejects an empty Geospatial color by naming every palette it could name', () => {
+      // The empty string is the interesting one: it is what an Architect field
+      // holds before anything is picked, so it reaches the schema looking like
+      // a value rather than an omission. `ColorReferenceSchema` is a union of
+      // the four palettes, and a union's own message is only "Invalid input" —
+      // what makes the failure actionable is the branch messages underneath,
+      // which spell out every colour the field will accept.
+      const result = ProtocolSchemaV8.safeParse(
+        createGeospatialProtocol({ color: '' }),
+      );
+      expect(result.success).toBe(false);
+      const issue = (result.success ? [] : result.error.issues).find(
+        (candidate) => candidate.path.join('.') === 'stages.0.mapOptions.color',
+      );
+      const quoted = (palette: readonly string[]) =>
+        `Invalid option: expected one of ${palette
+          .map((value) => `"${value}"`)
+          .join('|')}`;
+      expect(
+        issue?.code === 'invalid_union' &&
+          issue.errors.flat().map((nested) => nested.message),
+      ).toEqual([
+        quoted(NodeColorSequence),
+        quoted(EdgeColorSequence),
+        quoted(OrdinalColorSequence),
+        quoted(CategoricalColorSequence),
+      ]);
+    });
 
     it('rejects Geospatial stage with invalid showTransit type', () => {
       const protocol = createGeospatialProtocol({ showTransit: 'yes' });

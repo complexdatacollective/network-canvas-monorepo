@@ -1,14 +1,26 @@
 import { z } from 'zod';
 
-import { FRAMING_IDS } from './family-pedigree-framing.ts';
 import { EntityAttributesSchema, VariableValueSchema } from './network.ts';
+
+/**
+ * A deliberate copy of `FRAMING_IDS`, whose canonical definition is
+ * `packages/protocol-validation/src/schemas/8/family-pedigree-values.ts`.
+ *
+ * It is copied rather than imported for two reasons. This package must never
+ * depend on `@codaco/protocol-validation` — the dependency runs the other way.
+ * And this schema describes *persisted session metadata*, which has its own
+ * compatibility story: a stored session must keep parsing even if a future
+ * protocol schema version revises its framing set, so the two are allowed to
+ * diverge and must not be wired together.
+ */
+const SESSION_FRAMING_IDS = ['gamete', 'gendered'] as const;
 
 const FamilyPedigreeMetadataFields = {
   isNetworkCommitted: z.boolean(),
   // Version 1 records edge ids from the shared Redux network. Older pedigree
   // snapshots omitted this marker and may contain interface-local edge ids.
   edgeIdVersion: z.optional(z.literal(1)),
-  selectedFraming: z.optional(z.enum([...FRAMING_IDS])),
+  selectedFraming: z.optional(z.enum([...SESSION_FRAMING_IDS])),
   noChildrenAffirmed: z.optional(z.boolean()),
   nodes: z.optional(
     z.array(

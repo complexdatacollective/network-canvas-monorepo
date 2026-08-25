@@ -2,7 +2,7 @@ import { startCase } from 'es-toolkit/compat';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
-import { INHERITANCE_PATTERNS } from '@codaco/shared-consts';
+import { INHERITANCE_PATTERNS } from '@codaco/protocol-validation';
 import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import ColorPicker from '~/components/Form/Fields/ColorPicker';

@@ -1,8 +1,8 @@
 'use client';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { BIOLOGICAL_SEX_LEAD_IN } from '@codaco/shared-consts';
 
+import { BIOLOGICAL_SEX_LEAD_IN } from '../../biologicalSexCopy';
 import BiologicalSexField from '../BiologicalSexField';
 
 /**

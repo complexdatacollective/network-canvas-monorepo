@@ -1,9 +1,5 @@
-import type {
-  NcEdge,
-  NcNode,
-  RelationshipType,
-  VariableValue,
-} from '@codaco/shared-consts';
+import type { RelationshipType } from '@codaco/protocol-validation';
+import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
 
 import type { CommitBatch, VariableConfig } from '../../../store';
 import { writeOwnAttribute } from '../../../utils/writeOwnAttributes';

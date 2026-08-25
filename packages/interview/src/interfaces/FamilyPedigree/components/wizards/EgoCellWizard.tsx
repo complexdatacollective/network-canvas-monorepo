@@ -3,13 +3,13 @@
 import { AnimatePresence, motion } from 'motion/react';
 
 import type { SkipContext } from '@codaco/fresco-ui/dialogs/DialogProvider';
-import { FRAMING_TERMS, type FramingTerms } from '@codaco/shared-consts';
 
 import { useTrack } from '../../../../analytics/useTrack';
 import ActionButton from '../../../../components/ActionButton';
 import { useStageSelector } from '../../../../hooks/useStageSelector';
 import { useFamilyPedigreeStore } from '../../FamilyPedigreeContext';
 import { useFamilyPedigreeDialog } from '../../familyPedigreeDialog';
+import { FRAMING_TERMS, type FramingTerms } from '../../framingTerms';
 import type { VariableConfig } from '../../store';
 import { getFramingConfig, getIntroScreen } from '../../utils/stageConfig';
 import AdditionalParentsStep from '../quickStartWizard/AdditionalParentsStep';
