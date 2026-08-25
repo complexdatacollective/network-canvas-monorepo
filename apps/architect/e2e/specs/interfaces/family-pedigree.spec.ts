@@ -40,11 +40,8 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
   // inside one always-visible surface once `nodeConfig.type` is set — the
   // same multi-picker shape NetworkComposer's NodeConfiguration.tsx already
   // forced `createVariableViaSpotlight`'s `scope` option to handle (Task 19's
-  // network-composer.spec.ts). Each picker IS wrapped through
-  // `VariablePicker`'s own internal `FrescoReduxField`, so
-  // `editor.field(name)` resolves it correctly for scoping even though the
-  // row itself is hand-rolled JSX (`VariableRow`), not a bare
-  // `FrescoReduxField` call site.
+  // network-composer.spec.ts). Each picker uses ArchitectField's standard
+  // inline layout, so `editor.field(name)` resolves it correctly for scoping.
   //
   // Every one of the 4 node + 4 edge variables below routes through
   // NodeConfiguration.tsx's/EdgeConfiguration.tsx's own `handleNewXxxVariable`
@@ -106,6 +103,12 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
     variableName: 'biologicalSex',
     options: [],
   });
+
+  // `nodeConfig.form` is optional. A new pedigree therefore leaves its
+  // configuration collapsed and unregistered until the researcher enables it.
+  await expect(
+    architectPage.getByRole('switch', { name: 'Form configuration' }),
+  ).not.toBeChecked();
 
   await selectOrCreateEdgeType(architectPage, 'family_edge');
 

@@ -672,7 +672,9 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
       {nodeType && (
         <Section
           title="Form configuration"
-          description="Add fields shown when participants add or edit family members."
+          description="Optionally add fields shown when participants add or edit family members."
+          toggleable
+          defaultOpen={pedigreeFormFields !== undefined}
         >
           <ArchitectArrayField
             name="nodeConfig.form"
