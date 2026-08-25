@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
@@ -89,9 +89,10 @@ export function SyntheticGenerationDialog({
   protocol,
   protocolId,
 }: SyntheticGenerationDialogProps) {
-  const { state, generate, reset, saveArchive } = useSyntheticGeneration({
+  const { state, generate, saveArchive } = useSyntheticGeneration({
     protocol,
     protocolId,
+    open,
   });
 
   const [count, setCount] = useState(DEFAULT_COUNT);
@@ -112,13 +113,6 @@ export function SyntheticGenerationDialog({
 
   const isRunning = state.status === 'running';
   const archiveReady = state.status === 'done';
-
-  // Reopening starts a clean slate: the previous run's outcome belongs to the
-  // batch that produced it, and leaving a stale "Generated 10 interviews" above
-  // a fresh form would read as though this one had already run.
-  useEffect(() => {
-    if (open) reset();
-  }, [open, reset]);
 
   const handleGenerate = useCallback(() => {
     // A batch's identity is its seed AND the day its sessions are dated

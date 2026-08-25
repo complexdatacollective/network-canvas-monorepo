@@ -12,6 +12,7 @@ import {
   seedParameterValue,
   withinWindow,
 } from '~/components/Synthetic/useNumericDraft';
+import { useRefusalReset } from '~/components/Synthetic/useRefusalReset';
 
 import { parameterEntryWindow, parameterWindow } from '../parameterWindows';
 
@@ -113,6 +114,10 @@ export function DistributionEditor({
    * the schema's own sentence says why it went no further.
    */
   const [refusals, setRefusals] = useState<Record<string, string[]>>({});
+  // A refusal is about the block it was raised against; a block replaced from
+  // outside these controls — a reset, an undo — leaves it describing something
+  // no longer on screen.
+  useRefusalReset(synthetic, () => setRefusals({}));
   const specs = useMemo(() => describeDistributions(schema), [schema]);
 
   /**

@@ -98,6 +98,20 @@ export const REGISTRY: SimulatorRegistry = {
   TieStrengthCensus: simulateTieStrengthCensus,
 };
 
+/**
+ * What a caller may anchor a batch — or a standalone reading of the gate — to.
+ *
+ * One rule for both, because the gate advertises itself as the question the
+ * run will ask: a preflight that accepted an anchor generation refuses would
+ * hand back a verdict about a run that cannot happen, and one that accepted a
+ * date-only string would date the analysis from characters that are not a
+ * date at all.
+ *
+ * A full ISO datetime, because a zone-less string is parsed in the machine's
+ * local time — silently making output timezone-dependent.
+ */
+const startWindowSchema = z.string().datetime();
+
 export const generateInterviewsOptions = z
   .object({
     count: z.number().int().min(1).max(MAX_SYNTHETIC_INTERVIEWS),
@@ -136,7 +150,7 @@ export const generateInterviewsOptions = z
      * Validated as a full ISO datetime: a zone-less string would be parsed in
      * the machine's local time, silently making output timezone-dependent.
      */
-    startWindow: z.string().datetime().optional(),
+    startWindow: startWindowSchema.optional(),
     /**
      * Family-pedigree population and scenario options, applied to every
      * FamilyPedigree stage in the run. Run-level rather than protocol-embedded:
@@ -191,6 +205,10 @@ export type AnalyseSyntheticFeasibilityOptions = {
    * `generateInterviews` run is anchored by — pass the run's own value to ask
    * exactly the question that run will ask. Defaults to a clock read, which is
    * what an unanchored generation run does too.
+   *
+   * Held to the run's own rule ({@link startWindowSchema}), and refused the
+   * same way: a value generation would not accept must not come back from here
+   * as a verdict about a run that could never start.
    */
   startWindow?: string;
 };
@@ -245,10 +263,14 @@ export const analyseSyntheticFeasibility = (
   options: AnalyseSyntheticFeasibilityOptions = {},
 ): ConstraintConflict[] => {
   assertStagesCarrySyntheticDescriptors(protocol);
+  // Parsed before it is sliced: the first ten characters of an arbitrary
+  // string are not a date, and a verdict dated from them would be a confident
+  // answer about a run `generateInterviews` would refuse to start.
+  const anchor = startWindowSchema.optional().parse(options.startWindow);
   return analyseFeasibilityWithRules(
     protocol,
     assetData,
-    options.startWindow ?? new Date().toISOString(),
+    anchor ?? new Date().toISOString(),
     collectInterfaceImpliedRules(protocol),
   );
 };

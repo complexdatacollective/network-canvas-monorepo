@@ -20,6 +20,7 @@ import {
   type OptionWeightsController,
 } from '~/components/Options/optionWeights';
 import type { SyntheticWindow } from '~/components/Synthetic/summaries';
+import { useRefusalReset } from '~/components/Synthetic/useRefusalReset';
 
 import {
   effectiveVariableRules,
@@ -120,8 +121,11 @@ export const useSyntheticProposal = (): {
   refusals: string[];
   propose: (next: Record<string, unknown> | undefined) => void;
 } => {
-  const { propose } = useVariableSynthetic();
+  const { propose, synthetic } = useVariableSynthetic();
   const [refusals, setRefusals] = useState<string[]>([]);
+  // A refusal belongs to the block it was raised against, and this control is
+  // not the only thing that can replace one.
+  useRefusalReset(synthetic, () => setRefusals([]));
   const submit = useCallback(
     (next: Record<string, unknown> | undefined) => {
       setRefusals(propose(next));
@@ -238,6 +242,9 @@ export function VariableSyntheticProvider({
       // showing them however the disclosure stands, so the column can never
       // hide content the protocol holds.
       revealed: open || authored,
+      // Which block the weights in this column belong to. A cell holds its own
+      // refusal and cannot otherwise see the table replaced from outside it.
+      block: synthetic,
       weightFor: (value) =>
         declared.find(
           (entry) => optionValueKey(entry.value) === optionValueKey(value),

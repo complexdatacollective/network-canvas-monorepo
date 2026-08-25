@@ -783,6 +783,30 @@ describe('every datetime parameter the schema admits', () => {
     expect(latest()).toEqual({ distribution: 'uniform', min: '2024-06' });
   });
 
+  it('lets the window reach past the range the field itself collects', () => {
+    // Generation intersects the declared window with the field's, so a window
+    // that overhangs on either side says "wherever this field allows" — which
+    // `rejectInvalidDatetimeSynthetic` accepts, refusing only an end lying
+    // wholly past the field's opposite one. Carrying the field's bounds into
+    // these pickers made every overlapping range unreachable: a schema-legal
+    // descriptor with no way to write it.
+    const { expand, latest } = setup({
+      variable: {
+        ...DATETIME,
+        parameters: { type: 'full', min: '2020-01-01', max: '2021-12-31' },
+      },
+    });
+    expand();
+
+    const earliest = screen.getByLabelText('Earliest date');
+    expect(earliest).not.toHaveAttribute('min');
+    expect(earliest).not.toHaveAttribute('max');
+
+    fireEvent.change(earliest, { target: { value: '2019-06-01' } });
+
+    expect(latest()).toEqual({ distribution: 'uniform', min: '2019-06-01' });
+  });
+
   it('states a cluster once its date is chosen, and its spread after', () => {
     const { expand, latest } = setup({ variable: DATETIME });
     expand();
@@ -853,7 +877,7 @@ describe('every datetime parameter the schema admits', () => {
     expect(screen.queryByText(/already fixes the range/)).toBeNull();
   });
 
-  it('leaves an anchor and a cluster date free of the field’s own bounds', () => {
+  it('leaves every date control free of the field’s own bounds', () => {
     // Neither names a date the FIELD collects: an anchor is the point a
     // session-relative window is measured from, and a mean with a spread that
     // can still reach the window is a declaration the schema accepts. A field
@@ -869,12 +893,10 @@ describe('every datetime parameter the schema admits', () => {
     const anchor = screen.getByLabelText('Count those days from');
     expect(anchor).not.toHaveAttribute('max');
     expect(anchor).not.toHaveAttribute('min');
-    // The window's own ends are a different matter: those ARE dates the field
-    // collects, and the schema holds them to its resolution and range.
-    expect(screen.getByLabelText('Earliest date')).toHaveAttribute(
-      'max',
-      '2020-12-31',
-    );
+    // And neither do the window's own ends, for a reason of their own: the
+    // declared window is INTERSECTED with the field's, so one that reaches
+    // past it is a legal way of saying "wherever the field allows".
+    expect(screen.getByLabelText('Earliest date')).not.toHaveAttribute('max');
   });
 
   it('returns the family to the default when the block is reset', () => {
@@ -971,6 +993,68 @@ describe('what the schema said about an edit it refused', () => {
     expect(
       screen.getByText('At least one option value must have a positive weight'),
     ).toBeInTheDocument();
+  });
+
+  it('stops explaining it once the table it refused is gone', () => {
+    // A refusal belongs to the block it was raised against, and the control
+    // that raised it cannot see that block replaced from somewhere else.
+    // Resetting left the complaint about an all-zero table sitting beside the
+    // restored, perfectly drawable defaults.
+    const { expand, latest } = setup({ variable: ORDINAL });
+    expand();
+
+    commit(screen.getByRole('spinbutton', { name: 'Weight for low' }), '0');
+    commit(screen.getByRole('spinbutton', { name: 'Weight for high' }), '0');
+    expect(
+      screen.getByText('At least one option value must have a positive weight'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Reset to default/ }));
+
+    expect(latest()).toBeUndefined();
+    expect(
+      screen.queryByText(
+        'At least one option value must have a positive weight',
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it('stops explaining a distribution once another control has changed the block', () => {
+    // The refusal belongs to the block it was raised against, and the control
+    // holding it cannot see a SIBLING control replace that block — here the
+    // missingness, which the distribution editor knows nothing about.
+    const { expand, latest } = setup({
+      variable: {
+        ...SCALAR,
+        synthetic: { distribution: 'beta', mean: 0.5, sd: 0.1 },
+      },
+    });
+    expand();
+
+    commit(
+      screen.getByRole('spinbutton', { name: 'Standard deviation' }),
+      '0.9',
+    );
+    expect(
+      screen.getByText('A beta distribution requires sd² < mean × (1 − mean)'),
+    ).toBeInTheDocument();
+
+    commit(
+      screen.getByRole('spinbutton', { name: 'Chance of no answer' }),
+      '0.2',
+    );
+
+    expect(latest()).toEqual({
+      distribution: 'beta',
+      mean: 0.5,
+      sd: 0.1,
+      missingProbability: 0.2,
+    });
+    expect(
+      screen.queryByText(
+        'A beta distribution requires sd² < mean × (1 − mean)',
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it('explains a chance of yes a one-sided list can never draw', () => {

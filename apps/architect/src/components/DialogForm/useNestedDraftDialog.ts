@@ -1,4 +1,4 @@
-import { useCallback, useContext } from 'react';
+import { useCallback, useContext, useRef } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useFormMeta } from '@codaco/fresco-ui/form/hooks/useFormState';
@@ -18,6 +18,17 @@ type NestedDraftDialogOptions = {
    * only after the researcher confirms when there is.
    */
   onClose: () => void;
+  /**
+   * Work the dialog is holding that no registered field can report.
+   *
+   * `selectIsFormDirty` compares the fields against the values they registered
+   * with, so a dialog whose editor writes into state BESIDE the form — an
+   * opaque value with no control of its own to register, like a variable's
+   * synthetic block — is dirty in a way the store cannot see. Opened with its
+   * registered fields already filled in, such a dialog reported "nothing to
+   * lose" for an edit that was about to be lost.
+   */
+  unregisteredDraft?: () => boolean;
 };
 
 /**
@@ -41,18 +52,27 @@ type NestedDraftDialogOptions = {
  * Dirtiness is fresco-ui's `selectIsFormDirty` — a live comparison against the
  * values the fields registered with, never the form store's own sticky
  * `isDirty` flag, which never returns to false once anything has been typed and
- * would nag about a form the researcher had already restored by hand.
+ * would nag about a form the researcher had already restored by hand. A dialog
+ * that also holds work outside its fields says so through `unregisteredDraft`.
  */
 export const useNestedDraftDialog = ({
   open,
   onClose,
+  unregisteredDraft,
 }: NestedDraftDialogOptions) => {
   const storeApi = useContext(FormStoreContext);
   const { openDialog } = useDialog();
   const { isSubmitting } = useFormMeta();
 
+  // Read through a ref so a caller may pass an inline closure without
+  // rebuilding every guard below on each render.
+  const heldOutside = useRef(unregisteredDraft);
+  heldOutside.current = unregisteredDraft;
+
   const isDirty = useCallback(
-    () => (storeApi ? selectIsFormDirty(storeApi.getState()) : false),
+    () =>
+      (storeApi ? selectIsFormDirty(storeApi.getState()) : false) ||
+      heldOutside.current?.() === true,
     [storeApi],
   );
 

@@ -428,6 +428,11 @@ export default function NewVariableWindow({
       formId={FORM_ID}
       submitLabel="Save and Close"
       onSubmit={handleSubmit}
+      // The block below is held beside the form, so nothing the field store
+      // compares can report it. Opened with its name and type already filled
+      // in — which several stage attribute pickers do — a researcher who only
+      // touched a generation parameter was dismissed without being asked.
+      unregisteredDraft={() => synthetic !== undefined}
     >
       <NewVariableFields
         existingVariableNames={existingVariableNames}

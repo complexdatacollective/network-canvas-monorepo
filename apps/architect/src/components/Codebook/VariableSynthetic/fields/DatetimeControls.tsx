@@ -10,6 +10,7 @@ import {
   seedParameterValue,
   type NumericWindow,
 } from '~/components/Synthetic/useNumericDraft';
+import { useRefusalReset } from '~/components/Synthetic/useRefusalReset';
 
 import { useVariableSynthetic } from '../VariableSyntheticProvider';
 
@@ -24,11 +25,12 @@ import { useVariableSynthetic } from '../VariableSyntheticProvider';
  * anchor is the day the interview runs), and the FIXED window (`min`/`max`).
  *
  * Two things keep it honest without restating a rule. Every date control is the
- * app's own `DatePicker`: a bound of the generated window is given the
- * variable's own resolution and accepted range, so a date the field could
- * never collect is not enterable (spec rule 2), while a cluster's centre and a
- * window's anchor — neither of which names a date the field collects — are
- * given the resolution alone. And every combination the schema refuses —
+ * app's own `DatePicker`, given the variable's own RESOLUTION — a date written
+ * at a precision the field cannot express is not enterable (spec rule 2) — and
+ * given no other bound, because none of these four values names a date the
+ * field collects: generation intersects the declared window with the field's,
+ * so a window that reaches past it on either side is a legal way of saying
+ * "wherever the field allows". And every combination the schema refuses —
  * a floor stated twice over, a relative window on a control that already has
  * one, a zero-spread cluster outside the window — is refused BY the schema
  * through `propose`, with its own words rendered beside the control that
@@ -183,6 +185,10 @@ export function DatetimeControls() {
   const [refusal, setRefusal] = useState<
     { field: string; messages: string[] } | undefined
   >(undefined);
+  // Cleared when the block itself is replaced from outside these controls — a
+  // reset, an undo — since the sentence then describes a descriptor that is no
+  // longer there.
+  useRefusalReset(synthetic, () => setRefusal(undefined));
   const errorsFor = (field: string): string[] =>
     refusal?.field === field ? refusal.messages : [];
 
@@ -228,6 +234,23 @@ export function DatetimeControls() {
    * the schema, beside the control.
    */
   const fullDateParameters = { type: 'full' };
+  /**
+   * The window's own two ends: the variable's RESOLUTION, and no other bound —
+   * the same reasoning as above, applied to the pair the field's min/max look
+   * like they ought to bound.
+   *
+   * They ought not. Generation intersects the synthetic window with the
+   * field's, so a range that merely OVERLAPS is a declaration the schema
+   * accepts: on a field collecting 2020–2021, `min: 2019, max: 2022` says
+   * "anywhere this field allows", which is an ordinary thing to author.
+   * `rejectInvalidDatetimeSynthetic` refuses only an end that lies wholly past
+   * the field's opposite one. Carrying the field's bounds into these two
+   * pickers made every overlapping range unreachable — schema-legal
+   * descriptors with no way to write them — while the case the schema does
+   * refuse is refused by the schema, beside the control (spec rule 2 is about
+   * values the schema would REFUSE).
+   */
+  const boundParameters = { type: parameters.type };
 
   /**
    * Writes a block, and drops the family discriminant where the schema does
@@ -435,7 +458,7 @@ export function DatetimeControls() {
         label="Earliest date"
         hint="Leave this empty to reach as far back as the window above allows."
         value={readString(synthetic, 'min')}
-        parameters={parameters}
+        parameters={boundParameters}
         errors={errorsFor('min')}
         onChange={(min) =>
           commit('min', { ...synthetic, distribution: family, min })
@@ -446,7 +469,7 @@ export function DatetimeControls() {
         label="Latest date"
         hint="Leave this empty to reach as far forward as the window above allows."
         value={readString(synthetic, 'max')}
-        parameters={parameters}
+        parameters={boundParameters}
         errors={errorsFor('max')}
         onChange={(max) =>
           commit('max', { ...synthetic, distribution: family, max })

@@ -64,7 +64,7 @@ const protocol: CurrentProtocol = CurrentProtocolSchema.parse({
 });
 
 function renderDialog() {
-  return render(
+  const view = render(
     <SyntheticGenerationDialog
       open
       onOpenChange={vi.fn()}
@@ -72,6 +72,19 @@ function renderDialog() {
       protocolId="protocol-1"
     />,
   );
+  return {
+    ...view,
+    /** Close it the way the researcher does: the parent stops passing `open`. */
+    close: () =>
+      view.rerender(
+        <SyntheticGenerationDialog
+          open={false}
+          onOpenChange={vi.fn()}
+          protocol={protocol}
+          protocolId="protocol-1"
+        />,
+      ),
+  };
 }
 
 const setNumber = (name: string, value: string) => {
@@ -328,6 +341,26 @@ describe('SyntheticGenerationDialog', () => {
     expect(
       screen.getByRole('button', { name: 'Download archive' }),
     ).toBeEnabled();
+  });
+
+  it('lets go of the archive when the dialog closes', async () => {
+    // This dialog stays mounted under `ProjectActions` for the whole editing
+    // session, so a finished run held its export archive — up to a thousand
+    // interviews of CSV and GraphML — until a reopen that might never come.
+    const { close } = renderDialog();
+    clickGenerate();
+    await screen.findByRole('button', { name: 'Download archive' });
+
+    close();
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Download archive' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByText(/Generated \d+ interview/),
+    ).not.toBeInTheDocument();
   });
 
   it('offers the newest batch, not the one that was already saved', async () => {

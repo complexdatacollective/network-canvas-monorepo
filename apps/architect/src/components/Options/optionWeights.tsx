@@ -13,6 +13,7 @@ import {
   type NumericWindow,
   useNumericDraft,
 } from '~/components/Synthetic/useNumericDraft';
+import { useRefusalReset } from '~/components/Synthetic/useRefusalReset';
 import { cx } from '~/utils/cva';
 
 /**
@@ -40,6 +41,12 @@ const WEIGHT_WINDOW: NumericWindow = describeFieldWindow(
 export type OptionWeightsController = {
   /** Whether the column is on screen at all. */
   revealed: boolean;
+  /**
+   * The synthetic block these weights belong to, so a cell holding a refusal
+   * can tell that the table it complained about has been replaced — by a
+   * reset, an undo, or an accepted edit in another cell.
+   */
+  block: unknown;
   /** The authored weight for one option value; `undefined` while unauthored. */
   weightFor: (value: string | number | boolean) => number | undefined;
   /**
@@ -144,6 +151,9 @@ export function OptionWeightCell({
    * discarded it.
    */
   const [refusals, setRefusals] = useState<string[]>([]);
+  // Refused against the table as it then stood; a table replaced from outside
+  // this cell leaves the sentence describing something no longer on screen.
+  useRefusalReset(controller?.block, () => setRefusals([]));
   const weight =
     controller && optionValue !== undefined
       ? controller.weightFor(optionValue)

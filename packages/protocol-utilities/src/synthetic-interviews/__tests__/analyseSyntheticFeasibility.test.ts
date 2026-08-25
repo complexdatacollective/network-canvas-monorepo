@@ -286,3 +286,41 @@ describe('analyseSyntheticFeasibility', () => {
     expect(results).toHaveLength(1);
   });
 });
+
+describe('the anchor the gate is asked about', () => {
+  /**
+   * Non-drift covers the anchor too. An anchor generation would refuse must
+   * not come back from here as a verdict: the gate advertises itself as the
+   * question the run will ask, and a preflight that answered where the run
+   * cannot start is answering about a run that will never happen.
+   */
+  const simple = () => parse([elicits(2)]);
+
+  it.each([
+    ['a date with no time at all', '2026-08-14'],
+    ['an anchor with no zone', '2026-08-14T12:00:00'],
+    ['something that is not a date', 'sometime last week'],
+  ])('refuses %s, exactly as generation does', (_label, anchor) => {
+    const protocol = simple();
+
+    expect(() =>
+      analyseSyntheticFeasibility(protocol, {}, { startWindow: anchor }),
+    ).toThrow();
+    // The oracle's other half: the run really would refuse it, so the gate is
+    // agreeing with generation rather than inventing a rule of its own.
+    expect(() =>
+      generateInterviews(protocol, { count: 1, startWindow: anchor }),
+    ).toThrow();
+  });
+
+  it('takes the anchor a run takes, and reads the same verdict from it', () => {
+    const protocol = simple();
+
+    expect(
+      analyseSyntheticFeasibility(protocol, {}, { startWindow: START_WINDOW }),
+    ).toEqual([]);
+    expect(
+      generateInterviews(protocol, { count: 1, startWindow: START_WINDOW }),
+    ).toHaveLength(1);
+  });
+});

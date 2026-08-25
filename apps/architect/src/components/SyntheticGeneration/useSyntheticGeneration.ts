@@ -20,8 +20,8 @@ import { isSyntheticConstraintRefusal } from '~/utils/syntheticConstraintRefusal
  * one.
  *
  * A finished run holds its archive here rather than saving it, so it survives
- * until the researcher asks for it — until the dialog is closed, or until
- * another batch replaces it.
+ * until the researcher asks for it — and no longer: the run is cleared the
+ * moment its surface opens or closes, or when another batch replaces it.
  */
 
 const GENERIC_FAILURE_MESSAGE =
@@ -61,9 +61,16 @@ const IDLE: SyntheticGenerationState = { status: 'idle' };
 export function useSyntheticGeneration({
   protocol,
   protocolId,
+  open,
 }: {
   protocol: CurrentProtocol | null;
   protocolId: string | null;
+  /**
+   * Whether the surface holding this run is on screen. Every change of it
+   * clears the run — see the effect below, which is why this is the hook's
+   * business rather than its caller's.
+   */
+  open: boolean;
 }) {
   const [state, setState] = useState<SyntheticGenerationState>(IDLE);
 
@@ -87,6 +94,24 @@ export function useSyntheticGeneration({
     if (inFlight.current) return;
     setState(IDLE);
   }, []);
+
+  /**
+   * Every open AND every close starts a clean slate.
+   *
+   * Opening, because the previous run's outcome belongs to the batch that
+   * produced it: a stale "Generated 10 interviews" above a fresh form reads as
+   * though this one had already run. CLOSING, because a finished run is
+   * holding a whole export archive — up to `MAX_SYNTHETIC_INTERVIEWS`
+   * interviews of CSV and GraphML — and the surface that owns this hook stays
+   * mounted for the rest of the editing session. Waiting for a reopen that may
+   * never come meant carrying that archive until the tab was closed.
+   *
+   * Here rather than in the dialog because the archive is held here: whoever
+   * owns the memory owns letting go of it.
+   */
+  useEffect(() => {
+    reset();
+  }, [open, reset]);
 
   const generate = useCallback(
     async (request: SyntheticGenerationRequest) => {
@@ -162,5 +187,7 @@ export function useSyntheticGeneration({
     publish({ status: 'done', summary: state.summary, saved: true });
   }, [publish, state]);
 
-  return { state, generate, reset, saveArchive };
+  // `reset` is deliberately not returned: the effect above is the one thing
+  // that clears a run, so no caller can leave the archive held by forgetting.
+  return { state, generate, saveArchive };
 }
