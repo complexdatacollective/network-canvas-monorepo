@@ -275,6 +275,40 @@ describe('migrateProtocolsToCompatibleVersion', () => {
     expect(call.data.codebook.node.person).not.toHaveProperty('iconVariant');
   });
 
+  it('preserves stored experiments when normalizing a non-conformant protocol', async () => {
+    // Experiments exist only at the compatible version and the migration chain
+    // predates them, so both write paths must carry the stored value through
+    // rather than resetting it to the chain's default.
+    const legacyShaped = makeV7Protocol();
+    const storedExperiments = { encryptedVariables: true };
+    const prisma = makeMockPrisma();
+    prisma.protocol.findMany.mockResolvedValue([
+      {
+        id: 'cm-experiments',
+        assets: [],
+        name: 'With Experiments.netcanvas',
+        schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+        stages: legacyShaped.stages,
+        codebook: legacyShaped.codebook,
+        experiments: storedExperiments,
+        description: legacyShaped.description,
+        lastModified: new Date(legacyShaped.lastModified),
+      },
+    ]);
+
+    await migrateProtocolsToCompatibleVersion(
+      prisma as unknown as Parameters<
+        typeof migrateProtocolsToCompatibleVersion
+      >[0],
+    );
+
+    expect(prisma.protocol.update).toHaveBeenCalledTimes(1);
+    const call = prisma.protocol.update.mock.calls[0]?.[0] as {
+      data: { experiments: unknown };
+    };
+    expect(call.data.experiments).toEqual(storedExperiments);
+  });
+
   it('normalizes non-conformant asset-referencing protocols', async () => {
     // The re-migration input must include the manifest reconstructed from the
     // Asset rows, or migration of any asset-referencing protocol would fail

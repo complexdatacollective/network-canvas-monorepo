@@ -310,8 +310,9 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
           <Heading level="h1">Interview unavailable</Heading>
           <Paragraph>
             The protocol this interview uses could not be updated to work with
-            this version of the app. Repair the protocol in Architect and import
-            it again to continue.
+            this version of the app, so this interview cannot be continued. Its
+            responses remain available on the data screen. To start new
+            interviews, repair the protocol in Architect and import it again.
           </Paragraph>
           <Button
             onClick={() => {

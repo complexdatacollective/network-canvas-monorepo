@@ -137,6 +137,12 @@ async function migrateOneProtocol(
     schemaVersion: row.schemaVersion,
     stages: row.stages,
     codebook: row.codebook,
+    // Once the target version advances beyond 8, version-8 rows enter this
+    // path carrying experiments; a source that omitted them would persist the
+    // migration's absent default and silently erase the stored configuration.
+    // Omit the key (rather than sending null) for the older rows that have
+    // none.
+    ...(row.experiments != null ? { experiments: row.experiments } : {}),
     assetManifest: buildAssetManifest(row.assets),
   };
 
@@ -163,7 +169,11 @@ async function migrateOneProtocol(
       // the brand at the Prisma JSON boundary.
       stages: migrated.stages as Prisma.InputJsonValue,
       codebook: migrated.codebook,
-      experiments: migrated.experiments ?? Prisma.JsonNull,
+      // Fall back to the stored value like the normalization path below: the
+      // migration chain predates experiments and may not carry them through.
+      // A future migration that means to clear them should set `{}`, not drop
+      // the key.
+      experiments: migrated.experiments ?? row.experiments ?? Prisma.JsonNull,
       hash: newHash,
     },
     newHash,

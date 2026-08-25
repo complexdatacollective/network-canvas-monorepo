@@ -10,7 +10,7 @@ import type { StoredProtocolRow } from './assetDB';
 import { describeMigrationFailure } from './describeMigrationFailure';
 import {
   markStoredProtocolValidated,
-  putStoredProtocol,
+  putStoredProtocolIfUnchanged,
 } from './protocolLibrary';
 import { reportProtocolUpgrade } from './protocolUpgradeQueue';
 
@@ -46,7 +46,7 @@ type AdmissionDependencies = {
   validate?: typeof validateProtocol;
   markValidated?: typeof markStoredProtocolValidated;
   migrate?: typeof migrateProtocol;
-  persist?: typeof putStoredProtocol;
+  persist?: typeof putStoredProtocolIfUnchanged;
   notifyUpgraded?: typeof reportProtocolUpgrade;
 };
 
@@ -101,19 +101,38 @@ const upgradeStoredProtocol = async (
     };
   }
 
-  await (dependencies.persist ?? putStoredProtocol)({
+  // The migration and validation above awaited, so another tab holding this
+  // protocol may have saved into the row in the meantime. The guarded write
+  // lands the upgrade only if the row is still the one that was read;
+  // otherwise nothing is written and the researcher reopens against the
+  // peer's newer save.
+  const persisted = await (
+    dependencies.persist ?? putStoredProtocolIfUnchanged
+  )(row, {
     id: row.id,
     protocol: migrated,
     name: row.name,
     description: row.description,
     sourceRef: row.sourceRef,
-    // Keep every blob the PRE-migration manifest referenced. `putStoredProtocol`
+    // Keep every blob the PRE-migration manifest referenced. The save
     // garbage-collects assets that the saved manifest no longer names, and a
     // migration is free to re-key the manifest — which would otherwise delete
     // the researcher's own resources during a save they never asked for. They
     // are reclaimed by the next ordinary save if they really are unreachable.
     retainedAssetIds: Object.keys(row.protocol.assetManifest ?? {}),
   });
+  if (!persisted) {
+    return {
+      success: false,
+      refusal: {
+        status: 'error',
+        title: 'Protocol changed while upgrading',
+        message:
+          `"${row.name}" was saved by another window while it was being upgraded. ` +
+          'Nothing was changed. Open the protocol again to continue.',
+      },
+    };
+  }
 
   (dependencies.notifyUpgraded ?? reportProtocolUpgrade)({ name: row.name });
 

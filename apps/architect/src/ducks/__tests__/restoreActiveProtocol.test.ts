@@ -235,7 +235,7 @@ describe('restoreActiveProtocolFromLibrary', () => {
       store.dispatch(setActiveProtocolId('older'));
       storeOlderRow();
       const upgraded = makeProtocol('Written by an older Architect');
-      const persist = vi.fn().mockResolvedValue(undefined);
+      const persist = vi.fn().mockResolvedValue(true);
       const notifyUpgraded = vi.fn();
 
       const result = await restoreActiveProtocolFromLibrary(store, {
@@ -256,6 +256,7 @@ describe('restoreActiveProtocolFromLibrary', () => {
       // The editor holds the UPGRADED document, not the row that was read.
       expect(store.getState().activeProtocol.present).toEqual(upgraded);
       expect(persist).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'older' }),
         expect.objectContaining({ id: 'older', protocol: upgraded }),
       );
       expect(notifyUpgraded).toHaveBeenCalledWith({ name: 'Older study' });

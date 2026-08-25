@@ -109,7 +109,7 @@ describe('admitStoredProtocol', () => {
       const validate = vi
         .fn()
         .mockResolvedValue({ success: true, data: upgraded });
-      const persist = vi.fn().mockResolvedValue(undefined);
+      const persist = vi.fn().mockResolvedValue(true);
       const notifyUpgraded = vi.fn();
 
       await expect(
@@ -126,13 +126,39 @@ describe('admitStoredProtocol', () => {
       });
       // The upgraded document is validated before anything is written.
       expect(validate).toHaveBeenCalledWith(upgraded);
+      // The write is guarded on the row still being the one that was read:
+      // the snapshot travels with the input so the guard can compare.
       expect(persist).toHaveBeenCalledWith(
+        row,
         expect.objectContaining({ id: 'older', protocol: upgraded }),
       );
       expect(persist.mock.invocationCallOrder[0]!).toBeGreaterThan(
         validate.mock.invocationCallOrder[0]!,
       );
       expect(notifyUpgraded).toHaveBeenCalledWith({ name: row.name });
+    });
+
+    it('refuses without announcing when another window saved the row mid-upgrade', async () => {
+      const row = makeLegacyRow();
+      const persist = vi.fn().mockResolvedValue(false);
+      const notifyUpgraded = vi.fn();
+
+      const result = await admitStoredProtocol(row, {
+        migrate: vi.fn().mockReturnValue(upgraded),
+        validate: vi.fn().mockResolvedValue({ success: true, data: upgraded }),
+        persist,
+        notifyUpgraded,
+      });
+
+      expect(result).toEqual({
+        success: false,
+        refusal: {
+          status: 'error',
+          title: 'Protocol changed while upgrading',
+          message: expect.stringContaining('saved by another window'),
+        },
+      });
+      expect(notifyUpgraded).not.toHaveBeenCalled();
     });
 
     it('retains the assets the pre-migration manifest referenced', async () => {
@@ -143,7 +169,7 @@ describe('admitStoredProtocol', () => {
           assetManifest: { 'old-asset': { id: 'old-asset' } },
         } as unknown as CurrentProtocol,
       });
-      const persist = vi.fn().mockResolvedValue(undefined);
+      const persist = vi.fn().mockResolvedValue(true);
 
       await admitStoredProtocol(row, {
         migrate: vi.fn().mockReturnValue(upgraded),
@@ -153,6 +179,7 @@ describe('admitStoredProtocol', () => {
       });
 
       expect(persist).toHaveBeenCalledWith(
+        row,
         expect.objectContaining({ retainedAssetIds: ['old-asset'] }),
       );
     });

@@ -112,7 +112,7 @@ describe('useStoredProtocolMigration', () => {
     expect(toastAdd).toHaveBeenCalledWith({
       title: 'Protocol could not be updated',
       description:
-        'Broken Study could not be migrated to the current schema. Repair it in Architect and import it again — it cannot be used until then.',
+        'Broken Study could not be migrated to the current schema. Its interviews cannot be continued, though their responses remain on the data screen. Repair it in Architect and import it again to start new interviews.',
       variant: 'destructive',
     });
   });
@@ -133,7 +133,7 @@ describe('useStoredProtocolMigration', () => {
       expect.objectContaining({
         title: 'Protocols could not be updated',
         description:
-          '2 protocols could not be migrated to the current schema. Repair them in Architect and import them again — they cannot be used until then.',
+          '2 protocols could not be migrated to the current schema. Their interviews cannot be continued, though their responses remain on the data screen. Repair them in Architect and import them again to start new interviews.',
         variant: 'destructive',
       }),
     );

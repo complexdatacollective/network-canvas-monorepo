@@ -31,12 +31,12 @@ function failedToast(names: string[]): { title: string; description: string } {
   if (names.length === 1 && first !== undefined) {
     return {
       title: 'Protocol could not be updated',
-      description: `${first} could not be migrated to the current schema. Repair it in Architect and import it again — it cannot be used until then.`,
+      description: `${first} could not be migrated to the current schema. Its interviews cannot be continued, though their responses remain on the data screen. Repair it in Architect and import it again to start new interviews.`,
     };
   }
   return {
     title: 'Protocols could not be updated',
-    description: `${names.length} protocols could not be migrated to the current schema. Repair them in Architect and import them again — they cannot be used until then.`,
+    description: `${names.length} protocols could not be migrated to the current schema. Their interviews cannot be continued, though their responses remain on the data screen. Repair them in Architect and import them again to start new interviews.`,
   };
 }
 

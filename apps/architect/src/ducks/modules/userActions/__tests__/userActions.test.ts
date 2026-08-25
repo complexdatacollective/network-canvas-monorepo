@@ -12,6 +12,7 @@ const validateProtocol = vi.fn();
 const migrateProtocol = vi.fn();
 const setActiveProtocol = vi.fn();
 const putStoredProtocol = vi.fn();
+const putStoredProtocolIfUnchanged = vi.fn();
 const getStoredProtocol = vi.fn();
 const markStoredProtocolValidated = vi.fn();
 const saveProtocolAssets = vi.fn();
@@ -43,6 +44,8 @@ vi.mock('@codaco/protocol-validation', async (importOriginal) => {
 
 vi.mock('~/utils/protocolLibrary', () => ({
   putStoredProtocol: (...args: unknown[]) => putStoredProtocol(...args),
+  putStoredProtocolIfUnchanged: (...args: unknown[]) =>
+    putStoredProtocolIfUnchanged(...args),
   markStoredProtocolValidated: (...args: unknown[]) =>
     markStoredProtocolValidated(...args),
   deleteStoredProtocol: (...args: unknown[]) => deleteStoredProtocol(...args),
@@ -119,6 +122,7 @@ describe('userActions', () => {
     migrateProtocol.mockReset();
     setActiveProtocol.mockReset();
     putStoredProtocol.mockReset().mockResolvedValue(undefined);
+    putStoredProtocolIfUnchanged.mockReset().mockResolvedValue(true);
     getStoredProtocol.mockReset();
     markStoredProtocolValidated.mockReset().mockResolvedValue(undefined);
     saveProtocolAssets.mockReset().mockResolvedValue(undefined);
@@ -298,9 +302,10 @@ describe('userActions', () => {
         APP_SCHEMA_VERSION,
         { name: 'Older study' },
       );
-      // Saved back over the same row, so the library no longer holds the old
-      // document.
-      expect(putStoredProtocol).toHaveBeenCalledWith(
+      // Saved back over the same row (guarded on the row being unchanged), so
+      // the library no longer holds the old document.
+      expect(putStoredProtocolIfUnchanged).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'older' }),
         expect.objectContaining({
           id: 'older',
           protocol: upgraded,
