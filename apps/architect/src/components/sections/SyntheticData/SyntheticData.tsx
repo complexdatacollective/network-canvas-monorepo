@@ -214,8 +214,15 @@ const unscopedIssues = (issues: readonly SyntheticIssue[]): SyntheticIssue[] =>
  * refusal are routinely the very same issue arriving by two routes, and two
  * copies of it read as two problems.
  */
+// The separator is a NUL, spelt as an escape rather than written into the
+// source: a literal one makes every tool that sniffs for binary content —
+// ripgrep, `git diff`, an editor — treat this whole file as binary and stop
+// showing matches in it. It stays a NUL because no path segment and no
+// schema message can contain one, so no two distinct issues can key alike.
+const ISSUE_KEY_SEPARATOR = '\u0000';
+
 const issueKey = (issue: SyntheticIssue): string =>
-  `${issue.path.join('.')} ${issue.message}`;
+  `${issue.path.join('.')}${ISSUE_KEY_SEPARATOR}${issue.message}`;
 
 type TopologyEditorProps = {
   topology: EdgeTopology;

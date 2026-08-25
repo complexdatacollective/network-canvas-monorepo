@@ -8,7 +8,11 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { MAX_SYNTHETIC_INTERVIEWS } from '@codaco/protocol-utilities';
+import {
+  formatSyntheticBatchToken,
+  MAX_SYNTHETIC_INTERVIEWS,
+  parseSyntheticBatchToken,
+} from '@codaco/protocol-utilities';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { SyntheticConflictList } from '~/components/Synthetic/SyntheticConflictAlert';
 import type { SyntheticExportProgress } from '~/lib/syntheticExport/generateSyntheticExport';
@@ -91,7 +95,15 @@ export function SyntheticGenerationDialog({
   });
 
   const [count, setCount] = useState(DEFAULT_COUNT);
-  const [seedInput, setSeedInput] = useState('');
+  const [tokenInput, setTokenInput] = useState('');
+  /**
+   * A token that could not be read, held so the field can say so.
+   *
+   * Named rather than silently ignored: falling back to a fresh batch would
+   * answer a request to reproduce one batch by generating a different one, and
+   * the researcher would have no way to tell from the result.
+   */
+  const [tokenError, setTokenError] = useState<string[]>([]);
   const [simulateDropOut, setSimulateDropOut] = useState(true);
   // Defaults on: skip logic and filters are part of what the protocol says an
   // interview is, so generated data that ignores them is not data this protocol
@@ -109,19 +121,30 @@ export function SyntheticGenerationDialog({
   }, [open, reset]);
 
   const handleGenerate = useCallback(() => {
-    const parsedSeed = Number.parseInt(seedInput.trim(), 10);
+    // A batch's identity is its seed AND the day its sessions are dated
+    // against; the reported token carries both, and a bare seed pins only the
+    // draws. Anything else typed here is a mistake worth naming.
+    const typed = tokenInput.trim();
+    const pinned = typed === '' ? undefined : parseSyntheticBatchToken(typed);
+    if (typed !== '' && !pinned) {
+      setTokenError([
+        'That batch token could not be read. Enter the value a batch reported — a number, or number-YYYY-MM-DD — or leave the field blank.',
+      ]);
+      return;
+    }
+    setTokenError([]);
     void generate({
       count,
-      ...(Number.isFinite(parsedSeed) ? { seed: parsedSeed } : {}),
+      ...(pinned ? { pinned } : {}),
       simulateDropOut,
       respectSkipLogic,
     });
-  }, [count, generate, respectSkipLogic, seedInput, simulateDropOut]);
+  }, [count, generate, respectSkipLogic, simulateDropOut, tokenInput]);
 
   const handleClose = useCallback(() => {
-    // A run has no cancel: the engine draws a batch in one synchronous call, so
-    // there is no point between clicks at which it could be stopped. Closing
-    // mid-run would hide it without ending it.
+    // A run has no cancel: nothing partial is worth keeping — the archive only
+    // exists once the whole batch has been exported — and closing mid-run
+    // would hide the run without ending it.
     if (isRunning) return;
     onOpenChange(false);
   }, [isRunning, onOpenChange]);
@@ -186,14 +209,18 @@ export function SyntheticGenerationDialog({
       />
       <UnconnectedField
         name="syntheticSeed"
-        label="Random seed"
-        hint="Leave blank for a new batch each time. Every batch reports the seed it used — enter that seed to regenerate exactly the same interviews."
+        label="Batch token"
+        hint="Leave blank for a new batch each time. Every batch reports the token it ran on — enter that token to regenerate exactly the same interviews, dates included. A bare seed number pins the draws but dates the sessions around today."
         component={InputField}
-        type="number"
-        min={0}
-        value={seedInput}
+        type="text"
+        value={tokenInput}
         disabled={isRunning}
-        onChange={(next: string | undefined) => setSeedInput(next ?? '')}
+        errors={tokenError}
+        showErrors={tokenError.length > 0}
+        onChange={(next: string | undefined) => {
+          setTokenInput(next ?? '');
+          setTokenError([]);
+        }}
       />
       <UnconnectedField
         name="simulateDropOut"
@@ -258,9 +285,18 @@ export function SyntheticGenerationDialog({
                 ? `Saved as ${state.summary.fileName}. Download it again if you need another copy.`
                 : `Your archive is ready to download as ${state.summary.fileName}.`}
             </p>
+            {/* The token is the whole batch — the seed AND the day its
+                sessions are dated against — so entering it above really does
+                redraw these interviews rather than a differently dated batch
+                of the same shape. */}
             <p>
-              This batch used seed {state.summary.seed} — enter that seed above
-              to generate exactly these interviews again.
+              This batch is{' '}
+              {formatSyntheticBatchToken(
+                state.summary.seed,
+                state.summary.startWindow,
+              )}{' '}
+              — enter that token above to generate exactly these interviews
+              again.
             </p>
             {state.summary.failedCount > 0 ? (
               <p>

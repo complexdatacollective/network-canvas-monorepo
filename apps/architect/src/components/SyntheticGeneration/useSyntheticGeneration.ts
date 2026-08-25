@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type { ConstraintConflict } from '@codaco/protocol-utilities';
+import type {
+  ConstraintConflict,
+  SyntheticBatchIdentity,
+} from '@codaco/protocol-utilities';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { SyntheticGenerationError } from '~/lib/syntheticExport/errors';
 import type {
@@ -42,8 +45,13 @@ export type SyntheticGenerationState =
 
 export type SyntheticGenerationRequest = {
   count: number;
-  /** Omitted, the engine draws a fresh seed and reports it back. */
-  seed?: number;
+  /**
+   * The batch to replay, both halves of it. Omitted, a fresh seed and a fresh
+   * day-quantised anchor are drawn and reported back; a `seed` without a
+   * `startWindow` pins the draws and dates the sessions around today, which is
+   * what a bare seed token means.
+   */
+  pinned?: SyntheticBatchIdentity;
   simulateDropOut: boolean;
   respectSkipLogic: boolean;
 };
@@ -103,7 +111,10 @@ export function useSyntheticGeneration({
           protocol,
           protocolId,
           count: request.count,
-          ...(request.seed === undefined ? {} : { seed: request.seed }),
+          // Spread rather than named: a `seed: undefined` key would read to the
+          // engine's option parser as a pin at "undefined", and an absent
+          // `startWindow` is what asks for a fresh anchor.
+          ...request.pinned,
           simulateDropOut: request.simulateDropOut,
           respectSkipLogic: request.respectSkipLogic,
           onProgress: (progress) => {

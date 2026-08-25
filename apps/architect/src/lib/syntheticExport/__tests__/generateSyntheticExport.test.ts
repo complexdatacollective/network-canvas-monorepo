@@ -58,7 +58,7 @@ vi.mock('@codaco/protocol-utilities', async (original) => {
     generateInterviewsAsync: (
       ...args: Parameters<typeof actual.generateInterviewsAsync>
     ) => {
-      drivers.asynchronous();
+      drivers.asynchronous(args[1]);
       return actual.generateInterviewsAsync(...args);
     },
   };
@@ -209,6 +209,67 @@ describe('generateSyntheticExport', () => {
     // exports, and half an answer is not that.
     expect(options.exportGraphML).toBe(true);
     expect(options.exportCSV).toBe(true);
+  });
+
+  it('turns stage filtering off with the toggle that says it does', async () => {
+    // One dialog control, two engine flags. `respectFiltering` defaults to
+    // true, so leaving it unset meant a researcher who switched off "Respect
+    // skip logic and filtering" still got filtered networks — the half of the
+    // promise the label makes second.
+    await generateSyntheticExport({
+      protocol,
+      protocolId: null,
+      count: 1,
+      seed: 7,
+      simulateDropOut: false,
+      respectSkipLogic: false,
+    });
+
+    expect(drivers.asynchronous).toHaveBeenCalledWith(
+      expect.objectContaining({
+        respectSkipLogic: false,
+        respectFiltering: false,
+      }),
+    );
+  });
+
+  it('pins the day the sessions are dated against, and reports it', async () => {
+    // A batch is a pure function of its seed AND its anchor. Leaving the
+    // anchor to the wall clock meant the same seed redrew the same answers on
+    // differently dated sessions — and any date-relative value with them.
+    const first = await generateSyntheticExport({
+      protocol,
+      protocolId: null,
+      count: 2,
+      seed: 4242,
+      simulateDropOut: false,
+      respectSkipLogic: true,
+    });
+    const firstSessions = lastPipelineCall().data.sessions;
+
+    expect(first.startWindow).toMatch(/^\d{4}-\d{2}-\d{2}T00:00:00\.000Z$/);
+    expect(drivers.asynchronous).toHaveBeenCalledWith(
+      expect.objectContaining({ startWindow: first.startWindow }),
+    );
+
+    // Replayed from the reported pair — the whole batch, timestamps included.
+    await generateSyntheticExport({
+      protocol,
+      protocolId: null,
+      count: 2,
+      seed: first.seed,
+      startWindow: first.startWindow,
+      simulateDropOut: false,
+      respectSkipLogic: true,
+    });
+    const replayed = lastPipelineCall().data.sessions;
+
+    expect(replayed.map((session) => session.startTime)).toEqual(
+      firstSessions.map((session) => session.startTime),
+    );
+    expect(replayed.map((session) => session.network)).toEqual(
+      firstSessions.map((session) => session.network),
+    );
   });
 
   it('never holds the tab’s thread for a whole batch', async () => {

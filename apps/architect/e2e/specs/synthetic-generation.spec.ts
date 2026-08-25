@@ -89,10 +89,9 @@ test('generates a seeded batch and saves it as a synthetic export archive', asyn
     .getByRole('spinbutton', { name: 'Number of sessions' })
     .fill('1');
   // Pinned, so the confirmation below has a value this spec can predict — and
-  // so a rerun of this test draws the same interview.
-  await dialog
-    .getByRole('spinbutton', { name: 'Random seed' })
-    .fill(String(SEED));
+  // so a rerun of this test draws the same interview. A bare seed is a legal
+  // token: it pins the draws and dates the sessions around the day of the run.
+  await dialog.getByRole('textbox', { name: 'Batch token' }).fill(String(SEED));
 
   // Generation saves nothing on its own. `downloadBlob` is dropped by Safari
   // when it runs outside a user gesture, and the gesture that started the run
@@ -132,9 +131,12 @@ test('generates a seeded batch and saves it as a synthetic export archive', asyn
   expect(entryNames).toContain('.csv');
   expect(entryNames).toContain('.graphml');
 
-  // And the researcher is told which seed produced it, because that number is
-  // the only way to ask for this batch again.
-  await expect(dialog.getByText(new RegExp(String(SEED)))).toBeVisible();
+  // And the researcher is told which batch produced it, as the token that asks
+  // for it again — the seed AND the day its sessions are dated against, since
+  // the seed alone would redraw the same answers onto different dates.
+  await expect(
+    dialog.getByText(new RegExp(`${SEED}-\\d{4}-\\d{2}-\\d{2}`)),
+  ).toBeVisible();
   await expect(
     dialog.getByText(new RegExp(download.suggestedFilename())),
   ).toBeVisible();

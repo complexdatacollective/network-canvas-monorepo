@@ -1,6 +1,9 @@
 import type { InterviewExportInput } from '@codaco/network-exporters/input';
 import type { ExportOptions } from '@codaco/network-exporters/options';
-import { generateInterviewsAsync } from '@codaco/protocol-utilities';
+import {
+  freshBatchStartWindow,
+  generateInterviewsAsync,
+} from '@codaco/protocol-utilities';
 import {
   CURRENT_SCHEMA_VERSION,
   hashProtocol,
@@ -48,8 +51,18 @@ export type SyntheticExportProgress =
 export type SyntheticExportSummary = {
   /** Interviews written into the archive. */
   sessionCount: number;
-  /** The seed the batch actually ran on, so it can be reproduced exactly. */
+  /** The seed the batch actually ran on. Half of its identity; see below. */
   seed: number;
+  /**
+   * The start-window anchor its sessions are dated against — the OTHER half.
+   *
+   * A batch is a pure function of both, so a summary reporting the seed alone
+   * would promise a replay the engine cannot give: every timestamp, and every
+   * date-relative drawn value, follows the day of the rerun. Reported together
+   * as one copyable token (`formatSyntheticBatchToken`), exactly as
+   * Interviewer reports its own batches.
+   */
+  startWindow: string;
   /** What the archive will be called once it is saved. */
   fileName: string;
   /** Interviews the exporter could not write a file for. */
@@ -74,9 +87,20 @@ export type GenerateSyntheticExportOptions = {
   /** The asset-store scope roster and Geospatial pools resolve under. */
   protocolId: string | null;
   count: number;
-  /** Pin the batch. Omitted, a fresh seed is drawn and reported back. */
+  /** Pin the draws. Omitted, a fresh seed is drawn and reported back. */
   seed?: number;
+  /**
+   * Pin the day the sessions are dated against. Omitted, a fresh day-quantised
+   * anchor is drawn and reported back: the seed alone does not identify a
+   * batch, because session dates and every date-relative drawn value follow
+   * the anchor.
+   */
+  startWindow?: string;
   simulateDropOut: boolean;
+  /**
+   * The dialog's combined toggle: skip logic AND stage filters together,
+   * exactly as its label promises. Threaded to both of the engine's flags.
+   */
   respectSkipLogic: boolean;
   onProgress?: (progress: SyntheticExportProgress) => void;
 };
@@ -84,10 +108,11 @@ export type GenerateSyntheticExportOptions = {
 /**
  * A fresh seed for a batch nobody pinned.
  *
- * The one place entropy is allowed: the engine is a pure function of its seed,
- * which is what makes a batch reproducible, so the unrepeatable part has to be
- * chosen here and handed back to the researcher. A 32-bit integer is short
- * enough to read off a confirmation and type back into the seed field.
+ * The one place entropy is allowed: the engine is a pure function of its seed
+ * and its anchor, which is what makes a batch reproducible, so the unrepeatable
+ * part has to be chosen here and handed back to the researcher. A 32-bit
+ * integer is short enough to read off a confirmation and type back into the
+ * batch-token field.
  */
 function drawSeed(): number {
   const [value] = crypto.getRandomValues(new Uint32Array(1));
@@ -166,6 +191,7 @@ export async function generateSyntheticExport({
   protocolId,
   count,
   seed: pinnedSeed,
+  startWindow: pinnedStartWindow,
   simulateDropOut,
   respectSkipLogic,
   onProgress,
@@ -185,6 +211,7 @@ export async function generateSyntheticExport({
       : await collectSyntheticAssetData(parsed, protocolId);
 
   const seed = pinnedSeed ?? drawSeed();
+  const startWindow = pinnedStartWindow ?? freshBatchStartWindow();
 
   // Nothing has been written yet, so a refusal here — the engine proving up
   // front that the protocol's rules cannot all be satisfied — leaves the
@@ -198,7 +225,18 @@ export async function generateSyntheticExport({
   // come, and the browser eventually offering to kill the page.
   const results = await generateInterviewsAsync(
     parsed,
-    { count, seed, simulateDropOut, respectSkipLogic },
+    {
+      count,
+      seed,
+      startWindow,
+      simulateDropOut,
+      respectSkipLogic,
+      // One dialog toggle, both engine flags: its label has always promised
+      // "skip logic and filtering", and stage filters are the second half of
+      // that promise. Left unset, the engine defaults filtering back ON, so a
+      // researcher who turned the toggle off still got filtered networks.
+      respectFiltering: respectSkipLogic,
+    },
     assetData,
     (current, total) => onProgress?.({ phase: 'generating', current, total }),
   );
@@ -273,6 +311,7 @@ export async function generateSyntheticExport({
   return {
     sessionCount: results.length,
     seed,
+    startWindow,
     fileName: syntheticArchiveName(parsed.name),
     failedCount,
     archive: blob,

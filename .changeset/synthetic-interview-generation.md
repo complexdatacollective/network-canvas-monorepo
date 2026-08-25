@@ -82,11 +82,13 @@ generation would do wherever they are set.
   whether the protocol as a whole can generate, and every attribute row shows
   the value generation would use and opens for editing in place.
 - **Architect generates synthetic interview data itself**: a "Generate
-  synthetic data…" action asks how many sessions to fabricate (with an
-  optional seed for reproducible batches, and drop-out and skip-logic
-  toggles), runs the same generation Interviewer uses, and downloads a
-  ready-made CSV and GraphML export archive — named so a fabricated archive
-  can never be mistaken for a real study's data.
+  synthetic data…" action asks how many sessions to fabricate (with drop-out
+  and skip-logic toggles, and an optional batch token), runs the same
+  generation Interviewer uses, and downloads a ready-made CSV and GraphML
+  export archive — named so a fabricated archive can never be mistaken for a
+  real study's data. Every batch reports the token it ran on, in the same form
+  Interviewer reports its own: entering it generates exactly those interviews
+  again, dates included.
 
 No control can produce a value the protocol format would reject: every field is
 held to the range its own rules allow, and problems no single field can express

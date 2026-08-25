@@ -80,6 +80,12 @@ const setNumber = (name: string, value: string) => {
   });
 };
 
+const setToken = (value: string) => {
+  fireEvent.change(screen.getByRole('textbox', { name: 'Batch token' }), {
+    target: { value },
+  });
+};
+
 const clickGenerate = () =>
   fireEvent.click(screen.getByRole('button', { name: 'Generate' }));
 
@@ -87,6 +93,9 @@ const clickDownload = () =>
   fireEvent.click(screen.getByRole('button', { name: 'Download archive' }));
 
 const ARCHIVE_NAME = 'Field_Wiring-synthetic-2026-08-22_10-00.zip';
+// A batch is identified by its seed AND the day its sessions are dated
+// against, reported together as one copyable token.
+const START_WINDOW = '2026-08-22T00:00:00.000Z';
 const archive = new Blob(['zip'], { type: 'application/zip' });
 
 beforeEach(() => {
@@ -95,6 +104,7 @@ beforeEach(() => {
   generateSyntheticExport.mockResolvedValue({
     sessionCount: 10,
     seed: 1,
+    startWindow: START_WINDOW,
     fileName: ARCHIVE_NAME,
     failedCount: 0,
     archive,
@@ -106,7 +116,7 @@ describe('SyntheticGenerationDialog', () => {
     renderDialog();
 
     setNumber('Number of sessions', '3');
-    setNumber('Random seed', '4242');
+    setToken('4242');
     fireEvent.click(
       screen.getByRole('switch', { name: 'Simulate participant drop-out' }),
     );
@@ -123,6 +133,8 @@ describe('SyntheticGenerationDialog', () => {
         protocol,
         protocolId: 'protocol-1',
         count: 3,
+        // A bare seed token pins the draws and leaves the dates to the run,
+        // which is exactly what a bare seed means.
         seed: 4242,
         // Both toggles default on, so a click on each is a request for off. A
         // wiring that ignored the control would send `true` here.
@@ -130,6 +142,10 @@ describe('SyntheticGenerationDialog', () => {
         respectSkipLogic: false,
       }),
     );
+    const request = generateSyntheticExport.mock.calls[0]?.[0] as
+      | Record<string, unknown>
+      | undefined;
+    expect(Object.hasOwn(request ?? {}, 'startWindow')).toBe(false);
   });
 
   it('defaults to ten interviews with both behaviours on', async () => {
@@ -148,7 +164,7 @@ describe('SyntheticGenerationDialog', () => {
     );
   });
 
-  it('asks for no seed at all when the field is left blank, so the engine draws one', async () => {
+  it('asks for no pin at all when the field is left blank, so the engine draws one', async () => {
     renderDialog();
     clickGenerate();
 
@@ -159,15 +175,17 @@ describe('SyntheticGenerationDialog', () => {
       | Record<string, unknown>
       | undefined;
     // `seed: undefined` would be a pin at "undefined" as far as the engine's
-    // option parser is concerned; the key must be absent.
+    // option parser is concerned; the keys must be absent.
     expect(request).toBeDefined();
     expect(Object.hasOwn(request ?? {}, 'seed')).toBe(false);
+    expect(Object.hasOwn(request ?? {}, 'startWindow')).toBe(false);
   });
 
-  it('reports the seed a batch used, and generates again from it', async () => {
+  it('reports the token a batch ran on, and generates again from it', async () => {
     generateSyntheticExport.mockResolvedValue({
       sessionCount: 4,
       seed: 987654,
+      startWindow: START_WINDOW,
       fileName: ARCHIVE_NAME,
       failedCount: 0,
       archive,
@@ -175,25 +193,54 @@ describe('SyntheticGenerationDialog', () => {
     renderDialog();
     clickGenerate();
 
-    // The reported seed is the whole point of the confirmation: without it the
-    // batch cannot be asked for again.
-    expect(await screen.findByText(/987654/)).toBeInTheDocument();
+    // The reported token is the whole point of the confirmation: without BOTH
+    // halves the batch cannot be asked for again — the seed alone redraws the
+    // same answers onto differently dated sessions.
+    expect(await screen.findByText(/987654-2026-08-22/)).toBeInTheDocument();
     expect(
       screen.getByText(/Field_Wiring-synthetic-2026-08-22_10-00\.zip/),
     ).toBeInTheDocument();
     expect(screen.getByText('Generated 4 interviews')).toBeInTheDocument();
 
-    // Round trip: the number the researcher just read, typed back in, reaches
-    // the engine as a pin.
-    setNumber('Random seed', '987654');
+    // Round trip: the token the researcher just read, typed back in, reaches
+    // the engine as a pin on both halves.
+    setToken('987654-2026-08-22');
     clickGenerate();
 
     await waitFor(() =>
       expect(generateSyntheticExport).toHaveBeenCalledTimes(2),
     );
     expect(generateSyntheticExport).toHaveBeenLastCalledWith(
-      expect.objectContaining({ seed: 987654 }),
+      expect.objectContaining({
+        seed: 987654,
+        startWindow: START_WINDOW,
+      }),
     );
+  });
+
+  it('says so when the token cannot be read, rather than quietly drawing a new batch', async () => {
+    renderDialog();
+
+    setToken('yesterday please');
+    clickGenerate();
+
+    expect(
+      await screen.findByText(/That batch token could not be read/),
+    ).toBeInTheDocument();
+    // Silently falling back would answer a request to reproduce one batch by
+    // generating a different one, with nothing in the result to say so.
+    expect(generateSyntheticExport).not.toHaveBeenCalled();
+
+    // Correcting it clears the complaint and runs.
+    setToken('987654');
+    clickGenerate();
+
+    await waitFor(() =>
+      expect(generateSyntheticExport).toHaveBeenCalledTimes(1),
+    );
+    expect(
+      screen.queryByText(/That batch token could not be read/),
+    ).not.toBeInTheDocument();
   });
 
   it('holds the controls and the generate action while a batch is running', async () => {
@@ -205,6 +252,7 @@ describe('SyntheticGenerationDialog', () => {
             resolve({
               sessionCount: 1,
               seed: 5,
+              startWindow: START_WINDOW,
               fileName: 'a.zip',
               failedCount: 0,
               archive,
@@ -218,9 +266,7 @@ describe('SyntheticGenerationDialog', () => {
       name: 'Generating…',
     });
     expect(generating).toBeDisabled();
-    expect(
-      screen.getByRole('spinbutton', { name: 'Random seed' }),
-    ).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: 'Batch token' })).toBeDisabled();
 
     // A second attempt while the first is in flight must not start a second
     // batch — two archives with two different seeds is the failure this guards.
@@ -295,6 +341,7 @@ describe('SyntheticGenerationDialog', () => {
     generateSyntheticExport.mockResolvedValue({
       sessionCount: 2,
       seed: 55,
+      startWindow: START_WINDOW,
       fileName: laterName,
       failedCount: 0,
       archive: laterArchive,
