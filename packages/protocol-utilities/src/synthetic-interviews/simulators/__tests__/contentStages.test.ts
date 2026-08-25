@@ -120,7 +120,7 @@ const CONTENT_STAGES: Record<string, Record<string, unknown>> = {
       {
         id: 'disease-1',
         label: 'Cancer',
-        color: '#ff0000',
+        color: 'node-color-seq-1',
         variable: 'hasCancer',
         inheritancePattern: 'autosomalDominant',
       },

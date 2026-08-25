@@ -33,9 +33,9 @@ export type LegacyColorReferenceRepair =
       to: ColorReference;
     };
 
-export type LegacyColorReferenceRepairResult = {
+export type LegacyColorReferenceRepairResult<T = unknown> = {
   /** The input itself when no repair is needed; otherwise a repaired clone. */
-  protocol: unknown;
+  protocol: T;
   repairs: LegacyColorReferenceRepair[];
 };
 
@@ -51,9 +51,9 @@ export type LegacyColorReferenceRepairResult = {
  * 2. The two known raw values map to the defined sequence entries now used by
  * those same bundled protocols. No other raw/custom value is guessed at.
  */
-export const repairLegacyColorReferences = (
-  protocol: unknown,
-): LegacyColorReferenceRepairResult => {
+export const repairLegacyColorReferences = <T>(
+  protocol: T,
+): LegacyColorReferenceRepairResult<T> => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) {
     return { protocol, repairs: [] };
   }

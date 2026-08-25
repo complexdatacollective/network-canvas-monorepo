@@ -137,7 +137,10 @@ describe('bundled sample protocol', () => {
     const result = await importBundledProtocol({
       name: 'Legacy Development Protocol',
       assets: [],
-      document: developmentProtocolWithLegacyColors(),
+      // Deliberately legacy-shaped (raw hex colors the repair rewrites), so
+      // it can only be described by widening — the same runtime path the
+      // malformed-document test above exercises.
+      document: developmentProtocolWithLegacyColors() as VersionedProtocol,
     });
 
     expect(result.success).toBe(true);

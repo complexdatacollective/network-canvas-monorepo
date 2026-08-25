@@ -1250,7 +1250,7 @@ const composerGeoProtocol = (): CurrentProtocol =>
           center: [-74, 40.7],
           initialZoom: 10,
           dataSourceAssetId: 'regions',
-          color: '#3399ff',
+          color: 'ord-color-seq-6',
           targetFeatureProperty: 'name',
         },
         prompts: [
@@ -1371,7 +1371,7 @@ const pedigreeProtocol = (): CurrentProtocol =>
           {
             id: 'condition',
             label: 'Condition',
-            color: '#cc0000',
+            color: 'node-color-seq-1',
             variable: asEntityAttributeReference('condition'),
             inheritancePattern: 'autosomalDominant',
           },

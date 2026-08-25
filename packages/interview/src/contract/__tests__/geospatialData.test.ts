@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  type OrdinalColorReference,
   asEntityAttributeReference,
   DEFAULT_RESPONSE_BURDEN,
   type Stage,
@@ -53,7 +54,9 @@ function geospatialStage(
       center: [-74, 40.7],
       initialZoom: 10,
       dataSourceAssetId: assetId,
-      color: '#3399ff',
+      // A legacy raw color the repair path rewrites; representable
+      // only by widening past the token union.
+      color: '#3399ff' as unknown as OrdinalColorReference,
       targetFeatureProperty,
     },
     prompts: [
