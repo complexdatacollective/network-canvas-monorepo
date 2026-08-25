@@ -48,6 +48,7 @@ const IntroScreen = (_props: StageEditorSectionProps) => {
         addTitle="Edit Section"
         previewComponent={ItemPreview as unknown as Renderer}
         editorFieldsComponent={ItemEditor}
+        editorDialogSize="workspace"
         editorTitle="Edit Section"
         itemLabel="content section"
         sortable

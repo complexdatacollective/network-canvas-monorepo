@@ -66,6 +66,20 @@ describe('IntroScreen', () => {
     expect(screen.getByTestId('item-preview')).toHaveTextContent('Hello');
   });
 
+  it('uses the workspace width for the content section editor', () => {
+    renderSection({
+      introScreen: { items: [{ id: 't1', type: 'text', content: 'Hello' }] },
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Edit content section' }),
+    );
+
+    expect(screen.getByRole('dialog', { name: 'Edit Section' })).toHaveClass(
+      'max-w-7xl',
+    );
+  });
+
   it('sets an empty items list when toggled on', async () => {
     const view = renderSection();
 
