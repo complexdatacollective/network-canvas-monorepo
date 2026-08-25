@@ -308,9 +308,14 @@ describe('FamilyPedigree NodeConfiguration slot picker exclusions', () => {
     const attributes = screen.getByRole('region', {
       name: 'Family member attributes',
     });
+    const formConfiguration = screen.getByRole('region', {
+      name: 'Form configuration',
+    });
 
     expect(attributes).toHaveAttribute('data-component', 'Section');
     expect(familyMemberData).toContainElement(attributes);
+    expect(familyMemberData).toContainElement(formConfiguration);
+    expect(attributes).not.toContainElement(formConfiguration);
     expect(capturedFields['nodeConfig.nodeLabelVariable']).toMatchObject({
       label: 'Display label',
       inline: true,

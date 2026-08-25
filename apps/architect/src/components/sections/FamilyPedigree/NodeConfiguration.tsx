@@ -667,43 +667,43 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
             />
           </Section>
         )}
-      </Section>
 
-      {nodeType && (
-        <Section
-          title="Form configuration"
-          description="Optionally add fields shown when participants add or edit family members."
-          toggleable
-          defaultOpen={pedigreeFormFields !== undefined}
-        >
-          <ArchitectArrayField
-            name="nodeConfig.form"
-            label="Form fields"
-            component={DialogArrayField}
-            addButtonLabel="Create new form field"
-            validation={{}}
-            initialValue={nodeConfigFormInitial ?? []}
-            addTitle="Edit Field"
-            editorFieldsComponent={FieldFields as unknown as Renderer}
-            editorProps={{
-              type: nodeType,
-              entity: 'node',
-              siblingFields: pedigreeFormFields,
-            }}
-            previewComponent={NodeFormFieldPreview as unknown as Renderer}
-            editorTitle="Edit Field"
-            editorValidate={editorValidate}
-            itemLabel="field"
-            sortable
-            onBeforeSave={handleChangeFields}
-            normalizeItem={(value: unknown) =>
-              normalizeField(value as Record<string, unknown>)
-            }
-            itemSelector={itemSelector('node', nodeType ?? null)}
-            requestedEditFormName="editable-list-form"
-          />
-        </Section>
-      )}
+        {nodeType && (
+          <Section
+            title="Form configuration"
+            description="Optionally add fields shown when participants add or edit family members."
+            toggleable
+            defaultOpen={pedigreeFormFields !== undefined}
+          >
+            <ArchitectArrayField
+              name="nodeConfig.form"
+              label="Form fields"
+              component={DialogArrayField}
+              addButtonLabel="Create new form field"
+              validation={{}}
+              initialValue={nodeConfigFormInitial ?? []}
+              addTitle="Edit Field"
+              editorFieldsComponent={FieldFields as unknown as Renderer}
+              editorProps={{
+                type: nodeType,
+                entity: 'node',
+                siblingFields: pedigreeFormFields,
+              }}
+              previewComponent={NodeFormFieldPreview as unknown as Renderer}
+              editorTitle="Edit Field"
+              editorValidate={editorValidate}
+              itemLabel="field"
+              sortable
+              onBeforeSave={handleChangeFields}
+              normalizeItem={(value: unknown) =>
+                normalizeField(value as Record<string, unknown>)
+              }
+              itemSelector={itemSelector('node', nodeType ?? null)}
+              requestedEditFormName="editable-list-form"
+            />
+          </Section>
+        )}
+      </Section>
       <NewVariableWindow {...variableWindowProps} />
     </>
   );
