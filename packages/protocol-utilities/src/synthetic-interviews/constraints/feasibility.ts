@@ -333,9 +333,11 @@ const sessionDays = (today: string, windowDays: number): string[] => {
  * batch's own start-window anchor rather than a clock read of its own, so the
  * verdict is a function of the arguments and nothing else. `windowDays` is
  * how far before the anchor a session may start; the date-sensitive checks
- * cover every day in that span. `stopAt` and `overrides` bound and replace
- * stages exactly as they bound and replace the walk — see
- * `worstCaseEntityCounts`.
+ * cover every day in that span. `stopAt`, `overrides` and `respectFiltering`
+ * bound, replace and unfilter stages exactly as they do for the walk — see
+ * `worstCaseEntityCounts`. `respectFiltering` defaults to the same `true` the
+ * run's own options schema defaults it to, so a caller that says nothing gets
+ * the verdict for a run that honours every filter.
  */
 export const analyseFeasibility = ({
   protocol,
@@ -345,6 +347,7 @@ export const analyseFeasibility = ({
   windowDays = 0,
   stopAt,
   overrides,
+  respectFiltering = true,
 }: {
   protocol: CurrentProtocol;
   assetData: AssetData;
@@ -353,11 +356,13 @@ export const analyseFeasibility = ({
   windowDays?: number;
   stopAt?: { stageIndex: number; promptIndex?: number };
   overrides?: SessionOverrides;
+  respectFiltering?: boolean;
 }): ConstraintConflict[] => {
   const { codebook } = protocol;
   const stages: Stage[] = [...protocol.stages];
   const counts = worstCaseEntityCounts(stages, assetData, {
     codebook,
+    respectFiltering,
     ...(stopAt ? { stopAt } : {}),
     ...(overrides ? { overrides } : {}),
   });

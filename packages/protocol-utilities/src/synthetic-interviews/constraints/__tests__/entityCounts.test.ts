@@ -627,6 +627,26 @@ describe('filtered re-censuses are additive', () => {
       ).scopes.get(scopeKey({ entity: 'edge', type: 'friend' }))?.entities,
     ).toEqual({ floor: 0, ceiling: pairs * 2 });
   });
+
+  it('has no filtered stages at all where the run ignores filtering', () => {
+    // `respectFiltering: false` hands every simulator `undefined` in place of
+    // its stage's filter, so the second census reads the whole network and
+    // re-grades the edges the first one made. Counting it as additive there
+    // would refuse a run over edges it cannot create.
+    const protocol = parse([
+      nameGenerator({ count: { distribution: 'constant', value: 4 } }),
+      denseCensus('c1'),
+      denseCensus('c2', bandFilter),
+    ]);
+
+    expect(
+      worstCaseEntityCounts(
+        protocol.stages,
+        {},
+        { respectFiltering: false },
+      ).scopes.get(scopeKey({ entity: 'edge', type: 'friend' }))?.entities,
+    ).toEqual({ floor: 0, ceiling: 6 });
+  });
 });
 
 describe('a disabled other bin never draws', () => {
@@ -698,6 +718,78 @@ describe('roster rows consumed by earlier stages', () => {
       { rosterNodes: { first: rows(5), second: rows(5) } },
     );
     expect(counts.rosterDemands).toEqual([]);
+  });
+
+  it('counts the people a shared roster can supply, not the nominations', () => {
+    // Two stages of three over one three-row roster. A row is one PERSON
+    // however many stages offer it, and a row already in the network is one
+    // the roster stops showing — so the session holds three people, not the
+    // six a stage-by-stage tally adds up to. Counting the nominations would
+    // refuse every `unique` variable a later form fills in over people who
+    // cannot exist.
+    const shared = rows(3);
+    const counts = countsFor(
+      parse([
+        roster({ id: 'first', count: 3 }),
+        roster({ id: 'second', count: 3 }),
+      ]),
+      { rosterNodes: { first: shared, second: shared } },
+    );
+
+    expect(personWindow(counts)).toEqual({ floor: 3, ceiling: 3 });
+  });
+
+  it('still adds the people two disjoint rosters each supply', () => {
+    const counts = countsFor(
+      parse([
+        roster({ id: 'first', count: 3 }),
+        roster({ id: 'second', count: 3 }),
+      ]),
+      {
+        rosterNodes: {
+          first: rows(3),
+          second: rows(3).map((row, index) => ({
+            ...row,
+            [entityPrimaryKeyProperty]: `other-${index}`,
+          })),
+        },
+      },
+    );
+
+    expect(personWindow(counts)).toEqual({ floor: 6, ceiling: 6 });
+  });
+
+  it('reports a roster two earlier stages jointly empty', () => {
+    // Four rows shared by two stages taking two apiece, and a third stage
+    // whose own pool is two of those four. Neither earlier stage is forced
+    // onto the shared rows on its own — either could have taken the other two
+    // — but a row one of them takes is one the other cannot, so between them
+    // they spend four distinct rows out of four and the third stage meets an
+    // empty list on every seed.
+    const shared = rows(5);
+    const counts = countsFor(
+      parse([
+        roster({ id: 'first', count: 2 }),
+        roster({ id: 'second', count: 2 }),
+        roster({ id: 'third', count: 1, minNodes: 1 }),
+      ]),
+      {
+        rosterNodes: {
+          first: shared.slice(0, 4),
+          second: shared.slice(0, 4),
+          third: shared.slice(2, 4),
+        },
+      },
+    );
+
+    expect(counts.rosterDemands).toEqual([
+      expect.objectContaining({
+        stageId: 'third',
+        guaranteedAvailable: 0,
+        poolSize: 2,
+        unresolved: false,
+      }),
+    ]);
   });
 
   it('ignores disjoint pools entirely', () => {
@@ -801,5 +893,118 @@ describe('fixture overrides replace a stage’s output', () => {
     expect(
       holdersFor(counts, { entity: 'node', type: 'person' }, ['name']),
     ).toBe(0);
+  });
+
+  it('counts a fixture edge whose people the walk builds', () => {
+    const protocol = parse([
+      nameGenerator({ count: { distribution: 'constant', value: 5 } }),
+    ]);
+
+    const counts = worstCaseEntityCounts(
+      protocol.stages,
+      {},
+      {
+        codebook: protocol.codebook,
+        overrides: {
+          nodes: {
+            ng: [
+              { type: 'person', uid: 'a' },
+              { type: 'person', uid: 'b' },
+            ],
+          },
+          edges: [{ type: 'friend', from: 'a', to: 'b' }],
+        },
+      },
+    );
+
+    expect(
+      counts.scopes.get(scopeKey({ entity: 'edge', type: 'friend' }))?.entities,
+    ).toEqual({ floor: 0, ceiling: 1 });
+  });
+
+  it('leaves a fixture edge whose people a stopped walk never reaches alone', () => {
+    // The applier only relates people who have materialised, so a preview
+    // that stops before the stage owning both endpoints makes no such edge —
+    // and a demand for one would refuse a preview over a relationship it
+    // cannot create.
+    const protocol = parse([
+      alterForm(['band']),
+      nameGenerator({ count: { distribution: 'constant', value: 5 } }),
+    ]);
+    const overrides = {
+      nodes: {
+        ng: [
+          { type: 'person', uid: 'a' },
+          { type: 'person', uid: 'b' },
+        ],
+      },
+      edges: [{ type: 'friend', from: 'a', to: 'b' }],
+    };
+
+    const stopped = worstCaseEntityCounts(
+      protocol.stages,
+      {},
+      { codebook: protocol.codebook, overrides, stopAt: { stageIndex: 0 } },
+    );
+    expect(
+      stopped.scopes.get(scopeKey({ entity: 'edge', type: 'friend' })),
+    ).toBeUndefined();
+
+    // The same fixture, walked through: the edge is back.
+    const whole = worstCaseEntityCounts(
+      protocol.stages,
+      {},
+      { codebook: protocol.codebook, overrides },
+    );
+    expect(
+      whole.scopes.get(scopeKey({ entity: 'edge', type: 'friend' }))?.entities,
+    ).toEqual({ floor: 0, ceiling: 1 });
+  });
+
+  it('leaves a fixture edge naming nobody the walk builds alone', () => {
+    // An endpoint no entry declares and no roster offers is an id nothing can
+    // produce: every other node the walk builds is minted from the session's
+    // own stream. The applier passes such an edge over, and so does this.
+    const protocol = parse([
+      nameGenerator({ count: { distribution: 'constant', value: 5 } }),
+    ]);
+
+    const counts = worstCaseEntityCounts(
+      protocol.stages,
+      {},
+      {
+        codebook: protocol.codebook,
+        overrides: {
+          nodes: { ng: [{ type: 'person', uid: 'a' }] },
+          edges: [{ type: 'friend', from: 'a', to: 'nobody' }],
+        },
+      },
+    );
+
+    expect(
+      counts.scopes.get(scopeKey({ entity: 'edge', type: 'friend' })),
+    ).toBeUndefined();
+  });
+
+  it('counts a fixture edge between roster rows a worked stage offers', () => {
+    // A roster row keeps its own id when it is nominated, so a fixture edge
+    // can name one; whether this seed nominates it is exactly what the pass
+    // may not decide, so the edge is counted.
+    const protocol = parse([roster({ count: 2 })]);
+
+    const counts = worstCaseEntityCounts(
+      protocol.stages,
+      { rosterNodes: { roster: rows(4) } },
+      {
+        codebook: protocol.codebook,
+        overrides: {
+          edges: [{ type: 'friend', from: 'row-0', to: 'row-1' }],
+        },
+      },
+    );
+
+    expect(
+      counts.scopes.get(scopeKey({ entity: 'edge', type: 'friend' }))?.entities,
+    ).toEqual({ floor: 0, ceiling: 1 });
   });
 });

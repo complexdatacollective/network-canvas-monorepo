@@ -241,13 +241,16 @@ export const generateInterviews = (
   // session's date-relative windows resolve against its OWN start day — so
   // the verdict moves with the batch rather than with a clock read of its
   // own. The walk's own bounds bound the analysis too: stages a stopAt run
-  // never reaches, and stages the fixture channel replaces, demand nothing.
+  // never reaches, stages the fixture channel replaces, and — where the run
+  // ignores filtering — the filters the walk will not apply, all demand
+  // exactly what the walk will make of them.
   const conflicts = analyseFeasibility({
     protocol,
     assetData,
     today: startWindowAnchor.slice(0, 10),
     interfaceRules,
     windowDays: SYNTHETIC_START_WINDOW_DAYS,
+    respectFiltering: options.respectFiltering,
     ...(options.stopAt ? { stopAt: options.stopAt } : {}),
     ...(options.overrides ? { overrides: options.overrides } : {}),
   });

@@ -15,6 +15,11 @@ import type {
   SessionOverrides,
 } from '../walk/overrides';
 import { type EntityScopeRef, scopeKey } from './generateEntityAttributes';
+import {
+  fewestTakenFrom,
+  mostTakenFrom,
+  type RosterUse,
+} from './rosterDepletion';
 
 /**
  * How many entities of one scope the WALK can put into a session, as an
@@ -94,8 +99,10 @@ export type RosterDemand = {
   /**
    * The rows the stage is guaranteed to still be able to nominate on its
    * LUCKIEST seed, after every earlier roster-backed stage sharing rows with
-   * it has taken its own guaranteed minimum. Equal to `poolSize` where no
-   * earlier stage shares a row.
+   * it has taken its own guaranteed minimum. Judged over those stages
+   * TOGETHER (`rosterDepletion`), since their takes land on distinct rows:
+   * two that could each have kept off this pool alone may still empty it
+   * between them. Equal to `poolSize` where no earlier stage shares a row.
    */
   guaranteedAvailable: number;
   /**
@@ -371,10 +378,20 @@ const record = (
  * palette will not create a node from a blank name, so resolution zeroes any
  * authored missingness), which means a valid draw always names somebody and
  * the count's own floor carries through.
+ *
+ * `rosterTake` is the window a roster stage's OWN pool leaves it once the
+ * stages before it have drawn on the rows they share with it (`trackRosterStage`
+ * computes it). A roster stage adds PEOPLE rather than nominations: a row is
+ * one person however many stages offer it, and a row already in the network is
+ * a row no later stage is shown. Without it, two stages of three over one
+ * three-row roster read as a population of six that no seed can build, and a
+ * form filling in a `unique` variable afterwards is refused over people who
+ * cannot exist.
  */
 const nodesAdded = (
   stage: NodeCreatingStage,
   assetData: AssetData,
+  rosterTake?: EntityWindow,
 ): EntityWindow => {
   if (stage.type === 'NetworkComposer') {
     const composerCount = stage.synthetic.count;
@@ -384,6 +401,7 @@ const nodesAdded = (
 
   const { floor, ceiling } = syntheticCountSupport(stage.synthetic.count);
   if (stage.type !== 'NameGeneratorRoster') return { floor, ceiling };
+  if (rosterTake !== undefined) return rosterTake;
 
   const pool = poolFor(stage.id, assetData);
   if (pool === undefined) return { floor: 0, ceiling };
@@ -430,25 +448,6 @@ const overrideDrawnVariables = (
   return Object.keys(declared).filter((id) => !settled.has(id));
 };
 
-/** One roster-backed stage's contribution to shared-pool depletion. */
-type RosterUse = {
-  uids: ReadonlySet<string>;
-  /** The rows the stage takes on EVERY seed, however the draws land. */
-  guaranteedTake: number;
-  /** The most rows the stage can take on any seed. */
-  ceilingTake: number;
-};
-
-const intersectionSize = (
-  a: ReadonlySet<string>,
-  b: ReadonlySet<string>,
-): number => {
-  const [small, large] = a.size <= b.size ? [a, b] : [b, a];
-  let count = 0;
-  for (const uid of small) if (large.has(uid)) count += 1;
-  return count;
-};
-
 /** How far the walk works one stage, under a `stopAt` bound. */
 type StageExtent = 'full' | 'partial' | 'skipped';
 
@@ -483,6 +482,22 @@ type StageExtent = 'full' | 'partial' | 'skipped';
  * does: the stage is not simulated, so nothing it would have created or drawn
  * is counted — its predetermined entries are, one entity and one draw set per
  * entry — and the override edges land once at the end, endpoints permitting.
+ * "Endpoints permitting" is read here as the applier reads it: an edge is
+ * counted only where both of its endpoints are ids this bounded pass can
+ * actually produce (see `materialisableUids`), so a fixture edge between
+ * people a `stopAt` preview never reaches demands nothing.
+ *
+ * `respectFiltering` says whether the run's stages read the filtered network
+ * at all. Where it is false the walk ignores every stage filter
+ * (`stageFilterOf`), so this pass must too; where it is true a filter can only
+ * ever NARROW what a stage reaches, and the pass keeps reading each stage as
+ * if the filter passed everybody. That is a deliberate over-count in the one
+ * direction a pre-seed gate may err: the filter's verdict is resolved against
+ * the network the walk is still building, so a static opinion about it would
+ * be a second evaluator, disagreeing with the runtime's on some seeds and
+ * turning a refusal into the mid-walk failure this gate exists to prevent.
+ * The price is a protocol whose filter happens to exclude everybody being
+ * refused over demands it never makes.
  */
 export const worstCaseEntityCounts = (
   stages: readonly Stage[],
@@ -491,6 +506,7 @@ export const worstCaseEntityCounts = (
     codebook?: CurrentProtocol['codebook'];
     stopAt?: { stageIndex: number; promptIndex?: number };
     overrides?: SessionOverrides;
+    respectFiltering?: boolean;
   },
 ): WalkEntityCounts => {
   const scopes = new Map<string, ScopeCounts>();
@@ -501,10 +517,20 @@ export const worstCaseEntityCounts = (
   const edgeSubjects = new Map<string, Set<string>>();
   /** Roster-backed stages already passed, for shared-pool depletion. */
   const rosterUses: RosterUse[] = [];
+  /**
+   * Every node id this bounded pass can put in the network under an id a
+   * CALLER can name: a worked override entry's own `uid`, and the rows of the
+   * rosters the worked stages draw from. Everything else the walk builds is
+   * minted from the session's id stream, so a fixture edge can only ever reach
+   * these — which is what makes an endpoint outside this set an edge the
+   * applier will pass over rather than one it might apply.
+   */
+  const materialisableUids = new Set<string>();
 
   const stopAt = options?.stopAt;
   const codebook = options?.codebook;
   const overrides = options?.overrides;
+  const respectFiltering = options?.respectFiltering ?? true;
 
   const extentOf = (index: number): StageExtent => {
     if (stopAt === undefined) return 'full';
@@ -528,13 +554,30 @@ export const worstCaseEntityCounts = (
     }
   };
 
+  /**
+   * Record what one name-generating stage does to the shared roster rows, and
+   * answer with the window its own pool leaves it — `undefined` where this
+   * pass cannot say (a stage the stop bound leaves mid-flight, or a caller
+   * taking no part in the roster contract), which leaves the count support to
+   * speak for it.
+   */
   const trackRosterStage = (
     stage: NameGeneratingStage,
     extent: StageExtent,
-  ): void => {
+  ): EntityWindow | undefined => {
     const pool = poolFor(stage.id, assetData);
     const minNodes =
       'behaviours' in stage ? stage.behaviours?.minNodes : undefined;
+
+    // A nominated roster row carries its OWN id into the network, so a fixture
+    // edge can name one as an endpoint. Recorded for every stage the pass
+    // works, whether or not any particular row is drawn: which rows a seed
+    // reaches is exactly the thing this pass may not decide.
+    if (pool !== undefined) {
+      for (const row of pool) {
+        materialisableUids.add(row[entityPrimaryKeyProperty]);
+      }
+    }
 
     // A runtime gate no expressible count reaches: the count schemas cap
     // every figure at the population ceiling, so a stage demanding more can
@@ -595,23 +638,15 @@ export const worstCaseEntityCounts = (
     const { floor, ceiling } = syntheticCountSupport(stage.synthetic.count);
 
     // The rows this stage can still see on its LUCKIEST seed: every earlier
-    // roster-backed stage has taken at least its guaranteed minimum, and at
-    // least the part of that minimum its own pool forces into this one
-    // (rows it could not have avoided by preferring rows outside the
-    // overlap). Each earlier take lands on distinct rows — a taken row is in
-    // the network and cannot be taken again — so the guarantees sum.
-    let guaranteedDepletion = 0;
+    // roster-backed stage has taken at least its guaranteed minimum, those
+    // takes land on distinct rows, and whatever will not fit outside this
+    // pool has come out of it. Asked of every earlier stage AT ONCE
+    // (`rosterDepletion`), because asking them one at a time lets two stages
+    // that jointly empty a pool each answer that they could have kept off it.
+    const guaranteedDepletion = fewestTakenFrom(rosterUses, uids);
     // The rows earlier stages can have taken on THIS stage's unluckiest
     // seed, which is what bounds the take it is guaranteed to make.
-    let possibleDepletion = 0;
-    for (const use of rosterUses) {
-      const overlap = intersectionSize(use.uids, uids);
-      guaranteedDepletion += Math.max(
-        0,
-        use.guaranteedTake - (use.uids.size - overlap),
-      );
-      possibleDepletion += Math.min(use.ceilingTake, overlap);
-    }
+    const possibleDepletion = mostTakenFrom(rosterUses, uids);
     const guaranteedAvailable = Math.max(
       0,
       pool.length - Math.min(guaranteedDepletion, pool.length),
@@ -629,14 +664,24 @@ export const worstCaseEntityCounts = (
       });
     }
 
+    const guaranteedTake = Math.min(
+      floor,
+      Math.max(0, pool.length - Math.min(possibleDepletion, pool.length)),
+    );
+
     rosterUses.push({
       uids,
-      guaranteedTake: Math.min(
-        floor,
-        Math.max(0, pool.length - Math.min(possibleDepletion, pool.length)),
-      ),
+      guaranteedTake,
       ceilingTake: Math.min(ceiling, pool.length),
     });
+
+    // The people this stage puts in the network: at fewest what it takes
+    // however the earlier stages drew, at most what its own count allows of
+    // the rows they can have left it.
+    return {
+      floor: guaranteedTake,
+      ceiling: Math.min(ceiling, guaranteedAvailable),
+    };
   };
 
   const countPairStage = (stage: PairStage): void => {
@@ -681,7 +726,12 @@ export const worstCaseEntityCounts = (
       // invisible, and the runtime then adds a second edge of the type. A
       // filtered stage is therefore counted as additive, and only an
       // unfiltered one over an already-linked subject as reuse.
-      const filtered = 'filter' in stage && stage.filter !== undefined;
+      //
+      // A run that ignores filtering has no filtered stages at all: the walk
+      // hands every simulator `undefined` in place of the stage's filter, so
+      // the census reads the whole network and re-grades what it finds there.
+      const filtered =
+        respectFiltering && 'filter' in stage && stage.filter !== undefined;
       const onExisting =
         !filtered && edgeSubjects.get(edgeType)?.has(subjectType) === true;
       counts.entities.ceiling = onExisting
@@ -720,6 +770,7 @@ export const worstCaseEntityCounts = (
         );
         counts.entities.floor += 1;
         counts.entities.ceiling += 1;
+        if (entry.uid !== undefined) materialisableUids.add(entry.uid);
       }
       return;
     }
@@ -844,9 +895,11 @@ export const worstCaseEntityCounts = (
 
     if (!isNodeCreating(stage)) return;
 
-    if (isNameGenerating(stage)) trackRosterStage(stage, extent);
+    const rosterTake = isNameGenerating(stage)
+      ? trackRosterStage(stage, extent)
+      : undefined;
 
-    const added = nodesAdded(stage, assetData);
+    const added = nodesAdded(stage, assetData, rosterTake);
     const counts = nodeCounts(stage.subject.type);
     record(counts, createdNodeVariables(stage), added.ceiling, false);
     counts.entities.floor += added.floor;
@@ -854,9 +907,18 @@ export const worstCaseEntityCounts = (
   });
 
   // Predetermined relationships, applied by the walk as soon as both
-  // endpoints exist. Worst case, every one of them lands (a stopAt run may
-  // strand some short of their endpoints, which only produces fewer).
+  // endpoints exist — and never applied at all where an endpoint does not,
+  // which is the applier's own rule (`applyEdges` skips an entry whose people
+  // have not materialised) read back. A `stopAt` preview that stops before the
+  // stage owning an endpoint therefore demands nothing for that edge, rather
+  // than being refused over a relationship it will never make.
   for (const entry of overrides?.edges ?? []) {
+    if (
+      !materialisableUids.has(entry.from) ||
+      !materialisableUids.has(entry.to)
+    ) {
+      continue;
+    }
     const counts = edgeCounts(entry.type);
     recordOverrideEntry({ entity: 'edge', type: entry.type }, entry, counts);
     counts.entities.ceiling += 1;
