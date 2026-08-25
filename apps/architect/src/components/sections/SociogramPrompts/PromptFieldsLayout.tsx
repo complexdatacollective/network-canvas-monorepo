@@ -73,7 +73,7 @@ const PromptFieldsLayout = ({
     [createVariable, setLocalFieldValue],
   );
 
-  // "Unplaced node order" gates `sortOrder`'s own mounting, so a reactive
+  // "Sort unplaced nodes" gates `sortOrder`'s own mounting, so a reactive
   // read of the field can never see a value until AFTER the section is
   // already expanded — use the row's own pre-edit prop value instead, which
   // only needs to answer "does a configured order already exist" once, on
@@ -108,7 +108,7 @@ const PromptFieldsLayout = ({
       />
       <Section
         toggleable
-        title="Unplaced node order"
+        title="Sort unplaced nodes"
         description="Control the order of the stack participants use to position nodes."
         defaultOpen={hasSortOrder}
       >

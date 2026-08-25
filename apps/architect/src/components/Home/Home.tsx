@@ -328,6 +328,7 @@ const Home = () => {
                   </Button>
                   <Button
                     color="default"
+                    variant="glass"
                     onClick={openFileDialog}
                     className="@min-xl:h-16 @min-xl:px-8 @min-xl:text-lg"
                   >

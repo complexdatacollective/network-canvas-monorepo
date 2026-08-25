@@ -1,10 +1,9 @@
 // Shared canvas auto-layout hook.
 //
-// Drives the options-driven force worker (autoLayout.worker.ts) for both the
-// Narrative interface (read-only, run-once, seeded refinement) and the Sociogram
-// interface (user-toggleable continuous layout that persists on settle). The
-// behaviour is selected per call via `persist` and `runMode`; the worker forces
-// are selected via `layoutOptions`.
+// Drives the shared force worker (autoLayout.worker.ts) for Narrative,
+// Sociogram, and Network Composer. Lifecycle and persistence are selected per
+// call via `persist` and `runMode`; every interface uses the canonical force
+// profile owned by the worker.
 //
 // READ-ONLY guarantee (Narrative): persistence is gated behind `persist === true`
 // AND a supplied `dispatch`. When `persist` is false the syncToRedux call is not
@@ -33,7 +32,6 @@ import {
 
 import { useContractFlags } from '../contract/context';
 import type { AppDispatch } from '../store/store';
-import type { AutoLayoutForceOptions } from './autoLayout.worker';
 import {
   createAutoLayoutMockWorker,
   createAutoLayoutWorker,
@@ -83,14 +81,12 @@ type UseAutoLayoutOptions = {
   persist?: boolean;
   dispatch?: AppDispatch;
   currentStep?: number;
-  // 'once' runs and freezes, re-seeding only when inputs change (Narrative).
+  // 'once' runs and freezes, re-seeding only when inputs change.
   // 'continuous' is user-toggleable and reheats on edge/node changes while
-  // running (Sociogram). Default 'once'.
+  // running. Default 'once'.
   runMode?: RunMode;
   // Mock-worker layout strategy used under e2e. Default 'identity'.
   mockLayout?: MockLayout;
-  // Per-interface force overrides merged over the worker defaults.
-  layoutOptions?: Partial<AutoLayoutForceOptions>;
 };
 
 type UseAutoLayoutResult = {
@@ -117,7 +113,6 @@ export function useAutoLayout({
   currentStep,
   runMode = 'once',
   mockLayout = 'identity',
-  layoutOptions,
 }: UseAutoLayoutOptions): UseAutoLayoutResult {
   const { isE2E } = useContractFlags();
   const workerRef = useRef<Worker | null>(null);
@@ -188,17 +183,6 @@ export function useAutoLayout({
   // effect must NOT re-run on edge changes there.
   const seedEdgesKey = runMode === 'once' ? edgesKey : '';
 
-  // Depend on a stable serialization of the force overrides, not the object
-  // identity, so a caller passing an inline `layoutOptions` object does not
-  // re-seed the layout on every render. The effect reads the latest object via
-  // a ref keyed on this value.
-  const layoutOptionsKey = useMemo(
-    () => JSON.stringify(layoutOptions ?? {}),
-    [layoutOptions],
-  );
-  const layoutOptionsRef = useRef(layoutOptions);
-  layoutOptionsRef.current = layoutOptions;
-
   // Track the canvas dimensions so the simulation can (re-)seed in px and re-run
   // when the canvas resizes.
   const [dimensions, setDimensions] = useState<CanvasDimensions | null>(
@@ -242,11 +226,6 @@ export function useAutoLayout({
     // larger screens proportionally more breathing room (FIX 1).
     const aspect = dims.width / dims.height;
     const collideRadius = collideRadiusForNode(resolvedRadius) / dims.height;
-    // linkDistance recomputed from the live collide radius (see worker default):
-    // set just below the collision floor (2*collideRadius) so links pull
-    // connected nodes onto the floor — the closest spacing in the layout — while
-    // charge spreads unconnected nodes beyond it. Tune visually.
-    const linkDistance = 1.9 * collideRadius;
     // Bounds inset is keyed to the SAME resolved radius the setNodeRadius
     // effect above pushed into the store's clamp, then divided by height into
     // sim units — that equality is what makes the store clamp a no-op on
@@ -323,9 +302,7 @@ export function useAutoLayout({
       nodes: simNodes,
       links: simLinks,
       options: {
-        ...layoutOptionsRef.current,
         collideRadius,
-        linkDistance,
         boundsInset,
         // Sim extents: the worker resolves the forceX/forceY targets and the
         // bounds box from these (sim x spans [0, simWidth = aspect], y spans
@@ -365,7 +342,6 @@ export function useAutoLayout({
     nodeRadius,
     runMode,
     mockLayout,
-    layoutOptionsKey,
     persistArgs,
     store,
     dimensions,

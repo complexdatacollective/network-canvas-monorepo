@@ -141,7 +141,7 @@ describe('sociogram prompt fields register-effect stability', () => {
     ));
 
     fireEvent.click(
-      screen.getByRole('switch', { name: 'Unplaced node order' }),
+      screen.getByRole('switch', { name: 'Sort unplaced nodes' }),
     );
     await waitFor(() => {
       expect(storeApi.getState().fields.has('sortOrder')).toBe(true);
