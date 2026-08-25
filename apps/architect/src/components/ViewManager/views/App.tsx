@@ -112,30 +112,17 @@ const LaunchedProtocolOpener = () => {
       const [file] = takeLaunchFiles();
       if (!file) return;
 
-      // A launched file can need an upgrade, a configuration repair, or both,
-      // and each approval has to carry the earlier one forward — the same
-      // shape Home's drop/open flow uses. Each approval callback is offered
-      // only while its own flag is still unset, so an approval always advances
-      // and can never re-present the dialog it came from.
-      const open = async (approvals: {
-        migrationApproved?: boolean;
-        repairApproved?: boolean;
-      }): Promise<void> => {
+      const open = async (migrationApproved = false): Promise<void> => {
         const result = await dispatch(
-          openLocalNetcanvas({ file, ...approvals }),
+          openLocalNetcanvas({ file, migrationApproved }),
         ).unwrap();
         await showProtocolOpenResultDialog({
           result,
           openDialog,
-          onApproveMigration: approvals.migrationApproved
-            ? undefined
-            : () => open({ ...approvals, migrationApproved: true }),
-          onApproveRepair: approvals.repairApproved
-            ? undefined
-            : () => open({ ...approvals, repairApproved: true }),
+          onApproveMigration: migrationApproved ? undefined : () => open(true),
         });
       };
-      void open({});
+      void open();
     };
 
     openLaunchedProtocols();

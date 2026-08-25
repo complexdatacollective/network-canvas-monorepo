@@ -75,7 +75,6 @@
   },
   "devDependencies": {
     "@chromatic-com/storybook": "catalog:",
-    "@codaco/development-protocol": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@codaco/vitest-config": "workspace:^",
     "@storybook/addon-a11y": "catalog:",

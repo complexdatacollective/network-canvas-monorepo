@@ -71,22 +71,10 @@ const PROTOCOL_TO_THEME_VAR = {
   'cat-color-seq-10': '--cat-10',
 } as const satisfies Record<ColorReference, string>;
 
-const DEFAULT_COLOR_VAR = '--node-1';
 const DEFAULT_FALLBACK = 'rgb(226, 33, 91)';
-const LEGACY_PRIMARY_COLOR = /^primary-color-seq-([1-8])$/;
 
-/**
- * Stored sessions can predate the finite schema. Current references resolve
- * exhaustively; an old raw/custom value falls back to the same defined node
- * variable the previous runtime used rather than being rendered directly.
- */
-export const resolveProtocolThemeVariable = (color: unknown): string => {
-  if (typeof color !== 'string') return DEFAULT_COLOR_VAR;
-  const legacyPrimary = LEGACY_PRIMARY_COLOR.exec(color);
-  if (legacyPrimary) return `--node-${legacyPrimary[1]}`;
-  if (!Object.hasOwn(PROTOCOL_TO_THEME_VAR, color)) return DEFAULT_COLOR_VAR;
-  return PROTOCOL_TO_THEME_VAR[color as ColorReference];
-};
+export const resolveProtocolThemeVariable = (color: ColorReference): string =>
+  PROTOCOL_TO_THEME_VAR[color];
 
 /**
  * Converts any CSS color (including oklch) to hex format for Mapbox compatibility.

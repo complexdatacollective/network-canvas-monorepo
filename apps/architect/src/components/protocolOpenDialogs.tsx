@@ -16,13 +16,11 @@ type ShowProtocolOpenResultDialogArgs = {
   result: ProtocolOpenResult | undefined;
   openDialog: DialogContextType['openDialog'];
   onApproveMigration?: () => Promise<void>;
-  onApproveRepair?: () => Promise<void>;
 };
 export const showProtocolOpenResultDialog = async ({
   result,
   openDialog,
   onApproveMigration,
-  onApproveRepair,
 }: ShowProtocolOpenResultDialogArgs): Promise<void> => {
   if (!result || result.status === 'opened') {
     return;
@@ -111,73 +109,6 @@ export const showProtocolOpenResultDialog = async ({
       ),
       actions: { primary: { label: 'OK', value: true } },
     });
-    return;
-  }
-  if (result.status === 'repair-required') {
-    const problems = (
-      <ul className="mb-6 list-disc space-y-2 pl-5">
-        {result.problems.map((problem) => (
-          <li key={problem.problem}>
-            {problem.problem}
-            {problem.repair ? ` ${problem.repair}` : ''}
-          </li>
-        ))}
-      </ul>
-    );
-    if (!result.repairable) {
-      void openDialog({
-        type: 'acknowledge',
-        intent: 'destructive',
-        title: 'This protocol cannot be opened',
-        size: 'editor',
-        children: (
-          <>
-            <Paragraph>
-              Some of this protocol&apos;s settings conflict with each other,
-              and the conflicts cannot be resolved automatically:
-            </Paragraph>
-            {problems}
-            <Paragraph>
-              Open it in the version of Architect that created it, correct the
-              settings listed above, and try again. If you need help, reach out
-              on our{' '}
-              <ExternalLink href="https://community.networkcanvas.com/">
-                community website.
-              </ExternalLink>
-            </Paragraph>
-          </>
-        ),
-        actions: { primary: { label: 'Return to start screen', value: true } },
-      });
-      return;
-    }
-    const confirmed = await openDialog({
-      type: 'choice',
-      intent: 'warning',
-      title: 'This protocol needs fixing before it can be opened',
-      size: 'editor',
-      children: (
-        <>
-          <Paragraph>
-            Some of this protocol&apos;s settings conflict with each other.
-            Architect can fix them for you, but the changes below cannot be
-            undone once the protocol is saved.
-          </Paragraph>
-          {problems}
-          <Paragraph>
-            Nothing else in your protocol will change, and nothing is written
-            until you choose to fix it.
-          </Paragraph>
-        </>
-      ),
-      actions: {
-        primary: { label: 'Fix these problems', value: true },
-        cancel: { label: 'Return to start screen', value: false },
-      },
-    });
-    if (confirmed === true) {
-      await onApproveRepair?.();
-    }
     return;
   }
   if (result.status === 'validation-error') {

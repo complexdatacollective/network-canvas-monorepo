@@ -113,32 +113,6 @@ describe('ColorPicker', () => {
     ]);
   });
 
-  // A protocol authored against an over-ranged picker (Narrative Pedigree
-  // offered ten swatches of an eight-colour palette) still holds a value the
-  // list no longer offers. Dropping it from the list would show the researcher
-  // an unselected required field and hide what the protocol actually contains.
-  it('keeps a stored colour the palette no longer offers, selected and named', () => {
-    renderInForm(
-      <ArchitectField
-        name="color"
-        label="Disease color"
-        component={ColorPicker}
-        initialValue="node-color-seq-10"
-        palette="node-color-seq"
-        paletteRange={COLOR_PALETTES['node-color-seq']}
-      />,
-    );
-
-    const swatches = screen.getAllByRole('radio');
-    expect(swatches).toHaveLength(COLOR_PALETTES['node-color-seq'] + 1);
-
-    const stored = screen.getByRole('radio', { name: 'Color 10' });
-    expect(stored).toHaveAttribute('aria-checked', 'true');
-    // Last, so the palette proper still reads as the palette proper.
-    expect(swatches.at(-1)).toBe(stored);
-    expect(getColor()).toBe('node-color-seq-10');
-  });
-
   it('offers only the palette when the stored colour is one of its own', () => {
     renderInForm(
       <ArchitectField

@@ -3,13 +3,17 @@ import { RadioGroup } from '@base-ui/react/radio-group';
 import { range } from 'es-toolkit';
 
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
+import {
+  type ColorReference,
+  ColorReferenceSchema,
+} from '@codaco/protocol-validation';
 import { getColorSwatchName } from '~/config';
 import { cx } from '~/utils/cva';
 import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
 
 type ColorOption = {
   label: string;
-  value: string;
+  value: ColorReference;
 };
 
 type ColorPickerProps = CreateFormFieldProps<
@@ -27,10 +31,10 @@ type ColorPickerProps = CreateFormFieldProps<
   }
 >;
 
-const asColorOption = (name: string): ColorOption => ({
-  label: getColorSwatchName(name),
-  value: name,
-});
+const asColorOption = (name: string): ColorOption => {
+  const value = ColorReferenceSchema.parse(name);
+  return { label: getColorSwatchName(value), value };
+};
 
 /**
  * Protocol-colour swatch picker. Labelling belongs to the surrounding field —
@@ -62,19 +66,6 @@ const ColorPicker = ({
       )
     : options;
 
-  // A stored colour the list no longer offers still gets a swatch of its own,
-  // at the end. Protocols exist that were authored against a wider range than
-  // the picker now shows (Narrative Pedigree offered ten swatches of an
-  // eight-colour palette), and the alternatives are both worse: a picker with
-  // nothing selected is a dead end that hides what the protocol actually
-  // holds, and silently rewriting the value would change an authored colour
-  // without asking. Shown, named, and replaceable — and only replaceable by
-  // something the palette really has.
-  const colors =
-    value && !offered.some((color) => color.value === value)
-      ? [...offered, asColorOption(value)]
-      : offered;
-
   const isRequired = required || Boolean(ariaRequired);
 
   return (
@@ -102,7 +93,7 @@ const ColorPicker = ({
         readOnly && 'cursor-default opacity-70',
       )}
     >
-      {colors.map((color) => (
+      {offered.map((color) => (
         <Radio.Root
           key={color.value}
           value={color.value}
@@ -126,11 +117,6 @@ const ColorPicker = ({
               )}
               style={
                 {
-                  // `resolveProtocolColor` carries its own fallback, which
-                  // only ever applies to the out-of-range swatch above whose
-                  // theme variable does not exist: without it the chip has no
-                  // background at all and the researcher cannot see the colour
-                  // their protocol is holding.
                   '--color': resolveProtocolColor(color.value),
                 } as React.CSSProperties
               }
