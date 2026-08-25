@@ -23,7 +23,7 @@ const AssetsPage = () => {
       />
       <div className="mx-auto my-10 w-full max-w-7xl">
         <UnusedAssetsAlert />
-        <AssetBrowser sectionLayout="vertical" />
+        <AssetBrowser />
       </div>
     </Layout>
   );

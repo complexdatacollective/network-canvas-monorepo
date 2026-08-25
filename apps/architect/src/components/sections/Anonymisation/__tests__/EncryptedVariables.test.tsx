@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { getEncryptableVariableOptions } from '../EncryptedVariables';
+import {
+  getEncryptableVariableOptions,
+  requestEncryptionSectionChange,
+} from '../EncryptedVariables';
 
 // Encryption only supports text variables (the secure-attribute path encrypts
 // strings only). The picker must therefore offer only text variables, so a
@@ -27,5 +30,35 @@ describe('getEncryptableVariableOptions', () => {
     };
 
     expect(getEncryptableVariableOptions(variables)).toEqual([]);
+  });
+});
+
+describe('requestEncryptionSectionChange', () => {
+  it('retains encrypted selections when clearing is cancelled', async () => {
+    const clearSelections = vi.fn();
+
+    await expect(
+      requestEncryptionSectionChange({
+        hasEncryptedVariable: true,
+        nextOpen: false,
+        confirmClear: async () => false,
+        clearSelections,
+      }),
+    ).resolves.toBe(false);
+    expect(clearSelections).not.toHaveBeenCalled();
+  });
+
+  it('clears encrypted selections when closing is confirmed', async () => {
+    const clearSelections = vi.fn();
+
+    await expect(
+      requestEncryptionSectionChange({
+        hasEncryptedVariable: true,
+        nextOpen: false,
+        confirmClear: async () => true,
+        clearSelections,
+      }),
+    ).resolves.toBe(true);
+    expect(clearSelections).toHaveBeenCalledOnce();
   });
 });

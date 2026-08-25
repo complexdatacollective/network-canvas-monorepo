@@ -1,7 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { Stage } from '@codaco/protocol-validation';
@@ -12,15 +12,10 @@ import {
 } from '~/components/StageEditor/stageFormContext';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 
-// The confirm dialog's own rendering (portal, animation) is irrelevant to
-// the regression below; auto-confirming isolates the toggle write.
+const { confirmMock } = vi.hoisted(() => ({ confirmMock: vi.fn() }));
+
 vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
-  default: () => ({
-    confirm: async ({ onConfirm }: { onConfirm: () => void }) => {
-      onConfirm();
-      return true;
-    },
-  }),
+  default: () => ({ confirm: confirmMock }),
 }));
 vi.mock('~/components/NewVariableWindow', () => ({
   default: () => null,
@@ -93,25 +88,50 @@ const renderSection = () => {
         .getState()
         .getFieldState(name)?.value;
     },
+    getFormValues: () => {
+      if (!context) throw new Error('stage form context was not captured');
+      return (context as StageFormContextValue).storeApi
+        .getState()
+        .getFormValues();
+    },
   };
 };
 
-// Regression: the array field is still mounted when the confirm dialog
-// resolves (the Section's own `isOpen` only flips afterward), so the clear
-// write must use `undefined` — fresco-ui's `ArrayField` throws on a `null`
-// value (only `undefined` is defaulted to its own empty array). This mirrors
-// IntroScreen.tsx's identical fix.
 describe('NominationPrompts toggle off', () => {
-  it('clears nominationPrompts without crashing the still-mounted array field', async () => {
+  beforeEach(() => {
+    confirmMock.mockReset();
+    confirmMock.mockResolvedValue(true);
+  });
+
+  it('clears accepted nomination prompts without resurrecting them on reopen', async () => {
     const view = renderSection();
+    const toggle = screen.getByRole('switch', { name: 'Nomination prompts' });
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole('switch'));
-      // Let the mocked `confirm`'s promise (and the resulting store write)
-      // settle before asserting.
-      await Promise.resolve();
-    });
+    fireEvent.click(toggle);
 
+    await waitFor(() => expect(toggle).not.toBeChecked());
+    await waitFor(() =>
+      expect(view.getFormValues()).not.toHaveProperty('nominationPrompts'),
+    );
     expect(view.getFieldValue('nominationPrompts')).toBeUndefined();
+    expect(confirmMock).toHaveBeenCalledOnce();
+
+    fireEvent.click(toggle);
+
+    await waitFor(() => expect(toggle).toBeChecked());
+    expect(view.getFormValues().nominationPrompts).toBeUndefined();
+    expect(confirmMock).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the section and values open when clearing is cancelled', async () => {
+    confirmMock.mockResolvedValue(false);
+    const view = renderSection();
+    const toggle = screen.getByRole('switch', { name: 'Nomination prompts' });
+
+    fireEvent.click(toggle);
+
+    await waitFor(() => expect(confirmMock).toHaveBeenCalledOnce());
+    expect(toggle).toBeChecked();
+    expect(view.getFormValues()).toHaveProperty('nominationPrompts');
   });
 });

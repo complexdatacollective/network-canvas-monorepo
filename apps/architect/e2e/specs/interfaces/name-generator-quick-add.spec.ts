@@ -19,11 +19,11 @@ test('creates a valid NameGeneratorQuickAdd stage from scratch', async ({
   await editor.setStageName('Quickly Add Friends');
 
   // Same NodeType.tsx section as NameGenerator (`Section title="Node
-  // Type"`); QuickAdd.tsx's own `withDisabledSubjectRequired` gates its
+  // setup"`); QuickAdd.tsx's own `withDisabledSubjectRequired` gates its
   // section until `subject.type` is set.
   await selectOrCreateNodeType(architectPage, 'person');
 
-  // QuickAdd.tsx, `Section title="Quick Add Variable"` — a single
+  // QuickAdd.tsx, `Section title="Quick add configuration"` — a single
   // VariablePicker field (`quickAdd`) with no `value` yet, so its button
   // reads the picker's default "Select variable" (variables.ts's own
   // default), driven the same spotlight flow as addFormField's variable

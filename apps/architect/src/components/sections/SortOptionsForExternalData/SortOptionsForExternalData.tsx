@@ -1,8 +1,6 @@
 import { compose } from 'react-recompose';
 
-import Heading from '@codaco/fresco-ui/typography/Heading';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import MultiSelect, {
   completeRows,
@@ -11,7 +9,6 @@ import MultiSelect, {
 } from '~/components/Form/arrayFields/MultiSelect';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
-  useSetStageValue,
   useStageFormValue,
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
@@ -58,7 +55,6 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
   const variableOptionsGetter = getVariableOptionsGetter(variableOptions);
   const maxVariableOptions = variableOptions.length;
   const sortOrderOptionGetter = getSortOrderOptionGetter(variableOptions);
-  const setStageValue = useSetStageValue();
   const hasSortOrder = useStageFormValue('sortOptions.sortOrder') != null;
   const hasSortableProperties =
     useStageFormValue('sortOptions.sortableProperties') != null;
@@ -68,75 +64,62 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
   const initialSortableProperties = useStageInitialValue<ItemValue[]>(
     'sortOptions.sortableProperties',
   );
-  const handleToggleSortOptions = (nextState: boolean) => {
-    if (!nextState) {
-      // Clear both LEAF paths, not the `sortOptions` parent: `sortOptions`
-      // itself is never a registered field (only its two children are), and
-      // the store has no hierarchical relationship between a path and its
-      // sub-paths — writing the parent would not reach either child.
-      setStageValue('sortOptions.sortOrder', undefined);
-      setStageValue('sortOptions.sortableProperties', undefined);
-    }
-    return true;
-  };
   return (
     <Section
-      title="Sort Options"
-      summary={
-        <Paragraph>
-          Your roster will be presented to the interview participant as a list
-          of cards. You may configure the sort options of this list, including
-          which attributes are available for the participant to sort by during
-          the interview.
-        </Paragraph>
+      title="Roster sorting"
+      description={
+        disabled
+          ? 'Select a roster data source before configuring sorting.'
+          : 'Configure the initial card order and the attributes participants can sort by.'
       }
       toggleable
-      startExpanded={hasSortOrder || hasSortableProperties}
-      handleToggleChange={handleToggleSortOptions}
+      defaultOpen={hasSortOrder || hasSortableProperties}
       disabled={disabled}
     >
-      <Heading level="h4">Initial Sort Order</Heading>
-      <Paragraph>
-        Create one or more rules to determine the default sort order or the
-        roster, when it is first shown to the participant. By default,
-        Interviewer will use the order that nodes are defined in your data file.
-      </Paragraph>
-      <ArchitectArrayField
-        name="sortOptions.sortOrder"
-        label="Initial sort order"
-        labelHidden
-        component={MultiSelect}
-        addButtonLabel="Add new sort rule"
-        initialValue={initialSortOrder}
-        maxItems={1}
-        properties={SORT_ORDER_PROPERTIES}
-        validation={SORT_ORDER_VALIDATION}
-        options={sortOrderOptionGetter}
-      />
-      <Heading level="h4">Participant Sortable Properties</Heading>
-      <Paragraph>
-        This interface allows the participant to sort the roster, to help with
-        locating a specific member. Select one or more attributes from your
-        roster that the participant can use to sort the list.
-      </Paragraph>
-      <ArchitectArrayField
-        name="sortOptions.sortableProperties"
-        label="Participant sortable properties"
-        labelHidden
-        component={MultiSelect}
-        addButtonLabel="Add new sortable property"
-        initialValue={initialSortableProperties}
-        maxItems={maxVariableOptions}
-        properties={SORTABLE_PROPERTIES}
-        validation={SORTABLE_PROPERTIES_VALIDATION}
-        options={(fieldName: string, rowValues: unknown, allValues: unknown) =>
-          variableOptionsGetter(
-            fieldName,
-            rowValues,
-            allValues as Array<Record<string, unknown>>,
-          )
-        }
-      />
+      <Section
+        title="Initial ordering"
+        description="Create the rule that determines the roster's default order."
+      >
+        <ArchitectArrayField
+          name="sortOptions.sortOrder"
+          label="Sort rule"
+          hint="Set the roster's initial sort order. Without a rule, nodes keep their order from the data file."
+          component={MultiSelect}
+          addButtonLabel="Add new sort rule"
+          initialValue={initialSortOrder}
+          maxItems={1}
+          properties={SORT_ORDER_PROPERTIES}
+          validation={SORT_ORDER_VALIDATION}
+          options={sortOrderOptionGetter}
+        />
+      </Section>
+      <Section
+        title="Participant sorting"
+        description="Choose the roster attributes participants can use to reorder the cards."
+      >
+        <ArchitectArrayField
+          name="sortOptions.sortableProperties"
+          label="Sortable properties"
+          hint="Select attributes that help participants locate a specific roster member."
+          component={MultiSelect}
+          addButtonLabel="Add new sortable property"
+          initialValue={initialSortableProperties}
+          maxItems={maxVariableOptions}
+          properties={SORTABLE_PROPERTIES}
+          validation={SORTABLE_PROPERTIES_VALIDATION}
+          options={(
+            fieldName: string,
+            rowValues: unknown,
+            allValues: unknown,
+          ) =>
+            variableOptionsGetter(
+              fieldName,
+              rowValues,
+              allValues as Array<Record<string, unknown>>,
+            )
+          }
+        />
+      </Section>
     </Section>
   );
 };

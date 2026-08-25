@@ -118,13 +118,10 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
   // leaves that mirror section untouched and asserts its absence below via
   // `toTieStrengthPrompt`.
   await addPrompt(editor.field('prompts'), async () => {
-    await editor.fillRichText(
-      'Tie-Strength Census Prompt',
-      'How close are you?',
-    );
+    await editor.fillRichText('Prompt text', 'How close are you?');
 
     await architectPage
-      .getByLabel('Create an edge')
+      .getByLabel('Edge type')
       .selectOption({ label: '✨ Create new edge type ✨' });
     await architectPage
       .getByRole('textbox', { name: 'New edge type name' })

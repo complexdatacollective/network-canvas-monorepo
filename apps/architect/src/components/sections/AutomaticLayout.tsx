@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react';
 import RichSelectGroupField, {
   type RichSelectOption,
 } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
 
@@ -61,7 +61,10 @@ const AutomaticLayout = () => {
   const initialValue = useStageInitialValue<boolean>(FIELD_PATH) ?? false;
 
   return (
-    <Section layout="vertical">
+    <Section
+      title="Sociogram layout"
+      description="Choose how nodes are positioned when the stage opens."
+    >
       <ArchitectField
         name={FIELD_PATH}
         label="Layout mode"

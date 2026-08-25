@@ -2029,6 +2029,30 @@ describe('FormStore', () => {
       expect(field?.meta.isDirty).toBe(true);
     });
 
+    it('replaces an unregistered value with a cleared tombstone when persistence is disabled', () => {
+      persistentStore.getState().registerField({
+        name: 'email',
+        initialValue: 'initial@example.com',
+      });
+      persistentStore.getState().setFieldValue('email', 'changed@example.com');
+
+      persistentStore
+        .getState()
+        .unregisterField('email', { preserveValue: false });
+
+      expect(
+        persistentStore.getState().dormantValues.get('email')?.value,
+      ).toBeUndefined();
+      expect(persistentStore.getState().getFormValues()).toEqual({});
+      persistentStore.getState().registerField({
+        name: 'email',
+        initialValue: 'initial@example.com',
+      });
+      expect(
+        persistentStore.getState().getFieldState('email')?.value,
+      ).toBeUndefined();
+    });
+
     it('preserves an opaque dotted field path while dormant', () => {
       const path = ['favorite.color'];
       const pathOperations = getPathOperations(persistentStore);

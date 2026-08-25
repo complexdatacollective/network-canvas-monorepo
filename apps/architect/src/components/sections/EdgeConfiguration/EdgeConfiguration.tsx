@@ -1,8 +1,8 @@
 import { useCallback, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section, Subsection } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
+import { Subsection } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import EditableAttributesList from '~/components/Form/arrayFields/EditableAttributesList';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -92,7 +92,10 @@ const EdgeAttributeBlock = ({
   );
 
   return (
-    <Section title={title} layout="horizontal" required={false}>
+    <Section
+      title={title}
+      description="Configure the attributes collected for this connection type."
+    >
       <Subsection
         title="Editable attributes"
         summary="The attributes shown in the side panel when an edge is selected, so they can be edited during the interview. Each attribute is paired with the input control used to collect it."
@@ -160,24 +163,16 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
   return (
     <>
       <Section
-        title="Edge Configuration"
-        summary={
-          <Paragraph>
-            Define the types of connection participants can draw between nodes,
-            and the attributes collected for each connection type.
-          </Paragraph>
-        }
-        layout="horizontal"
-        required={false}
+        title="Edge configuration"
+        description="Define the connection types participants can draw and the attributes collected for each type."
       >
         <Subsection
-          title="Edge types"
+          title="Connection types"
           summary="Select the edge types participants can create on the canvas. Each selected type gets its own set of editable attributes below."
         >
           <ArchitectField
             name="edges"
             label="Edge types"
-            labelHidden
             component={EdgeTypeMultiSelectField}
             initialValue={initialEdges}
           />

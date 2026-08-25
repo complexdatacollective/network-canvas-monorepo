@@ -2,8 +2,8 @@ import { startCase } from 'es-toolkit/compat';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
+import Section from '@codaco/fresco-ui/Section';
 import { INHERITANCE_PATTERNS } from '@codaco/shared-consts';
-import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import ColorPicker from '~/components/Form/Fields/ColorPicker';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
@@ -77,7 +77,7 @@ const DiseaseFields = ({
 
   return (
     <>
-      <Section layout="vertical">
+      <Section title="Disease name">
         <IssueAnchor fieldName="label" description="Disease label" />
         <ArchitectField
           name="label"
@@ -88,7 +88,7 @@ const DiseaseFields = ({
           placeholder="Enter a name for this disease..."
         />
       </Section>
-      <Section layout="vertical">
+      <Section title="Disease color">
         <IssueAnchor fieldName="color" description="Disease color" />
         <ArchitectField
           name="color"
@@ -106,7 +106,7 @@ const DiseaseFields = ({
           paletteRange={COLOR_PALETTES['node-color-seq']}
         />
       </Section>
-      <Section layout="vertical">
+      <Section title="Disease data">
         <IssueAnchor fieldName="variable" description="Disease attribute" />
         <ArchitectField
           name="variable"
@@ -120,7 +120,7 @@ const DiseaseFields = ({
           options={availableVariables}
         />
       </Section>
-      <Section layout="vertical">
+      <Section title="Inheritance">
         <IssueAnchor
           fieldName="inheritancePattern"
           description="Inheritance pattern"

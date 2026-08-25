@@ -26,8 +26,10 @@ export async function addCardDisplayProperties(
   editor: StageEditor,
   rows: { variable: string; label: string }[],
 ): Promise<void> {
-  const section = editor.section('Card Display Options');
-  await section.getByRole('switch', { name: 'Card Display Options' }).click();
+  const section = editor.section('Card display');
+  await section
+    .getByRole('switch', { name: 'Card display', exact: true })
+    .click();
   for (const [index, row] of rows.entries()) {
     await section
       .getByRole('button', { name: 'Add new display property' })
@@ -50,8 +52,10 @@ export async function configureSortOptions(
     sortableProperties: { variable: string; label: string }[];
   },
 ): Promise<void> {
-  const section = editor.section('Sort Options');
-  await section.getByRole('switch', { name: 'Sort Options' }).click();
+  const section = editor.section('Roster sorting');
+  await section
+    .getByRole('switch', { name: 'Roster sorting', exact: true })
+    .click();
   await section.getByRole('button', { name: 'Add new sort rule' }).click();
   await editor
     .field('sortOptions.sortOrder[0].property')
@@ -86,8 +90,8 @@ export async function configureSearchOptions(
   },
 ): Promise<void> {
   await editor
-    .section('Search Options')
-    .getByRole('switch', { name: 'Search Options' })
+    .section('Roster search')
+    .getByRole('switch', { name: 'Roster search', exact: true })
     .click();
   for (const property of opts.matchProperties) {
     await editor

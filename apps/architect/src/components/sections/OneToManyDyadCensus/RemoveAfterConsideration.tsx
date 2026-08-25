@@ -1,6 +1,5 @@
 import FrescoBooleanField from '@codaco/fresco-ui/form/fields/Boolean';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
 
@@ -9,20 +8,15 @@ const RemoveAfterConsideration = () => {
     'behaviours.removeAfterConsideration',
   );
   return (
-    <Section layout="vertical">
+    <Section
+      title="Node availability"
+      description="Choose whether a focal node remains available after it has been considered."
+    >
       <ArchitectField
         name="behaviours.removeAfterConsideration"
         component={FrescoBooleanField}
         initialValue={initialValue}
-        label="Remove after consideration"
-        hint={
-          <Paragraph>
-            This toggle determines if a node should continue to be shown in the
-            bin after it has been the main focal node. If it is set to true, the
-            node will be removed from the pool after it has been shown in the
-            primary position for consideration.
-          </Paragraph>
-        }
+        label="Removal behavior"
         options={[
           {
             value: true,

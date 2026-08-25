@@ -4,8 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import type { RootState } from '~/ducks/modules/root';
 import type { AppDispatch } from '~/ducks/store';
@@ -23,6 +22,37 @@ type NodeType = {
   variables?: Record<string, Variable>;
   [key: string]: unknown;
 };
+
+type EncryptionSectionChange = {
+  hasEncryptedVariable: boolean;
+  nextOpen: boolean;
+  confirmClear: () => Promise<boolean | null>;
+  clearSelections: () => void;
+};
+
+/**
+ * Encrypted attributes live in the Redux codebook rather than a Fresco form,
+ * so Section's descendant-field reset cannot clear them on close.
+ */
+export const requestEncryptionSectionChange = async ({
+  hasEncryptedVariable,
+  nextOpen,
+  confirmClear,
+  clearSelections,
+}: EncryptionSectionChange): Promise<boolean> => {
+  if (!hasEncryptedVariable || nextOpen) {
+    return true;
+  }
+
+  const confirmed = (await confirmClear()) === true;
+  if (!confirmed) {
+    return false;
+  }
+
+  clearSelections();
+  return true;
+};
+
 /**
  * Encryption only supports text variables: the interview's secure-attribute
  * path encrypts string values only, so a non-text variable flagged encrypted
@@ -59,28 +89,28 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
       nodeType: NodeType,
       newState: boolean,
     ) => {
-      if (!hasEncryptedVariable || newState) {
-        return true;
-      }
-      const confirmed = await confirm({
-        title: 'This will clear selected attributes',
-        description: `This will deselect all encrypted attributes for the ${nodeType.name} node type. Do you want to continue?`,
-        confirmLabel: 'Clear encrypted attributes',
-        cancelLabel: 'Cancel',
-        intent: 'warning',
-        onConfirm: () => {},
+      return requestEncryptionSectionChange({
+        hasEncryptedVariable,
+        nextOpen: newState,
+        confirmClear: () =>
+          confirm({
+            title: 'This will clear selected attributes',
+            description: `This will deselect all encrypted attributes for the ${nodeType.name} node type. Do you want to continue?`,
+            confirmLabel: 'Clear encrypted attributes',
+            cancelLabel: 'Cancel',
+            intent: 'warning',
+            onConfirm: () => {},
+          }),
+        clearSelections: () => {
+          Object.entries(nodeType.variables || {}).forEach(
+            ([variableId, variable]) => {
+              if (variable?.encrypted) {
+                handleEncryptionToggle(variableId, false);
+              }
+            },
+          );
+        },
       });
-      if (confirmed) {
-        Object.entries(nodeType.variables || {}).forEach(
-          ([variableId, variable]) => {
-            if (variable?.encrypted) {
-              handleEncryptionToggle(variableId, false);
-            }
-          },
-        );
-        return true;
-      }
-      return false;
     },
     [confirm, handleEncryptionToggle],
   );
@@ -110,21 +140,14 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
   );
   return (
     <Section
-      title="Encrypted Attributes"
-      summary={
-        <>
-          <Paragraph>
-            You may encrypt one or more text attributes. Select the text
-            attributes for each node type that should be encrypted.
-          </Paragraph>
-          <Alert variant="info" className="my-7">
-            <AlertDescription>
-              Values for encrypted attributes are not stored in the database.
-            </AlertDescription>
-          </Alert>
-        </>
-      }
+      title="Encrypted attributes"
+      description="Select the text attributes for each node type that should be encrypted."
     >
+      <Alert variant="info" className="my-7">
+        <AlertDescription>
+          Values for encrypted attributes are not stored in the database.
+        </AlertDescription>
+      </Alert>
       {nodeTypeVariableData.map(
         ({
           nodeTypeId,
@@ -138,15 +161,10 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
             toggleable
             title={nodeType.name}
             key={nodeTypeId}
-            startExpanded={hasEncryptedVariable}
-            layout="vertical"
-            handleToggleChange={(newState) =>
+            defaultOpen={hasEncryptedVariable}
+            description="Enable encryption for attributes belonging to this node type."
+            onOpenChange={(newState) =>
               handleToggleChange(hasEncryptedVariable, nodeType, newState)
-            }
-            summary={
-              <Paragraph>
-                Enable this section to encrypt attributes for this node type.
-              </Paragraph>
             }
           >
             <div className="max-h-75 overflow-y-auto">

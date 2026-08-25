@@ -2,9 +2,8 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
-import { getFieldId } from '~/utils/issues';
 
 import { asValidationMap } from '../sections/Form/helpers';
 import VariableDefinitionFields, {
@@ -109,16 +108,14 @@ const ComposerAttributeFields = ({
       />
 
       <Section
-        layout="vertical"
-        id={getFieldId('label')}
+        title="Display caption"
+        description="Optionally customize how this attribute is named in the side panel."
         disabled={!fields.variable}
-        required={false}
-        title={!fields.variable ? 'Label' : undefined}
       >
         <ArchitectField
           name="label"
-          label="Label"
-          hint="Optionally caption this attribute in the side panel. When left empty, the attribute's name is shown instead."
+          label="Caption"
+          hint="When left empty, the attribute name is shown instead."
           component={InputField}
           initialValue={asString(item.label)}
           validation={{}}

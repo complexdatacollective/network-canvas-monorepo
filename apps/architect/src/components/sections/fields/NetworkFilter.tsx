@@ -1,15 +1,14 @@
 import { useCallback } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { ruleValidator } from '~/components/Query';
 import {
-  useSetStageValue,
   useStageFormValue,
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
 
-import Section from '../../EditorLayout/Section';
 import { handleFilterDeactivate } from '../Filter';
 import { FilterField, type RuleSetValue } from './RuleSetFields';
 
@@ -25,7 +24,6 @@ const NetworkFilter = ({
   allowEdgeRules,
 }: NetworkFilterProps) => {
   const { confirm } = useDialog();
-  const setStageValue = useSetStageValue();
   const hasFilter = useStageFormValue(name) != null;
   // The whole filter object is one registered field; without seeding it, a
   // committed filter renders blank and save would overwrite it away.
@@ -33,73 +31,51 @@ const NetworkFilter = ({
 
   const handleToggleChange = useCallback(
     async (newStatus: boolean) => {
-      if (newStatus) {
+      if (newStatus || !hasFilter) {
         return true;
       }
 
-      if (hasFilter) {
-        const result = await handleFilterDeactivate(
-          async () =>
-            (await confirm({
-              title: 'This will clear your filter',
-              description:
-                'This will clear your filter, and delete any rules you have created. Do you want to continue?',
-              confirmLabel: 'Clear filter',
-              cancelLabel: 'Cancel',
-              intent: 'warning',
-              onConfirm: () => {},
-            })) === true,
-        );
-
-        if (!result) {
-          return false;
-        }
-      }
-
-      setStageValue(name, undefined);
-      return true;
+      return handleFilterDeactivate(
+        async () =>
+          (await confirm({
+            title: 'This will clear your filter',
+            description:
+              'This will clear your filter, and delete any rules you have created. Do you want to continue?',
+            confirmLabel: 'Clear filter',
+            cancelLabel: 'Cancel',
+            intent: 'warning',
+            onConfirm: () => {},
+          })) === true,
+      );
     },
-    [confirm, hasFilter, name, setStageValue],
+    [confirm, hasFilter],
   );
 
-  const contrastProps =
+  const contrastClassName =
     variant === 'contrast'
-      ? {
-          // The deepest surface level: the panel this sits in is painted
-          // `bg-accent`, which resolves to the same slate blue as
-          // `--surface-3` in Architect's theme, so level 3 gave the filter no
-          // edge against its own container.
-          className: 'bg-surface-4 text-surface-4-contrast p-4 rounded-sm',
-          layout: 'vertical' as 'vertical' | 'horizontal',
-        }
-      : {};
+      ? 'rounded-sm bg-surface-4 text-surface-4-contrast p-4'
+      : undefined;
 
   return (
-    <Section
-      title="Filter"
-      summary="Enable to filter the nodes and edges that are displayed to participants in this panel."
-      toggleable
-      startExpanded={hasFilter}
-      handleToggleChange={handleToggleChange}
-      {...contrastProps}
-    >
-      {/*
-        The section heading is the filter's only visible name — it is what
-        labels the toggle beside it, including while the section is collapsed
-        and the field is unmounted. So the field repeats nothing: no second
-        "Filter" label, and no summary restating what the toggle plus the rule
-        builder already show. `labelHidden` keeps the accessible name.
-      */}
-      <ArchitectField
-        name={name}
-        label="Rules"
-        hint="Create one or more rules that must match in order for a node or edge to be shown in this panel."
-        component={FilterField}
-        initialValue={initialFilter}
-        allowEdgeRules={allowEdgeRules}
-        validation={{ validator: ruleValidator }}
-      />
-    </Section>
+    <div className={contrastClassName ?? 'w-full'}>
+      <Section
+        title="Panel filter"
+        description="Filter the nodes and edges displayed to participants in this panel."
+        toggleable
+        defaultOpen={hasFilter}
+        onOpenChange={handleToggleChange}
+      >
+        <ArchitectField
+          name={name}
+          label="Filter rules"
+          hint="Create one or more rules that must match in order for a node or edge to be shown in this panel."
+          component={FilterField}
+          initialValue={initialFilter}
+          allowEdgeRules={allowEdgeRules}
+          validation={{ validator: ruleValidator }}
+        />
+      </Section>
+    </div>
   );
 };
 

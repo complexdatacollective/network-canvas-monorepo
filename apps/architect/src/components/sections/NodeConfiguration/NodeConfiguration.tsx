@@ -2,8 +2,8 @@ import { isEqual } from 'es-toolkit/compat';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section, Subsection } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
+import { Subsection } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import EditableAttributesList from '~/components/Form/arrayFields/EditableAttributesList';
 import IssueAnchor from '~/components/IssueAnchor';
@@ -100,7 +100,7 @@ export const NodeConfigurationComponent = ({
   entity,
   type,
   disabled = false,
-  disabledMessage,
+  disabledMessage = 'Select a node type above to configure this section.',
   handleCreateVariable,
   handleChangeFields,
 }: NodeConfigurationProps) => {
@@ -276,42 +276,37 @@ export const NodeConfigurationComponent = ({
     );
   return (
     <Section
-      title="Node Configuration"
-      summary={
-        <Paragraph>
-          Configure the attribute mappings, layout behaviour, group hulls, and
-          the attributes collected for each node.
-        </Paragraph>
+      title="Node configuration"
+      description={
+        disabled
+          ? disabledMessage
+          : 'Configure attribute mappings, layout behaviour, group hulls, and editable node attributes.'
       }
       disabled={disabled}
-      disabledMessage={disabledMessage}
-      layout="horizontal"
     >
       <Subsection
         title="Quick add attribute"
         summary="The attribute populated by the inline quick-add field when a node is added from the toolbar — typically a name or label."
       >
-        <>
-          <IssueAnchor fieldName="quickAdd" description="Quick Add Attribute" />
-          <ArchitectField
-            name="quickAdd"
-            label="Create or select an attribute for the quick-add form"
-            component={VariablePicker}
-            initialValue={initialQuickAdd}
-            validation={{
+        <IssueAnchor fieldName="quickAdd" description="Quick Add Attribute" />
+        <ArchitectField
+          name="quickAdd"
+          label="Create or select an attribute for the quick-add form"
+          component={VariablePicker}
+          initialValue={initialQuickAdd}
+          validation={{
+            required: true,
+            crossClassPick: quickAddCrossClassValidate,
+          }}
+          type={type}
+          entity={entity}
+          options={quickAddOptionsForSubject}
+          onCreateOption={(value: string) =>
+            handleCreateVariable(value, 'text', 'quickAdd', {
               required: true,
-              crossClassPick: quickAddCrossClassValidate,
-            }}
-            type={type}
-            entity={entity}
-            options={quickAddOptionsForSubject}
-            onCreateOption={(value: string) =>
-              handleCreateVariable(value, 'text', 'quickAdd', {
-                required: true,
-              })
-            }
-          />
-        </>
+            })
+          }
+        />
         {typeof quickAddVariable === 'string' && (
           <CodebookVariableValidationSection
             fieldName="quickAdd"
@@ -326,72 +321,66 @@ export const NodeConfigurationComponent = ({
         title="Node positions"
         summary="Stores each node's position on the canvas. Reusing the same attribute across stages preserves positions as the participant moves between tasks."
       >
-        <>
-          <IssueAnchor
-            fieldName="layoutVariable"
-            description="Layout Attribute"
-          />
-          <ArchitectField
-            name="layoutVariable"
-            label="Create or select an attribute to store node coordinates"
-            component={VariablePicker}
-            initialValue={initialLayoutVariable}
-            validation={{ required: true }}
-            type={type}
-            entity={entity}
-            options={layoutVariablesForSubject}
-            onCreateOption={(value: string) =>
-              handleCreateVariable(value, 'layout', 'layoutVariable')
-            }
-          />
-        </>
+        <IssueAnchor
+          fieldName="layoutVariable"
+          description="Layout Attribute"
+        />
+        <ArchitectField
+          name="layoutVariable"
+          label="Create or select an attribute to store node coordinates"
+          component={VariablePicker}
+          initialValue={initialLayoutVariable}
+          validation={{ required: true }}
+          type={type}
+          entity={entity}
+          options={layoutVariablesForSubject}
+          onCreateOption={(value: string) =>
+            handleCreateVariable(value, 'layout', 'layoutVariable')
+          }
+        />
       </Subsection>
 
       <Subsection
         title="Automatic layout"
         summary="When on, nodes are arranged by a force-directed layout. Participants can toggle this during the interview; this sets the starting state."
       >
-        <>
-          <IssueAnchor
-            fieldName="behaviours.automaticLayout"
-            description="Default automatic layout"
-          />
-          <ArchitectField
-            name="behaviours.automaticLayout"
-            label="Start with automatic layout switched on"
-            component={ToggleField}
-            inline
-            initialValue={initialAutomaticLayout ?? true}
-          />
-        </>
+        <IssueAnchor
+          fieldName="behaviours.automaticLayout"
+          description="Default automatic layout"
+        />
+        <ArchitectField
+          name="behaviours.automaticLayout"
+          label="Start with automatic layout switched on"
+          component={ToggleField}
+          inline
+          initialValue={initialAutomaticLayout ?? true}
+        />
       </Subsection>
 
       <Subsection
         title="Group hulls"
         summary="Draw shaded outlines around groups of nodes that share a value of a categorical attribute. Choose (or create) the attribute whose values participants can group nodes into — by tapping nodes with the Groups tool, or by lasso-selecting several at once."
       >
-        <>
-          <IssueAnchor
-            fieldName="convexHullVariable"
-            description="Group hull attribute"
-          />
-          <ArchitectField
-            name="convexHullVariable"
-            label="Create or select a categorical attribute for grouping"
-            component={VariablePicker}
-            initialValue={initialConvexHullVariable}
-            validation={{ crossClassPick: convexHullCrossClassValidate }}
-            type={type}
-            entity={entity}
-            options={categoricalVariablesForSubject}
-            onCreateOption={(name: string) =>
-              openNewVariableWindow(
-                { initialValues: { name, type: 'categorical' } },
-                { field: 'convexHullVariable' },
-              )
-            }
-          />
-        </>
+        <IssueAnchor
+          fieldName="convexHullVariable"
+          description="Group hull attribute"
+        />
+        <ArchitectField
+          name="convexHullVariable"
+          label="Create or select a categorical attribute for grouping"
+          component={VariablePicker}
+          initialValue={initialConvexHullVariable}
+          validation={{ crossClassPick: convexHullCrossClassValidate }}
+          type={type}
+          entity={entity}
+          options={categoricalVariablesForSubject}
+          onCreateOption={(name: string) =>
+            openNewVariableWindow(
+              { initialValues: { name, type: 'categorical' } },
+              { field: 'convexHullVariable' },
+            )
+          }
+        />
       </Subsection>
 
       <Subsection

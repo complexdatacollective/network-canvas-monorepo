@@ -5,9 +5,8 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
-import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import {
   useCreateVariable,
@@ -115,14 +114,6 @@ const TapBehaviour = ({
       disableHighlighting();
     }
   };
-  const handleToggleChange = (value: boolean) => {
-    if (value) return true;
-    setLocalFieldValue('edges.create', undefined);
-    setLocalFieldValue('highlight.variable', undefined);
-    disableHighlighting();
-    return true;
-  };
-
   const liveEdgesCreate = useFormValue(['edges.create'] as const)[
     'edges.create'
   ];
@@ -136,19 +127,10 @@ const TapBehaviour = ({
 
   return (
     <Section
-      group
-      title="Interaction Behavior"
-      summary={
-        <Paragraph>
-          Tapping a node on the sociogram can trigger one of two behaviors:
-          assigning an attribute to the node, or creating an edge between two
-          nodes.
-        </Paragraph>
-      }
+      title="Node interaction"
+      description="Choose whether tapping a node toggles an attribute or creates an edge."
       toggleable
-      startExpanded={tapBehaviour !== null}
-      handleToggleChange={handleToggleChange}
-      layout="vertical"
+      defaultOpen={tapBehaviour !== null}
     >
       <RadioGroupField
         onChange={handleChangeTapBehaviour}
@@ -172,7 +154,8 @@ const TapBehaviour = ({
       {tapBehaviour === TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES && (
         <ArchitectField
           name="highlight.variable"
-          label="Boolean Attribute to Toggle"
+          label="Boolean attribute"
+          hint="Select the attribute toggled when a participant taps a node."
           component={VariablePicker}
           validation={{ required: true }}
           initialValue={initialHighlight?.variable ?? undefined}
@@ -200,7 +183,7 @@ const TapBehaviour = ({
       {tapBehaviour === TAP_BEHAVIOURS.CREATE_EDGES && (
         <ArchitectField
           name="edges.create"
-          label="Create edges of the following type"
+          label="Created edge type"
           component={EntitySelectField}
           validation={{ required: true }}
           initialValue={initialEdges?.create ?? undefined}

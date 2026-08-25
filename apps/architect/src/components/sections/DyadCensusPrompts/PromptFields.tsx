@@ -1,9 +1,7 @@
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
-import { getFieldId } from '~/utils/issues';
 
 import { EntitySelectControl as EntitySelectField } from '../fields/EntitySelectField/EntitySelectField';
 
@@ -14,17 +12,9 @@ type PromptFieldsProps = {
 
 const PromptFields = ({ text, createEdge }: PromptFieldsProps) => (
   <Section
-    title="Dyad Census Prompts"
-    id={getFieldId('text')}
-    layout="vertical"
+    title="Prompt configuration"
+    description="Write the participant prompt and select the edge type created by an affirmative response."
   >
-    <Paragraph>
-      Dyad Census prompts explain to your participant which relationship they
-      should evaluate (for example, &apos;friendship&apos;, &apos;material
-      support&apos; or &apos;conflict&apos;). Enter prompt text below, and
-      select an edge type that will be created when the participant answers
-      &apos;yes&apos;.
-    </Paragraph>
     <Alert variant="info" className="my-7">
       <AlertDescription className="space-y-4">
         <div>
@@ -46,7 +36,7 @@ const PromptFields = ({ text, createEdge }: PromptFieldsProps) => (
     </Alert>
     <ArchitectField
       name="text"
-      label="Prompt Text"
+      label="Prompt text"
       component={RichText}
       validation={{ required: true }}
       initialValue={text}
@@ -55,7 +45,7 @@ const PromptFields = ({ text, createEdge }: PromptFieldsProps) => (
     />
     <ArchitectField
       name="createEdge"
-      label="Create edges of the following type"
+      label="Created edge type"
       component={EntitySelectField}
       validation={{ required: true }}
       initialValue={createEdge}

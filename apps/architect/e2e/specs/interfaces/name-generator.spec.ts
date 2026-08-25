@@ -21,8 +21,8 @@ test('creates a valid NameGenerator stage from scratch', async ({
   // NameGenerator's subject is a node type (sections/NodeType.tsx — the
   // PLAIN `NodeType`, not `FilteredNodeType`; NameGenerator's registry entry
   // (StageEditor/Interfaces.tsx) uses `NodeType` directly, `Section
-  // title="Node Type"`). Form.tsx's `withDisabledSubjectRequired` disables
-  // the Form section until `subject.type` is set — same reasoning as
+  // title="Node setup"`). Form.tsx's `withDisabledSubjectRequired` disables
+  // Form configuration until `subject.type` is set — same reasoning as
   // alter-form.spec.ts.
   await selectOrCreateNodeType(architectPage, 'person');
 
@@ -34,7 +34,7 @@ test('creates a valid NameGenerator stage from scratch', async ({
   // rather than the brief's `getByLabel` guess.
   await editor.field('form.title').getByRole('textbox').fill('Add a person');
 
-  await addFormField(editor.section('Form'), {
+  await addFormField(editor.section('Form configuration'), {
     variableName: 'age',
     promptText: 'What is your name?',
     inputControl: 'Text Input',

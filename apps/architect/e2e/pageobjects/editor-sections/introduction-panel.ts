@@ -1,7 +1,7 @@
 import { type StageEditor } from '../stage-editor.js';
 
 // IntroductionPanel section (sections/IntroductionPanel.tsx, `Section
-// title="Introduction Panel"`, always-on, never gated; present only on
+// title="Task introduction"`, always-on, never gated; present only on
 // EgoForm / AlterForm / AlterEdgeForm / DyadCensus / TieStrengthCensus).
 // Both fields are required. `introductionPanel.title` is a plain input whose
 // accessible name is 'Title'; the text field is a block-mode RichText whose

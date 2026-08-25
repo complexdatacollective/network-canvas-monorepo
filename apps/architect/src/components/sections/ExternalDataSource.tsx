@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { compose } from 'react-recompose';
 
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
@@ -70,10 +70,13 @@ const ExternalDataSource = ({
 
   return (
     <Section
+      title="Roster source"
+      description={
+        disabled
+          ? disabledMessage
+          : 'Select the network data file that supplies nodes for this roster.'
+      }
       disabled={disabled}
-      disabledMessage={disabledMessage}
-      layout="vertical"
-      title={disabled ? 'Roster data source' : undefined}
     >
       <ArchitectField
         component={DataSource}

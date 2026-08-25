@@ -291,7 +291,7 @@ test.describe.serial('sample protocol built from scratch', () => {
       s('stages', 3, 'introductionPanel', 'title'),
       s('stages', 3, 'introductionPanel', 'text'),
     );
-    await addConfiguredFormField(editor.section('Form'), {
+    await addConfiguredFormField(editor.section('Form configuration'), {
       variableName: 'participant_consent',
       promptText: s('stages', 3, 'form', 'fields', 0, 'prompt').trim(),
       inputControl: 'BooleanChoice',
@@ -324,7 +324,7 @@ test.describe.serial('sample protocol built from scratch', () => {
       s('stages', 4, 'introductionPanel', 'text'),
     );
 
-    const form = editor.section('Form');
+    const form = editor.section('Form configuration');
     const prompt = (index: number) =>
       s('stages', 4, 'form', 'fields', index, 'prompt').trim();
     await addConfiguredFormField(form, {
@@ -499,7 +499,7 @@ test.describe.serial('sample protocol built from scratch', () => {
       .field('form.title')
       .getByRole('textbox')
       .fill(s('stages', 10, 'form', 'title'));
-    const form = editor.section('Form');
+    const form = editor.section('Form configuration');
     await addConfiguredFormField(form, {
       variableName: 'name',
       promptText: s('stages', 10, 'form', 'fields', 0, 'prompt').trim(),
@@ -606,7 +606,7 @@ test.describe.serial('sample protocol built from scratch', () => {
       s('stages', 14, 'introductionPanel', 'title'),
       s('stages', 14, 'introductionPanel', 'text'),
     );
-    const form = editor.section('Form');
+    const form = editor.section('Form configuration');
     await addConfiguredFormField(form, {
       variableName: 'visited',
       promptText: s('stages', 14, 'form', 'fields', 0, 'prompt').trim(),
@@ -682,9 +682,6 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addSociogramPrompt(editor, page, {
       text: s('stages', 16, 'prompts', 0, 'text'),
       layoutVariable: 'sociogram_layout',
-      // Canonical carries `highlight: { allowHighlighting: false }`, which
-      // only the Interaction Behavior on-then-off dance writes.
-      interaction: { kind: 'none-explicit' },
     });
     await saveStage(16, 'Sociogram');
 
@@ -697,7 +694,6 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addSociogramPrompt(editor, page, {
       text: s('stages', 17, 'prompts', 0, 'text'),
       layoutVariable: 'box_layout',
-      interaction: { kind: 'none-explicit' },
     });
     const stage = await saveStage(17, 'Sociogram');
     if (stage.type !== 'Sociogram') throw new Error('narrowed');
@@ -756,10 +752,9 @@ test.describe.serial('sample protocol built from scratch', () => {
       s('stages', 20, 'introductionPanel', 'text'),
     );
     await addPrompt(editor.field('prompts'), async () => {
-      // DyadCensus's prompt label is 'Prompt Text' (capital T) — a distinct
-      // component from the shared PromptText.
+      // DyadCensus's prompt dialog uses the visible field label "Prompt text".
       await editor.fillRichTextMarkdown(
-        'Prompt Text',
+        'Prompt text',
         s('stages', 20, 'prompts', 0, 'text'),
       );
       await selectOrCreateEdgeType(page, 'know');

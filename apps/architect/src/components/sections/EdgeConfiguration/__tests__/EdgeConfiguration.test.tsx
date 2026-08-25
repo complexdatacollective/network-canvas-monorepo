@@ -129,10 +129,10 @@ describe('EdgeConfiguration', () => {
     expect(screen.getByTestId('edge-type-multiselect')).toBeInTheDocument();
   });
 
-  it('renders the multi-select under the "Edge types" subsection heading', () => {
+  it('renders the multi-select under the connection-types subsection heading', () => {
     renderSection({ edges: [] });
     expect(
-      screen.getByRole('heading', { name: /edge types/i }),
+      screen.getByRole('heading', { name: /connection types/i }),
     ).toBeInTheDocument();
     expect(screen.getByTestId('subsection')).toContainElement(
       screen.getByTestId('edge-type-multiselect'),

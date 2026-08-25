@@ -4,12 +4,12 @@ import { useSelector } from 'react-redux';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { useCreateVariable } from '~/components/StageEditor/stageFormHooks';
 import type { RootState } from '~/ducks/modules/root';
 
-import Section from '../../EditorLayout/Section';
 import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import { getEdgesForSubject, getNarrativeVariables } from './selectors';
 
@@ -47,41 +47,12 @@ const PresetFields = ({
   const setLocalFieldValue = useFormStore((store) => store.setFieldValue);
   const { createVariable } = useCreateVariable();
 
-  // These three toggle sections gate their own fields' mounting, so a
-  // reactive read of the field (`useFormValue`) can never see a value until
-  // AFTER the section is already expanded — a chicken-and-egg problem for
-  // `startExpanded`. Use the row's own pre-edit prop values instead, which
-  // only need to answer "does a configured value already exist" once, on
-  // mount; the toggle switch owns everything after that.
+  // These three toggle sections gate their own fields' mounting. Use the row's
+  // pre-edit values to choose their initial open state; the uncontrolled
+  // section owns every later toggle.
   const hasGroupVariable = !!groupVariable;
   const hasDisplayEdges = !!edges?.display && edges.display.length > 0;
   const hasHighlightVariables = !!highlight && highlight.length > 0;
-
-  const handleToggleGroupVariable = useCallback(
-    (open: boolean) => {
-      if (!open) setLocalFieldValue('groupVariable', undefined);
-      return true;
-    },
-    [setLocalFieldValue],
-  );
-  const handleToggleDisplayEdges = useCallback(
-    (open: boolean) => {
-      // The registered leaf is `edges.display` — `edges` itself is never a
-      // field (the store is a flat, exact-string-keyed map with no
-      // hierarchy), so clearing `edges` would no-op and the real leaf's
-      // dormant value would resurrect on remount.
-      if (!open) setLocalFieldValue('edges.display', undefined);
-      return true;
-    },
-    [setLocalFieldValue],
-  );
-  const handleToggleHighlightVariables = useCallback(
-    (open: boolean) => {
-      if (!open) setLocalFieldValue('highlight', undefined);
-      return true;
-    },
-    [setLocalFieldValue],
-  );
 
   const handleCreateLayoutVariable = useCallback(
     async (name: string) => {
@@ -93,7 +64,7 @@ const PresetFields = ({
 
   return (
     <>
-      <Section layout="vertical">
+      <Section title="Preset identity">
         <ArchitectField
           name="label"
           label="Preset label"
@@ -110,7 +81,7 @@ const PresetFields = ({
           placeholder="Enter a label for the preset..."
         />
       </Section>
-      <Section layout="vertical">
+      <Section title="Node layout">
         <ArchitectField
           name="layoutVariable"
           label="Layout attribute"
@@ -129,29 +100,22 @@ const PresetFields = ({
         />
       </Section>
       <Section
-        title="Group Attribute"
-        summary={
-          <Paragraph>
-            Select a categorical attribute which will be used to draw convex
-            hulls around nodes.
-          </Paragraph>
-        }
+        title="Node grouping"
+        description="Draw convex hulls around nodes that share a categorical attribute."
         toggleable
         disabled={groupVariablesForSubject.length === 0}
-        startExpanded={hasGroupVariable && groupVariablesForSubject.length > 0}
-        handleToggleChange={handleToggleGroupVariable}
-        layout="vertical"
+        defaultOpen={hasGroupVariable && groupVariablesForSubject.length > 0}
       >
-        <Paragraph>
-          This feature will draw a semi-transparent convex hull for each
-          categorical value of the attribute you select. If a node&apos;s
-          attributes include this categorical value, the hull will be expanded
-          to include the node. If a node has multiple values for this
-          categorical attribute, it will appear in multiple overlapping hulls.
-        </Paragraph>
         <ArchitectField
           name="groupVariable"
-          label="Select a categorical attribute for grouping"
+          label="Grouping attribute"
+          hint={
+            <Paragraph>
+              The selected values draw semi-transparent convex hulls around
+              matching nodes; nodes with multiple values appear in overlapping
+              hulls.
+            </Paragraph>
+          }
           component={VariablePicker}
           initialValue={groupVariable ?? undefined}
           entity={entity}
@@ -161,17 +125,11 @@ const PresetFields = ({
         />
       </Section>
       <Section
-        title="Display Edges"
+        title="Displayed edges"
+        description="Select the edge types shown in this visualization preset."
         toggleable
-        startExpanded={hasDisplayEdges && edgesForSubject.length > 0}
-        handleToggleChange={handleToggleDisplayEdges}
+        defaultOpen={hasDisplayEdges && edgesForSubject.length > 0}
         disabled={edgesForSubject.length === 0}
-        summary={
-          <Paragraph>
-            Select one or more edge types to display on this narrative preset.
-          </Paragraph>
-        }
-        layout="vertical"
       >
         <ArchitectField
           name="edges.display"
@@ -182,26 +140,18 @@ const PresetFields = ({
         />
       </Section>
       <Section
-        title="Highlight Node Attributes"
-        summary={
-          <Paragraph>
-            Select one or more boolean attributes below. Nodes whose value is
-            &quot;true&quot; for this attribute will be highlighted when this
-            preset is active.
-          </Paragraph>
-        }
+        title="Node highlighting"
+        description="Highlight nodes whose selected boolean attributes are true."
         toggleable
-        startExpanded={
+        defaultOpen={
           hasHighlightVariables && highlightVariablesForSubject.length > 0
         }
         disabled={highlightVariablesForSubject.length === 0}
-        handleToggleChange={handleToggleHighlightVariables}
-        layout="vertical"
       >
         <ArchitectField
           name="highlight"
           component={CheckboxGroupField}
-          label="Select one or more boolean attributes"
+          label="Highlight attributes"
           initialValue={highlight ?? []}
           options={highlightVariablesForSubject}
         />

@@ -2,13 +2,11 @@ import { useCallback, useMemo } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import Section from '@codaco/fresco-ui/Section';
 import type { FilterRule } from '@codaco/protocol-validation';
-import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { Rule } from '~/components/Query/Rules/validateRule';
 import {
-  useSetStageValue,
   useStageFormValue,
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
@@ -29,7 +27,6 @@ type FilterValue = { rules?: Rule[]; join?: string } | undefined;
 type FilterPrompt = { edges?: { create?: string; display?: string[] } };
 
 const Filter = () => {
-  const setStageValue = useSetStageValue();
   const { confirm } = useDialog();
   const currentValue = useStageFormValue<FilterValue>('filter');
   const initialValue = useStageInitialValue<FilterValue>('filter');
@@ -62,7 +59,7 @@ const Filter = () => {
       if (!currentValue || newState) {
         return true;
       }
-      const confirmed = await handleFilterDeactivate(
+      return handleFilterDeactivate(
         async () =>
           (await confirm({
             title: 'This will clear your filter',
@@ -74,27 +71,16 @@ const Filter = () => {
             onConfirm: () => {},
           })) === true,
       );
-      if (confirmed) {
-        setStageValue('filter', undefined);
-        return true;
-      }
-      return false;
     },
-    [confirm, setStageValue, currentValue],
+    [confirm, currentValue],
   );
   return (
     <Section
-      title="Filter"
-      summary={
-        <Paragraph>
-          You can optionally filter which nodes or edges are shown on this
-          stage, by creating one or more rules using the options below.
-        </Paragraph>
-      }
+      title="Stage filter"
+      description="Create rules that limit which nodes or edges are shown on this stage."
       toggleable
-      startExpanded={!!currentValue}
-      handleToggleChange={handleToggleChange}
-      layout="vertical"
+      defaultOpen={!!currentValue}
+      onOpenChange={handleToggleChange}
     >
       {shouldShowWarning && (
         <Alert variant="warning" className="my-7">
@@ -107,7 +93,7 @@ const Filter = () => {
       )}
       <ArchitectField
         name="filter"
-        label="Filter Rules"
+        label="Filter rules"
         hint="Create one or more rules to filter what is shown on this stage."
         component={FilterField}
         initialValue={initialValue}

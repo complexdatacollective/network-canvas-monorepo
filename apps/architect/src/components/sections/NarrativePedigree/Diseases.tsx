@@ -1,10 +1,10 @@
 import { useCallback, type ComponentType } from 'react';
 import { useSelector } from 'react-redux';
 
+import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { Stage } from '@codaco/protocol-validation';
 import { normalizeForComparison } from '@codaco/shared-consts';
-import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -110,7 +110,7 @@ const Diseases = (_props: StageEditorSectionProps) => {
   );
 
   return (
-    <Section layout="vertical">
+    <Section title="Disease mappings">
       <ArchitectArrayField
         name="diseases"
         label="Diseases"

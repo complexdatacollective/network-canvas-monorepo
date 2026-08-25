@@ -4,12 +4,10 @@ import { compose } from 'react-recompose';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import LikertScaleField from '@codaco/fresco-ui/form/fields/LikertScale';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
-  useSetStageValue,
   useStageFormValue,
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
@@ -33,13 +31,9 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
     dataSource,
     true,
   );
-  const setStageValue = useSetStageValue();
   // Presence is read from the actual leaf fields, not the `searchOptions`
-  // parent (never itself a registered field): once both leaves unregister
-  // (the section collapses), a parent-path read would fall through to the
-  // stale committed value and resurrect "cleared" options the next time the
-  // section opens, since the store has no hierarchical relationship between
-  // a path and its sub-paths.
+  // parent, which is never itself a registered field. This determines the
+  // initial open state from the values the section actually owns.
   const matchProperties = useStageFormValue('searchOptions.matchProperties');
   const fuzziness = useStageFormValue('searchOptions.fuzziness');
   const hasSearchOptions = matchProperties != null || fuzziness != null;
@@ -49,33 +43,22 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
   const initialFuzziness = useStageInitialValue<number>(
     'searchOptions.fuzziness',
   );
-  const handleToggleSearchOptions = (nextState: boolean) => {
-    if (!nextState) {
-      // Clear both LEAF paths, not the `searchOptions` parent: `searchOptions`
-      // itself is never a registered field (only its two children are), and
-      // the store has no hierarchical relationship between a path and its
-      // sub-paths — writing the parent would not reach either child.
-      setStageValue('searchOptions.matchProperties', undefined);
-      setStageValue('searchOptions.fuzziness', undefined);
-    }
-    return true;
-  };
   return (
     <Section
-      title="Search Options"
-      toggleable
-      handleToggleChange={handleToggleSearchOptions}
-      startExpanded={hasSearchOptions}
-      summary={
-        <Paragraph>
-          To find and select nodes from the roster, the participant will use a
-          search function. This section controls how this search function works
-          on this stage.
-        </Paragraph>
+      title="Roster search"
+      description={
+        disabled
+          ? 'Select a roster data source before configuring search.'
+          : 'Configure how participants find and select nodes from the roster.'
       }
+      toggleable
+      defaultOpen={hasSearchOptions}
       disabled={disabled}
     >
-      <Section layout="vertical">
+      <Section
+        title="Search matching"
+        description="Choose the roster attributes considered when matching a participant's search."
+      >
         <Alert variant="info" className="my-7">
           <AlertDescription>
             Selecting lots of attributes here may slow the performance of the
@@ -88,12 +71,15 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
           component={FrescoCheckboxGroupField}
           initialValue={initialMatchProperties}
           validation={{ minSelected: 1 }}
-          label="Which attributes should be searchable?"
+          label="Searchable attributes"
           hint="You can configure which attributes are considered when matching roster nodes to the user's query."
           options={variableOptions}
         />
       </Section>
-      <Section layout="vertical">
+      <Section
+        title="Match tolerance"
+        description="Choose how closely a participant's search must match roster text."
+      >
         <Alert variant="info" className="my-7">
           <AlertDescription>
             If the roster contains many similar nodes, selecting

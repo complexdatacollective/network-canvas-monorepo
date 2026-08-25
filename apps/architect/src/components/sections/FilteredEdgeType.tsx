@@ -1,4 +1,4 @@
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 // Screen message listeners removed as part of screen system refactor
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -24,7 +24,10 @@ const FilteredEdgeType = (props: FilteredEdgeTypeProps) => {
   // are properly integrated with form state management
 
   return (
-    <Section layout="vertical">
+    <Section
+      title="Edge setup"
+      description="Choose the edge type this stage uses and optionally limit which edges are available."
+    >
       <IssueAnchor fieldName="subject" description="Edge Type" />
       <ArchitectField
         name="subject"

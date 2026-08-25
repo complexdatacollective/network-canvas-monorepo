@@ -165,14 +165,12 @@ const fillAndSubmit = (
   dialog: HTMLElement,
   { name, value }: { name: string; value: string },
 ) => {
-  fireEvent.change(
-    within(dialog).getByRole('textbox', { name: /API Key Name/ }),
-    { target: { value: name } },
-  );
-  fireEvent.change(
-    within(dialog).getByRole('textbox', { name: /API Key Value/ }),
-    { target: { value } },
-  );
+  fireEvent.change(within(dialog).getByRole('textbox', { name: /Key name/ }), {
+    target: { value: name },
+  });
+  fireEvent.change(within(dialog).getByRole('textbox', { name: /Key value/ }), {
+    target: { value },
+  });
   fireEvent.click(within(dialog).getByRole('button', { name: 'Create Key' }));
 };
 
@@ -205,7 +203,7 @@ describe('API key creation', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create Key' }));
 
     const nameInput = within(dialog).getByRole('textbox', {
-      name: /API Key Name/,
+      name: /Key name/,
     });
     await waitFor(() => expect(nameInput).toHaveFocus());
     expect(nameInput).toHaveAttribute('aria-invalid', 'true');
@@ -231,7 +229,7 @@ describe('API key creation', () => {
     fillAndSubmit(dialog, { name: '   ', value: 'pk.something' });
 
     const nameInput = within(dialog).getByRole('textbox', {
-      name: /API Key Name/,
+      name: /Key name/,
     });
     await waitFor(() => expect(nameInput).toHaveFocus());
     expect(nameInput).toHaveAttribute('aria-invalid', 'true');
@@ -248,7 +246,7 @@ describe('API key creation', () => {
     });
 
     const nameInput = within(dialog).getByRole('textbox', {
-      name: /API Key Name/,
+      name: /Key name/,
     });
     await waitFor(() =>
       expect(
@@ -324,7 +322,7 @@ describe('API key creation', () => {
     expect(apiKeyAssets(store)).toHaveLength(0);
     expect(dialog).toBeInTheDocument();
     expect(
-      within(dialog).getByRole('textbox', { name: /API Key Name/ }),
+      within(dialog).getByRole('textbox', { name: /Key name/ }),
     ).toHaveFocus();
   });
 
@@ -448,10 +446,10 @@ describe('API key creation', () => {
     // that both fields stayed populated, inviting exactly this repeat.
     const reopened = await openBrowser();
     expect(
-      within(reopened).getByRole('textbox', { name: /API Key Name/ }),
+      within(reopened).getByRole('textbox', { name: /Key name/ }),
     ).toHaveValue('');
     expect(
-      within(reopened).getByRole('textbox', { name: /API Key Value/ }),
+      within(reopened).getByRole('textbox', { name: /Key value/ }),
     ).toHaveValue('');
 
     fillAndSubmit(reopened, {

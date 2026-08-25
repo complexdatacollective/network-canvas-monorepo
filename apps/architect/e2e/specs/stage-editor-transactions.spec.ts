@@ -54,7 +54,7 @@ async function seedStageWithVariable(
     'Thanks for taking part in this study.',
   );
 
-  await addFormField(editor.section('Form'), {
+  await addFormField(editor.section('Form configuration'), {
     variableName: 'age',
     promptText: 'How old are you?',
     inputControl: 'Number Input',
@@ -114,11 +114,11 @@ test('discarding stage edits reverts a validation change to a shared variable', 
   // Edit the committed field and make its variable Required — a codebook
   // property, shared with every other stage that renders this variable.
   await editor
-    .section('Form')
+    .section('Form configuration')
     .getByRole('button', { name: 'Edit field' })
     .click();
   await architectPage
-    .locator('#field_validation')
+    .getByRole('dialog', { name: 'Edit Field', exact: true })
     .getByRole('switch', { name: 'Required', exact: true })
     .click();
   await architectPage
@@ -147,13 +147,13 @@ test('discarding a stage removes the variable a discarded field created', async 
   await reopenStage(architectPage);
 
   // Add a second field on a brand-new variable, then remove the field again.
-  await addFormField(editor.section('Form'), {
+  await addFormField(editor.section('Form configuration'), {
     variableName: 'orphanVar',
     promptText: 'Something we will discard.',
   });
 
   await editor
-    .section('Form')
+    .section('Form configuration')
     .getByRole('button', { name: 'Remove field' })
     .last()
     .click();
@@ -182,7 +182,7 @@ test('renaming a variable inline marks the stage dirty and reverts on discard', 
   await reopenStage(architectPage);
 
   await editor
-    .section('Form')
+    .section('Form configuration')
     .getByRole('button', { name: 'Edit field' })
     .click();
 

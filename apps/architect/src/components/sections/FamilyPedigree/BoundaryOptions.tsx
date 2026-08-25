@@ -1,6 +1,6 @@
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
+import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import IssueAnchor from '~/components/IssueAnchor';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -22,13 +22,8 @@ const BoundaryOptions = (_props: StageEditorSectionProps) => {
 
   return (
     <Section
-      title="Boundary Options"
-      summary={
-        <Paragraph>
-          Configure how far the family pedigree must extend beyond the
-          participant&rsquo;s immediate family.
-        </Paragraph>
-      }
+      title="Pedigree boundaries"
+      description="Set how far the pedigree must extend beyond the participant's immediate family."
     >
       <Paragraph>
         Each boundary below can be set to one of three enforcement levels, which
@@ -51,13 +46,13 @@ const BoundaryOptions = (_props: StageEditorSectionProps) => {
       </ul>
       <IssueAnchor
         fieldName="boundaries.requireGrandparents"
-        description="Require Grandparents"
+        description="Grandparent requirement"
       />
       <ArchitectField
         name="boundaries.requireGrandparents"
         component={NativeSelectField}
         validation={{ required: true }}
-        label="Require Grandparents"
+        label="Grandparent requirement"
         initialValue={requireGrandparentsInitial}
         options={BOUNDARY_REQUIREMENT_OPTIONS}
         placeholder="Select an option"
@@ -71,13 +66,13 @@ const BoundaryOptions = (_props: StageEditorSectionProps) => {
       />
       <IssueAnchor
         fieldName="boundaries.requireChildrenContributors"
-        description="Require Co-Parents' Families"
+        description="Co-parent family requirement"
       />
       <ArchitectField
         name="boundaries.requireChildrenContributors"
         component={NativeSelectField}
         validation={{ required: true }}
-        label="Require Co-Parents' Families"
+        label="Co-parent family requirement"
         initialValue={requireChildrenContributorsInitial}
         options={BOUNDARY_REQUIREMENT_OPTIONS}
         placeholder="Select an option"

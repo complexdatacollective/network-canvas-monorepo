@@ -2,11 +2,13 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { action } from 'storybook/actions';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
+import useDialog from './dialogs/useDialog';
 import Field from './form/Field/Field';
 import InputField from './form/fields/InputField';
 import Form from './form/Form';
 import SubmitButton from './form/SubmitButton';
 import Section from './Section';
+import { withDialogProvider } from './storybook-support/withDialogProvider';
 
 const meta = {
   title: 'Components/Section',
@@ -17,7 +19,7 @@ const meta = {
       description: {
         component: `A single-panel section for grouping related form fields.
 
-\`Section\` composes Base UI Collapsible, Fresco UI Surface, and the existing Toggle control. Toggleable sections unmount their contents when closed, so connected Fresco form fields unregister automatically.
+\`Section\` composes Base UI Collapsible, Fresco UI Surface, and the existing Toggle control. Closing a toggleable section unregisters its Fresco form fields and clears their current values. They remain cleared if the section is reopened during the same form session. Use \`onOpenChange\` to confirm or block a requested change before data is discarded.
 
 \`\`\`tsx
 <Section
@@ -31,7 +33,7 @@ const meta = {
 </Section>
 \`\`\`
 
-Props: \`title\`, \`description?\`, \`toggleable?\`, \`defaultOpen?\` (only accepted when \`toggleable\` is true), \`disabled?\`, and \`children\`.`,
+Props: \`title\`, \`description?\`, \`toggleable?\`, \`defaultOpen?\` and \`onOpenChange?\` (only accepted when \`toggleable\` is true), \`disabled?\`, and \`children\`.`,
       },
     },
   },
@@ -53,6 +55,11 @@ Props: \`title\`, \`description?\`, \`toggleable?\`, \`defaultOpen?\` (only acce
       control: 'boolean',
       description:
         'Whether a toggleable section starts open. Only accepted when toggleable is true.',
+    },
+    onOpenChange: {
+      control: false,
+      description:
+        'Called before a toggleable section changes state. Return false, or a promise resolving to false, to block the change.',
     },
     disabled: {
       control: 'boolean',
@@ -141,7 +148,7 @@ function NestedSectionsPreview() {
         defaultOpen
       >
         <div className="grid gap-6">
-          <Section title="Mapbox API key">
+          <Section title="Map provider credentials">
             <Field
               name="mapboxApiKey"
               label="Mapbox API key"
@@ -180,6 +187,47 @@ function NestedSectionsPreview() {
   );
 }
 
+function GuardedSectionPreview() {
+  const { confirm } = useDialog();
+
+  const confirmOpenChange = async (nextOpen: boolean) => {
+    if (nextOpen) return true;
+
+    const result = await confirm({
+      title: 'Reset optional details?',
+      description:
+        'Closing this section will discard its current field values.',
+      confirmLabel: 'Reset section',
+      cancelLabel: 'Keep editing',
+      intent: 'destructive',
+      onConfirm: () => {},
+    });
+    return result === true;
+  };
+
+  return (
+    <Form
+      onSubmit={() => Promise.resolve({ success: true })}
+      className="max-w-5xl"
+    >
+      <Section
+        title="Optional details"
+        description="Closing this section resets the field below."
+        toggleable
+        defaultOpen
+        onOpenChange={confirmOpenChange}
+      >
+        <Field
+          name="notes"
+          label="Notes"
+          component={InputField}
+          initialValue="Initial note"
+        />
+      </Section>
+    </Form>
+  );
+}
+
 export const Default: Story = {
   render: (args) => <SectionPreview {...args} />,
   play: async ({ canvasElement }) => {
@@ -190,6 +238,8 @@ export const Default: Story = {
 
     await expect(toggle).toHaveAttribute('aria-checked', 'true');
     await expect(canvas.getByLabelText('GeoJSON resource')).toBeVisible();
+    await userEvent.clear(canvas.getByLabelText('GeoJSON resource'));
+    await userEvent.type(canvas.getByLabelText('GeoJSON resource'), 'Edited');
 
     await userEvent.click(toggle);
 
@@ -204,6 +254,7 @@ export const Default: Story = {
     await waitFor(() =>
       expect(canvas.getByLabelText('GeoJSON resource')).toBeVisible(),
     );
+    await expect(canvas.getByLabelText('GeoJSON resource')).toHaveValue('');
   },
 };
 
@@ -232,6 +283,41 @@ export const Disabled: Story = {
   render: (args) => <SectionPreview {...args} />,
 };
 
+export const GuardedReset: Story = {
+  decorators: [withDialogProvider],
+  render: () => <GuardedSectionPreview />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const toggle = canvas.getByRole('switch', { name: 'Optional details' });
+    const notes = canvas.getByLabelText('Notes');
+    await userEvent.clear(notes);
+    await userEvent.type(notes, 'Unsaved note');
+
+    await userEvent.click(toggle);
+    const dialog = within(document.body).getByRole('dialog', {
+      name: 'Reset optional details?',
+    });
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Keep editing' }),
+    );
+    await expect(canvas.getByDisplayValue('Unsaved note')).toBeVisible();
+
+    await userEvent.click(toggle);
+    const reopenedDialog = within(document.body).getByRole('dialog', {
+      name: 'Reset optional details?',
+    });
+    await userEvent.click(
+      within(reopenedDialog).getByRole('button', { name: 'Reset section' }),
+    );
+    await waitFor(() =>
+      expect(canvas.queryByLabelText('Notes')).not.toBeInTheDocument(),
+    );
+
+    await userEvent.click(toggle);
+    await expect(canvas.getByLabelText('Notes')).toHaveValue('');
+  },
+};
+
 export const NestedSections: Story = {
   render: () => <NestedSectionsPreview />,
   play: async ({ canvasElement }) => {
@@ -247,7 +333,10 @@ export const NestedSections: Story = {
       canvas.getByRole('heading', { name: 'Map configuration', level: 3 }),
     ).toBeVisible();
     await expect(
-      canvas.getByRole('heading', { name: 'Mapbox API key', level: 4 }),
+      canvas.getByRole('heading', {
+        name: 'Map provider credentials',
+        level: 4,
+      }),
     ).toBeVisible();
     await expect(
       canvas.getByRole('textbox', { name: 'Mapbox API key' }),

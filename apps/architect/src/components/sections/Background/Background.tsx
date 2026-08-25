@@ -6,9 +6,9 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { StageType } from '@codaco/protocol-validation';
-import { Section } from '~/components/EditorLayout';
 import ExternalLink from '~/components/ExternalLink';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -171,13 +171,10 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
   return (
     <Section
       title="Background"
-      summary={
-        <Paragraph>
-          This section determines the graphical background for this prompt.
-          {imageAllowed
-            ? ' You can choose between a conventional series of concentric circles, or provide your own background image.'
-            : ' This stage uses the conventional series of concentric circles.'}
-        </Paragraph>
+      description={
+        imageAllowed
+          ? 'Choose concentric circles or a custom image as the graphical background for this prompt.'
+          : 'Configure the concentric-circle background for this prompt.'
       }
     >
       {imageAllowed && (
@@ -196,7 +193,7 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
           name="background.concentricCircles"
           component={IntegerInput}
           validation={{ required: true, positiveNumber: true }}
-          label="Number of concentric circles to use:"
+          label="Number of concentric circles"
           initialValue={concentricCirclesInitialValue}
           inline
         />
@@ -206,7 +203,7 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
           name="background.skewedTowardCenter"
           component={ToggleField}
           inline
-          label="Skew circle size?"
+          label="Skew circle sizes"
           hint="When enabled, the inner circles will be proportionally larger than the outer circles, which can help reduce overlap of nodes in the center of the canvas."
           initialValue={skewedTowardCenterInitialValue ?? false}
         />

@@ -2,13 +2,12 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
 import Surface from '@codaco/fresco-ui/layout/Surface';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import Section from '@codaco/fresco-ui/Section';
 import {
   FAMILY_PEDIGREE_SLOTS,
   INTERFACE_OWNED_OPTION_SETS,
   optionsMatchInterfaceOwnedSet,
 } from '@codaco/protocol-validation';
-import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import IssueAnchor from '~/components/IssueAnchor';
@@ -112,7 +111,7 @@ const VariableRow = ({
           </span>
         </div>
         <div className="relative w-full min-w-0 @min-[34rem]:flex-1 @min-[34rem]:basis-0">
-          <IssueAnchor fieldName={name} description={`${label} Attribute`} />
+          <IssueAnchor fieldName={name} description={`${label} attribute`} />
           <ArchitectField
             name={name}
             component={VariablePickerControl}
@@ -332,25 +331,10 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
   return (
     <>
       <Section
-        title="Edge Configuration"
-        summary={
-          <>
-            <Paragraph>
-              The family pedigree is stored as a network: each family member is
-              a node, and every parent or partner connection between two people
-              is an edge. This interface needs an edge type so that it can
-              record those connections in your codebook — including the
-              parentage it infers automatically — and so that the structure of
-              the pedigree appears in your exported data.
-            </Paragraph>
-            <Paragraph>
-              Select the edge type to use, along with the attributes that store
-              the details of each relationship.
-            </Paragraph>
-          </>
-        }
+        title="Relationship data"
+        description="Choose the edge type and attributes used to store family relationships."
       >
-        <IssueAnchor fieldName="edgeConfig.type" description="Edge Type" />
+        <IssueAnchor fieldName="edgeConfig.type" description="Edge type" />
         <ArchitectField
           name="edgeConfig.type"
           component={EntitySelectControl}
@@ -369,7 +353,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
           >
             <VariableRow
               name="edgeConfig.relationshipTypeVariable"
-              label="Relationship Type"
+              label="Relationship type"
               description="Stores the type of relationship between family members (e.g. biological, social, donor, surrogate, adoptive, or partner)."
               edgeType={edgeType}
               options={relationshipTypeVariableOptions}
@@ -378,7 +362,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
             />
             <VariableRow
               name="edgeConfig.isActiveVariable"
-              label="Is Active"
+              label="Active status"
               description="Stores whether the relationship is currently active."
               edgeType={edgeType}
               options={isActiveVariableOptions}
@@ -387,7 +371,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
             />
             <VariableRow
               name="edgeConfig.isGestationalCarrierVariable"
-              label="Gestational Carrier"
+              label="Gestational carrier"
               description="Stores whether a parent is a gestational carrier (parent edges only)."
               edgeType={edgeType}
               options={isGestationalCarrierVariableOptions}
@@ -396,7 +380,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
             />
             <VariableRow
               name="edgeConfig.gameteRoleVariable"
-              label="Gamete Role"
+              label="Gamete role"
               description="Stores which reproductive cell (gamete) a parent contributed to a child: the egg or the sperm. The interface uses this to trace the biological route of inheritance along each parent relationship. This attribute uses a fixed set of values (egg/sperm) that cannot be edited."
               edgeType={edgeType}
               options={gameteRoleVariableOptions}

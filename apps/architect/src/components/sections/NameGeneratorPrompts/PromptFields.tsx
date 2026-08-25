@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { shallowEqual, useSelector } from 'react-redux';
 
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import AssignAttributes, {
   committedAttributeVariableIds,
@@ -180,7 +180,10 @@ const PromptFields = ({
   return (
     <>
       <PromptText initialValue={text} />
-      <Section layout="vertical">
+      <Section
+        title="Additional attributes"
+        description="Assign fixed attribute values to nodes created from this prompt."
+      >
         {/*
           The field only mounts once a node type is chosen: with no subject
           there is no pool to pick from and nothing to validate. Hoisting it
@@ -191,10 +194,8 @@ const PromptFields = ({
         {subject && (
           <ArchitectArrayField
             name="additionalAttributes"
-            label="Assign Additional Attributes"
-            hint="This feature allows you to assign an attribute and associated value
-            to any nodes created on this prompt. You could then use this
-            attribute in your skip logic or stage filtering rules."
+            label="Attribute assignments"
+            hint="Use assigned values in skip logic or stage filtering rules."
             component={AssignAttributes}
             initialValue={additionalAttributes}
             entity={subject.entity}

@@ -4,7 +4,7 @@ import { shallowEqual, useSelector } from 'react-redux';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import Options, {
@@ -28,7 +28,6 @@ import {
   excludeInterfaceOwned,
   excludeValidatedUses,
 } from '~/selectors/roleFilters';
-import { getFieldId } from '~/utils/issues';
 
 import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import BinSortOrderSection from '../BinSortOrderSection';
@@ -168,11 +167,14 @@ const PromptFields = ({
   return (
     <>
       <PromptText initialValue={text} />
-      <Section id={getFieldId('variable')} layout="vertical">
+      <Section
+        title="Ordinal response"
+        description="Choose the ordinal attribute whose values are shown as bins."
+      >
         <ArchitectField
           name="variable"
-          label="Ordinal attribute"
-          hint="Select an ordinal attribute to assign a value to."
+          label="Attribute"
+          hint="Select an ordinal attribute."
           component={VariablePicker}
           validation={{ required: true }}
           initialValue={variable}
@@ -183,7 +185,7 @@ const PromptFields = ({
         />
       </Section>
       {currentVariable && (
-        <Section id={getFieldId('variableOptions')} layout="vertical">
+        <Section title="Attribute options">
           {lockedOptions && <LockedOptions options={lockedOptions} />}
           {!lockedOptions && showVariableOptionsTip && (
             <Alert variant="destructive" className="my-7">
@@ -215,7 +217,10 @@ const PromptFields = ({
           )}
         </Section>
       )}
-      <Section id={getFieldId('color')} layout="vertical">
+      <Section
+        title="Color gradient"
+        description="Choose the gradient used to distinguish ordinal options."
+      >
         <ArchitectField
           name="color"
           label="Color"

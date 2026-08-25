@@ -6,13 +6,13 @@
     "entity": "node",
     "type": "id-2"
   },
-  "background": {
-    "concentricCircles": 4,
-    "skewedTowardCenter": false
-  },
   "quickAdd": "id-3",
   "layoutVariable": "id-4",
   "behaviours": {
     "automaticLayout": true
+  },
+  "background": {
+    "concentricCircles": 4,
+    "skewedTowardCenter": false
   }
 }

@@ -1,5 +1,5 @@
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
@@ -13,7 +13,10 @@ const NarrativeBehaviours = (_props: StageEditorSectionProps) => {
     'behaviours.allowRepositioning',
   );
   return (
-    <Section title="Narrative Behaviours">
+    <Section
+      title="Narrative behaviors"
+      description="Control automatic layout, drawing, and node repositioning on the narrative canvas."
+    >
       <ArchitectField
         name="behaviours.automaticLayout"
         label="Automatic layout"

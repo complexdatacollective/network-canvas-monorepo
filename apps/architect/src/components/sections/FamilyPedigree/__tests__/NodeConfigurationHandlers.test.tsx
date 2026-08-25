@@ -16,7 +16,9 @@ import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 // the codebook write itself is a plain spy.
 vi.mock('~/components/EditorLayout', () => ({
   Row: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  Section: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+}));
+vi.mock('@codaco/fresco-ui/Section', () => ({
+  default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 vi.mock('~/components/IssueAnchor', () => ({ default: () => null }));
 vi.mock('~/components/NewVariableWindow', () => ({

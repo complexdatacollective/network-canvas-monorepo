@@ -4,9 +4,7 @@ import type { ComponentType } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import Heading from '@codaco/fresco-ui/typography/Heading';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import Options, {
@@ -29,7 +27,6 @@ import {
   excludeInterfaceOwned,
   excludeValidatedUses,
 } from '~/selectors/roleFilters';
-import { getFieldId } from '~/utils/issues';
 
 import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import { getEdgesForSubject } from '../SociogramPrompts/selectors';
@@ -158,32 +155,14 @@ const PromptFields = ({
 
   return (
     <>
-      <Section id={getFieldId('text')} layout="vertical">
+      <Section
+        title="Participant prompt"
+        description="Explain the relationship participants should evaluate for each pair."
+      >
         <ArchitectField
           name="text"
-          label="Tie-Strength Census Prompt"
-          hint={
-            <>
-              <Paragraph>
-                Tie-Strength Census prompts explain to your participant which
-                relationship they should evaluate (for example,
-                &apos;friendship&apos;, &apos;material support&apos; or
-                &apos;conflict&apos;). Enter prompt text below, and select an
-                edge type that will be created when the participant answers
-                &apos;yes&apos;.
-              </Paragraph>
-              <Paragraph>
-                Remember to write your prompt text to take into account that the
-                participant will be looking at pairs of prompts in sequence. Use
-                phrases such as &apos;
-                <strong>these people</strong>
-                &apos;, or &apos;
-                <strong>the two people shown</strong>
-                &apos; to indicate that the participant should focus on the
-                visible pair.
-              </Paragraph>
-            </>
-          }
+          label="Prompt text"
+          hint="Refer clearly to the two people shown and phrase the prompt for a yes or no response."
           component={RichTextField}
           validation={{ required: true }}
           initialValue={text}
@@ -192,37 +171,17 @@ const PromptFields = ({
         />
       </Section>
       <Section
-        title="Tie-Strength Configuration"
-        id={getFieldId('set-ordinal-value')}
-        summary={
-          <>
-            <Paragraph>
-              This interface works by presenting the user with a choice to
-              either:
-            </Paragraph>
-            <ul>
-              <li>
-                Create an edge between two alters, and simultaneously assign a
-                value to an ordinal attribute.
-              </li>
-              <li>Decline to create an edge</li>
-            </ul>
-          </>
-        }
-        layout="vertical"
+        title="Tie-strength response"
+        description="Configure the edge and ordinal value created by an affirmative response."
       >
-        <Section layout="vertical">
+        <Section
+          title="Edge creation"
+          description="Choose the edge type created between the two nodes."
+        >
           <ArchitectField
             name="createEdge"
-            label="Create an edge"
-            hint={
-              <Paragraph>
-                Begin by selecting or creating an edge type. You will then be
-                able to select or create an ordinal attribute on this edge type.
-                The options of this ordinal attribute will represent the choices
-                provided to the user when creating an edge.
-              </Paragraph>
-            }
+            label="Edge type"
+            hint="Select or create the edge type before configuring its ordinal attribute."
             component={NativeSelect as ComponentType<Record<string, unknown>>}
             validation={{ required: true, allowedNMToken: 'edge type name' }}
             initialValue={createEdge}
@@ -239,10 +198,13 @@ const PromptFields = ({
           />
         </Section>
         {currentCreateEdge && (
-          <Section title="Ordinal Attribute" layout="vertical">
+          <Section
+            title="Response attribute"
+            description="Choose the ordinal attribute whose options participants use to rate the relationship."
+          >
             <ArchitectField
               name="edgeVariable"
-              label="Select an ordinal attribute for this edge type"
+              label="Ordinal attribute"
               component={VariablePicker}
               validation={{ required: true }}
               initialValue={edgeVariable}
@@ -251,20 +213,8 @@ const PromptFields = ({
               options={ordinalVariableOptions}
               onCreateOption={handleNewVariable}
             />
-            {currentEdgeVariable && (
-              <Heading level="h4" id={getFieldId('variableOptions')}>
-                Attribute Options
-              </Heading>
-            )}
             {currentEdgeVariable && lockedOptions && (
               <LockedOptions options={lockedOptions} />
-            )}
-            {currentEdgeVariable && !lockedOptions && (
-              <Paragraph>
-                The following choices or &apos;options&apos; are configured for
-                this attribute. We suggest no more than four options should be
-                used on this interface.
-              </Paragraph>
             )}
             {currentEdgeVariable &&
               !lockedOptions &&
@@ -282,8 +232,8 @@ const PromptFields = ({
             {currentEdgeVariable && !lockedOptions && (
               <ArchitectArrayField
                 name="variableOptions"
-                label="Options"
-                labelHidden
+                label="Option values"
+                hint="Create up to four response options for this attribute."
                 component={Options}
                 addButtonLabel="Create new option"
                 validation={optionsValidation}
@@ -292,17 +242,14 @@ const PromptFields = ({
             )}
           </Section>
         )}
-        <Section id={getFieldId('negativeLabel')} layout="vertical">
+        <Section
+          title="Decline response"
+          description="Set the option participants use to decline edge creation."
+        >
           <ArchitectField
             name="negativeLabel"
             label="Decline option"
-            hint={
-              <Paragraph>
-                Enter text to display for the option that will{' '}
-                <strong>cancel edge creation</strong>. This option will be shown
-                on the far right of the screen.
-              </Paragraph>
-            }
+            hint="This option appears on the far right of the screen."
             component={RichTextField}
             validation={{ required: true }}
             initialValue={negativeLabel}

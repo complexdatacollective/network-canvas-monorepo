@@ -2,13 +2,11 @@ import { expect } from '@playwright/test';
 
 import { type StageEditor } from '../stage-editor.js';
 
-// NodePanels section (sections/NodePanels/*, `Section title="Side Panels"`,
+// NodePanels section (sections/NodePanels/*, `Section title="Side panels"`,
 // toggleable, collapsed on a fresh stage, disabled until `subject.type` is
 // set). Facts verified against source:
 // - Each section toggle is named by its own heading, so the header switch is
-//   'Side Panels' and a panel's nested Filter switch is 'Filter'. `.first()`
-//   survives from when both carried one shared name; it is harmless and keeps
-//   the header switch selected if a future panel repeats the heading.
+//   'Side panels' and a panel's nested filter switch is 'Panel filter'.
 // - 'Add new panel' is an `immediateAdd` ArrayField: one click inserts
 //   `{ id: uuid(), title: null, dataSource: 'existing', filter: null }`
 //   (NodePanels.tsx createNodePanel) inline — no dialog. Each panel's fields
@@ -21,8 +19,10 @@ export async function addExistingNetworkPanel(
   editor: StageEditor,
   title: string,
 ): Promise<void> {
-  const section = editor.section('Side Panels');
-  await section.getByRole('switch', { name: 'Side Panels' }).first().click();
+  const section = editor.section('Side panels');
+  await section
+    .getByRole('switch', { name: 'Side panels', exact: true })
+    .click();
   await section.getByRole('button', { name: 'Add new panel' }).click();
   const panel = section.getByRole('listitem').first();
   await panel.getByRole('textbox', { name: 'Panel title' }).fill(title);

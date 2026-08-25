@@ -6,12 +6,12 @@ import { createVariableViaSpotlight } from './variables.js';
 
 // NarrativePresets + NarrativeBehaviours sections. Facts verified against
 // source (sections/NarrativePresets/*, sections/NarrativeBehaviours.tsx):
-// - The preset dialog ('Edit Preset') exposes: label (by placeholder — the
-//   narrative.spec.ts precedent), layoutVariable (VariablePicker; typing an
-//   existing variable's exact name Enter-selects it), and three toggleable
-//   subsections — Group Variable (disallowCreation picker), Display Edges
-//   and Highlight Node Attributes (checkbox groups whose accessible names
-//   are the codebook entity/variable names; arrays fill in click order).
+// - The preset dialog ('Edit Preset') exposes a visible "Preset label" field,
+//   layoutVariable (VariablePicker; typing an existing variable's exact name
+//   Enter-selects it), and three toggleable subsections — Node grouping
+//   (disallowCreation picker), Displayed edges and Node highlighting (checkbox
+//   groups whose accessible names are the codebook entity/variable names;
+//   arrays fill in click order).
 // - normalizePreset drops groupVariable/edges/highlight when empty, so only
 //   configured keys persist.
 // - Behaviour switches are named by their field LABEL ('Free-draw',
@@ -50,8 +50,8 @@ export async function addNarrativePreset(
       });
       if (spec.groupVariable) {
         await editor
-          .section('Group Attribute')
-          .getByRole('switch', { name: 'Group Attribute' })
+          .section('Node grouping')
+          .getByRole('switch', { name: 'Node grouping', exact: true })
           .click();
         await createVariableViaSpotlight(page, {
           variableName: spec.groupVariable,
@@ -63,8 +63,8 @@ export async function addNarrativePreset(
       }
       if (spec.displayEdges) {
         await editor
-          .section('Display Edges')
-          .getByRole('switch', { name: 'Display Edges' })
+          .section('Displayed edges')
+          .getByRole('switch', { name: 'Displayed edges', exact: true })
           .click();
         for (const edgeName of spec.displayEdges) {
           await editor
@@ -75,8 +75,8 @@ export async function addNarrativePreset(
       }
       if (spec.highlight) {
         await editor
-          .section('Highlight Node Attributes')
-          .getByRole('switch', { name: 'Highlight Node Attributes' })
+          .section('Node highlighting')
+          .getByRole('switch', { name: 'Node highlighting', exact: true })
           .click();
         for (const variableName of spec.highlight) {
           await editor
@@ -100,7 +100,7 @@ export async function setNarrativeBehaviours(
   editor: StageEditor,
   opts: { freeDraw?: boolean; automaticLayout?: boolean },
 ): Promise<void> {
-  const section = editor.section('Narrative Behaviours');
+  const section = editor.section('Narrative behaviors');
   // Template defaults: automaticLayout true, allowRepositioning true,
   // freeDraw false (mount effect) — only click switches that must change.
   if (opts.freeDraw) {

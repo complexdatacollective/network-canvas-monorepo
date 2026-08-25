@@ -17,8 +17,17 @@ function RegisteredFields() {
   return <output aria-label="Registered fields">{names}</output>;
 }
 
+function NotifyRestoreButton() {
+  const notifyRestore = useFormStore((state) => state.notifyRestore);
+  return (
+    <button type="button" onClick={notifyRestore}>
+      Restore form configuration
+    </button>
+  );
+}
+
 describe('Section', () => {
-  it('unregisters fields while collapsed and restores them when reopened', async () => {
+  it('unregisters and resets fields when collapsed', async () => {
     const onSubmit = vi.fn(() => Promise.resolve({ success: true as const }));
 
     render(
@@ -48,14 +57,19 @@ describe('Section', () => {
     expect(
       screen.getByRole('status', { name: 'Registered fields' }),
     ).toHaveTextContent('notes');
+    fireEvent.change(screen.getByLabelText('Notes'), {
+      target: { value: 'Changed value' },
+    });
+    expect(screen.getByDisplayValue('Changed value')).toBeVisible();
 
     fireEvent.click(toggle);
 
+    expect(screen.queryByLabelText('Notes')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('status', { name: 'Registered fields' }),
+    ).toHaveTextContent('');
     await waitFor(() => {
-      expect(screen.queryByLabelText('Notes')).not.toBeInTheDocument();
-      expect(
-        screen.getByRole('status', { name: 'Registered fields' }),
-      ).toHaveTextContent('');
+      expect(toggle).toHaveAttribute('aria-checked', 'false');
     });
     expect(toggle).toHaveAttribute('aria-checked', 'false');
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
@@ -65,10 +79,136 @@ describe('Section', () => {
 
     fireEvent.click(toggle);
 
-    expect(await screen.findByDisplayValue('Remember this')).toBeVisible();
+    expect(await screen.findByLabelText('Notes')).toHaveValue('');
     expect(
       screen.getByRole('status', { name: 'Registered fields' }),
     ).toHaveTextContent('notes');
+  });
+
+  it('allows an asynchronous guard to block closing without losing data', async () => {
+    const onOpenChange = vi
+      .fn<(open: boolean) => Promise<boolean>>()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+
+    render(
+      <Form onSubmit={() => Promise.resolve({ success: true })}>
+        <Section
+          title="Guarded details"
+          toggleable
+          defaultOpen
+          onOpenChange={onOpenChange}
+        >
+          <Field
+            name="notes"
+            label="Notes"
+            component={InputField}
+            initialValue="Initial value"
+          />
+        </Section>
+      </Form>,
+    );
+
+    const toggle = screen.getByRole('switch', { name: 'Guarded details' });
+    fireEvent.change(screen.getByLabelText('Notes'), {
+      target: { value: 'Unsaved value' },
+    });
+    fireEvent.click(toggle);
+
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(screen.getByDisplayValue('Unsaved value')).toBeVisible();
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+
+    fireEvent.click(toggle);
+    await waitFor(() =>
+      expect(screen.queryByLabelText('Notes')).not.toBeInTheDocument(),
+    );
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+
+    fireEvent.click(toggle);
+    expect(await screen.findByLabelText('Notes')).toHaveValue('');
+  });
+
+  it('allows a synchronous guard to block closing', () => {
+    const onOpenChange = vi.fn(() => false);
+
+    render(
+      <Form onSubmit={() => Promise.resolve({ success: true })}>
+        <Section
+          title="Protected details"
+          toggleable
+          defaultOpen
+          onOpenChange={onOpenChange}
+        >
+          <Field name="notes" label="Notes" component={InputField} />
+        </Section>
+      </Form>,
+    );
+
+    const toggle = screen.getByRole('switch', { name: 'Protected details' });
+    fireEvent.click(toggle);
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByLabelText('Notes')).toBeVisible();
+  });
+
+  it('follows a changed default when a host restores configuration', async () => {
+    const { rerender } = render(
+      <Form onSubmit={() => Promise.resolve({ success: true })}>
+        <Section title="Restored details" toggleable defaultOpen={false}>
+          <span>Restored content</span>
+        </Section>
+        <NotifyRestoreButton />
+      </Form>,
+    );
+
+    const toggle = screen.getByRole('switch', { name: 'Restored details' });
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+
+    rerender(
+      <Form onSubmit={() => Promise.resolve({ success: true })}>
+        <Section title="Restored details" toggleable defaultOpen>
+          <span>Restored content</span>
+        </Section>
+        <NotifyRestoreButton />
+      </Form>,
+    );
+
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Restore form configuration' }),
+    );
+    await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'));
+    expect(screen.getByText('Restored content')).toBeVisible();
+  });
+
+  it('resets fields in nested sections when an enclosing section closes', async () => {
+    render(
+      <Form onSubmit={() => Promise.resolve({ success: true })}>
+        <Section title="Parent settings" toggleable defaultOpen>
+          <Section title="Nested settings">
+            <Field
+              name="nestedValue"
+              label="Nested value"
+              component={InputField}
+              initialValue="Initial nested value"
+            />
+          </Section>
+        </Section>
+      </Form>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Nested value'), {
+      target: { value: 'Changed nested value' },
+    });
+    fireEvent.click(screen.getByRole('switch', { name: 'Parent settings' }));
+    await waitFor(() =>
+      expect(screen.queryByLabelText('Nested value')).not.toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Parent settings' }));
+    expect(await screen.findByLabelText('Nested value')).toHaveValue('');
   });
 
   it('keeps non-toggleable sections open without a disclosure control', async () => {
@@ -110,12 +250,19 @@ describe('Section', () => {
       defaultOpen: false,
     };
 
+    // @ts-expect-error onOpenChange is invalid when toggleable is omitted.
+    const guardedAlwaysOpenProps: SectionProps = {
+      title: 'Always-open guarded section',
+      onOpenChange: () => true,
+    };
+
     expect(toggleableProps).toMatchObject({
       toggleable: true,
       defaultOpen: false,
     });
     void alwaysOpenProps;
     void explicitlyAlwaysOpenProps;
+    void guardedAlwaysOpenProps;
   });
 
   it('opens and closes exactly once from the keyboard', async () => {

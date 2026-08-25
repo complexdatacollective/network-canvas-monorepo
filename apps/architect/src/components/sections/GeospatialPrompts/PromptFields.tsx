@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import NewVariableWindow, {
   type Entity,
@@ -84,11 +84,13 @@ const PromptFields = ({
   return (
     <>
       <PromptText initialValue={text} />
-      <Section layout="vertical">
+      <Section
+        title="Location response"
+        description="Choose the location attribute that stores the participant's selection."
+      >
         <ArchitectField
           name="variable"
-          label="Selection attribute"
-          hint="Select a location attribute to store the participant's selection."
+          label="Location attribute"
           component={VariablePicker}
           validation={{ required: true }}
           initialValue={variable}

@@ -23,8 +23,8 @@ const renderSection = (committedStage?: Record<string, unknown>) =>
 // The visible label text also carries a required-indicator asterisk in the
 // DOM (`aria-hidden`, but still part of the label's textContent), so lookups
 // match on the leading label text rather than an exact string.
-const grandparentsLabel = /^Require Grandparents/;
-const coParentsLabel = /^Require Co-Parents' Families/;
+const grandparentsLabel = /^Grandparent requirement/;
+const coParentsLabel = /^Co-parent family requirement/;
 
 describe('BoundaryOptions', () => {
   it('renders a field for requireGrandparents', () => {

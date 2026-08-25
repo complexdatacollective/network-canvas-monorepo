@@ -2,7 +2,7 @@ import { useCallback, useMemo, type ComponentType } from 'react';
 import { useSelector } from 'react-redux';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
@@ -183,11 +183,13 @@ const Form = ({
 
   return (
     <Section
+      title="Form configuration"
+      description={
+        disabled
+          ? disabledMessage
+          : 'Map attributes to input controls and define the validation rules for this form.'
+      }
       disabled={disabled}
-      disabledMessage={disabledMessage}
-      group
-      title="Form"
-      summary="A Network Canvas form collects attributes by mapping them to input controls and defining validation rules."
     >
       {!disableFormTitle && (
         <ArchitectField

@@ -1,11 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useContext, type ContextType } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
@@ -151,12 +145,8 @@ const renderSection = (committedStage: Record<string, unknown>) => {
   };
 };
 
-/** Every `Section` toggle shares one title, so locate it by its heading. */
-const sectionToggle = (title: string) => {
-  const header = screen.getByText(title).parentElement;
-  if (!header) throw new Error(`no header rendered for "${title}"`);
-  return within(header).getByRole('switch');
-};
+const sectionToggle = (title: string) =>
+  screen.getByRole('switch', { name: title });
 
 const waitForSave = (submitLabel: string) =>
   waitFor(
@@ -191,7 +181,7 @@ describe('Sociogram prompt tap behavior', () => {
     fireEvent.change(screen.getByLabelText('layout.layoutVariable'), {
       target: { value: 'coords' },
     });
-    fireEvent.click(sectionToggle('Interaction Behavior'));
+    fireEvent.click(sectionToggle('Node interaction'));
     fireEvent.click(
       await screen.findByRole('radio', { name: /Attribute Toggling/ }),
     );
@@ -278,7 +268,7 @@ describe('Sociogram prompt tap behavior', () => {
     fireEvent.change(screen.getByLabelText('layout.layoutVariable'), {
       target: { value: 'coords' },
     });
-    fireEvent.click(sectionToggle('Interaction Behavior'));
+    fireEvent.click(sectionToggle('Node interaction'));
     fireEvent.click(
       await screen.findByRole('radio', { name: /Edge Creation/ }),
     );
@@ -295,10 +285,9 @@ describe('Sociogram prompt tap behavior', () => {
     });
   });
 
-  // The layout-only prompts of the canonical protocol are authored with the
-  // Interaction Behavior on-then-off dance, which is the only thing that
-  // writes their `highlight: {allowHighlighting: false}`.
-  it('records highlighting as off when the section is toggled on and back off', async () => {
+  // Opening and closing the Section without choosing a behavior must not add
+  // configuration to the prompt.
+  it('keeps interaction behavior absent when the Section is opened and closed', async () => {
     const { getPrompt } = renderSection({
       subject: { entity: 'node', type: 'person' },
     });
@@ -310,7 +299,7 @@ describe('Sociogram prompt tap behavior', () => {
     fireEvent.change(screen.getByLabelText('layout.layoutVariable'), {
       target: { value: 'coords' },
     });
-    const toggle = sectionToggle('Interaction Behavior');
+    const toggle = sectionToggle('Node interaction');
     fireEvent.click(toggle);
     await waitFor(() => expect(toggle).toBeChecked());
     fireEvent.click(toggle);
@@ -320,7 +309,7 @@ describe('Sociogram prompt tap behavior', () => {
     await waitForSave('Add');
 
     const prompt = getPrompt() as Record<string, unknown>;
-    expect(prompt.highlight).toEqual({ allowHighlighting: false });
+    expect(prompt).not.toHaveProperty('highlight');
     expect(prompt).not.toHaveProperty('edges');
   });
 });

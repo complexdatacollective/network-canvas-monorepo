@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
 
@@ -172,7 +172,10 @@ const ItemEditor = ({
       <span role="status" aria-live="polite" className="sr-only">
         {announcement}
       </span>
-      <Section layout="vertical">
+      <Section
+        title="Item format"
+        description="Choose the type of content this item will show."
+      >
         <ArchitectField
           name="type"
           label="Content type"
@@ -184,14 +187,17 @@ const ItemEditor = ({
         />
       </Section>
       {unusableContentNotice && (
-        <Section title="Content" layout="vertical">
+        <Section
+          title="Unavailable content"
+          description="This item needs a supported text, image, audio, or video source."
+        >
           <Alert variant="warning">
             <AlertDescription>{unusableContentNotice}</AlertDescription>
           </Alert>
         </Section>
       )}
       {slotType && (
-        <Section layout="vertical">
+        <Section title="Item content">
           <ArchitectField
             name={CONTENT_SLOT_NAMES[slotType]}
             component={contentInputs[slotType]}
@@ -206,7 +212,7 @@ const ItemEditor = ({
         </Section>
       )}
       {allowSize && supportsSize(resolvedType) && (
-        <Section layout="vertical" required={false}>
+        <Section title="Item presentation">
           <ArchitectField
             name="size"
             component={FrescoRadioGroupField}

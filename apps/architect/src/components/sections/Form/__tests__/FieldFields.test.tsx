@@ -7,20 +7,11 @@ import Form from '@codaco/fresco-ui/form/Form';
 // The heavy editor chrome is stubbed the way ComposerAttributeFields' test
 // stubs it; what matters here is the props FieldFields hands ValidationSection,
 // which the stub below surfaces as a data attribute.
-vi.mock('~/components/EditorLayout', () => ({
-  Section: ({
-    children,
-    title,
-  }: {
-    children: ReactNode;
-    title?: ReactNode;
-  }) => (
+vi.mock('@codaco/fresco-ui/Section', () => ({
+  default: ({ children, title }: { children: ReactNode; title: ReactNode }) => (
     <section data-testid="section" data-has-title={title != null}>
       {children}
     </section>
-  ),
-  Subsection: ({ children }: { children: ReactNode }) => (
-    <section>{children}</section>
   ),
 }));
 vi.mock('~/components/Form/ArchitectField', () => ({
@@ -109,13 +100,13 @@ beforeEach(() => {
 // a real codebook id let the row OFFER a reference rule the dialog then
 // rejected on save.
 describe('FieldFields validation identity', () => {
-  it('restores untitled Section surfaces around dialog fields', () => {
+  it('groups dialog fields in titled Section surfaces', () => {
     renderFields();
 
     const sections = screen.getAllByTestId('section');
     expect(sections.length).toBeGreaterThan(0);
     sections.forEach((section) => {
-      expect(section).toHaveAttribute('data-has-title', 'false');
+      expect(section).toHaveAttribute('data-has-title', 'true');
     });
     expect(screen.getByTestId('validation-section')).toHaveAttribute(
       'data-show-heading',

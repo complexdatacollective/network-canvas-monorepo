@@ -8,10 +8,11 @@ import type {
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import Section from '@codaco/fresco-ui/Section';
 import type { Variable, VariableOption } from '@codaco/protocol-validation';
 import { ensureError } from '@codaco/shared-consts';
 import DialogForm from '~/components/DialogForm/DialogForm';
-import { Section, Subsection } from '~/components/EditorLayout';
+import { Subsection } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import Options, {
@@ -96,8 +97,11 @@ const NewVariableFields = ({
     : NO_OPTIONS;
 
   return (
-    <Section layout="vertical">
-      <Subsection id={getFieldId('name')} title="Attribute Name">
+    <Section
+      title="Attribute definition"
+      description="Define the attribute's identity, data type, and available values."
+    >
+      <Subsection id={getFieldId('name')} title="Identity">
         <ArchitectField
           name="name"
           label="Attribute name"
@@ -116,11 +120,10 @@ const NewVariableFields = ({
           }}
         />
       </Subsection>
-      <Subsection id={getFieldId('type')} title="Attribute Type">
+      <Subsection id={getFieldId('type')} title="Data type">
         <ArchitectField
           name="type"
           label="Attribute type"
-          labelHidden
           component={StyledSelectField}
           placeholder="Select attribute type"
           options={variableTypeOptions}
@@ -138,7 +141,7 @@ const NewVariableFields = ({
         />
       </Subsection>
       {isOrdinalOrCategoricalType(variableType) && (
-        <Subsection id={getFieldId('options')} title="Options">
+        <Subsection id={getFieldId('options')} title="Allowed values">
           {lockedOptions ? (
             <LockedOptions options={lockedOptions} />
           ) : (

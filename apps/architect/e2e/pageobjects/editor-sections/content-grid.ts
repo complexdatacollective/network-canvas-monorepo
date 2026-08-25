@@ -11,7 +11,7 @@ import { pickResource, uploadIntoResourceBrowser } from './asset-upload.js';
 // writes no `size` key (normalizeType drops the '' value). Saved items are
 // `{ id, content, type: 'text' | 'asset' }` (+ `size`), in add order.
 // Open the item dialog and wait for the shared `editable-list-form` to hold
-// the FRESH draft: a new item has no `type`, so the Content section must be
+// the FRESH draft: a new item has no `type`, so the Item content section must be
 // absent before the type radio is clicked. Without this guard, back-to-back
 // item adds can race the form reinitialize and submit a second item carrying
 // the previous item's id — the app then rejects the whole stage commit with

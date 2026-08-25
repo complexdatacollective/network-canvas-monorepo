@@ -2,12 +2,11 @@ import type { ComponentType } from 'react';
 
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import Section from '@codaco/fresco-ui/Section';
 import { mapboxStyleOptions } from '~/config/mapboxConstants';
 import { documentationLinks } from '~/utils/documentationLinks';
 
 import useVariablesFromExternalData from '../../hooks/useVariablesFromExternalData';
-import { Section } from '../EditorLayout';
 import ExternalLink from '../ExternalLink';
 import ArchitectField from '../Form/ArchitectField';
 import ColorPicker from '../Form/Fields/ColorPicker';
@@ -75,7 +74,10 @@ const MapOptions = () => {
   };
   return (
     <>
-      <Section layout="vertical">
+      <Section
+        title="Map access"
+        description="Provide the Mapbox API key required to display the map."
+      >
         <div data-name="Map Options Mapbox Key" />
         <ArchitectField
           name="mapOptions.tokenAssetId"
@@ -96,13 +98,8 @@ const MapOptions = () => {
         />
       </Section>
       <Section
-        title="Data source for map layers"
-        summary={
-          <Paragraph>
-            This interface requires a GeoJSON source for map layers. These
-            provide selectable areas for prompts. Select a GeoJSON file to use.
-          </Paragraph>
-        }
+        title="Map layers"
+        description="Select the GeoJSON source that provides selectable areas for prompts."
       >
         <div data-name="Layer data-source" />
         <ArchitectField
@@ -115,7 +112,7 @@ const MapOptions = () => {
         {Boolean(dataSourceAssetId) && !isVariablesLoading && (
           <ArchitectField
             name="mapOptions.targetFeatureProperty"
-            label="Which property should be used for map selection?"
+            label="Map selection property"
             component={FrescoNativeSelectField}
             initialValue={initialTargetFeatureProperty}
             validation={{
@@ -134,11 +131,11 @@ const MapOptions = () => {
         )}
       </Section>
       <Section
-        title="Map Style"
-        summary={
-          <Paragraph>
-            Customize the colors, style, and features of the map.
-          </Paragraph>
+        title="Map appearance"
+        description={
+          disabled
+            ? 'Provide a Mapbox API key before configuring the map appearance.'
+            : 'Customize the colors, style, and features of the map.'
         }
         disabled={disabled}
       >
@@ -149,10 +146,10 @@ const MapOptions = () => {
           validation={{ required: true }}
           palette={paletteName}
           paletteRange={paletteSize}
-          label="Which color would you like to use for this stage's map outlines and selections?"
+          label="Map outline and selection color"
         />
         <ArchitectField
-          label="Which mapbox style would you like to use for the map itself?"
+          label="Mapbox style"
           component={FrescoNativeSelectField}
           name="mapOptions.style"
           initialValue={initialMapOptions?.style}
@@ -162,7 +159,7 @@ const MapOptions = () => {
 
         <ArchitectField
           name="mapOptions.showTransit"
-          label="Show Public Transit"
+          label="Show public transit"
           hint="Show public transit routes and stations on the map."
           component={ToggleField}
           inline
@@ -171,7 +168,7 @@ const MapOptions = () => {
 
         <ArchitectField
           name="mapOptions.allowSearch"
-          label="Allow Location Search"
+          label="Allow location search"
           hint="Allow participants to search the map for addresses, neighborhoods, and points of interest."
           component={ToggleField}
           inline
@@ -179,9 +176,13 @@ const MapOptions = () => {
         />
       </Section>
       <Section
+        title="Map starting position"
+        description={
+          disabled
+            ? 'Provide a Mapbox API key before setting the initial map view.'
+            : 'Set where the map is centered and how far it is zoomed when the stage opens.'
+        }
         disabled={disabled}
-        layout="vertical"
-        title={disabled ? 'Initial Map View' : undefined}
       >
         {/*
           NOTE: this registers a SEPARATE field at the parent `mapOptions`
@@ -199,7 +200,7 @@ const MapOptions = () => {
           component={MapSelection}
           initialValue={initialMapOptions}
           validation={{ required: 'Required', completeMapView }}
-          label="Initial Map View"
+          label="Initial map view"
           hint="Configure the initial map view to adjust where it will be centered and zoomed to."
           previewOptions={{ tokenAssetId, style }}
         />

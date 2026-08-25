@@ -8,11 +8,9 @@ import { createVariableViaSpotlight } from './variables.js';
 // verified against source:
 // - The layout picker (data-field-name="layout.layoutVariable") creates
 //   layout-typed variables through the simple spotlight path.
-// - 'Interaction Behavior' is toggleable and collapsed for a fresh prompt;
-//   toggling ON writes nothing, toggling OFF writes
-//   `highlight: { allowHighlighting: false }` (nulls pruned) — the canonical
-//   layout-only prompts carry exactly that key, so they are authored with an
-//   ON-then-OFF dance (PromptFieldsTapBehaviour handleToggleChange).
+// - 'Node interaction' is toggleable and collapsed for a fresh prompt.
+//   Closing it discards its descendant fields, so a layout-only prompt leaves
+//   `highlight` absent.
 // - The behaviour radios carry long markdown accessible names — matched via
 //   a name REGEX (their labels are sibling <label> elements, so the radio
 //   buttons have no text content for hasText to match). 'Edge
@@ -27,7 +25,6 @@ export type SociogramPromptSpec = {
   text: string;
   layoutVariable: string;
   interaction?:
-    | { kind: 'none-explicit' } // ON-then-OFF → highlight:{allowHighlighting:false}
     | { kind: 'createEdge'; edgeName: string; createNewEdgeType?: boolean }
     | { kind: 'highlight'; variableName: string; create?: boolean };
   displayEdges?: string[];
@@ -56,14 +53,13 @@ export async function addSociogramPrompt(
 
       const interaction = spec.interaction;
       if (interaction) {
-        const section = editor.section('Interaction Behavior');
+        const section = editor.section('Node interaction');
         const toggle = section.getByRole('switch', {
-          name: 'Interaction Behavior',
+          name: 'Node interaction',
+          exact: true,
         });
         await toggle.click();
-        if (interaction.kind === 'none-explicit') {
-          await toggle.click();
-        } else if (interaction.kind === 'createEdge') {
+        if (interaction.kind === 'createEdge') {
           // The behaviour radios' long markdown labels are SIBLING <label>
           // elements — the radio button itself has no text content, so
           // .filter({hasText}) can never match. The accessible NAME includes
@@ -102,9 +98,10 @@ export async function addSociogramPrompt(
       }
 
       if (spec.displayEdges) {
-        const displaySection = editor.section('Display Edges');
+        const displaySection = editor.section('Displayed edges');
         const displayToggle = displaySection.getByRole('switch', {
-          name: 'Display Edges',
+          name: 'Displayed edges',
+          exact: true,
         });
         // The section auto-expands when edges.create is set (mount-effect
         // union) — guard instead of blind-clicking.

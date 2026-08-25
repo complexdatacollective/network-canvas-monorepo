@@ -6,8 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { useStageFormValue } from '~/components/StageEditor/stageFormHooks';
 
@@ -87,38 +86,20 @@ const DisplayEdges = ({ edges: initialEdges }: DisplayEdgesProps) => {
 
   return (
     <Section
-      title="Display Edges"
-      summary={
-        <Paragraph>
-          You can display one or more edge types on this prompt. Where two nodes
-          are connected by multiple edge types, only one of those edge types
-          will be displayed.
-        </Paragraph>
-      }
+      // The shared Section is intentionally uncontrolled. Remount only when
+      // edge creation crosses absent/present so its default can auto-open the
+      // required display choice without resetting on every edge-type change.
+      key={createEdge ? 'with-created-edge' : 'without-created-edge'}
+      title="Displayed edges"
+      description="Choose the edge types shown on this prompt."
       toggleable
-      // Open for a row that arrived WITH display edges, and also whenever the
-      // live value gains one — the observer effect below unions a newly
-      // created edge type in, and `edges.display` only reaches the saved
-      // prompt while its field is mounted (an unregistered field's value is
-      // parked in the store's dormant map and excluded from `getFormValues`).
-      // Following only the pre-edit value silently dropped every
-      // auto-displayed create-edge, contradicting the notice this section
-      // renders ("The edge type being created must always be displayed").
-      startExpanded={!!initialEdges?.display?.length || !!displayEdges?.length}
+      defaultOpen={
+        !!createEdge ||
+        !!initialEdges?.display?.length ||
+        !!displayEdges?.length
+      }
       disabled={edgesForSubject.length === 0}
-      handleToggleChange={(value: boolean) => {
-        // Disallow closing when there is a disabled edge option
-        if (!value && hasDisabledEdgeOption) {
-          return false;
-        }
-        if (value) {
-          return true;
-        }
-        // Reset edge display
-        setLocalFieldValue('edges.display', undefined);
-        return true;
-      }}
-      layout="vertical"
+      onOpenChange={(nextOpen) => nextOpen || !hasDisabledEdgeOption}
     >
       {shouldShowNetworkFilterWarning && (
         <Alert variant="warning" className="my-7">
@@ -144,8 +125,7 @@ const DisplayEdges = ({ edges: initialEdges }: DisplayEdgesProps) => {
         name="edges.display"
         component={CheckboxGroupField}
         options={displayEdgesOptions}
-        label="Display edges of the following type(s)"
-        labelHidden
+        label="Edge types"
         initialValue={initialEdges?.display ?? EMPTY_DISPLAY_EDGES}
       />
     </Section>

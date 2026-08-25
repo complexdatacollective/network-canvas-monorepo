@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 
-import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import MultiSelect, {
   completeRows,
@@ -20,7 +19,7 @@ type BucketSortOrderSectionProps = {
   disabled?: boolean;
   maxItems?: number;
   optionGetter: OptionGetter;
-  summary?: ReactNode;
+  description?: ReactNode;
 };
 const SORT_RULE_PROPERTIES: PropertyField[] = [
   { fieldName: 'property' },
@@ -38,24 +37,15 @@ const BucketSortOrderSection = ({
   disabled = false,
   maxItems = 5,
   optionGetter,
-  summary = 'Enable this option to set the order that nodes appear before they are placed.',
+  description = 'Set the order of nodes before they are placed.',
 }: BucketSortOrderSectionProps) => {
-  const setFieldValue = useFormStore((state) => state.setFieldValue);
-  const handleToggleChange = (nextState: boolean) => {
-    if (!nextState) {
-      setFieldValue('bucketSortOrder', undefined);
-    }
-    return true;
-  };
   return (
     <Section
-      title="Set the order of nodes in the bucket"
-      summary={summary}
+      title="Bucket order"
+      description={description}
       toggleable
       disabled={disabled}
-      startExpanded={!!initialValue}
-      handleToggleChange={handleToggleChange}
-      layout="vertical"
+      defaultOpen={!!initialValue}
     >
       <ArchitectArrayField
         name="bucketSortOrder"

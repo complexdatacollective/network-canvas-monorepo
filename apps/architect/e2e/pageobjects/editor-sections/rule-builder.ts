@@ -69,7 +69,7 @@ const ADD_RULE_BUTTONS = {
 const ruleDialog = (host: Locator) =>
   host.page().getByRole('dialog', { name: 'Construct a Rule' });
 
-/** Authors one rule in the Filter section's builder. */
+/** Authors one rule in the Stage filter section's builder. */
 export async function addFilterRule(
   host: Locator,
   spec: FilterRuleSpec,
@@ -77,7 +77,7 @@ export async function addFilterRule(
   await addEntityRule(host, ADD_RULE_BUTTONS.filter, spec);
 }
 
-/** Authors one rule in the Skip Logic section's builder. */
+/** Authors one rule in the Skip logic section's builder. */
 export async function addSkipLogicRule(
   host: Locator,
   spec: RuleSpec,

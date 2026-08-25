@@ -1,8 +1,8 @@
 import { isEmpty, omit } from 'es-toolkit/compat';
 import type { ComponentType } from 'react';
 
+import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -67,17 +67,24 @@ const NarrativePresets = ({
 }: NarrativePresetsProps) => {
   const { entity, type } = useSubject();
   const initialPresets = useStageInitialValue<Preset[]>('presets');
+  const availabilityProps = disabled
+    ? ({ toggleable: true, defaultOpen: false, disabled: true } as const)
+    : {};
 
   return (
     <Section
-      disabled={disabled}
-      disabledMessage={disabledMessage}
-      layout="vertical"
-      title={disabled ? 'Narrative presets' : undefined}
+      key={disabled ? 'disabled' : 'enabled'}
+      title="Visualization presets"
+      description={
+        disabled
+          ? disabledMessage
+          : 'Create visualizations that researchers can switch between during the interview.'
+      }
+      {...availabilityProps}
     >
       <ArchitectArrayField
         name="presets"
-        label="Narrative presets"
+        label="Presets"
         hint={
           <Paragraph>
             Add one or more &quot;presets&quot; below, to create different

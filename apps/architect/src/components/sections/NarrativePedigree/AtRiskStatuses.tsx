@@ -1,6 +1,6 @@
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
@@ -17,7 +17,7 @@ const AtRiskStatuses = (_props: StageEditorSectionProps) => {
   const initialValue = useStageInitialValue<boolean>(FIELD_NAME) ?? false;
 
   return (
-    <Section title="At-Risk Statuses">
+    <Section title="At-risk statuses">
       <ArchitectField
         name={FIELD_NAME}
         component={ToggleField}

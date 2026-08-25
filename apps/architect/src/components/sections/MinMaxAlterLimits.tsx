@@ -1,16 +1,14 @@
 import { get, isNull, isUndefined } from 'es-toolkit/compat';
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
-  useSetStageValue,
   useStageFormValue,
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
@@ -89,7 +87,6 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
   const hasMultiplePrompts = !!prompts && prompts.length > 1;
   const initialMinValue = useStageInitialValue<number>('behaviours.minNodes');
   const initialMaxValue = useStageInitialValue<number>('behaviours.maxNodes');
-  const setStageValue = useSetStageValue();
   const { confirm } = useDialog();
   const handleToggleChange = useCallback(
     async (newState: boolean) => {
@@ -99,42 +96,29 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
       ) {
         return true;
       }
-      const confirmed = await confirm({
-        title: 'This will clear your values',
-        description:
-          'This will clear the minimum and maximum alter values. Do you want to continue?',
-        confirmLabel: 'Clear values',
-        cancelLabel: 'Cancel',
-        intent: 'warning',
-        onConfirm: () => {},
-      });
-      if (confirmed) {
-        setStageValue('behaviours.minNodes', undefined);
-        setStageValue('behaviours.maxNodes', undefined);
-        return true;
-      }
-      return false;
+      return (
+        (await confirm({
+          title: 'This will clear your values',
+          description:
+            'This will clear the minimum and maximum alter values. Do you want to continue?',
+          confirmLabel: 'Clear values',
+          cancelLabel: 'Cancel',
+          intent: 'warning',
+          onConfirm: () => {},
+        })) === true
+      );
     },
-    [confirm, setStageValue, currentMinValue, currentMaxValue],
+    [confirm, currentMinValue, currentMaxValue],
   );
-  const startExpanded = useMemo(
-    () => !isUndefined(currentMinValue) || !isUndefined(currentMaxValue),
-    [currentMaxValue, currentMinValue],
-  );
+  const defaultOpen =
+    !isUndefined(currentMinValue) || !isUndefined(currentMaxValue);
   return (
     <Section
-      title="Min/max alters"
-      summary={
-        <Paragraph>
-          This feature allows you to specify a minimum or maximum number of
-          alters that can be named on this stage. Please note that these limits
-          apply to the <strong>stage as a whole</strong>, regardless of the
-          number of prompts you have created.
-        </Paragraph>
-      }
+      title="Nomination limits"
+      description="Set the minimum or maximum number of alters that can be named across the whole stage."
       toggleable
-      startExpanded={startExpanded}
-      handleToggleChange={handleToggleChange}
+      defaultOpen={defaultOpen}
+      onOpenChange={handleToggleChange}
     >
       {hasMultiplePrompts && (
         <Alert variant="warning" className="my-7">
@@ -160,7 +144,7 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
             return value >= 0 ? undefined : 'Must be a positive number';
           },
         }}
-        label="Minimum Number of Alters"
+        label="Minimum number of alters"
         hint="0 = no minimum"
         placeholder="0"
       />
@@ -175,7 +159,7 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
             return value >= 1 ? undefined : 'Must be at least 1';
           },
         }}
-        label="Maximum Number of Alters"
+        label="Maximum number of alters"
         hint="Leave empty for no maximum"
         placeholder="Infinity"
       />

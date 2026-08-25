@@ -9,14 +9,13 @@ import {
 import { useSelector } from 'react-redux';
 
 import Surface from '@codaco/fresco-ui/layout/Surface';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import Section from '@codaco/fresco-ui/Section';
 import {
   FAMILY_PEDIGREE_SLOTS,
   INTERFACE_OWNED_OPTION_SETS,
   optionsMatchInterfaceOwnedSet,
 } from '@codaco/protocol-validation';
 import { ensureError } from '@codaco/shared-consts';
-import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
@@ -170,7 +169,7 @@ const VariableRow = ({
           </span>
         </div>
         <div className="relative w-full min-w-0 @min-[34rem]:flex-1 @min-[34rem]:basis-0">
-          <IssueAnchor fieldName={name} description={`${label} Attribute`} />
+          <IssueAnchor fieldName={name} description={`${label} attribute`} />
           <ArchitectField
             name={name}
             component={VariablePickerControl}
@@ -618,15 +617,10 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
   return (
     <>
       <Section
-        title="Node Configuration"
-        summary={
-          <Paragraph>
-            Select the node type and configure attributes and form fields for
-            family members.
-          </Paragraph>
-        }
+        title="Family member data"
+        description="Select the node type and configure attributes and form fields for family members."
       >
-        <IssueAnchor fieldName="nodeConfig.type" description="Node Type" />
+        <IssueAnchor fieldName="nodeConfig.type" description="Node type" />
         <ArchitectField
           name="nodeConfig.type"
           component={EntitySelectControl}
@@ -647,7 +641,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
           >
             <VariableRow
               name="nodeConfig.nodeLabelVariable"
-              label="Node Label"
+              label="Display label"
               description="A text attribute used to store the display label for each family member other than the participant."
               entityType={nodeType}
               options={nodeLabelVariableOptions}
@@ -664,7 +658,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
             )}
             <VariableRow
               name="nodeConfig.egoVariable"
-              label="Ego Identifier"
+              label="Participant identifier"
               description="A boolean attribute to identify which node represents the participant (ego) in the family pedigree."
               entityType={nodeType}
               options={egoVariableOptions}
@@ -673,7 +667,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
             />
             <VariableRow
               name="nodeConfig.relationshipVariable"
-              label="Relationship to Participant"
+              label="Relationship to participant"
               description="Stores each person's relationship to the participant (e.g., mother, uncle, daughter). Automatically calculated by the family pedigree interface."
               entityType={nodeType}
               options={relationshipVariableOptions}
@@ -682,7 +676,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
             />
             <VariableRow
               name="nodeConfig.biologicalSexVariable"
-              label="Biological Sex Attribute"
+              label="Biological sex"
               description="Stores each family member’s sex recorded at birth (female/male/intersex/don’t know/prefer not to say), used for sex-linked inheritance."
               entityType={nodeType}
               options={biologicalSexVariableOptions}
@@ -693,17 +687,13 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
         )}
 
         {nodeType && (
-          <Section layout="vertical">
+          <Section
+            title="Form configuration"
+            description="Add fields shown when participants add or edit family members."
+          >
             <ArchitectArrayField
               name="nodeConfig.form"
               label="Form fields"
-              hint={
-                <Paragraph>
-                  Add fields to collect information about each family member.
-                  These fields will be shown when participants add or edit
-                  family members.
-                </Paragraph>
-              }
               component={DialogArrayField}
               addButtonLabel="Create new form field"
               validation={{}}

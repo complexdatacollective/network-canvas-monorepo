@@ -1,9 +1,8 @@
 import { compose } from 'react-recompose';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
-import Heading from '@codaco/fresco-ui/typography/Heading';
+import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import MultiSelect, {
   completeRows,
@@ -12,7 +11,6 @@ import MultiSelect, {
 } from '~/components/Form/arrayFields/MultiSelect';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
-  useSetStageValue,
   useStageFormValue,
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
@@ -52,30 +50,17 @@ const CardDisplayOptions = ({
   );
   const variableOptionsGetter = getVariableOptionsGetter(variableOptions);
   const maxVariableOptions = variableOptions.length;
-  const setStageValue = useSetStageValue();
   const hasCardDisplayOptions =
     useStageFormValue('cardOptions.additionalProperties') != null;
   const initialAdditionalProperties = useStageInitialValue<ItemValue[]>(
     'cardOptions.additionalProperties',
   );
-  const handleToggleCardDisplayOptions = (nextState: boolean) => {
-    if (!nextState) {
-      setStageValue('cardOptions.additionalProperties', undefined);
-    }
-    return true;
-  };
   return (
     <Section
-      title="Card Display Options"
-      summary={
-        <Paragraph>
-          This section controls how the cards (which represent each item in your
-          roster data file) are displayed to the participant.
-        </Paragraph>
-      }
+      title="Card display"
+      description="Configure how roster cards are displayed to participants."
       toggleable
-      startExpanded={hasCardDisplayOptions}
-      handleToggleChange={handleToggleCardDisplayOptions}
+      defaultOpen={hasCardDisplayOptions}
       disabled={disabled}
     >
       <Alert variant="info" className="my-7">
@@ -84,11 +69,6 @@ const CardDisplayOptions = ({
           data as the main card title.
         </AlertDescription>
       </Alert>
-      <Heading level="h4">Additional Display Properties</Heading>
-      <Paragraph>
-        Would you like to display any other attributes to help the participant
-        recognize a roster alter?
-      </Paragraph>
       {maxVariableOptions === 0 && (
         <Paragraph>
           <em>
@@ -105,7 +85,7 @@ const CardDisplayOptions = ({
       <ArchitectArrayField
         name="cardOptions.additionalProperties"
         label="Additional display properties"
-        labelHidden
+        hint="Choose any additional roster attributes that will help participants recognize an alter."
         component={MultiSelect}
         addButtonLabel="Add new display property"
         initialValue={initialAdditionalProperties}

@@ -1,13 +1,10 @@
 import { get, pickBy } from 'es-toolkit/compat';
 import { useMemo } from 'react';
 
-import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import Section from '@codaco/fresco-ui/Section';
 import type { Variable } from '@codaco/protocol-validation';
-import { Section } from '~/components/EditorLayout';
 import Validations from '~/components/Validations/Validations';
-import useLatchedExpansion from '~/hooks/useLatchedExpansion';
 
 import { getFieldId } from '../../utils/issues';
 
@@ -57,6 +54,8 @@ type ValidationSectionProps = {
    * hint instead; stage-editor consumers retain the toggleable heading.
    */
   showHeading?: boolean;
+  /** Allows external-state consumers to mirror an accepted close. */
+  onOpenChange?: (open: boolean) => boolean | Promise<boolean>;
 };
 const ValidationSection = ({
   disabled = false,
@@ -71,8 +70,8 @@ const ValidationSection = ({
   initialValue,
   commitsImmediately = false,
   showHeading = true,
+  onOpenChange,
 }: ValidationSectionProps) => {
-  const setFieldValue = useFormStore((store) => store.setFieldValue);
   // Sibling draft values, read reactively off the SAME form `ValidationSection`
   // itself is rendered in — the field-editor dialog's `options`/`component`/
   // `parameters`/`_createNewVariable` fields when nested there, or (from
@@ -108,34 +107,6 @@ const ValidationSection = ({
       ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion
         hasEntries(liveValidation as ValidationMap)
       : hasEntries(initialValue);
-  // Removing the last rule must not collapse the section out from under the
-  // user — but an explicit close still releases the latch, so rules restored
-  // afterwards (undo, or a reinitialize) reopen it rather than being saved
-  // out of sight.
-  const { startExpanded, onExplicitClose } = useLatchedExpansion(hasValidation);
-  // Eleventh-wave Finding 3: the dialog's form-level validate
-  // (makeFieldEditorValidate) keys contradiction messages at `validation`
-  // even when the edited variable has no rules of its own (the target-only
-  // case — editing options/parameters can break an INCOMING sameAs or
-  // comparator). With no rules the section starts collapsed, so the
-  // Validations field is unmounted — and `validateForm` only fails a submit
-  // over errors on REGISTERED fields, so the collapsed section wouldn't just
-  // hide the message, it would let the contradictory save through entirely.
-  // Forcing the section open while the error stands registers the field (so
-  // the save is actually blocked). The ArchitectField rendered by
-  // `Validations` owns displaying the error once mounted.
-  const fieldErrors = useFormStore(
-    (store) => store.errors.fieldErrors.validation,
-  );
-  const hasValidationSyncError =
-    Array.isArray(fieldErrors) && fieldErrors.length > 0;
-  const handleToggleChange = (nextState: boolean) => {
-    if (!nextState) {
-      onExplicitClose();
-      setFieldValue('validation', undefined);
-    }
-    return true;
-  };
   const existingVariablesForType = useMemo(
     () =>
       pickBy(
@@ -144,33 +115,40 @@ const ValidationSection = ({
       ),
     [existingVariables, variableType],
   );
+  const validationEditor = (
+    <Validations
+      name="validation"
+      initialValue={initialValue ?? EMPTY_VALIDATION}
+      variableType={variableType}
+      entity={entity}
+      existingVariables={existingVariablesForType}
+      allVariables={allVariables}
+      currentVariableId={currentVariableId}
+      draftOptions={draftOptions}
+      draftComponent={draftComponent}
+      draftParameters={draftParameters}
+      draftVariableName={draftVariableName}
+      commitsImmediately={commitsImmediately}
+    />
+  );
+
+  if (!showHeading) {
+    return validationEditor;
+  }
+
   return (
-    <Section
-      layout="vertical"
-      id={id}
-      title={showHeading ? label : undefined}
-      summary={showHeading ? <Paragraph>{summary}</Paragraph> : undefined}
-      disabled={disabled}
-      toggleable={showHeading}
-      startExpanded={showHeading ? startExpanded : true}
-      forceExpanded={hasValidationSyncError}
-      handleToggleChange={handleToggleChange}
-    >
-      <Validations
-        name="validation"
-        initialValue={initialValue ?? EMPTY_VALIDATION}
-        variableType={variableType}
-        entity={entity}
-        existingVariables={existingVariablesForType}
-        allVariables={allVariables}
-        currentVariableId={currentVariableId}
-        draftOptions={draftOptions}
-        draftComponent={draftComponent}
-        draftParameters={draftParameters}
-        draftVariableName={draftVariableName}
-        commitsImmediately={commitsImmediately}
-      />
-    </Section>
+    <div id={id} className="w-full">
+      <Section
+        title={label}
+        description={summary}
+        disabled={disabled}
+        toggleable
+        defaultOpen={hasValidation}
+        onOpenChange={onOpenChange}
+      >
+        {validationEditor}
+      </Section>
+    </div>
   );
 };
 export default ValidationSection;

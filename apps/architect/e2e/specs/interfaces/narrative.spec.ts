@@ -94,12 +94,10 @@ test('creates a valid Narrative stage from scratch', async ({
   // shape as every other prompts/presets array in this suite, with the add
   // button named for what it adds ("Create new preset" opens the dialog,
   // "Add" submits a new item).
-  // PresetFields.tsx renders "Preset Label" first: a plain `FrescoReduxField`
-  // text input (`name="label"`) with `labelHidden` and a real `placeholder`,
-  // located directly rather than by (hidden) accessible name. Its "Layout
-  // Variable" section follows; "Group Variable"/"Display Edges"/"Highlight
-  // Node Attributes" are all `toggleable` and collapsed by default, so the
-  // Layout Variable `VariablePicker` is the only "Select variable" button
+  // PresetFields.tsx renders the visible "Preset label" field first, followed
+  // by "Layout attribute". "Node grouping"/"Displayed edges"/"Node
+  // highlighting" are all toggleable and collapsed by default, so the layout
+  // `VariablePicker` is the only "Select attribute" button
   // visible — no `scope` needed, unlike NetworkComposer's NodeConfiguration.
   //
   // The fresh codebook has no variables yet, so typing a name renders the
@@ -108,7 +106,7 @@ test('creates a valid Narrative stage from scratch', async ({
   // NarrativePresets/withPresetProps.tsx's `handleCreateLayoutVariable`
   // delegates to withCreateVariableHandler's `handleCreateVariable(name,
   // 'layout', 'layoutVariable')` — the same simple creation path as
-  // Sociogram's prompt "Layout" section, with the type pre-supplied by the
+  // Sociogram's prompt "Node layout" section, with the type pre-supplied by the
   // call site (no NewVariableWindow opens).
   await addPrompt(
     editor.field('presets'),

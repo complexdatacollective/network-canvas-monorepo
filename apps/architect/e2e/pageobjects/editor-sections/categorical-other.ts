@@ -3,12 +3,11 @@ import { type Page } from '@playwright/test';
 import { type StageEditor } from '../stage-editor.js';
 import { createVariableViaSpotlight } from './variables.js';
 
-// CategoricalBin prompt dialog's follow-up "Other" subsection
+// CategoricalBin prompt dialog's follow-up other-option subsection
 // (sections/CategoricalBinPrompts/PromptFields.tsx). Facts verified against
 // source:
-// - The section title contains straight double quotes — `Follow-up "Other"
-//   Option` — which break StageEditor.section()'s double-quoted CSS
-//   attribute selector, hence the single-quoted locator here.
+// - The toggleable region and its switch are both named "Follow-up other
+//   option" by the Section heading.
 // - It is disabled until the main categorical `variable` is picked, and its
 //   toggle initializes nothing.
 // - The otherVariable picker creates `{ name, type: 'text', validation:
@@ -18,8 +17,8 @@ import { createVariableViaSpotlight } from './variables.js';
 //   form, which rides into the saved prompt and fails the schema's strict
 //   object (verified live) — so the comparison layer drops it instead
 //   (helpers/normalize-protocol.ts dropForcedRequiredValidation).
-// - otherOptionLabel ("Label for 'Other' bin") and otherVariablePrompt ('Question
-//   Prompt for Dialog') are visible-labelled inline RichText fields; all
+// - otherOptionLabel ("Other bin label") and otherVariablePrompt
+//   ("Follow-up question") are visible-labelled inline RichText fields; all
 //   three fields are required once the section is on.
 export async function enableOtherOption(
   editor: StageEditor,
@@ -30,16 +29,15 @@ export async function enableOtherOption(
     variablePrompt: string;
   },
 ): Promise<void> {
-  const section = page.locator(`section[data-name='Follow-up "Other" Option']`);
+  const section = editor.section('Follow-up other option');
   await section
-    .getByRole('switch', { name: 'Follow-up "Other" Option' })
-    .first()
+    .getByRole('switch', { name: 'Follow-up other option', exact: true })
     .click();
   await createVariableViaSpotlight(page, {
     variableName: opts.variableName,
     scope: section,
     until: section.getByRole('button', { name: 'Change attribute' }),
   });
-  await editor.fillRichText("Label for 'Other' bin", opts.optionLabel);
-  await editor.fillRichText('Question Prompt for Dialog', opts.variablePrompt);
+  await editor.fillRichText('Other bin label', opts.optionLabel);
+  await editor.fillRichText('Follow-up question', opts.variablePrompt);
 }

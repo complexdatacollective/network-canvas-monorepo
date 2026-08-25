@@ -20,10 +20,6 @@ const sectionProps = {
   interfaceType: 'Anonymisation',
 } as const;
 
-// Audit sweep: AnonymisationValidation had ValidationSection's pre-fix shape —
-// a toggleable Section keyed only on `startExpanded={!!hasValidation}` — so
-// the class is closed here too rather than left depending on the absence of a
-// forced-open sync error.
 describe('AnonymisationValidation', () => {
   it('stays collapsed with no rules and no sync error', () => {
     renderStageForm({
@@ -49,7 +45,7 @@ describe('AnonymisationValidation', () => {
     expect(screen.getByRole('group', { name: 'Limits' })).toBeInTheDocument();
   });
 
-  it('opens while a validation sync error stands', () => {
+  it('stays collapsed when an unregistered validation field receives an error', () => {
     const { getStoreApi } = renderStageForm({
       committedStage: asStage({ id: 'stage-1', type: 'Anonymisation' }),
       children: <AnonymisationValidation {...sectionProps} />,
@@ -59,10 +55,8 @@ describe('AnonymisationValidation', () => {
       screen.queryByRole('group', { name: 'Limits' }),
     ).not.toBeInTheDocument();
 
-    // A collapsed toggleable Section unmounts its children, and
-    // `validateForm` only fails a submit over errors on REGISTERED fields —
-    // so a sync error keyed at `validation` while the section is shut would
-    // be silently inert without the forced expansion this pins.
+    // Collapsed fields are deliberately unregistered and excluded from
+    // validation under the shared Section contract.
     act(() => {
       getStoreApi()
         .getState()
@@ -72,7 +66,9 @@ describe('AnonymisationValidation', () => {
         });
     });
 
-    expect(screen.getByRole('group', { name: 'Limits' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('group', { name: 'Limits' }),
+    ).not.toBeInTheDocument();
   });
 
   it('offers only the length limits', () => {

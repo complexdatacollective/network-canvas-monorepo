@@ -1,6 +1,6 @@
 import { useMemo, type ComponentType } from 'react';
 
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -46,10 +46,7 @@ type SociogramPromptsProps = {
   disabledMessage?: string;
 };
 
-const SociogramPrompts = ({
-  disabled,
-  disabledMessage,
-}: SociogramPromptsProps) => {
+const SociogramPrompts = ({ disabled }: SociogramPromptsProps) => {
   const { entity, type } = useSubject();
   const initialPrompts = useStageInitialValue<Prompt[]>('prompts');
   const subject = useMemo(
@@ -63,15 +60,14 @@ const SociogramPrompts = ({
 
   return (
     <Section
+      title="Prompt collection"
+      description="Create and reorder the prompts shown in this stage."
       disabled={disabled}
-      disabledMessage={disabledMessage}
-      layout="vertical"
-      title={disabled ? 'Prompts' : undefined}
     >
       <ArchitectArrayField
         name="prompts"
         label="Prompts"
-        hint="Add one or more prompts below to frame the task for the user. You can reorder the prompts using the draggable handles on the left hand side."
+        hint="Add at least one prompt and drag prompts to reorder them."
         component={DialogArrayField}
         addButtonLabel="Create new prompt"
         validation={{ required: 'You must create at least one item.' }}

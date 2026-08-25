@@ -1,6 +1,5 @@
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -14,13 +13,8 @@ const AnonymisationExplanation = (_props: StageEditorSectionProps) => {
 
   return (
     <Section
-      title="Task Explanation"
-      summary={
-        <Paragraph>
-          Use this section to explain the anonymisation process to your
-          participants.
-        </Paragraph>
-      }
+      title="Task explanation"
+      description="Explain the anonymisation process to participants before they enter their passphrase."
     >
       <ArchitectField
         name="explanationText.title"

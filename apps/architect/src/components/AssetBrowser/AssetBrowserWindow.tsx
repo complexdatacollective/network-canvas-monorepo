@@ -37,7 +37,6 @@ const AssetBrowserWindow = ({
           onSelect={onSelect}
           selected={selected}
           disableDelete
-          sectionLayout="vertical"
         />
       </Layout>
     </Dialog>

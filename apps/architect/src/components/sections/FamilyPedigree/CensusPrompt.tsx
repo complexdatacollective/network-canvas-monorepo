@@ -1,5 +1,5 @@
+import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
 import IssueAnchor from '~/components/IssueAnchor';
@@ -10,8 +10,8 @@ const CensusPrompt = (_props: StageEditorSectionProps) => {
   const initialValue = useStageInitialValue<string>('censusPrompt');
 
   return (
-    <Section layout="vertical">
-      <IssueAnchor fieldName="censusPrompt" description="Census Prompt" />
+    <Section title="Family-building prompt">
+      <IssueAnchor fieldName="censusPrompt" description="Census prompt" />
       <ArchitectField
         name="censusPrompt"
         component={RichText}

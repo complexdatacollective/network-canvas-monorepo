@@ -32,7 +32,7 @@ describe('MinMaxAlterLimits', () => {
     });
 
     expect(
-      screen.queryByLabelText(/Minimum Number of Alters/),
+      screen.queryByLabelText(/Minimum number of alters/),
     ).not.toBeInTheDocument();
   });
 
@@ -42,8 +42,8 @@ describe('MinMaxAlterLimits', () => {
       children: <MinMaxAlterLimits {...STAGE_PROPS} />,
     });
 
-    expect(screen.getByLabelText(/Minimum Number of Alters/)).toHaveValue(2);
-    expect(screen.getByLabelText(/Maximum Number of Alters/)).toHaveValue(5);
+    expect(screen.getByLabelText(/Minimum number of alters/)).toHaveValue(2);
+    expect(screen.getByLabelText(/Maximum number of alters/)).toHaveValue(5);
   });
 
   it('parses typed digits to an integer and clears on an empty input', async () => {
@@ -52,9 +52,9 @@ describe('MinMaxAlterLimits', () => {
       children: <MinMaxAlterLimits {...STAGE_PROPS} />,
     });
 
-    fireEvent.click(screen.getByRole('switch', { name: 'Min/max alters' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Nomination limits' }));
 
-    const minInput = await screen.findByLabelText(/Minimum Number of Alters/);
+    const minInput = await screen.findByLabelText(/Minimum number of alters/);
     fireEvent.change(minInput, { target: { value: '3' } });
     expect(getFieldState('behaviours.minNodes')?.value).toBe(3);
 
@@ -75,11 +75,11 @@ describe('MinMaxAlterLimits', () => {
       children: <MinMaxAlterLimits {...STAGE_PROPS} />,
     });
 
-    fireEvent.click(screen.getByRole('switch', { name: 'Min/max alters' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Nomination limits' }));
 
     await waitFor(() => {
       expect(
-        screen.queryByLabelText(/Minimum Number of Alters/),
+        screen.queryByLabelText(/Minimum number of alters/),
       ).not.toBeInTheDocument();
     });
     expect(getFieldState('behaviours.minNodes')?.value).toBeUndefined();

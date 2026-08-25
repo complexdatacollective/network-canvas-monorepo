@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react';
 
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -16,7 +16,10 @@ const ContentGrid = (_props: StageEditorSectionProps) => {
   const initialItems = useStageInitialValue<Item[]>('items');
 
   return (
-    <Section layout="vertical">
+    <Section
+      title="Page content"
+      description="Build the sequence of text and media blocks participants will see."
+    >
       <ArchitectArrayField
         name="items"
         label="Items"

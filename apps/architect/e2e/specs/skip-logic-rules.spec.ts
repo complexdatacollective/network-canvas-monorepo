@@ -55,7 +55,7 @@ test('skip-logic rule cards carry valid, distinct semantics', async ({
     join: 'Any rule',
   });
 
-  const section = editor.section('Skip Logic');
+  const section = editor.section('Skip logic');
   const rules = editor.field('skipLogic.filter');
 
   // The rule builder is the required group targeted by the visible field
@@ -125,7 +125,7 @@ test('network-filter rules use the same editable-list workflow', async ({
     ],
   });
 
-  const section = editor.section('Filter');
+  const section = editor.section('Stage filter');
   const rules = editor.field('filter');
 
   await expect(rules.getByRole('list').getByRole('listitem')).toHaveCount(1);

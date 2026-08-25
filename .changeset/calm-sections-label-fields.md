@@ -2,4 +2,4 @@
 '@codaco/architect': patch
 ---
 
-Display single-field labels and guidance on their form fields instead of duplicating them as section headings throughout Architect.
+Standardize Architect editor settings into single-panel sections with concise headings, guidance, and field labels, including collapsible settings that discard their values when closed.

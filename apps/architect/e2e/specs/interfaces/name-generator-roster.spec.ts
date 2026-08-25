@@ -48,8 +48,8 @@ test('creates a valid NameGeneratorRoster stage from scratch', async ({
   await editor.setStageName('Select From Roster');
 
   // Same plain NodeType.tsx section as NameGenerator (`Section title="Node
-  // Type"`). ExternalDataSource.tsx's OWN section is ALSO gated by
-  // `withDisabledSubjectRequired` (unlike Form.tsx's Form section, this is
+  // setup"`). ExternalDataSource.tsx's OWN section is ALSO gated by
+  // `withDisabledSubjectRequired` (unlike Form configuration, this is
   // the section itself, not just its field array), so this must run first.
   await selectOrCreateNodeType(architectPage, 'person');
 

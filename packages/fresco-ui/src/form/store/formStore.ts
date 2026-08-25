@@ -389,9 +389,22 @@ type InternalFieldConfig = Omit<FieldConfig, 'name'> & {
   name: ObjectPath;
 };
 
+type UnregisterFieldOptions = {
+  /**
+   * Keep the current value available for a later registration by default.
+   * When false, a cleared tombstone is retained so a later registration does
+   * not restore its initial value and form hosts can distinguish a deliberate
+   * discard from a field that was never mounted.
+   */
+  preserveValue?: boolean;
+};
+
 type FieldOperations<Reference, Config> = {
   registerField: (config: Config) => void;
-  unregisterField: (fieldName: Reference) => void;
+  unregisterField: (
+    fieldName: Reference,
+    options?: UnregisterFieldOptions,
+  ) => void;
   setFieldValue: (fieldName: Reference, value: FieldValue) => void;
   setFieldTouched: (fieldName: Reference, touched: boolean) => void;
   setFieldBlurred: (fieldName: Reference) => void;
@@ -410,6 +423,10 @@ type FormStoreState = {
   /** Public field map keyed by the names supplied by field consumers. */
   fields: Map<string, FieldState>;
   dormantValues: Map<string, FieldState>;
+  /** Increments when a configured field is deliberately discarded on unmount. */
+  fieldDiscardVersion: number;
+  /** Increments when a host restores an earlier form snapshot. */
+  formRestoreVersion: number;
   errors: FlattenedErrors;
   isSubmitting: boolean;
   isValidating: boolean;
@@ -430,6 +447,7 @@ type FormStoreState = {
 
   // Form management
   registerForm: (config: FormConfig) => void;
+  notifyRestore: () => void;
   reset: () => void;
 
   setErrors: (errors: FlattenedErrors | null) => void;
@@ -481,9 +499,10 @@ const hasFieldChanged = (field: FieldState): boolean => {
  * markdown-to-rich-text conversion, an editor seeding itself) makes a freshly
  * opened form claim to be dirty immediately.
  *
- * `dormantValues` counts: a field that unmounts (a collapsed section, a branch
- * that stopped rendering) parks its value there, and an edit made before it
- * unmounted is still an unsaved edit.
+ * `dormantValues` counts: a field that unmounts through the default lifecycle
+ * parks its value there, and an edit made before it unmounted is still an
+ * unsaved edit. A destructive unmount parks `undefined` instead, which is also
+ * a real change when the field originally held data.
  *
  * Lives here, next to the state it reads, because more than one host needs the
  * answer and a host-local copy freezes that host's idea of "blank" — Architect
@@ -554,6 +573,8 @@ export const createFormStore = (): FormStoreApi => {
     immer((set, get, _store) => ({
       fields: new Map(),
       dormantValues: new Map(),
+      fieldDiscardVersion: 0,
+      formRestoreVersion: 0,
       errors: { formErrors: [], fieldErrors: {} },
 
       isSubmitting: false,
@@ -571,8 +592,8 @@ export const createFormStore = (): FormStoreApi => {
             ...config,
             name: encodeObjectPath(config.name),
           }),
-        unregisterField: (fieldName) =>
-          get().unregisterField(encodeObjectPath(fieldName)),
+        unregisterField: (fieldName, options) =>
+          get().unregisterField(encodeObjectPath(fieldName), options),
         setFieldValue: (fieldName, value) =>
           get().setFieldValue(encodeObjectPath(fieldName), value),
         setFieldTouched: (fieldName, touched) =>
@@ -597,6 +618,12 @@ export const createFormStore = (): FormStoreApi => {
         set((state) => {
           state.submitHandler = config.onSubmit;
           state.submitInvalidHandler = config.onSubmitInvalid ?? null;
+        });
+      },
+
+      notifyRestore: () => {
+        set((state) => {
+          state.formRestoreVersion += 1;
         });
       },
 
@@ -701,7 +728,7 @@ export const createFormStore = (): FormStoreApi => {
         });
       },
 
-      unregisterField: (fieldReference) => {
+      unregisterField: (fieldReference, options) => {
         // Check if field exists before updating to avoid unnecessary renders
         const fieldName = resolveRegisteredFieldName(
           fieldRecords,
@@ -723,20 +750,32 @@ export const createFormStore = (): FormStoreApi => {
 
             const field = fieldRecords.get(fieldName);
             if (field) {
+              if (
+                options?.preserveValue === false &&
+                field.value !== undefined
+              ) {
+                state.fieldDiscardVersion += 1;
+              }
               dormantRecords.set(fieldName, {
                 path: resolveStoredFieldPath(fieldName, field),
                 submissionErrorKey: field.submissionErrorKey,
                 initialValue: field.initialValue,
                 validation: field.validation,
-                value: field.value,
+                value:
+                  options?.preserveValue === false ? undefined : field.value,
                 meta: {
                   isValidating: false,
                   isTouched: true,
                   isBlurred: true,
                   isDirty: true,
-                  isValid: field.meta.isValid,
+                  isValid:
+                    options?.preserveValue === false
+                      ? !field.validation
+                      : field.meta.isValid,
                 },
               });
+            } else {
+              dormantRecords.delete(fieldName);
             }
 
             fieldRecords.delete(fieldName);

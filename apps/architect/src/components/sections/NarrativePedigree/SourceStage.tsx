@@ -2,8 +2,8 @@ import { useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
+import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
@@ -79,7 +79,7 @@ const SourceStage = (_props: StageEditorSectionProps) => {
   }, [draft, restoreVersion, sourceStageId, storeApi]);
 
   return (
-    <Section layout="vertical">
+    <Section title="Pedigree source">
       <ArchitectField
         name="sourceStageId"
         component={StyledSelectField}

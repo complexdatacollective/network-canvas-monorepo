@@ -35,9 +35,8 @@ describe('BinSortOrderSection', () => {
       </Form>,
     );
 
-    // `layout="vertical"` renders no collapsed placeholder — the mounted
-    // MultiSelect's own "Add new bin sort rule" affordance is the observable signal that
-    // the row field is (not) registered.
+    // The mounted MultiSelect's own affordance is the observable signal that
+    // the row field is not registered while the Section is collapsed.
     expect(
       screen.queryByRole('button', { name: 'Add new bin sort rule' }),
     ).not.toBeInTheDocument();
@@ -61,7 +60,7 @@ describe('BinSortOrderSection', () => {
     expect(getFieldValue()).toEqual([{ property: 'name', direction: 'asc' }]);
   });
 
-  it('clears binSortOrder on the nearest form store when toggled off', async () => {
+  it('clears binSortOrder when collapsed and reopens empty', async () => {
     render(
       <Form onSubmit={() => ({ success: true })}>
         <CaptureStore />
@@ -72,14 +71,21 @@ describe('BinSortOrderSection', () => {
       </Form>,
     );
 
-    fireEvent.click(
-      screen.getByRole('switch', { name: 'Set the order of nodes in bins' }),
-    );
+    fireEvent.click(screen.getByRole('switch', { name: 'Bin order' }));
 
     await waitFor(() => {
       expect(
         screen.queryByRole('button', { name: 'Add new bin sort rule' }),
       ).not.toBeInTheDocument();
+      expect(getFieldValue()).toBeUndefined();
+    });
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Bin order' }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Add new bin sort rule' }),
+      ).toBeInTheDocument();
     });
     expect(getFieldValue()).toBeUndefined();
   });

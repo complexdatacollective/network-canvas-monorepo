@@ -1,7 +1,6 @@
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
-import { getFieldId } from '~/utils/issues';
 
 type PromptTextProps = {
   name?: string;
@@ -17,13 +16,15 @@ type PromptTextProps = {
 
 const PromptText = ({ name = 'text', initialValue }: PromptTextProps) => {
   return (
-    <Section id={getFieldId(name)} layout="vertical">
+    <Section
+      title="Participant prompt"
+      description="Write the instruction or question participants see for this task."
+    >
       <ArchitectField
         name={name}
         component={RichText}
         singleLine
         label="Prompt text"
-        hint="Provide instructions or context to the participant about the task you want them to complete."
         placeholder="Enter your prompt..."
         validation={{ required: true }}
         initialValue={initialValue}

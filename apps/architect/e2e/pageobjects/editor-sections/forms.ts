@@ -9,7 +9,8 @@ import { createVariableViaSpotlight } from './variables.js';
 // required on DialogArrayField and there is no default, so this list's add
 // button names what it adds: "Create new form field".
 //
-// Takes the enclosing section `Locator` (e.g. `editor.section('Form')`) rather
+// Takes the enclosing section `Locator` (e.g.
+// `editor.section('Form configuration')`) rather
 // than the Page, and still scopes the OPEN click to it. That is no longer
 // needed to avoid a strict-mode collision — NameGenerator renders both a `Form`
 // AND a `NameGeneratorPrompts` DialogArrayField at once
@@ -27,8 +28,9 @@ import { createVariableViaSpotlight } from './variables.js';
 //   targets.
 // - `prompt`: a RichText field whose accessible name is "Question text"
 //   (FieldFields.tsx). This is the stable field-level label; the surrounding
-//   heading-less Section deliberately contributes no duplicate name.
-// - `component` ("Input Control", labelHidden): a real native `<select>`
+//   surrounding Participant prompt Section contributes context without
+//   duplicating that field label.
+// - `component` ("Input control"): a real native `<select>`
 //   (fresco-ui's `NativeSelectField`), so `selectOption` works directly.
 //   Its Subsection is `disabled={!variable}` (FieldFields.tsx) — i.e. it
 //   doesn't even mount until a variable is selected, which is why the

@@ -8,14 +8,13 @@ import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import Section from '@codaco/fresco-ui/Section';
 import DialogForm, {
   type DialogFormProps,
 } from '~/components/DialogForm/DialogForm';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { documentationLinks } from '~/utils/documentationLinks';
 
-import Section from '../../EditorLayout/Section';
 import ExternalLink from '../../ExternalLink';
 import { EntitySelectControl } from '../../sections/fields/EntitySelectField/EntitySelectField';
 import {
@@ -203,7 +202,7 @@ const RuleOperandFields = ({
 
   if (operator && operatorsWithOptionCount.has(operator)) {
     return (
-      <Section layout="vertical">
+      <Section title="Selection count">
         <RuleCountField
           label="Selected Option Count"
           hint="Enter the number of options that must be selected for this rule to pass."
@@ -216,7 +215,7 @@ const RuleOperandFields = ({
 
   if (operator && operatorsWithRegExp.has(operator)) {
     return (
-      <Section layout="vertical">
+      <Section title="Pattern match">
         <RuleValueField
           label="Attribute Value"
           hint={regExpHint}
@@ -232,7 +231,7 @@ const RuleOperandFields = ({
 
   if (operator && operatorsWithValue.has(operator)) {
     return (
-      <Section layout="vertical">
+      <Section title="Comparison value">
         <RuleValueField
           label="Attribute Value"
           hint="Enter the value to compare against."
@@ -269,7 +268,7 @@ const EgoRuleFields = ({
   variableOptions,
 }: BranchProps) => (
   <>
-    <Section layout="vertical">
+    <Section title="Ego attribute selection">
       <ArchitectField
         name={ATTRIBUTE_FIELD}
         label="Ego attribute"
@@ -286,7 +285,7 @@ const EgoRuleFields = ({
       />
     </Section>
     {attributeId && (
-      <Section layout="vertical">
+      <Section title="Ego comparison">
         <ArchitectField
           name={OPERATOR_FIELD}
           label="Operator"
@@ -340,7 +339,7 @@ const EntityRuleFields = ({
 
   return (
     <>
-      <Section layout="vertical">
+      <Section title={isNode ? 'Node type selection' : 'Edge type selection'}>
         <ArchitectField
           name={ENTITY_TYPE_FIELD}
           label={isNode ? 'Node type' : 'Edge type'}
@@ -360,7 +359,7 @@ const EntityRuleFields = ({
           validation={{ required: true }}
         />
       </Section>
-      <Section disabled={!entityTypeId} layout="vertical">
+      <Section title="Rule basis" disabled={!entityTypeId}>
         <ArchitectField
           name={RULE_KIND_FIELD}
           label="Rule type"
@@ -373,7 +372,7 @@ const EntityRuleFields = ({
       </Section>
 
       {ruleKind === TYPE_RULE && entityTypeId && (
-        <Section layout="vertical">
+        <Section title="Presence condition">
           <ArchitectField
             name={OPERATOR_FIELD}
             label="Operator"
@@ -391,7 +390,7 @@ const EntityRuleFields = ({
       )}
 
       {ruleKind === VARIABLE_RULE && entityTypeId && (
-        <Section layout="vertical">
+        <Section title="Attribute selection">
           <ArchitectField
             name={ATTRIBUTE_FIELD}
             label="Attribute"
@@ -410,7 +409,7 @@ const EntityRuleFields = ({
       )}
 
       {ruleKind === VARIABLE_RULE && attributeId && (
-        <Section layout="vertical">
+        <Section title="Attribute comparison">
           <ArchitectField
             name={OPERATOR_FIELD}
             label="Operator"
@@ -501,16 +500,17 @@ const RuleEditorFields = ({
         which would flatten these documentation links into an announcement the
         researcher cannot follow. As body copy they are ordinary links.
       */}
-      <Paragraph className="max-w-[75ch]">{description}</Paragraph>
-      <ArchitectField
-        name={TARGET_FIELD}
-        label="Entity"
-        hint="Select which network entity your rule should target."
-        component={RadioGroupField}
-        options={ruleTypes}
-        initialValue={typeof seed.type === 'string' ? seed.type : undefined}
-        validation={{ required: true }}
-      />
+      <Section title="Rule target" description={description}>
+        <ArchitectField
+          name={TARGET_FIELD}
+          label="Entity"
+          hint="Select which network entity your rule should target."
+          component={RadioGroupField}
+          options={ruleTypes}
+          initialValue={typeof seed.type === 'string' ? seed.type : undefined}
+          validation={{ required: true }}
+        />
+      </Section>
 
       {target === 'ego' && <EgoRuleFields {...branchProps} />}
       {(target === 'node' || target === 'edge') && (

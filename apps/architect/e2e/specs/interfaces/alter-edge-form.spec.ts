@@ -18,8 +18,8 @@ test('creates a valid AlterEdgeForm stage from scratch', async ({
   await editor.setStageName('About Each Relationship');
 
   // AlterEdgeForm's subject is an edge type
-  // (sections/FilteredEdgeType.tsx, `Section title="Edge Type"`), and
-  // Form.tsx's `withDisabledSubjectRequired` disables the Form section until
+  // (sections/FilteredEdgeType.tsx, `Section title="Edge setup"`), and
+  // Form.tsx's `withDisabledSubjectRequired` disables Form configuration until
   // `subject.type` is set — same reasoning as alter-form.spec.ts.
   await selectOrCreateEdgeType(architectPage, 'knows');
 
@@ -35,7 +35,7 @@ test('creates a valid AlterEdgeForm stage from scratch', async ({
     'Tell us a bit about how these two people know each other.',
   );
 
-  await addFormField(editor.section('Form'), {
+  await addFormField(editor.section('Form configuration'), {
     variableName: 'age',
     promptText: 'What is your name?',
     inputControl: 'Text Input',

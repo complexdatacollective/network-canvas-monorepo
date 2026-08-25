@@ -41,11 +41,11 @@ test('creates a valid EgoForm stage from scratch', async ({
 
   // EgoForm's subject always defaults to `{ entity: 'ego', type: null }`
   // (enhancers/withSubject.tsx's `defaultSubject`), and
-  // `withDisabledSubjectRequired` only disables the Form section when
+  // `withDisabledSubjectRequired` only disables Form configuration when
   // `interfaceType !== 'EgoForm' && !type` (enhancers/withDisabledSubjectRequired.tsx)
   // — so, unlike AlterForm/AlterEdgeForm, no subject-selection step is needed
   // before this section is interactive.
-  await addFormField(editor.section('Form'), {
+  await addFormField(editor.section('Form configuration'), {
     variableName: 'age',
     promptText: 'What is your name?',
     inputControl: 'Text Input',
