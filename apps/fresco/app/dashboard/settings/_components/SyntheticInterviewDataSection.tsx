@@ -38,6 +38,11 @@ export default function SyntheticInterviewDataSection({
 
   const [selectedProtocolId, setSelectedProtocolId] = useState<string>();
   const [count, setCount] = useState(10);
+  // The token a finished batch reports (`<seed>-<YYYY-MM-DD>`, or a bare
+  // seed): entering it regenerates that batch exactly. Opaque here — the
+  // route parses and validates it, so the identity logic stays server-side
+  // with the engine instead of being duplicated into this client bundle.
+  const [batchToken, setBatchToken] = useState('');
   const [simulateDropOut, setSimulateDropOut] = useState(true);
   const [respectSkipLogicAndFiltering, setRespectSkipLogicAndFiltering] =
     useState(false);
@@ -67,6 +72,9 @@ export default function SyntheticInterviewDataSection({
           count,
           simulateDropOut,
           respectSkipLogicAndFiltering,
+          ...(batchToken.trim() === ''
+            ? {}
+            : { batchToken: batchToken.trim() }),
         }),
       });
 
@@ -113,6 +121,7 @@ export default function SyntheticInterviewDataSection({
             total?: number;
             created?: number;
             seed?: number;
+            batchToken?: string;
             message?: string;
           };
 
@@ -137,11 +146,12 @@ export default function SyntheticInterviewDataSection({
             toast({
               title: 'Generation complete',
               description:
-                data.seed === undefined
+                data.batchToken === undefined
                   ? `Successfully generated ${String(created)} synthetic interviews.`
-                  : // The seed is what makes a batch reproducible: generating
-                    // again with it produces the same interviews.
-                    `Successfully generated ${String(created)} synthetic interviews (seed ${String(data.seed)}).`,
+                  : // The token is what makes a batch reproducible: entering
+                    // it in the field above regenerates exactly the same
+                    // interviews, dates included.
+                    `Successfully generated ${String(created)} synthetic interviews (batch ${data.batchToken}).`,
               variant: 'success',
             });
           }
@@ -235,6 +245,20 @@ export default function SyntheticInterviewDataSection({
           </div>
         )}
       </SettingsField>
+      <SettingsField
+        label="Batch token"
+        description="Leave blank for a new batch each time. Every batch reports the token it ran on — enter that token to regenerate exactly the same interviews, dates included. A bare seed number pins the draws but dates the sessions around today."
+        testId="synthetic-batch-token"
+        control={
+          <InputField
+            name="batchToken"
+            type="text"
+            value={batchToken}
+            onChange={(value) => setBatchToken(value ?? '')}
+            disabled={isGenerating}
+          />
+        }
+      />
       <SettingsField
         label="Simulate participant drop-out"
         description="When enabled, participants have an increasing chance of abandoning the interview at each stage."

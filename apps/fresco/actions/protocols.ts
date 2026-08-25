@@ -1,8 +1,12 @@
 'use server';
 
 import { Effect } from 'effect';
-import { type z } from 'zod';
+import { z } from 'zod';
 
+import {
+  CurrentProtocolSchema,
+  hashProtocol,
+} from '@codaco/protocol-validation';
 import { addEvent, addEvents } from '~/lib/activityFeed';
 import { requireApiAuth } from '~/lib/auth/guards';
 import { safeUpdateTag } from '~/lib/cache';
@@ -11,7 +15,7 @@ import { Prisma } from '~/lib/db/generated/client';
 import { selectUnreferencedKeys } from '~/lib/protocol/selectUnreferencedKeys';
 import { getStorageLayer } from '~/lib/storage/layers/StorageLayer';
 import { AssetStorage } from '~/lib/storage/services/AssetStorage';
-import { type protocolInsertSchema } from '~/schemas/protocol';
+import { protocolInsertSchema } from '~/schemas/protocol';
 
 /**
  * Check if a protocol with the given hash already exists.
@@ -210,20 +214,49 @@ export async function insertProtocol(
 ) {
   const session = await requireApiAuth();
 
+  // Any authenticated client can invoke this action directly, so the typed
+  // signature proves nothing about what actually arrived — parse before
+  // trusting any of it.
+  const parsedInput = protocolInsertSchema.safeParse(input);
+  if (!parsedInput.success) {
+    return {
+      error:
+        'The protocol import payload was malformed. Please try importing the protocol again.',
+      success: false,
+      errorDetails: new Error(z.prettifyError(parsedInput.error)),
+    };
+  }
+
   const {
-    protocol,
-    // The hash the importer already computed and checked for duplicates
-    // against, not a fresh one taken from `protocol`. `protocol` here is the
-    // schema's parse of the uploaded document, so hashing it would store an
-    // identity the duplicate check never looked for — and the two would part
-    // company again every time the schema grew a default (spec decision 15).
-    // The `hash` column's unique constraint remains the backstop.
-    protocolHash,
+    protocolDocument,
     protocolName,
     newAssets,
     existingAssetIds,
     originalFile,
-  } = input;
+  } = parsedInput.data;
+
+  // The stored parse output and the stored hash are BOTH derived here, from
+  // the same pre-parse document — the single input a caller controls — so a
+  // hash that does not identify the stored document cannot be stored. The
+  // hash is taken from the document rather than from the parse output because
+  // parsing folds schema-injected defaults into the result, and a protocol's
+  // identity must move with authored content, not with the schema (spec
+  // decision 15). The importer applies the same function to the same document
+  // for its duplicate pre-check, so the hash a duplicate is detected by and
+  // the hash a protocol is stored under cannot part company; the `hash`
+  // column's unique constraint remains the backstop.
+  const parsedProtocol = CurrentProtocolSchema.safeParse(protocolDocument);
+  if (!parsedProtocol.success) {
+    return {
+      error:
+        'The uploaded document is not a valid protocol. Please check the protocol file and try again.',
+      success: false,
+      errorDetails: new Error(z.prettifyError(parsedProtocol.error)),
+    };
+  }
+
+  const protocol = parsedProtocol.data;
+  const protocolHash = hashProtocol(protocolDocument);
 
   try {
     await prisma.protocol.create({

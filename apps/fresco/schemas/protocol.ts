@@ -1,8 +1,6 @@
 import 'server-only';
 import { z } from 'zod';
 
-import { CurrentProtocolSchema } from '@codaco/protocol-validation';
-
 const assetInsertSchema = z.object({
   key: z.string(),
   assetId: z.string(),
@@ -16,13 +14,20 @@ const assetInsertSchema = z.object({
 export type AssetInsertType = z.infer<typeof assetInsertSchema>;
 
 export const protocolInsertSchema = z.object({
-  protocol: CurrentProtocolSchema,
-  // Supplied by the importer rather than derived here from `protocol`: the
-  // hash identifies the document the researcher uploaded, which the parse
-  // output that reaches this action is no longer a faithful copy of (spec
-  // decision 15). Deriving it a second time is what would let the stored hash
-  // drift away from the one duplicate detection just checked.
-  protocolHash: z.string().min(1),
+  // The PRE-PARSE protocol document: the object the uploaded file contained
+  // for a current-version protocol, the migration output for older ones.
+  // `insertProtocol` derives BOTH the stored hash and the stored parse output
+  // from this one field at its trust boundary, so no caller can store a hash
+  // that does not identify the stored document. Deliberately not
+  // `CurrentProtocolSchema`: parsing here would swap the document for the
+  // schema's output, and a hash of that would fold schema-injected defaults
+  // into protocol identity (spec decision 15). Only the two fields the hash
+  // covers are named; `looseObject` passes the rest of the document through
+  // untouched for the action's own `CurrentProtocolSchema` parse.
+  protocolDocument: z.looseObject({
+    codebook: z.unknown(),
+    stages: z.unknown(),
+  }),
   protocolName: z.string(),
   newAssets: z.array(assetInsertSchema),
   existingAssetIds: z.array(z.string()),

@@ -1,7 +1,8 @@
-import { createId } from '@paralleldrive/cuid2';
-
 import {
+  formatSyntheticBatchToken,
+  freshBatchStartWindow,
   generateInterviews,
+  parseSyntheticBatchToken,
   type SyntheticInterviewResult,
 } from '@codaco/protocol-utilities';
 import { addEvent } from '~/lib/activityFeed';
@@ -100,10 +101,20 @@ export async function POST(request: Request) {
   const { protocol } = protocolResult;
 
   // A fresh seed per batch unless the caller pinned one, so two runs of the
-  // same protocol are different interviews rather than the same ones twice. It
-  // travels back with the completion event, which is what makes a batch
-  // reproducible after the fact.
-  const seed = parsed.data.seed ?? Math.floor(Math.random() * 2 ** 31);
+  // same protocol are different interviews rather than the same ones twice.
+  // The start-window anchor is the identity's other half — session dates and
+  // every date-relative drawn value follow it — so it is drawn (day-quantised)
+  // the same way. Both travel back with the completion event, as the one
+  // copyable token that makes the batch reproducible after the fact. A
+  // `batchToken` carries the whole identity at once (the schema has already
+  // proved it parses); the split fields serve API callers pinning halves.
+  const pinned = parsed.data.batchToken
+    ? parseSyntheticBatchToken(parsed.data.batchToken)
+    : null;
+  const seed =
+    pinned?.seed ?? parsed.data.seed ?? Math.floor(Math.random() * 2 ** 31);
+  const startWindow =
+    pinned?.startWindow ?? parsed.data.startWindow ?? freshBatchStartWindow();
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -125,8 +136,13 @@ export async function POST(request: Request) {
             {
               count,
               seed,
+              startWindow,
               simulateDropOut,
+              // One request field, both engine flags: the setting has always
+              // been labelled "skip logic and filtering", and stage filters
+              // are the second half of that promise.
               respectSkipLogic: respectSkipLogicAndFiltering,
+              respectFiltering: respectSkipLogicAndFiltering,
             },
             assetData,
             // Generation runs to completion synchronously, so these land as one
@@ -159,7 +175,12 @@ export async function POST(request: Request) {
 
         for (const result of results) {
           const { session } = result;
-          const participantIdentifier = `test-${createId()}`;
+          // Derived from the engine's own session id, which is drawn from the
+          // batch's seed: Fresco exports the identifier as the case key, so a
+          // replayed batch must yield the same case keys or its export is not
+          // a reproduction. Replaying therefore CONNECTS to the participant
+          // the first run created rather than minting a stranger.
+          const participantIdentifier = `test-${session.id}`;
 
           await prisma.interview.create({
             data: {
@@ -177,10 +198,13 @@ export async function POST(request: Request) {
               isSynthetic: true,
               stageMetadata: session.stageMetadata as object | undefined,
               participant: {
-                create: {
-                  identifier: participantIdentifier,
-                  label: participantIdentifier,
-                  isSynthetic: true,
+                connectOrCreate: {
+                  where: { identifier: participantIdentifier },
+                  create: {
+                    identifier: participantIdentifier,
+                    label: participantIdentifier,
+                    isSynthetic: true,
+                  },
                 },
               },
               protocol: {
@@ -207,7 +231,13 @@ export async function POST(request: Request) {
           `User ${username} generated ${String(created)} synthetic interviews for protocol "${protocolRecord.name}"`,
         );
 
-        send({ type: 'complete', created, seed });
+        send({
+          type: 'complete',
+          created,
+          seed,
+          startWindow,
+          batchToken: formatSyntheticBatchToken(seed, startWindow),
+        });
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'Unknown error';
