@@ -665,6 +665,18 @@ migration).
 - `schemas/8/` is recreated in the frozen schema-7 shape: a loose `schema.ts`
   stub, plus the existing v7→v8 `migration.ts`, which stays put — each
   version directory holds the migration _into_ that version.
+- Every direct `../schemas/8/` import under `src/utils/` rebinds to
+  `../schemas/9/` as part of the move. Most break loudly, because the
+  helper modules they import move with the tree — but
+  `collectEntityAttributeReferences.ts:22` imports `../schemas/8/schema.ts`
+  directly (deliberately bypassing `schemas/index.ts` to sidestep a module
+  cycle), and that path resolves **silently** to the recreated loose stub:
+  the walker would traverse an empty schema and every reference collection
+  (`collectAssetReferences`, entity references — Architect's in-use
+  indexes and delete protection) would return nothing without any error. A
+  canary test asserts `collectAssetReferences` returns nested hits for a
+  fixture protocol, so the current-schema binding can never silently
+  regress again.
 - `schemas/index.ts`: `z.literal(9)` joins `SchemaVersionSchema`,
   `CURRENT_SCHEMA_VERSION = 9`, `ProtocolSchemaV9` joins
   `VersionedProtocolSchema`, `CurrentProtocolSchema = ProtocolSchemaV9`, and
@@ -822,7 +834,16 @@ rationale applies identically to sample columns).
   post-validation keyed to `targetVersion` (§5.12).
 - `src/utils/dynamicNetworkResponse.ts` (new) — canonical response schema.
 - `src/utils/protocolRequiresInternet.ts` (new) — shared derivation (§5.7).
+- `src/utils/collectEntityAttributeReferences.ts`,
+  `findVariableRoleConflicts.ts`, `findExclusiveVariableConflicts.ts`,
+  `test-utils.ts` — direct `../schemas/8/` imports rebind to `schemas/9/`
+  (§5.12; the `schema.ts` binding is the silent one).
 - `src/index.ts` — exports.
+
+**Root `CLAUDE.md` / `AGENTS.md`** (one file; `AGENTS.md` is a symlink) —
+the protocol-validation section's "schemas are modularized in
+`src/schemas/8/`" guidance updates to `src/schemas/9/`, so future feature
+work follows the documented architecture into the right version.
 
 **`@codaco/protocols`** — canonical development/sample protocols, templates,
 and fixtures re-saved at schema 9.
@@ -892,7 +913,9 @@ only stages preceding the start stage (§5.9); `PreviewHost` passes it.
   roster and panel data sources
   (including the newly closed panel gap); response-schema tests (empty
   nodes valid, bad names rejected); `protocolRequiresInternet` cases;
-  `collectAssetReferences` picks up `valueAssetId`.
+  `collectAssetReferences` picks up `valueAssetId`, plus the canary that it
+  returns nested hits at all (§5.12 — the walker's direct current-schema
+  import must never silently bind to a frozen stub).
 - **migration:** a valid v8 protocol migrates to a valid v9 protocol
   changed only in `schemaVersion`; a v8 protocol with a dangling panel
   `dataSource` has that panel dropped and post-validates;
