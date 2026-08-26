@@ -286,7 +286,15 @@ branches on asset type. For `dynamicnetwork` it does not call
 `onRequestAsset`; instead it calls the new executor in
 `packages/interview/src/contract/dynamicRoster.ts`:
 
-1. Build the request from the template and current context.
+1. Build the request from the template and a context whose network is a
+   **stage-entry snapshot**: the dynamic branch serializes the network once
+   when the stage is entered and does not take the live network as an
+   effect dependency. Otherwise every nomination would mutate a dependency
+   of `useExternalData`'s effect, clearing the roster back to loading and
+   re-issuing the request mid-stage — Decision 2 means one fetch per stage
+   _entry_, not per network change. A regression test proves adding or
+   removing a node within the stage neither refetches nor resets the
+   roster.
 2. `fetch(url, { method, headers, body, signal, referrerPolicy: 'no-referrer',
 credentials: 'omit', cache: 'no-store' })`. POST bodies are sent with
    `Content-Type: application/json` (set by the app; not overridable).
@@ -300,10 +308,15 @@ credentials: 'omit', cache: 'no-store' })`. POST bodies are sent with
    `https://127.0.0.1` behind a locally trusted certificate would slip
    through a scheme-only check (the localhost allowance is development-only,
    §5.11/§6.3).
-3. Enforce: 30-second timeout via `AbortSignal.timeout`; `response.ok` (a
-   non-2xx status is a typed error); a 20 MB response cap (checked against
-   `Content-Length` when present and enforced while reading the stream); a
-   substituted URL longer than 8 KB is an error before sending.
+3. Enforce: a 30-second timeout composed with an effect-lifetime abort —
+   `AbortSignal.any([AbortSignal.timeout(30_000), lifetime.signal])`, where
+   the hook's cleanup aborts `lifetime` — so leaving the stage cancels the
+   request and its response download rather than merely ignoring the
+   eventual result, and re-entering never runs alongside a still-live
+   predecessor (covered by a navigate-away-mid-flight test); `response.ok`
+   (a non-2xx status is a typed error); a 20 MB response cap (checked
+   against `Content-Length` when present and enforced while reading the
+   stream); a substituted URL longer than 8 KB is an error before sending.
 4. Parse as JSON and validate against the canonical response schema (§5.5).
    **The runtime enforces exactly the rules the test request enforces; an
    invalid response is a fetch failure, never partially ingested.**
@@ -494,6 +507,17 @@ deterministic and offline reads the stored sample.**
   both — acceptable in a test surface.
 - **Column pickers and CI** likewise read the sample; e2e intercepts the
   endpoint with Playwright routes wherever it exercises the live path.
+- **The synthetic starting network stops before the start stage.**
+  `PreviewHost.buildSession` today passes every stage to `generateNetwork`
+  and only marks the start stage in-progress as a post-pass, so the network
+  handed to the live request would contain nodes from the previewed roster
+  stage itself and from stages the participant has not reached — an
+  endpoint that filters out already-present people would return a roster no
+  real participant would ever see. `generateNetwork` gains an option to run
+  stage handlers only for stages before an index, and `PreviewHost` passes
+  the preview start stage. This aligns example-data preview with real
+  interview semantics for every stage type, and it is what makes the
+  embedded `{{network}}` truthful.
 
 ### 5.10 Host changes
 
@@ -503,12 +527,17 @@ deterministic and offline reads the stored sample.**
   `onRequestAsset` is unchanged — at interview time a dynamic asset is never
   resolved to a URL.
 - **Interviewer.** `buildResolvedAssets` copies `request` from the manifest
-  entry. The sample file is stored/encrypted like any file asset. One
-  behavioural requirement to verify with a test: `hashProtocol` excludes
-  `assetManifest`, so re-importing a protocol whose only change is the
-  endpoint config produces the same hash — the import path must still
-  replace the stored protocol document (the existing `importedAt` bump
-  handles asset refresh).
+  entry. The sample file is stored/encrypted like any file asset. Because
+  §5.1 re-keys an edited request and rewrites its stage references, a
+  request edit on a _referenced_ asset changes `stages` and therefore the
+  protocol hash — it arrives as an ordinary new import. What legitimately
+  stays same-hash (the v8→v9 re-import, metadata edits, refreshed samples,
+  changes to unreferenced assets) must still take effect: the import path
+  replaces the stored protocol document (the existing `importedAt` bump
+  handles asset refresh) — **except `experiments`**, which the hash also
+  excludes but which governs encryption behaviour for resumable sessions;
+  a same-hash import whose `experiments` differ is rejected with guidance.
+  Covered by tests for both directions.
 - **Fresco.** Fresco does not persist the asset manifest — its `Protocol`
   row stores only `stages` and `codebook` JSON — so the request config
   needs a home: the `Asset` model gains a nullable `request Json` column
@@ -525,17 +554,23 @@ deterministic and offline reads the stored sample.**
   Fresco also needs the same same-hash story as Interviewer:
   `useProtocolImport` currently rejects an import whose `hashProtocol`
   matches an existing protocol ("delete the existing protocol first"), and
-  deleting is destructive to collected interviews — so an endpoint-only
-  edit could never be installed. Importing a protocol with a matching hash
-  becomes an in-place update behind a confirmation, and the update replaces
-  **every protocol-level field — `schemaVersion` included** — plus the
-  asset connections, not a curated subset: `hashProtocol` covers only
-  codebook and stages, so anything outside the hash can legitimately differ
-  between same-hash imports. The pointed case is the v8→v9 upgrade itself —
-  re-importing an untouched protocol at schema 9 produces the same hash,
-  and a curated update list that skipped `schemaVersion` would leave a row
-  claiming 8 while serving 9-only asset behaviour. Same-hash means codebook
-  and stages are identical, so existing interviews are unaffected.
+  deleting is destructive to collected interviews. Importing a protocol
+  with a matching hash becomes an in-place update behind a confirmation.
+  §5.1's re-keying bounds what this path carries: a request edit on a
+  _referenced_ asset rewrites stage `dataSource` strings, changes the hash,
+  and imports as an ordinary **new** protocol — in-flight interviews
+  deliberately keep the configuration they started under, and new sessions
+  use the new protocol. What legitimately stays same-hash is the v8→v9
+  re-import, metadata edits, refreshed samples, and unreferenced-asset
+  changes; the update replaces every protocol-level field **except
+  `experiments`** — `schemaVersion` included, since a curated list that
+  skipped it would leave a row claiming 8 while serving 9-only asset
+  behaviour. `experiments` is also outside the hash, but it governs
+  encryption for existing and resumable interviews, so a same-hash import
+  whose `experiments` differ is rejected with guidance rather than
+  silently rewriting encryption behaviour under interviews collected
+  without it. Same-hash means codebook and stages are identical, so
+  existing interviews are otherwise unaffected.
 - **Architect preview.** `currentProtocolToPayload` passes the asset
   through unchanged — type `'dynamicnetwork'` with `request` intact — and
   `PreviewHost` supplies a synthetic `interviewContext`, so the runtime's
@@ -602,6 +637,20 @@ migration).
   Post-validation selects the schema for the requested target (frozen
   versions validate against their loose stubs), with an explicit-target
   regression test.
+- Fresco's deploy-time protocol migration generalises with it.
+  `scripts/migrate-protocols-to-v8.ts` runs from `setup-database.ts` on
+  every platform build, and its `isConformantV8` check validates rows
+  against `CurrentProtocolSchema` — once current is 9, every valid stored
+  v8 row fails that check and is re-fed through v7→v8 normalisation on
+  each deploy. The script becomes migrate-to-current
+  (`migrate-protocols-to-current.ts`): rows below `CURRENT_SCHEMA_VERSION`
+  migrate forward through the standard chain (asset manifest reconstructed
+  as today; `stages`, `codebook`, `schemaVersion`, and the recomputed
+  `hash` updated in one transaction), rows at the current version are
+  validated against `CurrentProtocolSchema` and left untouched when
+  conformant, and failures are skipped and logged as today. A regression
+  test proves a conformant current-version row survives a deploy
+  unmodified.
 
 Consumers that read `CURRENT_SCHEMA_VERSION` / `CurrentProtocol` (Fresco's
 `validateAndMigrateProtocol`, Studio's migrate/validate, both importers)
@@ -684,7 +733,13 @@ Protocol-level refinements in `schemas/9/schema.ts`:
   execution — rejected upfront, pointing the author at headers); `body`
   present iff `method === 'POST'`; body template parses as JSON; every
   placeholder path is in the registry; no object-valued placeholder in the
-  URL; header names are valid and not forbidden; `valueAssetId` references
+  URL; header names are valid and not forbidden; header **values** — both
+  inline strings and the values of referenced `apikey` assets, which the
+  whole-protocol refinement can read — satisfy Fetch's header-value
+  constraints (ByteString range, no CR/LF/NUL, no leading or trailing
+  whitespace), because the `Headers` constructor throws on violations and a
+  schema-valid asset must never be structurally unexecutable;
+  `valueAssetId` references
   an `apikey` asset; `sampleOf` equals the hash of the current `request`
   object **with header key references resolved to the referenced keys'
   values** — so rotating a key, editing the request, or fabricating a
@@ -753,10 +808,16 @@ Interview.tsx` (context prop), `vite.renderer.config.ts` CSP.
 **Fresco** — `lib/db/schema.prisma` (`Asset.request`, `Asset.sampleOf`) +
 Prisma migration, `utils/protocolImport.tsx` + `schemas/protocol.ts` +
 `actions/protocols.ts` (persist request config; same-hash in-place update
-replacing all protocol-level fields, §5.10), `hooks/useProtocolImport.tsx`
-(same-hash update flow), `queries/interviews.ts` (`getInterviewById` adds
-the `participant` relation, §5.4), `mapInterviewPayload.ts`,
-`InterviewClient.tsx` (context prop).
+replacing all protocol-level fields except `experiments`, §5.10),
+`hooks/useProtocolImport.tsx` (same-hash update flow),
+`scripts/migrate-protocols-to-v8.ts` → `migrate-protocols-to-current.ts` +
+`scripts/setup-database.ts` (§5.12), `queries/interviews.ts`
+(`getInterviewById` adds the `participant` relation, §5.4),
+`mapInterviewPayload.ts`, `InterviewClient.tsx` (context prop).
+
+**`@codaco/protocol-utilities`** — `generateNetwork` gains a
+stop-before-stage option so Preview's synthetic starting network contains
+only stages preceding the start stage (§5.9); `PreviewHost` passes it.
 
 ## 9. Testing
 
@@ -780,7 +841,10 @@ the `participant` relation, §5.4), `mapInterviewPayload.ts`,
   tests with a mocked `fetch` (timeout, non-2xx, oversize, invalid JSON,
   offline, `cache: 'no-store'` set, production refusal of `http://` and of
   loopback hosts under any scheme); two stage entries produce two network
-  requests (the HTTP-cache bypass is observable, not assumed); content-only
+  requests (the HTTP-cache bypass is observable, not assumed); adding or
+  removing a node within the stage neither refetches nor resets the roster
+  (entry snapshot, §5.4); navigating away mid-flight aborts the request and
+  its download; content-only
   hash stability under reorder and dedup across refetch; serialization
   omits encrypted attributes (tested against an encrypted network) and
   response parsing strips nullish values exactly as the static parser does;
@@ -798,19 +862,26 @@ the `participant` relation, §5.4), `mapInterviewPayload.ts`,
   a roster stage from its sample columns; edit the request and confirm save
   is blocked until a fresh test succeeds and the accepted edit re-keys the
   asset with references rewritten; confirm Preview executes the live
-  (route-intercepted) request
-  with the synthetic context substituted, shows the fetched rows, and shows
+  (route-intercepted) request with the synthetic context substituted and an
+  embedded network containing only nodes from stages before the preview
+  start stage (§5.9), shows the fetched rows, and shows
   the error + retry state when the intercepted endpoint fails; confirm
   synthetic state generation reads the sample without issuing any request.
 - **Interviewer:** session-gate dialog for a dynamic-roster protocol while
-  offline; re-import test proving an endpoint-config-only change (same
-  protocol hash) takes effect.
+  offline; re-import tests proving a same-hash re-import (refreshed sample,
+  metadata, v8→v9) replaces the stored document, that one with differing
+  `experiments` is rejected, and that a request edit on a referenced asset
+  arrives as a new protocol.
 - **Fresco:** `mapInterviewPayload` carries `request` from the asset row
   and `caseId` carries the participant identifier (the `getInterviewById`
   include); import persists `request`/`sampleOf`; regression tests for the
-  same-hash in-place update — an endpoint-only re-import takes effect
-  without deleting the protocol or its interviews, and a v9 re-import of an
-  untouched v8 protocol updates the stored `schemaVersion`.
+  same-hash in-place update — a v9 re-import of an untouched v8 protocol
+  updates the stored `schemaVersion`, a refreshed-sample/metadata re-import
+  takes effect without deleting the protocol or its interviews, a same-hash
+  import with differing `experiments` is rejected, and a request edit on a
+  referenced asset imports as a new protocol while existing interviews keep
+  the old one; the deploy-time migrate-to-current script leaves a
+  conformant v9 row untouched and migrates a v8 row exactly once (§5.12).
 - **Oracle discipline:** every "fetch was not made" assertion (synthetic
   generation, column pickers) must fail when a fetch _is_ made, and
   Preview's "fetch was made" assertions must fail when it wasn't — assert
@@ -837,7 +908,11 @@ the `participant` relation, §5.4), `mapInterviewPayload.ts`,
 Normal changeset lane, one changeset: `@codaco/protocol-validation` (**major**
 — `CURRENT_SCHEMA_VERSION` changes and every consumer's protocols migrate on
 next open/import), `@codaco/interview` (minor), `@codaco/shared-consts`
-(minor), Architect, Interviewer, Fresco (minor each). The §10 documentation
+(minor), `@codaco/protocol-utilities` (minor), `@codaco/sample-protocol` and
+`@codaco/development-protocol` (**major** each — their published payloads
+jump to schema 9, and the mirror-sync guard requires the compatibility
+packages to change with the canonical `packages/protocols` content),
+Architect, Interviewer, Fresco (minor each). The §10 documentation
 pages ship as a **separate changeset in the Documentation lane** — the
 Documentation app is a separately gated product and `pnpm check:changesets`
 rejects mixing it into the normal lane. Suggested implementation
