@@ -46,11 +46,6 @@ const Preview = FieldPreview as ComponentType<Record<string, unknown>>;
 /** Stable empty array: `initialValue` is a register-effect dependency. */
 const NO_FIELDS: Record<string, unknown>[] = [];
 
-const notEmpty = (value: unknown) =>
-  value && Array.isArray(value) && value.length > 0
-    ? undefined
-    : 'You must create at least one item.';
-
 // The three interfaces whose form IS the whole stage have no separate heading
 // to author: the stage's own title does that job.
 const INTERFACES_WITHOUT_FORM_TITLE = new Set([
@@ -209,7 +204,7 @@ const Form = ({
         component={DialogArrayField}
         addButtonLabel="Create new form field"
         initialValue={initialFields ?? NO_FIELDS}
-        validation={{ notEmpty }}
+        validation={{ required: 'You must create at least one item.' }}
         addTitle="Edit Field"
         editorTitle="Edit Field"
         editorFieldsComponent={EditorFields}
