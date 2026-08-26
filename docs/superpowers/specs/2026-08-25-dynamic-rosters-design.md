@@ -822,8 +822,10 @@ only stages preceding the start stage (§5.9); `PreviewHost` passes it.
 ## 9. Testing
 
 - **protocol-validation:** schema unit tests for the new asset (valid/invalid
-  origins, URL credentials rejected, method/body coupling, header rules,
-  placeholder registry, object-in-URL, `sampleOf` mismatch rejected —
+  origins, URL credentials rejected, method/body coupling, header rules —
+  names and the CR/LF/ByteString value constraints, inline and via
+  referenced keys — placeholder registry, object-in-URL, `sampleOf`
+  mismatch rejected —
   including via a changed referenced key value); refinement tests for both
   roster and panel data sources
   (including the newly closed panel gap); response-schema tests (empty
