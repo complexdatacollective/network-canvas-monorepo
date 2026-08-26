@@ -251,6 +251,13 @@ Substitution rules — these are security rules, not conveniences:
   registry, authoring time). At runtime, a context value that is legitimately
   absent (`interview.caseId` on a host without one) substitutes as JSON
   `null` in bodies and the empty string in URLs.
+- **Request context is stable per interview.** `protocol.name` is
+  snapshotted into the interview/session record at creation by each host;
+  a later same-hash metadata edit to the stored protocol (§5.10) never
+  changes what an in-flight or resumable interview sends — an endpoint
+  routing on the placeholder cannot start returning a different roster
+  midway through collection. (`protocol.hash` is immutable by
+  construction, and `interview.*` is session-scoped already.)
 
 ### 5.3 Network serialization
 
@@ -311,11 +318,25 @@ credentials: 'omit', cache: 'no-store', redirect: 'error' })`. POST bodies
    cacheable headers would be answered from the browser's HTTP cache, and a
    revisited stage would silently see stale data — violating Decision 2's
    fetch-on-each-entry rule from a layer no service-worker configuration
-   covers. Production builds additionally refuse any non-`https://` URL
+   covers. The service-worker layer needs its own guard too: the installed
+   Architect and Interviewer Workbox configs match image and font URLs
+   **by extension regex alone**, cross-origin included, with `CacheFirst` —
+   and Workbox reads the Cache API explicitly, so `cache: 'no-store'` does
+   not bypass it. A roster endpoint whose path happens to end in a matched
+   extension would be served from cache on re-entry. Both apps therefore
+   gain a higher-priority `NetworkOnly` route, registered before every
+   extension cache, matching cross-origin fetch-style requests
+   (`request.destination === ''` and a foreign origin) — which captures
+   roster requests categorically without touching same-origin asset
+   caching or element-initiated image/font loads. A config-level test
+   asserts the route's position and matcher. Production builds additionally refuse any non-`https://` URL
    **and any loopback host regardless of scheme** — classified by parsing
    the hostname as an IP address, so `localhost`, `127.0.0.0/8`, `::1`,
    `0.0.0.0`, and IPv4-mapped IPv6 forms such as `[::ffff:127.0.0.1]` are
-   all caught, not just the listed textual spellings — because
+   all caught, not just the listed textual spellings; hostnames are
+   normalised (trailing dot stripped) and the RFC 6761 special-use domain
+   is rejected by name — `localhost` and anything ending in `.localhost`,
+   which browsers resolve to the loopback interface — because
    `https://127.0.0.1` behind a locally trusted certificate would slip
    through a scheme-only check (the localhost allowance is development-only,
    §5.11/§6.3).
@@ -468,12 +489,16 @@ and copy are extended to cover dynamic rosters.
   synthetic defaults — an endpoint keyed by `{{interview.caseId}}` needs a
   real enrolled identifier to return a representative response, and a
   synthetic one would yield a 404 or empty roster with no usable columns.
-  The network placeholder stays generated. The edited test values persist
-  in Architect's local protocol workspace — never in the exported
-  `.netcanvas`, since a real enrolled identifier is exactly what they may
-  contain — and Preview substitutes the same persisted values for its
-  scalar context (§5.9), so the end-to-end surface exercises the identity
-  the researcher proved rather than a freshly fabricated one.
+  The network placeholder stays generated. Of the edited test values, only
+  the **`interview.*` overrides** persist (in Architect's local protocol
+  workspace — never in the exported `.netcanvas`, since a real enrolled
+  identifier is exactly what they may contain), and Preview substitutes
+  those persisted values for its `interview.*` context (§5.9) so the
+  end-to-end surface exercises the identity the researcher proved.
+  `protocol.*`, `stage.id`, and `now` are intrinsic — Preview derives them
+  from its live context, because §5.2 defines `stage.id` as the stage
+  currently fetching, and an asset shared by two stages must see each
+  stage's real id, not the test panel's.
   Accepting the result stores the
   response JSON as the asset's sample file (`source`, generated filename
   `<uuid>.json`) via the existing asset-storage path, and writes `sampleOf`
@@ -515,11 +540,12 @@ deterministic and offline reads the stored sample.**
 
 - **Architect Preview** behaves exactly like a real interview: the
   stage-entry fetch, retry affordances, and failure states all run against
-  the researcher's real endpoint, with the persisted test values from the
-  asset's test panel (§5.8) filling the scalar placeholders — the identity
-  the accepted test proved, not a freshly fabricated one, so an endpoint
-  keyed by `{{interview.caseId}}` behaves in Preview as it did in the test —
-  and the live preview network filling `{{network}}`.
+  the researcher's real endpoint, with the persisted `interview.*` test
+  values from the asset's test panel (§5.8) filling the host placeholders —
+  the identity the accepted test proved, not a freshly fabricated one, so
+  an endpoint keyed by `{{interview.caseId}}` behaves in Preview as it did
+  in the test — while `protocol.*`, `stage.id`, and `now` come from the
+  live Preview context and the preview network fills `{{network}}`.
   This is deliberate — Preview is where a researcher proves the endpoint
   works end to end before deployment, including how the stage degrades when
   it doesn't. Previewing a dynamic-roster stage therefore needs internet,
@@ -593,8 +619,11 @@ deterministic and offline reads the stored sample.**
   the sample stays server-side for synthetic use. Fresco also persists the
   protocol document's own `name` (a new column beside `Protocol.name`,
   which stores the uploaded archive filename for display) and resolves
-  `{{protocol.name}}` from it, so the placeholder means the same thing on
-  every host. Storing `request` on the globally deduplicated `Asset` row is
+  `{{protocol.name}}` from it — snapshotted onto the interview at creation
+  (§5.2) — so the placeholder means the same thing on every host and stays
+  stable for in-flight interviews across metadata edits. Interviewer does
+  the same: the session record captures the name at creation and the
+  context reads the snapshot, not the re-loaded protocol document. Storing `request` on the globally deduplicated `Asset` row is
   sound _because of_ §5.1's immutability invariant — an assetId names one
   exact configuration, so protocols sharing an id share it correctly and a
   changed configuration always arrives as a new asset. Fresco sets no CSP
@@ -683,8 +712,11 @@ migration).
   the star export moves from `./8/schema.ts` to `./9/schema.ts`.
 - `schemas/9/migration.ts` — the v8→v9 migration, registered in
   `migration/migrate-protocol.ts`. It is a version bump plus one
-  normalisation: panels whose `dataSource` does not resolve to a manifest
-  asset of an allowed type are dropped. The normalisation exists because §7
+  normalisation: panels whose `dataSource` is **not the `'existing'`
+  sentinel** and does not resolve to a manifest
+  asset of an allowed type are dropped — `'existing'` panels are valid
+  in-session sources, exempt from §7's asset check, and must survive the
+  migration byte-identical (regression-tested). The normalisation exists because §7
   validates panel data sources for the first time and `migrateProtocol`
   post-validates its output — a migration must never produce an invalid
   protocol. Dropping such a panel preserves effective behaviour: it renders
@@ -877,12 +909,15 @@ type filter + preview renderer, `ResourcePicker`/`DataSource` type lists,
 persisted test values as the scalar context, §5.9/§5.10),
 a localhost-URL timeline alert (`TestingMapboxTokenAlert` pattern, §5.8),
 `ProtocolInfoCard` (use shared helper), `vite.config.ts` CSP (dev-gated
-localhost, §5.11).
+localhost, §5.11) + the cross-origin fetch `NetworkOnly` Workbox route
+(§5.4).
 
 **Interviewer** — `lib/assets/assetResolver.ts` (`buildResolvedAssets`),
 `lib/protocol/protocolRequiresInternet.ts` (delegate to shared helper),
 `lib/synthetic/loadRosterData.ts`, `NewSessionForm` copy, `routes/
-Interview.tsx` (context prop), `vite.renderer.config.ts` CSP.
+Interview.tsx` (context prop + name snapshot, §5.2),
+`vite.renderer.config.ts` CSP, `vite.config.ts` cross-origin fetch
+`NetworkOnly` Workbox route (§5.4).
 
 **Fresco** — `lib/db/schema.prisma` (`Asset.request`, `Asset.sampleOf`, and
 the embedded protocol-name column, §5.10) +
@@ -918,7 +953,8 @@ only stages preceding the start stage (§5.9); `PreviewHost` passes it.
   import must never silently bind to a frozen stub).
 - **migration:** a valid v8 protocol migrates to a valid v9 protocol
   changed only in `schemaVersion`; a v8 protocol with a dangling panel
-  `dataSource` has that panel dropped and post-validates;
+  `dataSource` has that panel dropped and post-validates, while an
+  `'existing'`-sentinel panel survives byte-identical;
   `getMigrationInfo(8, 9)` reports the migration notes; the existing
   v1→v8 chain fixtures still land on the new current version; an explicit
   `migrateProtocol(doc, 8)` still succeeds post-v9 (target-keyed
@@ -961,13 +997,19 @@ only stages preceding the start stage (§5.9); `PreviewHost` passes it.
   offline; import rejects a malformed sample; re-import tests proving a
   same-hash re-import (metadata, v8→v9) replaces the stored document, that
   one with differing `experiments` is rejected, and that a request edit or
-  sample refresh on a referenced asset arrives as a new protocol.
+  sample refresh on a referenced asset arrives as a new protocol; a
+  same-hash name edit does not change `{{protocol.name}}` for an existing
+  session (snapshot, §5.2); the Workbox config registers the cross-origin
+  fetch `NetworkOnly` route before every extension cache (same assertion
+  in Architect's config).
 - **Fresco:** `mapInterviewPayload` carries `request` from the asset row
   and `caseId` carries the participant identifier (the `getInterviewById`
   include); import persists `request`/`sampleOf` and the embedded protocol
   name, and rejects a malformed sample; `{{protocol.name}}` resolves to the
   document name, not the archive filename (cross-host substitution test);
-  the participant payload contains no dynamic-roster sample URL;
+  the participant payload contains no dynamic-roster sample URL; a
+  same-hash name edit does not change `{{protocol.name}}` for an existing
+  interview (snapshot, §5.2);
   `generate-test-interviews` draws roster nodes from stored samples;
   regression tests for the same-hash in-place update — a v9 re-import of an
   untouched v8 protocol updates the stored `schemaVersion`, a metadata
