@@ -19,4 +19,13 @@ describe('Architect theme', () => {
   it('keeps neutral controls platinum against white dialog surfaces', () => {
     expect(readThemeToken('neutral')).toBe('oklch(var(--platinum))');
   });
+
+  it('pairs the light nested surfaces with dark contrast text', () => {
+    expect(readThemeToken('surface-3-contrast')).toBe(
+      'oklch(var(--navy-taupe))',
+    );
+    expect(readThemeToken('surface-4-contrast')).toBe(
+      'oklch(var(--navy-taupe))',
+    );
+  });
 });

@@ -24,9 +24,9 @@
     --surface-2: oklch(0.93 0.01 280);
     --surface-2-contrast: oklch(var(--navy-taupe));
     --surface-3: oklch(0.9 0.01 280);
-    --surface-3-contrast: oklch(var(--white));
+    --surface-3-contrast: oklch(var(--navy-taupe));
     --surface-4: oklch(0.85 0.01 280);
-    --surface-4-contrast: oklch(var(--white));
+    --surface-4-contrast: oklch(var(--navy-taupe));
     /* Array items start a separate accent ladder. The first nested Surface
        uses the darker slate blue; further nesting clamps to that authored
        endpoint rather than inventing additional brand colors. */

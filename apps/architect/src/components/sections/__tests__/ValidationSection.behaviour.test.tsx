@@ -155,6 +155,7 @@ describe('ValidationSection with a target-only contradiction', () => {
     expect(
       screen.getByRole('group', { name: 'Requirements' }),
     ).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Required' })).toHaveFocus();
   });
 });
 

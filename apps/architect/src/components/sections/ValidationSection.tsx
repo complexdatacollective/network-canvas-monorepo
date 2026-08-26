@@ -1,5 +1,5 @@
 import { get, pickBy } from 'es-toolkit/compat';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
@@ -104,22 +104,18 @@ const ValidationSection = ({
   const hasValidationError = useFormStore(
     (store) => (store.errors.fieldErrors.validation?.length ?? 0) > 0,
   );
-  const hadValidationError = useRef(false);
-  const [validationErrorVersion, setValidationErrorVersion] = useState(0);
+  const errorFocusRequest = useFormStore((store) => store.errorFocusRequest);
 
   // A contradiction can be caused by changing an attribute that is only the
-  // target of another attribute's rule. Its own optional Validation Section is
+  // target of another attribute's rule. Its optional Validation Section is
   // legitimately closed, but the save-time validator still reports the error
   // against the validation field that owns the message. Remount the Section
-  // on each NEW standing error so it opens and registers that owning field.
-  // Clearing the error does not remount it again, so closing the Section still
-  // discards its rules and leaves it closed as requested.
-  useEffect(() => {
-    if (hasValidationError && !hadValidationError.current) {
-      setValidationErrorVersion((version) => version + 1);
-    }
-    hadValidationError.current = hasValidationError;
-  }, [hasValidationError]);
+  // in the SAME render that exposes each standing error, before useForm's
+  // layout effect tries to focus that field. The request counter also reopens
+  // it for each subsequent refused save if the researcher closed it meanwhile.
+  const sectionKey = hasValidationError
+    ? `validation-error-${errorFocusRequest}`
+    : 'validation';
   const existingVariablesForType = useMemo(
     () =>
       pickBy(
@@ -149,7 +145,7 @@ const ValidationSection = ({
     <>
       <div id={id} className="sr-only" />
       <Section
-        key={validationErrorVersion}
+        key={sectionKey}
         title={label}
         description={summary}
         disabled={disabled}
