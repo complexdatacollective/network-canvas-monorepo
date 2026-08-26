@@ -200,14 +200,17 @@ machinery — zip extraction (`extractProtocol.ts`), the export bundler's
 storage upload — handles it with no special casing beyond the type switch.
 
 One further invariant keeps cross-host asset handling sound: **an assetId is
-immutable — it names one exact request configuration and its sample.** When a
-request configuration changes, Architect assigns the asset a fresh id and
-rewrites every reference to it (stage `dataSource`, panel `dataSource`) in
-the same undo gesture as the save (§5.8). File assets already have this
-property (their bytes never change under an id), and Fresco's globally
-deduplicated `Asset` table depends on it: `assetId` is unique and shared
-across protocols there, so a mutable configuration under a stable id would
-let one protocol's endpoint silently serve — or overwrite — another's.
+immutable — it names one exact request configuration and its sample.** When
+the request configuration changes, **or an accepted re-test returns sample
+bytes that differ from the stored sample**, Architect assigns the asset a
+fresh id and rewrites every reference to it (stage `dataSource`, panel
+`dataSource`) in the same undo gesture as the save (§5.8). File assets
+already have this property (their bytes never change under an id), and
+Fresco's globally deduplicated `Asset` table depends on it: `assetId` is
+unique and shared across protocols there — `getNewAssetIds` skips uploading
+an already-known id, so mutated bytes or configuration under a stable id
+would either never reach Fresco or silently overwrite what another protocol
+shares.
 
 The `assetReference()` tag on `valueAssetId` makes header key usage visible to
 `collectAssetReferences`, so Architect's "in use" accounting and
@@ -296,15 +299,23 @@ branches on asset type. For `dynamicnetwork` it does not call
    removing a node within the stage neither refetches nor resets the
    roster.
 2. `fetch(url, { method, headers, body, signal, referrerPolicy: 'no-referrer',
-credentials: 'omit', cache: 'no-store' })`. POST bodies are sent with
+credentials: 'omit', cache: 'no-store', redirect: 'error' })`. POST bodies
+   are sent with
    `Content-Type: application/json` (set by the app; not overridable).
+   `redirect: 'error'` closes a boundary bypass: a followed redirect
+   re-targets the request _after_ the URL checks below have run, so an
+   allowed public endpoint could bounce the request to a blocked loopback
+   target. Endpoints must answer directly; the endpoint guide documents
+   this.
    `cache: 'no-store'` is load-bearing: without it a GET endpoint that sends
    cacheable headers would be answered from the browser's HTTP cache, and a
    revisited stage would silently see stale data — violating Decision 2's
    fetch-on-each-entry rule from a layer no service-worker configuration
    covers. Production builds additionally refuse any non-`https://` URL
-   **and any loopback host regardless of scheme** — `localhost`,
-   `127.0.0.0/8`, `::1`, `0.0.0.0`, checked on the parsed hostname — because
+   **and any loopback host regardless of scheme** — classified by parsing
+   the hostname as an IP address, so `localhost`, `127.0.0.0/8`, `::1`,
+   `0.0.0.0`, and IPv4-mapped IPv6 forms such as `[::ffff:127.0.0.1]` are
+   all caught, not just the listed textual spellings — because
    `https://127.0.0.1` behind a locally trusted certificate would slip
    through a scheme-only check (the localhost allowance is development-only,
    §5.11/§6.3).
@@ -378,6 +389,14 @@ test request and the interview runtime share it:
 - Unknown top-level keys (including `edges`) are ignored, matching the static
   JSON roster behaviour.
 
+The same schema also validates **stored sample bytes at every import
+boundary** — Architect opening a `.netcanvas`, Interviewer import, Fresco
+import. Protocol validation sees only the sample's filename, so a
+hand-authored or corrupted archive could otherwise pass validation and fail
+much later in column pickers and every sample-backed synthetic path. A
+malformed or missing sample is an import error, covered by tests in each
+host.
+
 Attribute-to-codebook mapping is unchanged: best-effort by name via
 `getParentKeyByNameValue`, unmatched keys stored raw under
 `allowUnknownAttributes`.
@@ -449,16 +468,23 @@ and copy are extended to cover dynamic rosters.
   synthetic defaults — an endpoint keyed by `{{interview.caseId}}` needs a
   real enrolled identifier to return a representative response, and a
   synthetic one would yield a 404 or empty roster with no usable columns.
-  The network placeholder stays generated. Accepting the result stores the
+  The network placeholder stays generated. The edited test values persist
+  in Architect's local protocol workspace — never in the exported
+  `.netcanvas`, since a real enrolled identifier is exactly what they may
+  contain — and Preview substitutes the same persisted values for its
+  scalar context (§5.9), so the end-to-end surface exercises the identity
+  the researcher proved rather than a freshly fabricated one.
+  Accepting the result stores the
   response JSON as the asset's sample file (`source`, generated filename
   `<uuid>.json`) via the existing asset-storage path, and writes `sampleOf`
   from the tested request. The asset cannot be saved without a stored
   sample, **and any edit to the request configuration disables save until a
   test of the edited configuration succeeds** — otherwise column pickers and
   synthetic data would describe an endpoint participants never call, failing
-  only during collection. Accepting a test of a _changed_ configuration also
-  assigns the asset its fresh id and rewrites references (§5.1's
-  immutability invariant), all in one undo gesture. Because `sampleOf`
+  only during collection. Accepting a test whose configuration changed _or
+  whose response bytes differ from the stored sample_ also assigns the
+  asset its fresh id and rewrites references (§5.1's immutability
+  invariant), all in one undo gesture. Because `sampleOf`
   hashes the request with header key references _resolved to their values_
   (§7), a change to a referenced `apikey` invalidates every dependent
   dynamic asset; Architect lists the affected assets via the reference index
@@ -489,8 +515,11 @@ deterministic and offline reads the stored sample.**
 
 - **Architect Preview** behaves exactly like a real interview: the
   stage-entry fetch, retry affordances, and failure states all run against
-  the researcher's real endpoint, with Preview's synthetic
-  `interviewContext` and the live preview network filling the placeholders.
+  the researcher's real endpoint, with the persisted test values from the
+  asset's test panel (§5.8) filling the scalar placeholders — the identity
+  the accepted test proved, not a freshly fabricated one, so an endpoint
+  keyed by `{{interview.caseId}}` behaves in Preview as it did in the test —
+  and the live preview network filling `{{network}}`.
   This is deliberate — Preview is where a researcher proves the endpoint
   works end to end before deployment, including how the stage degrades when
   it doesn't. Previewing a dynamic-roster stage therefore needs internet,
@@ -501,10 +530,19 @@ deterministic and offline reads the stored sample.**
   stored sample: it runs at startup across many stages at once and must be
   deterministic, offline-capable, and incapable of hammering the endpoint.
   The adapters extend their `type !== 'network'` guard to also accept
-  `dynamicnetwork` and resolve the sample file exactly as a static file.
-  A synthetic node drawn from the sample that still matches a live row
-  dedupes naturally (same content, same hash); a changed row appears as
-  both — acceptable in a test surface.
+  `dynamicnetwork` and resolve the sample file exactly as a static file —
+  parsed with the **same content-only key strategy as the live path**
+  (§5.4): the collector's current index-salted keys would never match a
+  live `_uid`, so a sampled node could be offered again by the live roster.
+  With matching keys, a synthetic node drawn from the sample that still
+  matches a live row dedupes naturally; a changed row appears as both —
+  acceptable in a test surface.
+- **Fresco's synthetic test interviews**
+  (`app/api/generate-test-interviews/route.ts`) currently call
+  `generateNetwork` with no roster data at all, so they would fabricate
+  people for dynamic-roster stages. The route gains a storage-backed roster
+  collector that reads samples from the asset store server-side, bringing
+  it in line with the other two synthetic adapters.
 - **Column pickers and CI** likewise read the sample; e2e intercepts the
   endpoint with Playwright routes wherever it exercises the live path.
 - **The synthetic starting network stops before the start stage.**
@@ -530,8 +568,9 @@ deterministic and offline reads the stored sample.**
   entry. The sample file is stored/encrypted like any file asset. Because
   §5.1 re-keys an edited request and rewrites its stage references, a
   request edit on a _referenced_ asset changes `stages` and therefore the
-  protocol hash — it arrives as an ordinary new import. What legitimately
-  stays same-hash (the v8→v9 re-import, metadata edits, refreshed samples,
+  protocol hash — it arrives as an ordinary new import, and so does a
+  refreshed sample, which re-keys the same way (§5.1). What legitimately
+  stays same-hash (the v8→v9 re-import, metadata edits,
   changes to unreferenced assets) must still take effect: the import path
   replaces the stored protocol document (the existing `importedAt` bump
   handles asset refresh) — **except `experiments`**, which the hash also
@@ -546,7 +585,16 @@ deterministic and offline reads the stored sample.**
   excluded from upload) and persists `request` and `sampleOf` on the asset
   row; the insert schema and `insertProtocol` carry them through;
   `mapInterviewPayload` populates `request` on the resolved asset from the
-  asset row. Storing `request` on the globally deduplicated `Asset` row is
+  asset row **and excludes dynamic-roster sample URLs from the participant
+  payload** — today every stored asset URL is serialized to the interview
+  client, and a sample produced by a test against a real identifier may
+  contain a real person's roster. Nothing breaks: the runtime never
+  requests a dynamic asset's URL (`onRequestAsset` is unused for them), and
+  the sample stays server-side for synthetic use. Fresco also persists the
+  protocol document's own `name` (a new column beside `Protocol.name`,
+  which stores the uploaded archive filename for display) and resolves
+  `{{protocol.name}}` from it, so the placeholder means the same thing on
+  every host. Storing `request` on the globally deduplicated `Asset` row is
   sound _because of_ §5.1's immutability invariant — an assetId names one
   exact configuration, so protocols sharing an id share it correctly and a
   changed configuration always arrives as a new asset. Fresco sets no CSP
@@ -560,8 +608,9 @@ deterministic and offline reads the stored sample.**
   _referenced_ asset rewrites stage `dataSource` strings, changes the hash,
   and imports as an ordinary **new** protocol — in-flight interviews
   deliberately keep the configuration they started under, and new sessions
-  use the new protocol. What legitimately stays same-hash is the v8→v9
-  re-import, metadata edits, refreshed samples, and unreferenced-asset
+  use the new protocol — and a refreshed sample re-keys and arrives the
+  same way (§5.1). What legitimately stays same-hash is the v8→v9
+  re-import, metadata edits, and unreferenced-asset
   changes; the update replaces every protocol-level field **except
   `experiments`** — `schemaVersion` included, since a curated list that
   skipped it would leave a row claiming 8 while serving 9-only asset
@@ -708,6 +757,13 @@ Governing rules, in order of importance:
    validation time.
 10. **No SSRF surface added on any server.** All requests originate in the
     participant's browser; no host proxies (Decision 4).
+11. **The stored sample is protocol content.** A test run against a real
+    enrolled identifier stores that person's roster inside the `.netcanvas`
+    and every host's asset store. It is excluded from participant payloads
+    (§5.10) and Preview's test values never export (§5.8), but anyone
+    holding the protocol file can read the sample; documentation tells
+    researchers to test with non-sensitive identifiers where roster content
+    is sensitive.
 
 CORS is the endpoint author's obligation and is documented: the endpoint must
 answer preflights (any custom header or JSON POST triggers one) and send
@@ -791,11 +847,13 @@ components/NodePanel.tsx` — retry UI + failure copy; the roster stage
   new type (sample path).
 
 **Architect** — resource dialog + test-request panel (new components under
-`src/components/AssetBrowser/`), `assetManifest` duck action, `AssetBrowser`
+`src/components/AssetBrowser/`; test values persisted in the local protocol
+workspace, §5.8), `assetManifest` duck action, `AssetBrowser`
 type filter + preview renderer, `ResourcePicker`/`DataSource` type lists,
-`useVariablesFromExternalData`, `PreviewHost/previewRosterData.ts`,
+`useVariablesFromExternalData`, import-time sample validation (§5.5),
+`PreviewHost/previewRosterData.ts`,
 `currentProtocolToPayload.ts` + `PreviewHost` (pass `request` through,
-synthetic `interviewContext`, §5.10),
+persisted test values as the scalar context, §5.9/§5.10),
 a localhost-URL timeline alert (`TestingMapboxTokenAlert` pattern, §5.8),
 `ProtocolInfoCard` (use shared helper), `vite.config.ts` CSP (dev-gated
 localhost, §5.11).
@@ -805,11 +863,15 @@ localhost, §5.11).
 `lib/synthetic/loadRosterData.ts`, `NewSessionForm` copy, `routes/
 Interview.tsx` (context prop), `vite.renderer.config.ts` CSP.
 
-**Fresco** — `lib/db/schema.prisma` (`Asset.request`, `Asset.sampleOf`) +
+**Fresco** — `lib/db/schema.prisma` (`Asset.request`, `Asset.sampleOf`, and
+the embedded protocol-name column, §5.10) +
 Prisma migration, `utils/protocolImport.tsx` + `schemas/protocol.ts` +
-`actions/protocols.ts` (persist request config; same-hash in-place update
+`actions/protocols.ts` (persist request config + embedded name; validate
+sample bytes at import, §5.5; same-hash in-place update
 replacing all protocol-level fields except `experiments`, §5.10),
 `hooks/useProtocolImport.tsx` (same-hash update flow),
+`app/api/generate-test-interviews/route.ts` (storage-backed roster
+collector, §5.9),
 `scripts/migrate-protocols-to-v8.ts` → `migrate-protocols-to-current.ts` +
 `scripts/setup-database.ts` (§5.12), `queries/interviews.ts`
 (`getInterviewById` adds the `participant` relation, §5.4),
@@ -841,8 +903,11 @@ only stages preceding the start stage (§5.9); `PreviewHost` passes it.
 - **interview:** substitution unit tests (tree substitution, typed
   replacement, interpolation escaping, encoding, absent values); executor
   tests with a mocked `fetch` (timeout, non-2xx, oversize, invalid JSON,
-  offline, `cache: 'no-store'` set, production refusal of `http://` and of
-  loopback hosts under any scheme); two stage entries produce two network
+  offline, `cache: 'no-store'` set, redirects refused, production refusal
+  of `http://` and of loopback hosts under any scheme including
+  IPv4-mapped IPv6 literals); the sample collector produces the same
+  content-only `_uid`s as the live path, so a sampled node is excluded
+  from a live roster containing the same row; two stage entries produce two network
   requests (the HTTP-cache bypass is observable, not assumed); adding or
   removing a node within the stage neither refetches nor resets the roster
   (entry snapshot, §5.4); navigating away mid-flight aborts the request and
@@ -870,20 +935,25 @@ only stages preceding the start stage (§5.9); `PreviewHost` passes it.
   the error + retry state when the intercepted endpoint fails; confirm
   synthetic state generation reads the sample without issuing any request.
 - **Interviewer:** session-gate dialog for a dynamic-roster protocol while
-  offline; re-import tests proving a same-hash re-import (refreshed sample,
-  metadata, v8→v9) replaces the stored document, that one with differing
-  `experiments` is rejected, and that a request edit on a referenced asset
-  arrives as a new protocol.
+  offline; import rejects a malformed sample; re-import tests proving a
+  same-hash re-import (metadata, v8→v9) replaces the stored document, that
+  one with differing `experiments` is rejected, and that a request edit or
+  sample refresh on a referenced asset arrives as a new protocol.
 - **Fresco:** `mapInterviewPayload` carries `request` from the asset row
   and `caseId` carries the participant identifier (the `getInterviewById`
-  include); import persists `request`/`sampleOf`; regression tests for the
-  same-hash in-place update — a v9 re-import of an untouched v8 protocol
-  updates the stored `schemaVersion`, a refreshed-sample/metadata re-import
-  takes effect without deleting the protocol or its interviews, a same-hash
-  import with differing `experiments` is rejected, and a request edit on a
-  referenced asset imports as a new protocol while existing interviews keep
-  the old one; the deploy-time migrate-to-current script leaves a
-  conformant v9 row untouched and migrates a v8 row exactly once (§5.12).
+  include); import persists `request`/`sampleOf` and the embedded protocol
+  name, and rejects a malformed sample; `{{protocol.name}}` resolves to the
+  document name, not the archive filename (cross-host substitution test);
+  the participant payload contains no dynamic-roster sample URL;
+  `generate-test-interviews` draws roster nodes from stored samples;
+  regression tests for the same-hash in-place update — a v9 re-import of an
+  untouched v8 protocol updates the stored `schemaVersion`, a metadata
+  re-import takes effect without deleting the protocol or its interviews, a
+  same-hash import with differing `experiments` is rejected, and a request
+  edit or sample refresh on a referenced asset imports as a new protocol
+  while existing interviews keep the old one; the deploy-time
+  migrate-to-current script leaves a conformant v9 row untouched and
+  migrates a v8 row exactly once (§5.12).
 - **Oracle discipline:** every "fetch was not made" assertion (synthetic
   generation, column pickers) must fail when a fetch _is_ made, and
   Preview's "fetch was made" assertions must fail when it wasn't — assert
@@ -894,7 +964,8 @@ only stages preceding the start stage (§5.9); `PreviewHost` passes it.
 
 - New page: _Building a dynamic roster endpoint_ — request anatomy,
   placeholder table, canonical response shape, CORS/preflight obligations,
-  idempotency requirement, key-visibility warning (§6.6).
+  no-redirect requirement (§5.4), idempotency requirement, key-visibility
+  warning (§6.6), and the sample-content privacy guidance (§6.11).
 - `working-with-rosters.en.md`, `name-generator-roster.en.mdx`,
   `key-concepts/resources.en.mdx` — the new resource type and test-request
   flow.
