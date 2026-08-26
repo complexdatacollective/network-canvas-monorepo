@@ -22,6 +22,7 @@ import { MotionButton } from '../../../Button';
 import useDialog from '../../../dialogs/useDialog';
 import { useAccessibilityAnnouncements } from '../../../dnd/useAccessibilityAnnouncements';
 import { useKeyboardReorder } from '../../../dnd/useKeyboardReorder';
+import Surface from '../../../layout/Surface';
 import {
   controlVariants,
   groupSpacingVariants,
@@ -85,7 +86,7 @@ const arrayFieldVariants = compose(
 );
 
 const itemVariants = cva({
-  base: 'publish-colors bg-surface-3 text-surface-3-contrast w-full rounded-sm px-6 py-4 select-none',
+  base: 'w-full rounded select-none',
 });
 
 /**
@@ -314,8 +315,8 @@ export type ArrayFieldDragHandleProps = {
  * centre, because the nearest adjacent target sits ~12 px away.
  *
  * That is a deliberate, reviewed choice (the handle blends into the item panel
- * by design — see the `bg-surface-3` item treatment it was rewritten for), NOT
- * an oversight. But it means the compliance lives in the LAYOUT, not here: any
+ * by design — see the accent Surface item treatment), NOT an oversight. But it
+ * means the compliance lives in the LAYOUT, not here: any
  * change that brings a neighbouring control closer, or that packs items more
  * tightly, breaks 2.5.8 with nothing in this file to warn you.
  *
@@ -456,6 +457,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
   ref: Ref<HTMLLIElement>,
 ) {
   const dragControls = useDragControls();
+
   const resolvedItemClasses =
     typeof itemClasses === 'function'
       ? itemClasses(item, isBeingEdited)
@@ -490,7 +492,10 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
   );
 
   return (
-    <Reorder.Item
+    <Surface
+      as={Reorder.Item}
+      noContainer
+      series="accent"
       ref={ref}
       value={item}
       dragListener={false}
@@ -505,7 +510,6 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
       initial="initial"
       animate="animate"
       exit="exit"
-      style={{ borderRadius: 14 }}
     >
       <ItemComponent
         item={item}
@@ -527,7 +531,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
         editTriggerRef={editTriggerRef}
         getAddTrigger={getAddTrigger}
       />
-    </Reorder.Item>
+    </Surface>
   );
 }
 

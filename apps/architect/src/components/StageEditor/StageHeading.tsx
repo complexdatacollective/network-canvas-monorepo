@@ -126,11 +126,12 @@ const StageHeading = ({
             ratio="4:3"
             sizes="10rem"
             alt={`${typeLabel} interface`}
-            className="relative h-28 w-auto rounded"
+            className="border-navy-taupe relative h-28 w-auto rounded-sm border-2"
           />
         </div>
       </div>
-      <div className="flex min-w-0 flex-col justify-center">
+      {/** *:data-[field-name=label] is because there's no way to add classes to the Field */}
+      <div className="flex min-w-0 flex-col justify-center *:data-[field-name=label]:m-0">
         <Paragraph
           className={headingVariants({
             level: 'label',

@@ -247,7 +247,7 @@ export const NodePanels = (_props: StageEditorSectionProps) => {
         itemComponent={NodePanel}
         itemTemplate={createNodePanel}
         getId={(panel: NodePanelValue) => panel.id}
-        itemClasses="bg-accent text-accent-contrast elevation-low"
+        itemClasses="elevation-low"
         addButtonLabel="Add new panel"
         emptyStateMessage="No side panels configured."
         immediateAdd

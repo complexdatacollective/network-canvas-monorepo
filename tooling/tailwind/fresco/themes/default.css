@@ -134,6 +134,21 @@
     --surface-4: oklch(from var(--background) calc(l - 0.09) c h);
     --surface-4-contrast: var(--text);
 
+    /* Alternate surface series for emphasized collections. It deliberately
+       aliases the deepest default levels so adopting the semantic series does
+       not change existing themes. Product themes may replace the whole series
+       with a brand-specific palette. */
+    --surface-accent: var(--surface-3);
+    --surface-accent-contrast: var(--surface-3-contrast);
+    --surface-accent-1: var(--surface-4);
+    --surface-accent-1-contrast: var(--surface-4-contrast);
+    --surface-accent-2: var(--surface-4);
+    --surface-accent-2-contrast: var(--surface-4-contrast);
+    --surface-accent-3: var(--surface-4);
+    --surface-accent-3-contrast: var(--surface-4-contrast);
+    --surface-accent-4: var(--surface-4);
+    --surface-accent-4-contrast: var(--surface-4-contrast);
+
     --surface-popover: oklch(var(--white));
     --surface-popover-contrast: var(--text);
 
@@ -260,6 +275,19 @@
     --surface-3-contrast: var(--text);
     --surface-4: oklch(from var(--background) calc(l + 0.14) c h);
     --surface-4-contrast: var(--text);
+
+    /* Redeclared so these aliases resolve against the dark ladder rather than
+       inheriting the computed light-theme values from :root. */
+    --surface-accent: var(--surface-3);
+    --surface-accent-contrast: var(--surface-3-contrast);
+    --surface-accent-1: var(--surface-4);
+    --surface-accent-1-contrast: var(--surface-4-contrast);
+    --surface-accent-2: var(--surface-4);
+    --surface-accent-2-contrast: var(--surface-4-contrast);
+    --surface-accent-3: var(--surface-4);
+    --surface-accent-3-contrast: var(--surface-4-contrast);
+    --surface-accent-4: var(--surface-4);
+    --surface-accent-4-contrast: var(--surface-4-contrast);
 
     --surface-popover: oklch(from var(--background) calc(l + 0.06) c h);
     --surface-popover-contrast: var(--text);

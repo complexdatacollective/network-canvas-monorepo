@@ -195,7 +195,7 @@ const Options = ({
         aria-invalid={ariaInvalid}
         itemComponent={Option}
         itemTemplate={itemTemplate}
-        itemClasses="bg-surface-3 text-surface-3-contrast p-0! shadow-none"
+        itemClasses="p-0! shadow-none"
         addButtonLabel={addButtonLabel}
         emptyStateMessage="No options have been added yet."
         immediateAdd

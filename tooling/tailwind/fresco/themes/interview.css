@@ -109,6 +109,16 @@
     --surface-3-contrast: var(--text);
     --surface-4: oklch(from var(--background) calc(l + 0.19) c h);
     --surface-4-contrast: var(--text);
+    --surface-accent: var(--surface-3);
+    --surface-accent-contrast: var(--surface-3-contrast);
+    --surface-accent-1: var(--surface-4);
+    --surface-accent-1-contrast: var(--surface-4-contrast);
+    --surface-accent-2: var(--surface-4);
+    --surface-accent-2-contrast: var(--surface-4-contrast);
+    --surface-accent-3: var(--surface-4);
+    --surface-accent-3-contrast: var(--surface-4-contrast);
+    --surface-accent-4: var(--surface-4);
+    --surface-accent-4-contrast: var(--surface-4-contrast);
     --surface-popover: var(--surface);
     --surface-popover-contrast: var(--surface-contrast);
 
