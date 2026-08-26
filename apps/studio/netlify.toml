@@ -25,6 +25,9 @@ functions = "apps/studio/netlify/functions"
 [build.environment]
 NODE_OPTIONS = "--max-old-space-size=4096"
 
+[context.deploy-preview]
+ignore = "cd \"$(git rev-parse --show-toplevel)\" && if test -n \"$CACHED_COMMIT_REF\" && test \"$CACHED_COMMIT_REF\" != \"$COMMIT_REF\" && git diff --quiet \"$CACHED_COMMIT_REF\" \"$COMMIT_REF\" -- apps/studio/netlify.toml package.json pnpm-lock.yaml pnpm-workspace.yaml && npx --yes turbo@2.10.4 query affected --packages @codaco/studio-client @codaco/studio-server --base \"$CACHED_COMMIT_REF\" --head \"$COMMIT_REF\" --exit-code; then true; else false; fi"
+
 # SPA fallback so client-side routes deep-link. Function paths are claimed
 # declaratively by src/netlify.ts's `config.path` and are matched first.
 [[redirects]]
