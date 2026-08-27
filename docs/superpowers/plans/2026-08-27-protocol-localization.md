@@ -557,16 +557,22 @@ ready.
    migration transaction; do not add a schema version without a storage need.
 3. Extend protocol migration so schema-8 sessions repointed to a schema-9 hash
    receive `und` in the same transaction. Preserve rollback on any failure.
-4. Extend `createSession` with required locale. In NewSessionForm, compute the
+4. Extend the commit-time `updateSession` race guard to preserve the freshest
+   stored locale alongside `protocolHash` if migration lands during an
+   encryption gap. A legacy tab can still perform a schema-8 full-row write
+   after migration and remove the field, so extend the durable
+   `protocolMigrations` launch healer to restore missing locale to `und` while
+   following the hash record. Never overwrite a locale that is present.
+5. Extend `createSession` with required locale. In NewSessionForm, compute the
    initial locale from `navigator.languages` at render/interaction time and
    expose an Interview Language select for multiple locales.
-5. Explicit selection passes as the only requested locale. Do not store the
+6. Explicit selection passes as the only requested locale. Do not store the
    browser preference list.
-6. Update synthetic sessions to default to protocol default or an explicit
+7. Update synthetic sessions to default to protocol default or an explicit
    builder locale.
-7. Hydrate and sync the session locale in InterviewRoute. Review mode reads the
+8. Hydrate and sync the session locale in InterviewRoute. Review mode reads the
    recorded locale and discards locale edits with other review changes.
-8. Listen to browser `languagechange` only to refresh the default for future
+9. Listen to browser `languagechange` only to refresh the default for future
    new-session forms. Never change a running session automatically.
 
 **Tests:**
@@ -575,6 +581,10 @@ ready.
 - Browser exact/variant/default selection and explicit override.
 - Migration transaction changes protocol hash and locale together; injected
   failure rolls back both.
+- Interleave current-bundle encryption with migration and prove the commit
+  guard preserves the freshest hash and locale. Then simulate a schema-8 tab's
+  full-row write with no locale and prove the next launch heals it to `und`
+  without changing network, progress, or current step.
 - Running locale change survives lock-screen route remount and app restart.
 - Existing session data and current step remain unchanged.
 
@@ -632,9 +642,12 @@ ready.
 7. Include stored locale in `GetInterviewByIdQuery`, `mapInterviewPayload`, and
    `SessionPayload` before server render. InterviewClient does not inspect
    `navigator.languages`.
-8. Extend sync schema with locale and validate it against the interview's
-   protocol declaration before update. Keep the generic 400 response at the
-   unauthenticated boundary.
+8. New clients include locale in the sync schema and the route validates a
+   supplied value against the interview's protocol declaration. Keep locale
+   optional at this HTTP boundary during rolling deployment: a schema-8 tab
+   that omits it must still save network, step, and metadata changes, and the
+   update must preserve the database's backfilled `und` locale. Reject a
+   supplied undeclared value with the existing generic 400 response.
 9. Extend deploy-time protocol selection, conformance reconstruction, and
    writes to carry `localization`. Prove localization, stages, codebook, hash,
    schema version, and interview locale change coherently and roll back
@@ -657,7 +670,9 @@ ready.
   localization and interview locale.
 - Payload server/client equality and no hydration warning.
 - Sync accepts declared locale, rejects arbitrary locale, and preserves freeze
-  behavior for completed interviews.
+  behavior for completed interviews. A legacy locale-less sync after database
+  migration saves its network/current-step changes and leaves stored `und`
+  intact.
 
 **Acceptance criteria:**
 
@@ -871,21 +886,22 @@ image diff, and do not adopt a broad baseline rewrite.
 
 ## Risk register
 
-| Risk                                                              | Mitigation                                                                                                                   |
-| ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| A participant-facing string is omitted from schema 9              | Complete the schema/render inventory before activation; metadata conformance fixture and compiler errors guard future drift. |
-| Best-fit behavior differs between environments                    | Use the same FormatJS ponyfill everywhere and explicit `best fit`; run Node and browser contract tests.                      |
-| Browser/server hydration picks different languages                | Fresco selects and persists locale before render; client receives it and never redetects.                                    |
-| Missing translation becomes a production blocker                  | Keep coverage outside `validateProtocol`; assert incomplete fixtures import/run/download.                                    |
-| Fallback produces duplicate disease labels                        | Resolve and compare disease labels for every declared locale during schema-9 validation.                                     |
-| Locale removal corrupts localized maps                            | Use schema-tagged paths, atomic update, collision/empty checks, confirmation, and undo tests.                                |
-| Translation changes alter export schema                           | Keep stable `name`, keys, and option values; test headers/GraphML keys across locales.                                       |
-| Locale preference leaks identifying data                          | Persist/export only the selected declared locale, never the raw ordered preference list.                                     |
-| RTL mirrors graph data or breaks interaction                      | Scope direction to presentation, audit physical CSS/icons, and run matrix/visual/manual RTL checks.                          |
-| New schema strands in-progress sessions                           | Preserve migration invariants; update hash, protocol, session locale, and references transactionally in each host.           |
-| `und` is mistaken for English                                     | Dedicated warning and explicit relabel action; known first-party English sources are converted to `en-US`.                   |
-| Shared package bundle becomes unusable in CLI/worker              | Keep helpers framework-free, bundle FormatJS, and test source and packed ESM imports.                                        |
-| Built-in English UI gives a false impression of full localization | State the boundary in Architect and docs; do not set document language globally for untranslated host chrome.                |
+| Risk                                                              | Mitigation                                                                                                                                             |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| A participant-facing string is omitted from schema 9              | Complete the schema/render inventory before activation; metadata conformance fixture and compiler errors guard future drift.                           |
+| Best-fit behavior differs between environments                    | Use the same FormatJS ponyfill everywhere and explicit `best fit`; run Node and browser contract tests.                                                |
+| Browser/server hydration picks different languages                | Fresco selects and persists locale before render; client receives it and never redetects.                                                              |
+| Missing translation becomes a production blocker                  | Keep coverage outside `validateProtocol`; assert incomplete fixtures import/run/download.                                                              |
+| Fallback produces duplicate disease labels                        | Resolve and compare disease labels for every declared locale during schema-9 validation.                                                               |
+| Locale removal corrupts localized maps                            | Use schema-tagged paths, atomic update, collision/empty checks, confirmation, and undo tests.                                                          |
+| Translation changes alter export schema                           | Keep stable `name`, keys, and option values; test headers/GraphML keys across locales.                                                                 |
+| Locale preference leaks identifying data                          | Persist/export only the selected declared locale, never the raw ordered preference list.                                                               |
+| RTL mirrors graph data or breaks interaction                      | Scope direction to presentation, audit physical CSS/icons, and run matrix/visual/manual RTL checks.                                                    |
+| New schema strands in-progress sessions                           | Preserve migration invariants; update hash, protocol, session locale, and references transactionally in each host.                                     |
+| A legacy app tab erases or cannot sync locale-backed state        | Preserve freshest locale in current Interviewer writes, heal locale-less legacy rows, and accept omission at Fresco sync while retaining stored `und`. |
+| `und` is mistaken for English                                     | Dedicated warning and explicit relabel action; known first-party English sources are converted to `en-US`.                                             |
+| Shared package bundle becomes unusable in CLI/worker              | Keep helpers framework-free, bundle FormatJS, and test source and packed ESM imports.                                                                  |
+| Built-in English UI gives a false impression of full localization | State the boundary in Architect and docs; do not set document language globally for untranslated host chrome.                                          |
 
 ## Definition of done
 

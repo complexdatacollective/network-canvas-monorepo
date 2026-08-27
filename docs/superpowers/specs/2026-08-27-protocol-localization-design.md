@@ -496,6 +496,13 @@ the device language changes.
   choose before handing over the device.
 - `StoredSession.locale` is included in encryption-independent session
   metadata and hydrated into `SessionPayload`.
+- The current bundle's commit-time `updateSession` guard preserves the newest
+  stored `locale` alongside `protocolHash` when another tab migrates the row
+  during encryption. A tab still running the schema-8 bundle can write a full
+  row with no locale after migration, so the durable protocol-migration heal
+  pass also restores missing locale to `und` while repairing superseded hash
+  references. This compatibility repair runs on every launch until legacy
+  tabs have disappeared.
 - Synthetic sessions choose the protocol default unless their builder asks
   for a specific locale.
 - The in-interview language control can update the session later.
@@ -522,8 +529,13 @@ not silently switch an interview already under way.
   and stores the selected locale atomically with the new interview.
 - `mapInterviewPayload` passes the stored locale to the client. Client code
   does not rerun browser detection, avoiding hydration changes.
-- Sync accepts locale only through the typed session payload and validates it
-  against the interview's stored protocol before updating.
+- New clients include locale in the typed sync payload, and the sync route
+  validates a supplied locale against the interview's stored protocol before
+  updating. During a rolling deployment the field remains optional at this
+  HTTP boundary so an already-open schema-8 client can continue saving
+  network and step changes. When such a legacy payload omits locale, the
+  update leaves the database's backfilled `und` value unchanged; absence is
+  never interpreted as a request to clear it.
 
 If a future participant-facing preflight page is added, it can use the same
 derived options. It is not required for initial delivery because the Shell
@@ -677,7 +689,10 @@ Third-party and stored documents use the honest automatic migration.
   correctly typed and post-validated results; clearing a caller key clears all
   of its target-version variants.
 - Interviewer's launch migration recomputes the hash, repoints sessions, and
-  initializes their locale in the same transaction.
+  initializes their locale in the same transaction. Its current-writer guard
+  preserves the freshest hash and locale, while the durable legacy-write heal
+  pass restores both a superseded hash and a missing `und` locale after an old
+  PWA tab writes.
 - Fresco's deploy-time migration persists the root localization declaration
   with the migrated schema version/content/hash and initializes interview
   locale in the coordinated database migration.
@@ -729,6 +744,10 @@ schema.
   checks.
 - Session locale updates are validated against the stored protocol to prevent
   an arbitrary string from entering persistence or exports.
+- Host compatibility boundaries distinguish omission from an invalid value:
+  an optional locale omitted by a legacy Fresco sync preserves the stored
+  value, while a supplied undeclared locale is rejected. Interviewer's launch
+  healer restores a missing locale created by a legacy full-row write.
 - The runtime never fetches translations and cannot fail because a network
   translation service is unavailable.
 - The warning analyser is deterministic and memoizable; it performs no I/O.
@@ -791,10 +810,16 @@ schema.
 
 - Interviewer browser preference selection, explicit override, encrypted
   session round-trip, resume, synthetic sessions, and `languagechange`
-  behavior.
+  behavior. Cross-tab migration tests interleave encryption with migration to
+  prove the current writer preserves the freshest locale, then simulate a
+  schema-8 full-row write and prove the next launch heals missing locale to
+  `und` without losing session content.
 - Fresco protocol-localization persistence on import/read/migrate, header
   matching, explicit link override, interview database migration, payload
-  serialization, sync validation, and hydration parity.
+  serialization, sync validation, and hydration parity. A rolling-deployment
+  test posts the legacy locale-less sync shape after database backfill and
+  proves network/current-step changes save while the stored `und` locale is
+  preserved; supplied undeclared locales still fail.
 - Studio settings-section validation plus sectionize/assemble/diff/migrate/
   publish round-trip of the root declaration.
 - Exported locale in CSV and GraphML while stable field names remain unchanged.
