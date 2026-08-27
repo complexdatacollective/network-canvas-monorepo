@@ -134,6 +134,10 @@ const SEED_SCHEMA = {
       description: 'Exact API paths snapshotted, e.g. /api/v1/protocols-meta',
     },
     uiExportCaptured: { type: 'boolean' },
+    networkSnapshots: {
+      type: 'number',
+      description: 'How many per-interview payload snapshots were saved',
+    },
     counts: {
       type: 'object',
       additionalProperties: false,
@@ -154,6 +158,10 @@ const CAPTURE_SCHEMA = {
   properties: {
     pass: { type: 'boolean' },
     uiExportCaptured: { type: 'boolean' },
+    networkSnapshots: {
+      type: 'number',
+      description: 'How many per-interview payload snapshots were saved',
+    },
     summaryPath: { type: 'string' },
     changedFiles: { type: 'number' },
     onlyInBaseline: { type: 'number' },
@@ -304,7 +312,7 @@ Do, in order, recording a check {name, pass} for each numbered step:
 4. Finish the wizard to the dashboard.
 5. In settings, generate ${SYNTHETIC_COUNT} synthetic interviews via the Synthetic Interview Data section (native select + number input per AGENT_NOTES); wait for the completion toast.
 6. In settings, enable the interview data API if it has an enable toggle, and create an API token. Record the token value.
-7. Snapshot the API: mkdir -p ${BASELINE_DIR}, then for each documented interview-data API endpoint (the settings page documents the paths; expect something like /api/v1/protocols-meta and /api/v1/interview) run curl -fsS -H "Authorization: Bearer <token>" ${UPGRADE_URL}<path> and save to ${BASELINE_DIR}/api-<last-path-segment>.json. Record the exact paths you used in apiPaths.
+7. Snapshot the API: mkdir -p ${BASELINE_DIR}, then for each documented interview-data API endpoint (the settings page documents the paths; expect something like /api/v1/protocols-meta and /api/v1/interview) run curl -fsS -H "Authorization: Bearer <token>" ${UPGRADE_URL}<path> and save to ${BASELINE_DIR}/api-<last-path-segment>.json. Record the exact paths you used in apiPaths. Then, because the interview COLLECTION endpoint returns metadata only, snapshot the stored network payload of EVERY interview: take the ids from the collection response and curl /api/v1/interview/<id> for each, saving to ${BASELINE_DIR}/api-interview-<id>.json. Record how many succeeded in networkSnapshots.
 8. Export ALL interviews via the interviews page UI, capturing the zip with the blob-hook technique in AGENT_NOTES: run bash ${HARNESS}/enable-captures.sh --lane upgrade, install the createObjectURL hook, drive the export menu + "Confirm File Export Options" dialog (leave every format toggle on), PUT the captured blob to <capture base>/baseline-ui-export.zip, and curl it to ${BASELINE_DIR}/ui-export.zip on the host. If no blob is captured, set uiExportCaptured:false and continue — the API snapshots still enable the diff.
 9. Record the dashboard counts (protocols, participants, interviews) in counts.
 
@@ -347,7 +355,7 @@ Inspect the logs for the migration/startup sequence (prisma migrate deploy, prot
 ${BROWSER_HOWTO}
 
 1. mkdir -p ${UPGRADED_DIR}
-2. Snapshot the API exactly as the baseline did: paths ${apiPaths}, with curl -fsS -H "Authorization: Bearer ${seed.apiToken ?? '<missing>'}" ${UPGRADE_URL}<path> saved to ${UPGRADED_DIR}/api-<last-path-segment>.json (same filenames as in ${BASELINE_DIR}).
+2. Snapshot the API exactly as the baseline did: paths ${apiPaths}, with curl -fsS -H "Authorization: Bearer ${seed.apiToken ?? '<missing>'}" ${UPGRADE_URL}<path> saved to ${UPGRADED_DIR}/api-<last-path-segment>.json (same filenames as in ${BASELINE_DIR}). Then snapshot every per-interview payload exactly as the baseline did: for each api-interview-<id>.json in ${BASELINE_DIR}, curl /api/v1/interview/<id> to ${UPGRADED_DIR}/api-interview-<id>.json (these carry the stored network; the collection endpoint is metadata only). Record how many succeeded in networkSnapshots.
 3. In the browser, export ALL interviews from the interviews page with the SAME options as the baseline export (every format toggle on), using the blob-hook capture in AGENT_NOTES (enable-captures.sh --lane upgrade is idempotent; install the hook BEFORE triggering the export); PUT the blob to <capture base>/upgraded-ui-export.zip and curl it to ${UPGRADED_DIR}/ui-export.zip. Only do this if ${BASELINE_DIR}/ui-export.zip exists — otherwise skip so the two sides stay comparable; if the blob capture fails, set uiExportCaptured:false.
 4. Run: node ${HARNESS}/scripts/diff-exports.mjs ${BASELINE_DIR} ${UPGRADED_DIR} --work ${DIFF_WORK} --out ${ARTIFACTS}/exports/diff-summary.json
 5. Return pass:true if capture and diff both ran; summaryPath=${ARTIFACTS}/exports/diff-summary.json plus the changedFiles / onlyInBaseline / onlyInCurrent counts from the summary. Do NOT paste diff content.`,
@@ -364,11 +372,23 @@ ${BROWSER_HOWTO}
     capture.pass = false;
     capture.notes = `${capture.notes ?? ''} [capture returned pass without summaryPath — treated as failed; the export diff cannot run]`;
   }
+  // And it cannot gate anything without network-bearing content: the
+  // interview COLLECTION endpoint is metadata-only, so with no UI archive and
+  // no per-interview payload snapshots a migration could corrupt every stored
+  // network and still diff clean.
+  if (
+    capture?.pass &&
+    !capture.uiExportCaptured &&
+    !((capture.networkSnapshots ?? 0) > 0)
+  ) {
+    capture.pass = false;
+    capture.notes = `${capture.notes ?? ''} [no UI export archive and no per-interview payload snapshots — a metadata-only diff cannot detect network corruption]`;
+  }
 
   const integrity = await agent(
     `Verify data survived a Fresco upgrade at ${UPGRADE_URL}. Sign in as ${ADMIN_USER} / ${ADMIN_PASSWORD}. Pre-upgrade the instance had counts ${JSON.stringify(seed.counts ?? {})} (protocols include "Sample Protocol"; interviews are ${SYNTHETIC_COUNT} synthetic ones).
 ${BROWSER_HOWTO}
-Checks: dashboard summary counts match the pre-upgrade counts; the protocols page lists the seeded protocol; the interviews page lists the synthetic interviews; the participants page loads; the activity feed still shows pre-upgrade events (protocol upload, interview generation); settings values set during seeding are unchanged. Return one check per item.`,
+Checks: dashboard summary counts match the pre-upgrade counts; the protocols page lists the seeded protocol; the interviews page lists the synthetic interviews; the participants page loads; the activity feed still shows pre-upgrade events (protocol upload, interview generation); settings values set during seeding are unchanged; a persisted interview still RESUMES on the upgraded build — open one seeded incomplete interview at its /interview/<id> URL (id from the interviews table or psql per AGENT_NOTES) and verify the interview shell renders its current stage without an error screen and that a request to /interview/<id>/sync succeeds in the network log. Do NOT interact with the stage content — render + sync only; this exercises Fresco's payload mapping and schema-version compatibility gate, not interview behaviour (the interview package covers that). Return one check per item.`,
     {
       label: 'verify-data-integrity',
       phase: 'Upgrade lane',

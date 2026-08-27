@@ -10,12 +10,13 @@
 // What it does to the staged tree (and only the staged tree — the real
 // Dockerfile and mirror pipeline are untouched):
 //   1. `pnpm pack`s the packages in Fresco's workspace dependency closure that
-//      the pending release will actually PUBLISH (named in .changeset/*.md)
-//      into <stage>/vendor/ (pack applies publishConfig, exactly like
-//      `changeset publish`). Closure packages without a pending changeset are
-//      left to registry resolution — the released image will install their
-//      published versions, so vendoring them would test a dependency
-//      combination that never ships.
+//      the pending release will actually PUBLISH (per Changesets' assembled
+//      release plan, including auto-bumped dependents of major bumps) into
+//      <stage>/vendor/ (pack applies publishConfig, exactly like
+//      `changeset publish`). Closure packages outside the plan are left to
+//      registry resolution — the released image will install their published
+//      versions, so vendoring them would test a dependency combination that
+//      never ships.
 //   2. Adds pnpm overrides mapping each vendored package to its tarball, so
 //      direct AND transitive ranges resolve to the pending code.
 //   3. Patches the staged Dockerfile with grep-anchored edits (the same
@@ -27,7 +28,15 @@
 //
 // Usage: node apps/fresco/release-test/scripts/bundle-pending-packages.mjs <stage-dir>
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -103,28 +112,29 @@ function tarballName(name, version) {
   return `${name.replace('@', '').replace('/', '-')}-${version}.tgz`;
 }
 
-// Packages the pending release will actually publish: the ones named in
-// pending changesets. Only these may be vendored — a workspace package with
-// committed changes but no changeset is NOT republished, so the released
-// image installs its registry version; vendoring it would test a dependency
-// combination that never ships. (Caret publish ranges mean in-range bumps do
-// not cascade republishes to dependents, so the changeset-named set is the
-// published set for the normal lane.)
+// Packages the pending release will actually publish, from Changesets' own
+// assembled release plan (`changeset status`) — NOT from changeset
+// frontmatter, which understates the plan: a major bump invalidates
+// dependents' caret ranges and the planner auto-adds those dependents as
+// patch releases no changeset names. Only planned releases may be vendored —
+// an unplanned workspace package is not republished, so the released image
+// installs its registry version; vendoring it would test a dependency
+// combination that never ships.
 function collectPendingReleases() {
-  const changesetDir = join(repoRoot, '.changeset');
-  const pending = new Set();
-  for (const entry of readdirSync(changesetDir)) {
-    if (!entry.endsWith('.md') || entry === 'README.md') continue;
-    const text = readFileSync(join(changesetDir, entry), 'utf8');
-    const frontmatter = text.split('---')[1] ?? '';
-    for (const line of frontmatter.split('\n')) {
-      const match = line.match(
-        /^\s*['"]?([^'":]+)['"]?\s*:\s*(major|minor|patch)\s*$/,
-      );
-      if (match) pending.add(match[1]);
-    }
-  }
-  return pending;
+  const planPath = join(
+    mkdtempSync(join(tmpdir(), 'release-plan-')),
+    'release-plan.json',
+  );
+  run('pnpm', ['exec', 'changeset', 'status', '--output', planPath], {
+    cwd: repoRoot,
+  });
+  const plan = JSON.parse(readFileSync(planPath, 'utf8'));
+  rmSync(join(planPath, '..'), { recursive: true, force: true });
+  return new Set(
+    plan.releases
+      .filter((release) => release.type !== 'none')
+      .map((release) => release.name),
+  );
 }
 
 // Grep-anchored patch: fail loudly if the Dockerfile drifts rather than
