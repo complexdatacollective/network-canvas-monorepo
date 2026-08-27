@@ -1,5 +1,6 @@
+import type { CSSProperties } from 'react';
+
 import Node, { type NodeColorSequence } from '@codaco/fresco-ui/Node';
-import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { GetInterviewsQuery } from '~/queries/interviews';
 
 // TODO: Move to shared-consts or protocol-validation
@@ -20,39 +21,18 @@ type EdgeSummaryProps = {
   typeName: string;
 };
 
+type EdgeGlyphStyle = CSSProperties & {
+  '--fill': string;
+  '--fill-dark': string;
+};
+
 function EdgeSummary({ color, count, typeName }: EdgeSummaryProps) {
-  /**
-   * There is a bug in the suggestCanonicalClasses rule: https://github.com/tailwindlabs/tailwindcss-intellisense/issues/1542
-   */
-  const edgeColorClasses = cx(
-    color === 'edge-color-seq-1' &&
-      // eslint-disable-next-line better-tailwindcss/enforce-canonical-classes
-      '[--fill-dark:oklch(from_var(--edge-1)_calc(l-var(--dark-mod))_c_h)] [--fill:var(--edge-1)]',
-    color === 'edge-color-seq-2' &&
-      // eslint-disable-next-line better-tailwindcss/enforce-canonical-classes
-      '[--fill-dark:oklch(from_var(--edge-2)_calc(l-var(--dark-mod))_c_h)] [--fill:var(--edge-2)]',
-    color === 'edge-color-seq-3' &&
-      // eslint-disable-next-line better-tailwindcss/enforce-canonical-classes
-      '[--fill-dark:oklch(from_var(--edge-3)_calc(l-var(--dark-mod))_c_h)] [--fill:var(--edge-3)]',
-    color === 'edge-color-seq-4' &&
-      // eslint-disable-next-line better-tailwindcss/enforce-canonical-classes
-      '[--fill-dark:oklch(from_var(--edge-4)_calc(l-var(--dark-mod))_c_h)] [--fill:var(--edge-4)]',
-    color === 'edge-color-seq-5' &&
-      // eslint-disable-next-line better-tailwindcss/enforce-canonical-classes
-      '[--fill-dark:oklch(from_var(--edge-5)_calc(l-var(--dark-mod))_c_h)] [--fill:var(--edge-5)]',
-    color === 'edge-color-seq-6' &&
-      // eslint-disable-next-line better-tailwindcss/enforce-canonical-classes
-      '[--fill-dark:oklch(from_var(--edge-6)_calc(l-var(--dark-mod))_c_h)] [--fill:var(--edge-6)]',
-    color === 'edge-color-seq-7' &&
-      // eslint-disable-next-line better-tailwindcss/enforce-canonical-classes
-      '[--fill-dark:oklch(from_var(--edge-7)_calc(l-var(--dark-mod))_c_h)] [--fill:var(--edge-7)]',
-    color === 'edge-color-seq-8' &&
-      // eslint-disable-next-line better-tailwindcss/enforce-canonical-classes
-      '[--fill-dark:oklch(from_var(--edge-8)_calc(l-var(--dark-mod))_c_h)] [--fill:var(--edge-8)]',
-    color === 'edge-color-seq-9' &&
-      // eslint-disable-next-line better-tailwindcss/enforce-canonical-classes
-      '[--fill-dark:oklch(from_var(--edge-9)_calc(l-var(--dark-mod))_c_h)] [--fill:var(--edge-9)]',
-  );
+  const edgeColorNumber = color.slice('edge-color-seq-'.length);
+  const edgeColorVariable = `var(--edge-${edgeColorNumber})`;
+  const edgeColorStyle: EdgeGlyphStyle = {
+    '--fill': edgeColorVariable,
+    '--fill-dark': `oklch(from ${edgeColorVariable} calc(l - var(--dark-mod)) c h)`,
+  };
 
   return (
     <div className="flex flex-col items-center">
@@ -62,7 +42,7 @@ function EdgeSummary({ color, count, typeName }: EdgeSummaryProps) {
           viewBox="0 0 60 60"
           width="24"
           height="24"
-          className={edgeColorClasses}
+          style={edgeColorStyle}
         >
           <g id="Links">
             <circle cx="49" cy="11" r="11" className="fill-(--fill-dark)" />
