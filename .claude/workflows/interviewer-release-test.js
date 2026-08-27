@@ -177,6 +177,10 @@ This boilerplate is validated against this exact deployment:
   const { chromium } = require('@playwright/test');
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  // REQUIRED in every context: analytics is on by default, and each fresh
+  // profile would register a new installation and emit real interview events
+  // to product analytics. Block the relay before any page loads.
+  await context.route('**://ph-relay.networkcanvas.com/**', (r) => r.abort());
   const page = await context.newPage();
   const consoleErrors = [];
   page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text()); });
@@ -221,9 +225,15 @@ KNOWN APP QUIRKS — encode them, do NOT report them as bugs:
   key drops). Expected behaviour, not a bug.
 - Use generous timeouts: 15–20 s around import, interview mount, and stage
   changes; 30 s for synthetic-data generation.
-- Console errors mentioning Content Security Policy, cloudflareinsights, or
-  frame-ancestors are environmental noise on this deployment — ignore them.
-  Report any OTHER console error in your result.
+- EXACTLY three kinds of console error are expected noise, and no others:
+  (a) "The Content Security Policy directive 'frame-ancestors' is ignored
+  when delivered via a <meta> element"; (b) CSP script-src violations for
+  Cloudflare's injected beacon — the blocked inline script and the blocked
+  load of static.cloudflareinsights.com; (c) failed requests to
+  ph-relay.networkcanvas.com caused by the analytics block above. Ignore
+  those three verbatim patterns only. Report any other console error —
+  including any OTHER CSP violation, which on a candidate build may be a
+  real regression.
 
 TOKEN DISCIPLINE (this workflow is a recurring release gate — keep it lean):
 - Put assertions IN the Playwright script (expect/waitForSelector) and print
@@ -261,6 +271,18 @@ const journeyModel = {
   'security-vault': 'sonnet',
   'pwa-offline': 'sonnet',
   'settings-and-chrome': 'sonnet',
+};
+
+// Numbered checks each journey prompt defines. Synthesis rejects a result
+// whose checks array does not match — a truncated report must not pass.
+const expectedChecks = {
+  'protocol-management': 9,
+  'conduct-sample-interview': 7,
+  'session-management': 8,
+  'data-export': 7,
+  'security-vault': 10,
+  'pwa-offline': 10,
+  'settings-and-chrome': 9,
 };
 
 const journeyDefs = [
@@ -521,8 +543,13 @@ CHECKS:
    "Welcome back" lock screen appears WITHOUT the "Recover by resetting"
    button (it is suppressed on interview routes). Unlock and confirm the
    interview is still there.
-6. Change PIN: Settings → Security → "Change PIN" → current PIN + new PIN +
-   confirm → then lock (top bar) and unlock with the NEW PIN.
+6. Change PIN: first EXIT the interview back to the dashboard (the button
+   named "Settings" on /interview/* is the interview engine's own menu —
+   text size and "Exit interview" only; the tabbed Settings dialog exists
+   only on the dashboard). Exit via that menu's "Exit interview" → confirm,
+   unlocking if prompted. Then dashboard Settings (gear,
+   data-testid="settings-trigger") → Security → "Change PIN" → current PIN +
+   new PIN + confirm → then lock (top bar) and unlock with the NEW PIN.
 7. Encryption chip: the status row's encryption chip
    (data-testid="encryption-status-trigger") reads "Encrypted" while enrolled.
 8. Revoke: Settings → Security → the "Revoke device lock" row → "Revoke" →
@@ -772,11 +799,20 @@ for (const r of results.filter(Boolean)) {
     continue;
   }
   journeys.push(r);
+  // A truncated report must not pass: every numbered check must be present.
+  const expected = expectedChecks[r.journey];
+  if (expected && r.checks.length !== expected) {
+    inconsistentJourneys.push(r.journey);
+    automationIssues.push(
+      `journey "${r.journey}" returned ${r.checks.length} of ${expected} expected checks; treated as incomplete`,
+    );
+  }
   if (!r.failures || !r.failures.length) {
     // A journey that signals failure without failure records cannot be
     // adjudicated — fail closed as incomplete rather than counting it clean.
     if (r.status === 'fail' || r.checks.some((c) => c.status === 'fail')) {
-      inconsistentJourneys.push(r.journey);
+      if (!inconsistentJourneys.includes(r.journey))
+        inconsistentJourneys.push(r.journey);
       automationIssues.push(
         `journey "${r.journey}" reported a failing status or failed checks but no failure records; treated as incomplete`,
       );
