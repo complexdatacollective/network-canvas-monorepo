@@ -324,6 +324,13 @@ pass=true only if steps 1-5 succeeded (the instance is seeded); report the rest 
       ...UI,
     },
   );
+  // The configured count is the ground truth the coverage gates compare
+  // against; a seed reporting a different interview count (an undercount
+  // would quietly weaken every later completeness check) is a failed seed.
+  if (seed?.pass && (seed.counts?.interviews ?? 0) !== SYNTHETIC_COUNT) {
+    seed.pass = false;
+    seed.notes = `${seed.notes ?? ''} [seed reported ${seed.counts?.interviews ?? 0} interviews but ${SYNTHETIC_COUNT} were requested — baseline is not the dataset the gates assume]`;
+  }
   lane.seed = seed;
   if (!seed?.pass) return lane;
 
@@ -357,8 +364,9 @@ ${BROWSER_HOWTO}
 1. mkdir -p ${UPGRADED_DIR}
 2. Snapshot the API exactly as the baseline did: paths ${apiPaths}, with curl -fsS -H "Authorization: Bearer ${seed.apiToken ?? '<missing>'}" ${UPGRADE_URL}<path> saved to ${UPGRADED_DIR}/api-<last-path-segment>.json (same filenames as in ${BASELINE_DIR}). Then snapshot every per-interview payload exactly as the baseline did: for each api-interview-<id>.json in ${BASELINE_DIR}, curl /api/v1/interview/<id> to ${UPGRADED_DIR}/api-interview-<id>.json (these carry the stored network; the collection endpoint is metadata only). Record how many succeeded in networkSnapshots.
 3. In the browser, export ALL interviews from the interviews page with the SAME options as the baseline export (every format toggle on), using the blob-hook capture in AGENT_NOTES (enable-captures.sh --lane upgrade is idempotent; install the hook BEFORE triggering the export); PUT the blob to <capture base>/upgraded-ui-export.zip and curl it to ${UPGRADED_DIR}/ui-export.zip. Only do this if ${BASELINE_DIR}/ui-export.zip exists — otherwise skip so the two sides stay comparable; if the blob capture fails, set uiExportCaptured:false.
-4. Run: node ${HARNESS}/scripts/diff-exports.mjs ${BASELINE_DIR} ${UPGRADED_DIR} --work ${DIFF_WORK} --out ${ARTIFACTS}/exports/diff-summary.json
-5. Return pass:true if capture and diff both ran; summaryPath=${ARTIFACTS}/exports/diff-summary.json plus the changedFiles / onlyInBaseline / onlyInCurrent counts from the summary. Do NOT paste diff content.`,
+4. Verify the export COMMITTED its status — the zip blob is assembled before the post-export commit action runs, so a captured blob alone does not prove it: wait for the export success toast, then run docker exec fresco-release-test-upgrade-postgres-1 psql -U postgres -t -c 'SELECT max("exportTime") FROM "Interview";' and confirm the value is from the last few minutes (this export, not the baseline one). A captured blob with a stale or null exportTime is a FAILURE.
+5. Run: node ${HARNESS}/scripts/diff-exports.mjs ${BASELINE_DIR} ${UPGRADED_DIR} --work ${DIFF_WORK} --out ${ARTIFACTS}/exports/diff-summary.json
+6. Return pass:true only if capture, the status-commit verification, and the diff all succeeded; summaryPath=${ARTIFACTS}/exports/diff-summary.json plus the changedFiles / onlyInBaseline / onlyInCurrent counts from the summary. Do NOT paste diff content.`,
     {
       label: 'export-capture',
       phase: 'Upgrade lane',
@@ -378,7 +386,10 @@ ${BROWSER_HOWTO}
   // sides would diff clean while corruption in the omitted interviews goes
   // undetected. Without the UI archive, both passes must have snapshotted the
   // full seeded set.
-  const expectedNetworks = seed?.counts?.interviews ?? SYNTHETIC_COUNT;
+  // Compared against the CONFIGURED count, never the agent-reported one (an
+  // undercount would make the completeness requirement vacuous); the seed
+  // gate above already failed the lane if the reported count differs.
+  const expectedNetworks = SYNTHETIC_COUNT;
   if (
     capture?.pass &&
     !capture.uiExportCaptured &&
