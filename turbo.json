@@ -392,7 +392,9 @@
         "components/**",
         ".storybook/**",
         "stories/**",
-        "vitest.config.*",
+        "*.config.ts",
+        "*.config.js",
+        "*.config.mjs",
         "vitest.setup.*",
         "package.json",
         "tsconfig*.json"
@@ -546,8 +548,9 @@
         "$TURBO_ROOT$/packages/protocols/sample/**",
         "src/**",
         "__tests__/**",
-        "vitest.config.*",
-        "vite.config.*",
+        "*.config.ts",
+        "*.config.js",
+        "*.config.mjs",
         "package.json",
         ".env",
         ".env.development"
