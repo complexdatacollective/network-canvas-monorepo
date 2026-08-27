@@ -178,6 +178,7 @@ This boilerplate is validated against this exact deployment:
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await context.newPage();
+  const consoleErrors = [];
   page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text()); });
   await page.goto('${url}');
 
@@ -300,7 +301,10 @@ CHECKS (in one or more scripts, fresh profile each run):
    (text may mention schema migration) and a new deck card. If the asset
    cannot be obtained after two attempts, mark this and check 7 skipped.
 7. duplicate import: import the SAME file again — the app upserts by content
-   hash, so no duplicate card appears (protocol count unchanged). Harness
+   hash. Wait for the fresh "Protocol imported" toast (the positive signal
+   that the re-selection was actually processed — without it this check
+   passes vacuously), THEN assert no duplicate card appeared and the
+   protocol count is unchanged. Harness
    quirk: calling setInputFiles a second time with the SAME path on the
    hidden input is inert (the app clears input.value only via the Import
    card's click handler, and Chromium suppresses change events for an
@@ -342,6 +346,12 @@ DyadCensus (Classmates) → Info ×2 → Sociogram (Attribute Nomination) →
 OrdinalBin (Contact Frequency) → CategoricalBin (Group Membership) → Info →
 CategoricalBin (Relationship Type) → Info → Narrative.
 
+IMPORTANT: on the Consent EgoForm, consent AFFIRMATIVELY (answer yes/true).
+Declining is a valid answer whose skip logic routes the interview straight
+to the finish stage — that would void the whole walk. If you find yourself
+on "Finish Interview" after only a handful of stages, an answer skipped the
+protocol: go back and change it rather than reporting success.
+
 Interaction cheat sheet:
 - Information: read, then Next.
 - EgoForm: fill required fields via [data-field-name="…"] input; BLUR each
@@ -373,8 +383,9 @@ CHECKS:
    grossly broken layout).
 2. Each interface type accepts the interaction described above (data entered
    is reflected in the UI before you advance).
-3. "Previous Step" works: from stage index 3, go back one stage and forward
-   again without data loss (quick-added names still listed).
+3. "Previous Step" works: after completing the FIRST Quick Add
+   name-generator stage, go back one stage and forward again without data
+   loss (the quick-added names are still listed on return).
 4. The stage drawer ("Go to another screen") opens and lists stages.
 5. The finish flow completes: confirm dialog → "Interview complete" screen
    (data-testid="interview-complete") → "Exit" lands on / or /data.
@@ -420,7 +431,10 @@ CHECKS:
    the row moves to In progress.
 7. Real resume round-trip: from Home, "Start new interview" on the sample
    card with case ID "resume-check"; advance 3 stages (the first stages are
-   Information — just Next); exit via the in-interview Settings menu
+   Information — just Next). The step write is fire-and-forget: before
+   exiting, poll IndexedDB (database "interviewer") via page.evaluate until
+   the session row's currentStep matches the visible [data-stage-step] — the
+   e2e suite does the same. Then exit via the in-interview Settings menu
    (data-testid="settings-button" → "Exit interview",
    data-testid="exit-button" → confirm "Exit this interview?"). Back on Home
    a "Resume last interview" pill names the protocol and "resume-check";
@@ -464,9 +478,11 @@ CHECKS:
    files and NO .csv files.
 5. CSV-only: toggle "Export CSV" back on and "Export GraphML" off → export →
    the archive contains .csv files and NO .graphml files. Restore both on.
-6. Abandon before save: run an export but click "Cancel" in the "Archive
-   ready" state instead of saving — no download occurs and the sessions'
-   Export status does NOT change (compare a never-exported row before/after).
+6. Abandon before save: checks 1–5 already exported the original five
+   sessions, so first generate ONE more synthetic session to get a fresh
+   never-exported row. Export only that session but click "Cancel" in the
+   "Archive ready" state instead of saving — no download occurs and that
+   row's Export status stays "Not exported".
 7. Cancel during build (data-testid="export-cancel-build"): attempt to cancel
    within the dialog's initial pause; if the build outruns you twice, mark
    this check skipped rather than failed.
@@ -745,6 +761,7 @@ const journeys = [];
 const confirmedFailures = [];
 const automationIssues = [];
 const deadJourneys = [];
+const inconsistentJourneys = [];
 
 for (const r of results.filter(Boolean)) {
   if (r.agentDied) {
@@ -755,7 +772,17 @@ for (const r of results.filter(Boolean)) {
     continue;
   }
   journeys.push(r);
-  if (!r.failures || !r.failures.length) continue;
+  if (!r.failures || !r.failures.length) {
+    // A journey that signals failure without failure records cannot be
+    // adjudicated — fail closed as incomplete rather than counting it clean.
+    if (r.status === 'fail' || r.checks.some((c) => c.status === 'fail')) {
+      inconsistentJourneys.push(r.journey);
+      automationIssues.push(
+        `journey "${r.journey}" reported a failing status or failed checks but no failure records; treated as incomplete`,
+      );
+    }
+    continue;
+  }
   if (!r.verification) {
     // Verifier died: fail closed — unverified failures keep their severity.
     for (const f of r.failures)
@@ -769,10 +796,18 @@ for (const r of results.filter(Boolean)) {
     );
     continue;
   }
-  for (const f of r.failures) {
-    const v =
-      r.verification.find((x) => x.description === f.description) ||
-      r.verification[r.failures.indexOf(f)];
+  // Match verdicts to failures without ever reusing a verdict: by verbatim
+  // description first; positional only when the verifier returned exactly
+  // one verdict per failure. Unmatched failures stay unverified (fail closed).
+  const oneToOne = r.verification.length === r.failures.length;
+  const used = new Set();
+  r.failures.forEach((f, i) => {
+    let idx = r.verification.findIndex(
+      (x, k) => !used.has(k) && x.description === f.description,
+    );
+    if (idx === -1 && oneToOne && !used.has(i)) idx = i;
+    const v = idx === -1 ? null : r.verification[idx];
+    if (v) used.add(idx);
     if (!v) {
       confirmedFailures.push({
         journey: r.journey,
@@ -793,7 +828,7 @@ for (const r of results.filter(Boolean)) {
         `[${r.journey}] ${v.verdict}: ${f.description} — ${v.explanation}`,
       );
     }
-  }
+  });
 }
 
 const blocking = confirmedFailures.filter(
@@ -801,7 +836,7 @@ const blocking = confirmedFailures.filter(
 );
 const verdict = blocking.length
   ? 'BLOCK'
-  : deadJourneys.length
+  : deadJourneys.length || inconsistentJourneys.length
     ? 'INCOMPLETE'
     : confirmedFailures.length
       ? 'PASS_WITH_ISSUES'
@@ -820,7 +855,7 @@ lines.push(`# Interviewer release smoke test — ${verdict}`);
 lines.push('');
 lines.push(`Target: ${url} (version ${preflight.version})`);
 lines.push(
-  `Journeys: ${journeys.length} run${deadJourneys.length ? `, ${deadJourneys.length} did not report (${deadJourneys.join(', ')})` : ''}. Checks: ${checkCounts.pass} passed, ${checkCounts.fail} failed, ${checkCounts.skipped} skipped.`,
+  `Journeys: ${journeys.length} run${deadJourneys.length ? `, ${deadJourneys.length} did not report (${deadJourneys.join(', ')})` : ''}${inconsistentJourneys.length ? `, ${inconsistentJourneys.length} inconsistent (${inconsistentJourneys.join(', ')})` : ''}. Checks: ${checkCounts.pass} passed, ${checkCounts.fail} failed, ${checkCounts.skipped} skipped.`,
 );
 lines.push(`Evidence: ${preflight.workDir}`);
 lines.push('');
@@ -857,5 +892,6 @@ return {
   confirmedFailures,
   automationIssues,
   deadJourneys,
+  inconsistentJourneys,
   summaryMarkdown: lines.join('\n'),
 };
