@@ -117,9 +117,9 @@ const happyPath = () => ({
     stampExists: true,
     stampVersion: '4.1.2',
     stampCommit: 'abc1234',
-    stampImageId: 'sha256:beef',
+    stampImageId: `sha256:${'b'.repeat(64)}`,
     stampDirty: false,
-    pendingImageId: 'sha256:beef',
+    pendingImageId: `sha256:${'b'.repeat(64)}`,
     baselineInterviewSnapshots: 5,
     upgradedInterviewSnapshots: 5,
     baselineUiExport: true,
@@ -819,6 +819,46 @@ test('a stack that reports no usable version proves nothing about what it runs',
   );
 });
 
+test('the released baseline must state its version too', async () => {
+  // The only evidence distinguishing a real upgrade from upgrading a build to
+  // itself; a missing field must not skip the comparison.
+  for (const version of [undefined, 'not a version']) {
+    const r = happyPath();
+    if (version === undefined) delete r['up-released'].version;
+    else r['up-released'].version = version;
+    const { result } = await run(r);
+    assert.equal(result.verdict, 'incomplete', String(version));
+    assert.equal(result.releasable, false, String(version));
+    assert.ok(
+      result.unaccounted.some((u) => u.includes('upgrading a build to itself')),
+      `${String(version)}: ${JSON.stringify(result.unaccounted)}`,
+    );
+  }
+});
+
+test('an abbreviated image id is not a provenance binding', async () => {
+  // Two different images can share a short prefix, so a truncated id would
+  // compare equal to one it does not describe.
+  const r = happyPath();
+  r['audit-artifacts'].stampImageId = 'sha256:beef';
+  r['audit-artifacts'].pendingImageId = 'sha256:beef';
+  const { result } = await run(r);
+  assert.notEqual(result.verdict, 'go');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('imageId')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('image ids compare by digest, not by prefix formatting', async () => {
+  const r = happyPath();
+  r['audit-artifacts'].stampImageId = 'b'.repeat(64);
+  r['audit-artifacts'].pendingImageId = `sha256:${'B'.repeat(64)}`;
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'go');
+  assert.equal(result.releasable, true);
+});
+
 test('an upgrade that did not change version is a failure on a pinned run', async () => {
   const r = happyPath();
   r['up-released'].version = 'v4.1.2';
@@ -953,7 +993,7 @@ test('a build claim that contradicts the stamp cannot be certified', async () =>
 
 test('the image that ran must be the image that was stamped', async () => {
   const r = happyPath();
-  r['audit-artifacts'].pendingImageId = 'sha256:cafe';
+  r['audit-artifacts'].pendingImageId = `sha256:${'c'.repeat(64)}`;
   const { result } = await run(r);
   assert.equal(result.verdict, 'incomplete');
   assert.ok(
@@ -1019,12 +1059,35 @@ test('a missing diff summary on disk means no diff was produced', async () => {
 });
 
 test('a diff that compared no files at all is not a clean diff', async () => {
+  // Zero, and every schema-valid non-count that could stand in for a positive
+  // one: a negative is truthy and would otherwise read as "it compared files".
+  for (const diffIdentical of [0, -1, 1.5, Number.NaN]) {
+    const r = happyPath();
+    r['audit-artifacts'].diffIdentical = diffIdentical;
+    const { result } = await run(r);
+    assert.equal(result.verdict, 'incomplete', String(diffIdentical));
+    assert.ok(
+      result.unaccounted.some((u) => u.includes('compared nothing at all')),
+      `${String(diffIdentical)}: ${JSON.stringify(result.unaccounted)}`,
+    );
+  }
+});
+
+test('matching UI archives do not waive the per-interview snapshots', async () => {
+  // Fresco reports a partial export as a success, so two archives that merely
+  // exist can both omit the same interviews and diff clean.
   const r = happyPath();
-  r['audit-artifacts'].diffIdentical = 0;
+  r['audit-artifacts'].baselineUiExport = true;
+  r['audit-artifacts'].upgradedUiExport = true;
+  r['audit-artifacts'].baselineInterviewSnapshots = 3;
+  r['audit-artifacts'].upgradedInterviewSnapshots = 3;
+  r['seed-baseline'].networkSnapshots = 3;
+  r['export-capture'].networkSnapshots = 3;
   const { result } = await run(r);
   assert.equal(result.verdict, 'incomplete');
+  assert.equal(result.releasable, false);
   assert.ok(
-    result.unaccounted.some((u) => u.includes('compared no files at all')),
+    result.unaccounted.some((u) => u.includes('cannot stand in for them')),
     JSON.stringify(result.unaccounted),
   );
 });
@@ -1469,6 +1532,14 @@ test('observed analytics egress warns without blocking the release', async () =>
     result.warnings.some((w) => w.includes('analytics relay')),
     JSON.stringify(result.warnings),
   );
+  // The warning must not repeat a claim the implementation dropped: the pin is
+  // gone, so the traffic is anonymous rather than attributable to this test.
+  const egress = result.warnings.find((w) => w.includes('analytics relay'));
+  assert.ok(
+    !egress.includes('pinned'),
+    `the warning still claims the installation id is pinned: ${egress}`,
+  );
+  assert.match(egress, /anonymous/);
 });
 
 test('a failed teardown warns without blocking the release', async () => {

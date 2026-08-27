@@ -120,6 +120,14 @@ const pendingImage = PENDING_IMAGE;
 // does not match its shape becomes null and its call site fails closed.
 // ---------------------------------------------------------------------------
 
+// A count the audit reports about the filesystem. Anything that is not a
+// non-negative integer is not a count, and must not reach a comparison where
+// a negative would read as "more than zero".
+const counted = (value) =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 0
+    ? value
+    : null;
+
 const shaped = (value, pattern, max) =>
   typeof value === 'string' &&
   value.length > 0 &&
@@ -134,7 +142,15 @@ const API_PATH = /^\/[\w./~-]*$/;
 const VERSION = /^[\w.+-]+$/;
 const CHANGESET_NAME = /^[\w-]+$/;
 const COMMIT = /^[0-9a-f]{7,40}$/i;
-const IMAGE_ID = /^(sha256:)?[0-9a-f]{4,64}$/i;
+// docker image inspect --format '{{.Id}}' and build-image.sh's stamp both
+// carry the full digest. Accepting an abbreviation would let two different
+// images that share a prefix compare equal, which is the opposite of what this
+// binding is for.
+const IMAGE_ID = /^(sha256:)?[0-9a-f]{64}$/i;
+const bareDigest = (value) => {
+  const clean = shaped(value, IMAGE_ID, 128);
+  return clean ? clean.replace(/^sha256:/i, '').toLowerCase() : null;
+};
 
 // A version as the health endpoint reports it ("v4.1.2") compared with a
 // version as package manifests carry it ("4.1.2").
@@ -344,8 +360,8 @@ const AUDIT_SCHEMA = {
       type: 'string',
       description: 'The id docker reports for the pending image right now',
     },
-    baselineInterviewSnapshots: { type: 'number' },
-    upgradedInterviewSnapshots: { type: 'number' },
+    baselineInterviewSnapshots: { type: 'integer', minimum: 0 },
+    upgradedInterviewSnapshots: { type: 'integer', minimum: 0 },
     baselineUiExport: { type: 'boolean' },
     upgradedUiExport: { type: 'boolean' },
     diffSummaryExists: { type: 'boolean' },
@@ -355,7 +371,7 @@ const AUDIT_SCHEMA = {
       description:
         'Every differing or one-sided file name in the diff summary: onlyInBaseline + onlyInCurrent + changed[].file',
     },
-    diffIdentical: { type: 'number' },
+    diffIdentical: { type: 'integer', minimum: 0 },
     changesets: {
       type: 'array',
       items: { type: 'string' },
@@ -694,7 +710,7 @@ Record one check per numbered item:
 1. mkdir -p ${UPGRADED_DIR}, then snapshot the API exactly as the baseline did: ${asData('paths', apiPaths)}, with curl -fsS -H "Authorization: Bearer ${apiToken ?? '<no usable token was recorded — create one in settings and say so in notes>'}" ${UPGRADE_URL}<path> saved to ${UPGRADED_DIR}/api-<last-path-segment>.json (same filenames as in ${BASELINE_DIR}).
 2. Snapshot every per-interview payload exactly as the baseline did: for each api-interview-<id>.json in ${BASELINE_DIR}, curl /api/v1/interview/<id> to ${UPGRADED_DIR}/api-interview-<id>.json (these carry the stored network; the collection endpoint is metadata only). Record how many succeeded in networkSnapshots; this item fails unless every baseline snapshot has an upgraded counterpart.
 3. In the browser, export ALL interviews from the interviews page with the SAME options as the baseline export (every format toggle on), using the blob-hook capture in AGENT_NOTES (enable-captures.sh --lane upgrade is idempotent; install the hook BEFORE triggering the export); PUT the blob to <capture base>/upgraded-ui-export.zip and curl it to ${UPGRADED_DIR}/ui-export.zip. THIS ITEM MAY BE SKIPPED, and ONLY when ${BASELINE_DIR}/ui-export.zip does not exist — check first; without a baseline archive there is nothing to compare against. Set uiExportCaptured:true only if ${UPGRADED_DIR}/ui-export.zip actually exists on the host afterwards.
-4. Verify the export COMMITTED its status — the zip blob is assembled before the post-export commit action runs, so a captured blob alone does not prove it: wait for the export success toast, then run docker exec fresco-release-test-upgrade-postgres-1 psql -U postgres -t -c 'SELECT max("exportTime") FROM "Interview";' and confirm the value is from the last few minutes (this export, not the baseline one). A captured blob with a stale or null exportTime is a FAILURE. THIS ITEM MAY BE SKIPPED, and ONLY when item 3 was skipped — there was no export whose status could be committed; the per-interview API snapshots carry the comparison instead.
+4. Verify the export COMMITTED its status — the zip blob is assembled before the post-export commit action runs, so a captured blob alone does not prove it: wait for the export success toast (note that Fresco shows the SUCCESS toast even when some interviews failed to export, naming how many — if it names any, this item FAILS: the archive is incomplete), then run docker exec fresco-release-test-upgrade-postgres-1 psql -U postgres -t -c 'SELECT max("exportTime") FROM "Interview";' and confirm the value is from the last few minutes (this export, not the baseline one). A captured blob with a stale or null exportTime is a FAILURE. THIS ITEM MAY BE SKIPPED, and ONLY when item 3 was skipped — there was no export whose status could be committed; the per-interview API snapshots carry the comparison instead.
 5. Run: node ${HARNESS}/scripts/diff-exports.mjs ${BASELINE_DIR} ${UPGRADED_DIR} --work ${DIFF_WORK} --out ${DIFF_SUMMARY} — this item passes only if the command exits 0 and ${DIFF_SUMMARY} exists.
 ${CHECK_DISCIPLINE}
 Set area="capture" and pass=true only if every item passed or was legitimately skipped, and report the changedFiles / onlyInBaseline / onlyInCurrent counts from the summary. Do NOT paste diff content.`,
@@ -1116,6 +1132,13 @@ if (upgradeLane?.swap?.ok === true) {
     failures.push(
       `upgrade lane: after the swap the stack reports version ${upgradeLane.swappedVersion}, but the pending image is ${buildVersion} — the swap did not run the image under test`,
     );
+  // Required as strictly as the swapped and fresh versions are: it is the only
+  // evidence distinguishing a real upgrade from running one build twice, and a
+  // missing field must not be able to skip the comparison.
+  if (!upgradeLane.releasedVersion)
+    unaccounted.push(
+      'upgrade lane: the released baseline reported no usable version, so nothing distinguishes this run from upgrading a build to itself',
+    );
   if (
     upgradeLane.releasedVersion &&
     upgradeLane.swappedVersion &&
@@ -1153,10 +1176,8 @@ if (audit?.stampExists === true) {
     typeof audit.stampDirty === 'boolean' ? null : 'dirty',
     shaped(audit.stampVersion, VERSION, 64) ? null : 'version',
     shaped(audit.stampCommit, COMMIT, 64) ? null : 'commit',
-    shaped(audit.stampImageId, IMAGE_ID, 128) ? null : 'imageId',
-    shaped(audit.pendingImageId, IMAGE_ID, 128)
-      ? null
-      : "the pending image's current id",
+    bareDigest(audit.stampImageId) ? null : 'imageId',
+    bareDigest(audit.pendingImageId) ? null : "the pending image's current id",
   ].filter(Boolean);
   if (missing.length) {
     // Fail closed on the flag too: an unreadable stamp cannot vouch for a
@@ -1185,11 +1206,9 @@ if (audit?.stampExists === true) {
     unaccounted.push(
       `the build reported commit ${build.commit} but stamp.json records ${audit.stampCommit} — the image under test cannot be identified`,
     );
-  if (
-    audit.stampImageId &&
-    audit.pendingImageId &&
-    String(audit.stampImageId).trim() !== String(audit.pendingImageId).trim()
-  )
+  const stampedDigest = bareDigest(audit.stampImageId);
+  const runningDigest = bareDigest(audit.pendingImageId);
+  if (stampedDigest && runningDigest && stampedDigest !== runningDigest)
     unaccounted.push(
       `${pendingImage} is now image ${audit.pendingImageId}, but stamp.json describes ${audit.stampImageId} — the image that ran is not the image that was stamped`,
     );
@@ -1303,9 +1322,12 @@ if (upgradeLane?.swap?.ok === true) {
         unaccounted.push(
           'export regression gate: the judge classified the same file more than once',
         );
-      if (!differing.length && (Number(audit.diffIdentical) || 0) === 0)
+      // A clean diff has to have compared something. Strictly positive, and
+      // read through counted() so a schema-valid negative cannot masquerade
+      // as a non-zero count.
+      if (!differing.length && !(counted(audit.diffIdentical) > 0))
         unaccounted.push(
-          'export regression gate: the diff summary compared no files at all',
+          `export regression gate: the diff summary reports no differing files and ${counted(audit.diffIdentical) === null ? 'an unusable identical-file count' : 'no identical files either'} — it compared nothing at all`,
         );
     }
   }
@@ -1323,18 +1345,23 @@ if (upgradeLane?.swap?.ok === true) {
 if (upgradeLane?.swap?.ok === true && audit) {
   const baselineZip = audit.baselineUiExport === true;
   const upgradedZip = audit.upgradedUiExport === true;
-  const baselineSnapshots = Number(audit.baselineInterviewSnapshots) || 0;
-  const upgradedSnapshots = Number(audit.upgradedInterviewSnapshots) || 0;
+  const baselineSnapshots = counted(audit.baselineInterviewSnapshots) ?? 0;
+  const upgradedSnapshots = counted(audit.upgradedInterviewSnapshots) ?? 0;
 
-  if (!(baselineZip && upgradedZip)) {
-    if (
-      baselineSnapshots < SYNTHETIC_COUNT ||
-      upgradedSnapshots < SYNTHETIC_COUNT
-    )
-      unaccounted.push(
-        `export comparability: without a UI export archive on both sides, every seeded interview needs a payload snapshot on both sides (need ${SYNTHETIC_COUNT}; on disk: baseline ${baselineSnapshots}, upgraded ${upgradedSnapshots}) — a partial or metadata-only diff cannot detect network corruption`,
-      );
-  }
+  // Never waived by the presence of the UI archives. Fresco reports a
+  // partial export as a success ("Export complete", success variant, with a
+  // count of interviews that could not be exported), so two archives that
+  // merely exist can both omit the same interviews and diff clean while
+  // corruption in them goes undetected. The per-interview snapshots are the
+  // only mechanical guarantee that every seeded interview was compared, and
+  // both checklists require them unconditionally — so synthesis does too.
+  if (
+    baselineSnapshots < SYNTHETIC_COUNT ||
+    upgradedSnapshots < SYNTHETIC_COUNT
+  )
+    unaccounted.push(
+      `export comparability: every seeded interview needs a payload snapshot on both sides (need ${SYNTHETIC_COUNT}; on disk: baseline ${baselineSnapshots}, upgraded ${upgradedSnapshots}) — a UI export archive cannot stand in for them, because Fresco reports a partial export as a success`,
+    );
   // Claims that contradict the disk make the whole report untrustworthy, even
   // when the gate above happens to be satisfied.
   const claims = [
@@ -1352,7 +1379,7 @@ if (upgradeLane?.swap?.ok === true && audit) {
     ['upgraded', upgradeLane.capture?.networkSnapshots, upgradedSnapshots],
   ];
   for (const [side, claimed, actual] of snapshotClaims) {
-    if (Number(claimed) > actual)
+    if ((counted(claimed) ?? 0) > actual)
       unaccounted.push(
         `export comparability: ${side} reported ${claimed} per-interview snapshots but ${actual} exist on disk`,
       );
@@ -1381,7 +1408,7 @@ if (upgradeLane?.seed?.pass) {
 const analyticsRequests = Number(freshLane?.setup?.analyticsRequests) || 0;
 if (analyticsRequests > 0)
   warnings.push(
-    `the fresh lane observed ${analyticsRequests} request(s) to the analytics relay even though the stack sets DISABLE_ANALYTICS — the release-test installation id is pinned so these are attributable, but client-side analytics initialising before the opt-out is worth a look`,
+    `the fresh lane observed ${analyticsRequests} request(s) to the analytics relay even though the stack sets DISABLE_ANALYTICS — posthog.init runs unconditionally before the opt-out lands on hydration, so these carry an anonymous browser identity and are not attributable to this test`,
   );
 
 if (audit && !audit.stampExists)
