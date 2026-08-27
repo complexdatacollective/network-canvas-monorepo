@@ -124,6 +124,7 @@ jobs:
           sparse-checkout: |
             .github/scripts
             scripts
+            apps/architect/scripts
           persist-credentials: false
 
       - name: Resolve the released commit
