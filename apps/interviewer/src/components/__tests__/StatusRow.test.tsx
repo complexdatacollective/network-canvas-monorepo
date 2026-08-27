@@ -102,7 +102,7 @@ describe('StatusRow', () => {
     );
   });
 
-  it('includes compact status labels in tooltip text', async () => {
+  it('includes compact status labels in popover text on hover', async () => {
     const user = userEvent.setup();
     render(
       <StatusRowView
@@ -125,6 +125,70 @@ describe('StatusRow', () => {
     await user.hover(storageTrigger);
     await waitFor(() =>
       expect(screen.getByText(/^Storage persistent\./)).toBeInTheDocument(),
+    );
+  });
+
+  // Regression: the explanations were Tooltips, which only open on hover and
+  // keyboard focus-visible — on a tablet (the primary field platform) no touch
+  // gesture could ever reveal them. A tap must open the popover, and a tap
+  // elsewhere must dismiss it.
+  it('opens the explanation on tap/click and closes on an outside tap', async () => {
+    const user = userEvent.setup();
+    render(
+      <StatusRowView
+        protocolCount={0}
+        interviewCount={0}
+        mode="none"
+        durability={{ persisted: false, usage: 22.5 * 1024 * 1024 }}
+        installed={false}
+      />,
+    );
+
+    await user.click(screen.getByTestId('storage-status-trigger'));
+    await waitFor(() =>
+      expect(
+        screen.getByText(/^Storage not persistent\. 22\.5 MB stored\./),
+      ).toBeInTheDocument(),
+    );
+
+    await user.click(screen.getByTestId('encryption-status-trigger'));
+    await waitFor(() =>
+      expect(screen.getByText(/^Not encrypted\./)).toBeInTheDocument(),
+    );
+
+    await user.click(document.body);
+    await waitFor(() =>
+      expect(screen.queryByText(/^Not encrypted\./)).not.toBeInTheDocument(),
+    );
+  });
+
+  it('opens the explanation on keyboard focus and closes on blur', async () => {
+    const user = userEvent.setup();
+    render(
+      <StatusRowView
+        protocolCount={0}
+        interviewCount={0}
+        mode="pin"
+        durability={{ persisted: true, usage: null }}
+        installed={false}
+      />,
+    );
+
+    // Tab order: the counts link, then the encryption chip, then storage.
+    await user.tab();
+    await user.tab();
+    expect(screen.getByTestId('encryption-status-trigger')).toHaveFocus();
+    await waitFor(() =>
+      expect(screen.getByText(/^Encrypted\./)).toBeInTheDocument(),
+    );
+
+    await user.tab();
+    expect(screen.getByTestId('storage-status-trigger')).toHaveFocus();
+    await waitFor(() =>
+      expect(screen.getByText(/^Storage persistent\./)).toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(screen.queryByText(/^Encrypted\./)).not.toBeInTheDocument(),
     );
   });
 

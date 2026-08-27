@@ -1,14 +1,14 @@
 import { HardDrive, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { motion } from 'motion/react';
 import type React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'wouter';
 
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@codaco/fresco-ui/Tooltip';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@codaco/fresco-ui/Popover';
 import { APP_VERSION } from '~/lib/appVersion';
 import type { AuthMode } from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
@@ -52,8 +52,101 @@ const variants = {
 const compactLabelClassName =
   'tablet-landscape:not-sr-only sr-only tablet-landscape:whitespace-nowrap';
 const statusTriggerClassName =
-  'focusable inline-flex items-center gap-1.5 rounded-sm';
+  'focusable inline-flex cursor-help items-center gap-1.5 rounded-sm';
 const statusIconClassName = 'tablet-landscape:size-3.5 size-4';
+
+// The chips' explanations used to be Tooltips, which only open on hover and
+// keyboard focus — on a tablet (the primary field platform) no gesture could
+// reveal them. A popover opens on tap as well, so hover, focus, and touch all
+// reach the same text. This mirrors fresco-ui Definition's interactive
+// pattern: the popover is controlled, focus/hover open it, and Base UI's own
+// click-toggle is withdrawn because the click's focus has already opened it —
+// left in place the two would race and a tap would close what it just opened.
+function StatusChipPopover({
+  testId,
+  className,
+  chip,
+  children,
+}: {
+  testId: string;
+  className?: string;
+  /** The always-visible chip contents (icon + compact label). */
+  chip: React.ReactNode;
+  /** The explanation revealed on hover, focus, or tap. */
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const triggerId = useId();
+  const triggerRef = useRef<HTMLSpanElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+
+  const keepOpenFor = (target: EventTarget | null) =>
+    target instanceof Node &&
+    Boolean(
+      triggerRef.current?.contains(target) ||
+      contentRef.current?.contains(target),
+    );
+
+  return (
+    <Popover
+      open={open}
+      triggerId={triggerId}
+      onOpenChange={(nextOpen, eventDetails) => {
+        // The pointer leaving must not dismiss a popover that keyboard focus
+        // (or the click that focused the trigger) is still holding open.
+        if (
+          !nextOpen &&
+          eventDetails.reason === 'trigger-hover' &&
+          keepOpenFor(document.activeElement)
+        ) {
+          return;
+        }
+        setOpen(nextOpen);
+      }}
+    >
+      <PopoverTrigger
+        id={triggerId}
+        openOnHover
+        nativeButton={false}
+        render={
+          <span
+            ref={triggerRef}
+            id={triggerId}
+            tabIndex={0}
+            data-testid={testId}
+            className={className}
+            onFocus={() => setOpen(true)}
+            onBlur={(event) => {
+              if (!keepOpenFor(event.relatedTarget)) setOpen(false);
+            }}
+            onClick={(
+              event: React.MouseEvent<HTMLSpanElement> & {
+                preventBaseUIHandler?: () => void;
+              },
+            ) => {
+              event.preventBaseUIHandler?.();
+            }}
+          >
+            {chip}
+          </span>
+        }
+      />
+      <PopoverContent
+        ref={contentRef}
+        side="top"
+        className="max-w-[min(var(--available-width),var(--container-sm))] text-sm text-pretty"
+        aria-labelledby={triggerId}
+        initialFocus={false}
+        onFocus={() => setOpen(true)}
+        onBlur={(event) => {
+          if (!keepOpenFor(event.relatedTarget)) setOpen(false);
+        }}
+      >
+        {children}
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 // Pure presentation: the dashboard's bottom-of-screen footer strip. `mode`
 // mirrors useAuth's enrolled security mode; `durability` mirrors the
@@ -99,91 +192,75 @@ export function StatusRowView({
             and iconography. */}
         {mode ? (
           mode === 'none' ? (
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <span
-                    tabIndex={0}
-                    data-testid="encryption-status-trigger"
-                    className={`${statusTriggerClassName} text-warning`}
-                  >
-                    <ShieldAlert className={statusIconClassName} />
-                    <span className={compactLabelClassName}>Not encrypted</span>
-                  </span>
-                }
-              />
-              <TooltipContent>
-                Not encrypted. No app security is enrolled — data is stored
-                unencrypted. Enrol a PIN, passphrase, or biometric in Settings
-                to encrypt it.
-              </TooltipContent>
-            </Tooltip>
+            <StatusChipPopover
+              testId="encryption-status-trigger"
+              className={`${statusTriggerClassName} text-warning`}
+              chip={
+                <>
+                  <ShieldAlert className={statusIconClassName} />
+                  <span className={compactLabelClassName}>Not encrypted</span>
+                </>
+              }
+            >
+              Not encrypted. No app security is enrolled — data is stored
+              unencrypted. Enrol a PIN, passphrase, or biometric in Settings to
+              encrypt it.
+            </StatusChipPopover>
           ) : (
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <span
-                    tabIndex={0}
-                    data-testid="encryption-status-trigger"
-                    className={`${statusTriggerClassName} text-primary`}
-                  >
-                    <ShieldCheck className={statusIconClassName} />
-                    <span className={compactLabelClassName}>Encrypted</span>
-                  </span>
-                }
-              />
-              <TooltipContent>
-                Encrypted. Interview data is encrypted at rest with your
-                enrolled unlock method.
-              </TooltipContent>
-            </Tooltip>
+            <StatusChipPopover
+              testId="encryption-status-trigger"
+              className={`${statusTriggerClassName} text-primary`}
+              chip={
+                <>
+                  <ShieldCheck className={statusIconClassName} />
+                  <span className={compactLabelClassName}>Encrypted</span>
+                </>
+              }
+            >
+              Encrypted. Interview data is encrypted at rest with your enrolled
+              unlock method.
+            </StatusChipPopover>
           )
         ) : null}
         {durability ? (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <span
-                  tabIndex={
-                    durability.usage !== null ||
-                    (!durability.persisted && installed)
-                      ? 0
-                      : undefined
-                  }
-                  data-testid="storage-status-trigger"
-                  className={statusTriggerClassName}
-                >
-                  {durability.persisted ? (
-                    <span className="text-primary inline-flex items-center gap-1.5">
-                      <HardDrive className={statusIconClassName} />
-                      <span className={compactLabelClassName}>
-                        Storage persistent
-                      </span>
-                    </span>
-                  ) : installed ? (
-                    // Installed apps are already partitioned away from
-                    // browsing data and exempt from routine cleanup, and no
-                    // further user action can flip the grant — a warning here
-                    // would alarm without offering a remedy (#886).
-                    <>
-                      <HardDrive className={statusIconClassName} />
-                      <span className={compactLabelClassName}>
-                        Storage best effort
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-warning inline-flex items-center gap-1.5">
-                      <HardDrive className={statusIconClassName} />
-                      <span className={compactLabelClassName}>
-                        Storage not persistent
-                      </span>
-                    </span>
-                  )}
+          // Always interactive — below the tablet-landscape breakpoint the
+          // label is sr-only, so the popover is the only way a sighted touch
+          // user can read what the icon means, even when no usage figure is
+          // available yet.
+          <StatusChipPopover
+            testId="storage-status-trigger"
+            className={statusTriggerClassName}
+            chip={
+              durability.persisted ? (
+                <span className="text-primary inline-flex items-center gap-1.5">
+                  <HardDrive className={statusIconClassName} />
+                  <span className={compactLabelClassName}>
+                    Storage persistent
+                  </span>
                 </span>
-              }
-            />
+              ) : installed ? (
+                // Installed apps are already partitioned away from
+                // browsing data and exempt from routine cleanup, and no
+                // further user action can flip the grant — a warning here
+                // would alarm without offering a remedy (#886).
+                <>
+                  <HardDrive className={statusIconClassName} />
+                  <span className={compactLabelClassName}>
+                    Storage best effort
+                  </span>
+                </>
+              ) : (
+                <span className="text-warning inline-flex items-center gap-1.5">
+                  <HardDrive className={statusIconClassName} />
+                  <span className={compactLabelClassName}>
+                    Storage not persistent
+                  </span>
+                </span>
+              )
+            }
+          >
             {!durability.persisted && installed ? (
-              <TooltipContent>
+              <>
                 Storage best effort. Installed-app data is kept separate from
                 browsing data and is not cleared routinely, but it is not
                 guaranteed against eviction if disk space runs low. Export
@@ -191,22 +268,22 @@ export function StatusRowView({
                 {durability.usage !== null
                   ? ` ${formatBytes(durability.usage)} stored.`
                   : ''}
-              </TooltipContent>
+              </>
             ) : durability.persisted ? (
-              <TooltipContent>
+              <>
                 Storage persistent.
                 {durability.usage !== null
                   ? ` ${formatBytes(durability.usage)} stored.`
                   : ''}
-              </TooltipContent>
+              </>
             ) : durability.usage !== null ? (
-              <TooltipContent>
+              <>
                 Storage not persistent. {formatBytes(durability.usage)} stored.
-              </TooltipContent>
+              </>
             ) : (
-              <TooltipContent>Storage not persistent.</TooltipContent>
+              <>Storage not persistent.</>
             )}
-          </Tooltip>
+          </StatusChipPopover>
         ) : null}
         {versionSlot}
       </div>
