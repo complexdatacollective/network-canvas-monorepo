@@ -66,7 +66,12 @@ Lead with the verdict, then render the returned `summaryMarkdown`:
   reproduced) and `unverifiedFailures` (no verifier adjudicated them —
   present these explicitly as unverified, never as confirmed; they block at
   blocker/major severity until verified).
-- `INCOMPLETE` — do not certify the release. If a journey **died**, resume
+- `INCOMPLETE` — do not certify the release; the summary's "Certification
+  gaps" section names every cause (a dead or inconsistent journey, missing
+  evidence, an unadjudicated failure, or a deployment that changed mid-run —
+  the run fingerprints the deployment's built assets at preflight and
+  re-checks them at the end, so a redeploy during the 25–40 minute run is
+  caught even at the same version). If a journey **died**, resume
   with `Workflow({ scriptPath, resumeFromRunId })` so completed journeys
   replay from cache. If a journey **completed but reported inconsistently**
   (wrong check count or numbering, an impermissible skip, a misreported

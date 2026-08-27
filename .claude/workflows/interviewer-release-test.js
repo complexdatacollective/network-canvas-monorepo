@@ -110,9 +110,14 @@ const FAILURE = {
 
 const PREFLIGHT_SCHEMA = {
   type: 'object',
-  required: ['ok', 'workDir', 'repoRoot', 'version', 'failures'],
+  required: ['ok', 'workDir', 'repoRoot', 'version', 'fingerprint', 'failures'],
   properties: {
     ok: { type: 'boolean' },
+    fingerprint: {
+      type: 'string',
+      description:
+        'Deployment fingerprint: first 16 hex chars of the sha-256 of the sorted assets/*.js|css paths referenced by the served HTML (computed with the exact command given)',
+    },
     workDir: {
       type: 'string',
       description: 'Absolute path of the created scratch directory',
@@ -177,8 +182,13 @@ const VERIFY_SCHEMA = {
 
 const EVIDENCE_SCHEMA = {
   type: 'object',
-  required: ['entries'],
+  required: ['entries', 'fingerprint'],
   properties: {
+    fingerprint: {
+      type: 'string',
+      description:
+        'Deployment fingerprint re-computed NOW with the exact command given — detects a mid-run redeploy',
+    },
     entries: {
       type: 'array',
       items: {
@@ -798,10 +808,14 @@ Do, in order:
    must contain apps/interviewer/package.json).
 2. Create a scratch work directory with mktemp -d (name it something like
    interviewer-release-test.XXXXXX) and report it as workDir.
-3. HTTP checks with curl: "/" returns 200 and HTML; /manifest.webmanifest
+3. Fingerprint the deployment (the run's immutable build identity — a
+   mid-run redeploy is detected by re-computing this at the end):
+   curl -s ${url}/ | grep -oE 'assets/[A-Za-z0-9_.-]+\\.(js|css)' | sort -u | shasum -a 256 | cut -c1-16
+   Report the 16 hex chars as fingerprint, exactly.
+4. HTTP checks with curl: "/" returns 200 and HTML; /manifest.webmanifest
    returns 200 and valid JSON with name "Network Canvas Interviewer";
    /sw.js returns 200 and JavaScript.
-4. Tooling: verify headless Playwright chromium can launch by running a tiny
+5. Tooling: verify headless Playwright chromium can launch by running a tiny
    node script that resolves @playwright/test via
    createRequire('<repoRoot>/apps/interviewer/package.json'), launches
    chromium headless, and — BEFORE loading any page — blocks product
@@ -815,12 +829,12 @@ Do, in order:
    <workDir>/preflight-home.png, and closes. If chromium is missing, install
    it once with: pnpm --filter @codaco/interviewer exec playwright install
    chromium — then retry.
-5. Version binding: ${
+6. Version binding: ${
     expectedVersion
       ? `this run certifies version ${expectedVersion} — if the served version from step 4 is not exactly "${expectedVersion}", record that as a failure (the deployment is stale or wrong).`
       : 'no expected version was supplied for this run; just report the served version.'
   }
-6. ok=true only if every step above succeeded; otherwise ok=false with each
+7. ok=true only if every step above succeeded; otherwise ok=false with each
    problem in failures.`,
   {
     label: 'preflight',
@@ -839,12 +853,15 @@ const versionMismatch =
 const workDirInvalid =
   preflight &&
   !(typeof preflight.workDir === 'string' && /^\/.+/.test(preflight.workDir));
+const fingerprintInvalid =
+  preflight && !/^[0-9a-f]{16}$/.test(preflight.fingerprint ?? '');
 if (
   !preflight ||
   !preflight.ok ||
   preflight.failures.length ||
   versionMismatch ||
-  workDirInvalid
+  workDirInvalid ||
+  fingerprintInvalid
 ) {
   const failures = preflight
     ? [
@@ -857,6 +874,11 @@ if (
         ...(workDirInvalid
           ? [
               `preflight reported an invalid work directory ("${preflight.workDir}")`,
+            ]
+          : []),
+        ...(fingerprintInvalid
+          ? [
+              'preflight reported no valid deployment fingerprint — the run cannot be bound to one build',
             ]
           : []),
       ]
@@ -995,6 +1017,9 @@ if (evidenceClaims.length) {
 2. the count of .png files directly inside it (e.g. \`find <dir> -maxdepth 1 -name '*.png' | wc -l\`);
 3. the DISTINCT check numbers among their filenames, as a list of integers (e.g. \`ls <dir> | grep -oE '^check[0-9]+' | sort -u\` → checkpointNumbers [1, 2, 5]).
 
+Then re-compute the deployment fingerprint and report it as fingerprint:
+curl -s ${url}/ | grep -oE 'assets/[A-Za-z0-9_.-]+\\.(js|css)' | sort -u | shasum -a 256 | cut -c1-16
+
 ENTRIES (JSON):
 ${JSON.stringify(evidenceClaims, null, 2)}
 
@@ -1013,12 +1038,21 @@ Return one entry per input with the journey name copied verbatim.`,
   }
 }
 
+// The deployment must be the SAME build the whole run: a mid-run redeploy
+// (same URL, possibly same version) invalidates every journey's evidence.
+const deployChanged =
+  evidence && evidence.fingerprint !== preflight.fingerprint;
+
 // ---------------------------------------------------------------------------
 // Synthesis (deterministic, in code)
 // ---------------------------------------------------------------------------
 
 const journeys = [];
 let verifierDied = false;
+// Harness/report gaps that cap the run below certification (INCOMPLETE),
+// as opposed to automationIssues, which holds ADVISORY adjudications
+// (failures a verifier refuted as flaky or harness-caused).
+const certificationGaps = [];
 const confirmedFailures = [];
 // Failures no verifier adjudicated. They still block at blocker/major
 // severity (fail closed) but are never presented as confirmed.
@@ -1030,7 +1064,7 @@ const inconsistentJourneys = [];
 for (const r of results.filter(Boolean)) {
   if (r.agentDied) {
     deadJourneys.push(r.journey);
-    automationIssues.push(
+    certificationGaps.push(
       `journey "${r.journey}" returned no result (agent error or skip)`,
     );
     continue;
@@ -1040,7 +1074,7 @@ for (const r of results.filter(Boolean)) {
   // the pipeline; flag it — self-misidentification signals a confused run.
   if (r.keyMismatch) {
     inconsistentJourneys.push(r.journey);
-    automationIssues.push(
+    certificationGaps.push(
       `journey "${r.journey}" misreported its key as "${r.reportedJourney || '(empty)'}"; treated as incomplete`,
     );
   }
@@ -1056,7 +1090,7 @@ for (const r of results.filter(Boolean)) {
   ) {
     if (!inconsistentJourneys.includes(r.journey))
       inconsistentJourneys.push(r.journey);
-    automationIssues.push(
+    certificationGaps.push(
       `journey "${r.journey}" did not claim its own artifacts directory (workDir/${r.journey}); treated as incomplete`,
     );
   } else if (evidence) {
@@ -1080,7 +1114,7 @@ for (const r of results.filter(Boolean)) {
     if (!e || !e.exists || e.screenshots < needed || missingCk.length) {
       if (!inconsistentJourneys.includes(r.journey))
         inconsistentJourneys.push(r.journey);
-      automationIssues.push(
+      certificationGaps.push(
         `journey "${r.journey}" lacks on-disk evidence (${e ? `exists=${e.exists}, screenshots=${e.screenshots} of >=${needed}${missingCk.length ? `, no capture for executed check(s) #${missingCk.join(', #')}` : ''}` : 'not audited'}); treated as incomplete`,
       );
     }
@@ -1090,7 +1124,7 @@ for (const r of results.filter(Boolean)) {
   if (expected && r.checks.length !== expected) {
     if (!inconsistentJourneys.includes(r.journey))
       inconsistentJourneys.push(r.journey);
-    automationIssues.push(
+    certificationGaps.push(
       `journey "${r.journey}" returned ${r.checks.length} of ${expected} expected checks; treated as incomplete`,
     );
   }
@@ -1104,7 +1138,7 @@ for (const r of results.filter(Boolean)) {
   if (misnumbered.length) {
     if (!inconsistentJourneys.includes(r.journey))
       inconsistentJourneys.push(r.journey);
-    automationIssues.push(
+    certificationGaps.push(
       `journey "${r.journey}" returned misnumbered check(s) at position(s) ${misnumbered
         .map(({ n }) => n)
         .join(', ')}; treated as incomplete`,
@@ -1135,7 +1169,7 @@ for (const r of results.filter(Boolean)) {
   if (badSkips.length) {
     if (!inconsistentJourneys.includes(r.journey))
       inconsistentJourneys.push(r.journey);
-    automationIssues.push(
+    certificationGaps.push(
       `journey "${r.journey}" skipped non-skippable check(s) ${badSkips
         .map(({ c, n }) => `#${n} (${c.detail || 'no reason'})`)
         .join(', ')}; treated as incomplete`,
@@ -1147,7 +1181,7 @@ for (const r of results.filter(Boolean)) {
     if (r.status === 'fail' || r.checks.some((c) => c.status === 'fail')) {
       if (!inconsistentJourneys.includes(r.journey))
         inconsistentJourneys.push(r.journey);
-      automationIssues.push(
+      certificationGaps.push(
         `journey "${r.journey}" reported a failing status or failed checks but no failure records; treated as incomplete`,
       );
     }
@@ -1165,7 +1199,7 @@ for (const r of results.filter(Boolean)) {
     if (uncovered.length) {
       if (!inconsistentJourneys.includes(r.journey))
         inconsistentJourneys.push(r.journey);
-      automationIssues.push(
+      certificationGaps.push(
         `journey "${r.journey}" has failed check(s) #${uncovered.join(', #')} with no failure record bound to them (failure.check); treated as incomplete`,
       );
     }
@@ -1178,7 +1212,7 @@ for (const r of results.filter(Boolean)) {
     for (const f of r.failures)
       unverifiedFailures.push({ ...f, journey: r.journey });
     verifierDied = true;
-    automationIssues.push(
+    certificationGaps.push(
       `verifier for "${r.journey}" returned no result; failures kept unverified and the run cannot certify`,
     );
     continue;
@@ -1235,8 +1269,13 @@ const blocking = [...confirmedFailures, ...unverifiedFailures].filter(
   (f) => f.severity === 'blocker' || f.severity === 'major',
 );
 if (auditFailed) {
-  automationIssues.push(
+  certificationGaps.push(
     'the evidence audit did not run; on-disk evidence is unconfirmed, so this run cannot certify',
+  );
+}
+if (deployChanged) {
+  certificationGaps.push(
+    `the deployment changed mid-run (fingerprint ${preflight.fingerprint} at preflight, ${evidence.fingerprint} at the end) — the journeys may describe a build that is no longer live; re-run against the current deployment`,
   );
 }
 // ANY unadjudicated failure makes the run incomplete (unless it already
@@ -1248,6 +1287,7 @@ const verdict = blocking.length
       inconsistentJourneys.length ||
       auditFailed ||
       verifierDied ||
+      deployChanged ||
       unverifiedFailures.length
     ? 'INCOMPLETE'
     : confirmedFailures.length
@@ -1306,11 +1346,14 @@ if (unverifiedFailures.length) {
   for (const f of unverifiedFailures)
     lines.push(`- [${f.severity}] (${f.journey}) ${f.description}`);
 }
+if (certificationGaps.length) {
+  lines.push('');
+  lines.push('## Certification gaps (these cap the run below certification)');
+  for (const a of certificationGaps) lines.push(`- ${a}`);
+}
 if (automationIssues.length) {
   lines.push('');
-  lines.push(
-    '## Not blocking (flaky / automation / unverified-verifier notes)',
-  );
+  lines.push('## Not blocking (adjudicated as flaky or automation artifacts)');
   for (const a of automationIssues) lines.push(`- ${a}`);
 }
 
@@ -1326,6 +1369,7 @@ return {
   journeys,
   confirmedFailures,
   unverifiedFailures,
+  certificationGaps,
   automationIssues,
   deadJourneys,
   inconsistentJourneys,

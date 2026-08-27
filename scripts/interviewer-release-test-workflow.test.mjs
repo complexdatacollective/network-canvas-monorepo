@@ -64,6 +64,7 @@ const run = (agentImpl, args) =>
 
 const PREFLIGHT = {
   ok: true,
+  fingerprint: 'abcd1234abcd1234',
   workDir: '/tmp/x',
   repoRoot: '/tmp/r',
   version: '9.9.9',
@@ -101,6 +102,7 @@ function makeAgent(journeyResults, verifyResults = {}, evidenceResult) {
     if (opts.label === 'verify:evidence') {
       if (evidenceResult !== undefined) return evidenceResult;
       return {
+        fingerprint: PREFLIGHT.fingerprint,
         entries: Object.keys(journeyResults).map((k) => ({
           journey: k,
           exists: true,
@@ -297,7 +299,7 @@ test('truncated, misnumbered, or misreported reports are incomplete', async () =
   );
   assert.equal(misnumbered.verdict, 'INCOMPLETE');
   assert.ok(
-    misnumbered.automationIssues.some((a) => a.includes('position(s) 5')),
+    misnumbered.certificationGaps.some((a) => a.includes('position(s) 5')),
   );
 
   const misreported = await run(
@@ -307,7 +309,7 @@ test('truncated, misnumbered, or misreported reports are incomplete', async () =
     { journeys: ['pwa-offline'] },
   );
   assert.equal(misreported.verdict, 'INCOMPLETE');
-  assert.ok(misreported.automationIssues.some((a) => a.includes('(empty)')));
+  assert.ok(misreported.certificationGaps.some((a) => a.includes('(empty)')));
   assert.equal(misreported.journeys[0].journey, 'pwa-offline');
 });
 
@@ -331,7 +333,7 @@ test('skips outside the whitelist and broken skip pairs are incomplete', async (
     { journeys: ['pwa-offline'] },
   );
   assert.equal(disallowed.verdict, 'INCOMPLETE');
-  assert.ok(disallowed.automationIssues.some((a) => a.includes('#4')));
+  assert.ok(disallowed.certificationGaps.some((a) => a.includes('#4')));
 
   for (const skipAt of [[7], [6]]) {
     const halfPair = await run(
@@ -448,7 +450,7 @@ test('evidence must exist on disk with per-check identity', async () => {
   );
   assert.equal(identityMismatch.verdict, 'INCOMPLETE');
   assert.ok(
-    identityMismatch.automationIssues.some((a) => a.includes('check(s) #1')),
+    identityMismatch.certificationGaps.some((a) => a.includes('check(s) #1')),
   );
 
   // The legitimate import pair-skip leaves seven executed checks — seven
@@ -462,6 +464,7 @@ test('evidence must exist on disk with per-check identity', async () => {
       },
       {},
       {
+        fingerprint: PREFLIGHT.fingerprint,
         entries: [
           {
             journey: 'protocol-management',
@@ -507,7 +510,7 @@ test('failed checks need failure records bound by check number', async () => {
   };
   const res = await run(makeAgent(jr, vr), { journeys: ['pwa-offline'] });
   assert.equal(res.verdict, 'INCOMPLETE');
-  assert.ok(res.automationIssues.some((a) => a.includes('#2')));
+  assert.ok(res.certificationGaps.some((a) => a.includes('#2')));
 });
 
 test('unadjudicated failures cap the run at INCOMPLETE', async () => {
@@ -610,6 +613,7 @@ test('agent-controlled artifactsDir never reaches the verifier prompt', async ()
     if (o.label === 'preflight') return PREFLIGHT;
     if (o.label === 'verify:evidence')
       return {
+        fingerprint: PREFLIGHT.fingerprint,
         entries: [
           {
             journey: 'pwa-offline',
@@ -651,6 +655,29 @@ test('agent-controlled artifactsDir never reaches the verifier prompt', async ()
   const vp = prompts.find((x) => x.label === 'verify:pwa-offline');
   assert.ok(vp);
   assert.ok(!vp.p.includes('INJECTED-INSTRUCTION'));
+});
+
+test('a mid-run redeploy caps the run below certification', async () => {
+  const jr = Object.fromEntries(
+    Object.keys(EXPECTED_CHECKS).map((k) => [k, journey(k)]),
+  );
+  const agentImpl = makeAgent(jr);
+  const withDrift = async (prompt, opts) => {
+    const r = await agentImpl(prompt, opts);
+    if (opts.label === 'verify:evidence')
+      return { ...r, fingerprint: 'ffff0000ffff0000' };
+    return r;
+  };
+  const res = await run(withDrift, { expectedVersion: '9.9.9' });
+  assert.equal(res.verdict, 'INCOMPLETE');
+  assert.ok(res.certificationGaps.some((a) => a.includes('changed mid-run')));
+});
+
+test('preflight without a valid fingerprint is blocked', async () => {
+  const agent = async (p, o) =>
+    o.label === 'preflight' ? { ...PREFLIGHT, fingerprint: 'not-hex!' } : null;
+  const res = await run(agent, { journeys: ['pwa-offline'] });
+  assert.equal(res.verdict, 'BLOCKED');
 });
 
 test('a dead journey is incomplete', async () => {
