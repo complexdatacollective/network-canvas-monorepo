@@ -183,7 +183,7 @@ const EVIDENCE_SCHEMA = {
       type: 'array',
       items: {
         type: 'object',
-        required: ['journey', 'exists', 'screenshots', 'distinctCheckpoints'],
+        required: ['journey', 'exists', 'screenshots', 'checkpointNumbers'],
         properties: {
           journey: { type: 'string' },
           exists: { type: 'boolean' },
@@ -191,10 +191,11 @@ const EVIDENCE_SCHEMA = {
             type: 'integer',
             description: 'Number of .png files in the directory',
           },
-          distinctCheckpoints: {
-            type: 'integer',
+          checkpointNumbers: {
+            type: 'array',
+            items: { type: 'integer' },
             description:
-              'Number of DISTINCT check<N> filename prefixes among the .png files (e.g. check1-foo.png and check1-bar.png count once)',
+              'The DISTINCT check numbers N for which a check<N>-prefixed .png exists (e.g. check1-foo.png and check1-bar.png contribute the single entry 1)',
           },
         },
       },
@@ -240,8 +241,9 @@ the saved screenshots, and dump ARIA snapshots
 Save a screenshot at every checkpoint — AT LEAST one per numbered check,
 named with the check's number as its filename prefix: check<N>-<slug>.png
 (e.g. check3-settings-tabs.png; extra captures like stage-<i>.png may sit
-alongside). The evidence audit counts DISTINCT check<N> prefixes on disk
-and rejects the run as incomplete when any executed check has none — under
+alongside). The evidence audit verifies the EXACT set of check<N> prefixes
+on disk against the checks you executed and rejects the run as incomplete
+when any executed check has no capture of its own — under
 ${workDir}/<your-journey-key>/
 and set artifactsDir to EXACTLY that directory — ${workDir}/<your-journey-key>
 — in your result; any other value is rejected by the verdict logic.
@@ -345,19 +347,10 @@ const expectedChecks = {
   'settings-and-chrome': 9,
 };
 
-// Minimum on-disk screenshots per journey (at least one per numbered check,
-// minus the checks the prompt permits to skip; conduct additionally saves a
-// per-stage image and skip logic may legitimately reduce the stage count).
-// A single token PNG must not satisfy the evidence audit.
-const minScreenshots = {
-  'protocol-management': 8,
-  'conduct-sample-interview': 20,
-  'session-management': 7,
-  'data-export': 6,
-  'security-vault': 8,
-  'pwa-offline': 7,
-  'settings-and-chrome': 8,
-};
+// The conduct journey additionally saves a per-stage image for the ~30-stage
+// walk (skip logic may legitimately reduce the count); every other journey's
+// evidence floor is implied by the exact checkpoint-set validation below.
+const CONDUCT_MIN_SCREENSHOTS = 20;
 
 // Check numbers each prompt explicitly permits to be skipped (environmental
 // limits it names itself). A skip anywhere else marks the run incomplete.
@@ -1000,7 +993,7 @@ if (evidenceClaims.length) {
     `Audit the evidence directories of an automated release test. For each entry below, check with the shell (no interpretation, no browsing, no writes):
 1. whether the directory exists;
 2. the count of .png files directly inside it (e.g. \`find <dir> -maxdepth 1 -name '*.png' | wc -l\`);
-3. the count of DISTINCT check<N> filename prefixes among them (e.g. \`ls <dir> | grep -oE '^check[0-9]+' | sort -u | wc -l\`).
+3. the DISTINCT check numbers among their filenames, as a list of integers (e.g. \`ls <dir> | grep -oE '^check[0-9]+' | sort -u\` → checkpointNumbers [1, 2, 5]).
 
 ENTRIES (JSON):
 ${JSON.stringify(evidenceClaims, null, 2)}
@@ -1068,24 +1061,27 @@ for (const r of results.filter(Boolean)) {
     );
   } else if (evidence) {
     const e = evidence.entries.find((x) => x.journey === r.journey);
-    const needed = minScreenshots[r.journey] ?? 1;
-    // Every EXECUTED check (expected minus actually-skipped) must have its
-    // own check<N>-prefixed capture — a pile of unrelated or duplicated
-    // PNGs meeting the total is not checkpoint evidence.
-    const skippedCount = r.checks.filter((c) => c.status === 'skipped').length;
-    const neededCheckpoints = expectedChecks[r.journey]
-      ? expectedChecks[r.journey] - skippedCount
-      : 0;
-    if (
-      !e ||
-      !e.exists ||
-      e.screenshots < needed ||
-      (e.distinctCheckpoints ?? 0) < neededCheckpoints
-    ) {
+    // Every EXECUTED check must have its own check<N>-prefixed capture — by
+    // IDENTITY, not count: an extra out-of-range prefix must not stand in
+    // for a missing one. Skipped checks owe nothing; conduct additionally
+    // owes its per-stage images.
+    const executedNumbers = r.checks
+      .map((c, i) => ({ c, n: i + 1 }))
+      .filter(({ c }) => c.status !== 'skipped')
+      .map(({ n }) => n);
+    const have = new Set(e ? (e.checkpointNumbers ?? []) : []);
+    const missingCk = expectedChecks[r.journey]
+      ? executedNumbers.filter((n) => !have.has(n))
+      : [];
+    const needed =
+      r.journey === 'conduct-sample-interview'
+        ? CONDUCT_MIN_SCREENSHOTS
+        : executedNumbers.length;
+    if (!e || !e.exists || e.screenshots < needed || missingCk.length) {
       if (!inconsistentJourneys.includes(r.journey))
         inconsistentJourneys.push(r.journey);
       automationIssues.push(
-        `journey "${r.journey}" lacks on-disk evidence (${e ? `exists=${e.exists}, screenshots=${e.screenshots} of >=${needed}, check-prefixed captures ${e.distinctCheckpoints ?? 0} of >=${neededCheckpoints}` : 'not audited'}); treated as incomplete`,
+        `journey "${r.journey}" lacks on-disk evidence (${e ? `exists=${e.exists}, screenshots=${e.screenshots} of >=${needed}${missingCk.length ? `, no capture for executed check(s) #${missingCk.join(', #')}` : ''}` : 'not audited'}); treated as incomplete`,
       );
     }
   }

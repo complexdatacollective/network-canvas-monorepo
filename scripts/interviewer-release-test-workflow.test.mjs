@@ -1,0 +1,661 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+// Offline tests for the verdict logic of the Interviewer release smoke-test
+// workflow (.claude/workflows/interviewer-release-test.js). The workflow body
+// runs with stubbed agent/parallel/pipeline globals and canned agent results,
+// so every fail-closed guard in the synthesis is exercised without spawning
+// agents or touching a deployment. WF_UNDER_TEST overrides the script path
+// for mutation-testing the guards.
+const repoRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+);
+const workflowPath =
+  process.env.WF_UNDER_TEST ??
+  path.join(repoRoot, '.claude', 'workflows', 'interviewer-release-test.js');
+const source = readFileSync(workflowPath, 'utf8');
+// The runtime evaluates the script as a function body with injected globals;
+// mirror that by dropping the `export const meta` statement and wrapping the
+// rest (the body uses top-level await and top-level return).
+const bodyStart = source.indexOf('};\n\nconst DEFAULT_URL');
+assert.notEqual(bodyStart, -1, 'meta anchor not found in workflow source');
+const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor;
+const runBody = new AsyncFunction(
+  'agent',
+  'parallel',
+  'pipeline',
+  'phase',
+  'log',
+  'args',
+  'budget',
+  'workflow',
+  source.slice(bodyStart + 2),
+);
+
+const phase = () => {};
+const log = () => {};
+const pipeline = async (items, s1, s2) => {
+  const out = [];
+  for (const [i, item] of items.entries()) {
+    let r = await s1(item, item, i);
+    if (s2) r = await s2(r, item, i);
+    out.push(r);
+  }
+  return out;
+};
+const parallel = async (thunks) =>
+  Promise.all(thunks.map((t) => t().catch(() => null)));
+
+const run = (agentImpl, args) =>
+  runBody(
+    agentImpl,
+    parallel,
+    pipeline,
+    phase,
+    log,
+    args,
+    undefined,
+    undefined,
+  );
+
+const PREFLIGHT = {
+  ok: true,
+  workDir: '/tmp/x',
+  repoRoot: '/tmp/r',
+  version: '9.9.9',
+  failures: [],
+  notes: '',
+};
+
+const EXPECTED_CHECKS = {
+  'protocol-management': 9,
+  'conduct-sample-interview': 7,
+  'session-management': 8,
+  'data-export': 7,
+  'security-vault': 10,
+  'pwa-offline': 10,
+  'settings-and-chrome': 9,
+};
+
+const mkChecks = (n, { failAt = [], skipAt = [] } = {}) =>
+  Array.from({ length: n }, (_, k) => ({
+    name: `${k + 1}. check`,
+    status: failAt.includes(k + 1)
+      ? 'fail'
+      : skipAt.includes(k + 1)
+        ? 'skipped'
+        : 'pass',
+    detail: 'x',
+  }));
+
+// Canned-result agent: journeys get a valid artifactsDir injected unless the
+// fixture sets one; the evidence audit confirms every claimed directory
+// unless a fixture overrides it.
+function makeAgent(journeyResults, verifyResults = {}, evidenceResult) {
+  return async (prompt, opts) => {
+    if (opts.label === 'preflight') return PREFLIGHT;
+    if (opts.label === 'verify:evidence') {
+      if (evidenceResult !== undefined) return evidenceResult;
+      return {
+        entries: Object.keys(journeyResults).map((k) => ({
+          journey: k,
+          exists: true,
+          screenshots: 25,
+          checkpointNumbers: Array.from({ length: 25 }, (_, i) => i + 1),
+        })),
+      };
+    }
+    if (opts.label.startsWith('journey:')) {
+      const key = opts.label.slice(8);
+      const r = journeyResults[key];
+      return r ? { artifactsDir: `/tmp/x/${key}`, ...r } : r;
+    }
+    if (opts.label.startsWith('verify:'))
+      return verifyResults[opts.label.slice(7)];
+    throw new Error(`unexpected agent ${opts.label}`);
+  };
+}
+
+const journey = (key, overrides = {}) => ({
+  journey: key,
+  status: 'pass',
+  checks: mkChecks(EXPECTED_CHECKS[key]),
+  failures: [],
+  ...overrides,
+});
+
+test('a failing status without failure records is incomplete', async () => {
+  const jr = {
+    'pwa-offline': journey('pwa-offline', {
+      status: 'fail',
+      checks: mkChecks(10, { failAt: [1] }),
+    }),
+  };
+  const res = await run(makeAgent(jr), { journeys: ['pwa-offline'] });
+  assert.equal(res.verdict, 'INCOMPLETE');
+  assert.ok(res.inconsistentJourneys.includes('pwa-offline'));
+});
+
+test('a partial verifier response never dismisses unmatched failures', async () => {
+  const jr = {
+    'pwa-offline': journey('pwa-offline', {
+      status: 'fail',
+      checks: mkChecks(10, { failAt: [1] }),
+      failures: [
+        {
+          severity: 'major',
+          description: 'failure A',
+          check: 1,
+          reproduction: 'r',
+        },
+        { severity: 'minor', description: 'failure B', reproduction: 'r' },
+      ],
+    }),
+  };
+  const vr = {
+    'pwa-offline': {
+      verdicts: [
+        {
+          description: 'failure B',
+          verdict: 'not-reproduced',
+          severity: 'minor',
+          explanation: 'nope',
+        },
+      ],
+    },
+  };
+  const res = await run(makeAgent(jr, vr), { journeys: ['pwa-offline'] });
+  assert.ok(res.unverifiedFailures.some((f) => f.description === 'failure A'));
+  assert.equal(res.verdict, 'BLOCK');
+  assert.ok(res.summaryMarkdown.includes('Unverified failures'));
+  assert.equal(
+    res.automationIssues.filter((a) => a.includes('failure B')).length,
+    1,
+  );
+});
+
+test('verdicts bind by failure id, never by position', async () => {
+  const base = journey('pwa-offline', {
+    status: 'fail',
+    checks: mkChecks(10, { failAt: [1] }),
+    failures: [
+      {
+        severity: 'minor',
+        description: 'failure A',
+        check: 1,
+        reproduction: 'r',
+      },
+      {
+        severity: 'major',
+        description: 'failure B',
+        check: 1,
+        reproduction: 'r',
+      },
+    ],
+  });
+  // Paraphrased verdicts WITH ids bind correctly.
+  const withIds = await run(
+    makeAgent(
+      { 'pwa-offline': base },
+      {
+        'pwa-offline': {
+          verdicts: [
+            {
+              description: 'A (reworded)',
+              failure: 1,
+              verdict: 'confirmed',
+              severity: 'minor',
+              explanation: 'yes',
+            },
+            {
+              description: 'B (reworded)',
+              failure: 2,
+              verdict: 'automation-issue',
+              severity: 'minor',
+              explanation: 'harness',
+            },
+          ],
+        },
+      },
+    ),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(withIds.confirmedFailures.length, 1);
+  assert.equal(withIds.confirmedFailures[0].description, 'failure A');
+  assert.equal(withIds.verdict, 'PASS_WITH_ISSUES');
+  // Paraphrased verdicts WITHOUT ids bind nothing — fail closed on the major.
+  const withoutIds = await run(
+    makeAgent(
+      { 'pwa-offline': base },
+      {
+        'pwa-offline': {
+          verdicts: [
+            {
+              description: 'first issue (reworded)',
+              verdict: 'not-reproduced',
+              severity: 'minor',
+              explanation: 'n',
+            },
+            {
+              description: 'second issue (reworded)',
+              verdict: 'not-reproduced',
+              severity: 'minor',
+              explanation: 'n',
+            },
+          ],
+        },
+      },
+    ),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(withoutIds.unverifiedFailures.length, 2);
+  assert.equal(withoutIds.verdict, 'BLOCK');
+});
+
+test('a confirmed major on a passing journey blocks', async () => {
+  const jr = {
+    'pwa-offline': journey('pwa-offline', {
+      failures: [
+        { severity: 'major', description: 'incidental', reproduction: 'r' },
+      ],
+    }),
+  };
+  const vr = {
+    'pwa-offline': {
+      verdicts: [
+        {
+          description: 'incidental',
+          failure: 1,
+          verdict: 'confirmed',
+          severity: 'major',
+          explanation: 'real',
+        },
+      ],
+    },
+  };
+  const res = await run(makeAgent(jr, vr), { journeys: ['pwa-offline'] });
+  assert.equal(res.verdict, 'BLOCK');
+});
+
+test('truncated, misnumbered, or misreported reports are incomplete', async () => {
+  const truncated = await run(
+    makeAgent({ 'pwa-offline': journey('pwa-offline', { checks: [] }) }),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(truncated.verdict, 'INCOMPLETE');
+  assert.ok(truncated.summaryMarkdown.includes('❌ pwa-offline'));
+
+  const dupChecks = mkChecks(10);
+  dupChecks[4] = { name: '4. check', status: 'pass', detail: 'duplicate' };
+  const misnumbered = await run(
+    makeAgent({ 'pwa-offline': journey('pwa-offline', { checks: dupChecks }) }),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(misnumbered.verdict, 'INCOMPLETE');
+  assert.ok(
+    misnumbered.automationIssues.some((a) => a.includes('position(s) 5')),
+  );
+
+  const misreported = await run(
+    makeAgent({
+      'pwa-offline': journey('pwa-offline', { journey: '', checks: [] }),
+    }),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(misreported.verdict, 'INCOMPLETE');
+  assert.ok(misreported.automationIssues.some((a) => a.includes('(empty)')));
+  assert.equal(misreported.journeys[0].journey, 'pwa-offline');
+});
+
+test('skips outside the whitelist and broken skip pairs are incomplete', async () => {
+  const allowed = await run(
+    makeAgent({
+      'pwa-offline': journey('pwa-offline', {
+        checks: mkChecks(10, { skipAt: [10] }),
+      }),
+    }),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(allowed.verdict, 'PASS');
+
+  const disallowed = await run(
+    makeAgent({
+      'pwa-offline': journey('pwa-offline', {
+        checks: mkChecks(10, { skipAt: [4] }),
+      }),
+    }),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(disallowed.verdict, 'INCOMPLETE');
+  assert.ok(disallowed.automationIssues.some((a) => a.includes('#4')));
+
+  for (const skipAt of [[7], [6]]) {
+    const halfPair = await run(
+      makeAgent({
+        'protocol-management': journey('protocol-management', {
+          checks: mkChecks(9, { skipAt }),
+        }),
+      }),
+      { journeys: ['protocol-management'] },
+    );
+    assert.equal(halfPair.verdict, 'INCOMPLETE', `lone skip of ${skipAt}`);
+  }
+});
+
+test('invalid journeys args throw instead of narrowing coverage', async () => {
+  await assert.rejects(
+    run(makeAgent({}), { journeys: ['pwa-offline', 'nope'] }),
+    /nope/,
+  );
+  await assert.rejects(
+    run(makeAgent({}), { journeys: 'data-export' }),
+    /array/,
+  );
+});
+
+test('preflight invariants are enforced in code, not agent self-report', async () => {
+  const okButFailures = async (p, o) =>
+    o.label === 'preflight'
+      ? { ...PREFLIGHT, ok: true, failures: ['manifest invalid'] }
+      : null;
+  const inconsistent = await run(okButFailures, undefined);
+  assert.equal(inconsistent.verdict, 'BLOCKED');
+  assert.ok(inconsistent.summaryMarkdown.includes('manifest invalid'));
+
+  const staleDeploy = await run(makeAgent({}), {
+    journeys: ['pwa-offline'],
+    expectedVersion: '9.9.8',
+  });
+  assert.equal(staleDeploy.verdict, 'BLOCKED');
+  assert.ok(staleDeploy.summaryMarkdown.includes('stale or wrong'));
+
+  const emptyWorkDir = async (p, o) =>
+    o.label === 'preflight' ? { ...PREFLIGHT, workDir: '' } : null;
+  assert.equal(
+    (await run(emptyWorkDir, { journeys: ['pwa-offline'] })).verdict,
+    'BLOCKED',
+  );
+
+  const dead = async (p, o) =>
+    o.label === 'preflight'
+      ? { ...PREFLIGHT, ok: false, failures: ['down'] }
+      : null;
+  assert.equal((await run(dead, undefined)).verdict, 'BLOCKED');
+});
+
+test('evidence must exist on disk with per-check identity', async () => {
+  const clean = journey('pwa-offline');
+  const foreignDir = await run(
+    makeAgent({
+      'pwa-offline': { ...clean, artifactsDir: '/elsewhere/dir' },
+    }),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(foreignDir.verdict, 'INCOMPLETE');
+
+  const runRoot = await run(
+    makeAgent({ 'pwa-offline': { ...clean, artifactsDir: '/tmp/x' } }),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(runRoot.verdict, 'INCOMPLETE');
+
+  const contradicted = await run(
+    makeAgent(
+      { 'pwa-offline': clean },
+      {},
+      {
+        entries: [
+          {
+            journey: 'pwa-offline',
+            exists: false,
+            screenshots: 0,
+            checkpointNumbers: [],
+          },
+        ],
+      },
+    ),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(contradicted.verdict, 'INCOMPLETE');
+
+  const deadAudit = await run(makeAgent({ 'pwa-offline': clean }, {}, null), {
+    journeys: ['pwa-offline'],
+  });
+  assert.equal(deadAudit.verdict, 'INCOMPLETE');
+
+  // Right cardinality, wrong identity: an out-of-range prefix cannot stand
+  // in for a missing check's capture.
+  const identityMismatch = await run(
+    makeAgent(
+      { 'pwa-offline': clean },
+      {},
+      {
+        entries: [
+          {
+            journey: 'pwa-offline',
+            exists: true,
+            screenshots: 30,
+            checkpointNumbers: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+          },
+        ],
+      },
+    ),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(identityMismatch.verdict, 'INCOMPLETE');
+  assert.ok(
+    identityMismatch.automationIssues.some((a) => a.includes('check(s) #1')),
+  );
+
+  // The legitimate import pair-skip leaves seven executed checks — seven
+  // per-check captures satisfy the audit.
+  const pairSkip = await run(
+    makeAgent(
+      {
+        'protocol-management': journey('protocol-management', {
+          checks: mkChecks(9, { skipAt: [6, 7] }),
+        }),
+      },
+      {},
+      {
+        entries: [
+          {
+            journey: 'protocol-management',
+            exists: true,
+            screenshots: 7,
+            checkpointNumbers: [1, 2, 3, 4, 5, 8, 9],
+          },
+        ],
+      },
+    ),
+    { journeys: ['protocol-management'] },
+  );
+  assert.equal(pairSkip.verdict, 'PASS');
+});
+
+test('failed checks need failure records bound by check number', async () => {
+  const jr = {
+    'pwa-offline': journey('pwa-offline', {
+      status: 'fail',
+      checks: mkChecks(10, { failAt: [1, 2] }),
+      failures: [
+        {
+          severity: 'minor',
+          description: 'covers 1 only',
+          check: 1,
+          reproduction: 'r',
+        },
+      ],
+    }),
+  };
+  const vr = {
+    'pwa-offline': {
+      verdicts: [
+        {
+          description: 'covers 1 only',
+          failure: 1,
+          verdict: 'not-reproduced',
+          severity: 'minor',
+          explanation: 'n',
+        },
+      ],
+    },
+  };
+  const res = await run(makeAgent(jr, vr), { journeys: ['pwa-offline'] });
+  assert.equal(res.verdict, 'INCOMPLETE');
+  assert.ok(res.automationIssues.some((a) => a.includes('#2')));
+});
+
+test('unadjudicated failures cap the run at INCOMPLETE', async () => {
+  const jr = {
+    'pwa-offline': journey('pwa-offline', {
+      status: 'fail',
+      checks: mkChecks(10, { failAt: [1] }),
+      failures: [
+        {
+          severity: 'minor',
+          description: 'small',
+          check: 1,
+          reproduction: 'r',
+        },
+      ],
+    }),
+  };
+  const emptyVerdicts = await run(
+    makeAgent(jr, { 'pwa-offline': { verdicts: [] } }),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(emptyVerdicts.verdict, 'INCOMPLETE');
+  assert.equal(emptyVerdicts.unverifiedFailures.length, 1);
+
+  const deadVerifier = await run(makeAgent(jr, {}), {
+    journeys: ['pwa-offline'],
+  });
+  assert.equal(deadVerifier.verdict, 'INCOMPLETE');
+});
+
+test('verifier-discovered defects surface; attribution cannot be hijacked', async () => {
+  const jr = {
+    'pwa-offline': journey('pwa-offline', {
+      status: 'fail',
+      checks: mkChecks(10, { failAt: [1] }),
+      failures: [
+        {
+          severity: 'minor',
+          description: 'attributed',
+          check: 1,
+          journey: 'data-export',
+          reproduction: 'r',
+        },
+      ],
+    }),
+  };
+  const vr = {
+    'pwa-offline': {
+      verdicts: [
+        {
+          description: 'attributed',
+          failure: 1,
+          verdict: 'confirmed',
+          severity: 'minor',
+          explanation: 'real',
+        },
+        {
+          description: 'NEW: sort wipes all rows',
+          verdict: 'confirmed',
+          severity: 'minor',
+          explanation: 'found while reproducing',
+        },
+      ],
+    },
+  };
+  const res = await run(makeAgent(jr, vr), { journeys: ['pwa-offline'] });
+  assert.equal(res.confirmedFailures[0].journey, 'pwa-offline');
+  assert.ok(
+    res.confirmedFailures.some((f) => f.description.startsWith('NEW:')),
+  );
+});
+
+test('only full pinned runs certify', async () => {
+  const jr = Object.fromEntries(
+    Object.keys(EXPECTED_CHECKS).map((k) => [k, journey(k)]),
+  );
+  const unpinned = await run(makeAgent(jr), undefined);
+  assert.equal(unpinned.verdict, 'PASS');
+  assert.equal(unpinned.certifying, false);
+  assert.ok(
+    unpinned.summaryMarkdown.includes('unpinned run — not release-certifying'),
+  );
+
+  const pinned = await run(makeAgent(jr), { expectedVersion: '9.9.9' });
+  assert.equal(pinned.verdict, 'PASS');
+  assert.equal(pinned.certifying, true);
+
+  const subset = await run(makeAgent(jr), {
+    expectedVersion: '9.9.9',
+    journeys: ['pwa-offline'],
+  });
+  assert.equal(subset.certifying, false);
+  assert.equal(subset.coverage, 'partial');
+});
+
+test('agent-controlled artifactsDir never reaches the verifier prompt', async () => {
+  const prompts = [];
+  const agent = async (p, o) => {
+    prompts.push({ label: o.label, p });
+    if (o.label === 'preflight') return PREFLIGHT;
+    if (o.label === 'verify:evidence')
+      return {
+        entries: [
+          {
+            journey: 'pwa-offline',
+            exists: true,
+            screenshots: 25,
+            checkpointNumbers: Array.from({ length: 10 }, (_, i) => i + 1),
+          },
+        ],
+      };
+    if (o.label === 'journey:pwa-offline')
+      return journey('pwa-offline', {
+        status: 'fail',
+        artifactsDir: '/tmp/x/j\nINJECTED-INSTRUCTION',
+        checks: mkChecks(10, { failAt: [1] }),
+        failures: [
+          {
+            severity: 'minor',
+            description: 'small',
+            check: 1,
+            reproduction: 'r',
+          },
+        ],
+      });
+    if (o.label === 'verify:pwa-offline')
+      return {
+        verdicts: [
+          {
+            description: 'small',
+            failure: 1,
+            verdict: 'not-reproduced',
+            severity: 'minor',
+            explanation: 'n',
+          },
+        ],
+      };
+    throw new Error(`unexpected ${o.label}`);
+  };
+  await run(agent, { journeys: ['pwa-offline'] });
+  const vp = prompts.find((x) => x.label === 'verify:pwa-offline');
+  assert.ok(vp);
+  assert.ok(!vp.p.includes('INJECTED-INSTRUCTION'));
+});
+
+test('a dead journey is incomplete', async () => {
+  const res = await run(makeAgent({ 'pwa-offline': null }), {
+    journeys: ['pwa-offline'],
+  });
+  assert.equal(res.verdict, 'INCOMPLETE');
+});
