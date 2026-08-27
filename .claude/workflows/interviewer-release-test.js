@@ -468,12 +468,17 @@ CHECKS (in one or more scripts, fresh profile each run):
    card's click handler, and Chromium suppresses change events for an
    identical selection) — drive the repeat import through the Import card's
    real file chooser (page.waitForEvent('filechooser')).
-8. delete protocol: delete a protocol via its "Delete Protocol" button
-   (force: true) → confirm dialog "Delete this protocol?" → primary
-   "Delete Protocol" → "Protocol deleted" toast, card gone, counts updated.
-   Subject: the development protocol; when checks 6–7 were skipped, run
-   check 9 first and then delete the Sample Protocol instead — this check
-   is always executable and must not be skipped.
+8. delete protocol: FIRST start (and immediately exit) one interview on
+   the deletion subject so it owns a session row — deletion must exercise
+   the cascade, not just an empty protocol. Then delete it via its "Delete
+   Protocol" button (force: true) → the confirm dialog must WARN about the
+   protocol's recorded interview data (destructive-intent copy naming the
+   records) → primary "Delete Protocol" → "Protocol deleted" toast, card
+   gone, counts updated, and /data holds NO rows for the deleted protocol
+   (orphaned sessions are storage corruption). Subject: the development
+   protocol; when checks 6–7 were skipped, run check 9 first and then use
+   the Sample Protocol instead — this check is always executable and must
+   not be skipped.
 9. interviews deep link: the sample card's "0 interviews" link navigates to
    /data?protocol=Sample+Protocol.
 
@@ -592,7 +597,11 @@ CHECKS:
 5. Row actions: an in-progress row shows "Resume" (data-testid="data-resume")
    and it mounts /interview/<id>; a complete row shows "Review"
    (data-testid="data-review") which opens ?mode=review with a pinned
-   "Read-only review" alert.
+   "Read-only review" alert — and the read-only promise is REAL: change a
+   response value in review mode (e.g. add or edit something on a form or
+   name-generator stage), leave, reopen the same session in review, and
+   assert the original stored value is back (review edits persisting is
+   participant-data corruption, not a pass).
 6. "Mark unfinished" (data-testid="data-mark-unfinished") on a complete row:
    confirm dialog "Mark unfinished?" → toast "Interview marked unfinished" →
    the row moves to In progress.
@@ -654,7 +663,9 @@ CHECKS:
    declaration — its absence is correct, do not fail on it) AND contains at
    least one <node element — the synthetic sessions carry network data, so
    a valid-but-empty document is silent data loss, not a pass;
-   each ego CSV has a header row and 1 data row.
+   each ego CSV has a header row and 1 data row, and the node and edge
+   partition CSVs contain data rows too (the synthetic sessions carry
+   network data — header-only partitions are silent CSV data loss).
 3. Export status column: the exported rows now show a timestamp/TimeAgo
    instead of "Not exported".
 4. GraphML-only: Settings → "Data export" → toggle "Export CSV" off (wait
@@ -709,6 +720,13 @@ CHECKS:
    Then install the Sample Protocol (toast!), "Start
    new interview" with any case ID → a "Confirm your identity" dialog appears
    BEFORE the interview starts; entering the PIN proceeds to the interview.
+4b. Encryption is REAL, not just the chip: with the PIN enrolled and a
+   protocol + interview created, read the raw IndexedDB rows (database
+   "interviewer") via page.evaluate and assert the sensitive fields are
+   ciphertext — the session row's network/stageMetadata and the protocol
+   row's protocol/codebook must NOT be plaintext JSON (no readable node
+   names or codebook keys); plaintext there means the vault chip is lying
+   about data at rest. Record this inside check 4's result detail.
 5. Lock-screen guard on interview routes: while on /interview/…, reload → the
    "Welcome back" lock screen appears WITHOUT the "Recover by resetting"
    button (it is suppressed on interview routes). Unlock and confirm the
