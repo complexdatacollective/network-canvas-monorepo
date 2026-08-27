@@ -115,6 +115,9 @@ const APP_MIRROR_OVERRIDES = {
       // anyone develops.
       '.agents',
       '.claude',
+      // The standalone repository owns its release automation. Never mirror
+      // monorepo app workflows into it, including docker-publish.yml.
+      '.github/workflows',
     ],
   },
 };
@@ -132,16 +135,18 @@ function parseArgs(argv) {
   return args;
 }
 
-// Recursively copy src -> dest, skipping the named top-level entries. Anchored to
-// the top level so a legitimately-named nested directory isn't dropped.
-function copyTree(src, dest, excludeTopLevel) {
-  const exclude = new Set(excludeTopLevel);
+// Recursively copy src -> dest, skipping the named relative paths. Exclusions
+// are anchored to the source root so a legitimately-named deeper path is kept.
+function copyTree(src, dest, excludePaths) {
+  const excludes = excludePaths.map((path) => path.split('/').join(sep));
   cpSync(src, dest, {
     recursive: true,
     filter: (from) => {
       const rel = relative(src, from);
       if (rel === '') return true;
-      return !exclude.has(rel.split(sep)[0]);
+      return !excludes.some(
+        (excluded) => rel === excluded || rel.startsWith(`${excluded}${sep}`),
+      );
     },
   });
 }
