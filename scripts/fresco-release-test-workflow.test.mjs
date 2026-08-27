@@ -13,7 +13,7 @@
 // `releasable: true` unless the run actually demonstrated a clean upgrade and a
 // clean fresh deployment of the pinned version.
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import {
   mkdtempSync,
   mkdirSync,
@@ -1461,21 +1461,41 @@ test('a partial endpoint set is not full API coverage', async () => {
 test('the harness writes its own files where git cannot see them', () => {
   // The CRUD agent creates a participant-import CSV. If it lands anywhere the
   // checkout tracks, the audit's own worktree check marks the build dirty and
-  // a clean run fails — the gate breaking itself.
+  // a clean run fails — the gate breaking itself. Asserting the prompt names
+  // ARTIFACTS is not enough: what matters is where that constant resolves and
+  // whether git ignores it, so resolve it and ask git.
   const crudPrompt =
     /Exercise Fresco dashboard CRUD[\s\S]*?label: 'verify-crud'/.exec(
       source,
     )?.[0];
   assert.ok(crudPrompt, 'failed to locate the CRUD prompt');
-  assert.match(
-    crudPrompt,
-    /\$\{ARTIFACTS\}\/crud\/participants\.csv/,
-    'the CSV must be created under the git-ignored artifacts directory',
-  );
   assert.ok(
     !/stay in your working directory for any files/.test(crudPrompt),
     'the prompt must not send file writes into the tracked checkout',
   );
+
+  const harness = /const HARNESS = '([^']+)'/.exec(source)?.[1];
+  const suffix = /const ARTIFACTS = `\$\{HARNESS\}\/([^`]+)`/.exec(source)?.[1];
+  assert.ok(harness && suffix, 'failed to resolve ARTIFACTS');
+  const artifacts = `${harness}/${suffix}`;
+
+  const written = [
+    ...crudPrompt.matchAll(/\$\{ARTIFACTS\}(\/[\w./-]*\.\w+)/g),
+  ].map((m) => `${artifacts}${m[1]}`);
+  assert.ok(
+    written.length > 0,
+    'the CRUD prompt must name the file it creates, under ARTIFACTS',
+  );
+  for (const path of written) {
+    const ignored = spawnSync('git', ['check-ignore', '-q', path], {
+      cwd: repoRoot,
+    });
+    assert.equal(
+      ignored.status,
+      0,
+      `git does not ignore ${path}, so creating it makes an honest run report a dirty tree`,
+    );
+  }
 });
 
 test('the diff must have compared the snapshots that are on disk', async () => {
@@ -1814,6 +1834,20 @@ test('the workflow reads the keys diff-exports.mjs actually writes', () => {
     );
     assert.ok(changedKey, 'the audit prompt does not map over changed entries');
 
+    // The identical list is read by the command too, and synthesis uses it to
+    // decide whether the diff compared anything at all — so a command that
+    // reports an empty or wrong list turns every clean run incomplete.
+    const identicalKey = /identical:\s*s\.(\w+)\b/.exec(command)?.[1];
+    assert.ok(
+      identicalKey,
+      'the command does not read an identical-file list from the summary',
+    );
+    assert.deepEqual(
+      summary[identicalKey],
+      ['api-same.json'],
+      `the command reads summary.${identicalKey}, which is not the identical-file list diff-exports.mjs writes — a clean run would report nothing compared and go incomplete`,
+    );
+
     const files = [
       ...oneSided.flatMap((key) => summary[key]),
       ...summary.changed.map((entry) => entry[changedKey]),
@@ -1827,7 +1861,6 @@ test('the workflow reads the keys diff-exports.mjs actually writes', () => {
       ['api-changed.json', 'api-gone.json', 'api-new.json'],
       'the audit prompt does not read the keys diff-exports.mjs writes',
     );
-    assert.deepEqual(summary.identical, ['api-same.json']);
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
