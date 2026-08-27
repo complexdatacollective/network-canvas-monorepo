@@ -499,9 +499,11 @@ function useLocalizedString(
 
 The provider reads the validated protocol localization and the persisted
 session locale, plus the host-supplied `localeOptions`. Changing locale
-dispatches a normal session update so the existing sync middleware persists
-it. Non-React selectors and utilities call the pure resolver with explicit
-locale arguments.
+dispatches a session-state action for immediate rendering and a dedicated
+`LocaleChangeHandler` for persistence. It does not infer locale-change intent
+from the complete `SessionPayload` passed to the ordinary `SyncHandler`.
+Non-React selectors and utilities call the pure resolver with explicit locale
+arguments.
 
 Fresco UI remains protocol-agnostic but must be able to retain resolved locale
 metadata. It adds a small presentation value accepted alongside its existing
@@ -563,9 +565,32 @@ list is discarded after matching.
 
 The Interview settings menu shows a language control when a protocol declares
 more than one locale or declares only `und`. Options use derived autonyms and
-direction. Selection takes effect immediately and persists through the normal
-sync path. A resumed interview therefore keeps its recorded selection even if
-the device language changes.
+direction. Selection takes effect immediately and persists through the
+dedicated locale-change channel. The ordinary full-session autosync never
+claims ownership of locale merely because `SessionPayload.locale` is present.
+A resumed interview therefore keeps its recorded selection even if the device
+language changes.
+
+The public host contract adds a required `LocaleChangeHandler` alongside
+`SyncHandler`. Locale-only actions call the former exactly once and are
+excluded from the latter's change detector. When network, progress, or stage
+metadata changes, `SyncHandler` may still receive a complete session snapshot
+for compatibility, but every host persists only the fields owned by that
+general sync route. `localeOptions` is presentation input and is never
+persisted or synchronized.
+
+```ts
+type LocaleChangeHandler = (
+  interviewId: string,
+  locale: LocaleTag,
+) => Promise<void>;
+```
+
+Hosts serialize calls for one interview. Interviewer's database transaction
+allocates the next locale-record revision from the latest stored record;
+Fresco performs the equivalent update on its interview row. Two genuinely
+intentional changes are last-committed-wins, but delayed general sync can never
+participate in that ordering.
 
 ### 8.2 Interviewer (Vite SPA)
 
@@ -574,21 +599,31 @@ the device language changes.
 - When more than one locale is declared, the form exposes an Interview
   Language select prefilled with that best match. This lets a researcher
   choose before handing over the device.
-- `StoredSession.locale` is included in encryption-independent session
-  metadata and hydrated into `SessionPayload`.
-- The current bundle's commit-time `updateSession` guard is patch-aware.
-  `protocolHash` always comes from the latest row because callers never patch
-  it. Locale comes from the latest row for an unrelated session patch, which
-  prevents a stale network/step sync from undoing another tab's language
-  selection or a migration backfill. When the caller explicitly patches
-  locale, that validated value wins; if the protocol hash changed during the
-  encryption gap, validate it against the latest protocol declaration before
-  commit and otherwise retain the latest stored locale. A tab still running a
-  pre-localization schema-8 bundle can write a full row with no
-  locale after migration, so the durable protocol-migration heal
-  pass also restores missing locale to `und` while repairing superseded hash
-  references. This compatibility repair runs on every launch until legacy
-  tabs have disappeared.
+- Locale is encryption-independent research metadata, but its canonical
+  persistence is a new Dexie `sessionLocales` table keyed by session id, not a
+  field in the legacy-replaceable `sessions` row. The application-facing
+  `StoredSession` returned by the database API joins that record and exposes a
+  required `locale`; the encrypted/plaintext session-row shape remains
+  compatible with schema-8 bundles.
+- A locale record contains the selected locale plus a revision and update
+  timestamp. `createSession` writes the session and locale record atomically.
+  `setSessionLocale` is the only mutation API: in one transaction it reads the
+  freshest session/protocol, validates the requested locale against that
+  protocol's schema-9 declaration, increments the revision, and writes the
+  locale record. `updateSession` cannot accept `locale`, and InterviewRoute's
+  ordinary sync handler persists only network/progress metadata.
+- This separate register is the compatibility boundary. A tab still running a
+  schema-8 bundle may replace the whole `sessions` row with an older hash or
+  locale-less shape, but it cannot delete, reset, or restore an earlier value
+  in a table it does not know exists. On resume, query, hydration, and export,
+  the joined locale record is authoritative.
+- The durable protocol-migration heal pass still repairs superseded session
+  hashes and also creates a missing locale record for a legacy-created or
+  partially upgraded session. It uses `und` for an automatically migrated
+  schema-8 protocol and otherwise the protocol default; it never overwrites an
+  existing locale record. Current deletion removes both records atomically.
+  If a legacy bundle deletes only the session row, launch-time orphan cleanup
+  removes the unreachable locale record.
 - Synthetic sessions choose the protocol default unless their builder asks
   for a specific locale.
 - The in-interview language control can update the session later.
@@ -616,13 +651,14 @@ not silently switch an interview already under way.
 - `mapInterviewPayload` passes the stored locale and server-derived metadata
   for every declared option to the client. Client code does not rerun browser
   detection or derive autonyms again during prerender/hydration.
-- New clients include locale in the typed sync payload, and the sync route
-  validates a supplied locale against the interview's stored protocol before
-  updating. During a rolling deployment the field remains optional at this
-  HTTP boundary so an already-open pre-localization client can continue saving
-  network and step changes. When such a legacy payload omits locale, the
-  update leaves the database's backfilled `und` value unchanged; absence is
-  never interpreted as a request to clear it.
+- New clients persist an intentional language selection through a dedicated
+  locale route/action that validates it against the interview's stored
+  protocol. The ordinary sync request owns network, step, and stage metadata
+  only; it never updates locale from the complete in-memory session snapshot.
+  During a rolling deployment, an already-open pre-localization client can
+  therefore continue saving its legacy locale-less sync shape without
+  touching the database's backfilled `und` value. A supplied undeclared value
+  on the dedicated locale boundary is rejected.
 
 If a future participant-facing preflight page is added, it can use the same
 derived options. It is not required for initial delivery because the Shell
@@ -850,11 +886,12 @@ schema-8 documents use the honest automatic migration.
   correctly typed and post-validated results; clearing a caller key clears all
   of its target-version variants.
 - Interviewer's launch migration recomputes the hash, repoints sessions, and
-  initializes their locale in the same transaction. Its current-writer guard
-  always preserves the freshest hash, preserves the freshest locale for an
-  unrelated patch, and permits a validated explicit locale patch to win. The
-  durable legacy-write heal pass restores both a superseded hash and a missing
-  `und` locale after an old PWA tab writes.
+  creates their durable `sessionLocales` records in the same transaction. The
+  current-writer guard continues preserving the freshest hash, while the
+  separate locale register and explicit `LocaleChangeHandler` keep locale out
+  of legacy full-row replacement and ordinary session sync. The durable heal
+  pass repairs superseded hashes, creates missing locale records without
+  replacing existing selections, and removes orphaned locale records.
 - Fresco's additive database migration initializes protocol localization and
   interview locale columns without rewriting stored protocol bodies, hashes,
   or versions. Its permanent read adapter migrates older rows in memory; any
@@ -923,10 +960,11 @@ language does not change analysis schema.
   checks.
 - Session locale updates are validated against the stored protocol to prevent
   an arbitrary string from entering persistence or exports.
-- Host compatibility boundaries distinguish omission from an invalid value:
-  an optional locale omitted by a legacy Fresco sync preserves the stored
-  value, while a supplied undeclared locale is rejected. Interviewer's launch
-  healer restores a missing locale created by a legacy full-row write.
+- Host compatibility boundaries distinguish session sync from language-change
+  intent: general sync never writes locale, while a supplied undeclared value
+  on the dedicated locale boundary is rejected. Interviewer's separate locale
+  register survives legacy full-row writes; its launch healer creates only a
+  genuinely missing record and never resets an existing selection.
 - Fresco duplicate detection uses the adapted schema-9 hash, not only the
   stored legacy hash, so re-importing an equivalent migrated protocol cannot
   create a second runtime-equivalent row.
@@ -1012,20 +1050,22 @@ language does not change analysis schema.
 
 - Interviewer browser preference selection, explicit override, encrypted
   session round-trip, resume, synthetic sessions, and `languagechange`
-  behavior. Cross-tab migration tests interleave encryption with migration to
-  prove unrelated writes preserve the freshest locale while an ordinary
-  validated locale patch persists, then simulate a schema-8 full-row write and
-  prove the next launch heals missing locale to `und` without losing session
-  content.
+  behavior. Cross-tab migration tests interleave encryption with migration,
+  select a locale through the dedicated handler, and then perform schema-8
+  full-row writes both without locale and with a stale `und` value. The
+  independent register must retain the selected locale while hash healing
+  preserves session content. Tests also cover a missing-register backfill and
+  orphan cleanup after legacy deletion.
 - Fresco protocol-localization persistence on import/read/migrate, header
   matching, explicit link override, interview database migration, payload
   serialization, sync validation, and hydration parity. A server/client test
   supplies different mocked `Intl.DisplayNames` results and proves the
   serialized server `localeOptions` keep initial selector markup identical.
-  A rolling-deployment
-  test posts the legacy locale-less sync shape after database backfill and
-  proves network/current-step changes save while the stored `und` locale is
-  preserved; supplied undeclared locales still fail.
+  A rolling-deployment test posts the legacy locale-less sync shape after
+  database backfill and proves network/current-step changes save while the
+  stored `und` locale is preserved. A separate locale request changes the
+  selection; a later general sync cannot undo it, and an undeclared dedicated
+  request still fails.
 - Fresco rollout tests prove setup leaves schema-7/schema-8 rows and hashes
   untouched, the schema-9 server handles mixed stored versions, and a
   direct upgrade that skips the compatibility image remains safe if build or
@@ -1069,7 +1109,7 @@ language does not change analysis schema.
 - Treat `CurrentProtocol`'s string-to-map changes as a breaking
   protocol-validation release.
 - Add coordinated normal-lane changesets for protocol-validation, Interview,
-  protocol-utilities, shared-consts, network-exporters,
+  Fresco UI, protocol-utilities, shared-consts, network-exporters,
   `@codaco/development-protocol`, `@codaco/sample-protocol`, Architect,
   Interviewer, and Fresco as required by the implementation. Shared-consts
   must publish the new session-locale export consumed by the externally
