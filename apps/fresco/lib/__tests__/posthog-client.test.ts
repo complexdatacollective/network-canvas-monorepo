@@ -146,6 +146,33 @@ describe('Fresco PostHog client', () => {
 
       expect(optOutCapturing).toHaveBeenCalled();
     });
+
+    // Turning analytics off and straight back on is a plausible thing to do
+    // in the settings; the tab must not stay silent until a reload.
+    it('opts back in when analytics are re-enabled without a reload', async () => {
+      const { startPostHog, stopPostHog } = await loadModule();
+
+      await startPostHog('install-123');
+      await stopPostHog();
+      optInCapturing.mockClear();
+
+      await startPostHog('install-123');
+
+      expect(optInCapturing).toHaveBeenCalled();
+    });
+
+    // Queued while the deployment's answer was still in flight, and the
+    // answer was no.
+    it('drops exceptions queued before analytics were disabled', async () => {
+      const { captureClientException, stopPostHog, startPostHog } =
+        await loadModule();
+
+      captureClientException(new Error('boom'));
+      await stopPostHog();
+      await startPostHog('install-123');
+
+      expect(captureException).not.toHaveBeenCalled();
+    });
   });
 
   describe('captureClientException', () => {
@@ -212,6 +239,8 @@ describe('Fresco PostHog client', () => {
     await startPostHog('install-123');
 
     expect(init).toHaveBeenCalledOnce();
-    expect(optInCapturing).toHaveBeenCalledOnce();
+    // Opting in, unlike init, is repeated on purpose: it is what re-enabling
+    // analytics in an open tab relies on.
+    expect(optInCapturing).toHaveBeenCalledTimes(2);
   });
 });

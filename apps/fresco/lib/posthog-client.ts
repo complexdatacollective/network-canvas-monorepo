@@ -35,15 +35,10 @@ async function getClient(): Promise<PostHog> {
       tracing_headers: [window.location.hostname],
     });
 
-    // Before opting in, because opting in captures an event of its own — it
-    // would otherwise be the one event missing the properties that attribute
-    // it to Fresco.
+    // Registered here, before startPostHog opts in, because opting in captures
+    // an event of its own — it would otherwise be the one event missing the
+    // properties that attribute it to Fresco.
     posthog.register(POSTHOG_APP_PROPERTIES);
-
-    // Repairs the stored consent of a browser that was opted out while this
-    // deployment had analytics disabled. Without it, that browser would stay
-    // silent for good once analytics were switched back on.
-    posthog.opt_in_capturing();
 
     return posthog;
   });
@@ -60,6 +55,12 @@ export async function startPostHog(installationId?: string) {
   // promise rejected, and callers only ever fire this off.
   try {
     const posthog = await getClient();
+
+    // On every enabled start, not just the first. It repairs the stored
+    // consent of a browser opted out while this deployment had analytics
+    // disabled — including one stopPostHog opted out moments ago, when a
+    // researcher turns analytics off and straight back on without reloading.
+    posthog.opt_in_capturing();
 
     if (installationId) {
       posthog.register({
@@ -83,6 +84,11 @@ export async function startPostHog(installationId?: string) {
  * started analytics there is nothing to stop.
  */
 export async function stopPostHog() {
+  // Anything an error boundary queued while the server's decision was still
+  // in flight was collected under a setting that turns out to be "off".
+  // Enabling analytics later must not retroactively report it.
+  pendingExceptions.length = 0;
+
   if (!clientPromise) {
     return;
   }
