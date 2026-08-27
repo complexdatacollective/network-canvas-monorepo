@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Developing Network Canvas UI'
+  short_description: 'UI guidance for Network Canvas interfaces'
+  default_prompt: 'Use $developing-network-canvas-ui before implementing a Network Canvas interface or interaction change.'

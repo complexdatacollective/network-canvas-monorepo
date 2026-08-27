@@ -1119,7 +1119,7 @@ run `pnpm changeset` twice and write two files.
    it only groups the entry under Major/Minor/Patch changes.
 4. Write the summary as **reader-facing release notes** — it becomes the
    changelog / GitHub release text. For app-facing entries use the
-   participant-appropriate tone described in `developing-in-network-canvas`.
+   participant-appropriate tone described in `developing-network-canvas-ui`.
 5. Commit the generated `.changeset/*.md` with your PR.
 
 ## Notes

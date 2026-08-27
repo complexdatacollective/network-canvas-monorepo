@@ -77,7 +77,7 @@ const ALLOWANCE_VISIBLE_FROM = 20;
 /**
  * Announce the remaining allowance only as it crosses these thresholds. A live
  * region updated on every keystroke floods a screen reader (the throttling rule
- * in `developing-in-network-canvas`), and the always-present description on the
+ * in `developing-network-canvas-ui`), and the always-present description on the
  * control already carries the exact count for anyone who asks for it.
  */
 const ANNOUNCE_THRESHOLDS = [ALLOWANCE_VISIBLE_FROM, 10, 5, 0];
