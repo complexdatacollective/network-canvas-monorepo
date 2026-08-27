@@ -13,13 +13,16 @@ export const meta = {
     {
       title: 'Upgrade lane',
       detail:
-        'seed released instance, swap to pending image, verify data + export diff',
+        'seed released instance, swap to pending image, verify data + capture exports',
     },
     {
       title: 'Fresh lane',
       detail: 'setup wizard end-to-end on the pending image',
     },
-    { title: 'Audit', detail: 'bind agent claims to on-disk artifacts' },
+    {
+      title: 'Audit',
+      detail: 're-diff the settled exports, judge them, bind claims to disk',
+    },
     { title: 'Report', detail: 'classify findings, go/no-go verdict' },
     { title: 'Teardown', detail: 'compose down unless keepStack' },
   ],
@@ -863,41 +866,6 @@ Set area="apiSettings".`,
   lane.crud = crud;
   lane.apiSettings = apiSettings;
 
-  // The judge must reason about the diff of the files as they stand, not about
-  // whatever the capture agent left behind: a capture that diffs and then
-  // rewrites a snapshot leaves a summary describing contents that are no
-  // longer there, and a filename-level cross-check cannot see that the bytes
-  // changed underneath it. So a separate agent re-runs the same deterministic
-  // script, and the judge reads ITS output.
-  if (capture?.pass) {
-    lane.diffAudit = await agent(
-      `Your working directory is already the correct repository checkout — do NOT cd anywhere else. Re-run the deterministic export diff over the capture directories as they stand right now:
-node ${HARNESS}/scripts/diff-exports.mjs ${BASELINE_DIR} ${UPGRADED_DIR} --work ${AUDIT_DIFF_WORK} --out ${AUDIT_DIFF_SUMMARY}
-Then read ${AUDIT_DIFF_SUMMARY} and report, from that file and nothing else:
-- files: EVERY entry of its "onlyInBaseline" and "onlyInCurrent" arrays (plain strings) plus every "file" of its "changed" array (objects), verbatim and complete.
-- identical: every name in its "identical" array, verbatim.
-Read them with the shell rather than by eye: node -e 'const s=require("./${AUDIT_DIFF_SUMMARY}");console.log(JSON.stringify({files:[...s.onlyInBaseline,...s.onlyInCurrent,...s.changed.map(c=>c.file)],identical:s.identical}))'. If any element of files is null the summary's keys have changed — return ok:false rather than a list with holes in it. Return ok:true if the command exited 0 and you read its summary, otherwise ok:false with the decisive output in "error". Change nothing else on disk and do not edit the capture's own summary.`,
-      {
-        label: 'diff-audit',
-        phase: 'Upgrade lane',
-        schema: DIFF_AUDIT_SCHEMA,
-        ...MECHANICAL,
-      },
-    );
-    lane.diffVerdict = await agent(
-      `You are judging whether a Fresco upgrade changed exported interview data in UNANTICIPATED ways. The same seeded interviews were exported before the upgrade (released build) and after (pending build); a deterministic normalizer already masked ONLY the volatile export-marking fields (GraphML sessionExportTime, CSV sessionExported, JSON lastUpdated/exportTime) and id-sorted API arrays — stable persisted times (sessionStart/sessionFinish, startTime/finishTime) are compared literally, so a difference in them is real. A freshly re-run diff of exactly those files is at ${AUDIT_DIFF_SUMMARY} (JSON: onlyInBaseline / onlyInCurrent / identical / changed with per-file diff excerpts and fullDiff paths under ${AUDIT_DIFF_WORK}/diffs/). Use that one — it describes the files as they stand now; ignore any other summary in that directory.
-Read ${AUDIT_DIFF_SUMMARY} yourself — do not rely on any count reported to you. Enumerate every differing or one-sided file it lists: every entry of onlyInBaseline, every entry of onlyInCurrent (both plain file-name strings), and the "file" of every entry of changed (objects, whose name lives under the "file" key). For each one, read as much of the full diff as needed to characterize it. Then read the pending changesets (.changeset/*.md in your working directory) — they describe everything this release ships. Classify EACH FILE into exactly one list, as one entry carrying that file's name verbatim in "file":
-- anticipated: explained by a specific pending changeset. Put that changeset's file name without the .md extension in "changeset". An entry naming a changeset that does not exist is treated as unanticipated.
-- unanticipated: everything else. Structural changes to graph data (missing nodes/edges/attributes, changed values) are unanticipated unless a changeset explicitly covers them.
-Every file the summary lists must appear exactly once across the two lists, and you must not invent entries for files it does not list — the workflow compares your entries against the summary on disk and fails the run if any file is unclassified. An empty diff (all identical, nothing one-sided) is pass:true with both lists empty. pass=false if anything is unanticipated.`,
-      {
-        label: 'diff-judge',
-        phase: 'Upgrade lane',
-        schema: DIFF_VERDICT_SCHEMA,
-        ...JUDGE,
-      },
-    );
-  }
   return lane;
 };
 
@@ -969,10 +937,54 @@ try {
   upgradeLane = await runUpgradeLane();
   freshLane = await runFreshLane();
 
+  phase('Audit');
+
+  // Measured only once every lane has finished writing. Running the diff and
+  // the judgment inside the upgrade lane left them describing a filesystem
+  // that later agents could still change, and — whether or not anything
+  // does — it meant the artifact audit below observed a different moment than
+  // the judge did, so the cross-checks between them compared two points in
+  // time. Both now read the same settled state.
+  // The judge must reason about the diff of the files as they stand, not about
+  // whatever the capture agent left behind: a capture that diffs and then
+  // rewrites a snapshot leaves a summary describing contents that are no
+  // longer there, and a filename-level cross-check cannot see that the bytes
+  // changed underneath it. So a separate agent re-runs the same deterministic
+  // script, and the judge reads ITS output.
+  if (upgradeLane.capture?.pass) {
+    upgradeLane.diffAudit = await agent(
+      `Your working directory is already the correct repository checkout — do NOT cd anywhere else. Re-run the deterministic export diff over the capture directories as they stand right now:
+node ${HARNESS}/scripts/diff-exports.mjs ${BASELINE_DIR} ${UPGRADED_DIR} --work ${AUDIT_DIFF_WORK} --out ${AUDIT_DIFF_SUMMARY}
+Then read ${AUDIT_DIFF_SUMMARY} and report, from that file and nothing else:
+- files: EVERY entry of its "onlyInBaseline" and "onlyInCurrent" arrays (plain strings) plus every "file" of its "changed" array (objects), verbatim and complete.
+- identical: every name in its "identical" array, verbatim.
+Read them with the shell rather than by eye: node -e 'const s=require("./${AUDIT_DIFF_SUMMARY}");console.log(JSON.stringify({files:[...s.onlyInBaseline,...s.onlyInCurrent,...s.changed.map(c=>c.file)],identical:s.identical}))'. If any element of files is null the summary's keys have changed — return ok:false rather than a list with holes in it. Return ok:true if the command exited 0 and you read its summary, otherwise ok:false with the decisive output in "error". Change nothing else on disk and do not edit the capture's own summary.`,
+      {
+        label: 'diff-audit',
+        phase: 'Audit',
+        schema: DIFF_AUDIT_SCHEMA,
+        ...MECHANICAL,
+      },
+    );
+    upgradeLane.diffVerdict = await agent(
+      `You are judging whether a Fresco upgrade changed exported interview data in UNANTICIPATED ways. The same seeded interviews were exported before the upgrade (released build) and after (pending build); a deterministic normalizer already masked ONLY the volatile export-marking fields (GraphML sessionExportTime, CSV sessionExported, JSON lastUpdated/exportTime) and id-sorted API arrays — stable persisted times (sessionStart/sessionFinish, startTime/finishTime) are compared literally, so a difference in them is real. A freshly re-run diff of exactly those files is at ${AUDIT_DIFF_SUMMARY} (JSON: onlyInBaseline / onlyInCurrent / identical / changed with per-file diff excerpts and fullDiff paths under ${AUDIT_DIFF_WORK}/diffs/). Use that one — it describes the files as they stand now; ignore any other summary in that directory.
+Read ${AUDIT_DIFF_SUMMARY} yourself — do not rely on any count reported to you. Enumerate every differing or one-sided file it lists: every entry of onlyInBaseline, every entry of onlyInCurrent (both plain file-name strings), and the "file" of every entry of changed (objects, whose name lives under the "file" key). For each one, read as much of the full diff as needed to characterize it. Then read the pending changesets (.changeset/*.md in your working directory) — they describe everything this release ships. Classify EACH FILE into exactly one list, as one entry carrying that file's name verbatim in "file":
+- anticipated: explained by a specific pending changeset. Put that changeset's file name without the .md extension in "changeset". An entry naming a changeset that does not exist is treated as unanticipated.
+- unanticipated: everything else. Structural changes to graph data (missing nodes/edges/attributes, changed values) are unanticipated unless a changeset explicitly covers them.
+Every file the summary lists must appear exactly once across the two lists, and you must not invent entries for files it does not list — the workflow compares your entries against the summary on disk and fails the run if any file is unclassified. An empty diff (all identical, nothing one-sided) is pass:true with both lists empty. pass=false if anything is unanticipated.`,
+      {
+        label: 'diff-judge',
+        phase: 'Audit',
+        schema: DIFF_VERDICT_SCHEMA,
+        ...JUDGE,
+      },
+    );
+  }
+
   // Every claim above is an agent's self-report. This one cheap agent reads
   // the artifacts those claims describe, so a schema-valid report from an
   // agent that never produced them cannot certify anything.
-  phase('Audit');
+
   auditResult = await agent(
     `Audit the on-disk artifacts of an automated release test. Your working directory is already the correct repository checkout — do NOT cd anywhere else. Use the shell only; do nothing else — no interpretation, no browsing, no writes, no fixing.
 

@@ -1205,6 +1205,28 @@ test('the classification is checked against a diff the audit ran itself', async 
   }
 });
 
+test('the diff and the judgment happen after every lane has stopped writing', async () => {
+  // Otherwise they describe a filesystem later agents can still change, and
+  // the artifact audit ends up observing a different moment than the judge —
+  // so the cross-checks between them compare two points in time.
+  const { prompts } = await run(happyPath());
+  const order = prompts.map((p) => p.label);
+  const lastWriter = Math.max(
+    ...['verify-fresh-setup', 'up-fresh', 'verify-crud', 'verify-api-settings']
+      .map((label) => order.indexOf(label))
+      .filter((i) => i >= 0),
+  );
+  for (const label of ['diff-audit', 'diff-judge'])
+    assert.ok(
+      order.indexOf(label) > lastWriter,
+      `${label} runs at ${order.indexOf(label)}, before the last lane agent at ${lastWriter}`,
+    );
+  assert.ok(
+    order.indexOf('diff-judge') < order.indexOf('audit-artifacts'),
+    'the artifact audit must observe the same settled state the judge did',
+  );
+});
+
 test('the judge reads the re-run summary, not the capture agent output', async () => {
   const { prompts } = await run(happyPath());
   const judge = promptFor(prompts, 'diff-judge');
