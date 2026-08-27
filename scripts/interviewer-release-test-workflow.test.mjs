@@ -103,12 +103,20 @@ function makeAgent(journeyResults, verifyResults = {}, evidenceResult) {
       if (evidenceResult !== undefined) return evidenceResult;
       return {
         fingerprint: PREFLIGHT.fingerprint,
-        entries: Object.keys(journeyResults).map((k) => ({
-          journey: k,
-          exists: true,
-          screenshots: 25,
-          checkpointNumbers: Array.from({ length: 25 }, (_, i) => i + 1),
-        })),
+        entries: [
+          ...Object.keys(journeyResults).map((k) => ({
+            journey: k,
+            exists: true,
+            screenshots: 25,
+            checkpointNumbers: Array.from({ length: 25 }, (_, i) => i + 1),
+          })),
+          ...Object.keys(verifyResults).map((k) => ({
+            journey: `verify-${k}`,
+            exists: true,
+            screenshots: 2,
+            checkpointNumbers: [],
+          })),
+        ],
       };
     }
     if (opts.label.startsWith('journey:')) {
@@ -797,6 +805,103 @@ test('verifier-discovered defects keep their reproduction steps', async () => {
   assert.equal(res2.verdict, 'BLOCK');
   assert.ok(
     res2.certificationGaps.some((a) => a.includes('no reproduction steps')),
+  );
+});
+
+test('an evidence-free verifier cannot dismiss failures', async () => {
+  const jr = {
+    'pwa-offline': journey('pwa-offline', {
+      status: 'fail',
+      checks: mkChecks(10, { failAt: [1] }),
+      failures: [
+        {
+          severity: 'major',
+          description: 'real one',
+          check: 1,
+          reproduction: 'r',
+        },
+      ],
+    }),
+  };
+  const vr = {
+    'pwa-offline': {
+      verdicts: [
+        {
+          description: 'real one',
+          failure: 1,
+          verdict: 'not-reproduced',
+          severity: 'minor',
+          explanation: 'trust me',
+        },
+      ],
+    },
+  };
+  // Default stub provides verifier evidence: the dismissal is accepted.
+  const evidenced = await run(makeAgent(jr, vr), { journeys: ['pwa-offline'] });
+  assert.equal(evidenced.unverifiedFailures.length, 0);
+  // Same verdicts with NO on-disk verifier evidence: dismissal rejected,
+  // the major stays unverified and blocks.
+  const bare = await run(
+    makeAgent(jr, vr, {
+      fingerprint: PREFLIGHT.fingerprint,
+      entries: [
+        {
+          journey: 'pwa-offline',
+          exists: true,
+          screenshots: 25,
+          checkpointNumbers: Array.from({ length: 25 }, (_, i) => i + 1),
+        },
+      ],
+    }),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(bare.verdict, 'BLOCK');
+  assert.ok(bare.unverifiedFailures.some((f) => f.description === 'real one'));
+  assert.ok(
+    bare.certificationGaps.some((a) =>
+      a.includes('dismissing verdicts are not accepted'),
+    ),
+  );
+});
+
+test('every certification gap caps the verdict', async () => {
+  const jr = {
+    'pwa-offline': journey('pwa-offline', {
+      status: 'fail',
+      checks: mkChecks(10, { failAt: [1] }),
+      failures: [
+        {
+          severity: 'minor',
+          description: 'small',
+          check: 1,
+          reproduction: 'r',
+        },
+      ],
+    }),
+  };
+  const vr = {
+    'pwa-offline': {
+      verdicts: [
+        {
+          description: 'small',
+          failure: 1,
+          verdict: 'confirmed',
+          severity: 'minor',
+          explanation: 'real',
+        },
+        {
+          description: 'NEW: minor found',
+          verdict: 'confirmed',
+          severity: 'minor',
+          explanation: 'e',
+        },
+      ],
+    },
+  };
+  const res = await run(makeAgent(jr, vr), { journeys: ['pwa-offline'] });
+  assert.equal(res.verdict, 'INCOMPLETE');
+  assert.ok(
+    res.certificationGaps.some((a) => a.includes('no reproduction steps')),
   );
 });
 

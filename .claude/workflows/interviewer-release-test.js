@@ -1025,6 +1025,16 @@ const evidenceClaims = results
     journey: r.journey,
     dir: `${preflight.workDir}/${r.journey}`,
   }));
+// Verifier evidence is audited too: a verdict that DISMISSES a reported
+// failure is only accepted when its verifier left on-disk evidence of
+// having actually driven the app.
+for (const r of results.filter(Boolean)) {
+  if (!r.agentDied && r.verification)
+    evidenceClaims.push({
+      journey: `verify-${r.journey}`,
+      dir: `${preflight.workDir}/verify-${r.journey}`,
+    });
+}
 
 let evidence = { entries: [] };
 let auditFailed = false;
@@ -1248,6 +1258,13 @@ for (const r of results.filter(Boolean)) {
     );
     continue;
   }
+  const verifyEntry = evidence
+    ? evidence.entries.find((x) => x.journey === `verify-${r.journey}`)
+    : null;
+  const verifierEvidenced = Boolean(
+    verifyEntry && verifyEntry.exists && verifyEntry.screenshots > 0,
+  );
+  let dismissalRejected = false;
   // Match verdicts to failures by explicit id first (the "failure" number
   // the verifier is required to echo), then verbatim description, never by
   // position, never reusing a verdict — a verdict about one failure must
@@ -1274,12 +1291,22 @@ for (const r of results.filter(Boolean)) {
         verification: v.explanation,
         evidence: [f.evidence, v.evidence].filter(Boolean).join(' | '),
       });
-    } else {
+    } else if (verifierEvidenced) {
       automationIssues.push(
         `[${r.journey}] ${v.verdict}: ${f.description} — ${v.explanation}`,
       );
+    } else {
+      // An evidence-free dismissal clears nothing: the failure stays
+      // unverified (blocking at blocker/major, capping the run otherwise).
+      unverifiedFailures.push({ ...f, journey: r.journey });
+      dismissalRejected = true;
     }
   });
+  if (dismissalRejected) {
+    certificationGaps.push(
+      `verifier for "${r.journey}" left no on-disk evidence (workDir/verify-${r.journey}) — its dismissing verdicts are not accepted and those failures stay unverified`,
+    );
+  }
   // A defect the verifier itself discovered and confirmed while reproducing
   // must not be lost just because no reported failure matches it.
   r.verification.forEach((v, k) => {
@@ -1327,6 +1354,7 @@ const verdict = blocking.length
       auditFailed ||
       verifierDied ||
       deployChanged ||
+      certificationGaps.length ||
       unverifiedFailures.length
     ? 'INCOMPLETE'
     : confirmedFailures.length

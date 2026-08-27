@@ -175,10 +175,13 @@ evidence directory of screenshots.
 For the changeset lane the candidate is the Version Packages PR's deploy
 preview, as described above — never `main`'s developer site, which cannot
 serve the bumped version before that PR merges. A **hotfix** likewise ships
-its own tree: point the workflow at a deployment of the hotfix branch — for
-example the Netlify deploy preview of its pull request into `main` — via
-`args: { url: "…", expectedVersion: "<the hotfix's bumped version>" }`, and
-never certify a hotfix against the developer site.
+its own tree: open the hotfix branch's pull request into `main` (the
+merge-back the hotfix procedure requires anyway) BEFORE dispatching the
+Hotfix Release workflow — its Netlify deploy preview is the candidate.
+Certify that preview via
+`args: { url: "…", expectedVersion: "<the hotfix's bumped version>" }`,
+then dispatch; never certify a hotfix against the developer site, and never
+dispatch production before the preview has its verdict.
 
 The workflow concentrates on what the Playwright E2E suite deliberately does
 not cover — the suite blocks service workers and conducts a lean fixture
