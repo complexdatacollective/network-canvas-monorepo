@@ -63,6 +63,17 @@ const url = (args && args.url) || DEFAULT_URL;
 // preflight fails unless the deployment serves it, so a stale deploy (an
 // older tree still live at the same URL) can never be certified.
 const expectedVersion = (args && args.expectedVersion) || null;
+// Both values are interpolated into agent prompts and the shell commands
+// inside them: restrict them to inert shapes so a hostile value cannot
+// escape into shell, JS-string, or prompt context.
+if (!/^https:\/\/[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+(:\d{2,5})?$/.test(url))
+  throw new Error(
+    `args.url must be a plain https origin with no path, query, or shell metacharacters (got ${JSON.stringify(url)})`,
+  );
+if (expectedVersion && !/^[0-9A-Za-z.+-]{1,64}$/.test(expectedVersion))
+  throw new Error(
+    'args.expectedVersion must be a plain version string ([0-9A-Za-z.+-])',
+  );
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -173,6 +184,11 @@ const VERIFY_SCHEMA = {
           },
           severity: { type: 'string', enum: ['blocker', 'major', 'minor'] },
           explanation: { type: 'string' },
+          reproduction: {
+            type: 'string',
+            description:
+              'For a discovered defect (no failure number): the exact reproduction steps you used',
+          },
           evidence: { type: 'string' },
         },
       },
@@ -973,8 +989,10 @@ Return one verdict per reported failure. Each verdict MUST carry the
 "failure" number it adjudicates (copied from the list above) — verdicts are
 bound by that number, and a verdict without one never dismisses a reported
 failure. If, while reproducing, you discover a DIFFERENT real defect, add an
-extra "confirmed" verdict describing it WITHOUT a failure number —
-discovered defects must not be lost.`,
+extra "confirmed" verdict describing it WITHOUT a failure number and WITH
+its exact reproduction steps in the verdict's "reproduction" field —
+discovered defects must not be lost, and a discovered defect without
+reproduction steps cannot seed a follow-up task.`,
       // Pinned regardless of args.model: verifier verdicts gate the release.
       {
         label: `verify:${j.key}`,
@@ -1166,6 +1184,19 @@ for (const r of results.filter(Boolean)) {
       );
     }
   }
+  // Even a permitted skip must say why — a bare skipped status is not a
+  // report of the environmental condition that allows it.
+  r.checks.forEach((c, i) => {
+    if (c.status === 'skipped' && !(c.detail && c.detail.trim()))
+      badSkips.push({ c, n: i + 1 });
+  });
+  {
+    const seen = new Set();
+    for (let i = badSkips.length - 1; i >= 0; i--) {
+      if (seen.has(badSkips[i].n)) badSkips.splice(i, 1);
+      else seen.add(badSkips[i].n);
+    }
+  }
   if (badSkips.length) {
     if (!inconsistentJourneys.includes(r.journey))
       inconsistentJourneys.push(r.journey);
@@ -1257,7 +1288,9 @@ for (const r of results.filter(Boolean)) {
       journey: r.journey,
       severity: v.severity,
       description: v.description,
-      reproduction: '(discovered by the verifier during reproduction)',
+      reproduction:
+        v.reproduction ||
+        '(the verifier reported no steps — see its explanation)',
       verdict: 'confirmed',
       verification: v.explanation,
       evidence: v.evidence,

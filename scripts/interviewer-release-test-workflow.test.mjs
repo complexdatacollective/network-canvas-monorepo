@@ -694,6 +694,85 @@ test('preflight and audit embed the identical fingerprint command', () => {
   assert.equal(commands[0], commands[1]);
 });
 
+test('hostile url and version args are rejected before interpolation', async () => {
+  await assert.rejects(
+    run(makeAgent({}), {
+      url: 'https://x.dev/; rm -rf ~',
+      journeys: ['pwa-offline'],
+    }),
+    /plain https origin/,
+  );
+  await assert.rejects(
+    run(makeAgent({}), { url: 'http://plain.dev', journeys: ['pwa-offline'] }),
+    /plain https origin/,
+  );
+  await assert.rejects(
+    run(makeAgent({}), {
+      expectedVersion: '1.0 `whoami`',
+      journeys: ['pwa-offline'],
+    }),
+    /plain version string/,
+  );
+  const ok = await run(makeAgent({ 'pwa-offline': journey('pwa-offline') }), {
+    url: 'https://deploy-preview-9--interviewer-pwa-dev.netlify.app',
+    journeys: ['pwa-offline'],
+  });
+  assert.equal(ok.verdict, 'PASS');
+});
+
+test('a permitted skip still needs a nonempty reason', async () => {
+  const checks = mkChecks(10, { skipAt: [10] });
+  checks[9] = { name: '10. check', status: 'skipped' };
+  const res = await run(
+    makeAgent({ 'pwa-offline': journey('pwa-offline', { checks }) }),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(res.verdict, 'INCOMPLETE');
+  assert.ok(res.certificationGaps.some((a) => a.includes('#10')));
+});
+
+test('verifier-discovered defects keep their reproduction steps', async () => {
+  const jr = {
+    'pwa-offline': journey('pwa-offline', {
+      status: 'fail',
+      checks: mkChecks(10, { failAt: [1] }),
+      failures: [
+        {
+          severity: 'minor',
+          description: 'small',
+          check: 1,
+          reproduction: 'r',
+        },
+      ],
+    }),
+  };
+  const vr = {
+    'pwa-offline': {
+      verdicts: [
+        {
+          description: 'small',
+          failure: 1,
+          verdict: 'not-reproduced',
+          severity: 'minor',
+          explanation: 'n',
+        },
+        {
+          description: 'NEW: found it',
+          verdict: 'confirmed',
+          severity: 'major',
+          explanation: 'e',
+          reproduction: '1. do X 2. see Y',
+        },
+      ],
+    },
+  };
+  const res = await run(makeAgent(jr, vr), { journeys: ['pwa-offline'] });
+  const discovered = res.confirmedFailures.find((f) =>
+    f.description.startsWith('NEW:'),
+  );
+  assert.equal(discovered.reproduction, '1. do X 2. see Y');
+});
+
 test('a dead journey is incomplete', async () => {
   const res = await run(makeAgent({ 'pwa-offline': null }), {
     journeys: ['pwa-offline'],
