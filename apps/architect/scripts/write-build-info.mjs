@@ -15,6 +15,15 @@ import { fileURLToPath } from 'node:url';
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
+// The hotfix lane runs MAIN's copy of this script against the hotfix tree's
+// dist (a hotfix branch cut from an older tag may predate the script), so the
+// output directory can be overridden as the first argument — and that lane
+// must also set COMMIT_REF explicitly: its GITHUB_SHA is the main commit the
+// workflow ran from, not the deployed code.
+const distDir = process.argv[2]
+  ? resolve(process.cwd(), process.argv[2])
+  : resolve(appDir, 'dist');
+
 function resolveDeployCommit() {
   const fromEnv = process.env.COMMIT_REF ?? process.env.GITHUB_SHA;
   if (fromEnv) return fromEnv;
@@ -26,6 +35,6 @@ function resolveDeployCommit() {
 }
 
 writeFileSync(
-  resolve(appDir, 'dist/build-info.json'),
+  resolve(distDir, 'build-info.json'),
   `${JSON.stringify({ commit: resolveDeployCommit() })}\n`,
 );

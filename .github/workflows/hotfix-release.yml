@@ -199,6 +199,18 @@ jobs:
             -f ref="refs/tags/$TAG" \
             -f sha="$SHA"
 
+      # Architect deployments expose their source commit at /build-info.json
+      # (apps/architect/scripts/write-build-info.mjs; the release-test workflow
+      # verifies it). Run MAIN's copy of the script — a hotfix branch cut from
+      # an older tag may predate it — pointed at the hotfix tree's dist, and
+      # pass the hotfix source commit explicitly: GITHUB_SHA here is the main
+      # commit this workflow ran from, not the deployed code.
+      - name: Stamp deployed commit
+        if: inputs.app == 'architect'
+        env:
+          COMMIT_REF: ${{ steps.commit.outputs.sha }}
+        run: node .hotfix-lane/apps/architect/scripts/write-build-info.mjs apps/architect/dist
+
       - name: Deploy ${{ inputs.app }} to production
         # Both site ids come in as environment variables and the app picks one in
         # bash. A `inputs.app == 'x' && secrets.A || secrets.B` expression would

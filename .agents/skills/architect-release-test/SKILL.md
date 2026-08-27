@@ -75,6 +75,9 @@ Invoke the Workflow tool with
   stores protocols in IndexedDB). Never start two runs concurrently.
 - The run is read-only for real data: agents only touch protocols they
   create with an `RT` name prefix and delete them afterwards.
+- Commit-pinned runs re-fetch `/build-info.json` after all other phases: a
+  deployment that changed mid-run holds the verdict at `blocked`, because
+  the collected evidence may describe a build that is no longer live.
 - If reachability fails the version check right after a push to `main`,
   the Netlify branch deploy may simply not have finished — check the
   architect-dev deploy status before treating it as breakage.

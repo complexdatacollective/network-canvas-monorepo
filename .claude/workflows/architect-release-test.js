@@ -8,6 +8,7 @@ export const meta = {
     { title: 'Reachability', detail: 'site up, assets, service worker' },
     { title: 'Functional checks', detail: 'one agent per checklist slice' },
     { title: 'Verify failures', detail: 'independent reproduction of fails' },
+    { title: 'Deployment recheck', detail: 'pinned commit still live' },
   ],
 };
 
@@ -79,6 +80,15 @@ const VERDICT_SCHEMA = {
     evidence: { type: 'string' },
   },
   required: ['confirmed', 'evidence'],
+};
+
+const RECHECK_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    commit: { type: 'string' },
+  },
+  required: ['commit'],
 };
 
 // Shared operating instructions for every browser-driving agent. Slices run
@@ -537,6 +547,47 @@ for (const f of failed.slice(6)) {
     ...f,
     verification: 'Over the verification cap; not independently verified.',
   });
+}
+
+// A main deployment can complete during a long run: the pinned commit was
+// verified at the start, but the functional evidence may then describe a
+// build that is no longer live. On pinned runs, re-fetch the stamp after all
+// other phases and hold the verdict at blocked if the deployment changed.
+phase('Deployment recheck');
+if (expectCommit && siteUp) {
+  const recheck = await agent(
+    `${ops('recheck')}
+## Your task
+In a fresh tab on the target, evaluate
+fetch('/build-info.json', { cache: 'no-store' }).then((r) => r.json()) and
+return the commit it reports in the "commit" output field, verbatim. If the
+file is missing or unparseable, return "not exposed". Do not create or
+modify any protocol; close your tab when done.`,
+    {
+      label: 'recheck:build-commit',
+      schema: RECHECK_SCHEMA,
+      model: 'sonnet',
+      effort: 'low',
+    },
+  );
+  const finalCommit =
+    recheck && typeof recheck.commit === 'string' ? recheck.commit.trim() : '';
+  if (finalCommit !== expectCommit) {
+    checks.push({
+      slice: 'reachability',
+      name: 'commit-recheck',
+      status: 'blocked',
+      details: recheck
+        ? `After the functional slices, /build-info.json reports "${finalCommit}" instead of the pinned "${expectCommit}" — the deployment changed (or lost its stamp) mid-run, so the evidence above may describe a build that is no longer live. Re-run against the current deployment.`
+        : 'The post-run commit recheck agent returned no result; deployment currency unverified.',
+    });
+  }
+} else {
+  log(
+    expectCommit
+      ? 'Site never loaded — skipping the post-run deployment recheck.'
+      : 'No commit pinned — skipping the post-run deployment recheck.',
+  );
 }
 
 const blocked = checks.filter((c) => c.status === 'blocked');
