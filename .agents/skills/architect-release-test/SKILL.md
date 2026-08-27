@@ -23,33 +23,47 @@ manual pass.)
 
 ## Arguments
 
-`/architect-release-test [--url <url>] [--slices <key,key>] [--expect-version <semver>] [--unpinned]`
+`/architect-release-test [--url <url>] [--slices <key,key>] [--expect-version <semver>] [--expect-commit <sha>] [--unpinned]`
 
 | Argument           | Maps to args.…   | Default                                                 |
 | ------------------ | ---------------- | ------------------------------------------------------- |
 | `--url`            | `url`            | https://architect.networkcanvas.dev                     |
 | `--slices`         | `slices` (array) | omitted — full run (a filtered run is never promotable) |
-| `--expect-version` | `expectVersion`  | derived from `origin/main` (see below)                  |
-| `--unpinned`       | —                | skip the version pin; the run cannot be promotable      |
+| `--expect-version` | `expectVersion`  | derived from `origin/main` — default URL only           |
+| `--expect-commit`  | `expectCommit`   | derived from `origin/main` — default URL only           |
+| `--unpinned`       | —                | skip both pins; the run cannot be promotable            |
 
 Slice keys: `protocol-lifecycle`, `stages-and-timeline`,
 `codebook-and-summary`, `stage-preview`. Reachability always runs.
 
-**Deriving the default expectVersion.** The dev deployment builds `main`,
-so unless the user supplied `--expect-version` or `--unpinned`, pin the
-version main actually carries:
+**Deriving the default pins (default URL only).** The dev deployment
+builds `main`, so unless the user supplied the flags or `--unpinned`, pin
+what main actually carries:
 
 ```bash
-git fetch origin main --quiet && git show origin/main:apps/architect/package.json | jq -r .version
+git fetch origin main --quiet && git show origin/main:apps/architect/package.json | jq -r .version && git rev-parse origin/main
 ```
 
-Pass that as `expectVersion`. Do not silently run unpinned: `promotable`
-requires the pin, and an unpinned green run is not promotion evidence.
+Pass those as `expectVersion` and `expectCommit`. Do not silently run
+unpinned: `promotable` requires both pins, and an unpinned green run is
+not promotion evidence.
+
+**Custom `--url` targets never inherit the `origin/main` defaults** — a
+branch, hotfix, or local deployment legitimately carries a different
+version and commit, and comparing it against main would report a healthy
+deployment as a mismatch. For a custom URL, require explicit
+`--expect-version`/`--expect-commit` (from whatever ref that deployment
+builds) or an explicit `--unpinned`; if none were given, ask rather than
+guessing.
+
+Builds deployed before the commit stamp shipped do not expose
+`data-build-commit`; a commit-pinned run fails its build-commit check
+against them by design (the candidate is expected to expose it).
 
 ## Running it
 
 Invoke the Workflow tool with
-`{ name: 'architect-release-test', args: { url?, slices?, expectVersion? } }`
+`{ name: 'architect-release-test', args: { url?, slices?, expectVersion?, expectCommit? } }`
 (or `scriptPath: '.claude/workflows/architect-release-test.js'`). Notes:
 
 - A full run takes roughly 25–35 minutes; slices run sequentially by
@@ -65,8 +79,9 @@ Invoke the Workflow tool with
 
 Lead with `promotable`, then the verdict:
 
-- **`promotable: true`** — every check passed, full coverage, version
-  pinned and matched: report that the release is safe to promote.
+- **`promotable: true`** — every check passed, full coverage, version and
+  build commit pinned and matched: report that the release is safe to
+  promote.
 - **`verdict: 'fail'`** — confirmed breakage: the release must not be
   promoted. Report each entry in `confirmedFailures` with its evidence.
 - **`verdict: 'blocked'`** — no confirmed breakage, but items in
@@ -77,6 +92,6 @@ Lead with `promotable`, then the verdict:
   string names the gap; relay it and, if the user is gating a release,
   offer the full pinned re-run.
 
-Always report `deployedVersion` and, when relevant, the `notes` entries —
+Always report `deployedVersion` and `deployedCommit`, and, when relevant, the `notes` entries —
 they carry harness observations and occasionally real app findings worth
 spinning off.

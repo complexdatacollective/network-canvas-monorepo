@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -12,6 +13,22 @@ import { createProtocolSourceAuthoringPlugin } from './scripts/protocol-source-a
 
 const rootDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(rootDir, '../..');
+
+// The commit this build was produced from, exposed to the page (see main.tsx)
+// so a deployment's exact build identity can be verified — the semver alone
+// cannot distinguish ordinary main commits between releases. Netlify's Git
+// integration provides COMMIT_REF (the dev deployment); the production release
+// job builds in GitHub Actions and deploys with --no-build, so GITHUB_SHA is
+// the source there; local builds fall back to git.
+function resolveBuildCommit(env: Record<string, string>): string {
+  const fromEnv = env.COMMIT_REF ?? env.GITHUB_SHA;
+  if (fromEnv) return fromEnv;
+  try {
+    return execSync('git rev-parse HEAD', { cwd: rootDir }).toString().trim();
+  } catch {
+    return 'unknown';
+  }
+}
 
 // The Content-Security-Policy directives a <meta http-equiv> can express — i.e.
 // everything except frame-ancestors, which is header-only and stays in
@@ -79,6 +96,7 @@ export default defineConfig(({ mode }) => {
   return {
     define: {
       __APP_VERSION__: JSON.stringify(version),
+      __BUILD_COMMIT__: JSON.stringify(resolveBuildCommit(env)),
     },
     resolve: {
       tsconfigPaths: true,

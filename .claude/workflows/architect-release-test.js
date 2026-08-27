@@ -3,7 +3,7 @@ export const meta = {
   description:
     'Agent-driven release smoke test of the deployed Architect dev site',
   whenToUse:
-    'Before promoting an Architect release: drives the dev deployment (https://architect.networkcanvas.dev, or args.url) through a release-tester checklist in the Browser pane and returns a pass/blocked/fail verdict. Release gates must consume the `promotable` field, which is true only for a full-coverage pass with expectVersion pinned and matched. args: { url?: string, slices?: string[], expectVersion?: string } — slices filters the functional slices by key (reachability always runs; a filtered run is never promotable), expectVersion fails reachability if the deployment shows a different version (compared ignoring a leading "v").',
+    'Before promoting an Architect release: drives the dev deployment (https://architect.networkcanvas.dev, or args.url) through a release-tester checklist in the Browser pane and returns a pass/blocked/fail verdict. Release gates must consume the `promotable` field, which is true only for a full-coverage pass with both expectVersion and expectCommit pinned and matched. args: { url?: string, slices?: string[], expectVersion?: string, expectCommit?: string } — slices filters the functional slices by key (reachability always runs; a filtered run is never promotable), expectVersion fails reachability on a version mismatch (compared ignoring a leading "v"), expectCommit fails it when the page\'s data-build-commit does not equal the pinned SHA.',
   phases: [
     { title: 'Reachability', detail: 'site up, assets, service worker' },
     { title: 'Functional checks', detail: 'one agent per checklist slice' },
@@ -37,6 +37,15 @@ const expectVersion =
     ? args.expectVersion.trim() || null
     : null;
 
+// Optional expected build commit (full SHA). The deployed app exposes its
+// build's commit as data-build-commit on <html> (architect's vite define
+// __BUILD_COMMIT__): the semver cannot distinguish ordinary main commits
+// between releases, so promotion clearance pins the exact build too.
+const expectCommit =
+  args && typeof args === 'object' && typeof args.expectCommit === 'string'
+    ? args.expectCommit.trim() || null
+    : null;
+
 const CHECKS_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -56,6 +65,7 @@ const CHECKS_SCHEMA = {
     },
     tooling_notes: { type: 'string' },
     version: { type: 'string' },
+    commit: { type: 'string' },
   },
   required: ['checks', 'tooling_notes'],
 };
@@ -173,12 +183,15 @@ const SLICES = [
    protocols tab.
 4. "reopen": Open your protocol again from its card (card menu > Open) and
    confirm the editor shows it. Return to the start screen.
-5. "export": Find the affordance to download/export your protocol as a
-   .netcanvas file (card menu or editor) and trigger it. This pane can never
-   observe the saved file, so a clean trigger IS the pass criterion: pass
-   when the download is offered/starts with no error dialog and no new
-   console error. Do not mark blocked merely because the file itself cannot
-   be seen — reserve blocked for the trigger action itself being unreachable.
+5. "export": Open your protocol in the editor and trigger the toolbar's
+   "Download" button. Pass requires POSITIVE success evidence — absence of
+   errors is not enough, because a handler that silently does nothing also
+   produces no errors. The button transitions to a "Downloaded" success
+   state only after the export actually completes: require that transition
+   (or equivalently instrument the download mechanism via javascript_tool —
+   e.g. wrap URL.createObjectURL before clicking — and observe it fire).
+   This pane can never observe the saved file itself; do not mark blocked
+   for that — reserve blocked for the Download control being unreachable.
 6. "delete": Delete your protocol from the start screen and confirm its card
    disappears.`,
   },
@@ -264,6 +277,7 @@ const REACH_EXPECTED = [
   'assets',
   'service-worker',
   'version',
+  'build-commit',
 ];
 
 const reachabilityPrompt = `${ops('reach')}
@@ -305,6 +319,14 @@ tell whether an entry predates the purge).
      expectVersion
        ? `Expected version: "${expectVersion}" — fail this check if the displayed version does not match it (ignore a leading "v" on either side: "8.2.0" matches "v8.2.0").`
        : 'No expected version was supplied, so pass with the observed value.'
+   }
+6. "build-commit": Read document.documentElement.dataset.buildCommit — the
+   deployed build stamps its source commit there. Put the observed value in
+   details AND in the top-level "commit" output field.
+   ${
+     expectCommit
+       ? `Expected commit: "${expectCommit}" — fail this check if the attribute is missing or does not equal it exactly (a candidate build must expose its commit; a missing attribute means an older build is still deployed).`
+       : 'No expected commit was supplied: pass, reporting the observed value, or "not exposed" if the attribute is absent (builds from before the commit stamp predate it).'
    }
 Do not create or modify any protocol in this slice.`;
 
@@ -422,6 +444,36 @@ if (reach && !observedVersion) {
   });
 }
 
+// Same contract for the build commit: enforced in code, not just the prompt.
+const observedCommit =
+  reach && typeof reach.commit === 'string' ? reach.commit.trim() : '';
+if (reach && expectCommit && !observedCommit) {
+  checks.push({
+    slice: 'reachability',
+    name: 'commit-enforced',
+    status: 'blocked',
+    details:
+      'Reachability agent did not return the top-level commit field; the deployed build commit is unverified.',
+  });
+} else if (
+  expectCommit &&
+  observedCommit &&
+  observedCommit !== expectCommit &&
+  !checks.some(
+    (c) =>
+      c.slice === 'reachability' &&
+      c.name === 'build-commit' &&
+      c.status === 'fail',
+  )
+) {
+  checks.push({
+    slice: 'reachability',
+    name: 'commit-enforced',
+    status: 'fail',
+    details: `Deployed build commit "${observedCommit}" does not match expected "${expectCommit}", and the agent did not fail its own build-commit check.`,
+  });
+}
+
 // Adversarially verify failures before letting them fail a release: an
 // independent agent re-runs the same flow. Reproduced (or the original
 // evidence stands unexplained) -> confirmed blocker. Refuted -> "flaky":
@@ -494,11 +546,17 @@ const verdict = confirmedFailures.length
 
 // Promotion clearance is stricter than a green run: "safe to promote" is
 // claimed only when every check passed AND the run covered every slice AND
-// the tested build's identity was pinned and matched via expectVersion. A
+// the tested build's identity was pinned and matched — both the semver
+// (expectVersion) and the exact build commit (expectCommit), because the
+// version chip cannot distinguish ordinary main commits between releases. A
 // green partial run, or a green run against an unpinned build, is useful
 // signal but never promotion evidence — and the machine-readable field for
 // a release gate to consume is `promotable`, not `verdict`.
-const promotable = verdict === 'pass' && !only && expectVersion !== null;
+const promotable =
+  verdict === 'pass' &&
+  !only &&
+  expectVersion !== null &&
+  expectCommit !== null;
 
 log(
   `Verdict: ${verdict} (promotable: ${promotable}) — ${checks.length} checks, ${confirmedFailures.length} confirmed failures, ${unverified.length} unverified failures, ${flaky.length} flaky, ${blocked.length} blocked`,
@@ -523,10 +581,15 @@ if (verdict === 'fail') {
   }
   if (expectVersion === null) {
     gaps.push(
-      "no expectVersion was supplied, so the tested build's identity was not pinned",
+      "no expectVersion was supplied, so the tested build's version was not pinned",
     );
   }
-  meaning = `Every selected check passed, but this run is NOT promotion evidence: ${gaps.join('; ')}. Re-run with full coverage and expectVersion to gate a release.`;
+  if (expectCommit === null) {
+    gaps.push(
+      "no expectCommit was supplied, so the deployed build's exact commit was not pinned",
+    );
+  }
+  meaning = `Every selected check passed, but this run is NOT promotion evidence: ${gaps.join('; ')}. Re-run with full coverage, expectVersion, and expectCommit to gate a release.`;
 }
 if (only && verdict !== 'pass') {
   meaning = `Partial run (${selected.map((s) => s.key).join(', ')} only) — ${meaning}`;
@@ -538,6 +601,8 @@ return {
   target,
   deployedVersion: (reach && reach.version) || null,
   expectedVersion: expectVersion,
+  deployedCommit: observedCommit || null,
+  expectedCommit: expectCommit,
   coverage: only ? selected.map((s) => s.key) : 'full',
   meaning,
   confirmedFailures,
