@@ -262,7 +262,10 @@ DISCIPLINE:
   whole run INCOMPLETE — if you are blocked on a check, report a failure
   with what blocked you instead of skipping it. Never guess a result.
 - Your structured result's "checks" must enumerate every numbered check you
-  were given, in order, each pass/fail/skipped.`;
+  were given, in order, each pass/fail/skipped, and each check's name must
+  BEGIN with its number exactly as given (e.g. "3. Interview stage-navigation
+  toggle") — the verdict logic rejects a report whose numbering is missing,
+  duplicated, or reordered.`;
 
 // ---------------------------------------------------------------------------
 // Journey definitions
@@ -626,9 +629,13 @@ CHECKS:
 5. Offline protocol install: while offline, install the Sample Protocol (its
    bytes are bundled) → "Protocol imported" toast.
 6. Offline interview: still offline, start an interview (case ID
-   "offline-check") and advance through the first 3 stages.
-7. Back online (setOffline(false)), reload: the app resumes normally and the
-   in-progress session is resumable.
+   "offline-check") and advance through the first 3 stages. Step writes are
+   fire-and-forget: record the reached [data-stage-step], then poll
+   IndexedDB (database "interviewer") via page.evaluate until the session
+   row's currentStep matches it — the offline progress must actually commit.
+7. Back online (setOffline(false)), reload: the app resumes normally and
+   resuming the in-progress session reopens it at the SAME step recorded in
+   check 6 (assert the [data-stage-step], not merely that Resume works).
 8. Console sweep: during a fresh online boot, no console errors beyond the
    documented CSP/cloudflareinsights noise.
 9. Status chips: the status row shows a storage-durability chip
@@ -747,7 +754,9 @@ Do, in order:
   },
 );
 
-if (!preflight || !preflight.ok) {
+// Any reported preflight failure blocks, regardless of the ok boolean — an
+// internally inconsistent report must fail closed.
+if (!preflight || !preflight.ok || preflight.failures.length) {
   const failures = preflight
     ? preflight.failures
     : ['preflight agent returned no result'];
@@ -860,9 +869,26 @@ for (const r of results.filter(Boolean)) {
   // A truncated report must not pass: every numbered check must be present.
   const expected = expectedChecks[r.journey];
   if (expected && r.checks.length !== expected) {
-    inconsistentJourneys.push(r.journey);
+    if (!inconsistentJourneys.includes(r.journey))
+      inconsistentJourneys.push(r.journey);
     automationIssues.push(
       `journey "${r.journey}" returned ${r.checks.length} of ${expected} expected checks; treated as incomplete`,
+    );
+  }
+  // Numbering must be the complete ordered set: each check's name begins
+  // with its 1-based position, so an omitted, duplicated, or reordered
+  // check cannot hide behind a correct count (and allowedSkips positions
+  // stay bound to the checks they were written for).
+  const misnumbered = r.checks
+    .map((c, i) => ({ c, n: i + 1 }))
+    .filter(({ c, n }) => !new RegExp(`^\\s*${n}(?:[.)\\s]|$)`).test(c.name));
+  if (misnumbered.length) {
+    if (!inconsistentJourneys.includes(r.journey))
+      inconsistentJourneys.push(r.journey);
+    automationIssues.push(
+      `journey "${r.journey}" returned misnumbered check(s) at position(s) ${misnumbered
+        .map(({ n }) => n)
+        .join(', ')}; treated as incomplete`,
     );
   }
   // A skip is only acceptable where the prompt explicitly allows one; any
