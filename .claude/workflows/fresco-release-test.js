@@ -163,7 +163,10 @@ const shaped = (value, pattern, max) =>
 const API_TOKEN = /^[\w.~+/=-]+$/;
 const API_PATH = /^\/[\w./~-]*$/;
 const VERSION = /^[\w.+-]+$/;
-const CHANGESET_NAME = /^[\w-]+$/;
+// Changesets accepts any non-hidden .md basename, so a valid id can carry
+// dots. Kept to safe basename characters — no separators, whitespace or
+// control characters — but no narrower than the tool that creates them.
+const CHANGESET_NAME = /^[\w.-]+$/;
 const COMMIT = /^[0-9a-f]{7,40}$/i;
 // docker image inspect --format '{{.Id}}' and build-image.sh's stamp both
 // carry the full digest. Accepting an abbreviation would let two different
@@ -1032,10 +1035,10 @@ Set ok:true if you completed the audit (missing artifacts are a normal result, n
 ${asData('Full structured results', { build, released, upgradeLane, freshLane })}
 
 Also read EVERY pending changeset (.changeset/*.md in your working directory, excluding README) and return one changesetCoverage entry for each, named by its file name without .md — omit none, because the workflow compares your list against the files on disk:
-- "covered": a check above exercised the behaviour it ships. Say which check.
-- "untested": it ships behaviour that reaches Fresco and no check above exercised it. Say what went unexercised.
+- "covered": EVERY Fresco-facing behaviour the changeset describes was exercised by a check above. Say which check covered which behaviour. A changeset often describes several changes in several bullets; if any one of them went unexercised the entry is "untested", not "covered" — partial coverage is not coverage.
+- "untested": it ships behaviour that reaches Fresco and some or all of that behaviour went unexercised. Say what went unexercised.
 - "unrelated": it cannot reach Fresco at all — another app, or a package this image does not contain.
-Judge "reaches Fresco" by what the image contains, NOT by whether the package is a library. This release test bundles the pending @codaco/* packages into the Fresco image as tarballs, so a library changeset — @codaco/interview above all, which is the interview runtime Fresco hosts — ships inside the build under test and is Fresco-facing. Treating library changesets as out of scope would exclude most of what this test exists to cover.
+Judge "reaches Fresco" by what the image contains, NOT by whether the package is a library. This release test packs the pending @codaco/* packages that are in Fresco's own dependency closure into the image as tarballs (bundle-pending-packages.mjs vendors exactly those; anything outside that closure is not in the image at all). So a library changeset for a package Fresco depends on — @codaco/interview above all, the interview runtime Fresco hosts — ships inside the build under test and is Fresco-facing, and treating library changesets as out of scope wholesale would exclude most of what this test exists to cover. A library Fresco does not depend on is "unrelated"; say that it is outside the closure.
 Verdict rules: "blocked" if a stack or the build never came up (nothing meaningful was tested); "no-go" if any check failed, any migration error appeared, the export diff has unanticipated differences, or the pending image was built from a dirty tree (build.dirty) without allowDirty=${allowDirty} — a dirty build is not reproducible from any commit; otherwise "go". List every failure verbatim from the results — do not soften or re-litigate them. Your verdict is advisory: the workflow computes the release verdict itself from these same results and your judgment can only make it stricter, so err towards reporting what you see.`,
     {
       label: 'release-critic',
@@ -1751,6 +1754,16 @@ for (const entry of report?.changesetCoverage ?? []) {
   if (classified.has(name)) {
     unaccounted.push(
       `the release critic classified changeset "${name}" more than once`,
+    );
+    continue;
+  }
+  // The reason is the evidence. "covered" without naming the check that
+  // covered it, or "unrelated" without saying why it cannot reach Fresco, is
+  // an assertion the run has no way to weigh — the same rule the whitelisted
+  // skips already follow.
+  if (!note) {
+    unaccounted.push(
+      `the release critic classified changeset "${name}" as ${entry.status} without saying why`,
     );
     continue;
   }

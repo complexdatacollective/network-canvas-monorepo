@@ -237,7 +237,18 @@ test('a failed check blocks the release even when the critic reports go', async 
   r['release-critic'] = {
     verdict: 'go',
     failures: [],
-    untestedShippedChanges: [],
+    changesetCoverage: [
+      {
+        changeset: 'fresco-release-blocker-fixes',
+        status: 'covered',
+        note: 'the fresh lane exercised setup',
+      },
+      {
+        changeset: 'interview-node-labels',
+        status: 'covered',
+        note: 'the export diff covered node labels',
+      },
+    ],
     summary: 'Looks fine to me.',
   };
   const { result } = await run(r);
@@ -751,7 +762,18 @@ test('the critic can only make the verdict stricter, never looser', async () => 
   named['release-critic'] = {
     verdict: 'no-go',
     failures: ['the activity feed lost its pre-upgrade events'],
-    untestedShippedChanges: [],
+    changesetCoverage: [
+      {
+        changeset: 'fresco-release-blocker-fixes',
+        status: 'covered',
+        note: 'the fresh lane exercised setup',
+      },
+      {
+        changeset: 'interview-node-labels',
+        status: 'covered',
+        note: 'the export diff covered node labels',
+      },
+    ],
     summary: 'One regression.',
   };
   const { result } = await run(named);
@@ -767,7 +789,18 @@ test('the critic can only make the verdict stricter, never looser', async () => 
   unnamed['release-critic'] = {
     verdict: 'no-go',
     failures: [],
-    untestedShippedChanges: [],
+    changesetCoverage: [
+      {
+        changeset: 'fresco-release-blocker-fixes',
+        status: 'covered',
+        note: 'the fresh lane exercised setup',
+      },
+      {
+        changeset: 'interview-node-labels',
+        status: 'covered',
+        note: 'the export diff covered node labels',
+      },
+    ],
     summary: 'Bad vibes.',
   };
   const second = await run(unnamed);
@@ -822,13 +855,54 @@ test('the critic is told library changesets are Fresco-facing', () => {
   );
   assert.match(
     critic,
-    /bundles the pending @codaco\/\* packages into the Fresco image/,
+    /packs the pending @codaco\/\* packages that are in Fresco's own dependency closure/,
+    'the prompt must describe what the bundler actually vendors',
+  );
+  assert.match(
+    critic,
+    /partial coverage is not coverage/,
+    'a changeset with one unexercised behaviour is untested, not covered',
   );
   for (const status of ['covered', 'untested', 'unrelated'])
     assert.ok(
       critic.includes(`"${status}"`),
       `the prompt must define ${status}`,
     );
+});
+
+test('a classification without its reason is not a classification', async () => {
+  // "covered" that names no check, or "unrelated" that says nothing, is an
+  // assertion the run cannot weigh — the rule the whitelisted skips follow.
+  for (const status of ['covered', 'unrelated', 'untested']) {
+    const r = happyPath();
+    r['release-critic'].changesetCoverage[1] = {
+      changeset: 'interview-node-labels',
+      status,
+      note: status === 'untested' ? '   ' : '',
+    };
+    const { result } = await run(r);
+    assert.equal(result.verdict, 'incomplete', status);
+    assert.equal(result.releasable, false, status);
+    assert.ok(
+      result.unaccounted.some((u) => u.includes('without saying why')),
+      `${status}: ${JSON.stringify(result.unaccounted)}`,
+    );
+  }
+});
+
+test('a dotted changeset id is a valid changeset id', async () => {
+  // Changesets accepts any non-hidden .md basename; rejecting one would make
+  // an honest run incomplete for a filename.
+  const r = happyPath();
+  r['audit-artifacts'].changesets = ['fix.foo', 'interview-node-labels'];
+  r['release-critic'].changesetCoverage[0] = {
+    changeset: 'fix.foo',
+    status: 'covered',
+    note: 'the upgrade lane exercised it',
+  };
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'go');
+  assert.equal(result.releasable, true);
 });
 
 test('untested shipped behaviour caps certification', async () => {
