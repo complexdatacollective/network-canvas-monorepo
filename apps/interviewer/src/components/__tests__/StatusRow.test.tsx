@@ -199,6 +199,41 @@ describe('StatusRow', () => {
     );
   });
 
+  // The mirror case: tabbing on opens the explanation, so the first Enter must
+  // collapse it. Only a pointer press arms the withdrawal, so ordinary
+  // keyboard focus must not leave an activation primed to be eaten.
+  it('collapses on the first Enter after tabbing onto a chip', async () => {
+    const user = userEvent.setup();
+    render(
+      <StatusRowView
+        protocolCount={0}
+        interviewCount={0}
+        mode="pin"
+        durability={{ persisted: true, usage: null }}
+        installed={false}
+      />,
+    );
+
+    // Tab order: the counts link, then the encryption chip.
+    await user.tab();
+    await user.tab();
+    expect(screen.getByTestId('encryption-status-trigger')).toHaveFocus();
+    await waitFor(() =>
+      expect(screen.getByText(/^Encrypted\./)).toBeInTheDocument(),
+    );
+
+    await user.keyboard('{Enter}');
+    await waitFor(() =>
+      expect(screen.queryByText(/^Encrypted\./)).not.toBeInTheDocument(),
+    );
+
+    // Space is the other activation key and must toggle the same way.
+    await user.keyboard('[Space]');
+    await waitFor(() =>
+      expect(screen.getByText(/^Encrypted\./)).toBeInTheDocument(),
+    );
+  });
+
   // The other half of that contract: a second tap on an already-open chip
   // dismisses it, rather than being swallowed as a repeat of the first press.
   it('closes again on a second tap of the same chip', async () => {

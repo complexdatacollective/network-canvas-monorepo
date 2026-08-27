@@ -63,11 +63,19 @@ const statusIconClassName = 'tablet-landscape:size-3.5 size-4';
 //
 // The one subtlety is the trigger's own activation. A press on an unfocused
 // trigger fires focus (which opens) and then click (which would toggle back
-// closed), so that first activation has to be withdrawn or a tap would close
-// what it just opened. Only that one: every other activation must still
-// toggle, otherwise a keyboard user who presses Escape is stranded — focus
-// stays on the trigger, so no further focus event arrives, and Enter or Space
-// could never reopen the explanation.
+// closed), so that press's own activation has to be withdrawn or a tap would
+// close what it just opened.
+//
+// Withdrawing it is narrowly scoped, because every activation that is *not*
+// that press must still toggle. Two ways to get this wrong, both of which
+// strand a keyboard user on a chip they cannot operate: withdraw every
+// activation and Enter can never reopen the explanation after Escape (focus
+// stays on the trigger, so no further focus event arrives); arm the
+// withdrawal on any focus and the first Enter after tabbing on is eaten
+// instead of collapsing what tabbing on opened. So only a pointer press arms
+// it — tracked across the press, since focus lands between pointerdown and
+// pointerup — and a keyboard-synthesised activation (`detail === 0`) is never
+// withdrawn regardless.
 function StatusChipPopover({
   testId,
   className,
@@ -85,10 +93,13 @@ function StatusChipPopover({
   const triggerId = useId();
   const triggerRef = useRef<HTMLSpanElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
-  // Set when focus opened the popover, and consumed by the activation that
-  // immediately follows — the two halves of a single press on an unfocused
-  // trigger. Cleared on every close so a later activation toggles normally.
-  const openedByFocus = useRef(false);
+  // True between pointerdown and pointerup on the trigger, which is the window
+  // the focus it causes lands in — how focus from a press is told apart from
+  // focus from tabbing on.
+  const pressing = useRef(false);
+  // Set when a press's own focus opened the popover, and consumed by that same
+  // press's click. Never set by keyboard focus.
+  const openedByPress = useRef(false);
 
   const keepOpenFor = (target: EventTarget | null) =>
     target instanceof Node &&
@@ -111,7 +122,7 @@ function StatusChipPopover({
         ) {
           return;
         }
-        if (!nextOpen) openedByFocus.current = false;
+        if (!nextOpen) openedByPress.current = false;
         setOpen(nextOpen);
       }}
     >
@@ -126,13 +137,26 @@ function StatusChipPopover({
             tabIndex={0}
             data-testid={testId}
             className={className}
+            onPointerDown={() => {
+              // A new press starts a fresh interaction, so anything left over
+              // from an abandoned one (pressed, then released elsewhere) is
+              // discarded rather than spent on this press's activation.
+              pressing.current = true;
+              openedByPress.current = false;
+            }}
+            onPointerUp={() => {
+              pressing.current = false;
+            }}
+            onPointerCancel={() => {
+              pressing.current = false;
+            }}
             onFocus={() => {
-              openedByFocus.current = true;
+              openedByPress.current = pressing.current;
               setOpen(true);
             }}
             onBlur={(event) => {
               if (!keepOpenFor(event.relatedTarget)) {
-                openedByFocus.current = false;
+                openedByPress.current = false;
                 setOpen(false);
               }
             }}
@@ -141,8 +165,11 @@ function StatusChipPopover({
                 preventBaseUIHandler?: () => void;
               },
             ) => {
-              if (openedByFocus.current) {
-                openedByFocus.current = false;
+              const openedByThisPress = openedByPress.current;
+              openedByPress.current = false;
+              // detail === 0 marks an activation synthesised from Enter or
+              // Space, which no press can have opened — it must always toggle.
+              if (openedByThisPress && event.detail !== 0) {
                 event.preventBaseUIHandler?.();
               }
             }}
