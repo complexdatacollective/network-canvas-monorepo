@@ -1483,6 +1483,14 @@ test('the harness writes its own files where git cannot see them', () => {
     !/stay in your working directory for any files/.test(crudPrompt),
     'the prompt must not send file writes into the tracked checkout',
   );
+  // The rule the agent actually follows. A path scan can only catch
+  // destinations that look like paths; this pins the instruction that governs
+  // every write, including ones with no filename shape at all.
+  assert.match(
+    crudPrompt,
+    /Write any file you need under \$\{ARTIFACTS\}\/crud\/[^.]*and NOWHERE else in the checkout/,
+    "the prompt must confine the agent's writes to the ignored artifacts directory",
+  );
 
   const harness = /const HARNESS = '([^']+)'/.exec(source)?.[1];
   const suffix = /const ARTIFACTS = `\$\{HARNESS\}\/([^`]+)`/.exec(source)?.[1];
