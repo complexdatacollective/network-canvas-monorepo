@@ -150,9 +150,11 @@ activate schema 9 until the consumer stack is ready.
   underscores, private-use tags, duplicates, and casing.
 - Preference parsing: q-values, stable ties, q=0, duplicates, whitespace,
   wildcard, empty/malformed header.
-- Matcher: exact match, `es-MX` to `es`, requested miss to default, missing
-  default to first declared available, reordered fallback, invalid selected
-  locale, one-locale protocol.
+- Matcher: exact match, browser/header `es-MX` to `es`, an explicit `es-MX`
+  passed alone to declared `es`, and a malformed or unmatched explicit value
+  to protocol default without consulting lower-priority preferences; requested
+  miss to default, missing default to first declared available, reordered
+  fallback, invalid selected locale, and one-locale protocol.
 - Metadata: autonym/fallback label, LTR, Arabic/Hebrew RTL, feature-absent
   fallbacks.
 - Prove no helper reads browser globals by importing and running it in the
@@ -207,9 +209,11 @@ activate schema 9 until the consumer stack is ready.
 9. In the schema-9 root refinement, collect every localized string and reject
    keys not declared by the root localization config. Emit the issue at the
    offending key path.
-10. Implement `analyzeProtocolLocalization` over the same collected hits. It
-    returns structured warnings for missing locales and the runtime fallback
-    locale without changing `validateProtocol`.
+10. Implement `analyzeProtocolLocalization` over the same collected hits. For
+    each missing-locale warning, call the runtime resolver with that warning's
+    declared locale as `selectedLocale` and report the resolver's source locale
+    as `fallbackLocale`. Keep this structured warning analysis separate from
+    `validateProtocol`.
 11. Change interface-owned option validation to pin values/order/semantic
     flags while permitting localized labels.
 12. Move Narrative Pedigree label uniqueness to the protocol-level schema-9
@@ -224,7 +228,8 @@ activate schema 9 until the consumer stack is ready.
 - One positive and negative test for every localizable field family.
 - Extra declared-valid-but-protocol-undeclared keys fail at their exact paths.
 - Missing default and nondefault translations validate successfully and
-  generate warnings.
+  generate warnings whose fallback locale matches runtime resolution for the
+  missing declared locale.
 - Empty objects, empty values on fields whose existing contract is nonempty,
   invalid tags, and noncanonical tags fail. Fields whose schema-8 contract
   deliberately allowed an empty value retain that behavior.
@@ -444,7 +449,9 @@ activate schema 9 until the consumer stack is ready.
    add locale, reorder, change default, remove locale, and relabel `und`.
 2. Implement an atomic traversal over schema-tagged localized paths for locale
    removal/relabel. Reuse the protocol-validation collector output rather than
-   recursively rewriting arbitrary objects.
+   recursively rewriting arbitrary objects. Relabeling the current default
+   updates `defaultLocale` in the same transaction; relabeling any other locale
+   leaves it unchanged.
 3. Reject locale relabel collisions. Confirm before destructive removal, show
    affected translation count, and prevent operations that leave an empty
    localized string.
@@ -476,7 +483,9 @@ activate schema 9 until the consumer stack is ready.
 
 - Field edits preserve translations in nonactive locales.
 - Missing translations save and warn; extra keys/empty maps fail.
-- Locale add/reorder/default/remove/relabel are undoable and atomic.
+- Locale add/reorder/default/remove/relabel are undoable and atomic. Relabeling
+  the default updates the declaration, `defaultLocale`, and every localized
+  key together; an injected failure rolls all of them back.
 - Destructive confirmation includes accurate counts and cancel is a no-op.
 - A removal that would empty a field is refused.
 - Coverage counts match collected schema hits.
@@ -575,8 +584,12 @@ activate schema 9 until the consumer stack is ready.
    requested locales or explicit locale from the route to a typed action
    boundary unless Next's request APIs are already the established action
    pattern.
-5. Add a stable invalid/undeclared-locale fallback to protocol default. Do not
-   turn a malformed locale query into an interview-creation failure.
+5. Treat an explicit query value as the sole preference whenever the parameter
+   is present. A canonical regional variant may best-fit to a declared locale;
+   a malformed value or one with no declared best-fit match selects the
+   protocol default without consulting `Accept-Language`. Do not turn a
+   malformed locale query into an interview-creation failure or persist the
+   raw value.
 6. Include stored locale in `GetInterviewByIdQuery`, `mapInterviewPayload`, and
    `SessionPayload` before server render. InterviewClient does not inspect
    `navigator.languages`.
@@ -594,7 +607,9 @@ activate schema 9 until the consumer stack is ready.
 
 - `Accept-Language` quality ordering, no header, malformed entries, regional
   match, and protocol-default fallback.
-- Explicit URL locale outranks header; undeclared explicit locale falls back.
+- Explicit URL locale outranks the header; `es-MX` best-fits to declared `es`,
+  while malformed or unmatched explicit values select the protocol default
+  without consulting the header.
 - POST participant identifier and locale parsing preserves current security
   behavior.
 - Prisma creation/backfill and deploy migration rollback.

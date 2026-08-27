@@ -202,10 +202,13 @@ function analyzeProtocolLocalization(
 ```
 
 The analyser emits one warning for each declared locale missing at each
-localized path. `fallbackLocale` is computed by the same resolver used by the
-interview, so Architect can say what a participant will actually see. A
-protocol using `und` also receives an Architect-level "language not
-identified" warning and a guided relabel action.
+localized path. For that warning it calls `resolveLocalizedString` with the
+warning's declared `locale` as `selectedLocale`; `fallbackLocale` is the
+resolver's returned source locale. This defines what a participant who
+selected that locale will actually see and keeps Architect coverage identical
+to Interview runtime fallback. A protocol using `und` also receives an
+Architect-level "language not identified" warning and a guided relabel
+action.
 
 This separation prevents production hosts from treating normal translation
 work-in-progress as invalid while giving Architect enough structured data to
@@ -326,17 +329,23 @@ The returned value is required to be one of the declared locales; otherwise
 the helper fails closed to `defaultLocale`. Priority is established before the
 call:
 
-1. An explicit locale chosen by the participant or researcher is passed as
-   the only requested locale.
+1. If an explicit locale was supplied by a participant or researcher, the
+   host passes that raw value as the only requested locale. A valid regional
+   variant may best-fit to a declared locale (`es-MX` may select declared
+   `es`). If the value is malformed or has no declared best-fit match, the
+   protocol default wins; lower-priority browser or header preferences are not
+   consulted.
 2. Otherwise a Vite host passes `navigator.languages`, falling back to
    `navigator.language`.
 3. Otherwise a server host passes the ordered, quality-weighted result of
    `Accept-Language` parsing.
 4. If the list is empty or no locale matches, the protocol default wins.
 
-An explicit choice is not concatenated with browser languages. This prevents
-a later browser language from overriding the user's stated preference for a
-partially translated field.
+Explicit-value presence is determined before normalization, so even a
+malformed explicit value is not silently replaced by a browser preference.
+An explicit choice is never concatenated with browser languages. This
+prevents a later browser language from overriding the user's stated
+preference for a partially translated field.
 
 ### 6.3 Per-string resolution
 
@@ -487,9 +496,11 @@ not silently switch an interview already under way.
 
 - The onboarding route parses `Accept-Language` on the server and selects a
   declared locale before creating the interview.
-- A valid explicit `locale`/`lang` recruitment parameter, if supplied, is the
-  only requested locale and outranks the header. Invalid or undeclared values
-  fall back safely and are not persisted.
+- An explicit `locale`/`lang` recruitment parameter, if supplied, is the only
+  requested locale and outranks the header. A canonical regional variant may
+  best-fit to a declared locale (`es-MX` to `es`); malformed values and values
+  with no declared best-fit match select `defaultLocale`. The raw parameter is
+  never persisted.
 - Prisma `Interview` gains a required locale column. The create action reads
   the protocol's localization declaration, validates any explicit choice,
   and stores the selected locale atomically with the new interview.
@@ -552,9 +563,12 @@ default until another default is chosen and disabled if it would leave any
 localized string empty.
 
 Renaming/relabeling a locale canonicalizes the new tag and atomically moves
-every matching key. A collision with an existing locale is rejected rather
-than merged. The special v8 migration action changes `und` to a chosen locale
-across the declaration and all localized strings in one transaction.
+the declaration entry and every matching localized-string key. If the old tag
+is `defaultLocale`, the same transaction updates `defaultLocale` to the new
+tag; otherwise the default remains unchanged. A collision with an existing
+locale is rejected rather than merged, and any failure rolls back the
+declaration, default, and all string-key changes together. The special v8
+migration action changes `und` to a chosen locale under the same rules.
 
 ### 9.2 Localized fields
 
@@ -679,9 +693,12 @@ schema.
 - Localization declaration default membership and ordering.
 - Empty maps, required-field empty translations, undeclared keys, and
   at-least-one-key enforcement at every tagged schema site.
-- Missing translations remain schema-valid and produce exact warning paths.
-- FormatJS best-fit matching, related variants, default fallback, locale-order
-  fallback, invalid preferences, and empty preference lists.
+- Missing translations remain schema-valid, produce exact warning paths, and
+  report the fallback produced when the missing warning locale is selected.
+- FormatJS best-fit matching, related variants, explicit `es-MX` to declared
+  `es`, malformed or unmatched explicit values to protocol default without
+  consulting lower-priority preferences, locale-order fallback, invalid
+  preferences, and empty preference lists.
 - `Accept-Language` quality ordering, stable ties, duplicates, wildcards, and
   malformed values.
 - Direction and display-name feature fallbacks.
@@ -703,8 +720,9 @@ schema.
 
 ### 13.3 Architect
 
-- Add/reorder/change-default/remove/relabel locale flows, including atomic
-  rollback on invalid edits.
+- Add/reorder/change-default/remove/relabel locale flows, including updating
+  `defaultLocale` when its tag is relabeled and atomic rollback of the
+  declaration, default, and localized-string keys on invalid edits.
 - Incomplete localized strings save successfully and appear as warnings.
 - Undeclared keys and empty localized strings fail loudly.
 - Coverage aggregation and exact field navigation.
