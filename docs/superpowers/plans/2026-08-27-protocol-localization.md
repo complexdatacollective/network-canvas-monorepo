@@ -58,9 +58,10 @@ strings. The current-version flip is deliberately late.
 
 Prefer one coordinated pull request because switching `CurrentProtocol` to
 schema 9 changes public field types across Architect, Interview, builders,
-hosts, and tests. If review size requires stacked pull requests, only the
-framework-free matcher utilities may land independently; do not export or
-activate schema 9 until the consumer stack is ready.
+hosts, Studio's protocol store, and tests. If review size requires stacked
+pull requests, only the framework-free matcher utilities may land
+independently; do not export or activate schema 9 until the consumer stack is
+ready.
 
 ## Milestone 0: Establish the implementation baseline
 
@@ -76,6 +77,7 @@ activate schema 9 until the consumer stack is ready.
 - `apps/interviewer/src/lib/db/**`
 - `apps/fresco/lib/db/schema.prisma`
 - `apps/fresco/scripts/migrate-protocols.ts`
+- `apps/studio/server/src/protocol/{sectionize,assemble,validate,migrate}.ts`
 - `packages/network-exporters/src/input.ts`
 
 **Work:**
@@ -86,7 +88,8 @@ activate schema 9 until the consumer stack is ready.
 3. Run the current focused baseline suites:
    `@codaco/protocol-validation` tests/typecheck, `@codaco/interview`
    tests/typecheck, Architect unit tests/typecheck, Interviewer unit
-   tests/typecheck, Fresco unit tests/typecheck, and network-exporters tests.
+   tests/typecheck, Fresco unit tests/typecheck, Studio server unit
+   tests/typecheck, and network-exporters tests.
 4. Inventory every participant render of the fields listed in the design.
    Use schema searches plus TypeScript call sites; do not rely only on a text
    search for `label`.
@@ -191,13 +194,15 @@ activate schema 9 until the consumer stack is ready.
    example, `min(1)` for required prompt text) and attaches a stable Zod
    metadata descriptor.
 3. Add the required root `localization` declaration to protocol schema 9.
-4. Convert the full participant-facing field inventory from the design:
-   codebook labels, variable labels/options, prompts, forms, panels,
+4. Convert the full participant-facing field inventory from the design: stage
+   labels, codebook labels, variable labels/options, prompts, forms, panels,
    Information, Anonymisation, Family Pedigree, Network Composer, Roster,
    Narrative, and Narrative Pedigree.
 5. Split shared text/asset item shapes where necessary so asset ids remain
    strings while rendered text becomes localized.
-6. Keep protocol/stage author metadata and semantic values as plain strings.
+6. Keep protocol author metadata, `interviewScript`, and semantic values as
+   plain strings. Stage `label` is localized because active Interview render
+   paths expose it to participants.
 7. Implement a schema-metadata walker modeled on
    `collectEntityAttributeReferences.ts`. It must traverse objects, arrays,
    records, optionals, transforms, discriminated unions, and reused schemas,
@@ -279,12 +284,15 @@ activate schema 9 until the consumer stack is ready.
    target validators for schema 7, 8, and 9. Preserve the default return as
    `CurrentProtocol`; add typed overloads/generics only where they remain
    honest for supported target schemas.
-9. Update `hashProtocol` to hash
-   `{ localization, codebook, stages }`. Decide the compatibility signature
-   explicitly: schema-8 callers either pass an optional localization until
-   activation or use a version-discriminated helper so old tests remain
-   meaningful.
-10. Add structural invariant tests comparing before/after stage ids/order and
+9. Change `ProtocolMigrator` caching to include the effective target version
+   in its internal identity. Preserve caller-facing `cacheKey` behavior and
+   make `clearCache(cacheKey)` clear all target variants for that caller key.
+10. Update `hashProtocol` to hash
+    `{ localization, codebook, stages }`. Decide the compatibility signature
+    explicitly: schema-8 callers either pass an optional localization until
+    activation or use a version-discriminated helper so old tests remain
+    meaningful.
+11. Add structural invariant tests comparing before/after stage ids/order and
     option values. Use the existing migration fuzz approach for copy purity
     and deterministic output.
 
@@ -296,6 +304,9 @@ activate schema 9 until the consumer stack is ready.
 - Optional empty content is omitted and required content is preserved.
 - Migration warnings include the `und` instruction.
 - Migration to target 8 post-validates schema 8 after schema 9 exists.
+- The same caller cache key used first for target 8 and then target 9 returns
+  the correct distinct schema versions; repeated calls at one target share the
+  cached result; clearing the key removes both variants.
 - Hash changes for a translation, default locale, or locale order; name,
   description, and derived locale metadata do not affect it.
 
@@ -364,6 +375,8 @@ activate schema 9 until the consumer stack is ready.
 - `packages/interview/src/localization/LocalizedText.tsx` (new, only if a wrapper materially reduces repeated accessible markup)
 - `packages/interview/src/Shell.tsx`
 - `packages/interview/src/components/Navigation/**`
+- `packages/interview/src/components/StagesMenu.tsx`
+- `packages/interview/src/interfaces/NarrativePedigree/components/NarrativePedigreeView.tsx`
 - Participant interface, prompt, form, panel, content, and codebook label renderers identified in Milestone 0
 - `packages/interview/src/index.ts`
 - Focused unit, Storybook, and interface-matrix tests
@@ -387,20 +400,25 @@ activate schema 9 until the consumer stack is ready.
    ids or values.
 7. Update node/edge/variable display fallbacks to use localized `label`, while
    export and semantic code continues to use stable `name` and keys.
-8. Remove label-based runtime comparisons discovered by the type transition;
+8. Resolve stage `label` in the participant Stages menu and Narrative Pedigree
+   snapshot title. Researcher/editor surfaces choose an explicit editor locale
+   or the protocol default rather than treating the map as a string.
+9. Remove label-based runtime comparisons discovered by the type transition;
    compare stable values or ids.
-9. Apply selected direction to protocol content regions and actual fallback
-   direction to leaf content. Audit physical spacing/alignment, arrows, and
-   drag behavior under RTL without mirroring graph coordinates.
-10. Keep hardcoded runtime-owned English copy out of LocalizedString and note
+10. Apply selected direction to protocol content regions and actual fallback
+    direction to leaf content. Audit physical spacing/alignment, arrows, and
+    drag behavior under RTL without mirroring graph coordinates.
+11. Keep hardcoded runtime-owned English copy out of LocalizedString and note
     it in tests/documentation as the separate application-catalog boundary.
-11. Ensure analytics records only the selected declared locale if approved;
+12. Ensure analytics records only the selected declared locale if approved;
     never send raw browser preference lists or participant text.
 
 **Tests:**
 
 - Exact, variant, default, and locale-order fallback in representative prompt,
   form, option, panel, and canvas label renderers.
+- Stage-menu items and Narrative Pedigree snapshot titles resolve selected and
+  fallback stage labels.
 - `lang`/`dir` on selected and mixed-fallback strings.
 - Changing locale preserves all session/network state and triggers one sync.
 - Resume uses stored locale.
@@ -457,7 +475,9 @@ activate schema 9 until the consumer stack is ready.
    localized string.
 4. Add `LocalizedStringField` as a protocol-specific Architect component.
    Integrate it into every participant-copy editor without moving validation
-   ownership away from the actual field.
+   ownership away from the actual field. This includes the stage-label editor;
+   Architect's timeline and editor headers resolve it using explicit editor
+   locale/default fallback.
 5. Add `/protocol/localization`, export its page, and add a project-nav tab with
    a warning indicator driven by localization coverage.
 6. Add memoized selectors over `analyzeProtocolLocalization`, grouped by
@@ -557,9 +577,12 @@ activate schema 9 until the consumer stack is ready.
 **Files:**
 
 - `apps/fresco/lib/db/schema.prisma`
-- `apps/fresco/lib/db/migrations/<timestamp>_add_interview_locale/migration.sql` (new)
+- `apps/fresco/lib/db/migrations/<timestamp>_add_protocol_localization_and_interview_locale/migration.sql` (new)
+- `apps/fresco/lib/db/index.ts`
 - `apps/fresco/schemas/interviews.ts`
+- `apps/fresco/actions/protocols.ts`
 - `apps/fresco/actions/interviews.ts`
+- Fresco protocol queries/result-extension code that reconstructs a protocol
 - `apps/fresco/app/(interview)/onboard/[protocolId]/route.ts`
 - `apps/fresco/app/(interview)/interview/[interviewId]/page.tsx`
 - `apps/fresco/app/(interview)/interview/[interviewId]/mapInterviewPayload.ts`
@@ -570,38 +593,44 @@ activate schema 9 until the consumer stack is ready.
 
 **Work:**
 
-1. Add a non-null `locale` column to `Interview`. Coordinate its backfill with
-   schema-9 protocol migration: existing interviews tied to migrated protocols
-   become `und`. The SQL default is a deployment safety net, not the selection
-   algorithm for new rows.
-2. Extend onboarding GET and POST parsing to accept an optional `locale` or
+1. Add required JSON `localization` storage to `Protocol` and a non-null
+   `locale` column to `Interview`. Backfill protocol rows with the migrated
+   `und` declaration and existing interviews with `und` in coordination with
+   schema-9 migration. SQL defaults are deployment safety nets, not the
+   selection algorithm for new rows.
+2. Persist `protocol.localization` during import and include it in every
+   protocol select/reconstruction path, current-schema result extension,
+   export, and interview payload mapping. A stored schema-9 protocol must
+   round-trip `{ localization, stages, codebook }` without projection.
+3. Extend onboarding GET and POST parsing to accept an optional `locale` or
    choose one canonical parameter name (`locale` preferred in the typed API;
    optionally accept `lang` as a URL alias).
-3. In `createInterview`, fetch the protocol localization declaration with the
+4. In `createInterview`, fetch the protocol localization declaration with the
    schema version. Validate an explicit choice; otherwise parse the request
    `Accept-Language`. Select and persist the locale in the same create call.
-4. Avoid hidden request-global coupling in reusable actions. Pass the ordered
+5. Avoid hidden request-global coupling in reusable actions. Pass the ordered
    requested locales or explicit locale from the route to a typed action
    boundary unless Next's request APIs are already the established action
    pattern.
-5. Treat an explicit query value as the sole preference whenever the parameter
+6. Treat an explicit query value as the sole preference whenever the parameter
    is present. A canonical regional variant may best-fit to a declared locale;
    a malformed value or one with no declared best-fit match selects the
    protocol default without consulting `Accept-Language`. Do not turn a
    malformed locale query into an interview-creation failure or persist the
    raw value.
-6. Include stored locale in `GetInterviewByIdQuery`, `mapInterviewPayload`, and
+7. Include stored locale in `GetInterviewByIdQuery`, `mapInterviewPayload`, and
    `SessionPayload` before server render. InterviewClient does not inspect
    `navigator.languages`.
-7. Extend sync schema with locale and validate it against the interview's
+8. Extend sync schema with locale and validate it against the interview's
    protocol declaration before update. Keep the generic 400 response at the
    unauthenticated boundary.
-8. Update deploy-time migration tests to prove protocol content, hash, schema
-   version, and interview locale change coherently. Preserve in-progress step
-   indices and networks.
-9. Include locale in relevant administrative summaries only where it provides
-   useful research context; do not localize protocol names in dashboard
-   filters.
+9. Extend deploy-time protocol selection, conformance reconstruction, and
+   writes to carry `localization`. Prove localization, stages, codebook, hash,
+   schema version, and interview locale change coherently and roll back
+   together. Preserve in-progress step indices and networks.
+10. Include locale in relevant administrative summaries only where it provides
+    useful research context; do not localize protocol names in dashboard
+    filters.
 
 **Tests:**
 
@@ -612,7 +641,9 @@ activate schema 9 until the consumer stack is ready.
   without consulting the header.
 - POST participant identifier and locale parsing preserves current security
   behavior.
-- Prisma creation/backfill and deploy migration rollback.
+- Protocol import/read/current-schema reconstruction preserves localization;
+  Prisma creation/backfill and deploy migration rollback cover both protocol
+  localization and interview locale.
 - Payload server/client equality and no hydration warning.
 - Sync accepts declared locale, rejects arbitrary locale, and preserves freeze
   behavior for completed interviews.
@@ -621,6 +652,7 @@ activate schema 9 until the consumer stack is ready.
 
 - Fresco selects locale before first client render.
 - Existing interviews remain resumable after schema/database migration.
+- No schema-9 protocol row can lose its root localization declaration.
 - No raw preference list is stored.
 
 ## Milestone 9: Export selected locale without localizing analysis schema
@@ -670,25 +702,36 @@ activate schema 9 until the consumer stack is ready.
 - `packages/interview/src/protocolSchemaVersion.ts`
 - Architect schema-version constants and protocol source-authoring plugin
 - Interviewer and Fresco compatibility uses already derived from Interview
+- `apps/studio/server/src/protocol/sectionize.ts`
+- `apps/studio/server/src/protocol/assemble.ts`
+- `apps/studio/server/src/protocol/validate.ts`
+- `apps/studio/server/src/protocol/migrate.ts`
+- Studio protocol round-trip, diff, validation, migration, and publish tests
 - Any residual schema-version fixtures or documentation
 
 **Work:**
 
-1. Set `CURRENT_SCHEMA_VERSION = 9` and `CurrentProtocolSchema =
-ProtocolSchemaV9` only after Milestones 1-9 compile on the branch.
-2. Update current-version exports of interface-owned constants to schema 9.
+1. Add `localization` to Studio's settings section and strict schema, and prove
+   sectionize/assemble/diff/migrate/publish preserves it. Older stored section
+   manifests assemble unchanged before canonical migration adds `und`.
+2. Set `CURRENT_SCHEMA_VERSION = 9` and `CurrentProtocolSchema =
+ProtocolSchemaV9` only after Milestones 1-9 and the Studio compatibility
+   work compile on the branch.
+3. Update current-version exports of interface-owned constants to schema 9.
    Keep explicit schema-version imports where migration code needs old values.
-3. Confirm Interview's compatibility constant, Architect's typed constant,
-   Interviewer, and Fresco all derive 9 without new numeric literals.
-4. Run a literal-version search over active code, tests, scripts, fixture
+4. Confirm Interview's compatibility constant, Architect's typed constant,
+   Interviewer, Fresco, and Studio all derive 9 without new numeric literals.
+5. Run a literal-version search over active code, tests, scripts, fixture
    manifests, protocol archives, and documentation. Classify every remaining
    `8` as historical/versioned or fix it.
-5. Run publish-export verification after a full build so the new helper and
+6. Run publish-export verification after a full build so the new helper and
    schema types are present in packed artifacts.
 
 **Acceptance criteria:**
 
 - All modern hosts report schema 9 from their single source of truth.
+- Studio round-trips the complete schema-9 settings section without dropping
+  localization.
 - No current host constructs or accepts a schema-8-shaped `CurrentProtocol`.
 - Classic version boundaries remain unchanged.
 
@@ -719,6 +762,8 @@ pnpm --filter @codaco/interviewer test
 pnpm --filter @codaco/interviewer typecheck
 pnpm --filter fresco test
 pnpm --filter fresco typecheck
+pnpm --filter @codaco/studio-server test
+pnpm --filter @codaco/studio-server typecheck
 ```
 
 Use the actual package scripts if a filter name or test script differs at
@@ -754,7 +799,9 @@ image diff, and do not adopt a broad baseline rewrite.
    and export.
 9. Fresco direct recruitment URL with explicit locale and conflicting header:
    explicit locale wins.
-10. Classic app attempts schema 9: clear incompatibility, no partial import.
+10. Studio sectionizes, assembles, migrates, validates, and publishes a
+    multilingual protocol without dropping localization.
+11. Classic app attempts schema 9: clear incompatibility, no partial import.
 
 **Acceptance criteria:**
 
@@ -780,9 +827,13 @@ image diff, and do not adopt a broad baseline rewrite.
 **Work:**
 
 1. Use the changeset skill to classify the breaking public schema/type changes
-   and coordinated package/app releases. Keep the work in the normal changeset
-   lane; do not mix separately gated Documentation or Website releases into
-   the same changeset.
+   and coordinated package/app releases. The normal-lane changeset must include
+   the converted published protocol artifacts in
+   `@codaco/development-protocol` and `@codaco/sample-protocol`, alongside the
+   affected libraries and apps, so npm and the latest-development-protocol
+   delivery path actually receive schema 9. Add a separate Studio-lane
+   changeset for affected Studio packages. Do not mix Studio, Documentation,
+   or Website with the normal lane or with one another.
 2. Explain in release notes:
    - schema 9 and `LocalizedString`;
    - missing translation warnings versus validation errors;
@@ -839,9 +890,12 @@ image diff, and do not adopt a broad baseline rewrite.
   CSV/GraphML metadata.
 - Schema-8 stored and imported protocols migrate without changing stages or
   collected answer shapes.
+- Fresco persists the root localization declaration on import, read, migration,
+  payload construction, and export; Studio round-trips it in protocol settings.
 - Current-version constants are 9 across all modern consumers; Classic remains
   explicitly unsupported.
 - Relevant tests, corpus validation, typecheck, lint, knip, builds, E2E,
   accessibility review, and inspected visual baselines pass.
 - Changesets and migration documentation clearly communicate the breaking
-  contract and the application-copy non-goal.
+  contract and the application-copy non-goal; both published compatibility
+  protocol packages and the separate Studio release lane are included.
