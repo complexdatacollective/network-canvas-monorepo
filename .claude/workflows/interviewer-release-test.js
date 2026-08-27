@@ -836,14 +836,14 @@ const partial = selected.length !== journeyDefs.length;
 // A run certifies a release only when it is full-coverage, pinned to the
 // candidate's version, AND aimed at an explicitly supplied candidate URL —
 // the default developer site is a diagnostic target, never a candidate.
-const explicitTarget = Boolean(args && args.url);
+const explicitTarget = Boolean(args && args.url) && url !== DEFAULT_URL;
 const certifying = !partial && Boolean(expectedVersion) && explicitTarget;
 const nonCertifyingReason = partial
   ? 'partial run'
   : !expectedVersion
     ? 'unpinned run'
     : !explicitTarget
-      ? 'default target — not a candidate deployment'
+      ? 'developer site is not a candidate deployment'
       : null;
 
 const preflight = await agent(

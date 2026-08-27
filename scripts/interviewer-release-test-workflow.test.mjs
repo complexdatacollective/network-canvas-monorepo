@@ -616,7 +616,17 @@ test('only full pinned runs certify', async () => {
   });
   assert.equal(pinnedDefaultTarget.verdict, 'PASS');
   assert.equal(pinnedDefaultTarget.certifying, false);
-  assert.ok(pinnedDefaultTarget.summaryMarkdown.includes('default target'));
+  assert.ok(
+    pinnedDefaultTarget.summaryMarkdown.includes('not a candidate deployment'),
+  );
+  const pinnedDevOrigin = await run(makeAgent(jr), {
+    url: 'https://interviewer.networkcanvas.dev',
+    expectedVersion: '9.9.9',
+  });
+  assert.equal(pinnedDevOrigin.certifying, false);
+  assert.ok(
+    pinnedDevOrigin.summaryMarkdown.includes('not a candidate deployment'),
+  );
   const pinned = await run(makeAgent(jr), {
     url: 'https://deploy-preview-9--interviewer-pwa-dev.netlify.app',
     expectedVersion: '9.9.9',
