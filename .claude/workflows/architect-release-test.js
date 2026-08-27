@@ -29,9 +29,12 @@ const only =
 // Compared ignoring a leading "v" — the header chip renders "v8.2.0".
 // When set, the reachability slice fails if the deployment shows a different
 // version — guarding against testing a stale deploy and calling it safe.
+// Blank/whitespace-only values normalize to null so every consumer (the
+// prompt's comparison branch, the orchestrator's mismatch check, and the
+// promotable guard) agrees on whether a version was actually pinned.
 const expectVersion =
   args && typeof args === 'object' && typeof args.expectVersion === 'string'
-    ? args.expectVersion
+    ? args.expectVersion.trim() || null
     : null;
 
 const CHECKS_SCHEMA = {
@@ -171,9 +174,11 @@ const SLICES = [
 4. "reopen": Open your protocol again from its card (card menu > Open) and
    confirm the editor shows it. Return to the start screen.
 5. "export": Find the affordance to download/export your protocol as a
-   .netcanvas file (card menu or editor) and trigger it. Pass if the download
-   is offered/starts without an error dialog; blocked if the pane cannot
-   service downloads at all.
+   .netcanvas file (card menu or editor) and trigger it. This pane can never
+   observe the saved file, so a clean trigger IS the pass criterion: pass
+   when the download is offered/starts with no error dialog and no new
+   console error. Do not mark blocked merely because the file itself cannot
+   be seen — reserve blocked for the trigger action itself being unreachable.
 6. "delete": Delete your protocol from the start screen and confirm its card
    disappears.`,
   },
