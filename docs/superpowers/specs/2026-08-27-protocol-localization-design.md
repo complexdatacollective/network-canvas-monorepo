@@ -521,11 +521,16 @@ the device language changes.
   choose before handing over the device.
 - `StoredSession.locale` is included in encryption-independent session
   metadata and hydrated into `SessionPayload`.
-- The current bundle's commit-time `updateSession` guard preserves the newest
-  stored `locale` alongside `protocolHash` when another tab migrates the row
-  during encryption. A tab still running a pre-localization schema-8 or
-  schema-9 bundle can write a full row with no locale after migration, so the
-  durable protocol-migration heal
+- The current bundle's commit-time `updateSession` guard is patch-aware.
+  `protocolHash` always comes from the latest row because callers never patch
+  it. Locale comes from the latest row for an unrelated session patch, which
+  prevents a stale network/step sync from undoing another tab's language
+  selection or a migration backfill. When the caller explicitly patches
+  locale, that validated value wins; if the protocol hash changed during the
+  encryption gap, validate it against the latest protocol declaration before
+  commit and otherwise retain the latest stored locale. A tab still running a
+  pre-localization schema-8 or schema-9 bundle can write a full row with no
+  locale after migration, so the durable protocol-migration heal
   pass also restores missing locale to `und` while repairing superseded hash
   references. This compatibility repair runs on every launch until legacy
   tabs have disappeared.
@@ -584,19 +589,26 @@ Activation is intrinsically safe for skipped releases:
    columns with database defaults/backfills, so a still-running older server
    can continue inserting rows. Older Prisma clients ignore the new columns.
 2. **Permanent versioned read adapter.** The schema-10 Fresco bundle accepts
-   stored schema 8, 9, and 10. It uses the registered migration chain to
+   stored schema 7, 8, 9, and 10. It uses the registered migration chain to
    produce schema 10 in memory for execution without mutating the stored row.
    The adapter computes the migrated schema-10 hash for runtime payloads and
    exports, so content and identity agree. Protocol reconstruction,
    `createInterview`, payload mapping, exports, locale selection, and strict
    result extensions all use this one adapter. New imports persist schema 10.
-3. **No pre-start version rewrite.** Decouple the stored-protocol migration
+3. **Canonical hash aliases.** Keep the stored legacy hash unchanged, but
+   maintain an indexed canonical schema-10 hash alias for duplicate lookup.
+   Import first checks exact/alias hashes; if an older row has no alias, adapt
+   it in memory, compute the canonical hash, and register the alias before
+   deciding whether to insert. Creating a schema-10 protocol and its alias is
+   transactional, and the alias uniqueness boundary prevents concurrent
+   equivalent imports from producing duplicates.
+4. **No pre-start version rewrite.** Decouple the stored-protocol migration
    target from Interview's runtime compatibility constant and explicitly
    prevent `setup-database.ts` from advancing protocol rows to schema 10. A
    direct upgrade from a pre-compatibility image can therefore build or start
    the new bundle before any localization rewrite, and a failed activation
    leaves protocol bodies and hashes readable by the old installation.
-4. **Post-activation convergence is optional.** Mixed stored versions remain a
+5. **Post-activation convergence is optional.** Mixed stored versions remain a
    supported state. An authenticated re-import or explicit maintenance command
    may persist the migrated schema-10 shape only after a schema-10 server is
    healthy, with backup and rollback consequences surfaced to the operator.
@@ -605,10 +617,11 @@ Activation is intrinsically safe for skipped releases:
 
 The hosted deployment may still stage compatibility and activation releases
 to reduce rollout risk, but correctness never depends on that order. Tests must
-cover a direct schema-8/schema-9-to-10 upgrade that skips the intermediate
-release, setup followed by a forced build/start failure with stored protocol
-rows unchanged, and successful start/resume/sync from every supported stored
-version.
+cover direct schema-7/schema-8/schema-9-to-10 upgrades that skip the
+intermediate release, setup followed by a forced build/start failure with
+stored protocol rows unchanged, successful start/resume/sync from every
+supported stored version, and schema-10 re-import deduplication against every
+legacy stored hash.
 
 ### 8.4 Architect preview
 
@@ -633,6 +646,13 @@ diff, draft migration, and publishing round-trip it without projection or
 loss. Existing schema-8 or schema-9 manifests still assemble exactly as
 fielded, then the canonical migration chain adds the `und` declaration when
 producing schema 10.
+
+The shipped `apps/studio/server/scripts/protocol-demo.ts` is part of this
+compatibility surface. Its edit step must select and update a localized prompt
+entry rather than filtering for `typeof prompt.text === 'string'`, and its diff
+display must resolve localized stage labels explicitly. The demo must complete
+its edit/diff/publish sequence under schema 10; assertions and casts are not a
+substitute for that executable check.
 
 This is storage and current-schema compatibility, not Studio UI localization.
 Studio's own message catalogs remain separate work. Schema 10 must not become
@@ -762,16 +782,18 @@ Third-party and stored documents use the honest automatic migration.
   of its target-version variants.
 - Interviewer's launch migration recomputes the hash, repoints sessions, and
   initializes their locale in the same transaction. Its current-writer guard
-  preserves the freshest hash and locale, while the durable legacy-write heal
-  pass restores both a superseded hash and a missing `und` locale after an old
-  PWA tab writes.
+  always preserves the freshest hash, preserves the freshest locale for an
+  unrelated patch, and permits a validated explicit locale patch to win. The
+  durable legacy-write heal pass restores both a superseded hash and a missing
+  `und` locale after an old PWA tab writes.
 - Fresco's additive database migration initializes protocol localization and
   interview locale columns without rewriting stored protocol bodies, hashes,
   or versions. Its permanent read adapter migrates older rows in memory; any
   persistent convergence happens only after the schema-10 server is active and
   is never part of pre-build/container-start setup.
 - Studio's draft migration and section round trip add and retain localization
-  in the settings section before the current-version switch.
+  in the settings section before the current-version switch; its protocol demo
+  edits localized prompt maps and resolves localized stage labels.
 - Architect library-open and import migrations show the new migration note.
 
 ## 11. Identity, exports, and compatibility
@@ -823,6 +845,9 @@ schema.
   an optional locale omitted by a legacy Fresco sync preserves the stored
   value, while a supplied undeclared locale is rejected. Interviewer's launch
   healer restores a missing locale created by a legacy full-row write.
+- Fresco duplicate detection uses the adapted schema-10 hash, not only the
+  stored legacy hash, so re-importing an equivalent migrated protocol cannot
+  create a second runtime-equivalent row.
 - The runtime never fetches translations and cannot fail because a network
   translation service is unavailable.
 - The warning analyser is deterministic and memoizable; it performs no I/O.
@@ -894,22 +919,25 @@ schema.
 - Interviewer browser preference selection, explicit override, encrypted
   session round-trip, resume, synthetic sessions, and `languagechange`
   behavior. Cross-tab migration tests interleave encryption with migration to
-  prove the current writer preserves the freshest locale, then simulate a
-  schema-9 full-row write and prove the next launch heals missing locale to
-  `und` without losing session content.
+  prove unrelated writes preserve the freshest locale while an ordinary
+  validated locale patch persists, then simulate a schema-9 full-row write and
+  prove the next launch heals missing locale to `und` without losing session
+  content.
 - Fresco protocol-localization persistence on import/read/migrate, header
   matching, explicit link override, interview database migration, payload
   serialization, sync validation, and hydration parity. A rolling-deployment
   test posts the legacy locale-less sync shape after database backfill and
   proves network/current-step changes save while the stored `und` locale is
   preserved; supplied undeclared locales still fail.
-- Fresco rollout tests prove setup leaves schema-8/schema-9 rows and hashes
-  untouched, the schema-10 server handles mixed stored versions, and a direct
-  upgrade that skips the compatibility image remains safe if build or startup
-  fails. No pre-start data transaction may depend on an intermediate release
-  having run.
+- Fresco rollout tests prove setup leaves schema-7/schema-8/schema-9 rows and
+  hashes untouched, the schema-10 server handles mixed stored versions, and a
+  direct upgrade that skips the compatibility image remains safe if build or
+  startup fails. Mixed-version re-import compares canonical adapted hashes and
+  cannot create a duplicate. No pre-start data transaction may depend on an
+  intermediate release having run.
 - Studio settings-section validation plus sectionize/assemble/diff/migrate/
-  publish round-trip of the root declaration.
+  publish round-trip of the root declaration, plus a successful schema-10
+  `protocol-demo` edit/diff/publish run.
 - Exported locale in CSV and GraphML while stable field names remain unchanged.
 - Full migration and validation of bundled protocols, public documentation
   protocols, E2E fixtures, and the private compatibility corpus.
