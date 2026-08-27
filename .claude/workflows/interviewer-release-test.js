@@ -592,15 +592,20 @@ CHECKS:
    confirm dialog "Mark unfinished?" → toast "Interview marked unfinished" →
    the row moves to In progress.
 7. Real resume round-trip: from Home, "Start new interview" on the sample
-   card with case ID "resume-check"; advance 3 stages (the first stages are
-   Information — just Next). The step write is fire-and-forget: before
-   exiting, poll IndexedDB (database "interviewer") via page.evaluate until
-   the session row's currentStep matches the visible [data-stage-step] — the
-   e2e suite does the same. Then exit via the in-interview Settings menu
+   card with case ID "resume-check"; advance to the FIRST Quick Add
+   name-generator stage and add an alter named "resume-probe" (network data
+   and the step counter persist through SEPARATE writes — a round-trip that
+   only checks the step can miss lost responses). The writes are
+   fire-and-forget: before exiting, poll IndexedDB (database "interviewer")
+   via page.evaluate until the session row's currentStep matches the
+   visible [data-stage-step] AND its stored network includes the
+   "resume-probe" node (readable in plaintext — no vault is enrolled in
+   this profile). Then exit via the in-interview Settings menu
    (data-testid="settings-button" → "Exit interview",
    data-testid="exit-button" → confirm "Exit this interview?"). Back on Home
    a "Resume last interview" pill names the protocol and "resume-check";
-   clicking it reopens the interview at the SAME [data-stage-step].
+   clicking it reopens the interview at the SAME [data-stage-step] AND the
+   "resume-probe" alter is listed again on the Quick Add stage.
 8. Bulk delete: on /data select the whole page (header checkbox "Select all
    interviews on this page") → banner offers "Select all N matching" → click
    it → "Delete N selected" (data-testid="data-delete") → confirm dialog
@@ -648,10 +653,13 @@ CHECKS:
 3. Export status column: the exported rows now show a timestamp/TimeAgo
    instead of "Not exported".
 4. GraphML-only: Settings → "Data export" → toggle "Export CSV" off (wait
-   for the switch to read back) → export again → the archive contains .graphml
-   files and NO .csv files.
+   for the switch to read back) → export again → the archive contains
+   exactly FIVE .graphml files (one per selected session — fewer means
+   sessions were dropped) and NO .csv files.
 5. CSV-only: toggle "Export CSV" back on and "Export GraphML" off → export →
-   the archive contains .csv files and NO .graphml files. Restore both on.
+   the archive contains exactly FIVE *_ego.csv files (one per selected
+   session) plus the other CSV partitions and NO .graphml files. Restore
+   both on.
 6. Abandon before save: checks 1–5 already exported the original five
    sessions, so first generate ONE more synthetic session to get a fresh
    never-exported row. ARM a download listener BEFORE triggering the export
@@ -799,7 +807,14 @@ CHECKS:
    is no longer that button. Restore ON.
 4. Data export settings persist: change "Screen layout width" to 1024, wait
    for read-back, reload, reopen Settings — still 1024. Restore 1920.
-5. Privacy: "Enable analytics" switch flips and reads back.
+5. Privacy: "Enable analytics" switch flips and reads back — verified
+   BEHAVIOURALLY, not just visually: the context blocks the relay, but
+   attempted requests are still observable via page.on('request'). With
+   analytics off (the default), perform a representative action and a
+   reload and assert ZERO attempts to ph-relay.networkcanvas.com; enable,
+   then disable again, repeat the action + reload, and assert zero NEW
+   attempts after the opt-out. (Do not require attempts while enabled —
+   the client initialises lazily and batches, so that direction flakes.)
 6. Escape closes the Settings modal.
 7. Routing: an unknown path (${url}/definitely-not-a-route) renders the
    not-found screen (actual content, not a blank page), and navigation back
@@ -1108,8 +1123,8 @@ if (evidenceClaims.length) {
     `Audit the evidence directories of an automated release test. For each entry below, check with the shell (no interpretation, no browsing, no writes):
 1. whether the directory exists;
 2. the count of .png files directly inside it (e.g. \`find <dir> -maxdepth 1 -name '*.png' | wc -l\`);
-3. checkpointNumbers, a list of integers: for a journey directory the DISTINCT check numbers (\`ls <dir> | grep -oE '^check[0-9]+' | sort -u\`); for a verify-* directory the DISTINCT failure numbers instead (\`ls <dir> | grep -oE '^failure[0-9]+' | sort -u\`);
-4. stageNumbers: the DISTINCT stage numbers among their filenames, as a list of integers (\`ls <dir> | grep -oE '^stage-?[0-9]+' | sort -u\`; report [] when none).
+3. checkpointNumbers, a list of integers, extracted from .png FILENAMES ONLY (scripts or notes named check1-*.mjs must not count): for a journey directory the DISTINCT check numbers (\`ls <dir> | grep -E '\\.png$' | grep -oE '^check[0-9]+' | sort -u\`); for a verify-* directory the DISTINCT failure numbers instead (\`ls <dir> | grep -E '\\.png$' | grep -oE '^failure[0-9]+' | sort -u\`);
+4. stageNumbers: the DISTINCT stage numbers among the .png filenames, as a list of integers (\`ls <dir> | grep -E '\\.png$' | grep -oE '^stage-?[0-9]+' | sort -u\`; report [] when none).
 
 Then re-compute the deployment fingerprint and report it as fingerprint:
 { curl -s ${url}/ | grep -oE 'assets/[A-Za-z0-9_.-]+\\.(js|css)' | sort -u; curl -s ${url}/manifest.webmanifest; curl -s ${url}/sw.js; } | shasum -a 256 | cut -c1-16
