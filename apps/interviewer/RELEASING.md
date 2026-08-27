@@ -146,13 +146,20 @@ declaration bundling can exceed Node's default heap during a clean build.
 
 ## Release smoke testing
 
-Before approving a release, run the agent-driven release smoke test against
-the developer site (Claude Code: invoke `/interviewer-release-test` — the
+Before approving a release, run the agent-driven release smoke test
+(Claude Code: invoke `/interviewer-release-test` — the
 `interviewer-release-test` skill, which launches the saved
 `interviewer-release-test-workflow` in `.claude/workflows/` and carries the
-launch/report/follow-up procedure). It drives
-`https://interviewer.networkcanvas.dev` — the current state of `main` — through
-every core user journey with headless Playwright: protocol management, the
+launch/report/follow-up procedure). **Certification targets the release
+candidate's own deployment, not the developer site**: for a normal release
+that is the Version Packages PR's Netlify deploy preview (its tree carries
+the bumped version, so pass `args: { url: <preview>, expectedVersion:
+<bumped version> }`) — the developer site still serves `main`'s pre-bump
+version until that PR merges, so it can neither serve nor certify the
+version being shipped. Without `args`, the workflow drives
+`https://interviewer.networkcanvas.dev` — the current state of `main` —
+which is the right target for ad-hoc health checks between releases. Either
+way it runs every core user journey with headless Playwright: protocol management, the
 full Sample Protocol interview, session and data management, export in every
 format combination, device-lock enrolment through revocation, service-worker
 and offline behaviour, and settings. Each journey runs in its own isolated
@@ -173,10 +180,11 @@ The workflow concentrates on what the Playwright E2E suite deliberately does
 not cover — the suite blocks service workers and conducts a lean fixture
 protocol, not the 30-stage Sample Protocol. It needs a checkout of this
 monorepo with dependencies installed (it installs Playwright's chromium on
-first use). When certifying a release, pass `args: { expectedVersion: "…" }`
-(the version being shipped) so a stale deployment cannot produce the verdict.
-Pass `args: { url: "…" }` to target a Netlify preview instead of
-the developer site, or `args: { journeys: ["data-export"] }` to re-run a
+first use). When certifying, always pass both `url` (the candidate's deploy
+preview) and `expectedVersion` (the version that preview's tree ships) so a
+stale or wrong deployment cannot produce the verdict — the binding is
+enforced in code, and preflight refuses a mismatch. Pass
+`args: { journeys: ["data-export"] }` to re-run a
 subset. Journeys are tiered across models for token efficiency (most run on
 Sonnet; the full interview walk and all failure verifiers run on Opus);
 `args: { model: "…" }` overrides the journey tier wholesale, while verifiers

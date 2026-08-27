@@ -22,10 +22,12 @@ Code's Workflow tool — run this command from Claude Code.)
 ## Launch (Claude Code)
 
 1. Collect options from the request; all are optional:
-   - `url` — target a Netlify preview instead of the dev site. Required for
-     a hotfix release: the dev site tracks `main`, which is not the hotfix
-     tree — point at a deployment of the hotfix branch (e.g. its PR's
-     Netlify preview).
+   - `url` — target a Netlify preview instead of the dev site. Required
+     whenever certifying: the release candidate's own deployment is the
+     target — the Version Packages PR's deploy preview for a normal release
+     (the dev site serves `main`'s pre-bump version until that PR merges),
+     or a deployment of the hotfix branch for a hotfix (e.g. its PR's
+     preview). The bare dev site is for ad-hoc `main` health checks.
    - `journeys` — a subset of: `protocol-management`,
      `conduct-sample-interview`, `session-management`, `data-export`,
      `security-vault`, `pwa-offline`, `settings-and-chrome`. A subset run
@@ -33,12 +35,13 @@ Code's Workflow tool — run this command from Claude Code.)
      it for diagnosis and iteration, then run the full suite to certify.
    - `model` — `haiku` | `sonnet` | `opus` | `fable` for preflight and the
      journeys; failure verifiers stay pinned regardless.
-   - `expectedVersion` — the exact version this release will ship. Required
-     when certifying a release: preflight fails unless the deployment
-     serves it, so a stale deploy (an older tree still live at the URL)
-     can never be certified.
+   - `expectedVersion` — the exact version the targeted deployment's tree
+     ships (for a Version Packages preview, the bumped version in that PR).
+     Required when certifying, and always passed together with the matching
+     `url`: the workflow refuses in code to certify a deployment serving a
+     different version, so a stale or wrong deploy can never pass.
 2. Invoke the Workflow tool:
-   `Workflow({ name: 'interviewer-release-test-workflow', args: { url, journeys, model } })`
+   `Workflow({ name: 'interviewer-release-test-workflow', args: { url, expectedVersion, journeys, model } })`
    (equivalently `scriptPath: '<repo-root>/.claude/workflows/interviewer-release-test.js'`).
    Requirements: a checkout of this monorepo with `pnpm install` done;
    preflight installs Playwright's chromium if missing.
