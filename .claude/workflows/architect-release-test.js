@@ -3,7 +3,7 @@ export const meta = {
   description:
     'Agent-driven release smoke test of the deployed Architect dev site',
   whenToUse:
-    'Before promoting an Architect release: drives the dev deployment (https://architect.networkcanvas.dev, or args.url) through a release-tester checklist in the Browser pane and returns a pass/blocked/fail verdict. Any fail should block the release. args: { url?: string, slices?: string[], expectVersion?: string } — slices filters the functional slices by key (reachability always runs; a filtered run is marked partial), expectVersion fails reachability if the deployment shows a different version.',
+    'Before promoting an Architect release: drives the dev deployment (https://architect.networkcanvas.dev, or args.url) through a release-tester checklist in the Browser pane and returns a pass/blocked/fail verdict. Release gates must consume the `promotable` field, which is true only for a full-coverage pass with expectVersion pinned and matched. args: { url?: string, slices?: string[], expectVersion?: string } — slices filters the functional slices by key (reachability always runs; a filtered run is never promotable), expectVersion fails reachability if the deployment shows a different version (compared ignoring a leading "v").',
   phases: [
     { title: 'Reachability', detail: 'site up, assets, service worker' },
     { title: 'Functional checks', detail: 'one agent per checklist slice' },
@@ -487,22 +487,49 @@ const verdict = confirmedFailures.length
     ? 'blocked'
     : 'pass';
 
+// Promotion clearance is stricter than a green run: "safe to promote" is
+// claimed only when every check passed AND the run covered every slice AND
+// the tested build's identity was pinned and matched via expectVersion. A
+// green partial run, or a green run against an unpinned build, is useful
+// signal but never promotion evidence — and the machine-readable field for
+// a release gate to consume is `promotable`, not `verdict`.
+const promotable = verdict === 'pass' && !only && expectVersion !== null;
+
 log(
-  `Verdict: ${verdict} — ${checks.length} checks, ${confirmedFailures.length} confirmed failures, ${unverified.length} unverified failures, ${flaky.length} flaky, ${blocked.length} blocked`,
+  `Verdict: ${verdict} (promotable: ${promotable}) — ${checks.length} checks, ${confirmedFailures.length} confirmed failures, ${unverified.length} unverified failures, ${flaky.length} flaky, ${blocked.length} blocked`,
 );
 
-let meaning = {
-  pass: 'Every check passed; safe to promote the release.',
-  blocked:
-    'No confirmed failures, but some checks were unverified, failed without independent verification, or were refuted only by a clean retry — review the blocked, unverifiedFailures, and flaky items manually before promoting.',
-  fail: 'Confirmed functional breakage on the deployment — do not promote the release.',
-}[verdict];
-if (only) {
-  meaning = `Partial run (${selected.map((s) => s.key).join(', ')} only) — not a full release verdict. ${meaning}`;
+let meaning;
+if (verdict === 'fail') {
+  meaning =
+    'Confirmed functional breakage on the deployment — do not promote the release.';
+} else if (verdict === 'blocked') {
+  meaning =
+    'No confirmed failures, but some checks were unverified, failed without independent verification, or were refuted only by a clean retry — review the blocked, unverifiedFailures, and flaky items manually before promoting.';
+} else if (promotable) {
+  meaning =
+    'Every check passed against the expected version with full coverage — safe to promote the release.';
+} else {
+  const gaps = [];
+  if (only) {
+    gaps.push(
+      `partial coverage (${selected.map((s) => s.key).join(', ')} only)`,
+    );
+  }
+  if (expectVersion === null) {
+    gaps.push(
+      "no expectVersion was supplied, so the tested build's identity was not pinned",
+    );
+  }
+  meaning = `Every selected check passed, but this run is NOT promotion evidence: ${gaps.join('; ')}. Re-run with full coverage and expectVersion to gate a release.`;
+}
+if (only && verdict !== 'pass') {
+  meaning = `Partial run (${selected.map((s) => s.key).join(', ')} only) — ${meaning}`;
 }
 
 return {
   verdict,
+  promotable,
   target,
   deployedVersion: (reach && reach.version) || null,
   expectedVersion: expectVersion,
