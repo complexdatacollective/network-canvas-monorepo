@@ -646,7 +646,10 @@ CHECKS:
    it → "Delete N selected" (data-testid="data-delete") → confirm dialog
    "Delete N interviews?" → toast; with everything deleted the empty state
    reads "No interviews recorded yet." (note: the empty text renders inside a
-   table row).
+   table row). Then RELOAD and confirm the installed Sample Protocol
+   survived — its card present and the status row at 1 protocol / 0
+   interviews (bulk-deleting sessions that also destroys protocols is
+   collateral data loss, not a pass).
 
 Return journey="session-management".`,
   },
