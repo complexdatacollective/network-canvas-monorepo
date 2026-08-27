@@ -59,7 +59,7 @@ const pendingImage = 'fresco-release-test:pending';
 
 const BROWSER_HOWTO = `You drive the app with the in-app Browser tools. FIRST read apps/fresco/release-test/AGENT_NOTES.md — it holds verified techniques for this exact app (protocol upload, download capture, selects, stalled dialogs); the generic approaches fail here, so follow the notes rather than rediscovering. Load browser tools ONCE with a single ToolSearch call:
 ToolSearch query "select:mcp__Claude_Browser__preview_start,mcp__Claude_Browser__tabs_create,mcp__Claude_Browser__tabs_close,mcp__Claude_Browser__navigate,mcp__Claude_Browser__computer,mcp__Claude_Browser__javascript_tool,mcp__Claude_Browser__read_network_requests,mcp__Claude_Browser__resize_window,mcp__Claude_Browser__browser_batch"
-Create your OWN tab with tabs_create (if the Browser pane is closed, preview_start {url: the base URL} opens it and returns a tabId), resize_window it to 1280x1100, and pass your tabId to EVERY browser call — other agents drive other tabs concurrently. Close your tab when done.
+Create your OWN tab with tabs_create (if the Browser pane is closed, preview_start {url: the base URL} opens it and returns a tabId), resize_window it to 1280x1100, and pass your tabId to EVERY browser call. Browser agents run one at a time in this workflow, but earlier agents may have left tabs behind — never reuse them; close your own tab when done.
 Be token-frugal: one screenshot for orientation, javascript_tool for state and verification; batch predictable sequences with browser_batch.`;
 
 const CHECK_ITEMS = {
@@ -231,15 +231,32 @@ Return ok:true with "image" set to that digest string, or ok:false with the erro
       },
     ),
 ];
+// skipBuild reuses the image from a prior build-image.sh run, but never on
+// trust: the stamp on disk must match both the actual image and the current
+// commit, and its dirty flag flows into the same reproducibility gate a fresh
+// build gets. Anything stale fails instead of testing an unrelated image.
+const validateReusedImage = () =>
+  agent(
+    `Your working directory is already the correct repository checkout — do NOT cd anywhere else. Validate that the existing ${pendingImage} image is the pending build of THIS tree:
+1. Read ${ARTIFACTS}/stamp.json (fields: image, imageId, version, commit, dirty). If missing, return ok:false with error "no stamp — run without skipBuild".
+2. Run: docker image inspect --format '{{.Id}}' ${pendingImage} — must equal the stamp's imageId.
+3. Run: git rev-parse --short HEAD — must equal the stamp's commit.
+Return ok:true with the stamp's image/version/commit/dirty fields only if BOTH match; otherwise ok:false with which comparison failed in "error" (the fix is to rerun without skipBuild). Do not rebuild anything.`,
+    {
+      label: 'validate-reused-image',
+      phase: 'Build',
+      schema: BUILD_SCHEMA,
+      ...MECHANICAL,
+    },
+  );
 if (skipBuild) {
-  log('skipBuild: reusing existing fresco-release-test:pending image');
+  log(
+    'skipBuild: validating existing fresco-release-test:pending against its stamp',
+  );
 }
-const [build, released] = skipBuild
-  ? [
-      { ok: true, image: pendingImage, notes: 'skipBuild' },
-      ...(await parallel([buildTasks[1]])),
-    ]
-  : await parallel(buildTasks);
+const [build, released] = await parallel(
+  skipBuild ? [validateReusedImage, buildTasks[1]] : buildTasks,
+);
 
 if (!build?.ok || !released?.ok) {
   return {
@@ -318,14 +335,14 @@ Inspect the logs for the migration/startup sequence (prisma migrate deploy, prot
   if (!swap?.ok) return lane;
 
   const apiPaths = JSON.stringify(seed.apiPaths ?? []);
-  // Two stages, deliberately serialized: capture and integrity must observe
-  // the upgraded-but-untouched dataset before the mutating CRUD and settings
-  // checks run — otherwise a deleted interview or toggled setting races the
-  // export diff and count checks into a schedule-dependent false no-go.
-  const [capture, integrity] = await parallel([
-    () =>
-      agent(
-        `The Fresco instance at ${UPGRADE_URL} was just upgraded; its data was seeded pre-upgrade. Capture the SAME exports that were captured before the upgrade, then run the deterministic diff. Stay in your working directory — it is already the correct repository checkout; do NOT cd to another checkout. Sign in as ${ADMIN_USER} / ${ADMIN_PASSWORD} if asked.
+  // Strictly serialized, twice over: capture and integrity must observe the
+  // upgraded-but-untouched dataset before the mutating CRUD and settings
+  // checks run (a deleted interview or toggled setting would race the export
+  // diff and count checks into a schedule-dependent false no-go), and browser
+  // agents must not run concurrently at all — a backgrounded tab in this
+  // environment goes dead (see AGENT_NOTES.md).
+  const capture = await agent(
+    `The Fresco instance at ${UPGRADE_URL} was just upgraded; its data was seeded pre-upgrade. Capture the SAME exports that were captured before the upgrade, then run the deterministic diff. Stay in your working directory — it is already the correct repository checkout; do NOT cd to another checkout. Sign in as ${ADMIN_USER} / ${ADMIN_PASSWORD} if asked.
 ${BROWSER_HOWTO}
 
 1. mkdir -p ${UPGRADED_DIR}
@@ -333,42 +350,44 @@ ${BROWSER_HOWTO}
 3. In the browser, export ALL interviews from the interviews page with the SAME options as the baseline export (every format toggle on), using the blob-hook capture in AGENT_NOTES (enable-captures.sh --lane upgrade is idempotent; install the hook BEFORE triggering the export); PUT the blob to <capture base>/upgraded-ui-export.zip and curl it to ${UPGRADED_DIR}/ui-export.zip. Only do this if ${BASELINE_DIR}/ui-export.zip exists — otherwise skip so the two sides stay comparable; if the blob capture fails, set uiExportCaptured:false.
 4. Run: node ${HARNESS}/scripts/diff-exports.mjs ${BASELINE_DIR} ${UPGRADED_DIR} --work ${DIFF_WORK} --out ${ARTIFACTS}/exports/diff-summary.json
 5. Return pass:true if capture and diff both ran; summaryPath=${ARTIFACTS}/exports/diff-summary.json plus the changedFiles / onlyInBaseline / onlyInCurrent counts from the summary. Do NOT paste diff content.`,
-        {
-          label: 'export-capture',
-          phase: 'Upgrade lane',
-          schema: CAPTURE_SCHEMA,
-          ...UI,
-        },
-      ),
-    () =>
-      agent(
-        `Verify data survived a Fresco upgrade at ${UPGRADE_URL}. Sign in as ${ADMIN_USER} / ${ADMIN_PASSWORD}. Pre-upgrade the instance had counts ${JSON.stringify(seed.counts ?? {})} (protocols include "Sample Protocol"; interviews are ${SYNTHETIC_COUNT} synthetic ones).
+    {
+      label: 'export-capture',
+      phase: 'Upgrade lane',
+      schema: CAPTURE_SCHEMA,
+      ...UI,
+    },
+  );
+  // The diff cannot run without a summary: a schema-valid capture that omits
+  // summaryPath is a FAILED capture, never a silent skip of the gate.
+  if (capture?.pass && !capture.summaryPath) {
+    capture.pass = false;
+    capture.notes = `${capture.notes ?? ''} [capture returned pass without summaryPath — treated as failed; the export diff cannot run]`;
+  }
+
+  const integrity = await agent(
+    `Verify data survived a Fresco upgrade at ${UPGRADE_URL}. Sign in as ${ADMIN_USER} / ${ADMIN_PASSWORD}. Pre-upgrade the instance had counts ${JSON.stringify(seed.counts ?? {})} (protocols include "Sample Protocol"; interviews are ${SYNTHETIC_COUNT} synthetic ones).
 ${BROWSER_HOWTO}
 Checks: dashboard summary counts match the pre-upgrade counts; the protocols page lists the seeded protocol; the interviews page lists the synthetic interviews; the participants page loads; the activity feed still shows pre-upgrade events (protocol upload, interview generation); settings values set during seeding are unchanged. Return one check per item.`,
-        {
-          label: 'verify-data-integrity',
-          phase: 'Upgrade lane',
-          schema: CHECKS_SCHEMA,
-          ...UI,
-        },
-      ),
-  ]);
-  const [crud, apiSettings] = await parallel([
-    () =>
-      agent(
-        `Exercise Fresco dashboard CRUD on the upgraded instance at ${UPGRADE_URL}. Sign in as ${ADMIN_USER} / ${ADMIN_PASSWORD}. Use data prefixed "crud-" so you never touch other agents' data; stay in your working directory for any files.
+    {
+      label: 'verify-data-integrity',
+      phase: 'Upgrade lane',
+      schema: CHECKS_SCHEMA,
+      ...UI,
+    },
+  );
+  const crud = await agent(
+    `Exercise Fresco dashboard CRUD on the upgraded instance at ${UPGRADE_URL}. Sign in as ${ADMIN_USER} / ${ADMIN_PASSWORD}. Use data prefixed "crud-" so you never touch other agents' data; stay in your working directory for any files.
 ${BROWSER_HOWTO}
 Checks: create a participant (crud-p1) and see it listed; edit its label; import participants from a small CSV you create (use the format the import dialog documents; 2 rows, identifiers crud-csv1/crud-csv2); export participants — install the blob hook from AGENT_NOTES first and confirm a CSV blob is captured (real downloads abort in this browser; a captured blob IS success); delete crud-p1; upload a second protocol (stage packages/protocols/e2e/interviewer-e2e/interviewer-e2e.netcanvas via stage-fixture.sh --lane upgrade and inject per AGENT_NOTES) and then delete it from the protocols page; delete ONE synthetic interview from the interviews page and confirm the row count drops. Return one check per operation.`,
-        {
-          label: 'verify-crud',
-          phase: 'Upgrade lane',
-          schema: CHECKS_SCHEMA,
-          ...UI,
-        },
-      ),
-    () =>
-      agent(
-        `Exercise Fresco's API and settings on the upgraded instance at ${UPGRADE_URL}. Sign in as ${ADMIN_USER} / ${ADMIN_PASSWORD} for browser steps; API token: ${seed.apiToken ?? '<missing — create a new one in settings and note that in your result>'}.
+    {
+      label: 'verify-crud',
+      phase: 'Upgrade lane',
+      schema: CHECKS_SCHEMA,
+      ...UI,
+    },
+  );
+  const apiSettings = await agent(
+    `Exercise Fresco's API and settings on the upgraded instance at ${UPGRADE_URL}. Sign in as ${ADMIN_USER} / ${ADMIN_PASSWORD} for browser steps; API token: ${seed.apiToken ?? '<missing — create a new one in settings and note that in your result>'}.
 ${BROWSER_HOWTO}
 Checks:
 - curl ${UPGRADE_URL}/api/health returns 200 healthy.
@@ -377,14 +396,13 @@ Checks:
 - Toggle one interview setting (e.g. limit interviews) off/on in settings and confirm it persists across a page reload.
 - Enable anonymous recruitment, then curl -sI "${UPGRADE_URL}/onboard/<protocolId>" (find a protocol id via the recruitment/test section in settings or the protocols page URL/copy-link affordance): expect a redirect into a new interview. Disable anonymous recruitment and repeat: expect the no-anonymous-recruitment outcome. Do NOT drive interview stages — redirect-level only.
 Return one check per item.`,
-        {
-          label: 'verify-api-settings',
-          phase: 'Upgrade lane',
-          schema: CHECKS_SCHEMA,
-          ...UI,
-        },
-      ),
-  ]);
+    {
+      label: 'verify-api-settings',
+      phase: 'Upgrade lane',
+      schema: CHECKS_SCHEMA,
+      ...UI,
+    },
+  );
   lane.capture = capture;
   lane.integrity = integrity;
   lane.crud = crud;
@@ -452,7 +470,11 @@ let freshLane;
 let report;
 let teardown;
 try {
-  [upgradeLane, freshLane] = await parallel([runUpgradeLane, runFreshLane]);
+  // Sequential on purpose: the in-app browser backgrounds all but one tab and
+  // backgrounded tabs go dead (AGENT_NOTES.md), so concurrent browser-driving
+  // lanes trade reliability (and token-burning tab recovery) for wall-clock.
+  upgradeLane = await runUpgradeLane();
+  freshLane = await runFreshLane();
 
   phase('Report');
   report = await agent(
@@ -500,6 +522,17 @@ if (build?.dirty && !allowDirty && verdict === 'go') {
   failures.push(
     'pending image was built from a dirty working tree — not reproducible from any commit (rerun clean, or pass allowDirty during development)',
   );
+}
+// The export diff is the central upgrade regression gate: once the swap ran,
+// a run without a diff verdict (failed capture, missing summary, judge never
+// invoked) must not read as a pass — and neither can an unanticipated diff,
+// whatever the critic's prose concluded.
+if (upgradeLane?.swap?.ok && upgradeLane?.diffVerdict?.pass !== true) {
+  const reason = upgradeLane?.diffVerdict
+    ? `unanticipated export differences: ${(upgradeLane.diffVerdict.unanticipated ?? []).join('; ')}`
+    : 'the export diff never reached a verdict (capture failed or its summary was missing)';
+  failures.push(`export regression gate: ${reason}`);
+  if (verdict === 'go') verdict = 'no-go';
 }
 if (!keepStack && teardown?.ok !== true) {
   failures.push(

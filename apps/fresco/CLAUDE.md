@@ -52,9 +52,11 @@ pending state of `main` can be release-tested locally with the
 `/fresco-release-test` Claude workflow (`.claude/workflows/fresco-release-test.js`;
 Codex: run the harness scripts below manually). It builds the pending image the
 way a release would — `scripts/mirror-app.mjs` stages the mirrored tree,
-`release-test/scripts/bundle-pending-packages.mjs` swaps the `@codaco/*`
-registry resolutions for tarballs packed from the pending workspace source, and
-the staged tree's own `Dockerfile` builds it — then runs two Docker stacks via
+`release-test/scripts/bundle-pending-packages.mjs` swaps the registry
+resolutions of exactly the `@codaco/*` packages the pending changesets will
+publish for tarballs packed from the pending source (the rest of the closure
+stays on registry versions, as the released image will), and the staged tree's
+own `Dockerfile` builds it — then runs two Docker stacks via
 `release-test/docker-compose.yml`:
 
 - **Upgrade lane** (ports 3210/5533/9310): seeds the currently released GHCR

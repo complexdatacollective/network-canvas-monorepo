@@ -9,15 +9,21 @@
 //
 // What it does to the staged tree (and only the staged tree — the real
 // Dockerfile and mirror pipeline are untouched):
-//   1. `pnpm pack`s every published @codaco package in Fresco's workspace
-//      dependency closure into <stage>/vendor/ (pack applies publishConfig,
-//      exactly like `changeset publish`).
-//   2. Adds pnpm overrides mapping each of those packages to its tarball, so
+//   1. `pnpm pack`s the packages in Fresco's workspace dependency closure that
+//      the pending release will actually PUBLISH (named in .changeset/*.md)
+//      into <stage>/vendor/ (pack applies publishConfig, exactly like
+//      `changeset publish`). Closure packages without a pending changeset are
+//      left to registry resolution — the released image will install their
+//      published versions, so vendoring them would test a dependency
+//      combination that never ships.
+//   2. Adds pnpm overrides mapping each vendored package to its tarball, so
 //      direct AND transitive ranges resolve to the pending code.
 //   3. Patches the staged Dockerfile with grep-anchored edits (the same
 //      fail-loud pattern mirror-app.mjs uses for the vitest config) so the
-//      deps stage can see vendor/ and the runner stage installs its @codaco
-//      runtime deps from the tarballs instead of the registry.
+//      deps stage can see vendor/ and the runner stage installs any vendored
+//      @codaco runtime deps from the tarballs instead of the registry.
+// A bundle-manifest.json (vendored + registry lists) is written to the stage
+// root for the caller's lockfile guard.
 //
 // Usage: node apps/fresco/release-test/scripts/bundle-pending-packages.mjs <stage-dir>
 import { spawnSync } from 'node:child_process';
@@ -97,6 +103,30 @@ function tarballName(name, version) {
   return `${name.replace('@', '').replace('/', '-')}-${version}.tgz`;
 }
 
+// Packages the pending release will actually publish: the ones named in
+// pending changesets. Only these may be vendored — a workspace package with
+// committed changes but no changeset is NOT republished, so the released
+// image installs its registry version; vendoring it would test a dependency
+// combination that never ships. (Caret publish ranges mean in-range bumps do
+// not cascade republishes to dependents, so the changeset-named set is the
+// published set for the normal lane.)
+function collectPendingReleases() {
+  const changesetDir = join(repoRoot, '.changeset');
+  const pending = new Set();
+  for (const entry of readdirSync(changesetDir)) {
+    if (!entry.endsWith('.md') || entry === 'README.md') continue;
+    const text = readFileSync(join(changesetDir, entry), 'utf8');
+    const frontmatter = text.split('---')[1] ?? '';
+    for (const line of frontmatter.split('\n')) {
+      const match = line.match(
+        /^\s*['"]?([^'":]+)['"]?\s*:\s*(major|minor|patch)\s*$/,
+      );
+      if (match) pending.add(match[1]);
+    }
+  }
+  return pending;
+}
+
 // Grep-anchored patch: fail loudly if the Dockerfile drifts rather than
 // producing an image that silently skipped the bundling.
 function patchOnce(content, anchor, replacement, description) {
@@ -120,26 +150,32 @@ function main() {
 
   const wsPackages = readWorkspacePackages();
   const closure = collectClosure(wsPackages);
+  const pending = collectPendingReleases();
+  const vendorNames = closure.filter((name) => pending.has(name));
+  const registryNames = closure.filter((name) => !pending.has(name));
   const vendorDir = join(stageDir, 'vendor');
 
-  // The Dockerfile patch set below names these packages explicitly.
-  for (const required of [
-    '@codaco/protocol-validation',
-    '@codaco/shared-consts',
-    '@codaco/interview',
-  ]) {
-    if (!closure.includes(required)) {
-      throw new Error(
-        `Fresco's workspace closure no longer contains ${required}; the runner-stage Dockerfile patches need updating.`,
-      );
-    }
+  const manifestOut = {
+    vendored: {},
+    registry: registryNames,
+  };
+
+  if (vendorNames.length === 0) {
+    // Nothing in Fresco's closure ships in this release: the pure pipeline
+    // tree already matches the future released image exactly.
+    writeFileSync(
+      join(stageDir, 'bundle-manifest.json'),
+      `${JSON.stringify(manifestOut, null, 2)}\n`,
+    );
+    console.log(JSON.stringify(manifestOut, null, 2));
+    return;
   }
 
   // 1. Pack the pending packages. Their dists must already be built (the
   //    caller runs the turbo closure build first); pack applies publishConfig
   //    so each tarball is what `changeset publish` would upload.
   const tarballs = {};
-  for (const name of closure) {
+  for (const name of vendorNames) {
     run('pnpm', ['--filter', name, 'pack', '--pack-destination', vendorDir], {
       cwd: repoRoot,
     });
@@ -150,6 +186,7 @@ function main() {
       );
     }
     tarballs[name] = expected;
+    manifestOut.vendored[name] = expected;
   }
 
   // 2. Overrides: force every range for these packages (the app's, and the
@@ -161,18 +198,19 @@ function main() {
       `${workspaceYamlPath} has no overrides: block to extend; check FRESCO_WORKSPACE_YAML in scripts/mirror-app.mjs.`,
     );
   }
-  const overrideLines = closure
+  const overrideLines = vendorNames
     .map((name) => `  '${name}': 'file:vendor/${tarballs[name]}'`)
     .join('\n');
   writeFileSync(
     workspaceYamlPath,
     workspaceYaml.replace(
       /^overrides:$/m,
-      `overrides:\n  # Pending workspace packages bundled by release-test (local tarballs).\n${overrideLines}`,
+      `overrides:\n  # Packages this release publishes, bundled by release-test (local tarballs).\n${overrideLines}`,
     ),
   );
 
-  // 3. Dockerfile patches.
+  // 3. Dockerfile patches — only where a vendored package requires them; the
+  //    registry-resolved remainder keeps the original Dockerfile lines.
   const dockerfilePath = join(stageDir, 'Dockerfile');
   let dockerfile = readFileSync(dockerfilePath, 'utf8');
 
@@ -194,29 +232,40 @@ function main() {
     'runner-stage lockfile COPY',
   );
 
-  // runner stage: the lockfile-pinned @codaco installs would resolve to
-  // `file:vendor/...` (a path that does not exist under /tmp/runtime) — point
-  // them at the vendored tarballs directly. shared-consts is installed
-  // alongside so protocol-validation's caret range dedupes onto the pending
-  // build instead of pulling the registry version.
-  dockerfile = patchOnce(
-    dockerfile,
-    '      "@codaco/protocol-validation@$(LV @codaco/protocol-validation)"; \\',
-    `      "/tmp/vendor/${tarballs['@codaco/protocol-validation']}" \\\n      "/tmp/vendor/${tarballs['@codaco/shared-consts']}"; \\`,
-    'runner-stage protocol-validation install',
-  );
-  dockerfile = patchOnce(
-    dockerfile,
-    '    npm pack --silent --pack-destination /tmp "@codaco/interview@$(LV @codaco/interview)"; \\',
-    `    cp /tmp/vendor/${tarballs['@codaco/interview']} /tmp/codaco-interview-vendored.tgz; \\`,
-    'runner-stage interview pack',
-  );
+  // runner stage: a vendored package's lockfile pin reads `file:vendor/...`
+  // (a path that does not exist under /tmp/runtime), so its install must point
+  // at the tarball; a registry-resolved package keeps the original LV() pin.
+  const pvVendored = tarballs['@codaco/protocol-validation'];
+  const scVendored = tarballs['@codaco/shared-consts'];
+  if (pvVendored || scVendored) {
+    const pvArg = pvVendored
+      ? `      "/tmp/vendor/${pvVendored}"`
+      : '      "@codaco/protocol-validation@$(LV @codaco/protocol-validation)"';
+    // An explicitly installed shared-consts tarball dedupes against
+    // protocol-validation's caret range, keeping the pending build in place.
+    const scArg = scVendored ? ` \\\n      "/tmp/vendor/${scVendored}"` : '';
+    dockerfile = patchOnce(
+      dockerfile,
+      '      "@codaco/protocol-validation@$(LV @codaco/protocol-validation)"; \\',
+      `${pvArg}${scArg}; \\`,
+      'runner-stage protocol-validation install',
+    );
+  }
+  if (tarballs['@codaco/interview']) {
+    dockerfile = patchOnce(
+      dockerfile,
+      '    npm pack --silent --pack-destination /tmp "@codaco/interview@$(LV @codaco/interview)"; \\',
+      `    cp /tmp/vendor/${tarballs['@codaco/interview']} /tmp/codaco-interview-vendored.tgz; \\`,
+      'runner-stage interview pack',
+    );
+  }
 
   writeFileSync(dockerfilePath, dockerfile);
-
-  console.log(
-    JSON.stringify({ bundled: closure.map((name) => tarballs[name]) }, null, 2),
+  writeFileSync(
+    join(stageDir, 'bundle-manifest.json'),
+    `${JSON.stringify(manifestOut, null, 2)}\n`,
   );
+  console.log(JSON.stringify(manifestOut, null, 2));
 }
 
 main();

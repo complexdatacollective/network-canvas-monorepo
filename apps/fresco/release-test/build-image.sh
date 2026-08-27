@@ -37,14 +37,36 @@ node apps/fresco/release-test/scripts/bundle-pending-packages.mjs "$STAGE_DIR"
 echo "[release-test] generating lockfile"
 (cd "$STAGE_DIR" && pnpm install --lockfile-only --ignore-scripts)
 
-# Every @codaco entry must resolve to a vendored tarball. Registry-resolved
-# references appear as '@codaco/<name>@<semver>' in the lockfile; any such hit
-# means the bundling silently failed for some package.
-if grep -nE "@codaco/[a-z0-9-]+@[0-9]" "$STAGE_DIR/pnpm-lock.yaml" >/dev/null; then
-  echo "[release-test] ERROR: staged lockfile resolves @codaco packages from the registry:" >&2
-  grep -nE "@codaco/[a-z0-9-]+@[0-9]" "$STAGE_DIR/pnpm-lock.yaml" >&2
-  exit 1
-fi
+# Every package the pending release publishes must resolve to its vendored
+# tarball and never from the registry (registry references appear as
+# '@codaco/<name>@<semver>'); packages without a pending changeset are
+# expected to resolve from the registry, exactly as the released image will.
+node - "$STAGE_DIR" <<'EOF'
+const { readFileSync } = require('node:fs');
+const { join } = require('node:path');
+const stageDir = process.argv[2];
+const manifest = JSON.parse(
+  readFileSync(join(stageDir, 'bundle-manifest.json'), 'utf8'),
+);
+const lockfile = readFileSync(join(stageDir, 'pnpm-lock.yaml'), 'utf8');
+const problems = [];
+for (const [name, tarball] of Object.entries(manifest.vendored)) {
+  if (!lockfile.includes(`file:vendor/${tarball}`)) {
+    problems.push(`${name}: no file:vendor/${tarball} resolution in lockfile`);
+  }
+  if (new RegExp(`${name}@\\d`).test(lockfile)) {
+    problems.push(`${name}: vendored but also resolved from the registry`);
+  }
+}
+if (problems.length) {
+  console.error('[release-test] ERROR: bundling guard failed:');
+  for (const p of problems) console.error(`  ${p}`);
+  process.exit(1);
+}
+console.log(
+  `[release-test] bundling guard OK: ${Object.keys(manifest.vendored).length} vendored, ${manifest.registry.length} from registry (${manifest.registry.join(', ') || 'none'})`,
+);
+EOF
 
 echo "[release-test] building image $IMAGE_TAG"
 docker build -t "$IMAGE_TAG" "$STAGE_DIR"
