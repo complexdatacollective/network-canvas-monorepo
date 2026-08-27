@@ -144,6 +144,32 @@ this directory. The developer build uses the same canonical `build` command and
 PWA assertion as CI. It also gives Node a larger heap because `@codaco/interview`
 declaration bundling can exceed Node's default heap during a clean build.
 
+## Release smoke testing
+
+Before approving a release, run the agent-driven release smoke test against
+the developer site (Claude Code: the saved workflow `interviewer-release-test`
+in `.claude/workflows/`, invoked as `/interviewer-release-test`). It drives
+`https://interviewer.networkcanvas.dev` — the current state of `main` — through
+every core user journey with headless Playwright: protocol management, the
+full Sample Protocol interview, session and data management, export in every
+format combination, device-lock enrolment through revocation, service-worker
+and offline behaviour, and settings. Each journey runs in its own isolated
+browser profile; every reported failure is independently reproduced by a
+second agent before it may block; the run returns a verdict of `PASS`,
+`PASS_WITH_ISSUES`, `INCOMPLETE`, or `BLOCK`, plus a markdown summary and an
+evidence directory of screenshots.
+
+The workflow concentrates on what the Playwright E2E suite deliberately does
+not cover — the suite blocks service workers and conducts a lean fixture
+protocol, not the 30-stage Sample Protocol. It needs a checkout of this
+monorepo with dependencies installed (it installs Playwright's chromium on
+first use). Pass `args: { url: "…" }` to target a Netlify preview instead of
+the developer site, or `args: { journeys: ["data-export"] }` to re-run a
+subset. Journeys are tiered across models for token efficiency (most run on
+Sonnet; the full interview walk and all failure verifiers run on Opus);
+`args: { model: "…" }` overrides the journey tier wholesale, while verifiers
+stay pinned so the gate keeps its rigor.
+
 ## How CI builds
 
 ```bash
