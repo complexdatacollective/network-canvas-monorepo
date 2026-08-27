@@ -15,10 +15,11 @@ export type DeckEntry =
 // identity the DB uses — so two protocols sharing a name but differing in hash
 // each get their own card and stay independently reachable (and deletable).
 // Pending imports and the bundled teasers are keyed by name instead: they have
-// no resulting hash yet, so name is the only identity available to let their
-// card morph in place into the installed protocol (see the name-based
-// shadowing in `buildDeck`). The `slot:`/`hash:` namespaces keep the import
-// entry's key from ever colliding with a protocol name or hash.
+// no resulting hash yet, so name is the only identity available. Sharing that
+// key is what lets a teaser's card become the installing card and then morph in
+// place into the installed protocol (see `buildDeck`). The `slot:`/`hash:`
+// namespaces keep the import entry's key from ever colliding with a protocol
+// name or hash.
 export function entryKey(entry: DeckEntry): string {
   switch (entry.kind) {
     case 'protocol':
@@ -49,9 +50,9 @@ function entryName(entry: Exclude<DeckEntry, { kind: 'import' }>): string {
   }
 }
 
-// Pending wins over the bundled teasers wins over protocol when entries share
-// a name-slot (e.g. a sample-source pending and the sample card, or a
-// freshly-imported protocol overlapping its just-cleared pending entry).
+// Pending wins over the bundled teasers when entries share a name-slot (an
+// in-flight sample install and the sample card), so the teaser's slot shows the
+// install progress.
 const KIND_PRIORITY = {
   pending: 3,
   sample: 2,
@@ -82,20 +83,33 @@ export function buildDeck({
       protocol,
     }),
   );
-  if (showSampleCard) candidates.push({ kind: 'sample' });
-  if (showDevelopmentCard) candidates.push({ kind: 'development' });
+  // A teaser offers a protocol the researcher doesn't have yet, so an
+  // installed protocol of the same name drops it: that card owns the name, and
+  // it is the one carrying the "Start new interview" and delete controls. The
+  // caller's flags say whether a teaser is wanted at all (the researcher's
+  // preference, the dev build); whether one is redundant is decided here, so
+  // the two teasers can't answer that question differently.
+  const installedNames = new Set(protocols.map((protocol) => protocol.name));
+  const teasers: Exclude<DeckEntry, { kind: 'import' }>[] = [];
+  if (showSampleCard) teasers.push({ kind: 'sample' });
+  if (showDevelopmentCard) teasers.push({ kind: 'development' });
+  for (const teaser of teasers) {
+    if (!installedNames.has(entryName(teaser))) candidates.push(teaser);
+  }
+
   for (const pending of pendingImports) {
     candidates.push({ kind: 'pending', pending });
   }
 
-  // A pending import (or a bundled teaser) shadows every installed protocol
-  // that shares its name, so the card morphs in place instead of the deck
-  // showing both the installing card and the finished protocol at once. Two
-  // installed protocols with the same name but different hashes keep separate
-  // slots, so neither becomes unreachable.
+  // A pending import shadows every installed protocol that shares its name, so
+  // the card morphs in place instead of the deck showing both the installing
+  // card and the finished protocol at once. Two installed protocols with the
+  // same name but different hashes keep separate slots, so neither becomes
+  // unreachable. Only pending entries shadow: a teaser is a candidate at all
+  // only while nothing of its name is installed.
   const shadowingNames = new Set<string>();
   for (const candidate of candidates) {
-    if (candidate.kind !== 'protocol') {
+    if (candidate.kind === 'pending') {
       shadowingNames.add(entryName(candidate));
     }
   }
