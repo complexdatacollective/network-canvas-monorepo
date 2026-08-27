@@ -57,7 +57,13 @@ is not ready to go out, release from the previous tag instead:
    reads that section for the GitHub release. Do **not** run
    `changeset version` on the branch — it would consume changesets that belong
    to main's next release.
-3. Push the branch, then run the **Hotfix Release** workflow **from main**,
+3. Push the branch and open its merge-back pull request into `main` NOW
+   (step 5 merges it after release, but the PR must exist first): its
+   Netlify deploy preview is the certification candidate. Run the release
+   smoke test against that preview with the hotfix's bumped version (see
+   Release smoke testing below) and proceed only on a certifying pass.
+
+4. Run the **Hotfix Release** workflow **from main**,
    with `app: interviewer` and `source_ref` set to the hotfix branch. It runs
    typecheck and tests across the app's whole workspace dependency closure,
    builds with PostHog source maps, deploys to Netlify production, and cuts
@@ -81,8 +87,9 @@ is not ready to go out, release from the previous tag instead:
    A branch that needs an older line published needs a separate channel, not
    this lane.
 
-4. **Merge the hotfix branch into main.** Open a pull request from the hotfix
-   branch itself rather than re-applying its content: the normal lane refuses
+5. **Merge the hotfix branch into main.** The pull request already exists
+   from step 3 — merging the branch itself rather than re-applying its
+   content matters: the normal lane refuses
    to deploy a tree that does not contain the newest released commit, so a
    cherry-pick — which makes a different commit — leaves main blocked. The
    merge brings the version bump and CHANGELOG with it. While you are there,
@@ -143,6 +150,60 @@ root as the build base. Its versioned build settings live in `netlify.toml` in
 this directory. The developer build uses the same canonical `build` command and
 PWA assertion as CI. It also gives Node a larger heap because `@codaco/interview`
 declaration bundling can exceed Node's default heap during a clean build.
+
+## Release smoke testing
+
+Before approving a release, run the agent-driven release smoke test
+(Claude Code: invoke `/interviewer-release-test` — the
+`interviewer-release-test` skill, which launches the saved
+`interviewer-release-test-workflow` in `.claude/workflows/` and carries the
+launch/report/follow-up procedure). **Certification targets the release
+candidate's own deployment, not the developer site**: for a normal release
+that is the Version Packages PR's Netlify deploy preview (its tree carries
+the bumped version, so pass `args: { url: <preview>, expectedVersion:
+<bumped version> }`) — the developer site still serves `main`'s pre-bump
+version until that PR merges, so it can neither serve nor certify the
+version being shipped. Without `args`, the workflow drives
+`https://interviewer.networkcanvas.dev` — the current state of `main` —
+which is the right target for ad-hoc health checks between releases. Either
+way it runs every core user journey with headless Playwright: protocol management, the
+full Sample Protocol interview, session and data management, export in every
+format combination, device-lock enrolment through revocation, service-worker
+and offline behaviour, and settings. Each journey runs in its own isolated
+browser profile; every reported failure is independently re-examined by a
+second agent, and a failure no verifier could adjudicate still blocks at
+blocker/major severity — reported explicitly as unverified, and capping the
+run at `INCOMPLETE` — rather than being trusted; the run returns a verdict
+of `PASS`,
+`PASS_WITH_ISSUES`, `INCOMPLETE`, or `BLOCK` (or `BLOCKED` when preflight
+cannot reach the target or its tooling), plus a markdown summary and an
+evidence directory of screenshots.
+
+For the changeset lane the candidate is the Version Packages PR's deploy
+preview, as described above — never `main`'s developer site, which cannot
+serve the bumped version before that PR merges. A **hotfix** likewise ships
+its own tree: open the hotfix branch's pull request into `main` (the
+merge-back the hotfix procedure requires anyway) BEFORE dispatching the
+Hotfix Release workflow — its Netlify deploy preview is the candidate.
+Certify that preview via
+`args: { url: "…", expectedVersion: "<the hotfix's bumped version>" }`,
+then dispatch; never certify a hotfix against the developer site, and never
+dispatch production before the preview has its verdict.
+
+The workflow concentrates on what the Playwright E2E suite deliberately does
+not cover — the suite blocks service workers and conducts a lean fixture
+protocol, not the 30-stage Sample Protocol. It needs a checkout of this
+monorepo with dependencies installed (it installs Playwright's chromium on
+first use). When certifying, always pass both `url` (the candidate's deploy
+preview) and `expectedVersion` (the version that preview's tree ships) so a
+stale or wrong deployment cannot produce the verdict — the binding is
+enforced in code, preflight refuses a mismatch, and a run without
+`expectedVersion` is marked `certifying: false` in its result and summary. Pass
+`args: { journeys: ["data-export"] }` to re-run a
+subset. Journeys are tiered across models for token efficiency (most run on
+Sonnet; the full interview walk and all failure verifiers run on Opus);
+`args: { model: "…" }` overrides the journey tier wholesale, while verifiers
+stay pinned so the gate keeps its rigor.
 
 ## How CI builds
 
