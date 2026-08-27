@@ -241,7 +241,8 @@ const validateReusedImage = () =>
 1. Read ${ARTIFACTS}/stamp.json (fields: image, imageId, version, commit, dirty). If missing, return ok:false with error "no stamp — run without skipBuild".
 2. Run: docker image inspect --format '{{.Id}}' ${pendingImage} — must equal the stamp's imageId.
 3. Run: git rev-parse --short HEAD — must equal the stamp's commit.
-Return ok:true with the stamp's image/version/commit/dirty fields only if BOTH match; otherwise ok:false with which comparison failed in "error" (the fix is to rerun without skipBuild). Do not rebuild anything.`,
+4. Run: git status --porcelain — the stamp's dirty flag describes the tree AT BUILD TIME, so report "dirty" as true if EITHER the stamp says true OR this command prints anything (uncommitted changes since the build mean the image does not contain the current tree, even though HEAD matches).
+Return ok:true with the stamp's image/version/commit and the combined dirty flag only if the checks in 2 and 3 both match; otherwise ok:false with which comparison failed in "error" (the fix is to rerun without skipBuild). Do not rebuild anything.`,
     {
       label: 'validate-reused-image',
       phase: 'Build',
@@ -534,9 +535,15 @@ if (upgradeLane?.swap?.ok && upgradeLane?.diffVerdict?.pass !== true) {
   failures.push(`export regression gate: ${reason}`);
   if (verdict === 'go') verdict = 'no-go';
 }
+// Teardown hygiene is reported separately from release quality: leftover
+// local containers say nothing about whether the candidate is safe to
+// publish, so they never flip a go — but they must never hide inside a "go"
+// result either, hence the distinct warnings channel (failures stays strictly
+// release-gating, so verdict "go" implies failures is empty).
+const warnings = [];
 if (!keepStack && teardown?.ok !== true) {
-  failures.push(
-    `teardown did not verify clean: ${teardown?.error ?? 'teardown agent returned no result'} — release-test containers/volumes may still be running`,
+  warnings.push(
+    `teardown did not verify clean: ${teardown?.error ?? 'teardown agent returned no result'} — release-test containers/volumes may still be running and can break the next run (bash ${HARNESS}/down.sh to clean up)`,
   );
 }
 
@@ -544,6 +551,7 @@ return {
   verdict,
   summary: report?.summary,
   failures,
+  warnings,
   untestedShippedChanges: report?.untestedShippedChanges ?? [],
   pendingImage: { ...build },
   releasedImage: released?.image,
