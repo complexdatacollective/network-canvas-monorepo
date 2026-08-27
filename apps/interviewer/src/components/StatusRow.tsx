@@ -55,9 +55,11 @@ const statusTriggerClassName =
   'focusable inline-flex items-center gap-1.5 rounded-sm';
 const statusIconClassName = 'tablet-landscape:size-3.5 size-4';
 
-// Pure presentation: the dashboard's bottom-of-screen footer strip. `mode`
-// mirrors useAuth's enrolled security mode; `durability` mirrors the
-// storage-persistence poll (null until the first check resolves).
+// Pure presentation: the dashboard's bottom-of-screen footer strip. `mode` is
+// the security mode to display (the container maps an unconfigured vault to
+// 'none'; undefined means the auth state hasn't settled and renders no
+// encryption statement); `durability` mirrors the storage-persistence poll
+// (null until the first check resolves).
 export function StatusRowView({
   protocolCount,
   interviewCount,
@@ -220,7 +222,13 @@ type StatusRowProps = {
 };
 
 export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
-  const { mode } = useAuth();
+  const { kind, mode } = useAuth();
+  // A never-configured vault stores data exactly as an enrolled 'none' vault
+  // does — unencrypted — so the footer must state "Not encrypted" there too,
+  // not stay silent. Keyed on kind, not `mode ?? 'none'`: mode is also
+  // undefined while 'loading' (and for 'corrupt'), where the truthful display
+  // is no statement rather than a false "Not encrypted" flash.
+  const displayMode = kind === 'unconfigured' ? 'none' : mode;
   const [durability, setDurability] = useState<Durability | null>(null);
   // Static per page load, like InstallBanner: installing mid-session still
   // requires launching the installed app.
@@ -276,7 +284,7 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
     <StatusRowView
       protocolCount={protocolCount}
       interviewCount={interviewCount}
-      mode={mode}
+      mode={displayMode}
       durability={durability}
       installed={installed}
       versionSlot={<AppUpdatePill />}
