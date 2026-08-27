@@ -107,11 +107,10 @@ const ValidationCommitObserver = ({
   onCommit: (validation: ValidationMap) => void;
 }) => {
   const { validation } = useFormValue(['validation'] as const);
-  // Turning the section off clears the field to `undefined` (see
-  // `ValidationSection`'s `handleToggleChange`), which reads identically to a
-  // field that has never mounted. Only the store tells the two apart, and the
-  // difference matters: the first is a removal that must reach the codebook,
-  // the second must write nothing at all.
+  // Rule changes made while the field is mounted are mirrored into the
+  // codebook here. Closing the Section is handled explicitly by the
+  // `onOpenChange` below because unmounting removes the field before this
+  // observer can see its discarded value.
   const hasValidationField = useFormStore(
     (store) => store.getFieldState('validation') !== undefined,
   );
@@ -230,6 +229,12 @@ const CodebookVariableValidationSection = ({
         summary={sectionSummary}
         initialValue={currentValidation}
         commitsImmediately
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCommit({});
+          }
+          return true;
+        }}
       />
     </FormStoreProvider>
   );

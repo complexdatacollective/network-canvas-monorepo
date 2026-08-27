@@ -21,8 +21,8 @@ test('creates a valid NameGenerator stage from scratch', async ({
   // NameGenerator's subject is a node type (sections/NodeType.tsx — the
   // PLAIN `NodeType`, not `FilteredNodeType`; NameGenerator's registry entry
   // (StageEditor/Interfaces.tsx) uses `NodeType` directly, `Section
-  // title="Node Type"`). Form.tsx's `withDisabledSubjectRequired` disables
-  // the Form section until `subject.type` is set — same reasoning as
+  // title="Node setup"`). Form.tsx's `withDisabledSubjectRequired` disables
+  // Form configuration until `subject.type` is set — same reasoning as
   // alter-form.spec.ts.
   await selectOrCreateNodeType(architectPage, 'person');
 
@@ -34,21 +34,21 @@ test('creates a valid NameGenerator stage from scratch', async ({
   // rather than the brief's `getByLabel` guess.
   await editor.field('form.title').getByRole('textbox').fill('Add a person');
 
-  await addFormField(editor.section('Form'), {
+  await addFormField(editor.section('Form configuration'), {
     variableName: 'age',
     promptText: 'What is your name?',
     inputControl: 'Text Input',
   });
 
-  // NameGeneratorPrompts.tsx, `Section title="Prompts"` — a SECOND
-  // DialogArrayField rendered alongside Form's own field array (both share
-  // the default "Create new" label), hence addPrompt's section-scoped open
-  // click (see prompts.ts's own comment). Inside the opened dialog,
+  // NameGeneratorPrompts.tsx's `prompts` field is a SECOND DialogArrayField
+  // rendered alongside Form's own field array (both share the default "Create
+  // new" label), hence addPrompt's field-scoped open click (see prompts.ts's
+  // own comment). Inside the opened dialog,
   // PromptFields.tsx renders PromptText.tsx's RichText field (name `text`)
   // with an explicit `label="Prompt text"` that wins over the name fallback
   // (same rule ego-form.spec.ts / alter-form.spec.ts already documented for
   // IntroductionPanel) — NOT the brief's guessed accessible name `'text'`.
-  await addPrompt(editor.section('Prompts'), async () => {
+  await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Name someone you know');
   });
 

@@ -33,16 +33,30 @@ vi.mock('~/components/Form/arrayFields/DialogArrayField', () => ({
   default: ({
     editorValidate,
     editorProps,
+    'aria-required': ariaRequired,
+    'aria-labelledby': ariaLabelledBy,
+    'aria-describedby': ariaDescribedBy,
   }: {
-    editorValidate: (
+    'editorValidate': (
       values: Record<string, unknown>,
       props?: { editIndex?: number; initialValues?: unknown },
     ) => Record<string, unknown>;
-    editorProps?: Record<string, unknown>;
+    'editorProps'?: Record<string, unknown>;
+    'aria-required'?: boolean;
+    'aria-labelledby'?: string;
+    'aria-describedby'?: string;
   }) => {
     capturedEditorValidate = editorValidate;
     capturedEditorProps = editorProps;
-    return <div data-testid="dialog-array-field" />;
+    return (
+      <ul
+        // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- mirrors ArrayField's current public accessibility props
+        aria-required={ariaRequired}
+        aria-labelledby={ariaLabelledBy}
+        aria-describedby={ariaDescribedBy}
+        data-testid="dialog-array-field"
+      />
+    );
   },
 }));
 
@@ -267,6 +281,22 @@ const renderForm = (
 };
 
 describe('Form.tsx cross-class gate (real role-map wiring)', () => {
+  it('exposes and enforces the required form-fields constraint', async () => {
+    renderForm({ entity: 'node', type: 'person' });
+
+    const fields = screen.getByRole('list', { name: 'Form fields' });
+    expect(fields).toHaveAttribute('aria-required', 'true');
+    expect(fields).toHaveAccessibleDescription(/Required/);
+
+    setFormFields([]);
+    if (!stageFormContext)
+      throw new Error('stage form context was not captured');
+    await stageFormContext.storeApi.getState().validateField('form.fields');
+    expect(
+      stageFormContext.storeApi.getState().getFieldErrors('form.fields'),
+    ).toEqual(['You must create at least one item.']);
+  });
+
   it('rejects a pick a bin elsewhere already writes, using the REAL role map for the mount’s subject', () => {
     const editorValidate = renderForm({ entity: 'node', type: 'person' });
     const errors = editorValidate({ variable: 'cat', validation: {} });

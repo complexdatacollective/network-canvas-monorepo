@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
 
@@ -163,7 +163,10 @@ const ItemEditor = ({
   const announcement = useContentTypeChangeAnnouncement(slotType);
 
   return (
-    <>
+    <Section
+      title="Item details"
+      description="Choose the content type, provide what participants will see, and adjust its presentation when available."
+    >
       {/*
         Mounted for the whole dialog, not rendered alongside its first message:
         a live region that appears at the same moment as its text is not
@@ -172,63 +175,45 @@ const ItemEditor = ({
       <span role="status" aria-live="polite" className="sr-only">
         {announcement}
       </span>
-      <Section layout="vertical">
-        <>
-          <ArchitectField
-            name="type"
-            label="Content type"
-            hint="Choose the type of content this item will show."
-            component={FrescoRadioGroupField}
-            validation={{ required: true }}
-            initialValue={initialType}
-            options={typeOptions}
-          />
-        </>
-      </Section>
+      <ArchitectField
+        name="type"
+        label="Content type"
+        hint="Choose the type of content this item will show."
+        component={FrescoRadioGroupField}
+        validation={{ required: true }}
+        initialValue={initialType}
+        options={typeOptions}
+      />
       {unusableContentNotice && (
-        <Section title="Content" layout="vertical">
-          <>
-            <Alert variant="warning">
-              <AlertDescription>{unusableContentNotice}</AlertDescription>
-            </Alert>
-          </>
-        </Section>
+        <Alert variant="warning">
+          <AlertDescription>{unusableContentNotice}</AlertDescription>
+        </Alert>
       )}
       {slotType && (
-        <Section layout="vertical">
-          <>
-            <ArchitectField
-              name={CONTENT_SLOT_NAMES[slotType]}
-              component={contentInputs[slotType]}
-              label="Content"
-              hint={`Provide the ${slotType} content for this item. This is what participants will see when they reach this item in the study.`}
-              validation={{ required: true }}
-              // Only the slot for the type the row was saved as starts from
-              // the row's content; every other slot starts empty, which is
-              // what keeps an asset id out of the rich text editor.
-              initialValue={
-                slotType === initialType ? initialContent : undefined
-              }
-            />
-          </>
-        </Section>
+        <ArchitectField
+          name={CONTENT_SLOT_NAMES[slotType]}
+          component={contentInputs[slotType]}
+          label="Content"
+          hint={`Provide the ${slotType} content for this item. This is what participants will see when they reach this item in the study.`}
+          validation={{ required: true }}
+          // Only the slot for the type the row was saved as starts from
+          // the row's content; every other slot starts empty, which is
+          // what keeps an asset id out of the rich text editor.
+          initialValue={slotType === initialType ? initialContent : undefined}
+        />
       )}
       {allowSize && supportsSize(resolvedType) && (
-        <Section layout="vertical" required={false}>
-          <>
-            <ArchitectField
-              name="size"
-              component={FrescoRadioGroupField}
-              label="Display size"
-              hint="Optionally constrain the height of this item. Full size lets it display at its natural height."
-              initialValue={size ?? ''}
-              options={sizeOptions}
-              orientation="horizontal"
-            />
-          </>
-        </Section>
+        <ArchitectField
+          name="size"
+          component={FrescoRadioGroupField}
+          label="Display size"
+          hint="Optionally constrain the height of this item. Full size lets it display at its natural height."
+          initialValue={size ?? ''}
+          options={sizeOptions}
+          orientation="horizontal"
+        />
       )}
-    </>
+    </Section>
   );
 };
 

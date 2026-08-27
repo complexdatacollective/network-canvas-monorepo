@@ -133,10 +133,10 @@ const diffFields = (previous: FieldsMap, next: FieldsMap): FieldsDiff => {
   next.forEach((nextField, name) => {
     const previousField = previous.get(name);
 
-    // Fields appearing or disappearing are mount churn (a section expanding,
-    // an interface swapping its fields), never a user edit. Ignoring them is
-    // what keeps the burst of registrations on open — and every collapse of a
-    // section — out of the undo timeline.
+    // Ordinary fields appearing or disappearing are mount churn (a section
+    // expanding, or an interface swapping its fields), never a user edit.
+    // Deliberate Section discards are signalled separately by the form store's
+    // fieldDiscardVersion below.
     if (!previousField) return;
 
     if (!previousField.meta.isBlurred && nextField.meta.isBlurred) {
@@ -266,6 +266,10 @@ const StageFormBridge = ({
       try {
         apply();
       } finally {
+        // Section uses this form-owned signal to reapply defaultOpen after the
+        // restore writes land, so configured fields can remount and rejoin the
+        // submitted snapshot without making defaultOpen generally reactive.
+        storeApi.getState().notifyRestore();
         restoring.current = false;
         dispatch(setRestoring(false));
         // Batched with the store writes `apply` made, so the commit that first
@@ -274,7 +278,7 @@ const StageFormBridge = ({
         refreshLiveValues();
       }
     },
-    [dispatch, refreshLiveValues],
+    [dispatch, refreshLiveValues, storeApi],
   );
 
   /**
@@ -329,7 +333,10 @@ const StageFormBridge = ({
   );
 
   const handleStoreChange = useCallback(
-    (next: { fields: FieldsMap }, previous: { fields: FieldsMap }) => {
+    (
+      next: { fields: FieldsMap; fieldDiscardVersion: number },
+      previous: { fields: FieldsMap; fieldDiscardVersion: number },
+    ) => {
       // Restores write through `setFieldValue`; they must not snapshot, and
       // `runRestore` refreshes the mirror once at the end.
       if (restoring.current) return;
@@ -338,11 +345,31 @@ const StageFormBridge = ({
       // refreshes the mirror once, after the last of them.
       if (batching.current) return;
 
-      if (next.fields === previous.fields) return;
+      if (
+        next.fields === previous.fields &&
+        next.fieldDiscardVersion === previous.fieldDiscardVersion
+      )
+        return;
 
       scheduleLiveValues();
 
       const { blurred, changed } = diffFields(previous.fields, next.fields);
+      const destructivelyUnmounted =
+        next.fieldDiscardVersion !== previous.fieldDiscardVersion;
+
+      // Descendant cleanup runs once per field as a Section unmounts. Each
+      // destructive unregister leaves an undefined dormant tombstone, which
+      // distinguishes a deliberate discard from ordinary conditional mount
+      // churn. Debounce the burst so one collapsed Section becomes one undo
+      // step containing the final registered form snapshot.
+      if (destructivelyUnmounted) {
+        cancelPendingSnapshot();
+        snapshotTimer.current = setTimeout(() => {
+          snapshotTimer.current = null;
+          takeSnapshot();
+        }, SNAPSHOT_DEBOUNCE_MS);
+        return;
+      }
 
       // Blur commits whatever the user has typed so far.
       if (blurred && snapshotTimer.current !== null) {

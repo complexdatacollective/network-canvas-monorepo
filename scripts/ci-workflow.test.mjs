@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
+import { parse } from 'yaml';
+
 import { GATED_PRODUCT_RELEASE_LANES } from './changeset-app-utils.mjs';
 import { E2E_JOB_NAMES } from './release-e2e-policy.mjs';
 
@@ -9,6 +11,7 @@ const workflow = readFileSync(
   new URL('../.github/workflows/ci-and-release.yml', import.meta.url),
   'utf8',
 );
+const parsedWorkflow = parse(workflow);
 const snapshotWorkflow = readFileSync(
   new URL(
     '../.github/workflows/open-e2e-snapshot-update-pr.yml',
@@ -117,6 +120,16 @@ test('both public sites crawl their matching Netlify deploy previews', () => {
         `deploy-preview-\\$\\{context\\.issue\\.number\\}--\\$\\{siteName\\}\\.netlify\\.app`,
       ),
     );
+    assert.match(
+      previewJob,
+      /status\.description === 'Deploy Preview canceled\.'/,
+      'a successful ignored Netlify deploy may reuse the stable PR alias',
+    );
+    assert.match(
+      previewJob,
+      /previewUrl\.hostname === 'app\.netlify\.com'/,
+      'the ignored-deploy fallback only accepts Netlify dashboard URLs',
+    );
     assert.match(previewJob, /@jthrilly\/dead-link-checker@\^1\.1\.0/);
     assert.match(previewJob, new RegExp(`"\\$${startPath}"`));
   }
@@ -127,6 +140,76 @@ test('both public sites crawl their matching Netlify deploy previews', () => {
   assert.match(carryForward, /- website-preview-checks/);
   assert.match(carryForward, /FLAG_DOCS: \["docs-preview-checks"\]/);
   assert.match(carryForward, /FLAG_WEBSITE: \["website-preview-checks"\]/);
+});
+
+test('an ignored Netlify deploy reuses only its verified PR preview alias', async () => {
+  const previewScript = parsedWorkflow.jobs['docs-preview-checks'].steps.find(
+    ({ id }) => id === 'netlify-preview',
+  )?.with?.script;
+  assert.equal(
+    typeof previewScript,
+    'string',
+    'the preview wait script exists',
+  );
+
+  const runPreviewScript = async (status) => {
+    const outputs = new Map();
+    const failures = [];
+    const github = {
+      paginate: async () => [status],
+      rest: { repos: { listCommitStatusesForRef() {} } },
+    };
+    const context = {
+      issue: { number: 1443 },
+      payload: { pull_request: { head: { sha: 'test-head' } } },
+      repo: { owner: 'test-owner', repo: 'test-repo' },
+    };
+    const core = {
+      setFailed: (message) => failures.push(message),
+      setOutput: (name, value) => outputs.set(name, value),
+    };
+    const AsyncFunction = async function () {}.constructor;
+
+    await new AsyncFunction('github', 'context', 'core', previewScript)(
+      github,
+      context,
+      core,
+    );
+
+    return { failures, outputs };
+  };
+
+  const ignoredDeploy = {
+    context: 'netlify/documentation-dev/deploy-preview',
+    description: 'Deploy Preview canceled.',
+    state: 'success',
+    target_url:
+      'https://app.netlify.com/projects/documentation-dev/deploys/6a8f036639821f00084e3a3c',
+  };
+  const ignoredResult = await runPreviewScript(ignoredDeploy);
+  assert.deepEqual(ignoredResult.failures, []);
+  assert.equal(
+    ignoredResult.outputs.get('url'),
+    'https://deploy-preview-1443--documentation-dev.netlify.app',
+  );
+
+  const wrongProjectResult = await runPreviewScript({
+    ...ignoredDeploy,
+    target_url:
+      'https://app.netlify.com/projects/another-site/deploys/6a8f036639821f00084e3a3c',
+  });
+  assert.equal(wrongProjectResult.outputs.has('url'), false);
+  assert.match(wrongProjectResult.failures[0], /pointed to unexpected URL/);
+
+  const ordinaryDashboardResult = await runPreviewScript({
+    ...ignoredDeploy,
+    description: 'Deploy Preview ready!',
+  });
+  assert.equal(ordinaryDashboardResult.outputs.has('url'), false);
+  assert.match(
+    ordinaryDashboardResult.failures[0],
+    /pointed to unexpected URL/,
+  );
 });
 
 test('website dead-link crawl waits for the documentation preview it links to', () => {

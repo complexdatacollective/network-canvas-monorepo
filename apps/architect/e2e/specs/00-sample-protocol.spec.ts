@@ -291,7 +291,7 @@ test.describe.serial('sample protocol built from scratch', () => {
       s('stages', 3, 'introductionPanel', 'title'),
       s('stages', 3, 'introductionPanel', 'text'),
     );
-    await addConfiguredFormField(editor.section('Form'), {
+    await addConfiguredFormField(editor.section('Form configuration'), {
       variableName: 'participant_consent',
       promptText: s('stages', 3, 'form', 'fields', 0, 'prompt').trim(),
       inputControl: 'BooleanChoice',
@@ -324,7 +324,7 @@ test.describe.serial('sample protocol built from scratch', () => {
       s('stages', 4, 'introductionPanel', 'text'),
     );
 
-    const form = editor.section('Form');
+    const form = editor.section('Form configuration');
     const prompt = (index: number) =>
       s('stages', 4, 'form', 'fields', index, 'prompt').trim();
     await addConfiguredFormField(form, {
@@ -424,7 +424,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await createQuickAddVariable(editor, page, 'name', {
       clearRequiredValidation: true,
     });
-    await addPrompt(editor.section('Prompts'), async () => {
+    await addPrompt(editor.field('prompts'), async () => {
       await editor.fillRichTextMarkdown(
         'Prompt text',
         s('stages', 6, 'prompts', 0, 'text'),
@@ -457,7 +457,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     // the spotlight) — no creation, so no validation to clear.
     await createQuickAddVariable(editor, page, 'name');
     await addExistingNetworkPanel(editor, s('stages', 8, 'panels', 0, 'title'));
-    await addPrompt(editor.section('Prompts'), async () => {
+    await addPrompt(editor.field('prompts'), async () => {
       await editor.fillRichTextMarkdown(
         'Prompt text',
         s('stages', 8, 'prompts', 0, 'text'),
@@ -499,7 +499,7 @@ test.describe.serial('sample protocol built from scratch', () => {
       .field('form.title')
       .getByRole('textbox')
       .fill(s('stages', 10, 'form', 'title'));
-    const form = editor.section('Form');
+    const form = editor.section('Form configuration');
     await addConfiguredFormField(form, {
       variableName: 'name',
       promptText: s('stages', 10, 'form', 'fields', 0, 'prompt').trim(),
@@ -525,7 +525,7 @@ test.describe.serial('sample protocol built from scratch', () => {
       promptText: s('stages', 10, 'form', 'fields', 2, 'prompt').trim(),
       inputControl: 'Text Area',
     });
-    await addPrompt(editor.section('Prompts'), async () => {
+    await addPrompt(editor.field('prompts'), async () => {
       await editor.fillRichTextMarkdown(
         'Prompt text',
         s('stages', 10, 'prompts', 0, 'text'),
@@ -552,7 +552,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     // Data source: upload the trimmed roster CSV at first use. Configure
     // card/sort options only AFTER the data source (changing it resets all
     // three option areas).
-    await openResourceBrowser(editor.section('Data source for Roster'));
+    await openResourceBrowser(editor.field('dataSource'));
     await uploadIntoResourceBrowser(page, fixture('class roster.csv'));
     await addCardDisplayProperties(editor, [
       { variable: 'first_name', label: 'First Name' },
@@ -565,7 +565,7 @@ test.describe.serial('sample protocol built from scratch', () => {
         { variable: 'last_name', label: 'Last Name' },
       ],
     });
-    await addPrompt(editor.section('Prompts'), async () => {
+    await addPrompt(editor.field('prompts'), async () => {
       await editor.fillRichTextMarkdown(
         'Prompt text',
         s('stages', 12, 'prompts', 0, 'text'),
@@ -580,7 +580,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await editor.createNew('NameGeneratorRoster', 13);
     await editor.setStageName(s('stages', 13, 'label'));
     await selectOrCreateNodeType(page, 'University', { icon: 'add-a-place' });
-    await openResourceBrowser(editor.section('Data source for Roster'));
+    await openResourceBrowser(editor.field('dataSource'));
     await uploadIntoResourceBrowser(page, fixture('world-universities.csv'));
     await addCardDisplayProperties(editor, [
       { variable: 'website', label: 'Website' },
@@ -590,7 +590,7 @@ test.describe.serial('sample protocol built from scratch', () => {
       matchProperties: ['website', 'country', 'name'],
       accuracy: 'High accuracy',
     });
-    await addPrompt(editor.section('Prompts'), async () => {
+    await addPrompt(editor.field('prompts'), async () => {
       await editor.fillRichTextMarkdown(
         'Prompt text',
         s('stages', 13, 'prompts', 0, 'text'),
@@ -606,7 +606,7 @@ test.describe.serial('sample protocol built from scratch', () => {
       s('stages', 14, 'introductionPanel', 'title'),
       s('stages', 14, 'introductionPanel', 'text'),
     );
-    const form = editor.section('Form');
+    const form = editor.section('Form configuration');
     await addConfiguredFormField(form, {
       variableName: 'visited',
       promptText: s('stages', 14, 'form', 'fields', 0, 'prompt').trim(),
@@ -682,9 +682,6 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addSociogramPrompt(editor, page, {
       text: s('stages', 16, 'prompts', 0, 'text'),
       layoutVariable: 'sociogram_layout',
-      // Canonical carries `highlight: { allowHighlighting: false }`, which
-      // only the Interaction Behavior on-then-off dance writes.
-      interaction: { kind: 'none-explicit' },
     });
     await saveStage(16, 'Sociogram');
 
@@ -697,7 +694,6 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addSociogramPrompt(editor, page, {
       text: s('stages', 17, 'prompts', 0, 'text'),
       layoutVariable: 'box_layout',
-      interaction: { kind: 'none-explicit' },
     });
     const stage = await saveStage(17, 'Sociogram');
     if (stage.type !== 'Sociogram') throw new Error('narrowed');
@@ -755,11 +751,10 @@ test.describe.serial('sample protocol built from scratch', () => {
       s('stages', 20, 'introductionPanel', 'title'),
       s('stages', 20, 'introductionPanel', 'text'),
     );
-    await addPrompt(editor.section('Prompts'), async () => {
-      // DyadCensus's prompt label is 'Prompt Text' (capital T) — a distinct
-      // component from the shared PromptText.
+    await addPrompt(editor.field('prompts'), async () => {
+      // DyadCensus's prompt dialog uses the visible field label "Prompt text".
       await editor.fillRichTextMarkdown(
-        'Prompt Text',
+        'Prompt text',
         s('stages', 20, 'prompts', 0, 'text'),
       );
       await selectOrCreateEdgeType(page, 'know');
@@ -841,7 +836,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await editor.createNew('OrdinalBin', 24);
     await editor.setStageName(s('stages', 24, 'label'));
     await selectOrCreateNodeType(page, 'Person');
-    await addPrompt(editor.section('Prompts'), async () => {
+    await addPrompt(editor.field('prompts'), async () => {
       await editor.fillRichTextMarkdown(
         'Prompt text',
         s('stages', 24, 'prompts', 0, 'text'),
@@ -874,7 +869,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await editor.createNew('CategoricalBin', 25);
     await editor.setStageName(s('stages', 25, 'label'));
     await selectOrCreateNodeType(page, 'Person');
-    await addPrompt(editor.section('Prompts'), async () => {
+    await addPrompt(editor.field('prompts'), async () => {
       await editor.fillRichTextMarkdown(
         'Prompt text',
         s('stages', 25, 'prompts', 0, 'text'),
@@ -927,7 +922,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await editor.createNew('CategoricalBin', 27);
     await editor.setStageName(s('stages', 27, 'label'));
     await selectOrCreateNodeType(page, 'Person');
-    await addPrompt(editor.section('Prompts'), async () => {
+    await addPrompt(editor.field('prompts'), async () => {
       await editor.fillRichTextMarkdown(
         'Prompt text',
         s('stages', 27, 'prompts', 0, 'text'),

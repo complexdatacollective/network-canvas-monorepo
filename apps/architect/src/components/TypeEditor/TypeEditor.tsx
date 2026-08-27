@@ -4,12 +4,11 @@ import { useMemo } from 'react';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
 import { getCodebook } from '~/selectors/protocol';
-import { getFieldId } from '~/utils/issues';
 
 import ColorPicker from '../Form/Fields/ColorPicker';
 import getPalette from './getPalette';
@@ -82,7 +81,10 @@ const TypeEditor = ({
 
   return (
     <>
-      <Section layout="vertical">
+      <Section
+        title="Type identity"
+        description="Name this type for the codebook and exported data."
+      >
         <ArchitectField
           label={`${capitalize(entity)} type name`}
           hint={
@@ -112,7 +114,7 @@ const TypeEditor = ({
         />
       </Section>
 
-      <Section id={getFieldId('color')} layout="vertical">
+      <Section title="Type color">
         <ArchitectField
           component={ColorPicker}
           name="color"
@@ -127,7 +129,10 @@ const TypeEditor = ({
 
       {entity === 'node' && (
         <>
-          <Section id={getFieldId('shape')} layout="vertical">
+          <Section
+            title="Node appearance"
+            description="Choose a default shape and optionally map shapes from an attribute."
+          >
             <ArchitectField
               component={ShapePickerControl}
               label="Shape"
@@ -148,7 +153,7 @@ const TypeEditor = ({
               }
             />
           </Section>
-          <Section id={getFieldId('icon')} layout="vertical">
+          <Section title="Interface icon">
             <ArchitectField
               component={IconPicker}
               label="Icon"

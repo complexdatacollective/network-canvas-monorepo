@@ -1,10 +1,9 @@
 // Screen message listeners removed as part of screen system refactor
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
 
-import Section from '../EditorLayout/Section';
 import IssueAnchor from '../IssueAnchor';
 import SubjectSelectField, {
   type EntitySubject,
@@ -24,31 +23,21 @@ const NodeType = (props: NodeTypeProps) => {
   // are properly integrated with form state management
   return (
     <Section
-      title="Node Type"
-      summary={
-        <Paragraph>
-          Select the type of node that this stage will create.
-        </Paragraph>
-      }
+      title="Node setup"
+      description="Choose the node type this stage creates and optionally limit which nodes are available."
     >
-      <>
-        <IssueAnchor fieldName="subject" description="Node Type" />
-        <ArchitectField
-          name="subject"
-          entityType="node"
-          label="Node type"
-          labelHidden
-          promptBeforeChange="You attempted to change the node type of a stage that you have already configured. Before you can proceed the stage must be reset, which will remove any existing configuration. Do you want to reset the stage now?"
-          component={SubjectSelectField}
-          initialValue={initialSubject}
-          validation={{ required: true }}
-        />
-      </>
-      {withFilter && (
-        <>
-          <Filter />
-        </>
-      )}
+      <IssueAnchor fieldName="subject" description="Node Type" />
+      <ArchitectField
+        name="subject"
+        entityType="node"
+        label="Node type"
+        hint="Select the type of node that this stage will create."
+        promptBeforeChange="You attempted to change the node type of a stage that you have already configured. Before you can proceed the stage must be reset, which will remove any existing configuration. Do you want to reset the stage now?"
+        component={SubjectSelectField}
+        initialValue={initialSubject}
+        validation={{ required: true }}
+      />
+      {withFilter && <Filter />}
     </Section>
   );
 };

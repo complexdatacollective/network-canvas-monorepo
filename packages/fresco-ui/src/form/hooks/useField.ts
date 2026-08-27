@@ -19,6 +19,7 @@ import {
   useFieldNamespace,
   useFieldNamespacePath,
 } from '../FieldNamespace';
+import { useShouldDiscardFieldOnUnmount } from '../FieldUnmountPolicy';
 import type { FieldState, ValidationContext } from '../store/types';
 import { validationPropKeys } from '../validation/functions';
 import {
@@ -276,6 +277,7 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   const setFieldValue = useFormStore((store) => store.setFieldValue);
   const setFieldBlurred = useFormStore((store) => store.setFieldBlurred);
   const validateField = useFormStore((store) => store.validateField);
+  const shouldDiscardOnUnmount = useShouldDiscardFieldOnUnmount();
 
   // Disable fields while form is submitting
   const isDisabled = isSubmitting || config.disabled;
@@ -351,11 +353,14 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     }
 
     return () => {
+      const options = {
+        preserveValue: !(shouldDiscardOnUnmount?.() ?? false),
+      };
       if (pathOperations) {
-        pathOperations.unregisterField(resolvedPath);
+        pathOperations.unregisterField(resolvedPath, options);
         return;
       }
-      unregisterField(publicResolvedName);
+      unregisterField(publicResolvedName, options);
     };
   }, [
     resolvedPath,
@@ -364,6 +369,7 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     resolvedName,
     initialValue,
     validation,
+    shouldDiscardOnUnmount,
     unregisterField,
     registerField,
   ]);

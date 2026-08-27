@@ -229,12 +229,12 @@ test(
     await architectPage.clock.setFixedTime(FIXED_CLOCK);
     await architectPage.goto('/protocol/codebook');
 
-    // Codebook.tsx renders each node type's protocol-defined `name` as an h2
-    // (EntityType.tsx); the fixture's only node type is `person`.
+    // EntityType renders the protocol-defined name and entity kind as the
+    // shared Section heading beneath Codebook's "Node Types" h2.
     await expect(
       architectPage.getByRole('heading', {
-        level: 2,
-        name: 'person',
+        level: 3,
+        name: 'person node type',
         exact: true,
       }),
     ).toBeVisible();

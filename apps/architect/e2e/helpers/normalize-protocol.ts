@@ -100,10 +100,15 @@ const pathMatches =
 //    (every Sociogram: the Layout Mode section always registers the field
 //    and defaults it to Manual) is left holding `behaviours: {}` once the
 //    key goes, so an emptied `behaviours` is dropped too — same shape as
-//    rule 8. A `behaviours` with any surviving key still compares strictly.
-// 7. RichText-backed strings — canonicalized on both sides (see
+//    rule 9. A `behaviours` with any surviving key still compares strictly.
+// 7. `prompts[*].highlight.allowHighlighting: false` ≡ absent — the shared
+//    Section now discards descendant fields when a toggleable section closes,
+//    so a layout-only prompt can no longer retain the explicit false written
+//    by the legacy section's close handler. Consumers treat an absent
+//    highlight configuration as highlighting disabled.
+// 8. RichText-backed strings — canonicalized on both sides (see
 //    `canonicalizeMarkdown`).
-// 8. Empty `variables: {}` on codebook entity types ≡ absent — the type
+// 9. Empty `variables: {}` on codebook entity types ≡ absent — the type
 //    editor always writes a variables map when creating a type, while the
 //    canonical file omits the key for variable-less types (know/conflict
 //    edges, the Classmate node). Non-empty maps still compare strictly.
@@ -128,6 +133,17 @@ const DELETED_PATHS: DeletionRule[] = [
     matches: pathMatches('stages', '*', 'behaviours', 'automaticLayout'),
     when: (value) => value === false,
   },
+  {
+    matches: pathMatches(
+      'stages',
+      '*',
+      'prompts',
+      '*',
+      'highlight',
+      'allowHighlighting',
+    ),
+    when: (value) => value === false,
+  },
   ...(['node', 'edge'] as const).map((entity) => ({
     matches: pathMatches('codebook', entity, '*', 'variables'),
     when: (value: unknown) =>
@@ -144,6 +160,7 @@ const DELETED_PATHS: DeletionRule[] = [
  */
 const EMPTY_EQUALS_ABSENT: PathMatcher[] = [
   pathMatches('stages', '*', 'behaviours'),
+  pathMatches('stages', '*', 'prompts', '*', 'highlight'),
 ];
 
 const RICH_TEXT_PATHS: PathMatcher[] = [
@@ -318,12 +335,13 @@ export function normalizeProtocol(input: unknown): unknown {
 // gaps, its per-run timestamp) is checked as an invariant of what Architect
 // writes today instead.
 //
-// The two conditional deletions are the exception, deliberately: each fires
+// The conditional deletions are the exception, deliberately: each fires
 // only when the value IS the default it treats as equivalent to absent
-// (`skewedTowardCenter: false`, `automaticLayout: false`). A changed value
-// still compares, and for those two "written as the default" and "not written
-// at all" are indistinguishable to every consumer — so no regression survives
-// the tolerance.
+// (`skewedTowardCenter: false`, `automaticLayout: false`, or
+// `allowHighlighting: false`). A changed value
+// still compares, and for those defaults "written as the default" and "not
+// written at all" are indistinguishable to every consumer — so no regression
+// survives the tolerance.
 export function assertBuiltProtocolInvariants(built: unknown): void {
   const problems: string[] = [];
   if (!isRecord(built)) throw new Error('built protocol is not an object');

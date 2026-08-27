@@ -2,8 +2,8 @@ import { startCase } from 'es-toolkit/compat';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
+import Section from '@codaco/fresco-ui/Section';
 import { INHERITANCE_PATTERNS } from '@codaco/protocol-validation';
-import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import ColorPicker from '~/components/Form/Fields/ColorPicker';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
@@ -76,74 +76,62 @@ const DiseaseFields = ({
   );
 
   return (
-    <>
-      <Section title="Disease Label" layout="vertical">
-        <>
-          <IssueAnchor fieldName="label" description="Disease label" />
-          <ArchitectField
-            name="label"
-            label="Disease label"
-            labelHidden
-            component={InputField}
-            validation={{ required: true }}
-            initialValue={asString(item?.label)}
-            placeholder="Enter a name for this disease..."
-          />
-        </>
-      </Section>
-      <Section title="Color" layout="vertical">
-        <>
-          <IssueAnchor fieldName="color" description="Disease color" />
-          <ArchitectField
-            name="color"
-            component={ColorPicker}
-            validation={{ required: true }}
-            label="Select a color for this disease"
-            initialValue={asString(item?.color)}
-            palette="node-color-seq"
-            // The palette's real size, not a hard-coded 10: the theme defines
-            // `--node-1` … `--node-8`, so the two extra swatches this used to
-            // offer rendered as nothing and stored a colour that renders as
-            // nothing wherever it is used. A protocol that already holds one
-            // still gets it back — see ColorPicker.
-            paletteRange={COLOR_PALETTES['node-color-seq']}
-          />
-        </>
-      </Section>
-      <Section title="Node Attribute" layout="vertical">
-        <>
-          <IssueAnchor fieldName="variable" description="Disease attribute" />
-          <ArchitectField
-            name="variable"
-            component={VariablePickerControl}
-            validation={{ required: true }}
-            label="Select boolean node attribute"
-            initialValue={asString(item?.variable)}
-            entity="node"
-            type={nodeType ?? ''}
-            options={availableVariables}
-          />
-        </>
-      </Section>
-      <Section title="Inheritance Pattern" layout="vertical">
-        <>
-          <IssueAnchor
-            fieldName="inheritancePattern"
-            description="Inheritance pattern"
-          />
-          <ArchitectField
-            name="inheritancePattern"
-            label="Inheritance pattern"
-            labelHidden
-            component={StyledSelectField}
-            validation={{ required: true }}
-            initialValue={asString(item?.inheritancePattern)}
-            options={INHERITANCE_PATTERN_OPTIONS}
-            placeholder="Select an inheritance pattern..."
-          />
-        </>
-      </Section>
-    </>
+    <Section
+      title="Disease details"
+      description="Define how this disease appears, map it to the source pedigree's affected-status attribute, and choose how its inheritance is interpreted."
+    >
+      <IssueAnchor fieldName="label" description="Disease label" />
+      <ArchitectField
+        name="label"
+        label="Disease label"
+        component={InputField}
+        validation={{ required: true }}
+        initialValue={asString(item?.label)}
+        placeholder="Enter a name for this disease..."
+      />
+      <IssueAnchor fieldName="color" description="Disease color" />
+      <ArchitectField
+        name="color"
+        component={ColorPicker}
+        validation={{ required: true }}
+        label="Color"
+        hint="Select a color for this disease."
+        initialValue={asString(item?.color)}
+        palette="node-color-seq"
+        // The palette's real size, not a hard-coded 10: the theme defines
+        // `--node-1` … `--node-8`, so the two extra swatches this used to
+        // offer rendered as nothing and stored a colour that renders as
+        // nothing wherever it is used. A protocol that already holds one
+        // still gets it back — see ColorPicker.
+        paletteRange={COLOR_PALETTES['node-color-seq']}
+      />
+      <IssueAnchor fieldName="variable" description="Disease attribute" />
+      <ArchitectField
+        name="variable"
+        component={VariablePickerControl}
+        validation={{ required: true }}
+        label="Node attribute"
+        hint="Select a boolean node attribute."
+        initialValue={asString(item?.variable)}
+        entity="node"
+        type={nodeType ?? ''}
+        options={availableVariables}
+      />
+      <IssueAnchor
+        fieldName="inheritancePattern"
+        description="Inheritance pattern"
+      />
+      <ArchitectField
+        name="inheritancePattern"
+        label="Inheritance pattern"
+        hint="Choose how this disease is inherited. Mendelian patterns are used with biological relationships and recorded sex to infer carrier and possible at-risk statuses. Multifactorial and Unknown show affected status only and do not infer carrier or at-risk statuses."
+        component={StyledSelectField}
+        validation={{ required: true }}
+        initialValue={asString(item?.inheritancePattern)}
+        options={INHERITANCE_PATTERN_OPTIONS}
+        placeholder="Select an inheritance pattern..."
+      />
+    </Section>
   );
 };
 

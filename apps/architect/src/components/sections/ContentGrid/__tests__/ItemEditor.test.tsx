@@ -124,6 +124,40 @@ const pickerValue = (kind: Exclude<SlotType, 'text'>) =>
 const announcement = () => screen.getByRole('status').textContent ?? '';
 
 describe('ItemEditor content-type switching', () => {
+  it('groups all available item fields in one Item details section', () => {
+    renderItemEditor({
+      id: '1',
+      type: 'image',
+      content: 'asset-image-1',
+      size: 'MEDIUM',
+    });
+
+    const section = screen.getByRole('region', { name: 'Item details' });
+    expect(
+      within(section).getByText(
+        'Choose the content type, provide what participants will see, and adjust its presentation when available.',
+      ),
+    ).toBeVisible();
+    expect(
+      within(section).getByRole('radiogroup', { name: 'Content type' }),
+    ).toBeInTheDocument();
+    expect(
+      within(section).getByRole('button', { name: 'Choose image' }),
+    ).toBeInTheDocument();
+    expect(
+      within(section).getByRole('radiogroup', { name: 'Display size' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: 'Item format' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: 'Item content' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: 'Item presentation' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('opens a saved text item with its content already in the editor', async () => {
     renderItemEditor({ id: '1', type: 'text', content: 'Saved prose' });
 

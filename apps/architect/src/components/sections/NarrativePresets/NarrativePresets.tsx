@@ -1,8 +1,8 @@
 import { isEmpty, omit } from 'es-toolkit/compat';
 import type { ComponentType } from 'react';
 
+import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -51,11 +51,6 @@ const template = () => ({
   },
   highlight: [],
 });
-const notEmpty = (value: unknown) =>
-  value && Array.isArray(value) && value.length > 0
-    ? undefined
-    : 'You must create at least one item.';
-
 // Deliberately NOT `StageEditorSectionProps & {...}`: `withDisabledSubjectRequired`
 // only ever supplies `{interfaceType?, type?}` (own) and `{disabled,
 // disabledMessage}` (injected) — the component it wraps must accept exactly
@@ -72,26 +67,33 @@ const NarrativePresets = ({
 }: NarrativePresetsProps) => {
   const { entity, type } = useSubject();
   const initialPresets = useStageInitialValue<Preset[]>('presets');
+  const availabilityProps = disabled
+    ? ({ toggleable: true, defaultOpen: false, disabled: true } as const)
+    : {};
 
   return (
     <Section
-      disabled={disabled}
-      disabledMessage={disabledMessage}
-      summary={
-        <Paragraph>
-          Add one or more &quot;presets&quot; below, to create different
-          visualizations that you can switch between within the interview.
-        </Paragraph>
+      key={disabled ? 'disabled' : 'enabled'}
+      title="Visualization presets"
+      description={
+        disabled
+          ? disabledMessage
+          : 'Create visualizations that researchers can switch between during the interview.'
       }
-      title="Narrative Presets"
+      {...availabilityProps}
     >
       <ArchitectArrayField
         name="presets"
-        label="Narrative presets"
-        labelHidden
+        label="Presets"
+        hint={
+          <Paragraph>
+            Add one or more &quot;presets&quot; below, to create different
+            visualizations that you can switch between within the interview.
+          </Paragraph>
+        }
         component={DialogArrayField}
         addButtonLabel="Create new preset"
-        validation={{ notEmpty }}
+        validation={{ required: 'You must create at least one item.' }}
         initialValue={initialPresets}
         addTitle="Edit Preset"
         editorFieldsComponent={

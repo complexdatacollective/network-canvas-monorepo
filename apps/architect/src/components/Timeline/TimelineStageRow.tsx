@@ -191,14 +191,14 @@ const TimelineStageRow = ({
         aria-keyshortcuts={reorder['aria-keyshortcuts']}
         onClick={handleOpenFromButton}
         onKeyDown={reorder.onKeyDown}
-        className="focusable block w-full max-w-56 justify-self-end rounded-xs"
+        className="focusable block w-full max-w-44 justify-self-end"
       >
         <StageTypeImage
           type={stage.type}
           alt=""
           ratio="4:3"
           sizes="14rem"
-          className="pointer-events-none w-full rounded-xs shadow transition-transform duration-300 ease-in-out select-none group-hover:scale-105"
+          className="border-navy-taupe bg-navy-taupe pointer-events-none w-full rounded-sm border-4 shadow transition-transform duration-300 ease-in-out select-none group-hover:scale-105"
         />
       </button>
       {/* Position badge. The `data-testid` pairs with the spine's

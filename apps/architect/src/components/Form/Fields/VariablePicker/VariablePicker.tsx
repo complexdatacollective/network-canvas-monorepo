@@ -37,6 +37,7 @@ type VariablePickerProps = CreateFormFieldProps<
  * surrounding field — pass it through `ArchitectField`'s `label`/`hint`.
  */
 export const VariablePickerControl = ({
+  className,
   id,
   name,
   value,
@@ -148,13 +149,7 @@ export const VariablePickerControl = ({
 
     if (has(selectedOption, 'type') && selectedOption.type) {
       return (
-        <ConnectedVariablePill
-          animated
-          displayMaxWidth="100%"
-          editable
-          uuid={selectedOption.value}
-          width="fit-content"
-        />
+        <ConnectedVariablePill animated editable uuid={selectedOption.value} />
       );
     }
 
@@ -163,14 +158,7 @@ export const VariablePickerControl = ({
     const finalLabel = selectedLabel || selectedValue || '';
     const variableType = (selectedOption.type ?? 'text') as VariableType;
 
-    return (
-      <VariablePill
-        label={finalLabel}
-        type={variableType}
-        displayMaxWidth="100%"
-        width="fit-content"
-      />
-    );
+    return <VariablePill label={finalLabel} type={variableType} />;
   };
 
   return (
@@ -179,7 +167,7 @@ export const VariablePickerControl = ({
         data-name={name}
         onBlur={handleBlur}
         onFocus={onFocus}
-        className="flex w-full flex-col items-start gap-4"
+        className={cx('flex w-full flex-col items-start gap-4', className)}
       >
         <fieldset
           id={id}
@@ -208,10 +196,10 @@ export const VariablePickerControl = ({
             <AnimatePresence mode="wait" initial={false}>
               {/* `w-full`, not shrink-to-fit. The fieldset is `items-start`,
                   so without an explicit width this wrapper takes the pill's
-                  own content width — and the pill's `max-width: min(20rem,
-                  100%)` then resolves 100% against a box the pill itself
-                  sized, which can never clamp anything. Filling the fieldset
-                  gives that percentage a real bound to resolve against. */}
+                  own content width — and the pill's `max-width: 100%` then
+                  resolves against a box the pill itself sized, which can
+                  never clamp anything. Filling the fieldset gives that
+                  percentage a real bound to resolve against. */}
               <motion.div
                 className="w-full min-w-0"
                 initial={{ opacity: 0 }}

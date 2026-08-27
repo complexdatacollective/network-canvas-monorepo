@@ -66,7 +66,7 @@ const REGIONS_GEOJSON = JSON.stringify({
 // picker with no inline "create" flow — an author can only ever SELECT an
 // existing library asset, so one has to already exist. The Mapbox API key is
 // deliberately NOT pre-seeded: APIKeyBrowser.tsx (unlike GeoDataSource) has
-// its own inline "Create New API Key" form wired straight to a synchronous
+// its own inline "Create API key" form wired straight to a synchronous
 // `addApiKeyAsset` dispatch (no async IDB round trip — api-key assets store
 // their value directly on the manifest entry, not as a blob; see
 // `assetTools.ts`'s `saveProtocolAssets`, which explicitly skips
@@ -168,10 +168,10 @@ test('creates a valid Geospatial stage from scratch', async ({
     name: 'API Key Browser',
   });
   await apiKeyDialog
-    .getByRole('textbox', { name: 'API Key Name' })
+    .getByRole('textbox', { name: 'Key name' })
     .fill('E2E Mapbox Key');
   await apiKeyDialog
-    .getByRole('textbox', { name: 'API Key Value' })
+    .getByRole('textbox', { name: 'Key value' })
     .fill(TESTING_MAPBOX_TOKEN);
   // Creating a key selects it and closes the dialog (#1394) — there is no
   // second step of picking the new card out of the Resource Library, and no
@@ -313,7 +313,7 @@ test('creates a valid Geospatial stage from scratch', async ({
   // NewVariableWindow locked to `type: 'location'` — the
   // spotlight-then-window two-step already proven by tie-strength-census.spec.ts's
   // locked-ordinal `edgeVariable`.
-  await addPrompt(editor.section('Prompts'), async () => {
+  await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Where do you live?');
     await createVariableViaSpotlight(architectPage, {
       variableName: 'location',

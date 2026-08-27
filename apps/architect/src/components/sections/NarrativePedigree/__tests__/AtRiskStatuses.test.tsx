@@ -23,7 +23,7 @@ const renderSection = (committedStage: Record<string, unknown> | null = null) =>
 describe('AtRiskStatuses', () => {
   it('renders the section title', () => {
     renderSection();
-    expect(screen.getByText('At-Risk Statuses')).toBeDefined();
+    expect(screen.getByText('At-risk statuses')).toBeDefined();
   });
 
   it('binds the toggle to showAtRiskStatuses, defaulting to off, with the expected label', () => {

@@ -23,14 +23,23 @@
     --surface-1-contrast: oklch(var(--navy-taupe));
     --surface-2: oklch(0.93 0.01 280);
     --surface-2-contrast: oklch(var(--navy-taupe));
-    --surface-3: oklch(var(--slate-blue));
-    --surface-3-contrast: oklch(var(--white));
-    /* The deepest level is the darker slate blue that nested panel chrome
-       (side-panel filters) used to paint on itself with `bg-slate-blue-dark`,
-       so it reads against `--surface-3`/`--accent`, which are both plain
-       slate blue. */
-    --surface-4: oklch(var(--slate-blue--dark));
-    --surface-4-contrast: oklch(var(--white));
+    --surface-3: oklch(0.9 0.01 280);
+    --surface-3-contrast: oklch(var(--navy-taupe));
+    --surface-4: oklch(0.85 0.01 280);
+    --surface-4-contrast: oklch(var(--navy-taupe));
+    /* Array items start a separate accent ladder. The first nested Surface
+       uses the darker slate blue; further nesting clamps to that authored
+       endpoint rather than inventing additional brand colors. */
+    --surface-accent: oklch(var(--slate-blue));
+    --surface-accent-contrast: oklch(var(--white));
+    --surface-accent-1: oklch(var(--slate-blue--dark));
+    --surface-accent-1-contrast: oklch(var(--white));
+    --surface-accent-2: oklch(var(--slate-blue--dark));
+    --surface-accent-2-contrast: oklch(var(--white));
+    --surface-accent-3: oklch(var(--slate-blue--dark));
+    --surface-accent-3-contrast: oklch(var(--white));
+    --surface-accent-4: oklch(var(--slate-blue--dark));
+    --surface-accent-4-contrast: oklch(var(--white));
     /* Focus rings stay mustard through the shared focus-styles machinery. */
     --focus-color: oklch(var(--mustard));
   }
@@ -54,8 +63,6 @@
     --sortable-contrast: oklch(var(--white));
     --action: oklch(var(--sea-green));
     --active: oklch(var(--sea-green));
-    --surface-accent: oklch(var(--navy-taupe));
-    --surface-accent-contrast: oklch(var(--white));
     --fresco-purple: oklch(10% 0.4 290);
     --fresco-purple-contrast: oklch(var(--white));
   }
@@ -68,8 +75,6 @@
   --color-sortable-contrast: var(--sortable-contrast);
   --color-action: var(--action);
   --color-active: var(--active);
-  --color-surface-accent: var(--surface-accent);
-  --color-surface-accent-contrast: var(--surface-accent-contrast);
   --color-fresco-purple: var(--fresco-purple);
   --color-fresco-purple-contrast: var(--fresco-purple-contrast);
 }

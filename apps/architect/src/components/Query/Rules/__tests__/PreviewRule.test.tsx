@@ -25,6 +25,17 @@ const TYPE_RULE = {
   },
 } as const satisfies { type: string; options: PreviewTextOptions };
 
+const ATTRIBUTE_PRESENCE_RULE = {
+  type: 'node',
+  options: {
+    typeLabel: 'person',
+    typeColor: 'node-color-seq-1',
+    attribute: 'relationship_to_ego',
+    variableType: 'text',
+    operator: 'NOT_EXISTS',
+  },
+} as const satisfies { type: string; options: PreviewTextOptions };
+
 const EDGE_RULE = {
   type: 'edge',
   options: {
@@ -221,6 +232,14 @@ describe('PreviewRule', () => {
     });
 
     expect(screen.getByLabelText('text attribute name')).toBeInTheDocument();
+  });
+
+  it('renders a no-value attribute condition as a variable pill', () => {
+    renderRule(ATTRIBUTE_PRESENCE_RULE);
+
+    expect(
+      screen.getByLabelText('text attribute relationship_to_ego'),
+    ).toBeInTheDocument();
   });
 });
 

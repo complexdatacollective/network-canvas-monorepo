@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import Options, {
@@ -10,6 +10,7 @@ import Options, {
   type OptionValue,
 } from '~/components/Form/arrayFields/Options';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
+import IssueAnchor from '~/components/IssueAnchor';
 import { getLockedOptions } from '~/components/Options/getLockedOptions';
 import LockedOptions from '~/components/Options/LockedOptions';
 import Parameters from '~/components/Parameters';
@@ -20,7 +21,6 @@ import {
   isVariableTypeWithParameters,
 } from '~/config/variables';
 import { documentationLinks } from '~/utils/documentationLinks';
-import { getFieldId } from '~/utils/issues';
 
 import BooleanChoice from '../../BooleanChoice';
 import ExternalLink from '../../ExternalLink';
@@ -48,13 +48,7 @@ type SharedProps = {
   item: Record<string, unknown>;
   /** The variable/input-control state both editors already own. */
   fields: FieldHandlers;
-  /**
-   * Whether each section carries a heading. NetworkComposer's attribute
-   * dialog titles its sections because it has no other structure; the Form
-   * field editor's sections sit inside a titled stage editor and do not. The
-   * flag also moves the options heading between the section title and the
-   * array field's own label, so the phrase appears exactly once either way.
-   */
+  /** Retained while both field-editor callers migrate to shared sections. */
   withSectionTitles?: boolean;
 };
 
@@ -68,27 +62,28 @@ export const VariablePickerSection = ({
   type = null,
   item,
   fields,
-  withSectionTitles = false,
   hint,
 }: SharedProps & { hint: ReactNode }) => (
-  <Section
-    layout="vertical"
-    id={getFieldId('variable')}
-    title={withSectionTitles ? 'Attribute' : undefined}
-  >
-    <ArchitectField
-      name="variable"
-      label="Attribute"
-      hint={hint}
-      component={VariablePickerControl}
-      initialValue={asString(item.variable)}
-      validation={{ required: true }}
-      entity={entity ?? undefined}
-      type={type ?? undefined}
-      options={fields.variableOptions}
-      onCreateOption={fields.handleNewVariable}
-    />
-  </Section>
+  <>
+    <IssueAnchor fieldName="variable" description="Attribute" />
+    <Section
+      title="Attribute selection"
+      description="Choose the attribute this form field will collect."
+    >
+      <ArchitectField
+        name="variable"
+        label="Attribute"
+        hint={hint}
+        component={VariablePickerControl}
+        initialValue={asString(item.variable)}
+        validation={{ required: true }}
+        entity={entity ?? undefined}
+        type={type ?? undefined}
+        options={fields.variableOptions}
+        onCreateOption={fields.handleNewVariable}
+      />
+    </Section>
+  </>
 );
 
 /**
@@ -102,17 +97,70 @@ export const VariablePickerSection = ({
  * that remain (section headings, the picker's hint, what each editor adds
  * around this) are props and surrounding markup, not a second implementation.
  */
-const VariableDefinitionFields = ({
-  item,
-  fields,
-  withSectionTitles = false,
-}: SharedProps) => {
+export const InputControlFields = ({ item, fields }: SharedProps) => {
+  const { variable, variableType, isNewVariable, componentOptions } = fields;
+
+  return (
+    <>
+      <IssueAnchor fieldName="component" description="Input control" />
+      <ArchitectField
+        name="component"
+        label="Input control"
+        hint={
+          <>
+            How the answer is collected. For detailed information about these
+            options, see our{' '}
+            <ExternalLink href={documentationLinks.inputControls}>
+              documentation
+            </ExternalLink>
+            .
+          </>
+        }
+        component={NativeSelectField}
+        initialValue={asString(item.component)}
+        validation={{ required: true }}
+        placeholder="Select an input control"
+        disabled={!variable}
+        // A NEW variable keeps the authored order, which reads as a
+        // progression from simplest control to most involved. An existing
+        // variable's list is a lookup — the researcher knows what they want
+        // and is finding it — so it is alphabetised (within each group,
+        // since the list may still be grouped by type).
+        options={toSelectOptions(componentOptions, {
+          sorted: !isNewVariable,
+        })}
+      />
+      {isNewVariable && variableType && (
+        <Alert variant="info" className="my-7">
+          <AlertDescription>
+            The selected input control will cause this attribute to be defined
+            as type <strong>{variableType}</strong>. Once set, this cannot be
+            changed (although you may change the input control within this
+            type).
+          </AlertDescription>
+        </Alert>
+      )}
+      {!isNewVariable && variableType && (
+        <Alert variant="warning" className="my-7">
+          <AlertTitle>Attribute type is locked</AlertTitle>
+          <AlertDescription>
+            A pre-existing attribute is currently selected. You cannot change an
+            attribute type after it has been created, so only{' '}
+            <strong>{variableType}</strong> compatible input controls can be
+            selected above. If you would like to use a different input control
+            type, you will need to create a new attribute.
+          </AlertDescription>
+        </Alert>
+      )}
+    </>
+  );
+};
+
+export const VariableConfigurationFields = ({ item, fields }: SharedProps) => {
   const {
     variable,
     variableType,
-    isNewVariable,
     component,
-    componentOptions,
     existingVariables,
     interfaceOwnedOptionSet,
   } = fields;
@@ -124,113 +172,78 @@ const VariableDefinitionFields = ({
 
   return (
     <>
-      <Section
-        layout="vertical"
-        id={getFieldId('component')}
-        title={withSectionTitles ? 'Input Control' : undefined}
-        disabled={!variable}
-      >
-        <ArchitectField
-          name="component"
-          label="Input control"
-          hint={
-            <>
-              How the answer is collected. For detailed information about these
-              options, see our{' '}
-              <ExternalLink href={documentationLinks.inputControls}>
-                documentation
-              </ExternalLink>
-              .
-            </>
-          }
-          component={NativeSelectField}
-          initialValue={asString(item.component)}
-          validation={{ required: true }}
-          placeholder="Select an input control"
-          // A NEW variable keeps the authored order, which reads as a
-          // progression from simplest control to most involved. An existing
-          // variable's list is a lookup — the researcher knows what they want
-          // and is finding it — so it is alphabetised (within each group,
-          // since the list may still be grouped by type).
-          options={toSelectOptions(componentOptions, {
-            sorted: !isNewVariable,
-          })}
-        />
-        {isNewVariable && variableType && (
-          <Alert variant="info" className="my-7">
-            <AlertDescription>
-              The selected input control will cause this attribute to be defined
-              as type <strong>{variableType}</strong>. Once set, this cannot be
-              changed (although you may change the input control within this
-              type).
-            </AlertDescription>
-          </Alert>
-        )}
-        {!isNewVariable && variableType && (
-          <Alert variant="warning" className="my-7">
-            <AlertTitle>Attribute type is locked</AlertTitle>
-            <AlertDescription>
-              A pre-existing attribute is currently selected. You cannot change
-              an attribute type after it has been created, so only{' '}
-              <strong>{variableType}</strong> compatible input controls can be
-              selected above. If you would like to use a different input control
-              type, you will need to create a new attribute.
-            </AlertDescription>
-          </Alert>
-        )}
-      </Section>
-
       {isOrdinalOrCategoricalType(variableType) && (
-        <Section
-          layout="vertical"
-          id={getFieldId('options')}
-          title={withSectionTitles ? 'Categorical/Ordinal options' : undefined}
-        >
-          {lockedOptions ? (
-            <LockedOptions options={lockedOptions} />
-          ) : (
-            <ArchitectArrayField
-              name="options"
-              label={
-                withSectionTitles ? 'Options' : 'Categorical/Ordinal options'
-              }
-              hint="The input type you selected indicates that this is a categorical or ordinal attribute. Create a minimum of two possible values for the participant to choose between."
-              component={Options}
-              addButtonLabel="Create new option"
-              initialValue={asOptions(item.options)}
-              validation={optionsValidation}
-            />
-          )}
-        </Section>
+        <>
+          <IssueAnchor fieldName="options" description="Choice values" />
+          <Section
+            title="Choice values"
+            description="Define the values participants can choose for this categorical or ordinal attribute."
+          >
+            {lockedOptions ? (
+              <LockedOptions options={lockedOptions} />
+            ) : (
+              <ArchitectArrayField
+                name="options"
+                label="Categorical/Ordinal options"
+                hint="The input type you selected indicates that this is a categorical or ordinal attribute. Create a minimum of two possible values for the participant to choose between."
+                component={Options}
+                addButtonLabel="Create new option"
+                initialValue={asOptions(item.options)}
+                validation={optionsValidation}
+              />
+            )}
+          </Section>
+        </>
       )}
       {isBooleanWithOptions(component) && (
-        // BooleanChoice writes to the `options` field, so anchor it there (it
-        // is mutually exclusive with the Categorical/Ordinal options section
-        // above, so the shared id never collides at runtime).
-        <Section
-          layout="vertical"
-          id={getFieldId('options')}
-          title={withSectionTitles ? 'BooleanChoice Options' : undefined}
-        >
-          <BooleanChoice initialValue={asOptions(item.options)} />
-        </Section>
+        <>
+          {/* BooleanChoice writes to the `options` field, so anchor it there (it
+              is mutually exclusive with the Categorical/Ordinal options section
+              above, so the shared id never collides at runtime). */}
+          <IssueAnchor fieldName="options" description="Boolean values" />
+          <Section
+            title="Boolean values"
+            description="Define the values stored for the on and off states."
+          >
+            <BooleanChoice initialValue={asOptions(item.options)} />
+          </Section>
+        </>
       )}
       {isVariableTypeWithParameters(variableType) && (
-        <Section
-          layout="vertical"
-          id={getFieldId('parameters')}
-          title={withSectionTitles ? 'Input Options' : undefined}
-        >
-          <Parameters
-            type={variableType}
-            component={component ?? ''}
-            name="parameters"
-            initialParameters={asParameterValues(item.parameters)}
-          />
-        </Section>
+        <>
+          <IssueAnchor fieldName="parameters" description="Control settings" />
+          <Section
+            title="Control settings"
+            description="Configure the settings available for this input control."
+          >
+            <Parameters
+              type={variableType}
+              component={component ?? ''}
+              name="parameters"
+              initialParameters={asParameterValues(item.parameters)}
+            />
+          </Section>
+        </>
       )}
     </>
   );
 };
+
+const VariableDefinitionFields = (props: SharedProps) => (
+  <>
+    <Section
+      title="Answer control"
+      description={
+        props.fields.variable
+          ? 'Choose how participants enter an answer for this attribute.'
+          : 'Select an attribute before choosing its input control.'
+      }
+      disabled={!props.fields.variable}
+    >
+      <InputControlFields {...props} />
+    </Section>
+    <VariableConfigurationFields {...props} />
+  </>
+);
 
 export default VariableDefinitionFields;

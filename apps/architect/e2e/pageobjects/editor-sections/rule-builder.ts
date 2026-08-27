@@ -23,11 +23,11 @@ import { type Locator } from '@playwright/test';
 //   NOT_EXISTS → 'does not exist' .
 //   Presence operators render as radios; variable-rule operators are a native
 //   <select> named 'Operator'.
-// - Boolean 'Attribute Value' is a radiogroup. Its visible option labels come
+// - Boolean 'Attribute value' is a radiogroup. Its visible option labels come
 //   from the variable's authored markdown, while each radio exposes the stored
 //   boolean through `data-value`.
-// - Ego rules: no entity-type step; the native select is labelled 'Ego
-//   attribute'.
+// - Attribute rules use the standard entity-scoped attribute picker. Its
+//   trigger reads 'Select attribute', and the spotlight is selection-only.
 // - The 'Rule Matching' control only renders once 2+ rules exist. Its visible
 //   radios read 'All rules must match' / 'Any rule can match'; a single-rule
 //   filter writes no `join` key.
@@ -69,7 +69,34 @@ const ADD_RULE_BUTTONS = {
 const ruleDialog = (host: Locator) =>
   host.page().getByRole('dialog', { name: 'Construct a Rule' });
 
-/** Authors one rule in the Filter section's builder. */
+async function selectAttribute(
+  dialog: Locator,
+  attributeName: string,
+): Promise<void> {
+  const attributeField = dialog.locator(
+    '[data-field-name="options.attribute"]',
+  );
+  await attributeField
+    .getByRole('button', { name: 'Select attribute' })
+    .click();
+
+  const page = dialog.page();
+  const search = page.getByRole('searchbox', {
+    name: 'Find or create an attribute',
+  });
+  await search.fill(attributeName);
+  await page
+    .getByTestId('spotlight-list-item')
+    .filter({ hasText: attributeName })
+    .first()
+    .waitFor();
+  await search.press('Enter');
+  await attributeField
+    .getByRole('button', { name: 'Change attribute' })
+    .waitFor();
+}
+
+/** Authors one rule in the Stage filter section's builder. */
 export async function addFilterRule(
   host: Locator,
   spec: FilterRuleSpec,
@@ -77,7 +104,7 @@ export async function addFilterRule(
   await addEntityRule(host, ADD_RULE_BUTTONS.filter, spec);
 }
 
-/** Authors one rule in the Skip Logic section's builder. */
+/** Authors one rule in the Skip logic section's builder. */
 export async function addSkipLogicRule(
   host: Locator,
   spec: RuleSpec,
@@ -97,14 +124,12 @@ async function addEgoRule(
 
   await host.getByRole('button', { name: ADD_RULE_BUTTONS.skipLogic }).click();
   await dialog.getByRole('radio', { name: /^Ego -/ }).click();
-  await dialog
-    .getByRole('combobox', { name: 'Ego attribute' })
-    .selectOption({ label: spec.variableName });
+  await selectAttribute(dialog, spec.variableName);
   await dialog
     .getByRole('combobox', { name: 'Operator' })
     .selectOption({ label: 'is exactly' });
   await dialog
-    .getByRole('radiogroup', { name: 'Attribute Value' })
+    .getByRole('radiogroup', { name: 'Attribute value' })
     .locator(`[role="radio"][data-value="${String(spec.value)}"]`)
     .click();
 
@@ -119,8 +144,9 @@ async function addEntityRule(
   const dialog = ruleDialog(host);
 
   await host.getByRole('button', { name: addButtonLabel }).click();
-  await dialog.getByRole('radio', { name: /^Node -/ }).click();
-  await dialog
+  const ruleTarget = dialog.getByRole('region', { name: 'Rule target' });
+  await ruleTarget.getByRole('radio', { name: /^Node -/ }).click();
+  await ruleTarget
     .getByRole('radio', {
       name: `Select node ${spec.nodeTypeName}`,
       exact: true,
@@ -140,14 +166,12 @@ async function addEntityRule(
       .getByRole('listbox', { name: 'Rule type' })
       .getByRole('option', { name: /^Attribute/ })
       .click();
-    await dialog
-      .getByRole('combobox', { name: 'Attribute' })
-      .selectOption({ label: spec.variableName });
+    await selectAttribute(dialog, spec.variableName);
     await dialog
       .getByRole('combobox', { name: 'Operator' })
       .selectOption({ label: 'is exactly' });
     await dialog
-      .getByRole('radiogroup', { name: 'Attribute Value' })
+      .getByRole('radiogroup', { name: 'Attribute value' })
       .locator('[role="radio"][data-value="true"]')
       .click();
   }

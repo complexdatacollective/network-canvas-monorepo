@@ -72,13 +72,7 @@ describe('Rules', () => {
     expect(screen.getAllByRole('button', { name: /^Add new/ })).toHaveLength(1);
   });
 
-  /**
-   * "Rule Matching" is the control that sets this, and it is the only
-   * thing that said so — a researcher reading the cards had to reach the
-   * bottom of the list to learn whether they had asked for all of them or any
-   * of them. The chosen value belongs between the rules as well.
-   */
-  it('shows the chosen matching between the rules as well as under them', () => {
+  it('shows the chosen matching only in the Rule Matching control', () => {
     render(
       <DialogProvider>
         <Rules
@@ -90,9 +84,11 @@ describe('Rules', () => {
       </DialogProvider>,
     );
 
-    const [first] = within(screen.getByRole('list')).getAllByRole('listitem');
-
-    expect(within(first!).getByText('or')).toBeVisible();
+    for (const item of within(screen.getByRole('list')).getAllByRole(
+      'listitem',
+    )) {
+      expect(within(item).queryByText('or')).toBeNull();
+    }
     expect(
       screen.getByRole('radio', { name: 'Any rule can match' }),
     ).toBeChecked();

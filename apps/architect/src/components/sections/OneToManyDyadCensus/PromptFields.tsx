@@ -3,13 +3,11 @@ import { shallowEqual, useSelector } from 'react-redux';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
-import { getFieldId } from '~/utils/issues';
 
 import BinSortOrderSection from '../BinSortOrderSection';
 import BucketSortOrderSection from '../BucketSortOrderSection';
@@ -69,17 +67,9 @@ const PromptFields = ({
   return (
     <>
       <Section
-        title="One to Many Dyad Census Prompts"
-        id={getFieldId('text')}
-        layout="vertical"
+        title="Prompt configuration"
+        description="Write the participant prompt and select the edge type created for chosen nodes."
       >
-        <Paragraph>
-          One to Many Dyad Census prompts guide your participant in evaluating
-          relationships between a single focal node and several target nodes.
-          (for example, &apos;friendship&apos;, &apos;material support&apos; or
-          &apos;conflict&apos;). Enter prompt text below, and select an edge
-          type that will be created when the participant selects a target node.
-        </Paragraph>
         <Alert variant="info" className="my-7">
           <AlertDescription>
             Remember to write your prompt text so that it clearly indicates the
@@ -92,27 +82,23 @@ const PromptFields = ({
             from the group.
           </AlertDescription>
         </Alert>
-        <>
-          <ArchitectField
-            name="text"
-            label="Prompt Text"
-            component={RichText}
-            validation={{ required: true }}
-            initialValue={text}
-            singleLine
-            placeholder="Enter text for the prompt here..."
-          />
-        </>
-        <>
-          <ArchitectField
-            name="createEdge"
-            label="Create edges of the following type"
-            component={EntitySelectField}
-            validation={{ required: true }}
-            initialValue={createEdge}
-            entityType="edge"
-          />
-        </>
+        <ArchitectField
+          name="text"
+          label="Prompt text"
+          component={RichText}
+          validation={{ required: true }}
+          initialValue={text}
+          singleLine
+          placeholder="Enter text for the prompt here..."
+        />
+        <ArchitectField
+          name="createEdge"
+          label="Created edge type"
+          component={EntitySelectField}
+          validation={{ required: true }}
+          initialValue={createEdge}
+          entityType="edge"
+        />
       </Section>
 
       <BucketSortOrderSection
@@ -120,27 +106,14 @@ const PromptFields = ({
         maxItems={sortMaxItems}
         optionGetter={getOptions}
         initialValue={bucketSortOrder}
-        summary={
-          <Paragraph>
-            The focal nodes are presented one at a time. You may optionally
-            configure a list of rules to determine how nodes are sorted in the
-            bucket when the task starts, which will determine the order that
-            your participant evaluates their relationships. Interviewer will
-            default to using the order in which nodes were named.
-          </Paragraph>
-        }
+        description="Order focal nodes before they are presented for evaluation."
       />
       <BinSortOrderSection
         disabled={!currentCreateEdge}
         maxItems={sortMaxItems}
         optionGetter={getOptions}
         initialValue={binSortOrder}
-        summary={
-          <Paragraph>
-            You may also configure one or more sort rules that determine the
-            order that the target nodes are sorted in the bin.
-          </Paragraph>
-        }
+        description="Order target nodes after they are placed in the bin."
       />
     </>
   );

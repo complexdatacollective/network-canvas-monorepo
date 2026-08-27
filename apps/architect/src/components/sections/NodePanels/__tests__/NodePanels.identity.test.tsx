@@ -18,7 +18,7 @@ import {
 // eslint-disable-next-line import/first -- must follow the vi.mock call above
 import { NodePanels } from '../NodePanels';
 
-const toggle = () => screen.getByRole('switch', { name: 'Side Panels' });
+const toggle = () => screen.getByRole('switch', { name: 'Side panels' });
 
 const ONE_PANEL = [
   { id: 'panel-1', title: 'A', dataSource: 'existing', filter: undefined },
@@ -73,11 +73,6 @@ describe('NodePanels panel identity', () => {
       expect(screen.getAllByTestId('node-panel')).toHaveLength(1),
     );
 
-    // Regression: the section used to read its list off the `panels` CONTAINER
-    // path, which the toggle-off's dormant "cleared" sentinel shadows for the
-    // rest of the session. The id registrations are rendered from that list,
-    // so the new panel was saved with no `id` at all — a panel the protocol
-    // schema rejects (`panelSchema.id`).
     const panels = (getFormValues() as { panels?: { id?: unknown }[] }).panels;
     expect(panels).toHaveLength(1);
     expect(typeof panels?.[0]?.id).toBe('string');
@@ -151,7 +146,7 @@ describe('NodePanels panel identity', () => {
     await waitForNoPanels();
 
     // The list going empty is not the researcher turning the feature off, so
-    // the section must not collapse out from under them (useLatchedExpansion).
+    // the Section's current open state must not change with its contents.
     expect(toggle()).toHaveAttribute('aria-checked', 'true');
     expect(
       screen.getByRole('button', { name: 'Add new panel' }),

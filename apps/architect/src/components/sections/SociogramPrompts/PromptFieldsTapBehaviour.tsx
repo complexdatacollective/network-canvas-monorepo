@@ -2,12 +2,14 @@ import { useCallback, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
-import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
+import RichSelectGroupField, {
+  type RichSelectOption,
+} from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
-import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import {
   useCreateVariable,
@@ -29,6 +31,21 @@ const TAP_BEHAVIOURS = {
   CREATE_EDGES: 'create edges',
   HIGHLIGHT_ATTRIBUTES: 'highlight attributes',
 };
+
+const TAP_BEHAVIOUR_OPTIONS: RichSelectOption[] = [
+  {
+    value: TAP_BEHAVIOURS.CREATE_EDGES,
+    label: 'Edge creation',
+    description:
+      'Clicking or tapping a node allows the participant to create an edge.',
+  },
+  {
+    value: TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES,
+    label: 'Attribute toggling',
+    description:
+      'Clicking or tapping a node toggles a boolean attribute between true and false.',
+  },
+];
 
 /**
  * `highlight.allowHighlighting` is what the interview runtime gates the
@@ -86,6 +103,11 @@ const TapBehaviour = ({
     initialState(),
   );
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) setTapBehaviour(null);
+    return true;
+  };
+
   // Turning highlighting off writes `false` rather than just dropping the
   // variable: the committed flag survives a save that never mentions it
   // (`mergeEditedRow` keeps whatever the row already had), which would leave
@@ -96,7 +118,9 @@ const TapBehaviour = ({
   const disableHighlighting = () =>
     setLocalFieldValue(ALLOW_HIGHLIGHTING_FIELD, false);
 
-  const handleChangeTapBehaviour = (behaviour: string | number | undefined) => {
+  const handleChangeTapBehaviour = (
+    behaviour: string | number | (string | number)[] | undefined,
+  ) => {
     const nextBehaviour = typeof behaviour === 'string' ? behaviour : null;
     setTapBehaviour(nextBehaviour);
     if (nextBehaviour === TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES) {
@@ -115,14 +139,6 @@ const TapBehaviour = ({
       disableHighlighting();
     }
   };
-  const handleToggleChange = (value: boolean) => {
-    if (value) return true;
-    setLocalFieldValue('edges.create', undefined);
-    setLocalFieldValue('highlight.variable', undefined);
-    disableHighlighting();
-    return true;
-  };
-
   const liveEdgesCreate = useFormValue(['edges.create'] as const)[
     'edges.create'
   ];
@@ -136,83 +152,61 @@ const TapBehaviour = ({
 
   return (
     <Section
-      group
-      title="Interaction Behavior"
-      summary={
-        <Paragraph>
-          Tapping a node on the sociogram can trigger one of two behaviors:
-          assigning an attribute to the node, or creating an edge between two
-          nodes.
-        </Paragraph>
-      }
+      title="Node interaction"
+      description="Choose whether tapping a node toggles an attribute or creates an edge."
       toggleable
-      startExpanded={tapBehaviour !== null}
-      handleToggleChange={handleToggleChange}
-      layout="vertical"
+      defaultOpen={tapBehaviour !== null}
+      onOpenChange={handleOpenChange}
     >
-      <>
-        <RadioGroupField
-          onChange={handleChangeTapBehaviour}
-          value={tapBehaviour ?? undefined}
-          options={[
-            {
-              value: TAP_BEHAVIOURS.CREATE_EDGES,
-              label:
-                '**Edge Creation**\n\nClicking or tapping a node will allow the participant to create an edge.',
-            },
-            {
-              value: TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES,
-              label:
-                '**Attribute Toggling**\n\nClicking or tapping a node will toggle a boolean attribute to true or false.',
-            },
-          ]}
+      <UnconnectedField
+        name="interaction-type"
+        label="Interaction type"
+        component={RichSelectGroupField}
+        onChange={handleChangeTapBehaviour}
+        value={tapBehaviour ?? undefined}
+        options={TAP_BEHAVIOUR_OPTIONS}
+      />
+      {tapBehaviour === TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES && (
+        <HiddenFieldValue name={ALLOW_HIGHLIGHTING_FIELD} initialValue />
+      )}
+      {tapBehaviour === TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES && (
+        <ArchitectField
+          name="highlight.variable"
+          label="Boolean attribute"
+          hint="Select the attribute toggled when a participant taps a node."
+          component={VariablePicker}
+          validation={{ required: true }}
+          initialValue={initialHighlight?.variable ?? undefined}
+          entity={entity}
+          type={type}
+          onCreateOption={(value: string) =>
+            handleCreateVariable(value, 'boolean', 'highlight.variable')
+          }
+          options={highlightVariablesForSubject}
         />
-      </>
-      {tapBehaviour && (
-        <>
-          {tapBehaviour === TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES && (
-            <>
-              <HiddenFieldValue name={ALLOW_HIGHLIGHTING_FIELD} initialValue />
-              <ArchitectField
-                name="highlight.variable"
-                label="Boolean Attribute to Toggle"
-                component={VariablePicker}
-                validation={{ required: true }}
-                initialValue={initialHighlight?.variable ?? undefined}
-                entity={entity}
-                type={type}
-                onCreateOption={(value: string) =>
-                  handleCreateVariable(value, 'boolean', 'highlight.variable')
-                }
-                options={highlightVariablesForSubject}
-              />
-            </>
-          )}
-          {tapBehaviour === TAP_BEHAVIOURS.CREATE_EDGES && (
-            <>
-              {showNetworkFilterWarning && (
-                <Alert variant="warning" className="my-7">
-                  <AlertTitle>Network filter hides this edge type</AlertTitle>
-                  <AlertDescription>
-                    Stage level network filtering is enabled, but the edge type
-                    you want to create on this prompt is not currently included
-                    in the filter. This means that these edges may not be
-                    displayed. Either remove the stage-level network filtering,
-                    or add these edge types to the filter to resolve this issue.
-                  </AlertDescription>
-                </Alert>
-              )}
-              <ArchitectField
-                name="edges.create"
-                label="Create edges of the following type"
-                component={EntitySelectField}
-                validation={{ required: true }}
-                initialValue={initialEdges?.create ?? undefined}
-                entityType="edge"
-              />
-            </>
-          )}
-        </>
+      )}
+      {tapBehaviour === TAP_BEHAVIOURS.CREATE_EDGES &&
+        showNetworkFilterWarning && (
+          <Alert variant="warning" className="my-7">
+            <AlertTitle>Network filter hides this edge type</AlertTitle>
+            <AlertDescription>
+              Stage level network filtering is enabled, but the edge type you
+              want to create on this prompt is not currently included in the
+              filter. This means that these edges may not be displayed. Either
+              remove the stage-level network filtering, or add these edge types
+              to the filter to resolve this issue.
+            </AlertDescription>
+          </Alert>
+        )}
+      {tapBehaviour === TAP_BEHAVIOURS.CREATE_EDGES && (
+        <ArchitectField
+          name="edges.create"
+          label="Created edge type"
+          component={EntitySelectField}
+          validation={{ required: true }}
+          initialValue={initialEdges?.create ?? undefined}
+          entityType="edge"
+        />
       )}
     </Section>
   );

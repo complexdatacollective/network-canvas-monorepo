@@ -1,6 +1,7 @@
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
 import { readProtocolJson } from '../helpers/read-store.js';
+import { openValidationSection } from '../pageobjects/editor-sections/form-field-controls.js';
 import { createVariableViaSpotlight } from '../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../pageobjects/stage-editor.js';
 
@@ -30,10 +31,10 @@ test('the field editor blocks an inverted min/max validation pair', async ({
 
   // Open the field dialog and configure a number variable (mirrors
   // pageobjects/editor-sections/forms.ts's addFormField, inlined so the
-  // dialog stays open for the Validation section).
+  // dialog stays open for the validation controls).
   const page = architectPage;
   await editor
-    .section('Form')
+    .section('Form configuration')
     .getByRole('button', { name: 'Create new form field', exact: true })
     .click();
   await createVariableViaSpotlight(page, { variableName: 'age' });
@@ -44,15 +45,16 @@ test('the field editor blocks an inverted min/max validation pair', async ({
     .getByLabel('Input control')
     .selectOption({ label: 'Number Input' });
 
-  // Field dialogs render validation inline without the legacy section heading
-  // or master toggle. The issue-anchor id remains the stable scope for its
-  // individual validation controls.
-  const validationSection = page.locator('#field_validation');
+  const validationControls = page.getByRole('dialog', {
+    name: 'Edit Field',
+    exact: true,
+  });
+  await openValidationSection(validationControls);
 
   const minValue = page.locator('input[name="validation-value-minValue"]');
   const maxValue = page.locator('input[name="validation-value-maxValue"]');
 
-  await validationSection
+  await validationControls
     .getByRole('switch', { name: 'Minimum value', exact: true })
     .click();
   await minValue.fill('10');
@@ -60,7 +62,7 @@ test('the field editor blocks an inverted min/max validation pair', async ({
 
   // Attempt maxValue 2 — the reason must show against both ends of the pair,
   // and the value must be held for correction rather than dropped.
-  await validationSection
+  await validationControls
     .getByRole('switch', { name: 'Maximum value', exact: true })
     .click();
   await maxValue.fill('2');
@@ -122,7 +124,7 @@ test('the field editor refuses to save an uncorrected min/max pair', async ({
   );
 
   await editor
-    .section('Form')
+    .section('Form configuration')
     .getByRole('button', { name: 'Create new form field', exact: true })
     .click();
   await createVariableViaSpotlight(page, { variableName: 'age' });
@@ -133,16 +135,20 @@ test('the field editor refuses to save an uncorrected min/max pair', async ({
     .getByLabel('Input control')
     .selectOption({ label: 'Number Input' });
 
-  const validationSection = page.locator('#field_validation');
+  const validationControls = page.getByRole('dialog', {
+    name: 'Edit Field',
+    exact: true,
+  });
+  await openValidationSection(validationControls);
   const minValue = page.locator('input[name="validation-value-minValue"]');
   const maxValue = page.locator('input[name="validation-value-maxValue"]');
 
-  await validationSection
+  await validationControls
     .getByRole('switch', { name: 'Minimum value', exact: true })
     .click();
   await minValue.fill('100');
   await minValue.blur();
-  await validationSection
+  await validationControls
     .getByRole('switch', { name: 'Maximum value', exact: true })
     .click();
   await maxValue.fill('50');
@@ -193,7 +199,7 @@ test('the option editor rejects canonically equivalent labels', async ({
   );
 
   await editor
-    .section('Form')
+    .section('Form configuration')
     .getByRole('button', { name: 'Create new form field', exact: true })
     .click();
   await createVariableViaSpotlight(page, { variableName: 'venue' });

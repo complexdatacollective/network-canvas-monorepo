@@ -1,7 +1,6 @@
 import { useMemo, type ComponentType } from 'react';
 
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -37,11 +36,6 @@ const isSubjectEntity = (
 ): value is 'node' | 'edge' | 'ego' =>
   value === 'node' || value === 'edge' || value === 'ego';
 
-const notEmpty = (value: unknown) =>
-  value && Array.isArray(value) && value.length > 0
-    ? undefined
-    : 'You must create at least one item.';
-
 // Deliberately NOT `StageEditorSectionProps & {...}`: `withDisabledSubjectRequired`
 // only ever supplies `{interfaceType?, type?}` (own) and `{disabled,
 // disabledMessage}` (injected) — the component it wraps must accept exactly
@@ -52,10 +46,7 @@ type SociogramPromptsProps = {
   disabledMessage?: string;
 };
 
-const SociogramPrompts = ({
-  disabled,
-  disabledMessage,
-}: SociogramPromptsProps) => {
+const SociogramPrompts = ({ disabled }: SociogramPromptsProps) => {
   const { entity, type } = useSubject();
   const initialPrompts = useStageInitialValue<Prompt[]>('prompts');
   const subject = useMemo(
@@ -69,23 +60,17 @@ const SociogramPrompts = ({
 
   return (
     <Section
+      title="Prompt collection"
+      description="Create and reorder the prompts shown in this stage."
       disabled={disabled}
-      disabledMessage={disabledMessage}
-      summary={
-        <Paragraph>
-          Add one or more prompts below to frame the task for the user. You can
-          reorder the prompts using the draggable handles on the left hand side.
-        </Paragraph>
-      }
-      title="Prompts"
     >
       <ArchitectArrayField
         name="prompts"
         label="Prompts"
-        labelHidden
+        hint="Add at least one prompt and drag prompts to reorder them."
         component={DialogArrayField}
         addButtonLabel="Create new prompt"
-        validation={{ notEmpty }}
+        validation={{ required: 'You must create at least one item.' }}
         initialValue={initialPrompts}
         addTitle="Edit Prompt"
         previewComponent={

@@ -21,10 +21,10 @@ test('creates a valid DyadCensus stage from scratch', async ({
   await editor.setStageName('Do They Know Each Other?');
 
   // DyadCensus's subject is a node type (sections/NodeType.tsx's
-  // `FilteredNodeType`, `Section title="Node Type"` — StageEditor/
+  // `FilteredNodeType`, `Section title="Node setup"` — StageEditor/
   // Interfaces.tsx registers `FilteredNodeType` for DyadCensus, the same as
   // AlterForm). DyadCensusPrompts.tsx's own `withDisabledSubjectRequired`
-  // disables the Prompts section until `subject.type` is set.
+  // disables the prompts field until `subject.type` is set.
   await selectOrCreateNodeType(architectPage, 'person');
 
   // IntroductionPanel.tsx is the exact shared component AlterForm/EgoForm
@@ -39,14 +39,13 @@ test('creates a valid DyadCensus stage from scratch', async ({
     'We would like to ask you about the people you know.',
   );
 
-  // DyadCensusPrompts.tsx, `Section title="Prompts"` wraps a
-  // DialogArrayField whose dialog (PromptFields.tsx) exposes: `text`
-  // (RichText, explicit `label="Prompt Text"` — capital T, NOT
-  // NameGenerator's "Prompt text") and `createEdge` (EntitySelectField,
+  // DyadCensusPrompts.tsx exposes a `prompts` DialogArrayField whose dialog
+  // (PromptFields.tsx) exposes: `text`
+  // (RichText, explicit `label="Prompt text"`) and `createEdge` (EntitySelectField,
   // `entityType="edge"`) — the same pill/"Create new edge type" UI
   // `selectOrCreateEdgeType` already drives for edge types elsewhere.
-  await addPrompt(editor.section('Prompts'), async () => {
-    await editor.fillRichText('Prompt Text', 'Do they know each other?');
+  await addPrompt(editor.field('prompts'), async () => {
+    await editor.fillRichText('Prompt text', 'Do they know each other?');
     await selectOrCreateEdgeType(architectPage, 'knows');
   });
 

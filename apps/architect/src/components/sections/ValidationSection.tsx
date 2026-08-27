@@ -3,11 +3,9 @@ import { useMemo } from 'react';
 
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import Section from '@codaco/fresco-ui/Section';
 import type { Variable } from '@codaco/protocol-validation';
-import { Section } from '~/components/EditorLayout';
 import Validations from '~/components/Validations/Validations';
-import useLatchedExpansion from '~/hooks/useLatchedExpansion';
 
 import { getFieldId } from '../../utils/issues';
 
@@ -51,12 +49,8 @@ type ValidationSectionProps = {
    * to refuse a half-configured rule with.
    */
   commitsImmediately?: boolean;
-  /**
-   * Keep the validation editor inside its Section surface without rendering
-   * the legacy Section heading/toggle. Dialogs use the field's own label and
-   * hint instead; stage-editor consumers retain the toggleable heading.
-   */
-  showHeading?: boolean;
+  /** Allows external-state consumers to mirror an accepted close. */
+  onOpenChange?: (open: boolean) => boolean | Promise<boolean>;
 };
 const ValidationSection = ({
   disabled = false,
@@ -70,9 +64,8 @@ const ValidationSection = ({
   currentVariableId,
   initialValue,
   commitsImmediately = false,
-  showHeading = true,
+  onOpenChange,
 }: ValidationSectionProps) => {
-  const setFieldValue = useFormStore((store) => store.setFieldValue);
   // Sibling draft values, read reactively off the SAME form `ValidationSection`
   // itself is rendered in — the field-editor dialog's `options`/`component`/
   // `parameters`/`_createNewVariable` fields when nested there, or (from
@@ -108,34 +101,21 @@ const ValidationSection = ({
       ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion
         hasEntries(liveValidation as ValidationMap)
       : hasEntries(initialValue);
-  // Removing the last rule must not collapse the section out from under the
-  // user — but an explicit close still releases the latch, so rules restored
-  // afterwards (undo, or a reinitialize) reopen it rather than being saved
-  // out of sight.
-  const { startExpanded, onExplicitClose } = useLatchedExpansion(hasValidation);
-  // Eleventh-wave Finding 3: the dialog's form-level validate
-  // (makeFieldEditorValidate) keys contradiction messages at `validation`
-  // even when the edited variable has no rules of its own (the target-only
-  // case — editing options/parameters can break an INCOMING sameAs or
-  // comparator). With no rules the section starts collapsed, so the
-  // Validations field is unmounted — and `validateForm` only fails a submit
-  // over errors on REGISTERED fields, so the collapsed section wouldn't just
-  // hide the message, it would let the contradictory save through entirely.
-  // Forcing the section open while the error stands registers the field (so
-  // the save is actually blocked). The ArchitectField rendered by
-  // `Validations` owns displaying the error once mounted.
-  const fieldErrors = useFormStore(
-    (store) => store.errors.fieldErrors.validation,
+  const hasValidationError = useFormStore(
+    (store) => (store.errors.fieldErrors.validation?.length ?? 0) > 0,
   );
-  const hasValidationSyncError =
-    Array.isArray(fieldErrors) && fieldErrors.length > 0;
-  const handleToggleChange = (nextState: boolean) => {
-    if (!nextState) {
-      onExplicitClose();
-      setFieldValue('validation', undefined);
-    }
-    return true;
-  };
+  const errorFocusRequest = useFormStore((store) => store.errorFocusRequest);
+
+  // A contradiction can be caused by changing an attribute that is only the
+  // target of another attribute's rule. Its optional Validation Section is
+  // legitimately closed, but the save-time validator still reports the error
+  // against the validation field that owns the message. Remount the Section
+  // in the SAME render that exposes each standing error, before useForm's
+  // layout effect tries to focus that field. The request counter also reopens
+  // it for each subsequent refused save if the researcher closed it meanwhile.
+  const sectionKey = hasValidationError
+    ? `validation-error-${errorFocusRequest}`
+    : 'validation';
   const existingVariablesForType = useMemo(
     () =>
       pickBy(
@@ -144,33 +124,38 @@ const ValidationSection = ({
       ),
     [existingVariables, variableType],
   );
+  const validationEditor = (
+    <Validations
+      name="validation"
+      initialValue={initialValue ?? EMPTY_VALIDATION}
+      variableType={variableType}
+      entity={entity}
+      existingVariables={existingVariablesForType}
+      allVariables={allVariables}
+      currentVariableId={currentVariableId}
+      draftOptions={draftOptions}
+      draftComponent={draftComponent}
+      draftParameters={draftParameters}
+      draftVariableName={draftVariableName}
+      commitsImmediately={commitsImmediately}
+    />
+  );
+
   return (
-    <Section
-      layout="vertical"
-      id={id}
-      title={showHeading ? label : undefined}
-      summary={showHeading ? <Paragraph>{summary}</Paragraph> : undefined}
-      disabled={disabled}
-      toggleable={showHeading}
-      startExpanded={showHeading ? startExpanded : true}
-      forceExpanded={hasValidationSyncError}
-      handleToggleChange={handleToggleChange}
-    >
-      <Validations
-        name="validation"
-        initialValue={initialValue ?? EMPTY_VALIDATION}
-        variableType={variableType}
-        entity={entity}
-        existingVariables={existingVariablesForType}
-        allVariables={allVariables}
-        currentVariableId={currentVariableId}
-        draftOptions={draftOptions}
-        draftComponent={draftComponent}
-        draftParameters={draftParameters}
-        draftVariableName={draftVariableName}
-        commitsImmediately={commitsImmediately}
-      />
-    </Section>
+    <>
+      <div id={id} className="sr-only" />
+      <Section
+        key={sectionKey}
+        title={label}
+        description={summary}
+        disabled={disabled}
+        toggleable
+        defaultOpen={hasValidation || hasValidationError}
+        onOpenChange={onOpenChange}
+      >
+        {validationEditor}
+      </Section>
+    </>
   );
 };
 export default ValidationSection;

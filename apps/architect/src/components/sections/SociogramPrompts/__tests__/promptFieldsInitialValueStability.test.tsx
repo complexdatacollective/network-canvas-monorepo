@@ -1,37 +1,18 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { act, render, screen } from '@testing-library/react';
 import {
-  useContext,
-  type ContextType,
-  type ReactNode,
-  type ReactElement,
-} from 'react';
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { useContext, type ContextType, type ReactElement } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 import FormStoreProvider, {
   FormStoreContext,
 } from '@codaco/fresco-ui/form/store/formStoreProvider';
-
-// The register-effect churn under test only bites while the field is MOUNTED,
-// and both fields live inside toggleable `Section`s that start collapsed for a
-// row with no pre-edit value. Render children unconditionally so the fields
-// mount without driving the toggle UI.
-vi.mock('~/components/EditorLayout', () => ({
-  Section: ({
-    children,
-    title,
-  }: {
-    children: ReactNode;
-    title?: ReactNode;
-  }) => (
-    <div data-testid="section">
-      {title && <h2>{title}</h2>}
-      {children}
-    </div>
-  ),
-  Row: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
 
 // The stage-form context is irrelevant to registration stability; stub the
 // hooks that would otherwise require a mounted `StageFormBridge`.
@@ -154,12 +135,17 @@ const renderHarness = (makeUi: () => ReactElement) => {
 // every in-flight validation in the dialog, and leaving phantom
 // isTouched/isDirty from the dormant round-trip.
 describe('sociogram prompt fields register-effect stability', () => {
-  it('registers sortOrder exactly once across re-renders of a new prompt row', () => {
+  it('registers sortOrder exactly once across re-renders of a new prompt row', async () => {
     const { storeApi, rerender } = renderHarness(() => (
       <PromptFieldsLayout entity="node" type="person" />
     ));
 
-    expect(storeApi.getState().fields.has('sortOrder')).toBe(true);
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Sort unplaced nodes' }),
+    );
+    await waitFor(() => {
+      expect(storeApi.getState().fields.has('sortOrder')).toBe(true);
+    });
     const counter = countUnregisters(storeApi, 'sortOrder');
 
     rerender();
@@ -173,10 +159,13 @@ describe('sociogram prompt fields register-effect stability', () => {
     expect(meta?.isDirty).toBe(false);
   });
 
-  it('registers edges.display exactly once across re-renders and a checkbox toggle', () => {
+  it('registers edges.display exactly once across re-renders and a checkbox toggle', async () => {
     const { storeApi, rerender } = renderHarness(() => <PromptFieldsEdges />);
 
-    expect(storeApi.getState().fields.has('edges.display')).toBe(true);
+    fireEvent.click(screen.getByRole('switch', { name: 'Displayed edges' }));
+    await waitFor(() => {
+      expect(storeApi.getState().fields.has('edges.display')).toBe(true);
+    });
     const counter = countUnregisters(storeApi, 'edges.display');
 
     rerender();
@@ -194,5 +183,31 @@ describe('sociogram prompt fields register-effect stability', () => {
     expect(storeApi.getState().getFieldState('edges.display')?.value).toEqual([
       'friend',
     ]);
+  });
+
+  it('automatically displays an edge selected for creation', async () => {
+    const { storeApi } = renderHarness(() => <PromptFieldsEdges />);
+
+    expect(
+      screen.getByRole('switch', { name: 'Displayed edges' }),
+    ).not.toBeChecked();
+    expect(storeApi.getState().fields.has('edges.display')).toBe(false);
+
+    act(() => {
+      storeApi.getState().registerField({ name: 'edges.create' });
+      storeApi.getState().setFieldValue('edges.create', 'friend');
+    });
+
+    // `createEdge` changes the Section key and its default together, mounting
+    // the display field in time for the observer write to be submitted.
+    await waitFor(() => {
+      expect(
+        screen.getByRole('switch', { name: 'Displayed edges' }),
+      ).toBeChecked();
+      expect(storeApi.getState().fields.has('edges.display')).toBe(true);
+      expect(storeApi.getState().getFormValues()).toMatchObject({
+        edges: { create: 'friend', display: ['friend'] },
+      });
+    });
   });
 });

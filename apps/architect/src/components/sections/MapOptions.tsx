@@ -2,19 +2,18 @@ import type { ComponentType } from 'react';
 
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import Section from '@codaco/fresco-ui/Section';
 import { mapboxStyleOptions } from '~/config/mapboxConstants';
 import { documentationLinks } from '~/utils/documentationLinks';
 
 import useVariablesFromExternalData from '../../hooks/useVariablesFromExternalData';
-import { Section } from '../EditorLayout';
 import ExternalLink from '../ExternalLink';
 import ArchitectField from '../Form/ArchitectField';
 import ColorPicker from '../Form/Fields/ColorPicker';
 import GeoAPIKey from '../Form/Fields/Geospatial/GeoAPIKey';
 import GeoDataSource from '../Form/Fields/Geospatial/GeoDataSource';
 import MapSelection, {
-  requiredMapView,
+  completeMapView,
   type MapValue,
 } from '../Form/Fields/Geospatial/MapSelection';
 import {
@@ -33,6 +32,8 @@ type MapOptionsValue = MapValue & {
 
 const NO_SELECTABLE_PROPERTIES_MESSAGE =
   'The selected GeoJSON has no feature properties available for map selection. Choose a GeoJSON file whose features include properties.';
+const MAP_SELECTION_PROPERTY_HINT =
+  "Choose the feature property whose value will identify a selected area and be stored in each prompt's location attribute. Use a property with a unique, non-empty value for every feature, such as a census tract ID, ZIP code, or neighborhood name.";
 
 const noSelectablePropertiesGuard = () => NO_SELECTABLE_PROPERTIES_MESSAGE;
 
@@ -76,17 +77,8 @@ const MapOptions = () => {
   return (
     <>
       <Section
-        title="API Key"
-        summary={
-          <Paragraph>
-            This interface requires an API key from Mapbox. For more information
-            about Mapbox and retrieving an API key, read our{' '}
-            <ExternalLink href={documentationLinks.geospatialInterface}>
-              documentation
-            </ExternalLink>{' '}
-            on the interface.
-          </Paragraph>
-        }
+        title="Map access"
+        description="Provide the Mapbox API key required to display the map."
       >
         <div data-name="Map Options Mapbox Key" />
         <ArchitectField
@@ -95,56 +87,58 @@ const MapOptions = () => {
           initialValue={initialMapOptions?.tokenAssetId}
           validation={{ required: true }}
           label="Mapbox API Key"
+          hint={
+            <>
+              This interface requires an API key from Mapbox. For more
+              information about Mapbox and retrieving an API key, read our{' '}
+              <ExternalLink href={documentationLinks.geospatialInterface}>
+                documentation
+              </ExternalLink>{' '}
+              on the interface.
+            </>
+          }
         />
       </Section>
       <Section
-        title="Data source for map layers"
-        summary={
-          <Paragraph>
-            This interface requires a GeoJSON source for map layers. These
-            provide selectable areas for prompts. Select a GeoJSON file to use.
-          </Paragraph>
-        }
+        title="Map layers"
+        description="Select the GeoJSON source that provides selectable areas for prompts."
       >
-        <>
-          <div data-name="Layer data-source" />
-          <ArchitectField
-            component={GeoDataSource}
-            name="mapOptions.dataSourceAssetId"
-            initialValue={initialMapOptions?.dataSourceAssetId}
-            validation={{ required: true }}
-            label="Layer data source"
-          />
-        </>
+        <div data-name="Layer data-source" />
+        <ArchitectField
+          component={GeoDataSource}
+          name="mapOptions.dataSourceAssetId"
+          initialValue={initialMapOptions?.dataSourceAssetId}
+          validation={{ required: true }}
+          label="Layer data source"
+          hint="Choose a GeoJSON resource containing the geographic areas participants can select. Each feature should include a property that identifies the area, such as a census tract, ZIP code, or neighborhood; after selecting the resource, choose which property value to record below. Avoid very large files or features outside the study area, as they can slow map loading."
+        />
         {Boolean(dataSourceAssetId) && !isVariablesLoading && (
-          <>
-            <ArchitectField
-              name="mapOptions.targetFeatureProperty"
-              label="Which property should be used for map selection?"
-              component={FrescoNativeSelectField}
-              initialValue={initialTargetFeatureProperty}
-              validation={{
-                required: noSelectableProperties
-                  ? noSelectablePropertiesGuard
-                  : true,
-              }}
-              options={variableOptions}
-              disabled={noSelectableProperties}
-              hint={
-                noSelectableProperties
-                  ? NO_SELECTABLE_PROPERTIES_MESSAGE
-                  : undefined
-              }
-            />
-          </>
+          <ArchitectField
+            name="mapOptions.targetFeatureProperty"
+            label="Map selection property"
+            component={FrescoNativeSelectField}
+            initialValue={initialTargetFeatureProperty}
+            validation={{
+              required: noSelectableProperties
+                ? noSelectablePropertiesGuard
+                : true,
+            }}
+            options={variableOptions}
+            disabled={noSelectableProperties}
+            hint={
+              noSelectableProperties
+                ? NO_SELECTABLE_PROPERTIES_MESSAGE
+                : MAP_SELECTION_PROPERTY_HINT
+            }
+          />
         )}
       </Section>
       <Section
-        title="Map Style"
-        summary={
-          <Paragraph>
-            Customize the colors, style, and features of the map.
-          </Paragraph>
+        title="Map appearance"
+        description={
+          disabled
+            ? 'Provide a Mapbox API key before configuring the map appearance.'
+            : 'Customize the colors, style, and features of the map.'
         }
         disabled={disabled}
       >
@@ -155,10 +149,12 @@ const MapOptions = () => {
           validation={{ required: true }}
           palette={paletteName}
           paletteRange={paletteSize}
-          label="Which color would you like to use for this stage's map outlines and selections?"
+          label="Map outline and selection color"
+          hint="Choose the color used to outline selectable GeoJSON areas and highlight the area a participant selects. Use a color that remains easy to distinguish from the chosen Mapbox style."
         />
         <ArchitectField
-          label="Which mapbox style would you like to use for the map itself?"
+          label="Mapbox style"
+          hint="Choose the Mapbox basemap displayed beneath the selectable GeoJSON areas. Consider the contrast between the basemap, the configured outline color, and any place labels participants need to read."
           component={FrescoNativeSelectField}
           name="mapOptions.style"
           initialValue={initialMapOptions?.style}
@@ -168,7 +164,7 @@ const MapOptions = () => {
 
         <ArchitectField
           name="mapOptions.showTransit"
-          label="Show Public Transit"
+          label="Show public transit"
           hint="Show public transit routes and stations on the map."
           component={ToggleField}
           inline
@@ -177,7 +173,7 @@ const MapOptions = () => {
 
         <ArchitectField
           name="mapOptions.allowSearch"
-          label="Allow Location Search"
+          label="Allow location search"
           hint="Allow participants to search the map for addresses, neighborhoods, and points of interest."
           component={ToggleField}
           inline
@@ -185,12 +181,11 @@ const MapOptions = () => {
         />
       </Section>
       <Section
-        title="Initial Map View"
-        summary={
-          <Paragraph>
-            Configure the initial map view to adjust where it will be centered
-            and zoomed to.
-          </Paragraph>
+        title="Map starting position"
+        description={
+          disabled
+            ? 'Provide a Mapbox API key before setting the initial map view.'
+            : 'Set where the map is centered and how far it is zoomed when the stage opens.'
         }
         disabled={disabled}
       >
@@ -209,8 +204,9 @@ const MapOptions = () => {
           name="mapOptions"
           component={MapSelection}
           initialValue={initialMapOptions}
-          validation={{ required: requiredMapView }}
-          label="Map center and zoom"
+          validation={{ required: 'Required', completeMapView }}
+          label="Initial map view"
+          hint="Configure the initial map view to adjust where it will be centered and zoomed to."
           previewOptions={{ tokenAssetId, style }}
         />
       </Section>

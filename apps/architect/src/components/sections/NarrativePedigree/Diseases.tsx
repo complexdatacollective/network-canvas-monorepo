@@ -1,10 +1,10 @@
 import { useCallback, type ComponentType } from 'react';
 import { useSelector } from 'react-redux';
 
+import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { Stage } from '@codaco/protocol-validation';
 import { normalizeForComparison } from '@codaco/shared-consts';
-import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -37,10 +37,6 @@ const diseaseTemplate = (): DiseaseRow => ({
   variable: '',
   inheritancePattern: '',
 });
-const notEmpty = (value: unknown) =>
-  value && Array.isArray(value) && value.length > 0
-    ? undefined
-    : 'You must create at least one item.';
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 type FamilyPedigreeStage = Extract<
@@ -114,22 +110,19 @@ const Diseases = (_props: StageEditorSectionProps) => {
   );
 
   return (
-    <Section
-      title="Diseases"
-      summary={
-        <Paragraph>
-          Define the diseases to visualize on the pedigree. Each disease maps to
-          a boolean node attribute from the source Family Pedigree stage.
-        </Paragraph>
-      }
-    >
+    <Section title="Disease mappings">
       <ArchitectArrayField
         name="diseases"
         label="Diseases"
-        labelHidden
+        hint={
+          <Paragraph>
+            Define the diseases to visualize on the pedigree. Each disease maps
+            to a boolean node attribute from the source Family Pedigree stage.
+          </Paragraph>
+        }
         component={DialogArrayField}
         addButtonLabel="Create new disease"
-        validation={{ notEmpty }}
+        validation={{ required: 'You must create at least one item.' }}
         initialValue={diseasesInitial ?? []}
         addTitle="Edit Disease"
         editorFieldsComponent={DiseaseFields as unknown as Renderer}

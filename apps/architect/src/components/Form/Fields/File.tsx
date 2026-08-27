@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
@@ -25,6 +26,17 @@ export type FileInputProps = CreateFormFieldProps<
     /** Asset highlighted in the browser; defaults to the field's value. */
     selected?: string;
     children?: (id: string) => ReactNode;
+    /** Replaces the standard resource browser while retaining this field's presentation and state wiring. */
+    renderBrowser?: (props: {
+      open: boolean;
+      close: () => void;
+      select: (assetId: string) => void;
+      selected: string;
+    }) => ReactNode;
+    /** Content that must remain mounted inside the fieldset, such as an aria-live status region. */
+    supplementaryContent?: ReactNode;
+    selectButtonLabel?: string;
+    updateButtonLabel?: string;
   }
 >;
 
@@ -45,6 +57,10 @@ const ResourcePicker = ({
   selected,
   className,
   children,
+  renderBrowser,
+  supplementaryContent,
+  selectButtonLabel = 'Select resource',
+  updateButtonLabel = 'Update resource',
   disabled = false,
   readOnly = false,
   'aria-describedby': ariaDescribedBy,
@@ -114,13 +130,23 @@ const ResourcePicker = ({
           </div>
         )}
 
-        <AssetBrowserWindow
-          show={browserOpen}
-          type={type}
-          selected={selected ?? value}
-          onSelect={handleSelectAsset}
-          onCancel={closeBrowser}
-        />
+        {supplementaryContent}
+        {renderBrowser ? (
+          renderBrowser({
+            open: browserOpen,
+            close: closeBrowser,
+            select: handleSelectAsset,
+            selected: selected ?? value,
+          })
+        ) : (
+          <AssetBrowserWindow
+            show={browserOpen}
+            type={type}
+            selected={selected ?? value}
+            onSelect={handleSelectAsset}
+            onCancel={closeBrowser}
+          />
+        )}
       </fieldset>
       <Button
         type="button"
@@ -128,8 +154,9 @@ const ResourcePicker = ({
         color="primary"
         disabled={disabled || readOnly}
         className="self-start"
+        icon={<Plus aria-hidden />}
       >
-        {!value ? 'Select resource' : 'Update resource'}
+        {!value ? selectButtonLabel : updateButtonLabel}
       </Button>
     </>
   );

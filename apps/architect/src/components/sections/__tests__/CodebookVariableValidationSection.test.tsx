@@ -109,9 +109,7 @@ describe('CodebookVariableValidationSection', () => {
     renderSection();
 
     // No existing rules: the section starts collapsed, so its toggle has to
-    // be opened before the rule list is reachable. `Section`'s toggle
-    // handler is async (it awaits `handleToggleChange`), so the resulting
-    // `setInternalOpen` lands a microtask after the click.
+    // be opened before the rule list is reachable.
     fireEvent.click(screen.getByRole('switch', { name: 'Validation' }));
     fireEvent.click(
       await screen.findByRole('switch', { name: 'Required', hidden: true }),

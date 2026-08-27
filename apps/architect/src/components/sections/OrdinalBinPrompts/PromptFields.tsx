@@ -4,7 +4,7 @@ import { shallowEqual, useSelector } from 'react-redux';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import Options, {
@@ -28,7 +28,6 @@ import {
   excludeInterfaceOwned,
   excludeValidatedUses,
 } from '~/selectors/roleFilters';
-import { getFieldId } from '~/utils/issues';
 
 import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import BinSortOrderSection from '../BinSortOrderSection';
@@ -168,62 +167,60 @@ const PromptFields = ({
   return (
     <>
       <PromptText initialValue={text} />
-      <Section id={getFieldId('variable')} layout="vertical">
-        <>
-          <ArchitectField
-            name="variable"
-            label="Ordinal attribute"
-            hint="Select an ordinal attribute to assign a value to."
-            component={VariablePicker}
-            validation={{ required: true }}
-            initialValue={variable}
-            entity={entity}
-            type={type}
-            options={ordinalVariableOptions}
-            onCreateOption={handleNewVariable}
-          />
-        </>
+      <Section
+        title="Ordinal response"
+        description="Choose the ordinal attribute whose values are shown as bins."
+      >
+        <ArchitectField
+          name="variable"
+          label="Attribute"
+          hint="Select an ordinal attribute."
+          component={VariablePicker}
+          validation={{ required: true }}
+          initialValue={variable}
+          entity={entity}
+          type={type}
+          options={ordinalVariableOptions}
+          onCreateOption={handleNewVariable}
+        />
       </Section>
       {currentVariable && (
-        <Section id={getFieldId('variableOptions')} layout="vertical">
-          <>
-            {lockedOptions ? (
-              <LockedOptions options={lockedOptions} />
-            ) : (
-              <>
-                {showVariableOptionsTip && (
-                  <Alert variant="destructive" className="my-7">
-                    <AlertTitle>Too many option values</AlertTitle>
-                    <AlertDescription>
-                      The ordinal bin interface is designed to use{' '}
-                      <strong>up to 5 option values</strong>. Using more will
-                      create a sub-optimal experience for participants, and
-                      might reduce data quality.
-                    </AlertDescription>
-                  </Alert>
-                )}
-                <ArchitectArrayField
-                  name="variableOptions"
-                  label="Option values"
-                  hint={
-                    <>
-                      An ordinal attribute contains pre-defined categories made
-                      up of a label (shown to the participant) and a value.
-                      Create <strong>up to 5</strong> option values for this
-                      attribute.
-                    </>
-                  }
-                  component={Options}
-                  addButtonLabel="Create new option"
-                  validation={optionsValidation}
-                  initialValue={variableOptions}
-                />
-              </>
-            )}
-          </>
+        <Section title="Attribute options">
+          {lockedOptions && <LockedOptions options={lockedOptions} />}
+          {!lockedOptions && showVariableOptionsTip && (
+            <Alert variant="destructive" className="my-7">
+              <AlertTitle>Too many option values</AlertTitle>
+              <AlertDescription>
+                The ordinal bin interface is designed to use{' '}
+                <strong>up to 5 option values</strong>. Using more will create a
+                sub-optimal experience for participants, and might reduce data
+                quality.
+              </AlertDescription>
+            </Alert>
+          )}
+          {!lockedOptions && (
+            <ArchitectArrayField
+              name="variableOptions"
+              label="Option values"
+              hint={
+                <>
+                  An ordinal attribute contains pre-defined categories made up
+                  of a label (shown to the participant) and a value. Create{' '}
+                  <strong>up to 5</strong> option values for this attribute.
+                </>
+              }
+              component={Options}
+              addButtonLabel="Create new option"
+              validation={optionsValidation}
+              initialValue={variableOptions}
+            />
+          )}
         </Section>
       )}
-      <Section id={getFieldId('color')} layout="vertical">
+      <Section
+        title="Color gradient"
+        description="Choose the gradient used to distinguish ordinal options."
+      >
         <ArchitectField
           name="color"
           label="Color"

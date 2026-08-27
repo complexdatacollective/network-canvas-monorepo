@@ -14,39 +14,11 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import Form from '@codaco/fresco-ui/form/Form';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 
-type MockVariablePillProps = {
-  displayMaxWidth?: string;
-  maxWidth?: string;
-  width?: string;
-};
-
 vi.mock('~/components/VariablePill', () => ({
-  ConnectedVariablePill: ({
-    displayMaxWidth,
-    maxWidth,
-    width,
-  }: MockVariablePillProps) => (
-    <div
-      data-testid="connected-variable-pill"
-      data-editor-max-width={maxWidth}
-      style={{ maxWidth: displayMaxWidth, width }}
-    >
-      ConnectedVariablePill
-    </div>
+  ConnectedVariablePill: () => (
+    <div data-testid="connected-variable-pill">ConnectedVariablePill</div>
   ),
-  VariablePill: ({
-    displayMaxWidth,
-    maxWidth,
-    width,
-  }: MockVariablePillProps) => (
-    <div
-      data-testid="variable-pill"
-      data-editor-max-width={maxWidth}
-      style={{ maxWidth: displayMaxWidth, width }}
-    >
-      VariablePill
-    </div>
-  ),
+  VariablePill: () => <div data-testid="variable-pill">VariablePill</div>,
 }));
 
 vi.mock('../VariableSpotlight', () => ({
@@ -187,6 +159,22 @@ describe('VariablePicker', () => {
     ).toBeInTheDocument();
   });
 
+  it('applies a caller class name to the picker root', () => {
+    const { container } = renderPicker(
+      <ArchitectField
+        name="variable"
+        label="Attribute"
+        component={VariablePicker}
+        className="@min-lg:w-[50cqw]"
+        options={options}
+      />,
+    );
+
+    expect(container.querySelector('[data-name="variable"]')).toHaveClass(
+      '@min-lg:w-[50cqw]',
+    );
+  });
+
   it('renders label, hint and errors through the BaseField slots only', async () => {
     const { container } = renderPicker(
       <ArchitectField
@@ -221,12 +209,7 @@ describe('VariablePicker', () => {
   it('renders the selected variable using the appropriate pill', () => {
     setup('age');
 
-    const pill = screen.getByTestId('connected-variable-pill');
-    expect(pill).toHaveStyle({
-      maxWidth: '100%',
-      width: 'fit-content',
-    });
-    expect(pill).not.toHaveAttribute('data-editor-max-width');
+    expect(screen.getByTestId('connected-variable-pill')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Change attribute' }),
     ).toBeInTheDocument();
@@ -235,12 +218,7 @@ describe('VariablePicker', () => {
   it('renders an untyped selected variable using the unconnected pill', () => {
     setup('new-variable');
 
-    const pill = screen.getByTestId('variable-pill');
-    expect(pill).toHaveStyle({
-      maxWidth: '100%',
-      width: 'fit-content',
-    });
-    expect(pill).not.toHaveAttribute('data-editor-max-width');
+    expect(screen.getByTestId('variable-pill')).toBeInTheDocument();
   });
 
   it('persists a spotlight selection to the form store', () => {

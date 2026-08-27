@@ -21,15 +21,6 @@ beforeAll(() => {
 
 type ValidationMap = Record<string, boolean | number | string | null>;
 
-// Eleventh-wave Finding 3: a variable that is only the TARGET of another
-// variable's sameAs (it configures no rules of its own) still gets the
-// dialog's contradiction error keyed at `validation` when the draft edit
-// breaks the incoming relationship. With no rules the Validation section
-// starts collapsed and the Validations field is unmounted — and
-// `validateForm` only fails a submit over errors on REGISTERED fields, so
-// without the forced expansion the contradictory save would go through with
-// no error at all.
-
 // `b` (the edited variable) has no rules of its own; `a` carries an incoming
 // sameAs to it. Both are full-resolution DatePickers in the codebook.
 const allVariables: Record<string, Variable> = {
@@ -116,7 +107,7 @@ const validate = (values: Record<string, unknown>) => {
 };
 
 describe('ValidationSection with a target-only contradiction', () => {
-  it('blocks the save and expands to show the message once the failed save surfaces it', async () => {
+  it('opens the optional section when a target-only error blocks save', async () => {
     const onSubmit = vi.fn();
 
     render(
@@ -134,17 +125,16 @@ describe('ValidationSection with a target-only contradiction', () => {
       </AppForm>,
     );
 
-    // No rules of its own and no contradiction yet: the section starts
-    // collapsed, so its children, including the validation field, are
-    // unmounted.
+    expect(
+      screen.getByRole('switch', { name: 'Validation' }),
+    ).not.toBeChecked();
     expect(
       screen.queryByRole('group', { name: 'Requirements' }),
     ).not.toBeInTheDocument();
 
     // The draft edit switches the picker to year resolution, breaking the
     // incoming full-resolution sameAs from `a`. fresco-ui's form-level
-    // validate only runs at submit time (not on every value change), so the
-    // section stays collapsed here — a documented, accepted behaviour.
+    // validate only runs at submit time, so no error is shown yet.
     fireEvent.click(
       screen.getByRole('button', { name: 'Switch to year resolution' }),
     );
@@ -153,31 +143,23 @@ describe('ValidationSection with a target-only contradiction', () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/different resolutions/)).not.toBeInTheDocument();
 
-    // The save is still blocked: the form-level validate runs inside
-    // onSubmit, ahead of the caller's onSubmit, and its error forces the
-    // section open (`forceExpanded`) so the message renders where the
-    // now-registered `validation` field's error slot is.
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-    // `useForm`'s submit handler is async (it awaits `validateForm()` before
-    // running the form-level validate), so the error — and the section
-    // opening in response to it — land after a microtask tick.
     const message = await screen.findByText(/different resolutions/);
     expect(message).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Validation' })).toBeChecked();
     expect(screen.getByTestId('validation-field-error')).toContainElement(
       message,
     );
-    expect(screen.getAllByText(/different resolutions/)).toHaveLength(1);
     expect(onSubmit).not.toHaveBeenCalled();
     expect(
       screen.getByRole('group', { name: 'Requirements' }),
     ).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Required' })).toHaveFocus();
   });
 });
 
-// The forceExpanded gate itself: a sync error keyed at `validation` opens the
-// section even before any draft change, and clears once the error does.
-describe('ValidationSection forceExpanded on a store-level validation error', () => {
+describe('ValidationSection with a store-level validation error', () => {
   const SetErrorsButton = () => {
     const setErrors = useFormStore((store) => store.setErrors);
     return (
@@ -195,7 +177,7 @@ describe('ValidationSection forceExpanded on a store-level validation error', ()
     );
   };
 
-  it('opens while a validation sync error stands', () => {
+  it('opens so its owning field can display the error', async () => {
     render(
       <AppForm onSubmit={() => ({ success: true })}>
         <SetErrorsButton />
@@ -218,9 +200,40 @@ describe('ValidationSection forceExpanded on a store-level validation error', ()
       screen.getByRole('button', { name: 'Force a validation error' }),
     );
 
-    expect(
-      screen.getByRole('group', { name: 'Requirements' }),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByRole('group', { name: 'Requirements' }),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByRole('switch', { name: 'Validation' })).toBeChecked();
+    expect(screen.getByTestId('validation-field-error')).toHaveTextContent(
+      'Contradictory rules',
+    );
+  });
+
+  it('renders its Section directly beside surrounding fields', () => {
+    render(
+      <AppForm onSubmit={() => ({ success: true })}>
+        <ValidationSection
+          entity="node"
+          variableType="datetime"
+          existingVariables={{}}
+          allVariables={allVariables}
+          currentVariableId="b"
+          initialValue={{}}
+        />
+        <button type="button">Following field</button>
+      </AppForm>,
+    );
+
+    const anchor = document.getElementById('field_validation');
+    const section = screen.getByRole('region', { name: 'Validation' });
+
+    expect(anchor).toBeEmptyDOMElement();
+    expect(anchor).not.toContainElement(section);
+    expect(section.parentElement?.nextElementSibling).toBe(
+      screen.getByRole('button', { name: 'Following field' }),
+    );
   });
 });
 
@@ -314,13 +327,11 @@ describe('ValidationSection expansion latch', () => {
     ).toBeInTheDocument();
   });
 
-  // Rules restored after the section was switched off are still saved, so
-  // leaving the section shut would hide them from the researcher entirely.
-  it('reopens when rules are restored after the section is switched off', async () => {
+  it('stays closed when external rules are restored after it is switched off', async () => {
     renderLatchHarness();
 
-    // Section settles its own toggle asynchronously (handleToggleChange may
-    // return a promise), so the collapse lands a tick after the click.
+    // Section settles its own toggle asynchronously because onOpenChange may
+    // return a promise, so the collapse lands a tick after the click.
     fireEvent.click(screen.getByRole('switch', { name: 'Validation' }));
     await waitFor(() =>
       expect(
@@ -331,8 +342,10 @@ describe('ValidationSection expansion latch', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Restore the rules' }));
 
     expect(
-      screen.getByRole('group', { name: 'Requirements' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('switch', { name: 'Validation' })).toBeChecked();
+      screen.queryByRole('group', { name: 'Requirements' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('switch', { name: 'Validation' }),
+    ).not.toBeChecked();
   });
 });

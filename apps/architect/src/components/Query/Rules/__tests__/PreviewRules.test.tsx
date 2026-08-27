@@ -4,20 +4,27 @@ import { describe, expect, it, vi } from 'vitest';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 
 import PreviewRules from '../PreviewRules';
+import type { Rule } from '../validateRule';
 
 const CODEBOOK = {
   node: {
     person: {
       name: 'person',
       color: 'node-color-seq-1',
-      variables: { name: { name: 'name', type: 'text' } },
+      variables: {
+        name: { name: 'name', type: 'text' },
+        relationship_to_ego: {
+          name: 'relationship_to_ego',
+          type: 'text',
+        },
+      },
     },
   },
   edge: {},
   ego: { variables: { nickname: { name: 'nickname', type: 'text' } } },
 };
 
-const RULES = [
+const RULES: Rule[] = [
   {
     id: 'rule-1',
     type: 'node',
@@ -35,7 +42,7 @@ const RULES = [
   },
 ];
 
-const renderRules = (rules = RULES, join?: string) =>
+const renderRules = (rules: Rule[] = RULES) =>
   render(
     <DialogProvider>
       <PreviewRules
@@ -44,7 +51,6 @@ const renderRules = (rules = RULES, join?: string) =>
         ruleTypes={[{ label: 'Node', value: 'node' }]}
         addButtonLabel="Add new rule"
         onChange={vi.fn()}
-        join={join}
       />
     </DialogProvider>,
   );
@@ -58,52 +64,6 @@ describe('PreviewRules', () => {
     expect(
       screen.getByRole('button', { name: 'Add new rule' }),
     ).toBeInTheDocument();
-  });
-
-  /**
-   * Whether a rule set means "all of these" or "any of these" is set by
-   * the Rule Matching control below the list, and it used to be read back
-   * between the rules as well. The separator was dropped in the move to the
-   * shared editable list, leaving three unconnected cards that say nothing
-   * about how they combine until the researcher reaches the bottom of the list.
-   */
-  it.each([
-    ['OR', 'or'],
-    ['AND', 'and'],
-  ])('reads a %s rule set as “%s” between its rules', (join, word) => {
-    renderRules(RULES, join);
-
-    const [first, second] = within(screen.getByRole('list')).getAllByRole(
-      'listitem',
-    );
-
-    // Between the two rules, and only there — a separator after the last one
-    // would join it to nothing.
-    expect(within(first!).getByText(word)).toBeVisible();
-    expect(within(second!).queryByText(word)).toBeNull();
-  });
-
-  it.each([
-    ['a single rule has nothing to combine with', [RULES[0]!], 'OR'],
-    ['nothing has said how the rules combine yet', RULES, undefined],
-  ])('renders no separator when %s', (_name, rules, join) => {
-    renderRules(rules, join);
-
-    for (const item of within(screen.getByRole('list')).getAllByRole(
-      'listitem',
-    )) {
-      expect(within(item).queryByText('or')).toBeNull();
-      expect(within(item).queryByText('and')).toBeNull();
-    }
-  });
-
-  // The separator was a <fieldset>/<legend>, borrowed for the way a legend
-  // cuts a gap in a border. It announced a form group containing no controls
-  // to every screen reader, once per join.
-  it('does not announce the separator as a form group', () => {
-    renderRules(RULES, 'OR');
-
-    expect(screen.queryByRole('group')).toBeNull();
   });
 
   it('tells two rules apart by name', () => {
@@ -147,6 +107,24 @@ describe('PreviewRules', () => {
         ),
       ).toHaveLength(0);
     }
+  });
+
+  it('renders a resolved no-value attribute as a variable pill', () => {
+    renderRules([
+      {
+        id: 'rule-relationship',
+        type: 'node',
+        options: {
+          type: 'person',
+          attribute: 'relationship_to_ego',
+          operator: 'NOT_EXISTS',
+        },
+      },
+    ]);
+
+    expect(
+      screen.getByLabelText('text attribute relationship_to_ego'),
+    ).toBeInTheDocument();
   });
 
   it('raises each rule off the list surface', () => {

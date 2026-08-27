@@ -119,12 +119,12 @@ const renderSection = (
 describe('NodeConfiguration', () => {
   it('renders the section title', () => {
     renderSection();
-    // `Section`'s title renders as a styled span rather than a heading
-    // element (unlike `Subsection`, which uses a real `<h3>`).
-    expect(screen.getByText('Node Configuration')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Node configuration' }),
+    ).toBeInTheDocument();
   });
 
-  it('renders each field area under its own subsection heading', () => {
+  it('renders each field area under its own nested section heading', () => {
     renderSection();
     expect(
       screen.getByRole('heading', { name: /quick add attribute/i }),
@@ -230,15 +230,13 @@ describe('NodeConfiguration', () => {
 
   it('is disabled until a node type is selected', () => {
     renderSection({ type: undefined, entity: 'node', disabled: true });
-    expect(
-      screen.getByText(/complete the required options above/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/select a node type above/i)).toBeInTheDocument();
   });
 
   it('is enabled when a node type is provided', () => {
     renderSection({ type: 'person', disabled: false });
     expect(
-      screen.queryByText(/complete the required options above/i),
+      screen.queryByText(/select a node type above/i),
     ).not.toBeInTheDocument();
   });
 });

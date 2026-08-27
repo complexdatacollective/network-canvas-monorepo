@@ -151,12 +151,8 @@ const renderSection = (committedStage: Record<string, unknown>) => {
   };
 };
 
-/** Every `Section` toggle shares one title, so locate it by its heading. */
-const sectionToggle = (title: string) => {
-  const header = screen.getByText(title).parentElement;
-  if (!header) throw new Error(`no header rendered for "${title}"`);
-  return within(header).getByRole('switch');
-};
+const sectionToggle = (title: string) =>
+  screen.getByRole('switch', { name: title });
 
 const waitForSave = (submitLabel: string) =>
   waitFor(
@@ -176,6 +172,28 @@ const HIGHLIGHT_PROMPT = {
 };
 
 describe('Sociogram prompt tap behavior', () => {
+  it('presents the interaction choices as a labelled rich select', async () => {
+    renderSection({
+      subject: { entity: 'node', type: 'person' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create new prompt' }));
+    fireEvent.click(sectionToggle('Node interaction'));
+
+    const interactionType = await screen.findByRole('listbox', {
+      name: 'Interaction type',
+    });
+    expect(within(interactionType).getAllByRole('option')).toHaveLength(2);
+    expect(
+      within(interactionType).getByRole('option', { name: /Edge creation/ }),
+    ).toBeVisible();
+    expect(
+      within(interactionType).getByRole('option', {
+        name: /Attribute toggling/,
+      }),
+    ).toBeVisible();
+  });
+
   // `highlight.allowHighlighting` is what the interview runtime gates the
   // tap-to-toggle branch on. A saved row carrying only `highlight.variable`
   // matches the schema's DISABLED variant and is a runtime no-op.
@@ -191,9 +209,9 @@ describe('Sociogram prompt tap behavior', () => {
     fireEvent.change(screen.getByLabelText('layout.layoutVariable'), {
       target: { value: 'coords' },
     });
-    fireEvent.click(sectionToggle('Interaction Behavior'));
+    fireEvent.click(sectionToggle('Node interaction'));
     fireEvent.click(
-      await screen.findByRole('radio', { name: /Attribute Toggling/ }),
+      await screen.findByRole('option', { name: /Attribute toggling/ }),
     );
     fireEvent.change(await screen.findByLabelText('highlight.variable'), {
       target: { value: 'flagged' },
@@ -248,7 +266,7 @@ describe('Sociogram prompt tap behavior', () => {
       target: { value: 'Tap to connect' },
     });
     fireEvent.click(
-      await screen.findByRole('radio', { name: /Edge Creation/ }),
+      await screen.findByRole('option', { name: /Edge creation/ }),
     );
     fireEvent.change(await screen.findByLabelText('edges.create'), {
       target: { value: 'friend' },
@@ -278,9 +296,9 @@ describe('Sociogram prompt tap behavior', () => {
     fireEvent.change(screen.getByLabelText('layout.layoutVariable'), {
       target: { value: 'coords' },
     });
-    fireEvent.click(sectionToggle('Interaction Behavior'));
+    fireEvent.click(sectionToggle('Node interaction'));
     fireEvent.click(
-      await screen.findByRole('radio', { name: /Edge Creation/ }),
+      await screen.findByRole('option', { name: /Edge creation/ }),
     );
     fireEvent.change(await screen.findByLabelText('edges.create'), {
       target: { value: 'friend' },
@@ -295,10 +313,9 @@ describe('Sociogram prompt tap behavior', () => {
     });
   });
 
-  // The layout-only prompts of the canonical protocol are authored with the
-  // Interaction Behavior on-then-off dance, which is the only thing that
-  // writes their `highlight: {allowHighlighting: false}`.
-  it('records highlighting as off when the section is toggled on and back off', async () => {
+  // Opening and closing the Section without choosing a behavior must not add
+  // configuration to the prompt.
+  it('keeps interaction behavior absent when the Section is opened and closed', async () => {
     const { getPrompt } = renderSection({
       subject: { entity: 'node', type: 'person' },
     });
@@ -310,7 +327,7 @@ describe('Sociogram prompt tap behavior', () => {
     fireEvent.change(screen.getByLabelText('layout.layoutVariable'), {
       target: { value: 'coords' },
     });
-    const toggle = sectionToggle('Interaction Behavior');
+    const toggle = sectionToggle('Node interaction');
     fireEvent.click(toggle);
     await waitFor(() => expect(toggle).toBeChecked());
     fireEvent.click(toggle);
@@ -320,7 +337,37 @@ describe('Sociogram prompt tap behavior', () => {
     await waitForSave('Add');
 
     const prompt = getPrompt() as Record<string, unknown>;
-    expect(prompt.highlight).toEqual({ allowHighlighting: false });
+    expect(prompt).not.toHaveProperty('highlight');
     expect(prompt).not.toHaveProperty('edges');
+  });
+
+  it('clears the local interaction choice when a configured Section closes', async () => {
+    renderSection({
+      subject: { entity: 'node', type: 'person' },
+      prompts: [HIGHLIGHT_PROMPT],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit prompt' }));
+
+    const toggle = sectionToggle('Node interaction');
+    expect(toggle).toBeChecked();
+    expect(screen.getByLabelText('highlight.variable')).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    await waitFor(() => expect(toggle).not.toBeChecked());
+
+    fireEvent.click(toggle);
+    await waitFor(() => expect(toggle).toBeChecked());
+
+    // The Section discards the registered highlight fields when it closes.
+    // Its unregistered local choice must reset too, or reopening would render
+    // an apparently selected Attribute Toggling mode without restoring the
+    // hidden allowHighlighting flag that makes the runtime honor it.
+    expect(
+      screen.queryByLabelText('highlight.variable'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('listbox', { name: 'Interaction type' }),
+    ).toBeInTheDocument();
   });
 });

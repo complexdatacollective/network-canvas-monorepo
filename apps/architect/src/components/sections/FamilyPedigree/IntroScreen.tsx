@@ -1,8 +1,7 @@
-import { useCallback, type ComponentType } from 'react';
+import type { ComponentType } from 'react';
 
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import Section from '@codaco/fresco-ui/Section';
 import type { FamilyPedigreeIntroItem } from '@codaco/protocol-validation';
-import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import type { DialogArrayItemSelector } from '~/components/Form/arrayFields/DialogArrayField';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
@@ -14,7 +13,6 @@ import {
 } from '~/components/sections/ContentGrid/itemTypes';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
-  useSetStageValue,
   useStageFormValue,
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
@@ -25,22 +23,7 @@ import {
 // own properties into it, so the cast is safe.
 type Renderer = ComponentType<Record<string, unknown>>;
 
-const notEmpty = (value: unknown) =>
-  value && Array.isArray(value) && value.length > 0
-    ? undefined
-    : 'You must create at least one item.';
-
 const IntroScreen = (_props: StageEditorSectionProps) => {
-  const setStageValue = useSetStageValue();
-  // The registered LEAF is `introScreen.items` — `introScreen` itself is
-  // never a field, so writing to it (as the old `{items: []} | null` whole-
-  // object toggle did) would silently no-op against the array field's own
-  // dormant/registered slot. `undefined` is the disabled sentinel — fresco-ui's
-  // `ArrayField` only special-cases `undefined` (a default-parameter fallback
-  // to its own empty array), so a field that is still mounted for one more
-  // render when this writes (the toggle handler runs before the Section's own
-  // `isOpen` flips) must never see `null`: `useArrayFieldItems` calls
-  // `value.forEach` unconditionally and only `undefined` is defaulted away.
   const items = useStageFormValue<FamilyPedigreeIntroItem[] | undefined>(
     'introScreen.items',
   );
@@ -48,54 +31,32 @@ const IntroScreen = (_props: StageEditorSectionProps) => {
     useStageInitialValue<FamilyPedigreeIntroItem[]>('introScreen.items');
   const isEnabled = items !== undefined;
 
-  const handleToggleChange = useCallback(
-    async (newState: boolean) => {
-      // Turning on always starts from an empty list (never resurrects a
-      // previous session's items); turning off parks the disabled sentinel
-      // so a later re-open starts fresh too, and so this section's own
-      // `startExpanded` read doesn't fall back to a stale committed value.
-      setStageValue('introScreen.items', newState ? [] : undefined);
-      return true;
-    },
-    [setStageValue],
-  );
-
   return (
     <Section
-      title="Intro Screen"
-      summary={
-        <Paragraph>
-          Optionally show an introductory screen to participants before the
-          family pedigree task begins. Add text and media sections below, and
-          drag them to reorder.
-        </Paragraph>
-      }
+      title="Introductory screen"
+      description="Optionally show participants text or media before the family pedigree task begins."
       toggleable
-      startExpanded={isEnabled}
-      handleToggleChange={handleToggleChange}
+      defaultOpen={isEnabled}
     >
-      <>
-        <ArchitectArrayField
-          name="introScreen.items"
-          label="Content sections"
-          component={DialogArrayField}
-          addButtonLabel="Create new content section"
-          validation={{ notEmpty }}
-          initialValue={initialItems ?? []}
-          addTitle="Edit Section"
-          previewComponent={ItemPreview as unknown as Renderer}
-          editorFieldsComponent={ItemEditor}
-          editorTitle="Edit Section"
-          itemLabel="content section"
-          sortable
-          normalizeItem={
-            normalizeType as unknown as (value: unknown) => unknown
-          }
-          itemSelector={denormalizeType as unknown as DialogArrayItemSelector}
-          requestedEditFormName="editable-list-form"
-          emptyStateMessage='No content sections have been created yet. Click "Create new content section" to add text or media to the intro screen.'
-        />
-      </>
+      <ArchitectArrayField
+        name="introScreen.items"
+        label="Content sections"
+        component={DialogArrayField}
+        addButtonLabel="Create new content section"
+        validation={{ required: 'You must create at least one item.' }}
+        initialValue={initialItems ?? []}
+        addTitle="Edit Section"
+        previewComponent={ItemPreview as unknown as Renderer}
+        editorFieldsComponent={ItemEditor}
+        editorDialogSize="workspace"
+        editorTitle="Edit Section"
+        itemLabel="content section"
+        sortable
+        normalizeItem={normalizeType as unknown as (value: unknown) => unknown}
+        itemSelector={denormalizeType as unknown as DialogArrayItemSelector}
+        requestedEditFormName="editable-list-form"
+        emptyStateMessage='No content sections have been created yet. Click "Create new content section" to add text or media to the intro screen.'
+      />
     </Section>
   );
 };

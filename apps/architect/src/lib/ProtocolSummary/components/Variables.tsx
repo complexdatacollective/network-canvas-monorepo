@@ -90,7 +90,11 @@ const Variables = ({ variables }: VariablesProps) => {
             return (
               <tr key={variableId} id={`variable-${variableId}`}>
                 <td>
-                  <VariablePill label={name} type={type} />
+                  <VariablePill
+                    className="max-w-[7cm]"
+                    label={name}
+                    type={type}
+                  />
                 </td>
                 <td>
                   {type}

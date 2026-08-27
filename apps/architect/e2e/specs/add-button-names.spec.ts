@@ -28,8 +28,8 @@ import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
  * identifiable without an allowlist. Two things follow from drawing it there.
  *
  * The rule builders were brought INSIDE it. `RuleSetFields` mounts
- * `Query/Rules/Rules.tsx` twice per stage editor, once for Skip Logic and once
- * for Filter. Each rule set is now one editable list with one conventionally
+ * `Query/Rules/Rules.tsx` twice per stage editor, once for Skip logic and once
+ * for Stage filter. Each rule set is now one editable list with one conventionally
  * named add control ("Add new skip logic rule" / "Add new filter rule"); the
  * rule target is selected inside the row editor. Both controls are therefore
  * covered here with no widening and no allowlist.
@@ -70,6 +70,7 @@ const ADD_BUTTON = /^(Add|Create) new\b/;
  * `"` escaped as `\"`.
  */
 const BUTTON_LINE = /^\s*-\s*button\s+"((?:[^"\\]|\\.)*)"/;
+const REGION_LINE = /^\s*-\s*region\s+"((?:[^"\\]|\\.)*)"/;
 
 /**
  * The accessibility tree, deliberately — not `getByRole('button')` over the
@@ -91,6 +92,12 @@ async function addButtonNames(scope: Locator): Promise<string[]> {
   return (await buttonNames(scope)).filter((name) => ADD_BUTTON.test(name));
 }
 
+async function regionName(region: Locator): Promise<string | undefined> {
+  const snapshot = await region.ariaSnapshot();
+  const name = REGION_LINE.exec(snapshot.split('\n')[0] ?? '')?.[1];
+  return name?.replaceAll(String.raw`\"`, '"');
+}
+
 /** Sorted so a failure reads as a set, not in tree order. */
 function duplicated(names: string[]): string[] {
   const seen = new Set<string>();
@@ -105,33 +112,40 @@ function duplicated(names: string[]): string[] {
 /**
  * A toggleable `Section` renders its own switch, named by the section heading
  * (`Section.tsx` labels it `aria-labelledby` the heading, so its accessible
- * name equals the `data-name` the section stamps). Collapsed sections keep
- * their children unmounted, so their add buttons are invisible to the tree —
- * and the bin/bucket sort-order lists, which are half of the collisions this
- * guards, are collapsed until configured.
+ * name equals the containing region's accessible name). Collapsed sections
+ * keep their children unmounted, so their add buttons are invisible to the
+ * tree — and the bin/bucket sort-order lists, which are half of the collisions
+ * this guards, are collapsed until configured.
  *
- * Turning one ON writes nothing to the form (every `handleToggleChange` in
- * these sections only clears on the way OFF), so the draft stays pristine and
- * the next navigation is not intercepted.
+ * This walk only opens sections; it never edits a mounted field, so the draft
+ * stays pristine and the next navigation is not intercepted.
  *
  * Re-queried between passes: expanding a section can reveal another one.
  */
-async function expandCollapsedSections(scope: Locator): Promise<void> {
+async function expandCollapsedSections(scope: Locator): Promise<number> {
+  let sectionsExpanded = 0;
   for (let pass = 0; pass < 3; pass += 1) {
     let expandedAny = false;
-    const sections = await scope.locator('[data-name]').all();
+    const sections = await scope.getByRole('region').all();
     for (const section of sections) {
-      const name = await section.getAttribute('data-name');
+      const name = await regionName(section);
       if (!name) continue;
-      const toggle = section.getByRole('switch', { name, exact: true }).first();
-      if ((await toggle.count()) === 0) continue;
+      const toggle = section.getByRole('switch', { name, exact: true });
+      const toggleCount = await toggle.count();
+      if (toggleCount === 0) continue;
+      expect(
+        toggleCount,
+        `Section region "${name}" should contain one matching switch`,
+      ).toBe(1);
       if (await toggle.isDisabled()) continue;
       if ((await toggle.getAttribute('aria-checked')) === 'true') continue;
       await toggle.click();
+      sectionsExpanded += 1;
       expandedAny = true;
     }
-    if (!expandedAny) return;
+    if (!expandedAny) return sectionsExpanded;
   }
+  return sectionsExpanded;
 }
 
 /**
@@ -147,14 +161,17 @@ type AddButtonWalk = {
   failures: string[];
   /** Every button name the walk read, whether or not it is an add button. */
   buttonsSeen: number;
+  /** Toggleable sections opened through their accessible region names. */
+  sectionsExpanded: number;
 };
 
 async function duplicateAddButtons(page: Page): Promise<AddButtonWalk> {
   const failures: string[] = [];
   let buttonsSeen = 0;
+  let sectionsExpanded = 0;
   const body = page.locator('body');
 
-  await expandCollapsedSections(body);
+  sectionsExpanded += await expandCollapsedSections(body);
   buttonsSeen += (await buttonNames(body)).length;
   for (const name of duplicated(await addButtonNames(body))) {
     failures.push(`stage editor: ${name}`);
@@ -172,7 +189,7 @@ async function duplicateAddButtons(page: Page): Promise<AddButtonWalk> {
     const dialog = page.getByRole('dialog').last();
     await expect(dialog).toBeVisible();
 
-    await expandCollapsedSections(dialog);
+    sectionsExpanded += await expandCollapsedSections(dialog);
 
     buttonsSeen += (await buttonNames(dialog)).length;
     for (const name of duplicated(await addButtonNames(dialog))) {
@@ -183,7 +200,7 @@ async function duplicateAddButtons(page: Page): Promise<AddButtonWalk> {
     await expect(dialog).toBeHidden();
   }
 
-  return { failures, buttonsSeen };
+  return { failures, buttonsSeen, sectionsExpanded };
 }
 
 const { protocol, assets } = loadAllInterfacesFixture();
@@ -219,13 +236,15 @@ for (const stage of protocol.stages) {
       page.getByRole('textbox', { name: 'Stage name' }),
     ).toBeVisible();
 
-    const { failures, buttonsSeen } = await duplicateAddButtons(page);
+    const { failures, buttonsSeen, sectionsExpanded } =
+      await duplicateAddButtons(page);
 
     // Non-vacuity for the walk itself. `duplicated([])` is `[]`, so a snapshot
     // that stopped yielding button lines — a changed YAML shape, a scope that
     // resolved to nothing, an editor that failed to mount — would pass this
     // test while reading no controls whatsoever.
     expect(buttonsSeen).toBeGreaterThan(0);
+    expect(sectionsExpanded).toBeGreaterThan(0);
     expect(failures.toSorted()).toEqual([]);
   });
 }

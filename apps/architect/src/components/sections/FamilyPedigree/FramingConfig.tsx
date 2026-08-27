@@ -1,8 +1,8 @@
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
+import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { FRAMING_IDS, type FramingId } from '@codaco/protocol-validation';
-import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
@@ -43,14 +43,8 @@ const FramingConfig = (_props: StageEditorSectionProps) => {
 
   return (
     <Section
-      title="Framing Configuration"
-      summary={
-        <Paragraph>
-          Choose how the pedigree interface is framed for participants. Fixed
-          framing uses a single consistent terminology, while participant choice
-          allows each participant to select the framing that suits them.
-        </Paragraph>
-      }
+      title="Pedigree framing"
+      description="Choose fixed terminology or let each participant select their preferred framing."
     >
       <Paragraph>
         The framing determines the language the interface uses when talking

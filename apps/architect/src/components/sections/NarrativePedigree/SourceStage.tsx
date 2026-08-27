@@ -2,8 +2,8 @@ import { useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
+import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
@@ -79,26 +79,24 @@ const SourceStage = (_props: StageEditorSectionProps) => {
   }, [draft, restoreVersion, sourceStageId, storeApi]);
 
   return (
-    <Section
-      title="Source Stage"
-      summary={
-        <Paragraph>
-          Select the Family Pedigree stage whose network data this Narrative
-          Pedigree will visualize. Only Family Pedigree stages are listed here.
-        </Paragraph>
-      }
-    >
-      <>
-        <ArchitectField
-          name="sourceStageId"
-          component={StyledSelectField}
-          label="Family Pedigree stage"
-          initialValue={sourceStageIdInitial}
-          placeholder="Select a Family Pedigree stage..."
-          options={options}
-          disabled={options.length === 0}
-        />
-      </>
+    <Section title="Pedigree source">
+      <ArchitectField
+        name="sourceStageId"
+        component={StyledSelectField}
+        label="Source stage"
+        hint={
+          <Paragraph>
+            Select the Family Pedigree stage whose network data this Narrative
+            Pedigree will visualize. Only Family Pedigree stages are listed
+            here.
+          </Paragraph>
+        }
+        initialValue={sourceStageIdInitial}
+        validation={{ required: true }}
+        placeholder="Select a Family Pedigree stage..."
+        options={options}
+        disabled={options.length === 0}
+      />
     </Section>
   );
 };

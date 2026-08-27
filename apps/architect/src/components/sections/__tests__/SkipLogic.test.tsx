@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import type { ComponentType } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -18,9 +18,8 @@ vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
 // A faithful-enough stand-in for `SkipLogicFields`: it registers the same
 // three leaf paths production does (`skipLogic.action`/`.filter`/
 // `.destination` — never a single `skipLogic` field), seeded from the
-// committed stage, so this test can verify SkipLogic's clear-on-toggle-off
-// actually reaches the fields it renders rather than an unregistered
-// `skipLogic` parent path.
+// committed stage, so this test can verify the shared Section's descendant
+// reset clears the fields it renders.
 const Probe = (({ value }: { value?: unknown }) => (
   <span data-testid="value">{JSON.stringify(value)}</span>
 )) as ComponentType<Record<string, unknown>>;
@@ -106,7 +105,7 @@ describe('SkipLogic', () => {
       children: <SkipLogic {...STAGE_PROPS} interfaceType="EgoForm" />,
     });
 
-    fireEvent.click(screen.getByRole('switch', { name: 'Skip Logic' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Skip logic' }));
 
     expect(confirm).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'This will clear your skip logic' }),
@@ -134,11 +133,11 @@ describe('SkipLogic', () => {
     });
 
     // Turn off (clears and collapses), then back on.
-    fireEvent.click(screen.getByRole('switch', { name: 'Skip Logic' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Skip logic' }));
     await waitFor(() => {
       expect(screen.queryByTestId('skip-logic-fields')).not.toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole('switch', { name: 'Skip Logic' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Skip logic' }));
 
     await screen.findByTestId('skip-logic-fields');
     expect(screen.getAllByTestId('value').map((el) => el.textContent)).toEqual([
@@ -146,6 +145,45 @@ describe('SkipLogic', () => {
       '',
       '',
     ]);
+  });
+
+  it('records a collapsed configuration as one undoable change', async () => {
+    confirm.mockResolvedValue(true);
+
+    const { getHistory, getFormValues, getStoreApi, snapshots } =
+      renderStageForm({
+        committedStage: asStage({ skipLogic: COMMITTED_SKIP_LOGIC }),
+        children: (
+          <>
+            <ArchitectField
+              name="label"
+              label="Stage name"
+              component={Probe}
+              initialValue="Stage"
+            />
+            <SkipLogic {...STAGE_PROPS} interfaceType="EgoForm" />
+          </>
+        ),
+      });
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Skip logic' }));
+    await waitFor(() => {
+      expect(screen.queryByTestId('skip-logic-fields')).not.toBeInTheDocument();
+      expect(getFormValues()).not.toHaveProperty('skipLogic');
+      expect(getStoreApi().getState().fieldDiscardVersion).toBeGreaterThan(0);
+      expect(getHistory().canUndo).toBe(true);
+    });
+    expect(snapshots).toHaveLength(1);
+
+    act(() => getHistory().undo());
+
+    await waitFor(() => {
+      expect(screen.getByTestId('skip-logic-fields')).toBeInTheDocument();
+    });
+    expect(getFormValues()).toMatchObject({
+      skipLogic: COMMITTED_SKIP_LOGIC,
+    });
+    expect(getHistory().canRedo).toBe(true);
   });
 
   it('keeps skipLogic when the confirm dialog is cancelled', async () => {
@@ -156,7 +194,7 @@ describe('SkipLogic', () => {
       children: <SkipLogic {...STAGE_PROPS} interfaceType="EgoForm" />,
     });
 
-    fireEvent.click(screen.getByRole('switch', { name: 'Skip Logic' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Skip logic' }));
 
     await vi.waitFor(() => {
       expect(confirm).toHaveBeenCalled();

@@ -18,8 +18,8 @@ test('creates a valid AlterForm stage from scratch', async ({
   await editor.setStageName('About Each Person');
 
   // AlterForm's subject is a node type (sections/NodeType.tsx's
-  // `FilteredNodeType`, `Section title="Node Type"`), and Form.tsx's
-  // `withDisabledSubjectRequired` disables the Form section
+  // `FilteredNodeType`, `Section title="Node setup"`), and Form.tsx's
+  // `withDisabledSubjectRequired` disables Form configuration
   // (`disabled: true` whenever `interfaceType !== 'EgoForm' && !type`) until
   // `subject.type` is set — Section.tsx doesn't even render `children` while
   // `disabled`, so the "Create new" button genuinely isn't in the DOM until
@@ -38,7 +38,7 @@ test('creates a valid AlterForm stage from scratch', async ({
     'Tell us a bit about each person you know.',
   );
 
-  await addFormField(editor.section('Form'), {
+  await addFormField(editor.section('Form configuration'), {
     variableName: 'age',
     promptText: 'What is your name?',
     inputControl: 'Text Input',

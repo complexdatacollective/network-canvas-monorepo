@@ -220,7 +220,12 @@ const mergeEditedRow = (
   const dormant = storeApi?.getState().dormantValues;
   if (!dormant || dormant.size === 0) return { ...committed, ...submitted };
 
-  const merged = cloneDeep(committed);
+  // Start with the mounted fields' submitted snapshot, then replay genuine
+  // dormant edits at their exact paths. A shallow submitted object such as
+  // `{ edges: { create } }` must not erase a dormant sibling written at
+  // `edges.display`; the two fields cannot be both mounted and dormant at the
+  // same time, so the dormant path is the authoritative value for that leaf.
+  const merged = cloneDeep({ ...committed, ...submitted });
   for (const [name, field] of dormant) {
     if (isEqual(field.value, field.initialValue)) continue;
     if (field.value === undefined) {
@@ -230,7 +235,7 @@ const mergeEditedRow = (
     }
   }
 
-  return { ...merged, ...submitted };
+  return merged;
 };
 
 /**

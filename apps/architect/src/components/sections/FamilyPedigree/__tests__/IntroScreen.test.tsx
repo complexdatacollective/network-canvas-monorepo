@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 // The row renderers IntroScreen's DialogArrayField mounts, stubbed so this
@@ -66,28 +66,41 @@ describe('IntroScreen', () => {
     expect(screen.getByTestId('item-preview')).toHaveTextContent('Hello');
   });
 
-  it('sets an empty items list when toggled on', () => {
+  it('uses the workspace width for the content section editor', () => {
+    renderSection({
+      introScreen: { items: [{ id: 't1', type: 'text', content: 'Hello' }] },
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Edit content section' }),
+    );
+
+    expect(screen.getByRole('dialog', { name: 'Edit Section' })).toHaveClass(
+      'max-w-7xl',
+    );
+  });
+
+  it('sets an empty items list when toggled on', async () => {
     const view = renderSection();
 
     fireEvent.click(screen.getByRole('switch'));
 
-    expect(view.getFormValues().introScreen).toEqual({ items: [] });
+    await waitFor(() =>
+      expect(view.getFormValues().introScreen).toEqual({ items: [] }),
+    );
   });
 
-  it('clears introScreen when toggled off', () => {
+  it('clears introScreen when toggled off', async () => {
     const view = renderSection({ introScreen: { items: [] } });
 
     fireEvent.click(screen.getByRole('switch'));
 
-    expect(view.getFormValues().introScreen).toBeUndefined();
+    await waitFor(() =>
+      expect(view.getFormValues().introScreen).toBeUndefined(),
+    );
   });
 
-  // Regression: writing the whole-object container key (`introScreen`)
-  // rather than the registered leaf (`introScreen.items`) is silently
-  // inert — the array field's own dormant slot never gets touched, so a
-  // toggle-off/toggle-on cycle would resurrect the previous session's items
-  // instead of starting fresh.
-  it('does not resurrect previous items after toggling off and back on', () => {
+  it('does not resurrect committed items after toggling off and back on', async () => {
     const view = renderSection({
       introScreen: {
         items: [{ id: 't1', type: 'text', content: 'Hello' }],
@@ -95,9 +108,14 @@ describe('IntroScreen', () => {
     });
 
     fireEvent.click(screen.getByRole('switch')); // off
+    await waitFor(() =>
+      expect(view.getFormValues().introScreen).toBeUndefined(),
+    );
     fireEvent.click(screen.getByRole('switch')); // on again
 
-    expect(view.getFormValues().introScreen).toEqual({ items: [] });
+    await waitFor(() =>
+      expect(view.getFormValues().introScreen).toEqual({ items: undefined }),
+    );
     expect(screen.queryByTestId('item-preview')).toBeNull();
   });
 });

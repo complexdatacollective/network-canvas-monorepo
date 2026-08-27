@@ -4,24 +4,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
 
-vi.mock('~/components/EditorLayout', () => ({
-  Section: ({ children }: { children: ReactNode }) => (
-    <div data-testid="section">{children}</div>
-  ),
-  Subsection: ({
-    children,
-    title,
-  }: {
-    children: ReactNode;
-    title?: ReactNode;
-  }) => (
-    <section data-testid="subsection">
-      {title && <h3>{title}</h3>}
-      {children}
-    </section>
-  ),
-}));
-
 // Surface each rendered field's `name` so the test can assert which fields
 // exist (variable, component) and which do not (prompt, hint, showValidationHints).
 vi.mock('~/components/Form/ArchitectField', () => ({

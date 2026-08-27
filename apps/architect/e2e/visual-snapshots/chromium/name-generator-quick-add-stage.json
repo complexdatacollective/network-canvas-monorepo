@@ -6,11 +6,11 @@
     "entity": "node",
     "type": "id-2"
   },
-  "quickAdd": "id-3",
   "prompts": [
     {
-      "id": "id-4",
+      "id": "id-3",
       "text": "Name someone you know"
     }
-  ]
+  ],
+  "quickAdd": "id-4"
 }

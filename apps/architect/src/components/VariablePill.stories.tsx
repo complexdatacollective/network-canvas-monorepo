@@ -19,14 +19,7 @@ const VARIABLE_TYPES = [
 
 type StoryArgs = Pick<
   VariablePillProps,
-  | 'animated'
-  | 'displayMaxWidth'
-  | 'editable'
-  | 'label'
-  | 'maxWidth'
-  | 'minWidth'
-  | 'type'
-  | 'width'
+  'animated' | 'className' | 'editable' | 'label' | 'type'
 >;
 
 const StoryVariablePill = ({ label, ...props }: StoryArgs) => {
@@ -62,44 +55,36 @@ independently:
 | \`ConnectedVariablePill\` | Resolves \`label\` and \`type\` from an attribute UUID, validates uniqueness, then renders \`VariablePill\`. | Architect state owns the attribute and edits must update the protocol codebook. |
 
 \`\`\`tsx
-// Content-sized between the default 12rem minimum and 20rem maximum.
+// Content-sized and constrained by its container.
 <VariablePill label="participant_age" type="number" />
 
-// Custom bounds; the label truncates after reaching maxWidth.
+// A Tailwind max-width truncates a longer label.
 <VariablePill
   label="participant_neighbourhood_connection_frequency"
   type="number"
-  minWidth="10rem"
-  maxWidth="16rem"
+  className="max-w-64"
 />
 
 <ConnectedVariablePill
   animated
   editable
   uuid={variableId}
-  width="100%"
+  className="max-w-80"
 />
 \`\`\`
 
 - \`label\` is both the visible name and the machine-readable \`data\` value
   when the pill is not editable.
 - \`type\` selects the attribute icon and accent color.
-- Without \`width\`, the pill grows with its content between \`minWidth\`
-  (default \`12rem\`) and \`maxWidth\` (default \`20rem\`).
-- Labels truncate with an ellipsis only after reaching \`maxWidth\`.
-- \`displayMaxWidth\` overrides that resting bound without changing the
-  editable pill's expansion ceiling. Use it when the surrounding layout, not
-  the editor design, determines where truncation begins.
-- \`width\` forces a preferred CSS width for contexts such as
-  \`VariableSpotlight\`; unless \`maxWidth\` is also supplied, that width is
-  used as the maximum.
+- The pill is exactly as wide as its label and type icon require by default.
+- Its containing block provides the default width constraint; long labels
+  truncate rather than expanding beyond it.
+- \`className\` composes Tailwind layout constraints such as \`max-w-64\`.
 - \`animated\` changes only the border treatment.
 - \`editable\` changes the semantic element to a button, adds the raised
   interaction affordance and edit tooltip, and enables the editing workflow.
-- On entering edit mode, the pill transitions from its current width toward
-  \`maxWidth\` while remaining anchored around the same center point. The target
-  is clamped before the 1.5× edit zoom so a wide resting pill cannot overflow
-  the viewport.
+- On entering edit mode, the pill expands from its current width to
+  its available maximum while remaining anchored around the same center point.
 `,
       },
     },
@@ -120,24 +105,10 @@ independently:
       options: VARIABLE_TYPES,
       description: 'Attribute type, which selects the icon and accent color.',
     },
-    width: {
+    className: {
       control: 'text',
       description:
-        'Optional preferred CSS width. By default, width follows the content.',
-    },
-    minWidth: {
-      control: 'text',
-      description: 'Minimum CSS width. Defaults to 12rem.',
-    },
-    maxWidth: {
-      control: 'text',
-      description:
-        'Maximum CSS width, after which the label truncates. Defaults to 20rem.',
-    },
-    displayMaxWidth: {
-      control: 'text',
-      description:
-        'Optional resting maximum that does not change the edit-mode ceiling.',
+        'Optional Tailwind classes, such as max-w-64, for context-specific layout constraints.',
     },
     animated: {
       control: 'boolean',
@@ -183,13 +154,7 @@ export const LongLabel: Story = {
     animated: true,
     editable: true,
     label: 'participant_neighbourhood_connection_frequency',
-    maxWidth: '16rem',
-  },
-};
-
-export const MinimumWidth: Story = {
-  args: {
-    label: 'age',
+    className: 'max-w-64',
   },
 };
 
@@ -203,15 +168,6 @@ export const MaximumWidth: Story = {
   args: {
     label:
       'participant_neighbourhood_connection_frequency_during_the_last_year',
-    maxWidth: '16rem',
-  },
-};
-
-export const FullWidth: Story = {
-  args: {
-    width: '100%',
-  },
-  parameters: {
-    layout: 'padded',
+    className: 'max-w-64',
   },
 };

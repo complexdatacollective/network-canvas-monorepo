@@ -113,35 +113,6 @@ const Sociogram = (stageProps: SociogramProps) => {
     }
   }, [canvasNodes, layoutVariable, store, layoutMode]);
 
-  // Sociogram force tuning (SIM space: px / canvas height, coordinates ~0..aspect,
-  // so charge/bias are screen-independent). No group cohesion acts (no convex
-  // hulls, so no groupVariable is supplied and the engine's cohesion force is
-  // inert); spread relies on charge. A weak symmetric forceX/forceY keeps the
-  // layout centred and slightly up to clear the bottom prompt panel.
-  //
-  // Unlike Narrative (which gently REFINES already-meaningful authored positions),
-  // Sociogram lays out FROM SCRATCH, so it needs a full anneal to escape local
-  // minima: a hot start (startAlpha 1) gives nodes enough energy to break free of
-  // inefficient positions, and a slow alphaDecay lets it cool over ~500 ticks
-  // rather than freezing early into a tangled local optimum.
-  //
-  // charge/bias are reasoned STARTING values for the new ~0..1.x coordinate scale
-  // and need a visual tuning pass — the old px charge (-3000) does not translate
-  // linearly to sim space. Tune visually.
-  const layoutOptions = useMemo(
-    () => ({
-      charge: -0.006,
-      startAlpha: 1,
-      alphaMin: 0.025,
-      alphaDecay: 1 - 0.001 ** (1 / 500),
-      biasXStrength: 0.13,
-      biasXFraction: 0.5,
-      biasYStrength: 0.13,
-      biasYFraction: 0.5,
-    }),
-    [],
-  );
-
   // Force simulation (only active in AUTOMATIC mode). Continuous, user-toggleable,
   // and persists settled positions back to Redux.
   const simulation = useAutoLayout({
@@ -157,7 +128,6 @@ const Sociogram = (stageProps: SociogramProps) => {
     currentStep,
     runMode: 'continuous',
     mockLayout: 'grid',
-    layoutOptions,
   });
 
   // Re-emit the legacy useForceSimulation analytics by observing isRunning

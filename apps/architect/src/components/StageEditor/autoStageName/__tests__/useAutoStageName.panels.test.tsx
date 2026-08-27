@@ -52,7 +52,7 @@ const protocol = {
   assetManifest: {},
 };
 
-const toggle = () => screen.getByRole('switch', { name: 'Side Panels' });
+const toggle = () => screen.getByRole('switch', { name: 'Side panels' });
 
 const stageName = () =>
   screen.getByRole('textbox', { name: 'Stage name' }) as HTMLInputElement;

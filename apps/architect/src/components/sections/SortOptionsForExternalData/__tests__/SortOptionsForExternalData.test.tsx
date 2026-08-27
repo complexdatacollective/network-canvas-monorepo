@@ -47,6 +47,17 @@ describe('SortOptionsForExternalData', () => {
     expect(getFieldState('sortOptions.sortableProperties')?.value).toEqual([
       { variable: 'name', label: 'Name' },
     ]);
+    expect(
+      screen.getByRole('heading', { name: 'Roster sorting' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'Initial ordering' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'Participant sorting' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Sort rule')).toBeInTheDocument();
+    expect(screen.getByText('Sortable properties')).toBeInTheDocument();
   });
 
   it('does not resurrect sortOrder/sortableProperties when reopened after a clear', async () => {
@@ -55,7 +66,7 @@ describe('SortOptionsForExternalData', () => {
       children: <SortOptionsForExternalData {...STAGE_PROPS} />,
     });
 
-    fireEvent.click(screen.getByRole('switch', { name: 'Sort Options' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Roster sorting' }));
     await waitFor(() => {
       expect(getFieldState('sortOptions.sortOrder')?.value).toBeUndefined();
     });
@@ -63,7 +74,7 @@ describe('SortOptionsForExternalData', () => {
       getFieldState('sortOptions.sortableProperties')?.value,
     ).toBeUndefined();
 
-    fireEvent.click(screen.getByRole('switch', { name: 'Sort Options' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Roster sorting' }));
     await waitFor(() => {
       expect(getFieldState('sortOptions.sortOrder')).not.toBeUndefined();
     });

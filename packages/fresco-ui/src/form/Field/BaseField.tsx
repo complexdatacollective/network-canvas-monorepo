@@ -74,7 +74,7 @@ export function BaseField({
       className={cx('group/field w-full grow not-last:mb-8', 'flex flex-col')}
     >
       {/*
-        Only `inline` fields query this element (see the `@min-[28rem]:`
+        Only `inline` fields query this element (see the `@min-lg:`
         utilities below), so only they make it a query container. Every other
         container-query consumer in the design system establishes its own
         container, so nothing else is scoped to this one.
@@ -95,8 +95,7 @@ export function BaseField({
             // field's own CONTAINER is wide enough, and stack when it's narrow —
             // a container query, not a viewport breakpoint, so a field adapts to
             // where it's placed (e.g. a narrow sidebar) rather than the screen.
-            inline &&
-              '@min-[28rem]:flex-row @min-[28rem]:items-center @min-[28rem]:justify-between @min-[28rem]:gap-4',
+            inline && '@min-lg:flex-row @min-lg:justify-between @min-lg:gap-4',
             'flex flex-col',
           )}
         >
@@ -106,6 +105,8 @@ export function BaseField({
               // Keep the gap below the label block only when something visible
               // remains there — the label itself, or a hint under a hidden label.
               !inline && (!labelHidden || hasVisibleHint) && 'mb-2',
+              // inline needs bottom margin too, but must correspond to when it switches to stacked layout
+              inline && '@max-lg:mb-2',
             )}
           >
             <FieldLabel

@@ -155,8 +155,13 @@ describe('TieStrengthCensusPrompts', () => {
   it('disables the section when the stage has no subject type', () => {
     renderSection({ subject: { entity: 'node' } });
     expect(
-      screen.getByText(/select a node type above to configure this section/i),
-    ).toBeInTheDocument();
+      screen
+        .getByRole('heading', { name: 'Prompt collection' })
+        .closest('section'),
+    ).toHaveAttribute('aria-disabled', 'true');
+    expect(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    ).toBeDisabled();
   });
 
   it('renders the prompts array field for a node subject', () => {

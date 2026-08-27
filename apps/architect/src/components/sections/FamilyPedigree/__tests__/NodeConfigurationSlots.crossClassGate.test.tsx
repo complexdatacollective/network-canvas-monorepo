@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { act, render } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { act, render, screen } from '@testing-library/react';
+import type { ComponentType, ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -25,9 +25,12 @@ import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 // app's other field-level gates. ArchitectArrayField is mocked to capture the
 // nodeConfig.form dialog's editorValidate, so the intra-draft MIRROR (a form
 // field picking a variable a still-unsaved slot drafts) is pinned too.
-vi.mock('~/components/EditorLayout', () => ({
-  Row: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  Section: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+vi.mock('@codaco/fresco-ui/Section', () => ({
+  default: ({ children, title }: { children: ReactNode; title: string }) => (
+    <section aria-label={title} data-component="Section">
+      {children}
+    </section>
+  ),
 }));
 vi.mock('~/components/IssueAnchor', () => ({ default: () => null }));
 vi.mock('~/components/NewVariableWindow', () => ({
@@ -52,6 +55,10 @@ vi.mock('~/components/sections/CodebookVariableValidationSection', () => ({
 }));
 
 type CapturedField = {
+  className?: string;
+  hint?: ReactNode;
+  inline?: boolean;
+  label?: string;
   validation?: Record<string, unknown>;
   options?: unknown;
 };
@@ -59,14 +66,29 @@ const capturedFields: Record<string, CapturedField | undefined> = {};
 vi.mock('~/components/Form/ArchitectField', () => ({
   default: ({
     name,
+    className,
+    hint,
+    inline,
+    label,
     validation,
     options,
   }: {
     name: string;
+    className?: string;
+    hint?: ReactNode;
+    inline?: boolean;
+    label: string;
     validation?: Record<string, unknown>;
     options?: unknown;
   }) => {
-    capturedFields[name] = { validation, options };
+    capturedFields[name] = {
+      className,
+      hint,
+      inline,
+      label,
+      validation,
+      options,
+    };
     return <div data-testid={`field-${name}`} />;
   },
 }));
@@ -80,24 +102,33 @@ let capturedEditorValidate:
 // The picker's sibling list travels the other way, as `editorProps`, so a test
 // can prove the gate and the picker read the same rows.
 let capturedEditorProps: Record<string, unknown> | undefined;
+let capturedEditorPreviewComponent:
+  | ComponentType<Record<string, unknown>>
+  | undefined;
 vi.mock('~/components/Form/ArchitectArrayField', () => ({
   default: ({
     editorValidate,
     editorProps,
+    editorPreviewComponent,
   }: {
     editorValidate?: (
       values: Record<string, unknown>,
       props?: { editIndex?: number; initialValues?: unknown },
     ) => Record<string, unknown>;
     editorProps?: Record<string, unknown>;
+    editorPreviewComponent?: ComponentType<Record<string, unknown>>;
   }) => {
     if (typeof editorValidate === 'function') {
       capturedEditorValidate = editorValidate;
       capturedEditorProps = editorProps;
+      capturedEditorPreviewComponent = editorPreviewComponent;
     }
     return <div data-testid="field-array" />;
   },
 }));
+
+// eslint-disable-next-line import/first -- must follow the vi.mock calls above
+import FieldEditorPreview from '~/components/sections/Form/FieldEditorPreview';
 
 // eslint-disable-next-line import/first -- must follow the vi.mock calls above
 import NodeConfiguration from '../NodeConfiguration';
@@ -210,6 +241,7 @@ const renderComponent = ({
   capturedValidationSectionProps = undefined;
   capturedEditorValidate = undefined;
   capturedEditorProps = undefined;
+  capturedEditorPreviewComponent = undefined;
   const store = configureStore({
     reducer: {
       activeProtocol: (state = { present: protocol }) => state,
@@ -286,6 +318,52 @@ const currentEditorValidate = () => {
 const currentSiblingFields = () => capturedEditorProps?.siblingFields;
 
 describe('FamilyPedigree NodeConfiguration slot picker exclusions', () => {
+  it('uses the standard interactive preview in its form field editor', () => {
+    renderComponent({ protocol: protocolWith([]) });
+
+    expect(capturedEditorPreviewComponent).toBe(FieldEditorPreview);
+  });
+
+  it('groups the attribute mappings in a nested Section with inline fields', () => {
+    renderComponent({ protocol: protocolWith([]) });
+
+    const familyMemberData = screen.getByRole('region', {
+      name: 'Family member data',
+    });
+    const attributes = screen.getByRole('region', {
+      name: 'Family member attributes',
+    });
+    const formConfiguration = screen.getByRole('region', {
+      name: 'Form configuration',
+    });
+
+    expect(attributes).toHaveAttribute('data-component', 'Section');
+    expect(familyMemberData).toContainElement(attributes);
+    expect(familyMemberData).toContainElement(formConfiguration);
+    expect(attributes).not.toContainElement(formConfiguration);
+    expect(capturedFields['nodeConfig.nodeLabelVariable']).toMatchObject({
+      className: '@min-lg:w-[50cqw]',
+      label: 'Display label',
+      inline: true,
+    });
+    expect(capturedFields['nodeConfig.egoVariable']).toMatchObject({
+      className: '@min-lg:w-[50cqw]',
+      label: 'Participant identifier',
+      inline: true,
+    });
+    expect(capturedFields['nodeConfig.relationshipVariable']).toMatchObject({
+      className: '@min-lg:w-[50cqw]',
+      label: 'Relationship to participant',
+      inline: true,
+    });
+    expect(capturedFields['nodeConfig.biologicalSexVariable']).toMatchObject({
+      className: '@min-lg:w-[50cqw]',
+      label: 'Biological sex',
+      inline: true,
+    });
+    expect(capturedFields['nodeConfig.type']?.className).toBeUndefined();
+  });
+
   it('edits the label as a node variable, preserving every text validation rule', () => {
     renderComponent({
       protocol: protocolWith([]),

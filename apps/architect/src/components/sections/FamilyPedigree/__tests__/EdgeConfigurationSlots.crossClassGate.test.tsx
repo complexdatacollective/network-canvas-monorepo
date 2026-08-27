@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { act, render } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
@@ -23,9 +23,12 @@ import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 // the mirror of NodeConfigurationSlots.crossClassGate.test.tsx on the edge
 // subject. There is no intra-draft case here: FamilyPedigree has no validated
 // writer on its edge type.
-vi.mock('~/components/EditorLayout', () => ({
-  Row: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  Section: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+vi.mock('@codaco/fresco-ui/Section', () => ({
+  default: ({ children, title }: { children: ReactNode; title: string }) => (
+    <section aria-label={title} data-component="Section">
+      {children}
+    </section>
+  ),
 }));
 vi.mock('~/components/IssueAnchor', () => ({ default: () => null }));
 vi.mock('~/components/NewVariableWindow', () => ({
@@ -34,6 +37,10 @@ vi.mock('~/components/NewVariableWindow', () => ({
 }));
 
 type CapturedField = {
+  className?: string;
+  hint?: ReactNode;
+  inline?: boolean;
+  label?: string;
   validation?: Record<string, unknown>;
   options?: unknown;
 };
@@ -41,14 +48,29 @@ const capturedFields: Record<string, CapturedField | undefined> = {};
 vi.mock('~/components/Form/ArchitectField', () => ({
   default: ({
     name,
+    className,
+    hint,
+    inline,
+    label,
     validation,
     options,
   }: {
     name: string;
+    className?: string;
+    hint?: ReactNode;
+    inline?: boolean;
+    label: string;
     validation?: Record<string, unknown>;
     options?: unknown;
   }) => {
-    capturedFields[name] = { validation, options };
+    capturedFields[name] = {
+      className,
+      hint,
+      inline,
+      label,
+      validation,
+      options,
+    };
     return <div data-testid={`field-${name}`} />;
   },
 }));
@@ -208,6 +230,45 @@ const renderComponent = ({
 };
 
 describe('FamilyPedigree EdgeConfiguration slot picker exclusions', () => {
+  it('groups the attribute mappings in a nested Section with inline fields', () => {
+    renderComponent({ protocol: protocolWith([]) });
+
+    const relationshipData = screen.getByRole('region', {
+      name: 'Relationship data',
+    });
+    const attributes = screen.getByRole('region', {
+      name: 'Relationship attributes',
+    });
+
+    expect(attributes).toHaveAttribute('data-component', 'Section');
+    expect(relationshipData).toContainElement(attributes);
+    expect(capturedFields['edgeConfig.relationshipTypeVariable']).toMatchObject(
+      {
+        className: '@min-lg:w-[50cqw]',
+        label: 'Relationship type',
+        inline: true,
+      },
+    );
+    expect(capturedFields['edgeConfig.isActiveVariable']).toMatchObject({
+      className: '@min-lg:w-[50cqw]',
+      label: 'Active status',
+      inline: true,
+    });
+    expect(
+      capturedFields['edgeConfig.isGestationalCarrierVariable'],
+    ).toMatchObject({
+      className: '@min-lg:w-[50cqw]',
+      label: 'Gestational carrier',
+      inline: true,
+    });
+    expect(capturedFields['edgeConfig.gameteRoleVariable']).toMatchObject({
+      className: '@min-lg:w-[50cqw]',
+      label: 'Gamete role',
+      inline: true,
+    });
+    expect(capturedFields['edgeConfig.type']?.className).toBeUndefined();
+  });
+
   it('drops a variable a form elsewhere already validates from every slot pool', () => {
     renderComponent({ protocol: protocolWith([EDGE_FORM_STAGE]) });
     expect(

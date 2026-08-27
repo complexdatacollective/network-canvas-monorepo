@@ -24,7 +24,7 @@ import { NodePanels } from '../NodePanels';
 
 type StageWithPanels = { panels?: { id?: unknown; dataSource?: unknown }[] };
 
-const toggle = () => screen.getByRole('switch', { name: 'Side Panels' });
+const toggle = () => screen.getByRole('switch', { name: 'Side panels' });
 
 const renderPanels = (committedPanels?: unknown[]) =>
   renderStageForm({

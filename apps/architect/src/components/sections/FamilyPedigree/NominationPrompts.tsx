@@ -2,13 +2,11 @@ import { useCallback, type ComponentType } from 'react';
 import { useSelector } from 'react-redux';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
-  useSetStageValue,
   useStageFormValue,
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
@@ -48,7 +46,6 @@ type NominationPrompt = { id?: string; variable?: string };
 
 const NominationPrompts = (_props: StageEditorSectionProps) => {
   const { confirm } = useDialog();
-  const setStageValue = useSetStageValue();
   const nodeType = useStageFormValue<string>('nodeConfig.type');
   const hasNominationPrompts =
     useStageFormValue<unknown[]>('nominationPrompts');
@@ -123,7 +120,7 @@ const NominationPrompts = (_props: StageEditorSectionProps) => {
     ],
   );
   const isDisabled = !nodeType;
-  const handleToggleChange = useCallback(
+  const handleOpenChange = useCallback(
     async (newState: boolean) => {
       if (!hasNominationPrompts?.length || newState) {
         return true;
@@ -137,39 +134,26 @@ const NominationPrompts = (_props: StageEditorSectionProps) => {
         intent: 'warning',
         onConfirm: () => {},
       });
-      if (confirmed) {
-        // `undefined`, not `null`: the toggle handler runs while the array
-        // field is still mounted (the confirm dialog resolves before the
-        // Section's own `isOpen` flips), and fresco-ui's `ArrayField` only
-        // defaults `undefined` to its own empty array — `null` reaches
-        // `useArrayFieldItems`'s unconditional `value.forEach` and throws
-        // (see IntroScreen.tsx's identical fix).
-        setStageValue('nominationPrompts', undefined);
-        return true;
-      }
-      return false;
+      return confirmed === true;
     },
-    [confirm, setStageValue, hasNominationPrompts],
+    [confirm, hasNominationPrompts],
   );
   return (
     <Section
       disabled={isDisabled}
-      summary={
-        <Paragraph>
-          Optionally add prompts to collect attribute information about family
-          members. Each prompt should ask about a specific condition or trait
-          and will store the response in the selected boolean attribute.
-        </Paragraph>
+      title="Nomination prompts"
+      description={
+        isDisabled
+          ? 'Select a node type to configure nomination prompts.'
+          : 'Optionally collect a specific condition or trait in a boolean attribute for each family member.'
       }
-      title="Nomination Prompts"
       toggleable
-      startExpanded={!!hasNominationPrompts?.length}
-      handleToggleChange={handleToggleChange}
+      defaultOpen={!isDisabled && !!hasNominationPrompts?.length}
+      onOpenChange={handleOpenChange}
     >
       <ArchitectArrayField
         name="nominationPrompts"
-        label="Nomination prompts"
-        labelHidden
+        label="Prompts"
         component={DialogArrayField}
         addButtonLabel="Create new nomination prompt"
         validation={{ notEmpty }}

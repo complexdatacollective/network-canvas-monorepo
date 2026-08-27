@@ -1,6 +1,6 @@
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
@@ -17,23 +17,21 @@ const AtRiskStatuses = (_props: StageEditorSectionProps) => {
   const initialValue = useStageInitialValue<boolean>(FIELD_NAME) ?? false;
 
   return (
-    <Section title="At-Risk Statuses">
-      <>
-        <ArchitectField
-          name={FIELD_NAME}
-          component={ToggleField}
-          inline
-          initialValue={initialValue}
-          label="Show possible (at-risk) statuses"
-          hint={
-            <Paragraph>
-              Optionally show <strong>possible</strong> (at-risk) statuses
-              alongside the certain ones, inferred from family structure and
-              inheritance patterns.
-            </Paragraph>
-          }
-        />
-      </>
+    <Section title="At-risk statuses">
+      <ArchitectField
+        name={FIELD_NAME}
+        component={ToggleField}
+        inline
+        initialValue={initialValue}
+        label="Show possible (at-risk) statuses"
+        hint={
+          <Paragraph>
+            Optionally show <strong>possible</strong> (at-risk) statuses
+            alongside the certain ones, inferred from family structure and
+            inheritance patterns.
+          </Paragraph>
+        }
+      />
       <div className="[&_h5]:mt-5 [&_h5]:mb-1 [&_h5]:font-semibold [&_li]:mb-1 [&_p]:mb-2.5 [&_ul]:mb-2.5 [&_ul]:list-disc [&_ul]:pl-7">
         <Paragraph>
           When enabled, the pedigree also shows a person who{' '}

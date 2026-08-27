@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { startCase } from 'es-toolkit/compat';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
@@ -44,9 +44,38 @@ const renderFields = (nodeType = 'node-type-1') => {
 };
 
 describe('DiseaseFields', () => {
-  it('renders the Disease Label section', () => {
+  it('groups every field in one Disease details section', () => {
     renderFields();
-    expect(screen.getByText('Disease Label')).toBeDefined();
+
+    const section = screen.getByRole('region', { name: 'Disease details' });
+    expect(
+      within(section).getByText(
+        "Define how this disease appears, map it to the source pedigree's affected-status attribute, and choose how its inheritance is interpreted.",
+      ),
+    ).toBeVisible();
+    expect(
+      within(section).getByRole('textbox', { name: 'Disease label' }),
+    ).toBeInTheDocument();
+    expect(
+      within(section).getByRole('radiogroup', { name: 'Color' }),
+    ).toBeInTheDocument();
+    expect(within(section).getByText('Node attribute')).toBeVisible();
+    expect(
+      within(section).getByRole('combobox', { name: 'Inheritance pattern' }),
+    ).toBeInTheDocument();
+  });
+
+  it('renders a visible label for the disease name field', () => {
+    renderFields();
+    const label = screen.getByText('Disease label');
+    expect(label).toBeVisible();
+    // Visibility is the behaviour under test; jsdom does not load Tailwind's
+    // screen-reader-only declaration, so assert the design-system visibility
+    // token directly as well as the accessible name.
+    expect(label).not.toHaveClass('sr-only');
+    expect(
+      screen.getByRole('textbox', { name: 'Disease label' }),
+    ).toBeInTheDocument();
   });
 
   it('renders the label field', () => {
@@ -56,23 +85,29 @@ describe('DiseaseFields', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders the Color section', () => {
+  it('renders a visible label for the color field', () => {
     renderFields();
-    expect(screen.getByText('Color')).toBeDefined();
+    const label = screen.getByText('Color');
+    expect(label).toBeVisible();
+    expect(label).not.toHaveClass('sr-only');
   });
 
   it('renders the color field', () => {
     renderFields();
     expect(
       screen.getByRole('radiogroup', {
-        name: /Select a color for this disease/i,
+        name: 'Color',
       }),
     ).toBeInTheDocument();
+    expect(screen.getByText('Select a color for this disease.')).toBeVisible();
   });
 
-  it('renders the Node Variable section', () => {
+  it('renders a visible label and hint for the node attribute field', () => {
     renderFields();
-    expect(screen.getByText('Node Attribute')).toBeDefined();
+    const label = screen.getByText('Node attribute');
+    expect(label).toBeVisible();
+    expect(label).not.toHaveClass('sr-only');
+    expect(screen.getByText('Select a boolean node attribute.')).toBeVisible();
   });
 
   it('renders the variable field, offering only boolean variables', () => {
@@ -81,9 +116,19 @@ describe('DiseaseFields', () => {
     expect(screen.getByText('Select attribute')).toBeInTheDocument();
   });
 
-  it('renders the Inheritance Pattern section', () => {
+  it('renders a visible label for the inheritance pattern field', () => {
     renderFields();
-    expect(screen.getByText('Inheritance Pattern')).toBeDefined();
+    const label = screen.getByText('Inheritance pattern');
+    expect(label).toBeVisible();
+    expect(label).not.toHaveClass('sr-only');
+    expect(
+      screen.getByRole('combobox', { name: 'Inheritance pattern' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Choose how this disease is inherited. Mendelian patterns are used with biological relationships and recorded sex to infer carrier and possible at-risk statuses. Multifactorial and Unknown show affected status only and do not infer carrier or at-risk statuses.',
+      ),
+    ).toBeVisible();
   });
 
   it('renders all INHERITANCE_PATTERNS as options', () => {

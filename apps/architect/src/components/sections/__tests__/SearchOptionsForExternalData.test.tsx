@@ -40,7 +40,7 @@ describe('SearchOptionsForExternalData', () => {
 
     expect(
       screen.getByRole('group', {
-        name: 'Which attributes should be searchable?',
+        name: 'Searchable attributes',
       }),
     ).toBeInTheDocument();
     expect(getFieldState('searchOptions.matchProperties')?.value).toEqual([
@@ -55,18 +55,18 @@ describe('SearchOptionsForExternalData', () => {
       children: <SearchOptionsForExternalData {...STAGE_PROPS} />,
     });
 
-    fireEvent.click(screen.getByRole('switch', { name: 'Search Options' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Roster search' }));
     await waitFor(() => {
       expect(
         screen.queryByRole('group', {
-          name: 'Which attributes should be searchable?',
+          name: 'Searchable attributes',
         }),
       ).not.toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('switch', { name: 'Search Options' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Roster search' }));
     await screen.findByRole('group', {
-      name: 'Which attributes should be searchable?',
+      name: 'Searchable attributes',
     });
 
     expect(
@@ -91,9 +91,7 @@ describe('SearchOptionsForExternalData', () => {
    * This section is where the Issues panel's start-cased field paths were most
    * visible: a roster with no searchable attribute selected listed "Search
    * Options Match Properties", which names nothing the researcher can see on
-   * the page. The anchor now carries the field's own label (#1400) — including
-   * for `fuzziness`, whose label is hidden on screen but is still the name the
-   * control announces.
+   * the page. The anchor now carries the field's own visible label (#1400).
    */
   it('anchors its fields for the Issues panel under their own labels', () => {
     const { container } = renderStageForm({
@@ -103,7 +101,7 @@ describe('SearchOptionsForExternalData', () => {
 
     expect(
       container.querySelector('#field_searchOptions_matchProperties__error'),
-    ).toHaveAttribute('data-name', 'Which attributes should be searchable?');
+    ).toHaveAttribute('data-name', 'Searchable attributes');
     expect(
       container.querySelector('#field_searchOptions_fuzziness__error'),
     ).toHaveAttribute('data-name', 'Search accuracy');

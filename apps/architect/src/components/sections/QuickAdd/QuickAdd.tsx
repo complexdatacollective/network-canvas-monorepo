@@ -1,5 +1,6 @@
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
+import IssueAnchor from '~/components/IssueAnchor';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
   useCreateVariable,
@@ -42,41 +43,45 @@ const QuickAdd = ({ disabled, disabledMessage }: QuickAddProps) => {
   }
 
   return (
-    <Section
-      disabled={disabled}
-      disabledMessage={disabledMessage}
-      group
-      title="Quick Add Attribute"
-      id="issue-form"
-      summary="Select the attribute that is assigned a value when creating a new node using the Quick Add button."
-    >
-      <ArchitectField
-        name="quickAdd"
-        label="Select an attribute"
-        hint="Use an attribute called 'name' here, unless you have a good reason not to. Interviewer will then automatically use this attribute as the label for the node in the interview."
-        component={VariablePicker}
-        validation={{ required: true }}
-        initialValue={initialQuickAdd}
-        options={options}
-        // NameGeneratorQuickAdd's quickAdd is a VALIDATED writer (see
-        // `withOptions.tsx`), so a variable created here requires a value
-        // from the start. NetworkComposer seeds the same rule for its own
-        // validated quick-add writer.
-        onCreateOption={(value: string) =>
-          createVariable(value, 'text', 'quickAdd', { required: true })
+    <>
+      <IssueAnchor fieldName="quickAdd" description="Select an attribute" />
+      <Section
+        title="Quick add configuration"
+        description={
+          disabled
+            ? disabledMessage
+            : 'Choose the attribute populated when a participant creates a node with Quick Add.'
         }
-        type={type}
-        entity={entity}
-      />
-      {quickAdd && (
-        <CodebookVariableValidationSection
-          fieldName="quickAdd"
-          entity={entity}
+        disabled={disabled}
+      >
+        <ArchitectField
+          name="quickAdd"
+          label="Select an attribute"
+          hint="Select the attribute that is assigned a value when creating a new node using the Quick Add button. Use an attribute called 'name' here, unless you have a good reason not to. Interviewer will then automatically use this attribute as the label for the node in the interview."
+          component={VariablePicker}
+          validation={{ required: true }}
+          initialValue={initialQuickAdd}
+          options={options}
+          // NameGeneratorQuickAdd's quickAdd is a VALIDATED writer (see
+          // `withOptions.tsx`), so a variable created here requires a value
+          // from the start. NetworkComposer seeds the same rule for its own
+          // validated quick-add writer.
+          onCreateOption={(value: string) =>
+            createVariable(value, 'text', 'quickAdd', { required: true })
+          }
           type={type}
-          variableId={quickAdd}
+          entity={entity}
         />
-      )}
-    </Section>
+        {quickAdd && (
+          <CodebookVariableValidationSection
+            fieldName="quickAdd"
+            entity={entity}
+            type={type}
+            variableId={quickAdd}
+          />
+        )}
+      </Section>
+    </>
   );
 };
 

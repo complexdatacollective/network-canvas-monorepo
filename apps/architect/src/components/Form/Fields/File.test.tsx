@@ -74,7 +74,13 @@ describe('File field', () => {
       screen.getByRole('group', { name: 'Background image' }),
     ).toHaveAccessibleDescription(/Required/);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Select resource' }));
+    const selectButton = screen.getByRole('button', {
+      name: 'Select resource',
+    });
+    expect(
+      selectButton.querySelector('svg[aria-hidden="true"]'),
+    ).toBeInTheDocument();
+    fireEvent.click(selectButton);
     fireEvent.click(screen.getByRole('button', { name: 'Choose asset' }));
 
     expect(getResource()).toBe('asset-1');

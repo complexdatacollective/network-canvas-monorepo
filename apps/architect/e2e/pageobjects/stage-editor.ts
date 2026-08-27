@@ -10,9 +10,8 @@ import { expect, type Locator, type Page } from '@playwright/test';
 //   seam (it's a bare input, not a form field),
 //   so `getByRole('textbox', { name: 'Stage name' })` is the only way in.
 // - `section()`/`field()` match the two seams the rest of the suite relies on:
-//   `Section` (EditorLayout/Section.tsx) stamps `data-name={title}` on its
-//   `<section>` when `title` is a string; `UnconnectedField`
-//   (fresco-ui/form/Field/UnconnectedField.tsx) stamps
+//   fresco-ui's `Section` renders a named `<section>` landmark through its
+//   heading; `UnconnectedField` (fresco-ui/form/Field/UnconnectedField.tsx) stamps
 //   `data-field-name={name}` on every field, and the connected `Field`
 //   stamps the same attribute on the identical wrapper (Task 2's seam).
 // - `expectNoIssues()`'s `getByTestId('issue')` is real: `Issues.tsx`'s issues
@@ -120,8 +119,8 @@ export class StageEditor {
     await input.fill(name);
   }
 
-  section(dataName: string): Locator {
-    return this.page.locator(`[data-name="${dataName}"]`);
+  section(title: string): Locator {
+    return this.page.getByRole('region', { name: title, exact: true });
   }
 
   field(name: string): Locator {

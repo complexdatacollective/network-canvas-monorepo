@@ -1,13 +1,12 @@
 import AssetBrowser from '~/components/AssetBrowser';
 import UnusedAssetsAlert from '~/components/AssetBrowser/UnusedAssetsAlert';
-import { Layout } from '~/components/EditorLayout';
 import ExternalLink from '~/components/ExternalLink';
 import PageHeading from '~/components/ProjectNav/PageHeading';
 import { documentationLinks } from '~/utils/documentationLinks';
 
 const AssetsPage = () => {
   return (
-    <Layout className="phone-landscape:px-7 tablet-landscape:px-29 px-5">
+    <div className="phone-landscape:px-7 tablet-landscape:px-29 px-5">
       <PageHeading
         title="Resource Library"
         description={
@@ -23,9 +22,9 @@ const AssetsPage = () => {
       />
       <div className="mx-auto my-10 w-full max-w-7xl">
         <UnusedAssetsAlert />
-        <AssetBrowser sectionLayout="vertical" />
+        <AssetBrowser />
       </div>
-    </Layout>
+    </div>
   );
 };
 

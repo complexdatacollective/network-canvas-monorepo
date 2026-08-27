@@ -55,7 +55,7 @@ test('skip-logic rule cards carry valid, distinct semantics', async ({
     join: 'Any rule',
   });
 
-  const section = editor.section('Skip Logic');
+  const section = editor.section('Skip logic');
   const rules = editor.field('skipLogic.filter');
 
   // The rule builder is the required group targeted by the visible field
@@ -70,7 +70,16 @@ test('skip-logic rule cards carry valid, distinct semantics', async ({
       };
     }),
   ).toEqual({ role: 'group', required: 'true' });
-  await expect(rules.getByRole('list').getByRole('listitem')).toHaveCount(2);
+  const ruleItems = rules.getByRole('list').getByRole('listitem');
+  await expect(ruleItems).toHaveCount(2);
+
+  for (const item of await ruleItems.all()) {
+    await expect(item.getByText('or', { exact: true })).toHaveCount(0);
+    await expect(item.getByText('and', { exact: true })).toHaveCount(0);
+  }
+  await expect(
+    section.getByRole('radio', { name: 'Any rule can match', exact: true }),
+  ).toBeChecked();
 
   for (const sentence of [FLAGGED_RULE, HIGHLIGHTED_RULE]) {
     await expect(
@@ -125,7 +134,7 @@ test('network-filter rules use the same editable-list workflow', async ({
     ],
   });
 
-  const section = editor.section('Filter');
+  const section = editor.section('Stage filter');
   const rules = editor.field('filter');
 
   await expect(rules.getByRole('list').getByRole('listitem')).toHaveCount(1);

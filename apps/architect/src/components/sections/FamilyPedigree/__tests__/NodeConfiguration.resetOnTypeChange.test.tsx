@@ -1,5 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { act, render } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -150,6 +156,59 @@ const COMMITTED_NODE_CONFIG = {
     form: [{ id: 'f1', variable: 'labelVar', prompt: 'P' }],
   },
 };
+
+const COMMITTED_NODE_CONFIG_WITHOUT_FORM = {
+  nodeConfig: {
+    type: 'person',
+    nodeLabelVariable: 'labelVar',
+    egoVariable: 'egoVar',
+    relationshipVariable: 'relVar',
+    biologicalSexVariable: 'sexVar',
+  },
+};
+
+describe('NodeConfiguration optional form', () => {
+  it('starts collapsed when no form is configured and initializes an empty form when enabled', async () => {
+    const view = renderComponent(COMMITTED_NODE_CONFIG_WITHOUT_FORM);
+    const toggle = screen.getByRole('switch', {
+      name: 'Form configuration',
+    });
+
+    expect(toggle).not.toBeChecked();
+    expect(view.getFieldValue('nodeConfig.form')).toBeUndefined();
+
+    fireEvent.click(toggle);
+
+    await waitFor(() => expect(toggle).toBeChecked());
+    await waitFor(() =>
+      expect(view.getFieldValue('nodeConfig.form')).toEqual([]),
+    );
+  });
+
+  it('starts expanded for a configured form and discards it when turned off', async () => {
+    const view = renderComponent(COMMITTED_NODE_CONFIG);
+    const toggle = screen.getByRole('switch', {
+      name: 'Form configuration',
+    });
+
+    expect(toggle).toBeChecked();
+    expect(view.getFieldValue('nodeConfig.form')).toEqual(
+      COMMITTED_NODE_CONFIG.nodeConfig.form,
+    );
+
+    fireEvent.click(toggle);
+
+    await waitFor(() => expect(toggle).not.toBeChecked());
+    await waitFor(() =>
+      expect(view.getFieldValue('nodeConfig.form')).toBeUndefined(),
+    );
+
+    fireEvent.click(toggle);
+
+    await waitFor(() => expect(toggle).toBeChecked());
+    expect(view.getFieldValue('nodeConfig.form')).toBeUndefined();
+  });
+});
 
 // Regression: `nodeConfig` is a CONTAINER key with real leaves nested under
 // it (`nodeConfig.nodeLabelVariable` etc.) — clearing the container key

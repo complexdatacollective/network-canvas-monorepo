@@ -3,13 +3,13 @@ import { expect, type Page } from '@playwright/test';
 import { type StageEditor } from '../stage-editor.js';
 import { createVariableViaSpotlight } from './variables.js';
 
-// QuickAdd section (sections/QuickAdd/QuickAdd.tsx, `Section title="Quick Add
-// Variable"`; returns null entirely until `subject.type` is set — pick the
+// QuickAdd section (sections/QuickAdd/QuickAdd.tsx, `Section title="Quick add
+// configuration"`; returns null entirely until `subject.type` is set — pick the
 // node type first). Creating a variable through this picker hard-codes
 // `validation: { required: true }` onto the codebook entry
 // (QuickAdd.tsx `handleCreateVariable(value, 'text', 'quickAdd', { required:
 // true })`); the canonical sample-protocol `name` variable has no validation,
-// so this helper then toggles OFF the Validation subsection that mounts under
+// so this helper then toggles OFF the nested Validation section that mounts under
 // the picker — ValidationSection dispatches `validation: null`, and
 // CodebookVariableValidationSection's `updateVariableAsync` with
 // `replaceProperties: ['validation']` deletes the key from the codebook
@@ -28,12 +28,13 @@ export async function createQuickAddVariable(
       .getByRole('button', { name: 'Change attribute' }),
   });
   if (opts.clearRequiredValidation) {
-    const validation = page.locator('[data-name="Validation"]');
+    const validation = editor.section('Validation');
     const toggle = validation.getByRole('switch', {
       name: 'Validation',
+      exact: true,
     });
     // The created variable carries `required`, so the section starts
-    // expanded (`startExpanded={!!hasValidation}`); one click turns it off.
+    // expanded (`defaultOpen={hasValidation}`); one click turns it off.
     await expect(toggle).toHaveAttribute('aria-checked', 'true');
     await toggle.click();
   }

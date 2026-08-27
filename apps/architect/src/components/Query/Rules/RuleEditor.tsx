@@ -8,14 +8,14 @@ import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import Section from '@codaco/fresco-ui/Section';
 import DialogForm, {
   type DialogFormProps,
 } from '~/components/DialogForm/DialogForm';
 import ArchitectField from '~/components/Form/ArchitectField';
+import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import { documentationLinks } from '~/utils/documentationLinks';
 
-import Section from '../../EditorLayout/Section';
 import ExternalLink from '../../ExternalLink';
 import { EntitySelectControl } from '../../sections/fields/EntitySelectField/EntitySelectField';
 import {
@@ -33,6 +33,7 @@ import {
   type RuleOptionItem,
   type RuleTargetType,
   type RuleTypeOption,
+  type RuleVariableOptionItem,
 } from './ruleCodebook';
 import {
   getEmptyRuleValue,
@@ -64,6 +65,8 @@ const OPERATOR_FIELD = 'options.operator';
 const RULE_KIND_FIELD = 'ruleKind';
 const VARIABLE_RULE = 'ALTER/VARIABLE';
 const TYPE_RULE = 'ALTER/TYPE';
+const RULE_STRUCTURE_DESCRIPTION =
+  'Choose an attribute, operator, and comparison value to define this rule.';
 
 /**
  * The rule's fields in the order each one constrains the next. A change to any
@@ -192,7 +195,7 @@ type OperandFieldsProps = {
  * rules: the only difference between them was copy, and a fork over copy is
  * how the ego branch came to be missing the integer option-count control.
  */
-const RuleOperandFields = ({
+const RuleOperandField = ({
   seed,
   operator,
   variableType,
@@ -203,46 +206,40 @@ const RuleOperandFields = ({
 
   if (operator && operatorsWithOptionCount.has(operator)) {
     return (
-      <Section layout="vertical">
-        <RuleCountField
-          label="Selected Option Count"
-          hint="Enter the number of options that must be selected for this rule to pass."
-          placeholder="Enter a value..."
-          initialValue={seedValue}
-        />
-      </Section>
+      <RuleCountField
+        label="Selected option count"
+        hint="Enter the number of options that must be selected for this rule to pass."
+        placeholder="Enter a value..."
+        initialValue={seedValue}
+      />
     );
   }
 
   if (operator && operatorsWithRegExp.has(operator)) {
     return (
-      <Section layout="vertical">
-        <RuleValueField
-          label="Attribute Value"
-          hint={regExpHint}
-          placeholder="Enter a regular expression..."
-          variableType={variableType}
-          options={variableOptions}
-          initialValue={seedValue}
-          validation={{ required: true, validRegExp: true }}
-        />
-      </Section>
+      <RuleValueField
+        label="Attribute value"
+        hint={regExpHint}
+        placeholder="Enter a regular expression..."
+        variableType={variableType}
+        options={variableOptions}
+        initialValue={seedValue}
+        validation={{ required: true, validRegExp: true }}
+      />
     );
   }
 
   if (operator && operatorsWithValue.has(operator)) {
     return (
-      <Section layout="vertical">
-        <RuleValueField
-          label="Attribute Value"
-          hint="Enter the value to compare against."
-          placeholder="Enter a value..."
-          variableType={variableType}
-          options={variableOptions}
-          initialValue={seedValue}
-          validation={{ required: true }}
-        />
-      </Section>
+      <RuleValueField
+        label="Attribute value"
+        hint="Enter the value to compare against."
+        placeholder="Enter a value..."
+        variableType={variableType}
+        options={variableOptions}
+        initialValue={seedValue}
+        validation={{ required: true }}
+      />
     );
   }
 
@@ -253,7 +250,7 @@ type BranchProps = {
   seed: EditableRule;
   attributeId: string | undefined;
   operator: string | undefined;
-  variablesAsOptions: RuleOptionItem[];
+  variablesAsOptions: RuleVariableOptionItem[];
   operatorOptions: RuleOptionItem[];
   variableType: string | undefined;
   variableOptions: RuleOptionItem[] | undefined;
@@ -268,49 +265,46 @@ const EgoRuleFields = ({
   variableType,
   variableOptions,
 }: BranchProps) => (
-  <>
-    <Section layout="vertical">
+  <Section title="Rule structure" description={RULE_STRUCTURE_DESCRIPTION}>
+    <ArchitectField
+      name={ATTRIBUTE_FIELD}
+      label="Ego attribute"
+      hint="Select the ego attribute this rule will be based on."
+      component={VariablePickerControl}
+      entity="ego"
+      disallowCreation
+      options={variablesAsOptions}
+      initialValue={
+        typeof seed.options?.attribute === 'string'
+          ? seed.options.attribute
+          : undefined
+      }
+      validation={{ required: true }}
+    />
+    {attributeId && (
       <ArchitectField
-        name={ATTRIBUTE_FIELD}
-        label="Ego attribute"
-        hint="Select the ego attribute this rule will be based on."
+        name={OPERATOR_FIELD}
+        label="Operator"
+        hint="Select the operator that will be used to compare the ego attribute to the value."
         component={NativeSelectField}
-        placeholder="Select an ego attribute…"
-        options={variablesAsOptions}
+        placeholder="Select an operator…"
+        options={operatorOptions}
         initialValue={
-          typeof seed.options?.attribute === 'string'
-            ? seed.options.attribute
+          typeof seed.options?.operator === 'string'
+            ? seed.options.operator
             : undefined
         }
         validation={{ required: true }}
       />
-    </Section>
-    {attributeId && (
-      <Section layout="vertical">
-        <ArchitectField
-          name={OPERATOR_FIELD}
-          label="Operator"
-          hint="Select the operator that will be used to compare the ego attribute to the value."
-          component={NativeSelectField}
-          placeholder="Select an operator…"
-          options={operatorOptions}
-          initialValue={
-            typeof seed.options?.operator === 'string'
-              ? seed.options.operator
-              : undefined
-          }
-          validation={{ required: true }}
-        />
-      </Section>
     )}
-    <RuleOperandFields
+    <RuleOperandField
       seed={seed}
       operator={operator}
       variableType={variableType}
       variableOptions={variableOptions}
       regExpHint="Enter the value to compare against. You can use a regular expression to match multiple values."
     />
-  </>
+  </Section>
 );
 
 type EntityBranchProps = BranchProps & {
@@ -340,27 +334,7 @@ const EntityRuleFields = ({
 
   return (
     <>
-      <Section layout="vertical">
-        <ArchitectField
-          name={ENTITY_TYPE_FIELD}
-          label={isNode ? 'Node type' : 'Edge type'}
-          hint={
-            isNode
-              ? 'Choose a node type to base your rule on. Remember you can add multiple rules if you need to cover different types.'
-              : 'Choose an edge type to base your rule on. Remember you can add multiple rules if you need to cover different types.'
-          }
-          component={EntitySelectControl}
-          entityType={target}
-          allowCreation={false}
-          initialValue={
-            typeof seed.options?.type === 'string'
-              ? seed.options.type
-              : undefined
-          }
-          validation={{ required: true }}
-        />
-      </Section>
-      <Section disabled={!entityTypeId} layout="vertical">
+      <Section title="Rule basis" disabled={!entityTypeId}>
         <ArchitectField
           name={RULE_KIND_FIELD}
           label="Rule type"
@@ -373,7 +347,7 @@ const EntityRuleFields = ({
       </Section>
 
       {ruleKind === TYPE_RULE && entityTypeId && (
-        <Section layout="vertical">
+        <Section title="Presence condition">
           <ArchitectField
             name={OPERATOR_FIELD}
             label="Operator"
@@ -391,13 +365,18 @@ const EntityRuleFields = ({
       )}
 
       {ruleKind === VARIABLE_RULE && entityTypeId && (
-        <Section layout="vertical">
+        <Section
+          title="Rule structure"
+          description={RULE_STRUCTURE_DESCRIPTION}
+        >
           <ArchitectField
             name={ATTRIBUTE_FIELD}
-            label="Attribute"
+            label={isNode ? 'Node attribute' : 'Edge attribute'}
             hint="Select an attribute to base this rule on."
-            component={NativeSelectField}
-            placeholder="Select an attribute…"
+            component={VariablePickerControl}
+            entity={target}
+            type={entityTypeId}
+            disallowCreation
             options={variablesAsOptions}
             initialValue={
               typeof seed.options?.attribute === 'string'
@@ -406,36 +385,30 @@ const EntityRuleFields = ({
             }
             validation={{ required: true }}
           />
-        </Section>
-      )}
-
-      {ruleKind === VARIABLE_RULE && attributeId && (
-        <Section layout="vertical">
-          <ArchitectField
-            name={OPERATOR_FIELD}
-            label="Operator"
-            hint="Select the operator that will be used to compare the attribute to the value."
-            component={NativeSelectField}
-            placeholder="Select an operator…"
-            options={operatorOptions}
-            initialValue={
-              typeof seed.options?.operator === 'string'
-                ? seed.options.operator
-                : undefined
-            }
-            validation={{ required: true }}
+          {attributeId && (
+            <ArchitectField
+              name={OPERATOR_FIELD}
+              label="Operator"
+              hint="Select the operator that will be used to compare the attribute to the value."
+              component={NativeSelectField}
+              placeholder="Select an operator…"
+              options={operatorOptions}
+              initialValue={
+                typeof seed.options?.operator === 'string'
+                  ? seed.options.operator
+                  : undefined
+              }
+              validation={{ required: true }}
+            />
+          )}
+          <RuleOperandField
+            seed={seed}
+            operator={operator}
+            variableType={variableType}
+            variableOptions={variableOptions}
+            regExpHint="Enter a regular expression to compare against."
           />
         </Section>
-      )}
-
-      {ruleKind === VARIABLE_RULE && (
-        <RuleOperandFields
-          seed={seed}
-          operator={operator}
-          variableType={variableType}
-          variableOptions={variableOptions}
-          regExpHint="Enter a regular expression to compare against."
-        />
       )}
     </>
   );
@@ -501,16 +474,37 @@ const RuleEditorFields = ({
         which would flatten these documentation links into an announcement the
         researcher cannot follow. As body copy they are ordinary links.
       */}
-      <Paragraph className="max-w-[75ch]">{description}</Paragraph>
-      <ArchitectField
-        name={TARGET_FIELD}
-        label="Entity"
-        hint="Select which network entity your rule should target."
-        component={RadioGroupField}
-        options={ruleTypes}
-        initialValue={typeof seed.type === 'string' ? seed.type : undefined}
-        validation={{ required: true }}
-      />
+      <Section title="Rule target" description={description}>
+        <ArchitectField
+          name={TARGET_FIELD}
+          label="Entity"
+          hint="Select which network entity your rule should target."
+          component={RadioGroupField}
+          options={ruleTypes}
+          initialValue={typeof seed.type === 'string' ? seed.type : undefined}
+          validation={{ required: true }}
+        />
+        {(target === 'node' || target === 'edge') && (
+          <ArchitectField
+            name={ENTITY_TYPE_FIELD}
+            label={target === 'node' ? 'Node type' : 'Edge type'}
+            hint={
+              target === 'node'
+                ? 'Choose a node type to base your rule on. Remember you can add multiple rules if you need to cover different types.'
+                : 'Choose an edge type to base your rule on. Remember you can add multiple rules if you need to cover different types.'
+            }
+            component={EntitySelectControl}
+            entityType={target}
+            allowCreation={false}
+            initialValue={
+              typeof seed.options?.type === 'string'
+                ? seed.options.type
+                : undefined
+            }
+            validation={{ required: true }}
+          />
+        )}
+      </Section>
 
       {target === 'ego' && <EgoRuleFields {...branchProps} />}
       {(target === 'node' || target === 'edge') && (

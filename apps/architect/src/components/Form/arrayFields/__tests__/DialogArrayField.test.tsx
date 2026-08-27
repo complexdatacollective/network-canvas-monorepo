@@ -24,7 +24,12 @@ import DialogArrayField, {
 
 // `id` is optional so a case can exercise rows that carry none, which fall
 // back to ArrayField's positional identity.
-type Item = { id?: string; label: string; note?: string };
+type Item = {
+  id?: string;
+  label: string;
+  note?: string;
+  settings?: { active?: string; staged?: string };
+};
 
 /** `initialValue` is a register-effect dependency, so keep it stable. */
 const NO_ITEMS: Item[] = [];
@@ -133,6 +138,42 @@ const UnmountingEditorFields = (props: Record<string, unknown>) => {
           initialValue=""
         />
       )}
+    </>
+  );
+};
+
+/**
+ * Keeps one nested sibling mounted while a host observer writes another leaf
+ * that has no mounted control, matching Sociogram's coupled create/display
+ * edge fields when the Displayed edges Section starts collapsed.
+ */
+const DormantSiblingEditorFields = (props: Record<string, unknown>) => {
+  const setFieldValue = useFormStore((state) => state.setFieldValue);
+  const settings =
+    typeof props.settings === 'object' && props.settings !== null
+      ? (props.settings as Item['settings'])
+      : undefined;
+
+  return (
+    <>
+      <ArchitectField
+        name="label"
+        label="Item label"
+        component={TextInput}
+        initialValue={typeof props.label === 'string' ? props.label : ''}
+      />
+      <ArchitectField
+        name="settings.active"
+        label="Active setting"
+        component={TextInput}
+        initialValue={settings?.active ?? ''}
+      />
+      <button
+        type="button"
+        onClick={() => setFieldValue('settings.staged', 'host update')}
+      >
+        Stage nested sibling
+      </button>
     </>
   );
 };
@@ -395,6 +436,35 @@ describe('DialogArrayField', () => {
 
     await waitFor(() => {
       expect(getItems()).toEqual([{ id: 'item-1', label: 'Before' }]);
+    });
+  });
+
+  it('merges a dormant host write beside a submitted nested sibling', async () => {
+    setup({
+      initialItems: [
+        {
+          id: 'item-1',
+          label: 'Before',
+          settings: { active: 'kept' },
+        },
+      ],
+      editorFieldsComponent: DormantSiblingEditorFields,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit item' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Stage nested sibling' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(getItems()).toEqual([
+        {
+          id: 'item-1',
+          label: 'Before',
+          settings: { active: 'kept', staged: 'host update' },
+        },
+      ]);
     });
   });
 

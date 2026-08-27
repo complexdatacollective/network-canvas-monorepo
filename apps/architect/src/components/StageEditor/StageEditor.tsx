@@ -557,7 +557,7 @@ const StageEditor = (props: StageEditorProps) => {
           hasUnsavedChanges={hasUnsavedChanges}
         />
         <div className="phone-landscape:px-6 px-4">
-          <div className="mx-auto w-full max-w-7xl">
+          <div className="mx-auto w-full max-w-4xl">
             {/*
              * The editor's visible hero heading is the stage-name INPUT
              * (StageHeading), which is a control, not a heading — so this route
@@ -580,9 +580,7 @@ const StageEditor = (props: StageEditorProps) => {
               totalStages={totalStages}
               isNewStage={!isExistingStage}
             />
-            <div className="flex flex-col gap-10 pt-14">
-              {renderSections(sections)}
-            </div>
+            <div className="pt-14">{renderSections(sections)}</div>
           </div>
         </div>
       </div>

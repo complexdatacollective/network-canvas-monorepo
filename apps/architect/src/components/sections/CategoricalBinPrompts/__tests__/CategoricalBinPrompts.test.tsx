@@ -219,14 +219,22 @@ const waitForSave = (submitLabel: string) =>
 describe('CategoricalBinPrompts', () => {
   it('disables the section when the stage has no subject type', () => {
     renderSection({ subject: { entity: 'node' } });
+    expect(screen.getByText('Prompts')).toBeVisible();
     expect(
-      screen.getByText(/select a node type above to configure this section/i),
-    ).toBeInTheDocument();
+      screen
+        .getByRole('heading', { name: 'Prompt collection' })
+        .closest('section'),
+    ).toHaveAttribute('aria-disabled', 'true');
+    expect(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    ).toBeDisabled();
   });
 
   it('renders the prompts array field for a node subject', () => {
     renderSection({ subject: { entity: 'node', type: 'person' } });
-    expect(screen.getAllByText('Prompts').length).toBeGreaterThan(0);
+    const prompts = screen.getByRole('list', { name: 'Prompts' });
+    expect(prompts).toHaveAttribute('aria-required', 'true');
+    expect(prompts).toHaveAccessibleDescription(/Required/);
     expect(
       screen.getByRole('button', { name: 'Create new prompt' }),
     ).toBeInTheDocument();
@@ -266,13 +274,9 @@ describe('CategoricalBinPrompts', () => {
     expect(screen.queryByLabelText('otherVariable')).not.toBeInTheDocument();
   });
 
-  // Regression: DialogArrayField's handleSave merges this session's submitted
-  // values OVER the row's pre-edit ones (to preserve properties the editor
-  // never renders), so an existing row's committed
-  // otherVariable/otherOptionLabel/otherVariablePrompt would survive a
-  // toggle-off on that merge alone. `mergeEditedRow` reads the cleared
-  // fields' dormant entries and deletes those keys instead.
-  it('clears an existing otherVariable trio from the saved prompt after "Other" is toggled off', async () => {
+  // Accepted closes discard the Section's registered values centrally, so the
+  // disabled feature is removed from the edited prompt on save.
+  it('clears an existing otherVariable trio after the Section is collapsed and saved', async () => {
     const { getPrompts } = renderSection({
       subject: { entity: 'node', type: 'person' },
       prompts: [
@@ -288,18 +292,12 @@ describe('CategoricalBinPrompts', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit prompt' }));
-    // The "Other" section starts expanded (startExpanded={!!otherVariable}) —
-    // its toggle is the only one of the dialog's several toggleable Sections
-    // (Bin/BucketSortOrderSection are the others) that starts checked.
+    // The follow-up Section starts open when the row already has a variable.
     await screen.findByLabelText('otherVariable');
-    const [otherToggle] = screen
-      .getAllByRole('switch')
-      .filter((toggle) => toggle.getAttribute('aria-checked') === 'true');
-    if (!otherToggle) throw new Error('expected the "Other" toggle to be on');
+    const otherToggle = screen.getByRole('switch', {
+      name: 'Follow-up other option',
+    });
     fireEvent.click(otherToggle);
-    // `Section`'s toggle handler is async (`await handleToggleChange(...)`
-    // before `setInternalOpen`), so the collapse — and the "Other" fields'
-    // unmount — lands a microtask after the click itself.
     await waitFor(() => {
       expect(screen.queryByLabelText('otherVariable')).not.toBeInTheDocument();
     });
@@ -343,16 +341,9 @@ describe('CategoricalBinPrompts', () => {
     );
   });
 
-  // Regression: toggling "Other" off CLEARS the trio, and the cleared value
-  // survives the collapse as a dormant entry holding `undefined` — so the
-  // picker remounts blank when the section is turned back on. Deriving the
-  // variable as "live value, or else the row's pre-edit prop" revived the
-  // removed variable there, mounting a fully populated Validation section
-  // under a blank, required picker. `CodebookVariableValidationSection`
-  // commits through `updateVariableAsync` the moment a rule is touched, so
-  // that mount is a live write path onto a codebook variable this prompt no
-  // longer references — and which another stage may still collect.
-  it('does not remount the validation section for a removed other variable', async () => {
+  // Reopening before save keeps the centrally cleared tombstone, so the
+  // feature starts empty rather than reviving the row's committed values.
+  it('reopens without the cleared other variable and validation section', async () => {
     renderSection({
       subject: { entity: 'node', type: 'person' },
       prompts: [
@@ -374,13 +365,9 @@ describe('CategoricalBinPrompts', () => {
       'free_text',
     );
 
-    const [otherToggle] = screen
-      .getAllByRole('switch')
-      .filter((toggle) => toggle.getAttribute('aria-checked') === 'true');
-    if (!otherToggle) throw new Error('expected the "Other" toggle to be on');
-
-    // `Section`'s toggle handler is async, so the collapse lands a microtask
-    // after the click.
+    const otherToggle = screen.getByRole('switch', {
+      name: 'Follow-up other option',
+    });
     fireEvent.click(otherToggle);
     await waitFor(() => {
       expect(screen.queryByLabelText('otherVariable')).not.toBeInTheDocument();
@@ -389,18 +376,13 @@ describe('CategoricalBinPrompts', () => {
     fireEvent.click(otherToggle);
     const picker = await screen.findByLabelText('otherVariable');
 
-    // The picker comes back blank, because the clear is what the save reads…
     expect(picker).toHaveValue('');
-    // …so nothing beneath it may still be pointed at the removed variable.
     expect(screen.queryByTestId('validation-section')).not.toBeInTheDocument();
   });
 
-  // The other half of that derivation: clearing the categorical variable
-  // disables this section, which unmounts its children WITHOUT clearing them.
-  // That parks `otherVariable` dormant holding its REAL value, so treating a
-  // dormant entry's mere existence as "removed" would drop a variable the
-  // researcher never touched — the loss `mergeEditedRow` exists to prevent.
-  it('keeps the other variable across a disabled-parent unmount', async () => {
+  // Clearing the categorical variable disables the dependent Section without
+  // discarding its configured values.
+  it('keeps the other variable while its Section is disabled', async () => {
     renderSection({
       subject: { entity: 'node', type: 'person' },
       prompts: [
@@ -421,16 +403,13 @@ describe('CategoricalBinPrompts', () => {
     fireEvent.change(screen.getByLabelText('variable'), {
       target: { value: '' },
     });
-    await waitFor(() => {
-      expect(screen.queryByLabelText('otherVariable')).not.toBeInTheDocument();
-    });
+    expect(screen.getByLabelText('otherVariable')).toBeDisabled();
 
     fireEvent.change(screen.getByLabelText('variable'), {
       target: { value: 'group' },
     });
-    expect(await screen.findByLabelText('otherVariable')).toHaveValue(
-      'free_text',
-    );
+    expect(screen.getByLabelText('otherVariable')).toBeEnabled();
+    expect(screen.getByLabelText('otherVariable')).toHaveValue('free_text');
     expect(screen.getByTestId('validation-section')).toHaveAttribute(
       'data-variable-id',
       'free_text',

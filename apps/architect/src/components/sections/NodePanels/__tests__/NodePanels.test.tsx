@@ -16,15 +16,7 @@ import {
   renderStageForm,
 } from '~/components/StageEditor/__tests__/stageFormTestHarness';
 
-import type { NodePanelValue } from '../NodePanel';
 import { handlePanelToggleChange, NodePanels } from '../NodePanels';
-
-const panel = (id: string): NodePanelValue => ({
-  id,
-  title: undefined,
-  dataSource: 'existing',
-  filter: undefined,
-});
 
 describe('NodePanels', () => {
   it('keeps fields unset until add and creates at most two UUID-backed panels', async () => {
@@ -50,13 +42,12 @@ describe('NodePanels', () => {
     // The section starts collapsed (no committed panels) — the real Section
     // toggle switch (unmocked here) must be opened before its children —
     // including the "Add new panel" button —
-    // exist in the tree. `handleToggleChange` is async (it awaits `confirm`
-    // even on the allow-through path), so the switch flips a tick after the
-    // click.
-    fireEvent.click(screen.getByRole('switch', { name: 'Side Panels' }));
+    // exist in the tree. The open-state guard is async, so the switch flips a
+    // tick after the click.
+    fireEvent.click(screen.getByRole('switch', { name: 'Side panels' }));
     await waitFor(() =>
       expect(
-        screen.getByRole('switch', { name: 'Side Panels' }),
+        screen.getByRole('switch', { name: 'Side panels' }),
       ).toHaveAttribute('aria-checked', 'true'),
     );
 
@@ -80,39 +71,33 @@ describe('NodePanels', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('keeps panel configuration when toggle removal is cancelled', async () => {
+  it('blocks closing configured panels when removal is cancelled', async () => {
     const confirm = vi.fn(async () => false as const);
-    const removePanels = vi.fn();
 
     await expect(
-      handlePanelToggleChange(false, [panel('panel-1')], confirm, removePanels),
+      handlePanelToggleChange(false, [{ id: 'panel-1' }], confirm),
     ).resolves.toBe(false);
     expect(confirm).toHaveBeenCalledOnce();
-    expect(removePanels).not.toHaveBeenCalled();
   });
 
-  it('stores null when toggle removal is confirmed', async () => {
+  it('allows the Section to clear configured panels when removal is confirmed', async () => {
     const confirm = vi.fn(async () => true as const);
-    let panels: NodePanelValue[] | null = [panel('panel-1')];
 
     await expect(
-      handlePanelToggleChange(false, panels, confirm, () => {
-        panels = null;
-      }),
+      handlePanelToggleChange(false, [{ id: 'panel-1' }], confirm),
     ).resolves.toBe(true);
     expect(confirm).toHaveBeenCalledOnce();
-    expect(panels).toBeNull();
   });
 
   it('does not confirm when enabling panels or removing an empty list', async () => {
     const confirm = vi.fn(async () => true as const);
 
     await expect(
-      handlePanelToggleChange(true, [panel('panel-1')], confirm, vi.fn()),
+      handlePanelToggleChange(true, [{ id: 'panel-1' }], confirm),
     ).resolves.toBe(true);
-    await expect(
-      handlePanelToggleChange(false, [], confirm, vi.fn()),
-    ).resolves.toBe(true);
+    await expect(handlePanelToggleChange(false, [], confirm)).resolves.toBe(
+      true,
+    );
     expect(confirm).not.toHaveBeenCalled();
   });
 });

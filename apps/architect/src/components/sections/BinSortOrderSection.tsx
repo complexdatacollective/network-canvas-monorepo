@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 
-import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import MultiSelect, {
   completeRows,
@@ -22,7 +21,7 @@ type BinSortOrderSectionProps = {
   disabled?: boolean;
   maxItems?: number;
   optionGetter: OptionGetter;
-  summary?: ReactNode;
+  description?: ReactNode;
 };
 const SORT_RULE_PROPERTIES: PropertyField[] = [
   { fieldName: 'property' },
@@ -40,40 +39,29 @@ const BinSortOrderSection = ({
   disabled = false,
   maxItems = 5,
   optionGetter,
-  summary = 'Enable this option to set the order that nodes appear after they have been placed into a bin.',
+  description = 'Set the order of nodes after they have been placed into a bin.',
 }: BinSortOrderSectionProps) => {
-  const setFieldValue = useFormStore((state) => state.setFieldValue);
-  const handleToggleChange = (nextState: boolean) => {
-    if (!nextState) {
-      setFieldValue('binSortOrder', undefined);
-    }
-    return true;
-  };
   return (
     <Section
-      title="Set the order of nodes in bins"
-      summary={summary}
+      title="Bin order"
+      description={description}
       toggleable
       disabled={disabled}
-      startExpanded={!!initialValue}
-      handleToggleChange={handleToggleChange}
-      layout="vertical"
+      defaultOpen={!!initialValue}
     >
-      <>
-        <ArchitectArrayField
-          name="binSortOrder"
-          label="Bin sort rules"
-          hint="Add one or more rules to determine the order in which nodes are displayed in the bin after they have been placed. Use the asterisk property to sort by the order that nodes were placed."
-          component={MultiSelect}
-          emptyStateMessage="No sort rules have been created yet."
-          addButtonLabel="Add new bin sort rule"
-          initialValue={initialValue}
-          properties={SORT_RULE_PROPERTIES}
-          validation={SORT_RULE_VALIDATION}
-          maxItems={maxItems}
-          options={optionGetter}
-        />
-      </>
+      <ArchitectArrayField
+        name="binSortOrder"
+        label="Bin sort rules"
+        hint="Add one or more rules to determine the order in which nodes are displayed in the bin after they have been placed. Use the asterisk property to sort by the order that nodes were placed."
+        component={MultiSelect}
+        emptyStateMessage="No sort rules have been created yet."
+        addButtonLabel="Add new bin sort rule"
+        initialValue={initialValue}
+        properties={SORT_RULE_PROPERTIES}
+        validation={SORT_RULE_VALIDATION}
+        maxItems={maxItems}
+        options={optionGetter}
+      />
     </Section>
   );
 };

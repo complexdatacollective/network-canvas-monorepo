@@ -117,11 +117,11 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
   // variable itself via `updateVariableAsync`), so this test deliberately
   // leaves that mirror section untouched and asserts its absence below via
   // `toTieStrengthPrompt`.
-  await addPrompt(editor.section('Prompts'), async () => {
-    await editor.fillRichText('Prompt Text', 'How close are you?');
+  await addPrompt(editor.field('prompts'), async () => {
+    await editor.fillRichText('Prompt text', 'How close are you?');
 
     await architectPage
-      .getByLabel('Select an edge type')
+      .getByLabel('Edge type')
       .selectOption({ label: '✨ Create new edge type ✨' });
     await architectPage
       .getByRole('textbox', { name: 'New edge type name' })
@@ -141,10 +141,7 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
       type: 'ordinal',
     });
 
-    await editor.fillRichText(
-      'Label for the decline option',
-      'We are not close',
-    );
+    await editor.fillRichText('Decline option', 'We are not close');
   });
 
   await editor.expectNoIssues();

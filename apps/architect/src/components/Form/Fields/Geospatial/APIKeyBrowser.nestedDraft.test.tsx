@@ -160,18 +160,16 @@ const openBrowser = async () => {
 };
 
 const typeHalfAKey = (dialog: HTMLElement) => {
-  fireEvent.change(
-    within(dialog).getByRole('textbox', { name: /API Key Name/ }),
-    { target: { value: 'Mapbox' } },
-  );
-  fireEvent.change(
-    within(dialog).getByRole('textbox', { name: /API Key Value/ }),
-    { target: { value: 'pk.half' } },
-  );
+  fireEvent.change(within(dialog).getByRole('textbox', { name: /Key name/ }), {
+    target: { value: 'Mapbox' },
+  });
+  fireEvent.change(within(dialog).getByRole('textbox', { name: /Key value/ }), {
+    target: { value: 'pk.half' },
+  });
 };
 
 const typedValue = (dialog: HTMLElement) =>
-  within(dialog).getByRole('textbox', { name: /API Key Value/ });
+  within(dialog).getByRole('textbox', { name: /Key value/ });
 
 const pressBack = async () => {
   await act(async () => {

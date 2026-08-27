@@ -6,7 +6,9 @@ import { parseOptionValue } from '../Option';
 import {
   allowedOptionValues,
   completeOptions,
+  MINIMUM_OPTIONS_MESSAGE,
   minTwoOptions,
+  minTwoPopulatedOptions,
   optionsValidation,
   uniqueOptionLabels,
   uniqueOptionValues,
@@ -25,6 +27,14 @@ describe('Options validators', () => {
         { label: 'Two', value: 2 },
       ]),
     ).toBeUndefined();
+  });
+
+  it('leaves empty lists to native required before checking for a second option', () => {
+    expect(minTwoPopulatedOptions(undefined)).toBeUndefined();
+    expect(minTwoPopulatedOptions([])).toBeUndefined();
+    expect(minTwoPopulatedOptions([{ label: 'One', value: 1 }])).toBe(
+      MINIMUM_OPTIONS_MESSAGE,
+    );
   });
 
   it('requires every option to have a label and a value', () => {
@@ -253,7 +263,8 @@ describe('Options validators', () => {
 
   it('bundles every array-level rule so a call site cannot keep only some', () => {
     expect(optionsValidation).toEqual({
-      minTwoOptions,
+      required: MINIMUM_OPTIONS_MESSAGE,
+      minTwoOptions: minTwoPopulatedOptions,
       completeOptions,
       uniqueOptionValues,
       uniqueOptionLabels,
@@ -266,6 +277,7 @@ describe('Options validators', () => {
   // it is missing before it is told the missing value is malformed.
   it('reports completeness before syntax when a row is both', () => {
     expect(Object.keys(optionsValidation)).toEqual([
+      'required',
       'minTwoOptions',
       'completeOptions',
       'uniqueOptionValues',

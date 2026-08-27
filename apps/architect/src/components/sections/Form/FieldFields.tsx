@@ -1,14 +1,16 @@
 import { omit } from 'es-toolkit/compat';
 
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
-import { getFieldId } from '~/utils/issues';
+import IssueAnchor from '~/components/IssueAnchor';
 
 import ValidationSection from '../ValidationSection';
 import { asValidationMap } from './helpers';
-import VariableDefinitionFields, {
+import {
+  InputControlFields,
+  VariableConfigurationFields,
   VariablePickerSection,
 } from './VariableDefinitionFields';
 import {
@@ -73,7 +75,11 @@ const FieldFields = ({
         hint="Select an attribute"
       />
 
-      <Section layout="vertical" id={getFieldId('prompt')}>
+      <Section
+        title="Field configuration"
+        description="Write the participant-facing prompt and choose how the response is collected."
+      >
+        <IssueAnchor fieldName="prompt" description="Question text" />
         <ArchitectField
           name="prompt"
           label="Question text"
@@ -84,8 +90,6 @@ const FieldFields = ({
           singleLine
           placeholder="What is this person's name?"
         />
-      </Section>
-      <Section layout="vertical">
         <ArchitectField
           name="hint"
           label="Hint text"
@@ -105,9 +109,15 @@ const FieldFields = ({
           initialValue={item.showValidationHints === true}
           validation={{}}
         />
+        <InputControlFields
+          entity={entity}
+          type={type}
+          item={item}
+          fields={fields}
+        />
       </Section>
 
-      <VariableDefinitionFields
+      <VariableConfigurationFields
         entity={entity}
         type={type}
         item={item}
@@ -131,7 +141,6 @@ const FieldFields = ({
         // a real codebook id let the row offer a reference rule the dialog
         // then rejected on save.
         currentVariableId={!isNewVariable && variable ? variable : ''}
-        showHeading={false}
       />
     </>
   );

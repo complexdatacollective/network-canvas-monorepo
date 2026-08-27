@@ -17,7 +17,14 @@ export type MapValue = {
   style?: string;
 };
 
-export const requiredMapView = (value: unknown) => {
+/**
+ * Validates the part of a present map-options object that native `required`
+ * cannot inspect. Absence is deliberately left to that native rule so the
+ * field also carries the visible and semantic required cues.
+ */
+export const completeMapView = (value: unknown) => {
+  if (value === null || value === undefined) return undefined;
+
   if (!value || typeof value !== 'object' || !('center' in value)) {
     return 'Required';
   }

@@ -1,13 +1,13 @@
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import { Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
+import RichText from '~/components/Form/Fields/RichText/Field';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import type { Entity } from '~/components/NewVariableWindow';
 import NewVariableWindow, {
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
-import PromptText from '~/components/sections/PromptText';
 import { useAppSelector } from '~/ducks/hooks';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
 import { getFieldId } from '~/utils/issues';
@@ -80,23 +80,32 @@ const NominationPromptFields = ({
 
   return (
     <>
-      <PromptText initialValue={asString(item?.text)} />
-      <Section title="Attribute" layout="vertical">
-        <>
-          <div id={getFieldId('variable')} />
-          <ArchitectField
-            name="variable"
-            component={VariablePickerControl}
-            validation={{ required: true }}
-            label="Attribute"
-            labelHidden
-            initialValue={asString(item?.variable)}
-            entity="node"
-            type={nodeType}
-            options={availableVariables}
-            onCreateOption={handleNewVariable}
-          />
-        </>
+      <Section
+        title="Nomination details"
+        description="Write the question participants will answer and choose the boolean attribute that records who they nominate."
+      >
+        <ArchitectField
+          name="text"
+          component={RichText}
+          singleLine
+          label="Prompt text"
+          placeholder="Enter your prompt..."
+          validation={{ required: true }}
+          initialValue={asString(item?.text)}
+        />
+        <div id={getFieldId('variable')} />
+        <ArchitectField
+          name="variable"
+          component={VariablePickerControl}
+          validation={{ required: true }}
+          label="Attribute"
+          hint="Select the boolean attribute this prompt will update."
+          initialValue={asString(item?.variable)}
+          entity="node"
+          type={nodeType}
+          options={availableVariables}
+          onCreateOption={handleNewVariable}
+        />
       </Section>
       <NewVariableWindow {...newVariableWindowProps} />
     </>

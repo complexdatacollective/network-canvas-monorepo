@@ -11,12 +11,11 @@ import type {
   FormSubmissionResult,
 } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import Section from '@codaco/fresco-ui/Section';
 import { normalizeForComparison } from '@codaco/shared-consts';
 import Assets from '~/components/AssetBrowser/Assets';
 import useExternalDataPreview from '~/components/AssetBrowser/useExternalDataPreview';
 import { useNestedDraftDialog } from '~/components/DialogForm/useNestedDraftDialog';
-import { Layout, Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { useAppDispatch, useAppStore } from '~/ducks/hooks';
 import { getProtocolLockState } from '~/ducks/modules/app';
@@ -193,61 +192,51 @@ const APIKeyBrowserBody = ({
       }
     >
       <FormWithoutProvider onSubmit={handleSubmit}>
-        <Layout>
-          {/*
-            `required` on a Section renders a red asterisk beside its heading.
-            Neither heading here names a control anyone has to fill in, and a
-            false required marker in a dialog about validation is worse than
-            none.
-          */}
-          <Section
-            title="Create New API Key"
-            layout="vertical"
-            required={false}
-          >
-            <Paragraph className="text-sm text-current/70">
-              This key is saved inside your protocol and is included, in plain
-              text, in any exported <code>.netcanvas</code> file. Anyone you
-              share the exported protocol with can read it, so only use a key
-              you are comfortable distributing.
-            </Paragraph>
-            <ArchitectField
-              name="keyName"
-              label="API Key Name"
-              component={InputField}
-              validation={{ required: true }}
-              type="text"
-              placeholder="Name this key"
-            />
-            <ArchitectField
-              name="keyValue"
-              label="API Key Value"
-              component={InputField}
-              validation={{ required: true }}
-              type="text"
-              placeholder="Enter an API Key..."
-            />
-            <div className="pt-4">
-              <SubmitButton
-                key="save"
-                iconPosition="right"
-                icon={<ArrowRight />}
-              >
-                Create Key
-              </SubmitButton>
-            </div>
-          </Section>
-          <Section title="Resource Library" layout="vertical" required={false}>
-            <Assets
-              onSelect={handleSelectAsset}
-              selected={selected}
-              type="apikey"
-              disableDelete
-              onPreview={handleShowPreview}
-            />
-          </Section>
-          {preview}
-        </Layout>
+        <Section
+          title="Create API key"
+          description={
+            <>
+              This key is saved inside your protocol and included as plain text
+              in exported <code>.netcanvas</code> files, so only use a key you
+              are comfortable distributing.
+            </>
+          }
+        >
+          <ArchitectField
+            name="keyName"
+            label="Key name"
+            component={InputField}
+            validation={{ required: true }}
+            type="text"
+            placeholder="Name this key"
+          />
+          <ArchitectField
+            name="keyValue"
+            label="Key value"
+            component={InputField}
+            validation={{ required: true }}
+            type="text"
+            placeholder="Enter an API Key..."
+          />
+          <div className="pt-4">
+            <SubmitButton key="save" iconPosition="right" icon={<ArrowRight />}>
+              Create Key
+            </SubmitButton>
+          </div>
+        </Section>
+        <Section
+          title="Saved API keys"
+          description="Select an API key already stored in this protocol."
+        >
+          <Assets
+            onSelect={handleSelectAsset}
+            selected={selected}
+            type="apikey"
+            disableDelete
+            onPreview={handleShowPreview}
+          />
+        </Section>
+        {preview}
       </FormWithoutProvider>
     </Dialog>
   );

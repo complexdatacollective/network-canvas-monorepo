@@ -9,9 +9,9 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Form from '@codaco/fresco-ui/form/Form';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import Section from '@codaco/fresco-ui/Section';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
 import { getCodebook } from '~/selectors/protocol';
 
 import EgoType from './EgoType';
@@ -103,7 +103,10 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
         <Heading level="h2" margin="none" className="mb-5!">
           Ego
         </Heading>
-        <Section layout="vertical" required={false}>
+        <Section
+          title="Ego attributes"
+          description="Review the attributes collected about the participant."
+        >
           <EgoType search={search} unusedOnly={unusedOnly} />
         </Section>
       </div>
@@ -125,7 +128,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
         {nodes.length === 0 ? (
           <Paragraph className="text-current/70">No node types yet.</Paragraph>
         ) : (
-          <div className="space-y-8">
+          <div>
             {nodes.map((node) => (
               <EntityType
                 key={node.type}
@@ -159,7 +162,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
         {edges.length === 0 ? (
           <Paragraph className="text-current/70">No edge types yet.</Paragraph>
         ) : (
-          <div className="space-y-8">
+          <div>
             {edges.map((edge) => (
               <EntityType
                 key={edge.type}

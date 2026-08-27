@@ -761,6 +761,7 @@ jobs:
             const statusContext = `netlify/${siteName}/deploy-preview`;
             const headSha = context.payload.pull_request.head.sha;
             const expectedHost = `deploy-preview-${context.issue.number}--${siteName}.netlify.app`;
+            const expectedOrigin = `https://${expectedHost}`;
             const deadline = Date.now() + 15 * 60 * 1000;
 
             while (Date.now() < deadline) {
@@ -784,14 +785,26 @@ jobs:
                   return;
                 }
 
-                if (previewUrl.protocol !== 'https:' || previewUrl.hostname !== expectedHost) {
+                const isPreviewUrl =
+                  previewUrl.protocol === 'https:' && previewUrl.hostname === expectedHost;
+                // Netlify reports an ignored deploy as a successful commit status,
+                // but links to its deploy dashboard instead of the stable PR alias.
+                const isCanceledDeployDashboard =
+                  status.description === 'Deploy Preview canceled.' &&
+                  previewUrl.protocol === 'https:' &&
+                  previewUrl.hostname === 'app.netlify.com' &&
+                  new RegExp(`^/projects/${siteName}/deploys/[a-f0-9]{24}/?$`).test(
+                    previewUrl.pathname,
+                  );
+
+                if (!isPreviewUrl && !isCanceledDeployDashboard) {
                   core.setFailed(
                     `${statusContext} pointed to unexpected URL ${previewUrl.toString()}`,
                   );
                   return;
                 }
 
-                core.setOutput('url', previewUrl.origin);
+                core.setOutput('url', expectedOrigin);
                 return;
               }
 
@@ -867,6 +880,7 @@ jobs:
             const statusContext = `netlify/${siteName}/deploy-preview`;
             const headSha = context.payload.pull_request.head.sha;
             const expectedHost = `deploy-preview-${context.issue.number}--${siteName}.netlify.app`;
+            const expectedOrigin = `https://${expectedHost}`;
             const deadline = Date.now() + 15 * 60 * 1000;
 
             while (Date.now() < deadline) {
@@ -890,14 +904,26 @@ jobs:
                   return;
                 }
 
-                if (previewUrl.protocol !== 'https:' || previewUrl.hostname !== expectedHost) {
+                const isPreviewUrl =
+                  previewUrl.protocol === 'https:' && previewUrl.hostname === expectedHost;
+                // Netlify reports an ignored deploy as a successful commit status,
+                // but links to its deploy dashboard instead of the stable PR alias.
+                const isCanceledDeployDashboard =
+                  status.description === 'Deploy Preview canceled.' &&
+                  previewUrl.protocol === 'https:' &&
+                  previewUrl.hostname === 'app.netlify.com' &&
+                  new RegExp(`^/projects/${siteName}/deploys/[a-f0-9]{24}/?$`).test(
+                    previewUrl.pathname,
+                  );
+
+                if (!isPreviewUrl && !isCanceledDeployDashboard) {
                   core.setFailed(
                     `${statusContext} pointed to unexpected URL ${previewUrl.toString()}`,
                   );
                   return;
                 }
 
-                core.setOutput('url', previewUrl.origin);
+                core.setOutput('url', expectedOrigin);
                 return;
               }
 
@@ -940,6 +966,7 @@ jobs:
             const statusContext = `netlify/${siteName}/deploy-preview`;
             const headSha = context.payload.pull_request.head.sha;
             const expectedHost = `deploy-preview-${context.issue.number}--${siteName}.netlify.app`;
+            const expectedOrigin = `https://${expectedHost}`;
             const deadline = Date.now() + 15 * 60 * 1000;
 
             while (Date.now() < deadline) {
@@ -963,14 +990,26 @@ jobs:
                   return;
                 }
 
-                if (previewUrl.protocol !== 'https:' || previewUrl.hostname !== expectedHost) {
+                const isPreviewUrl =
+                  previewUrl.protocol === 'https:' && previewUrl.hostname === expectedHost;
+                // Netlify reports an ignored deploy as a successful commit status,
+                // but links to its deploy dashboard instead of the stable PR alias.
+                const isCanceledDeployDashboard =
+                  status.description === 'Deploy Preview canceled.' &&
+                  previewUrl.protocol === 'https:' &&
+                  previewUrl.hostname === 'app.netlify.com' &&
+                  new RegExp(`^/projects/${siteName}/deploys/[a-f0-9]{24}/?$`).test(
+                    previewUrl.pathname,
+                  );
+
+                if (!isPreviewUrl && !isCanceledDeployDashboard) {
                   core.setFailed(
                     `${statusContext} pointed to unexpected URL ${previewUrl.toString()}`,
                   );
                   return;
                 }
 
-                core.setOutput('url', previewUrl.origin);
+                core.setOutput('url', expectedOrigin);
                 return;
               }
 

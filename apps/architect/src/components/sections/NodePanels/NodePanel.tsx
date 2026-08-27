@@ -218,7 +218,6 @@ const NodePanel = ({
           canUseExisting
         />
         <NetworkFilter
-          variant="contrast"
           name={`${fieldName}.filter`}
           allowEdgeRules={dataSource === EXISTING_DATA_SOURCE}
         />

@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '../../../dialogs/DialogProvider';
+import Surface from '../../../layout/Surface';
 import ArrayField, {
   ArrayFieldDragHandle,
   type ArrayFieldEditorProps,
@@ -63,6 +64,14 @@ function TestItem({
         Delete
       </button>
     </div>
+  );
+}
+
+function NestedSurfaceItem() {
+  return (
+    <Surface noContainer data-testid="nested-surface">
+      Nested surface
+    </Surface>
   );
 }
 
@@ -158,6 +167,21 @@ const renderField = (props: Partial<ArrayFieldProps<Item>> = {}) =>
   );
 
 describe('ArrayField', () => {
+  it('renders each item as an accent Surface boundary', () => {
+    renderField({
+      value: [{ id: 'one', label: 'one' }],
+      itemComponent: NestedSurfaceItem,
+    });
+
+    const nestedSurface = screen.getByTestId('nested-surface');
+    const item = nestedSurface.closest('li');
+    expect(item).not.toBeNull();
+    expect(item?.classList).toContain('bg-surface-accent');
+    expect(item?.classList).toContain('[--surface-depth:0]');
+    expect(nestedSurface.classList).toContain('bg-surface-accent-1');
+    expect(nestedSurface.classList).toContain('[--surface-depth:1]');
+  });
+
   it('keeps draft additions out of onChange until they are saved', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

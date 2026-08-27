@@ -153,9 +153,15 @@ export class Timeline {
     const fromBox = await from.boundingBox();
     const toBox = await to.boundingBox();
     if (!fromBox || !toBox) throw new Error('stage row not found');
+    // `block: 'start'` keeps the destination row reachable, but Architect's
+    // sticky navigation can cover the centre of a short first row. Start near
+    // the lower edge of the requested origin instead: this is still genuinely
+    // inside the preview, heading, or card under test, while remaining clear
+    // of the navigation as those controls change size.
+    const fromInset = Math.min(8, fromBox.height / 4);
     await this.page.mouse.move(
       fromBox.x + fromBox.width / 2,
-      fromBox.y + fromBox.height / 2,
+      fromBox.y + fromBox.height - fromInset,
     );
     await this.page.mouse.down();
     // Several steps so motion registers a drag (didDrag), not a click.

@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 
-import { Layout } from '~/components/EditorLayout';
 import PageHeading from '~/components/ProjectNav/PageHeading';
 import AssetManifest from '~/lib/ProtocolSummary/components/AssetManifest';
 import Codebook from '~/lib/ProtocolSummary/components/Codebook';
@@ -41,14 +40,14 @@ const SummaryPage = () => {
         index,
       }}
     >
-      <Layout>
+      <div className="w-full">
         <div className="w-full print:hidden">
           <PageHeading
             title="Protocol Summary"
             description="Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and assets."
           />
         </div>
-        <div className="protocol-summary-surface [&_.variable-pill]:origin-left [&_.variable-pill]:scale-[0.8]">
+        <div className="protocol-summary-surface mt-6 [&_.variable-pill]:origin-left [&_.variable-pill]:scale-[0.8]">
           {/* Cover is the first marker; an explicit page break here would be
             a no-op (CSS Fragmentation: forced breaks at the start of a
             fragment are discarded) so it's omitted. */}
@@ -64,7 +63,7 @@ const SummaryPage = () => {
           <Codebook />
           <AssetManifest />
         </div>
-      </Layout>
+      </div>
     </SummaryContext.Provider>
   );
 };
