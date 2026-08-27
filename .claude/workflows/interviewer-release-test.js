@@ -486,8 +486,12 @@ CHECKS (in one or more scripts, fresh profile each run):
    protocol; when checks 6–7 were skipped, run check 9 first and then use
    the Sample Protocol instead — this check is always executable and must
    not be skipped.
-9. interviews deep link: the sample card's "0 interviews" link navigates to
-   /data?protocol=Sample+Protocol.
+9. interviews deep link: first start one interview on the Sample Protocol
+   and exit immediately so the card's link reads "1 interview" (a
+   zero-session view cannot distinguish an applied filter from an ignored
+   one). Following the link must land on /data?protocol=Sample+Protocol
+   with the protocol filter ACTIVE and exactly that session listed;
+   clearing the filter shows the full table.
 
 Return journey="protocol-management".`,
   },
@@ -593,7 +597,11 @@ Settings (Escape).
 CHECKS:
 1. /data (via the "Data" segment of the view switcher) lists sessions in a
    table with Case ID, Protocol, Started, Updated, Progress, and Export
-   status columns; default page size is 25, and pagination reaches page 2.
+   status columns; default page size is 25. Pagination is verified by ROW
+   IDENTITY, not by the page control alone: record the visible Case IDs on
+   page 1, advance to page 2, and require the remaining sessions with NO
+   overlap against page 1 (a pager that advances while repeating the same
+   rows is broken retrieval).
 2. Status chips ("All · N", "In progress · N", "Complete · N") filter rows
    and write ?status= to the URL; the counts are consistent (in-progress +
    complete = all).
