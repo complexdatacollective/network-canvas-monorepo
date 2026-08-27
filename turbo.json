@@ -384,6 +384,22 @@
       ],
       "outputs": []
     },
+    "test:storybook": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "$TURBO_ROOT$/tooling/tailwind/**",
+        "src/**",
+        "components/**",
+        ".storybook/**",
+        "stories/**",
+        "vitest.config.*",
+        "vitest.setup.*",
+        "package.json",
+        "tsconfig*.json"
+      ],
+      "env": ["NODE_ENV", "STORYBOOK_MAPBOX_TOKEN", "SKIP_ENV_VALIDATION"],
+      "outputs": []
+    },
     "test:watch": {
       "cache": false,
       "persistent": true
@@ -660,6 +676,30 @@
         "vitest.setup.*",
         ".env"
       ],
+      "outputs": []
+    },
+    "fresco#test:storybook": {
+      "dependsOn": ["^topo", "fresco#codegen"],
+      "inputs": [
+        "app/**",
+        "components/**",
+        "hooks/**",
+        "lib/**",
+        "queries/**",
+        "styles/**",
+        "types/**",
+        "utils/**",
+        "public/**",
+        ".storybook/**",
+        "env.js",
+        "fresco.config.ts",
+        "*.config.ts",
+        "tsconfig*.json",
+        "package.json",
+        "vitest.config.*",
+        "vitest.setup.*"
+      ],
+      "env": ["NODE_ENV", "SKIP_ENV_VALIDATION"],
       "outputs": []
     },
     "fresco#codegen": {

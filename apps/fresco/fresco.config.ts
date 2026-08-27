@@ -1,7 +1,15 @@
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { buildAppSuperProperties } from '@codaco/shared-consts';
 
-import pkg from './package.json' with { type: 'json' };
+// Deliberately imported without a `with { type: 'json' }` attribute.
+// Storybook's Next.js Vite builder transforms this file with Next's SWC, and
+// `vite-plugin-storybook-nextjs` hardcodes `emitAssertForImportAttributes`,
+// rewriting the attribute to the legacy `assert` keyword that Chromium
+// removed — which breaks every story importing this module. `resolveJsonModule`
+// and bundler resolution make the plain form equivalent everywhere Fresco
+// loads this file. `next.config.ts` keeps the attribute: it is loaded by Next
+// itself, never by the Storybook pipeline.
+import pkg from './package.json';
 
 export const PROTOCOL_EXTENSION = '.netcanvas';
 

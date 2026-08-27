@@ -351,6 +351,26 @@ Before adding code for any feature, fix, or refactor, search for the existing pa
 - Vitest is the default unit and component test framework; Playwright covers E2E
 - If a storybook exists for a component, consider creating interactive tests within storybook
 
+#### Storybook interaction tests
+
+`test:storybook` (`vitest run --project=storybook`) executes every story's
+play function and assertions in a real browser. Five workspaces define it:
+`@codaco/architect`, `@codaco/fresco-ui`, `@codaco/interview`,
+`@codaco/interviewer`, and `fresco`. The `test-storybook` CI job runs them
+through Turbo and the `quality` gate requires it. Chromatic does not replace
+this: it has no project for Architect or Fresco, and TurboSnap only
+re-captures the stories a pull request changed.
+
+Two constraints keep these suites deterministic, both documented at length in
+the configs themselves. Each project's `optimizeDeps.include` must list every
+dependency reachable only through Storybook's virtual project-annotations
+module — an incomplete list re-optimises mid-run and fails the whole suite with
+"Failed to fetch dynamically imported module" on a cold cache while passing on
+a warm one, so always verify against a cleared
+`node_modules/.cache/storybook/*/*/sb-vitest`. And the CI job runs Turbo with
+`--concurrency=1`, because suites run in parallel starve each other's browsers
+on a four-core runner.
+
 #### Chromatic and TurboSnap
 
 Chromatic runs from `.github/workflows/chromatic.yml` as three independent
