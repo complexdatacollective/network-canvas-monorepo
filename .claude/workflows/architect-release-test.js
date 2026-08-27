@@ -3,7 +3,7 @@ export const meta = {
   description:
     'Agent-driven release smoke test of the deployed Architect dev site',
   whenToUse:
-    'Before promoting an Architect release: drives the dev deployment (https://architect.networkcanvas.dev, or args.url) through a release-tester checklist in the Browser pane and returns a pass/blocked/fail verdict. Release gates must consume the `promotable` field, which is true only for a full-coverage pass with both expectVersion and expectCommit pinned and matched. args: { url?: string, slices?: string[], expectVersion?: string, expectCommit?: string } — slices filters the functional slices by key (reachability always runs; a filtered run is never promotable), expectVersion fails reachability on a version mismatch (compared ignoring a leading "v"), expectCommit fails it when the page\'s data-build-commit does not equal the pinned SHA.',
+    'Before promoting an Architect release: drives the dev deployment (https://architect.networkcanvas.dev, or args.url) through a release-tester checklist in the Browser pane and returns a pass/blocked/fail verdict. Release gates must consume the `promotable` field, which is true only for a full-coverage pass with both expectVersion and expectCommit pinned and matched. args: { url?: string, slices?: string[], expectVersion?: string, expectCommit?: string } — slices filters the functional slices by key (reachability always runs; a filtered run is never promotable), expectVersion fails reachability on a version mismatch (compared ignoring a leading "v"), expectCommit fails it when the deployment\'s /build-info.json commit does not equal the pinned SHA.',
   phases: [
     { title: 'Reachability', detail: 'site up, assets, service worker' },
     { title: 'Functional checks', detail: 'one agent per checklist slice' },
@@ -37,10 +37,11 @@ const expectVersion =
     ? args.expectVersion.trim() || null
     : null;
 
-// Optional expected build commit (full SHA). The deployed app exposes its
-// build's commit as data-build-commit on <html> (architect's vite define
-// __BUILD_COMMIT__): the semver cannot distinguish ordinary main commits
-// between releases, so promotion clearance pins the exact build too.
+// Optional expected build commit (full SHA). Each deployment stamps its
+// commit into /build-info.json after the turbo-cached build (architect's
+// scripts/write-build-info.mjs): the semver cannot distinguish ordinary main
+// commits between releases, so promotion clearance pins the exact deployed
+// commit too.
 const expectCommit =
   args && typeof args === 'object' && typeof args.expectCommit === 'string'
     ? args.expectCommit.trim() || null
@@ -320,13 +321,14 @@ tell whether an entry predates the purge).
        ? `Expected version: "${expectVersion}" — fail this check if the displayed version does not match it (ignore a leading "v" on either side: "8.2.0" matches "v8.2.0").`
        : 'No expected version was supplied, so pass with the observed value.'
    }
-6. "build-commit": Read document.documentElement.dataset.buildCommit — the
-   deployed build stamps its source commit there. Put the observed value in
-   details AND in the top-level "commit" output field.
+6. "build-commit": In your tab, evaluate
+   fetch('/build-info.json', { cache: 'no-store' }).then((r) => r.json()) —
+   each deployment stamps its source commit there after the build. Put the
+   observed commit in details AND in the top-level "commit" output field.
    ${
      expectCommit
-       ? `Expected commit: "${expectCommit}" — fail this check if the attribute is missing or does not equal it exactly (a candidate build must expose its commit; a missing attribute means an older build is still deployed).`
-       : 'No expected commit was supplied: pass, reporting the observed value, or "not exposed" if the attribute is absent (builds from before the commit stamp predate it).'
+       ? `Expected commit: "${expectCommit}" — fail this check if the file is missing, unparseable, or its commit does not equal it exactly (a candidate deployment must expose its commit; a missing file means an older deployment is still live).`
+       : 'No expected commit was supplied: pass, reporting the observed commit, or "not exposed" if the file is absent (deployments from before the commit stamp predate it).'
    }
 Do not create or modify any protocol in this slice.`;
 

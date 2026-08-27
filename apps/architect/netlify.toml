@@ -1,5 +1,8 @@
 [build]
-command = "pnpm exec turbo run build --filter=@codaco/architect"
+# write-build-info.mjs stamps dist/build-info.json with the deployed commit
+# AFTER the turbo-cached build: baked into the build it would survive cache
+# restoration and describe whichever commit originally built the artifact.
+command = "pnpm exec turbo run build --filter=@codaco/architect && node apps/architect/scripts/write-build-info.mjs"
 publish = "apps/architect/dist"
 
 [build.environment]

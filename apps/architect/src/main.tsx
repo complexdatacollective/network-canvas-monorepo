@@ -29,11 +29,6 @@ import {
   requestPersistentStorageOnFirstInteraction,
 } from './utils/pwa';
 
-// Expose the build's commit so a deployment's exact build identity is
-// verifiable from the page (the release-test workflow reads it); the version
-// chip alone cannot distinguish main commits between releases.
-document.documentElement.dataset.buildCommit = __BUILD_COMMIT__;
-
 // Capture the PWA install prompt before React mounts — the event fires early and
 // is one-shot.
 initInstallPromptCapture();
