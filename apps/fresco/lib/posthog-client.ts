@@ -8,6 +8,12 @@ import {
 
 let clientPromise: Promise<PostHog> | undefined;
 
+// Exceptions raised before analytics finished starting, replayed by
+// startPostHog. Capped because a deployment with analytics off never starts,
+// and this would otherwise grow for the life of the tab.
+const MAX_PENDING_EXCEPTIONS = 10;
+const pendingExceptions: unknown[] = [];
+
 /**
  * Loads posthog-js and initialises it.
  *
@@ -17,8 +23,7 @@ let clientPromise: Promise<PostHog> | undefined;
  * feature flags. None of those are suppressed by opting out — a browser with
  * capturing explicitly denied still makes all of them — so the only way to
  * honour `DISABLE_ANALYTICS` is to never reach this function. That decision is
- * made on the server, in `AnalyticsLoader`, before the browser is asked to
- * load anything.
+ * made on the server, in `AnalyticsLoader`.
  */
 async function getClient(): Promise<PostHog> {
   clientPromise ??= import('posthog-js').then(({ default: posthog }) => {
@@ -29,6 +34,11 @@ async function getClient(): Promise<PostHog> {
       autocapture: true,
       tracing_headers: [window.location.hostname],
     });
+
+    // Before opting in, because opting in captures an event of its own — it
+    // would otherwise be the one event missing the properties that attribute
+    // it to Fresco.
+    posthog.register(POSTHOG_APP_PROPERTIES);
 
     // Repairs the stored consent of a browser that was opted out while this
     // deployment had analytics disabled. Without it, that browser would stay
@@ -47,19 +57,64 @@ async function getClient(): Promise<PostHog> {
  */
 export async function startPostHog(installationId?: string) {
   // Telemetry must never throw. A failed chunk load leaves the memoized
-  // promise rejected, and the caller only ever fires this off.
+  // promise rejected, and callers only ever fire this off.
   try {
     const posthog = await getClient();
 
-    posthog.register({
-      ...POSTHOG_APP_PROPERTIES,
-      ...(installationId ? { installation_id: installationId } : {}),
-    });
-
     if (installationId) {
+      posthog.register({
+        ...POSTHOG_APP_PROPERTIES,
+        installation_id: installationId,
+      });
       posthog.identify(installationId);
+    }
+
+    while (pendingExceptions.length > 0) {
+      posthog.captureException(pendingExceptions.shift());
     }
   } catch {
     // Analytics stay off for this page. Nothing else depends on them.
   }
+}
+
+/**
+ * Stops analytics in this tab, for when a researcher turns them off while the
+ * app is open. Never loads posthog-js just to opt out: if this tab never
+ * started analytics there is nothing to stop.
+ */
+export async function stopPostHog() {
+  if (!clientPromise) {
+    return;
+  }
+
+  try {
+    const posthog = await clientPromise;
+    posthog.opt_out_capturing();
+  } catch {
+    // Nothing was ever capturing.
+  }
+}
+
+/**
+ * Reports a client-side exception, waiting for analytics to start if they
+ * haven't yet.
+ *
+ * The error boundaries render before analytics do, so calling posthog-js
+ * directly would silently drop the exception — capture before `init()` is a
+ * no-op. If analytics never start, the exception is dropped, which is the
+ * point: a deployment with analytics off reports nothing.
+ */
+export function captureClientException(error: unknown) {
+  if (!clientPromise) {
+    if (pendingExceptions.length < MAX_PENDING_EXCEPTIONS) {
+      pendingExceptions.push(error);
+    }
+    return;
+  }
+
+  void clientPromise
+    .then((posthog) => posthog.captureException(error))
+    .catch(() => {
+      // Telemetry must never throw, least of all while reporting an error.
+    });
 }
