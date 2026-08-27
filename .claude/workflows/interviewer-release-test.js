@@ -181,6 +181,7 @@ const VERIFY_SCHEMA = {
           },
           failure: {
             type: 'integer',
+            minimum: 1,
             description:
               '1-based number of the reported failure this verdict adjudicates; omit ONLY for a new defect the verifier discovered itself',
           },
@@ -220,7 +221,7 @@ const EVIDENCE_SCHEMA = {
           'exists',
           'screenshots',
           'checkpointNumbers',
-          'stageCaptures',
+          'stageNumbers',
         ],
         properties: {
           journey: { type: 'string' },
@@ -832,9 +833,18 @@ if (requested) {
 if (!selected.length) throw new Error('No valid journeys selected');
 // A subset run is diagnostic, never release-certifying.
 const partial = selected.length !== journeyDefs.length;
-// A run certifies a release only when it is full-coverage AND pinned to the
-// candidate's version — an unpinned run cannot prove which deploy it tested.
-const certifying = !partial && Boolean(expectedVersion);
+// A run certifies a release only when it is full-coverage, pinned to the
+// candidate's version, AND aimed at an explicitly supplied candidate URL —
+// the default developer site is a diagnostic target, never a candidate.
+const explicitTarget = Boolean(args && args.url);
+const certifying = !partial && Boolean(expectedVersion) && explicitTarget;
+const nonCertifyingReason = partial
+  ? 'partial run'
+  : !expectedVersion
+    ? 'unpinned run'
+    : !explicitTarget
+      ? 'default target — not a candidate deployment'
+      : null;
 
 const preflight = await agent(
   `You are the preflight check of the Interviewer release smoke test against ${url}.
@@ -1378,7 +1388,7 @@ for (const r of results.filter(Boolean)) {
     // A numbered verdict that bound to nothing is a malformed adjudication:
     // it must not be promoted as a discovered defect (a duplicate number
     // could manufacture a blocker) and it means some adjudication is off.
-    if (v.failure) {
+    if (v.failure !== undefined) {
       certificationGaps.push(
         `verifier for "${r.journey}" returned a verdict bound to failure #${v.failure} that matches no reported failure — unbindable adjudication; treated as incomplete`,
       );
@@ -1445,7 +1455,7 @@ const checkCounts = journeys.reduce(
 
 const lines = [];
 lines.push(
-  `# Interviewer release smoke test — ${verdict}${certifying ? '' : partial ? ' (partial run — not release-certifying)' : ' (unpinned run — not release-certifying)'}`,
+  `# Interviewer release smoke test — ${verdict}${certifying ? '' : ` (${nonCertifyingReason} — not release-certifying)`}`,
 );
 lines.push('');
 lines.push(`Target: ${url} (version ${preflight.version})`);
@@ -1453,9 +1463,9 @@ if (partial)
   lines.push(
     `Coverage: partial — only ${selected.map((j) => j.key).join(', ')} ran. A subset run never certifies a release; run the full suite to certify.`,
   );
-if (!partial && !expectedVersion)
+if (!partial && !certifying)
   lines.push(
-    'Coverage: full, but no expectedVersion was supplied — this run is not bound to a specific deployment and never certifies a release. Pass expectedVersion (with the candidate url) to certify.',
+    `Coverage: full, but this run is not release-certifying (${nonCertifyingReason}). Pass both url (the candidate deployment) and expectedVersion (the version its tree ships) to certify.`,
   );
 lines.push(
   `Journeys: ${journeys.length} run${deadJourneys.length ? `, ${deadJourneys.length} did not report (${deadJourneys.join(', ')})` : ''}${inconsistentJourneys.length ? `, ${inconsistentJourneys.length} inconsistent (${inconsistentJourneys.join(', ')})` : ''}. Checks: ${checkCounts.pass} passed, ${checkCounts.fail} failed, ${checkCounts.skipped} skipped.`,

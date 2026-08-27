@@ -611,11 +611,21 @@ test('only full pinned runs certify', async () => {
     unpinned.summaryMarkdown.includes('unpinned run — not release-certifying'),
   );
 
-  const pinned = await run(makeAgent(jr), { expectedVersion: '9.9.9' });
+  const pinnedDefaultTarget = await run(makeAgent(jr), {
+    expectedVersion: '9.9.9',
+  });
+  assert.equal(pinnedDefaultTarget.verdict, 'PASS');
+  assert.equal(pinnedDefaultTarget.certifying, false);
+  assert.ok(pinnedDefaultTarget.summaryMarkdown.includes('default target'));
+  const pinned = await run(makeAgent(jr), {
+    url: 'https://deploy-preview-9--interviewer-pwa-dev.netlify.app',
+    expectedVersion: '9.9.9',
+  });
   assert.equal(pinned.verdict, 'PASS');
   assert.equal(pinned.certifying, true);
 
   const subset = await run(makeAgent(jr), {
+    url: 'https://deploy-preview-9--interviewer-pwa-dev.netlify.app',
     expectedVersion: '9.9.9',
     journeys: ['pwa-offline'],
   });
@@ -695,6 +705,18 @@ test('preflight without a valid fingerprint is blocked', async () => {
     o.label === 'preflight' ? { ...PREFLIGHT, fingerprint: 'not-hex!' } : null;
   const res = await run(agent, { journeys: ['pwa-offline'] });
   assert.equal(res.verdict, 'BLOCKED');
+});
+
+test('evidence schema matches what the audit prompt produces', () => {
+  assert.ok(
+    !source.includes('stageCaptures'),
+    'stageCaptures must not resurface',
+  );
+  assert.match(
+    source,
+    /'stageNumbers',\s*\]/,
+    'required list names stageNumbers',
+  );
 });
 
 test('preflight and audit embed the identical fingerprint command', () => {
@@ -1106,6 +1128,47 @@ test('an unnumbered verbatim verdict never dismisses a reported failure', async 
   assert.ok(
     res.unverifiedFailures.some((f) => f.description === 'the real one'),
   );
+});
+
+test('a zero failure id is unbindable, never a discovery', async () => {
+  const jr = {
+    'pwa-offline': journey('pwa-offline', {
+      status: 'fail',
+      checks: mkChecks(10, { failAt: [1] }),
+      failures: [
+        {
+          severity: 'minor',
+          description: 'small',
+          check: 1,
+          reproduction: 'r',
+        },
+      ],
+    }),
+  };
+  const vr = {
+    'pwa-offline': {
+      verdicts: [
+        {
+          description: 'small',
+          failure: 1,
+          verdict: 'confirmed',
+          severity: 'minor',
+          explanation: 'real',
+        },
+        {
+          description: 'phantom',
+          failure: 0,
+          verdict: 'confirmed',
+          severity: 'blocker',
+          explanation: 'malformed',
+        },
+      ],
+    },
+  };
+  const res = await run(makeAgent(jr, vr), { journeys: ['pwa-offline'] });
+  assert.ok(!res.confirmedFailures.some((f) => f.description === 'phantom'));
+  assert.notEqual(res.verdict, 'BLOCK');
+  assert.ok(res.certificationGaps.some((a) => a.includes('unbindable')));
 });
 
 test('a dead journey is incomplete', async () => {

@@ -57,8 +57,9 @@ Lead with the verdict, then render the returned `summaryMarkdown`:
 
 - `PASS` / `PASS_WITH_ISSUES` — releasable ONLY when
   `result.certifying === true` (full coverage, pinned with
-  `expectedVersion`); otherwise the verdict is diagnostic and approving a
-  release from it is not permitted. List verifier-confirmed minor findings
+  `expectedVersion`, AND aimed at an explicitly supplied candidate `url` —
+  the default developer site never certifies); otherwise the verdict is
+  diagnostic and approving a release from it is not permitted. List verifier-confirmed minor findings
   so they can be tracked; they do not block.
 - `BLOCK` — do not release. Name each blocking failure with its
   reproduction steps and evidence path (under the returned `workDir`),
