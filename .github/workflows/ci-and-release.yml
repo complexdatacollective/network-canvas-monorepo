@@ -646,11 +646,87 @@ jobs:
           echo "Running the full test suite for $GITHUB_EVENT_NAME"
           pnpm exec turbo run test
 
+  test-storybook:
+    # Storybook's play functions and their assertions, executed in a real
+    # browser by vitest. Chromatic captures stories for three of these
+    # projects, but TurboSnap only re-captures the ones a PR changed, and
+    # Architect and Fresco have no Chromatic project at all — so this is the
+    # only check that runs every play function on every change.
+    #
+    # A separate job from `test` because it needs Playwright browsers, which
+    # the plain unit-test runner does not.
+    if: >-
+      github.event_name != 'merge_group'
+      && github.event_name != 'push'
+      && !(github.event_name == 'workflow_dispatch'
+      && inputs.interview_e2e_benchmark == true)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+          # `--affected` diffs against the PR base; on a shallow clone turbo
+          # treats every package as changed.
+          fetch-depth: 0
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Resolve the pinned Playwright version
+        id: pw
+        run: |
+          version="$(grep -oE '@playwright/test@[0-9]+\.[0-9]+\.[0-9]+' pnpm-lock.yaml \
+            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -uV | tail -1 || true)"
+          if [ -z "$version" ]; then
+            echo "::error::could not resolve @playwright/test from pnpm-lock.yaml"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-firefox
+      - name: Install the pinned browsers
+        # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
+        # postinstall browser download never runs. Firefox is for fresco-ui,
+        # the one project whose storybook suite runs both engines.
+        run: pnpm --filter @codaco/interviewer exec playwright install --with-deps chromium firefox
+      - name: Generate Fresco's Prisma client and Next types
+        run: pnpm exec turbo run fresco#codegen
+      - name: Run storybook tests (PRs run only affected tasks)
+        env:
+          DIFF_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          # Same fail-closed affected selection as the `test` job: a change
+          # outside the workspace package trees can alter how these run
+          # without being any task's declared input, so it forces the full
+          # set. See that job for the reasoning behind each exclusion.
+          #
+          # `--concurrency=1` because each suite drives its own Chromium (and
+          # Firefox, for fresco-ui). Run in parallel they starve each other on
+          # a four-core runner, and the timing-sensitive stories fail on a
+          # half-rendered DOM. Serially the whole set takes about 100s.
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] \
+            && [[ -n "$DIFF_BASE_SHA" ]] \
+            && git cat-file -e "$DIFF_BASE_SHA^{commit}" \
+            && git diff --quiet "$DIFF_BASE_SHA" HEAD -- . \
+              ':(exclude)packages' ':(exclude)apps' ':(exclude)workers' \
+              ':(exclude)tooling' ':(exclude)docs' ':(exclude).changeset' \
+              ':(exclude)pnpm-lock.yaml' \
+              ':(exclude)scripts/*.test.mjs' ':(exclude)*.md'; then
+            echo "Running storybook test tasks affected by $DIFF_BASE_SHA..HEAD"
+            TURBO_SCM_BASE="$DIFF_BASE_SHA" pnpm exec turbo run test:storybook \
+              --affected --concurrency=1
+            exit 0
+          fi
+
+          echo "Running every storybook suite for $GITHUB_EVENT_NAME"
+          pnpm exec turbo run test:storybook --concurrency=1
+
   quality:
     needs:
       - lint
       - quality-support
       - test
+      - test-storybook
       - detect
       - e2e-policy
       - interview-e2e
@@ -677,6 +753,7 @@ jobs:
           LINT_RESULT: ${{ needs.lint.result }}
           SUPPORT_RESULT: ${{ needs.quality-support.result }}
           TEST_RESULT: ${{ needs.test.result }}
+          TEST_STORYBOOK_RESULT: ${{ needs.test-storybook.result }}
           INTERVIEW_E2E_RESULT: ${{ needs.interview-e2e.result }}
           INTERVIEW_E2E_NATIVE_RESULT: ${{ needs.interview-e2e-native.result }}
           INTERVIEWER_E2E_RESULT: ${{ needs.interviewer-e2e.result }}
@@ -704,7 +781,8 @@ jobs:
           verify_successes "quality gate" \
             "$LINT_RESULT" \
             "$SUPPORT_RESULT" \
-            "$TEST_RESULT"
+            "$TEST_RESULT" \
+            "$TEST_STORYBOOK_RESULT"
 
           if [[ "$EVENT_NAME" != "merge_group" && "$DETECT_RESULT" != "success" ]]; then
             echo "::error::quality gate failed — detect concluded '$DETECT_RESULT'"

@@ -18,7 +18,7 @@
     "start": "next start",
     "storybook": "SKIP_ENV_VALIDATION=true storybook dev -p 6006",
     "test": "SKIP_ENV_VALIDATION=true vitest run --project=units",
-    "test:storybook": "vitest --project=storybook",
+    "test:storybook": "SKIP_ENV_VALIDATION=true vitest run --project=storybook",
     "test:watch": "SKIP_ENV_VALIDATION=true vitest --project=units",
     "typecheck": "SKIP_ENV_VALIDATION=true tsc --noEmit",
     "vercel-build": "pnpm build:platform"
