@@ -234,10 +234,21 @@ adds a localized `label` beside a stable `name`:
 | Information           | Stage `title`, text-item `content`, and item `description`; asset-item `description`, while asset `content` remains an asset id |
 | Anonymisation         | Explanation `title` and `body`                                                                                                  |
 | Family Pedigree       | Intro text-item `content`, intro item `description`, `censusPrompt`, and nomination prompt `text`                               |
-| Network Composer      | Form-field `label` and `hint`                                                                                                   |
+| Network Composer      | Form-field `label` and `hint`; Visual Analog Scale override `parameters.minLabel` and `parameters.maxLabel`                     |
 | Name Generator Roster | Card-property and sort-property `label`                                                                                         |
 | Narrative             | Preset `label`                                                                                                                  |
 | Narrative Pedigree    | Disease `label`                                                                                                                 |
+
+Network Composer's Visual Analog Scale endpoint overrides need an explicit
+schema-9 branch. Schema 8 deliberately stores most Composer parameters as a
+loose `Record<string, unknown>`, and `ProtocolField` discovers these two keys
+with runtime type checks, so neither TypeScript nor the generic localization
+metadata walker would find a map hidden inside that record. The schema-9
+Composer field keeps unknown parameter compatibility but gives `minLabel` and
+`maxLabel` typed, metadata-tagged `LocalizedString` schemas when the component
+is `VisualAnalogScale`. Migration, Architect, and runtime resolution handle
+these stage-level overrides separately from the equivalent codebook-variable
+labels.
 
 The following remain plain strings because they are ids, semantics, machine
 data, or researcher-facing metadata:
@@ -541,6 +552,47 @@ If a future participant-facing preflight page is added, it can use the same
 derived options. It is not required for initial delivery because the Shell
 language control supplies an explicit participant choice.
 
+#### Fresco deployment cutover
+
+Fresco cannot rewrite stored protocols to schema 9 in the first deployment
+that introduces schema-9 runtime support. Its production `build:platform`
+command runs `setup-database.ts` before `next build`, while the previous
+deployment continues serving traffic. If that setup transaction rewrites rows
+first, the live schema-8 server rejects them in both `createInterview` and
+`mapInterviewPayload`; a later build failure would leave production unable to
+start or resume those interviews.
+
+Delivery therefore has two separately releasable phases:
+
+1. **Compatibility deployment.** Apply only additive database changes. The
+   protocol localization column and interview locale column use database
+   defaults/backfills that make writes from the still-live schema-8 server
+   safe. Decouple the deploy-time protocol rewrite from Interview's runtime
+   compatibility constant and leave the schema-8-to-9 data rewrite disabled.
+   The new Fresco bundle accepts stored schema 8 and 9: it migrates a schema-8
+   row to schema 9 in memory for execution without changing the stored row or
+   hash. The adapter computes the migrated schema-9 hash for runtime payloads
+   and exports, so content and identity agree during the compatibility window;
+   the database receives that same hash at activation. Schema-9 imports persist
+   the full root localization declaration. All protocol reconstruction,
+   create-interview, payload, export, and locale selection paths share this
+   bounded dual-read adapter. Release and verify this deployment before
+   proceeding.
+2. **Activation deployment.** Only after the compatibility deployment is live,
+   enable the idempotent schema-9 protocol data rewrite in a follow-up change.
+   During its pre-build setup the previous, dual-read deployment remains able
+   to serve either row version, so a failed build cannot strand production.
+   The transaction persists localization, stages, codebook, hash, and schema
+   version together and preserves interview ids, networks, and step state.
+
+The compatibility deployment writes no new schema-8 protocols, so concurrent
+imports during activation are already schema 9. Keep the dual-read adapter and
+database defaults through the rollback window; never roll back to a build
+older than the compatibility deployment after schema-9 rows exist. A deployment
+test must stop activation after the database transaction but before the new
+build becomes active and prove the still-live compatibility server can start,
+resume, and sync interviews from both row versions.
+
 ### 8.4 Architect preview
 
 Architect persists a preview locale preference in its editor state. Preview
@@ -695,7 +747,10 @@ Third-party and stored documents use the honest automatic migration.
   PWA tab writes.
 - Fresco's deploy-time migration persists the root localization declaration
   with the migrated schema version/content/hash and initializes interview
-  locale in the coordinated database migration.
+  locale in the coordinated database migration. The destructive row rewrite
+  is activated only in the second Fresco deployment described above; the first
+  deployment adds storage and dual-read compatibility without changing stored
+  protocol versions.
 - Studio's draft migration and section round trip add and retain localization
   in the settings section before the current-version switch.
 - Architect library-open and import migrations show the new migration note.
@@ -761,6 +816,9 @@ schema.
 - Localization declaration default membership and ordering.
 - Empty maps, required-field empty translations, undeclared keys, and
   at-least-one-key enforcement at every tagged schema site.
+- Network Composer Visual Analog Scale endpoint overrides are collected,
+  validated, warned, and migrated separately from codebook scalar endpoint
+  labels despite the schema-8 loose parameter record.
 - Missing translations remain schema-valid, produce exact warning paths, and
   report the fallback produced when the missing warning locale is selected.
 - FormatJS best-fit matching, related variants, explicit `es-MX` to declared
@@ -783,6 +841,8 @@ schema.
 - Every localized field family renders selected and fallback translations,
   including stage labels in the participant Stages menu and Narrative
   Pedigree snapshot title.
+- Network Composer Visual Analog Scale override endpoints resolve through the
+  typed component branch rather than the former string-only runtime checks.
 - Information and Family Pedigree media controls use resolved item
   descriptions for alt/accessibility labels and never expose asset metadata
   names as participant fallback copy.
@@ -820,6 +880,10 @@ schema.
   test posts the legacy locale-less sync shape after database backfill and
   proves network/current-step changes save while the stored `und` locale is
   preserved; supplied undeclared locales still fail.
+- Fresco rollout tests prove the compatibility deployment leaves schema-8 rows
+  untouched, serves mixed schema-8/schema-9 storage, and remains functional if
+  the activation build fails after its data transaction. Activation is not
+  allowed until that compatibility build is verified live.
 - Studio settings-section validation plus sectionize/assemble/diff/migrate/
   publish round-trip of the root declaration.
 - Exported locale in CSV and GraphML while stable field names remain unchanged.
