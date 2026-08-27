@@ -26,11 +26,9 @@ describe('NetworkSummary', () => {
       const label = screen.getByText(`Edge ${String(sequence)} (1)`);
       const glyph = label.parentElement?.querySelector('svg');
 
-      expect(glyph?.style.getPropertyValue('--fill')).toBe(
-        `var(--edge-${String(sequence)})`,
-      );
-      expect(glyph?.style.getPropertyValue('--fill-dark')).toBe(
-        `oklch(from var(--edge-${String(sequence)}) calc(l - var(--dark-mod)) c h)`,
+      expect(glyph).toHaveClass(`[--fill:var(--edge-${String(sequence)})]`);
+      expect(glyph).toHaveClass(
+        `[--fill-dark:oklch(from_var(--edge-${String(sequence)})_calc(l_-_var(--dark-mod))_c_h)]`,
       );
     },
   );
