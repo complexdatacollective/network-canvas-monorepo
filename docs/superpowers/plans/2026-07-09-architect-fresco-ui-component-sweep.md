@@ -19,7 +19,7 @@ turns it into a migration workflow and recommendation backlog.
 
 The audit was run with six read-only subagents, each instructed to:
 
-- read `AGENTS.md` and `.agents/skills/developing-in-network-canvas/SKILL.md`;
+- read `AGENTS.md` and `.agents/skills/developing-network-canvas-ui/SKILL.md`;
 - verify the current fresco-ui public surface from
   `packages/fresco-ui/package.json` `exports`;
 - inspect relevant fresco-ui source/stories before recommending a replacement;

@@ -14,11 +14,11 @@ A Network Canvas "interface" is the fundamental data-collection unit in a Networ
 ## When to use
 
 - A researcher wants an interview screen / stage type that does not already exist.
-- NOT for editing an existing interface, or for a non-stage feature — use `developing-in-network-canvas` for those.
+- NOT for editing an existing interface — use `developing-network-canvas-ui` for its UI implementation guidance and `verifying-an-interface-change` for the verification loop — or for a non-stage UI feature, which uses only `developing-network-canvas-ui`.
 
 ## Before you write any code (in order)
 
-1. **Invoke `developing-in-network-canvas` (REQUIRED).** Reuse-first, accessibility, internationalisation, and participant tone are not optional add-ons here — they are the body of the work. This skill assumes you are already following it.
+1. **Invoke `developing-network-canvas-ui` (REQUIRED).** Reuse-first, accessibility, internationalisation, and participant tone are not optional add-ons here — they are the body of the work. This skill assumes you are already following it.
 2. **Brainstorm the interface first.** A new stage type is a new feature; agree the interaction, the data it writes, and the configuration surface before touching files. Use your harness's brainstorming/planning flow (Claude Code: `superpowers:brainstorming`; Codex: planning mode) or a concise implementation plan when the request leaves behavior or schema shape ambiguous.
 3. **Confirm the schema version with the user. Do not assume.** Ask explicitly: does this target the **current** schema version as a purely additive stage type (no migration), or does it require a **new** schema version (and therefore a migration)? "It's obviously additive" is exactly the assumption to surface to the user, not to make silently. **Determine the current version by reading `CURRENT_SCHEMA_VERSION`** (exported from `packages/protocol-validation/src/schemas/index.ts`) — never hardcode a version number. New stage files live under `src/schemas/<current>/stages/`, where `<current>` is that value. A version bump additionally means a new `schemas/<n>/` directory, a `migration.ts`, and an entry in `SchemaVersionSchema`.
 
@@ -41,7 +41,7 @@ The stage-type string (e.g. `'TimelineSorter'`) is the single contract. It is wi
 
 ## Essential interface design principles
 
-**Reuse existing interface patterns before inventing new ones.** Most new interfaces are recombinations of patterns that already exist — walk the reuse ladder from `developing-in-network-canvas` at the _interface_ level, not just the component level.
+**Reuse existing interface patterns before inventing new ones.** Most new interfaces are recombinations of patterns that already exist — walk the reuse ladder from `developing-network-canvas-ui` at the _interface_ level, not just the component level.
 
 - **Multiple tasks within one stage → the `prompts` concept.** Do not invent a per-stage list of tasks/questions. Use prompts end to end: a `prompts` array in the schema, the shared prompt-list editor in Architect (reuse `EditableList` + `PromptText`, mirror `NameGeneratorPrompts`), and the runtime `Prompts` component (`packages/interview/src/components/Prompts/Prompts.tsx`) which already handles rotation, animation, and screen-reader announcement.
 - **Placement / drag / roster / selection/ and forms** are solved — build on the existing canvas, node, form, field, and collection primitives rather than net-new interaction code.

@@ -316,7 +316,9 @@ Network Canvas uses a protocol-based system where:
 
 ## Development Guidelines
 
-**Before writing code for any feature, fix, or change, invoke the `developing-in-network-canvas` skill.** It covers reusing existing packages/components before building new, and the project's accessibility, internationalisation, participant-tone, and visual/motion priorities (with depth for UI work).
+Before adding code for any feature, fix, or refactor, search for the existing package, module, helper, component, or pattern. Prefer reuse, composition, or a focused extension over a parallel implementation. If nothing fits, state what you checked and why the new code belongs in its chosen package.
+
+**Immediately before the first code edit that changes a user-facing interface, interaction, or user-visible output, invoke the `developing-network-canvas-ui` skill once for that implementation task.** Do not invoke it for backend, schema, worker, CI, tooling, dependency, test-only, or documentation changes unless they alter a user-facing surface, and do not re-invoke it for follow-up messages within the same implementation task.
 
 ### Code Standards
 
