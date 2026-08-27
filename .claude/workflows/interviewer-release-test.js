@@ -59,6 +59,10 @@ export const meta = {
 
 const DEFAULT_URL = 'https://interviewer.networkcanvas.dev';
 const url = (args && args.url) || DEFAULT_URL;
+// When certifying a release, pass the exact version the release will ship —
+// preflight fails unless the deployment serves it, so a stale deploy (an
+// older tree still live at the same URL) can never be certified.
+const expectedVersion = (args && args.expectedVersion) || null;
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -128,7 +132,7 @@ const PREFLIGHT_SCHEMA = {
 
 const JOURNEY_SCHEMA = {
   type: 'object',
-  required: ['journey', 'status', 'checks', 'failures'],
+  required: ['journey', 'status', 'checks', 'failures', 'artifactsDir'],
   properties: {
     journey: { type: 'string' },
     status: { type: 'string', enum: ['pass', 'fail'] },
@@ -160,6 +164,28 @@ const VERIFY_SCHEMA = {
           severity: { type: 'string', enum: ['blocker', 'major', 'minor'] },
           explanation: { type: 'string' },
           evidence: { type: 'string' },
+        },
+      },
+    },
+  },
+};
+
+const EVIDENCE_SCHEMA = {
+  type: 'object',
+  required: ['entries'],
+  properties: {
+    entries: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['journey', 'exists', 'screenshots'],
+        properties: {
+          journey: { type: 'string' },
+          exists: { type: 'boolean' },
+          screenshots: {
+            type: 'integer',
+            description: 'Number of .png files in the directory',
+          },
         },
       },
     },
@@ -754,7 +780,12 @@ Do, in order:
    <workDir>/preflight-home.png, and closes. If chromium is missing, install
    it once with: pnpm --filter @codaco/interviewer exec playwright install
    chromium — then retry.
-5. ok=true only if every step above succeeded; otherwise ok=false with each
+5. Version binding: ${
+    expectedVersion
+      ? `this run certifies version ${expectedVersion} — if the served version from step 4 is not exactly "${expectedVersion}", record that as a failure (the deployment is stale or wrong).`
+      : 'no expected version was supplied for this run; just report the served version.'
+  }
+6. ok=true only if every step above succeeded; otherwise ok=false with each
    problem in failures.`,
   {
     label: 'preflight',
@@ -812,7 +843,14 @@ const results = await pipeline(
     // The scheduled key is authoritative: validation maps must never bind to
     // an agent-controlled string. Preserve a mismatch for synthesis to flag.
     if (result.journey !== j.key) {
-      result = { ...result, journey: j.key, reportedJourney: result.journey };
+      // keyMismatch is an explicit boolean: a schema-valid empty-string key
+      // must not evade the flag via truthiness.
+      result = {
+        ...result,
+        journey: j.key,
+        reportedJourney: result.journey,
+        keyMismatch: true,
+      };
     }
     // Key off reported failures, not journey status: a journey may pass all
     // its scripted checks yet report a defect found incidentally.
@@ -851,6 +889,46 @@ Return one verdict per reported failure, descriptions copied verbatim.`,
 );
 
 // ---------------------------------------------------------------------------
+// Evidence audit: the claimed artifact directories must actually exist on
+// disk with screenshots — one cheap agent lists them all, so a schema-valid
+// report from an agent that never drove the app cannot certify anything.
+// ---------------------------------------------------------------------------
+
+const evidenceClaims = results
+  .filter(Boolean)
+  .filter(
+    (r) =>
+      !r.agentDied &&
+      r.artifactsDir &&
+      String(r.artifactsDir).startsWith(preflight.workDir),
+  )
+  .map((r) => ({ journey: r.journey, dir: r.artifactsDir }));
+
+let evidence = { entries: [] };
+let auditFailed = false;
+if (evidenceClaims.length) {
+  evidence = await agent(
+    `Audit the evidence directories of an automated release test. For each entry below, check with the shell whether the directory exists and count the .png files directly inside it (e.g. \`find <dir> -maxdepth 1 -name '*.png' | wc -l\`). Do nothing else — no interpretation, no browsing, no writes.
+
+ENTRIES (JSON):
+${JSON.stringify(evidenceClaims, null, 2)}
+
+Return one entry per input with the journey name copied verbatim.`,
+    {
+      label: 'verify:evidence',
+      phase: 'Verify',
+      schema: EVIDENCE_SCHEMA,
+      model: 'sonnet',
+      effort: 'low',
+    },
+  );
+  if (!evidence) {
+    auditFailed = true;
+    evidence = null;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Synthesis (deterministic, in code)
 // ---------------------------------------------------------------------------
 
@@ -874,11 +952,33 @@ for (const r of results.filter(Boolean)) {
   journeys.push(r);
   // A journey that misidentified itself was rebound to the scheduled key in
   // the pipeline; flag it — self-misidentification signals a confused run.
-  if (r.reportedJourney) {
+  if (r.keyMismatch) {
     inconsistentJourneys.push(r.journey);
     automationIssues.push(
-      `journey "${r.journey}" misreported its key as "${r.reportedJourney}"; treated as incomplete`,
+      `journey "${r.journey}" misreported its key as "${r.reportedJourney || '(empty)'}"; treated as incomplete`,
     );
+  }
+  // Evidence must be claimed inside this run's work directory and actually
+  // exist on disk (the audit below lists it) — a schema-valid report from an
+  // agent that never drove the app must not certify anything.
+  if (
+    !r.artifactsDir ||
+    !String(r.artifactsDir).startsWith(preflight.workDir)
+  ) {
+    if (!inconsistentJourneys.includes(r.journey))
+      inconsistentJourneys.push(r.journey);
+    automationIssues.push(
+      `journey "${r.journey}" claimed no artifacts directory under the run's workDir; treated as incomplete`,
+    );
+  } else if (evidence) {
+    const e = evidence.entries.find((x) => x.journey === r.journey);
+    if (!e || !e.exists || e.screenshots === 0) {
+      if (!inconsistentJourneys.includes(r.journey))
+        inconsistentJourneys.push(r.journey);
+      automationIssues.push(
+        `journey "${r.journey}" has no on-disk evidence (${e ? `exists=${e.exists}, screenshots=${e.screenshots}` : 'not audited'}); treated as incomplete`,
+      );
+    }
   }
   // A truncated report must not pass: every numbered check must be present.
   const expected = expectedChecks[r.journey];
@@ -994,9 +1094,14 @@ for (const r of results.filter(Boolean)) {
 const blocking = [...confirmedFailures, ...unverifiedFailures].filter(
   (f) => f.severity === 'blocker' || f.severity === 'major',
 );
+if (auditFailed) {
+  automationIssues.push(
+    'the evidence audit did not run; on-disk evidence is unconfirmed, so this run cannot certify',
+  );
+}
 const verdict = blocking.length
   ? 'BLOCK'
-  : deadJourneys.length || inconsistentJourneys.length
+  : deadJourneys.length || inconsistentJourneys.length || auditFailed
     ? 'INCOMPLETE'
     : confirmedFailures.length || unverifiedFailures.length
       ? 'PASS_WITH_ISSUES'

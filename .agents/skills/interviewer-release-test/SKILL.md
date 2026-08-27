@@ -33,6 +33,10 @@ Code's Workflow tool — run this command from Claude Code.)
      it for diagnosis and iteration, then run the full suite to certify.
    - `model` — `haiku` | `sonnet` | `opus` | `fable` for preflight and the
      journeys; failure verifiers stay pinned regardless.
+   - `expectedVersion` — the exact version this release will ship. Required
+     when certifying a release: preflight fails unless the deployment
+     serves it, so a stale deploy (an older tree still live at the URL)
+     can never be certified.
 2. Invoke the Workflow tool:
    `Workflow({ name: 'interviewer-release-test-workflow', args: { url, journeys, model } })`
    (equivalently `scriptPath: '<repo-root>/.claude/workflows/interviewer-release-test.js'`).
@@ -48,9 +52,12 @@ Lead with the verdict, then render the returned `summaryMarkdown`:
 
 - `PASS` / `PASS_WITH_ISSUES` — releasable. List verifier-confirmed minor
   findings so they can be tracked; they do not block.
-- `BLOCK` — do not release. Name each confirmed blocker or major failure
-  with its reproduction steps and evidence path (under the returned
-  `workDir`).
+- `BLOCK` — do not release. Name each blocking failure with its
+  reproduction steps and evidence path (under the returned `workDir`),
+  drawing from BOTH result fields: `confirmedFailures` (independently
+  reproduced) and `unverifiedFailures` (no verifier adjudicated them —
+  present these explicitly as unverified, never as confirmed; they block at
+  blocker/major severity until verified).
 - `INCOMPLETE` — do not certify the release. If a journey **died**, resume
   with `Workflow({ scriptPath, resumeFromRunId })` so completed journeys
   replay from cache. If a journey **completed but reported inconsistently**

@@ -173,7 +173,9 @@ The workflow concentrates on what the Playwright E2E suite deliberately does
 not cover — the suite blocks service workers and conducts a lean fixture
 protocol, not the 30-stage Sample Protocol. It needs a checkout of this
 monorepo with dependencies installed (it installs Playwright's chromium on
-first use). Pass `args: { url: "…" }` to target a Netlify preview instead of
+first use). When certifying a release, pass `args: { expectedVersion: "…" }`
+(the version being shipped) so a stale deployment cannot produce the verdict.
+Pass `args: { url: "…" }` to target a Netlify preview instead of
 the developer site, or `args: { journeys: ["data-export"] }` to re-run a
 subset. Journeys are tiered across models for token efficiency (most run on
 Sonnet; the full interview walk and all failure verifiers run on Opus);
