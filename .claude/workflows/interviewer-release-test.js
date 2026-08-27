@@ -772,7 +772,10 @@ CHECKS:
    text size and "Exit interview" only; the tabbed Settings dialog exists
    only on the dashboard). Exit via that menu's "Exit interview" → confirm,
    unlocking if prompted. Then dashboard Settings (gear,
-   data-testid="settings-trigger") → Security → "Change PIN" → current PIN +
+   data-testid="settings-trigger") → Security → "Change PIN" → submit a
+   WRONG current PIN first: the form must refuse the rotation (the
+   re-enrolment contract rejects an incorrect current credential even for
+   an unlocked user). Then the correct current PIN +
    new PIN + confirm → then lock (top bar), assert the OLD PIN is REJECTED
    (field clears, app stays locked — a change that leaves the old
    credential valid has failed its purpose), and only then unlock with the
@@ -790,14 +793,22 @@ CHECKS:
    session — surviving session rows mean the wipe lied), the /data view is
    empty, no lock, immediately usable.
 9. Passphrase enrolment (quick pass): /welcome again → choose "Passphrase" →
+   try a WEAK passphrase first (e.g. "short") — the wizard must refuse to
+   advance or show validation failure (the passphrase is the sole
+   protection for the data key in this mode; accepting weak secrets is a
+   security regression) — then
    "correct-horse-battery-1" twice + the no-recovery checkbox → finish →
    reload → submit a WRONG passphrase first via the "Passphrase" field
    (data-testid="passphrase-input") and "Unlock" (unlock-submit) — it must
    be rejected and the app stay locked (this verify path is separate from
    the PIN's, and accepting any nonempty passphrase is a bypass) — then
    unlock with the correct passphrase.
-10. Lock-screen reset path: lock, then "Recover by resetting" → dialog "Reset
-    all app data?" → "Permanently delete" → clean slate again.
+10. Lock-screen reset path: FIRST install the Sample Protocol again so the
+    reset has data to destroy (check 8's revoke already emptied the
+    database — resetting an empty store proves nothing). Then lock,
+    "Recover by resetting" → dialog "Reset all app data?" → "Permanently
+    delete" → verify the protocol AND any interviews are gone (0/0 in the
+    status row after reload), not merely that the lock cleared.
 
 Return journey="security-vault".`,
   },
