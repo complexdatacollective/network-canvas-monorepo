@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Architect Release Test'
+  short_description: 'Release-smoke-test the deployed Architect dev site'
+  default_prompt: 'Use $architect-release-test to release-test the deployed Architect dev site and report whether it is safe to promote.'
