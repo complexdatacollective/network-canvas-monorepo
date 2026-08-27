@@ -1284,6 +1284,12 @@ for (const r of results.filter(Boolean)) {
   // must not be lost just because no reported failure matches it.
   r.verification.forEach((v, k) => {
     if (used.has(k) || v.verdict !== 'confirmed') return;
+    // The defect blocks either way, but a discovered defect without steps
+    // leaves the report unable to seed a follow-up — say so explicitly.
+    if (!v.reproduction)
+      certificationGaps.push(
+        `the verifier discovered "${v.description}" but reported no reproduction steps — the defect still blocks, and its follow-up will need re-derivation`,
+      );
     confirmedFailures.push({
       journey: r.journey,
       severity: v.severity,
