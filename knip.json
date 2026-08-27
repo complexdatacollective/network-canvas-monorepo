@@ -107,7 +107,11 @@
       // The legacy setup deliberately resolves the active Classic workspace's
       // Framer Motion installation rather than declaring a second copy here.
       // Consumer coverage is enforced by vitest-animation-setup.test.mjs.
-      "ignoreDependencies": ["framer-motion"]
+      "ignoreDependencies": ["framer-motion"],
+      // Sibling declarations for the untyped setup-path.js entries; TypeScript
+      // resolves them implicitly (required for the mirrored app trees, where
+      // the vendored copy sits under node_modules), so nothing imports them.
+      "ignore": ["legacy/setup-path.d.ts", "modern/setup-path.d.ts"]
     },
     "apps/interviewer-classic": {
       "project": ["src/**/*.{js,jsx}"],
