@@ -30,6 +30,14 @@ services:
       DATABASE_URL_UNPOOLED: postgresql://postgres:postgres@postgres:5432/postgres
       PUBLIC_URL: http://localhost:${FRESCO_PORT:-3210}
       DISABLE_ANALYTICS: 'true'
+      # Pinned so a release test never mints a fresh installation identity.
+      # Every run of both lanes reuses this one, and the client-side PostHog
+      # init that runs before the opt-out effect lands (instrumentation-client
+      # .ts inits unconditionally; PostHogIdentify opts out on hydration) is
+      # therefore attributable to the release test rather than looking like a
+      # new Fresco deployment. The fresh lane counts relay requests and the
+      # workflow reports them as a warning.
+      INSTALLATION_ID: fresco-release-test
       COOKIE_SECURE: 'false'
       # Next standalone binds to $HOSTNAME (default: container id -> NIC IP),
       # which would make the 127.0.0.1 healthcheck below unreachable.

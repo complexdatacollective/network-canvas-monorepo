@@ -75,7 +75,60 @@ Harness scripts live in `apps/fresco/release-test/` (`build-image.sh`,
 download capture via MinIO). `release-test/AGENT_NOTES.md` records the
 verified techniques for driving Fresco in the in-app browser. The directory is
 excluded from the public mirror. Storage is configured through the setup
-wizard, not env vars, matching real bundled-MinIO deployments.
+wizard, not env vars, matching real bundled-MinIO deployments. Both stacks set
+`DISABLE_ANALYTICS` and pin `INSTALLATION_ID` to `fresco-release-test`, so a
+recurring gate never mints a fresh installation identity in product analytics;
+the fresh lane counts any request that still reaches the analytics relay and
+the workflow reports it as a warning.
+
+### Reading the verdict
+
+**Consume `releasable`, not `verdict`.** It is `true` only for a full-coverage
+`go` run: the version was pinned with `expectedVersion` and matched, the
+upgrade baseline was the real released image, and the tree was clean. Anything
+else is useful signal but not release evidence: `coverage` reads `partial`
+and `coverageGaps` says why.
+
+```
+/fresco-release-test  { expectedVersion: '4.1.2' }
+```
+
+`expectedVersion` is the version the Version Packages PR bumps Fresco to —
+the one `bundle-pending-packages.mjs` bakes into the staged tree, and the one
+both stacks must report from `/api/health`. Other args:
+`skipBuild` (reuse the previous image, revalidated against its stamp),
+`keepStack` (leave both stacks up), `releasedImage` (substitute the upgrade
+baseline; never certifying), `allowDirty` (accept an irreproducible image
+during development; never certifying).
+
+The four verdicts are distinct on purpose:
+
+| verdict      | meaning                                                                                       |
+| ------------ | --------------------------------------------------------------------------------------------- |
+| `go`         | every check passed and the whole run is accounted for                                         |
+| `no-go`      | the candidate failed something that gates a release                                           |
+| `incomplete` | nothing failed, but part of the run could not be accounted for — it proves nothing either way |
+| `blocked`    | the build never completed, or no checklist agent reported — nothing was tested                |
+
+Findings are split by what they are evidence of, and the split is load-bearing:
+`failures` are release-gating problems with the candidate; `unaccounted` are
+problems with the run itself (a truncated checklist, an unexplained skip, a
+dead judge, a claim no artifact supports); `warnings` are hygiene and
+environment notes (leftover containers, analytics egress, an accepted dirty
+tree) that never flip a verdict. `untestedShippedChanges` lists pending
+changesets shipping Fresco-facing behaviour no check exercised.
+
+The verdict is computed in the workflow, not by an agent. Every checklist
+prompt numbers its items and synthesis binds the returned checks to that
+numbering, so a truncated, reordered or quietly skipped report reads as
+`incomplete` rather than coverage; only checks whose own text permits a skip
+may be skipped; an artifact-audit agent lists what is actually on disk so no
+agent's claim about snapshots, archives or the export diff is taken on its
+word; and the `release-critic` agent is a narrator and cross-checker whose
+judgment can only make the verdict stricter. Regression tests for all of that
+live in `scripts/fresco-release-test-workflow.test.mjs` and run offline under
+`pnpm test:scripts` — they drive the workflow body with stub agents, so a
+change that reopens a fail-open fails CI.
 
 ## Commands
 
