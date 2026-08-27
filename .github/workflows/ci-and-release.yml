@@ -1988,7 +1988,7 @@ jobs:
         # Working-tree-only deletion; see the script header.
         run: node scripts/prune-ignored-changesets.mjs
       - id: changesets
-        uses: changesets/action@198f833dd7d863100ea6e28967bc9a9fdefadb0a # v2.1.0
+        uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
         with:
           version-script: pnpm run version-packages
           publish-script: pnpm run publish-packages
@@ -2361,7 +2361,7 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.background_creator_version }}
         run: bash .github/scripts/app-release-guard.sh
       - if: steps.guard.outputs.skip != 'true'
-        uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c # v2.0.0
+        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
         with:
           install: false
       - if: steps.guard.outputs.skip != 'true'
