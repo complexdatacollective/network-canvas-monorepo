@@ -85,9 +85,11 @@ the workflow reports it as a warning.
 
 **Consume `releasable`, not `verdict`.** It is `true` only for a full-coverage
 `go` run: the version was pinned with `expectedVersion` and matched, the
-upgrade baseline was the real released image, and the tree was clean. Anything
-else is useful signal but not release evidence: `coverage` reads `partial`
-and `coverageGaps` says why.
+upgrade baseline was the real released image, the tree was clean, and no
+pending changeset ships Fresco-facing behaviour the run never exercised.
+Anything else is useful signal but not release evidence: `coverage` reads
+`partial` and `coverageGaps` says why. Every exit returns the same fields,
+including the early one taken when the build never completes.
 
 ```
 /fresco-release-test  { expectedVersion: '4.1.2' }
@@ -103,12 +105,12 @@ during development; never certifying).
 
 The four verdicts are distinct on purpose:
 
-| verdict      | meaning                                                                                       |
-| ------------ | --------------------------------------------------------------------------------------------- |
-| `go`         | every check passed and the whole run is accounted for                                         |
-| `no-go`      | the candidate failed something that gates a release                                           |
-| `incomplete` | nothing failed, but part of the run could not be accounted for — it proves nothing either way |
-| `blocked`    | the build never completed, or no checklist agent reported — nothing was tested                |
+| verdict      | meaning                                                                                        |
+| ------------ | ---------------------------------------------------------------------------------------------- |
+| `go`         | every check passed and the whole run is accounted for                                          |
+| `no-go`      | the candidate failed something that gates a release                                            |
+| `incomplete` | nothing failed, but part of the run could not be accounted for — it proves nothing either way  |
+| `blocked`    | the released baseline could not be pulled, or no checklist agent reported — nothing was tested |
 
 Findings are split by what they are evidence of, and the split is load-bearing:
 `failures` are release-gating problems with the candidate; `unaccounted` are
@@ -116,16 +118,22 @@ problems with the run itself (a truncated checklist, an unexplained skip, a
 dead judge, a claim no artifact supports); `warnings` are hygiene and
 environment notes (leftover containers, analytics egress, an accepted dirty
 tree) that never flip a verdict. `untestedShippedChanges` lists pending
-changesets shipping Fresco-facing behaviour no check exercised.
+changesets shipping Fresco-facing behaviour no check exercised — a statement
+about the evidence rather than the build, so it caps certification through
+`coverageGaps` instead of failing the run. Either extend the checklists to
+cover them or read the list and decide.
 
 The verdict is computed in the workflow, not by an agent. Every checklist
 prompt numbers its items and synthesis binds the returned checks to that
 numbering, so a truncated, reordered or quietly skipped report reads as
 `incomplete` rather than coverage; only checks whose own text permits a skip
-may be skipped; an artifact-audit agent lists what is actually on disk so no
-agent's claim about snapshots, archives or the export diff is taken on its
-word; and the `release-critic` agent is a narrator and cross-checker whose
-judgment can only make the verdict stricter. Regression tests for all of that
+may be skipped, and only with a stated reason; an artifact-audit agent reports
+what is actually on disk — the build stamp's own version, commit, image id and
+dirty flag, the snapshot and archive files, and every file name the export diff
+found differing — so no agent's claim about any of them is taken on its word,
+and the export judge must classify every one of those files by name; and the
+`release-critic` agent is a narrator and cross-checker whose judgment can only
+make the verdict stricter. Regression tests for all of that
 live in `scripts/fresco-release-test-workflow.test.mjs` and run offline under
 `pnpm test:scripts` — they drive the workflow body with stub agents, so a
 change that reopens a fail-open fails CI.

@@ -107,14 +107,17 @@ const happyPath = () => ({
   'audit-artifacts': {
     ok: true,
     stampExists: true,
+    stampVersion: '4.1.2',
+    stampCommit: 'abc1234',
+    stampImageId: 'sha256:beef',
+    stampDirty: false,
+    pendingImageId: 'sha256:beef',
     baselineInterviewSnapshots: 5,
     upgradedInterviewSnapshots: 5,
     baselineUiExport: true,
     upgradedUiExport: true,
     diffSummaryExists: true,
-    diffOnlyInBaseline: 0,
-    diffOnlyInCurrent: 0,
-    diffChanged: 0,
+    diffFiles: [],
     diffIdentical: 12,
     changesets: ['fresco-release-blocker-fixes', 'interview-node-labels'],
   },
@@ -342,6 +345,74 @@ test('the UI-export skip pair must skip in both directions', async () => {
   }
 });
 
+test('a whitelisted skip still has to say why', async () => {
+  // Permission to skip is permission to skip for ONE named reason. Without the
+  // reason there is no evidence the narrow precondition ever held.
+  const r = happyPath();
+  r['verify-data-integrity'].checks[7] = {
+    name: '8. check 8',
+    status: 'skipped',
+  };
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('without saying why')),
+    JSON.stringify(result.unaccounted),
+  );
+
+  const blank = happyPath();
+  blank['verify-data-integrity'].checks[7] = {
+    name: '8. check 8',
+    status: 'skipped',
+    notes: '   ',
+  };
+  const whitespace = await run(blank);
+  assert.equal(whitespace.result.verdict, 'incomplete');
+});
+
+test('the documented UI-export fallback reaches a clean verdict', async () => {
+  // seed 8, capture 3 and capture 4 skip together, the API snapshots carry the
+  // comparison, and the run certifies — the fallback the whitelist promises.
+  const r = happyPath();
+  r['seed-baseline'].checks[7] = {
+    name: '8. check 8',
+    status: 'skipped',
+    notes: 'no blob was captured',
+  };
+  r['seed-baseline'].uiExportCaptured = false;
+  r['export-capture'].checks[2] = {
+    name: '3. check 3',
+    status: 'skipped',
+    notes: 'no baseline archive to compare against',
+  };
+  r['export-capture'].checks[3] = {
+    name: '4. check 4',
+    status: 'skipped',
+    notes: 'no export was captured, so there is no status commit to verify',
+  };
+  r['export-capture'].uiExportCaptured = false;
+  r['audit-artifacts'].baselineUiExport = false;
+  r['audit-artifacts'].upgradedUiExport = false;
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'go');
+  assert.equal(result.releasable, true);
+});
+
+test('the export status commit cannot be skipped for an export that happened', async () => {
+  const r = happyPath();
+  r['export-capture'].checks[3] = {
+    name: '4. check 4',
+    status: 'skipped',
+    notes: 'psql looked fiddly',
+  };
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('must skip together')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
 test('an area claiming success while carrying a failed check is inconsistent', async () => {
   const r = happyPath();
   r['verify-data-integrity'].checks[3] = {
@@ -417,10 +488,15 @@ test('unanticipated export differences block regardless of the judge pass flag',
   const r = happyPath();
   r['diff-judge'] = {
     pass: true,
-    unanticipated: ['ego.csv: three alter rows lost their attributes'],
+    unanticipated: [
+      {
+        file: 'ego.csv',
+        explanation: 'three alter rows lost their attributes',
+      },
+    ],
     anticipated: [],
   };
-  r['audit-artifacts'].diffChanged = 1;
+  r['audit-artifacts'].diffFiles = ['ego.csv'];
   const { result } = await run(r);
   assert.equal(result.verdict, 'no-go');
   assert.ok(
@@ -438,9 +514,15 @@ test('a difference excused by a changeset that does not exist is not excused', a
   r['diff-judge'] = {
     pass: true,
     unanticipated: [],
-    anticipated: ['tidy-up-exports: the node ordering changed'],
+    anticipated: [
+      {
+        file: 'nodes.csv',
+        changeset: 'tidy-up-exports',
+        explanation: 'the node ordering changed',
+      },
+    ],
   };
-  r['audit-artifacts'].diffChanged = 1;
+  r['audit-artifacts'].diffFiles = ['nodes.csv'];
   const { result } = await run(r);
   assert.equal(result.verdict, 'no-go');
   assert.ok(
@@ -455,22 +537,118 @@ test('a real changeset name does excuse a difference', async () => {
     pass: true,
     unanticipated: [],
     anticipated: [
-      'interview-node-labels: node labels gained a display variable',
+      {
+        file: 'nodes.csv',
+        changeset: 'interview-node-labels',
+        explanation: 'node labels gained a display variable',
+      },
     ],
   };
-  r['audit-artifacts'].diffChanged = 1;
+  r['audit-artifacts'].diffFiles = ['nodes.csv'];
   const { result } = await run(r);
   assert.equal(result.verdict, 'go');
   assert.equal(result.releasable, true);
 });
 
-test('a judge that classified nothing while the diff shows differences fails closed', async () => {
+test('every differing file must be classified, not just one of them', async () => {
+  // The exploit this replaces: four differing files, one valid anticipated
+  // entry, and a "some classification exists" test let the other three
+  // through — any of which could have been data corruption.
   const r = happyPath();
-  r['audit-artifacts'].diffChanged = 4;
+  r['audit-artifacts'].diffFiles = [
+    'nodes.csv',
+    'edges.csv',
+    'ego.csv',
+    'graph.graphml',
+  ];
+  r['diff-judge'] = {
+    pass: true,
+    unanticipated: [],
+    anticipated: [
+      {
+        file: 'nodes.csv',
+        changeset: 'interview-node-labels',
+        explanation: 'node labels gained a display variable',
+      },
+    ],
+  };
   const { result } = await run(r);
   assert.equal(result.verdict, 'incomplete');
   assert.ok(
-    result.unaccounted.some((u) => u.includes('classified none of them')),
+    result.unaccounted.some(
+      (u) =>
+        u.includes('never classified') &&
+        u.includes('edges.csv') &&
+        u.includes('ego.csv') &&
+        u.includes('graph.graphml'),
+    ),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('a judge that classified nothing at all fails closed', async () => {
+  const r = happyPath();
+  r['audit-artifacts'].diffFiles = ['nodes.csv', 'edges.csv'];
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('never classified')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('a file classified twice is not a file classified once', async () => {
+  // Isolated: one differing file, two entries claiming it. Without this guard
+  // a duplicate could pad the classification set to cover an omission.
+  const r = happyPath();
+  r['audit-artifacts'].diffFiles = ['nodes.csv'];
+  r['diff-judge'] = {
+    pass: true,
+    unanticipated: [],
+    anticipated: [
+      {
+        file: 'nodes.csv',
+        changeset: 'interview-node-labels',
+        explanation: 'labels',
+      },
+      {
+        file: 'nodes.csv',
+        changeset: 'fresco-release-blocker-fixes',
+        explanation: 'also labels',
+      },
+    ],
+  };
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('same file more than once')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('a judge classifying files the summary does not list is not describing this run', async () => {
+  const r = happyPath();
+  r['audit-artifacts'].diffFiles = ['nodes.csv'];
+  r['diff-judge'] = {
+    pass: true,
+    unanticipated: [],
+    anticipated: [
+      {
+        file: 'nodes.csv',
+        changeset: 'interview-node-labels',
+        explanation: 'labels',
+      },
+      {
+        file: 'some-other-run.csv',
+        changeset: 'interview-node-labels',
+        explanation: 'labels',
+      },
+    ],
+  };
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('does not list')),
     JSON.stringify(result.unaccounted),
   );
 });
@@ -641,6 +819,86 @@ test('a build that omits its dirty flag is treated as dirty', async () => {
   assert.ok(
     accepted.result.coverageGaps.some((g) => g.includes('dirty tree')),
     JSON.stringify(accepted.result.coverageGaps),
+  );
+});
+
+test('the stamp on disk overrides an under-reported dirty flag', async () => {
+  // The build agent's word for its own cleanliness was the one claim the audit
+  // did not check; stamp.json is what the build script actually wrote.
+  const r = happyPath();
+  r['build-image'].dirty = false;
+  r['audit-artifacts'].stampDirty = true;
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'no-go');
+  assert.equal(result.releasable, false);
+  assert.ok(
+    result.failures.some((f) => f.includes('dirty working tree')),
+    JSON.stringify(result.failures),
+  );
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('stamp.json records dirty:true')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('a build claim that contradicts the stamp cannot be certified', async () => {
+  for (const [field, value, needle] of [
+    ['stampVersion', '4.0.9', 'stamp.json records 4.0.9'],
+    ['stampCommit', 'deadbee', 'stamp.json records deadbee'],
+  ]) {
+    const r = happyPath();
+    r['audit-artifacts'][field] = value;
+    const { result } = await run(r);
+    assert.equal(result.verdict, 'incomplete', field);
+    assert.ok(
+      result.unaccounted.some((u) => u.includes(needle)),
+      `${field}: ${JSON.stringify(result.unaccounted)}`,
+    );
+  }
+});
+
+test('the image that ran must be the image that was stamped', async () => {
+  const r = happyPath();
+  r['audit-artifacts'].pendingImageId = 'sha256:cafe';
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) =>
+      u.includes('not the image that was stamped'),
+    ),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('known-untested shipped behaviour caps certification', async () => {
+  // Not a failure — a statement about the evidence. The run stays green and
+  // says why it is not release evidence.
+  const r = happyPath();
+  r['release-critic'].untestedShippedChanges = [
+    'interview-node-labels: no check exercises node labels',
+  ];
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'go');
+  assert.equal(result.releasable, false);
+  assert.equal(result.coverage, 'partial');
+  assert.ok(
+    result.coverageGaps.some((g) => g.includes('no check exercised')),
+    JSON.stringify(result.coverageGaps),
+  );
+  assert.deepEqual(result.failures, []);
+});
+
+test('an invented untested-change claim neither certifies nor caps', async () => {
+  const r = happyPath();
+  r['release-critic'].untestedShippedChanges = [
+    'imaginary-changeset: invented',
+  ];
+  const { result } = await run(r);
+  assert.equal(result.releasable, true);
+  assert.deepEqual(result.untestedShippedChanges, []);
+  assert.ok(
+    result.warnings.some((w) => w.includes('no such changeset exists')),
+    JSON.stringify(result.warnings),
   );
 });
 
@@ -1029,13 +1287,66 @@ test('a failed teardown warns without blocking the release', async () => {
 // Nothing tested at all
 // ---------------------------------------------------------------------------
 
-test('a build failure blocks before any lane runs', async () => {
+test('a failed release build is the candidate failing, not the harness', async () => {
+  // build-image.sh runs the release's own build path, so its failure means the
+  // release would fail the same way — the first real run of this gate caught
+  // exactly such a blocker.
   const r = happyPath();
   r['build-image'] = { ok: false, error: 'TS7016 in the staged tree' };
   const { result, prompts } = await run(r);
-  assert.equal(result.verdict, 'blocked');
+  assert.equal(result.verdict, 'no-go');
   assert.equal(result.releasable, false);
+  assert.ok(
+    result.failures.some((f) => f.includes('TS7016')),
+    JSON.stringify(result.failures),
+  );
   assert.ok(!prompts.some((p) => p.label === 'up-released'));
+});
+
+test('a failed baseline pull blocks without condemning the candidate', async () => {
+  const r = happyPath();
+  r['pull-released'] = { ok: false, error: 'unauthorized' };
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'blocked');
+  assert.deepEqual(result.failures, []);
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('unauthorized')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('the early-exit result carries the same documented shape', async () => {
+  // A consumer rendering the documented contract must not need a second code
+  // path for the runs that fail earliest.
+  const early = await run({
+    ...happyPath(),
+    'build-image': { ok: false, error: 'docker daemon not running' },
+  });
+  const full = await run(happyPath());
+  for (const field of [
+    'verdict',
+    'releasable',
+    'coverage',
+    'coverageGaps',
+    'failures',
+    'unaccounted',
+    'warnings',
+    'untestedShippedChanges',
+    'meaning',
+  ])
+    assert.ok(
+      field in early.result,
+      `the early exit omits the documented field "${field}"`,
+    );
+  assert.ok(
+    ['full', 'partial'].includes(early.result.coverage),
+    `coverage "${early.result.coverage}" is outside the documented vocabulary`,
+  );
+  assert.deepEqual(
+    Object.keys(early.result).toSorted((a, b) => a.localeCompare(b)),
+    Object.keys(full.result).toSorted((a, b) => a.localeCompare(b)),
+    'the early exit and the normal exit must return the same fields',
+  );
 });
 
 test('a released baseline that never came up leaves the upgrade path untested', async () => {
