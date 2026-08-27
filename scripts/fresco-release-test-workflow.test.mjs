@@ -127,7 +127,18 @@ const happyPath = () => ({
     upgradedUiExport: true,
     diffSummaryExists: true,
     diffFiles: [],
-    diffIdentical: 12,
+    diffIdenticalFiles: [
+      'api-protocols-meta.json',
+      'api-interview.json',
+      'api-interview-i1.json',
+      'api-interview-i2.json',
+      'api-interview-i3.json',
+      'api-interview-i4.json',
+      'api-interview-i5.json',
+    ],
+    headCommit: 'abc1234',
+    worktreeDirty: false,
+    releasedImageDigest: `ghcr.io/complexdatacollective/fresco@sha256:${'a'.repeat(64)}`,
     changesets: ['fresco-release-blocker-fixes', 'interview-node-labels'],
   },
   'release-critic': {
@@ -981,6 +992,94 @@ test('a malformed stamp field is treated as a missing one', async () => {
   );
 });
 
+test('the stamp must match the checkout the audit reads itself', async () => {
+  // Under skipBuild the reported commit is the validating agent echoing the
+  // stamp, so only an independent read of the checkout says the image belongs
+  // to this tree.
+  const r = happyPath();
+  r['audit-artifacts'].headCommit = 'deadbee';
+  const { result } = await run(r, {
+    expectedVersion: '4.1.2',
+    skipBuild: true,
+  });
+  assert.equal(result.verdict, 'incomplete');
+  assert.equal(result.releasable, false);
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('built from a different tree')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('an audit that cannot read the checkout ties the image to nothing', async () => {
+  const r = happyPath();
+  delete r['audit-artifacts'].headCommit;
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('independently ties the image')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('uncommitted changes the build did not report still make it dirty', async () => {
+  const r = happyPath();
+  r['audit-artifacts'].worktreeDirty = true;
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'no-go');
+  assert.equal(result.releasable, false);
+  assert.ok(
+    result.failures.some((f) => f.includes('dirty')),
+    JSON.stringify(result.failures),
+  );
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('uncommitted changes')),
+    JSON.stringify(result.unaccounted),
+  );
+
+  const unknown = happyPath();
+  delete unknown['audit-artifacts'].worktreeDirty;
+  const second = await run(unknown);
+  assert.equal(second.result.releasable, false);
+  assert.ok(
+    second.result.failures.some((f) => f.includes('dirty')),
+    'an unread worktree is treated as dirty',
+  );
+});
+
+test('the upgrade baseline must be recorded as a digest', async () => {
+  for (const image of [
+    undefined,
+    'ghcr.io/complexdatacollective/fresco:latest',
+  ]) {
+    const r = happyPath();
+    if (image === undefined) delete r['pull-released'].image;
+    else r['pull-released'].image = image;
+    const { result } = await run(r);
+    assert.equal(result.verdict, 'incomplete', String(image));
+    assert.equal(result.releasable, false, String(image));
+    assert.ok(
+      result.unaccounted.some((u) => u.includes('identifies the baseline')),
+      `${String(image)}: ${JSON.stringify(result.unaccounted)}`,
+    );
+    assert.ok(
+      result.coverageGaps.some((g) => g.includes('never resolved to a digest')),
+      `${String(image)}: ${JSON.stringify(result.coverageGaps)}`,
+    );
+  }
+});
+
+test('a pull that claimed a digest the tag does not have is not corroborated', async () => {
+  const r = happyPath();
+  r['audit-artifacts'].releasedImageDigest =
+    `ghcr.io/complexdatacollective/fresco@sha256:${'d'.repeat(64)}`;
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('may not have started from')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
 test('a build claim that contradicts the stamp cannot be certified', async () => {
   for (const [field, value, needle] of [
     ['stampVersion', '4.0.9', 'stamp.json records 4.0.9'],
@@ -1069,18 +1168,31 @@ test('a missing diff summary on disk means no diff was produced', async () => {
 });
 
 test('a diff that compared no files at all is not a clean diff', async () => {
-  // Zero, and every schema-valid non-count that could stand in for a positive
-  // one: a negative is truthy and would otherwise read as "it compared files".
-  for (const diffIdentical of [0, -1, 1.5, Number.NaN]) {
-    const r = happyPath();
-    r['audit-artifacts'].diffIdentical = diffIdentical;
-    const { result } = await run(r);
-    assert.equal(result.verdict, 'incomplete', String(diffIdentical));
-    assert.ok(
-      result.unaccounted.some((u) => u.includes('compared nothing at all')),
-      `${String(diffIdentical)}: ${JSON.stringify(result.unaccounted)}`,
-    );
-  }
+  const r = happyPath();
+  r['audit-artifacts'].diffIdenticalFiles = [];
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('compared nothing at all')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('the diff must have compared the snapshots that are on disk', async () => {
+  // The exploit: run the diff before writing the per-interview files. The
+  // summary then holds only the collection snapshot, and every later check —
+  // snapshot ids, contents, classification — still passes.
+  const r = happyPath();
+  r['audit-artifacts'].diffIdenticalFiles = ['api-interview.json'];
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.equal(result.releasable, false);
+  assert.ok(
+    result.unaccounted.some((u) =>
+      u.includes('the snapshots on disk are not the files that were diffed'),
+    ),
+    JSON.stringify(result.unaccounted),
+  );
 });
 
 test('matching UI archives do not waive the per-interview snapshots', async () => {
@@ -1159,7 +1271,35 @@ test('five snapshots of four interviews are not five interviews', async () => {
   assert.equal(result.verdict, 'incomplete');
   assert.equal(result.releasable, false);
   assert.ok(
-    result.unaccounted.some((u) => u.includes('distinct interviews')),
+    result.unaccounted.some((u) => u.includes('exactly the 5 seeded')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('a sixth snapshot contradicts the dataset it claims to describe', async () => {
+  // The export directories are cleared per run and the seed gate fixed the
+  // dataset at five, so an extra file means something did not run as reported.
+  const r = happyPath();
+  r['audit-artifacts'].baselineSnapshotIds = [
+    'i1',
+    'i2',
+    'i3',
+    'i4',
+    'i5',
+    'i6',
+  ];
+  r['audit-artifacts'].upgradedSnapshotIds = [
+    'i1',
+    'i2',
+    'i3',
+    'i4',
+    'i5',
+    'i6',
+  ];
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('exactly the 5 seeded')),
     JSON.stringify(result.unaccounted),
   );
 });

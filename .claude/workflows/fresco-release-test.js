@@ -155,6 +155,9 @@ const COMMIT = /^[0-9a-f]{7,40}$/i;
 // images that share a prefix compare equal, which is the opposite of what this
 // binding is for.
 const IMAGE_ID = /^(sha256:)?[0-9a-f]{64}$/i;
+// A pinned reference: name@sha256:<digest>, as `docker image inspect
+// --format '{{index .RepoDigests 0}}'` returns. A bare tag is not one.
+const DIGEST_REF = /^[a-z0-9][a-z0-9._/-]*@sha256:[0-9a-f]{64}$/i;
 const bareDigest = (value) => {
   const clean = shaped(value, IMAGE_ID, 128);
   return clean ? clean.replace(/^sha256:/i, '').toLowerCase() : null;
@@ -368,6 +371,19 @@ const AUDIT_SCHEMA = {
       type: 'string',
       description: 'The id docker reports for the pending image right now',
     },
+    headCommit: {
+      type: 'string',
+      description: 'git rev-parse --short HEAD in the working directory',
+    },
+    worktreeDirty: {
+      type: 'boolean',
+      description: 'Whether git status --porcelain printed anything',
+    },
+    releasedImageDigest: {
+      type: 'string',
+      description:
+        'The RepoDigest docker currently reports for the baseline tag',
+    },
     baselineSnapshotIds: {
       type: 'array',
       items: { type: 'string' },
@@ -394,7 +410,11 @@ const AUDIT_SCHEMA = {
       description:
         'Every differing or one-sided file name in the diff summary: onlyInBaseline + onlyInCurrent + changed[].file',
     },
-    diffIdentical: { type: 'integer', minimum: 0 },
+    diffIdenticalFiles: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Every name in the diff summary\'s "identical" array',
+    },
     changesets: {
       type: 'array',
       items: { type: 'string' },
@@ -412,6 +432,9 @@ const AUDIT_SCHEMA = {
     'upgradedUiExport',
     'diffSummaryExists',
     'diffFiles',
+    'diffIdenticalFiles',
+    'headCommit',
+    'worktreeDirty',
     'changesets',
   ],
 };
@@ -908,10 +931,12 @@ try {
 Report, exactly:
 - stampExists: whether ${STAMP} exists. If it does, also report its contents verbatim: stampVersion, stampCommit, stampImageId and stampDirty (the "version", "commit", "imageId" and "dirty" keys of that JSON file). Report the flag as the file states it — do NOT recompute or second-guess it.
 - pendingImageId: the output of docker image inspect --format '{{.Id}}' ${pendingImage} (omit the field if the image does not exist).
+- headCommit: the output of git rev-parse --short HEAD. worktreeDirty: true if git status --porcelain prints anything, false if it prints nothing. Report what these commands say about the checkout you are in — do not read them from any file.
+- releasedImageDigest: the output of docker image inspect --format '{{index .RepoDigests 0}}' ${releasedImage} (omit the field if that image is not present locally).
 - baselineSnapshotIds: the <id> part of every file matching ${BASELINE_DIR}/api-interview-<id>.json (empty array if the directory is missing). upgradedSnapshotIds: the same for ${UPGRADED_DIR}.
 - suspectSnapshots: how many of those files, across BOTH directories, are unusable. Count a file if ANY of these holds: it is smaller than 64 bytes; it is byte-identical to a different snapshot in the same directory (compare checksums, e.g. cksum, within each directory); or it does not contain its own <id> anywhere in its contents (grep -q -- "<id>" on that file). A count of files is not evidence that each one holds the interview it is named for, which is what this reports.
 - baselineUiExport / upgradedUiExport: whether ${BASELINE_DIR}/ui-export.zip and ${UPGRADED_DIR}/ui-export.zip exist.
-- diffSummaryExists: whether ${DIFF_SUMMARY} exists. If it does, also report diffIdentical (the LENGTH of its "identical" array) and diffFiles — EVERY entry of its "onlyInBaseline" and "onlyInCurrent" arrays (plain strings) plus every "file" of its "changed" array (objects), verbatim and complete. Read them with the shell rather than by eye: node -e 'const s=require("./${DIFF_SUMMARY}");console.log(JSON.stringify([...s.onlyInBaseline,...s.onlyInCurrent,...s.changed.map(c=>c.file)]))'. If any element of that output is null the keys have changed — report ok:false rather than a list with holes in it. If the summary lists none, report an empty array.
+- diffSummaryExists: whether ${DIFF_SUMMARY} exists. If it does, also report diffIdenticalFiles (every name in its "identical" array, verbatim) and diffFiles — EVERY entry of its "onlyInBaseline" and "onlyInCurrent" arrays (plain strings) plus every "file" of its "changed" array (objects), verbatim and complete. Read them with the shell rather than by eye: node -e 'const s=require("./${DIFF_SUMMARY}");console.log(JSON.stringify([...s.onlyInBaseline,...s.onlyInCurrent,...s.changed.map(c=>c.file)]))'. If any element of that output is null the keys have changed — report ok:false rather than a list with holes in it. If the summary lists none, report an empty array.
 - changesets: the base names of every .changeset/*.md file WITHOUT the .md extension, excluding README.
 Set ok:true if you completed the audit (missing artifacts are a normal result, not an error), or ok:false with what stopped you in "error".`,
     {
@@ -1222,14 +1247,44 @@ if (audit?.stampExists === true) {
     unaccounted.push(
       `the build reported version ${buildVersion} but stamp.json records ${stampVersion} — the image under test cannot be identified`,
     );
+  const stampCommit = shaped(audit.stampCommit, COMMIT, 64);
   if (
     build.commit &&
-    audit.stampCommit &&
-    String(audit.stampCommit).trim() !== String(build.commit).trim()
+    stampCommit &&
+    stampCommit !== String(build.commit).trim()
   )
     unaccounted.push(
       `the build reported commit ${build.commit} but stamp.json records ${audit.stampCommit} — the image under test cannot be identified`,
     );
+  // Under skipBuild the reported commit is the validating agent echoing the
+  // stamp, so stamp-versus-report proves only that it copied a field. The
+  // audit reads the checkout itself, which is the comparison that actually
+  // says the image belongs to this tree — and it matters for a fresh build
+  // too, where the stamp should equal HEAD by construction.
+  const headCommit = shaped(audit.headCommit, COMMIT, 64);
+  if (!headCommit)
+    unaccounted.push(
+      'the artifact audit did not report the checkout commit, so nothing independently ties the image under test to this tree',
+    );
+  else if (
+    stampCommit &&
+    !headCommit.startsWith(stampCommit) &&
+    !stampCommit.startsWith(headCommit)
+  )
+    unaccounted.push(
+      `stamp.json records commit ${audit.stampCommit} but the checkout is at ${audit.headCommit} — the image was built from a different tree${skipBuild ? ' (rerun without skipBuild)' : ''}`,
+    );
+  if (typeof audit.worktreeDirty !== 'boolean') {
+    buildDirty = true;
+    unaccounted.push(
+      'the artifact audit did not report whether the checkout is dirty — treated as dirty',
+    );
+  } else if (audit.worktreeDirty && !buildDirty) {
+    buildDirty = true;
+    unaccounted.push(
+      'the checkout has uncommitted changes that the build did not report — the image does not contain the current tree',
+    );
+  }
   const stampedDigest = bareDigest(audit.stampImageId);
   const runningDigest = bareDigest(audit.pendingImageId);
   if (stampedDigest && runningDigest && stampedDigest !== runningDigest)
@@ -1346,12 +1401,28 @@ if (upgradeLane?.swap?.ok === true) {
         unaccounted.push(
           'export regression gate: the judge classified the same file more than once',
         );
-      // A clean diff has to have compared something. Strictly positive, and
-      // read through counted() so a schema-valid negative cannot masquerade
-      // as a non-zero count.
-      if (!differing.length && !(counted(audit.diffIdentical) > 0))
+      const identical = (
+        Array.isArray(audit.diffIdenticalFiles) ? audit.diffIdenticalFiles : []
+      )
+        .map((name) => (typeof name === 'string' ? name.trim() : ''))
+        .filter(Boolean);
+      // A clean diff has to have compared something.
+      if (!differing.length && !identical.length)
         unaccounted.push(
-          `export regression gate: the diff summary reports no differing files and ${counted(audit.diffIdentical) === null ? 'an unusable identical-file count' : 'no identical files either'} — it compared nothing at all`,
+          'export regression gate: the diff summary lists neither differing nor identical files — it compared nothing at all',
+        );
+      // And it has to have compared THESE snapshots. Nothing otherwise ties
+      // the files the audit found on disk to the files the diff read: a diff
+      // run before the per-interview snapshots were written would summarize
+      // only the collection endpoint, and every later check would still pass.
+      // Matched on the api-interview- prefix rather than per id, because the
+      // normalizer masks date-like and epoch-like runs inside file names.
+      const comparedInterviews = [...identical, ...differing].filter((name) =>
+        name.split('/').pop().startsWith('api-interview-'),
+      ).length;
+      if (comparedInterviews !== SYNTHETIC_COUNT)
+        unaccounted.push(
+          `export regression gate: the diff compared ${comparedInterviews} per-interview payload file(s), but ${SYNTHETIC_COUNT} were seeded — the snapshots on disk are not the files that were diffed`,
         );
     }
   }
@@ -1384,12 +1455,15 @@ if (upgradeLane?.swap?.ok === true && audit) {
   // corruption in them goes undetected. The per-interview snapshots are the
   // only mechanical guarantee that every seeded interview was compared, and
   // both checklists require them unconditionally — so synthesis does too.
+  // Exactly, not at least: the lane clears the export directories before it
+  // starts and the seed gate already fixed the dataset at SYNTHETIC_COUNT
+  // interviews, so a sixth snapshot contradicts the run it claims to describe.
   if (
-    baselineSnapshots < SYNTHETIC_COUNT ||
-    upgradedSnapshots < SYNTHETIC_COUNT
+    baselineSnapshots !== SYNTHETIC_COUNT ||
+    upgradedSnapshots !== SYNTHETIC_COUNT
   )
     unaccounted.push(
-      `export comparability: every seeded interview needs a payload snapshot on both sides (need ${SYNTHETIC_COUNT} distinct interviews; on disk: baseline ${baselineSnapshots}, upgraded ${upgradedSnapshots}) — a UI export archive cannot stand in for them, because Fresco reports a partial export as a success`,
+      `export comparability: each side must hold a payload snapshot for exactly the ${SYNTHETIC_COUNT} seeded interviews (on disk: baseline ${baselineSnapshots}, upgraded ${upgradedSnapshots}) — a UI export archive cannot stand in for them, because Fresco reports a partial export as a success`,
     );
   // The two sides must describe the SAME interviews, or the diff pairs files
   // that were never about the same thing.
@@ -1448,6 +1522,33 @@ if (upgradeLane?.seed?.pass) {
     warnings.push(
       `${upgradeLane.seedInputs.rejectedPaths} API path(s) reported by the seed were not shaped like paths and were dropped before reaching any prompt`,
     );
+}
+
+// --- the upgrade baseline ---------------------------------------------------
+
+// `releasedImage` is a mutable tag. What proves the lane upgraded FROM the
+// current release is the digest the pull resolved, so a run that never
+// recorded one has no baseline identity — and the audit re-reads the tag's
+// digest so a pull agent that reported success without pulling is caught.
+// This binds the image the tag pointed at; it cannot retro-inspect the
+// baseline container, which the swap has already replaced by audit time.
+const pulledDigest = shaped(released?.image, DIGEST_REF, 256);
+if (upgradeLane?.upReleased?.ok === true) {
+  if (!pulledDigest)
+    unaccounted.push(
+      `the released image pull did not report a resolved digest for ${releasedImage} ("${released?.image ?? 'missing'}"), so nothing identifies the baseline this upgrade started from`,
+    );
+  else if (audit) {
+    const auditedDigest = shaped(audit.releasedImageDigest, DIGEST_REF, 256);
+    if (!auditedDigest)
+      unaccounted.push(
+        `the artifact audit could not read a digest for ${releasedImage}, so the pulled baseline is uncorroborated`,
+      );
+    else if (auditedDigest !== pulledDigest)
+      unaccounted.push(
+        `the pull reported baseline digest ${pulledDigest} but ${releasedImage} now resolves to ${auditedDigest} — the lane may not have started from the image the pull claims`,
+      );
+  }
 }
 
 // --- environment ------------------------------------------------------------
@@ -1536,6 +1637,10 @@ if (releasedImage !== DEFAULT_RELEASED_IMAGE)
   coverageGaps.push(
     `the upgrade baseline was ${releasedImage}, not the released image`,
   );
+if (!pulledDigest)
+  coverageGaps.push(
+    'the upgrade baseline was never resolved to a digest, so what it upgraded from is unrecorded',
+  );
 if (buildDirty) coverageGaps.push('the image was built from a dirty tree');
 // The run cannot claim to be release evidence for behaviour it knows it never
 // exercised. This is a statement about the evidence, not about the build, so
@@ -1581,7 +1686,7 @@ return {
   expectedVersion,
   testedVersion: buildVersion,
   pendingImage: { ...build },
-  releasedImage: released?.image ?? releasedImage,
+  releasedImage: pulledDigest ?? releasedImage,
   upgradeLane,
   freshLane,
   audit: auditResult,
