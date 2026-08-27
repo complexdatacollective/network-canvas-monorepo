@@ -136,8 +136,11 @@ const happyPath = () => ({
       'api-interview-i4.json',
       'api-interview-i5.json',
     ],
+    auditDiffRan: true,
     headCommit: 'abc1234',
     worktreeDirty: false,
+    upgradeContainerImage: `sha256:${'b'.repeat(64)}`,
+    freshContainerImage: `sha256:${'b'.repeat(64)}`,
     releasedImageDigest: `ghcr.io/complexdatacollective/fresco@sha256:${'a'.repeat(64)}`,
     changesets: ['fresco-release-blocker-fixes', 'interview-node-labels'],
   },
@@ -1175,6 +1178,83 @@ test('a diff that compared no files at all is not a clean diff', async () => {
   assert.ok(
     result.unaccounted.some((u) => u.includes('compared nothing at all')),
     JSON.stringify(result.unaccounted),
+  );
+});
+
+test('the classification is checked against a diff the audit ran itself', async () => {
+  // A capture that diffs before rewriting its snapshots leaves a summary
+  // describing files that are no longer there; the audit re-runs the same
+  // deterministic diff so the judge is checked against what is on disk now.
+  const r = happyPath();
+  r['audit-artifacts'].auditDiffRan = false;
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.equal(result.releasable, false);
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('re-run the diff')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('a lane must have run the image the stamp describes', async () => {
+  // A container left running from another build reporting the same version
+  // satisfies every version check; docker is asked what it actually ran.
+  for (const field of ['upgradeContainerImage', 'freshContainerImage']) {
+    const mismatched = happyPath();
+    mismatched['audit-artifacts'][field] = `sha256:${'e'.repeat(64)}`;
+    const { result } = await run(mismatched);
+    assert.equal(result.verdict, 'incomplete', field);
+    assert.ok(
+      result.unaccounted.some((u) => u.includes('exercised a different image')),
+      `${field}: ${JSON.stringify(result.unaccounted)}`,
+    );
+
+    const missing = happyPath();
+    delete missing['audit-artifacts'][field];
+    const second = await run(missing);
+    assert.equal(second.result.verdict, 'incomplete', `${field} missing`);
+    assert.ok(
+      second.result.unaccounted.some((u) =>
+        u.includes('nothing but a version string'),
+      ),
+      `${field} missing: ${JSON.stringify(second.result.unaccounted)}`,
+    );
+  }
+});
+
+test('a partial endpoint set is not full API coverage', async () => {
+  const r = happyPath();
+  r['seed-baseline'].apiPaths = ['/api/v1/interview'];
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.equal(result.releasable, false);
+  assert.ok(
+    result.unaccounted.some(
+      (u) =>
+        u.includes('/api/v1/protocols-meta') &&
+        u.includes('would not appear in the upgrade diff'),
+    ),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('the harness writes its own files where git cannot see them', () => {
+  // The CRUD agent creates a participant-import CSV. If it lands anywhere the
+  // checkout tracks, the audit's own worktree check marks the build dirty and
+  // a clean run fails — the gate breaking itself.
+  const crudPrompt =
+    /Exercise Fresco dashboard CRUD[\s\S]*?label: 'verify-crud'/.exec(
+      source,
+    )?.[0];
+  assert.ok(crudPrompt, 'failed to locate the CRUD prompt');
+  assert.match(
+    crudPrompt,
+    /\$\{ARTIFACTS\}\/crud\/participants\.csv/,
+    'the CSV must be created under the git-ignored artifacts directory',
+  );
+  assert.ok(
+    !/stay in your working directory for any files/.test(crudPrompt),
+    'the prompt must not send file writes into the tracked checkout',
   );
 });
 

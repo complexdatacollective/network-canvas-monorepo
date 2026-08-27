@@ -41,12 +41,24 @@ const BASELINE_DIR = `${ARTIFACTS}/exports/baseline`;
 const UPGRADED_DIR = `${ARTIFACTS}/exports/upgraded`;
 const DIFF_WORK = `${ARTIFACTS}/exports/diff`;
 const DIFF_SUMMARY = `${ARTIFACTS}/exports/diff-summary.json`;
+// The audit re-runs the same deterministic diff into its own directory. Its
+// result, not the capture agent's, is what the judge's classification is
+// checked against — a summary produced before the snapshots were rewritten
+// would otherwise be authoritative over the files that are actually there.
+const AUDIT_DIFF_WORK = `${ARTIFACTS}/exports/audit-diff`;
+const AUDIT_DIFF_SUMMARY = `${ARTIFACTS}/exports/audit-diff-summary.json`;
 const STAMP = `${ARTIFACTS}/stamp.json`;
 const SEED_PROTOCOL =
   'packages/protocols/documentation/protocols/Sample Protocol v4.netcanvas';
 const ADMIN_USER = 'releasetest';
 const ADMIN_PASSWORD = 'Fresco-Release-Test-1!';
 const SYNTHETIC_COUNT = 5;
+// The interview-data endpoints the upgrade diff must cover. Named here rather
+// than left to whatever the seed agent happened to record: a subset would let
+// a regression in an unsnapshotted endpoint pass as full coverage. If Fresco
+// renames one, this gate fails loudly — which is correct, because a renamed
+// data API is itself a release-relevant change.
+const REQUIRED_API_PATHS = ['/api/v1/protocols-meta', '/api/v1/interview'];
 const UPGRADE_URL = 'http://localhost:3210';
 const FRESH_URL = 'http://localhost:3211';
 const DEFAULT_RELEASED_IMAGE = 'ghcr.io/complexdatacollective/fresco:latest';
@@ -384,6 +396,19 @@ const AUDIT_SCHEMA = {
       description:
         'The RepoDigest docker currently reports for the baseline tag',
     },
+    upgradeContainerImage: {
+      type: 'string',
+      description: "The upgrade lane Fresco container's .Image id",
+    },
+    freshContainerImage: {
+      type: 'string',
+      description: "The fresh lane Fresco container's .Image id",
+    },
+    auditDiffRan: {
+      type: 'boolean',
+      description:
+        "Whether the audit's own re-run of diff-exports.mjs succeeded",
+    },
     baselineSnapshotIds: {
       type: 'array',
       items: { type: 'string' },
@@ -681,7 +706,7 @@ Do, in order, recording one check per numbered item:
 4. Finish the wizard to the dashboard.
 5. In settings, generate ${SYNTHETIC_COUNT} synthetic interviews via the Synthetic Interview Data section (native select + number input per AGENT_NOTES); wait for the completion toast.
 6. In settings, enable the interview data API if it has an enable toggle, and create an API token. Record the token value in apiToken.
-7. Snapshot the API: mkdir -p ${BASELINE_DIR}, then for each documented interview-data API endpoint (the settings page documents the paths; expect something like /api/v1/protocols-meta and /api/v1/interview) run curl -fsS -H "Authorization: Bearer <token>" ${UPGRADE_URL}<path> and save to ${BASELINE_DIR}/api-<last-path-segment>.json. Record the exact paths you used in apiPaths. Then, because the interview COLLECTION endpoint returns metadata only, snapshot the stored network payload of EVERY interview: take the ids from the collection response and curl /api/v1/interview/<id> for each, saving to ${BASELINE_DIR}/api-interview-<id>.json. Record how many succeeded in networkSnapshots. This item fails unless all ${SYNTHETIC_COUNT} per-interview snapshots were saved.
+7. Snapshot the API: mkdir -p ${BASELINE_DIR}, then for each documented interview-data API endpoint run curl -fsS -H "Authorization: Bearer <token>" ${UPGRADE_URL}<path> and save to ${BASELINE_DIR}/api-<last-path-segment>.json. You MUST snapshot at least ${REQUIRED_API_PATHS.join(' and ')} — if the settings page documents different paths for those collections, snapshot what it documents AND say so in notes, because the workflow requires these and will fail the run otherwise. Snapshot any further documented endpoints too. Record the exact paths you used in apiPaths. Then, because the interview COLLECTION endpoint returns metadata only, snapshot the stored network payload of EVERY interview: take the ids from the collection response and curl /api/v1/interview/<id> for each, saving to ${BASELINE_DIR}/api-interview-<id>.json. Record how many succeeded in networkSnapshots. This item fails unless all ${SYNTHETIC_COUNT} per-interview snapshots were saved.
 8. Export ALL interviews via the interviews page UI, capturing the zip with the blob-hook technique in AGENT_NOTES: run bash ${HARNESS}/enable-captures.sh --lane upgrade, install the createObjectURL hook, drive the export menu + "Confirm File Export Options" dialog (leave every format toggle on), PUT the captured blob to <capture base>/baseline-ui-export.zip, and curl it to ${BASELINE_DIR}/ui-export.zip on the host. THIS ITEM MAY BE SKIPPED: if no blob is captured, set uiExportCaptured:false, mark this check "skipped" with the reason, and continue — the API snapshots still enable the diff. Set uiExportCaptured:true only if ${BASELINE_DIR}/ui-export.zip actually exists on the host afterwards.
 9. Record the dashboard counts (protocols, participants, interviews) in counts.
 ${CHECK_DISCIPLINE}
@@ -792,12 +817,12 @@ Set area="integrity".`,
     },
   );
   const crud = await agent(
-    `Exercise Fresco dashboard CRUD on the upgraded instance at ${UPGRADE_URL}. Sign in as ${ADMIN_USER} / ${ADMIN_PASSWORD}. Use data prefixed "crud-" so you never touch other agents' data; stay in your working directory for any files.
+    `Exercise Fresco dashboard CRUD on the upgraded instance at ${UPGRADE_URL}. Sign in as ${ADMIN_USER} / ${ADMIN_PASSWORD}. Use data prefixed "crud-" so you never touch other agents' data. Write any file you need under ${ARTIFACTS}/crud/ (mkdir -p it first) and NOWHERE else in the checkout: that directory is git-ignored, and a stray untracked file elsewhere makes the tree look dirty, which fails the release-test's own reproducibility gate.
 ${BROWSER_HOWTO}
 Record one check per numbered item:
 1. Create a participant (crud-p1) and see it listed.
 2. Edit its label.
-3. Import participants from a small CSV you create (use the format the import dialog documents; 2 rows, identifiers crud-csv1/crud-csv2).
+3. Import participants from a small CSV you create at ${ARTIFACTS}/crud/participants.csv (use the format the import dialog documents; 2 rows, identifiers crud-csv1/crud-csv2).
 4. Export participants — install the blob hook from AGENT_NOTES first and confirm a CSV blob is captured (real downloads abort in this browser; a captured blob IS success).
 5. Delete crud-p1.
 6. Upload a second protocol (stage packages/protocols/e2e/interviewer-e2e/interviewer-e2e.netcanvas via stage-fixture.sh --lane upgrade and inject per AGENT_NOTES).
@@ -933,10 +958,14 @@ Report, exactly:
 - pendingImageId: the output of docker image inspect --format '{{.Id}}' ${pendingImage} (omit the field if the image does not exist).
 - headCommit: the output of git rev-parse --short HEAD. worktreeDirty: true if git status --porcelain prints anything, false if it prints nothing. Report what these commands say about the checkout you are in — do not read them from any file.
 - releasedImageDigest: the output of docker image inspect --format '{{index .RepoDigests 0}}' ${releasedImage} (omit the field if that image is not present locally).
+- upgradeContainerImage and freshContainerImage: the image each lane's Fresco container is ACTUALLY running, from docker inspect --format '{{.Image}}' fresco-release-test-upgrade-fresco-1 and docker inspect --format '{{.Image}}' fresco-release-test-fresh-fresco-1. Omit a field if that container does not exist. Report what docker says about the container, never what a tag resolves to.
 - baselineSnapshotIds: the <id> part of every file matching ${BASELINE_DIR}/api-interview-<id>.json (empty array if the directory is missing). upgradedSnapshotIds: the same for ${UPGRADED_DIR}.
 - suspectSnapshots: how many of those files, across BOTH directories, are unusable. Count a file if ANY of these holds: it is smaller than 64 bytes; it is byte-identical to a different snapshot in the same directory (compare checksums, e.g. cksum, within each directory); or it does not contain its own <id> anywhere in its contents (grep -q -- "<id>" on that file). A count of files is not evidence that each one holds the interview it is named for, which is what this reports.
 - baselineUiExport / upgradedUiExport: whether ${BASELINE_DIR}/ui-export.zip and ${UPGRADED_DIR}/ui-export.zip exist.
-- diffSummaryExists: whether ${DIFF_SUMMARY} exists. If it does, also report diffIdenticalFiles (every name in its "identical" array, verbatim) and diffFiles — EVERY entry of its "onlyInBaseline" and "onlyInCurrent" arrays (plain strings) plus every "file" of its "changed" array (objects), verbatim and complete. Read them with the shell rather than by eye: node -e 'const s=require("./${DIFF_SUMMARY}");console.log(JSON.stringify([...s.onlyInBaseline,...s.onlyInCurrent,...s.changed.map(c=>c.file)]))'. If any element of that output is null the keys have changed — report ok:false rather than a list with holes in it. If the summary lists none, report an empty array.
+- diffSummaryExists: whether ${DIFF_SUMMARY} exists (that is the capture's own summary — you are not reading its contents, only noting that it was produced).
+- Then run the deterministic diff YOURSELF over the files as they stand right now, so the classification is checked against the current contents rather than against whatever was on disk when the capture ran its diff:
+  node ${HARNESS}/scripts/diff-exports.mjs ${BASELINE_DIR} ${UPGRADED_DIR} --work ${AUDIT_DIFF_WORK} --out ${AUDIT_DIFF_SUMMARY}
+  Set auditDiffRan:true if it exits 0, false otherwise (both export directories missing is a normal false). From YOUR summary report diffIdenticalFiles (every name in its "identical" array, verbatim) and diffFiles — EVERY entry of its "onlyInBaseline" and "onlyInCurrent" arrays (plain strings) plus every "file" of its "changed" array (objects), verbatim and complete. Read them with the shell rather than by eye: node -e 'const s=require("./${AUDIT_DIFF_SUMMARY}");console.log(JSON.stringify([...s.onlyInBaseline,...s.onlyInCurrent,...s.changed.map(c=>c.file)]))'. If any element of that output is null the keys have changed — report ok:false rather than a list with holes in it. If the summary lists none, report an empty array.
 - changesets: the base names of every .changeset/*.md file WITHOUT the .md extension, excluding README.
 Set ok:true if you completed the audit (missing artifacts are a normal result, not an error), or ok:false with what stopped you in "error".`,
     {
@@ -1172,6 +1201,27 @@ const anyAreaRan = Object.values(areaResults).some(Boolean);
 
 // --- provenance: the containers must be running the image we built ----------
 
+// Health versions come from the app; container images come from docker. A
+// container left running from another build that reports the same version
+// would satisfy every version check, so each lane is also bound to the image
+// the stamp describes.
+for (const [lane, ran, field] of [
+  ['upgrade', upgradeLane?.swap?.ok === true, 'upgradeContainerImage'],
+  ['fresh', freshLane?.up?.ok === true, 'freshContainerImage'],
+]) {
+  if (!ran || !audit) continue;
+  const running = bareDigest(audit[field]);
+  const stamped = bareDigest(audit.stampImageId);
+  if (!running)
+    unaccounted.push(
+      `${lane} lane: the artifact audit could not read the image its Fresco container is running, so nothing but a version string says it ran the pending build`,
+    );
+  else if (stamped && running !== stamped)
+    unaccounted.push(
+      `${lane} lane: its Fresco container is running image ${audit[field]}, but the pending build is ${audit.stampImageId} — that lane exercised a different image`,
+    );
+}
+
 if (upgradeLane?.swap?.ok === true) {
   if (!upgradeLane.swappedVersion)
     unaccounted.push(
@@ -1364,15 +1414,20 @@ if (upgradeLane?.swap?.ok === true) {
       );
   }
 
-  // Bind the judgment to the summary on disk, file by file. Counting was not
+  // Bind the judgment to a diff the AUDIT ran, file by file. Counting was not
   // enough: a judge that classified one file out of six left the other five
-  // explaining nothing, and a "some classification exists" test cannot tell
-  // the difference. Every file the summary lists must be claimed exactly
-  // once, and every file the judge claims must be one the summary lists.
+  // explaining nothing. Neither was reading the capture's summary: a diff run
+  // before the snapshots were rewritten would describe files that are no
+  // longer there. Every file the audit's own diff lists must be claimed
+  // exactly once, and every file the judge claims must be one it lists.
   if (audit) {
     if (!audit.diffSummaryExists) {
       unaccounted.push(
         `export regression gate: ${DIFF_SUMMARY} does not exist on disk, so no diff was actually produced`,
+      );
+    } else if (audit.auditDiffRan !== true) {
+      unaccounted.push(
+        "export regression gate: the audit could not re-run the diff over the files as they stand, so the judge's verdict is unchecked against them",
       );
     } else if (verdict) {
       const differing = (Array.isArray(audit.diffFiles) ? audit.diffFiles : [])
@@ -1514,9 +1569,17 @@ if (upgradeLane?.seed?.pass) {
     unaccounted.push(
       'the seed returned no usable API token, so the post-upgrade snapshots may not describe the same endpoints as the baseline',
     );
-  if (!upgradeLane.seedInputs?.apiPaths?.length)
+  const recorded = upgradeLane.seedInputs?.apiPaths ?? [];
+  const missingPaths = REQUIRED_API_PATHS.filter(
+    (path) => !recorded.includes(path),
+  );
+  if (!recorded.length)
     unaccounted.push(
       'the seed recorded no usable API paths, so the post-upgrade snapshot had nothing to reproduce',
+    );
+  else if (missingPaths.length)
+    unaccounted.push(
+      `the seed did not snapshot ${missingPaths.join(' or ')}, so a regression in ${missingPaths.length > 1 ? 'those endpoints' : 'that endpoint'} would not appear in the upgrade diff`,
     );
   if (upgradeLane.seedInputs?.rejectedPaths)
     warnings.push(
