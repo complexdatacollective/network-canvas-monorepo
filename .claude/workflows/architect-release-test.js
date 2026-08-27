@@ -26,6 +26,7 @@ const only =
     : null;
 
 // Optional expected deployed version, e.g. args = { expectVersion: '8.2.0' }.
+// Compared ignoring a leading "v" — the header chip renders "v8.2.0".
 // When set, the reachability slice fails if the deployment shows a different
 // version — guarding against testing a stale deploy and calling it safe.
 const expectVersion =
@@ -268,9 +269,14 @@ const reachabilityPrompt = `${ops('reach')}
    the accessibility tree.
 2. "console": Read console errors for your tab. Pass when there are no errors
    indicating broken functionality; report anything you dismiss as benign.
-3. "assets": Read the network requests for your tab. Pass when no same-origin
-   request failed with a 4xx/5xx status. Third-party/analytics failures are
-   notes, not failures.
+3. "assets": Read the network requests for your tab. Any same-origin request
+   that failed is a fail — a 4xx/5xx status OR a statusless network error
+   (connection reset, TLS failure, aborted load). A request that merely shows
+   no captured status is not automatically a failure: this pane omits the
+   status for worker-context fetches — cross-check such entries (Performance
+   API responseStatus, or an in-page fetch of the same URL) and fail only if
+   the request actually errored. If request data is wholly unavailable, this
+   check is blocked. Third-party/analytics failures are notes, not failures.
 4. "service-worker": Prove the DEPLOYED build registers its own service
    worker. This persistent profile may hold a registration from an earlier
    visit, which would mask broken registration wiring and can serve a stale
@@ -286,7 +292,7 @@ const reachabilityPrompt = `${ops('reach')}
    the observed value in details AND in the top-level "version" output field.
    ${
      expectVersion
-       ? `Expected version: "${expectVersion}" — fail this check if the displayed version does not match it.`
+       ? `Expected version: "${expectVersion}" — fail this check if the displayed version does not match it (ignore a leading "v" on either side: "8.2.0" matches "v8.2.0").`
        : 'No expected version was supplied, so pass with the observed value.'
    }
 Do not create or modify any protocol in this slice.`;
@@ -372,15 +378,51 @@ const checks = results.flatMap(({ slice, expected, result }) => {
   return [...reported, ...missing];
 });
 
+// Enforce the version contract in code rather than trusting the prompt: an
+// absent top-level version field blocks, and a normalized mismatch against
+// expectVersion fails even when the agent marked its own version check pass.
+// The chip renders a leading "v" (e.g. "v8.2.0"), so both sides are compared
+// with it stripped.
+const stripV = (v) => v.trim().replace(/^v/i, '');
+const observedVersion =
+  reach && typeof reach.version === 'string' ? reach.version.trim() : '';
+if (reach && !observedVersion) {
+  checks.push({
+    slice: 'reachability',
+    name: 'version-enforced',
+    status: 'blocked',
+    details:
+      'Reachability agent did not return the top-level version field; the deployed version is unverified.',
+  });
+} else if (
+  expectVersion &&
+  observedVersion &&
+  stripV(observedVersion) !== stripV(expectVersion) &&
+  !checks.some(
+    (c) =>
+      c.slice === 'reachability' && c.name === 'version' && c.status === 'fail',
+  )
+) {
+  checks.push({
+    slice: 'reachability',
+    name: 'version-enforced',
+    status: 'fail',
+    details: `Deployed version "${observedVersion}" does not match expected "${expectVersion}" (compared ignoring a leading "v"), and the agent did not fail its own version check.`,
+  });
+}
+
 // Adversarially verify failures before letting them fail a release: an
 // independent agent re-runs the same flow. Reproduced (or the original
 // evidence stands unexplained) -> confirmed blocker. Refuted -> "flaky":
 // excluded from fail, but the verdict is still held at blocked — a clean
 // retry alone never upgrades an observed failure to pass, because
-// intermittent breakage is still breakage.
+// intermittent breakage is still breakage. A failure the harness could not
+// verify (dead verifier, over the cap) is exactly that — unverified — so it
+// holds the verdict at blocked rather than masquerading as confirmed.
 const failed = checks.filter((c) => c.status === 'fail');
 const confirmedFailures = [];
 const flaky = [];
+const unverified = [];
 phase('Verify failures');
 if (failed.length === 0) {
   log('No failures to verify.');
@@ -413,37 +455,40 @@ Describe exactly what you did in evidence either way.`,
       effort: 'high',
     },
   );
-  if (!verdict || verdict.confirmed) {
-    confirmedFailures.push({
+  if (!verdict) {
+    unverified.push({
       ...f,
-      verification: verdict ? verdict.evidence : 'verifier returned no result',
+      verification:
+        'Verifier returned no result; failure not independently verified.',
     });
+  } else if (verdict.confirmed) {
+    confirmedFailures.push({ ...f, verification: verdict.evidence });
   } else {
     flaky.push({ ...f, verification: verdict.evidence });
   }
 }
 for (const f of failed.slice(6)) {
-  confirmedFailures.push({
+  unverified.push({
     ...f,
-    verification: 'not verified (over cap); treated as confirmed',
+    verification: 'Over the verification cap; not independently verified.',
   });
 }
 
 const blocked = checks.filter((c) => c.status === 'blocked');
 const verdict = confirmedFailures.length
   ? 'fail'
-  : blocked.length || flaky.length
+  : blocked.length || flaky.length || unverified.length
     ? 'blocked'
     : 'pass';
 
 log(
-  `Verdict: ${verdict} — ${checks.length} checks, ${confirmedFailures.length} confirmed failures, ${flaky.length} flaky, ${blocked.length} blocked`,
+  `Verdict: ${verdict} — ${checks.length} checks, ${confirmedFailures.length} confirmed failures, ${unverified.length} unverified failures, ${flaky.length} flaky, ${blocked.length} blocked`,
 );
 
 let meaning = {
   pass: 'Every check passed; safe to promote the release.',
   blocked:
-    'No confirmed failures, but some checks were unverified or refuted only by a clean retry — review the blocked and flaky items manually before promoting.',
+    'No confirmed failures, but some checks were unverified, failed without independent verification, or were refuted only by a clean retry — review the blocked, unverifiedFailures, and flaky items manually before promoting.',
   fail: 'Confirmed functional breakage on the deployment — do not promote the release.',
 }[verdict];
 if (only) {
@@ -458,6 +503,7 @@ return {
   coverage: only ? selected.map((s) => s.key) : 'full',
   meaning,
   confirmedFailures,
+  unverifiedFailures: unverified,
   flaky,
   blocked,
   notes: results
