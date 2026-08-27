@@ -1854,7 +1854,11 @@ test('the workflow reads the keys diff-exports.mjs actually writes', () => {
       ],
       { stdio: 'pipe' },
     );
+    // The summary diff-exports.mjs just wrote: the fixture produced one
+    // identical file, one changed, and one on each side.
     const summary = JSON.parse(readFileSync(out, 'utf8'));
+    assert.deepEqual(summary.identical, ['api-same.json']);
+    assert.equal(summary.changed.length, 1);
 
     // Run the command the prompt actually embeds, over the summary the real
     // script just wrote. Pattern-matching its key names proved too weak twice:
