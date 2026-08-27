@@ -604,7 +604,10 @@ CHECKS:
    participant-data corruption, not a pass).
 6. "Mark unfinished" (data-testid="data-mark-unfinished") on a complete row:
    confirm dialog "Mark unfinished?" → toast "Interview marked unfinished" →
-   the row moves to In progress.
+   the row moves to In progress — then RESUME that session and assert its
+   recorded responses and progress are intact (the dialog promises existing
+   responses are kept; a session reset to an empty first stage is data
+   loss, not a pass).
 7. Real resume round-trip: from Home, "Start new interview" on the sample
    card with case ID "resume-check"; advance to the FIRST Quick Add
    name-generator stage and add an alter named "resume-probe" (network data
@@ -719,7 +722,11 @@ CHECKS:
 4. Step-up on interview entry: unlock first — check 3 left the app locked.
    Then install the Sample Protocol (toast!), "Start
    new interview" with any case ID → a "Confirm your identity" dialog appears
-   BEFORE the interview starts; entering the PIN proceeds to the interview.
+   BEFORE the interview starts; entering the PIN proceeds to the interview. Try a WRONG
+   8-digit PIN first: the dialog must reject it and NO session may be
+   created (the step-up gate accepting any credential is a bypass, and its
+   verify path is distinct from the lock screen's); only then proceed with
+   the correct PIN.
 4b. Encryption is REAL, not just the chip: with the PIN enrolled and a
    protocol + interview created, read the raw IndexedDB rows (database
    "interviewer") via page.evaluate and assert the sensitive fields are
@@ -740,7 +747,11 @@ CHECKS:
    new PIN + confirm → then lock (top bar), assert the OLD PIN is REJECTED
    (field clears, app stays locked — a change that leaves the old
    credential valid has failed its purpose), and only then unlock with the
-   NEW PIN.
+   NEW PIN. After unlocking, assert the data created in checks 4–4b
+   SURVIVED the rotation and still decrypts: the protocol card is present
+   and the interview row is listed with its content intact — a rotation
+   that re-initialises an empty vault also "unlocks", and that signal
+   alone is worthless.
 7. Encryption chip: the status row's encryption chip
    (data-testid="encryption-status-trigger") reads "Encrypted" while enrolled.
 8. Revoke: Settings → Security → the "Revoke device lock" row → "Revoke" →
