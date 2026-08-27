@@ -252,9 +252,10 @@ DISCIPLINE:
   If it does not reproduce, it was flaky automation — note it, don't fail it.
 - For each failure capture: exact reproduction steps, the page URL, a
   screenshot path, relevant console errors, and an ARIA-snapshot excerpt.
-- If a check cannot be attempted in this environment (e.g. a real OS install
-  prompt, a genuine app update), mark it "skipped" with the reason. Never
-  guess a result.
+- Only checks whose text explicitly says they may be skipped can be marked
+  "skipped" (always with the reason). Skipping any other check makes the
+  whole run INCOMPLETE — if you are blocked on a check, report a failure
+  with what blocked you instead of skipping it. Never guess a result.
 - Your structured result's "checks" must enumerate every numbered check you
   were given, in order, each pass/fail/skipped.`;
 
@@ -283,6 +284,14 @@ const expectedChecks = {
   'security-vault': 10,
   'pwa-offline': 10,
   'settings-and-chrome': 9,
+};
+
+// Check numbers each prompt explicitly permits to be skipped (environmental
+// limits it names itself). A skip anywhere else marks the run incomplete.
+const allowedSkips = {
+  'protocol-management': [6, 7], // dev-protocol release asset unobtainable
+  'data-export': [7], // export build outruns the cancel click
+  'pwa-offline': [10], // app update flow untestable against a live deploy
 };
 
 const journeyDefs = [
@@ -690,7 +699,11 @@ Do, in order:
 4. Tooling: verify headless Playwright chromium can launch by running a tiny
    node script that resolves @playwright/test via
    createRequire('<repoRoot>/apps/interviewer/package.json'), launches
-   chromium headless, loads ${url}, waits for the text "Import a protocol"
+   chromium headless, and — BEFORE loading any page — blocks product
+   analytics on the context with
+   context.route('**://ph-relay.networkcanvas.com/**', (r) => r.abort())
+   (a fresh profile defaults analytics on and would register a synthetic
+   installation). Then loads ${url}, waits for the text "Import a protocol"
    (15 s), reads document.visibilityState (must be "visible"), captures the
    version text from the bottom-right status pill (it looks like
    "Interviewer X.Y.Z" — report the semver as version), screenshots
@@ -805,6 +818,23 @@ for (const r of results.filter(Boolean)) {
     inconsistentJourneys.push(r.journey);
     automationIssues.push(
       `journey "${r.journey}" returned ${r.checks.length} of ${expected} expected checks; treated as incomplete`,
+    );
+  }
+  // A skip is only acceptable where the prompt explicitly allows one; any
+  // other skipped check means the journey was not actually exercised.
+  const badSkips = r.checks
+    .map((c, i) => ({ c, n: i + 1 }))
+    .filter(
+      ({ c, n }) =>
+        c.status === 'skipped' && !(allowedSkips[r.journey] || []).includes(n),
+    );
+  if (badSkips.length) {
+    if (!inconsistentJourneys.includes(r.journey))
+      inconsistentJourneys.push(r.journey);
+    automationIssues.push(
+      `journey "${r.journey}" skipped non-skippable check(s) ${badSkips
+        .map(({ c, n }) => `#${n} (${c.detail || 'no reason'})`)
+        .join(', ')}; treated as incomplete`,
     );
   }
   if (!r.failures || !r.failures.length) {
