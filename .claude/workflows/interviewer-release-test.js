@@ -88,6 +88,11 @@ const FAILURE = {
         'blocker: a core journey cannot be completed or data is lost; major: a feature is broken but a workaround exists; minor: cosmetic or peripheral',
     },
     description: { type: 'string' },
+    check: {
+      type: 'integer',
+      description:
+        'The numbered check this failure belongs to; omit only for defects found outside any numbered check',
+    },
     reproduction: {
       type: 'string',
       description: 'Exact steps from a fresh profile',
@@ -257,6 +262,10 @@ DISCIPLINE:
   If it does not reproduce, it was flaky automation — note it, don't fail it.
 - For each failure capture: exact reproduction steps, the page URL, a
   screenshot path, relevant console errors, and an ARIA-snapshot excerpt.
+- Every check you mark "fail" MUST have its own failure record carrying
+  that check's number in the record's "check" field; a failure found
+  outside any numbered check omits the field. One record never covers two
+  failed checks — the verdict logic rejects unaccounted failed checks.
 - Only checks whose text explicitly says they may be skipped can be marked
   "skipped" (always with the reason). Skipping any other check makes the
   whole run INCOMPLETE — if you are blocked on a check, report a failure
@@ -716,6 +725,8 @@ if (requested) {
   log(`Running subset: ${selected.map((j) => j.key).join(', ')}`);
 }
 if (!selected.length) throw new Error('No valid journeys selected');
+// A subset run is diagnostic, never release-certifying.
+const partial = selected.length !== journeyDefs.length;
 
 const preflight = await agent(
   `You are the preflight check of the Interviewer release smoke test against ${url}.
@@ -845,6 +856,9 @@ Return one verdict per reported failure, descriptions copied verbatim.`,
 
 const journeys = [];
 const confirmedFailures = [];
+// Failures no verifier adjudicated. They still block at blocker/major
+// severity (fail closed) but are never presented as confirmed.
+const unverifiedFailures = [];
 const automationIssues = [];
 const deadJourneys = [];
 const inconsistentJourneys = [];
@@ -920,14 +934,27 @@ for (const r of results.filter(Boolean)) {
     }
     continue;
   }
+  // Every failed check needs its own failure record, bound by check number —
+  // one record must not silently absorb other failed checks.
+  const failedNumbers = r.checks
+    .map((c, i) => ({ c, n: i + 1 }))
+    .filter(({ c }) => c.status === 'fail')
+    .map(({ n }) => n);
+  if (failedNumbers.length) {
+    const covered = new Set(r.failures.map((f) => f.check).filter(Boolean));
+    const uncovered = failedNumbers.filter((n) => !covered.has(n));
+    if (uncovered.length) {
+      if (!inconsistentJourneys.includes(r.journey))
+        inconsistentJourneys.push(r.journey);
+      automationIssues.push(
+        `journey "${r.journey}" has failed check(s) #${uncovered.join(', #')} with no failure record bound to them (failure.check); treated as incomplete`,
+      );
+    }
+  }
   if (!r.verification) {
     // Verifier died: fail closed — unverified failures keep their severity.
     for (const f of r.failures)
-      confirmedFailures.push({
-        journey: r.journey,
-        ...f,
-        verdict: 'unverified',
-      });
+      unverifiedFailures.push({ journey: r.journey, ...f });
     automationIssues.push(
       `verifier for "${r.journey}" returned no result; failures kept unverified`,
     );
@@ -946,11 +973,7 @@ for (const r of results.filter(Boolean)) {
     const v = idx === -1 ? null : r.verification[idx];
     if (v) used.add(idx);
     if (!v) {
-      confirmedFailures.push({
-        journey: r.journey,
-        ...f,
-        verdict: 'unverified',
-      });
+      unverifiedFailures.push({ journey: r.journey, ...f });
     } else if (v.verdict === 'confirmed') {
       confirmedFailures.push({
         journey: r.journey,
@@ -968,14 +991,14 @@ for (const r of results.filter(Boolean)) {
   });
 }
 
-const blocking = confirmedFailures.filter(
+const blocking = [...confirmedFailures, ...unverifiedFailures].filter(
   (f) => f.severity === 'blocker' || f.severity === 'major',
 );
 const verdict = blocking.length
   ? 'BLOCK'
   : deadJourneys.length || inconsistentJourneys.length
     ? 'INCOMPLETE'
-    : confirmedFailures.length
+    : confirmedFailures.length || unverifiedFailures.length
       ? 'PASS_WITH_ISSUES'
       : 'PASS';
 
@@ -988,9 +1011,15 @@ const checkCounts = journeys.reduce(
 );
 
 const lines = [];
-lines.push(`# Interviewer release smoke test — ${verdict}`);
+lines.push(
+  `# Interviewer release smoke test — ${verdict}${partial ? ' (partial run — not release-certifying)' : ''}`,
+);
 lines.push('');
 lines.push(`Target: ${url} (version ${preflight.version})`);
+if (partial)
+  lines.push(
+    `Coverage: partial — only ${selected.map((j) => j.key).join(', ')} ran. A subset run never certifies a release; run the full suite to certify.`,
+  );
 lines.push(
   `Journeys: ${journeys.length} run${deadJourneys.length ? `, ${deadJourneys.length} did not report (${deadJourneys.join(', ')})` : ''}${inconsistentJourneys.length ? `, ${inconsistentJourneys.length} inconsistent (${inconsistentJourneys.join(', ')})` : ''}. Checks: ${checkCounts.pass} passed, ${checkCounts.fail} failed, ${checkCounts.skipped} skipped.`,
 );
@@ -1010,6 +1039,14 @@ if (confirmedFailures.length) {
   for (const f of confirmedFailures)
     lines.push(`- [${f.severity}] (${f.journey}) ${f.description}`);
 }
+if (unverifiedFailures.length) {
+  lines.push('');
+  lines.push(
+    '## Unverified failures (no independent reproduction — blocking at blocker/major severity until verified)',
+  );
+  for (const f of unverifiedFailures)
+    lines.push(`- [${f.severity}] (${f.journey}) ${f.description}`);
+}
 if (automationIssues.length) {
   lines.push('');
   lines.push(
@@ -1022,11 +1059,13 @@ log(`Verdict: ${verdict}`);
 
 return {
   verdict,
+  coverage: partial ? 'partial' : 'full',
   url,
   version: preflight.version,
   workDir: preflight.workDir,
   journeys,
   confirmedFailures,
+  unverifiedFailures,
   automationIssues,
   deadJourneys,
   inconsistentJourneys,

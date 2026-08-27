@@ -28,7 +28,9 @@ Code's Workflow tool — run this command from Claude Code.)
      Netlify preview).
    - `journeys` — a subset of: `protocol-management`,
      `conduct-sample-interview`, `session-management`, `data-export`,
-     `security-vault`, `pwa-offline`, `settings-and-chrome`.
+     `security-vault`, `pwa-offline`, `settings-and-chrome`. A subset run
+     returns `coverage: "partial"` and **never certifies a release** — use
+     it for diagnosis and iteration, then run the full suite to certify.
    - `model` — `haiku` | `sonnet` | `opus` | `fable` for preflight and the
      journeys; failure verifiers stay pinned regardless.
 2. Invoke the Workflow tool:
@@ -49,10 +51,13 @@ Lead with the verdict, then render the returned `summaryMarkdown`:
 - `BLOCK` — do not release. Name each confirmed blocker or major failure
   with its reproduction steps and evidence path (under the returned
   `workDir`).
-- `INCOMPLETE` — do not certify the release: a journey died, returned an
-  inconsistent report, or skipped a non-skippable check. Resume with
-  `Workflow({ scriptPath, resumeFromRunId })` so completed journeys replay
-  from cache instead of rerunning everything.
+- `INCOMPLETE` — do not certify the release. If a journey **died**, resume
+  with `Workflow({ scriptPath, resumeFromRunId })` so completed journeys
+  replay from cache. If a journey **completed but reported inconsistently**
+  (wrong check count or numbering, an impermissible skip, a misreported
+  key), a resume replays the same cached malformed result — instead rerun
+  those journeys fresh with `args: { journeys: [...] }` to diagnose, then
+  run the full suite again to certify.
 - `BLOCKED` — preflight failed (target unreachable, tooling missing); fix
   and rerun.
 
