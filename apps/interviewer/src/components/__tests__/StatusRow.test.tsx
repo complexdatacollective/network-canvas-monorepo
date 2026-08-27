@@ -33,7 +33,10 @@ vi.mock('wouter', () => ({
   ),
 }));
 
-const useAuthMock = vi.fn(() => ({ kind: 'unlocked', mode: 'pin' }));
+const useAuthMock = vi.fn((): { kind: string; mode?: string } => ({
+  kind: 'unlocked',
+  mode: 'pin',
+}));
 vi.mock('~/lib/auth/AuthContext', () => ({
   useAuth: () => useAuthMock(),
 }));
@@ -177,6 +180,32 @@ describe('StatusRow', () => {
       expect(screen.getByText(/storage persistent/i)).toBeInTheDocument(),
     );
     expect(screen.queryByText(/protected/i)).not.toBeInTheDocument();
+  });
+
+  // Regression: a fresh, never-configured browser tab (kind 'unconfigured',
+  // mode undefined) is fully usable and stores data unencrypted — exactly
+  // like an enrolled 'none' vault — but the footer rendered no encryption
+  // statement at all. It must state "Not encrypted" there too.
+  it('warns "Not encrypted" when no vault has been configured', async () => {
+    mockEstimateStorage.mockResolvedValue({ usage: 0, quota: 0, percent: 0 });
+    mockIsPersisted.mockResolvedValue(true);
+    useAuthMock.mockReturnValue({ kind: 'unconfigured', mode: undefined });
+    render(<StatusRow protocolCount={0} interviewCount={0} />);
+    expect(screen.getByText('Not encrypted')).toBeInTheDocument();
+    expect(screen.queryByText('Encrypted')).not.toBeInTheDocument();
+  });
+
+  // While the vault record is still being read the mode is unknown; claiming
+  // "Not encrypted" for a vault that turns out to be secured would be false.
+  // No encryption statement until the auth state settles.
+  it('renders no encryption statement while auth state is loading', () => {
+    mockEstimateStorage.mockResolvedValue({ usage: 0, quota: 0, percent: 0 });
+    mockIsPersisted.mockResolvedValue(true);
+    useAuthMock.mockReturnValue({ kind: 'loading', mode: undefined });
+    render(<StatusRow protocolCount={0} interviewCount={0} />);
+    expect(
+      screen.queryByTestId('encryption-status-trigger'),
+    ).not.toBeInTheDocument();
   });
 
   it('re-reads persistence when the security mode changes (encryption enabled)', async () => {
