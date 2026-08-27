@@ -434,10 +434,14 @@ CHECKS (in one or more scripts, fresh profile each run):
    metadata and a "Start new interview" footer button, and the status row
    reads "1 protocols". The sample-protocol TEASER no longer reappears (it is
    auto-dismissed on install).
-4. re-show teaser: Settings (gear, data-testid="settings-trigger") → About →
-   toggle "Show sample protocol on home screen" — with the sample already
-   installed this controls the teaser preference; flip it off and on and
-   confirm the switch reads back its state.
+4. re-show teaser: the BEHAVIOURAL half of this check runs before check 3
+   installs (sequence it there, report it as check 4): with the sample NOT
+   yet installed, Settings (gear, data-testid="settings-trigger") → About →
+   toggle "Show sample protocol on home screen" OFF → the teaser card
+   disappears from the deck; ON → it reappears. After check 3's install,
+   flip the switch off and on again and confirm it reads back its state
+   (the installed card suppresses the teaser regardless — that suppression
+   is intended).
 5. invalid import: write a small garbage file named bad.netcanvas and feed it
    to the hidden input [data-testid="protocol-import-input"] via
    setInputFiles. Record the protocol count BEFORE the attempt; expect an
@@ -592,8 +596,11 @@ CHECKS:
    complete = all).
 3. Search (data-testid="data-search") filters by case-ID substring and writes
    ?q= to the URL.
-4. Clicking the "Case ID" column header sorts and writes ?sort=caseId to the
-   URL.
+4. Clicking the "Case ID" column header sorts: record the visible Case ID
+   column values — after the first click they are in ascending order, after
+   a second click descending (URL serialization and row ordering are
+   separate paths; ?sort=caseId appearing in the URL alone proves nothing
+   about the rows) — and the URL carries ?sort=caseId.
 5. Row actions: an in-progress row shows "Resume" (data-testid="data-resume")
    and it mounts /interview/<id>; a complete row shows "Review"
    (data-testid="data-review") which opens ?mode=review with a pinned
@@ -726,7 +733,13 @@ CHECKS:
    8-digit PIN first: the dialog must reject it and NO session may be
    created (the step-up gate accepting any credential is a bypass, and its
    verify path is distinct from the lock screen's); only then proceed with
-   the correct PIN.
+   the correct PIN. Also exercise the EXPORT step-up call site (distinct
+   from interview entry): enable "Require unlock before exporting data"
+   (Settings → Security), generate one synthetic session (Settings →
+   Synthetic data), then on /data select it and export — the identity
+   dialog must gate the export BEFORE the export dialog appears; a wrong
+   PIN is rejected with no export started, the correct PIN proceeds.
+   Disable the setting afterwards.
 4b. Encryption is REAL, not just the chip: with the PIN enrolled and a
    protocol + interview created, read the raw IndexedDB rows (database
    "interviewer") via page.evaluate and assert the sensitive fields are
