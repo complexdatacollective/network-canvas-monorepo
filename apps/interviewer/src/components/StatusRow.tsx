@@ -59,9 +59,15 @@ const statusIconClassName = 'tablet-landscape:size-3.5 size-4';
 // keyboard focus — on a tablet (the primary field platform) no gesture could
 // reveal them. A popover opens on tap as well, so hover, focus, and touch all
 // reach the same text. This mirrors fresco-ui Definition's interactive
-// pattern: the popover is controlled, focus/hover open it, and Base UI's own
-// click-toggle is withdrawn because the click's focus has already opened it —
-// left in place the two would race and a tap would close what it just opened.
+// pattern, with the popover controlled and focus/hover opening it.
+//
+// The one subtlety is the trigger's own activation. A press on an unfocused
+// trigger fires focus (which opens) and then click (which would toggle back
+// closed), so that first activation has to be withdrawn or a tap would close
+// what it just opened. Only that one: every other activation must still
+// toggle, otherwise a keyboard user who presses Escape is stranded — focus
+// stays on the trigger, so no further focus event arrives, and Enter or Space
+// could never reopen the explanation.
 function StatusChipPopover({
   testId,
   className,
@@ -79,6 +85,10 @@ function StatusChipPopover({
   const triggerId = useId();
   const triggerRef = useRef<HTMLSpanElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  // Set when focus opened the popover, and consumed by the activation that
+  // immediately follows — the two halves of a single press on an unfocused
+  // trigger. Cleared on every close so a later activation toggles normally.
+  const openedByFocus = useRef(false);
 
   const keepOpenFor = (target: EventTarget | null) =>
     target instanceof Node &&
@@ -101,6 +111,7 @@ function StatusChipPopover({
         ) {
           return;
         }
+        if (!nextOpen) openedByFocus.current = false;
         setOpen(nextOpen);
       }}
     >
@@ -115,16 +126,25 @@ function StatusChipPopover({
             tabIndex={0}
             data-testid={testId}
             className={className}
-            onFocus={() => setOpen(true)}
+            onFocus={() => {
+              openedByFocus.current = true;
+              setOpen(true);
+            }}
             onBlur={(event) => {
-              if (!keepOpenFor(event.relatedTarget)) setOpen(false);
+              if (!keepOpenFor(event.relatedTarget)) {
+                openedByFocus.current = false;
+                setOpen(false);
+              }
             }}
             onClick={(
               event: React.MouseEvent<HTMLSpanElement> & {
                 preventBaseUIHandler?: () => void;
               },
             ) => {
-              event.preventBaseUIHandler?.();
+              if (openedByFocus.current) {
+                openedByFocus.current = false;
+                event.preventBaseUIHandler?.();
+              }
             }}
           >
             {chip}
@@ -148,9 +168,11 @@ function StatusChipPopover({
   );
 }
 
-// Pure presentation: the dashboard's bottom-of-screen footer strip. `mode`
-// mirrors useAuth's enrolled security mode; `durability` mirrors the
-// storage-persistence poll (null until the first check resolves).
+// Pure presentation: the dashboard's bottom-of-screen footer strip. `mode` is
+// the security mode to display (the container maps an unconfigured vault to
+// 'none'; undefined means the auth state hasn't settled and renders no
+// encryption statement); `durability` mirrors the storage-persistence poll
+// (null until the first check resolves).
 export function StatusRowView({
   protocolCount,
   interviewCount,
@@ -297,7 +319,13 @@ type StatusRowProps = {
 };
 
 export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
-  const { mode } = useAuth();
+  const { kind, mode } = useAuth();
+  // A never-configured vault stores data exactly as an enrolled 'none' vault
+  // does — unencrypted — so the footer must state "Not encrypted" there too,
+  // not stay silent. Keyed on kind, not `mode ?? 'none'`: mode is also
+  // undefined while 'loading' (and for 'corrupt'), where the truthful display
+  // is no statement rather than a false "Not encrypted" flash.
+  const displayMode = kind === 'unconfigured' ? 'none' : mode;
   const [durability, setDurability] = useState<Durability | null>(null);
   // Static per page load, like InstallBanner: installing mid-session still
   // requires launching the installed app.
@@ -353,7 +381,7 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
     <StatusRowView
       protocolCount={protocolCount}
       interviewCount={interviewCount}
-      mode={mode}
+      mode={displayMode}
       durability={durability}
       installed={installed}
       versionSlot={<AppUpdatePill />}

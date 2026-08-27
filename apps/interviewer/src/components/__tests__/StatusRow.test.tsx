@@ -33,7 +33,10 @@ vi.mock('wouter', () => ({
   ),
 }));
 
-const useAuthMock = vi.fn(() => ({ kind: 'unlocked', mode: 'pin' }));
+const useAuthMock = vi.fn((): { kind: string; mode?: string } => ({
+  kind: 'unlocked',
+  mode: 'pin',
+}));
 vi.mock('~/lib/auth/AuthContext', () => ({
   useAuth: () => useAuthMock(),
 }));
@@ -162,6 +165,66 @@ describe('StatusRow', () => {
     );
   });
 
+  // Escape closes the popover but leaves focus on the trigger, so no further
+  // focus event arrives to reopen it. Only the activation that coincides with
+  // the focus-open is withdrawn; every later one must still toggle, or a
+  // keyboard user is stranded with an explanation they cannot reopen.
+  it('reopens with Enter after Escape, while the trigger keeps focus', async () => {
+    const user = userEvent.setup();
+    render(
+      <StatusRowView
+        protocolCount={0}
+        interviewCount={0}
+        mode="pin"
+        durability={{ persisted: true, usage: null }}
+        installed={false}
+      />,
+    );
+
+    const trigger = screen.getByTestId('encryption-status-trigger');
+    await user.click(trigger);
+    await waitFor(() =>
+      expect(screen.getByText(/^Encrypted\./)).toBeInTheDocument(),
+    );
+
+    await user.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(screen.queryByText(/^Encrypted\./)).not.toBeInTheDocument(),
+    );
+    expect(trigger).toHaveFocus();
+
+    await user.keyboard('{Enter}');
+    await waitFor(() =>
+      expect(screen.getByText(/^Encrypted\./)).toBeInTheDocument(),
+    );
+  });
+
+  // The other half of that contract: a second tap on an already-open chip
+  // dismisses it, rather than being swallowed as a repeat of the first press.
+  it('closes again on a second tap of the same chip', async () => {
+    const user = userEvent.setup();
+    render(
+      <StatusRowView
+        protocolCount={0}
+        interviewCount={0}
+        mode="pin"
+        durability={{ persisted: true, usage: null }}
+        installed={false}
+      />,
+    );
+
+    const trigger = screen.getByTestId('encryption-status-trigger');
+    await user.click(trigger);
+    await waitFor(() =>
+      expect(screen.getByText(/^Encrypted\./)).toBeInTheDocument(),
+    );
+
+    await user.click(trigger);
+    await waitFor(() =>
+      expect(screen.queryByText(/^Encrypted\./)).not.toBeInTheDocument(),
+    );
+  });
+
   it('opens the explanation on keyboard focus and closes on blur', async () => {
     const user = userEvent.setup();
     render(
@@ -241,6 +304,32 @@ describe('StatusRow', () => {
       expect(screen.getByText(/storage persistent/i)).toBeInTheDocument(),
     );
     expect(screen.queryByText(/protected/i)).not.toBeInTheDocument();
+  });
+
+  // Regression: a fresh, never-configured browser tab (kind 'unconfigured',
+  // mode undefined) is fully usable and stores data unencrypted — exactly
+  // like an enrolled 'none' vault — but the footer rendered no encryption
+  // statement at all. It must state "Not encrypted" there too.
+  it('warns "Not encrypted" when no vault has been configured', async () => {
+    mockEstimateStorage.mockResolvedValue({ usage: 0, quota: 0, percent: 0 });
+    mockIsPersisted.mockResolvedValue(true);
+    useAuthMock.mockReturnValue({ kind: 'unconfigured', mode: undefined });
+    render(<StatusRow protocolCount={0} interviewCount={0} />);
+    expect(screen.getByText('Not encrypted')).toBeInTheDocument();
+    expect(screen.queryByText('Encrypted')).not.toBeInTheDocument();
+  });
+
+  // While the vault record is still being read the mode is unknown; claiming
+  // "Not encrypted" for a vault that turns out to be secured would be false.
+  // No encryption statement until the auth state settles.
+  it('renders no encryption statement while auth state is loading', () => {
+    mockEstimateStorage.mockResolvedValue({ usage: 0, quota: 0, percent: 0 });
+    mockIsPersisted.mockResolvedValue(true);
+    useAuthMock.mockReturnValue({ kind: 'loading', mode: undefined });
+    render(<StatusRow protocolCount={0} interviewCount={0} />);
+    expect(
+      screen.queryByTestId('encryption-status-trigger'),
+    ).not.toBeInTheDocument();
   });
 
   it('re-reads persistence when the security mode changes (encryption enabled)', async () => {
