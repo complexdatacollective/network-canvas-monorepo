@@ -762,8 +762,11 @@ CHECKS:
    empty, no lock, immediately usable.
 9. Passphrase enrolment (quick pass): /welcome again → choose "Passphrase" →
    "correct-horse-battery-1" twice + the no-recovery checkbox → finish →
-   reload → unlock via the "Passphrase" field
-   (data-testid="passphrase-input") and "Unlock" (unlock-submit).
+   reload → submit a WRONG passphrase first via the "Passphrase" field
+   (data-testid="passphrase-input") and "Unlock" (unlock-submit) — it must
+   be rejected and the app stay locked (this verify path is separate from
+   the PIN's, and accepting any nonempty passphrase is a bypass) — then
+   unlock with the correct passphrase.
 10. Lock-screen reset path: lock, then "Recover by resetting" → dialog "Reset
     all app data?" → "Permanently delete" → clean slate again.
 
@@ -787,14 +790,16 @@ CHECKS:
 3. Caching headers (curl -sI): "/" , /sw.js and /manifest.webmanifest are
    served no-stale (max-age=0/must-revalidate); a hashed /assets/*.js chunk
    (take one from the page's network activity or the HTML) is served
-   immutable. KNOWN ISSUE (since 2026-08): the Cloudflare edge in front of
-   the .dev site rewrites cacheable content types (/sw.js, /workbox-*.js,
-   the non-hashed icons) to max-age=14400, overriding the repo's
-   public/_headers intent of max-age=0. If you observe exactly that, record
-   this check as fail with a minor failure citing the known issue — one curl
-   per path is enough, no deeper investigation. Anything BEYOND it (HTML or
-   manifest no longer no-stale, hashed assets no longer immutable) is a new
-   finding.
+   immutable. KNOWN ISSUE (since 2026-08, and it applies ONLY when the
+   target is the Cloudflare-fronted developer site — for this run:
+   ${url === 'https://interviewer.networkcanvas.dev' ? 'it IS the developer site, so the exemption applies' : 'the target is a candidate deployment, so the exemption does NOT apply — a max-age=14400 on sw.js or icons HERE is the candidate&apos;s own cache-policy regression and a real failure'}):
+   the Cloudflare edge in front of the .dev site rewrites cacheable content
+   types (/sw.js, /workbox-*.js, the non-hashed icons) to max-age=14400,
+   overriding the repo's public/_headers intent of max-age=0. When the
+   exemption applies and you observe exactly that, record this check as
+   fail with a minor failure citing the known issue — one curl per path is
+   enough, no deeper investigation. Anything BEYOND it (HTML or manifest no
+   longer no-stale, hashed assets no longer immutable) is a new finding.
 4. Offline boot: with the SW controlling the page, context.setOffline(true)
    → page.reload() → the Home screen still renders ("Import a protocol"
    card visible).
