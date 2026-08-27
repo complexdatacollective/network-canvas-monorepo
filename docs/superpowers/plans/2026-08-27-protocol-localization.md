@@ -375,6 +375,7 @@ ready.
 - `packages/interview/src/localization/LocalizedText.tsx` (new, only if a wrapper materially reduces repeated accessible markup)
 - `packages/interview/src/Shell.tsx`
 - `packages/interview/src/components/Navigation/**`
+- `packages/interview/src/components/ContentItem.tsx`
 - `packages/interview/src/components/StagesMenu.tsx`
 - `packages/interview/src/interfaces/NarrativePedigree/components/NarrativePedigreeView.tsx`
 - Participant interface, prompt, form, panel, content, and codebook label renderers identified in Milestone 0
@@ -403,14 +404,18 @@ ready.
 8. Resolve stage `label` in the participant Stages menu and Narrative Pedigree
    snapshot title. Researcher/editor surfaces choose an explicit editor locale
    or the protocol default rather than treating the map as a string.
-9. Remove label-based runtime comparisons discovered by the type transition;
-   compare stable values or ids.
-10. Apply selected direction to protocol content regions and actual fallback
+9. Resolve asset-item `description` before rendering image, audio, and video
+   accessibility labels. Never fall back to `assetMeta.name`; use an
+   application-owned generic media label when the optional description is
+   absent, leaving its translation to the separate UI-message catalog.
+10. Remove label-based runtime comparisons discovered by the type transition;
+    compare stable values or ids.
+11. Apply selected direction to protocol content regions and actual fallback
     direction to leaf content. Audit physical spacing/alignment, arrows, and
     drag behavior under RTL without mirroring graph coordinates.
-11. Keep hardcoded runtime-owned English copy out of LocalizedString and note
+12. Keep hardcoded runtime-owned English copy out of LocalizedString and note
     it in tests/documentation as the separate application-catalog boundary.
-12. Ensure analytics records only the selected declared locale if approved;
+13. Ensure analytics records only the selected declared locale if approved;
     never send raw browser preference lists or participant text.
 
 **Tests:**
@@ -419,6 +424,8 @@ ready.
   form, option, panel, and canvas label renderers.
 - Stage-menu items and Narrative Pedigree snapshot titles resolve selected and
   fallback stage labels.
+- Information and Family Pedigree image/audio/video accessibility names use
+  resolved descriptions and never use asset metadata names.
 - `lang`/`dir` on selected and mixed-fallback strings.
 - Changing locale preserves all session/network state and triggers one sync.
 - Resume uses stored locale.
@@ -469,7 +476,9 @@ ready.
    removal/relabel. Reuse the protocol-validation collector output rather than
    recursively rewriting arbitrary objects. Relabeling the current default
    updates `defaultLocale` in the same transaction; relabeling any other locale
-   leaves it unchanged.
+   leaves it unchanged. If the affected tag is the selected preview locale,
+   relabel it to the new tag or reset it to the surviving default on removal in
+   the same undoable operation.
 3. Reject locale relabel collisions. Confirm before destructive removal, show
    affected translation count, and prevent operations that leave an empty
    localized string.
@@ -492,7 +501,8 @@ ready.
    chooses an initial locale; known English templates use `en-US`.
 10. Add preview locale to editor preview state and `PreviewPayload`. PreviewHost
     hydrates `SessionPayload.locale` from that value and never detects browser
-    language independently.
+    language independently. Locale mutation failure/undo restores the preview
+    preference with the protocol state.
 11. Ensure downloads remain allowed with warnings and blocked only by schema
     errors.
 12. Update printable summary/codebook rendering to make its locale choice
@@ -505,7 +515,8 @@ ready.
 - Missing translations save and warn; extra keys/empty maps fail.
 - Locale add/reorder/default/remove/relabel are undoable and atomic. Relabeling
   the default updates the declaration, `defaultLocale`, and every localized
-  key together; an injected failure rolls all of them back.
+  key together; relabel/removal retargets or resets the selected preview
+  locale; an injected failure rolls all of them back.
 - Destructive confirmation includes accurate counts and cancel is a no-op.
 - A removal that would empty a field is refused.
 - Coverage counts match collected schema hits.
@@ -830,10 +841,13 @@ image diff, and do not adopt a broad baseline rewrite.
    and coordinated package/app releases. The normal-lane changeset must include
    the converted published protocol artifacts in
    `@codaco/development-protocol` and `@codaco/sample-protocol`, alongside the
-   affected libraries and apps, so npm and the latest-development-protocol
-   delivery path actually receive schema 9. Add a separate Studio-lane
-   changeset for affected Studio packages. Do not mix Studio, Documentation,
-   or Website with the normal lane or with one another.
+   affected libraries and apps, including `@codaco/shared-consts` for the
+   public session-locale export consumed by the externally bundled network
+   exporter. This ensures npm and the latest-development-protocol delivery
+   path actually receive schema 9 without an exporter/runtime version skew.
+   Add a separate Studio-lane changeset for affected Studio packages. Do not
+   mix Studio, Documentation, or Website with the normal lane or with one
+   another.
 2. Explain in release notes:
    - schema 9 and `LocalizedString`;
    - missing translation warnings versus validation errors;

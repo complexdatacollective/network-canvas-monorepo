@@ -249,6 +249,13 @@ data, or researcher-facing metadata:
 - ISO date constraints and other machine parameters;
 - interface-owned application copy.
 
+An asset `name` remains researcher/storage metadata only if participant
+renderers stop using it as fallback copy. Image, audio, and video items resolve
+their localized item `description` for alt text and accessible media names. If
+an item omits that optional description, the runtime supplies a generic
+application-owned media label (and the image may remain decorative where
+appropriate); it never exposes the untranslated asset name to a participant.
+
 The inventory must be confirmed against render call sites during
 implementation. If a plain schema string is found to be participant-facing,
 it joins this list before schema 9 ships; it must not be patched later as an
@@ -530,6 +537,12 @@ protocol default. `PreviewPayload` carries the selected locale so the popup
 does not detect independently. Preview can therefore reproduce every warning
 fallback exactly.
 
+Locale mutations keep that preference valid. Relabeling the selected preview
+locale moves the preference to the new canonical tag in the same undoable
+operation. Removing the selected preview locale resets it to the surviving
+`defaultLocale`. A failed locale mutation rolls back both protocol data and
+the preview preference, so Preview never receives an undeclared locale.
+
 ### 8.5 Studio protocol storage
 
 Studio's sectioned protocol store treats `localization` as protocol-level
@@ -592,6 +605,11 @@ tag; otherwise the default remains unchanged. A collision with an existing
 locale is rejected rather than merged, and any failure rolls back the
 declaration, default, and all string-key changes together. The special v8
 migration action changes `und` to a chosen locale under the same rules.
+
+The locale operation also owns Architect's preview preference: relabeling its
+selected locale retargets it, while removing its selected locale resets it to
+the surviving default. Undo and failure rollback restore the preference with
+the protocol mutation.
 
 ### 9.2 Localized fields
 
@@ -746,6 +764,9 @@ schema.
 - Every localized field family renders selected and fallback translations,
   including stage labels in the participant Stages menu and Narrative
   Pedigree snapshot title.
+- Information and Family Pedigree media controls use resolved item
+  descriptions for alt/accessibility labels and never expose asset metadata
+  names as participant fallback copy.
 - DOM `lang`/`dir` reflects the actual resolved locale.
 - Locale changes re-render without resetting network, prompt position, stage
   position, or form answers and travel through sync.
@@ -758,6 +779,8 @@ schema.
 - Add/reorder/change-default/remove/relabel locale flows, including updating
   `defaultLocale` when its tag is relabeled and atomic rollback of the
   declaration, default, and localized-string keys on invalid edits.
+- Relabel/removal keeps the preview locale declared, is undoable with the
+  protocol edit, and rolls the preference back on failure.
 - Incomplete localized strings save successfully and appear as warnings.
 - Undeclared keys and empty localized strings fail loudly.
 - Coverage aggregation and exact field navigation.
@@ -792,9 +815,11 @@ schema.
 - Treat `CurrentProtocol`'s string-to-map changes as a breaking
   protocol-validation release.
 - Add coordinated normal-lane changesets for protocol-validation, Interview,
-  protocol-utilities, network-exporters, `@codaco/development-protocol`,
-  `@codaco/sample-protocol`, Architect, Interviewer, and Fresco as required by
-  the implementation. Both compatibility packages must be versioned and
+  protocol-utilities, shared-consts, network-exporters,
+  `@codaco/development-protocol`, `@codaco/sample-protocol`, Architect,
+  Interviewer, and Fresco as required by the implementation. Shared-consts
+  must publish the new session-locale export consumed by the externally
+  bundled exporter. Both compatibility packages must be versioned and
   published with their schema-9 `protocol.json` content.
 - Add a separate Studio-lane changeset for the affected Studio packages; do
   not mix it with the normal lane. Keep separately gated Documentation work in
