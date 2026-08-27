@@ -183,13 +183,18 @@ const EVIDENCE_SCHEMA = {
       type: 'array',
       items: {
         type: 'object',
-        required: ['journey', 'exists', 'screenshots'],
+        required: ['journey', 'exists', 'screenshots', 'distinctCheckpoints'],
         properties: {
           journey: { type: 'string' },
           exists: { type: 'boolean' },
           screenshots: {
             type: 'integer',
             description: 'Number of .png files in the directory',
+          },
+          distinctCheckpoints: {
+            type: 'integer',
+            description:
+              'Number of DISTINCT check<N> filename prefixes among the .png files (e.g. check1-foo.png and check1-bar.png count once)',
           },
         },
       },
@@ -232,9 +237,12 @@ starts from a fresh profile — that is fine; the journey is self-contained and
 cheap to replay from the top. After each run, inspect the console output, Read
 the saved screenshots, and dump ARIA snapshots
 (await page.locator('body').ariaSnapshot()) before extending the script.
-Save a screenshot at every checkpoint — AT LEAST one per numbered check
-(the evidence audit enforces a per-journey minimum; a run without them is
-rejected as incomplete) — under ${workDir}/<your-journey-key>/
+Save a screenshot at every checkpoint — AT LEAST one per numbered check,
+named with the check's number as its filename prefix: check<N>-<slug>.png
+(e.g. check3-settings-tabs.png; extra captures like stage-<i>.png may sit
+alongside). The evidence audit counts DISTINCT check<N> prefixes on disk
+and rejects the run as incomplete when any executed check has none — under
+${workDir}/<your-journey-key>/
 and set artifactsDir to EXACTLY that directory — ${workDir}/<your-journey-key>
 — in your result; any other value is rejected by the verdict logic.
 
@@ -989,7 +997,10 @@ let evidence = { entries: [] };
 let auditFailed = false;
 if (evidenceClaims.length) {
   evidence = await agent(
-    `Audit the evidence directories of an automated release test. For each entry below, check with the shell whether the directory exists and count the .png files directly inside it (e.g. \`find <dir> -maxdepth 1 -name '*.png' | wc -l\`). Do nothing else — no interpretation, no browsing, no writes.
+    `Audit the evidence directories of an automated release test. For each entry below, check with the shell (no interpretation, no browsing, no writes):
+1. whether the directory exists;
+2. the count of .png files directly inside it (e.g. \`find <dir> -maxdepth 1 -name '*.png' | wc -l\`);
+3. the count of DISTINCT check<N> filename prefixes among them (e.g. \`ls <dir> | grep -oE '^check[0-9]+' | sort -u | wc -l\`).
 
 ENTRIES (JSON):
 ${JSON.stringify(evidenceClaims, null, 2)}
@@ -1058,11 +1069,23 @@ for (const r of results.filter(Boolean)) {
   } else if (evidence) {
     const e = evidence.entries.find((x) => x.journey === r.journey);
     const needed = minScreenshots[r.journey] ?? 1;
-    if (!e || !e.exists || e.screenshots < needed) {
+    // Every EXECUTED check (expected minus actually-skipped) must have its
+    // own check<N>-prefixed capture — a pile of unrelated or duplicated
+    // PNGs meeting the total is not checkpoint evidence.
+    const skippedCount = r.checks.filter((c) => c.status === 'skipped').length;
+    const neededCheckpoints = expectedChecks[r.journey]
+      ? expectedChecks[r.journey] - skippedCount
+      : 0;
+    if (
+      !e ||
+      !e.exists ||
+      e.screenshots < needed ||
+      (e.distinctCheckpoints ?? 0) < neededCheckpoints
+    ) {
       if (!inconsistentJourneys.includes(r.journey))
         inconsistentJourneys.push(r.journey);
       automationIssues.push(
-        `journey "${r.journey}" lacks on-disk evidence (${e ? `exists=${e.exists}, screenshots=${e.screenshots} of >=${needed} required` : 'not audited'}); treated as incomplete`,
+        `journey "${r.journey}" lacks on-disk evidence (${e ? `exists=${e.exists}, screenshots=${e.screenshots} of >=${needed}, check-prefixed captures ${e.distinctCheckpoints ?? 0} of >=${neededCheckpoints}` : 'not audited'}); treated as incomplete`,
       );
     }
   }
@@ -1220,14 +1243,18 @@ if (auditFailed) {
     'the evidence audit did not run; on-disk evidence is unconfirmed, so this run cannot certify',
   );
 }
+// ANY unadjudicated failure makes the run incomplete (unless it already
+// blocks): a dead verifier and a schema-valid empty/partial verdict list
+// are the same failure to adjudicate, and neither may quietly certify.
 const verdict = blocking.length
   ? 'BLOCK'
   : deadJourneys.length ||
       inconsistentJourneys.length ||
       auditFailed ||
-      verifierDied
+      verifierDied ||
+      unverifiedFailures.length
     ? 'INCOMPLETE'
-    : confirmedFailures.length || unverifiedFailures.length
+    : confirmedFailures.length
       ? 'PASS_WITH_ISSUES'
       : 'PASS';
 
@@ -1278,7 +1305,7 @@ if (confirmedFailures.length) {
 if (unverifiedFailures.length) {
   lines.push('');
   lines.push(
-    '## Unverified failures (no independent reproduction — blocking at blocker/major severity until verified)',
+    '## Unverified failures (no independent adjudication — blocking at blocker/major severity; any unverified failure also caps the run at INCOMPLETE)',
   );
   for (const f of unverifiedFailures)
     lines.push(`- [${f.severity}] (${f.journey}) ${f.description}`);
