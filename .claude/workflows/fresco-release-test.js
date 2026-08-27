@@ -123,6 +123,14 @@ const pendingImage = PENDING_IMAGE;
 // A count the audit reports about the filesystem. Anything that is not a
 // non-negative integer is not a count, and must not reach a comparison where
 // a negative would read as "more than zero".
+// The distinct interview ids a side snapshotted, taken from its file names.
+const snapshotIds = (list) =>
+  new Set(
+    (Array.isArray(list) ? list : [])
+      .map((id) => (typeof id === 'string' ? id.trim() : ''))
+      .filter(Boolean),
+  );
+
 const counted = (value) =>
   typeof value === 'number' && Number.isInteger(value) && value >= 0
     ? value
@@ -360,8 +368,23 @@ const AUDIT_SCHEMA = {
       type: 'string',
       description: 'The id docker reports for the pending image right now',
     },
-    baselineInterviewSnapshots: { type: 'integer', minimum: 0 },
-    upgradedInterviewSnapshots: { type: 'integer', minimum: 0 },
+    baselineSnapshotIds: {
+      type: 'array',
+      items: { type: 'string' },
+      description:
+        'The <id> of every BASELINE api-interview-<id>.json file, taken from the file name',
+    },
+    upgradedSnapshotIds: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'The same for the upgraded side',
+    },
+    suspectSnapshots: {
+      type: 'integer',
+      minimum: 0,
+      description:
+        'Per-interview snapshots across both sides that are near-empty, byte-identical to another snapshot on the same side, or do not contain their own id',
+    },
     baselineUiExport: { type: 'boolean' },
     upgradedUiExport: { type: 'boolean' },
     diffSummaryExists: { type: 'boolean' },
@@ -382,8 +405,9 @@ const AUDIT_SCHEMA = {
   required: [
     'ok',
     'stampExists',
-    'baselineInterviewSnapshots',
-    'upgradedInterviewSnapshots',
+    'baselineSnapshotIds',
+    'upgradedSnapshotIds',
+    'suspectSnapshots',
     'baselineUiExport',
     'upgradedUiExport',
     'diffSummaryExists',
@@ -884,8 +908,8 @@ try {
 Report, exactly:
 - stampExists: whether ${STAMP} exists. If it does, also report its contents verbatim: stampVersion, stampCommit, stampImageId and stampDirty (the "version", "commit", "imageId" and "dirty" keys of that JSON file). Report the flag as the file states it — do NOT recompute or second-guess it.
 - pendingImageId: the output of docker image inspect --format '{{.Id}}' ${pendingImage} (omit the field if the image does not exist).
-- baselineInterviewSnapshots: number of files matching ${BASELINE_DIR}/api-interview-*.json (0 if the directory is missing).
-- upgradedInterviewSnapshots: the same for ${UPGRADED_DIR}.
+- baselineSnapshotIds: the <id> part of every file matching ${BASELINE_DIR}/api-interview-<id>.json (empty array if the directory is missing). upgradedSnapshotIds: the same for ${UPGRADED_DIR}.
+- suspectSnapshots: how many of those files, across BOTH directories, are unusable. Count a file if ANY of these holds: it is smaller than 64 bytes; it is byte-identical to a different snapshot in the same directory (compare checksums, e.g. cksum, within each directory); or it does not contain its own <id> anywhere in its contents (grep -q -- "<id>" on that file). A count of files is not evidence that each one holds the interview it is named for, which is what this reports.
 - baselineUiExport / upgradedUiExport: whether ${BASELINE_DIR}/ui-export.zip and ${UPGRADED_DIR}/ui-export.zip exist.
 - diffSummaryExists: whether ${DIFF_SUMMARY} exists. If it does, also report diffIdentical (the LENGTH of its "identical" array) and diffFiles — EVERY entry of its "onlyInBaseline" and "onlyInCurrent" arrays (plain strings) plus every "file" of its "changed" array (objects), verbatim and complete. Read them with the shell rather than by eye: node -e 'const s=require("./${DIFF_SUMMARY}");console.log(JSON.stringify([...s.onlyInBaseline,...s.onlyInCurrent,...s.changed.map(c=>c.file)]))'. If any element of that output is null the keys have changed — report ok:false rather than a list with holes in it. If the summary lists none, report an empty array.
 - changesets: the base names of every .changeset/*.md file WITHOUT the .md extension, excluding README.
@@ -1345,8 +1369,13 @@ if (upgradeLane?.swap?.ok === true) {
 if (upgradeLane?.swap?.ok === true && audit) {
   const baselineZip = audit.baselineUiExport === true;
   const upgradedZip = audit.upgradedUiExport === true;
-  const baselineSnapshots = counted(audit.baselineInterviewSnapshots) ?? 0;
-  const upgradedSnapshots = counted(audit.upgradedInterviewSnapshots) ?? 0;
+  // Identities, not a tally. Five files prove nothing if two of them describe
+  // the same interview, or one is an error body: the diff would compare the
+  // matching pair cleanly while a seeded interview went unexamined.
+  const baselineIds = snapshotIds(audit.baselineSnapshotIds);
+  const upgradedIds = snapshotIds(audit.upgradedSnapshotIds);
+  const baselineSnapshots = baselineIds.size;
+  const upgradedSnapshots = upgradedIds.size;
 
   // Never waived by the presence of the UI archives. Fresco reports a
   // partial export as a success ("Export complete", success variant, with a
@@ -1360,7 +1389,25 @@ if (upgradeLane?.swap?.ok === true && audit) {
     upgradedSnapshots < SYNTHETIC_COUNT
   )
     unaccounted.push(
-      `export comparability: every seeded interview needs a payload snapshot on both sides (need ${SYNTHETIC_COUNT}; on disk: baseline ${baselineSnapshots}, upgraded ${upgradedSnapshots}) — a UI export archive cannot stand in for them, because Fresco reports a partial export as a success`,
+      `export comparability: every seeded interview needs a payload snapshot on both sides (need ${SYNTHETIC_COUNT} distinct interviews; on disk: baseline ${baselineSnapshots}, upgraded ${upgradedSnapshots}) — a UI export archive cannot stand in for them, because Fresco reports a partial export as a success`,
+    );
+  // The two sides must describe the SAME interviews, or the diff pairs files
+  // that were never about the same thing.
+  const onlyBaseline = [...baselineIds].filter((id) => !upgradedIds.has(id));
+  const onlyUpgraded = [...upgradedIds].filter((id) => !baselineIds.has(id));
+  if (onlyBaseline.length || onlyUpgraded.length)
+    unaccounted.push(
+      `export comparability: the two sides snapshotted different interviews (${onlyBaseline.length ? `baseline only: ${onlyBaseline.join(', ')}` : ''}${onlyBaseline.length && onlyUpgraded.length ? '; ' : ''}${onlyUpgraded.length ? `upgraded only: ${onlyUpgraded.join(', ')}` : ''}) — the diff would pair files that are not about the same interview`,
+    );
+  // And each file must actually hold the interview it is named for.
+  const suspect = counted(audit.suspectSnapshots);
+  if (suspect === null)
+    unaccounted.push(
+      'export comparability: the audit did not report how many per-interview snapshots are unusable, so their contents are unverified',
+    );
+  else if (suspect > 0)
+    unaccounted.push(
+      `export comparability: ${suspect} per-interview snapshot(s) are near-empty, duplicated, or do not contain their own id — a snapshot that does not hold the interview it is named for leaves that interview uncompared`,
     );
   // Claims that contradict the disk make the whole report untrustworthy, even
   // when the gate above happens to be satisfied.
@@ -1456,9 +1503,13 @@ for (const item of report?.untestedShippedChanges ?? []) {
   const text = String(item ?? '').trim();
   if (!text) continue;
   if (!audit || namesKnownChangeset(text)) untestedShippedChanges.push(text);
+  // Two agents disagreeing does not prove the critic invented it — the audit's
+  // listing could be the wrong one. Resolving that in favour of certification
+  // would be the one direction this gate must never resolve, so it is
+  // unaccounted: the run cannot certify until a human says which is right.
   else
-    warnings.push(
-      `the release critic listed "${text}" as an untested shipped change, but no such changeset exists`,
+    unaccounted.push(
+      `the release critic listed "${text}" as an untested shipped change, but the artifact audit did not find a changeset of that name — one of the two is wrong, and the run cannot certify until it is clear which`,
     );
 }
 

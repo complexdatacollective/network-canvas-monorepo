@@ -120,8 +120,9 @@ const happyPath = () => ({
     stampImageId: `sha256:${'b'.repeat(64)}`,
     stampDirty: false,
     pendingImageId: `sha256:${'b'.repeat(64)}`,
-    baselineInterviewSnapshots: 5,
-    upgradedInterviewSnapshots: 5,
+    baselineSnapshotIds: ['i1', 'i2', 'i3', 'i4', 'i5'],
+    upgradedSnapshotIds: ['i1', 'i2', 'i3', 'i4', 'i5'],
+    suspectSnapshots: 0,
     baselineUiExport: true,
     upgradedUiExport: true,
     diffSummaryExists: true,
@@ -765,9 +766,14 @@ test('untested shipped changes are kept only when they name a real changeset', a
   assert.deepEqual(result.untestedShippedChanges, [
     'interview-node-labels: no check exercises node labels',
   ]);
+  // The corroborated one caps certification; the uncorroborated one is a
+  // disagreement between two agents, not a proven invention, so it blocks
+  // rather than being filed as a note.
+  assert.equal(result.verdict, 'incomplete');
+  assert.equal(result.releasable, false);
   assert.ok(
-    result.warnings.some((w) => w.includes('no such changeset exists')),
-    JSON.stringify(result.warnings),
+    result.unaccounted.some((u) => u.includes('one of the two is wrong')),
+    JSON.stringify(result.unaccounted),
   );
 });
 
@@ -1022,17 +1028,21 @@ test('known-untested shipped behaviour caps certification', async () => {
   assert.deepEqual(result.failures, []);
 });
 
-test('an invented untested-change claim neither certifies nor caps', async () => {
+test('a changeset the audit cannot corroborate never resolves towards certifying', async () => {
+  // Whether the critic invented it or the audit missed it, resolving the
+  // disagreement in favour of "go" is the one direction this gate must not
+  // take on its own.
   const r = happyPath();
   r['release-critic'].untestedShippedChanges = [
     'imaginary-changeset: invented',
   ];
   const { result } = await run(r);
-  assert.equal(result.releasable, true);
+  assert.equal(result.verdict, 'incomplete');
+  assert.equal(result.releasable, false);
   assert.deepEqual(result.untestedShippedChanges, []);
   assert.ok(
-    result.warnings.some((w) => w.includes('no such changeset exists')),
-    JSON.stringify(result.warnings),
+    result.unaccounted.some((u) => u.includes('the run cannot certify')),
+    JSON.stringify(result.unaccounted),
   );
 });
 
@@ -1079,8 +1089,8 @@ test('matching UI archives do not waive the per-interview snapshots', async () =
   const r = happyPath();
   r['audit-artifacts'].baselineUiExport = true;
   r['audit-artifacts'].upgradedUiExport = true;
-  r['audit-artifacts'].baselineInterviewSnapshots = 3;
-  r['audit-artifacts'].upgradedInterviewSnapshots = 3;
+  r['audit-artifacts'].baselineSnapshotIds = ['i1', 'i2', 'i3'];
+  r['audit-artifacts'].upgradedSnapshotIds = ['i1', 'i2', 'i3'];
   r['seed-baseline'].networkSnapshots = 3;
   r['export-capture'].networkSnapshots = 3;
   const { result } = await run(r);
@@ -1098,7 +1108,7 @@ test('without archives on both sides, every interview needs a payload snapshot',
   r['export-capture'].uiExportCaptured = false;
   r['audit-artifacts'].baselineUiExport = false;
   r['audit-artifacts'].upgradedUiExport = false;
-  r['audit-artifacts'].baselineInterviewSnapshots = 3;
+  r['audit-artifacts'].baselineSnapshotIds = ['i1', 'i2', 'i3'];
   r['seed-baseline'].networkSnapshots = 3;
   r['seed-baseline'].checks[7] = {
     name: '8. check 8',
@@ -1123,7 +1133,7 @@ test('one-sided archives do not waive the payload-snapshot requirement', async (
   // The upgraded side claims (and has) an archive; the baseline has none, so
   // there is nothing to diff it against.
   r['audit-artifacts'].baselineUiExport = false;
-  r['audit-artifacts'].baselineInterviewSnapshots = 0;
+  r['audit-artifacts'].baselineSnapshotIds = [];
   r['seed-baseline'].uiExportCaptured = false;
   r['seed-baseline'].networkSnapshots = 0;
   r['seed-baseline'].checks[7] = {
@@ -1139,10 +1149,69 @@ test('one-sided archives do not waive the payload-snapshot requirement', async (
   );
 });
 
+test('five snapshots of four interviews are not five interviews', async () => {
+  // A tally cannot tell "one file per seeded interview" from "one interview
+  // snapshotted twice"; the ids can.
+  const r = happyPath();
+  r['audit-artifacts'].baselineSnapshotIds = ['i1', 'i2', 'i3', 'i4', 'i4'];
+  r['audit-artifacts'].upgradedSnapshotIds = ['i1', 'i2', 'i3', 'i4', 'i4'];
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.equal(result.releasable, false);
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('distinct interviews')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('the two sides must snapshot the same interviews', async () => {
+  // Equal counts, disjoint subjects: the diff would pair files that were
+  // never about the same interview.
+  const r = happyPath();
+  r['audit-artifacts'].upgradedSnapshotIds = ['i1', 'i2', 'i3', 'i4', 'i9'];
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some(
+      (u) =>
+        u.includes('snapshotted different interviews') &&
+        u.includes('i5') &&
+        u.includes('i9'),
+    ),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('a snapshot that does not hold its own interview leaves it uncompared', async () => {
+  const r = happyPath();
+  r['audit-artifacts'].suspectSnapshots = 2;
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.equal(result.releasable, false);
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('near-empty, duplicated')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('an audit that never checked snapshot contents leaves them unverified', async () => {
+  for (const suspectSnapshots of [undefined, -1, 'none']) {
+    const r = happyPath();
+    if (suspectSnapshots === undefined)
+      delete r['audit-artifacts'].suspectSnapshots;
+    else r['audit-artifacts'].suspectSnapshots = suspectSnapshots;
+    const { result } = await run(r);
+    assert.equal(result.verdict, 'incomplete', String(suspectSnapshots));
+    assert.ok(
+      result.unaccounted.some((u) => u.includes('contents are unverified')),
+      `${String(suspectSnapshots)}: ${JSON.stringify(result.unaccounted)}`,
+    );
+  }
+});
+
 test('a capture claim that contradicts the disk is not trusted', async () => {
   const r = happyPath();
   r['audit-artifacts'].upgradedUiExport = false;
-  r['audit-artifacts'].upgradedInterviewSnapshots = 5;
   const { result } = await run(r);
   assert.equal(result.verdict, 'incomplete');
   assert.ok(
