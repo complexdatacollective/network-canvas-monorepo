@@ -771,6 +771,33 @@ test('verifier-discovered defects keep their reproduction steps', async () => {
     f.description.startsWith('NEW:'),
   );
   assert.equal(discovered.reproduction, '1. do X 2. see Y');
+  // Omitting the steps still blocks, and the report names its own gap.
+  const vrNoSteps = {
+    'pwa-offline': {
+      verdicts: [
+        {
+          description: 'small',
+          failure: 1,
+          verdict: 'not-reproduced',
+          severity: 'minor',
+          explanation: 'n',
+        },
+        {
+          description: 'NEW: found it',
+          verdict: 'confirmed',
+          severity: 'major',
+          explanation: 'e',
+        },
+      ],
+    },
+  };
+  const res2 = await run(makeAgent(jr, vrNoSteps), {
+    journeys: ['pwa-offline'],
+  });
+  assert.equal(res2.verdict, 'BLOCK');
+  assert.ok(
+    res2.certificationGaps.some((a) => a.includes('no reproduction steps')),
+  );
 });
 
 test('a dead journey is incomplete', async () => {
