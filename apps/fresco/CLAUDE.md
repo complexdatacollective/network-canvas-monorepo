@@ -76,10 +76,12 @@ download capture via MinIO). `release-test/AGENT_NOTES.md` records the
 verified techniques for driving Fresco in the in-app browser. The directory is
 excluded from the public mirror. Storage is configured through the setup
 wizard, not env vars, matching real bundled-MinIO deployments. Both stacks set
-`DISABLE_ANALYTICS` and pin `INSTALLATION_ID` to `fresco-release-test`, so a
-recurring gate never mints a fresh installation identity in product analytics;
-the fresh lane counts any request that still reaches the analytics relay and
-the workflow reports it as a warning.
+`DISABLE_ANALYTICS`, which stops server-side capture and opts the browser out
+on hydration — but not the unconditional `posthog.init` in
+`instrumentation-client.ts` that runs first, so a recurring gate still emits
+anonymous pre-hydration traffic to the relay. The fresh lane counts the
+requests that reach it and the workflow reports them as a warning rather than
+pretending they do not happen.
 
 ### Reading the verdict
 

@@ -13,7 +13,15 @@
 // `releasable: true` unless the run actually demonstrated a clean upgrade and a
 // clean fresh deployment of the pinned version.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -396,6 +404,52 @@ test('the documented UI-export fallback reaches a clean verdict', async () => {
   const { result } = await run(r);
   assert.equal(result.verdict, 'go');
   assert.equal(result.releasable, true);
+});
+
+test('a skip is rejected when the audit shows its precondition did not hold', async () => {
+  // A stated reason is a claim. These three claims can be settled on disk, so
+  // an archive that exists refutes the skip that says it does not.
+  const cases = [
+    { area: 'seed', item: 8, audit: { baselineUiExport: true } },
+    { area: 'capture', item: 3, audit: { baselineUiExport: true } },
+    { area: 'capture', item: 4, audit: { upgradedUiExport: true } },
+  ];
+  for (const { area, item, audit: auditOverride } of cases) {
+    const r = happyPath();
+    // Skip the whole chain with plausible reasons, so only the audited
+    // precondition can be what fires.
+    r['seed-baseline'].checks[7] = {
+      name: '8. check 8',
+      status: 'skipped',
+      notes: 'no blob captured',
+    };
+    r['export-capture'].checks[2] = {
+      name: '3. check 3',
+      status: 'skipped',
+      notes: 'no baseline archive',
+    };
+    r['export-capture'].checks[3] = {
+      name: '4. check 4',
+      status: 'skipped',
+      notes: 'no export to commit',
+    };
+    r['seed-baseline'].uiExportCaptured = false;
+    r['export-capture'].uiExportCaptured = false;
+    r['audit-artifacts'].baselineUiExport = false;
+    r['audit-artifacts'].upgradedUiExport = false;
+    Object.assign(r['audit-artifacts'], auditOverride);
+    const { result } = await run(r);
+    const where = `${area} check ${item}`;
+    assert.equal(result.verdict, 'incomplete', where);
+    assert.ok(
+      result.unaccounted.some(
+        (u) =>
+          u.includes(`${area}: check ${item} was skipped`) &&
+          u.includes('precondition did not hold'),
+      ),
+      `${where}: ${JSON.stringify(result.unaccounted)}`,
+    );
+  }
 });
 
 test('the export status commit cannot be skipped for an export that happened', async () => {
@@ -841,6 +895,46 @@ test('the stamp on disk overrides an under-reported dirty flag', async () => {
   );
 });
 
+test('a stamp audit that omits the stamp is not an audit', async () => {
+  // Every comparison is guarded by the field being present, so an audit that
+  // answers "it exists" and nothing else would skip all of them in silence.
+  for (const field of [
+    'stampDirty',
+    'stampVersion',
+    'stampCommit',
+    'stampImageId',
+    'pendingImageId',
+  ]) {
+    const r = happyPath();
+    delete r['audit-artifacts'][field];
+    const { result } = await run(r);
+    assert.notEqual(result.verdict, 'go', field);
+    assert.equal(result.releasable, false, field);
+    assert.ok(
+      result.unaccounted.some((u) =>
+        u.includes('the image under test is unverified'),
+      ),
+      `${field}: ${JSON.stringify(result.unaccounted)}`,
+    );
+    // And it fails closed on reproducibility rather than trusting the agent.
+    assert.ok(
+      result.failures.some((f) => f.includes('dirty')),
+      `${field}: an unreadable stamp cannot vouch for a clean tree`,
+    );
+  }
+});
+
+test('a malformed stamp field is treated as a missing one', async () => {
+  const r = happyPath();
+  r['audit-artifacts'].stampImageId = 'not an image id';
+  const { result } = await run(r);
+  assert.notEqual(result.verdict, 'go');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('imageId')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
 test('a build claim that contradicts the stamp cannot be certified', async () => {
   for (const [field, value, needle] of [
     ['stampVersion', '4.0.9', 'stamp.json records 4.0.9'],
@@ -1096,6 +1190,78 @@ test('agent output embedded in a prompt is labelled as data', async () => {
 });
 
 // ---------------------------------------------------------------------------
+// The diff summary is written by another file. The workflow tells its agents
+// which keys to read out of it, and that instruction is a cross-file contract
+// no stub can check — a renamed key silently empties the classification set,
+// which is exactly how a changed file once slipped past the coverage guard.
+// So run the real script and compare its output against the instruction.
+// ---------------------------------------------------------------------------
+
+test('the workflow reads the keys diff-exports.mjs actually writes', () => {
+  const work = mkdtempSync(join(tmpdir(), 'fresco-diff-contract-'));
+  try {
+    const baseline = join(work, 'baseline');
+    const current = join(work, 'current');
+    mkdirSync(baseline);
+    mkdirSync(current);
+    // One identical file, one changed, one only on each side.
+    writeFileSync(join(baseline, 'api-same.json'), '{"a":1}\n');
+    writeFileSync(join(current, 'api-same.json'), '{"a":1}\n');
+    writeFileSync(join(baseline, 'api-changed.json'), '{"a":1}\n');
+    writeFileSync(join(current, 'api-changed.json'), '{"a":2}\n');
+    writeFileSync(join(baseline, 'api-gone.json'), '{"a":1}\n');
+    writeFileSync(join(current, 'api-new.json'), '{"a":1}\n');
+    const out = join(work, 'summary.json');
+    execFileSync(
+      process.execPath,
+      [
+        join(repoRoot, 'apps/fresco/release-test/scripts/diff-exports.mjs'),
+        baseline,
+        current,
+        '--work',
+        join(work, 'diff'),
+        '--out',
+        out,
+      ],
+      { stdio: 'pipe' },
+    );
+    const summary = JSON.parse(readFileSync(out, 'utf8'));
+
+    // Read the keys the audit prompt names out of its own command, then apply
+    // them to the summary the real script just wrote.
+    const command = /node -e '([^']+)'/.exec(source)?.[1];
+    assert.ok(command, 'failed to find the audit prompt command');
+    const oneSided = [...command.matchAll(/\.\.\.s\.(\w+)(?![\w.(])/g)].map(
+      (m) => m[1],
+    );
+    const changedKey = /s\.changed\.map\(c=>c\.(\w+)\)/.exec(command)?.[1];
+    assert.deepEqual(
+      oneSided,
+      ['onlyInBaseline', 'onlyInCurrent'],
+      'the audit prompt does not read both one-sided arrays',
+    );
+    assert.ok(changedKey, 'the audit prompt does not map over changed entries');
+
+    const files = [
+      ...oneSided.flatMap((key) => summary[key]),
+      ...summary.changed.map((entry) => entry[changedKey]),
+    ];
+    assert.ok(
+      files.every((name) => typeof name === 'string' && name),
+      `the prompt reads changed[].${changedKey}, which diff-exports.mjs does not write — the classification set would silently lose every changed file`,
+    );
+    assert.deepEqual(
+      files.toSorted((a, b) => a.localeCompare(b)),
+      ['api-changed.json', 'api-gone.json', 'api-new.json'],
+      'the audit prompt does not read the keys diff-exports.mjs writes',
+    );
+    assert.deepEqual(summary.identical, ['api-same.json']);
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Family 5 — the invocation contract
 // ---------------------------------------------------------------------------
 
@@ -1116,6 +1282,41 @@ test('a mistyped flag fails the invocation instead of weakening the gate', async
     run(happyPath(), { releasedImage: 'fresco; rm -rf /' }),
     /must be a Docker image reference/,
   );
+});
+
+test('an unaccounted run never reports full coverage', async () => {
+  // Pinned, clean, default baseline — every coverage input says "full", but the
+  // run could not account for part of itself, so it did not cover everything.
+  const r = happyPath();
+  r['verify-crud'].checks = passing(3);
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.equal(result.coverage, 'partial');
+  assert.ok(
+    result.coverageGaps.some((g) => g.includes('could not be accounted for')),
+    JSON.stringify(result.coverageGaps),
+  );
+});
+
+test('a stale cached image under skipBuild is not a failed release build', async () => {
+  // Under skipBuild nothing is built: that slot holds a stamp validation, and
+  // its failure means the local cache is stale, not that the release is broken.
+  const r = happyPath();
+  r['validate-reused-image'] = {
+    ok: false,
+    error: 'stamp commit deadbee does not match HEAD abc1234',
+  };
+  const { result } = await run(r, {
+    expectedVersion: '4.1.2',
+    skipBuild: true,
+  });
+  assert.equal(result.verdict, 'blocked');
+  assert.deepEqual(result.failures, []);
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('rerun without skipBuild')),
+    JSON.stringify(result.unaccounted),
+  );
+  assert.match(result.meaning, /Rerun without skipBuild/);
 });
 
 test('an unpinned run passes but never certifies', async () => {

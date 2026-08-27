@@ -133,6 +133,8 @@ const API_TOKEN = /^[\w.~+/=-]+$/;
 const API_PATH = /^\/[\w./~-]*$/;
 const VERSION = /^[\w.+-]+$/;
 const CHANGESET_NAME = /^[\w-]+$/;
+const COMMIT = /^[0-9a-f]{7,40}$/i;
+const IMAGE_ID = /^(sha256:)?[0-9a-f]{4,64}$/i;
 
 // A version as the health endpoint reports it ("v4.1.2") compared with a
 // version as package manifests carry it ("4.1.2").
@@ -295,7 +297,7 @@ const DIFF_ENTRY = {
     file: {
       type: 'string',
       description:
-        'The file name exactly as the diff summary lists it, in onlyInBaseline, onlyInCurrent, or changed[].name',
+        'The file name exactly as the diff summary lists it: an element of onlyInBaseline or onlyInCurrent, or the "file" of a changed entry',
     },
     changeset: {
       type: 'string',
@@ -351,7 +353,7 @@ const AUDIT_SCHEMA = {
       type: 'array',
       items: { type: 'string' },
       description:
-        'Every differing or one-sided file name in the diff summary: onlyInBaseline + onlyInCurrent + changed[].name',
+        'Every differing or one-sided file name in the diff summary: onlyInBaseline + onlyInCurrent + changed[].file',
     },
     diffIdentical: { type: 'number' },
     changesets: {
@@ -420,6 +422,31 @@ const allowedSkips = {
 // to be diffed against the baseline one: capturing exactly one side produces a
 // wholly one-sided diff, and skipping the upgraded side while the baseline
 // succeeded silently drops the archive comparison altogether.
+// Some skips have a precondition the audit can settle on disk. A stated reason
+// is a claim; these are the claims that can be checked, so they are — a skip
+// whose precondition demonstrably did not hold is a dodge with a sentence
+// attached.
+const auditedSkips = [
+  {
+    area: 'seed',
+    check: 8,
+    holds: (a) => a.baselineUiExport === false,
+    why: 'the baseline UI export archive exists on disk, so the export was captured after all',
+  },
+  {
+    area: 'capture',
+    check: 3,
+    holds: (a) => a.baselineUiExport === false,
+    why: 'the baseline UI export archive exists on disk, so there was something to compare against',
+  },
+  {
+    area: 'capture',
+    check: 4,
+    holds: (a) => a.upgradedUiExport === false,
+    why: 'the upgraded UI export archive exists on disk, so an export happened and its status commit is verifiable',
+  },
+];
+
 const skipPairs = [
   {
     left: { area: 'seed', check: 8 },
@@ -497,12 +524,22 @@ if (!build?.ok || !released?.ok) {
   // The pending build IS the release's own build path (mirror-stage plus the
   // staged tree's Dockerfile), so its failure is the candidate's, not the
   // harness's — the first real run of this gate caught exactly such a blocker.
-  // A failed pull of the released baseline is the environment's.
-  const buildFailures = build?.ok
-    ? []
-    : [
-        `pending image build failed: ${build?.error ?? 'the build agent returned no result'} — the release would build the same tree`,
-      ];
+  // Under skipBuild, though, nothing was built: the same slot holds a stamp
+  // validation whose failure means the cached image is stale, which is a
+  // local problem and says nothing about the candidate. A failed pull of the
+  // released baseline is likewise the environment's.
+  const buildFailures =
+    build?.ok || skipBuild
+      ? []
+      : [
+          `pending image build failed: ${build?.error ?? 'the build agent returned no result'} — the release would build the same tree`,
+        ];
+  const staleImage =
+    !build?.ok && skipBuild
+      ? [
+          `skipBuild could not validate the cached ${pendingImage} against this tree: ${build?.error ?? 'the validation agent returned no result'} — rerun without skipBuild`,
+        ]
+      : [];
   return {
     verdict: buildFailures.length ? 'no-go' : 'blocked',
     releasable: false,
@@ -510,10 +547,13 @@ if (!build?.ok || !released?.ok) {
     coverageGaps: ['nothing was built or pulled, so no lane ran'],
     meaning: buildFailures.length
       ? 'The release build itself failed, so no lane ran — do not release.'
-      : 'Nothing was exercised — the released baseline could not be pulled. Fix the environment and rerun.',
+      : staleImage.length
+        ? 'Nothing was exercised — the cached image could not be validated against this tree. Rerun without skipBuild.'
+        : 'Nothing was exercised — the released baseline could not be pulled. Fix the environment and rerun.',
     summary: null,
     failures: buildFailures,
     unaccounted: [
+      ...staleImage,
       !released?.ok
         ? `released image pull failed: ${released?.error ?? 'the pull agent returned no result'}`
         : null,
@@ -735,7 +775,7 @@ Set area="apiSettings".`,
   if (capture?.pass) {
     lane.diffVerdict = await agent(
       `You are judging whether a Fresco upgrade changed exported interview data in UNANTICIPATED ways. The same seeded interviews were exported before the upgrade (released build) and after (pending build); a deterministic normalizer already masked ONLY the volatile export-marking fields (GraphML sessionExportTime, CSV sessionExported, JSON lastUpdated/exportTime) and id-sorted API arrays — stable persisted times (sessionStart/sessionFinish, startTime/finishTime) are compared literally, so a difference in them is real. It produced ${DIFF_SUMMARY} (JSON: onlyInBaseline / onlyInCurrent / identical / changed with per-file diff excerpts and fullDiff paths under ${DIFF_WORK}/diffs/).
-Read that summary file yourself — do not rely on any count reported to you. Enumerate every differing or one-sided file it lists: every name in onlyInBaseline, every name in onlyInCurrent, and every changed[].name. For each one, read as much of the full diff as needed to characterize it. Then read the pending changesets (.changeset/*.md in your working directory) — they describe everything this release ships. Classify EACH FILE into exactly one list, as one entry carrying that file's name verbatim in "file":
+Read that summary file yourself — do not rely on any count reported to you. Enumerate every differing or one-sided file it lists: every entry of onlyInBaseline, every entry of onlyInCurrent (both plain file-name strings), and the "file" of every entry of changed (objects, whose name lives under the "file" key). For each one, read as much of the full diff as needed to characterize it. Then read the pending changesets (.changeset/*.md in your working directory) — they describe everything this release ships. Classify EACH FILE into exactly one list, as one entry carrying that file's name verbatim in "file":
 - anticipated: explained by a specific pending changeset. Put that changeset's file name without the .md extension in "changeset". An entry naming a changeset that does not exist is treated as unanticipated.
 - unanticipated: everything else. Structural changes to graph data (missing nodes/edges/attributes, changed values) are unanticipated unless a changeset explicitly covers them.
 Every file the summary lists must appear exactly once across the two lists, and you must not invent entries for files it does not list — the workflow compares your entries against the summary on disk and fails the run if any file is unclassified. An empty diff (all identical, nothing one-sided) is pass:true with both lists empty. pass=false if anything is unanticipated.`,
@@ -831,7 +871,7 @@ Report, exactly:
 - baselineInterviewSnapshots: number of files matching ${BASELINE_DIR}/api-interview-*.json (0 if the directory is missing).
 - upgradedInterviewSnapshots: the same for ${UPGRADED_DIR}.
 - baselineUiExport / upgradedUiExport: whether ${BASELINE_DIR}/ui-export.zip and ${UPGRADED_DIR}/ui-export.zip exist.
-- diffSummaryExists: whether ${DIFF_SUMMARY} exists. If it does, also report diffIdentical (the LENGTH of its "identical" array) and diffFiles — EVERY name in its "onlyInBaseline" and "onlyInCurrent" arrays plus every "name" in its "changed" array, verbatim and complete. Read them with the shell rather than by eye, e.g. node -e 'const s=require("./${DIFF_SUMMARY}");console.log(JSON.stringify([...s.onlyInBaseline,...s.onlyInCurrent,...s.changed.map(c=>c.name)]))'. If the summary lists none, report an empty array.
+- diffSummaryExists: whether ${DIFF_SUMMARY} exists. If it does, also report diffIdentical (the LENGTH of its "identical" array) and diffFiles — EVERY entry of its "onlyInBaseline" and "onlyInCurrent" arrays (plain strings) plus every "file" of its "changed" array (objects), verbatim and complete. Read them with the shell rather than by eye: node -e 'const s=require("./${DIFF_SUMMARY}");console.log(JSON.stringify([...s.onlyInBaseline,...s.onlyInCurrent,...s.changed.map(c=>c.file)]))'. If any element of that output is null the keys have changed — report ok:false rather than a list with holes in it. If the summary lists none, report an empty array.
 - changesets: the base names of every .changeset/*.md file WITHOUT the .md extension, excluding README.
 Set ok:true if you completed the audit (missing artifacts are a normal result, not an error), or ok:false with what stopped you in "error".`,
     {
@@ -1004,6 +1044,15 @@ for (const { left, right, why } of skipPairs) {
     );
 }
 
+for (const { area, check, holds, why } of auditedSkips) {
+  if (!audit || !areaResults[area]) continue;
+  if (!skippedByArea[area]?.has(check)) continue;
+  if (!holds(audit))
+    unaccounted.push(
+      `${area}: check ${check} was skipped, but ${why} — the skip's precondition did not hold`,
+    );
+}
+
 if (upgradeLane?.seed?.countMismatch !== undefined)
   failures.push(
     `seed: reported ${upgradeLane.seed.countMismatch} interviews but ${SYNTHETIC_COUNT} were requested — the baseline is not the dataset every later completeness gate assumes`,
@@ -1097,6 +1146,26 @@ if (freshLane?.up?.ok === true) {
 // misreports everything else in the same breath.
 let buildDirty = agentDirty;
 if (audit?.stampExists === true) {
+  // Every comparison below is guarded by the field being present, so a stamp
+  // audit that answers "it exists" and omits the contents would skip all of
+  // them silently. Demand the whole tuple: a partial audit is no audit.
+  const missing = [
+    typeof audit.stampDirty === 'boolean' ? null : 'dirty',
+    shaped(audit.stampVersion, VERSION, 64) ? null : 'version',
+    shaped(audit.stampCommit, COMMIT, 64) ? null : 'commit',
+    shaped(audit.stampImageId, IMAGE_ID, 128) ? null : 'imageId',
+    shaped(audit.pendingImageId, IMAGE_ID, 128)
+      ? null
+      : "the pending image's current id",
+  ].filter(Boolean);
+  if (missing.length) {
+    // Fail closed on the flag too: an unreadable stamp cannot vouch for a
+    // clean tree.
+    buildDirty = true;
+    unaccounted.push(
+      `the artifact audit reported stamp.json exists but did not report ${missing.join(', ')} — the image under test is unverified, so it is treated as not reproducible`,
+    );
+  }
   if (audit.stampDirty === true && agentDirty !== true) {
     buildDirty = true;
     unaccounted.push(
@@ -1394,6 +1463,12 @@ if (buildDirty) coverageGaps.push('the image was built from a dirty tree');
 // exercised. This is a statement about the evidence, not about the build, so
 // it caps certification rather than producing a failure — read the list and
 // decide, or extend the checklists to cover it.
+// A run that could not account for part of itself did not cover everything,
+// whatever its pins say — coverage must not read "full" for it.
+if (unaccounted.length)
+  coverageGaps.push(
+    `${unaccounted.length} part(s) of the run could not be accounted for (see unaccounted)`,
+  );
 if (untestedShippedChanges.length)
   coverageGaps.push(
     `${untestedShippedChanges.length} pending changeset(s) ship Fresco-facing behaviour no check exercised (see untestedShippedChanges)`,
