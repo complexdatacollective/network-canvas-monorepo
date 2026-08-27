@@ -104,6 +104,19 @@ const happyPath = () => ({
     pass: true,
     checks: passing(5),
   },
+  'diff-audit': {
+    ok: true,
+    files: [],
+    identical: [
+      'api-protocols-meta.json',
+      'api-interview.json',
+      'api-interview-i1.json',
+      'api-interview-i2.json',
+      'api-interview-i3.json',
+      'api-interview-i4.json',
+      'api-interview-i5.json',
+    ],
+  },
   'diff-judge': { pass: true, unanticipated: [], anticipated: [] },
   'up-fresh': { ok: true, baseUrl: 'http://localhost:3211', version: 'v4.1.2' },
   'verify-fresh-setup': {
@@ -126,17 +139,6 @@ const happyPath = () => ({
     baselineUiExport: true,
     upgradedUiExport: true,
     diffSummaryExists: true,
-    diffFiles: [],
-    diffIdenticalFiles: [
-      'api-protocols-meta.json',
-      'api-interview.json',
-      'api-interview-i1.json',
-      'api-interview-i2.json',
-      'api-interview-i3.json',
-      'api-interview-i4.json',
-      'api-interview-i5.json',
-    ],
-    auditDiffRan: true,
     headCommit: 'abc1234',
     worktreeDirty: false,
     upgradeContainerImage: `sha256:${'b'.repeat(64)}`,
@@ -565,7 +567,7 @@ test('unanticipated export differences block regardless of the judge pass flag',
     ],
     anticipated: [],
   };
-  r['audit-artifacts'].diffFiles = ['ego.csv'];
+  r['diff-audit'].files = ['ego.csv'];
   const { result } = await run(r);
   assert.equal(result.verdict, 'no-go');
   assert.ok(
@@ -591,7 +593,7 @@ test('a difference excused by a changeset that does not exist is not excused', a
       },
     ],
   };
-  r['audit-artifacts'].diffFiles = ['nodes.csv'];
+  r['diff-audit'].files = ['nodes.csv'];
   const { result } = await run(r);
   assert.equal(result.verdict, 'no-go');
   assert.ok(
@@ -613,7 +615,7 @@ test('a real changeset name does excuse a difference', async () => {
       },
     ],
   };
-  r['audit-artifacts'].diffFiles = ['nodes.csv'];
+  r['diff-audit'].files = ['nodes.csv'];
   const { result } = await run(r);
   assert.equal(result.verdict, 'go');
   assert.equal(result.releasable, true);
@@ -624,7 +626,7 @@ test('every differing file must be classified, not just one of them', async () =
   // entry, and a "some classification exists" test let the other three
   // through — any of which could have been data corruption.
   const r = happyPath();
-  r['audit-artifacts'].diffFiles = [
+  r['diff-audit'].files = [
     'nodes.csv',
     'edges.csv',
     'ego.csv',
@@ -657,7 +659,7 @@ test('every differing file must be classified, not just one of them', async () =
 
 test('a judge that classified nothing at all fails closed', async () => {
   const r = happyPath();
-  r['audit-artifacts'].diffFiles = ['nodes.csv', 'edges.csv'];
+  r['diff-audit'].files = ['nodes.csv', 'edges.csv'];
   const { result } = await run(r);
   assert.equal(result.verdict, 'incomplete');
   assert.ok(
@@ -670,7 +672,7 @@ test('a file classified twice is not a file classified once', async () => {
   // Isolated: one differing file, two entries claiming it. Without this guard
   // a duplicate could pad the classification set to cover an omission.
   const r = happyPath();
-  r['audit-artifacts'].diffFiles = ['nodes.csv'];
+  r['diff-audit'].files = ['nodes.csv'];
   r['diff-judge'] = {
     pass: true,
     unanticipated: [],
@@ -697,7 +699,7 @@ test('a file classified twice is not a file classified once', async () => {
 
 test('a judge classifying files the summary does not list is not describing this run', async () => {
   const r = happyPath();
-  r['audit-artifacts'].diffFiles = ['nodes.csv'];
+  r['diff-audit'].files = ['nodes.csv'];
   r['diff-judge'] = {
     pass: true,
     unanticipated: [],
@@ -1172,7 +1174,7 @@ test('a missing diff summary on disk means no diff was produced', async () => {
 
 test('a diff that compared no files at all is not a clean diff', async () => {
   const r = happyPath();
-  r['audit-artifacts'].diffIdenticalFiles = [];
+  r['diff-audit'].identical = [];
   const { result } = await run(r);
   assert.equal(result.verdict, 'incomplete');
   assert.ok(
@@ -1185,14 +1187,46 @@ test('the classification is checked against a diff the audit ran itself', async 
   // A capture that diffs before rewriting its snapshots leaves a summary
   // describing files that are no longer there; the audit re-runs the same
   // deterministic diff so the judge is checked against what is on disk now.
-  const r = happyPath();
-  r['audit-artifacts'].auditDiffRan = false;
-  const { result } = await run(r);
-  assert.equal(result.verdict, 'incomplete');
-  assert.equal(result.releasable, false);
+  for (const diffAudit of [
+    { ok: false, files: [], identical: [], error: 'unzip failed' },
+    null,
+  ]) {
+    const r = happyPath();
+    r['diff-audit'] = diffAudit;
+    const { result } = await run(r);
+    assert.equal(result.verdict, 'incomplete');
+    assert.equal(result.releasable, false);
+    assert.ok(
+      result.unaccounted.some((u) =>
+        u.includes('the judge read an unverified summary'),
+      ),
+      JSON.stringify(result.unaccounted),
+    );
+  }
+});
+
+test('the judge reads the re-run summary, not the capture agent output', async () => {
+  const { prompts } = await run(happyPath());
+  const judge = promptFor(prompts, 'diff-judge');
+  assert.match(
+    judge,
+    /audit-diff-summary\.json/,
+    'the judge must be pointed at the re-run summary',
+  );
+  // Anchored on the path separator: "diff-summary.json" is a substring of
+  // "audit-diff-summary.json", so an unanchored check would pass either way.
   assert.ok(
-    result.unaccounted.some((u) => u.includes('re-run the diff')),
-    JSON.stringify(result.unaccounted),
+    !/exports\/diff-summary\.json/.test(judge),
+    "the judge must not be pointed at the capture agent's own summary",
+  );
+  assert.ok(
+    !/exports\/diff\//.test(judge),
+    "the judge must not be pointed at the capture agent's own diff directory",
+  );
+  const order = prompts.map((p) => p.label);
+  assert.ok(
+    order.indexOf('diff-audit') < order.indexOf('diff-judge'),
+    'the re-run has to happen before the judge reads it',
   );
 });
 
@@ -1220,6 +1254,41 @@ test('a lane must have run the image the stamp describes', async () => {
       `${field} missing: ${JSON.stringify(second.result.unaccounted)}`,
     );
   }
+});
+
+test('a required endpoint the diff never compared is not coverage', async () => {
+  // The seed can list both paths while the collection snapshots were never
+  // written; only the files the diff actually read prove they were compared.
+  for (const missing of ['api-protocols-meta.json', 'api-interview.json']) {
+    const r = happyPath();
+    r['diff-audit'].identical = r['diff-audit'].identical.filter(
+      (name) => name !== missing,
+    );
+    const { result } = await run(r);
+    assert.equal(result.verdict, 'incomplete', missing);
+    assert.equal(result.releasable, false, missing);
+    assert.ok(
+      result.unaccounted.some((u) =>
+        u.includes('never compared a snapshot of'),
+      ),
+      `${missing}: ${JSON.stringify(result.unaccounted)}`,
+    );
+  }
+});
+
+test('the read-only audit is not asked to write anything', () => {
+  // It was, briefly: the prompt forbade writes and then told the agent to run
+  // a script that writes, so an obedient agent made every run incomplete.
+  const auditPrompt =
+    /Audit the on-disk artifacts[\s\S]*?label: 'audit-artifacts'/.exec(
+      source,
+    )?.[0];
+  assert.ok(auditPrompt, 'failed to locate the artifact-audit prompt');
+  assert.match(auditPrompt, /no writes/);
+  assert.ok(
+    !/diff-exports\.mjs/.test(auditPrompt),
+    'the read-only audit must not be told to run a script that writes',
+  );
 });
 
 test('a partial endpoint set is not full API coverage', async () => {
@@ -1263,7 +1332,7 @@ test('the diff must have compared the snapshots that are on disk', async () => {
   // summary then holds only the collection snapshot, and every later check —
   // snapshot ids, contents, classification — still passes.
   const r = happyPath();
-  r['audit-artifacts'].diffIdenticalFiles = ['api-interview.json'];
+  r['diff-audit'].identical = ['api-interview.json'];
   const { result } = await run(r);
   assert.equal(result.verdict, 'incomplete');
   assert.equal(result.releasable, false);
@@ -1521,7 +1590,7 @@ test('the diff judge is pointed at the workflow constant, not an agent string', 
   assert.ok(!prompt.includes('/tmp/evil.json'));
   assert.ok(
     prompt.includes(
-      'apps/fresco/release-test/artifacts/exports/diff-summary.json',
+      'apps/fresco/release-test/artifacts/exports/audit-diff-summary.json',
     ),
   );
 });

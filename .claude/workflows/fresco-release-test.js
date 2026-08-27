@@ -369,6 +369,27 @@ const DIFF_VERDICT_SCHEMA = {
   required: ['pass', 'unanticipated', 'anticipated'],
 };
 
+const DIFF_AUDIT_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    ok: { type: 'boolean' },
+    files: {
+      type: 'array',
+      items: { type: 'string' },
+      description:
+        'Every differing or one-sided file: onlyInBaseline + onlyInCurrent + changed[].file',
+    },
+    identical: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Every name in the summary\'s "identical" array',
+    },
+    error: { type: 'string' },
+  },
+  required: ['ok', 'files', 'identical'],
+};
+
 const AUDIT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -404,11 +425,6 @@ const AUDIT_SCHEMA = {
       type: 'string',
       description: "The fresh lane Fresco container's .Image id",
     },
-    auditDiffRan: {
-      type: 'boolean',
-      description:
-        "Whether the audit's own re-run of diff-exports.mjs succeeded",
-    },
     baselineSnapshotIds: {
       type: 'array',
       items: { type: 'string' },
@@ -429,17 +445,6 @@ const AUDIT_SCHEMA = {
     baselineUiExport: { type: 'boolean' },
     upgradedUiExport: { type: 'boolean' },
     diffSummaryExists: { type: 'boolean' },
-    diffFiles: {
-      type: 'array',
-      items: { type: 'string' },
-      description:
-        'Every differing or one-sided file name in the diff summary: onlyInBaseline + onlyInCurrent + changed[].file',
-    },
-    diffIdenticalFiles: {
-      type: 'array',
-      items: { type: 'string' },
-      description: 'Every name in the diff summary\'s "identical" array',
-    },
     changesets: {
       type: 'array',
       items: { type: 'string' },
@@ -456,8 +461,6 @@ const AUDIT_SCHEMA = {
     'baselineUiExport',
     'upgradedUiExport',
     'diffSummaryExists',
-    'diffFiles',
-    'diffIdenticalFiles',
     'headCommit',
     'worktreeDirty',
     'changesets',
@@ -860,10 +863,30 @@ Set area="apiSettings".`,
   lane.crud = crud;
   lane.apiSettings = apiSettings;
 
+  // The judge must reason about the diff of the files as they stand, not about
+  // whatever the capture agent left behind: a capture that diffs and then
+  // rewrites a snapshot leaves a summary describing contents that are no
+  // longer there, and a filename-level cross-check cannot see that the bytes
+  // changed underneath it. So a separate agent re-runs the same deterministic
+  // script, and the judge reads ITS output.
   if (capture?.pass) {
+    lane.diffAudit = await agent(
+      `Your working directory is already the correct repository checkout — do NOT cd anywhere else. Re-run the deterministic export diff over the capture directories as they stand right now:
+node ${HARNESS}/scripts/diff-exports.mjs ${BASELINE_DIR} ${UPGRADED_DIR} --work ${AUDIT_DIFF_WORK} --out ${AUDIT_DIFF_SUMMARY}
+Then read ${AUDIT_DIFF_SUMMARY} and report, from that file and nothing else:
+- files: EVERY entry of its "onlyInBaseline" and "onlyInCurrent" arrays (plain strings) plus every "file" of its "changed" array (objects), verbatim and complete.
+- identical: every name in its "identical" array, verbatim.
+Read them with the shell rather than by eye: node -e 'const s=require("./${AUDIT_DIFF_SUMMARY}");console.log(JSON.stringify({files:[...s.onlyInBaseline,...s.onlyInCurrent,...s.changed.map(c=>c.file)],identical:s.identical}))'. If any element of files is null the summary's keys have changed — return ok:false rather than a list with holes in it. Return ok:true if the command exited 0 and you read its summary, otherwise ok:false with the decisive output in "error". Change nothing else on disk and do not edit the capture's own summary.`,
+      {
+        label: 'diff-audit',
+        phase: 'Upgrade lane',
+        schema: DIFF_AUDIT_SCHEMA,
+        ...MECHANICAL,
+      },
+    );
     lane.diffVerdict = await agent(
-      `You are judging whether a Fresco upgrade changed exported interview data in UNANTICIPATED ways. The same seeded interviews were exported before the upgrade (released build) and after (pending build); a deterministic normalizer already masked ONLY the volatile export-marking fields (GraphML sessionExportTime, CSV sessionExported, JSON lastUpdated/exportTime) and id-sorted API arrays — stable persisted times (sessionStart/sessionFinish, startTime/finishTime) are compared literally, so a difference in them is real. It produced ${DIFF_SUMMARY} (JSON: onlyInBaseline / onlyInCurrent / identical / changed with per-file diff excerpts and fullDiff paths under ${DIFF_WORK}/diffs/).
-Read that summary file yourself — do not rely on any count reported to you. Enumerate every differing or one-sided file it lists: every entry of onlyInBaseline, every entry of onlyInCurrent (both plain file-name strings), and the "file" of every entry of changed (objects, whose name lives under the "file" key). For each one, read as much of the full diff as needed to characterize it. Then read the pending changesets (.changeset/*.md in your working directory) — they describe everything this release ships. Classify EACH FILE into exactly one list, as one entry carrying that file's name verbatim in "file":
+      `You are judging whether a Fresco upgrade changed exported interview data in UNANTICIPATED ways. The same seeded interviews were exported before the upgrade (released build) and after (pending build); a deterministic normalizer already masked ONLY the volatile export-marking fields (GraphML sessionExportTime, CSV sessionExported, JSON lastUpdated/exportTime) and id-sorted API arrays — stable persisted times (sessionStart/sessionFinish, startTime/finishTime) are compared literally, so a difference in them is real. A freshly re-run diff of exactly those files is at ${AUDIT_DIFF_SUMMARY} (JSON: onlyInBaseline / onlyInCurrent / identical / changed with per-file diff excerpts and fullDiff paths under ${AUDIT_DIFF_WORK}/diffs/). Use that one — it describes the files as they stand now; ignore any other summary in that directory.
+Read ${AUDIT_DIFF_SUMMARY} yourself — do not rely on any count reported to you. Enumerate every differing or one-sided file it lists: every entry of onlyInBaseline, every entry of onlyInCurrent (both plain file-name strings), and the "file" of every entry of changed (objects, whose name lives under the "file" key). For each one, read as much of the full diff as needed to characterize it. Then read the pending changesets (.changeset/*.md in your working directory) — they describe everything this release ships. Classify EACH FILE into exactly one list, as one entry carrying that file's name verbatim in "file":
 - anticipated: explained by a specific pending changeset. Put that changeset's file name without the .md extension in "changeset". An entry naming a changeset that does not exist is treated as unanticipated.
 - unanticipated: everything else. Structural changes to graph data (missing nodes/edges/attributes, changed values) are unanticipated unless a changeset explicitly covers them.
 Every file the summary lists must appear exactly once across the two lists, and you must not invent entries for files it does not list — the workflow compares your entries against the summary on disk and fails the run if any file is unclassified. An empty diff (all identical, nothing one-sided) is pass:true with both lists empty. pass=false if anything is unanticipated.`,
@@ -962,10 +985,7 @@ Report, exactly:
 - baselineSnapshotIds: the <id> part of every file matching ${BASELINE_DIR}/api-interview-<id>.json (empty array if the directory is missing). upgradedSnapshotIds: the same for ${UPGRADED_DIR}.
 - suspectSnapshots: how many of those files, across BOTH directories, are unusable. Count a file if ANY of these holds: it is smaller than 64 bytes; it is byte-identical to a different snapshot in the same directory (compare checksums, e.g. cksum, within each directory); or it does not contain its own <id> anywhere in its contents (grep -q -- "<id>" on that file). A count of files is not evidence that each one holds the interview it is named for, which is what this reports.
 - baselineUiExport / upgradedUiExport: whether ${BASELINE_DIR}/ui-export.zip and ${UPGRADED_DIR}/ui-export.zip exist.
-- diffSummaryExists: whether ${DIFF_SUMMARY} exists (that is the capture's own summary — you are not reading its contents, only noting that it was produced).
-- Then run the deterministic diff YOURSELF over the files as they stand right now, so the classification is checked against the current contents rather than against whatever was on disk when the capture ran its diff:
-  node ${HARNESS}/scripts/diff-exports.mjs ${BASELINE_DIR} ${UPGRADED_DIR} --work ${AUDIT_DIFF_WORK} --out ${AUDIT_DIFF_SUMMARY}
-  Set auditDiffRan:true if it exits 0, false otherwise (both export directories missing is a normal false). From YOUR summary report diffIdenticalFiles (every name in its "identical" array, verbatim) and diffFiles — EVERY entry of its "onlyInBaseline" and "onlyInCurrent" arrays (plain strings) plus every "file" of its "changed" array (objects), verbatim and complete. Read them with the shell rather than by eye: node -e 'const s=require("./${AUDIT_DIFF_SUMMARY}");console.log(JSON.stringify([...s.onlyInBaseline,...s.onlyInCurrent,...s.changed.map(c=>c.file)]))'. If any element of that output is null the keys have changed — report ok:false rather than a list with holes in it. If the summary lists none, report an empty array.
+- diffSummaryExists: whether ${DIFF_SUMMARY} exists (you are not reading its contents, only noting that the capture produced it).
 - changesets: the base names of every .changeset/*.md file WITHOUT the .md extension, excluding README.
 Set ok:true if you completed the audit (missing artifacts are a normal result, not an error), or ok:false with what stopped you in "error".`,
     {
@@ -1370,6 +1390,7 @@ const describeDiff = (entry) =>
 // clean, fully classified diff verdict must never read as a pass.
 if (upgradeLane?.swap?.ok === true) {
   const verdict = upgradeLane.diffVerdict;
+  const diffAudit = upgradeLane.diffAudit;
   const unanticipated = diffEntries(verdict?.unanticipated);
   // An "anticipated" difference is only excused when it names a changeset
   // that actually exists; an invented justification is a difference nobody
@@ -1425,12 +1446,12 @@ if (upgradeLane?.swap?.ok === true) {
       unaccounted.push(
         `export regression gate: ${DIFF_SUMMARY} does not exist on disk, so no diff was actually produced`,
       );
-    } else if (audit.auditDiffRan !== true) {
+    } else if (diffAudit?.ok !== true) {
       unaccounted.push(
-        "export regression gate: the audit could not re-run the diff over the files as they stand, so the judge's verdict is unchecked against them",
+        `export regression gate: the re-run of the diff over the files as they stand did not complete (${diffAudit?.error ?? 'the diff-audit agent returned no result'}), so the judge read an unverified summary`,
       );
     } else if (verdict) {
-      const differing = (Array.isArray(audit.diffFiles) ? audit.diffFiles : [])
+      const differing = (Array.isArray(diffAudit.files) ? diffAudit.files : [])
         .map((name) => (typeof name === 'string' ? name.trim() : ''))
         .filter(Boolean);
       const claimed = [...anticipated, ...unanticipated]
@@ -1457,7 +1478,7 @@ if (upgradeLane?.swap?.ok === true) {
           'export regression gate: the judge classified the same file more than once',
         );
       const identical = (
-        Array.isArray(audit.diffIdenticalFiles) ? audit.diffIdenticalFiles : []
+        Array.isArray(diffAudit.identical) ? diffAudit.identical : []
       )
         .map((name) => (typeof name === 'string' ? name.trim() : ''))
         .filter(Boolean);
@@ -1478,6 +1499,19 @@ if (upgradeLane?.swap?.ok === true) {
       if (comparedInterviews !== SYNTHETIC_COUNT)
         unaccounted.push(
           `export regression gate: the diff compared ${comparedInterviews} per-interview payload file(s), but ${SYNTHETIC_COUNT} were seeded — the snapshots on disk are not the files that were diffed`,
+        );
+      // The collection endpoints too, bound to files the diff actually read
+      // rather than to the path list the seed reported snapshotting.
+      const basenames = new Set(
+        [...identical, ...differing].map((name) => name.split('/').pop()),
+      );
+      const uncompared = REQUIRED_API_PATHS.filter(
+        (path) =>
+          !basenames.has(`api-${path.split('/').filter(Boolean).pop()}.json`),
+      );
+      if (uncompared.length)
+        unaccounted.push(
+          `export regression gate: the diff never compared a snapshot of ${uncompared.join(' or ')} — a regression in ${uncompared.length > 1 ? 'those endpoints' : 'that endpoint'} could not have been detected`,
         );
     }
   }
