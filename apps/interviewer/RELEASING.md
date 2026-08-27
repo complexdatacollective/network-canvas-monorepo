@@ -158,8 +158,16 @@ format combination, device-lock enrolment through revocation, service-worker
 and offline behaviour, and settings. Each journey runs in its own isolated
 browser profile; every reported failure is independently reproduced by a
 second agent before it may block; the run returns a verdict of `PASS`,
-`PASS_WITH_ISSUES`, `INCOMPLETE`, or `BLOCK`, plus a markdown summary and an
+`PASS_WITH_ISSUES`, `INCOMPLETE`, or `BLOCK` (or `BLOCKED` when preflight
+cannot reach the target or its tooling), plus a markdown summary and an
 evidence directory of screenshots.
+
+This certifies the changeset lane, whose candidate is `main`. A **hotfix**
+deliberately ships a different tree, so a clean verdict from the developer
+site says nothing about it: point the workflow at a deployment of the hotfix
+branch instead — for example the Netlify deploy preview of its pull request
+into `main` — via `args: { url: "…" }`, and never certify a hotfix against
+the developer site.
 
 The workflow concentrates on what the Playwright E2E suite deliberately does
 not cover — the suite blocks service workers and conducts a lean fixture

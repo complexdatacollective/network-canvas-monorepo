@@ -22,7 +22,10 @@ Code's Workflow tool — run this command from Claude Code.)
 ## Launch (Claude Code)
 
 1. Collect options from the request; all are optional:
-   - `url` — target a Netlify preview instead of the dev site.
+   - `url` — target a Netlify preview instead of the dev site. Required for
+     a hotfix release: the dev site tracks `main`, which is not the hotfix
+     tree — point at a deployment of the hotfix branch (e.g. its PR's
+     Netlify preview).
    - `journeys` — a subset of: `protocol-management`,
      `conduct-sample-interview`, `session-management`, `data-export`,
      `security-vault`, `pwa-offline`, `settings-and-chrome`.

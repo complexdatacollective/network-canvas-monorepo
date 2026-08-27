@@ -346,9 +346,12 @@ CHECKS (in one or more scripts, fresh profile each run):
    card's click handler, and Chromium suppresses change events for an
    identical selection) — drive the repeat import through the Import card's
    real file chooser (page.waitForEvent('filechooser')).
-8. delete protocol: delete the development protocol via its "Delete Protocol"
-   button (force: true) → confirm dialog "Delete this protocol?" → primary
+8. delete protocol: delete a protocol via its "Delete Protocol" button
+   (force: true) → confirm dialog "Delete this protocol?" → primary
    "Delete Protocol" → "Protocol deleted" toast, card gone, counts updated.
+   Subject: the development protocol; when checks 6–7 were skipped, run
+   check 9 first and then delete the Sample Protocol instead — this check
+   is always executable and must not be skipped.
 9. interviews deep link: the sample card's "0 interviews" link navigates to
    /data?protocol=Sample+Protocol.
 
@@ -408,8 +411,11 @@ Interaction cheat sheet:
   nomination: click nodes to toggle highlight.
 - DyadCensus: answer the yes/no prompt for each pair (mix answers).
 - OrdinalBin / CategoricalBin: drag each node into a bin (vary bins).
-- Narrative: open the preset panel and select a preset so the network draws;
-  then Next.
+- Narrative: the sample protocol has exactly ONE preset and it activates
+  automatically (the preset navigation controls are disabled at the ends) —
+  there is no preset selection to perform. Assert the active preset renders
+  the network, exercise the drawing/annotation or display toggles, then
+  Next.
 - Finish stage: heading "Finish Interview", button "Finish" → confirm dialog
   "Are you sure you want to finish the interview?" → "Finish Interview".
 
@@ -494,7 +500,16 @@ ${driving(ctx.workDir, ctx.repoRoot)}
 Setup: install the Sample Protocol (toast!), then Settings → "Synthetic data"
 → generate 5 sessions (toast). Exports download a ZIP — use Playwright's
 download API (page.waitForEvent('download')) and save into your artifacts
-dir. Unzip with the shell to inspect contents.
+dir. Unzip with the shell to inspect contents. IMPORTANT: before any page
+loads, force the plain-download save rung the way the e2e suite does
+(apps/interviewer/e2e/fixtures/download-fixture.ts) — in Chromium the app
+prefers the native Save-As picker, which never emits Playwright's download
+event:
+  await context.addInitScript(() => {
+    delete window.showSaveFilePicker;
+    delete navigator.canShare;
+    delete navigator.share;
+  });
 
 CHECKS:
 1. Default export (GraphML + CSV both on): on /data select all 5 sessions →
@@ -683,8 +698,14 @@ if (requested) {
   const unknown = requested.filter(
     (k) => !journeyDefs.some((j) => j.key === k),
   );
+  // Requested coverage that does not exist must fail the invocation, not
+  // silently narrow the release test.
   if (unknown.length)
-    log(`Ignoring unknown journey keys: ${unknown.join(', ')}`);
+    throw new Error(
+      `Unknown journey key(s): ${unknown.join(', ')} — valid keys: ${journeyDefs
+        .map((j) => j.key)
+        .join(', ')}`,
+    );
   log(`Running subset: ${selected.map((j) => j.key).join(', ')}`);
 }
 if (!selected.length) throw new Error('No valid journeys selected');
@@ -736,7 +757,13 @@ if (!preflight || !preflight.ok) {
     url,
     version: preflight ? preflight.version : 'unknown',
     preflightFailures: failures,
-    summary: `Release test could not run against ${url}: ${failures.join('; ')}`,
+    summaryMarkdown: [
+      '# Interviewer release smoke test — BLOCKED',
+      '',
+      `Target: ${url}`,
+      'Preflight failed; no journeys ran. Fix these and rerun:',
+      ...failures.map((f) => `- ${f}`),
+    ].join('\n'),
   };
 }
 log(
@@ -762,6 +789,11 @@ const results = await pipeline(
     }),
   async (result, j) => {
     if (!result) return { journey: j.key, agentDied: true };
+    // The scheduled key is authoritative: validation maps must never bind to
+    // an agent-controlled string. Preserve a mismatch for synthesis to flag.
+    if (result.journey !== j.key) {
+      result = { ...result, journey: j.key, reportedJourney: result.journey };
+    }
     // Key off reported failures, not journey status: a journey may pass all
     // its scripted checks yet report a defect found incidentally.
     if (!result.failures || !result.failures.length) return result;
@@ -817,6 +849,14 @@ for (const r of results.filter(Boolean)) {
     continue;
   }
   journeys.push(r);
+  // A journey that misidentified itself was rebound to the scheduled key in
+  // the pipeline; flag it — self-misidentification signals a confused run.
+  if (r.reportedJourney) {
+    inconsistentJourneys.push(r.journey);
+    automationIssues.push(
+      `journey "${r.journey}" misreported its key as "${r.reportedJourney}"; treated as incomplete`,
+    );
+  }
   // A truncated report must not pass: every numbered check must be present.
   const expected = expectedChecks[r.journey];
   if (expected && r.checks.length !== expected) {
