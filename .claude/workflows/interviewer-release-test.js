@@ -687,6 +687,10 @@ CHECKS:
    each ego CSV has a header row and 1 data row, and the node and edge
    partition CSVs contain data rows too (the synthetic sessions carry
    network data — header-only partitions are silent CSV data loss).
+   IDENTITY PAIRING: read the five case IDs from /data first; each must
+   appear in exactly ONE GraphML file and its matching ego CSV — a payload
+   filed under another session's name, duplicated, or missing is export
+   corruption even when the counts add up.
 3. Export status column: the exported rows now show a timestamp/TimeAgo
    instead of "Not exported".
 4. GraphML-only: Settings → "Data export" → toggle "Export CSV" off (wait
@@ -787,7 +791,11 @@ CHECKS:
    new PIN + confirm → then lock (top bar), assert the OLD PIN is REJECTED
    (field clears, app stays locked — a change that leaves the old
    credential valid has failed its purpose), and only then unlock with the
-   NEW PIN. After unlocking, assert the data created in checks 4–4b
+   NEW PIN. Before rotating, open a SECOND page in the same
+   browser context; after the rotation completes, that second page must
+   have force-locked itself (the cross-tab storage listener — an unlocked
+   stale tab still holding the old key would encrypt rows the new vault
+   cannot unwrap). After unlocking, assert the data created in checks 4–4b
    SURVIVED the rotation and still decrypts: the protocol card is present
    and the interview row is listed with its content intact — a rotation
    that re-initialises an empty vault also "unlocks", and that signal
