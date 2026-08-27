@@ -768,7 +768,14 @@ test('hostile url and version args are rejected before interpolation', async () 
       expectedVersion: '1.0 `whoami`',
       journeys: ['pwa-offline'],
     }),
-    /plain version string/,
+    /semver version/,
+  );
+  await assert.rejects(
+    run(makeAgent({}), {
+      expectedVersion: 'unknown',
+      journeys: ['pwa-offline'],
+    }),
+    /semver version/,
   );
   const ok = await run(makeAgent({ 'pwa-offline': journey('pwa-offline') }), {
     url: 'https://deploy-preview-9--interviewer-pwa-dev.netlify.app',

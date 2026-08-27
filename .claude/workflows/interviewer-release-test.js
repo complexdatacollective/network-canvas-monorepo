@@ -78,9 +78,12 @@ if (!/^https:\/\/[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+(:\d{2,5})?$/.test(url))
   throw new Error(
     `args.url must be a plain https origin with no path, query, or shell metacharacters (got ${JSON.stringify(url)})`,
   );
-if (expectedVersion && !/^[0-9A-Za-z.+-]{1,64}$/.test(expectedVersion))
+if (
+  expectedVersion &&
+  !/^\d+\.\d+\.\d+(-[0-9A-Za-z.+-]{1,32})?$/.test(expectedVersion)
+)
   throw new Error(
-    'args.expectedVersion must be a plain version string ([0-9A-Za-z.+-])',
+    'args.expectedVersion must be a semver version (a placeholder like "unknown" would match a preflight that could not read the deployed version)',
   );
 
 // ---------------------------------------------------------------------------
@@ -679,9 +682,14 @@ CHECKS:
 3. Export status column: the exported rows now show a timestamp/TimeAgo
    instead of "Not exported".
 4. GraphML-only: Settings → "Data export" → toggle "Export CSV" off (wait
-   for the switch to read back) → export again → the archive contains
-   exactly FIVE .graphml files (one per selected session — fewer means
-   sessions were dropped) and NO .csv files.
+   for the switch to read back) and ALSO enable "Export node positions as
+   screen-coordinate pixels" → export again → the archive contains exactly
+   FIVE .graphml files (one per selected session — fewer means sessions
+   were dropped) and NO .csv files, and the GraphML node data now carries
+   screen-coordinate attributes (keys containing "screen", e.g.
+   *_screenSpaceX/Y) that were ABSENT from check 1's export — the flag
+   must reach the output, not just persist as a setting. Disable the
+   screen-coordinate toggle afterwards.
 5. CSV-only: toggle "Export CSV" back on and "Export GraphML" off → export →
    the archive contains exactly FIVE *_ego.csv files (one per selected
    session) plus the other CSV partitions and NO .graphml files. Restore
@@ -725,7 +733,11 @@ CHECKS:
 2. Relock on reload: reload → lock screen "Welcome back". A WRONG 8-digit PIN
    clears the field and the dialog stays; the correct PIN unlocks (entry
    auto-submits when all 8 digits are typed).
-3. Manual lock: the top-bar "Lock app" button locks immediately.
+3. Manual lock: the top-bar "Lock app" button locks immediately. Idle
+   auto-lock is REAL, not just a setting: set "Auto-lock after" to 1 minute
+   (Settings → Security), unlock, generate no input events for ~70 s, and
+   the lock screen must appear on its own (the useIdleTimer path — reload
+   and manual locks never exercise it); restore 15 minutes afterwards.
 4. Step-up on interview entry: unlock first — check 3 left the app locked.
    Then install the Sample Protocol (toast!), "Start
    new interview" with any case ID → a "Confirm your identity" dialog appears
@@ -750,7 +762,11 @@ CHECKS:
 5. Lock-screen guard on interview routes: while on /interview/…, reload → the
    "Welcome back" lock screen appears WITHOUT the "Recover by resetting"
    button (it is suppressed on interview routes). Unlock and confirm the
-   interview is still there.
+   interview is still there. Then exercise the EXIT step-up call site:
+   enable "Require unlock when exiting an interview" (Settings → Security),
+   exit the interview via its menu — the identity dialog must gate the
+   exit; a wrong PIN is rejected and you REMAIN in the interview, the
+   correct PIN completes the exit. Disable the setting afterwards.
 6. Change PIN: first EXIT the interview back to the dashboard (the button
    named "Settings" on /interview/* is the interview engine's own menu —
    text size and "Exit interview" only; the tabbed Settings dialog exists
@@ -819,7 +835,12 @@ CHECKS:
 5. Offline protocol install: while offline, install the Sample Protocol (its
    bytes are bundled) → "Protocol imported" toast.
 6. Offline interview: still offline, start an interview (case ID
-   "offline-check") and advance through the first 3 stages. Step writes are
+   "offline-check") and advance through the first 3 stages. Then — STILL
+   OFFLINE — reload the /interview/<id> page itself: the interview must
+   render again from the precached shell (this exercises the dedicated
+   /interview/ navigation fallback in the service worker, a separate
+   handler from ordinary navigations; reloading only after going online
+   never touches it). Step writes are
    fire-and-forget: record the reached [data-stage-step], then poll
    IndexedDB (database "interviewer") via page.evaluate until the session
    row's currentStep matches it — the offline progress must actually commit.
