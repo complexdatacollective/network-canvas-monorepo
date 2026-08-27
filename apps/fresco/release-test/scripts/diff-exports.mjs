@@ -5,10 +5,17 @@
 //
 // Each input directory holds what a capture produced: UI export archives
 // (*.zip) and/or API snapshots (*.json). Archives are extracted, every text
-// file is normalized (volatile timestamps masked, JSON keys sorted, datetimes
-// in filenames masked so archive members pair up across runs), and the two
-// trees are diffed. The summary JSON goes to stdout and --out; full normalized
-// trees and per-file diffs are left in --work for inspection.
+// file is normalized and the two trees are diffed. The summary JSON goes to
+// stdout and --out; full normalized trees and per-file diffs are left in
+// --work for inspection.
+//
+// Normalization masks ONLY the named fields that legitimately differ between
+// two exports of the same data (export wall-clock stamps and rows touched by
+// the export marking) — never timestamps wholesale, so corruption of stable
+// persisted times (sessionStart/sessionFinish, startTime/finishTime) still
+// shows up in the diff. JSON gets sorted keys and id-sorted object arrays so
+// pagination-order ties cannot masquerade as changes; datetimes in FILE NAMES
+// are masked so archive members pair up across runs.
 //
 // Usage: node diff-exports.mjs <baselineDir> <currentDir> --work <dir> [--out <file>]
 import { spawnSync } from 'node:child_process';
@@ -25,42 +32,115 @@ import { join, relative, resolve } from 'node:path';
 
 const DIFF_EXCERPT_LINES = 60;
 
-// Volatile values that legitimately differ between two exports of the same
-// data: wall-clock timestamps (ISO and epoch-milliseconds).
-const ISO_TIMESTAMP =
-  /\d{4}-\d{2}-\d{2}[T_ ]\d{2}[:.-]\d{2}[:.-]\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g;
 const DATE_IN_NAME =
   /\d{4}-\d{2}-\d{2}(?:[T_ -]?\d{2}[:.-]?\d{2}[:.-]?\d{2})?/g;
-const EPOCH_MS = /\b1\d{12}\b/g;
+const EPOCH_IN_NAME = /\b1\d{12}\b/g;
+
+// The ONLY values allowed to differ between two exports of the same data.
+// GraphML stamps the export wall-clock as a graph attribute; the ego CSV
+// carries it as the sessionExported column; the interview data API's
+// lastUpdated (and any exportTime) move when the export itself marks rows.
+// Everything else — sessionStart/sessionFinish, startTime/finishTime included
+// — stays literal so corruption of persisted values fails the diff.
+const VOLATILE_GRAPHML_ATTR = /(\bnc:sessionExportTime=")[^"]*(")/g;
+const VOLATILE_CSV_COLUMNS = new Set(['sessionExported']);
+const VOLATILE_JSON_KEYS = new Set(['lastUpdated', 'exportTime']);
 
 function normalizeName(name) {
-  return name.replace(DATE_IN_NAME, 'DATE').replace(EPOCH_MS, 'EPOCH');
+  return name.replace(DATE_IN_NAME, 'DATE').replace(EPOCH_IN_NAME, 'EPOCH');
 }
 
-function sortKeysDeep(value) {
-  if (Array.isArray(value)) return value.map(sortKeysDeep);
+function normalizeJsonDeep(value) {
+  if (Array.isArray(value)) {
+    const mapped = value.map(normalizeJsonDeep);
+    // Collections arrive in query order (e.g. a lastUpdated sort with ties);
+    // id-sort them so ordering noise cannot read as a data change.
+    if (mapped.every((v) => v && typeof v === 'object' && 'id' in v)) {
+      return mapped.toSorted((a, b) =>
+        String(a.id).localeCompare(String(b.id)),
+      );
+    }
+    return mapped;
+  }
   if (value && typeof value === 'object') {
     return Object.fromEntries(
       Object.keys(value)
         .toSorted((a, b) => a.localeCompare(b))
-        .map((key) => [key, sortKeysDeep(value[key])]),
+        .map((key) => [
+          key,
+          VOLATILE_JSON_KEYS.has(key)
+            ? '<VOLATILE>'
+            : normalizeJsonDeep(value[key]),
+        ]),
     );
   }
   return value;
 }
 
-function normalizeContent(name, text) {
-  let normalized = text;
-  if (name.endsWith('.json')) {
-    try {
-      normalized = `${JSON.stringify(sortKeysDeep(JSON.parse(text)), null, 2)}\n`;
-    } catch {
-      // Not valid JSON after all — fall through to plain masking.
+// Minimal RFC-4180 row splitter: enough to find a cell boundary in the
+// exporter's own output (quoted fields with embedded commas/quotes).
+function splitCsvRow(row) {
+  const cells = [];
+  let cell = '';
+  let quoted = false;
+  for (let i = 0; i < row.length; i += 1) {
+    const ch = row[i];
+    if (quoted) {
+      if (ch === '"' && row[i + 1] === '"') {
+        cell += '""';
+        i += 1;
+      } else if (ch === '"') {
+        cell += ch;
+        quoted = false;
+      } else {
+        cell += ch;
+      }
+    } else if (ch === '"') {
+      cell += ch;
+      quoted = true;
+    } else if (ch === ',') {
+      cells.push(cell);
+      cell = '';
+    } else {
+      cell += ch;
     }
   }
-  return normalized
-    .replace(ISO_TIMESTAMP, '<TIMESTAMP>')
-    .replace(EPOCH_MS, '<EPOCH_MS>');
+  cells.push(cell);
+  return cells;
+}
+
+function normalizeCsv(text) {
+  const lines = text.split('\n');
+  const header = splitCsvRow(lines[0] ?? '');
+  const volatileIdx = new Set(
+    header.flatMap((name, idx) =>
+      VOLATILE_CSV_COLUMNS.has(name.replace(/^"|"$/g, '')) ? [idx] : [],
+    ),
+  );
+  if (volatileIdx.size === 0) return text;
+  return lines
+    .map((line, lineIdx) => {
+      if (lineIdx === 0 || line === '') return line;
+      return splitCsvRow(line)
+        .map((cell, idx) => (volatileIdx.has(idx) ? '<VOLATILE>' : cell))
+        .join(',');
+    })
+    .join('\n');
+}
+
+function normalizeContent(name, text) {
+  if (name.endsWith('.json')) {
+    try {
+      return `${JSON.stringify(normalizeJsonDeep(JSON.parse(text)), null, 2)}\n`;
+    } catch {
+      return text; // Not valid JSON after all — compare as-is.
+    }
+  }
+  if (name.endsWith('.csv')) return normalizeCsv(text);
+  if (name.endsWith('.graphml')) {
+    return text.replace(VOLATILE_GRAPHML_ATTR, '$1<VOLATILE>$2');
+  }
+  return text;
 }
 
 function listFiles(dir) {

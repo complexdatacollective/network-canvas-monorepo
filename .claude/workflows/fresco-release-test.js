@@ -3,7 +3,7 @@ export const meta = {
   description:
     'Release-test the pending Fresco build locally in Docker: upgrade path from the released image (seed, migrate, export diff) plus fresh-deployment setup verification',
   whenToUse:
-    'Before approving a Fresco release (merging the Version Packages PR). Requires Docker. Optional args: { keepStack, skipBuild, releasedImage }.',
+    'Before approving a Fresco release (merging the Version Packages PR). Requires Docker. Optional args: { keepStack, skipBuild, releasedImage, allowDirty }.',
   phases: [
     {
       title: 'Build',
@@ -49,6 +49,10 @@ const FRESH_URL = 'http://localhost:3211';
 
 const keepStack = Boolean(args?.keepStack);
 const skipBuild = Boolean(args?.skipBuild);
+// A dirty tree means the tested image is not reproducible from any commit;
+// the final verdict is capped at no-go unless the caller accepts that
+// explicitly (development iterations).
+const allowDirty = Boolean(args?.allowDirty);
 const releasedImage =
   args?.releasedImage ?? 'ghcr.io/complexdatacollective/fresco:latest';
 const pendingImage = 'fresco-release-test:pending';
@@ -259,8 +263,8 @@ const runUpgradeLane = async () => {
   const lane = { name: 'upgrade' };
 
   const upReleased = await agent(
-    `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run: bash ${HARNESS}/up.sh --lane upgrade --image ${releasedImage}
-(Bash timeout 480000 — first boot runs migrations.) The last stdout line is JSON with baseUrl and the health response. Return ok:true with baseUrl and the health "version" field, or ok:false with the decisive error lines in "error".`,
+    `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run: rm -rf ${ARTIFACTS}/exports && bash ${HARNESS}/up.sh --lane upgrade --image ${releasedImage}
+(The rm clears any previous run's export captures so the diff can never mix runs — required because skipBuild bypasses the build step's artifact cleanup. Bash timeout 480000 — first boot runs migrations.) The last stdout line is JSON with baseUrl and the health response. Return ok:true with baseUrl and the health "version" field, or ok:false with the decisive error lines in "error".`,
     {
       label: 'up-released',
       phase: 'Upgrade lane',
@@ -300,7 +304,8 @@ pass=true only if steps 1-5 succeeded (the instance is seeded); report the rest 
   const swap = await agent(
     `Upgrade the running release-test stack to the pending image, exactly as a deployment would:
 Run: bash ${HARNESS}/up.sh --lane upgrade --image ${pendingImage} --keep-data
-(Bash timeout 480000.) Then run: docker compose -p fresco-release-test-upgrade -f ${HARNESS}/docker-compose.yml logs --tail 200 fresco
+(Bash timeout 480000.) Then run: FRESCO_IMAGE=${pendingImage} docker compose -p fresco-release-test-upgrade -f ${HARNESS}/docker-compose.yml logs --tail 200 fresco
+(The FRESCO_IMAGE prefix is required: the compose file refuses interpolation without it, and up.sh's export does not survive into your shell.)
 Inspect the logs for the migration/startup sequence (prisma migrate deploy, protocol/data migrations, server start). Return ok:true with the health "version", or ok:false with the decisive failing log lines in "error". Any migration error, stack trace, or crash-loop is a failure even if the container eventually reports healthy.`,
     {
       label: 'upgrade-swap',
@@ -313,7 +318,11 @@ Inspect the logs for the migration/startup sequence (prisma migrate deploy, prot
   if (!swap?.ok) return lane;
 
   const apiPaths = JSON.stringify(seed.apiPaths ?? []);
-  const [capture, integrity, crud, apiSettings] = await parallel([
+  // Two stages, deliberately serialized: capture and integrity must observe
+  // the upgraded-but-untouched dataset before the mutating CRUD and settings
+  // checks run — otherwise a deleted interview or toggled setting races the
+  // export diff and count checks into a schedule-dependent false no-go.
+  const [capture, integrity] = await parallel([
     () =>
       agent(
         `The Fresco instance at ${UPGRADE_URL} was just upgraded; its data was seeded pre-upgrade. Capture the SAME exports that were captured before the upgrade, then run the deterministic diff. Stay in your working directory — it is already the correct repository checkout; do NOT cd to another checkout. Sign in as ${ADMIN_USER} / ${ADMIN_PASSWORD} if asked.
@@ -343,6 +352,8 @@ Checks: dashboard summary counts match the pre-upgrade counts; the protocols pag
           ...UI,
         },
       ),
+  ]);
+  const [crud, apiSettings] = await parallel([
     () =>
       agent(
         `Exercise Fresco dashboard CRUD on the upgraded instance at ${UPGRADE_URL}. Sign in as ${ADMIN_USER} / ${ADMIN_PASSWORD}. Use data prefixed "crud-" so you never touch other agents' data; stay in your working directory for any files.
@@ -381,7 +392,7 @@ Return one check per item.`,
 
   if (capture?.pass && capture.summaryPath) {
     lane.diffVerdict = await agent(
-      `You are judging whether a Fresco upgrade changed exported interview data in UNANTICIPATED ways. The same seeded interviews were exported before the upgrade (released build) and after (pending build); a deterministic normalizer already masked timestamps and produced ${capture.summaryPath} (JSON: onlyInBaseline / onlyInCurrent / identical / changed with per-file diff excerpts and fullDiff paths under ${DIFF_WORK}/diffs/).
+      `You are judging whether a Fresco upgrade changed exported interview data in UNANTICIPATED ways. The same seeded interviews were exported before the upgrade (released build) and after (pending build); a deterministic normalizer already masked ONLY the volatile export-marking fields (GraphML sessionExportTime, CSV sessionExported, JSON lastUpdated/exportTime) and id-sorted API arrays — stable persisted times (sessionStart/sessionFinish, startTime/finishTime) are compared literally, so a difference in them is real. It produced ${capture.summaryPath} (JSON: onlyInBaseline / onlyInCurrent / identical / changed with per-file diff excerpts and fullDiff paths under ${DIFF_WORK}/diffs/).
 Read the summary. For every difference, read as much of the full diff as needed to characterize it. Then read the pending changesets (.changeset/*.md in your working directory) — they describe everything this release ships. Classify each difference as anticipated (explained by a specific changeset — name it) or unanticipated. Structural changes to graph data (missing nodes/edges/attributes, changed values) are unanticipated unless a changeset explicitly covers them. An empty diff (all identical, nothing one-sided) is pass:true with empty lists. pass=false if anything is unanticipated.`,
       {
         label: 'diff-judge',
@@ -439,6 +450,7 @@ Return one check per item; pass=true only if all pass.`,
 let upgradeLane;
 let freshLane;
 let report;
+let teardown;
 try {
   [upgradeLane, freshLane] = await parallel([runUpgradeLane, runFreshLane]);
 
@@ -448,7 +460,7 @@ try {
 ${JSON.stringify({ build, released, upgradeLane, freshLane }, null, 2)}
 
 Also read the pending changesets (.changeset/*.md in your working directory) and note any that ship Fresco-facing behaviour no check above exercised (list them in untestedShippedChanges; library-only or other-app changesets do not belong there).
-Verdict rules: "blocked" if a stack or the build never came up (nothing meaningful was tested); "no-go" if any check failed, any migration error appeared, or the export diff has unanticipated differences; otherwise "go". List every failure verbatim from the results — do not soften or re-litigate them.`,
+Verdict rules: "blocked" if a stack or the build never came up (nothing meaningful was tested); "no-go" if any check failed, any migration error appeared, the export diff has unanticipated differences, or the pending image was built from a dirty tree (build.dirty) without allowDirty=${allowDirty} — a dirty build is not reproducible from any commit; otherwise "go". List every failure verbatim from the results — do not soften or re-litigate them.`,
     {
       label: 'release-critic',
       phase: 'Report',
@@ -463,7 +475,7 @@ Verdict rules: "blocked" if a stack or the build never came up (nothing meaningf
       `keepStack: leaving stacks running (${UPGRADE_URL} upgraded, ${FRESH_URL} fresh); run bash ${HARNESS}/down.sh when finished`,
     );
   } else {
-    await agent(
+    teardown = await agent(
       `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run: bash ${HARNESS}/down.sh
 Then verify nothing remains: docker ps -a and docker volume ls filtered for "fresco-release-test" must be empty. Return ok:true, or ok:false with what remained in "error".`,
       {
@@ -476,15 +488,35 @@ Then verify nothing remains: docker ps -a and docker volume ls filtered for "fre
   }
 }
 
+// Deterministic enforcement on top of the critic's judgment: a dirty build or
+// a failed teardown must be visible in the returned verdict/failures even if
+// the critic's prose missed them.
+const failures = [
+  ...(report?.failures ?? ['release-critic agent did not return']),
+];
+let verdict = report?.verdict ?? 'blocked';
+if (build?.dirty && !allowDirty && verdict === 'go') {
+  verdict = 'no-go';
+  failures.push(
+    'pending image was built from a dirty working tree — not reproducible from any commit (rerun clean, or pass allowDirty during development)',
+  );
+}
+if (!keepStack && teardown?.ok !== true) {
+  failures.push(
+    `teardown did not verify clean: ${teardown?.error ?? 'teardown agent returned no result'} — release-test containers/volumes may still be running`,
+  );
+}
+
 return {
-  verdict: report?.verdict ?? 'blocked',
+  verdict,
   summary: report?.summary,
-  failures: report?.failures ?? ['release-critic agent did not return'],
+  failures,
   untestedShippedChanges: report?.untestedShippedChanges ?? [],
   pendingImage: { ...build },
   releasedImage: released?.image,
   upgradeLane,
   freshLane,
   artifacts: ARTIFACTS,
+  teardown: keepStack ? 'stacks deliberately kept' : teardown,
   stacksKept: keepStack,
 };
