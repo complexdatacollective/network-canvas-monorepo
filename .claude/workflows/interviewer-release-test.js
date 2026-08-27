@@ -155,6 +155,12 @@ const JOURNEY_SCHEMA = {
     checks: { type: 'array', items: CHECK },
     failures: { type: 'array', items: FAILURE },
     artifactsDir: { type: 'string' },
+    traversedStages: {
+      type: 'array',
+      items: { type: 'integer' },
+      description:
+        'conduct-sample-interview only: every stage index you landed on, in order',
+    },
     notes: { type: 'string' },
   },
 };
@@ -229,10 +235,11 @@ const EVIDENCE_SCHEMA = {
             description:
               'Journey dirs: the DISTINCT check numbers N with a check<N>-prefixed .png. verify-* dirs: the DISTINCT failure numbers K with a failure<K>-prefixed .png.',
           },
-          stageCaptures: {
-            type: 'integer',
+          stageNumbers: {
+            type: 'array',
+            items: { type: 'integer' },
             description:
-              'The count of DISTINCT stage-<N> filename prefixes (0 where none exist)',
+              'The DISTINCT stage numbers N with a stage-<N>-prefixed .png (empty where none exist)',
           },
         },
       },
@@ -532,6 +539,9 @@ CHECKS:
 6. /data afterwards lists the session: case ID "release-smoke", status
    Complete, progress 100%.
 7. No unexpected console errors accumulated across the whole interview.
+
+Report EVERY stage index you land on in the traversedStages result field —
+the evidence audit requires a stage-<index>.png for each one.
 
 If one stage's interaction genuinely cannot be completed after real effort,
 record a failure for that stage, then use the stage drawer to move past it and
@@ -1075,7 +1085,7 @@ if (evidenceClaims.length) {
 1. whether the directory exists;
 2. the count of .png files directly inside it (e.g. \`find <dir> -maxdepth 1 -name '*.png' | wc -l\`);
 3. checkpointNumbers, a list of integers: for a journey directory the DISTINCT check numbers (\`ls <dir> | grep -oE '^check[0-9]+' | sort -u\`); for a verify-* directory the DISTINCT failure numbers instead (\`ls <dir> | grep -oE '^failure[0-9]+' | sort -u\`);
-4. stageCaptures: the count of DISTINCT stage prefixes (\`ls <dir> | grep -oE '^stage-?[0-9]+' | sort -u | wc -l\`; report 0 when none).
+4. stageNumbers: the DISTINCT stage numbers among their filenames, as a list of integers (\`ls <dir> | grep -oE '^stage-?[0-9]+' | sort -u\`; report [] when none).
 
 Then re-compute the deployment fingerprint and report it as fingerprint:
 { curl -s ${url}/ | grep -oE 'assets/[A-Za-z0-9_.-]+\\.(js|css)' | sort -u; curl -s ${url}/manifest.webmanifest; curl -s ${url}/sw.js; } | shasum -a 256 | cut -c1-16
@@ -1168,22 +1178,33 @@ for (const r of results.filter(Boolean)) {
       ? executedNumbers.filter((n) => !have.has(n))
       : [];
     const needed = executedNumbers.length;
-    // Conduct's per-stage evidence is counted by DISTINCT stage prefixes so
-    // ordinary check captures cannot stand in for missing stage images.
-    const stageShort =
-      r.journey === 'conduct-sample-interview' &&
-      (e ? (e.stageCaptures ?? 0) : 0) < CONDUCT_MIN_SCREENSHOTS;
+    // Conduct's per-stage evidence is validated by IDENTITY against the
+    // journey's own traversed-stage report: every traversed stage needs its
+    // stage-<index>.png, the traversed set itself must clear the minimum
+    // walk length, and check captures cannot stand in for stage images.
+    let stageProblem = '';
+    if (r.journey === 'conduct-sample-interview') {
+      const traversed = Array.isArray(r.traversedStages)
+        ? r.traversedStages
+        : [];
+      const onDisk = new Set(e ? (e.stageNumbers ?? []) : []);
+      const missingStages = traversed.filter((n) => !onDisk.has(n));
+      if (traversed.length < CONDUCT_MIN_SCREENSHOTS)
+        stageProblem = `reported only ${traversed.length} traversed stages (>=${CONDUCT_MIN_SCREENSHOTS} expected)`;
+      else if (missingStages.length)
+        stageProblem = `no capture for traversed stage(s) ${missingStages.join(', ')}`;
+    }
     if (
       !e ||
       !e.exists ||
       e.screenshots < needed ||
-      stageShort ||
+      stageProblem ||
       missingCk.length
     ) {
       if (!inconsistentJourneys.includes(r.journey))
         inconsistentJourneys.push(r.journey);
       certificationGaps.push(
-        `journey "${r.journey}" lacks on-disk evidence (${e ? `exists=${e.exists}, screenshots=${e.screenshots} of >=${needed}${stageShort ? `, distinct stage captures ${e.stageCaptures ?? 0} of >=${CONDUCT_MIN_SCREENSHOTS}` : ''}${missingCk.length ? `, no capture for executed check(s) #${missingCk.join(', #')}` : ''}` : 'not audited'}); treated as incomplete`,
+        `journey "${r.journey}" lacks on-disk evidence (${e ? `exists=${e.exists}, screenshots=${e.screenshots} of >=${needed}${stageProblem ? `, ${stageProblem}` : ''}${missingCk.length ? `, no capture for executed check(s) #${missingCk.join(', #')}` : ''}` : 'not audited'}); treated as incomplete`,
       );
     }
   }
@@ -1310,19 +1331,17 @@ for (const r of results.filter(Boolean)) {
       (verifyEntry.checkpointNumbers ?? []).includes(n),
     );
   let dismissalRejected = false;
-  // Match verdicts to failures by explicit id first (the "failure" number
-  // the verifier is required to echo), then verbatim description, never by
-  // position, never reusing a verdict — a verdict about one failure must
-  // not dismiss another. Unmatched failures stay unverified (fail closed).
+  // Match verdicts to failures by the explicit "failure" id the verifier is
+  // required to echo — never by description, never by position, never
+  // reusing a verdict: an unnumbered verdict never adjudicates a reported
+  // failure (the prompt reserves unnumbered verdicts for discovered
+  // defects), so a verbatim-copied description cannot smuggle a dismissal
+  // past the id requirement. Unmatched failures stay unverified.
   const used = new Set();
   r.failures.forEach((f, i) => {
-    let idx = r.verification.findIndex(
+    const idx = r.verification.findIndex(
       (x, k) => !used.has(k) && x.failure === i + 1,
     );
-    if (idx === -1)
-      idx = r.verification.findIndex(
-        (x, k) => !used.has(k) && !x.failure && x.description === f.description,
-      );
     const v = idx === -1 ? null : r.verification[idx];
     if (v) used.add(idx);
     if (!v) {

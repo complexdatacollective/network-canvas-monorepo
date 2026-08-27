@@ -109,14 +109,14 @@ function makeAgent(journeyResults, verifyResults = {}, evidenceResult) {
             exists: true,
             screenshots: 25,
             checkpointNumbers: Array.from({ length: 25 }, (_, i) => i + 1),
-            stageCaptures: 25,
+            stageNumbers: Array.from({ length: 25 }, (_, i) => i + 1),
           })),
           ...Object.keys(verifyResults).map((k) => ({
             journey: `verify-${k}`,
             exists: true,
             screenshots: 5,
             checkpointNumbers: [1, 2, 3, 4, 5],
-            stageCaptures: 0,
+            stageNumbers: [],
           })),
         ],
       };
@@ -137,6 +137,9 @@ const journey = (key, overrides = {}) => ({
   status: 'pass',
   checks: mkChecks(EXPECTED_CHECKS[key]),
   failures: [],
+  ...(key === 'conduct-sample-interview'
+    ? { traversedStages: Array.from({ length: 25 }, (_, i) => i + 1) }
+    : {}),
   ...overrides,
 });
 
@@ -173,6 +176,7 @@ test('a partial verifier response never dismisses unmatched failures', async () 
       verdicts: [
         {
           description: 'failure B',
+          failure: 2,
           verdict: 'not-reproduced',
           severity: 'minor',
           explanation: 'nope',
@@ -426,7 +430,7 @@ test('evidence must exist on disk with per-check identity', async () => {
             exists: false,
             screenshots: 0,
             checkpointNumbers: [],
-            stageCaptures: 25,
+            stageNumbers: Array.from({ length: 25 }, (_, i) => i + 1),
           },
         ],
       },
@@ -453,7 +457,7 @@ test('evidence must exist on disk with per-check identity', async () => {
             exists: true,
             screenshots: 30,
             checkpointNumbers: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-            stageCaptures: 25,
+            stageNumbers: Array.from({ length: 25 }, (_, i) => i + 1),
           },
         ],
       },
@@ -483,7 +487,7 @@ test('evidence must exist on disk with per-check identity', async () => {
             exists: true,
             screenshots: 7,
             checkpointNumbers: [1, 2, 3, 4, 5, 8, 9],
-            stageCaptures: 25,
+            stageNumbers: Array.from({ length: 25 }, (_, i) => i + 1),
           },
         ],
       },
@@ -926,7 +930,7 @@ test('conduct needs distinct per-stage captures, not raw totals', async () => {
             exists: true,
             screenshots: 40,
             checkpointNumbers: [1, 2, 3, 4, 5, 6, 7],
-            stageCaptures: 8,
+            stageNumbers: [],
           },
         ],
       },
@@ -935,7 +939,9 @@ test('conduct needs distinct per-stage captures, not raw totals', async () => {
   );
   assert.equal(res.verdict, 'INCOMPLETE');
   assert.ok(
-    res.certificationGaps.some((a) => a.includes('distinct stage captures 8')),
+    res.certificationGaps.some((a) =>
+      a.includes('no capture for traversed stage(s)'),
+    ),
   );
 });
 
@@ -989,14 +995,14 @@ test('dismissals bind to per-failure verifier captures', async () => {
           exists: true,
           screenshots: 25,
           checkpointNumbers: Array.from({ length: 10 }, (_, i) => i + 1),
-          stageCaptures: 0,
+          stageNumbers: [],
         },
         {
           journey: 'verify-pwa-offline',
           exists: true,
           screenshots: 1,
           checkpointNumbers: [2],
-          stageCaptures: 0,
+          stageNumbers: [],
         },
       ],
     }),
@@ -1065,6 +1071,40 @@ test('malformed preflight paths are blocked', async () => {
   assert.equal(
     (await run(badRepoRoot, { journeys: ['pwa-offline'] })).verdict,
     'BLOCKED',
+  );
+});
+
+test('an unnumbered verbatim verdict never dismisses a reported failure', async () => {
+  const jr = {
+    'pwa-offline': journey('pwa-offline', {
+      status: 'fail',
+      checks: mkChecks(10, { failAt: [1] }),
+      failures: [
+        {
+          severity: 'major',
+          description: 'the real one',
+          check: 1,
+          reproduction: 'r',
+        },
+      ],
+    }),
+  };
+  const vr = {
+    'pwa-offline': {
+      verdicts: [
+        {
+          description: 'the real one',
+          verdict: 'not-reproduced',
+          severity: 'minor',
+          explanation: 'verbatim but unnumbered',
+        },
+      ],
+    },
+  };
+  const res = await run(makeAgent(jr, vr), { journeys: ['pwa-offline'] });
+  assert.equal(res.verdict, 'BLOCK');
+  assert.ok(
+    res.unverifiedFailures.some((f) => f.description === 'the real one'),
   );
 });
 
