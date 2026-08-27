@@ -17,7 +17,8 @@
 // Usage:
 //   node scripts/mirror-app.mjs --app <appDir> --repo <owner/name> --version <version> [--branch <name>] [--with-lockfile]
 // Env:
-//   LEGACY_RELEASE_GH_TOKEN  cross-repo token with contents:write (required to push)
+//   LEGACY_RELEASE_GH_TOKEN  cross-repo token with Contents + Workflows write
+//                            (classic PAT: repo + workflow; required to push)
 //   MONOREPO_SHA             source commit sha (recorded in the commit message)
 //   GITHUB_OUTPUT            when set, `mirror_sha=<sha>` is appended for the workflow
 //   MIRROR_DRY_RUN           when "true", stage + commit locally but skip the push
