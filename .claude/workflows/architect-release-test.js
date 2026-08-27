@@ -3,7 +3,7 @@ export const meta = {
   description:
     'Agent-driven release smoke test of the deployed Architect dev site',
   whenToUse:
-    'Before promoting an Architect release: drives the dev deployment (https://architect.networkcanvas.dev, or args.url) through a release-tester checklist in the Browser pane and returns a pass/blocked/fail verdict. Any fail should block the release. args: { url?: string, slices?: string[] } — slices filters the functional slices by key (reachability always runs).',
+    'Before promoting an Architect release: drives the dev deployment (https://architect.networkcanvas.dev, or args.url) through a release-tester checklist in the Browser pane and returns a pass/blocked/fail verdict. Any fail should block the release. args: { url?: string, slices?: string[], expectVersion?: string } — slices filters the functional slices by key (reachability always runs; a filtered run is marked partial), expectVersion fails reachability if the deployment shows a different version.',
   phases: [
     { title: 'Reachability', detail: 'site up, assets, service worker' },
     { title: 'Functional checks', detail: 'one agent per checklist slice' },
@@ -25,6 +25,14 @@ const only =
     ? args.slices
     : null;
 
+// Optional expected deployed version, e.g. args = { expectVersion: '8.2.0' }.
+// When set, the reachability slice fails if the deployment shows a different
+// version — guarding against testing a stale deploy and calling it safe.
+const expectVersion =
+  args && typeof args === 'object' && typeof args.expectVersion === 'string'
+    ? args.expectVersion
+    : null;
+
 const CHECKS_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -43,6 +51,7 @@ const CHECKS_SCHEMA = {
       },
     },
     tooling_notes: { type: 'string' },
+    version: { type: 'string' },
   },
   required: ['checks', 'tooling_notes'],
 };
@@ -96,10 +105,12 @@ protocol-design PWA. Target deployment: ${target}
 - Hidden-pane overlay bugs: a closed Base UI dialog can leave a zero-opacity
   backdrop that swallows clicks, and an open dialog/menu can collapse to a
   0x0 box while its accessibility nodes remain. If clicks stop landing,
-  neutralize ghost backdrops (pointer-events: none via javascript_tool) or
-  fire the named control's .click() directly — only ever to trigger the same
-  action a human click would, never to bypass a confirmation or mutate app
-  state directly.
+  neutralize ghost backdrops (pointer-events: none or display: none via
+  javascript_tool) or fire the named control's .click() directly — only ever
+  to trigger the same action a human click would, never to bypass a
+  confirmation or mutate app state directly. Never Element.remove() a
+  React-managed node: it desyncs reconciliation and throws the app's error
+  dialog.
 - Some textbox accessibility nodes echo their placeholder instead of their
   value; verify field values via visible text or javascript_tool, not the
   tree alone.
@@ -110,12 +121,14 @@ protocol-design PWA. Target deployment: ${target}
 - If a first-run welcome or gallery card appears, dismiss it; that is normal.
 
 ## State safety (critical)
-- This browser profile may contain a person's real protocols. You may create,
-  modify, or delete ONLY protocols whose name starts with "RT ${tag}". Never
-  touch any other protocol, never use "Clear all", never clear site storage.
+- This browser profile may contain a person's real protocols. You may create
+  protocols only with names starting "RT ${tag} ", and may modify or delete
+  ONLY the exact protocols you created in this run. Never touch any other
+  protocol — including a leftover "RT" protocol from an earlier or concurrent
+  run (report those in tooling_notes instead of deleting them) — never use
+  "Clear all", never clear site storage.
 - Name your protocol "RT ${tag} <suffix>" where <suffix> is 4 random
-  alphanumeric characters you choose. If a stale "RT ${tag}" protocol from an
-  earlier run exists, delete it first.
+  alphanumeric characters you choose, so runs never collide.
 - Before finishing — even after a failure — return to the start screen, delete
   every protocol you created, and close every tab you opened.
 
@@ -143,6 +156,7 @@ const SLICES = [
   {
     key: 'protocol-lifecycle',
     tag: 'lifecycle',
+    expected: ['create', 'rename', 'templates', 'reopen', 'export', 'delete'],
     checklist: `
 1. "create": From the start screen, activate the create-protocol button,
    complete the dialog with your protocol name, and confirm the editor opens
@@ -165,6 +179,13 @@ const SLICES = [
   {
     key: 'stages-and-timeline',
     tag: 'stages',
+    expected: [
+      'add-information-stage',
+      'edit-stage',
+      'add-name-generator',
+      'delete-stage',
+      'cleanup',
+    ],
     checklist: `
 1. "add-information-stage": Create your protocol, then use "Add new stage" to
    open the interface picker. Confirm it lists multiple stage types, choose
@@ -184,15 +205,17 @@ const SLICES = [
   {
     key: 'codebook-and-summary',
     tag: 'codebook',
+    expected: ['seed', 'codebook', 'summary', 'return', 'cleanup'],
     checklist: `
 1. "seed": Create your protocol and add one Name Generator stage, creating a
    node type through the stage editor. Save the stage.
-2. "codebook": Open the protocol's codebook view (the "Manage codebook"
-   affordance or the /protocol/codebook route) and confirm the node type you
-   created is listed.
-3. "summary": Open the protocol summary (the summary affordance or the
-   /protocol/summary route) and confirm a printable summary renders with the
-   protocol name and your stage.
+2. "codebook": Open the protocol's codebook view via its user-facing
+   navigation control (e.g. "Manage codebook"). Do NOT type the route — a
+   missing or broken control fails this check; this smoke test guards the
+   path a person actually uses. Confirm the node type you created is listed.
+3. "summary": Open the protocol summary via its user-facing control (again,
+   never by typing the route) and confirm a printable summary renders with
+   the protocol name and your stage.
 4. "return": From a subpage, use "Return to Stages" and confirm you land back
    on the timeline.
 5. "cleanup": Delete your protocol from the start screen.`,
@@ -200,6 +223,7 @@ const SLICES = [
   {
     key: 'stage-preview',
     tag: 'preview',
+    expected: ['seed', 'launch', 'preview-route', 'editor-intact', 'cleanup'],
     checklist: `
 1. "seed": Create your protocol and add an Information stage whose content
    includes the exact text "Release test preview content". Stay in (or reopen)
@@ -228,6 +252,14 @@ const SLICES = [
   },
 ];
 
+const REACH_EXPECTED = [
+  'load',
+  'console',
+  'assets',
+  'service-worker',
+  'version',
+];
+
 const reachabilityPrompt = `${ops('reach')}
 ## Your checklist
 1. "load": Navigate to the target and confirm the Architect start screen
@@ -239,22 +271,35 @@ const reachabilityPrompt = `${ops('reach')}
 3. "assets": Read the network requests for your tab. Pass when no same-origin
    request failed with a 4xx/5xx status. Third-party/analytics failures are
    notes, not failures.
-4. "service-worker": In your tab evaluate
-   navigator.serviceWorker.getRegistration() and confirm a registration exists
-   (this is an installable PWA). Registration can lag first load — wait a few
-   seconds and retry once before judging.
-Also: record the deployed app version in tooling_notes — it appears as a
-chip in the start screen's header (e.g. "v8.1.0"). Do not create or modify
-any protocol in this slice.`;
+4. "service-worker": Prove the DEPLOYED build registers its own service
+   worker. This persistent profile may hold a registration from an earlier
+   visit, which would mask broken registration wiring and can serve a stale
+   cached shell — so first unregister:
+   (await navigator.serviceWorker.getRegistration())?.unregister(), then
+   hard-reload the tab and wait for the app to settle. Now
+   navigator.serviceWorker.getRegistration() must return a fresh registration
+   (registration can lag load — wait a few seconds and retry once before
+   judging). Note the active worker script URL.
+5. "version": After the service-worker check's reload (so the header reflects
+   the newest deployed build rather than a stale cached shell), read the
+   deployed version from the start-screen header chip (e.g. "v8.1.0"). Put
+   the observed value in details AND in the top-level "version" output field.
+   ${
+     expectVersion
+       ? `Expected version: "${expectVersion}" — fail this check if the displayed version does not match it.`
+       : 'No expected version was supplied, so pass with the observed value.'
+   }
+Do not create or modify any protocol in this slice.`;
 
 phase('Reachability');
 log(`Target: ${target}`);
 // Model policy: drivers run on Sonnet at medium effort — browser driving is
 // its sweet spot, and a driver mistake costs one Opus verification rather
-// than a wrong verdict, because only verifier-confirmed failures block.
-// Verifiers stay on Opus at high effort: they alone decide whether a failure
-// blocks the release, and they spawn only on failures, so a green run never
-// pays for them. Reachability is a mechanical checklist: Sonnet, low effort.
+// than a wrong verdict: only verifier-confirmed failures fail the gate, and
+// a refuted report still holds it at blocked. Verifiers stay on Opus at high
+// effort: they alone decide whether a failure fails the release, and they
+// spawn only on failures, so a green run never pays for them. Reachability
+// is a mechanical checklist: Sonnet, low effort.
 const reach = await agent(reachabilityPrompt, {
   label: 'reachability',
   schema: CHECKS_SCHEMA,
@@ -263,19 +308,35 @@ const reach = await agent(reachabilityPrompt, {
 });
 
 const results = [];
-results.push({ slice: 'reachability', result: reach });
+results.push({
+  slice: 'reachability',
+  expected: REACH_EXPECTED,
+  result: reach,
+});
 
 const siteUp =
   reach && reach.checks.some((c) => c.name === 'load' && c.status === 'pass');
 
 const selected = only ? SLICES.filter((s) => only.includes(s.key)) : SLICES;
 if (only) {
+  // An empty or misspelled filter must not shrink a "pass" into meaning
+  // nothing — refuse it loudly instead of returning a hollow verdict.
+  const known = new Set(SLICES.map((s) => s.key));
+  const unknown = only.filter((k) => !known.has(k));
+  if (unknown.length > 0 || selected.length === 0) {
+    throw new Error(
+      `args.slices selected no runnable slices (unknown: [${unknown.join(', ')}]). Valid keys: ${SLICES.map((s) => s.key).join(', ')}`,
+    );
+  }
   log(`Slice filter: running only [${selected.map((s) => s.key).join(', ')}]`);
 }
 
 phase('Functional checks');
 if (!siteUp) {
   log('Start screen did not load — skipping functional slices.');
+  for (const s of selected) {
+    results.push({ slice: s.key, expected: s.expected, result: null });
+  }
 } else {
   for (const slice of selected) {
     log(`Running slice: ${slice.key}`);
@@ -288,38 +349,35 @@ if (!siteUp) {
         effort: 'medium',
       },
     );
-    results.push({ slice: slice.key, result });
+    results.push({ slice: slice.key, expected: slice.expected, result });
   }
 }
 
-// Flatten. A dead/skipped agent (null) blocks its whole slice — fail closed.
-const checks = results.flatMap(({ slice, result }) =>
-  result
-    ? result.checks.map((c) => ({ ...c, slice }))
-    : [
-        {
-          slice,
-          name: 'agent',
-          status: 'blocked',
-          details: 'Slice agent returned no result; slice unverified.',
-        },
-      ],
-);
-if (!siteUp) {
-  for (const s of selected) {
-    checks.push({
-      slice: s.key,
-      name: 'slice',
+// Reconcile each slice's report against its expected checklist: a check the
+// agent failed to report is unverified, and unverified is blocked — a
+// schema-valid partial report must not be able to pass the gate. A dead,
+// skipped, or never-run slice (null result) blocks every expected check.
+const checks = results.flatMap(({ slice, expected, result }) => {
+  const reported = result ? result.checks.map((c) => ({ ...c, slice })) : [];
+  const missing = expected
+    .filter((name) => !reported.some((c) => c.name === name))
+    .map((name) => ({
+      slice,
+      name,
       status: 'blocked',
-      details: 'Skipped: start screen never loaded.',
-    });
-  }
-}
+      details: result
+        ? 'Agent did not report this check; unverified.'
+        : 'Slice did not run (agent died, or reachability failed); unverified.',
+    }));
+  return [...reported, ...missing];
+});
 
-// Adversarially verify failures before letting them block a release: an
-// independent agent tries to complete the same flow. Reproduced -> confirmed
-// blocker; completed successfully -> the original fail was operator error and
-// is downgraded to "flaky" for the report.
+// Adversarially verify failures before letting them fail a release: an
+// independent agent re-runs the same flow. Reproduced (or the original
+// evidence stands unexplained) -> confirmed blocker. Refuted -> "flaky":
+// excluded from fail, but the verdict is still held at blocked — a clean
+// retry alone never upgrades an observed failure to pass, because
+// intermittent breakage is still breakage.
 const failed = checks.filter((c) => c.status === 'fail');
 const confirmedFailures = [];
 const flaky = [];
@@ -340,9 +398,14 @@ UI. Perform the flow yourself, carefully, in a fresh tab with your own
 Reported failure (check "${f.name}" in slice "${f.slice}"):
 ${f.details}
 
-Set confirmed=true only if you also hit genuine app breakage in this flow;
-set confirmed=false if you completed it successfully, and describe exactly
-what you did in evidence either way.`,
+A clean success on your retry does NOT by itself refute the report —
+intermittent breakage is still breakage. Set confirmed=false ONLY if you can
+identify the specific operator error or harness artifact in the reported
+narrative that explains the original observation (wrong control, misread
+state, a documented pane quirk you re-demonstrated). Otherwise set
+confirmed=true — including when your own attempt succeeded but the original
+evidence still reads as genuine app behavior — noting possible intermittency.
+Describe exactly what you did in evidence either way.`,
     {
       label: `verify:${f.slice}/${f.name}`,
       schema: VERDICT_SCHEMA,
@@ -369,7 +432,7 @@ for (const f of failed.slice(6)) {
 const blocked = checks.filter((c) => c.status === 'blocked');
 const verdict = confirmedFailures.length
   ? 'fail'
-  : blocked.length
+  : blocked.length || flaky.length
     ? 'blocked'
     : 'pass';
 
@@ -377,15 +440,23 @@ log(
   `Verdict: ${verdict} — ${checks.length} checks, ${confirmedFailures.length} confirmed failures, ${flaky.length} flaky, ${blocked.length} blocked`,
 );
 
+let meaning = {
+  pass: 'Every check passed; safe to promote the release.',
+  blocked:
+    'No confirmed failures, but some checks were unverified or refuted only by a clean retry — review the blocked and flaky items manually before promoting.',
+  fail: 'Confirmed functional breakage on the deployment — do not promote the release.',
+}[verdict];
+if (only) {
+  meaning = `Partial run (${selected.map((s) => s.key).join(', ')} only) — not a full release verdict. ${meaning}`;
+}
+
 return {
   verdict,
   target,
-  meaning: {
-    pass: 'Every check passed; safe to promote the release.',
-    blocked:
-      'No failures, but some checks could not be verified by the harness — verify the blocked items manually before promoting.',
-    fail: 'Confirmed functional breakage on the deployment — do not promote the release.',
-  }[verdict],
+  deployedVersion: (reach && reach.version) || null,
+  expectedVersion: expectVersion,
+  coverage: only ? selected.map((s) => s.key) : 'full',
+  meaning,
   confirmedFailures,
   flaky,
   blocked,
