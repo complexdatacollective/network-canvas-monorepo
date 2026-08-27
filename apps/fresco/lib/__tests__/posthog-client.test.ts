@@ -184,6 +184,34 @@ describe('Fresco PostHog client', () => {
       expect(identify).not.toHaveBeenCalled();
     });
 
+    // The dynamic import of posthog-js takes a moment; a stop can land inside
+    // that window, and the stale start must not undo it.
+    it('does not opt back in when stopped while starting', async () => {
+      const { startPostHog, stopPostHog } = await loadModule();
+
+      const starting = startPostHog('install-123');
+      const stopping = stopPostHog();
+      await Promise.all([starting, stopping]);
+
+      expect(calls.lastIndexOf('opt_in_capturing')).toBeLessThan(
+        calls.indexOf('opt_out_capturing'),
+      );
+      expect(calls.at(-1)).toBe('shutdown');
+    });
+
+    // stopPostHog clears the queue, but nothing had started, so without a
+    // record of the decision a later error would simply queue up again.
+    it('drops later exceptions when disabled before anything started', async () => {
+      const { stopPostHog, startPostHog, captureClientException } =
+        await loadModule();
+
+      await stopPostHog();
+      captureClientException(new Error('raised while disabled'));
+      await startPostHog('install-123');
+
+      expect(captureException).not.toHaveBeenCalled();
+    });
+
     it('reports nothing after being stopped', async () => {
       const { startPostHog, stopPostHog, captureClientException } =
         await loadModule();

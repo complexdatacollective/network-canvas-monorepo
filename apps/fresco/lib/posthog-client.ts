@@ -10,6 +10,11 @@ let clientPromise: Promise<PostHog> | undefined;
 // posthog-js cannot be brought back after shutdown, so once this is set the
 // tab stays quiet until the next page load. See stopPostHog.
 let shutDown = false;
+// The last decision the server gave this tab: undefined until it arrives.
+// Loading posthog-js takes a moment, so a start can still be in flight when
+// analytics are turned off, and an error boundary can report while the answer
+// is still unknown. Both consult this rather than assuming.
+let analyticsEnabled: boolean | undefined;
 
 // Exceptions raised before analytics finished starting, replayed by
 // startPostHog. Capped because a deployment with analytics off never starts,
@@ -54,6 +59,8 @@ async function getClient(): Promise<PostHog> {
  * installation ID so events group by deployment rather than by person.
  */
 export async function startPostHog(installationId?: string) {
+  analyticsEnabled = true;
+
   if (shutDown) {
     return;
   }
@@ -62,6 +69,13 @@ export async function startPostHog(installationId?: string) {
   // promise rejected, and callers only ever fire this off.
   try {
     const posthog = await getClient();
+
+    // Analytics may have been turned off while posthog-js was loading, in
+    // which case stopPostHog has already run and this start is stale. Opting
+    // in now would undo it.
+    if (!analyticsEnabled || shutDown) {
+      return;
+    }
 
     // On every enabled start, not just the first, so that a browser carrying a
     // stored opt-out — one this deployment wrote while analytics were off —
@@ -102,6 +116,8 @@ export async function startPostHog(installationId?: string) {
  * under them to apply a setting.
  */
 export async function stopPostHog() {
+  analyticsEnabled = false;
+
   // Anything an error boundary queued while the server's decision was still
   // in flight was collected under a setting that turns out to be "off".
   // Enabling analytics later must not retroactively report it.
@@ -132,7 +148,9 @@ export async function stopPostHog() {
  * point: a deployment with analytics off reports nothing.
  */
 export function captureClientException(error: unknown) {
-  if (shutDown) {
+  // Nothing raised while this deployment says no is reported, queued, or kept
+  // for a later change of mind.
+  if (shutDown || analyticsEnabled === false) {
     return;
   }
 
