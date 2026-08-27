@@ -15,7 +15,6 @@ import { TopActionBar } from '~/components/TopActionBar';
 import { revokeProtocolAssetUrls } from '~/lib/assets/assetResolver';
 import { deleteProtocol, updateSettings } from '~/lib/db/api';
 import type { StoredSession } from '~/lib/db/types';
-import { DEVELOPMENT_PROTOCOL } from '~/lib/protocol/developmentProtocol';
 import { useProtocolImport } from '~/lib/protocol/useProtocolImport';
 import { useLaunchedProtocolImport } from '~/lib/pwa/useLaunchedProtocolImport';
 import { useLaunchFailureToast } from '~/lib/pwa/useLaunchFailureToast';
@@ -236,20 +235,14 @@ export function HomeRoute() {
               protocols={protocols}
               sessions={sessions}
               initialProtocolHash={initialProtocolHash}
+              // Both flags say only whether the teaser is wanted at all — the
+              // researcher's preference, and the dev-only build gate. The deck
+              // drops a teaser whose protocol is already installed, and hands
+              // its slot to the pending card while an install is in flight.
               showSampleCard={
-                settings
-                  ? !settings.sampleProtocolDismissed &&
-                    !pendingImports.some((p) => p.source === 'sample')
-                  : false
+                settings ? !settings.sampleProtocolDismissed : false
               }
-              showDevelopmentCard={
-                // Dev-only teaser; disappears once the Development protocol
-                // is installed (or while its import is in flight — the
-                // pending card shadows the slot during the install itself).
-                import.meta.env.DEV &&
-                !protocols.some((p) => p.name === DEVELOPMENT_PROTOCOL.name) &&
-                !pendingImports.some((p) => p.source === 'development')
-              }
+              showDevelopmentCard={import.meta.env.DEV}
               pendingImports={pendingImports}
               onImportFile={handleImportFile}
               onStartInterview={setPendingProtocolHash}

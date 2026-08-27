@@ -17,15 +17,20 @@
 // Usage:
 //   node scripts/mirror-app.mjs --app <appDir> --repo <owner/name> --version <version> [--branch <name>] [--with-lockfile]
 // Env:
-//   LEGACY_RELEASE_GH_TOKEN  cross-repo token with contents:write (required to push)
+//   LEGACY_RELEASE_GH_TOKEN  cross-repo token with Contents + Workflows write
+//                            (classic PAT: repo + workflow; required to push)
 //   MONOREPO_SHA             source commit sha (recorded in the commit message)
 //   GITHUB_OUTPUT            when set, `mirror_sha=<sha>` is appended for the workflow
 //   MIRROR_DRY_RUN           when "true", stage + commit locally but skip the push
+//   MIRROR_STAGE_DIR         stage into this (not yet existing) directory instead
+//                            of a random tmpdir, so a caller can post-process the
+//                            staged tree (used by apps/fresco/release-test)
 import { spawnSync } from 'node:child_process';
 import {
   appendFileSync,
   cpSync,
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   writeFileSync,
@@ -115,6 +120,12 @@ const APP_MIRROR_OVERRIDES = {
       // anyone develops.
       '.agents',
       '.claude',
+      // The local release-testing harness references monorepo paths and must
+      // not ship in the standalone tree.
+      'release-test',
+      // The standalone Fresco repository must contain no GitHub Actions
+      // workflows, including docker-publish.yml.
+      '.github/workflows',
     ],
   },
 };
@@ -132,16 +143,18 @@ function parseArgs(argv) {
   return args;
 }
 
-// Recursively copy src -> dest, skipping the named top-level entries. Anchored to
-// the top level so a legitimately-named nested directory isn't dropped.
-function copyTree(src, dest, excludeTopLevel) {
-  const exclude = new Set(excludeTopLevel);
+// Recursively copy src -> dest, skipping the named relative paths. Exclusions
+// are anchored to the source root so a legitimately-named deeper path is kept.
+function copyTree(src, dest, excludePaths) {
+  const excludes = excludePaths.map((path) => path.split('/').join(sep));
   cpSync(src, dest, {
     recursive: true,
     filter: (from) => {
       const rel = relative(src, from);
       if (rel === '') return true;
-      return !exclude.has(rel.split(sep)[0]);
+      return !excludes.some(
+        (excluded) => rel === excluded || rel.startsWith(`${excluded}${sep}`),
+      );
     },
   });
 }
@@ -375,7 +388,20 @@ function main() {
 
   const overrides = APP_MIRROR_OVERRIDES[appName] ?? {};
 
-  const staging = mkdtempSync(join(tmpdir(), 'mirror-stage-'));
+  let staging;
+  if (process.env.MIRROR_STAGE_DIR) {
+    staging = resolve(process.env.MIRROR_STAGE_DIR);
+    // Refuse a pre-existing directory: stale files would silently leak into
+    // the staged tree (copyTree only adds, never removes).
+    if (existsSync(staging)) {
+      throw new Error(
+        `MIRROR_STAGE_DIR ${staging} already exists; remove it first.`,
+      );
+    }
+    mkdirSync(staging, { recursive: true });
+  } else {
+    staging = mkdtempSync(join(tmpdir(), 'mirror-stage-'));
+  }
   console.error(`[mirror] staging ${appName} -> ${staging}`);
 
   stageSource(appDir, staging, overrides.extraExcludes);

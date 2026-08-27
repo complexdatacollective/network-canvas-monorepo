@@ -33,7 +33,10 @@ vi.mock('wouter', () => ({
   ),
 }));
 
-const useAuthMock = vi.fn(() => ({ kind: 'unlocked', mode: 'pin' }));
+const useAuthMock = vi.fn((): { kind: string; mode?: string } => ({
+  kind: 'unlocked',
+  mode: 'pin',
+}));
 vi.mock('~/lib/auth/AuthContext', () => ({
   useAuth: () => useAuthMock(),
 }));
@@ -102,7 +105,7 @@ describe('StatusRow', () => {
     );
   });
 
-  it('includes compact status labels in tooltip text', async () => {
+  it('includes compact status labels in popover text on hover', async () => {
     const user = userEvent.setup();
     render(
       <StatusRowView
@@ -125,6 +128,165 @@ describe('StatusRow', () => {
     await user.hover(storageTrigger);
     await waitFor(() =>
       expect(screen.getByText(/^Storage persistent\./)).toBeInTheDocument(),
+    );
+  });
+
+  // Regression: the explanations were Tooltips, which only open on hover and
+  // keyboard focus-visible — on a tablet (the primary field platform) no touch
+  // gesture could ever reveal them. A tap must open the popover, and a tap
+  // elsewhere must dismiss it.
+  it('opens the explanation on tap/click and closes on an outside tap', async () => {
+    const user = userEvent.setup();
+    render(
+      <StatusRowView
+        protocolCount={0}
+        interviewCount={0}
+        mode="none"
+        durability={{ persisted: false, usage: 22.5 * 1024 * 1024 }}
+        installed={false}
+      />,
+    );
+
+    await user.click(screen.getByTestId('storage-status-trigger'));
+    await waitFor(() =>
+      expect(
+        screen.getByText(/^Storage not persistent\. 22\.5 MB stored\./),
+      ).toBeInTheDocument(),
+    );
+
+    await user.click(screen.getByTestId('encryption-status-trigger'));
+    await waitFor(() =>
+      expect(screen.getByText(/^Not encrypted\./)).toBeInTheDocument(),
+    );
+
+    await user.click(document.body);
+    await waitFor(() =>
+      expect(screen.queryByText(/^Not encrypted\./)).not.toBeInTheDocument(),
+    );
+  });
+
+  // Escape closes the popover but leaves focus on the trigger, so no further
+  // focus event arrives to reopen it. Only the activation that coincides with
+  // the focus-open is withdrawn; every later one must still toggle, or a
+  // keyboard user is stranded with an explanation they cannot reopen.
+  it('reopens with Enter after Escape, while the trigger keeps focus', async () => {
+    const user = userEvent.setup();
+    render(
+      <StatusRowView
+        protocolCount={0}
+        interviewCount={0}
+        mode="pin"
+        durability={{ persisted: true, usage: null }}
+        installed={false}
+      />,
+    );
+
+    const trigger = screen.getByTestId('encryption-status-trigger');
+    await user.click(trigger);
+    await waitFor(() =>
+      expect(screen.getByText(/^Encrypted\./)).toBeInTheDocument(),
+    );
+
+    await user.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(screen.queryByText(/^Encrypted\./)).not.toBeInTheDocument(),
+    );
+    expect(trigger).toHaveFocus();
+
+    await user.keyboard('{Enter}');
+    await waitFor(() =>
+      expect(screen.getByText(/^Encrypted\./)).toBeInTheDocument(),
+    );
+  });
+
+  // The mirror case: tabbing on opens the explanation, so the first Enter must
+  // collapse it. Only a pointer press arms the withdrawal, so ordinary
+  // keyboard focus must not leave an activation primed to be eaten.
+  it('collapses on the first Enter after tabbing onto a chip', async () => {
+    const user = userEvent.setup();
+    render(
+      <StatusRowView
+        protocolCount={0}
+        interviewCount={0}
+        mode="pin"
+        durability={{ persisted: true, usage: null }}
+        installed={false}
+      />,
+    );
+
+    // Tab order: the counts link, then the encryption chip.
+    await user.tab();
+    await user.tab();
+    expect(screen.getByTestId('encryption-status-trigger')).toHaveFocus();
+    await waitFor(() =>
+      expect(screen.getByText(/^Encrypted\./)).toBeInTheDocument(),
+    );
+
+    await user.keyboard('{Enter}');
+    await waitFor(() =>
+      expect(screen.queryByText(/^Encrypted\./)).not.toBeInTheDocument(),
+    );
+
+    // Space is the other activation key and must toggle the same way.
+    await user.keyboard('[Space]');
+    await waitFor(() =>
+      expect(screen.getByText(/^Encrypted\./)).toBeInTheDocument(),
+    );
+  });
+
+  // The other half of that contract: a second tap on an already-open chip
+  // dismisses it, rather than being swallowed as a repeat of the first press.
+  it('closes again on a second tap of the same chip', async () => {
+    const user = userEvent.setup();
+    render(
+      <StatusRowView
+        protocolCount={0}
+        interviewCount={0}
+        mode="pin"
+        durability={{ persisted: true, usage: null }}
+        installed={false}
+      />,
+    );
+
+    const trigger = screen.getByTestId('encryption-status-trigger');
+    await user.click(trigger);
+    await waitFor(() =>
+      expect(screen.getByText(/^Encrypted\./)).toBeInTheDocument(),
+    );
+
+    await user.click(trigger);
+    await waitFor(() =>
+      expect(screen.queryByText(/^Encrypted\./)).not.toBeInTheDocument(),
+    );
+  });
+
+  it('opens the explanation on keyboard focus and closes on blur', async () => {
+    const user = userEvent.setup();
+    render(
+      <StatusRowView
+        protocolCount={0}
+        interviewCount={0}
+        mode="pin"
+        durability={{ persisted: true, usage: null }}
+        installed={false}
+      />,
+    );
+
+    // Tab order: the counts link, then the encryption chip, then storage.
+    await user.tab();
+    await user.tab();
+    expect(screen.getByTestId('encryption-status-trigger')).toHaveFocus();
+    await waitFor(() =>
+      expect(screen.getByText(/^Encrypted\./)).toBeInTheDocument(),
+    );
+
+    await user.tab();
+    expect(screen.getByTestId('storage-status-trigger')).toHaveFocus();
+    await waitFor(() =>
+      expect(screen.getByText(/^Storage persistent\./)).toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(screen.queryByText(/^Encrypted\./)).not.toBeInTheDocument(),
     );
   });
 
@@ -177,6 +339,32 @@ describe('StatusRow', () => {
       expect(screen.getByText(/storage persistent/i)).toBeInTheDocument(),
     );
     expect(screen.queryByText(/protected/i)).not.toBeInTheDocument();
+  });
+
+  // Regression: a fresh, never-configured browser tab (kind 'unconfigured',
+  // mode undefined) is fully usable and stores data unencrypted — exactly
+  // like an enrolled 'none' vault — but the footer rendered no encryption
+  // statement at all. It must state "Not encrypted" there too.
+  it('warns "Not encrypted" when no vault has been configured', async () => {
+    mockEstimateStorage.mockResolvedValue({ usage: 0, quota: 0, percent: 0 });
+    mockIsPersisted.mockResolvedValue(true);
+    useAuthMock.mockReturnValue({ kind: 'unconfigured', mode: undefined });
+    render(<StatusRow protocolCount={0} interviewCount={0} />);
+    expect(screen.getByText('Not encrypted')).toBeInTheDocument();
+    expect(screen.queryByText('Encrypted')).not.toBeInTheDocument();
+  });
+
+  // While the vault record is still being read the mode is unknown; claiming
+  // "Not encrypted" for a vault that turns out to be secured would be false.
+  // No encryption statement until the auth state settles.
+  it('renders no encryption statement while auth state is loading', () => {
+    mockEstimateStorage.mockResolvedValue({ usage: 0, quota: 0, percent: 0 });
+    mockIsPersisted.mockResolvedValue(true);
+    useAuthMock.mockReturnValue({ kind: 'loading', mode: undefined });
+    render(<StatusRow protocolCount={0} interviewCount={0} />);
+    expect(
+      screen.queryByTestId('encryption-status-trigger'),
+    ).not.toBeInTheDocument();
   });
 
   it('re-reads persistence when the security mode changes (encryption enabled)', async () => {

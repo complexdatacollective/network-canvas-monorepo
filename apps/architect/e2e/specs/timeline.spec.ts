@@ -265,15 +265,14 @@ test('inserts a new Information stage at the clicked index', async ({
   await architectPage
     .getByRole('searchbox', { name: 'Search interfaces' })
     .fill('Information');
+  // Each card is a button named for its interface and nothing else
+  // (`aria-labelledby` to its own heading in Interface.tsx), so the name a
+  // researcher hears is what finds it here. Before that label existed the card
+  // was named by everything inside it — the title twice, then the description
+  // sentence, then every tag — and this spec had to reach past the name and
+  // match the heading nested in the button instead.
   await architectPage
-    .getByRole('button')
-    .filter({
-      has: architectPage.getByRole('heading', {
-        level: 4,
-        name: 'Information',
-        exact: true,
-      }),
-    })
+    .getByRole('button', { name: 'Information', exact: true })
     .click();
 
   // handleSelectInterface (NewStageScreen.tsx) builds the query string as
@@ -502,14 +501,7 @@ test('an empty protocol can gain its first stage from the keyboard', async ({
     .getByRole('searchbox', { name: 'Search interfaces' })
     .fill('Information');
   await architectPage
-    .getByRole('button')
-    .filter({
-      has: architectPage.getByRole('heading', {
-        level: 4,
-        name: 'Information',
-        exact: true,
-      }),
-    })
+    .getByRole('button', { name: 'Information', exact: true })
     .click();
 
   await architectPage.waitForURL(

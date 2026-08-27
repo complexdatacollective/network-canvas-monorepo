@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures/test.js';
+import { clickWhenDeckSettles } from '../helpers/deck.js';
 
 const PIN = '12345678';
 const PASSPHRASE = 'correct-horse-battery-1';
@@ -55,12 +56,16 @@ test.describe('vault lifecycle', () => {
   }) => {
     await vault.enrolPin(PIN);
     await page.getByRole('button', { name: 'Previous protocol' }).click();
-    await page.getByRole('button', { name: 'Install sample protocol' }).click();
+    await clickWhenDeckSettles(
+      page.getByRole('button', { name: 'Install sample protocol' }),
+    );
     await expect(
       page.getByRole('button', { name: 'Start new interview' }),
     ).toBeVisible({ timeout: 15_000 });
 
-    await page.getByRole('button', { name: 'Start new interview' }).click();
+    await clickWhenDeckSettles(
+      page.getByRole('button', { name: 'Start new interview' }),
+    );
     await page.getByTestId('new-session-case-id').fill('refresh-regression');
     await page.getByTestId('new-session-submit').click();
     await vault.confirmPin(PIN);
