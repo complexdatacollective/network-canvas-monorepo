@@ -123,7 +123,10 @@ tree) that never flip a verdict. `untestedShippedChanges` lists pending
 changesets shipping Fresco-facing behaviour no check exercised — a statement
 about the evidence rather than the build, so it caps certification through
 `coverageGaps` instead of failing the run. Either extend the checklists to
-cover them or read the list and decide.
+cover them or read the list and decide. Every pending changeset has to be
+classified as covered, untested or unrelated, and a library changeset counts
+as Fresco-facing: the harness bundles the pending `@codaco/*` packages into
+the image, so their behaviour ships inside the build under test.
 
 The verdict is computed in the workflow, not by an agent. Every checklist
 prompt numbers its items and synthesis binds the returned checks to that

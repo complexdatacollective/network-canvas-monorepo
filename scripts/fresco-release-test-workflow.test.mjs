@@ -149,7 +149,18 @@ const happyPath = () => ({
   'release-critic': {
     verdict: 'go',
     failures: [],
-    untestedShippedChanges: [],
+    changesetCoverage: [
+      {
+        changeset: 'fresco-release-blocker-fixes',
+        status: 'covered',
+        note: 'the fresh lane exercised setup',
+      },
+      {
+        changeset: 'interview-node-labels',
+        status: 'covered',
+        note: 'the export diff covered node labels',
+      },
+    ],
     summary: 'Upgrade and fresh deployment both clean.',
   },
   'teardown': { ok: true },
@@ -772,23 +783,103 @@ test('a dead critic cannot certify a run', async () => {
   assert.equal(result.releasable, false);
 });
 
-test('untested shipped changes are kept only when they name a real changeset', async () => {
+test('every pending changeset must be accounted for, not only the mentioned ones', async () => {
+  // The release bundles the pending @codaco/* packages into the image, so a
+  // library changeset ships inside the build under test. One the critic never
+  // classified is behaviour nobody said was exercised.
   const r = happyPath();
-  r['release-critic'].untestedShippedChanges = [
-    'interview-node-labels: no check exercises node labels',
-    'imaginary-changeset: invented',
+  r['release-critic'].changesetCoverage = [
+    {
+      changeset: 'fresco-release-blocker-fixes',
+      status: 'covered',
+      note: 'setup',
+    },
   ];
   const { result } = await run(r);
-  assert.deepEqual(result.untestedShippedChanges, [
-    'interview-node-labels: no check exercises node labels',
-  ]);
-  // The corroborated one caps certification; the uncorroborated one is a
-  // disagreement between two agents, not a proven invention, so it blocks
-  // rather than being filed as a note.
   assert.equal(result.verdict, 'incomplete');
   assert.equal(result.releasable, false);
   assert.ok(
-    result.unaccounted.some((u) => u.includes('one of the two is wrong')),
+    result.unaccounted.some(
+      (u) =>
+        u.includes('interview-node-labels') &&
+        u.includes('has to be accounted for'),
+    ),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('the critic is told library changesets are Fresco-facing', () => {
+  // The instruction used to exclude them wholesale, which excluded most of
+  // what this test exists to cover.
+  const critic =
+    /You are the release-gate critic[\s\S]*?label: 'release-critic'/.exec(
+      source,
+    )?.[0];
+  assert.ok(critic, 'failed to locate the release-critic prompt');
+  assert.ok(
+    !/library-only or other-app changesets do not belong/.test(critic),
+    'library changesets must not be excluded wholesale',
+  );
+  assert.match(
+    critic,
+    /bundles the pending @codaco\/\* packages into the Fresco image/,
+  );
+  for (const status of ['covered', 'untested', 'unrelated'])
+    assert.ok(
+      critic.includes(`"${status}"`),
+      `the prompt must define ${status}`,
+    );
+});
+
+test('untested shipped behaviour caps certification', async () => {
+  const r = happyPath();
+  r['release-critic'].changesetCoverage[1] = {
+    changeset: 'interview-node-labels',
+    status: 'untested',
+    note: 'no check exercises node labels',
+  };
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'go');
+  assert.equal(result.releasable, false);
+  assert.equal(result.coverage, 'partial');
+  assert.deepEqual(result.untestedShippedChanges, [
+    'interview-node-labels: no check exercises node labels',
+  ]);
+  assert.ok(
+    result.coverageGaps.some((g) => g.includes('no check exercised')),
+    JSON.stringify(result.coverageGaps),
+  );
+  assert.deepEqual(result.failures, []);
+});
+
+test('a changeset the audit cannot corroborate never resolves towards certifying', async () => {
+  const r = happyPath();
+  r['release-critic'].changesetCoverage.push({
+    changeset: 'imaginary-changeset',
+    status: 'untested',
+    note: 'invented',
+  });
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.equal(result.releasable, false);
+  assert.deepEqual(result.untestedShippedChanges, []);
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('the run cannot certify')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('a changeset classified twice is not classified once', async () => {
+  const r = happyPath();
+  r['release-critic'].changesetCoverage.push({
+    changeset: 'interview-node-labels',
+    status: 'unrelated',
+    note: 'second opinion',
+  });
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('more than once')),
     JSON.stringify(result.unaccounted),
   );
 });
@@ -1110,42 +1201,6 @@ test('the image that ran must be the image that was stamped', async () => {
     result.unaccounted.some((u) =>
       u.includes('not the image that was stamped'),
     ),
-    JSON.stringify(result.unaccounted),
-  );
-});
-
-test('known-untested shipped behaviour caps certification', async () => {
-  // Not a failure — a statement about the evidence. The run stays green and
-  // says why it is not release evidence.
-  const r = happyPath();
-  r['release-critic'].untestedShippedChanges = [
-    'interview-node-labels: no check exercises node labels',
-  ];
-  const { result } = await run(r);
-  assert.equal(result.verdict, 'go');
-  assert.equal(result.releasable, false);
-  assert.equal(result.coverage, 'partial');
-  assert.ok(
-    result.coverageGaps.some((g) => g.includes('no check exercised')),
-    JSON.stringify(result.coverageGaps),
-  );
-  assert.deepEqual(result.failures, []);
-});
-
-test('a changeset the audit cannot corroborate never resolves towards certifying', async () => {
-  // Whether the critic invented it or the audit missed it, resolving the
-  // disagreement in favour of "go" is the one direction this gate must not
-  // take on its own.
-  const r = happyPath();
-  r['release-critic'].untestedShippedChanges = [
-    'imaginary-changeset: invented',
-  ];
-  const { result } = await run(r);
-  assert.equal(result.verdict, 'incomplete');
-  assert.equal(result.releasable, false);
-  assert.deepEqual(result.untestedShippedChanges, []);
-  assert.ok(
-    result.unaccounted.some((u) => u.includes('the run cannot certify')),
     JSON.stringify(result.unaccounted),
   );
 });

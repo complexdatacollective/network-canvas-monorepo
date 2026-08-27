@@ -476,15 +476,33 @@ const REPORT_SCHEMA = {
   properties: {
     verdict: { type: 'string', enum: ['go', 'no-go', 'blocked'] },
     failures: { type: 'array', items: { type: 'string' } },
-    untestedShippedChanges: {
+    changesetCoverage: {
       type: 'array',
-      items: { type: 'string' },
-      description:
-        'Pending changesets shipping Fresco-facing changes that no check exercised. Each entry MUST start with the changeset file name without .md, then ": ", then why it is untested',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          changeset: {
+            type: 'string',
+            description: 'The changeset file name without the .md extension',
+          },
+          status: {
+            type: 'string',
+            enum: ['covered', 'untested', 'unrelated'],
+          },
+          note: {
+            type: 'string',
+            description:
+              'covered: which check exercised it. untested: what nothing exercised. unrelated: why it cannot reach Fresco',
+          },
+        },
+        required: ['changeset', 'status', 'note'],
+      },
+      description: 'One entry for EVERY pending changeset, none omitted',
     },
     summary: { type: 'string', description: 'Three sentences max' },
   },
-  required: ['verdict', 'failures', 'untestedShippedChanges', 'summary'],
+  required: ['verdict', 'failures', 'changesetCoverage', 'summary'],
 };
 
 // ---------------------------------------------------------------------------
@@ -1013,7 +1031,11 @@ Set ok:true if you completed the audit (missing artifacts are a normal result, n
     `You are the release-gate critic for a Fresco release test. The pending build was tested two ways: an upgrade from the released image (seed → migrate → verify → export diff) and a fresh-deployment setup.
 ${asData('Full structured results', { build, released, upgradeLane, freshLane })}
 
-Also read the pending changesets (.changeset/*.md in your working directory) and note any that ship Fresco-facing behaviour no check above exercised (list them in untestedShippedChanges, each entry beginning with the changeset file name without .md then ": "; library-only or other-app changesets do not belong there).
+Also read EVERY pending changeset (.changeset/*.md in your working directory, excluding README) and return one changesetCoverage entry for each, named by its file name without .md — omit none, because the workflow compares your list against the files on disk:
+- "covered": a check above exercised the behaviour it ships. Say which check.
+- "untested": it ships behaviour that reaches Fresco and no check above exercised it. Say what went unexercised.
+- "unrelated": it cannot reach Fresco at all — another app, or a package this image does not contain.
+Judge "reaches Fresco" by what the image contains, NOT by whether the package is a library. This release test bundles the pending @codaco/* packages into the Fresco image as tarballs, so a library changeset — @codaco/interview above all, which is the interview runtime Fresco hosts — ships inside the build under test and is Fresco-facing. Treating library changesets as out of scope would exclude most of what this test exists to cover.
 Verdict rules: "blocked" if a stack or the build never came up (nothing meaningful was tested); "no-go" if any check failed, any migration error appeared, the export diff has unanticipated differences, or the pending image was built from a dirty tree (build.dirty) without allowDirty=${allowDirty} — a dirty build is not reproducible from any commit; otherwise "go". List every failure verbatim from the results — do not soften or re-litigate them. Your verdict is advisory: the workflow computes the release verdict itself from these same results and your judgment can only make it stricter, so err towards reporting what you see.`,
     {
       label: 'release-critic',
@@ -1067,13 +1089,6 @@ const knownChangesets = new Set(
     .map((name) => shaped(name, CHANGESET_NAME, 200))
     .filter(Boolean),
 );
-// An entry is only credited to a changeset when it names one that exists.
-const namesKnownChangeset = (entry) => {
-  const prefix = String(entry ?? '')
-    .split(':')[0]
-    ?.trim();
-  return Boolean(prefix) && knownChangesets.has(prefix);
-};
 
 // --- checklist accounting ---------------------------------------------------
 
@@ -1708,18 +1723,48 @@ if (
     `the release critic returned "${report.verdict}" without naming a failure the accounting could confirm`,
   );
 
+// Every pending changeset must be accounted for, not only the ones the critic
+// chose to mention. The release bundles the pending @codaco/* packages into
+// the image, so a library changeset ships inside the build under test — an
+// unclassified one is behaviour nobody said was exercised.
 const untestedShippedChanges = [];
-for (const item of report?.untestedShippedChanges ?? []) {
-  const text = String(item ?? '').trim();
-  if (!text) continue;
-  if (!audit || namesKnownChangeset(text)) untestedShippedChanges.push(text);
+const classified = new Map();
+for (const entry of report?.changesetCoverage ?? []) {
+  const name = shaped(entry?.changeset, CHANGESET_NAME, 200);
+  const note = String(entry?.note ?? '').trim();
+  if (!name) {
+    unaccounted.push(
+      `the release critic returned a changeset coverage entry with no usable name ("${entry?.changeset ?? 'missing'}")`,
+    );
+    continue;
+  }
   // Two agents disagreeing does not prove the critic invented it — the audit's
   // listing could be the wrong one. Resolving that in favour of certification
   // would be the one direction this gate must never resolve, so it is
   // unaccounted: the run cannot certify until a human says which is right.
-  else
+  if (audit && !knownChangesets.has(name)) {
     unaccounted.push(
-      `the release critic listed "${text}" as an untested shipped change, but the artifact audit did not find a changeset of that name — one of the two is wrong, and the run cannot certify until it is clear which`,
+      `the release critic classified a changeset "${name}" that the artifact audit did not find — one of the two is wrong, and the run cannot certify until it is clear which`,
+    );
+    continue;
+  }
+  if (classified.has(name)) {
+    unaccounted.push(
+      `the release critic classified changeset "${name}" more than once`,
+    );
+    continue;
+  }
+  classified.set(name, entry.status);
+  if (entry.status === 'untested')
+    untestedShippedChanges.push(`${name}: ${note || 'no reason given'}`);
+}
+if (audit) {
+  const unclassified = [...knownChangesets].filter(
+    (name) => !classified.has(name),
+  );
+  if (unclassified.length)
+    unaccounted.push(
+      `the release critic did not say whether ${unclassified.join(', ')} ${unclassified.length > 1 ? 'ship' : 'ships'} behaviour this run exercised — every pending changeset has to be accounted for`,
     );
 }
 
