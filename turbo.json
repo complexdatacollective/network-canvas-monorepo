@@ -682,10 +682,13 @@
       "dependsOn": ["^topo", "fresco#codegen"],
       "inputs": [
         "app/**",
+        "actions/**",
         "components/**",
         "hooks/**",
         "lib/**",
         "queries/**",
+        "schemas/**",
+        "scripts/**",
         "styles/**",
         "types/**",
         "utils/**",
@@ -693,11 +696,16 @@
         ".storybook/**",
         "env.js",
         "fresco.config.ts",
+        "instrumentation.ts",
+        "instrumentation-client.ts",
         "*.config.ts",
+        "*.config.js",
+        "*.config.mjs",
         "tsconfig*.json",
         "package.json",
         "vitest.config.*",
-        "vitest.setup.*"
+        "vitest.setup.*",
+        ".env"
       ],
       "env": ["NODE_ENV", "SKIP_ENV_VALIDATION"],
       "outputs": []
