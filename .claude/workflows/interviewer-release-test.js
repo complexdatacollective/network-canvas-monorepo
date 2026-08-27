@@ -5,7 +5,12 @@
 // production site) through every core user journey using headless Playwright,
 // then returns a structured release verdict.
 //
-// Invoke by name:            Workflow({ name: 'interviewer-release-test' })
+// Usually invoked via the /interviewer-release-test command (the
+// interviewer-release-test skill in .agents/skills/, which carries the full
+// launch/report/follow-up procedure). Direct invocation:
+//   Workflow({ name: 'interviewer-release-test-workflow' })
+// The workflow name deliberately differs from the skill name — a skill and a
+// workflow sharing one name is undefined behaviour in Claude Code.
 // Override the target:       args: { url: 'https://deploy-preview-…netlify.app' }
 // Run a subset of journeys:  args: { journeys: ['data-export', 'pwa-offline'] }
 //
@@ -31,7 +36,7 @@
 // every journey (verifiers stay pinned so the gate keeps its rigor).
 
 export const meta = {
-  name: 'interviewer-release-test',
+  name: 'interviewer-release-test-workflow',
   description:
     'Agent-driven release smoke test of the deployed Interviewer PWA',
   whenToUse:

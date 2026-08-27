@@ -147,8 +147,10 @@ declaration bundling can exceed Node's default heap during a clean build.
 ## Release smoke testing
 
 Before approving a release, run the agent-driven release smoke test against
-the developer site (Claude Code: the saved workflow `interviewer-release-test`
-in `.claude/workflows/`, invoked as `/interviewer-release-test`). It drives
+the developer site (Claude Code: invoke `/interviewer-release-test` — the
+`interviewer-release-test` skill, which launches the saved
+`interviewer-release-test-workflow` in `.claude/workflows/` and carries the
+launch/report/follow-up procedure). It drives
 `https://interviewer.networkcanvas.dev` — the current state of `main` — through
 every core user journey with headless Playwright: protocol management, the
 full Sample Protocol interview, session and data management, export in every
