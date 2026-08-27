@@ -680,6 +680,20 @@ test('preflight without a valid fingerprint is blocked', async () => {
   assert.equal(res.verdict, 'BLOCKED');
 });
 
+test('preflight and audit embed the identical fingerprint command', () => {
+  const commands = [
+    ...source.matchAll(
+      /\{ curl -s \$\{url\}\/[^\n]*shasum -a 256 \| cut -c1-16/g,
+    ),
+  ].map((m) => m[0]);
+  assert.equal(
+    commands.length,
+    2,
+    'expected the command in exactly two prompts',
+  );
+  assert.equal(commands[0], commands[1]);
+});
+
 test('a dead journey is incomplete', async () => {
   const res = await run(makeAgent({ 'pwa-offline': null }), {
     journeys: ['pwa-offline'],

@@ -116,7 +116,7 @@ const PREFLIGHT_SCHEMA = {
     fingerprint: {
       type: 'string',
       description:
-        'Deployment fingerprint: first 16 hex chars of the sha-256 of the sorted assets/*.js|css paths referenced by the served HTML (computed with the exact command given)',
+        'Deployment fingerprint: first 16 hex chars of the sha-256 over the sorted asset paths of the served HTML plus the manifest and service-worker bodies (computed with the exact command given)',
     },
     workDir: {
       type: 'string',
@@ -810,7 +810,7 @@ Do, in order:
    interviewer-release-test.XXXXXX) and report it as workDir.
 3. Fingerprint the deployment (the run's immutable build identity — a
    mid-run redeploy is detected by re-computing this at the end):
-   curl -s ${url}/ | grep -oE 'assets/[A-Za-z0-9_.-]+\\.(js|css)' | sort -u | shasum -a 256 | cut -c1-16
+   { curl -s ${url}/ | grep -oE 'assets/[A-Za-z0-9_.-]+\\.(js|css)' | sort -u; curl -s ${url}/manifest.webmanifest; curl -s ${url}/sw.js; } | shasum -a 256 | cut -c1-16
    Report the 16 hex chars as fingerprint, exactly.
 4. HTTP checks with curl: "/" returns 200 and HTML; /manifest.webmanifest
    returns 200 and valid JSON with name "Network Canvas Interviewer";
@@ -1018,7 +1018,7 @@ if (evidenceClaims.length) {
 3. the DISTINCT check numbers among their filenames, as a list of integers (e.g. \`ls <dir> | grep -oE '^check[0-9]+' | sort -u\` → checkpointNumbers [1, 2, 5]).
 
 Then re-compute the deployment fingerprint and report it as fingerprint:
-curl -s ${url}/ | grep -oE 'assets/[A-Za-z0-9_.-]+\\.(js|css)' | sort -u | shasum -a 256 | cut -c1-16
+{ curl -s ${url}/ | grep -oE 'assets/[A-Za-z0-9_.-]+\\.(js|css)' | sort -u; curl -s ${url}/manifest.webmanifest; curl -s ${url}/sw.js; } | shasum -a 256 | cut -c1-16
 
 ENTRIES (JSON):
 ${JSON.stringify(evidenceClaims, null, 2)}
