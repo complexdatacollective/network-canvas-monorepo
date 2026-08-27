@@ -1458,12 +1458,22 @@ test('a partial endpoint set is not full API coverage', async () => {
   );
 });
 
+// Paths the CRUD prompt may name that are NOT writes into the checkout: a
+// harness script it invokes, and a fixture it reads. Anything else path-shaped
+// has to live under the ignored artifacts directory, so adding a write
+// elsewhere fails this test until whoever added it classifies it here.
+const CRUD_READ_ONLY_PATHS = new Set([
+  'stage-fixture.sh',
+  'packages/protocols/e2e/interviewer-e2e/interviewer-e2e.netcanvas',
+]);
+
 test('the harness writes its own files where git cannot see them', () => {
   // The CRUD agent creates a participant-import CSV. If it lands anywhere the
   // checkout tracks, the audit's own worktree check marks the build dirty and
-  // a clean run fails — the gate breaking itself. Asserting the prompt names
-  // ARTIFACTS is not enough: what matters is where that constant resolves and
-  // whether git ignores it, so resolve it and ask git.
+  // a clean run fails — the gate breaking itself. Two things have to hold: the
+  // paths under ARTIFACTS really are ignored (resolve the constant and ask
+  // git, rather than trusting the literal), and the prompt names no other
+  // writable path at all.
   const crudPrompt =
     /Exercise Fresco dashboard CRUD[\s\S]*?label: 'verify-crud'/.exec(
       source,
@@ -1479,14 +1489,18 @@ test('the harness writes its own files where git cannot see them', () => {
   assert.ok(harness && suffix, 'failed to resolve ARTIFACTS');
   const artifacts = `${harness}/${suffix}`;
 
-  const written = [
-    ...crudPrompt.matchAll(/\$\{ARTIFACTS\}(\/[\w./-]*\.\w+)/g),
-  ].map((m) => `${artifacts}${m[1]}`);
+  const tokens = [...crudPrompt.matchAll(/[\w${}/.@-]*\.\w{2,9}\b/g)].map(
+    (m) => m[0],
+  );
+  const underArtifacts = tokens.filter((token) =>
+    token.startsWith('${ARTIFACTS}/'),
+  );
   assert.ok(
-    written.length > 0,
+    underArtifacts.length > 0,
     'the CRUD prompt must name the file it creates, under ARTIFACTS',
   );
-  for (const path of written) {
+  for (const token of underArtifacts) {
+    const path = token.replace('${ARTIFACTS}', artifacts);
     const ignored = spawnSync('git', ['check-ignore', '-q', path], {
       cwd: repoRoot,
     });
@@ -1496,6 +1510,16 @@ test('the harness writes its own files where git cannot see them', () => {
       `git does not ignore ${path}, so creating it makes an honest run report a dirty tree`,
     );
   }
+
+  const unclassified = tokens.filter(
+    (token) =>
+      !token.startsWith('${ARTIFACTS}/') && !CRUD_READ_ONLY_PATHS.has(token),
+  );
+  assert.deepEqual(
+    unclassified,
+    [],
+    'the CRUD prompt names a path that is neither under the ignored artifacts directory nor a known read-only reference — if it is a write it will dirty the tree; if it is a read, add it to CRUD_READ_ONLY_PATHS',
+  );
 });
 
 test('the diff must have compared the snapshots that are on disk', async () => {
@@ -1789,6 +1813,19 @@ test('agent output embedded in a prompt is labelled as data', async () => {
 // So run the real script and compare its output against the instruction.
 // ---------------------------------------------------------------------------
 
+// Resolve a path constant out of the workflow source, following the template
+// literals it is built from, so tests exercise the paths the workflow really
+// uses rather than the literal text of the constant.
+function resolveConstant(name) {
+  const literal = new RegExp(`const ${name} = \`([^\`]+)\``).exec(source)?.[1];
+  const plain = new RegExp(`const ${name} = '([^']+)'`).exec(source)?.[1];
+  assert.ok(literal || plain, `failed to resolve ${name}`);
+  if (plain) return plain;
+  return literal.replaceAll(/\$\{(\w+)\}/g, (_, inner) =>
+    resolveConstant(inner),
+  );
+}
+
 test('the workflow reads the keys diff-exports.mjs actually writes', () => {
   const work = mkdtempSync(join(tmpdir(), 'fresco-diff-contract-'));
   try {
@@ -1819,47 +1856,49 @@ test('the workflow reads the keys diff-exports.mjs actually writes', () => {
     );
     const summary = JSON.parse(readFileSync(out, 'utf8'));
 
-    // Read the keys the audit prompt names out of its own command, then apply
-    // them to the summary the real script just wrote.
-    const command = /node -e '([^']+)'/.exec(source)?.[1];
-    assert.ok(command, 'failed to find the audit prompt command');
-    const oneSided = [...command.matchAll(/\.\.\.s\.(\w+)(?![\w.(])/g)].map(
-      (m) => m[1],
+    // Run the command the prompt actually embeds, over the summary the real
+    // script just wrote. Pattern-matching its key names proved too weak twice:
+    // the key can be right while the expression around it returns nothing.
+    const raw = /node -e '([^']+)'/.exec(source)?.[1];
+    assert.ok(raw, 'failed to find the diff-audit command');
+    // The command lives in a template literal, so resolve the path constants
+    // it interpolates before running it.
+    const command = raw.replaceAll(
+      '${AUDIT_DIFF_SUMMARY}',
+      resolveConstant('AUDIT_DIFF_SUMMARY'),
     );
-    const changedKey = /s\.changed\.map\(c=>c\.(\w+)\)/.exec(command)?.[1];
-    assert.deepEqual(
-      oneSided,
-      ['onlyInBaseline', 'onlyInCurrent'],
-      'the audit prompt does not read both one-sided arrays',
-    );
-    assert.ok(changedKey, 'the audit prompt does not map over changed entries');
-
-    // The identical list is read by the command too, and synthesis uses it to
-    // decide whether the diff compared anything at all — so a command that
-    // reports an empty or wrong list turns every clean run incomplete.
-    const identicalKey = /identical:\s*s\.(\w+)\b/.exec(command)?.[1];
     assert.ok(
-      identicalKey,
-      'the command does not read an identical-file list from the summary',
+      !command.includes('${'),
+      `the command still has unresolved interpolations: ${command}`,
     );
-    assert.deepEqual(
-      summary[identicalKey],
-      ['api-same.json'],
-      `the command reads summary.${identicalKey}, which is not the identical-file list diff-exports.mjs writes — a clean run would report nothing compared and go incomplete`,
-    );
+    const summaryPath = /require\("\.\/([^"]+)"\)/.exec(command)?.[1];
+    assert.ok(summaryPath, 'the command does not require a summary file');
 
-    const files = [
-      ...oneSided.flatMap((key) => summary[key]),
-      ...summary.changed.map((entry) => entry[changedKey]),
-    ];
-    assert.ok(
-      files.every((name) => typeof name === 'string' && name),
-      `the prompt reads changed[].${changedKey}, which diff-exports.mjs does not write — the classification set would silently lose every changed file`,
+    // The command resolves its summary relative to the working directory, so
+    // stage one at exactly that path and run it there.
+    const stage = join(work, 'stage');
+    mkdirSync(join(stage, dirname(summaryPath)), { recursive: true });
+    writeFileSync(join(stage, summaryPath), readFileSync(out, 'utf8'));
+    const ran = spawnSync(process.execPath, ['-e', command], {
+      cwd: stage,
+      encoding: 'utf8',
+    });
+    assert.equal(
+      ran.status,
+      0,
+      `the diff-audit command failed against a real summary: ${ran.stderr}`,
     );
+    const reported = JSON.parse(ran.stdout);
+
     assert.deepEqual(
-      files.toSorted((a, b) => a.localeCompare(b)),
+      reported.files.toSorted((a, b) => String(a).localeCompare(String(b))),
       ['api-changed.json', 'api-gone.json', 'api-new.json'],
-      'the audit prompt does not read the keys diff-exports.mjs writes',
+      'the command does not report the differing and one-sided files diff-exports.mjs wrote',
+    );
+    assert.deepEqual(
+      reported.identical,
+      ['api-same.json'],
+      'the command does not report the identical files diff-exports.mjs wrote — a clean run would report nothing compared and go incomplete',
     );
   } finally {
     rmSync(work, { recursive: true, force: true });
