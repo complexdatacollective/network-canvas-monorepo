@@ -262,34 +262,40 @@ const REACH_EXPECTED = [
 ];
 
 const reachabilityPrompt = `${ops('reach')}
+## Setup — purge the stale worker BEFORE any check
+This persistent profile may hold a service-worker registration from an
+earlier visit, which can serve an older cached shell — a page that loads,
+logs, and fetches like a previous release. Every check below must observe the
+freshly deployed build, so first: navigate to the target, run
+(await navigator.serviceWorker.getRegistration())?.unregister(), hard-reload
+the tab, and wait for the app to settle. All five checks apply to this
+post-purge load; where a console or network log cannot be scoped to it,
+re-read after the reload (reload once more into a clean read if you cannot
+tell whether an entry predates the purge).
 ## Your checklist
-1. "load": Navigate to the target and confirm the Architect start screen
-   renders — the create-protocol button ("Create a new protocol") and the
-   protocol list area are visible. Not just a paint: the controls must be in
-   the accessibility tree.
-2. "console": Read console errors for your tab. Pass when there are no errors
-   indicating broken functionality; report anything you dismiss as benign.
-3. "assets": Read the network requests for your tab. Any same-origin request
-   that failed is a fail — a 4xx/5xx status OR a statusless network error
-   (connection reset, TLS failure, aborted load). A request that merely shows
-   no captured status is not automatically a failure: this pane omits the
-   status for worker-context fetches — cross-check such entries (Performance
-   API responseStatus, or an in-page fetch of the same URL) and fail only if
-   the request actually errored. If request data is wholly unavailable, this
-   check is blocked. Third-party/analytics failures are notes, not failures.
-4. "service-worker": Prove the DEPLOYED build registers its own service
-   worker. This persistent profile may hold a registration from an earlier
-   visit, which would mask broken registration wiring and can serve a stale
-   cached shell — so first unregister:
-   (await navigator.serviceWorker.getRegistration())?.unregister(), then
-   hard-reload the tab and wait for the app to settle. Now
-   navigator.serviceWorker.getRegistration() must return a fresh registration
-   (registration can lag load — wait a few seconds and retry once before
-   judging). Note the active worker script URL.
-5. "version": After the service-worker check's reload (so the header reflects
-   the newest deployed build rather than a stale cached shell), read the
-   deployed version from the start-screen header chip (e.g. "v8.1.0"). Put
-   the observed value in details AND in the top-level "version" output field.
+1. "load": Confirm the Architect start screen renders — the create-protocol
+   button ("Create a new protocol") and the protocol list area are visible.
+   Not just a paint: the controls must be in the accessibility tree.
+2. "console": Read console errors for the post-purge load. Pass when there
+   are no errors indicating broken functionality; report anything you dismiss
+   as benign.
+3. "assets": Read the network requests for the post-purge load. Any
+   same-origin request that failed is a fail — a 4xx/5xx status OR a
+   statusless network error (connection reset, TLS failure, aborted load). A
+   request that merely shows no captured status is not automatically a
+   failure: this pane omits the status for worker-context fetches —
+   cross-check such entries (Performance API responseStatus, or an in-page
+   fetch of the same URL) and fail only if the request actually errored. If
+   request data is wholly unavailable, this check is blocked.
+   Third-party/analytics failures are notes, not failures.
+4. "service-worker": Prove the deployed build registers its own service
+   worker: the setup unregistered any prior registration, so
+   navigator.serviceWorker.getRegistration() must now return a fresh
+   registration created by this load (registration can lag — wait a few
+   seconds and retry once before judging). Note the active worker script URL.
+5. "version": Read the deployed version from the start-screen header chip
+   (e.g. "v8.1.0"). Put the observed value in details AND in the top-level
+   "version" output field.
    ${
      expectVersion
        ? `Expected version: "${expectVersion}" — fail this check if the displayed version does not match it (ignore a leading "v" on either side: "8.2.0" matches "v8.2.0").`
