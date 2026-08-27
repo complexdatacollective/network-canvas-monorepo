@@ -447,6 +447,12 @@ CHECKS (in one or more scripts, fresh profile each run):
    input; it is ~33 MB so allow 60 s; expect a "Protocol imported" toast
    (text may mention schema migration) and a new deck card. If the asset
    cannot be obtained after two attempts, mark this and check 7 skipped.
+   If the app rejects the asset because its schema is NEWER than this build
+   supports (the import error names an unsupported/newer schema version),
+   that is protocol/app version skew — expected when certifying a hotfix
+   cut from an older release line after a newer development protocol
+   shipped — not a candidate defect: mark checks 6 and 7 skipped with that
+   reason. Rejection of a supported-schema asset remains a failure.
 7. duplicate import: import the SAME file again — the app upserts by content
    hash. Wait for the fresh "Protocol imported" toast (the positive signal
    that the re-selection was actually processed — without it this check
@@ -635,7 +641,9 @@ CHECKS:
 2. Archive contents: exactly 5 *.graphml files (plain .graphml suffix) and 5
    *_ego.csv files plus the other CSV partitions; each .graphml is
    well-formed XML with a <graphml> root element (the exporter emits NO XML
-   declaration — its absence is correct, do not fail on it);
+   declaration — its absence is correct, do not fail on it) AND contains at
+   least one <node element — the synthetic sessions carry network data, so
+   a valid-but-empty document is silent data loss, not a pass;
    each ego CSV has a header row and 1 data row.
 3. Export status column: the exported rows now show a timestamp/TimeAgo
    instead of "Not exported".
@@ -1346,6 +1354,7 @@ for (const r of results.filter(Boolean)) {
     Boolean(
       verifyEntry &&
       verifyEntry.exists &&
+      verifyEntry.screenshots > 0 &&
       (verifyEntry.checkpointNumbers ?? []).includes(n),
     );
   let dismissalRejected = false;

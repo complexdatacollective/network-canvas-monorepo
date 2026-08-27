@@ -1263,6 +1263,60 @@ test('unevidenced severity downgrades keep the reported severity', async () => {
   assert.notEqual(evidenced.verdict, 'BLOCK');
 });
 
+test('an internally inconsistent audit entry cannot evidence a dismissal', async () => {
+  const jr = {
+    'pwa-offline': journey('pwa-offline', {
+      status: 'fail',
+      checks: mkChecks(10, { failAt: [1] }),
+      failures: [
+        {
+          severity: 'major',
+          description: 'real one',
+          check: 1,
+          reproduction: 'r',
+        },
+      ],
+    }),
+  };
+  const vr = {
+    'pwa-offline': {
+      verdicts: [
+        {
+          description: 'real one',
+          failure: 1,
+          verdict: 'not-reproduced',
+          severity: 'minor',
+          explanation: 'n',
+        },
+      ],
+    },
+  };
+  const res = await run(
+    makeAgent(jr, vr, {
+      fingerprint: PREFLIGHT.fingerprint,
+      entries: [
+        {
+          journey: 'pwa-offline',
+          exists: true,
+          screenshots: 25,
+          checkpointNumbers: Array.from({ length: 10 }, (_, i) => i + 1),
+          stageNumbers: [],
+        },
+        {
+          journey: 'verify-pwa-offline',
+          exists: true,
+          screenshots: 0,
+          checkpointNumbers: [1],
+          stageNumbers: [],
+        },
+      ],
+    }),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(res.verdict, 'BLOCK');
+  assert.ok(res.unverifiedFailures.some((f) => f.description === 'real one'));
+});
+
 test('a dead journey is incomplete', async () => {
   const res = await run(makeAgent({ 'pwa-offline': null }), {
     journeys: ['pwa-offline'],
