@@ -7,6 +7,9 @@ import {
 } from '~/fresco.config';
 
 let clientPromise: Promise<PostHog> | undefined;
+// posthog-js cannot be brought back after shutdown, so once this is set the
+// tab stays quiet until the next page load. See stopPostHog.
+let shutDown = false;
 
 // Exceptions raised before analytics finished starting, replayed by
 // startPostHog. Capped because a deployment with analytics off never starts,
@@ -51,15 +54,18 @@ async function getClient(): Promise<PostHog> {
  * installation ID so events group by deployment rather than by person.
  */
 export async function startPostHog(installationId?: string) {
+  if (shutDown) {
+    return;
+  }
+
   // Telemetry must never throw. A failed chunk load leaves the memoized
   // promise rejected, and callers only ever fire this off.
   try {
     const posthog = await getClient();
 
-    // On every enabled start, not just the first. It repairs the stored
-    // consent of a browser opted out while this deployment had analytics
-    // disabled — including one stopPostHog opted out moments ago, when a
-    // researcher turns analytics off and straight back on without reloading.
+    // On every enabled start, not just the first, so that a browser carrying a
+    // stored opt-out — one this deployment wrote while analytics were off —
+    // starts capturing again rather than staying silent for good.
     posthog.opt_in_capturing();
 
     if (installationId) {
@@ -80,8 +86,20 @@ export async function startPostHog(installationId?: string) {
 
 /**
  * Stops analytics in this tab, for when a researcher turns them off while the
- * app is open. Never loads posthog-js just to opt out: if this tab never
+ * app is open. Never loads posthog-js just to stop it: if this tab never
  * started analytics there is nothing to stop.
+ *
+ * Opting out is not enough on its own. Measured against the pinned posthog-js:
+ * with consent set to denied, the remote-config loader still refreshed feature
+ * flags five minutes after init, so a tab left open kept contacting the relay
+ * after the deployment had said no. `shutdown()` ends that; with both, the
+ * following five minutes produced no requests at all.
+ *
+ * The cost is that posthog-js cannot be revived afterwards — `init()` sees
+ * `__loaded` and returns, so nothing restarts. Analytics therefore resume on
+ * the next page load rather than the moment they are switched back on, which
+ * is the right way round: a participant's tab must never be reloaded out from
+ * under them to apply a setting.
  */
 export async function stopPostHog() {
   // Anything an error boundary queued while the server's decision was still
@@ -95,7 +113,10 @@ export async function stopPostHog() {
 
   try {
     const posthog = await clientPromise;
+    // Opt out first, so the flush inside shutdown has nothing new to send.
     posthog.opt_out_capturing();
+    await posthog.shutdown();
+    shutDown = true;
   } catch {
     // Nothing was ever capturing.
   }
@@ -111,6 +132,10 @@ export async function stopPostHog() {
  * point: a deployment with analytics off reports nothing.
  */
 export function captureClientException(error: unknown) {
+  if (shutDown) {
+    return;
+  }
+
   if (!clientPromise) {
     if (pendingExceptions.length < MAX_PENDING_EXCEPTIONS) {
       pendingExceptions.push(error);

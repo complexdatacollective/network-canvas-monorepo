@@ -7,6 +7,7 @@ const {
   optInCapturing,
   optOutCapturing,
   captureException,
+  shutdown,
   calls,
 } = vi.hoisted(() => {
   const order: string[] = [];
@@ -16,8 +17,12 @@ const {
     register: vi.fn(() => void order.push('register')),
     identify: vi.fn(),
     optInCapturing: vi.fn(() => void order.push('opt_in_capturing')),
-    optOutCapturing: vi.fn(),
+    optOutCapturing: vi.fn(() => void order.push('opt_out_capturing')),
     captureException: vi.fn(),
+    shutdown: vi.fn(() => {
+      order.push('shutdown');
+      return Promise.resolve();
+    }),
   };
 });
 
@@ -29,6 +34,7 @@ vi.mock('posthog-js', () => ({
     opt_in_capturing: optInCapturing,
     opt_out_capturing: optOutCapturing,
     captureException,
+    shutdown,
   },
 }));
 
@@ -147,18 +153,48 @@ describe('Fresco PostHog client', () => {
       expect(optOutCapturing).toHaveBeenCalled();
     });
 
-    // Turning analytics off and straight back on is a plausible thing to do
-    // in the settings; the tab must not stay silent until a reload.
-    it('opts back in when analytics are re-enabled without a reload', async () => {
+    // Opting out leaves the remote-config loader refreshing feature flags
+    // every five minutes; only shutdown ends that.
+    it('shuts the client down, not just opts it out', async () => {
+      const { startPostHog, stopPostHog } = await loadModule();
+
+      await startPostHog('install-123');
+      await stopPostHog();
+
+      expect(optOutCapturing).toHaveBeenCalled();
+      expect(shutdown).toHaveBeenCalled();
+      expect(calls.indexOf('opt_out_capturing')).toBeLessThan(
+        calls.indexOf('shutdown'),
+      );
+    });
+
+    // posthog-js cannot be revived after shutdown — init() sees __loaded and
+    // returns — so the tab must stay quiet rather than pretend to restart.
+    it('stays stopped until the next page load', async () => {
       const { startPostHog, stopPostHog } = await loadModule();
 
       await startPostHog('install-123');
       await stopPostHog();
       optInCapturing.mockClear();
+      identify.mockClear();
 
       await startPostHog('install-123');
 
-      expect(optInCapturing).toHaveBeenCalled();
+      expect(optInCapturing).not.toHaveBeenCalled();
+      expect(identify).not.toHaveBeenCalled();
+    });
+
+    it('reports nothing after being stopped', async () => {
+      const { startPostHog, stopPostHog, captureClientException } =
+        await loadModule();
+
+      await startPostHog('install-123');
+      await stopPostHog();
+      captureException.mockClear();
+
+      captureClientException(new Error('boom'));
+
+      expect(captureException).not.toHaveBeenCalled();
     });
 
     // Queued while the deployment's answer was still in flight, and the
@@ -239,8 +275,8 @@ describe('Fresco PostHog client', () => {
     await startPostHog('install-123');
 
     expect(init).toHaveBeenCalledOnce();
-    // Opting in, unlike init, is repeated on purpose: it is what re-enabling
-    // analytics in an open tab relies on.
+    // Opting in, unlike init, is repeated on purpose: it is what clears a
+    // stored opt-out this deployment wrote while analytics were off.
     expect(optInCapturing).toHaveBeenCalledTimes(2);
   });
 });
