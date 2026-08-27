@@ -727,6 +727,14 @@ test('evidence schema matches what the audit prompt produces', () => {
     /'stageNumbers',\s*\]/,
     'required list names stageNumbers',
   );
+  assert.ok(
+    source.includes('least one <node element'),
+    'GraphML node-content oracle must stay in the export prompt',
+  );
+  assert.ok(
+    source.includes('.png FILENAMES ONLY'),
+    'checkpoint extraction must be png-scoped',
+  );
 });
 
 test('preflight and audit embed the identical fingerprint command', () => {
