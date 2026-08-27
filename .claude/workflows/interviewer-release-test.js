@@ -58,7 +58,12 @@ export const meta = {
 };
 
 const DEFAULT_URL = 'https://interviewer.networkcanvas.dev';
-const url = (args && args.url) || DEFAULT_URL;
+// Canonical origin form: lowercase, default port stripped, no trailing
+// slash — so a cosmetic variant of the developer origin cannot slip the
+// certification exclusion below.
+const canonicalOrigin = (u) =>
+  String(u).toLowerCase().replace(/\/+$/, '').replace(/:443$/, '');
+const url = canonicalOrigin((args && args.url) || DEFAULT_URL);
 // When certifying a release, pass the exact version the release will ship —
 // preflight fails unless the deployment serves it, so a stale deploy (an
 // older tree still live at the same URL) can never be certified.
@@ -836,7 +841,8 @@ const partial = selected.length !== journeyDefs.length;
 // A run certifies a release only when it is full-coverage, pinned to the
 // candidate's version, AND aimed at an explicitly supplied candidate URL —
 // the default developer site is a diagnostic target, never a candidate.
-const explicitTarget = Boolean(args && args.url) && url !== DEFAULT_URL;
+const explicitTarget =
+  Boolean(args && args.url) && url !== canonicalOrigin(DEFAULT_URL);
 const certifying = !partial && Boolean(expectedVersion) && explicitTarget;
 const nonCertifyingReason = partial
   ? 'partial run'
@@ -1194,13 +1200,15 @@ for (const r of results.filter(Boolean)) {
     // walk length, and check captures cannot stand in for stage images.
     let stageProblem = '';
     if (r.journey === 'conduct-sample-interview') {
-      const traversed = Array.isArray(r.traversedStages)
-        ? r.traversedStages
-        : [];
+      // DISTINCT stages: back/forward navigation legitimately repeats ids,
+      // and twenty repetitions of one stage are not a twenty-stage walk.
+      const traversed = [
+        ...new Set(Array.isArray(r.traversedStages) ? r.traversedStages : []),
+      ];
       const onDisk = new Set(e ? (e.stageNumbers ?? []) : []);
       const missingStages = traversed.filter((n) => !onDisk.has(n));
       if (traversed.length < CONDUCT_MIN_SCREENSHOTS)
-        stageProblem = `reported only ${traversed.length} traversed stages (>=${CONDUCT_MIN_SCREENSHOTS} expected)`;
+        stageProblem = `reported only ${traversed.length} distinct traversed stages (>=${CONDUCT_MIN_SCREENSHOTS} expected)`;
       else if (missingStages.length)
         stageProblem = `no capture for traversed stage(s) ${missingStages.join(', ')}`;
     }
@@ -1357,10 +1365,20 @@ for (const r of results.filter(Boolean)) {
     if (!v) {
       unverifiedFailures.push({ ...f, journey: r.journey });
     } else if (v.verdict === 'confirmed') {
+      // A severity DOWNGRADE is a partial dismissal: without the verifier's
+      // own failure<K> capture on disk it keeps the reported severity.
+      const rank = { blocker: 3, major: 2, minor: 1 };
+      const downgraded =
+        (rank[v.severity] ?? 0) < (rank[f.severity] ?? 0) &&
+        !dismissEvidenced(i + 1);
+      if (downgraded)
+        certificationGaps.push(
+          `verifier for "${r.journey}" downgraded "${f.description}" from ${f.severity} to ${v.severity} without per-failure evidence — the reported severity is kept`,
+        );
       confirmedFailures.push({
         ...f,
         journey: r.journey,
-        severity: v.severity,
+        severity: downgraded ? f.severity : v.severity,
         verdict: 'confirmed',
         verification: v.explanation,
         evidence: [f.evidence, v.evidence].filter(Boolean).join(' | '),

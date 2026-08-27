@@ -1181,6 +1181,88 @@ test('a zero failure id is unbindable, never a discovery', async () => {
   assert.ok(res.certificationGaps.some((a) => a.includes('unbindable')));
 });
 
+test('cosmetic developer-origin variants never certify', async () => {
+  const jr = Object.fromEntries(
+    Object.keys(EXPECTED_CHECKS).map((k) => [k, journey(k)]),
+  );
+  for (const variant of [
+    'https://interviewer.networkcanvas.dev:443',
+    'https://INTERVIEWER.networkcanvas.dev',
+  ]) {
+    const res = await run(makeAgent(jr), {
+      url: variant,
+      expectedVersion: '9.9.9',
+    });
+    assert.equal(res.certifying, false, variant);
+  }
+});
+
+test('repeated stage ids do not satisfy the conduct walk floor', async () => {
+  const jr = {
+    'conduct-sample-interview': journey('conduct-sample-interview', {
+      traversedStages: Array.from({ length: 25 }, () => 3),
+    }),
+  };
+  const res = await run(makeAgent(jr), {
+    journeys: ['conduct-sample-interview'],
+  });
+  assert.equal(res.verdict, 'INCOMPLETE');
+  assert.ok(
+    res.certificationGaps.some((a) => a.includes('distinct traversed stages')),
+  );
+});
+
+test('unevidenced severity downgrades keep the reported severity', async () => {
+  const jr = {
+    'pwa-offline': journey('pwa-offline', {
+      status: 'fail',
+      checks: mkChecks(10, { failAt: [1] }),
+      failures: [
+        {
+          severity: 'major',
+          description: 'big one',
+          check: 1,
+          reproduction: 'r',
+        },
+      ],
+    }),
+  };
+  const vr = {
+    'pwa-offline': {
+      verdicts: [
+        {
+          description: 'big one',
+          failure: 1,
+          verdict: 'confirmed',
+          severity: 'minor',
+          explanation: 'softened',
+        },
+      ],
+    },
+  };
+  // No verifier evidence entry: the downgrade is rejected, major blocks.
+  const bare = await run(
+    makeAgent(jr, vr, {
+      fingerprint: PREFLIGHT.fingerprint,
+      entries: [
+        {
+          journey: 'pwa-offline',
+          exists: true,
+          screenshots: 25,
+          checkpointNumbers: Array.from({ length: 10 }, (_, i) => i + 1),
+          stageNumbers: [],
+        },
+      ],
+    }),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(bare.verdict, 'BLOCK');
+  assert.ok(bare.certificationGaps.some((a) => a.includes('downgraded')));
+  // With per-failure verifier evidence the downgrade is accepted.
+  const evidenced = await run(makeAgent(jr, vr), { journeys: ['pwa-offline'] });
+  assert.notEqual(evidenced.verdict, 'BLOCK');
+});
+
 test('a dead journey is incomplete', async () => {
   const res = await run(makeAgent({ 'pwa-offline': null }), {
     journeys: ['pwa-offline'],
