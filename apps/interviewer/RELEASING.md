@@ -57,7 +57,13 @@ is not ready to go out, release from the previous tag instead:
    reads that section for the GitHub release. Do **not** run
    `changeset version` on the branch — it would consume changesets that belong
    to main's next release.
-3. Push the branch, then run the **Hotfix Release** workflow **from main**,
+3. Push the branch and open its merge-back pull request into `main` NOW
+   (step 5 merges it after release, but the PR must exist first): its
+   Netlify deploy preview is the certification candidate. Run the release
+   smoke test against that preview with the hotfix's bumped version (see
+   Release smoke testing below) and proceed only on a certifying pass.
+
+4. Run the **Hotfix Release** workflow **from main**,
    with `app: interviewer` and `source_ref` set to the hotfix branch. It runs
    typecheck and tests across the app's whole workspace dependency closure,
    builds with PostHog source maps, deploys to Netlify production, and cuts
@@ -81,8 +87,9 @@ is not ready to go out, release from the previous tag instead:
    A branch that needs an older line published needs a separate channel, not
    this lane.
 
-4. **Merge the hotfix branch into main.** Open a pull request from the hotfix
-   branch itself rather than re-applying its content: the normal lane refuses
+5. **Merge the hotfix branch into main.** The pull request already exists
+   from step 3 — merging the branch itself rather than re-applying its
+   content matters: the normal lane refuses
    to deploy a tree that does not contain the newest released commit, so a
    cherry-pick — which makes a different commit — leaves main blocked. The
    merge brings the version bump and CHANGELOG with it. While you are there,

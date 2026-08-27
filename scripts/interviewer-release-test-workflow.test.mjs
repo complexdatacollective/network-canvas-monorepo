@@ -109,12 +109,14 @@ function makeAgent(journeyResults, verifyResults = {}, evidenceResult) {
             exists: true,
             screenshots: 25,
             checkpointNumbers: Array.from({ length: 25 }, (_, i) => i + 1),
+            stageCaptures: 25,
           })),
           ...Object.keys(verifyResults).map((k) => ({
             journey: `verify-${k}`,
             exists: true,
-            screenshots: 2,
-            checkpointNumbers: [],
+            screenshots: 5,
+            checkpointNumbers: [1, 2, 3, 4, 5],
+            stageCaptures: 0,
           })),
         ],
       };
@@ -424,6 +426,7 @@ test('evidence must exist on disk with per-check identity', async () => {
             exists: false,
             screenshots: 0,
             checkpointNumbers: [],
+            stageCaptures: 25,
           },
         ],
       },
@@ -450,6 +453,7 @@ test('evidence must exist on disk with per-check identity', async () => {
             exists: true,
             screenshots: 30,
             checkpointNumbers: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+            stageCaptures: 25,
           },
         ],
       },
@@ -479,6 +483,7 @@ test('evidence must exist on disk with per-check identity', async () => {
             exists: true,
             screenshots: 7,
             checkpointNumbers: [1, 2, 3, 4, 5, 8, 9],
+            stageCaptures: 25,
           },
         ],
       },
@@ -859,7 +864,7 @@ test('an evidence-free verifier cannot dismiss failures', async () => {
   assert.ok(bare.unverifiedFailures.some((f) => f.description === 'real one'));
   assert.ok(
     bare.certificationGaps.some((a) =>
-      a.includes('dismissing verdicts are not accepted'),
+      a.includes('dismissals are not accepted'),
     ),
   );
 });
@@ -902,6 +907,164 @@ test('every certification gap caps the verdict', async () => {
   assert.equal(res.verdict, 'INCOMPLETE');
   assert.ok(
     res.certificationGaps.some((a) => a.includes('no reproduction steps')),
+  );
+});
+
+test('conduct needs distinct per-stage captures, not raw totals', async () => {
+  const jr = {
+    'conduct-sample-interview': journey('conduct-sample-interview'),
+  };
+  const res = await run(
+    makeAgent(
+      jr,
+      {},
+      {
+        fingerprint: PREFLIGHT.fingerprint,
+        entries: [
+          {
+            journey: 'conduct-sample-interview',
+            exists: true,
+            screenshots: 40,
+            checkpointNumbers: [1, 2, 3, 4, 5, 6, 7],
+            stageCaptures: 8,
+          },
+        ],
+      },
+    ),
+    { journeys: ['conduct-sample-interview'] },
+  );
+  assert.equal(res.verdict, 'INCOMPLETE');
+  assert.ok(
+    res.certificationGaps.some((a) => a.includes('distinct stage captures 8')),
+  );
+});
+
+test('dismissals bind to per-failure verifier captures', async () => {
+  const jr = {
+    'pwa-offline': journey('pwa-offline', {
+      status: 'fail',
+      checks: mkChecks(10, { failAt: [1] }),
+      failures: [
+        {
+          severity: 'major',
+          description: 'first',
+          check: 1,
+          reproduction: 'r',
+        },
+        {
+          severity: 'minor',
+          description: 'second',
+          check: 1,
+          reproduction: 'r',
+        },
+      ],
+    }),
+  };
+  const vr = {
+    'pwa-offline': {
+      verdicts: [
+        {
+          description: 'first',
+          failure: 1,
+          verdict: 'not-reproduced',
+          severity: 'minor',
+          explanation: 'n',
+        },
+        {
+          description: 'second',
+          failure: 2,
+          verdict: 'not-reproduced',
+          severity: 'minor',
+          explanation: 'n',
+        },
+      ],
+    },
+  };
+  const res = await run(
+    makeAgent(jr, vr, {
+      fingerprint: PREFLIGHT.fingerprint,
+      entries: [
+        {
+          journey: 'pwa-offline',
+          exists: true,
+          screenshots: 25,
+          checkpointNumbers: Array.from({ length: 10 }, (_, i) => i + 1),
+          stageCaptures: 0,
+        },
+        {
+          journey: 'verify-pwa-offline',
+          exists: true,
+          screenshots: 1,
+          checkpointNumbers: [2],
+          stageCaptures: 0,
+        },
+      ],
+    }),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(res.verdict, 'BLOCK');
+  assert.ok(res.unverifiedFailures.some((f) => f.description === 'first'));
+  assert.ok(!res.unverifiedFailures.some((f) => f.description === 'second'));
+});
+
+test('unbindable numbered verdicts are never promoted as discoveries', async () => {
+  const jr = {
+    'pwa-offline': journey('pwa-offline', {
+      status: 'fail',
+      checks: mkChecks(10, { failAt: [1] }),
+      failures: [
+        {
+          severity: 'minor',
+          description: 'only one',
+          check: 1,
+          reproduction: 'r',
+        },
+      ],
+    }),
+  };
+  const vr = {
+    'pwa-offline': {
+      verdicts: [
+        {
+          description: 'only one',
+          failure: 1,
+          verdict: 'confirmed',
+          severity: 'minor',
+          explanation: 'real',
+        },
+        {
+          description: 'phantom duplicate',
+          failure: 1,
+          verdict: 'confirmed',
+          severity: 'blocker',
+          explanation: 'malformed',
+        },
+      ],
+    },
+  };
+  const res = await run(makeAgent(jr, vr), { journeys: ['pwa-offline'] });
+  assert.ok(
+    !res.confirmedFailures.some((f) => f.description === 'phantom duplicate'),
+  );
+  assert.notEqual(res.verdict, 'BLOCK');
+  assert.equal(res.verdict, 'INCOMPLETE');
+  assert.ok(res.certificationGaps.some((a) => a.includes('unbindable')));
+});
+
+test('malformed preflight paths are blocked', async () => {
+  const badWorkDir = async (p, o) =>
+    o.label === 'preflight'
+      ? { ...PREFLIGHT, workDir: '/tmp/x\n### INJECT' }
+      : null;
+  assert.equal(
+    (await run(badWorkDir, { journeys: ['pwa-offline'] })).verdict,
+    'BLOCKED',
+  );
+  const badRepoRoot = async (p, o) =>
+    o.label === 'preflight' ? { ...PREFLIGHT, repoRoot: 'not-a-path' } : null;
+  assert.equal(
+    (await run(badRepoRoot, { journeys: ['pwa-offline'] })).verdict,
+    'BLOCKED',
   );
 });
 

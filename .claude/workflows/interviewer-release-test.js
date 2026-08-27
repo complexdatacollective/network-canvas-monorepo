@@ -209,7 +209,13 @@ const EVIDENCE_SCHEMA = {
       type: 'array',
       items: {
         type: 'object',
-        required: ['journey', 'exists', 'screenshots', 'checkpointNumbers'],
+        required: [
+          'journey',
+          'exists',
+          'screenshots',
+          'checkpointNumbers',
+          'stageCaptures',
+        ],
         properties: {
           journey: { type: 'string' },
           exists: { type: 'boolean' },
@@ -221,7 +227,12 @@ const EVIDENCE_SCHEMA = {
             type: 'array',
             items: { type: 'integer' },
             description:
-              'The DISTINCT check numbers N for which a check<N>-prefixed .png exists (e.g. check1-foo.png and check1-bar.png contribute the single entry 1)',
+              'Journey dirs: the DISTINCT check numbers N with a check<N>-prefixed .png. verify-* dirs: the DISTINCT failure numbers K with a failure<K>-prefixed .png.',
+          },
+          stageCaptures: {
+            type: 'integer',
+            description:
+              'The count of DISTINCT stage-<N> filename prefixes (0 where none exist)',
           },
         },
       },
@@ -607,7 +618,8 @@ CHECKS:
    networkCanvasExport-<digits>.zip arrives → toast "Export complete".
 2. Archive contents: exactly 5 *.graphml files (plain .graphml suffix) and 5
    *_ego.csv files plus the other CSV partitions; each .graphml is
-   well-formed XML (starts with an XML prolog and contains a <graphml root);
+   well-formed XML with a <graphml> root element (the exporter emits NO XML
+   declaration — its absence is correct, do not fail on it);
    each ego CSV has a header row and 1 data row.
 3. Export status column: the exported rows now show a timestamp/TimeAgo
    instead of "Not exported".
@@ -729,12 +741,11 @@ CHECKS:
    documented CSP/cloudflareinsights noise.
 9. Status chips: the status row shows a storage-durability chip
    (data-testid="storage-status-trigger", one of "Storage persistent" /
-   "Storage best effort" / "Storage not persistent") whose explanatory text
-   is revealed on keyboard focus or hover (the chips are tooltips, not
-   click-popovers). KNOWN GAP (tracked separately, do not re-report): in a
-   never-configured profile the encryption chip
-   (data-testid="encryption-status-trigger") is absent entirely; if it IS
-   present here it must read "Not encrypted".
+   "Storage best effort" / "Storage not persistent") AND an encryption chip
+   (data-testid="encryption-status-trigger") that MUST read "Not encrypted"
+   in this never-configured profile — the app states its security status
+   even before setup, and a missing chip is a real regression. Each chip's
+   explanatory text is reachable by click/tap as well as keyboard focus.
 10. App update flow: cannot be exercised against a deployed site (no way to
     stage a newer build) — mark skipped with this reason.
 
@@ -868,7 +879,12 @@ const versionMismatch =
   preflight && expectedVersion && preflight.version !== expectedVersion;
 const workDirInvalid =
   preflight &&
-  !(typeof preflight.workDir === 'string' && /^\/.+/.test(preflight.workDir));
+  !(
+    typeof preflight.workDir === 'string' &&
+    /^\/[A-Za-z0-9._/-]+$/.test(preflight.workDir)
+  );
+const repoRootInvalid =
+  preflight && !/^\/[A-Za-z0-9._/-]+$/.test(preflight.repoRoot ?? '');
 const fingerprintInvalid =
   preflight && !/^[0-9a-f]{16}$/.test(preflight.fingerprint ?? '');
 if (
@@ -877,6 +893,7 @@ if (
   preflight.failures.length ||
   versionMismatch ||
   workDirInvalid ||
+  repoRootInvalid ||
   fingerprintInvalid
 ) {
   const failures = preflight
@@ -890,6 +907,11 @@ if (
         ...(workDirInvalid
           ? [
               `preflight reported an invalid work directory ("${preflight.workDir}")`,
+            ]
+          : []),
+        ...(repoRootInvalid
+          ? [
+              `preflight reported an invalid repo root ("${preflight.repoRoot}")`,
             ]
           : []),
         ...(fingerprintInvalid
@@ -968,9 +990,18 @@ ${driving(ctx.workDir, ctx.repoRoot)}
 For each failure: reproduce it from scratch in a fresh profile, following its
 reproduction steps; attempt twice. Then actively try to make the app SUCCEED
 via reasonable alternate user behaviour (slower pacing, extra waits, a
-slightly different but ordinary path) — if a reasonable user gets through, it
-is not a blocker; downgrade severity accordingly and explain. Save evidence
-screenshots under ${ctx.workDir}/verify-${j.key}/.
+slightly different but ordinary path). Severity rules: alternate-path success
+means the defect is not a BLOCKER — but a reproducibly broken documented flow
+with a working alternate path is MAJOR by this gate's own definition (a
+broken feature with a workaround, still release-blocking); downgrade below
+major only when the primary flow itself works. "not-reproduced" does not
+erase an intermittent defect: use it only when you can name what invalidates
+the original observation (harness timing, stale state, a misread signal); a
+defect you can reproduce only sometimes is "confirmed" with severity
+reflecting its impact. Save evidence screenshots under
+${ctx.workDir}/verify-${j.key}/, named failure<K>-<slug>.png for the failure
+number each capture concerns — a dismissing verdict without a matching
+failure<K> capture on disk is not accepted.
 
 Verdicts: "confirmed" = reproducible app defect; "not-reproduced" = could not
 reproduce in two attempts; "automation-issue" = the harness caused it (bad
@@ -1043,7 +1074,8 @@ if (evidenceClaims.length) {
     `Audit the evidence directories of an automated release test. For each entry below, check with the shell (no interpretation, no browsing, no writes):
 1. whether the directory exists;
 2. the count of .png files directly inside it (e.g. \`find <dir> -maxdepth 1 -name '*.png' | wc -l\`);
-3. the DISTINCT check numbers among their filenames, as a list of integers (e.g. \`ls <dir> | grep -oE '^check[0-9]+' | sort -u\` → checkpointNumbers [1, 2, 5]).
+3. checkpointNumbers, a list of integers: for a journey directory the DISTINCT check numbers (\`ls <dir> | grep -oE '^check[0-9]+' | sort -u\`); for a verify-* directory the DISTINCT failure numbers instead (\`ls <dir> | grep -oE '^failure[0-9]+' | sort -u\`);
+4. stageCaptures: the count of DISTINCT stage prefixes (\`ls <dir> | grep -oE '^stage-?[0-9]+' | sort -u | wc -l\`; report 0 when none).
 
 Then re-compute the deployment fingerprint and report it as fingerprint:
 { curl -s ${url}/ | grep -oE 'assets/[A-Za-z0-9_.-]+\\.(js|css)' | sort -u; curl -s ${url}/manifest.webmanifest; curl -s ${url}/sw.js; } | shasum -a 256 | cut -c1-16
@@ -1135,15 +1167,23 @@ for (const r of results.filter(Boolean)) {
     const missingCk = expectedChecks[r.journey]
       ? executedNumbers.filter((n) => !have.has(n))
       : [];
-    const needed =
-      r.journey === 'conduct-sample-interview'
-        ? CONDUCT_MIN_SCREENSHOTS
-        : executedNumbers.length;
-    if (!e || !e.exists || e.screenshots < needed || missingCk.length) {
+    const needed = executedNumbers.length;
+    // Conduct's per-stage evidence is counted by DISTINCT stage prefixes so
+    // ordinary check captures cannot stand in for missing stage images.
+    const stageShort =
+      r.journey === 'conduct-sample-interview' &&
+      (e ? (e.stageCaptures ?? 0) : 0) < CONDUCT_MIN_SCREENSHOTS;
+    if (
+      !e ||
+      !e.exists ||
+      e.screenshots < needed ||
+      stageShort ||
+      missingCk.length
+    ) {
       if (!inconsistentJourneys.includes(r.journey))
         inconsistentJourneys.push(r.journey);
       certificationGaps.push(
-        `journey "${r.journey}" lacks on-disk evidence (${e ? `exists=${e.exists}, screenshots=${e.screenshots} of >=${needed}${missingCk.length ? `, no capture for executed check(s) #${missingCk.join(', #')}` : ''}` : 'not audited'}); treated as incomplete`,
+        `journey "${r.journey}" lacks on-disk evidence (${e ? `exists=${e.exists}, screenshots=${e.screenshots} of >=${needed}${stageShort ? `, distinct stage captures ${e.stageCaptures ?? 0} of >=${CONDUCT_MIN_SCREENSHOTS}` : ''}${missingCk.length ? `, no capture for executed check(s) #${missingCk.join(', #')}` : ''}` : 'not audited'}); treated as incomplete`,
       );
     }
   }
@@ -1261,9 +1301,14 @@ for (const r of results.filter(Boolean)) {
   const verifyEntry = evidence
     ? evidence.entries.find((x) => x.journey === `verify-${r.journey}`)
     : null;
-  const verifierEvidenced = Boolean(
-    verifyEntry && verifyEntry.exists && verifyEntry.screenshots > 0,
-  );
+  // A dismissal is bound to ITS failure's on-disk capture — one unrelated
+  // screenshot must not clear every dismissed failure in the journey.
+  const dismissEvidenced = (n) =>
+    Boolean(
+      verifyEntry &&
+      verifyEntry.exists &&
+      (verifyEntry.checkpointNumbers ?? []).includes(n),
+    );
   let dismissalRejected = false;
   // Match verdicts to failures by explicit id first (the "failure" number
   // the verifier is required to echo), then verbatim description, never by
@@ -1291,7 +1336,7 @@ for (const r of results.filter(Boolean)) {
         verification: v.explanation,
         evidence: [f.evidence, v.evidence].filter(Boolean).join(' | '),
       });
-    } else if (verifierEvidenced) {
+    } else if (dismissEvidenced(i + 1)) {
       automationIssues.push(
         `[${r.journey}] ${v.verdict}: ${f.description} — ${v.explanation}`,
       );
@@ -1304,13 +1349,23 @@ for (const r of results.filter(Boolean)) {
   });
   if (dismissalRejected) {
     certificationGaps.push(
-      `verifier for "${r.journey}" left no on-disk evidence (workDir/verify-${r.journey}) — its dismissing verdicts are not accepted and those failures stay unverified`,
+      `verifier for "${r.journey}" left no per-failure evidence (workDir/verify-${r.journey}/failure<K>-*.png) for one or more dismissed failures — those dismissals are not accepted and the failures stay unverified`,
     );
   }
   // A defect the verifier itself discovered and confirmed while reproducing
   // must not be lost just because no reported failure matches it.
   r.verification.forEach((v, k) => {
-    if (used.has(k) || v.verdict !== 'confirmed') return;
+    if (used.has(k)) return;
+    // A numbered verdict that bound to nothing is a malformed adjudication:
+    // it must not be promoted as a discovered defect (a duplicate number
+    // could manufacture a blocker) and it means some adjudication is off.
+    if (v.failure) {
+      certificationGaps.push(
+        `verifier for "${r.journey}" returned a verdict bound to failure #${v.failure} that matches no reported failure — unbindable adjudication; treated as incomplete`,
+      );
+      return;
+    }
+    if (v.verdict !== 'confirmed') return;
     // The defect blocks either way, but a discovered defect without steps
     // leaves the report unable to seed a follow-up — say so explicitly.
     if (!v.reproduction)
