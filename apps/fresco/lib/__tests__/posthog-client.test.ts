@@ -7,6 +7,7 @@ const {
   optInCapturing,
   optOutCapturing,
   captureException,
+  capture,
   shutdown,
   calls,
 } = vi.hoisted(() => {
@@ -19,6 +20,7 @@ const {
     optInCapturing: vi.fn(() => void order.push('opt_in_capturing')),
     optOutCapturing: vi.fn(() => void order.push('opt_out_capturing')),
     captureException: vi.fn(),
+    capture: vi.fn(),
     shutdown: vi.fn(() => {
       order.push('shutdown');
       return Promise.resolve();
@@ -34,6 +36,7 @@ vi.mock('posthog-js', () => ({
     opt_in_capturing: optInCapturing,
     opt_out_capturing: optOutCapturing,
     captureException,
+    capture,
     shutdown,
   },
 }));
@@ -239,6 +242,32 @@ describe('Fresco PostHog client', () => {
     });
   });
 
+  describe('captureClientEvent', () => {
+    it('queues events raised before analytics started, like exceptions', async () => {
+      const { captureClientEvent, startPostHog } = await loadModule();
+
+      captureClientEvent('ProtocolInstalled', { schemaVersion: 8 });
+      expect(capture).not.toHaveBeenCalled();
+
+      await startPostHog('install-123');
+
+      expect(capture).toHaveBeenCalledWith('ProtocolInstalled', {
+        schemaVersion: 8,
+      });
+    });
+
+    it('drops events when analytics are disabled', async () => {
+      const { captureClientEvent, stopPostHog, startPostHog } =
+        await loadModule();
+
+      await stopPostHog();
+      captureClientEvent('ProtocolInstalled');
+      await startPostHog('install-123');
+
+      expect(capture).not.toHaveBeenCalled();
+    });
+  });
+
   describe('captureClientException', () => {
     // The error boundaries render before analytics start, and posthog-js
     // treats capture before init() as a silent no-op.
@@ -252,6 +281,26 @@ describe('Fresco PostHog client', () => {
       await startPostHog('install-123');
 
       expect(captureException).toHaveBeenCalledWith(error);
+    });
+
+    // captureClientException attaches to the same promise startPostHog is
+    // waiting on, and would otherwise win the race and report before the
+    // opt-in and identify that make the report count.
+    it('waits for opt-in and identify, not just for the client', async () => {
+      const { captureClientException, startPostHog } = await loadModule();
+
+      const starting = startPostHog('install-123');
+      captureClientException(new Error('boom'));
+      await starting;
+
+      expect(captureException).toHaveBeenCalledOnce();
+      expect(calls).toEqual([
+        'init',
+        'register',
+        'opt_in_capturing',
+        'register',
+      ]);
+      expect(identify).toHaveBeenCalledBefore(captureException);
     });
 
     it('captures immediately once analytics have started', async () => {

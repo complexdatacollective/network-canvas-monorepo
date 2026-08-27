@@ -16,11 +16,16 @@ let shutDown = false;
 // is still unknown. Both consult this rather than assuming.
 let analyticsEnabled: boolean | undefined;
 
-// Exceptions raised before analytics finished starting, replayed by
-// startPostHog. Capped because a deployment with analytics off never starts,
-// and this would otherwise grow for the life of the tab.
-const MAX_PENDING_EXCEPTIONS = 10;
-const pendingExceptions: unknown[] = [];
+// True once an enabled start has finished opting in and identifying. Until
+// then posthog-js may exist but treat capture as a no-op, or capture under the
+// wrong identity, so reports wait rather than being lost.
+let started = false;
+
+// Reports made before that point, replayed by startPostHog. Capped because a
+// deployment with analytics off never starts, and this would otherwise grow
+// for the life of the tab.
+const MAX_PENDING_REPORTS = 10;
+const pendingReports: ((posthog: PostHog) => void)[] = [];
 
 /**
  * Loads posthog-js and initialises it.
@@ -90,8 +95,10 @@ export async function startPostHog(installationId?: string) {
       posthog.identify(installationId);
     }
 
-    while (pendingExceptions.length > 0) {
-      posthog.captureException(pendingExceptions.shift());
+    started = true;
+
+    while (pendingReports.length > 0) {
+      pendingReports.shift()?.(posthog);
     }
   } catch {
     // Analytics stay off for this page. Nothing else depends on them.
@@ -117,11 +124,12 @@ export async function startPostHog(installationId?: string) {
  */
 export async function stopPostHog() {
   analyticsEnabled = false;
+  started = false;
 
-  // Anything an error boundary queued while the server's decision was still
-  // in flight was collected under a setting that turns out to be "off".
-  // Enabling analytics later must not retroactively report it.
-  pendingExceptions.length = 0;
+  // Anything reported while the server's decision was still in flight was
+  // collected under a setting that turns out to be "off". Enabling analytics
+  // later must not retroactively report it.
+  pendingReports.length = 0;
 
   if (!clientPromise) {
     return;
@@ -139,31 +147,44 @@ export async function stopPostHog() {
 }
 
 /**
- * Reports a client-side exception, waiting for analytics to start if they
- * haven't yet.
+ * Queues a report until analytics have started, or makes it now if they
+ * already have.
  *
- * The error boundaries render before analytics do, so calling posthog-js
- * directly would silently drop the exception — capture before `init()` is a
- * no-op. If analytics never start, the exception is dropped, which is the
- * point: a deployment with analytics off reports nothing.
+ * Everything client-side goes through here rather than calling posthog-js
+ * directly. The error boundaries and the dashboard both render before
+ * analytics do, and posthog-js treats capture before `init()` — and before
+ * the opt-in and identify that follow it — as a silent no-op or an
+ * unattributed event. If analytics never start, the report is dropped, which
+ * is the point: a deployment with analytics off reports nothing.
  */
-export function captureClientException(error: unknown) {
+function report(make: (posthog: PostHog) => void) {
   // Nothing raised while this deployment says no is reported, queued, or kept
   // for a later change of mind.
   if (shutDown || analyticsEnabled === false) {
     return;
   }
 
-  if (!clientPromise) {
-    if (pendingExceptions.length < MAX_PENDING_EXCEPTIONS) {
-      pendingExceptions.push(error);
+  if (!started || !clientPromise) {
+    if (pendingReports.length < MAX_PENDING_REPORTS) {
+      pendingReports.push(make);
     }
     return;
   }
 
-  void clientPromise
-    .then((posthog) => posthog.captureException(error))
-    .catch(() => {
-      // Telemetry must never throw, least of all while reporting an error.
-    });
+  void clientPromise.then(make).catch(() => {
+    // Telemetry must never throw, least of all while reporting an error.
+  });
+}
+
+/** Reports a client-side exception. */
+export function captureClientException(error: unknown) {
+  report((posthog) => posthog.captureException(error));
+}
+
+/** Reports a client-side event. */
+export function captureClientEvent(
+  event: string,
+  properties?: Record<string, unknown>,
+) {
+  report((posthog) => posthog.capture(event, properties));
 }
