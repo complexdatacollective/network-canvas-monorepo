@@ -10,7 +10,9 @@
   // xcrun is the macOS simulator tool used by the Capacitor dev helper.
   // taskkill is the Windows process-termination tool used by
   // apps/architect-classic/scripts/dev.mjs to tear down dev-server processes.
-  "ignoreBinaries": ["electron-builder", "xcrun", "taskkill"],
+  // diff is the POSIX tool apps/fresco/release-test/scripts/diff-exports.mjs
+  // spawns to compare normalized export trees.
+  "ignoreBinaries": ["electron-builder", "xcrun", "taskkill", "diff"],
   // unplugin-dts loads @typescript/typescript6 by name at build time (TypeScript
   // 7 dropped the JavaScript Compiler API it needs for declaration emit), so it
   // is never imported from source.
@@ -27,7 +29,12 @@
     // monorepo mode. That file (and fresco's .github tooling) still ships to the
     // standalone Fresco repo on mirror, so it is ignored rather than deleted.
     "apps/fresco": {
-      "project": ["**/*.{js,jsx,ts,tsx}"],
+      // release-test/scripts are invoked from shell scripts knip cannot parse;
+      // list them as entries so they and their imports (e.g.
+      // scripts/resolve-manifest.mjs in the root workspace) count as used. The
+      // project glob deliberately keeps other .mjs invisible, as before.
+      "entry": ["release-test/scripts/*.mjs"],
+      "project": ["**/*.{js,jsx,ts,tsx}", "release-test/scripts/*.mjs"],
       "ignore": ["knip.config.ts"],
       "ignoreDependencies": [
         "sharp", // Used by next/image but not directly imported

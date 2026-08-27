@@ -45,6 +45,36 @@ Consequences worth remembering:
   mirror. Code that only works under one bundler will pass locally and fail in
   the released image — see "Workers and bundler portability" below.
 
+## Release testing
+
+Before a Fresco release is approved (the Version Packages PR merged), the
+pending state of `main` can be release-tested locally with the
+`/fresco-release-test` Claude workflow (`.claude/workflows/fresco-release-test.js`;
+Codex: run the harness scripts below manually). It builds the pending image the
+way a release would — `scripts/mirror-app.mjs` stages the mirrored tree,
+`release-test/scripts/bundle-pending-packages.mjs` swaps the `@codaco/*`
+registry resolutions for tarballs packed from the pending workspace source, and
+the staged tree's own `Dockerfile` builds it — then runs two Docker stacks via
+`release-test/docker-compose.yml`:
+
+- **Upgrade lane** (ports 3210/5533/9310): seeds the currently released GHCR
+  image through its setup wizard (sample protocol, synthetic interviews, data
+  export), swaps the app container to the pending image against the live
+  volumes so its `migrate-and-start.sh` migrations run on real data, verifies
+  data integrity, dashboard CRUD, settings, and the interview data API, and
+  diffs pre- vs post-upgrade exports (`release-test/scripts/diff-exports.mjs`)
+  for unanticipated differences.
+- **Fresh lane** (ports 3211/5534/9311): verifies the new-deployment setup
+  process of the pending image end-to-end.
+
+Harness scripts live in `apps/fresco/release-test/` (`build-image.sh`,
+`up.sh --lane upgrade|fresh --image <ref> [--keep-data]`, `down.sh`,
+`stage-fixture.sh` and `enable-captures.sh` for browser-driven uploads and
+download capture via MinIO). `release-test/AGENT_NOTES.md` records the
+verified techniques for driving Fresco in the in-app browser. The directory is
+excluded from the public mirror. Storage is configured through the setup
+wizard, not env vars, matching real bundled-MinIO deployments.
+
 ## Commands
 
 ```bash

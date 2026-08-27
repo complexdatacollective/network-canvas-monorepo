@@ -21,11 +21,15 @@
 //   MONOREPO_SHA             source commit sha (recorded in the commit message)
 //   GITHUB_OUTPUT            when set, `mirror_sha=<sha>` is appended for the workflow
 //   MIRROR_DRY_RUN           when "true", stage + commit locally but skip the push
+//   MIRROR_STAGE_DIR         stage into this (not yet existing) directory instead
+//                            of a random tmpdir, so a caller can post-process the
+//                            staged tree (used by apps/fresco/release-test)
 import { spawnSync } from 'node:child_process';
 import {
   appendFileSync,
   cpSync,
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   writeFileSync,
@@ -115,6 +119,9 @@ const APP_MIRROR_OVERRIDES = {
       // anyone develops.
       '.agents',
       '.claude',
+      // The local release-testing harness references monorepo paths and must
+      // not ship in the standalone tree.
+      'release-test',
     ],
   },
 };
@@ -375,7 +382,20 @@ function main() {
 
   const overrides = APP_MIRROR_OVERRIDES[appName] ?? {};
 
-  const staging = mkdtempSync(join(tmpdir(), 'mirror-stage-'));
+  let staging;
+  if (process.env.MIRROR_STAGE_DIR) {
+    staging = resolve(process.env.MIRROR_STAGE_DIR);
+    // Refuse a pre-existing directory: stale files would silently leak into
+    // the staged tree (copyTree only adds, never removes).
+    if (existsSync(staging)) {
+      throw new Error(
+        `MIRROR_STAGE_DIR ${staging} already exists; remove it first.`,
+      );
+    }
+    mkdirSync(staging, { recursive: true });
+  } else {
+    staging = mkdtempSync(join(tmpdir(), 'mirror-stage-'));
+  }
   console.error(`[mirror] staging ${appName} -> ${staging}`);
 
   stageSource(appDir, staging, overrides.extraExcludes);
