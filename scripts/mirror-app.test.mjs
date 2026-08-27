@@ -39,13 +39,17 @@ test('Fresco mirror omits all GitHub Actions workflows', (t) => {
     'name: Future action\n',
   );
 
-  mkdirSync(seed);
+  mkdirSync(join(seed, '.github', 'workflows'), { recursive: true });
   git(directory, 'init', '--bare', '--initial-branch=main', remote);
   git(seed, 'init', '--initial-branch=main');
   git(seed, 'config', 'user.email', 'ci@example.com');
   git(seed, 'config', 'user.name', 'ci');
   writeFileSync(join(seed, 'README.md'), 'mirror target\n');
-  git(seed, 'add', 'README.md');
+  writeFileSync(
+    join(seed, '.github', 'workflows', 'target-owned.yml'),
+    'name: Target workflow\n',
+  );
+  git(seed, 'add', '.');
   git(seed, 'commit', '-m', 'Initialize mirror target');
   git(seed, 'remote', 'add', 'origin', remote);
   git(seed, 'push', '-u', 'origin', 'main');

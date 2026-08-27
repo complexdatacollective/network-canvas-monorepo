@@ -115,8 +115,8 @@ const APP_MIRROR_OVERRIDES = {
       // anyone develops.
       '.agents',
       '.claude',
-      // The standalone repository owns its release automation. Never mirror
-      // monorepo app workflows into it, including docker-publish.yml.
+      // The standalone Fresco repository must contain no GitHub Actions
+      // workflows, including docker-publish.yml.
       '.github/workflows',
     ],
   },
