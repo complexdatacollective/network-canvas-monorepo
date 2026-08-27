@@ -1195,6 +1195,7 @@ test('cosmetic developer-origin variants never certify', async () => {
   );
   for (const variant of [
     'https://interviewer.networkcanvas.dev:443',
+    'https://interviewer.networkcanvas.dev:0443',
     'https://INTERVIEWER.networkcanvas.dev',
   ]) {
     const res = await run(makeAgent(jr), {

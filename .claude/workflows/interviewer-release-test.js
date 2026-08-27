@@ -62,7 +62,10 @@ const DEFAULT_URL = 'https://interviewer.networkcanvas.dev';
 // slash — so a cosmetic variant of the developer origin cannot slip the
 // certification exclusion below.
 const canonicalOrigin = (u) =>
-  String(u).toLowerCase().replace(/\/+$/, '').replace(/:443$/, '');
+  String(u)
+    .toLowerCase()
+    .replace(/\/+$/, '')
+    .replace(/:0*443$/, '');
 const url = canonicalOrigin((args && args.url) || DEFAULT_URL);
 // When certifying a release, pass the exact version the release will ship —
 // preflight fails unless the deployment serves it, so a stale deploy (an
@@ -437,8 +440,10 @@ CHECKS (in one or more scripts, fresh profile each run):
    confirm the switch reads back its state.
 5. invalid import: write a small garbage file named bad.netcanvas and feed it
    to the hidden input [data-testid="protocol-import-input"] via
-   setInputFiles. Expect an "Import failed" toast and a still-healthy app
-   (deck renders, no crash).
+   setInputFiles. Record the protocol count BEFORE the attempt; expect an
+   "Import failed" toast, the count unchanged, and — after a reload — no
+   card or partial record persisted for the garbage file (a failure that
+   half-imports is storage corruption, not a pass).
 6. real file import: obtain the newest Development.netcanvas from this
    monorepo's GitHub releases (a release named like
    "@codaco/development-protocol-…" on complexdatacollective/network-canvas-monorepo;
@@ -714,13 +719,18 @@ CHECKS:
    only on the dashboard). Exit via that menu's "Exit interview" → confirm,
    unlocking if prompted. Then dashboard Settings (gear,
    data-testid="settings-trigger") → Security → "Change PIN" → current PIN +
-   new PIN + confirm → then lock (top bar) and unlock with the NEW PIN.
+   new PIN + confirm → then lock (top bar), assert the OLD PIN is REJECTED
+   (field clears, app stays locked — a change that leaves the old
+   credential valid has failed its purpose), and only then unlock with the
+   NEW PIN.
 7. Encryption chip: the status row's encryption chip
    (data-testid="encryption-status-trigger") reads "Encrypted" while enrolled.
 8. Revoke: Settings → Security → the "Revoke device lock" row → "Revoke" →
    confirm dialog "Revoke device lock and wipe data?" with confirm label
-   "Destroy device data" → the app resets to a clean slate (0 protocols, no
-   lock, immediately usable).
+   "Destroy device data" → after a reload the app is a clean slate: the
+   status row reads 0 protocols AND 0 interviews (check 4 created a
+   session — surviving session rows mean the wipe lied), the /data view is
+   empty, no lock, immediately usable.
 9. Passphrase enrolment (quick pass): /welcome again → choose "Passphrase" →
    "correct-horse-battery-1" twice + the no-recovery checkbox → finish →
    reload → unlock via the "Passphrase" field
