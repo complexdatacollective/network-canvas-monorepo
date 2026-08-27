@@ -22,11 +22,32 @@ export const onRequestError: Instrumentation.onRequestError = async (
     const { POSTHOG_APP_PROPERTIES } = await import('./fresco.config');
     const { prisma } = await import('./lib/db');
 
+    // Query the settings directly instead of using the cached queries from
+    // queries/appSettings. Those use 'use cache' + cacheLife(), which isn't
+    // available in the instrumentation context.
+    //
+    // The environment variable only forces analytics off, mirroring
+    // getDisableAnalytics — an unset or false value defers to the database.
+    let disableAnalytics = env.DISABLE_ANALYTICS ?? false;
+    if (!disableAnalytics) {
+      try {
+        const setting = await prisma.appSettings.findUnique({
+          where: { key: 'disableAnalytics' },
+        });
+        disableAnalytics = setting?.value === 'true';
+      } catch {
+        // Without the setting we can't tell whether this deployment consented
+        // to analytics, so stay silent rather than assume consent.
+        disableAnalytics = true;
+      }
+    }
+
+    if (disableAnalytics) {
+      return;
+    }
+
     const posthog = getPostHogServer();
 
-    // Query installation ID directly instead of using the cached query
-    // from queries/appSettings. The cached version uses 'use cache' +
-    // cacheLife(), which isn't available in the instrumentation context.
     let distinctId = env.INSTALLATION_ID;
     if (!distinctId) {
       const result = await prisma.appSettings.findUnique({

@@ -4,10 +4,17 @@ const {
   mockCaptureException,
   mockFlushPostHog,
   mockGetPostHogSessionProperties,
+  mockFindUnique,
+  mockEnv,
 } = vi.hoisted(() => ({
   mockCaptureException: vi.fn(),
   mockFlushPostHog: vi.fn(),
   mockGetPostHogSessionProperties: vi.fn(),
+  mockFindUnique: vi.fn(),
+  mockEnv: { INSTALLATION_ID: 'install-123' } as {
+    INSTALLATION_ID?: string;
+    DISABLE_ANALYTICS?: boolean;
+  },
 }));
 
 vi.mock('../../lib/posthog-server', () => ({
@@ -18,7 +25,7 @@ vi.mock('../../lib/posthog-server', () => ({
 }));
 
 vi.mock('../../env', () => ({
-  env: { INSTALLATION_ID: 'install-123' },
+  env: mockEnv,
 }));
 
 vi.mock('../../fresco.config', () => ({
@@ -31,13 +38,29 @@ vi.mock('../../fresco.config', () => ({
 }));
 
 vi.mock('../../lib/db', () => ({
-  prisma: { appSettings: { findUnique: vi.fn() } },
+  prisma: { appSettings: { findUnique: mockFindUnique } },
 }));
+
+const REQUEST = {
+  path: '/test',
+  method: 'GET',
+  headers: { 'x-posthog-session-id': 'browser-session-123' },
+};
+
+const CONTEXT = {
+  routerKind: 'App Router',
+  routePath: '/test',
+  routeType: 'route',
+  revalidateReason: undefined,
+} as const;
 
 describe('Fresco request-error instrumentation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv('NEXT_RUNTIME', 'nodejs');
+    mockEnv.INSTALLATION_ID = 'install-123';
+    delete mockEnv.DISABLE_ANALYTICS;
+    mockFindUnique.mockResolvedValue(null);
     mockGetPostHogSessionProperties.mockReturnValue({
       $session_id: 'browser-session-123',
     });
@@ -51,20 +74,7 @@ describe('Fresco request-error instrumentation', () => {
     const error = new Error('request failed');
     const { onRequestError } = await import('../../instrumentation');
 
-    await onRequestError(
-      error,
-      {
-        path: '/test',
-        method: 'GET',
-        headers: { 'x-posthog-session-id': 'browser-session-123' },
-      },
-      {
-        routerKind: 'App Router',
-        routePath: '/test',
-        routeType: 'route',
-        revalidateReason: undefined,
-      },
-    );
+    await onRequestError(error, REQUEST, CONTEXT);
 
     expect(mockGetPostHogSessionProperties).toHaveBeenCalledWith(
       'browser-session-123',
@@ -78,5 +88,36 @@ describe('Fresco request-error instrumentation', () => {
       }),
     );
     expect(mockFlushPostHog).toHaveBeenCalledOnce();
+  });
+
+  it('sends nothing when DISABLE_ANALYTICS is set', async () => {
+    mockEnv.DISABLE_ANALYTICS = true;
+    const { onRequestError } = await import('../../instrumentation');
+
+    await onRequestError(new Error('request failed'), REQUEST, CONTEXT);
+
+    expect(mockCaptureException).not.toHaveBeenCalled();
+    expect(mockFlushPostHog).not.toHaveBeenCalled();
+  });
+
+  it('sends nothing when the stored setting disables analytics', async () => {
+    mockFindUnique.mockResolvedValue({
+      key: 'disableAnalytics',
+      value: 'true',
+    });
+    const { onRequestError } = await import('../../instrumentation');
+
+    await onRequestError(new Error('request failed'), REQUEST, CONTEXT);
+
+    expect(mockCaptureException).not.toHaveBeenCalled();
+  });
+
+  it('stays silent when the setting cannot be read', async () => {
+    mockFindUnique.mockRejectedValue(new Error('database is down'));
+    const { onRequestError } = await import('../../instrumentation');
+
+    await onRequestError(new Error('request failed'), REQUEST, CONTEXT);
+
+    expect(mockCaptureException).not.toHaveBeenCalled();
   });
 });
