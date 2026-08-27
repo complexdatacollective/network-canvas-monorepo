@@ -2,7 +2,7 @@
 
 ## Overview
 
-Implement protocol-authored localization as schema version 9, using
+Implement protocol-authored localization as schema version 10, using
 `@formatjs/intl-localematcher` for deterministic best-fit locale matching.
 The implementation adds a strict-but-incomplete `LocalizedString` contract,
 separate warning analysis, universal locale utilities, React resolution
@@ -13,11 +13,13 @@ The design authority is
 `docs/superpowers/specs/2026-08-27-protocol-localization-design.md`. The schema
 8 corrections and migration invariants in
 `docs/superpowers/specs/2026-08-25-schema-8-corrections-design.md` remain in
-force.
+force. The accepted Dynamic Rosters design and epic (#1449, #1457) own schema
+9; its schema issue #1451 is a prerequisite for localization's versioned
+schema work.
 
 This is a coordinated cross-workspace change. Keep it on one feature branch
 and make milestone-sized commits, but do not merge a state in which
-`CURRENT_SCHEMA_VERSION` is 9 while a modern host still assumes schema-8
+`CURRENT_SCHEMA_VERSION` is 10 while a modern host still assumes schema-9
 strings. The current-version flip is deliberately late.
 
 ## Planning context
@@ -26,14 +28,14 @@ strings. The current-version flip is deliberately late.
 
 | Decision                                      | Reason                                                                                                                                                                   |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Schema 9 is required                          | Participant-facing fields change from strings to locale-keyed objects, which is a real protocol contract change.                                                         |
+| Schema 10 is required                         | Participant-facing fields change from strings to locale-keyed objects; schema 9 is already assigned to Dynamic Rosters, so localization follows it.                      |
 | Keep helpers in `@codaco/protocol-validation` | The functions operate on protocol-owned types; every modern host already depends on the package; this avoids a new public package and dependency cycle.                  |
 | Keep React integration in `@codaco/interview` | Protocol-validation remains framework-free and works in Node, Vite, Next server code, workers, and the CLI.                                                              |
 | Use FormatJS `best fit` explicitly            | It implements the ECMA-402 locale matching behavior the browser does not expose as a public arbitrary-resource matcher.                                                  |
 | Persist one selected locale                   | It makes resume deterministic and avoids retaining the user's full browser/header preference list.                                                                       |
 | Missing translations are warnings             | Partially translated protocols remain valid and runnable; extra locale keys, empty maps, and violations of the owning field's existing content constraint remain errors. |
 | Fallback follows declared locale order        | Object key insertion order is not an authoring contract; `localization.locales` becomes the explicit final fallback priority.                                            |
-| Migrate unknown-language text to `und`        | Automatic migration cannot truthfully infer that arbitrary schema-8 content is English.                                                                                  |
+| Migrate unknown-language text to `und`        | Automatic migration cannot truthfully infer that arbitrary schema-9 content is English.                                                                                  |
 | Add codebook `label` beside `name`            | Participant copy becomes localizable without making export column/type names locale-dependent.                                                                           |
 | Store locale in session and export metadata   | The language used is part of the conditions under which interview data was collected.                                                                                    |
 | Do not deep-resolve the whole protocol        | That would erase the source locale of fallback text and prevent accurate DOM `lang`/`dir`.                                                                               |
@@ -49,6 +51,9 @@ strings. The current-version flip is deliberately late.
   must typecheck the entire affected closure.
 - Protocol migrations do not add/remove/reorder stages or change collected
   answer-value shapes.
+- Localization copies the complete Dynamic Rosters schema-9 tree and preserves
+  its `dynamicnetwork` asset contract, references, and v8-to-v9 migration. It
+  never creates a second incompatible schema 9.
 - Classic apps keep their external legacy protocol-validation dependencies.
 - Locale-derived display labels and direction never become protocol data or
   protocol hash inputs.
@@ -57,19 +62,20 @@ strings. The current-version flip is deliberately late.
 ### Delivery shape
 
 Prefer one coordinated implementation pull request because switching
-`CurrentProtocol` to schema 9 changes public field types across Architect,
-Interview, builders, hosts, Studio's protocol store, and tests. Fresco is the
-delivery exception: its compatibility code and additive database changes must
-deploy and be verified before a follow-up activation change enables the
-schema-9 row rewrite. If review size requires other stacked pull requests,
-only the framework-free matcher utilities may land independently; do not
-export or activate schema 9 until the consumer stack is ready.
+`CurrentProtocol` to schema 10 changes public field types across Architect,
+Interview, builders, hosts, Studio's protocol store, and tests. Dynamic
+Rosters schema 9 must land first. Fresco may use a staged hosted rollout, but
+the activation image itself must safely handle installations that skip an
+intermediate release; it never rewrites stored protocols before the new
+server starts. If review size requires other stacked pull requests, only the
+framework-free matcher utilities may land before schema 9; do not export or
+activate schema 10 until the consumer stack is ready.
 
 ## Milestone 0: Establish the implementation baseline
 
 **Files to inspect, not initially edit:**
 
-- `packages/protocol-validation/src/schemas/8/**`
+- `packages/protocol-validation/src/schemas/9/**`
 - `packages/protocol-validation/src/schemas/index.ts`
 - `packages/protocol-validation/src/migration/**`
 - `packages/protocol-validation/src/utils/collectEntityAttributeReferences.ts`
@@ -84,18 +90,21 @@ export or activate schema 9 until the consumer stack is ready.
 
 **Work:**
 
-1. Confirm the feature branch is not `main`, record `git status`, and preserve
+1. Confirm #1451 has landed and the repository's current schema-9 tree contains
+   the accepted Dynamic Rosters contract. If it has not, continue only the
+   framework-free Milestone 1 work; do not create a competing versioned tree.
+2. Confirm the feature branch is not `main`, record `git status`, and preserve
    unrelated changes.
-2. Run dependency installation only if the workspace is not ready.
-3. Run the current focused baseline suites:
+3. Run dependency installation only if the workspace is not ready.
+4. Run the current focused baseline suites:
    `@codaco/protocol-validation` tests/typecheck, `@codaco/interview`
    tests/typecheck, Architect unit tests/typecheck, Interviewer unit
    tests/typecheck, Fresco unit tests/typecheck, Studio server unit
    tests/typecheck, and network-exporters tests.
-4. Inventory every participant render of the fields listed in the design.
+5. Inventory every participant render of the fields listed in the design.
    Use schema searches plus TypeScript call sites; do not rely only on a text
    search for `label`.
-5. Record the known failing baseline before changing code.
+6. Record the known failing baseline before changing code.
 
 **Acceptance criteria:**
 
@@ -171,38 +180,40 @@ export or activate schema 9 until the consumer stack is ready.
 - A source import and a packed protocol-validation import both work.
 - No application behavior changes yet.
 
-## Milestone 2: Add schema 9 and LocalizedString metadata
+## Milestone 2: Add schema 10 and LocalizedString metadata
 
 **Files:**
 
-- `packages/protocol-validation/src/schemas/9/**` (new copy of schema 8)
-- `packages/protocol-validation/src/schemas/9/localized-string.ts` (new)
+- `packages/protocol-validation/src/schemas/10/**` (new copy of schema 9)
+- `packages/protocol-validation/src/schemas/10/localized-string.ts` (new)
 - `packages/protocol-validation/src/utils/collectLocalizedStrings.ts` (new)
 - `packages/protocol-validation/src/localization/analyzeProtocolLocalization.ts` (new)
-- `packages/protocol-validation/src/schemas/9/__tests__/localized-string.test.ts` (new)
-- `packages/protocol-validation/src/schemas/9/__tests__/localization-coverage.test.ts` (new)
-- `packages/protocol-validation/src/schemas/9/__tests__/localized-disease-labels.test.ts` (new)
+- `packages/protocol-validation/src/schemas/10/__tests__/localized-string.test.ts` (new)
+- `packages/protocol-validation/src/schemas/10/__tests__/localization-coverage.test.ts` (new)
+- `packages/protocol-validation/src/schemas/10/__tests__/localized-disease-labels.test.ts` (new)
 - `packages/protocol-validation/src/schemas/index.ts`
 - `packages/protocol-validation/src/index.ts`
 
 **Work:**
 
-1. Copy schema 8 to `schemas/9` as the established version-isolation model.
-   Update internal relative imports and schema literals; do not make schema 9
-   re-export or mutate schema-8 definitions.
+1. Copy the complete Dynamic Rosters schema 9 tree to `schemas/10` using the
+   established version-isolation model. Preserve `dynamicnetwork`, its asset
+   reference refinements, and all schema-9 corrections. Update internal
+   relative imports and schema literals; do not make schema 10 re-export or
+   mutate schema-9 definitions.
 2. Define `LocaleTagSchema`, `ProtocolLocalizationSchema`, and a localized
    string schema factory. The base localized schema validates at least one key;
-   the factory preserves each owning field's schema-8 content constraint (for
+   the factory preserves each owning field's schema-9 content constraint (for
    example, `min(1)` for required prompt text) and attaches a stable Zod
    metadata descriptor.
-3. Add the required root `localization` declaration to protocol schema 9.
+3. Add the required root `localization` declaration to protocol schema 10.
 4. Convert the full participant-facing field inventory from the design: stage
    labels, codebook labels, variable labels/options, prompts, forms, panels,
    Information, Anonymisation, Family Pedigree, Network Composer, Roster,
    Narrative, and Narrative Pedigree. Network Composer includes its
    stage-level Visual Analog Scale `parameters.minLabel` and `maxLabel`
    overrides, not only codebook scalar parameters.
-5. Replace the schema-9 Network Composer field's untyped Visual Analog Scale
+5. Replace the schema-10 Network Composer field's untyped Visual Analog Scale
    parameter path with a component-aware branch that gives `minLabel` and
    `maxLabel` localized, metadata-tagged schemas while retaining compatibility
    for other unknown parameter keys. The current loose record plus runtime
@@ -220,7 +231,7 @@ export or activate schema 9 until the consumer stack is ready.
    existing collector, invoke the `finishing-a-refactor` skill and enumerate
    both collectors' call sites before adopting it. A focused independent
    collector is preferable if generic extraction would obscure behavior.
-10. In the schema-9 root refinement, collect every localized string and reject
+10. In the schema-10 root refinement, collect every localized string and reject
     keys not declared by the root localization config. Emit the issue at the
     offending key path.
 11. Implement `analyzeProtocolLocalization` over the same collected hits. For
@@ -230,11 +241,11 @@ export or activate schema 9 until the consumer stack is ready.
     `validateProtocol`.
 12. Change interface-owned option validation to pin values/order/semantic
     flags while permitting localized labels.
-13. Move Narrative Pedigree label uniqueness to the protocol-level schema-9
+13. Move Narrative Pedigree label uniqueness to the protocol-level schema-10
     refinement. Resolve labels for every declared locale before normalizing
     and comparing them.
-14. Add `ProtocolSchemaV9` to the versioned schema union and export
-    `Protocol<9>`, but leave `CURRENT_SCHEMA_VERSION` at 8 until the activation
+14. Add `ProtocolSchemaV10` to the versioned schema union and export
+    `Protocol<10>`, but leave `CURRENT_SCHEMA_VERSION` at 9 until the activation
     milestone.
 
 **Tests:**
@@ -248,10 +259,10 @@ export or activate schema 9 until the consumer stack is ready.
   generate warnings whose fallback locale matches runtime resolution for the
   missing declared locale.
 - Empty objects, empty values on fields whose existing contract is nonempty,
-  invalid tags, and noncanonical tags fail. Fields whose schema-8 contract
+  invalid tags, and noncanonical tags fail. Fields whose schema-9 contract
   deliberately allowed an empty value retain that behavior.
-- Schema-8 protocols remain parsed only by schema 8; schema-9 maps are never
-  backported into schema 8.
+- Schema-9 protocols remain parsed only by schema 9; schema-10 maps are never
+  backported into schema 9.
 - Collector conformance test enumerates expected metadata hits from a complete
   fixture, so a future schema field cannot disappear silently.
 - Disease collisions caused by fallback fail for the affected locale; distinct
@@ -259,17 +270,18 @@ export or activate schema 9 until the consumer stack is ready.
 
 **Acceptance criteria:**
 
-- Schema 8 remains byte-for-byte compatible in its public validation behavior.
-- Schema 9 validates complete and incomplete localized fixtures as designed.
+- Schema 9 remains behaviorally frozen, including the complete
+  `dynamicnetwork` contract.
+- Schema 10 validates complete and incomplete localized fixtures as designed.
 - Warning analysis and blocking validation are separate APIs.
 
-## Milestone 3: Implement v8-to-v9 migration and version plumbing
+## Milestone 3: Implement v9-to-v10 migration and version plumbing
 
 **Files:**
 
-- `packages/protocol-validation/src/schemas/9/migration.ts` (new)
-- `packages/protocol-validation/src/schemas/9/__tests__/migration.test.ts` (new)
-- `packages/protocol-validation/src/schemas/9/__tests__/migration-fuzz.test.ts` (new)
+- `packages/protocol-validation/src/schemas/10/migration.ts` (new)
+- `packages/protocol-validation/src/schemas/10/__tests__/migration.test.ts` (new)
+- `packages/protocol-validation/src/schemas/10/__tests__/migration-fuzz.test.ts` (new)
 - `packages/protocol-validation/src/migration/index.ts`
 - `packages/protocol-validation/src/migration/migrate-protocol.ts`
 - `packages/protocol-validation/src/utils/hashProtocol.ts`
@@ -277,8 +289,9 @@ export or activate schema 9 until the consumer stack is ready.
 
 **Work:**
 
-1. Add schema 9 to `ProtocolTypeMap` and register `migrationV8toV9`.
-2. Implement typed, explicit mapping helpers for each v8 schema family. Do not
+1. Add schema 10 to `ProtocolTypeMap` and register `migrationV9toV10` after the
+   Dynamic Rosters v8-to-v9 step.
+2. Implement typed, explicit mapping helpers for each v9 schema family. Do not
    recursively wrap every property named `label`, `title`, or `text`; that
    would localize researcher metadata and machine fields accidentally.
 3. Add `{ defaultLocale: 'und', locales: ['und'] }` and wrap known
@@ -289,14 +302,16 @@ export or activate schema 9 until the consumer stack is ready.
    recursive property-name matching inside the loose stage parameter record.
 5. Omit an optional localized field if its old optional string is empty and
    the target editor treats that as absence. Wrap an empty value when the field
-   is required or its schema-8 contract treats empty as data; do not invent
+   is required or its schema-9 contract treats empty as data; do not invent
    replacement text.
 6. Preserve stage array length/order, ids, references, option values, codebook
-   keys, and all fields that determine collected answer shape.
+   keys, and all fields that determine collected answer shape. Preserve every
+   schema-9 `dynamicnetwork` request, header, placeholder, sample source/hash,
+   asset reference, and validation invariant unchanged.
 7. Add a migration note that the source language could not be inferred and
    should be identified in Architect.
 8. Replace current-only post-validation in `migrateProtocol` with a map of
-   target validators for schema 7, 8, and 9. Preserve the default return as
+   target validators for schema 7, 8, 9, and 10. Preserve the default return as
    `CurrentProtocol`; add typed overloads/generics only where they remain
    honest for supported target schemas.
 9. Change `ProtocolMigrator` caching to include the effective target version
@@ -304,9 +319,9 @@ export or activate schema 9 until the consumer stack is ready.
    make `clearCache(cacheKey)` clear all target variants for that caller key.
 10. Update `hashProtocol` to hash
     `{ localization, codebook, stages }`. Decide the compatibility signature
-    explicitly: schema-8 callers either pass an optional localization until
-    activation or use a version-discriminated helper so old tests remain
-    meaningful.
+    explicitly: a version-discriminated helper retains the legacy input for
+    schema 9 and includes localization for schema 10, so stored older rows and
+    migrated current documents each have an honest identity.
 11. Add structural invariant tests comparing before/after stage ids/order and
     option values. Use the existing migration fuzz approach for copy purity
     and deterministic output.
@@ -320,8 +335,11 @@ export or activate schema 9 until the consumer stack is ready.
 - Existing input is not mutated.
 - Optional empty content is omitted and required content is preserved.
 - Migration warnings include the `und` instruction.
-- Migration to target 8 post-validates schema 8 after schema 9 exists.
-- The same caller cache key used first for target 8 and then target 9 returns
+- A complete Dynamic Rosters fixture migrates with every `dynamicnetwork`
+  field/reference unchanged and still validates/runs at schema 10.
+- Migration to target 9 post-validates schema 9 after schema 10 exists; retain
+  the target-8 regression as well.
+- The same caller cache key used first for target 9 and then target 10 returns
   the correct distinct schema versions; repeated calls at one target share the
   cached result; clearing the key removes both variants.
 - Hash changes for a translation, default locale, or locale order; name,
@@ -329,7 +347,8 @@ export or activate schema 9 until the consumer stack is ready.
 
 **Acceptance criteria:**
 
-- Any valid schema-8 protocol migrates deterministically to valid schema 9.
+- Any valid schema-9 protocol migrates deterministically to valid schema 10;
+  any valid schema-8 protocol reaches the same result through v8→v9→v10.
 - Migration invariants have executable tests.
 - Intermediate-target migration no longer relies on the current schema.
 
@@ -348,7 +367,7 @@ export or activate schema 9 until the consumer stack is ready.
 
 **Work:**
 
-1. Build a one-use typed conversion script or use the v8-to-v9 migrator as a
+1. Build a one-use typed conversion script or use the v9-to-v10 migrator as a
    starting point, then explicitly relabel known English first-party content
    from `und` to `en-US`.
 2. Convert canonical protocol sources, not generated compatibility copies;
@@ -365,14 +384,15 @@ export or activate schema 9 until the consumer stack is ready.
 6. Add one canonical intentionally incomplete multilingual fixture used across
    schema, runtime, host, and E2E tests.
 7. Validate that generated compatibility packages and protocol archives carry
-   schema 9 and the correct localization declaration.
+   schema 10 and the correct localization declaration.
 
 **Acceptance criteria:**
 
 - All first-party English protocols declare `en-US`, not `und`.
 - Builders can generate complete, incomplete, regional-variant, and RTL
   protocol fixtures without unsafe assertions.
-- The protocol corpus validates under schema 9.
+- The protocol corpus validates under schema 10 and retains valid
+  `dynamicnetwork` fixtures from schema 9.
 
 ## Milestone 5: Add Interview runtime localization context
 
@@ -482,7 +502,7 @@ export or activate schema 9 until the consumer stack is ready.
 - `apps/architect/src/selectors/protocol.ts`
 - `apps/architect/src/ducks/modules/activeProtocol.ts`
 - `apps/architect/src/ducks/modules/protocol/**`
-- Every existing field/editor for a schema-9 LocalizedString
+- Every existing field/editor for a schema-10 LocalizedString
 - `apps/architect/src/components/PreviewHost/messages.ts`
 - `apps/architect/src/components/PreviewHost/launchPreview.ts`
 - `apps/architect/src/components/PreviewHost/PreviewHost.tsx`
@@ -548,7 +568,7 @@ export or activate schema 9 until the consumer stack is ready.
   coverage warning.
 - Read-only protocol views expose localization coverage without edit controls.
 - E2E: migrate/open v8, identify `und`, add Spanish, observe warnings, translate
-  one field, preview Spanish with fallback, download valid schema 9.
+  one field, preview Spanish with fallback, download valid schema 10.
 
 **Acceptance criteria:**
 
@@ -581,12 +601,13 @@ export or activate schema 9 until the consumer stack is ready.
 2. Add a Dexie version only if an index or upgrade transform is needed. A
    nonindexed field can be populated by the existing launch-time protocol
    migration transaction; do not add a schema version without a storage need.
-3. Extend protocol migration so schema-8 sessions repointed to a schema-9 hash
-   receive `und` in the same transaction. Preserve rollback on any failure.
+3. Extend protocol migration so pre-localization schema-8/schema-9 sessions
+   repointed to a schema-10 hash receive `und` in the same transaction.
+   Preserve rollback on any failure.
 4. Extend the commit-time `updateSession` race guard to preserve the freshest
    stored locale alongside `protocolHash` if migration lands during an
-   encryption gap. A legacy tab can still perform a schema-8 full-row write
-   after migration and remove the field, so extend the durable
+   encryption gap. A legacy tab can still perform a pre-localization full-row
+   write after migration and remove the field, so extend the durable
    `protocolMigrations` launch healer to restore missing locale to `und` while
    following the hash record. Never overwrite a locale that is present.
 5. Extend `createSession` with required locale. In NewSessionForm, compute the
@@ -608,7 +629,7 @@ export or activate schema 9 until the consumer stack is ready.
 - Migration transaction changes protocol hash and locale together; injected
   failure rolls back both.
 - Interleave current-bundle encryption with migration and prove the commit
-  guard preserves the freshest hash and locale. Then simulate a schema-8 tab's
+  guard preserves the freshest hash and locale. Then simulate a schema-9 tab's
   full-row write with no locale and prove the next launch heals it to `und`
   without changing network, progress, or current step.
 - Running locale change survives lock-screen route remount and app restart.
@@ -616,8 +637,8 @@ export or activate schema 9 until the consumer stack is ready.
 
 **Acceptance criteria:**
 
-- Every schema-9 Interviewer session has a declared locale.
-- No v8 session becomes orphaned or resumes in a different state.
+- Every schema-10 Interviewer session has a declared locale.
+- No pre-localization session becomes orphaned or resumes in a different state.
 
 ## Milestone 8: Persist locale in Fresco and preserve SSR parity
 
@@ -643,13 +664,13 @@ export or activate schema 9 until the consumer stack is ready.
 1. Add required JSON `localization` storage to `Protocol` and a non-null
    `locale` column to `Interview`. Backfill protocol rows with the migrated
    `und` declaration and existing interviews with `und` in coordination with
-   schema-9 migration. Use additive columns with database defaults so the
-   still-live schema-8 server can continue inserting rows during the first
+   schema-10 migration. Use additive columns with database defaults so a
+   still-live schema-8/schema-9 server can continue inserting rows during the
    build. SQL defaults are deployment safety nets, not the selection algorithm
    for new rows.
 2. Persist `protocol.localization` during import and include it in every
    protocol select/reconstruction path, current-schema result extension,
-   export, and interview payload mapping. A stored schema-9 protocol must
+   export, and interview payload mapping. A stored schema-10 protocol must
    round-trip `{ localization, stages, codebook }` without projection.
 3. Extend onboarding GET and POST parsing to accept an optional `locale` or
    choose one canonical parameter name (`locale` preferred in the typed API;
@@ -672,32 +693,31 @@ export or activate schema 9 until the consumer stack is ready.
    `navigator.languages`.
 8. New clients include locale in the sync schema and the route validates a
    supplied value against the interview's protocol declaration. Keep locale
-   optional at this HTTP boundary during rolling deployment: a schema-8 tab
-   that omits it must still save network, step, and metadata changes, and the
-   update must preserve the database's backfilled `und` locale. Reject a
-   supplied undeclared value with the existing generic 400 response.
-9. Decouple `migrateProtocolsToCompatibleVersion` activation from Interview's
-   runtime compatibility constant. The first Fresco release applies the
-   additive storage migration but leaves schema-8 rows and hashes untouched.
-   Its new server accepts stored schemas 8 and 9, migrating schema-8 content in
-   memory for the schema-9 Interview runtime and deriving `und` localization.
-   Compute the migrated schema-9 hash for runtime payloads and exports while
-   leaving the stored hash untouched; activation later persists that same
-   identity. Schema-9 imports write the complete new shape. Update strict
-   result extensions, `createInterview`, `mapInterviewPayload`, exports, and
-   every reconstruction path to share this bounded dual-read adapter.
-10. Release and verify that compatibility deployment in production before
-    enabling the data rewrite. In a follow-up activation change, enable the
-    idempotent schema-9 rewrite. `build:platform` may run it before `next build`
-    because the live compatibility server already accepts both row versions;
-    a later build failure must leave that server functional. Persist
-    localization, stages, codebook, hash, and schema version together and
-    preserve interview ids, locale, step indices, and networks.
-11. Keep the dual-read adapter and database defaults for the rollback window.
-    Never roll back to a pre-compatibility Fresco build after schema-9 rows
-    exist, and do not let the compatibility deployment create new schema-8
-    protocols.
-12. Include locale in relevant administrative summaries only where it provides
+   optional at this HTTP boundary during rolling deployment: a
+   pre-localization tab that omits it must still save network, step, and
+   metadata changes, and the update must preserve the database's backfilled
+   `und` locale. Reject a supplied undeclared value with the existing generic
+   400 response.
+9. Decouple `migrateProtocolsToCompatibleVersion` from Interview's runtime
+   compatibility constant and prevent `setup-database.ts` from advancing stored
+   protocol bodies or hashes to schema 10. This applies to both Netlify's
+   pre-build path and the GHCR container's pre-start path; correctness must not
+   depend on an installation having run an intermediate image.
+10. Add one permanent versioned read adapter for stored schemas 8, 9, and 10.
+    Use the registered chain to produce schema 10 in memory and derive `und`
+    localization, then compute the migrated schema-10 hash for runtime payloads
+    and exports while leaving storage untouched. Strict result extensions,
+    `createInterview`, `mapInterviewPayload`, exports, and every reconstruction
+    path use the adapter. New imports write schema 10 only.
+11. Treat mixed stored versions as supported. Persistent convergence may occur
+    only through an authenticated re-import or a separately invoked maintenance
+    command after a schema-10 server is healthy, with backup and rollback
+    consequences made explicit. It is optional, never runs at build/startup,
+    and is not required to conduct interviews.
+12. Keep the dual-read adapter and database defaults through the rollback
+    window. A hosted rollout may stage a compatibility release, but direct
+    self-hosted upgrades that skip it remain safe.
+13. Include locale in relevant administrative summaries only where it provides
     useful research context; do not localize protocol names in dashboard
     filters.
 
@@ -713,12 +733,13 @@ export or activate schema 9 until the consumer stack is ready.
 - Protocol import/read/current-schema reconstruction preserves localization;
   Prisma creation/backfill and deploy migration rollback cover both protocol
   localization and interview locale.
-- Compatibility-release setup leaves existing schema-8 protocol rows and
-  hashes unchanged, while the deployed server starts/resumes interviews from
-  mixed schema-8/schema-9 storage and writes only schema 9 for new imports.
-- Simulate activation committing its database transaction and then failing
-  before the new build activates. The still-live compatibility deployment
-  must start, resume, and sync interviews for the migrated rows.
+- Setup leaves existing schema-8/schema-9 protocol bodies and hashes unchanged,
+  while the schema-10 server starts/resumes interviews from mixed storage and
+  writes only schema 10 for new imports.
+- Upgrade directly from a pre-compatibility GHCR image to the schema-10 image,
+  then force build/start failure. Stored protocol rows remain unchanged and the
+  older installation can still run; retrying the schema-10 image starts,
+  resumes, and syncs every supported stored version.
 - Payload server/client equality and no hydration warning.
 - Sync accepts declared locale, rejects arbitrary locale, and preserves freeze
   behavior for completed interviews. A legacy locale-less sync after database
@@ -729,10 +750,10 @@ export or activate schema 9 until the consumer stack is ready.
 
 - Fresco selects locale before first client render.
 - Existing interviews remain resumable after schema/database migration.
-- No schema-9 protocol row can lose its root localization declaration.
+- No schema-10 protocol row can lose its root localization declaration.
 - No raw preference list is stored.
-- The schema-9 row rewrite cannot run until the dual-read compatibility
-  deployment has been released and verified.
+- No automatic pre-build or pre-start process rewrites a protocol row to schema
+  10, even when an installation skips releases.
 
 ## Milestone 9: Export selected locale without localizing analysis schema
 
@@ -772,7 +793,7 @@ export or activate schema 9 until the consumer stack is ready.
 - Researchers can determine the selected language for every exported session.
 - Existing analysis field identity is locale-independent.
 
-## Milestone 10: Activate schema 9 across modern consumers
+## Milestone 10: Activate schema 10 across modern consumers
 
 **Files:**
 
@@ -792,33 +813,33 @@ export or activate schema 9 until the consumer stack is ready.
 
 1. Add `localization` to Studio's settings section and strict schema, and prove
    sectionize/assemble/diff/migrate/publish preserves it. Older stored section
-   manifests assemble unchanged before canonical migration adds `und`.
-2. Set `CURRENT_SCHEMA_VERSION = 9` and
-   `CurrentProtocolSchema = ProtocolSchemaV9` only after the implementation
+   manifests for schema 8 or 9 assemble unchanged before canonical migration
+   adds `und`.
+2. Set `CURRENT_SCHEMA_VERSION = 10` and
+   `CurrentProtocolSchema = ProtocolSchemaV10` only after the implementation
    from Milestones 1-9, including Studio compatibility work, compiles
    successfully on the branch.
-3. Update current-version exports of interface-owned constants to schema 9.
+3. Update current-version exports of interface-owned constants to schema 10.
    Keep explicit schema-version imports where migration code needs old values.
 4. Confirm Interview's compatibility constant, Architect's typed constant,
-   Interviewer, Fresco, and Studio all derive 9 without new numeric literals.
-   Fresco's temporary stored-row migration gate is the explicit exception: it
-   is not derived from that runtime constant and remains disabled for the
-   compatibility release.
+   Interviewer, Fresco, and Studio all derive 10 without new numeric literals.
+   Fresco's stored-row migration cap is the explicit exception: it is not
+   derived from that runtime constant and must never make setup rewrite rows to 10.
 5. Run a literal-version search over active code, tests, scripts, fixture
    manifests, protocol archives, and documentation. Classify every remaining
-   `8` as historical/versioned or fix it.
+   `8` or `9` as historical/versioned/Dynamic-Rosters-owned or fix it.
 6. Run publish-export verification after a full build so the new helper and
    schema types are present in packed artifacts.
-7. After the compatibility Fresco release is verified, make the follow-up
-   activation change that enables its schema-9 row rewrite. Do not combine
-   these into one deployment even if all branch tests pass.
+7. Prove the activation build includes Fresco's mixed-version read adapter and
+   does not enable a schema-10 bulk rewrite in either setup path.
 
 **Acceptance criteria:**
 
-- All modern hosts report schema 9 from their single source of truth.
-- Studio round-trips the complete schema-9 settings section without dropping
+- All modern hosts report schema 10 from their single source of truth.
+- Studio round-trips the complete schema-10 settings section without dropping
   localization.
-- No current host constructs or accepts a schema-8-shaped `CurrentProtocol`.
+- No current host constructs or accepts a schema-9-shaped `CurrentProtocol`;
+  Fresco's storage boundary explicitly adapts versioned older rows instead.
 - Classic version boundaries remain unchanged.
 
 ## Milestone 11: Cross-surface verification and visual review
@@ -887,11 +908,14 @@ image diff, and do not adopt a broad baseline rewrite.
    explicit locale wins.
 10. Studio sectionizes, assembles, migrates, validates, and publishes a
     multilingual protocol without dropping localization.
-11. Classic app attempts schema 9: clear incompatibility, no partial import.
-12. Fresco compatibility build serves mixed stored versions; activation data
-    migration commits, the subsequent build is forced to fail, and the still-
-    live compatibility deployment continues new, resumed, and synced
-    interviews.
+11. Classic app attempts schema 10: clear incompatibility, no partial import.
+12. Fresco schema-10 image is installed directly over a pre-compatibility
+    image. Setup leaves schema-8/schema-9 rows unchanged; force startup failure,
+    verify the old image can still run, then retry and conduct new, resumed, and
+    synced interviews through the mixed-version adapter.
+13. A schema-9 protocol with a dynamic roster migrates to schema 10, retains
+    the endpoint request/sample/reference contract, and resolves localized
+    roster-stage copy.
 
 **Acceptance criteria:**
 
@@ -923,12 +947,13 @@ image diff, and do not adopt a broad baseline rewrite.
    affected libraries and apps, including `@codaco/shared-consts` for the
    public session-locale export consumed by the externally bundled network
    exporter. This ensures npm and the latest-development-protocol delivery
-   path actually receive schema 9 without an exporter/runtime version skew.
+   path actually receive schema 10 without an exporter/runtime version skew.
    Add a separate Studio-lane changeset for affected Studio packages. Do not
    mix Studio, Documentation, or Website with the normal lane or with one
    another.
 2. Explain in release notes:
-   - schema 9 and `LocalizedString`;
+   - schema 10 and `LocalizedString`, including its dependency on Dynamic
+     Rosters schema 9;
    - missing translation warnings versus validation errors;
    - exact fallback order;
    - `und` migration and Architect relabel workflow;
@@ -952,26 +977,29 @@ image diff, and do not adopt a broad baseline rewrite.
 
 | Risk                                                              | Mitigation                                                                                                                                             |
 | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| A participant-facing string is omitted from schema 9              | Complete the schema/render inventory before activation; metadata conformance fixture and compiler errors guard future drift.                           |
+| Localization forks Dynamic Rosters' schema 9                      | Make #1451 a prerequisite; copy the complete schema-9 tree into schema 10 and register only v9→v10 localization there.                                 |
+| A participant-facing string is omitted from schema 10             | Complete the schema/render inventory before activation; metadata conformance fixture and compiler errors guard future drift.                           |
 | Best-fit behavior differs between environments                    | Use the same FormatJS ponyfill everywhere and explicit `best fit`; run Node and browser contract tests.                                                |
 | Browser/server hydration picks different languages                | Fresco selects and persists locale before render; client receives it and never redetects.                                                              |
 | Missing translation becomes a production blocker                  | Keep coverage outside `validateProtocol`; assert incomplete fixtures import/run/download.                                                              |
-| Fallback produces duplicate disease labels                        | Resolve and compare disease labels for every declared locale during schema-9 validation.                                                               |
+| Fallback produces duplicate disease labels                        | Resolve and compare disease labels for every declared locale during schema-10 validation.                                                              |
 | Locale removal corrupts localized maps                            | Use schema-tagged paths, atomic update, collision/empty checks, confirmation, and undo tests.                                                          |
 | Translation changes alter export schema                           | Keep stable `name`, keys, and option values; test headers/GraphML keys across locales.                                                                 |
 | Locale preference leaks identifying data                          | Persist/export only the selected declared locale, never the raw ordered preference list.                                                               |
 | RTL mirrors graph data or breaks interaction                      | Scope direction to presentation, audit physical CSS/icons, and run matrix/visual/manual RTL checks.                                                    |
 | New schema strands in-progress sessions                           | Preserve migration invariants; update hash, protocol, session locale, and references transactionally in each host.                                     |
 | A legacy app tab erases or cannot sync locale-backed state        | Preserve freshest locale in current Interviewer writes, heal locale-less legacy rows, and accept omission at Fresco sync while retaining stored `und`. |
-| Fresco rewrites rows before a compatible server is active         | Ship and verify an additive, dual-read compatibility deployment first; enable the data rewrite only in a follow-up activation change.                  |
+| Fresco rewrites rows before a compatible server is active         | Never advance protocol rows in build/start setup; keep a permanent 8/9/10 read adapter so skipped self-hosted releases are safe.                       |
 | `und` is mistaken for English                                     | Dedicated warning and explicit relabel action; known first-party English sources are converted to `en-US`.                                             |
 | Shared package bundle becomes unusable in CLI/worker              | Keep helpers framework-free, bundle FormatJS, and test source and packed ESM imports.                                                                  |
 | Built-in English UI gives a false impression of full localization | State the boundary in Architect and docs; do not set document language globally for untranslated host chrome.                                          |
 
 ## Definition of done
 
-- Schema 9 represents every protocol-authored participant string as a valid
+- Schema 10 represents every protocol-authored participant string as a valid
   `LocalizedString` and retains stable semantic names/values.
+- Dynamic Rosters schema 9 and #1451 land first; schema 10 preserves its full
+  `dynamicnetwork` contract and v8→v9 migration.
 - Incomplete translations validate, warn, preview, run, resume, and export.
 - Undeclared keys, empty maps, invalid/canonicalization errors, and empty
   translations on fields with a nonempty content contract fail with exact
@@ -983,11 +1011,12 @@ image diff, and do not adopt a broad baseline rewrite.
   relabel `und`, and preview any locale.
 - Interview locale is selected, user-changeable, persisted, and included in
   CSV/GraphML metadata.
-- Schema-8 stored and imported protocols migrate without changing stages or
-  collected answer shapes.
-- Fresco persists the root localization declaration on import, read, migration,
-  payload construction, and export; Studio round-trips it in protocol settings.
-- Current-version constants are 9 across all modern consumers; Classic remains
+- Schema-9 stored and imported protocols migrate without changing stages or
+  collected answer shapes; schema 8 follows the complete v8→v9→v10 chain.
+- Fresco persists the root localization declaration for schema-10 imports and
+  preserves it through read, versioned adaptation, payload construction, and
+  export; Studio round-trips it in protocol settings.
+- Current-version constants are 10 across all modern consumers; Classic remains
   explicitly unsupported.
 - Relevant tests, corpus validation, typecheck, lint, knip, builds, E2E,
   accessibility review, and inspected visual baselines pass.
