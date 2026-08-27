@@ -71,8 +71,12 @@ EOF
 echo "[release-test] building image $IMAGE_TAG"
 docker build -t "$IMAGE_TAG" "$STAGE_DIR"
 
+# The bundler bakes the release plan's version into the staged manifest (the
+# working tree still carries the released one), so the stamp reports what the
+# image actually says it is.
+STAGED_VERSION="$(node -p "require('$STAGE_DIR/package.json').version")"
 IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$IMAGE_TAG")"
-STAMP="{\"image\":\"$IMAGE_TAG\",\"imageId\":\"$IMAGE_ID\",\"version\":\"$VERSION\",\"commit\":\"$COMMIT\",\"dirty\":$DIRTY}"
+STAMP="{\"image\":\"$IMAGE_TAG\",\"imageId\":\"$IMAGE_ID\",\"version\":\"$STAGED_VERSION\",\"commit\":\"$COMMIT\",\"dirty\":$DIRTY}"
 printf '%s\n' "$STAMP" >"$ARTIFACTS_DIR/stamp.json"
 
 rm -rf "$(dirname "$STAGE_DIR")"

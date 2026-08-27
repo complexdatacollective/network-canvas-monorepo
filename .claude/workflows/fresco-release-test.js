@@ -372,23 +372,29 @@ ${BROWSER_HOWTO}
     capture.pass = false;
     capture.notes = `${capture.notes ?? ''} [capture returned pass without summaryPath — treated as failed; the export diff cannot run]`;
   }
-  // And it cannot gate anything without network-bearing content: the
-  // interview COLLECTION endpoint is metadata-only, so with no UI archive and
-  // no per-interview payload snapshots a migration could corrupt every stored
-  // network and still diff clean.
+  // And it cannot gate anything without network-bearing content covering
+  // EVERY seeded interview: the interview COLLECTION endpoint is
+  // metadata-only, and a matching partial subset of payload snapshots on both
+  // sides would diff clean while corruption in the omitted interviews goes
+  // undetected. Without the UI archive, both passes must have snapshotted the
+  // full seeded set.
+  const expectedNetworks = seed?.counts?.interviews ?? SYNTHETIC_COUNT;
   if (
     capture?.pass &&
     !capture.uiExportCaptured &&
-    !((capture.networkSnapshots ?? 0) > 0)
+    !(
+      (capture.networkSnapshots ?? 0) >= expectedNetworks &&
+      (seed.networkSnapshots ?? 0) >= expectedNetworks
+    )
   ) {
     capture.pass = false;
-    capture.notes = `${capture.notes ?? ''} [no UI export archive and no per-interview payload snapshots — a metadata-only diff cannot detect network corruption]`;
+    capture.notes = `${capture.notes ?? ''} [no UI export archive and per-interview payload snapshots are incomplete (need ${expectedNetworks} on both sides; baseline ${seed.networkSnapshots ?? 0}, upgraded ${capture.networkSnapshots ?? 0}) — a partial or metadata-only diff cannot detect network corruption]`;
   }
 
   const integrity = await agent(
     `Verify data survived a Fresco upgrade at ${UPGRADE_URL}. Sign in as ${ADMIN_USER} / ${ADMIN_PASSWORD}. Pre-upgrade the instance had counts ${JSON.stringify(seed.counts ?? {})} (protocols include "Sample Protocol"; interviews are ${SYNTHETIC_COUNT} synthetic ones).
 ${BROWSER_HOWTO}
-Checks: dashboard summary counts match the pre-upgrade counts; the protocols page lists the seeded protocol; the interviews page lists the synthetic interviews; the participants page loads; the activity feed still shows pre-upgrade events (protocol upload, interview generation); settings values set during seeding are unchanged; a persisted interview still RESUMES on the upgraded build — open one seeded incomplete interview at its /interview/<id> URL (id from the interviews table or psql per AGENT_NOTES) and verify the interview shell renders its current stage without an error screen and that a request to /interview/<id>/sync succeeds in the network log. Do NOT interact with the stage content — render + sync only; this exercises Fresco's payload mapping and schema-version compatibility gate, not interview behaviour (the interview package covers that). Return one check per item.`,
+Checks: dashboard summary counts match the pre-upgrade counts; the protocols page lists the seeded protocol; the interviews page lists the synthetic interviews; the participants page loads; the activity feed still shows pre-upgrade events (protocol upload, interview generation); settings values set during seeding are unchanged; a persisted interview still RESUMES on the upgraded build — open one seeded incomplete interview at its /interview/<id> URL (id from the interviews table or psql per AGENT_NOTES) and verify the interview shell renders its current stage without an error screen. Then provoke a sync: the sync middleware only fires on a session STATE CHANGE, so an untouched stage sends nothing — use the shell's forward/back navigation control (shell chrome, not stage content) to advance or step the stage, and confirm a request to /interview/<id>/sync succeeds in the network log. If stage validation blocks navigation both ways, the render check alone passes this item — note that sync could not be provoked rather than failing it. Do NOT interact with stage content; this exercises Fresco's payload mapping and schema-version compatibility gate, not interview behaviour (the interview package covers that). Return one check per item.`,
     {
       label: 'verify-data-integrity',
       phase: 'Upgrade lane',

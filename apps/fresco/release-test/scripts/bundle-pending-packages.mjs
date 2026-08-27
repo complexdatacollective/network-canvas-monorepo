@@ -130,11 +130,26 @@ function collectPendingReleases() {
   });
   const plan = JSON.parse(readFileSync(planPath, 'utf8'));
   rmSync(join(planPath, '..'), { recursive: true, force: true });
-  return new Set(
+  const releases = new Map(
     plan.releases
       .filter((release) => release.type !== 'none')
-      .map((release) => release.name),
+      .map((release) => [release.name, release.newVersion]),
   );
+  return releases;
+}
+
+// The staged manifest still carries the RELEASED version (the Version
+// Packages PR bumps it only on merge), but the real mirror is built after
+// that bump — so bake the planned version in, or APP_VERSION and every
+// version-derived behaviour under test would be the previous release's.
+function applyPlannedAppVersion(stageDir, releases) {
+  const plannedVersion = releases.get('fresco');
+  if (!plannedVersion) return null;
+  const manifestPath = join(stageDir, 'package.json');
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  manifest.version = plannedVersion;
+  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  return plannedVersion;
 }
 
 // Grep-anchored patch: fail loudly if the Dockerfile drifts rather than
@@ -164,10 +179,12 @@ function main() {
   const vendorNames = closure.filter((name) => pending.has(name));
   const registryNames = closure.filter((name) => !pending.has(name));
   const vendorDir = join(stageDir, 'vendor');
+  const plannedAppVersion = applyPlannedAppVersion(stageDir, pending);
 
   const manifestOut = {
     vendored: {},
     registry: registryNames,
+    plannedAppVersion,
   };
 
   if (vendorNames.length === 0) {
