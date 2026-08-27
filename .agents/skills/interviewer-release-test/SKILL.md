@@ -39,7 +39,9 @@ Code's Workflow tool — run this command from Claude Code.)
      ships (for a Version Packages preview, the bumped version in that PR).
      Required when certifying, and always passed together with the matching
      `url`: the workflow refuses in code to certify a deployment serving a
-     different version, so a stale or wrong deploy can never pass.
+     different version, and a run WITHOUT it returns `certifying: false`
+     with a "not release-certifying" banner — only a full-coverage, pinned
+     run certifies.
 2. Invoke the Workflow tool:
    `Workflow({ name: 'interviewer-release-test-workflow', args: { url, expectedVersion, journeys, model } })`
    (equivalently `scriptPath: '<repo-root>/.claude/workflows/interviewer-release-test.js'`).

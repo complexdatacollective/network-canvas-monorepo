@@ -232,7 +232,9 @@ starts from a fresh profile — that is fine; the journey is self-contained and
 cheap to replay from the top. After each run, inspect the console output, Read
 the saved screenshots, and dump ARIA snapshots
 (await page.locator('body').ariaSnapshot()) before extending the script.
-Save a screenshot at every checkpoint under ${workDir}/<your-journey-key>/
+Save a screenshot at every checkpoint — AT LEAST one per numbered check
+(the evidence audit enforces a per-journey minimum; a run without them is
+rejected as incomplete) — under ${workDir}/<your-journey-key>/
 and set artifactsDir to EXACTLY that directory — ${workDir}/<your-journey-key>
 — in your result; any other value is rejected by the verdict logic.
 
@@ -333,6 +335,20 @@ const expectedChecks = {
   'security-vault': 10,
   'pwa-offline': 10,
   'settings-and-chrome': 9,
+};
+
+// Minimum on-disk screenshots per journey (at least one per numbered check,
+// minus the checks the prompt permits to skip; conduct additionally saves a
+// per-stage image and skip logic may legitimately reduce the stage count).
+// A single token PNG must not satisfy the evidence audit.
+const minScreenshots = {
+  'protocol-management': 8,
+  'conduct-sample-interview': 20,
+  'session-management': 7,
+  'data-export': 6,
+  'security-vault': 8,
+  'pwa-offline': 7,
+  'settings-and-chrome': 8,
 };
 
 // Check numbers each prompt explicitly permits to be skipped (environmental
@@ -575,9 +591,13 @@ CHECKS:
    the archive contains .csv files and NO .graphml files. Restore both on.
 6. Abandon before save: checks 1–5 already exported the original five
    sessions, so first generate ONE more synthetic session to get a fresh
-   never-exported row. Export only that session but click "Cancel" in the
-   "Archive ready" state instead of saving — no download occurs and that
-   row's Export status stays "Not exported".
+   never-exported row. ARM a download listener BEFORE triggering the export
+   (page.waitForEvent('download') raced against a timeout — never assert
+   "no download" from a moment's glance). Export only that session, reach
+   "Archive ready", click "Cancel", positively observe the dialog closed,
+   then hold ~5 s and assert the armed listener never fired; finally RELOAD
+   /data and re-read that row's persisted Export status — it must still be
+   "Not exported" (a stale pre-cancel DOM is not evidence).
 7. Cancel during build (data-testid="export-cancel-build"): attempt to cancel
    within the dialog's initial pause; if the build outruns you twice, mark
    this check skipped rather than failed.
@@ -764,6 +784,9 @@ if (requested) {
 if (!selected.length) throw new Error('No valid journeys selected');
 // A subset run is diagnostic, never release-certifying.
 const partial = selected.length !== journeyDefs.length;
+// A run certifies a release only when it is full-coverage AND pinned to the
+// candidate's version — an unpinned run cannot prove which deploy it tested.
+const certifying = !partial && Boolean(expectedVersion);
 
 const preflight = await agent(
   `You are the preflight check of the Interviewer release smoke test against ${url}.
@@ -1034,11 +1057,12 @@ for (const r of results.filter(Boolean)) {
     );
   } else if (evidence) {
     const e = evidence.entries.find((x) => x.journey === r.journey);
-    if (!e || !e.exists || e.screenshots === 0) {
+    const needed = minScreenshots[r.journey] ?? 1;
+    if (!e || !e.exists || e.screenshots < needed) {
       if (!inconsistentJourneys.includes(r.journey))
         inconsistentJourneys.push(r.journey);
       automationIssues.push(
-        `journey "${r.journey}" has no on-disk evidence (${e ? `exists=${e.exists}, screenshots=${e.screenshots}` : 'not audited'}); treated as incomplete`,
+        `journey "${r.journey}" lacks on-disk evidence (${e ? `exists=${e.exists}, screenshots=${e.screenshots} of >=${needed} required` : 'not audited'}); treated as incomplete`,
       );
     }
   }
@@ -1217,13 +1241,17 @@ const checkCounts = journeys.reduce(
 
 const lines = [];
 lines.push(
-  `# Interviewer release smoke test — ${verdict}${partial ? ' (partial run — not release-certifying)' : ''}`,
+  `# Interviewer release smoke test — ${verdict}${certifying ? '' : partial ? ' (partial run — not release-certifying)' : ' (unpinned run — not release-certifying)'}`,
 );
 lines.push('');
 lines.push(`Target: ${url} (version ${preflight.version})`);
 if (partial)
   lines.push(
     `Coverage: partial — only ${selected.map((j) => j.key).join(', ')} ran. A subset run never certifies a release; run the full suite to certify.`,
+  );
+if (!partial && !expectedVersion)
+  lines.push(
+    'Coverage: full, but no expectedVersion was supplied — this run is not bound to a specific deployment and never certifies a release. Pass expectedVersion (with the candidate url) to certify.',
   );
 lines.push(
   `Journeys: ${journeys.length} run${deadJourneys.length ? `, ${deadJourneys.length} did not report (${deadJourneys.join(', ')})` : ''}${inconsistentJourneys.length ? `, ${inconsistentJourneys.length} inconsistent (${inconsistentJourneys.join(', ')})` : ''}. Checks: ${checkCounts.pass} passed, ${checkCounts.fail} failed, ${checkCounts.skipped} skipped.`,
@@ -1268,6 +1296,7 @@ log(`Verdict: ${verdict}`);
 return {
   verdict,
   coverage: partial ? 'partial' : 'full',
+  certifying,
   url,
   version: preflight.version,
   workDir: preflight.workDir,

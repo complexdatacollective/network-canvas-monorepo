@@ -183,7 +183,8 @@ monorepo with dependencies installed (it installs Playwright's chromium on
 first use). When certifying, always pass both `url` (the candidate's deploy
 preview) and `expectedVersion` (the version that preview's tree ships) so a
 stale or wrong deployment cannot produce the verdict — the binding is
-enforced in code, and preflight refuses a mismatch. Pass
+enforced in code, preflight refuses a mismatch, and a run without
+`expectedVersion` is marked `certifying: false` in its result and summary. Pass
 `args: { journeys: ["data-export"] }` to re-run a
 subset. Journeys are tiered across models for token efficiency (most run on
 Sonnet; the full interview walk and all failure verifiers run on Opus);
