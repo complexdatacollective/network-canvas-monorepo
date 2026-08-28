@@ -146,7 +146,13 @@ describe('posthog-server', () => {
         distinctId: 'install-123',
         properties: {
           fresco_exception_mechanism: 'onunhandledrejection',
-          $exception_list: [{ type: 'TypeError', value: 'boom' }],
+          $exception_list: [
+            {
+              type: 'TypeError',
+              value: 'boom',
+              mechanism: { type: 'generic', handled: true, synthetic: false },
+            },
+          ],
           installation_id: 'install-123',
         },
       });
@@ -157,10 +163,63 @@ describe('posthog-server', () => {
           {
             type: 'TypeError',
             value: 'boom',
-            mechanism: { type: 'onunhandledrejection', handled: false },
+            mechanism: {
+              type: 'onunhandledrejection',
+              handled: false,
+              synthetic: false,
+            },
           },
         ],
       });
+    });
+
+    // ErrorPropertiesBuilder walks an error's `cause` into further entries and
+    // marks those handled, and stamps each entry with its own `synthetic`.
+    // Autocapture kept both; overwriting the whole mechanism would report one
+    // cause chain as several separate unhandled failures.
+    it('marks only the first entry unhandled and keeps synthetic', async () => {
+      const beforeSend = await getBeforeSend();
+
+      const result = beforeSend({
+        event: '$exception',
+        distinctId: 'install-123',
+        properties: {
+          fresco_exception_mechanism: 'onuncaughtexception',
+          $exception_list: [
+            {
+              type: 'Error',
+              value: 'outer',
+              mechanism: { type: 'generic', handled: true, synthetic: false },
+            },
+            {
+              type: 'Error',
+              value: 'the cause',
+              mechanism: { type: 'generic', handled: true, synthetic: true },
+            },
+          ],
+        },
+      });
+
+      expect(result?.properties?.$exception_list).toEqual([
+        {
+          type: 'Error',
+          value: 'outer',
+          mechanism: {
+            type: 'onuncaughtexception',
+            handled: false,
+            synthetic: false,
+          },
+        },
+        {
+          type: 'Error',
+          value: 'the cause',
+          mechanism: {
+            type: 'onuncaughtexception',
+            handled: true,
+            synthetic: true,
+          },
+        },
+      ]);
     });
 
     it('leaves an ordinary event untouched', async () => {
@@ -390,6 +449,44 @@ describe('posthog-server', () => {
         'install-123',
         expect.anything(),
       );
+    });
+
+    // Whatever was rejected reaches the listener as-is. Classification runs
+    // before the reporting path's own guard, so a throw here would lose the
+    // report — and from the uncaughtException listener, end the process.
+    // These assert on call counts rather than on the reported value itself:
+    // handing a revoked proxy or a throwing `name` to a matcher makes the
+    // matcher throw, which would hide what is being tested.
+    it('reports a value that throws on instanceof', async () => {
+      const { reportRejection } = await installAndGetListeners();
+
+      const revocable = Proxy.revocable({}, {});
+      revocable.revoke();
+
+      expect(() => reportRejection(revocable.proxy)).not.toThrow();
+      await settle();
+
+      expect(mockCaptureException).toHaveBeenCalledTimes(1);
+      expect(mockCaptureException.mock.calls[0]?.[1]).toBe('install-123');
+    });
+
+    it('reports an error whose name accessor throws', async () => {
+      const { reportUncaught } = await installAndGetListeners();
+
+      const hostile = new Error('boom');
+      Object.defineProperty(hostile, 'name', {
+        get() {
+          throw new Error('name is a trap');
+        },
+      });
+
+      expect(() => reportUncaught(hostile)).not.toThrow();
+      await settle();
+
+      expect(mockCaptureException).toHaveBeenCalledTimes(1);
+      expect(mockCaptureException.mock.calls[0]?.[2]).toMatchObject({
+        fresco_exception_mechanism: 'onuncaughtexception',
+      });
     });
 
     // The per-kind buckets are bounded, so that code throwing many

@@ -36,6 +36,10 @@ export function getPostHogSessionProperties(
   return {};
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 // posthog-node's public `captureException` hard-codes its own hint, and the
 // third argument is merged as ordinary event properties. There is therefore no
 // parameter for the mechanism error tracking shows against an exception, and
@@ -62,11 +66,24 @@ function moveMechanismIntoException(
 
   const exceptions: unknown = properties.$exception_list;
   if (Array.isArray(exceptions)) {
-    properties.$exception_list = exceptions.map((exception: unknown) =>
-      exception && typeof exception === 'object' && !Array.isArray(exception)
-        ? { ...exception, mechanism: { type: mechanism, handled: false } }
-        : exception,
-    );
+    properties.$exception_list = exceptions.map((exception: unknown, index) => {
+      if (!isRecord(exception)) return exception;
+
+      // Only the first entry is the failure itself. `ErrorPropertiesBuilder`
+      // walks an error's `cause` chain into further entries and deliberately
+      // marks those handled, and gives every entry its own `synthetic` flag —
+      // both of which autocapture kept, so both are kept here. Overwriting the
+      // whole mechanism would report one cause chain as several unhandled
+      // failures and lose `synthetic` along the way.
+      const generated = isRecord(exception.mechanism)
+        ? exception.mechanism
+        : {};
+
+      return {
+        ...exception,
+        mechanism: { ...generated, type: mechanism, handled: index !== 0 },
+      };
+    });
   }
 
   return { ...event, properties };
@@ -170,9 +187,21 @@ const MAX_TRACKED_FAILURE_KINDS = 50;
 type ReportBucket = { tokens: number; refilledAt: number };
 const reportBuckets = new Map<string, ReportBucket>();
 
+// The value handed to an `unhandledRejection` listener is whatever was
+// rejected, which need not cooperate: `instanceof` throws on a revoked proxy,
+// and an error can carry a `name` accessor that throws or returns something
+// that is not a string. Sliced, too, so a long name cannot bloat a bucket key.
+const MAX_FAILURE_NAME_LENGTH = 80;
+
 function failureKind(error: unknown, mechanism: ExceptionMechanism) {
-  const name = error instanceof Error && error.name ? error.name : typeof error;
-  return `${mechanism}:${name}`;
+  try {
+    const name = error instanceof Error ? error.name : undefined;
+    return typeof name === 'string' && name
+      ? `${mechanism}:${name.slice(0, MAX_FAILURE_NAME_LENGTH)}`
+      : `${mechanism}:${typeof error}`;
+  } catch {
+    return `${mechanism}:unknown`;
+  }
 }
 
 function withinReportBudget(kind: string) {
@@ -235,6 +264,18 @@ async function captureProcessError(
   }
 }
 
+function reportProcessFailure(error: unknown, mechanism: ExceptionMechanism) {
+  // Nothing may escape a process-level listener. A throw from the
+  // `uncaughtException` one is fatal, and from the `unhandledRejection` one it
+  // is re-raised as an uncaught exception, losing the report it was making.
+  try {
+    if (!withinReportBudget(failureKind(error, mechanism))) return;
+    void captureProcessError(error, mechanism);
+  } catch {
+    // swallow
+  }
+}
+
 let processErrorReportingInstalled = false;
 
 /**
@@ -265,14 +306,11 @@ export function installProcessErrorReporting() {
   processErrorReportingInstalled = true;
 
   process.on('uncaughtException', (error) => {
-    if (!withinReportBudget(failureKind(error, 'onuncaughtexception'))) return;
-    void captureProcessError(error, 'onuncaughtexception');
+    reportProcessFailure(error, 'onuncaughtexception');
   });
 
   process.on('unhandledRejection', (reason) => {
-    if (!withinReportBudget(failureKind(reason, 'onunhandledrejection')))
-      return;
-    void captureProcessError(reason, 'onunhandledrejection');
+    reportProcessFailure(reason, 'onunhandledrejection');
   });
 }
 
