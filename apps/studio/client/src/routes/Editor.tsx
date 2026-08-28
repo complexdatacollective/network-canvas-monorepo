@@ -60,10 +60,11 @@ function stageLabel(document: SectionDoc | undefined, index: number): string {
 export default function Editor() {
   const params = route.useParams();
   const queryClient = useQueryClient();
-  const [clientId] = useState(() => globalThis.crypto.randomUUID());
   const [selection, setSelection] = useState<Selection>({ kind: 'settings' });
   const [reconcilingAdd, setReconcilingAdd] = useState(false);
   const [addRecoveryFailed, setAddRecoveryFailed] = useState(false);
+  const [reconcilingMove, setReconcilingMove] = useState(false);
+  const [moveRecoveryFailed, setMoveRecoveryFailed] = useState(false);
   const selectionInitialized = useRef(false);
   const draft = useQuery(orpc.protocols.draft.queryOptions({ input: params }));
   const stages = useMemo(
@@ -83,21 +84,23 @@ export default function Editor() {
   }, [draft.data, stages]);
 
   const refreshDraft = useCallback(async () => {
-    await queryClient.invalidateQueries({
-      queryKey: orpc.protocols.draft.key({
-        input: {
-          teamId: params.teamId,
-          protocolId: params.protocolId,
-          draftId: params.draftId,
-        },
-      }),
-    });
+    await queryClient.invalidateQueries(
+      {
+        queryKey: orpc.protocols.draft.key({
+          input: {
+            teamId: params.teamId,
+            protocolId: params.protocolId,
+            draftId: params.draftId,
+          },
+        }),
+      },
+      { throwOnError: true },
+    );
   }, [params.draftId, params.protocolId, params.teamId, queryClient]);
 
   const selectedStageId = selection.kind === 'stage' ? selection.stageId : null;
   const session = useStudioStageSession({
     ...params,
-    clientId,
     stageId: selectedStageId,
     draft: draft.data ?? {
       protocol: {
@@ -143,6 +146,19 @@ export default function Editor() {
     }
   };
 
+  const reconcileMoveStage = async () => {
+    setReconcilingMove(true);
+    setMoveRecoveryFailed(false);
+    try {
+      await refreshDraft();
+      moveStage.reset();
+    } catch {
+      setMoveRecoveryFailed(true);
+    } finally {
+      setReconcilingMove(false);
+    }
+  };
+
   if (draft.isPending) {
     return (
       <main
@@ -154,7 +170,7 @@ export default function Editor() {
       </main>
     );
   }
-  if (draft.isError || !draft.data) {
+  if (!draft.data) {
     return (
       <main id="main-content" className="p-6">
         <Alert variant="destructive">
@@ -252,6 +268,29 @@ export default function Editor() {
                       )}
                     </Alert>
                   )}
+                  {moveStage.isError && (
+                    <Alert className="mb-2" variant="destructive">
+                      <Paragraph margin="none">
+                        Studio could not confirm the new screen order. Refresh
+                        the outline before moving another screen.
+                      </Paragraph>
+                      <Button
+                        className="mt-3"
+                        size="sm"
+                        variant="outline"
+                        disabled={reconcilingMove}
+                        onClick={() => void reconcileMoveStage()}
+                      >
+                        Refresh order
+                      </Button>
+                      {moveRecoveryFailed && (
+                        <Paragraph className="mt-2" margin="none">
+                          The outline could not be refreshed. Reload this editor
+                          before moving another screen.
+                        </Paragraph>
+                      )}
+                    </Alert>
+                  )}
                   {stages.length === 0 ? (
                     <Paragraph className="px-2 text-sm">
                       Add a screen to begin the interview flow.
@@ -292,7 +331,12 @@ export default function Editor() {
                                 type="button"
                                 className="focusable rounded p-1 disabled:opacity-30"
                                 aria-label={`Move ${stageLabel(stage, index)} up`}
-                                disabled={index === 0 || moveStage.isPending}
+                                disabled={
+                                  index === 0 ||
+                                  moveStage.isPending ||
+                                  moveStage.isError ||
+                                  reconcilingMove
+                                }
                                 onClick={() =>
                                   moveStage.mutate({
                                     stageId,
@@ -308,7 +352,9 @@ export default function Editor() {
                                 aria-label={`Move ${stageLabel(stage, index)} down`}
                                 disabled={
                                   index === stages.length - 1 ||
-                                  moveStage.isPending
+                                  moveStage.isPending ||
+                                  moveStage.isError ||
+                                  reconcilingMove
                                 }
                                 onClick={() =>
                                   moveStage.mutate({
@@ -662,8 +708,6 @@ function Inspector(props: {
             ? 'Saved'
             : `${snapshot.pendingCommands.length} pending`}
         </dd>
-        <dt className="font-bold">Viewers</dt>
-        <dd>{snapshot.presence.length}</dd>
       </dl>
       <div className="flex flex-wrap gap-2" aria-label="Change history">
         <Button
