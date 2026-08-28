@@ -88,7 +88,19 @@ function redactValue(value: unknown, depth: number): unknown {
     return entries.map((entry) => redactValue(entry, depth + 1));
   }
 
+  // Only property bags are walked. Rebuilding anything else from its own
+  // entries would throw the value away — `Object.entries(new Date())` is
+  // empty, so a Date would be reported as `{}`.
+  if (!isPlainObject(value)) {
+    return value;
+  }
+
   return redactObject(value, depth + 1);
+}
+
+function isPlainObject(value: object): boolean {
+  const prototype: unknown = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
 
 function redactObject(value: object, depth: number): Record<string, unknown> {

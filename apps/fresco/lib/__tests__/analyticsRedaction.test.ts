@@ -119,6 +119,18 @@ describe('redactProperties', () => {
     expect(redactProperties(properties)).toEqual(properties);
   });
 
+  // Rebuilding one of these from its own entries would throw it away:
+  // `Object.entries(new Date())` is empty, so it would be reported as `{}`.
+  it('keeps objects that are not property bags', () => {
+    const timestamp = new Date('2026-01-01T00:00:00Z');
+    const seen = new Set(['a']);
+
+    const redacted = redactProperties({ timestamp, seen });
+
+    expect(redacted.timestamp).toBe(timestamp);
+    expect(redacted.seen).toBe(seen);
+  });
+
   // Replay payloads are large, and are kept safe by not recording participant
   // pages at all rather than by scrubbing them here.
   it('does not walk session replay payloads', () => {
