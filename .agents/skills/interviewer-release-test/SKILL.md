@@ -53,6 +53,10 @@ this command from Claude Code.)
 2. Invoke the Workflow tool:
    `Workflow({ name: 'interviewer-release-test-workflow', args: { url, expectedVersion, hotfix, journeys, model } })`
    (equivalently `scriptPath: '<repo-root>/.claude/workflows/interviewer-release-test.js'`).
+   If the workflow file changed during the CURRENT session, invoke via
+   `scriptPath` — name resolution has been observed serving a stale
+   snapshot after a same-session scriptPath resume, and two validation
+   runs silently executed an old gate before this was caught.
    Requirements: a checkout of this monorepo with `pnpm install` done;
    preflight installs Playwright's chromium if missing.
 3. A full run takes roughly 25–40 minutes in the background. Wait for its
