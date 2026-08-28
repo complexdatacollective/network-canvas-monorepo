@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { Alert } from '@codaco/fresco-ui/Alert';
 import { Badge } from '@codaco/fresco-ui/Badge';
+import Button from '@codaco/fresco-ui/Button';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
@@ -68,6 +69,7 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
   const refetchActiveTeam = activeTeam.refetch;
   const refetchActiveMember = activeMember.refetch;
   const [switchingTeamId, setSwitchingTeamId] = useState<string | null>(null);
+  const [retryingActiveTeam, setRetryingActiveTeam] = useState(false);
   const [switchError, setSwitchError] = useState(false);
 
   const switchToTeam = useCallback(
@@ -95,6 +97,23 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
 
   const activeTeamId = activeTeam.data?.id;
   const selectedTeam = props.teams.find((team) => team.id === activeTeamId);
+  const membershipMatchesTeam =
+    selectedTeam !== undefined &&
+    activeMember.data?.organizationId === selectedTeam.id;
+  const activeTeamLoadError = activeTeam.error || activeMember.error;
+
+  const retryActiveTeam = async () => {
+    setRetryingActiveTeam(true);
+    setSwitchError(false);
+    try {
+      await refetchActiveTeam();
+      await refetchActiveMember();
+    } catch {
+      setSwitchError(true);
+    } finally {
+      setRetryingActiveTeam(false);
+    }
+  };
 
   useEffect(() => {
     const firstTeam = props.teams[0];
@@ -103,12 +122,14 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
       selectedTeam === undefined &&
       !activeTeam.isPending &&
       switchingTeamId === null &&
+      !activeTeam.error &&
       !switchError
     ) {
       void switchToTeam(firstTeam.id);
     }
   }, [
     activeTeam.isPending,
+    activeTeam.error,
     props.teams,
     selectedTeam,
     switchError,
@@ -137,15 +158,18 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
                 value: team.id,
                 label: team.name,
               }))}
-              disabled={switchingTeamId !== null}
-              onChange={(value) => void switchToTeam(String(value))}
+              disabled={switchingTeamId !== null || retryingActiveTeam}
+              onChange={(value) => {
+                const teamId = String(value);
+                if (teamId !== '') void switchToTeam(teamId);
+              }}
             />
           </div>
           <div className="flex items-center gap-3">
             {selectedTeam && <Badge>Currently active</Badge>}
-            {(activeTeam.isPending || switchingTeamId !== null) && (
-              <Spinner size="sm" />
-            )}
+            {(activeTeam.isPending ||
+              switchingTeamId !== null ||
+              retryingActiveTeam) && <Spinner size="sm" />}
           </div>
         </div>
         {switchError && (
@@ -155,7 +179,22 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
         )}
       </Surface>
 
-      {selectedTeam && activeTeam.data ? (
+      {activeTeamLoadError ? (
+        <Surface spacing="lg">
+          <Alert variant="destructive">
+            Studio could not load the active team and your access to it.
+          </Alert>
+          <Button
+            className="mt-4"
+            size="sm"
+            variant="outline"
+            disabled={retryingActiveTeam}
+            onClick={() => void retryActiveTeam()}
+          >
+            Retry team access
+          </Button>
+        </Surface>
+      ) : selectedTeam && activeTeam.data && membershipMatchesTeam ? (
         <ActiveTeamWorkspace
           key={selectedTeam.id}
           team={activeTeam.data}
@@ -166,7 +205,7 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
         <Surface spacing="lg">
           <div className="flex items-center gap-3" role="status">
             <Spinner size="sm" />
-            <Paragraph margin="none">Opening the active team…</Paragraph>
+            <Paragraph margin="none">Loading team access…</Paragraph>
           </div>
         </Surface>
       )}
@@ -331,7 +370,9 @@ function TeamManagement(props: {
     ? TEAM_ROLE_OPTIONS
     : TEAM_ROLE_OPTIONS.filter((role) => role.value !== 'owner');
   const pendingInvitations = props.team.invitations.filter(
-    (invitation) => invitation.status === 'pending',
+    (invitation) =>
+      invitation.status === 'pending' &&
+      invitation.expiresAt.getTime() > Date.now(),
   );
 
   const updateRole = async (memberId: string, role: TeamRole) => {

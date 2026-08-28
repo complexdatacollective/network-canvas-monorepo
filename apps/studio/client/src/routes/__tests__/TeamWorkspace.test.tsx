@@ -61,6 +61,16 @@ const fixtures = vi.hoisted(() => {
         expiresAt: new Date('2026-09-01T00:00:00Z'),
         createdAt: new Date('2026-08-28T00:00:00Z'),
       },
+      {
+        id: 'invitation-expired',
+        organizationId: TEAM_A.id,
+        inviterId: OWNER.userId,
+        email: 'expired@example.com',
+        role: 'member',
+        status: 'pending',
+        expiresAt: new Date('2020-01-01T00:00:00Z'),
+        createdAt: new Date('2019-12-01T00:00:00Z'),
+      },
     ],
   };
   const BETA_MEMBER = {
@@ -107,6 +117,8 @@ const fixtures = vi.hoisted(() => {
     updateMemberRole: ReturnType<typeof vi.fn>;
     refetchActiveTeam: ReturnType<typeof vi.fn>;
     refetchActiveMember: ReturnType<typeof vi.fn>;
+    activeTeamError: Error | null;
+    activeMemberError: Error | null;
   } = {
     activeTeam: undefined,
     activeMember: undefined,
@@ -115,6 +127,8 @@ const fixtures = vi.hoisted(() => {
     updateMemberRole: vi.fn(),
     refetchActiveTeam: vi.fn(),
     refetchActiveMember: vi.fn(),
+    activeTeamError: null,
+    activeMemberError: null,
   };
   return {
     TEAM_A,
@@ -155,13 +169,13 @@ vi.mock('../../lib/auth.ts', () => ({
     useActiveOrganization: vi.fn(() => ({
       data: fixtures.authState.activeTeam,
       isPending: false,
-      error: null,
+      error: fixtures.authState.activeTeamError,
       refetch: fixtures.authState.refetchActiveTeam,
     })),
     useActiveMember: vi.fn(() => ({
       data: fixtures.authState.activeMember,
       isPending: false,
-      error: null,
+      error: fixtures.authState.activeMemberError,
       refetch: fixtures.authState.refetchActiveMember,
     })),
     organization: {
@@ -233,6 +247,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   authState.activeTeam = ACTIVE_TEAM_A;
   authState.activeMember = OWNER;
+  authState.activeTeamError = null;
+  authState.activeMemberError = null;
   authState.setActive.mockImplementation(
     (input: { organizationId: string }) => {
       if (input.organizationId === TEAM_B.id) {
@@ -265,6 +281,7 @@ describe('Studio team workspace', () => {
       'member',
     );
     expect(screen.getByText('pending@example.com')).toBeInTheDocument();
+    expect(screen.queryByText('expired@example.com')).toBeNull();
   });
 
   it('switches the active team and scopes the protocol list to it', async () => {
@@ -353,5 +370,42 @@ describe('Studio team workspace', () => {
     ).toBeInTheDocument();
     expect(screen.queryByLabelText('Role for Owner Researcher')).toBeNull();
     expect(screen.getByText('Owner')).toBeInTheDocument();
+  });
+
+  it('does not auto-activate repeatedly when the active team fails to load', async () => {
+    authState.activeTeam = undefined;
+    authState.activeTeamError = new Error('load failed');
+    renderWorkspace();
+
+    expect(
+      await screen.findByText(/could not load the active team/i),
+    ).toBeInTheDocument();
+    expect(authState.setActive).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry team access' }));
+    await waitFor(() => {
+      expect(authState.refetchActiveTeam).toHaveBeenCalledTimes(1);
+      expect(authState.refetchActiveMember).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('waits for membership in the selected team before exposing controls', async () => {
+    authState.activeTeam = ACTIVE_TEAM_B;
+    authState.activeMember = OWNER;
+    renderWorkspace();
+
+    expect(await screen.findByText('Loading team access…')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Invite user' })).toBeNull();
+    expect(screen.queryByText('Beta protocol')).toBeNull();
+  });
+
+  it('ignores the empty team placeholder', async () => {
+    const view = renderWorkspace();
+    const team = await screen.findByLabelText('Active team');
+
+    fireEvent.change(team, { target: { value: '' } });
+    view.rerenderWorkspace();
+
+    expect(authState.setActive).not.toHaveBeenCalled();
+    expect(team).toHaveValue(TEAM_A.id);
   });
 });
