@@ -76,6 +76,15 @@ describe('generated schema documentation', () => {
   it('has a standalone regeneration command', () => {
     expect(readManifestScripts()).toHaveProperty('generate:erd');
   });
+
+  it.each(['apply-schema', 'db:reset'])(
+    'regenerates before %s touches the database',
+    (script) => {
+      expect(readManifestScripts()[script]).toMatch(
+        /^pnpm run sync-fingerprint && /,
+      );
+    },
+  );
 });
 
 async function withScratch(

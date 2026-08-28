@@ -164,8 +164,9 @@ The server never applies schema — it only verifies. Application is
 a repo checkout: it introspects the live database, applies whatever delta
 brings it to the definitions, re-runs the sidecars, and stamps a fingerprint —
 the hash of the DDL that describes this build. Boot compares that stamp
-against the fingerprint committed in `server/src/db/fingerprint.generated.ts`;
-after any schema or sidecar change, resync it (a test fails if you forget):
+against the fingerprint committed in `server/src/db/fingerprint.generated.ts`.
+Both database commands resync the fingerprint and generated schema docs before
+touching the database. To resync without connecting to a database, run:
 
 ```bash
 pnpm --filter @codaco/studio-server sync-fingerprint
