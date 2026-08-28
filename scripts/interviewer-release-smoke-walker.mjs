@@ -490,7 +490,9 @@ try {
       contexts: attrs.filter(
         (a) => Array.isArray(a.context) && a.context.length,
       ).length,
-      edgeTypes: [...new Set(edges.map((e) => e.type))].sort(),
+      edgeTypes: [...new Set(edges.map((e) => e.type))].toSorted((a, b) =>
+        String(a).localeCompare(String(b)),
+      ),
       egoName: (s.network.ego?.attributes ?? {}).ego_name ?? null,
     };
   });
