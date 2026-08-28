@@ -123,7 +123,13 @@ try {
   // "Failed to load resource" text omits it).
   const NOISE = [
     /frame-ancestors.*ignored when delivered via a <meta> element/i,
-    /cloudflareinsights|Content Security Policy.*(inline|script)/i,
+    // Cloudflare's injected beacon produces exactly two CSP signatures: the
+    // refused INLINE bootstrap (the app ships no inline scripts of its own)
+    // and the blocked cloudflareinsights.com load. Any OTHER CSP violation —
+    // e.g. a URL-bearing refusal of a lazy app script under a bad policy —
+    // must surface.
+    /Refused to execute inline script.*Content Security Policy/i,
+    /cloudflareinsights/i,
     /ph-relay\.networkcanvas\.com/i,
     // This walk is deliberately OFFLINE for its core phases: network
     // resource-load failures (our own positive-control probe included) are
