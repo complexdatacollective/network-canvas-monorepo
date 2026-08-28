@@ -1422,6 +1422,20 @@ test('structured skip codes gate schema-skew to hotfix runs', async () => {
   assert.equal(inconsistent.verdict, 'INCOMPLETE');
 });
 
+test('prompt-mandated environment-limit reasons never trip the skew trap', async () => {
+  // pwa-offline check 10's own instruction produces a detail containing
+  // "newer build" — the skew-consistency trap is scoped to positions where
+  // schema-skew is a permitted class, so this phrasing must certify.
+  const checks = mkChecks(10, { skipAt: [10] });
+  checks[9].detail =
+    'app update flow: no way to stage a newer build against a deployed site';
+  const res = await run(
+    makeAgent({ 'pwa-offline': journey('pwa-offline', { checks }) }),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(res.verdict, 'PASS');
+});
+
 test('prompts instruct the exact skip codes the validator demands', () => {
   // Drift guard: every class in allowedSkips must be named by the journey
   // prompt that is permitted to use it, or agents cannot comply.

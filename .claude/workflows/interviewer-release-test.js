@@ -1476,12 +1476,16 @@ for (const r of results.filter(Boolean)) {
       const codes = (allowedSkips[r.journey] || {})[n];
       if (!codes || !codes.includes(c.skipCode)) return true;
       if (c.skipCode === 'schema-skew' && !hotfixRun) return true;
-      // Defense in depth behind the structured code: a mainline skip whose
-      // code claims the artifact never arrived while its detail describes an
-      // import rejection is internally inconsistent — reject the report
-      // rather than trust the label.
+      // Defense in depth behind the structured code, scoped to positions
+      // where "schema-skew" is a permitted class at all: a mainline skip
+      // there whose code claims the artifact never arrived while its detail
+      // describes an import rejection is internally inconsistent — reject
+      // the report rather than trust the label. Elsewhere skew is not a
+      // possible condition and prompt-mandated phrasings (pwa-offline 10's
+      // "no way to stage a newer build") must not trip it.
       if (
         !hotfixRun &&
+        codes.includes('schema-skew') &&
         c.skipCode !== 'schema-skew' &&
         /schema|skew|unsupported|newer|exceed|incompatible|reject|migrat/i.test(
           c.detail ?? '',
