@@ -69,7 +69,11 @@ export function createRpcRouter(
         .use(requireTeam)
         .handler(async ({ context, input }) => {
           const store = new ProtocolStore(context.tenantDb);
-          return store.createProtocol({ protocol: emptyProtocol(input.name) });
+          return store.createProtocol({
+            protocol: emptyProtocol(input.name),
+            protocolId: input.protocolId,
+            draftId: input.draftId,
+          });
         }),
       list: os.protocols.list
         .use(requireTeam)
@@ -202,7 +206,12 @@ export function createRpcRouter(
             input.protocolId,
             input.draftId,
           );
-          const result = await moveStage(context.tenantDb, input);
+          const result = await moveStage(context.tenantDb, {
+            draftId: input.draftId,
+            stageId: input.stageId,
+            toIndex: input.toIndex,
+            expectedRevision: BigInt(input.expectedRevision),
+          });
           return {
             sequence: String(result.manifestSeq),
             hash: result.manifestHash,

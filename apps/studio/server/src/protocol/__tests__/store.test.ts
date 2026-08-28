@@ -50,6 +50,28 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     expect(await store.getDraftDocument(draftId)).toEqual(baseProtocol());
   });
 
+  it('createProtocol returns the same draft for a repeated creation identity', async () => {
+    const protocolId = randomUUID();
+    const draftId = randomUUID();
+    const params = { protocol: baseProtocol(), protocolId, draftId };
+
+    await expect(store.createProtocol(params)).resolves.toEqual({
+      protocolId,
+      draftId,
+    });
+    await expect(store.createProtocol(params)).resolves.toEqual({
+      protocolId,
+      draftId,
+    });
+
+    const rows = await db.query(
+      `SELECT count(*)::int AS count FROM protocol_drafts
+       WHERE protocol_id = $1 AND draft_id = $2`,
+      [protocolId, draftId],
+    );
+    expect(rows.rows[0]).toEqual({ count: 1 });
+  });
+
   it('reads protocol draft metadata without loading section documents', async () => {
     const { protocolId, draftId } = await store.createProtocol({
       protocol: baseProtocol(),

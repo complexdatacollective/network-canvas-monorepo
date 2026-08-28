@@ -129,7 +129,11 @@ export default function Editor() {
   });
   const moveStage = useMutation({
     mutationFn: async (input: { stageId: string; toIndex: number }) =>
-      rpcClient.protocols.moveStage({ ...params, ...input }),
+      rpcClient.protocols.moveStage({
+        ...params,
+        ...input,
+        expectedRevision: draft.data?.revision.sequence ?? '0',
+      }),
     onSuccess: refreshDraft,
   });
 

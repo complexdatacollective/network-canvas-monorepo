@@ -148,10 +148,31 @@ export class ProtocolStore {
 
     const teamId = this.db.teamId;
     return this.db.transaction(async (client) => {
-      await client.query(
-        `INSERT INTO protocols (id, team_id, name) VALUES ($1, $2, $3)`,
+      const inserted = await client.query(
+        `INSERT INTO protocols (id, team_id, name) VALUES ($1, $2, $3)
+         ON CONFLICT (id) DO NOTHING
+         RETURNING id`,
         [protocolId, teamId, params.protocol.name],
       );
+      if (inserted.rowCount === 0) {
+        const existing = await client.query(
+          `SELECT p.name, pd.draft_id
+           FROM protocols p
+           JOIN protocol_drafts pd
+             ON pd.protocol_id = p.id AND pd.team_id = p.team_id
+           WHERE p.id = $1 AND p.team_id = $2`,
+          [protocolId, teamId],
+        );
+        const row = existing.rows[0] as
+          | { name: string; draft_id: string }
+          | undefined;
+        if (row?.name === params.protocol.name && row.draft_id === draftId) {
+          return { protocolId, draftId };
+        }
+        throw new ProtocolStoreError(
+          `protocol creation identity ${protocolId} is already in use`,
+        );
+      }
       await insertDraftRows(client, teamId, draftId, sections);
       await client.query(
         `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id)

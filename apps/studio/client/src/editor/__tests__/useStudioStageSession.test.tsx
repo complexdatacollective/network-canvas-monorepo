@@ -90,6 +90,33 @@ afterEach(() => {
 });
 
 describe('useStudioStageSession', () => {
+  it('refreshes authoritative fields after acquiring an editable lease', async () => {
+    vi.mocked(rpcClient.protocols.draft).mockResolvedValueOnce({
+      ...DRAFT,
+      revision: { sequence: '3', hash: 'revision-3' },
+      sections: {
+        ...DRAFT.sections,
+        [`stage:${STAGE_ID}`]: {
+          ...DRAFT.sections[`stage:${STAGE_ID}`],
+          label: 'Changed before acquisition',
+          title: 'Changed before acquisition',
+        },
+      },
+    });
+
+    const view = renderSession();
+    await waitFor(() => expect(view.result.current.status).toBe('ready'));
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+
+    expect(
+      view.result.current.session.getSnapshot().editedSection.fields,
+    ).toMatchObject({
+      label: 'Changed before acquisition',
+      title: 'Changed before acquisition',
+    });
+    expect(rpcClient.protocols.draft).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps the same leased session when a committed draft refresh arrives', async () => {
     const view = renderSession();
     await waitFor(() => expect(view.result.current.status).toBe('ready'));
@@ -183,6 +210,47 @@ describe('useStudioStageSession', () => {
     expect(rpcClient.protocols.releaseSection).not.toHaveBeenCalled();
 
     commit.resolve({ sequence: '3', hash: 'revision-3' });
+    await waitFor(() =>
+      expect(rpcClient.protocols.releaseSection).toHaveBeenCalledWith(
+        expect.objectContaining({ leaseEpoch: '1' }),
+      ),
+    );
+  });
+
+  it('drains an active commit before releasing a lost lease', async () => {
+    vi.useFakeTimers();
+    const commit = deferred<{ sequence: string; hash: string }>();
+    vi.mocked(rpcClient.protocols.commitSection).mockReturnValueOnce(
+      commit.promise,
+    );
+    vi.mocked(rpcClient.protocols.renewSection).mockRejectedValueOnce(
+      new Error('network interrupted'),
+    );
+    const view = renderSession();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(view.result.current.status).toBe('ready');
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+
+    act(() => {
+      if (view.result.current.status !== 'ready') throw new Error('not ready');
+      view.result.current.session.dispatch([
+        { op: 'set', key: 'label', value: 'Changed' },
+      ]);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(rpcClient.protocols.releaseSection).not.toHaveBeenCalled();
+
+    commit.resolve({ sequence: '3', hash: 'revision-3' });
+    vi.useRealTimers();
     await waitFor(() =>
       expect(rpcClient.protocols.releaseSection).toHaveBeenCalledWith(
         expect.objectContaining({ leaseEpoch: '1' }),
