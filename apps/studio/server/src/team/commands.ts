@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { z } from 'zod';
 
-import { TEAM_ROLES, type TeamRole } from '@codaco/studio-rpc';
+import { TeamRoleSchema, type TeamRole } from '@codaco/studio-rpc';
 
 import {
   auditEventContext,
@@ -41,7 +41,10 @@ function parseRoles(value: string): TeamRole[] {
   const roles = value
     .split(',')
     .map((role) => role.trim())
-    .filter((role): role is TeamRole => TEAM_ROLES.includes(role as TeamRole));
+    .flatMap((role) => {
+      const parsed = TeamRoleSchema.safeParse(role);
+      return parsed.success ? [parsed.data] : [];
+    });
   if (roles.length === 0 || roles.join(',') !== value.replaceAll(' ', '')) {
     throw new TeamCommandError('INVALID_ROLE');
   }
