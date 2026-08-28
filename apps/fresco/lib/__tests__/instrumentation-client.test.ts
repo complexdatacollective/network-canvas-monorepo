@@ -125,6 +125,20 @@ describe('instrumentation-client', () => {
     expect(mockStopPostHog).not.toHaveBeenCalled();
   });
 
+  // The observer spots the tag arriving, and the load handler that shuts the
+  // observer down reads it again. Acting twice would re-identify the browser.
+  it('acts on the decision once, however many times it is seen', async () => {
+    await loadInstrumentation();
+
+    publishDecision('{"enabled":true,"installationId":"install-123"}');
+    await settle();
+
+    window.dispatchEvent(new Event('load'));
+    await settle();
+
+    expect(mockStartPostHog).toHaveBeenCalledTimes(1);
+  });
+
   it('stops watching once the page has loaded', async () => {
     await loadInstrumentation();
 

@@ -23,7 +23,17 @@ import { startPostHog, stopPostHog } from '~/lib/posthog-client';
  * the library and never contacts the relay.
  */
 
+let applied = false;
+
 function applyDecision(decision: AnalyticsDecision) {
+  // The tag can be read twice: once by the observer that spots it arriving,
+  // and again by the load handler that shuts the observer down. Acting on it
+  // twice would identify the browser and repeat the opt-in a second time.
+  if (applied) {
+    return;
+  }
+  applied = true;
+
   if (decision.enabled) {
     void startPostHog(decision.installationId);
     return;
