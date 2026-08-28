@@ -91,7 +91,11 @@ const url = canonicalOrigin((args && args.url) || DEFAULT_URL);
 const expectedVersion = (args && args.expectedVersion) || null;
 // Hotfix runs certify a tree cut from an OLDER release line: only there is
 // a newer-schema rejection of the latest development protocol expected.
-const hotfixRun = Boolean(args && args.hotfix);
+if (args && args.hotfix !== undefined && typeof args.hotfix !== 'boolean')
+  throw new Error(
+    `args.hotfix must be a boolean (got ${JSON.stringify(args.hotfix)}) — a truthy non-boolean like "false" must not enable the hotfix skip class`,
+  );
+const hotfixRun = Boolean(args) && args.hotfix === true;
 // Both values are interpolated into agent prompts and the shell commands
 // inside them: restrict them to inert shapes so a hostile value cannot
 // escape into shell, JS-string, or prompt context.
@@ -1476,22 +1480,13 @@ for (const r of results.filter(Boolean)) {
       const codes = (allowedSkips[r.journey] || {})[n];
       if (!codes || !codes.includes(c.skipCode)) return true;
       if (c.skipCode === 'schema-skew' && !hotfixRun) return true;
-      // Defense in depth behind the structured code, scoped to positions
-      // where "schema-skew" is a permitted class at all: a mainline skip
-      // there whose code claims the artifact never arrived while its detail
-      // describes an import rejection is internally inconsistent — reject
-      // the report rather than trust the label. Elsewhere skew is not a
-      // possible condition and prompt-mandated phrasings (pwa-offline 10's
-      // "no way to stage a newer build") must not trip it.
-      if (
-        !hotfixRun &&
-        codes.includes('schema-skew') &&
-        c.skipCode !== 'schema-skew' &&
-        /schema|skew|unsupported|newer|exceed|incompatible|reject|migrat/i.test(
-          c.detail ?? '',
-        )
-      )
-        return true;
+      // No free-text heuristic backs this up: two review rounds proved any
+      // keyword list either fails open (a paraphrase it missed) or breaks
+      // honest runs (prompt-mandated "newer build", a "rejected" HTTP 403 in
+      // a genuine download failure). The declared class is the
+      // classification; its truth rests on the same agent-honesty baseline
+      // as every other reported observation, and the skip details remain in
+      // the report for the human merging on it.
       return false;
     });
   // protocol-management checks 6 and 7 are a skip PAIR (the duplicate-import

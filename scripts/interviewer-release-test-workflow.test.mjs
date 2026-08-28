@@ -1409,17 +1409,27 @@ test('structured skip codes gate schema-skew to hotfix runs', async () => {
     { journeys: ['protocol-management'] },
   );
   assert.equal(wrongClass.verdict, 'INCOMPLETE');
-  // Defense in depth: a mainline skip labelled asset-unavailable whose
-  // detail describes an import rejection is internally inconsistent.
-  const lying = pm({
+  // No free-text second-guessing of a permitted class: a genuine download
+  // failure may legitimately contain words like "rejected" (an HTTP 403) —
+  // the declared code classifies, the detail is evidence for humans.
+  const httpReject = pm({
     skipCodes: { 6: 'asset-unavailable', 7: 'asset-unavailable' },
   });
-  lying['protocol-management'].checks[5].detail =
-    'the app rejected the file: schema newer than supported';
-  const inconsistent = await run(makeAgent(lying, {}, evidence), {
+  httpReject['protocol-management'].checks[5].detail =
+    'the release request was rejected with HTTP 403';
+  const legitReject = await run(makeAgent(httpReject, {}, evidence), {
     journeys: ['protocol-management'],
   });
-  assert.equal(inconsistent.verdict, 'INCOMPLETE');
+  assert.equal(legitReject.verdict, 'PASS');
+  // args.hotfix is strictly boolean — a truthy non-boolean must fail the
+  // invocation rather than enable the hotfix skip class.
+  await assert.rejects(
+    run(makeAgent(skew, {}, evidence), {
+      journeys: ['protocol-management'],
+      hotfix: 'false',
+    }),
+    /boolean/,
+  );
 });
 
 test('prompt-mandated environment-limit reasons never trip the skew trap', async () => {
