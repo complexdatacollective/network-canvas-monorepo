@@ -82,16 +82,21 @@ const EXPECTED_CHECKS = {
   'settings-and-chrome': 9,
 };
 
-const mkChecks = (n, { failAt = [], skipAt = [] } = {}) =>
-  Array.from({ length: n }, (_, k) => ({
-    name: `${k + 1}. check`,
-    status: failAt.includes(k + 1)
+const mkChecks = (n, { failAt = [], skipAt = [], skipCodes = {} } = {}) =>
+  Array.from({ length: n }, (_, k) => {
+    const num = k + 1;
+    const status = failAt.includes(num)
       ? 'fail'
-      : skipAt.includes(k + 1)
+      : skipAt.includes(num)
         ? 'skipped'
-        : 'pass',
-    detail: 'x',
-  }));
+        : 'pass';
+    const c = { name: `${num}. check`, status, detail: 'x' };
+    if (status === 'skipped')
+      c.skipCode = Object.hasOwn(skipCodes, num)
+        ? skipCodes[num]
+        : 'environment-limit';
+    return c;
+  });
 
 // Canned-result agent: journeys get a valid artifactsDir injected unless the
 // fixture sets one; the evidence audit confirms every claimed directory
@@ -353,12 +358,19 @@ test('skips outside the whitelist and broken skip pairs are incomplete', async (
     const halfPair = await run(
       makeAgent({
         'protocol-management': journey('protocol-management', {
-          checks: mkChecks(9, { skipAt }),
+          checks: mkChecks(9, {
+            skipAt,
+            skipCodes: { 6: 'asset-unavailable', 7: 'asset-unavailable' },
+          }),
         }),
       }),
       { journeys: ['protocol-management'] },
     );
-    assert.equal(halfPair.verdict, 'INCOMPLETE', `lone skip of ${skipAt}`);
+    assert.equal(
+      halfPair.verdict,
+      'INCOMPLETE',
+      `lone skip of ${skipAt.join(', ')}`,
+    );
   }
 });
 
@@ -475,7 +487,10 @@ test('evidence must exist on disk with per-check identity', async () => {
     makeAgent(
       {
         'protocol-management': journey('protocol-management', {
-          checks: mkChecks(9, { skipAt: [6, 7] }),
+          checks: mkChecks(9, {
+            skipAt: [6, 7],
+            skipCodes: { 6: 'asset-unavailable', 7: 'asset-unavailable' },
+          }),
         }),
       },
       {},
@@ -1333,13 +1348,7 @@ test('an internally inconsistent audit entry cannot evidence a dismissal', async
   assert.ok(res.unverifiedFailures.some((f) => f.description === 'real one'));
 });
 
-test('schema-skew skips are hotfix-only in code', async () => {
-  const checks = mkChecks(9, { skipAt: [6, 7] });
-  checks[5].detail = 'newest dev protocol has a newer/unsupported schema';
-  checks[6].detail = 'skipped with 6 (schema skew)';
-  const jr = {
-    'protocol-management': journey('protocol-management', { checks }),
-  };
+test('structured skip codes gate schema-skew to hotfix runs', async () => {
   const evidence = {
     fingerprint: PREFLIGHT.fingerprint,
     entries: [
@@ -1352,29 +1361,76 @@ test('schema-skew skips are hotfix-only in code', async () => {
       },
     ],
   };
-  const mainline = await run(makeAgent(jr, {}, evidence), {
+  const pm = (opts) => ({
+    'protocol-management': journey('protocol-management', {
+      checks: mkChecks(9, { skipAt: [6, 7], ...opts }),
+    }),
+  });
+  const skew = pm({ skipCodes: { 6: 'schema-skew', 7: 'schema-skew' } });
+  // The declared class is what gates — even a paraphrase the old keyword
+  // matcher missed ("format version 9 exceeds this build's supported
+  // version 8") cannot certify a mainline run.
+  skew['protocol-management'].checks[5].detail =
+    'protocol format version 9 exceeds this build’s supported version 8';
+  const mainline = await run(makeAgent(skew, {}, evidence), {
     journeys: ['protocol-management'],
   });
   assert.equal(mainline.verdict, 'INCOMPLETE');
-  const hotfix = await run(makeAgent(jr, {}, evidence), {
+  const hotfix = await run(makeAgent(skew, {}, evidence), {
     journeys: ['protocol-management'],
     hotfix: true,
   });
   assert.equal(hotfix.verdict, 'PASS');
   // Asset-unobtainable skips stay permitted in both modes.
-  const checksAsset = mkChecks(9, { skipAt: [6, 7] });
-  checksAsset[5].detail =
-    'release asset could not be downloaded after two attempts';
-  checksAsset[6].detail = 'skipped with 6 (no asset)';
-  const jr2 = {
-    'protocol-management': journey('protocol-management', {
-      checks: checksAsset,
-    }),
-  };
-  const assetSkip = await run(makeAgent(jr2, {}, evidence), {
+  const assetSkip = await run(
+    makeAgent(
+      pm({ skipCodes: { 6: 'asset-unavailable', 7: 'asset-unavailable' } }),
+      {},
+      evidence,
+    ),
+    { journeys: ['protocol-management'] },
+  );
+  assert.equal(assetSkip.verdict, 'PASS');
+  // A skip with no declared code fails closed even at a permitted position.
+  const uncoded = pm({});
+  delete uncoded['protocol-management'].checks[5].skipCode;
+  delete uncoded['protocol-management'].checks[6].skipCode;
+  const noCode = await run(makeAgent(uncoded, {}, evidence), {
     journeys: ['protocol-management'],
   });
-  assert.equal(assetSkip.verdict, 'PASS');
+  assert.equal(noCode.verdict, 'INCOMPLETE');
+  // A code outside the position's permitted classes fails closed too.
+  const wrongClass = await run(
+    makeAgent(
+      pm({ skipCodes: { 6: 'environment-limit', 7: 'environment-limit' } }),
+      {},
+      evidence,
+    ),
+    { journeys: ['protocol-management'] },
+  );
+  assert.equal(wrongClass.verdict, 'INCOMPLETE');
+  // Defense in depth: a mainline skip labelled asset-unavailable whose
+  // detail describes an import rejection is internally inconsistent.
+  const lying = pm({
+    skipCodes: { 6: 'asset-unavailable', 7: 'asset-unavailable' },
+  });
+  lying['protocol-management'].checks[5].detail =
+    'the app rejected the file: schema newer than supported';
+  const inconsistent = await run(makeAgent(lying, {}, evidence), {
+    journeys: ['protocol-management'],
+  });
+  assert.equal(inconsistent.verdict, 'INCOMPLETE');
+});
+
+test('prompts instruct the exact skip codes the validator demands', () => {
+  // Drift guard: every class in allowedSkips must be named by the journey
+  // prompt that is permitted to use it, or agents cannot comply.
+  for (const quoted of [
+    'skipCode "asset-unavailable"',
+    'skipCode "schema-skew"',
+    'skipCode "environment-limit"',
+  ])
+    assert.ok(source.includes(quoted), `prompt names ${quoted}`);
 });
 
 test('a dead journey is incomplete', async () => {

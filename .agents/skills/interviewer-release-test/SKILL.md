@@ -45,8 +45,10 @@ Code's Workflow tool — run this command from Claude Code.)
    - `hotfix` — pass `true` only when certifying a hotfix cut from an
      older release line: it permits the documented pair-skip when the
      newest development protocol's schema is newer than the candidate
-     supports. On main-line candidates that rejection is a real
-     protocol-support regression and fails.
+     supports. Every skip carries a machine-checked `skipCode` class, and
+     the `schema-skew` class is rejected in code on non-hotfix runs: on a
+     main-line candidate that rejection is a real protocol-support
+     regression and fails.
 2. Invoke the Workflow tool:
    `Workflow({ name: 'interviewer-release-test-workflow', args: { url, expectedVersion, hotfix, journeys, model } })`
    (equivalently `scriptPath: '<repo-root>/.claude/workflows/interviewer-release-test.js'`).

@@ -121,6 +121,12 @@ const CHECK = {
       type: 'string',
       description: 'What was observed, or why skipped',
     },
+    skipCode: {
+      type: 'string',
+      enum: ['asset-unavailable', 'schema-skew', 'environment-limit'],
+      description:
+        'REQUIRED whenever status is "skipped": the class of permitted reason. asset-unavailable: a required external artifact could not be obtained. schema-skew: the app rejected the artifact because its schema is newer than this build supports (hotfix runs only). environment-limit: the harness or deployment cannot exercise this check, as the prompt itself states.',
+    },
   },
 };
 
@@ -429,12 +435,21 @@ const expectedChecks = {
 // evidence floor is implied by the exact checkpoint-set validation below.
 const CONDUCT_MIN_SCREENSHOTS = 20;
 
-// Check numbers each prompt explicitly permits to be skipped (environmental
-// limits it names itself). A skip anywhere else marks the run incomplete.
+// Check numbers each prompt explicitly permits to be skipped, mapped to the
+// skip-reason classes acceptable at that position. A skip anywhere else — or
+// one whose declared skipCode is missing or not in its position's list —
+// marks the run incomplete. The classification is structural, never keyword
+// matching on free text: any phrasing a keyword matcher missed would fail
+// open. "schema-skew" is additionally valid only on a hotfix run
+// (args.hotfix); on a main-line candidate the same condition is a
+// protocol-support regression, never a permission slip.
 const allowedSkips = {
-  'protocol-management': [6, 7], // dev-protocol release asset unobtainable
-  'data-export': [7], // export build outruns the cancel click
-  'pwa-offline': [10], // app update flow untestable against a live deploy
+  'protocol-management': {
+    6: ['asset-unavailable', 'schema-skew'], // dev-protocol release asset
+    7: ['asset-unavailable', 'schema-skew'], // pair-skips with check 6
+  },
+  'data-export': { 7: ['environment-limit'] }, // build outruns the cancel click
+  'pwa-offline': { 10: ['environment-limit'] }, // update flow needs a staged build
 };
 
 const journeyDefs = [
@@ -479,11 +494,12 @@ CHECKS (in one or more scripts, fresh profile each run):
    or the public API, then download the asset). Import it via the same file
    input; it is ~33 MB so allow 60 s; expect a "Protocol imported" toast
    (text may mention schema migration) and a new deck card. If the asset
-   cannot be obtained after two attempts, mark this and check 7 skipped.
+   cannot be obtained after two attempts, mark this and check 7 skipped with
+   skipCode "asset-unavailable" and a detail describing the download failure.
    ${
      hotfixRun
-       ? 'This is a HOTFIX run (args.hotfix): if the app rejects the asset because its schema is NEWER than this build supports (the import error names an unsupported/newer schema version), that is protocol/app version skew — expected for a candidate cut from an older release line — not a candidate defect: mark checks 6 and 7 skipped with that reason. Rejection of a supported-schema asset remains a failure.'
-       : 'This is NOT a hotfix run: the candidate ships from the current line and MUST support the latest development protocol — a rejection naming an unsupported/newer schema is a REAL regression in protocol support (stale bundled validation), a failure, never a skip.'
+       ? 'This is a HOTFIX run (args.hotfix): if the app rejects the asset because its schema is NEWER than this build supports (the import error names an unsupported/newer schema version), that is protocol/app version skew — expected for a candidate cut from an older release line — not a candidate defect: mark checks 6 and 7 skipped with skipCode "schema-skew" and that reason. Rejection of a supported-schema asset remains a failure.'
+       : 'This is NOT a hotfix run: the candidate ships from the current line and MUST support the latest development protocol — a rejection naming an unsupported/newer schema is a REAL regression in protocol support (stale bundled validation), a failure, never a skip (there is no valid skipCode for it).'
    }
 7. duplicate import: import the SAME file again — the app upserts by content
    hash. Wait for the fresh "Protocol imported" toast (the positive signal
@@ -636,11 +652,17 @@ CHECKS:
    complete = all).
 3. Search (data-testid="data-search") filters by case-ID substring and writes
    ?q= to the URL.
-4. Clicking the "Case ID" column header sorts: record the visible Case ID
-   column values — after the first click they are in ascending order, after
-   a second click descending (URL serialization and row ordering are
-   separate paths; ?sort=caseId appearing in the URL alone proves nothing
-   about the rows) — and the URL carries ?sort=caseId.
+4. FIRST clear the filters checks 2–3 applied — they persist in the URL:
+   select the "All" status chip and empty the search field, then confirm
+   ?status= and ?q= are gone and the full 30-session dataset is back (25
+   rows on page 1). Every later check assumes the unfiltered table; a
+   filtered leftover makes the sort vacuous, hides one of the two statuses
+   check 5 needs, and turns check 8's "Select all N matching" into a partial
+   delete. THEN click the "Case ID" column header to sort: record the
+   visible Case ID column values — after the first click they are in
+   ascending order, after a second click descending (URL serialization and
+   row ordering are separate paths; ?sort=caseId appearing in the URL alone
+   proves nothing about the rows) — and the URL carries ?sort=caseId.
 5. Row actions: an in-progress row shows "Resume" (data-testid="data-resume")
    and it mounts /interview/<id>; a complete row shows "Review"
    (data-testid="data-review") which opens ?mode=review with a pinned
@@ -754,7 +776,7 @@ CHECKS:
    "Not exported" (a stale pre-cancel DOM is not evidence).
 7. Cancel during build (data-testid="export-cancel-build"): attempt to cancel
    within the dialog's initial pause; if the build outruns you twice, mark
-   this check skipped rather than failed.
+   this check skipped with skipCode "environment-limit" rather than failed.
 
 Return journey="data-export".`,
   },
@@ -782,11 +804,14 @@ CHECKS:
 2. Relock on reload: reload → lock screen "Welcome back". A WRONG 8-digit PIN
    clears the field and the dialog stays; the correct PIN unlocks (entry
    auto-submits when all 8 digits are typed).
-3. Manual lock: the top-bar "Lock app" button locks immediately. Idle
-   auto-lock is REAL, not just a setting: set "Auto-lock after" to 1 minute
-   (Settings → Security), unlock, generate no input events for ~70 s, and
-   the lock screen must appear on its own (the useIdleTimer path — reload
-   and manual locks never exercise it); restore 15 minutes afterwards.
+3. Manual lock, then idle auto-lock — one coherent sequence: click the
+   top-bar "Lock app" button → the lock screen appears immediately → unlock
+   with the PIN. Now set "Auto-lock after" to 1 minute (Settings →
+   Security), close Settings, and generate no input events for ~70 s — the
+   lock screen must appear ON ITS OWN (the useIdleTimer path — reload and
+   manual locks never exercise it). Unlock once more, restore "Auto-lock
+   after" to 15 minutes, close Settings, and finish by clicking "Lock app"
+   again so the journey continues from a locked app.
 4. Step-up on interview entry: unlock first — check 3 left the app locked.
    Then install the Sample Protocol (toast!), "Start
    new interview" with any case ID → a "Confirm your identity" dialog appears
@@ -810,10 +835,13 @@ CHECKS:
    row's protocol/codebook must NOT be plaintext JSON (no readable node
    names or codebook keys); plaintext there means the vault chip is lying
    about data at rest. Record this inside check 4's result detail.
-5. Lock-screen guard on interview routes: while on /interview/…, reload → the
-   "Welcome back" lock screen appears WITHOUT the "Recover by resetting"
-   button (it is suppressed on interview routes). Unlock and confirm the
-   interview is still there.
+5. Lock-screen guard on interview routes: check 4 ended back on the
+   dashboard, so FIRST re-enter the interview it created — Home → "Resume
+   last interview" pill (or /data → Resume), completing the identity
+   step-up if prompted — and confirm the URL is /interview/…. THEN reload →
+   the "Welcome back" lock screen appears WITHOUT the "Recover by
+   resetting" button (it is suppressed on interview routes). Unlock and
+   confirm the interview is still there.
 6. Change PIN: first EXIT the interview back to the dashboard (the button
    named "Settings" on /interview/* is the interview engine's own menu —
    text size and "Exit interview" only; the tabbed Settings dialog exists
@@ -862,12 +890,17 @@ CHECKS:
    be rejected and the app stay locked (this verify path is separate from
    the PIN's, and accepting any nonempty passphrase is a bypass) — then
    unlock with the correct passphrase.
-10. Lock-screen reset path: FIRST install the Sample Protocol again so the
-    reset has data to destroy (check 8's revoke already emptied the
-    database — resetting an empty store proves nothing). Then lock,
-    "Recover by resetting" → dialog "Reset all app data?" → "Permanently
-    delete" → verify the protocol AND any interviews are gone (0/0 in the
-    status row after reload), not merely that the lock cleared.
+10. Lock-screen reset path: FIRST install the Sample Protocol again AND
+    start + immediately exit one interview on it (complete the identity
+    step-up with the passphrase if prompted), so the reset has BOTH data
+    types to destroy — check 8's revoke already emptied the database, and
+    check 9 only re-enrolled the lock, so without this seeding the
+    "0 interviews" assertion starts at zero and passes even if the reset
+    fails to delete session rows. Then lock, "Recover by resetting" →
+    dialog "Reset all app data?" → "Permanently delete" → verify the
+    protocol AND the seeded interview are gone (0 protocols / 0 interviews
+    in the status row after reload, /data empty), not merely that the lock
+    cleared.
 
 Return journey="security-vault".`,
   },
@@ -928,7 +961,8 @@ CHECKS:
    even before setup, and a missing chip is a real regression. Each chip's
    explanatory text is reachable by click/tap as well as keyboard focus.
 10. App update flow: cannot be exercised against a deployed site (no way to
-    stage a newer build) — mark skipped with this reason.
+    stage a newer build) — mark skipped with skipCode "environment-limit" and
+    this reason.
 
 Return journey="pwa-offline".`,
   },
@@ -958,15 +992,19 @@ CHECKS:
    for read-back, reload, reopen Settings — still 1024. Restore 1920.
 5. Privacy: "Enable analytics" switch flips and reads back — verified
    BEHAVIOURALLY, not just visually: the context blocks the relay, but
-   attempted requests are still observable via page.on('request'). With
+   attempted requests are still observable via page.on('request').
    ESTABLISH the off-baseline explicitly first — toggle analytics OFF and
    wait for the switch to read back (do NOT assume the default state;
    report what the initial state was as an observation, never as a
-   failure) — then perform a representative action and a
-   reload and assert ZERO attempts to ph-relay.networkcanvas.com; enable,
-   then disable again, repeat the action + reload, and assert zero NEW
-   attempts after the opt-out. (Do not require attempts while enabled —
-   the client initialises lazily and batches, so that direction flakes.)
+   failure) — then perform a representative action and a reload, KEEP the
+   listener armed while the page sits idle for a further 15 s, and assert
+   ZERO attempts to ph-relay.networkcanvas.com across the whole window
+   (the client batches on a flush timer — a counter read immediately
+   after the action misses a late flush and would certify a broken
+   opt-out); enable, then disable again, repeat the action + reload +
+   15 s armed quiet period, and assert zero NEW attempts after the
+   opt-out. (Do not require attempts while enabled — the client
+   initialises lazily and batches, so that direction flakes.)
 6. Escape closes the Settings modal.
 7. Routing: an unknown path (${url}/definitely-not-a-route) renders the
    not-found screen (actual content, not a blank page), and navigation back
@@ -1426,14 +1464,32 @@ for (const r of results.filter(Boolean)) {
         .join(', ')}; treated as incomplete`,
     );
   }
-  // A skip is only acceptable where the prompt explicitly allows one; any
-  // other skipped check means the journey was not actually exercised.
+  // A skip is only acceptable where the prompt explicitly allows one, and it
+  // must declare a machine-readable skipCode from that position's permitted
+  // classes. Any other skipped check means the journey was not actually
+  // exercised. "schema-skew" is hotfix-only (see allowedSkips); the free-text
+  // detail is evidence for humans, never the classifier.
   const badSkips = r.checks
     .map((c, i) => ({ c, n: i + 1 }))
-    .filter(
-      ({ c, n }) =>
-        c.status === 'skipped' && !(allowedSkips[r.journey] || []).includes(n),
-    );
+    .filter(({ c, n }) => {
+      if (c.status !== 'skipped') return false;
+      const codes = (allowedSkips[r.journey] || {})[n];
+      if (!codes || !codes.includes(c.skipCode)) return true;
+      if (c.skipCode === 'schema-skew' && !hotfixRun) return true;
+      // Defense in depth behind the structured code: a mainline skip whose
+      // code claims the artifact never arrived while its detail describes an
+      // import rejection is internally inconsistent — reject the report
+      // rather than trust the label.
+      if (
+        !hotfixRun &&
+        c.skipCode !== 'schema-skew' &&
+        /schema|skew|unsupported|newer|exceed|incompatible|reject|migrat/i.test(
+          c.detail ?? '',
+        )
+      )
+        return true;
+      return false;
+    });
   // protocol-management checks 6 and 7 are a skip PAIR (the duplicate-import
   // check may only be skipped because the asset for check 6 was
   // unobtainable, and cannot run without it) — their skip states must match
@@ -1461,31 +1517,15 @@ for (const r of results.filter(Boolean)) {
       else seen.add(badSkips[i].n);
     }
   }
-  // The schema-skew rationale for skipping 6/7 is legitimate ONLY on a
-  // hotfix run: on a main-line candidate the same stated reason is a
-  // protocol-support regression wearing a permission slip. This enforces
-  // the permitted CLASS of reason, not its truth.
-  if (!hotfixRun && r.journey === 'protocol-management') {
-    r.checks.forEach((c, i) => {
-      if (
-        (i === 5 || i === 6) &&
-        c.status === 'skipped' &&
-        /schema|skew|unsupported|newer/i.test(c.detail ?? '')
-      )
-        badSkips.push({ c, n: i + 1 });
-    });
-    const seen = new Set();
-    for (let i = badSkips.length - 1; i >= 0; i--) {
-      if (seen.has(badSkips[i].n)) badSkips.splice(i, 1);
-      else seen.add(badSkips[i].n);
-    }
-  }
   if (badSkips.length) {
     if (!inconsistentJourneys.includes(r.journey))
       inconsistentJourneys.push(r.journey);
     certificationGaps.push(
       `journey "${r.journey}" skipped non-skippable check(s) ${badSkips
-        .map(({ c, n }) => `#${n} (${c.detail || 'no reason'})`)
+        .map(
+          ({ c, n }) =>
+            `#${n} (${c.skipCode || 'no skipCode'}: ${c.detail || 'no reason'})`,
+        )
         .join(', ')}; treated as incomplete`,
     );
   }
