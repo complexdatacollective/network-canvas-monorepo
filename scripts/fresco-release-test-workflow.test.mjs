@@ -2539,6 +2539,24 @@ test('the sink and the reader agree on the wire contract', async () => {
     );
 });
 
+// The sink is read once, at the end, so its log spans everything the lane
+// could have provoked. Moved earlier it would report on a window in which the
+// app had barely been asked to do anything, and its zero would mean much less.
+test('each lane reads its sink after it has finished exercising the app', async () => {
+  const { prompts } = await run(happyPath());
+  const order = prompts.map((p) => p.label);
+  for (const [sink, last] of [
+    ['relay-sink-upgrade', 'verify-api-settings'],
+    ['relay-sink-fresh', 'verify-fresh-setup'],
+  ]) {
+    assert.ok(order.includes(sink) && order.includes(last), `${sink} missing`);
+    assert.ok(
+      order.indexOf(sink) > order.indexOf(last),
+      `${sink} ran before ${last}, so it read a log from before the lane's work`,
+    );
+  }
+});
+
 test('the sink agents are told to report the script, not to interpret it', async () => {
   const { prompts } = await run(happyPath());
   for (const [label, lane] of SINK_AREAS) {
