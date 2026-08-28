@@ -99,6 +99,7 @@ describe.skipIf(!db)('team-scoped procedures', () => {
     });
     expect(lease.mode).toBe('editable');
     if (lease.mode !== 'editable') throw new Error('expected editable lease');
+    expect(lease.nextClientSequence).toBe('1');
 
     const revision = await client.protocols.commitSection({
       ...scope,
@@ -112,6 +113,16 @@ describe.skipIf(!db)('team-scoped procedures', () => {
     expect(
       (await client.protocols.draft(scope)).sections[sectionId],
     ).toMatchObject({ label: 'Welcome' });
+    const reacquired = await client.protocols.acquireSection({
+      ...scope,
+      sectionId,
+      clientId,
+    });
+    expect(reacquired).toMatchObject({
+      mode: 'editable',
+      leaseEpoch: lease.leaseEpoch,
+      nextClientSequence: '2',
+    });
     expect(
       await client.protocols.renewSection({
         ...scope,
