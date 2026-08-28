@@ -191,7 +191,7 @@ describe.skipIf(!db)('magic-link sign-in', () => {
     try {
       await provisionScratchSchema(scratch.pool);
       const { app, email, cookie } = await signInWithMagicLink(
-        scratch.pool,
+        scratch.app,
         'researcher',
       );
 
@@ -214,7 +214,7 @@ describe.skipIf(!db)('teams (organization plugin)', () => {
     try {
       await provisionScratchSchema(scratch.pool);
       const { app, auth, cookie } = await signInWithMagicLink(
-        scratch.pool,
+        scratch.app,
         'owner',
       );
       const me = await createRpcClient(app, { cookie }).me();
@@ -260,7 +260,7 @@ describe.skipIf(!db)('teams (organization plugin)', () => {
     const scratch = await createScratchSchema(db);
     try {
       await provisionScratchSchema(scratch.pool);
-      const { app, cookie } = await signInWithMagicLink(scratch.pool, 'owner');
+      const { app, cookie } = await signInWithMagicLink(scratch.app, 'owner');
       const create = await app.request('/api/auth/organization/create', {
         method: 'POST',
         headers: {

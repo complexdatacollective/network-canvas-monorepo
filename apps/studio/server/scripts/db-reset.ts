@@ -5,7 +5,7 @@ import { parseArgs } from 'node:util';
 
 import pg from 'pg';
 
-import { createPool } from '../src/db/pool.ts';
+import { createOwnerPool } from '../src/db/pool.ts';
 import { seed } from '../src/db/seed.ts';
 import { isLocalDatabase, readEnv } from '../src/env.ts';
 import { applySchema } from './apply.ts';
@@ -63,7 +63,7 @@ if (!isLocalDatabase(env.db.url) && !values.force) {
 
 console.log(`Resetting ${target}`);
 
-const pool = createPool(env.db);
+const pool = createOwnerPool(env.db);
 
 try {
   await pool.query('drop schema if exists public cascade');

@@ -22,15 +22,16 @@ import {
 
 describe.skipIf(!dbAvailable)('lease state machine', () => {
   let db: Pool;
+  let dispose: () => Promise<void>;
   let tenantDb: TenantDb;
   let server: SyncServer;
 
   beforeAll(async () => {
-    ({ db, tenantDb, server } = await makeServer('sync_lease'));
+    ({ db, tenantDb, server, dispose } = await makeServer('sync_lease'));
   });
 
   afterAll(async () => {
-    await db.end();
+    await dispose();
   });
   it('acquires a free lease at epoch 1 and refuses a second owner', async () => {
     const draft = await makeDraft(server);

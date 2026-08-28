@@ -20,15 +20,17 @@ import {
 
 describe.skipIf(!dbAvailable)('team isolation', () => {
   let db: Pool;
+  let dispose: () => Promise<void>;
   let server: SyncServer;
   let otherServer: SyncServer;
 
   beforeAll(async () => {
-    ({ db, server } = await makeServer('sync_tenancy'));
-    otherServer = new SyncServer(createTenantDb(db, 'team-other'));
+    let app: Pool;
+    ({ db, app, server, dispose } = await makeServer('sync_tenancy'));
+    otherServer = new SyncServer(createTenantDb(app, 'team-other'));
   });
   afterAll(async () => {
-    await db.end();
+    await dispose();
   });
 
   it('stores identical section content once per team', async () => {

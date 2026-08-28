@@ -18,15 +18,16 @@ import {
 
 describe.skipIf(!dbAvailable)('commit path', () => {
   let db: Pool;
+  let dispose: () => Promise<void>;
   let tenantDb: TenantDb;
   let server: SyncServer;
 
   beforeAll(async () => {
-    ({ db, tenantDb, server } = await makeServer('sync_commit'));
+    ({ db, tenantDb, server, dispose } = await makeServer('sync_commit'));
   });
 
   afterAll(async () => {
-    await db.end();
+    await dispose();
   });
   it('advances the manifest and produces the hash the shared engine predicts', async () => {
     const draft = await makeDraft(server);

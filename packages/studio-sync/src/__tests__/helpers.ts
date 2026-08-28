@@ -7,6 +7,7 @@ import {
 import pg from 'pg';
 
 import type { SectionDoc } from '../apply.ts';
+import { TENANT_ROLES } from '../rls.ts';
 import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '../schema.ts';
 import { SyncServer } from '../server.ts';
 import { createTenantDb } from '../tenant.ts';
@@ -14,13 +15,26 @@ import { CI, PGPORT } from './test-env.ts';
 
 export const TEST_TEAM_ID = 'team-test';
 
+export type SyncDatabase = {
+  /** The superuser: provisioning, fixtures, and cross-team oracles. */
+  db: pg.Pool;
+  /** Pinned to the application role, so RLS is enforced on it. */
+  app: pg.Pool;
+  /** Pinned to the maintenance role the policies let across every team. */
+  maintenance: pg.Pool;
+  dispose: () => Promise<void>;
+};
+
 /**
  * A scratch database carrying the sync schema. Connects as the postgres
  * superuser to a disposable instance — never point it at a real one. It lives
  * here rather than beside the schema because ../schema.ts is on the Studio
  * server's production boot path.
  */
-async function createSyncDatabase(port: number, name: string) {
+async function createSyncDatabase(
+  port: number,
+  name: string,
+): Promise<SyncDatabase> {
   if (!/^[a-z_][a-z0-9_]*$/.test(name)) {
     throw new Error(`unsafe scratch database name: ${name}`);
   }
@@ -36,20 +50,32 @@ async function createSyncDatabase(port: number, name: string) {
   await admin.query(`CREATE DATABASE ${name}`);
   await admin.end();
 
-  const db = new pg.Pool({
-    host: '127.0.0.1',
-    port,
-    user: 'postgres',
-    password: 'spike',
-    database: name,
-    max: 20,
-  });
+  const connect = (role?: string) =>
+    new pg.Pool({
+      host: '127.0.0.1',
+      port,
+      user: 'postgres',
+      password: 'spike',
+      database: name,
+      max: 20,
+      ...(role === undefined ? {} : { options: `-c role=${role}` }),
+    });
+  const db = connect();
   const statements = await generateMigration(
     await generateDrizzleJson({}),
     await generateDrizzleJson(SYNC_TABLES),
   );
   await db.query([...statements, SYNC_SIDECAR_SQL].join('\n'));
-  return db;
+  const app = connect(TENANT_ROLES.app);
+  const maintenance = connect(TENANT_ROLES.maintenance);
+  return {
+    db,
+    app,
+    maintenance,
+    dispose: async () => {
+      await Promise.all([app.end(), maintenance.end(), db.end()]);
+    },
+  };
 }
 
 /**
@@ -85,11 +111,15 @@ export const dbAvailable = await (async () => {
   }
 })();
 
+/** The server under test runs as the application role, as it does in Studio. */
 export async function makeServer(dbName: string, ttlMs?: number) {
-  const db = await createSyncDatabase(PGPORT, dbName);
-  const tenantDb = createTenantDb(db, TEST_TEAM_ID);
+  const { db, app, maintenance, dispose } = await createSyncDatabase(
+    PGPORT,
+    dbName,
+  );
+  const tenantDb = createTenantDb(app, TEST_TEAM_ID);
   const server = new SyncServer(tenantDb, ttlMs);
-  return { db, tenantDb, server };
+  return { db, app, maintenance, tenantDb, server, dispose };
 }
 
 export const DEFAULT_SECTIONS: Record<string, SectionDoc> = {
@@ -110,7 +140,8 @@ export async function makeDraft(
 /**
  * Wait until some backend in this database is blocked on a lock — the signal
  * that a transaction under test has reached its `FOR UPDATE` and is queueing
- * behind another one.
+ * behind another one. Takes the superuser pool: pg_stat_activity hides other
+ * sessions' wait state from a session running as a different role.
  */
 export async function waitForLockWait(db: pg.Pool): Promise<void> {
   for (let attempt = 0; attempt < 200; attempt++) {

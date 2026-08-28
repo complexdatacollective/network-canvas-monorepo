@@ -93,7 +93,7 @@ export function createBetterAuthInstance(
         // with no foreign key at all — would silently orphan their drafts,
         // sections, manifests and leases. Nothing in Studio calls this
         // endpoint yet, so it stays closed until a deliberate tenant-purge
-        // path lands with roles and row-level security (#1249).
+        // path lands with the team-role work that follows #1249.
         disableOrganizationDeletion: true,
         schema: {
           session: { fields: { activeOrganizationId: 'activeTeamId' } },

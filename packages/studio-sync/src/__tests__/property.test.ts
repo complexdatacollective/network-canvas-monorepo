@@ -1,7 +1,6 @@
 // Property tests. Pure properties run hundreds of cases; the DB-backed
 // interleaving property runs fewer (each case is real Postgres traffic).
 import fc from 'fast-check';
-import type { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -115,16 +114,16 @@ describe('apply engine properties (pure, 300 cases each)', () => {
 describe.skipIf(!dbAvailable)(
   'lease/commit interleaving property (DB-backed, 25 schedules)',
   () => {
-    let db: Pool;
+    let dispose: () => Promise<void>;
     let tenantDb: TenantDb;
     let server: SyncServer;
 
     beforeAll(async () => {
-      ({ db, tenantDb, server } = await makeServer('sync_property'));
+      ({ tenantDb, server, dispose } = await makeServer('sync_property'));
     });
 
     afterAll(async () => {
-      await db.end();
+      await dispose();
     });
 
     // Random schedules of two contenders (acquire, renew, commit, expire,

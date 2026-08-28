@@ -5,6 +5,7 @@ import type pg from 'pg';
 import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '@codaco/studio-sync/schema';
 
 import { PROTOCOL_SIDECAR_SQL, PROTOCOL_TABLES } from '../protocol/schema.ts';
+import { ACCESS_SIDECAR_SQL } from './access.ts';
 import { AUTH_TABLES } from './auth-schema.ts';
 import { SCHEMA_FINGERPRINT } from './fingerprint.generated.ts';
 
@@ -29,7 +30,13 @@ export const SCHEMA = {
   schemaFingerprint,
 };
 
-export const SIDECARS = [SYNC_SIDECAR_SQL, PROTOCOL_SIDECAR_SQL];
+// Order matters: the sync sidecar creates the roles the others grant to, and
+// the access sidecar must see every table.
+export const SIDECARS = [
+  SYNC_SIDECAR_SQL,
+  PROTOCOL_SIDECAR_SQL,
+  ACCESS_SIDECAR_SQL,
+];
 
 // The stamp table is excluded from the unstamped probe: its presence alone
 // says nothing about which build's tables sit beside it.

@@ -6,6 +6,7 @@ import process from 'node:process';
 
 import pg from 'pg';
 
+import { createOwnerPool } from '../src/db/pool.ts';
 import { checkSchema } from '../src/db/schema.ts';
 import { DEV, DEV_DATABASE_URL } from '../src/env/catalogue.ts';
 import { applySchema } from './apply.ts';
@@ -150,7 +151,7 @@ async function ensureDatabase(): Promise<void> {
 // Absent only: a stale schema is a human decision (the boot message names the
 // remedies), and auto-reconciling it here could destroy dev data.
 async function ensureSchemaProvisioned(): Promise<void> {
-  const pool = new pg.Pool({ connectionString: DEV_DATABASE_URL });
+  const pool = createOwnerPool({ url: DEV_DATABASE_URL });
   try {
     if ((await checkSchema(pool)).kind === 'absent') {
       await applySchema(pool);

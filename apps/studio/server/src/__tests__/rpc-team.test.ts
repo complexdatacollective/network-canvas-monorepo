@@ -49,11 +49,9 @@ describe.skipIf(!db)('team-scoped procedures', () => {
       getMembership: (_userId, teamId) =>
         Promise.resolve(memberships[teamId] ?? null),
     });
-    client = createRpcClient(
-      createApp(readEnv(), { auth, pool: scratch.pool }),
-    );
+    client = createRpcClient(createApp(readEnv(), { auth, pool: scratch.app }));
     anonymousClient = createRpcClient(
-      createApp(readEnv(), { auth: stubAuthService(), pool: scratch.pool }),
+      createApp(readEnv(), { auth: stubAuthService(), pool: scratch.app }),
     );
   });
   afterAll(async () => {

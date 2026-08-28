@@ -14,6 +14,7 @@
     "./apply": "./src/apply.ts",
     "./client": "./src/client.ts",
     "./server": "./src/server.ts",
+    "./rls": "./src/rls.ts",
     "./schema": "./src/schema.ts",
     "./tenant": "./src/tenant.ts"
   },

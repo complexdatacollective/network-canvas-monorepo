@@ -35,8 +35,14 @@ export async function ageQuarantine(
   );
 }
 
+/**
+ * The store under test runs as the application role, as it does in Studio;
+ * `db` is the connecting login, for fixtures and cross-team oracles.
+ */
 export async function makeStoreSchema(): Promise<{
   db: pg.Pool;
+  app: pg.Pool;
+  maintenance: pg.Pool;
   tenantDb: TenantDb;
   dispose: () => Promise<void>;
 }> {
@@ -51,7 +57,9 @@ export async function makeStoreSchema(): Promise<{
   }
   return {
     db: scratch.pool,
-    tenantDb: createTenantDb(scratch.pool, TEST_TEAM_ID),
+    app: scratch.app,
+    maintenance: scratch.maintenance,
+    tenantDb: createTenantDb(scratch.app, TEST_TEAM_ID),
     dispose: scratch.dispose,
   };
 }
