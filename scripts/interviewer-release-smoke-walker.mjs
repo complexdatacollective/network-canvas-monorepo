@@ -220,6 +220,11 @@ async function clickSettled(locator) {
     last = b;
     await page.waitForTimeout(250);
   }
+  // Never click into a still-moving deck: exhausting the window without
+  // sustained stability is a loud failure, not a fall-through to the exact
+  // swallowed-click behaviour this helper prevents.
+  if (stable < 3)
+    throw new Error('deck never settled after 30 stability samples');
   await locator.click();
 }
 

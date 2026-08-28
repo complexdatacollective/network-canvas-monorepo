@@ -113,14 +113,20 @@ const NOISE = [
   /cloudflareinsights/i,
   /ph-relay\.networkcanvas\.com/i,
 ];
-page.on('console', (m) => {
-  if (m.type() !== 'error') return;
-  // Chromium's generic "Failed to load resource" text omits the URL — it
-  // lives in the message location, so match the noise patterns against both
-  // (the ph-relay aborts from our own route block land here).
-  const text = `${m.text()} ${m.location()?.url ?? ''}`;
-  if (!NOISE.some((p) => p.test(text))) consoleErrors.push(text.trim());
-});
+// Attach to EVERY page in the context (the cross-tab check opens a second
+// one) — an error on any page is part of the verdict.
+function attachConsoleListener(p) {
+  p.on('console', (m) => {
+    if (m.type() !== 'error') return;
+    // Chromium's generic "Failed to load resource" text omits the URL — it
+    // lives in the message location, so match the noise patterns against
+    // both (the ph-relay aborts from our own route block land here).
+    const text = `${m.text()} ${m.location()?.url ?? ''}`;
+    if (!NOISE.some((pat) => pat.test(text))) consoleErrors.push(text.trim());
+  });
+}
+attachConsoleListener(page);
+context.on('page', (p) => attachConsoleListener(p));
 
 const watchdog = setTimeout(async () => {
   try {
@@ -198,6 +204,11 @@ async function clickSettled(locator) {
     last = b;
     await page.waitForTimeout(250);
   }
+  // Never click into a still-moving deck: exhausting the window without
+  // sustained stability is a loud failure, not a fall-through to the exact
+  // swallowed-click behaviour this helper prevents.
+  if (stable < 3)
+    throw new Error('deck never settled after 30 stability samples');
   await locator.click();
 }
 
@@ -493,8 +504,25 @@ try {
         req.onsuccess = () => res(req.result);
         req.onerror = () => rej(req.error);
       });
-    const isEnvelope = (v) =>
-      Boolean(v) && typeof v.iv === 'string' && typeof v.ct === 'string';
+    // A real envelope is base64 with an AES-GCM-shaped IV (12 bytes) and a
+    // ciphertext at least as long as the GCM tag, whose DECODED bytes carry
+    // none of the seeded plaintext markers — a wrapper with plaintext (or
+    // empty strings) stuffed into ct must not certify.
+    const MARKERS = ['"nodes"', '"schemaVersion"', '"codebook"', '"stages"'];
+    const isEnvelope = (v) => {
+      if (!v || typeof v.iv !== 'string' || typeof v.ct !== 'string')
+        return false;
+      let iv;
+      let ct;
+      try {
+        iv = atob(v.iv);
+        ct = atob(v.ct);
+      } catch {
+        return false;
+      }
+      if (iv.length !== 12 || ct.length < 16) return false;
+      return !MARKERS.some((m) => ct.includes(m));
+    };
     const sessions = await readAll('sessions');
     const protocols = await readAll('protocols');
     const assets = await readAll('assets');
