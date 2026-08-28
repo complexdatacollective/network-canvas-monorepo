@@ -58,7 +58,7 @@ const fixtures = vi.hoisted(() => {
         email: 'pending@example.com',
         role: 'admin',
         status: 'pending',
-        expiresAt: new Date('2026-09-01T00:00:00Z'),
+        expiresAt: new Date(Date.now() + 86_400_000),
         createdAt: new Date('2026-08-28T00:00:00Z'),
       },
       {
@@ -68,7 +68,7 @@ const fixtures = vi.hoisted(() => {
         email: 'expired@example.com',
         role: 'member',
         status: 'pending',
-        expiresAt: new Date('2020-01-01T00:00:00Z'),
+        expiresAt: new Date(Date.now() - 86_400_000),
         createdAt: new Date('2019-12-01T00:00:00Z'),
       },
     ],
