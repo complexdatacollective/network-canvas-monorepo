@@ -52,6 +52,58 @@ describe('posthog-server', () => {
     mockHeaders.mockResolvedValue(new Headers());
   });
 
+  describe('getPostHogServer', () => {
+    it('constructs the client without exception autocapture', async () => {
+      const { PostHog } = await import('posthog-node');
+      const { getPostHogServer } = await import('../posthog-server');
+
+      getPostHogServer();
+
+      expect(PostHog).toHaveBeenCalledWith('test-api-key', {
+        host: 'https://test.example.com',
+        flushAt: 1,
+        flushInterval: 0,
+      });
+    });
+
+    // The consent leak this guards against is not visible in the options
+    // object alone: `enableExceptionAutocapture` makes posthog-node attach
+    // process-level listeners that report exceptions without checking the
+    // deployment's setting, and nothing removes them afterwards. So take the
+    // options this module actually passes and hand them to the real library,
+    // which is the only thing that can say whether they install listeners.
+    it('installs no process-level exception listeners', async () => {
+      const { PostHog: MockedPostHog } = await import('posthog-node');
+      const { getPostHogServer } = await import('../posthog-server');
+
+      getPostHogServer();
+
+      const constructorArgs = vi.mocked(MockedPostHog).mock.calls[0];
+      if (!constructorArgs) {
+        throw new Error('The module did not construct a PostHog client.');
+      }
+
+      const { PostHog: RealPostHog } =
+        await vi.importActual<typeof import('posthog-node')>('posthog-node');
+
+      const before = {
+        uncaughtException: process.listenerCount('uncaughtException'),
+        unhandledRejection: process.listenerCount('unhandledRejection'),
+      };
+
+      const realClient = new RealPostHog(...constructorArgs);
+
+      try {
+        expect({
+          uncaughtException: process.listenerCount('uncaughtException'),
+          unhandledRejection: process.listenerCount('unhandledRejection'),
+        }).toEqual(before);
+      } finally {
+        await realClient.shutdown();
+      }
+    });
+  });
+
   describe('captureEvent', () => {
     it('returns early when analytics disabled', async () => {
       mockGetDisableAnalytics.mockResolvedValue(true);

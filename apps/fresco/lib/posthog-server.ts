@@ -36,12 +36,36 @@ export function getPostHogSessionProperties(
   return {};
 }
 
+/**
+ * Returns the shared server-side client, constructing it on first use.
+ *
+ * Nothing may reach the client without first checking whether this deployment
+ * has analytics enabled, and that check has to happen on every capture rather
+ * than once at construction: a researcher can turn analytics off at any point,
+ * and the server keeps running.
+ *
+ * That rule is why `enableExceptionAutocapture` is deliberately absent.
+ * Enabling it makes posthog-node add `uncaughtException` and
+ * `unhandledRejection` listeners to the process, and those listeners report
+ * straight to the relay without consulting the setting. They are installed
+ * when the client is constructed and there is no way to take them back:
+ * `shutdown()` stops the exception rate limiter and leaves the listeners in
+ * place, so rebuilding the client would add a second pair rather than replace
+ * the first. A deployment that started with analytics enabled would therefore
+ * keep sending exceptions for the life of the process after being told not to.
+ *
+ * The reporting this gives up is small. Errors raised while handling a request
+ * reach `onRequestError`, which checks the setting; errors thrown in `after`
+ * callbacks are caught and logged by Next and never reached these listeners
+ * anyway. What is left is failures outside any request — a module that throws
+ * at startup, a stray timer — which a self-hosted operator sees in the server
+ * log.
+ */
 export function getPostHogServer() {
   client ??= new PostHog(POSTHOG_API_KEY, {
     host: POSTHOG_PROXY_HOST,
     flushAt: 1,
     flushInterval: 0,
-    enableExceptionAutocapture: true,
   });
   return client;
 }
