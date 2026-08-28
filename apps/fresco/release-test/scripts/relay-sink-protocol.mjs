@@ -21,6 +21,17 @@ export const PROBE_MARKER = 'FRESCO-RELEASE-TEST-PROBE';
 // listening: a refused connection would be egress that went unrecorded.
 export const READY_FILE = '/tmp/relay-sink-listening';
 
+// How long the sink gives a connection to identify itself before classifying
+// it. A client that says nothing within it is egress, not a probe.
+export const IDENTIFY_MS = 3000;
+
+// How long a reader must wait after the last thing it did before the sink's
+// log can be treated as complete. A socket accepted just before the read, that
+// stalls or sends a short prefix, is not classified until IDENTIFY_MS has
+// passed — read sooner and that connection is reported as silence. The margin
+// covers the write and docker's own log latency.
+export const SETTLE_WAIT_MS = IDENTIFY_MS + 1500;
+
 /**
  * Classifies a connection from the first bytes it sent.
  *

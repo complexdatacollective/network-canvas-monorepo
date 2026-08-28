@@ -111,9 +111,21 @@ stronger: the check script dials the sink _from inside that lane's Fresco
 container_, at the relay's real hostname, on every port the sink covers,
 carrying a nonce it generated for that invocation — so a probe that comes back
 recorded proves the whole path real egress would take. Without it, a sink that
-never started reads exactly like a silent deployment. The upgrade lane's sink
-is recreated at the swap (`up.sh --keep-data`), so its log covers the pending
-image's lifetime and never the released image's.
+never started reads exactly like a silent deployment. The app container and the
+sink are removed together at the swap (`up.sh --keep-data`), so the log covers
+the pending image's lifetime and never the released image's.
+
+Read it for what it is. The run provokes `captureEvent`/`captureException`
+heavily — `lib/activityFeed.ts` captures and flushes on every activity-feed
+entry — so a zero is real evidence about the cached `isAnalyticsDisabled()`
+guard. It is not evidence about the other one: `instrumentation.ts`'s
+`onRequestError` and the process listeners consult
+`isAnalyticsDisabledUncached()`, and neither is reachable on demand without
+shipping an error-injection affordance in the image under test. Those are
+covered by `lib/__tests__/instrumentation.test.ts` and
+`lib/__tests__/posthog-server.test.ts`, which assert silence with analytics
+disabled. What the sink adds over them is that any path which _does_ construct
+the client and send is caught, whichever guard let it through.
 
 ### Reading the verdict
 

@@ -27,11 +27,13 @@
 import { writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 
-import { classify, READY_FILE, SINK_PORTS } from './relay-sink-protocol.mjs';
+import {
+  classify,
+  IDENTIFY_MS,
+  READY_FILE,
+  SINK_PORTS,
+} from './relay-sink-protocol.mjs';
 
-// How long a connection is given to identify itself. A client that says
-// nothing within it is classified as egress, not as a probe.
-const IDENTIFY_MS = 3000;
 // Enough to hold the marker and its nonce; the rest of any request is
 // irrelevant and never read.
 const IDENTIFY_BYTES = 128;

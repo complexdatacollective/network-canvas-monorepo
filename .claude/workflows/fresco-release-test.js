@@ -1864,12 +1864,26 @@ for (const [lane, surface, result] of egressSurfaces) {
 // from the start, the upgrade lane from the swap, which recreates the sink so
 // its log cannot carry the released image's traffic (up.sh).
 //
-// A zero is meaningful because both lanes provoke server-side capture
-// repeatedly before this is read: lib/activityFeed.ts calls captureEvent for
-// every activity-feed entry and flushes immediately, so protocol uploads,
-// interview generation and participant CRUD all reach it, as do the setup
-// wizard's AppSetup event and the interview route's own. A build that lost the
-// guard would have connected many times over by now.
+// A zero is meaningful for the path the run actually provokes, and that path
+// is specifically captureEvent/captureException, which consult the cached
+// isAnalyticsDisabled(). lib/activityFeed.ts calls captureEvent for every
+// activity-feed entry and flushes immediately, so protocol uploads, interview
+// generation and participant CRUD all reach it, as do the setup wizard's
+// AppSetup event and the interview route's own. A build that lost THAT guard
+// would have connected many times over by the time this is read.
+//
+// It is not evidence about the other guard. instrumentation.ts's
+// onRequestError and posthog-server.ts's process listeners consult
+// isAnalyticsDisabledUncached() instead, and neither is reachable on demand:
+// one needs an error escaping a request handler, the other a failure outside
+// any request. Provoking them would mean shipping an error-injection
+// affordance in the image under test, or depending on some route's incidental
+// lack of error handling — a probe that would go quiet the moment someone
+// added a try/catch, and take this gate's meaning with it. Those two are
+// covered where they can be covered honestly: lib/__tests__/instrumentation.
+// test.ts and lib/__tests__/posthog-server.test.ts both assert silence with
+// analytics disabled. What the sink adds is that ANY path which does construct
+// the client and send is seen, whichever guard let it through.
 const relaySinks = [
   ['fresh lane', freshLane?.up?.ok === true, freshLane?.relaySink],
   ['upgrade lane', upgradeLane?.swap?.ok === true, upgradeLane?.relaySink],

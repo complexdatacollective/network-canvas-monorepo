@@ -2468,7 +2468,19 @@ test('the upgrade swap reopens the sink window it reads', () => {
     up,
   )?.[1];
   assert.ok(keepData, 'failed to locate the --keep-data branch of up.sh');
-  assert.match(keepData, /compose rm -sf relay-sink/);
+  // The app container goes with it, in the same command. Removing only the
+  // sink leaves the released app running while `up` starts the replacement and
+  // waits for it to be healthy — and anything it sent in that window would be
+  // read as the pending image's traffic.
+  assert.match(
+    keepData,
+    /compose rm -sf (fresco relay-sink|relay-sink fresco)\b/,
+  );
+  // The volumes are what make this a swap rather than a fresh install.
+  assert.ok(
+    !/\brm\b[^\n]*-[a-z]*v/.test(keepData) && !/\bdown\b/.test(keepData),
+    'the swap must not remove the seeded volumes',
+  );
 });
 
 // The relay the sink stands in for. Read from the constant rather than
@@ -2555,6 +2567,34 @@ test('each lane reads its sink after it has finished exercising the app', async 
       `${sink} ran before ${last}, so it read a log from before the lane's work`,
     );
   }
+});
+
+// The sink holds a connection that stalls, or sends a short prefix, until its
+// identification timeout expires. A reader that snapshots the log sooner
+// reports a socket accepted just beforehand as silence — so the wait is
+// derived from that timeout rather than picked to be "long enough".
+test("the sink reader outlasts the sink's identification timeout", async () => {
+  const { IDENTIFY_MS, SETTLE_WAIT_MS } =
+    await import('../apps/fresco/release-test/scripts/relay-sink-protocol.mjs');
+  assert.ok(
+    SETTLE_WAIT_MS > IDENTIFY_MS,
+    `a reader waiting ${SETTLE_WAIT_MS}ms cannot see a connection the sink classifies after ${IDENTIFY_MS}ms`,
+  );
+  // And the reader must take the wait from that constant, not restate it: a
+  // literal here would silently stop tracking the sink.
+  const reader = readFileSync(
+    join(repoRoot, 'apps/fresco/release-test/scripts/relay-sink-check.mjs'),
+    'utf8',
+  );
+  assert.match(reader, /setTimeout\(resolve, SETTLE_WAIT_MS\)/);
+  const sink = readFileSync(
+    join(repoRoot, 'apps/fresco/release-test/scripts/relay-sink.mjs'),
+    'utf8',
+  );
+  assert.ok(
+    !/const IDENTIFY_MS\s*=/.test(sink),
+    'the sink must use the shared timeout, not define a second one',
+  );
 });
 
 test('the sink agents are told to report the script, not to interpret it', async () => {

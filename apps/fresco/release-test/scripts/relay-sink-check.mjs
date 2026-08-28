@@ -25,7 +25,11 @@
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 
-import { PROBE_MARKER, SINK_PORTS } from './relay-sink-protocol.mjs';
+import {
+  PROBE_MARKER,
+  SETTLE_WAIT_MS,
+  SINK_PORTS,
+} from './relay-sink-protocol.mjs';
 
 const args = process.argv.slice(2);
 let lane = '';
@@ -122,9 +126,12 @@ for (const port of SINK_PORTS) {
   }
 }
 
-// docker exec returns as soon as the probe's socket closes; the sink settles
-// and records on its own side. Give it a moment before reading the log.
-await new Promise((resolve) => setTimeout(resolve, 1000));
+// The sink does not classify a connection the moment it arrives: one that
+// stalls, or sends less than a full identifying prefix, is held until its
+// identification timeout expires. Reading before that elapses would report a
+// socket accepted just beforehand as silence — so wait out the timeout the
+// sink itself uses, not merely long enough for the probes to land.
+await new Promise((resolve) => setTimeout(resolve, SETTLE_WAIT_MS));
 
 let raw = '';
 try {
