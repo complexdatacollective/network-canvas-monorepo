@@ -807,9 +807,11 @@ check's detail:
 3. Manual lock and REAL idle auto-lock at the 1-minute setting: step
    "manual-and-idle-lock".
 4. Step-up gates (a rejected credential creates no session) and encryption
-   at rest across sessions, protocols, AND assets: steps
-   "stepup-interview-entry", "phantom-after-entry-gated-exit",
-   "stepup-export", and "ciphertext-at-rest".
+   at rest across sessions, protocols, AND assets — including rows seeded
+   in plaintext BEFORE enrolment, proving the re-encryption sweep: steps
+   "seed-before-enrolment", "stepup-interview-entry",
+   "phantom-after-entry-gated-exit", "stepup-export", and
+   "ciphertext-at-rest".
 5. Lock-screen guard on interview routes (recovery suppressed): step
    "interview-route-lock-guard".
 6. Exit step-up and PIN rotation (cross-tab force-lock, old PIN rejected,

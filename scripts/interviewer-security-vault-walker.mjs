@@ -231,11 +231,38 @@ async function setToggle(name, on) {
 }
 
 async function installSampleProtocol() {
+  // Card activation is EFFECT-VERIFIED with retries: the dot click can be
+  // swallowed while the deck's entrance spring is still running (observed
+  // when this is the walk's first interaction after initial load).
+  const install = page.getByRole('button', {
+    name: 'Install sample protocol',
+  });
   const dot = page.getByRole('button', { name: 'Go to card 1' });
-  if (await dot.isVisible().catch(() => false)) await dot.click();
-  await clickSettled(
-    page.getByRole('button', { name: 'Install sample protocol' }),
-  );
+  // Let the deck's ENTRANCE spring finish before the first interaction —
+  // clicks dispatched during it are swallowed (probe-verified: a click 4 s
+  // after load activates the card instantly; one at ~2 s does not).
+  await expect(
+    page
+      .getByText('0 protocols')
+      .or(page.getByText(/\d+ protocols/))
+      .first(),
+  ).toBeVisible({
+    timeout: 20_000,
+  });
+  await page.waitForTimeout(2_000);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (await install.isVisible().catch(() => false)) break;
+    if (await dot.isVisible().catch(() => false)) {
+      await clickSettled(dot);
+      // Activation's own effect signal: the dot takes aria-current.
+      const activated = await expect(dot)
+        .toHaveAttribute('aria-current', 'true', { timeout: 5_000 })
+        .then(() => true)
+        .catch(() => false);
+      if (activated) break;
+    }
+  }
+  await clickSettled(install);
   await expect(page.getByText('Protocol imported').first()).toBeVisible({
     timeout: 30_000,
   });
@@ -303,6 +330,25 @@ async function checkPhantomStepUp(stepName) {
 // --- the walk -------------------------------------------------------------
 try {
   await page.goto(url);
+
+  // 0. Seed PLAINTEXT rows before any vault exists: install the protocol and
+  // record one session in 'none' mode. Enrolment must then RE-ENCRYPT these
+  // pre-existing rows (the re-encryption sweep) — without this seeding, every
+  // row the ciphertext oracle inspects was encrypted on first write, and a
+  // sweep regression (researcher enables a lock AFTER collecting data)
+  // certifies plaintext at rest.
+  await installSampleProtocol();
+  await startInterview('pre-enrol-probe');
+  await expectStageMounted();
+  await exitInterview();
+  await expect(
+    page.getByRole('button', { name: 'Start new interview' }),
+  ).toBeVisible({ timeout: 15_000 });
+  record(
+    'seed-before-enrolment',
+    true,
+    'protocol + session recorded in none mode before any vault existed',
+  );
 
   // 1. Enrol a PIN via the 6-step wizard; the lock-behaviour step must show
   // "Require unlock when entering an interview" defaulting ON.
@@ -385,15 +431,15 @@ try {
   await expectLocked();
   record(
     'manual-and-idle-lock',
-    idleSeconds >= 55,
-    `manual lock ok; idle auto-lock fired after ~${idleSeconds}s at the 1-minute setting`,
+    idleSeconds >= 55 && idleSeconds <= 85,
+    `manual lock ok; idle auto-lock fired after ~${idleSeconds}s at the 1-minute setting (bounds 55-85s: materially late firing is a weaker lock than the setting promises)`,
   );
 
   // 4. Step-up on interview entry (wrong PIN first, no session), then the
-  // export step-up call site, then ciphertext at rest.
+  // export step-up call site, then ciphertext at rest. (The protocol was
+  // installed in step 0, before enrolment.)
   await unlockPin(PIN);
   await expectUnlocked();
-  await installSampleProtocol();
   // Raw session count, readable regardless of encryption — the wrong-PIN
   // rejection must not have created a session row.
   const rawSessionCount = () =>
@@ -509,19 +555,39 @@ try {
     // none of the seeded plaintext markers — a wrapper with plaintext (or
     // empty strings) stuffed into ct must not certify.
     const MARKERS = ['"nodes"', '"schemaVersion"', '"codebook"', '"stages"'];
-    const isEnvelope = (v) => {
+    const decodeEnvelope = (v) => {
       if (!v || typeof v.iv !== 'string' || typeof v.ct !== 'string')
-        return false;
-      let iv;
-      let ct;
+        return null;
       try {
-        iv = atob(v.iv);
-        ct = atob(v.ct);
+        const iv = atob(v.iv);
+        const ct = atob(v.ct);
+        if (iv.length !== 12 || ct.length < 16) return null;
+        return ct;
       } catch {
-        return false;
+        return null;
       }
-      if (iv.length !== 12 || ct.length < 16) return false;
-      return !MARKERS.some((m) => ct.includes(m));
+    };
+    const isEnvelope = (v) => {
+      const ct = decodeEnvelope(v);
+      return ct !== null && !MARKERS.some((m) => ct.includes(m));
+    };
+    // Assets are CSV/SVG/PNG/MOV — none carries the JSON markers, so their
+    // ciphertext must also be free of asset-shaped plaintext: media magic
+    // numbers, an SVG tag, or text-like content (real AES-GCM output is
+    // ~37% printable by chance; seeded CSV/SVG is ~100%).
+    const isAssetEnvelope = (v) => {
+      const ct = decodeEnvelope(v);
+      if (ct === null) return false;
+      if (ct.includes('PNG') || ct.includes('ftyp') || ct.includes('<svg'))
+        return false;
+      const head = ct.slice(0, 200);
+      let printable = 0;
+      for (let i = 0; i < head.length; i += 1) {
+        const c = head.charCodeAt(i);
+        if ((c >= 32 && c <= 126) || c === 9 || c === 10 || c === 13)
+          printable += 1;
+      }
+      return printable / head.length < 0.9;
     };
     const sessions = await readAll('sessions');
     const protocols = await readAll('protocols');
@@ -555,14 +621,17 @@ try {
           isEnvelope(p._enc?.codebook),
       ),
       assetsEncrypted: assets.every(
-        (a) => !('data' in a) && isEnvelope(a._enc?.data),
+        (a) => !('data' in a) && isAssetEnvelope(a._enc?.data),
       ),
       leaks: JSON.stringify({ sessions, protocols }).includes('"nodes"'),
     };
   });
   record(
     'ciphertext-at-rest',
-    cipher.sessionCount > 0 &&
+    // Exactly 3 sessions here: pre-enrol-probe (written PLAINTEXT before
+    // the vault existed — its envelope proves the re-encryption sweep),
+    // vault-probe, and the synthetic session.
+    cipher.sessionCount === 3 &&
       cipher.protocolCount > 0 &&
       cipher.assetCount > 0 &&
       cipher.sessionsEncrypted &&
@@ -570,7 +639,7 @@ try {
       cipher.protocolsEncrypted &&
       cipher.assetsEncrypted &&
       !cipher.leaks,
-    `sessions=${cipher.sessionCount} protocols=${cipher.protocolCount} assets=${cipher.assetCount} sessionsEncrypted=${cipher.sessionsEncrypted} stageMetadataEnvelopes=${cipher.stageMetadataEnvelopes} protocolsEncrypted=${cipher.protocolsEncrypted} assetsEncrypted=${cipher.assetsEncrypted} plaintextLeak=${cipher.leaks}`,
+    `sessions=${cipher.sessionCount} (incl. the pre-enrolment row, so the re-encryption sweep is proven) protocols=${cipher.protocolCount} assets=${cipher.assetCount} sessionsEncrypted=${cipher.sessionsEncrypted} stageMetadataEnvelopes=${cipher.stageMetadataEnvelopes} protocolsEncrypted=${cipher.protocolsEncrypted} assetsEncrypted=${cipher.assetsEncrypted} plaintextLeak=${cipher.leaks}`,
   );
 
   // 5. Lock-screen guard on interview routes: re-enter the interview, reload,
@@ -674,7 +743,8 @@ try {
   await unlockPin(NEW_PIN);
   await expectUnlocked();
   // The EXACT seeded counts, not a pattern "0 interviews" would satisfy:
-  // vault-probe + the synthetic session + exit-probe = 3 sessions. Poll —
+  // pre-enrol-probe + vault-probe + the synthetic session + exit-probe = 4
+  // sessions. Poll —
   // the status row fades in after unlock, and an instant read races it.
   let dataSurvived = true;
   try {
@@ -682,7 +752,7 @@ try {
     // element ("1 protocols 3 interviews") — bare getByText would strict-mode
     // collide with the deck card's own "3 interviews" link.
     await expect(
-      page.getByRole('link', { name: '1 protocols 3 interviews' }),
+      page.getByRole('link', { name: '1 protocols 4 interviews' }),
     ).toBeVisible({ timeout: 15_000 });
   } catch {
     dataSurvived = false;
@@ -703,7 +773,7 @@ try {
   record(
     'rotate-pin',
     exitGateHeld && wrongCurrentRefused && oldPinRejected && dataSurvived,
-    `exit gate held=${exitGateHeld}; wrong current refused=${wrongCurrentRefused}; second tab force-locked; old PIN rejected=${oldPinRejected}; data survived=${dataSurvived} (1 protocols / 3 interviews exact)`,
+    `exit gate held=${exitGateHeld}; wrong current refused=${wrongCurrentRefused}; second tab force-locked; old PIN rejected=${oldPinRejected}; data survived=${dataSurvived} (1 protocols / 4 interviews exact)`,
   );
 
   // The rotated vault must still DECRYPT the pre-rotation payload — counts

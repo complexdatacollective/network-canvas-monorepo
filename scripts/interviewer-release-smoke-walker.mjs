@@ -416,8 +416,12 @@ try {
       .allTextContents()
       .then((t) => t.join('|'))
       .catch(() => '');
+  // Retain the FIRST pair's identity: it receives the walk's only "Yes",
+  // so the persisted friends edge must connect exactly these two people.
+  let friendsPair = [];
   for (let pair = 0; pair < 3; pair += 1) {
     const before = await pairLabels();
+    if (pair === 0) friendsPair = before.split('|');
     await page.getByRole('radio', { name: pair === 0 ? 'Yes' : 'No' }).click();
     if (pair < 2) {
       await expect.poll(pairLabels, { timeout: 15_000 }).not.toBe(before);
@@ -523,8 +527,10 @@ try {
     if (!s?.network) return { found: false };
     const edges = s.network.edges ?? [];
     const byName = {};
+    const idToName = {};
     for (const n of s.network.nodes ?? []) {
       const a = n.attributes ?? {};
+      idToName[n._uid] = a.name;
       byName[a.name] = {
         layout:
           a.layout &&
@@ -539,9 +545,14 @@ try {
       found: true,
       sessionCount: sessions.length,
       byName,
-      edgeTypes: [...new Set(edges.map((e) => e.type))].toSorted((a, b) =>
-        String(a).localeCompare(String(b)),
-      ),
+      // Endpoint identity, not just type presence: map each edge's node ids
+      // (entityPrimaryKeyProperty '_uid') back to names.
+      edgeList: edges.map((e) => ({
+        type: e.type,
+        ends: [idToName[e.from], idToName[e.to]].toSorted((a, b) =>
+          String(a).localeCompare(String(b)),
+        ),
+      })),
       egoName: (s.network.ego?.attributes ?? {}).ego_name ?? null,
     };
   });
@@ -561,18 +572,33 @@ try {
   const layoutsDistinct =
     layoutPoints.length === 3 &&
     new Set(layoutPoints.map((p) => `${p.x},${p.y}`)).size === 3;
+  // Edge ENDPOINTS and cardinality, not just type presence: exactly one
+  // knows edge between Alex and Blair (the sociogram link), and exactly one
+  // friends edge between the pair the walk answered Yes for — a right-typed
+  // edge on the wrong dyad, or a duplicate, is corrupted relationship data.
+  const edgeList = payload.edgeList ?? [];
+  const sortedPair = (pair) =>
+    [...pair].sort((a, b) => String(a).localeCompare(String(b))).join('+');
+  const knowsEdges = edgeList.filter((e) => e.type === 'knows');
+  const friendsEdges = edgeList.filter((e) => e.type === 'friends');
+  const edgesExact =
+    edgeList.length === 2 &&
+    knowsEdges.length === 1 &&
+    sortedPair(knowsEdges[0].ends) === 'Alex+Blair' &&
+    friendsEdges.length === 1 &&
+    friendsPair.length === 2 &&
+    sortedPair(friendsEdges[0].ends) === sortedPair(friendsPair);
   const payloadOk =
     payload.found &&
     payload.sessionCount === 1 &&
     contextsExact &&
     layoutsDistinct &&
-    payload.edgeTypes.includes('knows') &&
-    payload.edgeTypes.includes('friends') &&
+    edgesExact &&
     payload.egoName === 'Smoke Tester';
   record(
     'persisted-payload',
     payloadOk,
-    `stored network: ${JSON.stringify(byName)} edgeTypes=${JSON.stringify(payload.edgeTypes ?? [])} ego=${JSON.stringify(payload.egoName ?? null)} contextsExact=${contextsExact} layoutsDistinct=${layoutsDistinct}`,
+    `stored network: ${JSON.stringify(byName)} edges=${JSON.stringify(edgeList)} expectedFriendsPair=${JSON.stringify(friendsPair)} ego=${JSON.stringify(payload.egoName ?? null)} contextsExact=${contextsExact} layoutsDistinct=${layoutsDistinct} edgesExact=${edgesExact}`,
   );
 
   // Cross-cutting: every non-whitelisted console error collected across the
