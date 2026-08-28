@@ -4,7 +4,8 @@
 
 **Tracking:** #1259 (audit log and data-egress alerting), #1252
 (observability foundation), #1257 (role-based access control), #1256 (team
-invitations), and #1515 (initial team-management UI).
+invitations), #1515 (initial team-management UI), #1519 (immutable foundation),
+#1520 (activity UI), and #1521 (producer and alert expansion).
 
 ## 1. Summary
 
@@ -642,7 +643,7 @@ or the expected type is changed—before its new expected state is accepted.
 
 ## 14. Delivery plan
 
-### Slice A — immutable foundation and current team administration
+### Slice A — immutable foundation and current team administration (#1519)
 
 Bring this slice into the current Studio team-workspace phase:
 
@@ -656,27 +657,26 @@ Bring this slice into the current Studio team-workspace phase:
 This is the minimum slice that makes the currently demonstrated role and
 invitation functionality accountable. It should follow or stack on #1515.
 
-### Slice B — team activity UI and export
+### Slice B — team activity UI and export (#1520)
 
 Add the authorized list/get contract, activity route, filters, detail view,
 pagination, CSV export, and integration/E2E coverage. Slice B depends on Slice
 A and can be stacked while Slice A is reviewed.
 
-### Slice C — producer expansion and egress alerts
+### Slice C — producer expansion and egress alerts (#1521)
 
 As protocol, study, participant, data API, credential, and integration features
 land, add their event producers as acceptance criteria of the owning feature.
 Add the alert outbox and notification delivery with #1252. This preserves the
 Phase 7 production-readiness work without delaying the team audit foundation.
 
-## 15. GitHub tracking recommendation
+## 15. GitHub tracking
 
-Keep #1259 as the audit/egress epic and replace its single broad implementation
-task with three linked child issues matching Slices A–C. Put Slices A and B in
-Phase 3 (Editor core) because team administration is already user-visible and
-role changes are the motivating risk. Keep Slice C in Phase 7 because its
-broader data-egress and notification work depends on observability and future
-data domains.
+#1259 remains the audit/egress epic, with #1519, #1520, and #1521 as linked
+child issues matching Slices A–C. Slices A and B are in Phase 3 (Editor core)
+because team administration is already user-visible and role changes are the
+motivating risk. Slice C remains in Phase 7 because its broader data-egress and
+notification work depends on observability and future data domains.
 
 Do not silently add either issue to the active sprint. After #1515 merges, the
 project owner can move Slice A from **Backlog** to **Ready** as the next
