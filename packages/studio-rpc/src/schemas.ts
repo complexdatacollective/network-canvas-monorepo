@@ -77,7 +77,11 @@ const SectionScopedSchema = ProtocolDraftInputSchema.extend({
 
 export const AcquireSectionInputSchema = SectionScopedSchema;
 export const AcquireSectionResultSchema = z.discriminatedUnion('mode', [
-  z.object({ mode: z.literal('editable'), leaseEpoch: DecimalSequenceSchema }),
+  z.object({
+    mode: z.literal('editable'),
+    leaseEpoch: DecimalSequenceSchema,
+    nextClientSequence: DecimalSequenceSchema,
+  }),
   z.object({ mode: z.literal('readOnly') }),
 ]);
 

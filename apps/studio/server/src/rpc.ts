@@ -98,16 +98,26 @@ export function createRpcRouter(
             input.protocolId,
             input.draftId,
           );
-          const lease = await createProtocolSyncServer(
-            context.tenantDb,
-          ).acquire(
+          const syncServer = createProtocolSyncServer(context.tenantDb);
+          const owner = `${context.principal.userId}:${input.clientId}`;
+          const lease = await syncServer.acquire(
             input.draftId,
             input.sectionId,
-            `${context.principal.userId}:${input.clientId}`,
+            owner,
           );
-          return lease
-            ? { mode: 'editable' as const, leaseEpoch: String(lease.epoch) }
-            : { mode: 'readOnly' as const };
+          if (!lease) return { mode: 'readOnly' as const };
+
+          const resume = await syncServer.resume(input.draftId, owner);
+          const lastApplied = resume.lastApplied[input.sectionId];
+          const nextClientSequence =
+            lastApplied?.epoch === lease.epoch
+              ? lastApplied.clientSeq + 1n
+              : 1n;
+          return {
+            mode: 'editable' as const,
+            leaseEpoch: String(lease.epoch),
+            nextClientSequence: String(nextClientSequence),
+          };
         }),
       commitSection: os.protocols.commitSection
         .use(requireTeam)
