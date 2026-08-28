@@ -10,21 +10,40 @@ import { addStage, moveStage } from './protocol/draft-structure.ts';
 import { emptyProtocol } from './protocol/sectionize.ts';
 import { ProtocolStore } from './protocol/store.ts';
 import { createProtocolSyncServer } from './protocol/sync.ts';
+import {
+  cancelTeamInvitation,
+  createTeamInvitation,
+  TeamCommandError,
+  updateTeamMemberRole,
+} from './team/commands.ts';
 
 // The SPA's internal surface: unpublished and free-moving within the
 // deploy-compatibility rules on #1245 — its only client is the Studio SPA.
 
 export type RpcContext = {
   principal: Principal | null;
+  requestId: string;
 };
 
 const os = implement(contract).$context<RpcContext>();
 
 const requireUser = os.middleware(({ context, next }) => {
-  const { principal } = context;
+  const { principal, requestId } = context;
   if (!principal) throw new ORPCError('UNAUTHORIZED');
-  return next({ context: { principal } });
+  return next({ context: { principal, requestId } });
 });
+
+async function handleTeamCommand<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (!(error instanceof TeamCommandError)) throw error;
+    if (error.code === 'FORBIDDEN') throw new ORPCError('FORBIDDEN');
+    if (error.code === 'NOT_FOUND') throw new ORPCError('NOT_FOUND');
+    if (error.code === 'CONFLICT') throw new ORPCError('CONFLICT');
+    throw new ORPCError('BAD_REQUEST');
+  }
+}
 
 export function createRpcRouter(
   caps: AuthCapabilities,
@@ -49,6 +68,7 @@ export function createRpcRouter(
       return next({
         context: {
           principal,
+          requestId: context.requestId,
           team: { id: input.teamId, role: membership.role },
           tenantDb: createTenantDb(pool, input.teamId),
         },
@@ -64,6 +84,50 @@ export function createRpcRouter(
       emailVerified: context.principal.emailVerified,
       name: context.principal.name,
     })),
+    team: {
+      updateMemberRole: os.team.updateMemberRole
+        .use(requireTeam)
+        .handler(({ context, input }) =>
+          handleTeamCommand(() =>
+            updateTeamMemberRole(
+              {
+                tenantDb: context.tenantDb,
+                principal: context.principal,
+                requestId: context.requestId,
+              },
+              { memberId: input.memberId, role: input.role },
+            ),
+          ),
+        ),
+      createInvitation: os.team.createInvitation
+        .use(requireTeam)
+        .handler(({ context, input }) =>
+          handleTeamCommand(() =>
+            createTeamInvitation(
+              {
+                tenantDb: context.tenantDb,
+                principal: context.principal,
+                requestId: context.requestId,
+              },
+              { email: input.email, role: input.role },
+            ),
+          ),
+        ),
+      cancelInvitation: os.team.cancelInvitation
+        .use(requireTeam)
+        .handler(({ context, input }) =>
+          handleTeamCommand(() =>
+            cancelTeamInvitation(
+              {
+                tenantDb: context.tenantDb,
+                principal: context.principal,
+                requestId: context.requestId,
+              },
+              { invitationId: input.invitationId },
+            ),
+          ),
+        ),
+    },
     protocols: {
       create: os.protocols.create
         .use(requireTeam)

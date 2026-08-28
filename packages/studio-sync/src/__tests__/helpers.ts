@@ -9,11 +9,33 @@ import pg from 'pg';
 import type { SectionDoc } from '../apply.ts';
 import { TENANT_ROLES } from '../rls.ts';
 import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '../schema.ts';
-import { SyncServer } from '../server.ts';
-import { createTenantDb } from '../tenant.ts';
+import {
+  forceExpire,
+  SyncServer,
+  type SyncTransactionExecutor,
+} from '../server.ts';
+import { createTenantDb, type TenantDb } from '../tenant.ts';
 import { CI, PGPORT } from './test-env.ts';
 
 export const TEST_TEAM_ID = 'team-test';
+
+export function testSyncTransactionExecutor(
+  db: TenantDb,
+): SyncTransactionExecutor {
+  return (_operation, work, opts) => db.transaction(work, opts);
+}
+
+export function makeTestSyncServer(db: TenantDb, ttlMs?: number): SyncServer {
+  return new SyncServer(db, testSyncTransactionExecutor(db), ttlMs);
+}
+
+export function expireLease(
+  db: TenantDb,
+  draftId: string,
+  sectionId: string,
+): Promise<void> {
+  return forceExpire(db, testSyncTransactionExecutor(db), draftId, sectionId);
+}
 
 export type SyncDatabase = {
   /** The superuser: provisioning, fixtures, and cross-team oracles. */
@@ -118,7 +140,7 @@ export async function makeServer(dbName: string, ttlMs?: number) {
     dbName,
   );
   const tenantDb = createTenantDb(app, TEST_TEAM_ID);
-  const server = new SyncServer(tenantDb, ttlMs);
+  const server = makeTestSyncServer(tenantDb, ttlMs);
   return { db, app, maintenance, tenantDb, server, dispose };
 }
 

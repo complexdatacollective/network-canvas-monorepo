@@ -9,9 +9,15 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { TEAM_GUC, TENANT_ROLES } from '../rls.ts';
 import { SYNC_TABLES } from '../schema.ts';
-import { SyncServer } from '../server.ts';
+import { type SyncServer } from '../server.ts';
 import { createTenantDb, type TenantDb } from '../tenant.ts';
-import { TEST_TEAM_ID, dbAvailable, makeDraft, makeServer } from './helpers.ts';
+import {
+  TEST_TEAM_ID,
+  dbAvailable,
+  makeDraft,
+  makeServer,
+  makeTestSyncServer,
+} from './helpers.ts';
 
 const OTHER_TEAM_ID = 'team-other';
 
@@ -27,7 +33,7 @@ describe.skipIf(!dbAvailable)('row-level security', () => {
     ({ db, app, maintenance, tenantDb, server, dispose } =
       await makeServer('sync_rls'));
     await makeDraft(server);
-    await makeDraft(new SyncServer(createTenantDb(app, OTHER_TEAM_ID)));
+    await makeDraft(makeTestSyncServer(createTenantDb(app, OTHER_TEAM_ID)));
   });
   afterAll(async () => {
     await dispose();

@@ -4,6 +4,7 @@ import type pg from 'pg';
 
 import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '@codaco/studio-sync/schema';
 
+import { AUDIT_SIDECAR_SQL, AUDIT_TABLES } from '../audit/schema.ts';
 import { PROTOCOL_SIDECAR_SQL, PROTOCOL_TABLES } from '../protocol/schema.ts';
 import { ACCESS_SIDECAR_SQL } from './access.ts';
 import { AUTH_TABLES } from './auth-schema.ts';
@@ -27,15 +28,18 @@ export const SCHEMA = {
   ...AUTH_TABLES,
   ...SYNC_TABLES,
   ...PROTOCOL_TABLES,
+  ...AUDIT_TABLES,
   schemaFingerprint,
 };
 
-// Order matters: the sync sidecar creates the roles the others grant to, and
-// the access sidecar must see every table.
+// Order matters: sync creates the roles, access grants the general table
+// privileges, and audit runs last to revoke its immutable table's mutating
+// privileges after every broad grant.
 export const SIDECARS = [
   SYNC_SIDECAR_SQL,
   PROTOCOL_SIDECAR_SQL,
   ACCESS_SIDECAR_SQL,
+  AUDIT_SIDECAR_SQL,
 ];
 
 // The stamp table is excluded from the unstamped probe: its presence alone

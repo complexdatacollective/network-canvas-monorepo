@@ -11,7 +11,7 @@ import {
   manifestHash,
   type SectionDoc,
 } from './apply.ts';
-import type { TenantDb } from './tenant.ts';
+import type { TenantDb, TenantTransactionOptions } from './tenant.ts';
 
 export class LeaseRejectedError extends Error {
   constructor(reason: string) {
@@ -64,17 +64,36 @@ export type CommitResult = {
   sectionHash: string;
 };
 
+export type SyncTransactionOperation =
+  | 'createDraft'
+  | 'acquire'
+  | 'takeover'
+  | 'renew'
+  | 'release'
+  | 'commit'
+  | 'resume'
+  | 'forceExpireForTest';
+
+export type SyncTransactionExecutor = <T>(
+  operation: SyncTransactionOperation,
+  work: (client: pg.PoolClient) => Promise<T>,
+  opts?: TenantTransactionOptions,
+) => Promise<T>;
+
 export class SyncServer {
   private db: TenantDb;
+  private executeTransaction: SyncTransactionExecutor;
   private ttlMs: number;
   private validateSection: SectionValidator | undefined;
 
   constructor(
     db: TenantDb,
+    executeTransaction: SyncTransactionExecutor,
     ttlMs = 30_000,
     validateSection?: SectionValidator,
   ) {
     this.db = db;
+    this.executeTransaction = executeTransaction;
     this.ttlMs = ttlMs;
     this.validateSection = validateSection;
   }
@@ -82,7 +101,7 @@ export class SyncServer {
   async createDraft(draftId: string, sections: Record<string, SectionDoc>) {
     const sectionHashes: Record<string, string> = {};
     const teamId = this.db.teamId;
-    await this.db.transaction(async (client) => {
+    await this.executeTransaction('createDraft', async (client) => {
       for (const [sectionId, doc] of Object.entries(sections)) {
         const hash = contentHash(doc);
         sectionHashes[sectionId] = hash;
@@ -127,7 +146,7 @@ export class SyncServer {
     sectionId: string,
     owner: string,
   ): Promise<Lease | null> {
-    const res = await this.lockedOnHead(draftId, (client) =>
+    const res = await this.lockedOnHead('acquire', draftId, (client) =>
       client.query(
         `INSERT INTO leases (draft_id, team_id, section_id, owner, epoch, expires_at)
          SELECT $1, $3, $2, $4, 1,
@@ -157,10 +176,11 @@ export class SyncServer {
   }
 
   private async lockedOnHead(
+    operation: 'acquire' | 'takeover',
     draftId: string,
     work: (client: pg.PoolClient) => Promise<pg.QueryResult>,
   ): Promise<pg.QueryResult> {
-    return this.db.transaction(async (client) => {
+    return this.executeTransaction(operation, async (client) => {
       await client.query(
         `SELECT 1 FROM drafts WHERE id = $1 AND team_id = $2 FOR SHARE`,
         [draftId, this.db.teamId],
@@ -192,7 +212,7 @@ export class SyncServer {
     sectionId: string,
     owner: string,
   ): Promise<Lease | null> {
-    const res = await this.lockedOnHead(draftId, (client) =>
+    const res = await this.lockedOnHead('takeover', draftId, (client) =>
       client.query(
         `UPDATE leases
          SET owner = $4, epoch = epoch + 1,
@@ -216,14 +236,16 @@ export class SyncServer {
     owner: string,
     epoch: bigint,
   ): Promise<Lease | null> {
-    const res = await this.db.query(
-      `UPDATE leases
-       SET expires_at = clock_timestamp() + make_interval(secs => $5::float / 1000)
-       WHERE draft_id = $1 AND section_id = $2 AND owner = $3 AND epoch = $4
-         AND team_id = $6
-         AND expires_at > clock_timestamp()
-       RETURNING epoch, expires_at`,
-      [draftId, sectionId, owner, String(epoch), this.ttlMs, this.db.teamId],
+    const res = await this.executeTransaction('renew', (client) =>
+      client.query(
+        `UPDATE leases
+         SET expires_at = clock_timestamp() + make_interval(secs => $5::float / 1000)
+         WHERE draft_id = $1 AND section_id = $2 AND owner = $3 AND epoch = $4
+           AND team_id = $6
+           AND expires_at > clock_timestamp()
+         RETURNING epoch, expires_at`,
+        [draftId, sectionId, owner, String(epoch), this.ttlMs, this.db.teamId],
+      ),
     );
     const row = res.rows[0] as { epoch: string; expires_at: Date } | undefined;
     return row ? { epoch: BigInt(row.epoch), expiresAt: row.expires_at } : null;
@@ -239,12 +261,14 @@ export class SyncServer {
     owner: string,
     epoch: bigint,
   ): Promise<void> {
-    await this.db.query(
-      `UPDATE leases SET expires_at = clock_timestamp()
-       WHERE draft_id = $1 AND section_id = $2 AND owner = $3 AND epoch = $4
-         AND team_id = $5
-         AND expires_at > clock_timestamp()`,
-      [draftId, sectionId, owner, String(epoch), this.db.teamId],
+    await this.executeTransaction('release', (client) =>
+      client.query(
+        `UPDATE leases SET expires_at = clock_timestamp()
+         WHERE draft_id = $1 AND section_id = $2 AND owner = $3 AND epoch = $4
+           AND team_id = $5
+           AND expires_at > clock_timestamp()`,
+        [draftId, sectionId, owner, String(epoch), this.db.teamId],
+      ),
     );
   }
 
@@ -264,7 +288,7 @@ export class SyncServer {
   }): Promise<CommitResult> {
     const { draftId, sectionId, owner, epoch, clientSeq, commands } = params;
     const teamId = this.db.teamId;
-    return this.db.transaction(async (client) => {
+    return this.executeTransaction('commit', async (client) => {
       // Per-draft serialization: every commit advances the head under this
       // row lock, so concurrent section commits cannot fork the chain. Taken
       // FIRST — the dedup and lease checks below are only meaningful at the
@@ -428,7 +452,8 @@ export class SyncServer {
     // commit landing between them would pair pre-commit sectionHashes with a
     // post-commit lastApplied — the client would drop the acknowledged batch
     // yet load the older document, leaving its base behind the server.
-    const { head, acked } = await this.db.transaction(
+    const { head, acked } = await this.executeTransaction(
+      'resume',
       async (client) => {
         const headRes = await client.query(
           `SELECT d.head_seq, d.head_manifest_hash, m.section_hashes
@@ -508,12 +533,15 @@ export class SyncServer {
  * lease in place. Touches only expires_at — the machinery stays untouched. */
 export async function forceExpire(
   db: TenantDb,
+  executeTransaction: SyncTransactionExecutor,
   draftId: string,
   sectionId: string,
 ) {
-  await db.query(
-    `UPDATE leases SET expires_at = now() - interval '1 millisecond'
-     WHERE draft_id = $1 AND section_id = $2 AND team_id = $3`,
-    [draftId, sectionId, db.teamId],
+  await executeTransaction('forceExpireForTest', (client) =>
+    client.query(
+      `UPDATE leases SET expires_at = now() - interval '1 millisecond'
+       WHERE draft_id = $1 AND section_id = $2 AND team_id = $3`,
+      [draftId, sectionId, db.teamId],
+    ),
   );
 }

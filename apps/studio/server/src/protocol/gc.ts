@@ -3,6 +3,8 @@ import type pg from 'pg';
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
+import { runNoAuditTenantTransaction } from '../audit/transaction.ts';
+
 export type GcResult = {
   manifestsDeleted: number;
   sectionsDeleted: number;
@@ -105,70 +107,89 @@ export async function gcProtocolStore(
       [teamId],
     );
     for (const { id: draftId } of drafts.rows as { id: string }[]) {
-      await tenant.transaction(async (client) => {
-        const head = await client.query(
-          `SELECT head_seq FROM drafts WHERE id = $1 AND team_id = $2 FOR UPDATE`,
-          [draftId, teamId],
-        );
-        const headRow = head.rows[0] as { head_seq: string } | undefined;
-        if (headRow === undefined) return;
-        const oldest = String(
-          BigInt(headRow.head_seq) - BigInt(retainManifestsPerDraft),
-        );
+      await runNoAuditTenantTransaction(
+        tenant,
+        'protocol.gcDraftHistory',
+        async (client) => {
+          const head = await client.query(
+            `SELECT head_seq FROM drafts WHERE id = $1 AND team_id = $2 FOR UPDATE`,
+            [draftId, teamId],
+          );
+          const headRow = head.rows[0] as { head_seq: string } | undefined;
+          if (headRow === undefined) return;
+          const oldest = String(
+            BigInt(headRow.head_seq) - BigInt(retainManifestsPerDraft),
+          );
 
-        const commandLog = await client.query(
-          `DELETE FROM command_log cl
-           WHERE cl.draft_id = $1
-             AND cl.team_id = $4
-             AND cl.manifest_seq < $2::bigint
-             AND cl.created_at < now() - make_interval(secs => $3::float / 1000)
-             AND NOT EXISTS (
-               SELECT 1 FROM leases l
-               WHERE l.draft_id = cl.draft_id
-                 AND l.team_id = cl.team_id
-                 AND l.section_id = cl.section_id
-                 AND l.owner = cl.owner
-                 AND l.epoch = cl.epoch
-                 AND l.expires_at > clock_timestamp()
-             )`,
-          [draftId, oldest, commandRetryHorizonMs, teamId],
-        );
-        const manifests = await client.query(
-          `DELETE FROM manifests m
-           WHERE m.draft_id = $1
-             AND m.team_id = $3
-             AND m.seq < $2::bigint
-             AND NOT EXISTS (
-               SELECT 1 FROM command_log cl
-               WHERE cl.draft_id = m.draft_id
-                 AND cl.team_id = m.team_id
-                 AND cl.manifest_seq = m.seq
-             )`,
-          [draftId, oldest, teamId],
-        );
-        result.commandLogDeleted += commandLog.rowCount ?? 0;
-        result.manifestsDeleted += manifests.rowCount ?? 0;
-      });
+          const commandLog = await client.query(
+            `DELETE FROM command_log cl
+             WHERE cl.draft_id = $1
+               AND cl.team_id = $4
+               AND cl.manifest_seq < $2::bigint
+               AND cl.created_at < now() - make_interval(secs => $3::float / 1000)
+               AND NOT EXISTS (
+                 SELECT 1 FROM leases l
+                 WHERE l.draft_id = cl.draft_id
+                   AND l.team_id = cl.team_id
+                   AND l.section_id = cl.section_id
+                   AND l.owner = cl.owner
+                   AND l.epoch = cl.epoch
+                   AND l.expires_at > clock_timestamp()
+               )`,
+            [draftId, oldest, commandRetryHorizonMs, teamId],
+          );
+          const manifests = await client.query(
+            `DELETE FROM manifests m
+             WHERE m.draft_id = $1
+               AND m.team_id = $3
+               AND m.seq < $2::bigint
+               AND NOT EXISTS (
+                 SELECT 1 FROM command_log cl
+                 WHERE cl.draft_id = m.draft_id
+                   AND cl.team_id = m.team_id
+                   AND cl.manifest_seq = m.seq
+               )`,
+            [draftId, oldest, teamId],
+          );
+          result.commandLogDeleted += commandLog.rowCount ?? 0;
+          result.manifestsDeleted += manifests.rowCount ?? 0;
+        },
+      );
     }
 
-    await tenant.query(
-      `UPDATE sections s SET unreferenced_at = NULL
-       WHERE s.team_id = $1 AND s.unreferenced_at IS NOT NULL
-         AND (${referenced})`,
-      [teamId],
+    await runNoAuditTenantTransaction(
+      tenant,
+      'protocol.gcReconcileReferencedSections',
+      (client) =>
+        client.query(
+          `UPDATE sections s SET unreferenced_at = NULL
+           WHERE s.team_id = $1 AND s.unreferenced_at IS NOT NULL
+             AND (${referenced})`,
+          [teamId],
+        ),
     );
-    await tenant.query(
-      `UPDATE sections s SET unreferenced_at = clock_timestamp()
-       WHERE s.team_id = $1 AND s.unreferenced_at IS NULL
-         AND NOT (${referenced})`,
-      [teamId],
+    await runNoAuditTenantTransaction(
+      tenant,
+      'protocol.gcMarkUnreferencedSections',
+      (client) =>
+        client.query(
+          `UPDATE sections s SET unreferenced_at = clock_timestamp()
+           WHERE s.team_id = $1 AND s.unreferenced_at IS NULL
+             AND NOT (${referenced})`,
+          [teamId],
+        ),
     );
-    const sections = await tenant.query(
-      `DELETE FROM sections s
-       WHERE s.team_id = $2
-         AND s.unreferenced_at < now() - make_interval(secs => $1::float / 1000)
-         AND NOT (${referenced})`,
-      [sectionGraceMs, teamId],
+    const sections = await runNoAuditTenantTransaction(
+      tenant,
+      'protocol.gcDeleteUnreferencedSections',
+      (client) =>
+        client.query(
+          `DELETE FROM sections s
+           WHERE s.team_id = $2
+             AND s.unreferenced_at < now() - make_interval(secs => $1::float / 1000)
+             AND NOT (${referenced})`,
+          [sectionGraceMs, teamId],
+        ),
     );
     result.sectionsDeleted += sections.rowCount ?? 0;
   }

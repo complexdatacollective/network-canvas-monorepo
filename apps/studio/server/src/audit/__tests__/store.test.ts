@@ -1,0 +1,245 @@
+import { randomUUID } from 'node:crypto';
+
+import type pg from 'pg';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
+
+import {
+  createScratchSchema,
+  provisionScratchSchema,
+  reachableDb,
+  seedTeam,
+} from '../../__tests__/support/postgres.ts';
+import type { AuditEventInput } from '../events.ts';
+import { AUDIT_SEQUENCE_LOCK_SEED, AuditStore } from '../store.ts';
+
+const db = await reachableDb();
+const store = new AuditStore();
+
+function invitationEvent(teamId: string): AuditEventInput {
+  return {
+    teamId,
+    eventType: 'team.invitation.created',
+    eventVersion: 1,
+    category: 'team_access',
+    outcome: 'succeeded',
+    actorKind: 'user',
+    actorId: 'actor',
+    actorLabel: 'Audit actor',
+    subjectType: 'team_invitation',
+    subjectId: randomUUID(),
+    subjectLabel: 'invitee@example.com',
+    resourceType: null,
+    resourceId: null,
+    resourceLabel: null,
+    requestId: randomUUID(),
+    details: { role: 'member' },
+  };
+}
+
+async function append(tenantDb: TenantDb, teamId: string) {
+  return tenantDb.transaction((client) =>
+    store.append(client, invitationEvent(teamId)),
+  );
+}
+
+async function appendAsOwner(pool: pg.Pool, teamId: string) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const event = await store.append(client, invitationEvent(teamId));
+    await client.query('COMMIT');
+    return event;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+describe.skipIf(!db)('immutable audit store', () => {
+  let pool: pg.Pool;
+  let app: pg.Pool;
+  let maintenance: pg.Pool;
+  let dispose: () => Promise<void>;
+
+  beforeAll(async () => {
+    if (!db) throw new Error('unreachable: probe guaranteed a database');
+    ({ pool, app, maintenance, dispose } = await createScratchSchema(db));
+    await provisionScratchSchema(pool);
+    for (const teamId of [
+      'audit-a',
+      'audit-b',
+      'audit-privileges',
+      'audit-concurrency',
+      'audit-lock-a',
+      'audit-lock-b',
+      'audit-predicate-low',
+      'audit-predicate-high',
+    ]) {
+      await seedTeam(pool, teamId);
+    }
+  });
+
+  afterAll(async () => {
+    await dispose();
+  });
+
+  it('lets runtime roles append and read but not mutate history', async () => {
+    const tenant = createTenantDb(app, 'audit-privileges');
+    const first = await append(tenant, 'audit-privileges');
+    expect(first.sequence).toBe('1');
+    const maintenanceTenant = createTenantDb(maintenance, 'audit-privileges');
+    expect((await append(maintenanceTenant, 'audit-privileges')).sequence).toBe(
+      '2',
+    );
+    expect(
+      await tenant.transaction((client) =>
+        store.listForTeam(client, 'audit-privileges'),
+      ),
+    ).toHaveLength(2);
+
+    const privileges = await pool.query<{
+      role: string;
+      update: boolean;
+      delete: boolean;
+      truncate: boolean;
+    }>(
+      `SELECT role,
+              has_table_privilege(role, 'audit_events', 'UPDATE') AS update,
+              has_table_privilege(role, 'audit_events', 'DELETE') AS delete,
+              has_table_privilege(role, 'audit_events', 'TRUNCATE') AS truncate
+       FROM unnest(ARRAY['studio_app', 'studio_maintenance']) AS role
+       ORDER BY role`,
+    );
+    expect(privileges.rows).toEqual([
+      { role: 'studio_app', update: false, delete: false, truncate: false },
+      {
+        role: 'studio_maintenance',
+        update: false,
+        delete: false,
+        truncate: false,
+      },
+    ]);
+
+    await expect(
+      tenant.query(`UPDATE audit_events SET actor_label = 'changed'`),
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
+      tenant.query(`DELETE FROM audit_events`),
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(app.query(`TRUNCATE audit_events`)).rejects.toMatchObject({
+      code: '42501',
+    });
+    await expect(
+      maintenance.query(`UPDATE audit_events SET actor_label = 'changed'`),
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
+      maintenance.query(`DELETE FROM audit_events`),
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
+      maintenance.query(`TRUNCATE audit_events`),
+    ).rejects.toMatchObject({ code: '42501' });
+
+    await expect(
+      pool.query(`UPDATE audit_events SET actor_label = 'changed'`),
+    ).rejects.toThrow('audit events are immutable');
+    await expect(pool.query(`DELETE FROM audit_events`)).rejects.toThrow(
+      'audit events are immutable',
+    );
+  });
+
+  it('enforces application-team RLS and explicit team query predicates', async () => {
+    const tenantA = createTenantDb(app, 'audit-a');
+    const tenantB = createTenantDb(app, 'audit-b');
+    await append(tenantA, 'audit-a');
+    await append(tenantB, 'audit-b');
+
+    expect(
+      await tenantA.transaction((client) =>
+        store.listForTeam(client, 'audit-a'),
+      ),
+    ).toHaveLength(1);
+    expect(await app.query(`SELECT id FROM audit_events`)).toHaveProperty(
+      'rowCount',
+      0,
+    );
+    await expect(
+      tenantA.transaction((client) =>
+        store.append(client, invitationEvent('audit-b')),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+
+    const ownerClient = await pool.connect();
+    try {
+      expect(await store.listForTeam(ownerClient, 'audit-a')).toHaveLength(1);
+      expect(await store.listForTeam(ownerClient, 'audit-b')).toHaveLength(1);
+    } finally {
+      ownerClient.release();
+    }
+  });
+
+  it('allocates a complete unique sequence under same-team concurrency', async () => {
+    const tenant = createTenantDb(app, 'audit-concurrency');
+    const inserted = await Promise.all(
+      Array.from({ length: 12 }, () => append(tenant, 'audit-concurrency')),
+    );
+    expect(
+      inserted
+        .map(({ sequence }) => BigInt(sequence))
+        .toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
+    ).toEqual(Array.from({ length: 12 }, (_, index) => BigInt(index + 1)));
+  });
+
+  it('serializes one team lock without making another team contend', async () => {
+    const holder = await app.connect();
+    const contender = await app.connect();
+    try {
+      await holder.query('BEGIN');
+      await contender.query('BEGIN');
+      await holder.query(
+        `SELECT pg_advisory_xact_lock(hashtextextended($1, $2::bigint))`,
+        ['audit-lock-a', AUDIT_SEQUENCE_LOCK_SEED.toString()],
+      );
+
+      const sameTeam = await contender.query<{ acquired: boolean }>(
+        `SELECT pg_try_advisory_xact_lock(hashtextextended($1, $2::bigint)) AS acquired`,
+        ['audit-lock-a', AUDIT_SEQUENCE_LOCK_SEED.toString()],
+      );
+      expect(sameTeam.rows).toEqual([{ acquired: false }]);
+
+      const otherTeam = await contender.query<{ acquired: boolean }>(
+        `SELECT pg_try_advisory_xact_lock(hashtextextended($1, $2::bigint)) AS acquired`,
+        ['audit-lock-b', AUDIT_SEQUENCE_LOCK_SEED.toString()],
+      );
+      expect(otherTeam.rows).toEqual([{ acquired: true }]);
+    } finally {
+      await contender.query('ROLLBACK').catch(() => undefined);
+      await holder.query('ROLLBACK').catch(() => undefined);
+      contender.release();
+      holder.release();
+    }
+  });
+
+  it('allocates from the explicit team even when another team is further ahead', async () => {
+    for (let index = 0; index < 5; index += 1) {
+      await appendAsOwner(pool, 'audit-predicate-high');
+    }
+    expect((await appendAsOwner(pool, 'audit-predicate-low')).sequence).toBe(
+      '1',
+    );
+    expect((await appendAsOwner(pool, 'audit-predicate-low')).sequence).toBe(
+      '2',
+    );
+  });
+
+  it('has no foreign key that could cascade mutable rows into history', async () => {
+    const foreignKeys = await pool.query(
+      `SELECT conname FROM pg_constraint
+       WHERE conrelid = 'audit_events'::regclass AND contype = 'f'`,
+    );
+    expect(foreignKeys.rowCount).toBe(0);
+  });
+});

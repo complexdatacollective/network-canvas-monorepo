@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { upgradeWebSocket } from '@hono/node-server';
 import { RPCHandler } from '@orpc/server/fetch';
 import { type Context, Hono } from 'hono';
@@ -7,6 +9,7 @@ import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
 
 import { createApiV1 } from './api.ts';
 import { createAssetRoutes, createAssetStore } from './assets.ts';
+import { BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES } from './audit/better-auth-policy.ts';
 import { createAuthService } from './auth/create.ts';
 import { requireSameOrigin, requireWsOrigin } from './auth/csrf.ts';
 import {
@@ -29,6 +32,14 @@ const WS_PATH = '/ws';
 // prefix, so anything covering the whole surface has to name both.
 const STORAGE_PATHS = ['/storage', '/storage/*'];
 const UNSAFE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
+const BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES: ReadonlyMap<
+  string,
+  { disposition: 'allowed' | 'blocked' }
+> = new Map(
+  Object.values(BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES)
+    .filter(({ method }) => method === 'POST')
+    .map((policy) => [policy.path, policy]),
+);
 
 type CreateAppDeps = {
   auth?: AuthService;
@@ -65,7 +76,25 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
 
   // Registered before the problem-JSON catch-alls below, which would
   // otherwise swallow the /api prefix.
-  app.on(['GET', 'POST'], '/api/auth/*', (c) => auth.handler(c.req.raw));
+  app.on(['GET', 'POST'], '/api/auth/*', async (c) => {
+    // Studio owns these writes so their domain row and immutable audit event
+    // share one transaction. Normalize trailing slashes here, at the one
+    // Better Auth forwarding boundary, so no alternate URL can bypass it.
+    const normalizedPath = c.req.path.replace(/\/+$/, '');
+    if (
+      c.req.method === 'POST' &&
+      normalizedPath.startsWith('/api/auth/organization/')
+    ) {
+      const policy =
+        BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES.get(normalizedPath);
+      if (!policy || policy.disposition === 'blocked') {
+        return c.json({ title: 'Not Found', status: 404 }, 404, {
+          'Content-Type': 'application/problem+json',
+        });
+      }
+    }
+    return await auth.handler(c.req.raw);
+  });
 
   // The public data API — a separate surface from the SPA's RPC below, per
   // the 2026-08-11 decision on #1248.
@@ -96,7 +125,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   app.use('/rpc/*', async (c, next) => {
     const { matched, response } = await rpcHandler.handle(c.req.raw, {
       prefix: '/rpc',
-      context: { principal: c.get('principal') },
+      context: { principal: c.get('principal'), requestId: randomUUID() },
     });
     if (matched) return c.newResponse(response.body, response);
     await next();

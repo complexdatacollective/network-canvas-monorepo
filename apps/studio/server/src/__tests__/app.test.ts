@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createApp } from '../app.ts';
+import { BLOCKED_BETTER_AUTH_TEAM_MUTATION_PATHS } from '../audit/better-auth-policy.ts';
+import { stubAuthService } from './support/auth.ts';
 import { createRpcClient } from './support/rpc.ts';
 
 describe('studio server', () => {
@@ -70,6 +72,92 @@ describe('studio server', () => {
     expect(res.headers.get('Content-Type')).toContain(
       'application/problem+json',
     );
+  });
+
+  it('refuses audited team writes before Better Auth can mutate them', async () => {
+    const handler = vi.fn(() =>
+      Promise.resolve(Response.json({ wrote: true })),
+    );
+    const app = createApp(undefined, {
+      auth: stubAuthService({ handler }),
+    });
+    const bodies: Record<string, object> = {
+      '/api/auth/organization/update-member-role': {
+        organizationId: 'team-a',
+        memberId: 'member-a',
+        role: 'admin',
+      },
+      '/api/auth/organization/invite-member': {
+        organizationId: 'team-a',
+        email: 'invitee@example.com',
+        role: 'member',
+      },
+      '/api/auth/organization/cancel-invitation': {
+        invitationId: 'invitation-a',
+      },
+      '/api/auth/organization/remove-member': {
+        organizationId: 'team-a',
+        memberIdOrEmail: 'member-a',
+      },
+      '/api/auth/organization/leave': {
+        organizationId: 'team-a',
+      },
+    };
+
+    for (const path of BLOCKED_BETTER_AUTH_TEAM_MUTATION_PATHS) {
+      for (const requestedPath of [path, `${path}/`, `${path}?attempt=1`]) {
+        const response = await app.request(requestedPath, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'origin': 'http://localhost:5173',
+          },
+          body: JSON.stringify(bodies[path]),
+        });
+        expect(response.status).toBe(404);
+        expect(await response.json()).toEqual({
+          title: 'Not Found',
+          status: 404,
+        });
+      }
+    }
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('fails closed for an unclassified Better Auth organization mutation', async () => {
+    const handler = vi.fn(() =>
+      Promise.resolve(Response.json({ wrote: true })),
+    );
+    const app = createApp(undefined, {
+      auth: stubAuthService({ handler }),
+    });
+
+    const response = await app.request(
+      '/api/auth/organization/future-team-write/?attempt=1',
+      { method: 'POST' },
+    );
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ title: 'Not Found', status: 404 });
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('forwards an explicitly classified Better Auth organization mutation', async () => {
+    const handler = vi.fn(() =>
+      Promise.resolve(Response.json({ available: true })),
+    );
+    const app = createApp(undefined, {
+      auth: stubAuthService({ handler }),
+    });
+
+    const response = await app.request(
+      '/api/auth/organization/check-slug/?slug=example',
+      { method: 'POST' },
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ available: true });
+    expect(handler).toHaveBeenCalledOnce();
   });
 
   it('does not serve unmatched storage paths', async () => {

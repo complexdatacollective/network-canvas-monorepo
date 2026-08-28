@@ -9,6 +9,7 @@ import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document'
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
+import { runNoAuditTenantTransaction } from '../audit/transaction.ts';
 import { insertDraftRows } from './draft-rows.ts';
 import { sectionizeProtocol } from './sectionize.ts';
 
@@ -64,14 +65,18 @@ export async function migrateStoredVersionToDraft(
   const migrated = migrateProtocol(document, CURRENT_SCHEMA_VERSION, { name });
   const migratedSections = sectionizeProtocol(migrated);
 
-  await db.transaction(async (client) => {
-    await insertDraftRows(client, teamId, draftId, migratedSections);
-    await client.query(
-      `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id, based_on_version_id)
-       VALUES ($1, $2, $3, $4)`,
-      [draftId, teamId, versionRow.protocol_id, params.versionId],
-    );
-  });
+  await runNoAuditTenantTransaction(
+    db,
+    'protocol.migrateStoredVersionToDraft',
+    async (client) => {
+      await insertDraftRows(client, teamId, draftId, migratedSections);
+      await client.query(
+        `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id, based_on_version_id)
+         VALUES ($1, $2, $3, $4)`,
+        [draftId, teamId, versionRow.protocol_id, params.versionId],
+      );
+    },
+  );
 
   return {
     draftId,

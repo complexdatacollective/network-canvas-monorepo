@@ -11,6 +11,9 @@ import { z } from 'zod';
 
 export const SOCIAL_PROVIDERS = ['google', 'microsoft'] as const;
 export type SocialProvider = (typeof SOCIAL_PROVIDERS)[number];
+export const TEAM_ROLES = ['owner', 'admin', 'member'] as const;
+export const TeamRoleSchema = z.enum(TEAM_ROLES);
+export type TeamRole = z.infer<typeof TeamRoleSchema>;
 
 export const StatusSchema = z.object({
   name: z.string(),
@@ -34,6 +37,38 @@ export const MeSchema = z.object({
 // construction).
 export const TeamScopedSchema = z.object({
   teamId: z.string().min(1),
+});
+
+export const UpdateTeamMemberRoleInputSchema = TeamScopedSchema.extend({
+  memberId: z.string().min(1),
+  role: TeamRoleSchema,
+});
+
+export const UpdateTeamMemberRoleResultSchema = z.object({
+  memberId: z.string().min(1),
+  role: TeamRoleSchema,
+});
+
+export const CreateTeamInvitationInputSchema = TeamScopedSchema.extend({
+  email: z.email().max(320),
+  role: TeamRoleSchema,
+});
+
+export const CreateTeamInvitationResultSchema = z.object({
+  invitationId: z.string().min(1),
+  email: z.email().max(320),
+  role: TeamRoleSchema,
+  status: z.literal('pending'),
+  expiresAt: z.date(),
+});
+
+export const CancelTeamInvitationInputSchema = TeamScopedSchema.extend({
+  invitationId: z.string().min(1),
+});
+
+export const CancelTeamInvitationResultSchema = z.object({
+  invitationId: z.string().min(1),
+  status: z.literal('canceled'),
 });
 
 export const ProtocolSummarySchema = z.object({

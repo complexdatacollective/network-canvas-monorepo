@@ -12,11 +12,12 @@ import {
   contentHash,
   type SectionDoc,
 } from '../apply.ts';
-import { forceExpire, LeaseRejectedError, type SyncServer } from '../server.ts';
+import { LeaseRejectedError, type SyncServer } from '../server.ts';
 import type { TenantDb } from '../tenant.ts';
 import {
   assertLinearChain,
   dbAvailable,
+  expireLease,
   makeDraft,
   makeServer,
 } from './helpers.ts';
@@ -165,7 +166,7 @@ describe.skipIf(!dbAvailable)(
 
             for (const o of ops) {
               if (o === 'expire') {
-                await forceExpire(tenantDb, draft, 's');
+                await expireLease(tenantDb, draft, 's');
                 if (model) model.expired = true;
               } else if (o === 'acquireA' || o === 'acquireB') {
                 const who = o === 'acquireA' ? 'A' : 'B';

@@ -16,8 +16,10 @@ export type Principal = SessionPrincipal;
 /**
  * A user's standing in the team they were resolved against. Roles are the
  * organization plugin's ('owner' | 'admin' | 'member' by default); #1257's
- * RBAC taxonomy maps onto them later. Kept behind AuthService so better-auth
- * stays replaceable (#1245) — no other module may read the membership tables.
+ * RBAC taxonomy maps onto them later. Read-only request authorization stays
+ * behind AuthService so better-auth remains replaceable (#1245); audited team
+ * commands re-read and lock the same domain rows through TeamStore because
+ * their authorization decision must share the write transaction.
  */
 export type TeamMembership = {
   role: string;

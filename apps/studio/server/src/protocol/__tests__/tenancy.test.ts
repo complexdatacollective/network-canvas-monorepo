@@ -7,10 +7,8 @@ import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
-  SyncServer,
   UnknownSectionDocumentError,
   UnknownSectionError,
-  forceExpire,
 } from '@codaco/studio-sync/server';
 import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
@@ -21,7 +19,9 @@ import {
   GC_OPTS,
   ageQuarantine,
   baseProtocol,
+  expireLease,
   makeStoreSchema,
+  makeTestSyncServer,
   storeDb,
 } from './helpers.ts';
 
@@ -79,7 +79,7 @@ describe.skipIf(!storeDb)('team isolation', () => {
       storeA.getVersionSections(published.versionId),
     ).rejects.toThrow(ProtocolStoreError);
 
-    const syncA = new SyncServer(tenantA);
+    const syncA = makeTestSyncServer(tenantA);
     await expect(syncA.acquire(b.draftId, 'settings', 'tab-a')).rejects.toThrow(
       UnknownSectionError,
     );
@@ -90,7 +90,7 @@ describe.skipIf(!storeDb)('team isolation', () => {
       UnknownSectionDocumentError,
     );
     await expect(
-      new SyncServer(tenantB).getSection(bOnlySettingsHash),
+      makeTestSyncServer(tenantB).getSection(bOnlySettingsHash),
     ).resolves.toMatchObject({ name: 'Only in B' });
   });
 
@@ -134,7 +134,7 @@ describe.skipIf(!storeDb)('team isolation', () => {
     // from the tables it sweeps. Enumerating from teams would strand these
     // rows permanently.
     const ghost = createTenantDb(app, 'team-ghost');
-    const sync = new SyncServer(ghost);
+    const sync = makeTestSyncServer(ghost);
     const draftId = randomUUID();
     await sync.createDraft(draftId, {
       settings: { name: 'Ghost', description: 'first' },
@@ -148,7 +148,7 @@ describe.skipIf(!storeDb)('team isolation', () => {
       clientSeq: 1n,
       commands: [{ op: 'set', key: 'description', value: 'second' }],
     });
-    await forceExpire(ghost, draftId, 'settings');
+    await expireLease(ghost, draftId, 'settings');
 
     // Reached through `drafts`: the superseded manifest is collectable.
     await gcProtocolStore(maintenance, GC_OPTS);

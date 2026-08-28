@@ -22,16 +22,15 @@ import {
 } from '@codaco/fresco-ui/Table';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { TEAM_ROLES, type TeamRole } from '@codaco/studio-rpc';
 
-import { orpc } from '../lib/api.ts';
+import { orpc, rpcClient } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
 
 type Team = NonNullable<
   ReturnType<typeof authClient.useListOrganizations>['data']
 >[number];
 
-const TEAM_ROLES = ['owner', 'admin', 'member'] as const;
-type TeamRole = (typeof TEAM_ROLES)[number];
 const TEAM_ROLE_OPTIONS = TEAM_ROLES.map((role) => ({
   value: role,
   label: roleLabel(role),
@@ -376,7 +375,11 @@ function TeamManagement(props: {
   activeMemberRole: string | undefined;
 }) {
   const activeTeam = authClient.useActiveOrganization();
+  const activeMember = authClient.useActiveMember();
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
+  const [cancellingInvitationId, setCancellingInvitationId] = useState<
+    string | null
+  >(null);
   const [inviteFormKey, setInviteFormKey] = useState(0);
   const [message, setMessage] = useState<
     { kind: 'success' | 'error'; text: string } | undefined
@@ -398,27 +401,43 @@ function TeamManagement(props: {
     setUpdatingMemberId(memberId);
     setMessage(undefined);
     try {
-      const result = await authClient.organization.updateMemberRole({
+      await rpcClient.team.updateMemberRole({
+        teamId: props.team.id,
         memberId,
         role,
-        organizationId: props.team.id,
       });
-      if (result.error) {
-        setMessage({
-          kind: 'error',
-          text: 'The team role could not be changed. Check that the team still has an owner, then try again.',
-        });
-      } else {
-        await activeTeam.refetch();
-        setMessage({ kind: 'success', text: 'Team role updated.' });
-      }
+      await Promise.all([activeTeam.refetch(), activeMember.refetch()]);
+      setMessage({ kind: 'success', text: 'Team role updated.' });
     } catch {
       setMessage({
         kind: 'error',
-        text: 'The team role could not be changed. Try again.',
+        text: 'The team role could not be changed. Check that the team still has an owner, then try again.',
       });
     } finally {
       setUpdatingMemberId(null);
+    }
+  };
+
+  const cancelInvitation = async (invitationId: string, email: string) => {
+    setCancellingInvitationId(invitationId);
+    setMessage(undefined);
+    try {
+      await rpcClient.team.cancelInvitation({
+        teamId: props.team.id,
+        invitationId,
+      });
+      await activeTeam.refetch();
+      setMessage({
+        kind: 'success',
+        text: `Invitation cancelled for ${email}.`,
+      });
+    } catch {
+      setMessage({
+        kind: 'error',
+        text: 'The invitation could not be cancelled. Wait a moment and try again.',
+      });
+    } finally {
+      setCancellingInvitationId(null);
     }
   };
 
@@ -539,19 +558,11 @@ function TeamManagement(props: {
               }
               setMessage(undefined);
               try {
-                const result = await authClient.organization.inviteMember({
+                await rpcClient.team.createInvitation({
+                  teamId: props.team.id,
                   email,
                   role,
-                  organizationId: props.team.id,
                 });
-                if (result.error) {
-                  return {
-                    success: false,
-                    formErrors: [
-                      'The invitation could not be created. The person may already be a member or have a pending invitation.',
-                    ],
-                  };
-                }
                 await activeTeam.refetch();
                 setMessage({
                   kind: 'success',
@@ -602,6 +613,7 @@ function TeamManagement(props: {
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Expires</TableHead>
+                {canManage && <TableHead>Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -612,6 +624,22 @@ function TeamManagement(props: {
                   <TableCell>
                     {invitation.expiresAt.toLocaleDateString()}
                   </TableCell>
+                  {canManage && (
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant="text"
+                        color="destructive"
+                        aria-label={`Cancel invitation for ${invitation.email}`}
+                        disabled={cancellingInvitationId !== null}
+                        onClick={() =>
+                          void cancelInvitation(invitation.id, invitation.email)
+                        }
+                      >
+                        Cancel
+                      </Button>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>

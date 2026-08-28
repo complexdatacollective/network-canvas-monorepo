@@ -1,7 +1,6 @@
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { SyncServer, forceExpire } from '@codaco/studio-sync/server';
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import { gcProtocolStore } from '../gc.ts';
@@ -10,7 +9,9 @@ import {
   GC_OPTS,
   ageQuarantine,
   baseProtocol,
+  expireLease,
   makeStoreSchema,
+  makeTestSyncServer,
   storeDb,
 } from './helpers.ts';
 
@@ -20,7 +21,7 @@ async function commitDescription(
   value: string,
   clientSeq: bigint,
 ) {
-  const sync = new SyncServer(db);
+  const sync = makeTestSyncServer(db);
   const owner = 'gc-tab';
   const lease = await sync.acquire(draftId, 'settings', owner);
   await sync.commit({
@@ -69,7 +70,7 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
     const head = await store.getDraftSections(draftId);
 
     // Expire the live lease: this case is about the manifest/section window.
-    await forceExpire(tenantDb, draftId, 'settings');
+    await expireLease(tenantDb, draftId, 'settings');
     const marked = await gcProtocolStore(maintenance, GC_OPTS);
 
     expect(marked.manifestsDeleted).toBe(2);
@@ -101,7 +102,7 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(tenantDb);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'settings', 'retry-tab');
     await sync.commit({
       draftId,
@@ -140,7 +141,7 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
       protocol: baseProtocol(),
     });
     await commitDescription(tenantDb, draftId, 'kept', 30n);
-    await forceExpire(tenantDb, draftId, 'settings');
+    await expireLease(tenantDb, draftId, 'settings');
     const result = await gcProtocolStore(maintenance, {
       ...GC_OPTS,
       commandRetryHorizonMs: 60_000,
@@ -153,14 +154,14 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
       protocol: baseProtocol(),
     });
     await commitDescription(tenantDb, draftId, 'the resumed head', 40n);
-    const sync = new SyncServer(tenantDb);
+    const sync = makeTestSyncServer(tenantDb);
     const resumed = (await sync.resume(draftId, 'reader-tab')).sectionHashes
       .settings!;
     await db.query(
       `UPDATE sections SET created_at = created_at - interval '1 hour'`,
     );
     await commitDescription(tenantDb, draftId, 'superseding it', 41n);
-    await forceExpire(tenantDb, draftId, 'settings');
+    await expireLease(tenantDb, draftId, 'settings');
 
     await gcProtocolStore(maintenance, GC_OPTS);
     expect(await sync.getSection(resumed)).toMatchObject({

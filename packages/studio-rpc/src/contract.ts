@@ -5,7 +5,11 @@ import {
   AcquireSectionInputSchema,
   AcquireSectionResultSchema,
   AddInformationStageInputSchema,
+  CancelTeamInvitationInputSchema,
+  CancelTeamInvitationResultSchema,
   CommitSectionInputSchema,
+  CreateTeamInvitationInputSchema,
+  CreateTeamInvitationResultSchema,
   CreateProtocolInputSchema,
   CreateProtocolResultSchema,
   ManifestRevisionSchema,
@@ -19,9 +23,17 @@ import {
   RenewSectionResultSchema,
   StatusSchema,
   TeamScopedSchema,
+  UpdateTeamMemberRoleInputSchema,
+  UpdateTeamMemberRoleResultSchema,
 } from './schemas.ts';
 
-export { SOCIAL_PROVIDERS, type SocialProvider } from './schemas.ts';
+export {
+  SOCIAL_PROVIDERS,
+  TEAM_ROLES,
+  TeamRoleSchema,
+  type SocialProvider,
+  type TeamRole,
+} from './schemas.ts';
 
 // The SPA's internal RPC contract (oRPC v2, per the 2026-08-10 decision on
 // #1244). This is the only shared code between the two Studio deployables —
@@ -42,6 +54,17 @@ export const contract = {
   status: oc.output(StatusSchema),
   /** The signed-in researcher; refuses UNAUTHORIZED without a session. */
   me: oc.output(MeSchema),
+  team: {
+    updateMemberRole: oc
+      .input(UpdateTeamMemberRoleInputSchema)
+      .output(UpdateTeamMemberRoleResultSchema),
+    createInvitation: oc
+      .input(CreateTeamInvitationInputSchema)
+      .output(CreateTeamInvitationResultSchema),
+    cancelInvitation: oc
+      .input(CancelTeamInvitationInputSchema)
+      .output(CancelTeamInvitationResultSchema),
+  },
   /**
    * Team-scoped procedures: every input carries a teamId, checked against the
    * caller's membership (FORBIDDEN for non-members and unknown teams alike —

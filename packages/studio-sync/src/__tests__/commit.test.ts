@@ -5,12 +5,13 @@ import type { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { applyCommands, contentHash } from '../apply.ts';
-import { forceExpire, LeaseRejectedError, type SyncServer } from '../server.ts';
+import { LeaseRejectedError, type SyncServer } from '../server.ts';
 import type { TenantDb } from '../tenant.ts';
 import {
   assertLinearChain,
   dbAvailable,
   DEFAULT_SECTIONS,
+  expireLease,
   makeDraft,
   makeServer,
   waitForLockWait,
@@ -104,7 +105,7 @@ describe.skipIf(!dbAvailable)('commit path', () => {
 
     // …and before the retry arrives, the lease expires and another tab
     // takes the section over (epoch bump).
-    await forceExpire(tenantDb, draft, 'stage-1');
+    await expireLease(tenantDb, draft, 'stage-1');
     const b = await server.acquire(draft, 'stage-1', 'tab-B');
     expect(b?.epoch).toBe(2n);
 
@@ -166,7 +167,7 @@ describe.skipIf(!dbAvailable)('commit path', () => {
 
       // The lease expires while the commit queues. Transaction-start time
       // would still read it as live at the serialization point.
-      await forceExpire(tenantDb, draft, 'stage-1');
+      await expireLease(tenantDb, draft, 'stage-1');
       await blocker.query('ROLLBACK');
 
       expect(await commit).toBeInstanceOf(LeaseRejectedError);

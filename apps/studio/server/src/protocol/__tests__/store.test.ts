@@ -5,7 +5,6 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   LeaseRejectedError,
-  SyncServer,
   UnknownDraftError,
   UnknownSectionError,
 } from '@codaco/studio-sync/server';
@@ -25,6 +24,7 @@ import {
   TEST_TEAM_ID,
   baseProtocol,
   makeStoreSchema,
+  makeTestSyncServer,
   storeDb,
   waitForLockWait,
 } from './helpers.ts';
@@ -98,7 +98,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(tenantDb);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'stage:nameGenerator1', 'tab-1');
     expect(lease).not.toBeNull();
     await sync.commit({
@@ -329,7 +329,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(tenantDb);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'stageOrder', 'editor-tab');
     expect(lease).not.toBeNull();
 
@@ -362,7 +362,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(tenantDb);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(
       draftId,
       'codebook:edge:knows',
@@ -396,7 +396,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(tenantDb);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'settings', 'commit-tab');
 
     const blocker = await db.connect();
@@ -472,7 +472,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(tenantDb);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'stageOrder', 'tab-1');
     await sync.commit({
       draftId,
@@ -493,7 +493,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(tenantDb);
+    const sync = makeTestSyncServer(tenantDb);
     await sync.acquire(draftId, 'stage:sociogram1', 'editor-tab');
     await removeStage(tenantDb, { draftId, stageId: 'sociogram1' });
 
@@ -506,7 +506,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(tenantDb);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'settings', 'editor-tab');
     await store.discardDraft(draftId);
 
@@ -529,7 +529,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(tenantDb);
+    const sync = makeTestSyncServer(tenantDb);
     await sync.acquire(draftId, 'settings', 'tab-1');
     await store.discardDraft(draftId);
 

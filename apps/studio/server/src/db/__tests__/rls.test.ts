@@ -77,6 +77,7 @@ describe.skipIf(!db)('row-level security', () => {
       .toSorted();
     // Spelled out so a new tenant table cannot slip in without a policy.
     expect(expected).toEqual([
+      'audit_events',
       'command_log',
       'drafts',
       'leases',

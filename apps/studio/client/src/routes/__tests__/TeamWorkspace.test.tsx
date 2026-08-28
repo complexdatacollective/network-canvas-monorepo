@@ -106,6 +106,9 @@ const fixtures = vi.hoisted(() => {
     ],
   };
   const createProtocol = vi.fn();
+  const createInvitation = vi.fn();
+  const updateMemberRole = vi.fn();
+  const cancelInvitation = vi.fn();
   const authState: {
     activeTeam: typeof ACTIVE_TEAM_A | typeof ACTIVE_TEAM_B | undefined;
     activeMember:
@@ -114,8 +117,6 @@ const fixtures = vi.hoisted(() => {
       | typeof BETA_MEMBER
       | undefined;
     setActive: ReturnType<typeof vi.fn>;
-    inviteMember: ReturnType<typeof vi.fn>;
-    updateMemberRole: ReturnType<typeof vi.fn>;
     refetchActiveTeam: ReturnType<typeof vi.fn>;
     refetchActiveMember: ReturnType<typeof vi.fn>;
     activeTeamError: Error | null;
@@ -124,8 +125,6 @@ const fixtures = vi.hoisted(() => {
     activeTeam: undefined,
     activeMember: undefined,
     setActive: vi.fn(),
-    inviteMember: vi.fn(),
-    updateMemberRole: vi.fn(),
     refetchActiveTeam: vi.fn(),
     refetchActiveMember: vi.fn(),
     activeTeamError: null,
@@ -141,6 +140,9 @@ const fixtures = vi.hoisted(() => {
     ACTIVE_TEAM_B,
     protocolsByTeam,
     createProtocol,
+    createInvitation,
+    updateMemberRole,
+    cancelInvitation,
     authState,
   };
 });
@@ -182,8 +184,6 @@ vi.mock('../../lib/auth.ts', () => ({
     })),
     organization: {
       setActive: fixtures.authState.setActive,
-      inviteMember: fixtures.authState.inviteMember,
-      updateMemberRole: fixtures.authState.updateMemberRole,
     },
     signOut: vi.fn(),
   },
@@ -226,7 +226,14 @@ vi.mock('../../lib/api.ts', () => ({
       },
     },
   },
-  rpcClient: { protocols: {} },
+  rpcClient: {
+    protocols: {},
+    team: {
+      createInvitation: fixtures.createInvitation,
+      updateMemberRole: fixtures.updateMemberRole,
+      cancelInvitation: fixtures.cancelInvitation,
+    },
+  },
 }));
 
 function renderWorkspace() {
@@ -260,8 +267,21 @@ beforeEach(() => {
       return Promise.resolve({ data: authState.activeTeam, error: null });
     },
   );
-  authState.inviteMember.mockResolvedValue({ data: {}, error: null });
-  authState.updateMemberRole.mockResolvedValue({ data: {}, error: null });
+  fixtures.createInvitation.mockResolvedValue({
+    invitationId: 'new-invitation',
+    email: 'new@example.com',
+    role: 'admin',
+    status: 'pending',
+    expiresAt: new Date(Date.now() + 86_400_000),
+  });
+  fixtures.updateMemberRole.mockResolvedValue({
+    memberId: COLLABORATOR.id,
+    role: 'admin',
+  });
+  fixtures.cancelInvitation.mockResolvedValue({
+    invitationId: 'invitation-1',
+    status: 'canceled',
+  });
   fixtures.createProtocol.mockImplementation(
     (input: { protocolId: string; draftId: string }) =>
       Promise.resolve({
@@ -363,10 +383,10 @@ describe('Studio team workspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Invite user' }));
 
     await waitFor(() =>
-      expect(authState.inviteMember).toHaveBeenCalledWith({
+      expect(fixtures.createInvitation).toHaveBeenCalledWith({
+        teamId: TEAM_A.id,
         email: 'new@example.com',
         role: 'admin',
-        organizationId: TEAM_A.id,
       }),
     );
     expect(
@@ -380,13 +400,69 @@ describe('Studio team workspace', () => {
     fireEvent.change(role, { target: { value: 'admin' } });
 
     await waitFor(() =>
-      expect(authState.updateMemberRole).toHaveBeenCalledWith({
+      expect(fixtures.updateMemberRole).toHaveBeenCalledWith({
+        teamId: TEAM_A.id,
         memberId: COLLABORATOR.id,
         role: 'admin',
-        organizationId: TEAM_A.id,
       }),
     );
     expect(await screen.findByText('Team role updated.')).toBeInTheDocument();
+  });
+
+  it('refreshes active membership after the current user changes their role', async () => {
+    const selfAdmin = { ...COLLABORATOR, role: 'admin' };
+    authState.activeMember = selfAdmin;
+    authState.activeTeam = {
+      ...ACTIVE_TEAM_A,
+      members: [OWNER, selfAdmin],
+    };
+    fixtures.updateMemberRole.mockImplementation(
+      (input: { memberId: string; role: 'owner' | 'admin' | 'member' }) => {
+        const demoted = { ...selfAdmin, role: input.role };
+        authState.activeMember = demoted;
+        authState.activeTeam = {
+          ...ACTIVE_TEAM_A,
+          members: [OWNER, demoted],
+        };
+        return Promise.resolve(input);
+      },
+    );
+    const view = renderWorkspace();
+
+    fireEvent.change(
+      await screen.findByLabelText('Role for Team Collaborator'),
+      { target: { value: 'member' } },
+    );
+
+    await waitFor(() =>
+      expect(authState.refetchActiveMember).toHaveBeenCalledTimes(1),
+    );
+    view.rerenderWorkspace();
+    expect(
+      await screen.findByText(
+        'Only team owners and admins can invite people or change roles.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Invite user' })).toBeNull();
+  });
+
+  it('cancels a pending invitation in the active team', async () => {
+    renderWorkspace();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Cancel invitation for pending@example.com',
+      }),
+    );
+
+    await waitFor(() =>
+      expect(fixtures.cancelInvitation).toHaveBeenCalledWith({
+        teamId: TEAM_A.id,
+        invitationId: 'invitation-1',
+      }),
+    );
+    expect(
+      await screen.findByText('Invitation cancelled for pending@example.com.'),
+    ).toBeInTheDocument();
   });
 
   it('shows roles without management controls to ordinary members', async () => {
