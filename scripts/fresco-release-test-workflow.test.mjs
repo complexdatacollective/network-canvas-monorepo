@@ -2471,32 +2471,54 @@ test('the upgrade swap reopens the sink window it reads', () => {
   assert.match(keepData, /compose rm -sf relay-sink/);
 });
 
-test('the stack aliases the relay hostname onto a sink the app waits for', () => {
-  const compose = readFileSync(
-    join(repoRoot, 'apps/fresco/release-test/docker-compose.yml'),
-    'utf8',
-  );
-  // The alias is what makes the sink observe anything at all; the hostname is
-  // POSTHOG_HOST from @codaco/shared-consts, and it has to match it exactly.
-  const relayHost = /export const POSTHOG_HOST = '([^']+)'/.exec(
+// The relay the sink stands in for. Read from the constant rather than
+// repeated here: the sink observes nothing if it is aliased onto a name, or
+// listening on a port, that the app does not actually use.
+const relayUrl = () => {
+  const value = /export const POSTHOG_HOST = '([^']+)'/.exec(
     readFileSync(
       join(repoRoot, 'packages/shared-consts/src/posthog.ts'),
       'utf8',
     ),
   )?.[1];
-  assert.ok(relayHost, 'failed to read POSTHOG_HOST');
-  const hostname = new URL(relayHost).hostname;
+  assert.ok(value, 'failed to read POSTHOG_HOST');
+  return new URL(value);
+};
+
+test('the stack aliases the relay hostname onto a sink the app waits for', () => {
+  const compose = readFileSync(
+    join(repoRoot, 'apps/fresco/release-test/docker-compose.yml'),
+    'utf8',
+  );
+  // The alias is what makes the sink observe anything at all, and it has to
+  // match POSTHOG_HOST's hostname exactly.
+  const { hostname } = relayUrl();
   assert.match(compose, new RegExp(`aliases:\\s*\\n\\s*- ${hostname}\\b`));
   // And the app must not start before the sink is listening: a refused
   // connection is egress that went unrecorded.
   assert.match(compose, /relay-sink:\n\s*condition: service_healthy/);
 });
 
+// The sink can only record a connection to a port it is listening on;
+// anywhere else the app would get a refusal, which is egress that leaves no
+// trace. Repointing POSTHOG_HOST at a port the sink does not cover would
+// silently hollow the gate out, so the constant is checked against the port
+// list rather than assumed to agree with it.
+test('the sink covers the port the relay constant actually names', async () => {
+  const { SINK_PORTS } = await import(
+    '../apps/fresco/release-test/scripts/relay-sink-protocol.mjs'
+  );
+  const url = relayUrl();
+  const port = Number(url.port || (url.protocol === 'https:' ? 443 : 80));
+  assert.ok(
+    SINK_PORTS.includes(port),
+    `POSTHOG_HOST resolves to port ${port}, which the sink does not listen on (${SINK_PORTS.join(', ')}) — egress there would be refused rather than recorded`,
+  );
+});
+
 test('the sink and the reader agree on the wire contract', async () => {
   const { PROBE_MARKER, SINK_PORTS, classify } =
     await import('../apps/fresco/release-test/scripts/relay-sink-protocol.mjs');
-  assert.ok(SINK_PORTS.includes(443), 'https is the port posthog-node uses');
-
   // Only the marker is a probe. Everything else — a TLS ClientHello, a bare
   // http request, or a connection that said nothing — is egress, because a
   // sink that cannot tell what it received must not report silence.
