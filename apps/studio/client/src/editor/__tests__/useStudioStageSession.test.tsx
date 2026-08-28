@@ -69,6 +69,7 @@ beforeEach(() => {
   vi.mocked(rpcClient.protocols.acquireSection).mockResolvedValue({
     mode: 'editable',
     leaseEpoch: '1',
+    nextClientSequence: '1',
   });
   vi.mocked(rpcClient.protocols.renewSection).mockReset();
   vi.mocked(rpcClient.protocols.renewSection).mockResolvedValue({
@@ -133,11 +134,84 @@ describe('useStudioStageSession', () => {
     );
   });
 
+  it('continues client sequencing when an existing lease is reacquired', async () => {
+    vi.mocked(rpcClient.protocols.acquireSection).mockResolvedValueOnce({
+      mode: 'editable',
+      leaseEpoch: '4',
+      nextClientSequence: '7',
+    });
+    const view = renderSession();
+    await waitFor(() => expect(view.result.current.status).toBe('ready'));
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+
+    act(() => {
+      if (view.result.current.status !== 'ready') throw new Error('not ready');
+      view.result.current.session.dispatch([
+        { op: 'set', key: 'label', value: 'Changed' },
+      ]);
+    });
+
+    await waitFor(() =>
+      expect(rpcClient.protocols.commitSection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          leaseEpoch: '4',
+          clientSequence: '7',
+        }),
+      ),
+    );
+  });
+
+  it('drains a pending commit before releasing its lease', async () => {
+    const commit = deferred<{ sequence: string; hash: string }>();
+    vi.mocked(rpcClient.protocols.commitSection).mockReturnValueOnce(
+      commit.promise,
+    );
+    const view = renderSession();
+    await waitFor(() => expect(view.result.current.status).toBe('ready'));
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+
+    act(() => {
+      if (view.result.current.status !== 'ready') throw new Error('not ready');
+      view.result.current.session.dispatch([
+        { op: 'set', key: 'label', value: 'Changed' },
+      ]);
+    });
+    await waitFor(() =>
+      expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(1),
+    );
+
+    view.unmount();
+    expect(rpcClient.protocols.releaseSection).not.toHaveBeenCalled();
+
+    commit.resolve({ sequence: '3', hash: 'revision-3' });
+    await waitFor(() =>
+      expect(rpcClient.protocols.releaseSection).toHaveBeenCalledWith(
+        expect.objectContaining({ leaseEpoch: '1' }),
+      ),
+    );
+  });
+
   it('promotes a spectator after the editing lease becomes available', async () => {
     vi.useFakeTimers();
+    vi.mocked(rpcClient.protocols.draft).mockResolvedValueOnce({
+      ...DRAFT,
+      revision: { sequence: '3', hash: 'revision-3' },
+      sections: {
+        ...DRAFT.sections,
+        [`stage:${STAGE_ID}`]: {
+          ...DRAFT.sections[`stage:${STAGE_ID}`],
+          label: 'Changed by collaborator',
+          title: 'Changed by collaborator',
+        },
+      },
+    });
     vi.mocked(rpcClient.protocols.acquireSection)
       .mockResolvedValueOnce({ mode: 'readOnly' })
-      .mockResolvedValueOnce({ mode: 'editable', leaseEpoch: '2' });
+      .mockResolvedValueOnce({
+        mode: 'editable',
+        leaseEpoch: '2',
+        nextClientSequence: '1',
+      });
     const view = renderSession();
     await act(async () => {
       await Promise.resolve();
@@ -157,6 +231,12 @@ describe('useStudioStageSession', () => {
     expect(view.result.current.session.getSnapshot().access.mode).toBe(
       'editable',
     );
+    expect(
+      view.result.current.session.getSnapshot().editedSection.fields,
+    ).toMatchObject({
+      label: 'Changed by collaborator',
+      title: 'Changed by collaborator',
+    });
     expect(rpcClient.protocols.draft).toHaveBeenCalledTimes(1);
   });
 
@@ -164,6 +244,7 @@ describe('useStudioStageSession', () => {
     const acquisition = deferred<{
       mode: 'editable';
       leaseEpoch: string;
+      nextClientSequence: string;
     }>();
     vi.mocked(rpcClient.protocols.acquireSection).mockReturnValueOnce(
       acquisition.promise,
@@ -171,7 +252,11 @@ describe('useStudioStageSession', () => {
     const view = renderSession();
     view.unmount();
 
-    acquisition.resolve({ mode: 'editable', leaseEpoch: '7' });
+    acquisition.resolve({
+      mode: 'editable',
+      leaseEpoch: '7',
+      nextClientSequence: '1',
+    });
 
     await waitFor(() =>
       expect(rpcClient.protocols.releaseSection).toHaveBeenCalledWith(

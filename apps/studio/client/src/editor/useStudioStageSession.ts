@@ -248,7 +248,7 @@ export function useStudioStageSession(params: {
         latestDraft.current = refreshed;
         currentLease = access;
         acquiredLease = null;
-        clientSequence = 1n;
+        clientSequence = BigInt(access.nextClientSequence);
         commitFailure = null;
         store.setAccess({
           mode: 'editable',
@@ -376,6 +376,7 @@ export function useStudioStageSession(params: {
 
         if (access.mode === 'editable') {
           currentLease = access;
+          clientSequence = BigInt(access.nextClientSequence);
           startRenewal();
           showReady('This screen is ready to edit.');
         } else {
@@ -403,7 +404,14 @@ export function useStudioStageSession(params: {
       if (runtime.current?.store === store) runtime.current = null;
       const lease = currentLease;
       currentLease = null;
-      if (lease !== null) void releaseLease(lease).catch(() => undefined);
+      if (lease !== null) {
+        void queue
+          .then(
+            () => releaseLease(lease),
+            () => releaseLease(lease),
+          )
+          .catch(() => undefined);
+      }
     };
   }, [
     params.clientId,

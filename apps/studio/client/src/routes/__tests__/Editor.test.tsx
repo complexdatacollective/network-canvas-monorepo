@@ -71,9 +71,11 @@ vi.mock('../../lib/api.ts', () => ({
   },
   rpcClient: {
     protocols: {
-      acquireSection: vi
-        .fn()
-        .mockResolvedValue({ mode: 'editable', leaseEpoch: '1' }),
+      acquireSection: vi.fn().mockResolvedValue({
+        mode: 'editable',
+        leaseEpoch: '1',
+        nextClientSequence: '1',
+      }),
       renewSection: vi.fn().mockResolvedValue({ renewed: true }),
       releaseSection: vi.fn().mockResolvedValue(undefined),
       commitSection: vi
@@ -184,6 +186,27 @@ describe('Studio editor shell', () => {
     });
     fireEvent.click(validationButton);
     expect(document.getElementById('protocol-problems')).toHaveFocus();
+  });
+
+  it('blocks another add attempt until an ambiguous failure is reconciled', async () => {
+    vi.mocked(rpcClient.protocols.addInformationStage).mockRejectedValueOnce(
+      new Error('response lost'),
+    );
+    renderEditor();
+    await screen.findByRole('heading', { name: 'Protocol outline' });
+
+    const add = screen.getByRole('button', { name: 'Add' });
+    fireEvent.click(add);
+
+    expect(
+      await screen.findByText(
+        /could not confirm whether the screen was added/i,
+      ),
+    ).toBeInTheDocument();
+    expect(add).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh outline' }));
+    await waitFor(() => expect(add).toBeEnabled());
   });
 
   it('disables editing when another session holds the screen lease', async () => {

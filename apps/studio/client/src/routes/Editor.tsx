@@ -62,6 +62,8 @@ export default function Editor() {
   const queryClient = useQueryClient();
   const [clientId] = useState(() => globalThis.crypto.randomUUID());
   const [selection, setSelection] = useState<Selection>({ kind: 'settings' });
+  const [reconcilingAdd, setReconcilingAdd] = useState(false);
+  const [addRecoveryFailed, setAddRecoveryFailed] = useState(false);
   const selectionInitialized = useRef(false);
   const draft = useQuery(orpc.protocols.draft.queryOptions({ input: params }));
   const stages = useMemo(
@@ -127,6 +129,19 @@ export default function Editor() {
       rpcClient.protocols.moveStage({ ...params, ...input }),
     onSuccess: refreshDraft,
   });
+
+  const reconcileAddStage = async () => {
+    setReconcilingAdd(true);
+    setAddRecoveryFailed(false);
+    try {
+      await refreshDraft();
+      addStage.reset();
+    } catch {
+      setAddRecoveryFailed(true);
+    } finally {
+      setReconcilingAdd(false);
+    }
+  };
 
   if (draft.isPending) {
     return (
@@ -206,12 +221,37 @@ export default function Editor() {
                       size="sm"
                       variant="text"
                       icon={<Plus aria-hidden="true" />}
-                      disabled={addStage.isPending}
+                      disabled={
+                        addStage.isPending || addStage.isError || reconcilingAdd
+                      }
                       onClick={() => addStage.mutate()}
                     >
                       Add
                     </Button>
                   </div>
+                  {addStage.isError && (
+                    <Alert className="mb-2" variant="destructive">
+                      <Paragraph margin="none">
+                        Studio could not confirm whether the screen was added.
+                        Refresh the outline before trying again.
+                      </Paragraph>
+                      <Button
+                        className="mt-3"
+                        size="sm"
+                        variant="outline"
+                        disabled={reconcilingAdd}
+                        onClick={() => void reconcileAddStage()}
+                      >
+                        Refresh outline
+                      </Button>
+                      {addRecoveryFailed && (
+                        <Paragraph className="mt-2" margin="none">
+                          The outline could not be refreshed. Reload this editor
+                          before adding another screen.
+                        </Paragraph>
+                      )}
+                    </Alert>
+                  )}
                   {stages.length === 0 ? (
                     <Paragraph className="px-2 text-sm">
                       Add a screen to begin the interview flow.
