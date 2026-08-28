@@ -6,6 +6,7 @@
 @import '@codaco/tailwind-config/fresco.css';
 
 @import '@codaco/fresco-ui/styles.css';
+@import '@codaco/protocol-builder/styles.css';
 
 html,
 body,

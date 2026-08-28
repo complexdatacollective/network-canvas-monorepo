@@ -6,9 +6,9 @@ import {
   contentHash,
   manifestHash,
 } from '@codaco/studio-sync/apply';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
-import { sectionId } from './taxonomy.ts';
 import { assertSectionValid } from './validate.ts';
 
 export class DraftStructureError extends Error {}
@@ -211,6 +211,52 @@ export async function removeStage(
       head,
       { [orderId]: { stages: newOrder } },
       [id],
+    );
+  });
+}
+
+export async function moveStage(
+  db: TenantDb,
+  params: { draftId: string; stageId: string; toIndex: number },
+): Promise<StructuralResult> {
+  const teamId = db.teamId;
+  return db.transaction(async (client) => {
+    const head = await lockHead(client, teamId, params.draftId);
+    const orderId = sectionId({ kind: 'stageOrder' });
+    const orderHash = head.sectionHashes[orderId];
+    if (orderHash === undefined) {
+      throw new DraftStructureError('draft has no stageOrder section');
+    }
+    const order = stageOrderOf(await loadDoc(client, teamId, orderHash));
+    const fromIndex = order.indexOf(params.stageId);
+    if (fromIndex === -1) {
+      throw new DraftStructureError(`no stage ${params.stageId} in draft`);
+    }
+    if (params.toIndex < 0 || params.toIndex >= order.length) {
+      throw new DraftStructureError(
+        `stage index ${params.toIndex} out of range`,
+      );
+    }
+    if (fromIndex === params.toIndex) {
+      return {
+        manifestSeq: head.headSeq,
+        manifestHash: head.headManifestHash,
+      };
+    }
+    const newOrder = [...order];
+    const [stageId] = newOrder.splice(fromIndex, 1);
+    if (stageId === undefined) {
+      throw new DraftStructureError(`no stage ${params.stageId} in draft`);
+    }
+    newOrder.splice(params.toIndex, 0, stageId);
+    await fenceLeases(client, teamId, params.draftId, [orderId]);
+    return advanceManifest(
+      client,
+      teamId,
+      params.draftId,
+      head,
+      { [orderId]: { stages: newOrder } },
+      [],
     );
   });
 }

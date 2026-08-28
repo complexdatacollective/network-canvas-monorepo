@@ -4,8 +4,8 @@ import {
   type VersionedProtocol,
   validateProtocol,
 } from '@codaco/protocol-validation';
+import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 
-import { assembleProtocol } from '../assemble.ts';
 import { sectionizeProtocol } from '../sectionize.ts';
 import { validateSection, validateStageSectionIdentity } from '../validate.ts';
 import { baseProtocol } from './helpers.ts';
@@ -64,7 +64,7 @@ describe('validation layering', () => {
       expect(validateSection(id, doc).success, id).toBe(true);
     }
 
-    const assembled = assembleProtocol(sections);
+    const assembled = assembleProtocolSections(sections);
     const result = await validateProtocol(assembled as VersionedProtocol);
     expect(result.success).toBe(false);
   });

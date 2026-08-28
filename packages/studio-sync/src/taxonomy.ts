@@ -7,7 +7,13 @@ export type SectionRef =
   | { kind: 'codebookEgo' }
   | { kind: 'assets' };
 
-/** @public */
+declare const protocolSectionIdBrand: unique symbol;
+
+/** Client-safe identity shared by Studio storage, sync, and editor hosts. */
+export type ProtocolSectionId = string & {
+  readonly [protocolSectionIdBrand]: true;
+};
+
 export class UnknownSectionIdError extends Error {
   constructor(id: string) {
     super(`not a protocol-store section id: ${id}`);
@@ -18,23 +24,41 @@ const STAGE_PREFIX = 'stage:';
 const NODE_PREFIX = 'codebook:node:';
 const EDGE_PREFIX = 'codebook:edge:';
 
-export function sectionId(ref: SectionRef): string {
+export function sectionId(ref: SectionRef): ProtocolSectionId {
   switch (ref.kind) {
     case 'settings':
-      return 'settings';
+      return toProtocolSectionId('settings');
     case 'stageOrder':
-      return 'stageOrder';
+      return toProtocolSectionId('stageOrder');
     case 'stage':
-      return `${STAGE_PREFIX}${ref.stageId}`;
+      return toProtocolSectionId(
+        `${STAGE_PREFIX}${nonEmpty(ref.stageId, 'stage id')}`,
+      );
     case 'codebookNode':
-      return `${NODE_PREFIX}${ref.typeId}`;
+      return toProtocolSectionId(
+        `${NODE_PREFIX}${nonEmpty(ref.typeId, 'node type id')}`,
+      );
     case 'codebookEdge':
-      return `${EDGE_PREFIX}${ref.typeId}`;
+      return toProtocolSectionId(
+        `${EDGE_PREFIX}${nonEmpty(ref.typeId, 'edge type id')}`,
+      );
     case 'codebookEgo':
-      return 'codebook:ego';
+      return toProtocolSectionId('codebook:ego');
     case 'assets':
-      return 'assets';
+      return toProtocolSectionId('assets');
   }
+  throw new UnknownSectionIdError('unknown section reference');
+}
+
+function toProtocolSectionId(value: string): ProtocolSectionId {
+  // This module is the sole constructor for the branded string.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return value as ProtocolSectionId;
+}
+
+function nonEmpty(value: string, label: string): string {
+  if (value === '') throw new UnknownSectionIdError(`empty ${label}`);
+  return value;
 }
 
 // Stage and codebook type ids may themselves contain ':', so this matches

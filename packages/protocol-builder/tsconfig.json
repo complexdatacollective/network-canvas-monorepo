@@ -1,0 +1,10 @@
+{
+  "extends": "@codaco/tsconfig/web.json",
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+    "types": ["vite/client"]
+  },
+  "include": [".storybook", "src"],
+  "exclude": ["node_modules", "storybook-static"]
+}

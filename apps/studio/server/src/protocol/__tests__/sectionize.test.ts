@@ -5,8 +5,8 @@ import {
   validateProtocol,
 } from '@codaco/protocol-validation';
 import { contentHash } from '@codaco/studio-sync/apply';
+import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 
-import { assembleProtocol } from '../assemble.ts';
 import { sectionizeProtocol } from '../sectionize.ts';
 import { validateSection } from '../validate.ts';
 import { versionContentHash } from '../version-hash.ts';
@@ -26,7 +26,7 @@ describe('sectionize/assemble round trip', () => {
         ).toBe(true);
       }
 
-      const assembled = assembleProtocol(sections);
+      const assembled = assembleProtocolSections(sections);
       expect(assembled).toEqual(protocol);
 
       const revalidated = await validateProtocol(
@@ -41,7 +41,7 @@ describe('sectionize/assemble round trip', () => {
 
   it('round-trips the base protocol', () => {
     const protocol = baseProtocol();
-    const assembled = assembleProtocol(sectionizeProtocol(protocol));
+    const assembled = assembleProtocolSections(sectionizeProtocol(protocol));
     expect(assembled).toEqual(protocol);
   });
 
@@ -49,7 +49,9 @@ describe('sectionize/assemble round trip', () => {
     const protocol = JSON.parse(
       JSON.stringify(baseProtocol()).replaceAll('"person"', '"__proto__"'),
     ) as ReturnType<typeof baseProtocol>;
-    const assembled = assembleProtocol(sectionizeProtocol(protocol)) as {
+    const assembled = assembleProtocolSections(
+      sectionizeProtocol(protocol),
+    ) as {
       codebook: { node: Record<string, unknown> };
     };
     expect(Object.hasOwn(assembled.codebook.node, '__proto__')).toBe(true);
