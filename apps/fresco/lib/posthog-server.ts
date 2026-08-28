@@ -1,5 +1,5 @@
 // lib/posthog-server.ts
-import { PostHog } from 'posthog-node';
+import { type EventMessage, PostHog } from 'posthog-node';
 
 import {
   POSTHOG_API_KEY,
@@ -36,6 +36,42 @@ export function getPostHogSessionProperties(
   return {};
 }
 
+// posthog-node's public `captureException` hard-codes its own hint, and the
+// third argument is merged as ordinary event properties. There is therefore no
+// parameter for the mechanism error tracking shows against an exception, and
+// without one every report is recorded as `generic` and `handled: true` — so a
+// genuinely unhandled failure would arrive looking like a handled one. Reports
+// from the process listeners carry this marker instead, and `before_send` —
+// the supported hook for editing an event on its way out — moves it into the
+// exception itself. The type strings match the ones posthog-node's own
+// autocapture used, so these reports line up with anything captured before.
+const MECHANISM_PROPERTY = 'fresco_exception_mechanism';
+
+export type ExceptionMechanism = 'onuncaughtexception' | 'onunhandledrejection';
+
+function moveMechanismIntoException(
+  event: EventMessage | null,
+): EventMessage | null {
+  if (!event?.properties) return event;
+
+  const mechanism = event.properties[MECHANISM_PROPERTY];
+  if (typeof mechanism !== 'string') return event;
+
+  const properties = { ...event.properties };
+  delete properties[MECHANISM_PROPERTY];
+
+  const exceptions: unknown = properties.$exception_list;
+  if (Array.isArray(exceptions)) {
+    properties.$exception_list = exceptions.map((exception: unknown) =>
+      exception && typeof exception === 'object' && !Array.isArray(exception)
+        ? { ...exception, mechanism: { type: mechanism, handled: false } }
+        : exception,
+    );
+  }
+
+  return { ...event, properties };
+}
+
 /**
  * Returns the shared server-side client, constructing it on first use.
  *
@@ -66,6 +102,7 @@ export function getPostHogServer() {
     host: POSTHOG_PROXY_HOST,
     flushAt: 1,
     flushInterval: 0,
+    before_send: moveMechanismIntoException,
   });
   return client;
 }
@@ -116,31 +153,66 @@ export async function resolveInstallationIdUncached() {
 
 // A process-level failure can repeat without limit — one broken interval can
 // reject forever — and each report costs a settings read as well as a request
-// to the relay. posthog-node's autocapture carried its own rate limiter; this
-// replaces it. Next logs every occurrence either way, so a dropped report
-// costs nothing an operator cannot see in the server log.
-const REPORT_WINDOW_MS = 60_000;
-const MAX_REPORTS_PER_WINDOW = 10;
-let windowStartedAt = 0;
-let reportsInWindow = 0;
+// to the relay. posthog-node's autocapture carried a rate limiter; this
+// replaces it, with the same shape: a token bucket per kind of failure rather
+// than one for the whole process, so a noisy repeat cannot use up the capacity
+// a new and different failure needs. Ten tokens, one back every ten seconds,
+// matching the SDK's defaults. Next logs every occurrence either way, so a
+// dropped report costs nothing an operator cannot see in the server log.
+const REPORT_BUCKET_SIZE = 10;
+const REPORT_REFILL_MS = 10_000;
+// Bounded, unlike the SDK's, because the key includes the error's name: code
+// that throws many differently-named errors would otherwise grow this without
+// limit. Least recently used goes first, and a dropped key simply starts from
+// a full bucket next time.
+const MAX_TRACKED_FAILURE_KINDS = 50;
 
-function withinReportBudget() {
+type ReportBucket = { tokens: number; refilledAt: number };
+const reportBuckets = new Map<string, ReportBucket>();
+
+function failureKind(error: unknown, mechanism: ExceptionMechanism) {
+  const name = error instanceof Error && error.name ? error.name : typeof error;
+  return `${mechanism}:${name}`;
+}
+
+function withinReportBudget(kind: string) {
   const now = Date.now();
+  const bucket = reportBuckets.get(kind);
 
-  if (now - windowStartedAt >= REPORT_WINDOW_MS) {
-    windowStartedAt = now;
-    reportsInWindow = 0;
+  // Re-inserting keeps the map in least-recently-used order, so eviction drops
+  // a kind that has gone quiet rather than one that is currently being limited.
+  reportBuckets.delete(kind);
+
+  if (!bucket) {
+    if (reportBuckets.size >= MAX_TRACKED_FAILURE_KINDS) {
+      const leastRecentlyUsed = reportBuckets.keys().next();
+      if (!leastRecentlyUsed.done)
+        reportBuckets.delete(leastRecentlyUsed.value);
+    }
+    reportBuckets.set(kind, {
+      tokens: REPORT_BUCKET_SIZE - 1,
+      refilledAt: now,
+    });
+    return true;
   }
 
-  if (reportsInWindow >= MAX_REPORTS_PER_WINDOW) return false;
+  const intervals = Math.floor((now - bucket.refilledAt) / REPORT_REFILL_MS);
+  if (intervals > 0) {
+    bucket.tokens = Math.min(bucket.tokens + intervals, REPORT_BUCKET_SIZE);
+    bucket.refilledAt += intervals * REPORT_REFILL_MS;
+  }
 
-  reportsInWindow += 1;
+  reportBuckets.set(kind, bucket);
+
+  if (bucket.tokens === 0) return false;
+
+  bucket.tokens -= 1;
   return true;
 }
 
 async function captureProcessError(
   error: unknown,
-  mechanism: 'uncaughtException' | 'unhandledRejection',
+  mechanism: ExceptionMechanism,
 ) {
   // Telemetry must never throw, least of all here: an error escaping this
   // handler would re-enter the very listener that is reporting.
@@ -154,8 +226,7 @@ async function captureProcessError(
       ...POSTHOG_APP_PROPERTIES,
       installation_id: distinctId,
       $source: 'server',
-      mechanism,
-      handled: false,
+      [MECHANISM_PROPERTY]: mechanism,
     });
 
     await flushPostHog();
@@ -194,13 +265,14 @@ export function installProcessErrorReporting() {
   processErrorReportingInstalled = true;
 
   process.on('uncaughtException', (error) => {
-    if (!withinReportBudget()) return;
-    void captureProcessError(error, 'uncaughtException');
+    if (!withinReportBudget(failureKind(error, 'onuncaughtexception'))) return;
+    void captureProcessError(error, 'onuncaughtexception');
   });
 
   process.on('unhandledRejection', (reason) => {
-    if (!withinReportBudget()) return;
-    void captureProcessError(reason, 'unhandledRejection');
+    if (!withinReportBudget(failureKind(reason, 'onunhandledrejection')))
+      return;
+    void captureProcessError(reason, 'onunhandledrejection');
   });
 }
 

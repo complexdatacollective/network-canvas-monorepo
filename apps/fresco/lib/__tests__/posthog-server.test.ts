@@ -1,3 +1,4 @@
+import type * as PostHogNode from 'posthog-node';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
@@ -78,6 +79,7 @@ describe('posthog-server', () => {
         host: 'https://test.example.com',
         flushAt: 1,
         flushInterval: 0,
+        before_send: expect.any(Function),
       });
     });
 
@@ -99,7 +101,7 @@ describe('posthog-server', () => {
       }
 
       const { PostHog: RealPostHog } =
-        await vi.importActual<typeof import('posthog-node')>('posthog-node');
+        await vi.importActual<typeof PostHogNode>('posthog-node');
 
       const before = {
         uncaughtException: process.listenerCount('uncaughtException'),
@@ -116,6 +118,79 @@ describe('posthog-server', () => {
       } finally {
         await realClient.shutdown();
       }
+    });
+  });
+
+  describe('before_send exception mechanism', () => {
+    async function getBeforeSend() {
+      const { PostHog } = await import('posthog-node');
+      const { getPostHogServer } = await import('../posthog-server');
+
+      getPostHogServer();
+
+      const options = vi.mocked(PostHog).mock.calls[0]?.[1];
+      const beforeSend = options?.before_send;
+
+      if (typeof beforeSend !== 'function') {
+        throw new Error('The client was constructed without a before_send.');
+      }
+
+      return beforeSend;
+    }
+
+    it('moves the marker into the exception and removes it', async () => {
+      const beforeSend = await getBeforeSend();
+
+      const result = beforeSend({
+        event: '$exception',
+        distinctId: 'install-123',
+        properties: {
+          fresco_exception_mechanism: 'onunhandledrejection',
+          $exception_list: [{ type: 'TypeError', value: 'boom' }],
+          installation_id: 'install-123',
+        },
+      });
+
+      expect(result?.properties).toEqual({
+        installation_id: 'install-123',
+        $exception_list: [
+          {
+            type: 'TypeError',
+            value: 'boom',
+            mechanism: { type: 'onunhandledrejection', handled: false },
+          },
+        ],
+      });
+    });
+
+    it('leaves an ordinary event untouched', async () => {
+      const beforeSend = await getBeforeSend();
+
+      const event = {
+        event: 'ProtocolInstalled',
+        distinctId: 'install-123',
+        properties: { installation_id: 'install-123' },
+      };
+
+      expect(beforeSend(event)).toEqual(event);
+    });
+
+    it('strips the marker even when there is no exception list', async () => {
+      const beforeSend = await getBeforeSend();
+
+      const result = beforeSend({
+        event: '$exception',
+        distinctId: 'install-123',
+        properties: { fresco_exception_mechanism: 'onuncaughtexception' },
+      });
+
+      expect(result?.properties).toEqual({});
+    });
+
+    it('passes a dropped event through', async () => {
+      const beforeSend = await getBeforeSend();
+
+      expect(beforeSend(null)).toBeNull();
     });
   });
 
@@ -190,8 +265,6 @@ describe('posthog-server', () => {
         expect.objectContaining({
           $source: 'server',
           installation_id: 'install-123',
-          mechanism: 'unhandledRejection',
-          handled: false,
         }),
       );
       expect(mockFlush).toHaveBeenCalled();
@@ -207,7 +280,9 @@ describe('posthog-server', () => {
       expect(mockCaptureException).toHaveBeenCalledWith(
         error,
         'install-123',
-        expect.objectContaining({ mechanism: 'uncaughtException' }),
+        expect.objectContaining({
+          fresco_exception_mechanism: 'onuncaughtexception',
+        }),
       );
     });
 
@@ -265,6 +340,114 @@ describe('posthog-server', () => {
       }
 
       expect(mockCaptureException).toHaveBeenCalledTimes(10);
+    });
+
+    // A single process-wide bucket would let a noisy repeat hide the arrival
+    // of a new and different failure for the rest of the window.
+    it('keeps capacity for a different failure while one kind floods', async () => {
+      const { reportRejection } = await installAndGetListeners();
+
+      class NoisyError extends Error {
+        override name = 'NoisyError';
+      }
+      class RareError extends Error {
+        override name = 'RareError';
+      }
+
+      for (let index = 0; index < 15; index += 1) {
+        reportRejection(new NoisyError(`repeat ${index}`));
+        await settle();
+      }
+      expect(mockCaptureException).toHaveBeenCalledTimes(10);
+
+      const rare = new RareError('the one that matters');
+      reportRejection(rare);
+      await settle();
+
+      expect(mockCaptureException).toHaveBeenCalledWith(
+        rare,
+        'install-123',
+        expect.anything(),
+      );
+    });
+
+    // The two mechanisms must not share a bucket either.
+    it('keeps capacity for uncaught exceptions while rejections flood', async () => {
+      const { reportRejection, reportUncaught } =
+        await installAndGetListeners();
+
+      for (let index = 0; index < 15; index += 1) {
+        reportRejection(new Error(`repeat ${index}`));
+        await settle();
+      }
+
+      const thrown = new Error('a real throw');
+      reportUncaught(thrown);
+      await settle();
+
+      expect(mockCaptureException).toHaveBeenCalledWith(
+        thrown,
+        'install-123',
+        expect.anything(),
+      );
+    });
+
+    // The per-kind buckets are bounded, so that code throwing many
+    // differently-named errors cannot grow the map without limit. Eviction is
+    // least-recently-used, and an evicted kind starts from a full bucket.
+    it('bounds how many failure kinds it tracks', async () => {
+      const { reportRejection } = await installAndGetListeners();
+
+      const named = (name: string) => {
+        const error = new Error(`from ${name}`);
+        error.name = name;
+        return error;
+      };
+
+      // Exhaust one kind. The budget is spent synchronously in the listener,
+      // so these do not need to finish reporting to count.
+      for (let index = 0; index < 12; index += 1) {
+        reportRejection(named('FloodError'));
+      }
+      await settle();
+      mockCaptureException.mockClear();
+
+      // Push it out of the map with more distinct kinds than the cap.
+      for (let index = 0; index < 50; index += 1) {
+        reportRejection(named(`Distinct${index}Error`));
+      }
+      await settle();
+      mockCaptureException.mockClear();
+
+      // Evicted, so this starts from a full bucket rather than staying limited.
+      const returning = named('FloodError');
+      reportRejection(returning);
+      await settle();
+
+      expect(mockCaptureException).toHaveBeenCalledWith(
+        returning,
+        'install-123',
+        expect.anything(),
+      );
+    });
+
+    // posthog-node's public captureException has no parameter for the
+    // mechanism, so the marker travels as a property and before_send moves it
+    // into the exception. Without that, error tracking records a genuinely
+    // unhandled failure as handled.
+    it('tags reports so before_send can mark them unhandled', async () => {
+      const { reportRejection } = await installAndGetListeners();
+
+      reportRejection(new Error('nobody awaited this'));
+      await settle();
+
+      expect(mockCaptureException).toHaveBeenCalledWith(
+        expect.anything(),
+        'install-123',
+        expect.objectContaining({
+          fresco_exception_mechanism: 'onunhandledrejection',
+        }),
+      );
     });
 
     it('installs its listeners only once', async () => {
