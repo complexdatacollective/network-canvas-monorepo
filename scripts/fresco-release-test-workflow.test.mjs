@@ -2157,10 +2157,12 @@ for (const [label, lane] of EGRESS_AREAS) {
     r[label].externalHosts = ['us.i.posthog.com'];
     const { result } = await run(r);
     assert.equal(result.verdict, 'no-go');
-    assert.ok(
-      result.failures.some((f) => f.includes('us.i.posthog.com')),
-      JSON.stringify(result.failures),
+    // Matched, not substring-searched: a dotted hostname literal reaching
+    // .includes() reads to CodeQL as URL sanitization, which this is not.
+    const egress = result.failures.find((f) =>
+      /\bus\.i\.posthog\.com\b/.test(f),
     );
+    assert.ok(egress, JSON.stringify(result.failures));
   });
 
   test(`an unreported ${lane} host list fails closed rather than reading as silence`, async () => {
