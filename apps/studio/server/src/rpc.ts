@@ -94,7 +94,7 @@ export function createRpcRouter(
       acquireSection: os.protocols.acquireSection
         .use(requireTeam)
         .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraft(
+          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
             input.protocolId,
             input.draftId,
           );
@@ -122,7 +122,7 @@ export function createRpcRouter(
       commitSection: os.protocols.commitSection
         .use(requireTeam)
         .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraft(
+          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
             input.protocolId,
             input.draftId,
           );
@@ -144,7 +144,7 @@ export function createRpcRouter(
       renewSection: os.protocols.renewSection
         .use(requireTeam)
         .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraft(
+          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
             input.protocolId,
             input.draftId,
           );
@@ -162,7 +162,7 @@ export function createRpcRouter(
       releaseSection: os.protocols.releaseSection
         .use(requireTeam)
         .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraft(
+          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
             input.protocolId,
             input.draftId,
           );
@@ -176,7 +176,7 @@ export function createRpcRouter(
       addInformationStage: os.protocols.addInformationStage
         .use(requireTeam)
         .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraft(
+          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
             input.protocolId,
             input.draftId,
           );
@@ -198,7 +198,7 @@ export function createRpcRouter(
       moveStage: os.protocols.moveStage
         .use(requireTeam)
         .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraft(
+          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
             input.protocolId,
             input.draftId,
           );

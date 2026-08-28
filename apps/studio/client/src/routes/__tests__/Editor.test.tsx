@@ -2,13 +2,14 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { rpcClient } from '../../lib/api.ts';
 import { createAppRouter } from '../../router.tsx';
 
 const STAGE_A = '11111111-1111-4111-8111-111111111111';
 const STAGE_B = '22222222-2222-4222-8222-222222222222';
+const queryDraft = vi.hoisted(() => vi.fn());
 const DRAFT = {
   protocol: {
     id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -63,7 +64,7 @@ vi.mock('../../lib/api.ts', () => ({
       draft: {
         queryOptions: () => ({
           queryKey: ['draft'],
-          queryFn: () => Promise.resolve(DRAFT),
+          queryFn: queryDraft,
         }),
         key: () => ['draft'],
       },
@@ -88,6 +89,16 @@ vi.mock('../../lib/api.ts', () => ({
     },
   },
 }));
+
+beforeEach(() => {
+  queryDraft.mockReset();
+  queryDraft.mockResolvedValue(DRAFT);
+  vi.mocked(rpcClient.protocols.moveStage).mockReset();
+  vi.mocked(rpcClient.protocols.moveStage).mockResolvedValue({
+    sequence: '3',
+    hash: 'r3',
+  });
+});
 
 function renderEditor() {
   const router = createAppRouter(
@@ -122,6 +133,7 @@ describe('Studio editor shell', () => {
     expect(
       screen.getByRole('heading', { name: 'Inspector' }),
     ).toBeInTheDocument();
+    expect(screen.queryByText('Viewers')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Move Follow-up up' }));
     await waitFor(() =>
@@ -207,6 +219,28 @@ describe('Studio editor shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Refresh outline' }));
     await waitFor(() => expect(add).toBeEnabled());
+  });
+
+  it('blocks another reorder until an ambiguous refresh failure is reconciled', async () => {
+    queryDraft
+      .mockResolvedValueOnce(DRAFT)
+      .mockRejectedValueOnce(new Error('refresh failed'));
+    renderEditor();
+    const moveUp = await screen.findByRole('button', {
+      name: 'Move Follow-up up',
+    });
+
+    fireEvent.click(moveUp);
+
+    expect(
+      await screen.findByText(/could not confirm the new screen order/i),
+    ).toBeInTheDocument();
+    for (const button of screen.getAllByRole('button', { name: /^Move / })) {
+      expect(button).toBeDisabled();
+    }
+
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh order' }));
+    await waitFor(() => expect(moveUp).toBeEnabled());
   });
 
   it('disables editing when another session holds the screen lease', async () => {

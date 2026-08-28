@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type pg from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   LeaseRejectedError,
@@ -48,6 +48,20 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       protocol: baseProtocol(),
     });
     expect(await store.getDraftDocument(draftId)).toEqual(baseProtocol());
+  });
+
+  it('reads protocol draft metadata without loading section documents', async () => {
+    const { protocolId, draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    const getDraftSections = vi.spyOn(store, 'getDraftSections');
+
+    await expect(
+      store.getProtocolDraftMetadata(protocolId, draftId),
+    ).resolves.toMatchObject({ id: protocolId, draftId });
+    expect(getDraftSections).not.toHaveBeenCalled();
+
+    getDraftSections.mockRestore();
   });
 
   it('createProtocol rejects a section that fails write-time validation', async () => {
