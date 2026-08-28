@@ -19,17 +19,19 @@ import {
 // Kept out of src/ so drizzle-kit (and its esbuild binary) can never reach
 // the server or Netlify bundles.
 
-let rendered: Promise<string[]> | undefined;
+let renderedDrizzleSchema: Promise<string[]> | undefined;
 
-export function renderSchemaStatements(): Promise<string[]> {
-  rendered ??= (async () => {
-    const statements = await generateMigration(
+export function renderDrizzleSchemaStatements(): Promise<string[]> {
+  renderedDrizzleSchema ??= (async () =>
+    generateMigration(
       await generateDrizzleJson({}),
       await generateDrizzleJson(SCHEMA),
-    );
-    return [...statements, ...SIDECARS];
-  })();
-  return rendered;
+    ))();
+  return renderedDrizzleSchema;
+}
+
+export async function renderSchemaStatements(): Promise<string[]> {
+  return [...(await renderDrizzleSchemaStatements()), ...SIDECARS];
 }
 
 export async function computeSchemaFingerprint(): Promise<string> {

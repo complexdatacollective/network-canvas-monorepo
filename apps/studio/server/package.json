@@ -20,6 +20,7 @@
     "db:reset": "node scripts/db-reset.ts",
     "protocol-demo": "node scripts/protocol-demo.ts",
     "generate:env-docs": "node scripts/generate-env-docs.ts",
+    "generate:erd": "node scripts/generate-schema-docs.ts",
     "start": "NODE_ENV=production CLIENT_DIST=../client/dist node --env-file-if-exists=.env dist/index.js",
     "typecheck": "tsc --build --noEmit",
     "test": "vitest run",
@@ -49,7 +50,9 @@
   "devDependencies": {
     "@codaco/protocols": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
+    "@dbml/core": "10.1.1",
     "@orpc/client": "2.0.0-beta.26",
+    "@softwaretechnik/dbml-renderer": "1.0.31",
     "@types/nodemailer": "8.0.1",
     "@types/pg": "^8.20.4",
     "@types/ws": "^8.18.1",
