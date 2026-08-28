@@ -84,6 +84,7 @@ const result = {
   steps: [],
   failures: [],
 };
+const consoleErrors = [];
 function record(step, ok, note) {
   result.steps.push({ step, ok, note });
   console.log(`${ok ? 'PASS' : 'FAIL'} ${step}${note ? ` :: ${note}` : ''}`);
@@ -116,6 +117,26 @@ try {
   await context.route('**://ph-relay.networkcanvas.com/**', (r) => r.abort());
   page = await context.newPage();
   page.setDefaultTimeout(15_000);
+  // Every non-whitelisted console error is reportable under the gate's
+  // shared journey contract (same listener as the vault walker; noise
+  // patterns match the message location URL too, since Chromium's generic
+  // "Failed to load resource" text omits it).
+  const NOISE = [
+    /frame-ancestors.*ignored when delivered via a <meta> element/i,
+    /cloudflareinsights|Content Security Policy.*(inline|script)/i,
+    /ph-relay\.networkcanvas\.com/i,
+    // This walk is deliberately OFFLINE for its core phases: network
+    // resource-load failures (our own positive-control probe included) are
+    // the condition under test, not findings. App-level errors still
+    // surface — they are never "Failed to load resource" lines.
+    /__offline-probe-/,
+    /Failed to load resource: net::ERR_(INTERNET_DISCONNECTED|FAILED)/,
+  ];
+  page.on('console', (m) => {
+    if (m.type() !== 'error') return;
+    const text = `${m.text()} ${m.location()?.url ?? ''}`;
+    if (!NOISE.some((p) => p.test(text))) consoleErrors.push(text.trim());
+  });
 } catch (err) {
   record(
     'setup',
@@ -529,6 +550,16 @@ try {
     'persisted-payload',
     payloadOk,
     `stored network: ${JSON.stringify(byName)} edgeTypes=${JSON.stringify(payload.edgeTypes ?? [])} ego=${JSON.stringify(payload.egoName ?? null)} contextsExact=${contextsExact} layoutsDistinct=${layoutsDistinct}`,
+  );
+
+  // Cross-cutting: every non-whitelisted console error collected across the
+  // whole walk is reportable under the gate's shared journey contract.
+  record(
+    'console-errors',
+    consoleErrors.length === 0,
+    consoleErrors.length
+      ? `${consoleErrors.length} non-whitelisted console error(s): ${consoleErrors.slice(0, 3).join(' || ').slice(0, 400)}`
+      : 'no non-whitelisted console errors across the walk',
   );
 
   clearTimeout(watchdog);

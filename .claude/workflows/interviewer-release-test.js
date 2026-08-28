@@ -582,9 +582,10 @@ check's detail:
 4. Finish flow completes: step "finish".
 5. Completed session on /data at 100% while STILL offline: step
    "persisted-offline".
-6. The row survives an online reload AND the stored payload is intact
-   (nodes, layouts, categorical values, both edge types, ego): steps
-   "persisted-online" and "persisted-payload".
+6. The row survives an online reload, the stored payload is intact
+   (nodes, layouts, categorical values, both edge types, ego), and no
+   non-whitelisted console error accumulated across the walk: steps
+   "persisted-online", "persisted-payload", and "console-errors".
 A failed "setup" step means the walker could not start at all — report the
 journey as failed with that note and let the verifier adjudicate.
 

@@ -168,6 +168,15 @@ async function expectUnlocked(p = page) {
   );
   await expect(p.getByLabel('Lock app')).toBeVisible();
 }
+// A rejected code CLEARS the segmented field — wait for that event-driven
+// signal rather than a fixed sleep the PBKDF2 verify can outlast on a slow
+// machine (which would sample "still pending" as "refused" and then type
+// into a busy form).
+async function expectPinRejected(p = page) {
+  await expect(
+    p.getByTestId('segmented-code-pin').locator('input').first(),
+  ).toHaveValue('', { timeout: 30_000 });
+}
 
 // Deck-settle click: the spring-animated deck swallows early clicks, and a
 // single stable sample pair can catch it mid-flight — require SUSTAINED
@@ -319,7 +328,7 @@ try {
   await page.reload();
   await expectLocked();
   await typeSegmented(page, 'pin', '87654321');
-  await page.waitForTimeout(1500);
+  await expectPinRejected();
   await expectLocked();
   const firstSegment = page
     .getByTestId('segmented-code-pin')
@@ -393,7 +402,7 @@ try {
   ).toBeVisible();
   const preStepUpUrl = page.url();
   await typeSegmented(page, 'pin', '87654321');
-  await page.waitForTimeout(1500);
+  await expectPinRejected();
   const sessionsAfterWrongPin = await rawSessionCount();
   const gateHeld =
     (await page
@@ -438,7 +447,7 @@ try {
     .isVisible()
     .catch(() => false);
   await typeSegmented(page, 'pin', '87654321');
-  await page.waitForTimeout(1500);
+  await expectPinRejected();
   const exportGateHeld =
     (await page
       .getByRole('heading', { name: 'Confirm your identity' })
@@ -491,8 +500,19 @@ try {
       protocolCount: protocols.length,
       assetCount: assets.length,
       sessionsEncrypted: sessions.every(
-        (s) => !('network' in s) && isEnvelope(s._enc?.network),
+        (s) =>
+          !('network' in s) &&
+          !('stageMetadata' in s) &&
+          isEnvelope(s._enc?.network) &&
+          (s._enc?.stageMetadata === undefined ||
+            isEnvelope(s._enc.stageMetadata)),
       ),
+      // stageMetadata is a SEPARATE sensitive field (encryptSession) — at
+      // least one seeded session (the synthetic one exercises DyadCensus)
+      // must carry its envelope, or a metadata-only regression hides.
+      stageMetadataEnvelopes: sessions.filter((s) =>
+        isEnvelope(s._enc?.stageMetadata),
+      ).length,
       protocolsEncrypted: protocols.every(
         (p) =>
           !('protocol' in p) &&
@@ -512,10 +532,11 @@ try {
       cipher.protocolCount > 0 &&
       cipher.assetCount > 0 &&
       cipher.sessionsEncrypted &&
+      cipher.stageMetadataEnvelopes > 0 &&
       cipher.protocolsEncrypted &&
       cipher.assetsEncrypted &&
       !cipher.leaks,
-    `sessions=${cipher.sessionCount} protocols=${cipher.protocolCount} assets=${cipher.assetCount} sessionsEncrypted=${cipher.sessionsEncrypted} protocolsEncrypted=${cipher.protocolsEncrypted} assetsEncrypted=${cipher.assetsEncrypted} plaintextLeak=${cipher.leaks}`,
+    `sessions=${cipher.sessionCount} protocols=${cipher.protocolCount} assets=${cipher.assetCount} sessionsEncrypted=${cipher.sessionsEncrypted} stageMetadataEnvelopes=${cipher.stageMetadataEnvelopes} protocolsEncrypted=${cipher.protocolsEncrypted} assetsEncrypted=${cipher.assetsEncrypted} plaintextLeak=${cipher.leaks}`,
   );
 
   // 5. Lock-screen guard on interview routes: re-enter the interview, reload,
@@ -563,7 +584,7 @@ try {
     page.getByRole('heading', { name: 'Confirm your identity' }),
   ).toBeVisible();
   await typeSegmented(page, 'pin', '87654321');
-  await page.waitForTimeout(1500);
+  await expectPinRejected();
   const exitGateHeld = page.url().includes('/interview/');
   await typeSegmented(page, 'pin', PIN);
   await checkPhantomStepUp('phantom-after-exit-gated-exit');
@@ -612,7 +633,7 @@ try {
   await page.getByLabel('Lock app').click();
   await expectLocked();
   await typeSegmented(page, 'pin', PIN);
-  await page.waitForTimeout(1500);
+  await expectPinRejected();
   const oldPinRejected = await page
     .getByRole('heading', { name: 'Welcome back' })
     .isVisible();
@@ -789,7 +810,11 @@ try {
   await expectLocked();
   await page.getByTestId('passphrase-input').fill('definitely-wrong-1234');
   await page.getByTestId('unlock-submit').click();
-  await page.waitForTimeout(1500);
+  // The submit disables while the PBKDF2 verify runs — wait for it to come
+  // back rather than sampling a fixed sleep the verify can outlast.
+  await expect(page.getByTestId('unlock-submit')).toBeEnabled({
+    timeout: 30_000,
+  });
   const wrongUnlockRejected = await page
     .getByRole('heading', { name: 'Welcome back' })
     .isVisible();
