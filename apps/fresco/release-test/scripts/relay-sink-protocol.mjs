@@ -46,3 +46,61 @@ export function classify(firstBytes) {
   const nonce = text.slice(PROBE_MARKER.length).trim().split(/\s+/)[0] ?? '';
   return { kind: 'probe', nonce };
 }
+
+/**
+ * Counts what a sink's log says, from the reader's point of view.
+ *
+ * Pure, and exported, because this is the whole oracle: `probeConnections` is
+ * the positive control and `analyticsConnections` is the verdict. It is tested
+ * directly rather than only through a running stack.
+ *
+ * Two rules, both deliberately conservative:
+ *
+ * - A connection the sink accepted but has not yet classified counts as
+ *   egress. It was a connection attempt whether or not the sink has finished
+ *   reading it, and "not yet known" must never be reported as "not egress".
+ * - A line that cannot be read counts as egress, for the same reason.
+ *
+ * Probe records from an earlier invocation carry a different nonce. They are
+ * not this run's control and are not held against the build either.
+ */
+export function tally(raw, nonce) {
+  const accepted = new Set();
+  const classified = new Map();
+  let unreadable = 0;
+  let logLines = 0;
+
+  for (const line of String(raw ?? '').split('\n')) {
+    const text = line.trim();
+    if (!text) continue;
+    logLines += 1;
+    let entry;
+    try {
+      entry = JSON.parse(text);
+    } catch {
+      unreadable += 1;
+      continue;
+    }
+    if (entry?.kind === 'listening') continue;
+    if (!Number.isInteger(entry?.seq)) {
+      unreadable += 1;
+      continue;
+    }
+    if (entry.kind === 'accepted') accepted.add(entry.seq);
+    else if (entry.kind === 'probe' || entry.kind === 'egress')
+      classified.set(entry.seq, entry);
+    else unreadable += 1;
+  }
+
+  let probeConnections = 0;
+  for (const entry of classified.values())
+    if (entry.kind === 'probe' && entry.nonce === nonce) probeConnections += 1;
+
+  let analyticsConnections = unreadable;
+  for (const seq of new Set([...accepted, ...classified.keys()])) {
+    const entry = classified.get(seq);
+    if (!entry || entry.kind !== 'probe') analyticsConnections += 1;
+  }
+
+  return { probeConnections, analyticsConnections, logLines };
+}

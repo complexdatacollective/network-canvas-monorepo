@@ -99,6 +99,14 @@ relay's hostname onto a sink container (`relay-sink` in the compose file,
 receives. `release-test/scripts/relay-sink-check.mjs` reads that log, and any
 connection fails the run.
 
+Each connection is written down twice — once when it is accepted, once when it
+has been classified — because classification cannot be immediate: a client that
+stalls, or sends less than a full identifying prefix, is unknown until the
+sink's timeout expires. A log written only at classification time is missing
+everything accepted in that window, so the reader counts an
+accepted-but-unclassified connection as egress. Nothing that has not identified
+itself as a probe is read as one.
+
 The sink records connection attempts and never terminates TLS. posthog-node
 speaks https, so parsing requests would mean minting a certificate for the
 relay's name and trusting it inside the image under test — a container

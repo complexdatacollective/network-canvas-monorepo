@@ -2597,6 +2597,100 @@ test("the sink reader outlasts the sink's identification timeout", async () => {
   );
 });
 
+// The reader's accounting, tested directly on synthetic logs. This is the
+// whole oracle — probeConnections is the positive control, analyticsConnections
+// is the verdict — so it is exercised without a stack rather than only through
+// one.
+test('the log tally counts anything unidentified as egress', async () => {
+  const { tally } =
+    await import('../apps/fresco/release-test/scripts/relay-sink-protocol.mjs');
+  const line = (o) => JSON.stringify(o);
+  const clean = [
+    line({ kind: 'listening', ports: [443, 80] }),
+    line({ kind: 'accepted', seq: 1, port: 443 }),
+    line({ kind: 'probe', seq: 1, port: 443, nonce: 'n1' }),
+    line({ kind: 'accepted', seq: 2, port: 80 }),
+    line({ kind: 'probe', seq: 2, port: 80, nonce: 'n1' }),
+  ].join('\n');
+  assert.deepEqual(tally(clean, 'n1'), {
+    probeConnections: 2,
+    analyticsConnections: 0,
+    logLines: 5,
+  });
+
+  // The race this exists for: accepted, not yet classified. The sink holds a
+  // stalling connection for its whole identification timeout, so a reader that
+  // waited for classification would report this as silence.
+  const pending = `${clean}\n${line({ kind: 'accepted', seq: 3, port: 443 })}`;
+  assert.equal(tally(pending, 'n1').analyticsConnections, 1);
+
+  // Classified egress, an unparseable line, a record with no seq, and a record
+  // whose kind means nothing here — every one counts.
+  for (const [what, extra] of [
+    ['classified egress', line({ kind: 'egress', seq: 3, port: 443 })],
+    ['unparseable', 'not json at all'],
+    ['seq-less', line({ kind: 'egress', port: 443 })],
+    ['unknown kind', line({ kind: 'something-else', seq: 3 })],
+    ['non-integer seq', line({ kind: 'accepted', seq: '3' })],
+  ])
+    assert.equal(
+      tally(`${clean}\n${extra}`, 'n1').analyticsConnections,
+      1,
+      `${what} was not counted as egress`,
+    );
+
+  // A probe from an earlier invocation of the check is neither this run's
+  // control nor evidence against the build.
+  const stale = [
+    line({ kind: 'accepted', seq: 9, port: 443 }),
+    line({ kind: 'probe', seq: 9, port: 443, nonce: 'older' }),
+  ].join('\n');
+  assert.deepEqual(
+    tally(`${clean}\n${stale}`, 'n1'),
+    { probeConnections: 2, analyticsConnections: 0, logLines: 7 },
+    'a stale probe must count as neither control nor egress',
+  );
+
+  // An empty or unusable log is not a clean one; the workflow reads a zero
+  // probe count as "the sink was never shown to be watching".
+  for (const empty of ['', null, undefined])
+    assert.equal(tally(empty, 'n1').probeConnections, 0);
+});
+
+// tally() treats an accepted-but-unclassified connection as egress, which is
+// only meaningful if the sink actually writes a line when it accepts one.
+// Recording solely at classification time is the fail-open this closes: the
+// sink holds a stalling connection for its whole identification timeout, so
+// every connection accepted within that window would be missing from the log a
+// reader snapshots.
+test('the sink writes a connection down when it accepts it', () => {
+  const sink = readFileSync(
+    join(repoRoot, 'apps/fresco/release-test/scripts/relay-sink.mjs'),
+    'utf8',
+  );
+  const handle = /function handle\([\s\S]*?\n}/.exec(sink)?.[0];
+  assert.ok(handle, 'failed to locate the sink connection handler');
+  const acceptedAt = handle.indexOf("kind: 'accepted'");
+  assert.ok(
+    acceptedAt !== -1,
+    'the sink must record a connection when it accepts it, not only once classified',
+  );
+  // Before anything that waits: the point is that the line exists even for a
+  // connection the sink has not finished reading.
+  const settleAt = handle.indexOf('const settle =');
+  assert.ok(
+    settleAt !== -1 && acceptedAt < settleAt,
+    'the accept record must be written before classification is set up',
+  );
+  // And both halves must carry the key that joins them, or the reader cannot
+  // tell an unclassified connection from a classified one.
+  assert.match(handle, /const seq = \+\+accepted;/);
+  assert.ok(
+    (handle.match(/\bseq,/g) ?? []).length >= 2,
+    'both the accept and the classification record must carry seq',
+  );
+});
+
 test('the sink agents are told to report the script, not to interpret it', async () => {
   const { prompts } = await run(happyPath());
   for (const [label, lane] of SINK_AREAS) {

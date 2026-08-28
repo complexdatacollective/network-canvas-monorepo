@@ -29,6 +29,7 @@ import {
   PROBE_MARKER,
   SETTLE_WAIT_MS,
   SINK_PORTS,
+  tally,
 } from './relay-sink-protocol.mjs';
 
 const args = process.argv.slice(2);
@@ -126,11 +127,14 @@ for (const port of SINK_PORTS) {
   }
 }
 
-// The sink does not classify a connection the moment it arrives: one that
-// stalls, or sends less than a full identifying prefix, is held until its
-// identification timeout expires. Reading before that elapses would report a
-// socket accepted just beforehand as silence — so wait out the timeout the
-// sink itself uses, not merely long enough for the probes to land.
+// Egress completeness does not depend on this wait — the sink writes a line
+// the instant it accepts a connection, and anything accepted-but-unclassified
+// is counted as egress below. The wait is what keeps that from reading as a
+// FALSE no-go: a connection is not classified until it identifies itself or
+// the sink's timeout expires, so reading too early would count this run's own
+// probes, and any genuinely benign late arrival, as unidentified traffic.
+// Waiting out the sink's own timeout means all but the last instant's
+// connections are classified precisely rather than conservatively.
 await new Promise((resolve) => setTimeout(resolve, SETTLE_WAIT_MS));
 
 let raw = '';
@@ -143,31 +147,7 @@ try {
 // Only the sink's stdout: `docker logs` demultiplexes the container's streams,
 // and execFileSync returns stdout alone, so a runtime warning on stderr can
 // never be miscounted as a connection.
-//
-// A line the sink wrote that this cannot parse IS counted as egress, not
-// discarded: the sink writes one line per connection, so an unreadable line is
-// an unaccounted connection.
-let probeConnections = 0;
-let analyticsConnections = 0;
-let logLines = 0;
-for (const line of raw.split('\n')) {
-  const text = line.trim();
-  if (!text) continue;
-  logLines += 1;
-  let entry;
-  try {
-    entry = JSON.parse(text);
-  } catch {
-    analyticsConnections += 1;
-    continue;
-  }
-  if (entry?.kind === 'listening') continue;
-  if (entry?.kind === 'probe') {
-    if (entry.nonce === nonce) probeConnections += 1;
-    continue;
-  }
-  analyticsConnections += 1;
-}
+const { probeConnections, analyticsConnections, logLines } = tally(raw, nonce);
 
 process.stdout.write(
   `${JSON.stringify({

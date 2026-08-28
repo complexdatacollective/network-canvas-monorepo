@@ -40,7 +40,23 @@ const IDENTIFY_BYTES = 128;
 
 const record = (entry) => process.stdout.write(`${JSON.stringify(entry)}\n`);
 
+// Every connection is written down TWICE: once the instant it is accepted, and
+// again once it has been classified. The first line is what makes the log
+// complete at any moment. Classification cannot be immediate — a client that
+// stalls, or sends less than a full identifying prefix, is not known until the
+// timeout expires — so a log written only at classification time is missing
+// every connection accepted within the last IDENTIFY_MS, and a reader that
+// snapshots it reports those as silence.
+//
+// The pair is joined by `seq`, so a reader can see an accepted connection that
+// has not yet been classified and count it as egress: nothing that has not
+// identified itself as a probe may be read as one.
+let accepted = 0;
+
 function handle(socket, port) {
+  const seq = ++accepted;
+  record({ at: new Date().toISOString(), kind: 'accepted', seq, port });
+
   const chunks = [];
   let length = 0;
   let settled = false;
@@ -52,6 +68,7 @@ function handle(socket, port) {
     const { kind, nonce } = classify(Buffer.concat(chunks, length));
     record({
       at: new Date().toISOString(),
+      seq,
       port,
       kind,
       ...(nonce ? { nonce } : {}),
