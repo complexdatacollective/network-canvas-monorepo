@@ -1333,6 +1333,50 @@ test('an internally inconsistent audit entry cannot evidence a dismissal', async
   assert.ok(res.unverifiedFailures.some((f) => f.description === 'real one'));
 });
 
+test('schema-skew skips are hotfix-only in code', async () => {
+  const checks = mkChecks(9, { skipAt: [6, 7] });
+  checks[5].detail = 'newest dev protocol has a newer/unsupported schema';
+  checks[6].detail = 'skipped with 6 (schema skew)';
+  const jr = {
+    'protocol-management': journey('protocol-management', { checks }),
+  };
+  const evidence = {
+    fingerprint: PREFLIGHT.fingerprint,
+    entries: [
+      {
+        journey: 'protocol-management',
+        exists: true,
+        screenshots: 7,
+        checkpointNumbers: [1, 2, 3, 4, 5, 8, 9],
+        stageNumbers: [],
+      },
+    ],
+  };
+  const mainline = await run(makeAgent(jr, {}, evidence), {
+    journeys: ['protocol-management'],
+  });
+  assert.equal(mainline.verdict, 'INCOMPLETE');
+  const hotfix = await run(makeAgent(jr, {}, evidence), {
+    journeys: ['protocol-management'],
+    hotfix: true,
+  });
+  assert.equal(hotfix.verdict, 'PASS');
+  // Asset-unobtainable skips stay permitted in both modes.
+  const checksAsset = mkChecks(9, { skipAt: [6, 7] });
+  checksAsset[5].detail =
+    'release asset could not be downloaded after two attempts';
+  checksAsset[6].detail = 'skipped with 6 (no asset)';
+  const jr2 = {
+    'protocol-management': journey('protocol-management', {
+      checks: checksAsset,
+    }),
+  };
+  const assetSkip = await run(makeAgent(jr2, {}, evidence), {
+    journeys: ['protocol-management'],
+  });
+  assert.equal(assetSkip.verdict, 'PASS');
+});
+
 test('a dead journey is incomplete', async () => {
   const res = await run(makeAgent({ 'pwa-offline': null }), {
     journeys: ['pwa-offline'],

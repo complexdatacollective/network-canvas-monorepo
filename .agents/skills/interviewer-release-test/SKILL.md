@@ -48,7 +48,7 @@ Code's Workflow tool — run this command from Claude Code.)
      supports. On main-line candidates that rejection is a real
      protocol-support regression and fails.
 2. Invoke the Workflow tool:
-   `Workflow({ name: 'interviewer-release-test-workflow', args: { url, expectedVersion, journeys, model } })`
+   `Workflow({ name: 'interviewer-release-test-workflow', args: { url, expectedVersion, hotfix, journeys, model } })`
    (equivalently `scriptPath: '<repo-root>/.claude/workflows/interviewer-release-test.js'`).
    Requirements: a checkout of this monorepo with `pnpm install` done;
    preflight installs Playwright's chromium if missing.

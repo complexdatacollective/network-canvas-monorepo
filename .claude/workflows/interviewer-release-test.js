@@ -515,7 +515,12 @@ CHECKS (in one or more scripts, fresh profile each run):
    /data?protocol=Sample+Protocol with the protocol filter ACTIVE, list
    exactly the Sample Protocol's session, EXCLUDE the other protocol's
    row, and show both on clearing the filter. Then complete check 8's
-   deletion.
+   deletion. In the checks-6–7-skipped fallback only one protocol exists,
+   so the exclusion half has no possible negative-control row: still
+   assert the active filter and exact listing, and RECORD in the check's
+   detail that the exclusion assertion was untestable for lack of a second
+   protocol — do not mark the check skipped, and do not fabricate the
+   exclusion result.
 
 Return journey="protocol-management".`,
   },
@@ -789,9 +794,11 @@ CHECKS:
    8-digit PIN first: the dialog must reject it and NO session may be
    created (the step-up gate accepting any credential is a bypass, and its
    verify path is distinct from the lock screen's); only then proceed with
-   the correct PIN. Also exercise the EXPORT step-up call site (distinct
-   from interview entry): enable "Require unlock before exporting data"
-   (Settings → Security), generate one synthetic session (Settings →
+   the correct PIN. Then EXIT the interview normally (the exit
+   setting is not yet enabled) back to the dashboard — the tabbed Settings
+   dialog exists only there — and exercise the EXPORT step-up call site
+   (distinct from interview entry): enable "Require unlock before
+   exporting data" (Settings → Security), generate one synthetic session (Settings →
    Synthetic data), then on /data select it and export — the identity
    dialog must gate the export BEFORE the export dialog appears; a wrong
    PIN is rejected with no export started, the correct PIN proceeds.
@@ -1448,6 +1455,25 @@ for (const r of results.filter(Boolean)) {
       badSkips.push({ c, n: i + 1 });
   });
   {
+    const seen = new Set();
+    for (let i = badSkips.length - 1; i >= 0; i--) {
+      if (seen.has(badSkips[i].n)) badSkips.splice(i, 1);
+      else seen.add(badSkips[i].n);
+    }
+  }
+  // The schema-skew rationale for skipping 6/7 is legitimate ONLY on a
+  // hotfix run: on a main-line candidate the same stated reason is a
+  // protocol-support regression wearing a permission slip. This enforces
+  // the permitted CLASS of reason, not its truth.
+  if (!hotfixRun && r.journey === 'protocol-management') {
+    r.checks.forEach((c, i) => {
+      if (
+        (i === 5 || i === 6) &&
+        c.status === 'skipped' &&
+        /schema|skew|unsupported|newer/i.test(c.detail ?? '')
+      )
+        badSkips.push({ c, n: i + 1 });
+    });
     const seen = new Set();
     for (let i = badSkips.length - 1; i >= 0; i--) {
       if (seen.has(badSkips[i].n)) badSkips.splice(i, 1);
