@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Alert } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -19,6 +19,12 @@ export default function Home() {
   const status = useQuery(orpc.status.queryOptions());
   const teams = authClient.useListOrganizations();
   const [teamId, setTeamId] = useState<string | null>(null);
+  const creationAttempt = useRef<{
+    teamId: string;
+    name: string;
+    protocolId: string;
+    draftId: string;
+  } | null>(null);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -179,8 +185,21 @@ export default function Home() {
                       formErrors: ['Select a team before creating a protocol.'],
                     };
                   }
+                  const previousAttempt = creationAttempt.current;
+                  const attempt =
+                    previousAttempt?.teamId === teamId &&
+                    previousAttempt.name === name
+                      ? previousAttempt
+                      : {
+                          teamId,
+                          name,
+                          protocolId: globalThis.crypto.randomUUID(),
+                          draftId: globalThis.crypto.randomUUID(),
+                        };
+                  creationAttempt.current = attempt;
                   try {
-                    await createProtocol.mutateAsync({ teamId, name });
+                    await createProtocol.mutateAsync(attempt);
+                    creationAttempt.current = null;
                     return { success: true };
                   } catch {
                     return {

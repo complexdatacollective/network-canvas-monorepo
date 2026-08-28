@@ -217,11 +217,21 @@ export async function removeStage(
 
 export async function moveStage(
   db: TenantDb,
-  params: { draftId: string; stageId: string; toIndex: number },
+  params: {
+    draftId: string;
+    stageId: string;
+    toIndex: number;
+    expectedRevision: bigint;
+  },
 ): Promise<StructuralResult> {
   const teamId = db.teamId;
   return db.transaction(async (client) => {
     const head = await lockHead(client, teamId, params.draftId);
+    if (head.headSeq !== params.expectedRevision) {
+      throw new DraftStructureError(
+        `draft changed from revision ${params.expectedRevision} to ${head.headSeq}`,
+      );
+    }
     const orderId = sectionId({ kind: 'stageOrder' });
     const orderHash = head.sectionHashes[orderId];
     if (orderHash === undefined) {

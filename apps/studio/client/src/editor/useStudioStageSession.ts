@@ -11,6 +11,7 @@ import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document'
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { rpcClient } from '../lib/api.ts';
+import { registerStudioEditorSession } from './sessionLifecycle.ts';
 
 type Draft = Awaited<ReturnType<typeof rpcClient.protocols.draft>>;
 
@@ -89,6 +90,7 @@ export function useStudioStageSession(params: {
       });
       return () => undefined;
     }
+    const initialDocument = document;
 
     let active = true;
     let acquiring = false;
@@ -101,6 +103,9 @@ export function useStudioStageSession(params: {
     let clientSequence = 1n;
     let commitFailure: Error | null = null;
     let queue: Promise<void> = Promise.resolve();
+    let initialization: Promise<void> = Promise.resolve();
+    let promotion: Promise<void> = Promise.resolve();
+    let closePromise: Promise<void> | null = null;
     setState({ status: 'loading' });
 
     const releaseLease = async (lease: Readonly<{ leaseEpoch: string }>) => {
@@ -113,10 +118,15 @@ export function useStudioStageSession(params: {
         leaseEpoch: lease.leaseEpoch,
       });
     };
-    const releaseLeaseInBackground = (
+    const releaseLeaseAfterQueue = (
       lease: Readonly<{ leaseEpoch: string }>,
     ) => {
-      void releaseLease(lease).catch(() => undefined);
+      void queue
+        .then(
+          () => releaseLease(lease),
+          () => releaseLease(lease),
+        )
+        .catch(() => undefined);
     };
 
     const stopRenewal = () => {
@@ -135,7 +145,9 @@ export function useStudioStageSession(params: {
     const retryAcquisition = () => {
       if (!active) return;
       if (retry === undefined) {
-        retry = setInterval(() => void attemptPromotion(), 5_000);
+        retry = setInterval(() => {
+          promotion = attemptPromotion();
+        }, 5_000);
       }
     };
 
@@ -146,7 +158,7 @@ export function useStudioStageSession(params: {
       stopRenewal();
       store.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
       showReady(message);
-      if (lease !== null) releaseLeaseInBackground(lease);
+      if (lease !== null) releaseLeaseAfterQueue(lease);
       retryAcquisition();
     };
 
@@ -269,22 +281,57 @@ export function useStudioStageSession(params: {
       }
     }
 
-    void rpcClient.protocols
-      .acquireSection({
-        teamId: params.teamId,
-        protocolId: params.protocolId,
-        draftId: params.draftId,
-        sectionId: selectedSectionId,
-        clientId: leaseClientId,
-      })
-      .then((access) => {
+    async function initialize(): Promise<void> {
+      let acquiredLease: Readonly<{ leaseEpoch: string }> | null = null;
+      try {
+        const access = await rpcClient.protocols.acquireSection({
+          teamId: params.teamId,
+          protocolId: params.protocolId,
+          draftId: params.draftId,
+          sectionId: selectedSectionId,
+          clientId: leaseClientId,
+        });
+        if (access.mode === 'editable') acquiredLease = access;
         if (!active) {
-          if (access.mode === 'editable') {
-            void releaseLease(access).catch(() => undefined);
-          }
-          return undefined;
+          if (acquiredLease !== null) await releaseLease(acquiredLease);
+          return;
         }
-        const { identity, fields } = stageDraftFromDocument(document);
+
+        let authoritativeDraft = latestDraft.current;
+        let authoritativeDocument: SectionDoc = initialDocument;
+        const latestDocument = authoritativeDraft.sections[selectedSectionId];
+        if (latestDocument !== undefined) {
+          authoritativeDocument = latestDocument;
+        }
+        if (access.mode === 'editable') {
+          authoritativeDraft = await rpcClient.protocols.draft({
+            teamId: params.teamId,
+            protocolId: params.protocolId,
+            draftId: params.draftId,
+          });
+          if (!active) {
+            await releaseLease(access);
+            acquiredLease = null;
+            return;
+          }
+          const refreshedDocument =
+            authoritativeDraft.sections[selectedSectionId];
+          if (refreshedDocument === undefined) {
+            await releaseLease(access);
+            acquiredLease = null;
+            setState({
+              status: 'failed',
+              message: 'The selected screen is no longer in this draft.',
+            });
+            return;
+          }
+          authoritativeDocument = refreshedDocument;
+          latestDraft.current = authoritativeDraft;
+        }
+
+        const { identity, fields } = stageDraftFromDocument(
+          authoritativeDocument,
+        );
         committedFields = structuredClone(fields);
 
         save = async () => {
@@ -295,10 +342,10 @@ export function useStudioStageSession(params: {
         store = new ProtocolBuilderSessionStore({
           identity,
           fields,
-          protocolSections: latestDraft.current.sections,
+          protocolSections: authoritativeDraft.sections,
           manifestRevision: {
-            sequence: BigInt(latestDraft.current.revision.sequence),
-            hash: latestDraft.current.revision.hash,
+            sequence: BigInt(authoritativeDraft.revision.sequence),
+            hash: authoritativeDraft.revision.hash,
           },
           access:
             access.mode === 'editable'
@@ -376,42 +423,55 @@ export function useStudioStageSession(params: {
 
         if (access.mode === 'editable') {
           currentLease = access;
+          acquiredLease = null;
           clientSequence = BigInt(access.nextClientSequence);
           startRenewal();
           showReady('This screen is ready to edit.');
+          void Promise.resolve(onCommitted.current()).catch(() => undefined);
         } else {
           showReady(
             'This screen is open read-only because someone else is editing it.',
           );
           retryAcquisition();
         }
-        return undefined;
-      })
-      .catch(() => {
+      } catch {
+        if (acquiredLease !== null) {
+          await releaseLease(acquiredLease).catch(() => undefined);
+        }
         if (active) {
           setState({
             status: 'failed',
             message: 'This screen could not be opened. Try again.',
           });
         }
-        return undefined;
-      });
+      }
+    }
 
-    return () => {
+    initialization = initialize();
+
+    const close = (): Promise<void> => {
+      if (closePromise !== null) return closePromise;
       active = false;
       stopRenewal();
       stopRetry();
-      if (runtime.current?.store === store) runtime.current = null;
-      const lease = currentLease;
-      currentLease = null;
-      if (lease !== null) {
-        void queue
-          .then(
-            () => releaseLease(lease),
-            () => releaseLease(lease),
-          )
-          .catch(() => undefined);
-      }
+      closePromise = initialization.then(async () => {
+        await promotion;
+        if (runtime.current?.store === store) runtime.current = null;
+        const lease = currentLease;
+        currentLease = null;
+        if (lease === null) return;
+        await queue.then(
+          () => releaseLease(lease),
+          () => releaseLease(lease),
+        );
+      });
+      return closePromise;
+    };
+    const unregister = registerStudioEditorSession(close);
+
+    return () => {
+      unregister();
+      void close().catch(() => undefined);
     };
   }, [params.draftId, params.protocolId, params.stageId, params.teamId]);
 

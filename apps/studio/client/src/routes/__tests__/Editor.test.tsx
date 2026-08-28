@@ -79,6 +79,7 @@ vi.mock('../../lib/api.ts', () => ({
       }),
       renewSection: vi.fn().mockResolvedValue({ renewed: true }),
       releaseSection: vi.fn().mockResolvedValue(undefined),
+      draft: vi.fn(),
       commitSection: vi
         .fn()
         .mockResolvedValue({ sequence: '3', hash: 'revision-3' }),
@@ -98,6 +99,8 @@ beforeEach(() => {
     sequence: '3',
     hash: 'r3',
   });
+  vi.mocked(rpcClient.protocols.draft).mockReset();
+  vi.mocked(rpcClient.protocols.draft).mockResolvedValue(DRAFT);
 });
 
 function renderEditor() {
@@ -138,7 +141,11 @@ describe('Studio editor shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Move Follow-up up' }));
     await waitFor(() =>
       expect(rpcClient.protocols.moveStage).toHaveBeenCalledWith(
-        expect.objectContaining({ stageId: STAGE_B, toIndex: 0 }),
+        expect.objectContaining({
+          stageId: STAGE_B,
+          toIndex: 0,
+          expectedRevision: DRAFT.revision.sequence,
+        }),
       ),
     );
   });
@@ -222,13 +229,14 @@ describe('Studio editor shell', () => {
   });
 
   it('blocks another reorder until an ambiguous refresh failure is reconciled', async () => {
-    queryDraft
-      .mockResolvedValueOnce(DRAFT)
-      .mockRejectedValueOnce(new Error('refresh failed'));
     renderEditor();
     const moveUp = await screen.findByRole('button', {
       name: 'Move Follow-up up',
     });
+    await waitFor(() =>
+      expect(queryDraft.mock.calls.length).toBeGreaterThan(1),
+    );
+    queryDraft.mockRejectedValueOnce(new Error('refresh failed'));
 
     fireEvent.click(moveUp);
 
