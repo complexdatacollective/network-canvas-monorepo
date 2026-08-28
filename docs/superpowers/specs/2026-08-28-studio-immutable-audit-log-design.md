@@ -1,6 +1,6 @@
 # Studio Immutable Team Audit Log Design
 
-**Status:** Proposed for review (2026-08-28).
+**Status:** Accepted for implementation (2026-08-28).
 
 **Tracking:** #1259 (audit log and data-egress alerting), #1252
 (observability foundation), #1257 (role-based access control), #1256 (team
@@ -31,14 +31,14 @@ continue to provide authentication, sessions, active-team selection, and
 read-only organization data, but a client-visible Better Auth endpoint must not
 remain as an unaudited alternative for a mutation Studio owns.
 
-The first delivery should move forward with the current team-management work.
-It will establish the immutable store and audit the team actions already
-exposed in the UI. A team activity screen and export follow on that foundation.
-Protocol, study, participant, interview-data, credential, and integration
-producers are added as those capabilities become writable. Data-egress alerts
-are derived from the same immutable events through a transactional outbox;
-they depend on the broader observability and notification work but do not block
-the initial audit log.
+The immutable foundation and current team-administration producers are the next
+Studio implementation slice. They will establish the mandatory audited-command
+seam and audit the team actions already exposed in the UI. A team activity
+screen and export follow on that foundation. Protocol, study, participant,
+interview-data, credential, and integration producers are added as those
+capabilities become writable. Data-egress alerts are derived from the same
+immutable events through a transactional outbox; they depend on the broader
+observability and notification work but do not block the initial audit log.
 
 ## 2. Requirements
 
@@ -412,7 +412,41 @@ event” procedure exists.
 
 ### 8.2 Audited domain commands
 
-An audit-required mutation follows this order inside one `TenantDb.transaction`:
+The TypeScript domain layer exposes one `runAuditedMutation` executor for
+audit-required writes. It owns the `TenantDb.transaction`; the callback receives
+the transaction's `pg.PoolClient` and must return both its result and one or
+more typed `AuditEventInput` values. The executor appends those events before
+commit. Its required-event return type makes a successful audited command
+impossible to express without declaring its event.
+
+The intended shape is:
+
+```ts
+runAuditedMutation<T>(
+  context: AuditedCommandContext,
+  work: (
+    client: pg.PoolClient,
+  ) => Promise<{
+    result: T;
+    events: readonly [AuditEventInput, ...AuditEventInput[]];
+  }>,
+): Promise<T>
+```
+
+Mutating stores accept the supplied `pg.PoolClient`; they do not open or commit
+their own transaction. RPC handlers, synchronization endpoints, workers, and
+future public-API adapters call a domain command rather than a writable store
+directly. A module-boundary test prevents server mutation entry points from
+opening raw `TenantDb` transactions outside the audited command executor and a
+small reviewed allowlist for schema/bootstrap operations.
+
+This is the automatic adoption mechanism for future behavior: a new important
+domain mutation uses the shared executor, and the type contract requires its
+event. A mutation deliberately classified as `none` uses a separate explicit
+path carrying a static reason that appears in the command registry. There is no
+boolean flag that can silently disable auditing.
+
+An audit-required mutation follows this order inside the executor's transaction:
 
 1. authorize the actor for the explicit team and operation;
 2. lock and read the current target state;
@@ -425,11 +459,27 @@ Any thrown error rolls back all three writes. Side effects that cannot
 participate in PostgreSQL—email, webhooks, or object-store work—are driven from
 a committed outbox, never performed between the mutation and audit append.
 
-Protocol stores that already own transactions accept an optional required
-audit context or are invoked from a domain command that owns the transaction;
-the implementation must not append a second, post-commit “best effort” event.
+Protocol stores that already own transactions are refactored to accept the
+executor's client or are invoked from a domain command that owns the
+transaction. Audit context is not optional on a required path, and the
+implementation must not append a second, post-commit “best effort” event.
 
-### 8.3 Better Auth organization mutations
+### 8.3 Database responsibility and trigger boundary
+
+PostgreSQL is the final authority for storage, append-only privileges, the
+immutability trigger, sequence allocation, row-level security, and atomic
+commit. It does not use generic table triggers to invent domain audit events.
+
+A generic database trigger can observe a row change, but it cannot reliably
+know the authenticated user or API token, the request id, the domain intent,
+the safe display snapshot, or which bounded fields are appropriate. It also
+cannot observe important read-only actions such as PII access and data export.
+Recording raw row diffs would leak sensitive content and still miss those
+behaviors. Semantic event production therefore belongs in the mandatory typed
+domain-command layer, while PostgreSQL makes the resulting history immutable
+and transactionally inseparable from the write.
+
+### 8.4 Better Auth organization mutations
 
 The installed Better Auth organization hooks run outside the domain
 transaction required by this specification. An `after` hook is therefore not
@@ -678,11 +728,11 @@ because team administration is already user-visible and role changes are the
 motivating risk. Slice C remains in Phase 7 because its broader data-egress and
 notification work depends on observability and future data domains.
 
-Do not silently add either issue to the active sprint. After #1515 merges, the
-project owner can move Slice A from **Backlog** to **Ready** as the next
-enabling issue; Slice B can remain Backlog until A is underway. This brings the
-requirement forward without displacing work already committed to the sprint or
-pretending that alert delivery no longer has Phase 7 dependencies.
+#1519 is **Ready** as the next enabling issue and remains outside the active
+sprint. It may stack on #1515 rather than waiting for that pull request to
+merge. #1520 remains Backlog until the immutable foundation is underway. This
+brings the requirement forward without pretending that alert delivery no
+longer has Phase 7 dependencies.
 
 ## 16. Definition of done
 
