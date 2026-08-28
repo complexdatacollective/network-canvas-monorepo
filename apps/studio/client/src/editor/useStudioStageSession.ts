@@ -38,7 +38,6 @@ export function useStudioStageSession(params: {
   teamId: string;
   protocolId: string;
   draftId: string;
-  clientId: string;
   stageId: string | null;
   draft: Draft;
   onCommitted: () => Promise<void> | void;
@@ -81,6 +80,7 @@ export function useStudioStageSession(params: {
       kind: 'stage',
       stageId: params.stageId,
     });
+    const leaseClientId = globalThis.crypto.randomUUID();
     const document = latestDraft.current.sections[selectedSectionId];
     if (document === undefined) {
       setState({
@@ -109,7 +109,7 @@ export function useStudioStageSession(params: {
         protocolId: params.protocolId,
         draftId: params.draftId,
         sectionId: selectedSectionId,
-        clientId: params.clientId,
+        clientId: leaseClientId,
         leaseEpoch: lease.leaseEpoch,
       });
     };
@@ -161,7 +161,7 @@ export function useStudioStageSession(params: {
             protocolId: params.protocolId,
             draftId: params.draftId,
             sectionId: selectedSectionId,
-            clientId: params.clientId,
+            clientId: leaseClientId,
             leaseEpoch: lease.leaseEpoch,
           })
           .then((result) => {
@@ -198,7 +198,7 @@ export function useStudioStageSession(params: {
           protocolId: params.protocolId,
           draftId: params.draftId,
           sectionId: selectedSectionId,
-          clientId: params.clientId,
+          clientId: leaseClientId,
         });
         if (access.mode !== 'editable') return;
         acquiredLease = access;
@@ -252,7 +252,7 @@ export function useStudioStageSession(params: {
         commitFailure = null;
         store.setAccess({
           mode: 'editable',
-          leaseOwner: params.clientId,
+          leaseOwner: leaseClientId,
           leaseEpoch: BigInt(access.leaseEpoch),
         });
         stopRetry();
@@ -275,7 +275,7 @@ export function useStudioStageSession(params: {
         protocolId: params.protocolId,
         draftId: params.draftId,
         sectionId: selectedSectionId,
-        clientId: params.clientId,
+        clientId: leaseClientId,
       })
       .then((access) => {
         if (!active) {
@@ -304,7 +304,7 @@ export function useStudioStageSession(params: {
             access.mode === 'editable'
               ? {
                   mode: 'editable',
-                  leaseOwner: params.clientId,
+                  leaseOwner: leaseClientId,
                   leaseEpoch: BigInt(access.leaseEpoch),
                 }
               : { mode: 'readOnly', reason: 'spectator' },
@@ -324,7 +324,7 @@ export function useStudioStageSession(params: {
                   protocolId: params.protocolId,
                   draftId: params.draftId,
                   sectionId: selectedSectionId,
-                  clientId: params.clientId,
+                  clientId: leaseClientId,
                   leaseEpoch: lease.leaseEpoch,
                   clientSequence: String(clientSequence++),
                   commands: [...batch.commands],
@@ -413,13 +413,7 @@ export function useStudioStageSession(params: {
           .catch(() => undefined);
       }
     };
-  }, [
-    params.clientId,
-    params.draftId,
-    params.protocolId,
-    params.stageId,
-    params.teamId,
-  ]);
+  }, [params.draftId, params.protocolId, params.stageId, params.teamId]);
 
   return state;
 }

@@ -55,7 +55,6 @@ function renderSession(draft = DRAFT) {
         teamId: 'team-a',
         protocolId: DRAFT.protocol.id,
         draftId: DRAFT.protocol.draftId,
-        clientId: 'client-a',
         stageId: STAGE_ID,
         draft: currentDraft,
         onCommitted: vi.fn(),
@@ -189,6 +188,48 @@ describe('useStudioStageSession', () => {
         expect.objectContaining({ leaseEpoch: '1' }),
       ),
     );
+  });
+
+  it('fences a replacement session from stale lease cleanup', async () => {
+    const commit = deferred<{ sequence: string; hash: string }>();
+    vi.mocked(rpcClient.protocols.commitSection).mockReturnValueOnce(
+      commit.promise,
+    );
+    const first = renderSession();
+    await waitFor(() => expect(first.result.current.status).toBe('ready'));
+    if (first.result.current.status !== 'ready') throw new Error('not ready');
+
+    act(() => {
+      if (first.result.current.status !== 'ready') throw new Error('not ready');
+      first.result.current.session.dispatch([
+        { op: 'set', key: 'label', value: 'Changed' },
+      ]);
+    });
+    await waitFor(() =>
+      expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(1),
+    );
+    const firstClientId = vi.mocked(rpcClient.protocols.acquireSection).mock
+      .calls[0]![0].clientId;
+
+    first.unmount();
+    const replacement = renderSession();
+    await waitFor(() =>
+      expect(replacement.result.current.status).toBe('ready'),
+    );
+    const replacementClientId = vi.mocked(rpcClient.protocols.acquireSection)
+      .mock.calls[1]![0].clientId;
+    expect(replacementClientId).not.toBe(firstClientId);
+
+    commit.resolve({ sequence: '3', hash: 'revision-3' });
+    await waitFor(() =>
+      expect(rpcClient.protocols.releaseSection).toHaveBeenCalledWith(
+        expect.objectContaining({ clientId: firstClientId, leaseEpoch: '1' }),
+      ),
+    );
+    expect(rpcClient.protocols.releaseSection).not.toHaveBeenCalledWith(
+      expect.objectContaining({ clientId: replacementClientId }),
+    );
+    replacement.unmount();
   });
 
   it('promotes a spectator after the editing lease becomes available', async () => {

@@ -248,10 +248,10 @@ export class ProtocolStore {
     return assembleProtocolSections(sections);
   }
 
-  async getProtocolDraft(
+  async getProtocolDraftMetadata(
     protocolId: string,
     draftId: string,
-  ): Promise<{ protocol: EditableProtocolRow; draft: DraftSections }> {
+  ): Promise<EditableProtocolRow> {
     const res = await this.db.query(
       `SELECT p.id, p.name, p.created_at, p.updated_at
        FROM protocols p
@@ -274,15 +274,20 @@ export class ProtocolStore {
       );
     }
     return {
-      protocol: {
-        id: row.id,
-        draftId,
-        name: row.name,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-      },
-      draft: await this.getDraftSections(draftId),
+      id: row.id,
+      draftId,
+      name: row.name,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
     };
+  }
+
+  async getProtocolDraft(
+    protocolId: string,
+    draftId: string,
+  ): Promise<{ protocol: EditableProtocolRow; draft: DraftSections }> {
+    const protocol = await this.getProtocolDraftMetadata(protocolId, draftId);
+    return { protocol, draft: await this.getDraftSections(draftId) };
   }
 
   async validateDraft(
