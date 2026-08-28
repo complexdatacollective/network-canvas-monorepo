@@ -89,11 +89,31 @@ analytics repointed at any other ingestion host still fails, and each reports
 its total log size as a positive control — a log that recorded nothing cannot
 evidence silence. Any host outside the deployment fails the run.
 
-What this does **not** watch is server-side capture. `lib/posthog-server.ts`
-returns on `isAnalyticsDisabled()` before it constructs the posthog-node
-client, so a disabled deployment never builds one; that guard is covered by
-unit tests, not by this gate, because seeing the container's own egress needs
-a relay sink the harness does not have.
+Server-side capture is watched separately, because a browser network log
+describes what the _page_ sent and is structurally blind to what the Fresco
+_process_ sends. `lib/posthog-server.ts` returns on `isAnalyticsDisabled()`
+before `getPostHogServer()` constructs the posthog-node client, so a disabled
+deployment never builds one — and each stack proves that by aliasing the
+relay's hostname onto a sink container (`relay-sink` in the compose file,
+`release-test/scripts/relay-sink.mjs`) that records every connection it
+receives. `release-test/scripts/relay-sink-check.mjs` reads that log, and any
+connection fails the run.
+
+The sink records connection attempts and never terminates TLS. posthog-node
+speaks https, so parsing requests would mean minting a certificate for the
+relay's name and trusting it inside the image under test — a container
+configured differently from the one that ships, handed a relay that appears to
+work. It would also buy nothing the gate uses: what it asks is whether the
+container reached off-box for analytics at all, and a connection attempt
+answers that completely while being recorded before any handshake can fail.
+Its positive control is the same idea as `networkLogEntries`, one step
+stronger: the check script dials the sink _from inside that lane's Fresco
+container_, at the relay's real hostname, on every port the sink covers,
+carrying a nonce it generated for that invocation — so a probe that comes back
+recorded proves the whole path real egress would take. Without it, a sink that
+never started reads exactly like a silent deployment. The upgrade lane's sink
+is recreated at the swap (`up.sh --keep-data`), so its log covers the pending
+image's lifetime and never the released image's.
 
 ### Reading the verdict
 

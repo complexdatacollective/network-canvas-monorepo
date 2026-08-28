@@ -46,7 +46,17 @@ compose() {
   docker compose -p "$PROJECT" -f "$SCRIPT_DIR/docker-compose.yml" "$@"
 }
 
-if [ "$KEEP_DATA" != "true" ]; then
+if [ "$KEEP_DATA" = "true" ]; then
+  # The upgrade swap. Drop the analytics sink with it, so the log the release
+  # gate reads covers the pending image's lifetime and nothing before it: this
+  # stack ran the RELEASED image until now, and that image predates the
+  # guarantee the gate checks — failing the candidate for its predecessor's
+  # traffic would be as wrong as missing its own. `up` below recreates the sink
+  # and waits for it to be listening before it creates the new app container,
+  # so the swap opens no window in which egress could be refused rather than
+  # recorded.
+  compose rm -sf relay-sink
+else
   compose down -v --remove-orphans
 fi
 

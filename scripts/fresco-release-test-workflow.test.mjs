@@ -101,6 +101,14 @@ const happyPath = () => ({
     networkLogEntries: 24,
   },
   'verify-crud': { area: 'crud', pass: true, checks: passing(8) },
+  'relay-sink-upgrade': {
+    ok: true,
+    sinkRunning: true,
+    sinkPorts: 2,
+    probeSent: 2,
+    probeConnections: 2,
+    analyticsConnections: 0,
+  },
   'verify-api-settings': {
     area: 'apiSettings',
     pass: true,
@@ -127,6 +135,14 @@ const happyPath = () => ({
     checks: passing(11),
     externalHosts: [],
     networkLogEntries: 31,
+  },
+  'relay-sink-fresh': {
+    ok: true,
+    sinkRunning: true,
+    sinkPorts: 2,
+    probeSent: 2,
+    probeConnections: 2,
+    analyticsConnections: 0,
   },
   'audit-artifacts': {
     ok: true,
@@ -2277,6 +2293,253 @@ test('the interview reading is taken from a tab opened after the swap', async ()
   assert.match(integrity, /released image/);
   // And it must not be read before the log is demonstrably recording.
   assert.match(integrity, /document request/);
+});
+
+// ---------------------------------------------------------------------------
+// Family 6b — the server-side half of the same question.
+//
+// Both readings above come from a browser tab, so they describe what the PAGE
+// sent. lib/posthog-server.ts sends from inside the Fresco process, which no
+// browser network log can see. Each lane's stack aliases the relay's hostname
+// onto a sink container that records every connection it receives, and
+// relay-sink-check.mjs reports what it recorded plus the probe that proves it
+// was watching. These tests hold that reading to the same standard as the
+// browser ones: it gates, it fails closed, and its silence is worthless until
+// the positive control says the sink was up and recording.
+// ---------------------------------------------------------------------------
+
+const SINK_AREAS = [
+  ['relay-sink-fresh', 'fresh lane'],
+  ['relay-sink-upgrade', 'upgrade lane'],
+];
+
+for (const [label, lane] of SINK_AREAS) {
+  test(`server-side egress from the ${lane} blocks the release`, async () => {
+    const r = happyPath();
+    r[label].analyticsConnections = 3;
+    const { result } = await run(r);
+    assert.equal(result.verdict, 'no-go');
+    assert.equal(result.releasable, false);
+    const egress = result.failures.find(
+      (f) => f.includes('analytics relay hostname') && f.includes(lane),
+    );
+    assert.ok(egress, JSON.stringify(result.failures));
+    assert.match(egress, /opened 3 connection\(s\)/);
+    assert.ok(
+      !result.warnings.some((w) => w.includes('analytics relay hostname')),
+      `server-side egress must gate rather than warn: ${JSON.stringify(result.warnings)}`,
+    );
+  });
+
+  test(`a ${lane} sink that could not be read is not silence`, async () => {
+    for (const sink of [
+      { ok: false, error: 'relay-sink container is not running' },
+      undefined,
+      // Otherwise complete and clean, so this case turns on sinkRunning alone:
+      // a stopped sink observed nothing, whatever the rest of the reading says.
+      { ...happyPath()[label], sinkRunning: false },
+    ]) {
+      const r = happyPath();
+      r[label] = sink;
+      const { result } = await run(r);
+      const shown = JSON.stringify(sink) ?? 'undefined';
+      assert.equal(result.verdict, 'incomplete', shown);
+      assert.equal(result.releasable, false, shown);
+      assert.deepEqual(result.failures, [], shown);
+      assert.ok(
+        result.unaccounted.some(
+          (u) => u.includes('analytics sink') && u.includes(lane),
+        ),
+        `${shown}: ${JSON.stringify(result.unaccounted)}`,
+      );
+    }
+  });
+
+  // The positive control. A sink that never started, or a hostname alias that
+  // never took effect, records exactly what a silent container records — so
+  // until the probe comes back, zero connections means nothing.
+  test(`a ${lane} sink that never answered its probe proves nothing`, async () => {
+    for (const patch of [
+      { probeConnections: 0 },
+      { probeConnections: undefined },
+      { probeConnections: -1 },
+      { probeConnections: 'lots' },
+      { probeConnections: 1.5 },
+      { probeSent: 0 },
+      { probeSent: undefined },
+      // Fewer ports probed than the sink covers: a port it was not listening
+      // on refuses egress rather than recording it.
+      { probeSent: 1 },
+      // The sink received more probes than its log shows: it drops
+      // connections, so its silence is not evidence.
+      { probeConnections: 1 },
+      { sinkPorts: 0 },
+      { sinkPorts: undefined },
+      { sinkPorts: 'two' },
+    ]) {
+      const r = happyPath();
+      Object.assign(r[label], patch);
+      for (const [key, value] of Object.entries(patch))
+        if (value === undefined) delete r[label][key];
+      const { result } = await run(r);
+      const shown = JSON.stringify(patch);
+      assert.equal(result.releasable, false, `${shown} certified the release`);
+      assert.deepEqual(result.failures, [], shown);
+      assert.ok(
+        result.unaccounted.some(
+          (u) =>
+            u.includes(lane) &&
+            (u.includes('nothing shows the sink was watching') ||
+              u.includes('cannot show that anything stayed silent')),
+        ),
+        `${shown}: ${JSON.stringify(result.unaccounted)}`,
+      );
+    }
+  });
+
+  // The counts are omitted rather than invented when the script fails, so the
+  // schema cannot require them — which makes this the guard that stops an
+  // absent reading from passing as a clean one.
+  test(`an unusable ${lane} connection count is not a clean one`, async () => {
+    for (const connections of [undefined, -1, 'none', 0.5]) {
+      const r = happyPath();
+      r[label].analyticsConnections = connections;
+      if (connections === undefined) delete r[label].analyticsConnections;
+      const { result } = await run(r);
+      const shown = JSON.stringify(connections) ?? 'undefined';
+      assert.equal(result.releasable, false, `${shown} certified the release`);
+      assert.deepEqual(result.failures, [], shown);
+      assert.ok(
+        result.unaccounted.some(
+          (u) =>
+            u.includes('whether its Fresco container called out') &&
+            u.includes(lane),
+        ),
+        `${shown}: ${JSON.stringify(result.unaccounted)}`,
+      );
+    }
+  });
+}
+
+// The two lanes exercise different code paths through the same image (a fresh
+// deployment vs one that migrated), so neither vouches for the other.
+test('a silent fresh container does not excuse the upgraded one', async () => {
+  const r = happyPath();
+  r['relay-sink-fresh'].analyticsConnections = 0;
+  r['relay-sink-upgrade'].analyticsConnections = 1;
+  const { result } = await run(r);
+  assert.equal(result.releasable, false);
+  assert.ok(
+    result.failures.some(
+      (f) => f.includes('upgrade lane') && f.includes('analytics relay'),
+    ),
+    JSON.stringify(result.failures),
+  );
+});
+
+// The upgrade lane's stack ran the RELEASED image until the swap, and that
+// image predates the guarantee. Reading a sink whose log spanned it would fail
+// the candidate for its predecessor's traffic, so the reading only exists once
+// the swap has happened — and up.sh drops the sink at the swap so its log
+// starts there.
+test('no sink finding is produced for a lane that never ran the pending image', async () => {
+  for (const [broken, lane] of [
+    [{ 'up-fresh': { ok: false, error: 'migrate deploy exited 1' } }, 'fresh'],
+    [{ 'upgrade-swap': { ok: false, error: 'migration failed' } }, 'upgrade'],
+  ]) {
+    const r = { ...happyPath(), ...broken };
+    const { result } = await run(r);
+    for (const line of [...result.failures, ...result.unaccounted])
+      assert.ok(
+        !(line.includes('analytics sink') && line.includes(`${lane} lane`)),
+        `a lane that never ran the pending image produced a sink finding: ${line}`,
+      );
+  }
+});
+
+test('the upgrade swap reopens the sink window it reads', () => {
+  const up = readFileSync(
+    join(repoRoot, 'apps/fresco/release-test/up.sh'),
+    'utf8',
+  );
+  // --keep-data is the swap. Without dropping the sink, its log would still
+  // hold whatever the released image sent before it.
+  const keepData = /if \[ "\$KEEP_DATA" = "true" \]; then([\s\S]*?)\nelse/.exec(
+    up,
+  )?.[1];
+  assert.ok(keepData, 'failed to locate the --keep-data branch of up.sh');
+  assert.match(keepData, /compose rm -sf relay-sink/);
+});
+
+test('the stack aliases the relay hostname onto a sink the app waits for', () => {
+  const compose = readFileSync(
+    join(repoRoot, 'apps/fresco/release-test/docker-compose.yml'),
+    'utf8',
+  );
+  // The alias is what makes the sink observe anything at all; the hostname is
+  // POSTHOG_HOST from @codaco/shared-consts, and it has to match it exactly.
+  const relayHost = /export const POSTHOG_HOST = '([^']+)'/.exec(
+    readFileSync(
+      join(repoRoot, 'packages/shared-consts/src/posthog.ts'),
+      'utf8',
+    ),
+  )?.[1];
+  assert.ok(relayHost, 'failed to read POSTHOG_HOST');
+  const hostname = new URL(relayHost).hostname;
+  assert.match(compose, new RegExp(`aliases:\\s*\\n\\s*- ${hostname}\\b`));
+  // And the app must not start before the sink is listening: a refused
+  // connection is egress that went unrecorded.
+  assert.match(compose, /relay-sink:\n\s*condition: service_healthy/);
+});
+
+test('the sink and the reader agree on the wire contract', async () => {
+  const { PROBE_MARKER, SINK_PORTS, classify } =
+    await import('../apps/fresco/release-test/scripts/relay-sink-protocol.mjs');
+  assert.ok(SINK_PORTS.includes(443), 'https is the port posthog-node uses');
+
+  // Only the marker is a probe. Everything else — a TLS ClientHello, a bare
+  // http request, or a connection that said nothing — is egress, because a
+  // sink that cannot tell what it received must not report silence.
+  assert.deepEqual(classify(Buffer.from(`${PROBE_MARKER} abc123\n`)), {
+    kind: 'probe',
+    nonce: 'abc123',
+  });
+  for (const bytes of [
+    Buffer.from([0x16, 0x03, 0x01, 0x02, 0x00]),
+    Buffer.from('POST /i/v0/e/ HTTP/1.1\r\n'),
+    Buffer.from(` ${PROBE_MARKER} abc123`),
+    Buffer.alloc(0),
+    null,
+  ])
+    assert.equal(
+      classify(bytes).kind,
+      'egress',
+      `${JSON.stringify(String(bytes))} was not counted as egress`,
+    );
+});
+
+test('the sink agents are told to report the script, not to interpret it', async () => {
+  const { prompts } = await run(happyPath());
+  for (const [label, lane] of SINK_AREAS) {
+    const prompt = promptFor(prompts, label);
+    assert.match(prompt, /relay-sink-check\.mjs --lane /);
+    assert.match(prompt, new RegExp(`--lane ${lane.split(' ')[0]}\\b`));
+    for (const field of [
+      'sinkRunning',
+      'sinkPorts',
+      'probeSent',
+      'probeConnections',
+      'analyticsConnections',
+    ])
+      assert.ok(
+        prompt.includes(field),
+        `${label}: ${field} is never asked for`,
+      );
+    // A failed run omits the counts rather than inventing them — which is why
+    // the schema cannot require them, and why the synthesis above has to treat
+    // every absent one as unaccounted.
+    assert.match(prompt, /OMIT the counts/);
+  }
 });
 
 test('a failed teardown warns without blocking the release', async () => {

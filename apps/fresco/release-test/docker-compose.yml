@@ -12,6 +12,11 @@
 # Named volumes let the upgrade lane swap the fresco image against live data
 # (the swap runs the new image's migrate-and-start.sh); `down -v` removes them
 # so every run starts from the unconfigured setup wizard.
+#
+# relay-sink is aliased onto the PostHog relay's hostname for every container
+# on this network, so server-side analytics egress from the app container is
+# observed rather than leaving the box. See release-test/scripts/relay-sink.mjs
+# and the release gate in .claude/workflows/fresco-release-test.js.
 
 services:
   fresco:
@@ -23,6 +28,10 @@ services:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
+      # Started AND listening before the app is, so a server-side analytics
+      # request can never be refused rather than recorded.
+      relay-sink:
+        condition: service_healthy
     ports:
       - '${FRESCO_PORT:-3210}:3000'
     environment:
@@ -94,6 +103,35 @@ services:
       - |
         mc alias set minio http://minio:9000 minioadmin minioadmin
         mc mb --ignore-existing minio/fresco-test
+
+  # Stands in for https://ph-relay.networkcanvas.com (`@codaco/shared-consts`
+  # POSTHOG_HOST) inside this network, via the alias below: Docker's embedded
+  # DNS answers that name with this container for everything on the network, so
+  # posthog-node in the app container would connect here instead of off-box.
+  # It records connection attempts and never terminates TLS — see
+  # scripts/relay-sink.mjs for why, and scripts/relay-sink-check.mjs for the
+  # probe that proves it was watching.
+  #
+  # No restart policy on purpose: a sink that died mid-run must stay dead, so
+  # the closing probe fails and the run reports that it observed nothing —
+  # rather than coming back up and reporting a silence it did not witness.
+  relay-sink:
+    image: node:lts-alpine
+    command: ['node', '/opt/release-test/relay-sink.mjs']
+    volumes:
+      - ./scripts:/opt/release-test:ro
+    healthcheck:
+      # The sink's own readiness file, not a connection to its ports: a
+      # healthcheck that dialled 443 would be recorded as egress on every
+      # interval and fail the gate it exists to support.
+      test: ['CMD', 'test', '-f', '/tmp/relay-sink-listening']
+      interval: 2s
+      timeout: 5s
+      retries: 15
+    networks:
+      default:
+        aliases:
+          - ph-relay.networkcanvas.com
 
 volumes:
   postgres:
