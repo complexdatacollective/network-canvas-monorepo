@@ -2,10 +2,21 @@ import { oc } from '@orpc/contract';
 import { z } from 'zod';
 
 import {
+  AcquireSectionInputSchema,
+  AcquireSectionResultSchema,
+  AddInformationStageInputSchema,
+  CommitSectionInputSchema,
   CreateProtocolInputSchema,
   CreateProtocolResultSchema,
+  ManifestRevisionSchema,
   MeSchema,
+  MoveStageInputSchema,
+  ProtocolDraftInputSchema,
+  ProtocolDraftSchema,
   ProtocolSummarySchema,
+  ReleaseSectionInputSchema,
+  RenewSectionInputSchema,
+  RenewSectionResultSchema,
   StatusSchema,
   TeamScopedSchema,
 } from './schemas.ts';
@@ -40,6 +51,21 @@ export const contract = {
     create: oc
       .input(CreateProtocolInputSchema)
       .output(CreateProtocolResultSchema),
+    draft: oc.input(ProtocolDraftInputSchema).output(ProtocolDraftSchema),
     list: oc.input(TeamScopedSchema).output(z.array(ProtocolSummarySchema)),
+    acquireSection: oc
+      .input(AcquireSectionInputSchema)
+      .output(AcquireSectionResultSchema),
+    commitSection: oc
+      .input(CommitSectionInputSchema)
+      .output(ManifestRevisionSchema),
+    renewSection: oc
+      .input(RenewSectionInputSchema)
+      .output(RenewSectionResultSchema),
+    releaseSection: oc.input(ReleaseSectionInputSchema).output(z.void()),
+    addInformationStage: oc
+      .input(AddInformationStageInputSchema)
+      .output(ManifestRevisionSchema),
+    moveStage: oc.input(MoveStageInputSchema).output(ManifestRevisionSchema),
   },
 };

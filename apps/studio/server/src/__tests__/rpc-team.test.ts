@@ -67,7 +67,65 @@ describe.skipIf(!db)('team-scoped procedures', () => {
     expect(listed.map((protocol) => protocol.id)).toContain(created.protocolId);
     const row = listed.find((protocol) => protocol.id === created.protocolId)!;
     expect(row.name).toBe('Spine Proof');
+    expect(row.draftId).toBe(created.draftId);
     expect(row.createdAt).toBeInstanceOf(Date);
+  });
+
+  it('opens, structures, leases, and commits an editor draft', async () => {
+    const created = await client.protocols.create({
+      teamId: 'team-a',
+      name: 'Editor proof',
+    });
+    const scope = {
+      teamId: 'team-a',
+      protocolId: created.protocolId,
+      draftId: created.draftId,
+    };
+    const stageA = '11111111-1111-4111-8111-111111111111';
+    const stageB = '22222222-2222-4222-8222-222222222222';
+    await client.protocols.addInformationStage({ ...scope, stageId: stageA });
+    await client.protocols.addInformationStage({ ...scope, stageId: stageB });
+    await client.protocols.moveStage({ ...scope, stageId: stageB, toIndex: 0 });
+
+    const opened = await client.protocols.draft(scope);
+    expect(opened.sections.stageOrder).toEqual({ stages: [stageB, stageA] });
+
+    const clientId = '33333333-3333-4333-8333-333333333333';
+    const sectionId = `stage:${stageA}`;
+    const lease = await client.protocols.acquireSection({
+      ...scope,
+      sectionId,
+      clientId,
+    });
+    expect(lease.mode).toBe('editable');
+    if (lease.mode !== 'editable') throw new Error('expected editable lease');
+
+    const revision = await client.protocols.commitSection({
+      ...scope,
+      sectionId,
+      clientId,
+      leaseEpoch: lease.leaseEpoch,
+      clientSequence: '1',
+      commands: [{ op: 'set', key: 'label', value: 'Welcome' }],
+    });
+    expect(BigInt(revision.sequence)).toBeGreaterThan(0n);
+    expect(
+      (await client.protocols.draft(scope)).sections[sectionId],
+    ).toMatchObject({ label: 'Welcome' });
+    expect(
+      await client.protocols.renewSection({
+        ...scope,
+        sectionId,
+        clientId,
+        leaseEpoch: lease.leaseEpoch,
+      }),
+    ).toEqual({ renewed: true });
+    await client.protocols.releaseSection({
+      ...scope,
+      sectionId,
+      clientId,
+      leaseEpoch: lease.leaseEpoch,
+    });
   });
 
   it('refuses a non-member team and an unknown team identically', async () => {

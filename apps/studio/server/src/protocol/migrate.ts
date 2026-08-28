@@ -5,12 +5,12 @@ import {
   migrateProtocol,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
-import { assembleProtocol } from './assemble.ts';
 import { insertDraftRows } from './draft-rows.ts';
 import { sectionizeProtocol } from './sectionize.ts';
-import { sectionId } from './taxonomy.ts';
 
 /** @public */
 export class MigrationTargetError extends Error {}
@@ -55,7 +55,7 @@ export async function migrateStoredVersionToDraft(
     sections[row.section_id] = row.doc;
   }
 
-  const document = assembleProtocol(sections);
+  const document = assembleProtocolSections(sections);
   const settings = sections[sectionId({ kind: 'settings' })];
   const name =
     typeof settings?.name === 'string' && settings.name !== ''

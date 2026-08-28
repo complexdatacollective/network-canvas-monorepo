@@ -20,7 +20,10 @@
   },
   "devDependencies": {
     "@codaco/fresco-ui": "workspace:^",
+    "@codaco/protocol-builder": "workspace:^",
+    "@codaco/protocol-validation": "workspace:^",
     "@codaco/studio-rpc": "workspace:^",
+    "@codaco/studio-sync": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@codaco/vitest-config": "workspace:^",
@@ -37,6 +40,7 @@
     "@vitejs/plugin-react": "catalog:",
     "better-auth": "catalog:",
     "jsdom": "catalog:",
+    "lucide-react": "catalog:",
     "motion": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",

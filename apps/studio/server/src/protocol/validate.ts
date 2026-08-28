@@ -12,8 +12,7 @@ import {
   stageSchema,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
-
-import { parseSectionId } from './taxonomy.ts';
+import { parseSectionId } from '@codaco/studio-sync/taxonomy';
 
 /** @public */
 export const SettingsSectionSchema = z.strictObject({
