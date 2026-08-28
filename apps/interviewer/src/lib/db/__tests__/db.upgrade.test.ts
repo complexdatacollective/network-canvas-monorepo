@@ -15,6 +15,7 @@ import {
   type NcNetwork,
 } from '@codaco/shared-consts';
 
+import { fromBase64 } from '../../vault/crypto';
 import { db, getSettings } from '../db';
 import { migrateStoredProtocols } from '../migrateStoredProtocols';
 import {
@@ -61,11 +62,56 @@ const V2_SESSIONS_STORES = {
 
 // The Dexie version db.ts currently declares. When a version(4) is added,
 // this suite must grow a v3 seed in LEGACY_VERSIONS below alongside bumping
-// this constant — a bare bump here ships the new upgrade step untested.
+// this constant — the "historical coverage" guard test enforces that pairing
+// mechanically.
 const CURRENT_DEXIE_VERSION = 3;
 
 type LegacyVersion = 1 | 2;
 const LEGACY_VERSIONS: LegacyVersion[] = [1, 2];
+
+// The complete INSTALLED shape the current schema must produce after any
+// upgrade: every store's primary key and full index set. The production repos
+// .where() over these indexes, so a historical index dropped from db.ts would
+// leave upgraded users throwing SchemaError at runtime — asserting only
+// store names would miss that entirely. When a future version legitimately
+// adds a store or index, extend this map in the same change.
+const EXPECTED_INSTALLED_SCHEMA: Record<
+  string,
+  { keyPath: string; indexes: string[] }
+> = {
+  assets: { keyPath: 'id', indexes: ['assetId', 'protocolHash'] },
+  protocolMigrations: { keyPath: 'previousHash', indexes: [] },
+  protocols: { keyPath: 'id', indexes: ['hash', 'importedAt', 'name'] },
+  sessions: {
+    keyPath: 'id',
+    indexes: [
+      'caseId',
+      'exportedAt',
+      'finishedAt',
+      'isSynthetic',
+      'lastUpdatedAt',
+      'protocolHash',
+      'startedAt',
+    ],
+  },
+  settings: { keyPath: 'id', indexes: [] },
+};
+
+describe('historical coverage', () => {
+  it('seeds every version the current schema can upgrade from', () => {
+    // Nothing else forces this suite to keep pace with db.ts: without this
+    // guard, adding a version(4) upgrade step and bumping
+    // CURRENT_DEXIE_VERSION would leave the v3 → v4 step untested — the
+    // v1/v2 seeds reach v4 through a freshly created, EMPTY v3 schema,
+    // whereas a real v3 installation carries rows (protocolMigrations
+    // re-keying records, say) that the new step could destroy unnoticed.
+    // When this fails, add the new legacy version to LEGACY_VERSIONS and
+    // seed representative rows for the stores it introduced.
+    expect(LEGACY_VERSIONS).toEqual(
+      Array.from({ length: CURRENT_DEXIE_VERSION - 1 }, (_, i) => i + 1),
+    );
+  });
+});
 
 // Opens the same-named database the way the released app at `fromVersion` did,
 // hands it to `seed`, and closes it so the production instance can upgrade it.
@@ -349,19 +395,26 @@ describe.each([
           expect(db.verno).toBe(CURRENT_DEXIE_VERSION);
           const native = db.backendDB();
           expect(native.version).toBe(CURRENT_DEXIE_VERSION * 10);
-          expect(Array.from(native.objectStoreNames).toSorted()).toEqual([
-            'assets',
-            'protocolMigrations',
-            'protocols',
-            'sessions',
-            'settings',
-          ]);
-          // The v2 index exists in the INSTALLED schema (not merely the declared
-          // one), whichever version the database started at.
-          const sessionStore = native
-            .transaction('sessions', 'readonly')
-            .objectStore('sessions');
-          expect(Array.from(sessionStore.indexNames)).toContain('isSynthetic');
+          // The INSTALLED schema (not merely the declared one) carries every
+          // store with its primary key and complete index set, whichever
+          // version the database started at.
+          expect(Array.from(native.objectStoreNames).toSorted()).toEqual(
+            Object.keys(EXPECTED_INSTALLED_SCHEMA).toSorted(),
+          );
+          const inspection = native.transaction(
+            Array.from(native.objectStoreNames),
+            'readonly',
+          );
+          for (const [storeName, shape] of Object.entries(
+            EXPECTED_INSTALLED_SCHEMA,
+          )) {
+            const store = inspection.objectStore(storeName);
+            expect({
+              store: storeName,
+              keyPath: store.keyPath,
+              indexes: Array.from(store.indexNames).toSorted(),
+            }).toEqual({ store: storeName, ...shape });
+          }
 
           // Every row survives byte-for-byte — encrypted rows keep their exact
           // ciphertext, plaintext rows their exact fields.
@@ -469,3 +522,186 @@ describe.each([
     );
   },
 );
+
+// ---------------------------------------------------------------------------
+// Frozen ciphertext. These rows were encrypted ONCE, with the persisted
+// format the released app writes (AES-GCM-256, 12-byte IV, additionalData =
+// "<table>:<row id>", base64 iv/ct, JSON plaintext), under the fixed DEK
+// below — and are decrypted here by the CURRENT codec. The parameterised
+// suite above cannot catch a persisted-format change, because it encrypts
+// and decrypts with the same build; this fixture is what fails when the new
+// build can no longer read ciphertext a release already stored (a changed
+// AAD prefix, envelope, or algorithm).
+//
+// Never regenerate these to make a failure pass: a failure means upgraded
+// users lose access to their stored data, and the fix is a stored-data
+// migration in the app, not a new fixture. Only when such a migration
+// deliberately lands may the fixtures be regenerated (import the DEK below
+// and AES-GCM-encrypt the JSON plaintexts with the recorded AADs and any
+// fixed 12-byte IVs).
+// ---------------------------------------------------------------------------
+const FROZEN_DEK_B64 = 'AAcOFRwjKjE4P0ZNVFtiaXB3foWMk5qhqK+2vcTL0tk=';
+
+const FROZEN_PROTOCOL_PLAINTEXT = {
+  schemaVersion: 8,
+  codebook: {
+    node: {
+      person: { name: 'Person', color: 'node-color-seq-1', variables: {} },
+    },
+    edge: {},
+    ego: {},
+  },
+  stages: [],
+};
+
+const FROZEN_NETWORK_PLAINTEXT = {
+  ego: { _uid: 'frozen-ego', attributes: { mood: 7 } },
+  nodes: [
+    { _uid: 'frozen-n1', type: 'person', attributes: { name: 'Frozen Alex' } },
+  ],
+  edges: [],
+};
+
+const FROZEN_ROWS: {
+  protocol: StoredProtocolRow;
+  session: StoredSessionRow;
+  apiKeyAsset: StoredAssetRow;
+  imageAsset: StoredAssetRow;
+} = {
+  protocol: {
+    id: 'frozen-hash',
+    hash: 'frozen-hash',
+    name: 'Frozen Study',
+    schemaVersion: 8,
+    importedAt: '2026-01-01T00:00:00.000Z',
+    _enc: {
+      protocol: {
+        iv: 'AQEBAQEBAQEBAQEB',
+        ct: 'D0VMJDJa95FaLwb9noMTZBezNpPpwwIUpTnr6F9bpsCqcjsaVs4KhFv9tXCVoyjQYs5PtJFhTNzm+8lKSxaoe6+9POH4/aIpePF24DFM5tx+bJMXcIqr4ol13RaXjI5NrXfDMbw19TGZ9Rl7grk8xUXJ2rCE1YsTXK2wXIwrZ/vI+ulKS9+8T7DkT0uePoe4PvFXjr6HzcoW1aOrWQ==',
+      },
+      codebook: {
+        iv: 'AgICAgICAgICAgIC',
+        ct: 'aWG29fp6x8c2G5s2xBNHR4RSEhUWip+hNJzOAvkQfFCBLHHOw5nHWUyraI8a8UMHL5u8h4MrfjPu+aO6MR6vbPTQipOk73VLr0E8Xo914n86tcHXK4MQ66rUUoi9cXs6eK6mWn3M/T2O3slbU2GdbjMk',
+      },
+    },
+  },
+  session: {
+    id: 'frozen-session',
+    protocolHash: 'frozen-hash',
+    protocolName: 'Frozen Study',
+    caseId: 'frozen-case',
+    startedAt: '2026-01-05T10:00:00.000Z',
+    lastUpdatedAt: '2026-01-05T10:30:00.000Z',
+    finishedAt: null,
+    exportedAt: null,
+    currentStep: 1,
+    _enc: {
+      network: {
+        iv: 'AwMDAwMDAwMDAwMD',
+        ct: '1NDlJ1geOJIzVv0olpvyxEZ+AO3reu2XzpdLAN3JYzXaYnCT8v7CuA1DRlzBD2gdDd5vbdUZlmosUWVLTBocGEezgu2LS0rJLCBLRghx50lVv0WX6aEEZMB4P2iLe/4Jt9/O+0aCTHMgxX51h2TuBE3bdOPpW7cDEDBWF+2o72ePIOG4Pf2G1BeIdtsNRah+UYSMbDulpD2rDnZQBtO/nbtoBA==',
+      },
+      stageMetadata: {
+        iv: 'BAQEBAQEBAQEBAQE',
+        ct: 'eAqlD/+UmPCZb/aAR10ccwk1rrz2ce8h95i+zfovJ7Qw11KCscT4czZ9ebUE7Q==',
+      },
+    },
+  },
+  apiKeyAsset: {
+    id: 'frozen-hash::frozen-key',
+    protocolHash: 'frozen-hash',
+    assetId: 'frozen-key',
+    name: 'Map key',
+    type: 'apikey',
+    _enc: {
+      data: {
+        kind: 'string',
+        iv: 'BQUFBQUFBQUFBQUF',
+        ct: 'xdoX1MxNy0vAKbYvIaSezL+TJ9a44dWVm3HBuss=',
+      },
+    },
+  },
+  imageAsset: {
+    id: 'frozen-hash::frozen-image',
+    protocolHash: 'frozen-hash',
+    assetId: 'frozen-image',
+    name: 'Background',
+    type: 'image',
+    _enc: {
+      data: {
+        kind: 'blob',
+        mime: 'image/png',
+        iv: 'BgYGBgYGBgYGBgYG',
+        ct: 'NopaNyGSqNEolH4yRg0DWFlg1EEpvg==',
+      },
+    },
+  },
+};
+
+describe('ciphertext written by the released persisted format', () => {
+  beforeEach(resetDatabase);
+  afterEach(async () => {
+    await resetDatabase();
+    setSessionDek(null);
+  });
+
+  it('still decrypts through the current codec after the upgrade', async () => {
+    setSessionDek(
+      await crypto.subtle.importKey(
+        'raw',
+        fromBase64(FROZEN_DEK_B64),
+        'AES-GCM',
+        false,
+        ['encrypt', 'decrypt'],
+      ),
+    );
+
+    await withLegacyDb(1, async (legacy) => {
+      await legacy
+        .table<StoredProtocolRow, string>('protocols')
+        .put(FROZEN_ROWS.protocol);
+      await legacy
+        .table<StoredSessionRow, string>('sessions')
+        .put(FROZEN_ROWS.session);
+      await legacy
+        .table<StoredAssetRow, string>('assets')
+        .bulkPut([FROZEN_ROWS.apiKeyAsset, FROZEN_ROWS.imageAsset]);
+    });
+
+    await db.open();
+
+    const protocolRow = await db.protocols.get('frozen-hash');
+    if (!protocolRow) throw new Error('frozen protocol row missing');
+    const { _enc: _encP, ...protocolRest } = FROZEN_ROWS.protocol;
+    expect(await decryptProtocol(protocolRow)).toEqual({
+      ...protocolRest,
+      protocol: FROZEN_PROTOCOL_PLAINTEXT,
+      codebook: FROZEN_PROTOCOL_PLAINTEXT.codebook,
+    });
+
+    const sessionRow = await db.sessions.get('frozen-session');
+    if (!sessionRow) throw new Error('frozen session row missing');
+    const { _enc: _encS, ...sessionRest } = FROZEN_ROWS.session;
+    expect(await decryptSession(sessionRow)).toEqual({
+      ...sessionRest,
+      network: FROZEN_NETWORK_PLAINTEXT,
+      stageMetadata: { '0': { automaticLayout: true } },
+    });
+
+    const keyRow = await db.assets.get('frozen-hash::frozen-key');
+    if (!keyRow) throw new Error('frozen api-key asset row missing');
+    const { _enc: _encK, ...keyRest } = FROZEN_ROWS.apiKeyAsset;
+    expect(await decryptAsset(keyRow)).toEqual({
+      ...keyRest,
+      data: 'frozen-secret',
+    });
+
+    const imageRow = await db.assets.get('frozen-hash::frozen-image');
+    if (!imageRow) throw new Error('frozen image asset row missing');
+    const image = await decryptAsset(imageRow);
+    if (!(image.data instanceof Blob)) throw new Error('expected a Blob');
+    expect(image.data.type).toBe('image/png');
+    expect(Array.from(new Uint8Array(await image.data.arrayBuffer()))).toEqual([
+      137, 80, 78, 71, 13, 10,
+    ]);
+  });
+});
