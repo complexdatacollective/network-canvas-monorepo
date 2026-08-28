@@ -477,38 +477,58 @@ try {
     db.close();
     const s = sessions[0];
     if (!s?.network) return { found: false };
-    const nodes = s.network.nodes ?? [];
     const edges = s.network.edges ?? [];
-    const attrs = nodes.map((n) => n.attributes ?? {});
-    const names = attrs.map((a) => a.name);
+    const byName = {};
+    for (const n of s.network.nodes ?? []) {
+      const a = n.attributes ?? {};
+      byName[a.name] = {
+        layout:
+          a.layout &&
+          typeof a.layout.x === 'number' &&
+          typeof a.layout.y === 'number'
+            ? { x: a.layout.x, y: a.layout.y }
+            : null,
+        context: Array.isArray(a.context) ? a.context : null,
+      };
+    }
     return {
       found: true,
       sessionCount: sessions.length,
-      nodeNames: names,
-      layouts: attrs.filter((a) => a.layout && typeof a.layout.x === 'number')
-        .length,
-      contexts: attrs.filter(
-        (a) => Array.isArray(a.context) && a.context.length,
-      ).length,
+      byName,
       edgeTypes: [...new Set(edges.map((e) => e.type))].toSorted((a, b) =>
         String(a).localeCompare(String(b)),
       ),
       egoName: (s.network.ego?.attributes ?? {}).ego_name ?? null,
     };
   });
+  // Values, not counts: each node must carry its EXACT category and its own
+  // layout, and the three layouts must be pairwise distinct (the walk placed
+  // them at distinct spots — three identical coordinates is corruption even
+  // though every count matches).
+  const EXPECTED_CONTEXT = { Alex: 'work', Blair: 'social', Casey: 'family' };
+  const byName = payload.byName ?? {};
+  const contextsExact = Object.entries(EXPECTED_CONTEXT).every(([n, cat]) => {
+    const c = byName[n]?.context;
+    return Array.isArray(c) && c.length === 1 && c[0] === cat;
+  });
+  const layoutPoints = Object.keys(EXPECTED_CONTEXT)
+    .map((n) => byName[n]?.layout)
+    .filter(Boolean);
+  const layoutsDistinct =
+    layoutPoints.length === 3 &&
+    new Set(layoutPoints.map((p) => `${p.x},${p.y}`)).size === 3;
   const payloadOk =
     payload.found &&
     payload.sessionCount === 1 &&
-    ['Alex', 'Blair', 'Casey'].every((n) => payload.nodeNames.includes(n)) &&
-    payload.layouts === 3 &&
-    payload.contexts === 3 &&
+    contextsExact &&
+    layoutsDistinct &&
     payload.edgeTypes.includes('knows') &&
     payload.edgeTypes.includes('friends') &&
     payload.egoName === 'Smoke Tester';
   record(
     'persisted-payload',
     payloadOk,
-    `stored network: nodes=${JSON.stringify(payload.nodeNames ?? [])} layouts=${payload.layouts ?? 0} contexts=${payload.contexts ?? 0} edgeTypes=${JSON.stringify(payload.edgeTypes ?? [])} ego=${JSON.stringify(payload.egoName ?? null)}`,
+    `stored network: ${JSON.stringify(byName)} edgeTypes=${JSON.stringify(payload.edgeTypes ?? [])} ego=${JSON.stringify(payload.egoName ?? null)} contextsExact=${contextsExact} layoutsDistinct=${layoutsDistinct}`,
   );
 
   clearTimeout(watchdog);

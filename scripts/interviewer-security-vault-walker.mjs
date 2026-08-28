@@ -169,14 +169,19 @@ async function expectUnlocked(p = page) {
   await expect(p.getByLabel('Lock app')).toBeVisible();
 }
 
-// Deck-settle click (the spring-animated deck swallows early clicks).
+// Deck-settle click: the spring-animated deck swallows early clicks, and a
+// single stable sample pair can catch it mid-flight — require SUSTAINED
+// stability (three identical samples 250 ms apart), matching the smoke
+// walker and the documented deck quirk.
 async function clickSettled(locator) {
   await expect(locator).toBeVisible();
-  for (let i = 0; i < 20; i += 1) {
-    const a = await locator.boundingBox();
-    await page.waitForTimeout(250);
+  let stable = 0;
+  let last = null;
+  for (let i = 0; i < 30 && stable < 3; i += 1) {
     const b = await locator.boundingBox();
-    if (a && b && a.x === b.x && a.y === b.y) break;
+    stable = b && last && b.x === last.x && b.y === last.y ? stable + 1 : 0;
+    last = b;
+    await page.waitForTimeout(250);
   }
   await locator.click();
 }
@@ -693,7 +698,15 @@ try {
   await revokeDialog
     .getByRole('button', { name: 'Destroy device data' })
     .click();
-  await page.waitForTimeout(2000);
+  // Wait for the async revoke to COMPLETE before reloading — a fixed sleep
+  // can tear down the deletion mid-flight and manufacture a partial wipe.
+  // Completion signal (verified empirically): the Settings dialog stays open
+  // and its Security tab flips to the unconfigured state.
+  await expect(revokeDialog).toHaveCount(0, { timeout: 30_000 });
+  await expect(page.getByText('No device lock is configured')).toBeVisible({
+    timeout: 30_000,
+  });
+  await closeSettings();
   await page.reload();
   await expect(page.getByText('0 protocols')).toBeVisible({ timeout: 15_000 });
   const noLockAfterRevoke =
@@ -815,7 +828,10 @@ try {
   const resetDialog = page.getByRole('dialog', { name: 'Reset all app data?' });
   await expect(resetDialog).toBeVisible();
   await resetDialog.getByRole('button', { name: 'Permanently delete' }).click();
-  await page.waitForTimeout(2000);
+  // Same completion wait as revoke: the reset's deletion must finish before
+  // the reload, or the reload can interrupt it mid-wipe.
+  await expect(resetDialog).toHaveCount(0, { timeout: 30_000 });
+  await expect(page.getByText('0 protocols')).toBeVisible({ timeout: 30_000 });
   await page.reload();
   await expect(page.getByText('0 protocols')).toBeVisible({ timeout: 15_000 });
   const afterReset = await rawStoreCounts();
