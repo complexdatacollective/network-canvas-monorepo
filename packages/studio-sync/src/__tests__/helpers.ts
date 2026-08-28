@@ -9,7 +9,10 @@ import pg from 'pg';
 import type { SectionDoc } from '../apply.ts';
 import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '../schema.ts';
 import { SyncServer } from '../server.ts';
+import { createTenantDb } from '../tenant.ts';
 import { CI, PGPORT } from './test-env.ts';
+
+export const TEST_TEAM_ID = 'team-test';
 
 /**
  * A scratch database carrying the sync schema. Connects as the postgres
@@ -84,8 +87,9 @@ export const dbAvailable = await (async () => {
 
 export async function makeServer(dbName: string, ttlMs?: number) {
   const db = await createSyncDatabase(PGPORT, dbName);
-  const server = new SyncServer(db, ttlMs);
-  return { db, server };
+  const tenantDb = createTenantDb(db, TEST_TEAM_ID);
+  const server = new SyncServer(tenantDb, ttlMs);
+  return { db, tenantDb, server };
 }
 
 export const DEFAULT_SECTIONS: Record<string, SectionDoc> = {

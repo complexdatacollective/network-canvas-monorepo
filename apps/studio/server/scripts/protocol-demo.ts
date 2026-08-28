@@ -5,6 +5,7 @@ import { parseArgs } from 'node:util';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { type SectionDoc, canonicalize } from '@codaco/studio-sync/apply';
+import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import { createPool } from '../src/db/pool.ts';
 import { checkSchema, schemaProblemMessage } from '../src/db/schema.ts';
@@ -156,7 +157,12 @@ try {
     `Protocol store — ${url.hostname}:${url.port || '5432'}${url.pathname}`,
   );
 
-  const store = new ProtocolStore(pool);
+  await pool.query(
+    `INSERT INTO teams (id, name, slug) VALUES ('demo-team', 'Demo', 'demo-team')
+     ON CONFLICT (id) DO NOTHING`,
+  );
+  const tenantDb = createTenantDb(pool, 'demo-team');
+  const store = new ProtocolStore(tenantDb);
 
   // ── 1 ──────────────────────────────────────────────────────────────────
   step(1, 'The protocol document');
@@ -260,8 +266,8 @@ try {
 
   // Live section edits belong to the sync engine's lease path, which has no
   // client here, so the edit is made structurally instead.
-  await removeStage(pool, { draftId, stageId: stages.stageId });
-  const advanced = await addStage(pool, {
+  await removeStage(tenantDb, { draftId, stageId: stages.stageId });
+  const advanced = await addStage(tenantDb, {
     draftId,
     stage: edited,
     index: stages.index,

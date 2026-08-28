@@ -15,6 +15,7 @@ import {
   requirePrincipal,
 } from './auth/principal.ts';
 import type { AuthService } from './auth/service.ts';
+import { createPool } from './db/pool.ts';
 import type { AuthCapabilities } from './domain.ts';
 import { readEnv } from './env.ts';
 import { createRpcRouter } from './rpc.ts';
@@ -47,7 +48,8 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
       'Content-Type': 'application/problem+json',
     });
   });
-  const auth = deps.auth ?? createAuthService(env, deps.pool);
+  const pool = deps.pool ?? (env.db ? createPool(env.db) : undefined);
+  const auth = deps.auth ?? createAuthService(env, pool);
   const enabled = Boolean(env.db && env.auth);
   const authCaps: AuthCapabilities = {
     enabled,
@@ -90,7 +92,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     app.use('/rpc/*', requireSameOrigin(env.auth.baseUrl));
   }
   app.use('/rpc/*', createPrincipalMiddleware(auth));
-  const rpcHandler = new RPCHandler(createRpcRouter(authCaps));
+  const rpcHandler = new RPCHandler(createRpcRouter(authCaps, { auth, pool }));
   app.use('/rpc/*', async (c, next) => {
     const { matched, response } = await rpcHandler.handle(c.req.raw, {
       prefix: '/rpc',

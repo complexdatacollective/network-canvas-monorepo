@@ -4,28 +4,56 @@ import { fileURLToPath } from 'node:url';
 import type pg from 'pg';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import {
   createScratchSchema,
   provisionScratchSchema,
   reachableDb,
+  seedTeam,
 } from '../../__tests__/support/postgres.ts';
 
 export const storeDb = await reachableDb();
 
+export const TEST_TEAM_ID = 'team-test';
+
+export const GC_OPTS = {
+  retainManifestsPerDraft: 0,
+  sectionGraceMs: 60_000,
+  commandRetryHorizonMs: 0,
+};
+
+/** Backdates the sweep quarantine so a GC run can collect immediately. */
+export async function ageQuarantine(
+  db: pg.Pool,
+  teamId?: string,
+): Promise<void> {
+  await db.query(
+    `UPDATE sections SET unreferenced_at = unreferenced_at - interval '1 hour'
+     ${teamId === undefined ? '' : 'WHERE team_id = $1'}`,
+    teamId === undefined ? [] : [teamId],
+  );
+}
+
 export async function makeStoreSchema(): Promise<{
   db: pg.Pool;
+  tenantDb: TenantDb;
   dispose: () => Promise<void>;
 }> {
   if (!storeDb) throw new Error('unreachable: probe guaranteed a database');
   const scratch = await createScratchSchema(storeDb);
   try {
     await provisionScratchSchema(scratch.pool);
+    await seedTeam(scratch.pool, TEST_TEAM_ID);
   } catch (error) {
     await scratch.dispose();
     throw error;
   }
-  return { db: scratch.pool, dispose: scratch.dispose };
+  return {
+    db: scratch.pool,
+    tenantDb: createTenantDb(scratch.pool, TEST_TEAM_ID),
+    dispose: scratch.dispose,
+  };
 }
 
 // Resolved through the exports map so that changing a fixture invalidates this

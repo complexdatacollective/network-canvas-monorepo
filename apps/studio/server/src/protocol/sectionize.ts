@@ -1,10 +1,23 @@
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  CURRENT_SCHEMA_VERSION,
+  type CurrentProtocol,
+} from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { sectionId } from './taxonomy.ts';
 
 /** @public */
 export class SectionizeError extends Error {}
+
+// Branded reference fields make the literal uncastable directly.
+export function emptyProtocol(name: string): CurrentProtocol {
+  return {
+    name,
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    codebook: {},
+    stages: [],
+  } as unknown as CurrentProtocol;
+}
 
 export function sectionizeProtocol(
   protocol: CurrentProtocol,

@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { contentHash } from '../apply.ts';
 import { SyncClient } from '../client.ts';
 import { forceExpire, SyncServer } from '../server.ts';
+import type { TenantDb } from '../tenant.ts';
 import { dbAvailable, makeDraft, makeServer } from './helpers.ts';
 
 /**
@@ -40,10 +41,11 @@ class GatedServer extends SyncServer {
 
 describe.skipIf(!dbAvailable)('reconnect and resume', () => {
   let db: Pool;
+  let tenantDb: TenantDb;
   let server: SyncServer;
 
   beforeAll(async () => {
-    ({ db, server } = await makeServer('sync_resume'));
+    ({ db, tenantDb, server } = await makeServer('sync_resume'));
   });
 
   afterAll(async () => {
@@ -112,7 +114,7 @@ describe.skipIf(!dbAvailable)('reconnect and resume', () => {
     sleeper.edit('stage-1', [{ op: 'set', key: 'note', value: 'also mine' }]);
 
     // The laptop sleeps; the lease expires; a colleague takes over and edits.
-    await forceExpire(db, draft, 'stage-1');
+    await forceExpire(tenantDb, draft, 'stage-1');
     const colleague = new SyncClient('tab-colleague', server, draft);
     expect(await colleague.openSection('stage-1')).toBe(true);
     colleague.edit('stage-1', [
@@ -152,7 +154,7 @@ describe.skipIf(!dbAvailable)('reconnect and resume', () => {
   });
 
   it('reconnect discards a resume snapshot a concurrent push has overtaken', async () => {
-    const gated = new GatedServer(db);
+    const gated = new GatedServer(tenantDb);
     const draft = await makeDraft(gated);
     const client = new SyncClient(randomUUID(), gated, draft);
     expect(await client.openSection('stage-1')).toBe(true);

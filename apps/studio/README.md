@@ -181,6 +181,30 @@ Studio consumes the schema-conformant protocol document exactly as
 assembled document with the canonical validator before freezing it. Sectioning
 is Studio-internal storage topology, not a protocol-schema change.
 
+### Tenancy
+
+Teams (#1249) are the tenant boundary. Every domain row — protocols, versions,
+drafts, sections, manifests, leases, the command log — carries a denormalized
+`team_id`, pinned to its parent through composite foreign keys, and section
+documents deduplicate **per team**: identical content in two teams is two rows,
+because a shared row would leak content across the boundary. The data layer
+only speaks through a `TenantDb` (`@codaco/studio-sync/tenant`), a pool handle
+pinned to one team: the `ProtocolStore` and `SyncServer` constructors take one
+instead of a pool, every statement carries an explicit team predicate, and
+`transaction()` stamps `app.team_id` as a transaction-local GUC so row-level
+security can be layered on later without reworking callers. A team's id enters
+a request explicitly — `requireTeam` in `server/src/rpc.ts` resolves the
+procedure input's `teamId` against the caller's membership
+(`AuthService.getMembership`) and yields the pinned `TenantDb`; the session's
+active team is never the authorization input. Garbage collection is the one
+deliberately cross-team caller: it iterates teams and runs each sweep under
+that team's `TenantDb`. Until RLS lands, scoping is opt-in per procedure — a
+team-scoped procedure must `.use(requireTeam)`.
+
+Better-auth's organization plugin backs these tables, and its own optional
+`teams` feature — a subdivision _inside_ an organization — stays disabled, so
+"team" has exactly one meaning in this schema.
+
 Live editing within a section is not here — that is the sync engine's lease and
 commit path in `@codaco/studio-sync`. The store owns what sync deliberately
 refuses: creation, structural add and remove, publishing, versions, diff,
@@ -191,13 +215,15 @@ on a machine with no container `pnpm --filter @codaco/studio-server test`
 passes having verified far less than it appears to. Read the reporter, not the
 exit code.
 
-No surface exposes the store yet — neither RPC procedure nor API route — so
+The store's RPC surface is minimal — `protocols.create` and `protocols.list`
+exist to prove the tenancy spine end to end, and no screen renders them yet —
+so
 
 ```bash
 pnpm --filter @codaco/studio-server protocol-demo
 ```
 
-is the only way to look at one. It sectionizes a protocol (the sample one, or
+remains the way to look at one. It sectionizes a protocol (the sample one, or
 `--protocol <path>`), prints its sections and their hashes (`--sections` for
 every row), assembles it back, publishes it, edits one prompt and publishes
 again to show how much of the second version is structurally shared with the
@@ -356,9 +382,9 @@ them:
   there — and consequently the only place that lane ever detects a stale
   schema.
 - **`seed` currently writes nothing.** Studio has no domain entities yet; the
-  first workspace owner and the default workspace land with workspace
-  invitations (#1256). The step is documented now so the procedure does not
-  change when it starts doing something.
+  first team owner and the default team land with team invitations (#1256).
+  The step is documented now so the procedure does not change when it starts
+  doing something.
 
 ## Deployment topologies
 

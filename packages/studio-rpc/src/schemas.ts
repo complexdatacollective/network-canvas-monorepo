@@ -28,3 +28,26 @@ export const MeSchema = z.object({
   emailVerified: z.boolean(),
   name: z.string(),
 });
+
+// Every team-scoped procedure names its team explicitly — the authz input is
+// never the session's active team (#1248: every route is team-scoped by
+// construction).
+export const TeamScopedSchema = z.object({
+  teamId: z.string().min(1),
+});
+
+export const ProtocolSummarySchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const CreateProtocolInputSchema = TeamScopedSchema.extend({
+  name: z.string().min(1),
+});
+
+export const CreateProtocolResultSchema = z.object({
+  protocolId: z.uuid(),
+  draftId: z.uuid(),
+});

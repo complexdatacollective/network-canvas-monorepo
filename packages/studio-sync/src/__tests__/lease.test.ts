@@ -12,6 +12,7 @@ import {
   type SyncServer,
   UnknownSectionError,
 } from '../server.ts';
+import type { TenantDb } from '../tenant.ts';
 import {
   assertLinearChain,
   dbAvailable,
@@ -21,10 +22,11 @@ import {
 
 describe.skipIf(!dbAvailable)('lease state machine', () => {
   let db: Pool;
+  let tenantDb: TenantDb;
   let server: SyncServer;
 
   beforeAll(async () => {
-    ({ db, server } = await makeServer('sync_lease'));
+    ({ db, tenantDb, server } = await makeServer('sync_lease'));
   });
 
   afterAll(async () => {
@@ -55,7 +57,7 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
     const draft = await makeDraft(server);
     const first = await server.acquire(draft, 'stage-1', 'tab-A');
     expect(first?.epoch).toBe(1n);
-    await forceExpire(db, draft, 'stage-1');
+    await forceExpire(tenantDb, draft, 'stage-1');
     // The same owner after expiry is a fresh claim: pre-sleep in-flight
     // commits must be fenced out, so the epoch advances.
     const again = await server.acquire(draft, 'stage-1', 'tab-A');
@@ -68,7 +70,7 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
     expect(a?.epoch).toBe(1n);
 
     // Laptop A sleeps past expiry; B observes the lease as free and takes over.
-    await forceExpire(db, draft, 'stage-1');
+    await forceExpire(tenantDb, draft, 'stage-1');
     const b = await server.acquire(draft, 'stage-1', 'tab-B');
     expect(b?.epoch).toBe(2n);
 
@@ -101,7 +103,7 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
   it('late heartbeat cannot resurrect an expired lease', async () => {
     const draft = await makeDraft(server);
     const a = await server.acquire(draft, 'stage-1', 'tab-A');
-    await forceExpire(db, draft, 'stage-1');
+    await forceExpire(tenantDb, draft, 'stage-1');
 
     // The late heartbeat arrives before any takeover — it must still fail:
     // another client may already have observed the lease as free.
@@ -115,7 +117,7 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
   it('expiry-window write: commit after expiry but before takeover is rejected (epoch alone is not sufficient)', async () => {
     const draft = await makeDraft(server);
     await server.acquire(draft, 'stage-1', 'tab-A');
-    await forceExpire(db, draft, 'stage-1');
+    await forceExpire(tenantDb, draft, 'stage-1');
 
     // No takeover has happened — owner and epoch still match. Only the
     // commit-time expires_at check stands between a slept laptop and a
@@ -197,7 +199,7 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
   it('racing acquires on an expired lease admit exactly one winner', async () => {
     const draft = await makeDraft(server);
     await server.acquire(draft, 'stage-1', 'tab-A');
-    await forceExpire(db, draft, 'stage-1');
+    await forceExpire(tenantDb, draft, 'stage-1');
 
     const contenders = Array.from({ length: 8 }, (_, i) => `contender-${i}`);
     const results = await Promise.all(

@@ -80,12 +80,12 @@ describe.skipIf(!db)('schema verification', () => {
         'schemaFingerprint',
         'sections',
         'session',
+        'team_invitations',
+        'team_members',
+        'teams',
         'user',
         'verification',
         'version_sections',
-        'workspace_invitations',
-        'workspace_members',
-        'workspaces',
       ]);
       expect([...SCHEMA_TABLES].toSorted()).toEqual(
         tables.rows

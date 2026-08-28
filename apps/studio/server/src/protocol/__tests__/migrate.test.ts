@@ -5,10 +5,16 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { type SectionDoc, canonicalize } from '@codaco/studio-sync/apply';
 import { SyncServer } from '@codaco/studio-sync/server';
+import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import { migrateStoredVersionToDraft } from '../migrate.ts';
 import { ProtocolStore } from '../store.ts';
-import { baseProtocol, makeStoreSchema, storeDb } from './helpers.ts';
+import {
+  TEST_TEAM_ID,
+  baseProtocol,
+  makeStoreSchema,
+  storeDb,
+} from './helpers.ts';
 
 // Write-time validation pins new sections to the current schema, so a stored
 // schema-7 version has to be seeded through the sync engine directly.
@@ -27,12 +33,13 @@ const V7_SECTIONS: Record<string, SectionDoc> = {
 
 describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
   let db: pg.Pool;
+  let tenantDb: TenantDb;
   let dispose: () => Promise<void>;
   let store: ProtocolStore;
 
   beforeAll(async () => {
-    ({ db, dispose } = await makeStoreSchema());
-    store = new ProtocolStore(db);
+    ({ db, tenantDb, dispose } = await makeStoreSchema());
+    store = new ProtocolStore(tenantDb);
   });
   afterAll(async () => {
     await dispose();
@@ -44,14 +51,15 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
   }> {
     const protocolId = randomUUID();
     const draftId = randomUUID();
-    await db.query(`INSERT INTO protocols (id, name) VALUES ($1, $2)`, [
-      protocolId,
-      'Legacy Protocol',
-    ]);
-    await new SyncServer(db).createDraft(draftId, V7_SECTIONS);
     await db.query(
-      `INSERT INTO protocol_drafts (draft_id, protocol_id) VALUES ($1, $2)`,
-      [draftId, protocolId],
+      `INSERT INTO protocols (id, team_id, name) VALUES ($1, $2, $3)`,
+      [protocolId, TEST_TEAM_ID, 'Legacy Protocol'],
+    );
+    await new SyncServer(tenantDb).createDraft(draftId, V7_SECTIONS);
+    await db.query(
+      `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id)
+       VALUES ($1, $2, $3)`,
+      [draftId, TEST_TEAM_ID, protocolId],
     );
     const published = await store.publishDraft({ draftId });
     if (published.status !== 'published') {
@@ -70,7 +78,9 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
       [versionId],
     );
 
-    const migration = await migrateStoredVersionToDraft(db, { versionId });
+    const migration = await migrateStoredVersionToDraft(tenantDb, {
+      versionId,
+    });
     expect(migration).toMatchObject({
       protocolId,
       fromSchemaVersion: 7,
@@ -114,7 +124,7 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     const published = await store.publishDraft({ draftId });
     if (published.status !== 'published') throw new Error(published.status);
 
-    const migration = await migrateStoredVersionToDraft(db, {
+    const migration = await migrateStoredVersionToDraft(tenantDb, {
       versionId: published.versionId,
     });
     expect(migration.fromSchemaVersion).toBe(8);

@@ -9,6 +9,7 @@ import {
   UnknownDraftError,
   UnknownSectionError,
 } from '@codaco/studio-sync/server';
+import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import {
   DraftStructureError,
@@ -21,6 +22,7 @@ import { ProtocolStore } from '../store.ts';
 import { createProtocolSyncServer } from '../sync.ts';
 import { SectionValidationFailedError } from '../validate.ts';
 import {
+  TEST_TEAM_ID,
   baseProtocol,
   makeStoreSchema,
   storeDb,
@@ -29,12 +31,13 @@ import {
 
 describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
   let db: pg.Pool;
+  let tenantDb: TenantDb;
   let dispose: () => Promise<void>;
   let store: ProtocolStore;
 
   beforeAll(async () => {
-    ({ db, dispose } = await makeStoreSchema());
-    store = new ProtocolStore(db);
+    ({ db, tenantDb, dispose } = await makeStoreSchema());
+    store = new ProtocolStore(tenantDb);
   });
   afterAll(async () => {
     await dispose();
@@ -59,7 +62,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(db);
+    const sync = new SyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'stage:nameGenerator1', 'tab-1');
     expect(lease).not.toBeNull();
     await sync.commit({
@@ -81,7 +84,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       protocol: baseProtocol(),
     });
     const before = await store.getDraftSections(draftId);
-    const result = await addStage(db, {
+    const result = await addStage(tenantDb, {
       draftId,
       stage: {
         id: 'info1',
@@ -113,13 +116,13 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       protocol: baseProtocol(),
     });
     await expect(
-      addStage(db, {
+      addStage(tenantDb, {
         draftId,
         stage: baseProtocol().stages[0]!,
       }),
     ).rejects.toThrow(/already exists/);
     await expect(
-      addStage(db, {
+      addStage(tenantDb, {
         draftId,
         stage: {
           id: 'info2',
@@ -132,11 +135,14 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       }),
     ).rejects.toThrow(/out of range/);
     await expect(
-      addStage(db, { draftId, stage: { id: 'bad', type: 'Information' } }),
+      addStage(tenantDb, {
+        draftId,
+        stage: { id: 'bad', type: 'Information' },
+      }),
     ).rejects.toThrow(SectionValidationFailedError);
     for (const index of [1.5, Number.NaN]) {
       await expect(
-        addStage(db, {
+        addStage(tenantDb, {
           draftId,
           stage: {
             id: 'info3',
@@ -157,7 +163,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     });
     const before = await store.getDraftSections(draftId);
     const removedHash = before.sectionHashes['stage:sociogram1'];
-    await removeStage(db, { draftId, stageId: 'sociogram1' });
+    await removeStage(tenantDb, { draftId, stageId: 'sociogram1' });
 
     const document = (await store.getDraftDocument(draftId)) as {
       stages: { id: string }[];
@@ -171,7 +177,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     expect(row.rowCount).toBe(1);
 
     await expect(
-      removeStage(db, { draftId, stageId: 'sociogram1' }),
+      removeStage(tenantDb, { draftId, stageId: 'sociogram1' }),
     ).rejects.toThrow(DraftStructureError);
   });
 
@@ -179,7 +185,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    await addCodebookEntity(db, {
+    await addCodebookEntity(tenantDb, {
       draftId,
       ref: { entity: 'node', typeId: 'place' },
       definition: {
@@ -197,7 +203,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     ]);
 
     await expect(
-      addCodebookEntity(db, {
+      addCodebookEntity(tenantDb, {
         draftId,
         ref: { entity: 'node', typeId: 'place' },
         definition: {
@@ -208,7 +214,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       }),
     ).rejects.toThrow(/already exists/);
 
-    await removeCodebookEntity(db, {
+    await removeCodebookEntity(tenantDb, {
       draftId,
       ref: { entity: 'node', typeId: 'place' },
     });
@@ -223,7 +229,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       protocol: baseProtocol(),
     });
     await expect(
-      addCodebookEntity(db, {
+      addCodebookEntity(tenantDb, {
         draftId,
         ref: { entity: 'node', typeId: 'person type' },
         definition: {
@@ -243,7 +249,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = createProtocolSyncServer(db);
+    const sync = createProtocolSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'stageOrder', 'tab-1');
     const before = await store.getDraftSections(draftId);
 
@@ -267,7 +273,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = createProtocolSyncServer(db);
+    const sync = createProtocolSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'stage:sociogram1', 'tab-1');
 
     await expect(
@@ -287,11 +293,11 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(db);
+    const sync = new SyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'stageOrder', 'editor-tab');
     expect(lease).not.toBeNull();
 
-    await addStage(db, {
+    await addStage(tenantDb, {
       draftId,
       stage: {
         id: 'infoFence',
@@ -320,7 +326,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(db);
+    const sync = new SyncServer(tenantDb);
     const lease = await sync.acquire(
       draftId,
       'codebook:edge:knows',
@@ -328,11 +334,11 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     );
     expect(lease).not.toBeNull();
 
-    await removeCodebookEntity(db, {
+    await removeCodebookEntity(tenantDb, {
       draftId,
       ref: { entity: 'edge', typeId: 'knows' },
     });
-    await addCodebookEntity(db, {
+    await addCodebookEntity(tenantDb, {
       draftId,
       ref: { entity: 'edge', typeId: 'knows' },
       definition: { name: 'Knows', color: 'edge-color-seq-2' },
@@ -354,7 +360,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(db);
+    const sync = new SyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'settings', 'commit-tab');
 
     const blocker = await db.connect();
@@ -365,12 +371,20 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const head = await store.getDraftSections(draftId);
     const advanced = { ...head.sectionHashes, settings: 'advanced-hash' };
     await blocker.query(
-      `INSERT INTO sections (hash, doc) VALUES ('advanced-hash', '{}'::jsonb)`,
+      `INSERT INTO sections (team_id, hash, doc)
+       VALUES ($1, 'advanced-hash', '{}'::jsonb)`,
+      [TEST_TEAM_ID],
     );
     await blocker.query(
-      `INSERT INTO manifests (draft_id, seq, hash, parent_hash, section_hashes)
-       VALUES ($1, $2, 'advanced-manifest', $3, $4)`,
-      [draftId, String(head.headSeq + 1n), head.headManifestHash, advanced],
+      `INSERT INTO manifests (draft_id, team_id, seq, hash, parent_hash, section_hashes)
+       VALUES ($1, $5, $2, 'advanced-manifest', $3, $4)`,
+      [
+        draftId,
+        String(head.headSeq + 1n),
+        head.headManifestHash,
+        advanced,
+        TEST_TEAM_ID,
+      ],
     );
     await blocker.query(
       `UPDATE drafts SET head_seq = $2, head_manifest_hash = 'advanced-manifest'
@@ -378,7 +392,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       [draftId, String(head.headSeq + 1n)],
     );
 
-    const pending = removeStage(db, { draftId, stageId: 'sociogram1' });
+    const pending = removeStage(tenantDb, { draftId, stageId: 'sociogram1' });
     await waitForLockWait(db);
     await blocker.query('COMMIT');
     blocker.release();
@@ -392,7 +406,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = createProtocolSyncServer(db);
+    const sync = createProtocolSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'stageOrder', 'tab-1');
     const before = await store.getDraftSections(draftId);
 
@@ -422,7 +436,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(db);
+    const sync = new SyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'stageOrder', 'tab-1');
     await sync.commit({
       draftId,
@@ -443,9 +457,9 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(db);
+    const sync = new SyncServer(tenantDb);
     await sync.acquire(draftId, 'stage:sociogram1', 'editor-tab');
-    await removeStage(db, { draftId, stageId: 'sociogram1' });
+    await removeStage(tenantDb, { draftId, stageId: 'sociogram1' });
 
     await expect(
       sync.takeover(draftId, 'stage:sociogram1', 'other-tab'),
@@ -456,7 +470,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(db);
+    const sync = new SyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'settings', 'editor-tab');
     await store.discardDraft(draftId);
 
@@ -479,7 +493,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(db);
+    const sync = new SyncServer(tenantDb);
     await sync.acquire(draftId, 'settings', 'tab-1');
     await store.discardDraft(draftId);
 

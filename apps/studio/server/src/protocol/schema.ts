@@ -1,5 +1,6 @@
 import {
-  type AnyPgColumn,
+  foreignKey,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -12,24 +13,38 @@ import {
 
 import { drafts, sections } from '@codaco/studio-sync/schema';
 
-const protocols = pgTable('protocols', {
-  id: uuid('id').primaryKey(),
-  name: text('name').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+import { teams } from '../db/auth-schema.ts';
+
+const protocols = pgTable(
+  'protocols',
+  {
+    id: uuid('id').primaryKey(),
+    // No cascade: a team's sync-side rows carry team_id without a foreign key,
+    // so no delete of a team row could ever be complete. Team deletion is
+    // refused outright in src/auth/better-auth.ts; this FK is the backstop.
+    teamId: text('team_id')
+      .notNull()
+      .references(() => teams.id),
+    name: text('name').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique().on(table.id, table.teamId),
+    index('protocols_team_id_idx').on(table.teamId),
+  ],
+);
 
 const protocolVersions = pgTable(
   'protocol_versions',
   {
     id: uuid('id').primaryKey(),
-    protocolId: uuid('protocol_id')
-      .notNull()
-      .references(() => protocols.id),
+    protocolId: uuid('protocol_id').notNull(),
+    teamId: text('team_id').notNull(),
     versionNumber: integer('version_number').notNull(),
     label: text('label'),
     versionHash: text('version_hash').notNull(),
@@ -38,9 +53,7 @@ const protocolVersions = pgTable(
     // No FK: draft rows are discardable.
     sourceDraftId: uuid('source_draft_id'),
     sourceManifestHash: text('source_manifest_hash').notNull(),
-    migratedFromVersionId: uuid('migrated_from_version_id').references(
-      (): AnyPgColumn => protocolVersions.id,
-    ),
+    migratedFromVersionId: uuid('migrated_from_version_id'),
     publishedAt: timestamp('published_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -48,6 +61,15 @@ const protocolVersions = pgTable(
   (table) => [
     unique().on(table.protocolId, table.versionNumber),
     unique().on(table.protocolId, table.versionHash),
+    unique().on(table.id, table.teamId),
+    foreignKey({
+      columns: [table.protocolId, table.teamId],
+      foreignColumns: [protocols.id, protocols.teamId],
+    }),
+    foreignKey({
+      columns: [table.migratedFromVersionId, table.teamId],
+      foreignColumns: [table.id, table.teamId],
+    }),
   ],
 );
 
@@ -56,31 +78,54 @@ const protocolVersions = pgTable(
 const versionSections = pgTable(
   'version_sections',
   {
-    versionId: uuid('version_id')
-      .notNull()
-      .references(() => protocolVersions.id),
+    versionId: uuid('version_id').notNull(),
+    teamId: text('team_id').notNull(),
     sectionId: text('section_id').notNull(),
-    sectionHash: text('section_hash')
-      .notNull()
-      .references(() => sections.hash),
+    sectionHash: text('section_hash').notNull(),
   },
-  (table) => [primaryKey({ columns: [table.versionId, table.sectionId] })],
+  (table) => [
+    primaryKey({ columns: [table.versionId, table.sectionId] }),
+    foreignKey({
+      columns: [table.versionId, table.teamId],
+      foreignColumns: [protocolVersions.id, protocolVersions.teamId],
+    }),
+    foreignKey({
+      columns: [table.teamId, table.sectionHash],
+      foreignColumns: [sections.teamId, sections.hash],
+    }),
+    index('version_sections_team_id_section_hash_idx').on(
+      table.teamId,
+      table.sectionHash,
+    ),
+  ],
 );
 
-const protocolDrafts = pgTable('protocol_drafts', {
-  draftId: uuid('draft_id')
-    .primaryKey()
-    .references(() => drafts.id),
-  protocolId: uuid('protocol_id')
-    .notNull()
-    .references(() => protocols.id),
-  basedOnVersionId: uuid('based_on_version_id').references(
-    () => protocolVersions.id,
-  ),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+const protocolDrafts = pgTable(
+  'protocol_drafts',
+  {
+    draftId: uuid('draft_id').primaryKey(),
+    teamId: text('team_id').notNull(),
+    protocolId: uuid('protocol_id').notNull(),
+    basedOnVersionId: uuid('based_on_version_id'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.draftId, table.teamId],
+      foreignColumns: [drafts.id, drafts.teamId],
+    }),
+    foreignKey({
+      columns: [table.protocolId, table.teamId],
+      foreignColumns: [protocols.id, protocols.teamId],
+    }),
+    foreignKey({
+      columns: [table.basedOnVersionId, table.teamId],
+      foreignColumns: [protocolVersions.id, protocolVersions.teamId],
+    }),
+  ],
+);
 
 export const PROTOCOL_TABLES = {
   protocols,

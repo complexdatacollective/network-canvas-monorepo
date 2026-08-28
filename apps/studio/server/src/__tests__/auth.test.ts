@@ -1,10 +1,6 @@
-import { createORPCClient, safe } from '@orpc/client';
-import { RPCLink } from '@orpc/client/fetch';
-import type { RouterContractClient } from '@orpc/contract';
+import { safe } from '@orpc/client';
 import type pg from 'pg';
 import { describe, expect, it } from 'vitest';
-
-import type { contract } from '@codaco/studio-rpc';
 
 import { createApp } from '../app.ts';
 import { createBetterAuthService } from '../auth/better-auth.ts';
@@ -16,6 +12,7 @@ import {
   provisionScratchSchema,
   reachableDb,
 } from './support/postgres.ts';
+import { createRpcClient } from './support/rpc.ts';
 
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
@@ -25,19 +22,6 @@ const PRINCIPAL: SessionPrincipal = {
   name: 'Researcher',
   sessionId: 'session-1',
 };
-
-function createRpcClient(
-  app: ReturnType<typeof createApp>,
-  headers: Record<string, string> = {},
-) {
-  const link = new RPCLink({
-    origin: 'http://studio.test',
-    url: '/rpc',
-    headers: { 'sec-fetch-site': 'same-origin', ...headers },
-    fetch: async (url, init) => app.request(url, init),
-  });
-  return createORPCClient(link) as RouterContractClient<typeof contract>;
-}
 
 describe('principal resolution', () => {
   it('resolves the cookie session into the RPC context', async () => {
@@ -223,8 +207,8 @@ describe.skipIf(!db)('magic-link sign-in', () => {
   });
 });
 
-describe.skipIf(!db)('workspaces (organization plugin)', () => {
-  it('creates a workspace and resolves the creator membership', async () => {
+describe.skipIf(!db)('teams (organization plugin)', () => {
+  it('creates a team and resolves the creator membership', async () => {
     if (!db) throw new Error('unreachable');
     const scratch = await createScratchSchema(db);
     try {
@@ -236,7 +220,7 @@ describe.skipIf(!db)('workspaces (organization plugin)', () => {
       const me = await createRpcClient(app, { cookie }).me();
 
       // Through the plugin's own endpoint: exercises the drizzle adapter
-      // against the folded workspace tables end to end.
+      // against the folded team tables end to end.
       const create = await app.request('/api/auth/organization/create', {
         method: 'POST',
         headers: {
@@ -247,25 +231,69 @@ describe.skipIf(!db)('workspaces (organization plugin)', () => {
         body: JSON.stringify({ name: 'My Study Group', slug: 'my-studies' }),
       });
       expect(create.status).toBe(200);
-      const workspace = (await create.json()) as { id: string; slug: string };
-      expect(workspace.slug).toBe('my-studies');
+      const team = (await create.json()) as { id: string; slug: string };
+      expect(team.slug).toBe('my-studies');
 
-      expect(await auth.getMembership(me.userId, workspace.id)).toEqual({
+      expect(await auth.getMembership(me.userId, team.id)).toEqual({
         role: 'owner',
       });
-      expect(await auth.getMembership(me.userId, 'not-a-workspace')).toBeNull();
-      expect(await auth.getMembership('someone-else', workspace.id)).toBeNull();
+      expect(await auth.getMembership(me.userId, 'not-a-team')).toBeNull();
+      expect(await auth.getMembership('someone-else', team.id)).toBeNull();
 
       // The plugin only check-then-inserts memberships, so the composite
       // unique index is what keeps that single-row read unambiguous. Omitting
       // created_at also exercises its default.
       await expect(
         scratch.pool.query(
-          `insert into workspace_members (id, workspace_id, user_id, role)
+          `insert into team_members (id, team_id, user_id, role)
            values ($1, $2, $3, 'member')`,
-          ['second-membership', workspace.id, me.userId],
+          ['second-membership', team.id, me.userId],
         ),
       ).rejects.toThrow(/duplicate key/);
+    } finally {
+      await scratch.dispose();
+    }
+  });
+
+  it('refuses to delete a team, as its tenant data cannot be deleted with it', async () => {
+    if (!db) throw new Error('unreachable');
+    const scratch = await createScratchSchema(db);
+    try {
+      await provisionScratchSchema(scratch.pool);
+      const { app, cookie } = await signInWithMagicLink(scratch.pool, 'owner');
+      const create = await app.request('/api/auth/organization/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'origin': 'http://localhost:5173',
+          cookie,
+        },
+        body: JSON.stringify({ name: 'Doomed', slug: 'doomed' }),
+      });
+      expect(create.status).toBe(200);
+      const team = (await create.json()) as { id: string };
+
+      // The owner would otherwise be allowed to delete it, orphaning every
+      // sync-side row that names the team without a foreign key.
+      const deleted = await app.request('/api/auth/organization/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'origin': 'http://localhost:5173',
+          cookie,
+        },
+        body: JSON.stringify({ organizationId: team.id }),
+      });
+      expect(deleted.status).not.toBe(200);
+      expect(await deleted.json()).toMatchObject({
+        code: 'ORGANIZATION_DELETION_DISABLED',
+      });
+
+      const survivors = await scratch.pool.query(
+        `select id from teams where id = $1`,
+        [team.id],
+      );
+      expect(survivors.rowCount).toBe(1);
     } finally {
       await scratch.dispose();
     }

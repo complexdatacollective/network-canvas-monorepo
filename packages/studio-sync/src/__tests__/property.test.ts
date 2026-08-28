@@ -14,6 +14,7 @@ import {
   type SectionDoc,
 } from '../apply.ts';
 import { forceExpire, LeaseRejectedError, type SyncServer } from '../server.ts';
+import type { TenantDb } from '../tenant.ts';
 import {
   assertLinearChain,
   dbAvailable,
@@ -115,10 +116,11 @@ describe.skipIf(!dbAvailable)(
   'lease/commit interleaving property (DB-backed, 25 schedules)',
   () => {
     let db: Pool;
+    let tenantDb: TenantDb;
     let server: SyncServer;
 
     beforeAll(async () => {
-      ({ db, server } = await makeServer('sync_property'));
+      ({ db, tenantDb, server } = await makeServer('sync_property'));
     });
 
     afterAll(async () => {
@@ -164,7 +166,7 @@ describe.skipIf(!dbAvailable)(
 
             for (const o of ops) {
               if (o === 'expire') {
-                await forceExpire(db, draft, 's');
+                await forceExpire(tenantDb, draft, 's');
                 if (model) model.expired = true;
               } else if (o === 'acquireA' || o === 'acquireB') {
                 const who = o === 'acquireA' ? 'A' : 'B';

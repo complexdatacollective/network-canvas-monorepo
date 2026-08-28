@@ -41,7 +41,7 @@ const session = pgTable(
     userId: text('userId')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
-    activeWorkspaceId: text('activeWorkspaceId'),
+    activeTeamId: text('activeTeamId'),
   },
   (table) => [index('session_userId_idx').on(table.userId)],
 );
@@ -102,7 +102,7 @@ const rateLimit = pgTable('rateLimit', {
 // plugin's schema overrides in src/auth/better-auth.ts (#1249). Property keys
 // are snake_case because the drizzle adapter resolves overridden field names
 // against them.
-const workspaces = pgTable('workspaces', {
+export const teams = pgTable('teams', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(),
@@ -113,13 +113,13 @@ const workspaces = pgTable('workspaces', {
   metadata: text('metadata'),
 });
 
-const workspace_members = pgTable(
-  'workspace_members',
+const team_members = pgTable(
+  'team_members',
   {
     id: text('id').primaryKey(),
-    workspace_id: text('workspace_id')
+    team_id: text('team_id')
       .notNull()
-      .references(() => workspaces.id, { onDelete: 'cascade' }),
+      .references(() => teams.id, { onDelete: 'cascade' }),
     user_id: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
@@ -128,30 +128,26 @@ const workspace_members = pgTable(
       .notNull()
       .defaultNow(),
   },
-  // A user holds at most one membership per workspace, enforced here because
-  // the plugin only check-then-inserts: it keeps getMembership's single-row
-  // read unambiguous. The unique index subsumes the generated single-column
-  // workspace_id index; the reversed composite serves "workspaces for this
-  // user".
+  // A user holds at most one membership per team, enforced here because the
+  // plugin only check-then-inserts: it keeps getMembership's single-row read
+  // unambiguous. The unique index subsumes the generated single-column team_id
+  // index; the reversed composite serves "teams for this user".
   (table) => [
-    uniqueIndex('workspace_members_workspace_id_user_id_idx').on(
-      table.workspace_id,
+    uniqueIndex('team_members_team_id_user_id_idx').on(
+      table.team_id,
       table.user_id,
     ),
-    index('workspace_members_user_id_workspace_id_idx').on(
-      table.user_id,
-      table.workspace_id,
-    ),
+    index('team_members_user_id_team_id_idx').on(table.user_id, table.team_id),
   ],
 );
 
-const workspace_invitations = pgTable(
-  'workspace_invitations',
+const team_invitations = pgTable(
+  'team_invitations',
   {
     id: text('id').primaryKey(),
-    workspace_id: text('workspace_id')
+    team_id: text('team_id')
       .notNull()
-      .references(() => workspaces.id, { onDelete: 'cascade' }),
+      .references(() => teams.id, { onDelete: 'cascade' }),
     email: text('email').notNull(),
     role: text('role'),
     status: text('status').default('pending').notNull(),
@@ -164,8 +160,8 @@ const workspace_invitations = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
   },
   (table) => [
-    index('workspace_invitations_workspace_id_idx').on(table.workspace_id),
-    index('workspace_invitations_email_idx').on(table.email),
+    index('team_invitations_team_id_idx').on(table.team_id),
+    index('team_invitations_email_idx').on(table.email),
   ],
 );
 
@@ -175,7 +171,7 @@ export const AUTH_TABLES = {
   account,
   verification,
   rateLimit,
-  workspaces,
-  workspace_members,
-  workspace_invitations,
+  teams,
+  team_members,
+  team_invitations,
 };
