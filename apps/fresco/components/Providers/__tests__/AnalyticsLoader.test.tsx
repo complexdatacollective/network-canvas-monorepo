@@ -16,15 +16,31 @@ vi.mock('~/queries/appSettings', () => ({
 
 import AnalyticsLoader from '../AnalyticsLoader';
 
-/** The decision the rendered tag publishes. */
+type RenderedChild = { props?: { name?: unknown; content?: unknown } };
+
+/** The decision the rendered tag publishes, for instrumentation-client. */
 async function publishedDecision() {
   const element = await AnalyticsLoader();
-  const { name, content } = element.props;
+  const children: RenderedChild[] = element.props.children;
 
-  expect(name).toBe('fresco-analytics');
-  expect(typeof content).toBe('string');
+  const tag = children.find(
+    (child) => child.props?.name === 'fresco-analytics',
+  );
+  const content = tag?.props?.content;
 
-  return JSON.parse(String(content)) as Record<string, unknown>;
+  if (typeof content !== 'string') {
+    throw new TypeError('no decision was published');
+  }
+
+  return JSON.parse(content) as Record<string, unknown>;
+}
+
+/** The decision handed to the component that follows later changes. */
+async function appliedDecision() {
+  const element = await AnalyticsLoader();
+  const children: { props?: { decision?: unknown } }[] = element.props.children;
+
+  return children.find((child) => child.props?.decision)?.props?.decision;
 }
 
 describe('AnalyticsLoader', () => {
@@ -69,6 +85,18 @@ describe('AnalyticsLoader', () => {
   // rather than being parsed as code. Recorded here because publishing it as
   // an inline script instead — the obvious alternative — would not have this
   // property.
+  // The tag is read once, at page load. A researcher turning analytics off in
+  // a tab that is already open re-renders this, and the tab has to stop
+  // capturing without waiting for a reload.
+  it('also hands the decision to the component that follows later changes', async () => {
+    mockGetDisableAnalytics.mockResolvedValue(false);
+
+    await expect(appliedDecision()).resolves.toEqual({
+      enabled: true,
+      installationId: 'install-123',
+    });
+  });
+
   it('cannot be broken out of by an installation ID', async () => {
     mockGetDisableAnalytics.mockResolvedValue(false);
     mockGetInstallationId.mockResolvedValue(

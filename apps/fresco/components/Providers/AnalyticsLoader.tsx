@@ -1,5 +1,6 @@
 import { connection } from 'next/server';
 
+import ApplyAnalyticsDecision from '~/components/Providers/ApplyAnalyticsDecision';
 import {
   ANALYTICS_DECISION_META_NAME,
   type AnalyticsDecision,
@@ -40,10 +41,18 @@ export default async function AnalyticsLoader() {
   // instead.
   await connection();
 
+  const decision = await resolveDecision();
+
   return (
-    <meta
-      name={ANALYTICS_DECISION_META_NAME}
-      content={JSON.stringify(await resolveDecision())}
-    />
+    <>
+      {/* Read by instrumentation-client.ts, which does not need React. */}
+      <meta
+        name={ANALYTICS_DECISION_META_NAME}
+        content={JSON.stringify(decision)}
+      />
+      {/* Follows the decision when a researcher changes the setting in a tab
+          that is already open, which the tag alone cannot do. */}
+      <ApplyAnalyticsDecision decision={decision} />
+    </>
   );
 }

@@ -180,14 +180,18 @@ export async function stopPostHog() {
 }
 
 /**
- * Ends session replay for the rest of this page load.
+ * Ends session replay for the rest of this page load, and stops it starting.
  *
  * `disable_session_recording` is settled when posthog-js initialises, which
  * covers a participant arriving on their interview through a fresh page load.
- * It does not cover a researcher reaching the same page from the dashboard by
- * client-side navigation, where recording is already running — see the
- * interview link in `app/dashboard/_components/InterviewsTable`. Participant
- * pages call this on mount so that route ends recording too.
+ * Participant pages call this as well, so that replay is off even if one is
+ * somehow reached without a page load.
+ *
+ * Called unconditionally rather than only when a recording is running.
+ * `stopSessionRecording` also sets `disable_session_recording` to true, and
+ * that is the half that matters here: the replay extension loads lazily, so a
+ * recorder that has not started yet would otherwise start moments later and
+ * record the page anyway.
  */
 export async function stopSessionRecording() {
   if (!clientPromise) {
@@ -196,9 +200,7 @@ export async function stopSessionRecording() {
 
   try {
     const posthog = await clientPromise;
-    if (posthog.sessionRecordingStarted()) {
-      posthog.stopSessionRecording();
-    }
+    posthog.stopSessionRecording();
   } catch {
     // Telemetry must never throw, and nothing was recording.
   }

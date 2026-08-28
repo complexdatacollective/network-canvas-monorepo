@@ -447,25 +447,23 @@ describe('Fresco PostHog client', () => {
     // A researcher opening an interview from the dashboard gets there by
     // client-side navigation, so posthog-js never re-initialises and the
     // decision above was already made on a page where recording was allowed.
-    it('ends a recording that was already running', async () => {
-      const { startPostHog, stopSessionRecording: stop } = await loadModule();
-      await startPostHog('install-123');
-      sessionRecordingStarted.mockReturnValue(true);
+    // Called whatever the current state, and deliberately without consulting
+    // sessionRecordingStarted. The replay extension loads lazily, so "not
+    // recording yet" is not "not going to record" — and stopSessionRecording
+    // also sets disable_session_recording, which is the half that stops it
+    // starting a moment later.
+    it.each([true, false])(
+      'stops replay when a recording has started: %s',
+      async (recording) => {
+        sessionRecordingStarted.mockReturnValue(recording);
+        const { startPostHog, stopSessionRecording: stop } = await loadModule();
+        await startPostHog('install-123');
 
-      await stop();
+        await stop();
 
-      expect(stopSessionRecording).toHaveBeenCalled();
-    });
-
-    it('does nothing when no recording was running', async () => {
-      const { startPostHog, stopSessionRecording: stop } = await loadModule();
-      await startPostHog('install-123');
-      sessionRecordingStarted.mockReturnValue(false);
-
-      await stop();
-
-      expect(stopSessionRecording).not.toHaveBeenCalled();
-    });
+        expect(stopSessionRecording).toHaveBeenCalled();
+      },
+    );
 
     it('never loads PostHog just to stop recording', async () => {
       const { stopSessionRecording: stop } = await loadModule();

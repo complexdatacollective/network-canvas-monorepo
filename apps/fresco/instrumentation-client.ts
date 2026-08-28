@@ -3,7 +3,7 @@ import {
   type AnalyticsDecision,
   parseAnalyticsDecision,
 } from '~/lib/analyticsDecision';
-import { startPostHog, stopPostHog } from '~/lib/posthog-client';
+import { applyAnalyticsDecision } from '~/lib/applyAnalyticsDecision';
 
 /**
  * Acts on the server's decision about analytics, as early in a page load as
@@ -17,30 +17,15 @@ import { startPostHog, stopPostHog } from '~/lib/posthog-client';
  * place would queue a crash report that nothing would ever send. Applying the
  * decision here means the queue drains whatever React does.
  *
- * It deliberately does not initialise PostHog itself. `startPostHog` is only
- * called for a deployment that has said yes, and posthog-js is imported
- * dynamically inside it, so a deployment with analytics disabled never fetches
- * the library and never contacts the relay.
+ * It deliberately does not initialise PostHog itself. PostHog is only started
+ * for a deployment that has said yes, and posthog-js is imported dynamically
+ * at that point, so a deployment with analytics disabled never fetches the
+ * library and never contacts the relay.
+ *
+ * Reading the tag once is enough here: `ApplyAnalyticsDecision` follows any
+ * later change to the setting, and both go through `applyAnalyticsDecision`,
+ * which ignores an answer it has already acted on.
  */
-
-let applied = false;
-
-function applyDecision(decision: AnalyticsDecision) {
-  // The tag can be read twice: once by the observer that spots it arriving,
-  // and again by the load handler that shuts the observer down. Acting on it
-  // twice would identify the browser and repeat the opt-in a second time.
-  if (applied) {
-    return;
-  }
-  applied = true;
-
-  if (decision.enabled) {
-    void startPostHog(decision.installationId);
-    return;
-  }
-
-  void stopPostHog();
-}
 
 function readDecision(): AnalyticsDecision | undefined {
   const content = document
@@ -74,7 +59,7 @@ function waitForDecision() {
     }
 
     observer.disconnect();
-    applyDecision(decision);
+    applyAnalyticsDecision(decision);
   });
 
   observer.observe(document.documentElement, {
@@ -92,7 +77,7 @@ function waitForDecision() {
       observer.disconnect();
 
       if (decision) {
-        applyDecision(decision);
+        applyAnalyticsDecision(decision);
       }
     },
     { once: true },
@@ -102,7 +87,7 @@ function waitForDecision() {
 const decision = readDecision();
 
 if (decision) {
-  applyDecision(decision);
+  applyAnalyticsDecision(decision);
 } else {
   waitForDecision();
 }
