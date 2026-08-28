@@ -38,6 +38,7 @@ export const TeamScopedSchema = z.object({
 
 export const ProtocolSummarySchema = z.object({
   id: z.uuid(),
+  draftId: z.uuid().nullable(),
   name: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -50,4 +51,83 @@ export const CreateProtocolInputSchema = TeamScopedSchema.extend({
 export const CreateProtocolResultSchema = z.object({
   protocolId: z.uuid(),
   draftId: z.uuid(),
+});
+
+const DecimalSequenceSchema = z.string().regex(/^\d+$/);
+const SectionDocumentSchema = z.record(z.string(), z.unknown());
+
+export const ProtocolDraftInputSchema = TeamScopedSchema.extend({
+  protocolId: z.uuid(),
+  draftId: z.uuid(),
+});
+
+export const ProtocolDraftSchema = z.object({
+  protocol: ProtocolSummarySchema.extend({ draftId: z.uuid() }),
+  revision: z.object({
+    sequence: DecimalSequenceSchema,
+    hash: z.string().min(1),
+  }),
+  sections: z.record(z.string(), SectionDocumentSchema),
+});
+
+const SectionScopedSchema = ProtocolDraftInputSchema.extend({
+  sectionId: z.string().min(1),
+  clientId: z.uuid(),
+});
+
+export const AcquireSectionInputSchema = SectionScopedSchema;
+export const AcquireSectionResultSchema = z.discriminatedUnion('mode', [
+  z.object({ mode: z.literal('editable'), leaseEpoch: DecimalSequenceSchema }),
+  z.object({ mode: z.literal('readOnly') }),
+]);
+
+const CommandSchema = z.discriminatedUnion('op', [
+  z.object({ op: z.literal('set'), key: z.string(), value: z.unknown() }),
+  z.object({ op: z.literal('unset'), key: z.string() }),
+  z.object({
+    op: z.literal('insertItem'),
+    key: z.string(),
+    index: z.number().int().nonnegative(),
+    item: z.unknown(),
+  }),
+  z.object({
+    op: z.literal('removeItem'),
+    key: z.string(),
+    index: z.number().int().nonnegative(),
+  }),
+  z.object({
+    op: z.literal('moveItem'),
+    key: z.string(),
+    from: z.number().int().nonnegative(),
+    to: z.number().int().nonnegative(),
+  }),
+]);
+
+export const CommitSectionInputSchema = SectionScopedSchema.extend({
+  leaseEpoch: DecimalSequenceSchema,
+  clientSequence: DecimalSequenceSchema,
+  commands: z.array(CommandSchema).min(1),
+});
+
+export const ManifestRevisionSchema = z.object({
+  sequence: DecimalSequenceSchema,
+  hash: z.string().min(1),
+});
+
+export const RenewSectionInputSchema = SectionScopedSchema.extend({
+  leaseEpoch: DecimalSequenceSchema,
+});
+
+export const RenewSectionResultSchema = z.object({ renewed: z.boolean() });
+export const ReleaseSectionInputSchema = SectionScopedSchema.extend({
+  leaseEpoch: DecimalSequenceSchema,
+});
+
+export const AddInformationStageInputSchema = ProtocolDraftInputSchema.extend({
+  stageId: z.uuid(),
+});
+
+export const MoveStageInputSchema = ProtocolDraftInputSchema.extend({
+  stageId: z.string().min(1),
+  toIndex: z.number().int().nonnegative(),
 });

@@ -1,4 +1,4 @@
-import { Outlet, useNavigate } from '@tanstack/react-router';
+import { Link, Outlet, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
 import { Alert } from '@codaco/fresco-ui/Alert';
@@ -19,38 +19,53 @@ export default function AppLayout() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center justify-end gap-4 px-4 py-2">
-        {signOutFailed && (
-          <Alert variant="destructive">
-            Sign-out did not complete. Try again.
-          </Alert>
-        )}
-        {session && (
-          <span className="text-sm">
-            Signed in as {session.user.name || session.user.email}
-          </span>
-        )}
-        <Button
-          size="sm"
-          onClick={() => {
-            setSignOutFailed(false);
-            void authClient
-              .signOut()
-              .then((result) => {
-                // better-fetch resolves failed requests with an error field
-                // instead of throwing; a failed sign-out leaves the cookie
-                // valid, so pretending it worked would be a lie.
-                if (result.error) {
-                  setSignOutFailed(true);
-                  return;
-                }
-                return navigate({ to: '/sign-in' });
-              })
-              .catch(() => setSignOutFailed(true));
-          }}
+      <a
+        href="#main-content"
+        className="focusable bg-surface text-surface-contrast fixed top-2 left-2 z-50 -translate-y-24 rounded px-4 py-2 focus:translate-y-0"
+      >
+        Skip to main content
+      </a>
+      <header className="flex items-center justify-between gap-4 px-4 py-2">
+        <Link
+          className="focusable font-heading rounded font-bold no-underline"
+          to="/"
         >
-          Sign out
-        </Button>
+          Studio
+        </Link>
+        <div className="flex flex-wrap items-center justify-end gap-4">
+          {signOutFailed && (
+            <Alert variant="destructive">
+              Sign-out did not complete. Try again.
+            </Alert>
+          )}
+          {session && (
+            <span className="text-sm">
+              Signed in as {session.user.name || session.user.email}
+            </span>
+          )}
+          <Button
+            size="sm"
+            onClick={() => {
+              setSignOutFailed(false);
+              void authClient
+                .signOut()
+                .then(async (result) => {
+                  // better-fetch resolves failed requests with an error field
+                  // instead of throwing; a failed sign-out leaves the cookie
+                  // valid, so pretending it worked would be a lie.
+                  if (result.error) {
+                    setSignOutFailed(true);
+                    return undefined;
+                  }
+                  await navigate({ to: '/sign-in' });
+                  return undefined;
+                })
+                .catch(() => setSignOutFailed(true));
+            }}
+          >
+            Sign out
+          </Button>
+        </div>
       </header>
       <div className="min-h-0 flex-1">
         <Outlet />

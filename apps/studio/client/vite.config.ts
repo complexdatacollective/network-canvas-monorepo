@@ -24,7 +24,11 @@ export default defineConfig({
     // Workspace packages resolve to raw TypeScript source; excluded from
     // pre-bundling so Vite transforms them through its own pipeline rather
     // than attempting to pre-bundle them.
-    exclude: ['@codaco/fresco-ui'],
+    exclude: [
+      '@codaco/fresco-ui',
+      '@codaco/protocol-builder',
+      '@codaco/studio-sync',
+    ],
   },
   server: {
     proxy: {

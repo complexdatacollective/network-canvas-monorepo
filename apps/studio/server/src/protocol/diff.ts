@@ -1,6 +1,5 @@
 import { type SectionDoc, canonicalize } from '@codaco/studio-sync/apply';
-
-import { parseSectionId, sectionId } from './taxonomy.ts';
+import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 
 export type SectionSet = Record<string, string>;
 

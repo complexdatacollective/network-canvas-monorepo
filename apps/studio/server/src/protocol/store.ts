@@ -7,13 +7,19 @@ import {
   validateProtocol,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
+import {
+  assembleProtocolSections,
+  ProtocolAssemblyError,
+} from '@codaco/studio-sync/protocol-document';
+import {
+  parseSectionId,
+  sectionId as makeSectionId,
+} from '@codaco/studio-sync/taxonomy';
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
-import { AssemblyError, assembleProtocol } from './assemble.ts';
 import { type ProtocolChange, diffProtocolSections } from './diff.ts';
 import { insertDraftRows } from './draft-rows.ts';
 import { sectionizeProtocol } from './sectionize.ts';
-import { sectionId as makeSectionId, parseSectionId } from './taxonomy.ts';
 import {
   type SectionIssue,
   SectionValidationFailedError,
@@ -49,10 +55,13 @@ export type VersionRow = {
 
 export type ProtocolRow = {
   id: string;
+  draftId: string | null;
   name: string;
   createdAt: Date;
   updatedAt: Date;
 };
+
+type EditableProtocolRow = Omit<ProtocolRow, 'draftId'> & { draftId: string };
 
 export type DraftSections = {
   headSeq: bigint;
@@ -90,9 +99,9 @@ function assembleOrIssues(
   | { document: Record<string, unknown>; issues?: undefined }
   | { document?: undefined; issues: ProtocolValidationIssue[] } {
   try {
-    return { document: assembleProtocol(sections) };
+    return { document: assembleProtocolSections(sections) };
   } catch (err) {
-    if (err instanceof AssemblyError) {
+    if (err instanceof ProtocolAssemblyError) {
       return { issues: [{ code: 'custom', path: [], message: err.message }] };
     }
     throw err;
@@ -236,7 +245,44 @@ export class ProtocolStore {
 
   async getDraftDocument(draftId: string): Promise<Record<string, unknown>> {
     const { sections } = await this.getDraftSections(draftId);
-    return assembleProtocol(sections);
+    return assembleProtocolSections(sections);
+  }
+
+  async getProtocolDraft(
+    protocolId: string,
+    draftId: string,
+  ): Promise<{ protocol: EditableProtocolRow; draft: DraftSections }> {
+    const res = await this.db.query(
+      `SELECT p.id, p.name, p.created_at, p.updated_at
+       FROM protocols p
+       JOIN protocol_drafts pd
+         ON pd.protocol_id = p.id AND pd.team_id = p.team_id
+       WHERE p.id = $1 AND pd.draft_id = $2 AND p.team_id = $3`,
+      [protocolId, draftId, this.db.teamId],
+    );
+    const row = res.rows[0] as
+      | {
+          id: string;
+          name: string;
+          created_at: Date;
+          updated_at: Date;
+        }
+      | undefined;
+    if (row === undefined) {
+      throw new ProtocolStoreError(
+        `no draft ${draftId} for protocol ${protocolId}`,
+      );
+    }
+    return {
+      protocol: {
+        id: row.id,
+        draftId,
+        name: row.name,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      },
+      draft: await this.getDraftSections(draftId),
+    };
   }
 
   async validateDraft(
@@ -447,7 +493,7 @@ export class ProtocolStore {
     versionId: string,
   ): Promise<Record<string, unknown>> {
     const { sections } = await this.getVersionSections(versionId);
-    return assembleProtocol(sections);
+    return assembleProtocolSections(sections);
   }
 
   async listVersions(protocolId: string): Promise<VersionRow[]> {
@@ -483,19 +529,29 @@ export class ProtocolStore {
 
   async listProtocols(): Promise<ProtocolRow[]> {
     const res = await this.db.query(
-      `SELECT id, name, created_at, updated_at FROM protocols
-       WHERE team_id = $1 ORDER BY created_at DESC, id`,
+      `SELECT p.id, p.name, p.created_at, p.updated_at, d.draft_id
+       FROM protocols p
+       LEFT JOIN LATERAL (
+         SELECT pd.draft_id
+         FROM protocol_drafts pd
+         WHERE pd.protocol_id = p.id AND pd.team_id = p.team_id
+         ORDER BY pd.created_at DESC, pd.draft_id
+         LIMIT 1
+       ) d ON true
+       WHERE p.team_id = $1 ORDER BY p.created_at DESC, p.id`,
       [this.db.teamId],
     );
     return (
       res.rows as {
         id: string;
+        draft_id: string | null;
         name: string;
         created_at: Date;
         updated_at: Date;
       }[]
     ).map((row) => ({
       id: row.id,
+      draftId: row.draft_id,
       name: row.name,
       createdAt: row.created_at,
       updatedAt: row.updated_at,

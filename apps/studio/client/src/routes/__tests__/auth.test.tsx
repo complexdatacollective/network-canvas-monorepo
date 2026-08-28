@@ -13,6 +13,7 @@ vi.mock('../../lib/auth.ts', () => ({
   authClient: {
     getSession: vi.fn(),
     useSession: vi.fn(),
+    useListOrganizations: vi.fn(),
     signIn: { magicLink: vi.fn(), social: vi.fn() },
     signOut: vi.fn(),
   },
@@ -34,7 +35,24 @@ vi.mock('../../lib/api.ts', () => ({
         queryFn: () => currentStatus,
       }),
     },
+    protocols: {
+      list: {
+        queryOptions: () => ({
+          queryKey: ['protocols'],
+          queryFn: () => [],
+        }),
+        key: () => ['protocols'],
+      },
+      create: {
+        mutationOptions: () => ({ mutationFn: vi.fn() }),
+      },
+      draft: {
+        queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
+        key: () => ['draft'],
+      },
+    },
   },
+  rpcClient: { protocols: {} },
 }));
 
 const mocked = vi.mocked(authClient, true);
@@ -84,6 +102,11 @@ beforeEach(() => {
   currentStatus = STATUS;
   mocked.getSession.mockResolvedValue(signedOut);
   mocked.useSession.mockReturnValue(sessionNone);
+  mocked.useListOrganizations.mockReturnValue({
+    data: [],
+    isPending: false,
+    error: null,
+  } as unknown as ReturnType<typeof authClient.useListOrganizations>);
 });
 
 describe('route guard', () => {
