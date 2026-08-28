@@ -2505,9 +2505,8 @@ test('the stack aliases the relay hostname onto a sink the app waits for', () =>
 // silently hollow the gate out, so the constant is checked against the port
 // list rather than assumed to agree with it.
 test('the sink covers the port the relay constant actually names', async () => {
-  const { SINK_PORTS } = await import(
-    '../apps/fresco/release-test/scripts/relay-sink-protocol.mjs'
-  );
+  const { SINK_PORTS } =
+    await import('../apps/fresco/release-test/scripts/relay-sink-protocol.mjs');
   const url = relayUrl();
   const port = Number(url.port || (url.protocol === 'https:' ? 443 : 80));
   assert.ok(
@@ -2517,7 +2516,7 @@ test('the sink covers the port the relay constant actually names', async () => {
 });
 
 test('the sink and the reader agree on the wire contract', async () => {
-  const { PROBE_MARKER, SINK_PORTS, classify } =
+  const { PROBE_MARKER, classify } =
     await import('../apps/fresco/release-test/scripts/relay-sink-protocol.mjs');
   // Only the marker is a probe. Everything else — a TLS ClientHello, a bare
   // http request, or a connection that said nothing — is egress, because a
