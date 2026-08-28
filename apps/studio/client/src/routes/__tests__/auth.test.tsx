@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { contract } from '@codaco/studio-rpc';
 
+import { registerStudioEditorSession } from '../../editor/sessionLifecycle.ts';
 import { authClient } from '../../lib/auth.ts';
 import { createAppRouter } from '../../router.tsx';
 
@@ -61,6 +62,14 @@ type GetSessionResult = Awaited<ReturnType<typeof authClient.getSession>>;
 type UseSessionResult = ReturnType<typeof authClient.useSession>;
 type MagicLinkResult = Awaited<ReturnType<typeof authClient.signIn.magicLink>>;
 type SocialResult = Awaited<ReturnType<typeof authClient.signIn.social>>;
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((complete) => {
+    resolve = complete;
+  });
+  return { promise, resolve };
+}
 
 const SESSION = {
   user: {
@@ -170,6 +179,27 @@ describe('route guard', () => {
 });
 
 describe('sign-out', () => {
+  it('closes editor sessions before clearing authentication', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    mocked.useSession.mockReturnValue(sessionLive);
+    const closed = deferred<void>();
+    const close = vi.fn(() => closed.promise);
+    const unregister = registerStudioEditorSession(close);
+    mocked.signOut.mockResolvedValue({
+      data: { success: true },
+      error: null,
+    } as unknown as Awaited<ReturnType<typeof authClient.signOut>>);
+    renderAt('/');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+    expect(mocked.signOut).not.toHaveBeenCalled();
+
+    closed.resolve();
+    await waitFor(() => expect(mocked.signOut).toHaveBeenCalledTimes(1));
+    unregister();
+  });
+
   it('stays put and reports failure when sign-out does not complete', async () => {
     mocked.getSession.mockResolvedValue(signedIn);
     mocked.useSession.mockReturnValue(sessionLive);

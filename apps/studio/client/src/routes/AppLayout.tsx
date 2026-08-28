@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Alert } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 
+import { closeStudioEditorSessions } from '../editor/sessionLifecycle.ts';
 import { authClient } from '../lib/auth.ts';
 
 export default function AppLayout() {
@@ -47,20 +48,23 @@ export default function AppLayout() {
             size="sm"
             onClick={() => {
               setSignOutFailed(false);
-              void authClient
-                .signOut()
-                .then(async (result) => {
+              void (async () => {
+                try {
+                  await closeStudioEditorSessions();
+                  await navigate({ to: '/' });
+                  const result = await authClient.signOut();
                   // better-fetch resolves failed requests with an error field
                   // instead of throwing; a failed sign-out leaves the cookie
                   // valid, so pretending it worked would be a lie.
                   if (result.error) {
                     setSignOutFailed(true);
-                    return undefined;
+                    return;
                   }
                   await navigate({ to: '/sign-in' });
-                  return undefined;
-                })
-                .catch(() => setSignOutFailed(true));
+                } catch {
+                  setSignOutFailed(true);
+                }
+              })();
             }}
           >
             Sign out
