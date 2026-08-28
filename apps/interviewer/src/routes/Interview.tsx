@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useSearch } from 'wouter';
+import { useLocation, useRoute, useSearch } from 'wouter';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
@@ -75,6 +75,17 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     getAuthorizedInterviewId,
     setAuthorizedInterviewId,
   } = useStepUpAuth();
+  // App.tsx's AnimatePresence page transition keeps this route mounted — with
+  // live context subscriptions and effects — while its exit fade plays after
+  // navigation away. The load effect must treat that window as inert:
+  // re-running the enter gate there raises a step-up prompt over Home that
+  // nothing ever resolves, and re-writing the entry authorization re-arms what
+  // the gated exit just cleared.
+  const [interviewRouteMatches, interviewRouteParams] = useRoute(
+    '/interview/:sessionId',
+  );
+  const isLiveRoute =
+    interviewRouteMatches && interviewRouteParams.sessionId === sessionId;
   const [finished, setFinished] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [allowStageNavigation, setAllowStageNavigation] = useState(false);
@@ -135,6 +146,9 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   }, [requireFreshUnlock, goHome, setAuthorizedInterviewId]);
 
   useEffect(() => {
+    // Exit-fade window (see isLiveRoute above): do nothing at all — no gate,
+    // no authorization write, no state update.
+    if (!isLiveRoute) return undefined;
     let active = true;
     const load = async () => {
       const settings = await getSettings();
@@ -233,6 +247,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     getAuthorizedInterviewId,
     setAuthorizedInterviewId,
     reviewRequested,
+    isLiveRoute,
   ]);
 
   const { client: posthogClient, enabled: analyticsEnabled } = useAnalytics();
