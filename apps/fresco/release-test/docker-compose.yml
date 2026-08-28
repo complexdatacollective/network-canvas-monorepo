@@ -29,11 +29,11 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres
       DATABASE_URL_UNPOOLED: postgresql://postgres:postgres@postgres:5432/postgres
       PUBLIC_URL: http://localhost:${FRESCO_PORT:-3210}
-      # Stops server-side capture, and stops the browser reaching the relay at
+      # Stops server-side capture, and stops the browser reaching off-box at
       # all: posthog-js is loaded only once the server has confirmed analytics
-      # are on, so a stack that sets this makes no request to it. The fresh
-      # lane counts the requests that reach the relay and the workflow fails
-      # the run on any of them.
+      # are on, so a stack that sets this contacts nothing but localhost. Both
+      # lanes report the hosts their tab reached and the workflow fails the run
+      # on any that is not this deployment.
       DISABLE_ANALYTICS: 'true'
       COOKIE_SECURE: 'false'
       # Next standalone binds to $HOSTNAME (default: container id -> NIC IP),

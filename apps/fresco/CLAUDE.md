@@ -76,16 +76,24 @@ download capture via MinIO). `release-test/AGENT_NOTES.md` records the
 verified techniques for driving Fresco in the in-app browser. The directory is
 excluded from the public mirror. Storage is configured through the setup
 wizard, not env vars, matching real bundled-MinIO deployments. Both stacks set
-`DISABLE_ANALYTICS`, and a deployment with analytics disabled must reach the
-analytics relay zero times: the browser loads posthog-js only once the server
-has confirmed analytics are on (`components/Providers/AnalyticsLoader.tsx` and
+`DISABLE_ANALYTICS`, and a deployment with analytics disabled sends nothing
+off-box from the browser: posthog-js is loaded only once the server has
+confirmed analytics are on (`components/Providers/AnalyticsLoader.tsx` and
 `lib/posthog-client.ts`), so there is no earlier window in which it could call
-out. Both surfaces that can start analytics are counted, because a regression
-in either is invisible to the other — the fresh lane reads the new-deployment
-dashboard, and the upgrade lane reads the participant-facing interview route,
-which hands `@codaco/interview` its own client. The workflow fails the run on
-any request from either: since that guarantee shipped, one is a regression
-rather than a known limitation.
+out. Both browser surfaces that can start analytics are read, because a
+regression in either is invisible to the other — the fresh lane reads the
+new-deployment dashboard, and the upgrade lane reads the participant-facing
+interview route, which hands `@codaco/interview` its own client. Each reports
+the hosts its tab contacted rather than requests to the relay's hostname, so
+analytics repointed at any other ingestion host still fails, and each reports
+its total log size as a positive control — a log that recorded nothing cannot
+evidence silence. Any host outside the deployment fails the run.
+
+What this does **not** watch is server-side capture. `lib/posthog-server.ts`
+returns on `isAnalyticsDisabled()` before it constructs the posthog-node
+client, so a disabled deployment never builds one; that guard is covered by
+unit tests, not by this gate, because seeing the container's own egress needs
+a relay sink the harness does not have.
 
 ### Reading the verdict
 

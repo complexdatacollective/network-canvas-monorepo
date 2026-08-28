@@ -168,6 +168,11 @@ const VERSION = /^[\w.+-]+$/;
 // control characters — but no narrower than the tool that creates them.
 const CHANGESET_NAME = /^[\w.-]+$/;
 const COMMIT = /^[0-9a-f]{7,40}$/i;
+// A bare hostname: labels joined by dots, no scheme, port, path or userinfo.
+// Deliberately strict — anything else is not something the egress gate can
+// reason about, and is reported as unreadable rather than waved through.
+const HOSTNAME =
+  /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/i;
 // docker image inspect --format '{{.Id}}' and build-image.sh's stamp both
 // carry the full digest. Accepting an abbreviation would let two different
 // images that share a prefix compare equal, which is the opposite of what this
@@ -251,20 +256,36 @@ const CHECKS_SCHEMA = {
   required: ['area', 'pass', 'checks'],
 };
 
-// For the two areas that also report how often the browser reached the
-// analytics relay. Gating, so the field is required: its absence must not be
-// readable as zero.
+// For the two areas that also report where the browser sent traffic.
+//
+// Not a count of requests to the relay's hostname: analytics that regressed to
+// posthog-js's default ingestion host, or to any other host a config change
+// pointed it at, would leave that count at zero while transmitting. The
+// question a self-hosted deployment can actually answer is whether the browser
+// contacted anything off-box at all, so the agent reports the hosts and the
+// gate reads any of them as egress.
+//
+// networkLogEntries is the positive control. "No external hosts" is a negative
+// assertion, and an empty log satisfies it exactly as well as a silent page
+// does — so a zero is only evidence when the log demonstrably recorded the
+// page's own traffic. Both fields are required: their absence must not be
+// readable as silence.
 const EGRESS_CHECKS_SCHEMA = {
   ...CHECKS_SCHEMA,
   properties: {
     ...CHECKS_SCHEMA.properties,
-    analyticsRequests: {
-      type: 'number',
+    externalHosts: {
+      type: 'array',
+      items: { type: 'string' },
       description:
-        'Requests to the analytics relay observed in the network log',
+        'Distinct hostnames the tab contacted that are not localhost/127.0.0.1',
+    },
+    networkLogEntries: {
+      type: 'number',
+      description: "Total requests the tab's network log recorded, of any host",
     },
   },
-  required: [...CHECKS_SCHEMA.required, 'analyticsRequests'],
+  required: [...CHECKS_SCHEMA.required, 'externalHosts', 'networkLogEntries'],
 };
 
 const STACK_SCHEMA = {
@@ -850,7 +871,7 @@ Record one check per numbered item:
 7. A persisted interview still RESUMES on the upgraded build — open one seeded incomplete interview at its /interview/<id> URL (id from the interviews table or psql per AGENT_NOTES) and verify the interview shell renders its current stage without an error screen.
 8. A sync round-trip still succeeds: the sync middleware only fires on a session STATE CHANGE, so an untouched stage sends nothing — use the shell's forward/back navigation control (shell chrome, not stage content) to advance or step the stage, and confirm a request to /interview/<id>/sync succeeds in the network log. THIS ITEM MAY BE SKIPPED, and only when stage validation blocks navigation in both directions so no state change can be produced; say so in notes.
 Do NOT interact with stage content; items 7 and 8 exercise Fresco's payload mapping and schema-version compatibility gate, not interview behaviour (the interview package covers that).
-Then, separately from the checks: the participant-facing interview route starts analytics by a different path from the dashboard, so it needs its own reading. Open that same /interview/<id> URL in a FRESH tab (an interview needs no sign-in), let it settle, then read THAT tab's network log and count every request to ph-relay.networkcanvas.com — attempted, failed and blocked alike — and report that exact count in analyticsRequests (0 if there were none). The tab must be one you opened yourself just now: this instance ran the released image until the swap, and a log carrying its traffic would describe the wrong build. Report what the log shows and nothing else; the workflow decides what the number means. Do not turn it into a ninth check.
+Then, separately from the checks: the participant-facing interview route starts analytics by a different path from the dashboard, so it needs its own reading. Open that same /interview/<id> URL in a FRESH tab (an interview needs no sign-in). The tab must be one you opened yourself just now: this instance ran the released image until the swap, and a log carrying its traffic would describe the wrong build. Wait until the interview shell has rendered its stage AND the tab's network log contains that page's own document request — that is what tells you the log is recording; do not read it before then. Then read the FULL log and report two things. networkLogEntries: how many requests it holds in total, of any host. externalHosts: the distinct hostnames among them that are NOT localhost or 127.0.0.1, as bare hostnames with no scheme or port (an empty array if there are none; everything this deployment needs, MinIO included, is served from localhost). Report what the log shows and nothing else — do not filter for what looks like analytics, and do not report an empty log as an empty host list. The workflow decides what they mean. Do not turn either into a ninth check.
 ${CHECK_DISCIPLINE}
 Set area="integrity".`,
     {
@@ -940,7 +961,7 @@ Record one check per numbered item, in order:
 9. The uploaded protocol is listed on the protocols page.
 10. In settings, create an API token (enable the data API if needed) and curl one documented endpoint with it: well-formed JSON.
 11. Analytics stay off: this stack sets DISABLE_ANALYTICS, so the settings privacy section must show analytics disabled AND read-only (an environment-locked notice rather than an operable switch).
-Then, separately from the checks: read the tab's network log and count every request to ph-relay.networkcanvas.com — attempted, failed and blocked alike — and report that exact count in analyticsRequests (0 if there were none). Report what the log shows and nothing else; the workflow decides what the number means. Do not turn it into a twelfth check.
+Then, separately from the checks: read this tab's FULL network log — every request it recorded, attempted, failed and blocked alike — and report two things. networkLogEntries: how many requests the log holds in total, of any host. externalHosts: the distinct hostnames among them that are NOT localhost or 127.0.0.1, as bare hostnames with no scheme or port (an empty array if there are none; everything this deployment needs, MinIO included, is served from localhost). Report what the log shows and nothing else — do not filter for what looks like analytics, and do not report an empty log as an empty host list. The workflow decides what they mean. Do not turn either into a twelfth check.
 ${CHECK_DISCIPLINE}
 Set area="freshSetup".`,
     {
@@ -1713,14 +1734,37 @@ const egressSurfaces = [
 ];
 for (const [lane, surface, result] of egressSurfaces) {
   if (!result) continue;
-  const observed = counted(result.analyticsRequests);
-  if (observed === null)
+
+  // The positive control comes first. Everything below is a negative
+  // assertion, and a log that recorded nothing satisfies it exactly as well as
+  // a page that sent nothing — so until the log is shown to have been
+  // recording, its silence is not evidence of anything.
+  const entries = counted(result.networkLogEntries);
+  if (entries === null || entries === 0) {
     unaccounted.push(
-      `the ${lane} did not report a usable count of requests to the analytics relay ("${result.analyticsRequests ?? 'missing'}"), so nothing shows whether ${surface} stayed silent on this DISABLE_ANALYTICS deployment`,
+      `the ${lane}'s network log for ${surface} held ${entries === 0 ? 'no requests at all' : `no usable request count ("${result.networkLogEntries ?? 'missing'}")`} — a log that recorded nothing cannot show that anything stayed silent`,
     );
-  else if (observed > 0)
+    continue;
+  }
+
+  if (!Array.isArray(result.externalHosts)) {
+    unaccounted.push(
+      `the ${lane} did not report the hosts ${surface} contacted ("${result.externalHosts ?? 'missing'}"), so nothing shows where its traffic went`,
+    );
+    continue;
+  }
+  // A name that is not shaped like a host is not a host this can reason
+  // about — reporting it as clean would launder it, so the run stops instead.
+  const hosts = result.externalHosts.map((h) => shaped(h, HOSTNAME, 253));
+  if (hosts.some((h) => h === null)) {
+    unaccounted.push(
+      `the ${lane} reported something that is not a hostname among the hosts ${surface} contacted, so its egress cannot be read`,
+    );
+    continue;
+  }
+  if (hosts.length)
     failures.push(
-      `the ${lane} observed ${observed} request(s) to the analytics relay from ${surface} even though the stack sets DISABLE_ANALYTICS — a deployment with analytics disabled must never load PostHog at all`,
+      `${surface} contacted ${hosts.length} host(s) outside this deployment — ${hosts.join(', ')} — even though the ${lane}'s stack sets DISABLE_ANALYTICS; a self-hosted deployment with analytics disabled sends nothing off-box`,
     );
 }
 

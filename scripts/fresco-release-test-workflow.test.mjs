@@ -97,7 +97,8 @@ const happyPath = () => ({
     area: 'integrity',
     pass: true,
     checks: passing(8),
-    analyticsRequests: 0,
+    externalHosts: [],
+    networkLogEntries: 24,
   },
   'verify-crud': { area: 'crud', pass: true, checks: passing(8) },
   'verify-api-settings': {
@@ -124,7 +125,8 @@ const happyPath = () => ({
     area: 'freshSetup',
     pass: true,
     checks: passing(11),
-    analyticsRequests: 0,
+    externalHosts: [],
+    networkLogEntries: 31,
   },
   'audit-artifacts': {
     ok: true,
@@ -2118,8 +2120,10 @@ test('the workflow only ever returns a documented verdict', async () => {
 // ---------------------------------------------------------------------------
 
 // A deployment with analytics disabled loads posthog-js only once the server
-// has said analytics are on, so the relay hears from it exactly zero times.
-// Anything else is that guarantee having been lost in the build under test.
+// has said analytics are on, so nothing leaves the box. The oracle is the set
+// of hosts the tab reached, not requests to the relay's hostname: analytics
+// repointed at any other ingestion host would leave a relay count at zero
+// while transmitting.
 //
 // Two surfaces start analytics by different paths — the dashboard through
 // AnalyticsLoader, the participant-facing interview route through
@@ -2131,41 +2135,90 @@ const EGRESS_AREAS = [
 ];
 
 for (const [label, lane] of EGRESS_AREAS) {
-  test(`a relay request seen by the ${lane} blocks the release`, async () => {
+  test(`egress seen by the ${lane} blocks the release`, async () => {
     const r = happyPath();
-    r[label].analyticsRequests = 3;
+    r[label].externalHosts = ['ph-relay.networkcanvas.com'];
     const { result } = await run(r);
     assert.equal(result.verdict, 'no-go');
     assert.equal(result.releasable, false);
-    const egress = result.failures.find((f) => f.includes('analytics relay'));
+    const egress = result.failures.find((f) => f.includes('outside this'));
     assert.ok(egress, JSON.stringify(result.failures));
-    assert.match(egress, /3 request/);
-    assert.match(egress, new RegExp(lane));
-    // The old text excused the traffic as an unavoidable pre-hydration window.
-    // That window no longer exists, so the message must not resurrect it.
+    assert.match(egress, /ph-relay\.networkcanvas\.com/);
     assert.ok(
-      !/hydration|unconditional|anonymous/.test(egress),
-      `the failure still describes the removed pre-hydration window: ${egress}`,
-    );
-    assert.ok(
-      !result.warnings.some((w) => w.includes('analytics relay')),
+      !result.warnings.some((w) => w.includes('outside this')),
       `the egress must gate rather than warn: ${JSON.stringify(result.warnings)}`,
     );
   });
 
-  test(`an unreported ${lane} relay count fails closed rather than reading as zero`, async () => {
+  // The relay hostname is not the oracle — a regression that reached
+  // posthog-js's default ingestion host instead must fail identically.
+  test(`the ${lane} blocks egress to a host that is not the relay`, async () => {
     const r = happyPath();
-    delete r[label].analyticsRequests;
+    r[label].externalHosts = ['us.i.posthog.com'];
+    const { result } = await run(r);
+    assert.equal(result.verdict, 'no-go');
+    assert.ok(
+      result.failures.some((f) => f.includes('us.i.posthog.com')),
+      JSON.stringify(result.failures),
+    );
+  });
+
+  test(`an unreported ${lane} host list fails closed rather than reading as silence`, async () => {
+    const r = happyPath();
+    delete r[label].externalHosts;
     const { result } = await run(r);
     assert.equal(result.verdict, 'incomplete');
     assert.equal(result.releasable, false);
     assert.deepEqual(result.failures, []);
     assert.ok(
       result.unaccounted.some(
-        (u) => u.includes('analytics relay') && u.includes(lane),
+        (u) => u.includes('where its traffic went') && u.includes(lane),
       ),
       JSON.stringify(result.unaccounted),
     );
+  });
+
+  // The positive control. "No external hosts" and "the log recorded nothing"
+  // are the same observation until the log is shown to have been recording,
+  // and only one of them is evidence.
+  test(`an empty ${lane} network log is not evidence of silence`, async () => {
+    for (const entries of [0, undefined, -1, 'lots', 2.5]) {
+      const r = happyPath();
+      r[label].networkLogEntries = entries;
+      const { result } = await run(r);
+      const shown = JSON.stringify(entries) ?? 'undefined';
+      assert.equal(result.releasable, false, `${shown} certified the release`);
+      assert.deepEqual(result.failures, [], shown);
+      assert.ok(
+        result.unaccounted.some(
+          (u) =>
+            u.includes('cannot show that anything stayed silent') &&
+            u.includes(lane),
+        ),
+        `${shown}: ${JSON.stringify(result.unaccounted)}`,
+      );
+    }
+  });
+
+  // A value that is not a hostname cannot be reasoned about; treating it as
+  // clean would launder it into a pass.
+  test(`a malformed ${lane} host is not laundered into a pass`, async () => {
+    for (const host of [
+      'https://ph-relay.networkcanvas.com',
+      'a host',
+      '',
+      7,
+    ]) {
+      const r = happyPath();
+      r[label].externalHosts = [host];
+      const { result } = await run(r);
+      const shown = JSON.stringify(host);
+      assert.equal(result.releasable, false, `${shown} certified the release`);
+      assert.ok(
+        result.unaccounted.some((u) => u.includes('not a hostname')),
+        `${shown}: ${JSON.stringify(result.unaccounted)}`,
+      );
+    }
   });
 }
 
@@ -2174,8 +2227,8 @@ for (const [label, lane] of EGRESS_AREAS) {
 // would be.
 test('a silent dashboard does not excuse the interview route', async () => {
   const r = happyPath();
-  r['verify-fresh-setup'].analyticsRequests = 0;
-  r['verify-data-integrity'].analyticsRequests = 1;
+  r['verify-fresh-setup'].externalHosts = [];
+  r['verify-data-integrity'].externalHosts = ['ph-relay.networkcanvas.com'];
   const { result } = await run(r);
   assert.equal(result.releasable, false);
   assert.ok(
@@ -2184,50 +2237,29 @@ test('a silent dashboard does not excuse the interview route', async () => {
   );
 });
 
-test('a malformed relay count is not coerced into a clean observation', async () => {
-  // Number('0') is 0 and Number({}) is NaN: coercion would read a string, a
-  // fraction, a negative and a non-number alike as "the relay was silent".
-  const malformed = [
-    ['a string', '0'],
-    ['a fraction', 1.5],
-    ['a negative', -1],
-    ['null', null],
-    ['an object', {}],
-    ['NaN', Number.NaN],
-  ];
-  for (const [shown, value] of malformed) {
-    const r = happyPath();
-    r['verify-fresh-setup'].analyticsRequests = value;
-    const { result } = await run(r);
-    assert.equal(result.releasable, false, `${shown} certified the release`);
-    assert.deepEqual(result.failures, [], shown);
-    assert.ok(
-      result.unaccounted.some((u) => u.includes('analytics relay')),
-      `${shown}: ${JSON.stringify(result.unaccounted)}`,
-    );
-  }
-});
-
-test('the relay gate stays silent when the fresh setup never ran', async () => {
+test('the egress gate stays silent when the fresh setup never ran', async () => {
   const r = happyPath();
   r['up-fresh'] = { ok: false, error: 'prisma migrate deploy exited 1' };
   const { result } = await run(r);
   for (const line of [...result.failures, ...result.unaccounted])
     assert.ok(
-      !line.includes('analytics relay'),
-      `a lane that never reached setup produced an analytics finding: ${line}`,
+      !line.includes('new-deployment dashboard'),
+      `a lane that never reached setup produced an egress finding: ${line}`,
     );
 });
 
-test('both egress agents are required to return the relay count', async () => {
+test('both egress agents are required to return both observations', async () => {
   const { prompts } = await run(happyPath());
   for (const [label] of EGRESS_AREAS) {
     const a = prompts.find((p) => p.label === label);
-    assert.ok(
-      a.opts.schema.required.includes('analyticsRequests'),
-      `${label}: the gating field is optional in the schema, so an agent may omit it`,
-    );
-    assert.match(a.prompt, /ph-relay\.networkcanvas\.com/);
+    for (const field of ['externalHosts', 'networkLogEntries'])
+      assert.ok(
+        a.opts.schema.required.includes(field),
+        `${label}: ${field} is optional in the schema, so an agent may omit it`,
+      );
+    // The prompt must not reduce the oracle back to one hostname.
+    assert.match(a.prompt, /networkLogEntries/);
+    assert.match(a.prompt, /localhost/);
   }
 });
 
@@ -2235,10 +2267,14 @@ test('both egress agents are required to return the relay count', async () => {
 // image predates the guarantee. A count taken from a tab it had already
 // touched would fail the candidate for its predecessor's traffic.
 test('the interview reading is taken from a tab opened after the swap', async () => {
-  const { prompts } = await run(happyPath());
-  const integrity = promptFor(prompts, 'verify-data-integrity');
+  const integrity = promptFor(
+    (await run(happyPath())).prompts,
+    'verify-data-integrity',
+  );
   assert.match(integrity, /FRESH tab/);
   assert.match(integrity, /released image/);
+  // And it must not be read before the log is demonstrably recording.
+  assert.match(integrity, /document request/);
 });
 
 test('a failed teardown warns without blocking the release', async () => {
