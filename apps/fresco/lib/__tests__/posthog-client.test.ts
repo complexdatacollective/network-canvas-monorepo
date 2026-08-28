@@ -9,12 +9,18 @@ const {
   captureException,
   capture,
   shutdown,
+  startSessionRecording,
+  stopSessionRecording,
+  sessionRecordingStarted,
   calls,
 } = vi.hoisted(() => {
   const order: string[] = [];
   return {
     calls: order,
-    init: vi.fn(() => void order.push('init')),
+    init: vi.fn(
+      (_key: string, _config: Record<string, unknown>) =>
+        void order.push('init'),
+    ),
     register: vi.fn(() => void order.push('register')),
     identify: vi.fn(),
     optInCapturing: vi.fn(() => void order.push('opt_in_capturing')),
@@ -25,6 +31,9 @@ const {
       order.push('shutdown');
       return Promise.resolve();
     }),
+    startSessionRecording: vi.fn(),
+    stopSessionRecording: vi.fn(),
+    sessionRecordingStarted: vi.fn(() => false),
   };
 });
 
@@ -38,6 +47,9 @@ vi.mock('posthog-js', () => ({
     captureException,
     capture,
     shutdown,
+    startSessionRecording,
+    stopSessionRecording,
+    sessionRecordingStarted,
   },
 }));
 
@@ -355,5 +367,112 @@ describe('Fresco PostHog client', () => {
     // Opting in, unlike init, is repeated on purpose: it is what clears a
     // stored opt-out this deployment wrote while analytics were off.
     expect(optInCapturing).toHaveBeenCalledTimes(2);
+  });
+
+  describe('participant privacy', () => {
+    const INTERVIEW_ID = 'clh3k4j5k0000abcdefghijkl';
+
+    /** The config posthog-js was initialised with. */
+    function initConfig() {
+      const call = init.mock.calls[0];
+      if (!call) throw new Error('PostHog was never initialised');
+
+      return call[1];
+    }
+
+    beforeEach(() => {
+      window.history.pushState({}, '', '/');
+    });
+
+    // posthog-js attaches the current URL to everything it captures, and on a
+    // participant's page that URL is their access credential.
+    it('redacts participant links from every event before it is sent', async () => {
+      const { startPostHog } = await loadModule();
+      await startPostHog('install-123');
+
+      const beforeSend = initConfig().before_send;
+      if (typeof beforeSend !== 'function') {
+        throw new TypeError('before_send was not configured');
+      }
+
+      expect(
+        beforeSend({
+          event: '$pageview',
+          properties: {
+            $current_url: `https://fresco.example.org/interview/${INTERVIEW_ID}`,
+          },
+        }),
+      ).toEqual(
+        expect.objectContaining({
+          properties: {
+            $current_url: 'https://fresco.example.org/interview/[redacted]',
+          },
+        }),
+      );
+    });
+
+    it('passes a dropped event through untouched', async () => {
+      const { startPostHog } = await loadModule();
+      await startPostHog('install-123');
+
+      const beforeSend = initConfig().before_send;
+      if (typeof beforeSend !== 'function') {
+        throw new TypeError('before_send was not configured');
+      }
+
+      expect(beforeSend(null)).toBeNull();
+    });
+
+    // Replay writes the page's own URL into its payload, where before_send
+    // cannot reach it — and a recording of someone answering interview
+    // questions is research data, not telemetry.
+    it('never records a session that starts on a participant page', async () => {
+      window.history.pushState({}, '', `/interview/${INTERVIEW_ID}`);
+      const { startPostHog } = await loadModule();
+
+      await startPostHog('install-123');
+
+      expect(initConfig().disable_session_recording).toBe(true);
+    });
+
+    it('leaves recording alone on researcher pages', async () => {
+      window.history.pushState({}, '', '/dashboard/interviews');
+      const { startPostHog } = await loadModule();
+
+      await startPostHog('install-123');
+
+      expect(initConfig().disable_session_recording).toBe(false);
+    });
+
+    // A researcher opening an interview from the dashboard gets there by
+    // client-side navigation, so posthog-js never re-initialises and the
+    // decision above was already made on a page where recording was allowed.
+    it('ends a recording that was already running', async () => {
+      const { startPostHog, stopSessionRecording: stop } = await loadModule();
+      await startPostHog('install-123');
+      sessionRecordingStarted.mockReturnValue(true);
+
+      await stop();
+
+      expect(stopSessionRecording).toHaveBeenCalled();
+    });
+
+    it('does nothing when no recording was running', async () => {
+      const { startPostHog, stopSessionRecording: stop } = await loadModule();
+      await startPostHog('install-123');
+      sessionRecordingStarted.mockReturnValue(false);
+
+      await stop();
+
+      expect(stopSessionRecording).not.toHaveBeenCalled();
+    });
+
+    it('never loads PostHog just to stop recording', async () => {
+      const { stopSessionRecording: stop } = await loadModule();
+
+      await stop();
+
+      expect(init).not.toHaveBeenCalled();
+    });
   });
 });

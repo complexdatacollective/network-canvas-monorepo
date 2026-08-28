@@ -1,10 +1,11 @@
-import type { PostHog } from 'posthog-js';
+import type { CaptureResult, PostHog } from 'posthog-js';
 
 import {
   POSTHOG_API_KEY,
   POSTHOG_APP_PROPERTIES,
   POSTHOG_PROXY_HOST,
 } from '~/fresco.config';
+import { isParticipantPath, redactProperties } from '~/lib/analyticsRedaction';
 
 let clientPromise: Promise<PostHog> | undefined;
 // posthog-js cannot be brought back after shutdown, so once this is set the
@@ -38,6 +39,31 @@ const pendingReports: ((posthog: PostHog) => void)[] = [];
  * honour `DISABLE_ANALYTICS` is to never reach this function. That decision is
  * made on the server, in `AnalyticsLoader`.
  */
+/**
+ * Strips participant access links out of every event before it is sent.
+ *
+ * posthog-js attaches the current URL to everything it captures, and on a
+ * participant's page that URL is their access credential. `before_send` is the
+ * last point every event passes through, so redacting here covers autocapture,
+ * pageviews, exceptions and anything added later, rather than a list of
+ * property names that would fall out of date.
+ */
+function redactEvent(event: CaptureResult | null): CaptureResult | null {
+  if (!event) {
+    return event;
+  }
+
+  event.properties = redactProperties(event.properties);
+  if (event.$set) {
+    event.$set = redactProperties(event.$set);
+  }
+  if (event.$set_once) {
+    event.$set_once = redactProperties(event.$set_once);
+  }
+
+  return event;
+}
+
 async function getClient(): Promise<PostHog> {
   clientPromise ??= import('posthog-js').then(({ default: posthog }) => {
     posthog.init(POSTHOG_API_KEY, {
@@ -46,6 +72,13 @@ async function getClient(): Promise<PostHog> {
       capture_exceptions: true,
       autocapture: true,
       tracing_headers: [window.location.hostname],
+      before_send: redactEvent,
+      // Replay records the page's own URL inside its payload, out of reach of
+      // `before_send`, and a recording of someone answering interview
+      // questions is research data rather than telemetry. Participants always
+      // arrive on these pages through a fresh page load, so deciding once at
+      // init covers them.
+      disable_session_recording: isParticipantPath(window.location.pathname),
     });
 
     // Registered here, before startPostHog opts in, because opting in captures
@@ -143,6 +176,31 @@ export async function stopPostHog() {
     shutDown = true;
   } catch {
     // Nothing was ever capturing.
+  }
+}
+
+/**
+ * Ends session replay for the rest of this page load.
+ *
+ * `disable_session_recording` is settled when posthog-js initialises, which
+ * covers a participant arriving on their interview through a fresh page load.
+ * It does not cover a researcher reaching the same page from the dashboard by
+ * client-side navigation, where recording is already running — see the
+ * interview link in `app/dashboard/_components/InterviewsTable`. Participant
+ * pages call this on mount so that route ends recording too.
+ */
+export async function stopSessionRecording() {
+  if (!clientPromise) {
+    return;
+  }
+
+  try {
+    const posthog = await clientPromise;
+    if (posthog.sessionRecordingStarted()) {
+      posthog.stopSessionRecording();
+    }
+  } catch {
+    // Telemetry must never throw, and nothing was recording.
   }
 }
 
