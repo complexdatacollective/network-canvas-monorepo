@@ -42,6 +42,11 @@ Code's Workflow tool — run this command from Claude Code.)
      different version, and a run WITHOUT it returns `certifying: false`
      with a "not release-certifying" banner — only a full-coverage, pinned
      run certifies.
+   - `hotfix` — pass `true` only when certifying a hotfix cut from an
+     older release line: it permits the documented pair-skip when the
+     newest development protocol's schema is newer than the candidate
+     supports. On main-line candidates that rejection is a real
+     protocol-support regression and fails.
 2. Invoke the Workflow tool:
    `Workflow({ name: 'interviewer-release-test-workflow', args: { url, expectedVersion, journeys, model } })`
    (equivalently `scriptPath: '<repo-root>/.claude/workflows/interviewer-release-test.js'`).
@@ -81,6 +86,18 @@ Lead with the verdict, then render the returned `summaryMarkdown`:
   run the full suite again to certify.
 - `BLOCKED` — preflight failed (target unreachable, tooling missing); fix
   and rerun.
+
+## Scope and known limits
+
+This is a smoke gate over representative journeys, not an exhaustive
+behaviour suite — per-feature coverage belongs to the app's unit and e2e
+suites. Harness limits, each evaluated and declined on the record: native
+OS dialogs and OS file-handler launches (no headless surface), biometric
+(needs virtual-authenticator infrastructure the e2e suite also excludes),
+cross-origin IndexedDB upgrade seeding, and header/raw-HTML fingerprinting
+(edge-injected per-request content). Propose new oracles only with a
+validating run — unvalidated prompt text is where this gate's
+false-failure bugs have come from.
 
 ## Follow up
 

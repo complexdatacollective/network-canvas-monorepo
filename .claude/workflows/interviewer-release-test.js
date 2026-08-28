@@ -13,6 +13,9 @@
 // workflow sharing one name is undefined behaviour in Claude Code.
 // Override the target:       args: { url: 'https://deploy-preview-…netlify.app' }
 // Run a subset of journeys:  args: { journeys: ['data-export', 'pwa-offline'] }
+// Hotfix certification:      args: { hotfix: true } (permits the newer-schema
+//                            dev-protocol pair-skip; on main-line candidates
+//                            that rejection is a protocol-support regression)
 //
 // Requirements: run from a checkout of this monorepo with dependencies
 // installed (`pnpm install`); Playwright's chromium browser is installed on
@@ -26,6 +29,21 @@
 // Screenshots and downloads land in a temp work directory reported in the
 // result. Failures only block the release after an independent verifier agent
 // reproduces them from scratch.
+//
+// SCOPE (read before proposing additions): this is a SMOKE gate over
+// representative journeys of the deployed app — it certifies that a release
+// candidate basically works, end to end, on real deployed bits. It is NOT
+// an exhaustive behaviour suite; per-feature coverage belongs to the app's
+// unit and Playwright e2e suites. Documented harness limits (each has been
+// evaluated and declined with reasons in PR #1471/#1502 review threads):
+// native OS dialogs (showSaveFilePicker) and OS file-handler launches do
+// not exist in headless automation; biometric/WebAuthn needs virtual-
+// authenticator infrastructure the repo's e2e deliberately excludes;
+// released→candidate IndexedDB upgrade seeding is impossible across two
+// origins; response headers and raw HTML bodies are excluded from the
+// deployment fingerprint because the edge injects per-request content.
+// New oracles MUST be validated against a real run before merging — the
+// gate's false-failure bugs have all come from unvalidated prompt text.
 //
 // Model tiering (token efficiency): preflight and most journeys run on
 // sonnet — browser-driving against explicit checklists, guarded by the
@@ -71,6 +89,9 @@ const url = canonicalOrigin((args && args.url) || DEFAULT_URL);
 // preflight fails unless the deployment serves it, so a stale deploy (an
 // older tree still live at the same URL) can never be certified.
 const expectedVersion = (args && args.expectedVersion) || null;
+// Hotfix runs certify a tree cut from an OLDER release line: only there is
+// a newer-schema rejection of the latest development protocol expected.
+const hotfixRun = Boolean(args && args.hotfix);
 // Both values are interpolated into agent prompts and the shell commands
 // inside them: restrict them to inert shapes so a hostile value cannot
 // escape into shell, JS-string, or prompt context.
@@ -459,12 +480,11 @@ CHECKS (in one or more scripts, fresh profile each run):
    input; it is ~33 MB so allow 60 s; expect a "Protocol imported" toast
    (text may mention schema migration) and a new deck card. If the asset
    cannot be obtained after two attempts, mark this and check 7 skipped.
-   If the app rejects the asset because its schema is NEWER than this build
-   supports (the import error names an unsupported/newer schema version),
-   that is protocol/app version skew — expected when certifying a hotfix
-   cut from an older release line after a newer development protocol
-   shipped — not a candidate defect: mark checks 6 and 7 skipped with that
-   reason. Rejection of a supported-schema asset remains a failure.
+   ${
+     hotfixRun
+       ? 'This is a HOTFIX run (args.hotfix): if the app rejects the asset because its schema is NEWER than this build supports (the import error names an unsupported/newer schema version), that is protocol/app version skew — expected for a candidate cut from an older release line — not a candidate defect: mark checks 6 and 7 skipped with that reason. Rejection of a supported-schema asset remains a failure.'
+       : 'This is NOT a hotfix run: the candidate ships from the current line and MUST support the latest development protocol — a rejection naming an unsupported/newer schema is a REAL regression in protocol support (stale bundled validation), a failure, never a skip.'
+   }
 7. duplicate import: import the SAME file again — the app upserts by content
    hash. Wait for the fresh "Protocol imported" toast (the positive signal
    that the re-selection was actually processed — without it this check
@@ -486,12 +506,16 @@ CHECKS (in one or more scripts, fresh profile each run):
    protocol; when checks 6–7 were skipped, run check 9 first and then use
    the Sample Protocol instead — this check is always executable and must
    not be skipped.
-9. interviews deep link: first start one interview on the Sample Protocol
-   and exit immediately so the card's link reads "1 interview" (a
-   zero-session view cannot distinguish an applied filter from an ignored
-   one). Following the link must land on /data?protocol=Sample+Protocol
-   with the protocol filter ACTIVE and exactly that session listed;
-   clearing the filter shows the full table.
+9. interviews deep link: SEQUENCE this between check 8's session creation
+   and its deletion, so a NONMATCHING row exists (with only one session in
+   the table, a filtered and an unfiltered view are indistinguishable).
+   Start one interview on the Sample Protocol and exit immediately so its
+   link reads "1 interview"; while check 8's session on the OTHER protocol
+   still exists, follow the link: it must land on
+   /data?protocol=Sample+Protocol with the protocol filter ACTIVE, list
+   exactly the Sample Protocol's session, EXCLUDE the other protocol's
+   row, and show both on clearing the filter. Then complete check 8's
+   deletion.
 
 Return journey="protocol-management".`,
   },
@@ -623,9 +647,11 @@ CHECKS:
 6. "Mark unfinished" (data-testid="data-mark-unfinished") on a complete row:
    confirm dialog "Mark unfinished?" → toast "Interview marked unfinished" →
    the row moves to In progress — then RESUME that session and assert its
-   recorded responses and progress are intact (the dialog promises existing
-   responses are kept; a session reset to an empty first stage is data
-   loss, not a pass).
+   recorded responses are intact and its progress was RECOMPUTED to the
+   last available authored stage (a completed row intentionally drops
+   below 100% here — e.g. 100% → ~80% — that transition is correct
+   behaviour, NOT data loss; the failures are responses vanishing or the
+   session resetting to an empty first stage).
 7. Real resume round-trip: from Home, "Start new interview" on the sample
    card with case ID "resume-check"; advance to the FIRST Quick Add
    name-generator stage and add an alter named "resume-probe" (network data
@@ -661,7 +687,10 @@ Return journey="session-management".`,
 ${driving(ctx.workDir, ctx.repoRoot)}
 
 Setup: install the Sample Protocol (toast!), then Settings → "Synthetic data"
-→ generate 5 sessions (toast). Exports download a ZIP — use Playwright's
+→ turn "Simulate participant drop-out" OFF before generating (drop-out is ON
+by default and routinely yields sessions that quit before the first name
+generator — legitimately node-less exports that would false-fail the content
+oracles below) → generate 5 sessions (toast). Exports download a ZIP — use Playwright's
 download API (page.waitForEvent('download')) and save into your artifacts
 dir. Unzip with the shell to inspect contents. IMPORTANT: before any page
 loads, force the plain-download save rung the way the e2e suite does
@@ -777,16 +806,18 @@ CHECKS:
 5. Lock-screen guard on interview routes: while on /interview/…, reload → the
    "Welcome back" lock screen appears WITHOUT the "Recover by resetting"
    button (it is suppressed on interview routes). Unlock and confirm the
-   interview is still there. Then exercise the EXIT step-up call site:
-   enable "Require unlock when exiting an interview" (Settings → Security),
-   exit the interview via its menu — the identity dialog must gate the
-   exit; a wrong PIN is rejected and you REMAIN in the interview, the
-   correct PIN completes the exit. Disable the setting afterwards.
+   interview is still there.
 6. Change PIN: first EXIT the interview back to the dashboard (the button
    named "Settings" on /interview/* is the interview engine's own menu —
    text size and "Exit interview" only; the tabbed Settings dialog exists
    only on the dashboard). Exit via that menu's "Exit interview" → confirm,
-   unlocking if prompted. Then dashboard Settings (gear,
+   unlocking if prompted. Now, from the dashboard, exercise the EXIT
+   step-up call site coherently: enable "Require unlock when exiting an
+   interview" (Settings → Security), start a fresh interview (case ID
+   "exit-probe"), then exit via its menu — the identity dialog must gate
+   the exit; a wrong PIN is rejected and you REMAIN in the interview, the
+   correct PIN completes the exit back to the dashboard. Disable the
+   setting. Then dashboard Settings (gear,
    data-testid="settings-trigger") → Security → "Change PIN" → submit a
    WRONG current PIN first: the form must refuse the rotation (the
    re-enrolment contract rejects an incorrect current credential even for
@@ -795,10 +826,12 @@ CHECKS:
    (field clears, app stays locked — a change that leaves the old
    credential valid has failed its purpose), and only then unlock with the
    NEW PIN. Before rotating, open a SECOND page in the same
-   browser context; after the rotation completes, that second page must
-   have force-locked itself (the cross-tab storage listener — an unlocked
-   stale tab still holding the old key would encrypt rows the new vault
-   cannot unwrap). After unlocking, assert the data created in checks 4–4b
+   browser context and UNLOCK IT with the current (old) PIN — unlock state
+   is per-tab, so a fresh page starts locked and proves nothing —
+   positively establish it is usable; after the rotation completes in the
+   first page, the second must have force-locked itself (the cross-tab
+   storage listener — an unlocked stale tab still holding the old key
+   would encrypt rows the new vault cannot unwrap). After unlocking, assert the data created in checks 4–4b
    SURVIVED the rotation and still decrypts: the protocol card is present
    and the interview row is listed with its content intact — a rotation
    that re-initialises an empty vault also "unlocks", and that signal
@@ -865,15 +898,16 @@ CHECKS:
 5. Offline protocol install: while offline, install the Sample Protocol (its
    bytes are bundled) → "Protocol imported" toast.
 6. Offline interview: still offline, start an interview (case ID
-   "offline-check") and advance through the first 3 stages. Then — STILL
-   OFFLINE — reload the /interview/<id> page itself: the interview must
-   render again from the precached shell (this exercises the dedicated
-   /interview/ navigation fallback in the service worker, a separate
-   handler from ordinary navigations; reloading only after going online
-   never touches it). Step writes are
-   fire-and-forget: record the reached [data-stage-step], then poll
-   IndexedDB (database "interviewer") via page.evaluate until the session
-   row's currentStep matches it — the offline progress must actually commit.
+   "offline-check") and advance through the first 3 stages. Step writes are
+   fire-and-forget: BEFORE any reload, record the reached
+   [data-stage-step] and poll IndexedDB (database "interviewer") via
+   page.evaluate until the session row's currentStep matches it — the
+   offline progress must commit first, or a broken write would simply
+   re-read its own stale value after reload. THEN — STILL OFFLINE — reload
+   the /interview/<id> page itself: the interview must render again from
+   the precached shell (the dedicated /interview/ navigation fallback, a
+   separate service-worker handler from ordinary navigations) AT THE
+   RECORDED STEP.
 7. Back online (setOffline(false)), reload: the app resumes normally and
    resuming the in-progress session reopens it at the SAME step recorded in
    check 6 (assert the [data-stage-step], not merely that Resume works).
@@ -918,7 +952,10 @@ CHECKS:
 5. Privacy: "Enable analytics" switch flips and reads back — verified
    BEHAVIOURALLY, not just visually: the context blocks the relay, but
    attempted requests are still observable via page.on('request'). With
-   analytics off (the default), perform a representative action and a
+   ESTABLISH the off-baseline explicitly first — toggle analytics OFF and
+   wait for the switch to read back (do NOT assume the default state;
+   report what the initial state was as an observation, never as a
+   failure) — then perform a representative action and a
    reload and assert ZERO attempts to ph-relay.networkcanvas.com; enable,
    then disable again, repeat the action + reload, and assert zero NEW
    attempts after the opt-out. (Do not require attempts while enabled —

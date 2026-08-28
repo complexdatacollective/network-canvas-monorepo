@@ -186,7 +186,9 @@ its own tree: open the hotfix branch's pull request into `main` (the
 merge-back the hotfix procedure requires anyway) BEFORE dispatching the
 Hotfix Release workflow — its Netlify deploy preview is the candidate.
 Certify that preview via
-`args: { url: "…", expectedVersion: "<the hotfix's bumped version>" }`,
+`args: { url: "…", expectedVersion: "<the hotfix's bumped version>",
+hotfix: true }` (the `hotfix` flag permits the documented dev-protocol
+schema-skew skip that only an older release line legitimately hits),
 then dispatch; never certify a hotfix against the developer site, and never
 dispatch production before the preview has its verdict.
 
