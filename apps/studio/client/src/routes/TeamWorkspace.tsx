@@ -423,205 +423,201 @@ function TeamManagement(props: {
   };
 
   return (
-    <Surface spacing="lg">
-      <div className="flex flex-col gap-6">
-        <section aria-labelledby="members-heading">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <Heading id="members-heading" level="h2" margin="none">
-                Team members
-              </Heading>
-              <Paragraph className="text-sm" margin="none">
-                View who can access this team and the role assigned to each
-                person.
-              </Paragraph>
-            </div>
-            <Badge variant="secondary">
-              {props.team.members.length}{' '}
-              {props.team.members.length === 1 ? 'member' : 'members'}
-            </Badge>
+    <div className="flex flex-col gap-6">
+      <section aria-labelledby="members-heading">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <Heading id="members-heading" level="h2" margin="none">
+              Team members
+            </Heading>
+            <Paragraph className="text-sm" margin="none">
+              View who can access this team and the role assigned to each
+              person.
+            </Paragraph>
           </div>
+          <Badge variant="secondary">
+            {props.team.members.length}{' '}
+            {props.team.members.length === 1 ? 'member' : 'members'}
+          </Badge>
+        </div>
 
-          {message && (
-            <Alert
-              className="mt-4"
-              variant={message.kind === 'error' ? 'destructive' : 'default'}
-            >
-              <span role="status">{message.text}</span>
-            </Alert>
-          )}
+        {message && (
+          <Alert
+            className="mt-4"
+            variant={message.kind === 'error' ? 'destructive' : 'default'}
+          >
+            <span role="status">{message.text}</span>
+          </Alert>
+        )}
 
-          <Table className="mt-4">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {props.team.members.map((member) => {
-                const name = member.user.name || member.user.email;
-                const memberIsOwner = member.role
-                  .split(',')
-                  .some((role) => role.trim() === 'owner');
-                const canEditRole =
-                  canManage && (canAssignOwner === true || !memberIsOwner);
-                return (
-                  <TableRow key={member.id}>
-                    <TableCell>
-                      {name}
-                      {member.id === props.activeMemberId && (
-                        <span className="ml-2 text-sm opacity-70">(you)</span>
-                      )}
-                    </TableCell>
-                    <TableCell>{member.user.email}</TableCell>
-                    <TableCell>
-                      {canEditRole ? (
-                        <>
-                          <label
-                            className="sr-only"
-                            htmlFor={`member-role-${member.id}`}
-                          >
-                            Role for {name}
-                          </label>
-                          <NativeSelectField
-                            id={`member-role-${member.id}`}
-                            name={`member-role-${member.id}`}
-                            size="sm"
-                            value={member.role}
-                            options={assignableRoles}
-                            disabled={updatingMemberId !== null}
-                            onChange={(value) => {
-                              if (!isTeamRole(value)) {
-                                setMessage({
-                                  kind: 'error',
-                                  text: 'Studio received an unsupported team role.',
-                                });
-                                return;
-                              }
-                              void updateRole(member.id, value);
-                            }}
-                          />
-                        </>
-                      ) : (
-                        <Badge variant="outline">
-                          {roleLabel(member.role)}
-                        </Badge>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </section>
+        <Table className="mt-4">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Role</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {props.team.members.map((member) => {
+              const name = member.user.name || member.user.email;
+              const memberIsOwner = member.role
+                .split(',')
+                .some((role) => role.trim() === 'owner');
+              const canEditRole =
+                canManage && (canAssignOwner === true || !memberIsOwner);
+              return (
+                <TableRow key={member.id}>
+                  <TableCell>
+                    {name}
+                    {member.id === props.activeMemberId && (
+                      <span className="ml-2 text-sm opacity-70">(you)</span>
+                    )}
+                  </TableCell>
+                  <TableCell>{member.user.email}</TableCell>
+                  <TableCell>
+                    {canEditRole ? (
+                      <>
+                        <label
+                          className="sr-only"
+                          htmlFor={`member-role-${member.id}`}
+                        >
+                          Role for {name}
+                        </label>
+                        <NativeSelectField
+                          id={`member-role-${member.id}`}
+                          name={`member-role-${member.id}`}
+                          size="sm"
+                          value={member.role}
+                          options={assignableRoles}
+                          disabled={updatingMemberId !== null}
+                          onChange={(value) => {
+                            if (!isTeamRole(value)) {
+                              setMessage({
+                                kind: 'error',
+                                text: 'Studio received an unsupported team role.',
+                              });
+                              return;
+                            }
+                            void updateRole(member.id, value);
+                          }}
+                        />
+                      </>
+                    ) : (
+                      <Badge variant="outline">{roleLabel(member.role)}</Badge>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </section>
 
-        <section aria-labelledby="invitations-heading">
-          <Heading id="invitations-heading" level="h2" margin="none">
-            Invitations
-          </Heading>
-          <Paragraph className="text-sm" margin="none">
-            Invite a collaborator and choose the role they will receive when
-            they join.
-          </Paragraph>
+      <section aria-labelledby="invitations-heading">
+        <Heading id="invitations-heading" level="h2" margin="none">
+          Invitations
+        </Heading>
+        <Paragraph className="text-sm" margin="none">
+          Invite a collaborator and choose the role they will receive when they
+          join.
+        </Paragraph>
 
-          {canManage ? (
-            <Form
-              key={inviteFormKey}
-              className="mt-4 grid items-end gap-4 md:grid-cols-[minmax(0,2fr)_minmax(10rem,1fr)_auto]"
-              onSubmit={async (values) => {
-                const email =
-                  typeof values.email === 'string' ? values.email : '';
-                const role = values.role;
-                if (!isTeamRole(role)) {
-                  return {
-                    success: false,
-                    formErrors: ['Choose a valid role for this invitation.'],
-                  };
-                }
-                setMessage(undefined);
-                try {
-                  const result = await authClient.organization.inviteMember({
-                    email,
-                    role,
-                    organizationId: props.team.id,
-                  });
-                  if (result.error) {
-                    return {
-                      success: false,
-                      formErrors: [
-                        'The invitation could not be created. The person may already be a member or have a pending invitation.',
-                      ],
-                    };
-                  }
-                  await activeTeam.refetch();
-                  setMessage({
-                    kind: 'success',
-                    text: `Invitation created for ${email}.`,
-                  });
-                  setInviteFormKey((key) => key + 1);
-                  return { success: true };
-                } catch {
+        {canManage ? (
+          <Form
+            key={inviteFormKey}
+            className="mt-4 grid items-end gap-4 md:grid-cols-[minmax(0,2fr)_minmax(10rem,1fr)_auto]"
+            onSubmit={async (values) => {
+              const email =
+                typeof values.email === 'string' ? values.email : '';
+              const role = values.role;
+              if (!isTeamRole(role)) {
+                return {
+                  success: false,
+                  formErrors: ['Choose a valid role for this invitation.'],
+                };
+              }
+              setMessage(undefined);
+              try {
+                const result = await authClient.organization.inviteMember({
+                  email,
+                  role,
+                  organizationId: props.team.id,
+                });
+                if (result.error) {
                   return {
                     success: false,
                     formErrors: [
-                      'The invitation could not be created. Wait a moment and try again.',
+                      'The invitation could not be created. The person may already be a member or have a pending invitation.',
                     ],
                   };
                 }
-              }}
-            >
-              <Field
-                name="email"
-                label="Email address"
-                component={InputField}
-                type="email"
-                autoComplete="email"
-                required
-              />
-              <Field
-                name="role"
-                label="Team role"
-                component={NativeSelectField}
-                options={assignableRoles}
-                initialValue="member"
-                required
-              />
-              <SubmitButton>Invite user</SubmitButton>
-            </Form>
-          ) : (
-            <Alert className="mt-4">
-              Only team owners and admins can invite people or change roles.
-            </Alert>
-          )}
+                await activeTeam.refetch();
+                setMessage({
+                  kind: 'success',
+                  text: `Invitation created for ${email}.`,
+                });
+                setInviteFormKey((key) => key + 1);
+                return { success: true };
+              } catch {
+                return {
+                  success: false,
+                  formErrors: [
+                    'The invitation could not be created. Wait a moment and try again.',
+                  ],
+                };
+              }
+            }}
+          >
+            <Field
+              name="email"
+              label="Email address"
+              component={InputField}
+              type="email"
+              autoComplete="email"
+              required
+            />
+            <Field
+              name="role"
+              label="Team role"
+              component={NativeSelectField}
+              options={assignableRoles}
+              initialValue="member"
+              required
+            />
+            <SubmitButton>Invite user</SubmitButton>
+          </Form>
+        ) : (
+          <Alert className="mt-4">
+            Only team owners and admins can invite people or change roles.
+          </Alert>
+        )}
 
-          {pendingInvitations.length === 0 ? (
-            <Paragraph className="mt-4">No pending invitations.</Paragraph>
-          ) : (
-            <Table className="mt-4">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Expires</TableHead>
+        {pendingInvitations.length === 0 ? (
+          <Paragraph className="mt-4">No pending invitations.</Paragraph>
+        ) : (
+          <Table className="mt-4">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Expires</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pendingInvitations.map((invitation) => (
+                <TableRow key={invitation.id}>
+                  <TableCell>{invitation.email}</TableCell>
+                  <TableCell>{roleLabel(invitation.role)}</TableCell>
+                  <TableCell>
+                    {invitation.expiresAt.toLocaleDateString()}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pendingInvitations.map((invitation) => (
-                  <TableRow key={invitation.id}>
-                    <TableCell>{invitation.email}</TableCell>
-                    <TableCell>{roleLabel(invitation.role)}</TableCell>
-                    <TableCell>
-                      {invitation.expiresAt.toLocaleDateString()}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </section>
-      </div>
-    </Surface>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </section>
+    </div>
   );
 }
