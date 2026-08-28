@@ -4,6 +4,12 @@ import type pg from 'pg';
 import { describe, expect, it } from 'vitest';
 
 import { applySchema, computeSchemaFingerprint } from '../../scripts/apply.ts';
+import {
+  renderSchemaDocs,
+  spliceSchemaDocs,
+  STUDIO_ERD_PATH,
+  STUDIO_README_PATH,
+} from '../../scripts/schema-docs.ts';
 import { SCHEMA_FINGERPRINT } from '../db/fingerprint.generated.ts';
 import {
   checkSchema,
@@ -39,6 +45,46 @@ describe('fingerprint constant', () => {
   it('is resynced by a script package.json declares', () => {
     expect(readManifestScripts()).toHaveProperty('sync-fingerprint');
   });
+});
+
+describe('generated schema documentation', () => {
+  it('matches the committed ERD and README section', async () => {
+    const artifacts = await renderSchemaDocs();
+    const readme = readFileSync(STUDIO_README_PATH, 'utf8');
+
+    expect(
+      readFileSync(STUDIO_ERD_PATH, 'utf8'),
+      'stale schema-erd.svg; run: pnpm --filter @codaco/studio-server sync-fingerprint',
+    ).toBe(artifacts.svg);
+    expect(
+      readme,
+      'stale README schema section; run: pnpm --filter @codaco/studio-server sync-fingerprint',
+    ).toBe(spliceSchemaDocs(readme, artifacts.readmeSection));
+  });
+
+  it('documents the sidecar-only security and trigger behavior', async () => {
+    const { readmeSection, svg } = await renderSchemaDocs();
+
+    expect(readmeSection).toContain('FORCE ROW LEVEL SECURITY');
+    expect(readmeSection).toContain('studio_maintenance');
+    expect(readmeSection).toContain('sections_immutable');
+    expect(readmeSection).toContain('version_sections_insert_frozen');
+    expect(svg).toContain('RLS policy team_isolation');
+    expect(svg).toContain('sidecar trigger sections_immutable');
+  });
+
+  it('has a standalone regeneration command', () => {
+    expect(readManifestScripts()).toHaveProperty('generate:erd');
+  });
+
+  it.each(['apply-schema', 'db:reset'])(
+    'regenerates before %s touches the database',
+    (script) => {
+      expect(readManifestScripts()[script]).toMatch(
+        /^pnpm run sync-fingerprint && /,
+      );
+    },
+  );
 });
 
 async function withScratch(
