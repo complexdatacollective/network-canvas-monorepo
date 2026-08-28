@@ -97,6 +97,8 @@ const happyPath = () => ({
     area: 'integrity',
     pass: true,
     checks: passing(8),
+    externalHosts: [],
+    networkLogEntries: 24,
   },
   'verify-crud': { area: 'crud', pass: true, checks: passing(8) },
   'verify-api-settings': {
@@ -123,7 +125,8 @@ const happyPath = () => ({
     area: 'freshSetup',
     pass: true,
     checks: passing(11),
-    analyticsRequests: 0,
+    externalHosts: [],
+    networkLogEntries: 31,
   },
   'audit-artifacts': {
     ok: true,
@@ -2112,27 +2115,168 @@ test('the workflow only ever returns a documented verdict', async () => {
 });
 
 // ---------------------------------------------------------------------------
-// Family 6 — environment, and the channels that must not gate a release
+// Family 6 — environment: what the deployment must not do, and the hygiene
+// channels that must not gate a release
 // ---------------------------------------------------------------------------
 
-test('observed analytics egress warns without blocking the release', async () => {
+// A deployment with analytics disabled loads posthog-js only once the server
+// has said analytics are on, so nothing leaves the box. The oracle is the set
+// of hosts the tab reached, not requests to the relay's hostname: analytics
+// repointed at any other ingestion host would leave a relay count at zero
+// while transmitting.
+//
+// Two surfaces start analytics by different paths — the dashboard through
+// AnalyticsLoader, the participant-facing interview route through
+// @codaco/interview's own resolveClient — so each is read separately and a
+// regression confined to either has to block on its own.
+const EGRESS_AREAS = [
+  ['verify-fresh-setup', 'fresh lane'],
+  ['verify-data-integrity', 'upgrade lane'],
+];
+
+for (const [label, lane] of EGRESS_AREAS) {
+  test(`egress seen by the ${lane} blocks the release`, async () => {
+    const r = happyPath();
+    r[label].externalHosts = ['ph-relay.networkcanvas.com'];
+    const { result } = await run(r);
+    assert.equal(result.verdict, 'no-go');
+    assert.equal(result.releasable, false);
+    const egress = result.failures.find((f) => f.includes('outside this'));
+    assert.ok(egress, JSON.stringify(result.failures));
+    assert.match(egress, /ph-relay\.networkcanvas\.com/);
+    assert.ok(
+      !result.warnings.some((w) => w.includes('outside this')),
+      `the egress must gate rather than warn: ${JSON.stringify(result.warnings)}`,
+    );
+  });
+
+  // The relay hostname is not the oracle — a regression that reached
+  // posthog-js's default ingestion host instead must fail identically.
+  test(`the ${lane} blocks egress to a host that is not the relay`, async () => {
+    const r = happyPath();
+    r[label].externalHosts = ['us.i.posthog.com'];
+    const { result } = await run(r);
+    assert.equal(result.verdict, 'no-go');
+    // Matched, not substring-searched: a dotted hostname literal reaching
+    // .includes() reads to CodeQL as URL sanitization, which this is not.
+    const egress = result.failures.find((f) =>
+      /\bus\.i\.posthog\.com\b/.test(f),
+    );
+    assert.ok(egress, JSON.stringify(result.failures));
+  });
+
+  test(`an unreported ${lane} host list fails closed rather than reading as silence`, async () => {
+    const r = happyPath();
+    delete r[label].externalHosts;
+    const { result } = await run(r);
+    assert.equal(result.verdict, 'incomplete');
+    assert.equal(result.releasable, false);
+    assert.deepEqual(result.failures, []);
+    assert.ok(
+      result.unaccounted.some(
+        (u) => u.includes('where its traffic went') && u.includes(lane),
+      ),
+      JSON.stringify(result.unaccounted),
+    );
+  });
+
+  // The positive control. "No external hosts" and "the log recorded nothing"
+  // are the same observation until the log is shown to have been recording,
+  // and only one of them is evidence.
+  test(`an empty ${lane} network log is not evidence of silence`, async () => {
+    for (const entries of [0, undefined, -1, 'lots', 2.5]) {
+      const r = happyPath();
+      r[label].networkLogEntries = entries;
+      const { result } = await run(r);
+      const shown = JSON.stringify(entries) ?? 'undefined';
+      assert.equal(result.releasable, false, `${shown} certified the release`);
+      assert.deepEqual(result.failures, [], shown);
+      assert.ok(
+        result.unaccounted.some(
+          (u) =>
+            u.includes('cannot show that anything stayed silent') &&
+            u.includes(lane),
+        ),
+        `${shown}: ${JSON.stringify(result.unaccounted)}`,
+      );
+    }
+  });
+
+  // A value that is not a hostname cannot be reasoned about; treating it as
+  // clean would launder it into a pass.
+  test(`a malformed ${lane} host is not laundered into a pass`, async () => {
+    for (const host of [
+      'https://ph-relay.networkcanvas.com',
+      'a host',
+      '',
+      7,
+    ]) {
+      const r = happyPath();
+      r[label].externalHosts = [host];
+      const { result } = await run(r);
+      const shown = JSON.stringify(host);
+      assert.equal(result.releasable, false, `${shown} certified the release`);
+      assert.ok(
+        result.unaccounted.some((u) => u.includes('not a hostname')),
+        `${shown}: ${JSON.stringify(result.unaccounted)}`,
+      );
+    }
+  });
+}
+
+// The whole point of reading two surfaces: the dashboard staying silent must
+// not vouch for the interview route, which is where a participant's browser
+// would be.
+test('a silent dashboard does not excuse the interview route', async () => {
   const r = happyPath();
-  r['verify-fresh-setup'].analyticsRequests = 3;
+  r['verify-fresh-setup'].externalHosts = [];
+  r['verify-data-integrity'].externalHosts = ['ph-relay.networkcanvas.com'];
   const { result } = await run(r);
-  assert.equal(result.verdict, 'go');
-  assert.equal(result.releasable, true);
+  assert.equal(result.releasable, false);
   assert.ok(
-    result.warnings.some((w) => w.includes('analytics relay')),
-    JSON.stringify(result.warnings),
+    result.failures.some((f) => f.includes('interview route')),
+    JSON.stringify(result.failures),
   );
-  // The warning must not repeat a claim the implementation dropped: the pin is
-  // gone, so the traffic is anonymous rather than attributable to this test.
-  const egress = result.warnings.find((w) => w.includes('analytics relay'));
-  assert.ok(
-    !egress.includes('pinned'),
-    `the warning still claims the installation id is pinned: ${egress}`,
+});
+
+test('the egress gate stays silent when the fresh setup never ran', async () => {
+  const r = happyPath();
+  r['up-fresh'] = { ok: false, error: 'prisma migrate deploy exited 1' };
+  const { result } = await run(r);
+  for (const line of [...result.failures, ...result.unaccounted])
+    assert.ok(
+      !line.includes('new-deployment dashboard'),
+      `a lane that never reached setup produced an egress finding: ${line}`,
+    );
+});
+
+test('both egress agents are required to return both observations', async () => {
+  const { prompts } = await run(happyPath());
+  for (const [label] of EGRESS_AREAS) {
+    const a = prompts.find((p) => p.label === label);
+    for (const field of ['externalHosts', 'networkLogEntries'])
+      assert.ok(
+        a.opts.schema.required.includes(field),
+        `${label}: ${field} is optional in the schema, so an agent may omit it`,
+      );
+    // The prompt must not reduce the oracle back to one hostname.
+    assert.match(a.prompt, /networkLogEntries/);
+    assert.match(a.prompt, /localhost/);
+  }
+});
+
+// The upgrade lane's instance ran the released image until the swap, and that
+// image predates the guarantee. A count taken from a tab it had already
+// touched would fail the candidate for its predecessor's traffic.
+test('the interview reading is taken from a tab opened after the swap', async () => {
+  const integrity = promptFor(
+    (await run(happyPath())).prompts,
+    'verify-data-integrity',
   );
-  assert.match(egress, /anonymous/);
+  assert.match(integrity, /FRESH tab/);
+  assert.match(integrity, /released image/);
+  // And it must not be read before the log is demonstrably recording.
+  assert.match(integrity, /document request/);
 });
 
 test('a failed teardown warns without blocking the release', async () => {

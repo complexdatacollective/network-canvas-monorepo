@@ -76,12 +76,24 @@ download capture via MinIO). `release-test/AGENT_NOTES.md` records the
 verified techniques for driving Fresco in the in-app browser. The directory is
 excluded from the public mirror. Storage is configured through the setup
 wizard, not env vars, matching real bundled-MinIO deployments. Both stacks set
-`DISABLE_ANALYTICS`, which stops server-side capture and opts the browser out
-on hydration — but not the unconditional `posthog.init` in
-`instrumentation-client.ts` that runs first, so a recurring gate still emits
-anonymous pre-hydration traffic to the relay. The fresh lane counts the
-requests that reach it and the workflow reports them as a warning rather than
-pretending they do not happen.
+`DISABLE_ANALYTICS`, and a deployment with analytics disabled sends nothing
+off-box from the browser: posthog-js is loaded only once the server has
+confirmed analytics are on (`components/Providers/AnalyticsLoader.tsx` and
+`lib/posthog-client.ts`), so there is no earlier window in which it could call
+out. Both browser surfaces that can start analytics are read, because a
+regression in either is invisible to the other — the fresh lane reads the
+new-deployment dashboard, and the upgrade lane reads the participant-facing
+interview route, which hands `@codaco/interview` its own client. Each reports
+the hosts its tab contacted rather than requests to the relay's hostname, so
+analytics repointed at any other ingestion host still fails, and each reports
+its total log size as a positive control — a log that recorded nothing cannot
+evidence silence. Any host outside the deployment fails the run.
+
+What this does **not** watch is server-side capture. `lib/posthog-server.ts`
+returns on `isAnalyticsDisabled()` before it constructs the posthog-node
+client, so a disabled deployment never builds one; that guard is covered by
+unit tests, not by this gate, because seeing the container's own egress needs
+a relay sink the harness does not have.
 
 ### Reading the verdict
 
@@ -118,8 +130,8 @@ Findings are split by what they are evidence of, and the split is load-bearing:
 `failures` are release-gating problems with the candidate; `unaccounted` are
 problems with the run itself (a truncated checklist, an unexplained skip, a
 dead judge, a claim no artifact supports); `warnings` are hygiene and
-environment notes (leftover containers, analytics egress, an accepted dirty
-tree) that never flip a verdict. `untestedShippedChanges` lists pending
+environment notes (leftover containers, an accepted dirty tree) that never flip
+a verdict. `untestedShippedChanges` lists pending
 changesets shipping Fresco-facing behaviour no check exercised — a statement
 about the evidence rather than the build, so it caps certification through
 `coverageGaps` instead of failing the run. Either extend the checklists to
