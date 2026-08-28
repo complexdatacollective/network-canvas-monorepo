@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures/test.js';
+import { clickWhenDeckSettles } from '../helpers/deck.js';
 
 // Passes the wizard's strength gate (length ≥ 12, all four character classes)
 // and the vault's validatePassphrase.
@@ -111,10 +112,22 @@ test.describe('biometric vault', () => {
   test('the recovery passphrase unlocks after the passkey is lost', async ({
     webauthn,
     vault,
+    interviewNav,
     page,
   }) => {
     await webauthn.install({ hasPrf: true });
     await vault.enrolBiometric(RECOVERY_PHRASE);
+
+    // Install the sample protocol while the biometric session holds the DEK:
+    // its stages are encrypted at rest under that key, giving the recovery
+    // path below something real to decrypt.
+    await page.getByRole('button', { name: 'Previous protocol' }).click();
+    await clickWhenDeckSettles(
+      page.getByRole('button', { name: 'Install sample protocol' }),
+    );
+    await expect(
+      page.getByRole('button', { name: 'Start new interview' }),
+    ).toBeVisible({ timeout: 15_000 });
 
     // Simulate losing the passkey (credential removed / device reset): the
     // credential disappears while the vault record — and its recovery wrap —
@@ -136,12 +149,35 @@ test.describe('biometric vault', () => {
     await page.getByRole('button', { name: 'Unlock', exact: true }).click();
     await expect(page.getByRole('alert')).toContainText('Incorrect passphrase');
 
-    // The correct recovery passphrase opens the recovery wrap of the same DEK.
+    // The correct recovery passphrase unlocks.
     await page.getByTestId('passphrase-input').fill(RECOVERY_PHRASE);
     await page.getByRole('button', { name: 'Unlock', exact: true }).click();
     await expect(
       page.getByRole('heading', { name: 'Sample Protocol' }),
     ).toBeVisible({ timeout: 15_000 });
+
+    // Prove the recovered DEK is the SAME key the biometric session held, not
+    // merely a key that unwraps: start an interview from the protocol
+    // installed before the passkey was lost — its stages render only if they
+    // decrypt with the recovered DEK. (After the reload the installed
+    // protocol is already the deck's active card.)
+    await clickWhenDeckSettles(
+      page.getByRole('button', { name: 'Start new interview' }),
+    );
+    await page.getByTestId('new-session-case-id').fill('biometric-recovery');
+    await page.getByTestId('new-session-submit').click();
+
+    // Entering an interview requires step-up auth; the passkey is gone there
+    // too, so recovery is the step-up route as well.
+    await expect(
+      page.getByRole('heading', { name: 'Confirm your identity' }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Recover with passphrase' }).click();
+    await page.getByTestId('passphrase-input').fill(RECOVERY_PHRASE);
+    await page.getByRole('button', { name: 'Unlock', exact: true }).click();
+
+    await expect(page).toHaveURL(/\/interview\//, { timeout: 15_000 });
+    await interviewNav.waitForStage();
   });
 
   test('enrolment fails fast when the authenticator cannot provide PRF', async ({
@@ -167,6 +203,11 @@ test.describe('biometric vault', () => {
     // …and no vault record was written: a failed ceremony must not leave a
     // half-enrolled vault behind.
     expect(await vault.readPersistedVaultRaw()).toBeNull();
+    // The ceremony minted a passkey before the PRF check could reject it; the
+    // fail-fast drops that orphan again (signalUnknownCredential — which the
+    // virtual authenticator honours, observably removing the credential).
+    // Polled because the alert renders independently of the removal.
+    await expect.poll(() => webauthn.credentialCount()).toBe(0);
 
     // The advertised fallback is actionable: Back returns to the method
     // picker with PIN still selectable.

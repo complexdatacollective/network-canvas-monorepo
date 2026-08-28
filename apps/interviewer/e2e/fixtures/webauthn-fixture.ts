@@ -19,6 +19,9 @@ import type { CDPSession, Page } from '@playwright/test';
 //   forever (Chromium waits for an authenticator to appear), so a lost
 //   credential is simulated with `clearCredentials()`, never by removing the
 //   authenticator.
+// - `PublicKeyCredential.signalUnknownCredential()` genuinely deletes the
+//   named credential from the virtual authenticator, so orphan-passkey
+//   cleanup is observable through `credentialCount()`.
 export class WebAuthnFixture {
   private page: Page;
   private client: CDPSession | null = null;
