@@ -34,8 +34,13 @@
 // representative journeys of the deployed app — it certifies that a release
 // candidate basically works, end to end, on real deployed bits. It is NOT
 // an exhaustive behaviour suite; per-feature coverage belongs to the app's
-// unit and Playwright e2e suites. Documented harness limits (each has been
-// evaluated and declined with reasons in PR #1471/#1502 review threads):
+// unit and Playwright e2e suites. The conduct-offline journey runs the
+// committed walker (scripts/interviewer-release-smoke-walker.mjs) over the
+// six-stage release-smoke fixture protocol ENTIRELY OFFLINE — interfaces
+// are imported eagerly into one engine chunk, so broader stage-type
+// coverage adds no deployment risk coverage and belongs to the e2e and
+// Storybook suites. Documented harness limits (each has been evaluated and
+// declined with reasons in PR #1471/#1502 review threads):
 // native OS dialogs (showSaveFilePicker) and OS file-handler launches do
 // not exist in headless automation; biometric/WebAuthn needs virtual-
 // authenticator infrastructure the repo's e2e deliberately excludes;
@@ -44,14 +49,16 @@
 // deployment fingerprint because the edge injects per-request content.
 // New oracles MUST be validated against a real run before merging — the
 // gate's false-failure bugs have all come from unvalidated prompt text.
+// A change to journey prompts merges only behind a full validation run
+// (see the skill's "Changing this workflow" section).
 //
-// Model tiering (token efficiency): preflight and most journeys run on
-// sonnet — browser-driving against explicit checklists, guarded by the
-// verify layer. The 30-stage interview walk runs on opus (heterogeneous
-// interactions and rendering judgment), and verifiers are pinned to opus at
-// high effort because their verdicts gate the release. Pass
-// args: { model: 'haiku'|'sonnet'|'opus'|'fable' } to override preflight and
-// every journey (verifiers stay pinned so the gate keeps its rigor).
+// Model tiering (token efficiency): preflight and every journey run on
+// sonnet — browser-driving against explicit checklists (conduct-offline is
+// a scripted walker invocation), guarded by the verify layer. Verifiers
+// are pinned to opus at high effort because their verdicts gate the
+// release. Pass args: { model: 'haiku'|'sonnet'|'opus'|'fable' } to
+// override preflight and every journey (verifiers stay pinned so the gate
+// keeps its rigor).
 
 export const meta = {
   name: 'interviewer-release-test-workflow',
@@ -197,12 +204,6 @@ const JOURNEY_SCHEMA = {
     checks: { type: 'array', items: CHECK },
     failures: { type: 'array', items: FAILURE },
     artifactsDir: { type: 'string' },
-    traversedStages: {
-      type: 'array',
-      items: { type: 'integer' },
-      description:
-        'conduct-sample-interview only: every stage index you landed on, in order',
-    },
     notes: { type: 'string' },
   },
 };
@@ -258,13 +259,7 @@ const EVIDENCE_SCHEMA = {
       type: 'array',
       items: {
         type: 'object',
-        required: [
-          'journey',
-          'exists',
-          'screenshots',
-          'checkpointNumbers',
-          'stageNumbers',
-        ],
+        required: ['journey', 'exists', 'screenshots', 'checkpointNumbers'],
         properties: {
           journey: { type: 'string' },
           exists: { type: 'boolean' },
@@ -277,12 +272,6 @@ const EVIDENCE_SCHEMA = {
             items: { type: 'integer' },
             description:
               'Journey dirs: the DISTINCT check numbers N with a check<N>-prefixed .png. verify-* dirs: the DISTINCT failure numbers K with a failure<K>-prefixed .png.',
-          },
-          stageNumbers: {
-            type: 'array',
-            items: { type: 'integer' },
-            description:
-              'The DISTINCT stage numbers N with a stage-<N>-prefixed .png (empty where none exist)',
           },
         },
       },
@@ -325,6 +314,11 @@ starts from a fresh profile — that is fine; the journey is self-contained and
 cheap to replay from the top. After each run, inspect the console output, Read
 the saved screenshots, and dump ARIA snapshots
 (await page.locator('body').ariaSnapshot()) before extending the script.
+EVERY script run must be time-bounded: pass an explicit timeout to the Bash
+tool sized to the run (a few minutes), and never disable or inflate
+Playwright's own default timeouts wholesale — one hung locator wait inside
+an unbounded shell call once stalled this gate for two hours. A run that
+times out is a signal to inspect, not to rerun with a bigger limit.
 Save a screenshot at every checkpoint — AT LEAST one per numbered check,
 named with the check's number as its filename prefix: check<N>-<slug>.png
 (e.g. check3-settings-tabs.png; extra captures like stage-<i>.png may sit
@@ -414,7 +408,7 @@ DISCIPLINE:
 // Per-journey model tier; overridable wholesale via args.model.
 const journeyModel = {
   'protocol-management': 'sonnet',
-  'conduct-sample-interview': 'opus',
+  'conduct-offline': 'sonnet',
   'session-management': 'sonnet',
   'data-export': 'sonnet',
   'security-vault': 'sonnet',
@@ -426,18 +420,13 @@ const journeyModel = {
 // whose checks array does not match — a truncated report must not pass.
 const expectedChecks = {
   'protocol-management': 9,
-  'conduct-sample-interview': 7,
+  'conduct-offline': 6,
   'session-management': 8,
   'data-export': 7,
   'security-vault': 10,
   'pwa-offline': 10,
   'settings-and-chrome': 9,
 };
-
-// The conduct journey additionally saves a per-stage image for the ~30-stage
-// walk (skip logic may legitimately reduce the count); every other journey's
-// evidence floor is implied by the exact checkpoint-set validation below.
-const CONDUCT_MIN_SCREENSHOTS = 20;
 
 // Check numbers each prompt explicitly permits to be skipped, mapped to the
 // skip-reason classes acceptable at that position. A skip anywhere else — or
@@ -545,90 +534,66 @@ CHECKS (in one or more scripts, fresh profile each run):
 Return journey="protocol-management".`,
   },
   {
-    key: 'conduct-sample-interview',
+    key: 'conduct-offline',
     prompt: (
       ctx,
-    ) => `You are the "conduct-sample-interview" journey of the Interviewer release smoke test — the deepest journey: conduct the ENTIRE bundled Sample Protocol as a realistic participant.
+    ) => `You are the "conduct-offline" journey of the Interviewer release smoke test: conduct a complete interview ENTIRELY OFFLINE via the repo's committed walker, proving the deployment's precache serves the whole interview engine without network and that every data-model write path (ego, node, layout, both edge-creation paths, categorical attribute) persists.
 ${driving(ctx.workDir, ctx.repoRoot)}
 
-Setup: install the Sample Protocol (activate card 1 → "Install sample
-protocol" → wait for the "Protocol imported" toast), then "Start new
-interview" with case ID "release-smoke". The interview mounts at
-/interview/<id> as main[data-theme-interview]; the current step index is in
-its [data-stage-step] attribute. Navigation: "Next Step" / "Previous Step"
-buttons on the left rail; the progress bar is a "Go to another screen" button
-opening a stage drawer.
+This journey is driven by the repo's canonical walker — RUN it, never
+rebuild its driving logic yourself (its interactions are maintained in step
+with the e2e fixtures, and ad-hoc reimplementation is where this gate's
+past false failures came from):
 
-The protocol has 30 authored stages plus an engine-appended finish stage, in
-this order (skip logic may legitimately skip some depending on your answers —
-a lower traversed count alone is not a failure):
-Information ×3 → EgoForm (Consent) → EgoForm (Ego Form) → Info →
-NameGeneratorQuickAdd → Info → NameGeneratorQuickAdd with side panel → Info →
-NameGenerator with node form (Clinic/Health Care Provider) → Info →
-NameGeneratorRoster (Small Roster – Classroom) → NameGeneratorRoster
-(University Roster) → AlterForm (per-alter form pages) → Info → Sociogram →
-Sociogram with background image → Info → Sociogram (Edge Creation) →
-DyadCensus (Classmates) → Info ×2 → Sociogram (Attribute Nomination) →
-OrdinalBin (Contact Frequency) → CategoricalBin (Group Membership) → Info →
-CategoricalBin (Relationship Type) → Info → Narrative.
+  cd ${ctx.repoRoot} && node scripts/interviewer-release-smoke-walker.mjs \\
+    --url ${url} --artifacts ${ctx.workDir}/conduct-offline
 
-IMPORTANT: on the Consent EgoForm, consent AFFIRMATIVELY (answer yes/true).
-Declining is a valid answer whose skip logic routes the interview straight
-to the finish stage — that would void the whole walk. If you find yourself
-on "Finish Interview" after only a handful of stages, an answer skipped the
-protocol: go back and change it rather than reporting success.
+Give that Bash call an explicit timeout of ~6 minutes — the walker enforces
+its own 5-minute hard watchdog (exit 2 = hang, with watchdog-timeout.png).
+It conducts the six-stage Release Smoke fixture protocol
+(packages/protocols/e2e/release-smoke): one online visit installs the
+service worker and imports the protocol, the context then goes OFFLINE
+(with a positive control proving the flip is real), the entire interview is
+conducted offline, and the completed session is verified on /data at 100%
+both offline and after an online reload. It writes numbered evidence
+screenshots and result.json into the artifacts directory; the last stdout
+line is the result JSON. Exit codes: 0 all passed, 1 check failures,
+2 watchdog hang, 3 setup error — 2 and 3 are failed runs, never passes.
 
-Interaction cheat sheet:
-- Information: read, then Next.
-- EgoForm: fill required fields via [data-field-name="…"] input; BLUR each
-  field to trigger validation; the Next button pulses (gains a bg-success
-  class) when the stage is complete.
-- NameGeneratorQuickAdd: data-testid quick-add-toggle → quick-add-input →
-  type a name, press Enter; add 3–4 people (e.g. Alex, Blair, Casey, Devon);
-  added nodes appear as role="option".
-- NameGenerator with form: an add control opens a node form dialog; fill the
-  required fields and submit; repeat for 2 nodes.
-- Roster stages: pick 2–3 entries from the roster list/cards to add them.
-- AlterForm: one form page per alter; fill required fields, advance through
-  all alters.
-- Sociogram: canvas is role="application" named "Sociogram Canvas"; drag node
-  bubbles from the bucket onto distinct spots with mouse.down/move/up (several
-  small moves, not one jump). Edge creation: click two placed nodes in
-  sequence; visible edges are svg line[visibility="visible"]. Attribute
-  nomination: click nodes to toggle highlight.
-- DyadCensus: answer the yes/no prompt for each pair (mix answers).
-- OrdinalBin / CategoricalBin: drag each node into a bin (vary bins).
-- Narrative: the sample protocol has exactly ONE preset and it activates
-  automatically (the preset navigation controls are disabled at the ends) —
-  there is no preset selection to perform. Assert the active preset renders
-  the network, exercise the drawing/annotation or display toggles, then
-  Next.
-- Finish stage: heading "Finish Interview", button "Finish" → confirm dialog
-  "Are you sure you want to finish the interview?" → "Finish Interview".
+Map the walker's result.json steps onto these CHECKS. A check passes ONLY
+when every step listed for it passed; quote the walker's step notes in each
+check's detail:
+1. Service worker + import: steps "sw-controlled" and "protocol-imported".
+2. Offline flip with positive control: step "offline-positive-control".
+3. All six stages conducted offline: steps "session-started",
+   "stage-information", "stage-egoform", "stage-quickadd",
+   "stage-sociogram", "stage-dyadcensus", "stage-catbin".
+4. Finish flow completes: step "finish".
+5. Completed session on /data at 100% while STILL offline: step
+   "persisted-offline".
+6. The row survives an online reload: step "persisted-online".
 
-CHECKS:
-1. Every stage you land on renders usable content (screenshot each stage as
-   stage-<index>.png and afterwards review the images for blank stages or
-   grossly broken layout).
-2. Each interface type accepts the interaction described above (data entered
-   is reflected in the UI before you advance).
-3. "Previous Step" works: after completing the FIRST Quick Add
-   name-generator stage, go back one stage and forward again without data
-   loss (the quick-added names are still listed on return).
-4. The stage drawer ("Go to another screen") opens and lists stages.
-5. The finish flow completes: confirm dialog → "Interview complete" screen
-   (data-testid="interview-complete") → "Exit" lands on / or /data.
-6. /data afterwards lists the session: case ID "release-smoke", status
-   Complete, progress 100%.
-7. No unexpected console errors accumulated across the whole interview.
+Evidence: after the run, copy the walker's screenshots to per-check names
+in the SAME artifacts directory (keep the originals):
+  cd ${ctx.workDir}/conduct-offline && cp 01-sw-ready.png check1-sw.png &&
+  cp 02-protocol-imported.png check1b-imported.png &&
+  cp 03-offline-control.png check2-offline.png &&
+  cp 04-stage-information.png check3-stages.png &&
+  cp 10-finish-complete.png check4-finish.png &&
+  cp 11-data-row-offline.png check5-data-offline.png &&
+  cp 12-data-row-online.png check6-data-online.png
 
-Report EVERY stage index you land on in the traversedStages result field —
-the evidence audit requires a stage-<index>.png for each one.
+For every failed walker step, record a failure bound to its check number,
+with the walker's note and screenshot paths as evidence: stage or
+persistence failures are blocker (field data collection is broken);
+sw-controlled or protocol-imported failures are blocker (the PWA contract
+is broken); a failed offline positive control means the offline condition
+could not be created — report it as this journey's failure and let the
+verifier adjudicate whether it is an app defect or harness limit. If the
+walker aborted early, every check it never reached is a FAILED check
+(missing coverage), never a skip or a pass.
 
-If one stage's interaction genuinely cannot be completed after real effort,
-record a failure for that stage, then use the stage drawer to move past it and
-finish the rest — a complete run with one stage failure beats an aborted run.
-Return journey="conduct-sample-interview".`,
+Return journey="conduct-offline".`,
   },
   {
     key: 'session-management',
@@ -995,20 +960,27 @@ CHECKS:
 4. Data export settings persist: change "Screen layout width" to 1024, wait
    for read-back, reload, reopen Settings — still 1024. Restore 1920.
 5. Privacy: "Enable analytics" switch flips and reads back — verified
-   BEHAVIOURALLY, not just visually: the context blocks the relay, but
-   attempted requests are still observable via page.on('request').
-   ESTABLISH the off-baseline explicitly first — toggle analytics OFF and
-   wait for the switch to read back (do NOT assume the default state;
-   report what the initial state was as an observation, never as a
-   failure) — then perform a representative action and a reload, KEEP the
-   listener armed while the page sits idle for a further 15 s, and assert
-   ZERO attempts to ph-relay.networkcanvas.com across the whole window
-   (the client batches on a flush timer — a counter read immediately
-   after the action misses a late flush and would certify a broken
-   opt-out); enable, then disable again, repeat the action + reload +
-   15 s armed quiet period, and assert zero NEW attempts after the
-   opt-out. (Do not require attempts while enabled — the client
-   initialises lazily and batches, so that direction flakes.)
+   BEHAVIOURALLY with BOTH directions of evidence: the context blocks the
+   relay, but attempted requests to ph-relay.networkcanvas.com are still
+   observable via page.on('request'). The app disables autocapture and
+   pageview capture (only explicit app events emit), so an idle page
+   proves NOTHING — every probe must be a KNOWN-TRACKED action: feed a
+   garbage bad.netcanvas to the protocol import input, which fires a
+   protocol_install_failed analytics event on every failed import
+   (useProtocolImport.ts) with no persistent state. Report the switch's
+   initial state as an observation, never a failure. Sequence:
+   (a) POSITIVE CONTROL first: toggle analytics ON, wait for read-back,
+   perform the garbage import, and require AT LEAST ONE attempted relay
+   request within a 20 s armed window — if none arrives, the listener or
+   the probe is not observing capture at all, so record THIS check as
+   failed coverage rather than treating later zeroes as an opt-out pass.
+   (b) Toggle OFF, wait for read-back, reload, RE-READ the switch after
+   the reload (the persisted setting is what survives), repeat the
+   garbage-import probe, and KEEP the listener armed through a 15 s quiet
+   window (the client batches on a flush timer — an immediate counter
+   read misses a late flush): assert ZERO new attempts across the whole
+   window. (c) Enable, then disable again, and repeat (b) — the opt-out
+   must hold after re-enable, not only from the initial state.
 6. Escape closes the Settings modal.
 7. Routing: an unknown path (${url}/definitely-not-a-route) renders the
    not-found screen (actual content, not a blank page), and navigation back
@@ -1183,6 +1155,16 @@ log(
   `Preflight OK — deployed version ${preflight.version}, work dir ${preflight.workDir}`,
 );
 
+// Canonicalize before ANY comparison or interpolation: macOS $TMPDIR ends in
+// "/", so a preflight that reports "$TMPDIR/name" carries "//" — an agent
+// echoing that verbatim and one normalizing it claim the SAME directory (a
+// validation run proved the raw comparison INCOMPLETEs four honest journeys).
+const canonPath = (p) =>
+  String(p)
+    .replace(/\/{2,}/g, '/')
+    .replace(/(.)\/+$/, '$1');
+preflight.workDir = canonPath(preflight.workDir);
+preflight.repoRoot = canonPath(preflight.repoRoot);
 const ctx = { workDir: preflight.workDir, repoRoot: preflight.repoRoot };
 
 // ---------------------------------------------------------------------------
@@ -1222,8 +1204,7 @@ const results = await pipeline(
     // journey's child directory (prompt-injection vector otherwise).
     const expectedDir = `${ctx.workDir}/${j.key}`;
     const evidenceDir =
-      result.artifactsDir &&
-      String(result.artifactsDir).replace(/\/+$/, '') === expectedDir
+      result.artifactsDir && canonPath(result.artifactsDir) === expectedDir
         ? expectedDir
         : ctx.workDir;
     const verify = await agent(
@@ -1292,8 +1273,7 @@ const evidenceClaims = results
     (r) =>
       !r.agentDied &&
       r.artifactsDir &&
-      String(r.artifactsDir).replace(/\/+$/, '') ===
-        `${preflight.workDir}/${r.journey}`,
+      canonPath(r.artifactsDir) === `${preflight.workDir}/${r.journey}`,
   )
   .map((r) => ({
     journey: r.journey,
@@ -1317,8 +1297,7 @@ if (evidenceClaims.length) {
     `Audit the evidence directories of an automated release test. For each entry below, check with the shell (no interpretation, no browsing, no writes):
 1. whether the directory exists;
 2. the count of .png files directly inside it (e.g. \`find <dir> -maxdepth 1 -name '*.png' | wc -l\`);
-3. checkpointNumbers, a list of integers, extracted from .png FILENAMES ONLY (scripts or notes named check1-*.mjs must not count): for a journey directory the DISTINCT check numbers (\`ls <dir> | grep -E '\\.png$' | grep -oE '^check[0-9]+' | sort -u\`); for a verify-* directory the DISTINCT failure numbers instead (\`ls <dir> | grep -E '\\.png$' | grep -oE '^failure[0-9]+' | sort -u\`);
-4. stageNumbers: the DISTINCT stage numbers among the .png filenames, as a list of integers (\`ls <dir> | grep -E '\\.png$' | grep -oE '^stage-?[0-9]+' | sort -u\`; report [] when none).
+3. checkpointNumbers, a list of integers, extracted from .png FILENAMES ONLY (scripts or notes named check1-*.mjs must not count): for a journey directory the DISTINCT check numbers (\`ls <dir> | grep -E '\\.png$' | grep -oE '^check[0-9]+' | sort -u\`); for a verify-* directory the DISTINCT failure numbers instead (\`ls <dir> | grep -E '\\.png$' | grep -oE '^failure[0-9]+' | sort -u\`).
 
 Then re-compute the deployment fingerprint and report it as fingerprint:
 { curl -s ${url}/ | grep -oE 'assets/[A-Za-z0-9_.-]+\\.(js|css)' | sort -u; curl -s ${url}/manifest.webmanifest; curl -s ${url}/sw.js; } | shasum -a 256 | cut -c1-16
@@ -1388,8 +1367,7 @@ for (const r of results.filter(Boolean)) {
   // never drove the app must not certify anything.
   if (
     !r.artifactsDir ||
-    String(r.artifactsDir).replace(/\/+$/, '') !==
-      `${preflight.workDir}/${r.journey}`
+    canonPath(r.artifactsDir) !== `${preflight.workDir}/${r.journey}`
   ) {
     if (!inconsistentJourneys.includes(r.journey))
       inconsistentJourneys.push(r.journey);
@@ -1411,35 +1389,11 @@ for (const r of results.filter(Boolean)) {
       ? executedNumbers.filter((n) => !have.has(n))
       : [];
     const needed = executedNumbers.length;
-    // Conduct's per-stage evidence is validated by IDENTITY against the
-    // journey's own traversed-stage report: every traversed stage needs its
-    // stage-<index>.png, the traversed set itself must clear the minimum
-    // walk length, and check captures cannot stand in for stage images.
-    let stageProblem = '';
-    if (r.journey === 'conduct-sample-interview') {
-      // DISTINCT stages: back/forward navigation legitimately repeats ids,
-      // and twenty repetitions of one stage are not a twenty-stage walk.
-      const traversed = [
-        ...new Set(Array.isArray(r.traversedStages) ? r.traversedStages : []),
-      ];
-      const onDisk = new Set(e ? (e.stageNumbers ?? []) : []);
-      const missingStages = traversed.filter((n) => !onDisk.has(n));
-      if (traversed.length < CONDUCT_MIN_SCREENSHOTS)
-        stageProblem = `reported only ${traversed.length} distinct traversed stages (>=${CONDUCT_MIN_SCREENSHOTS} expected)`;
-      else if (missingStages.length)
-        stageProblem = `no capture for traversed stage(s) ${missingStages.join(', ')}`;
-    }
-    if (
-      !e ||
-      !e.exists ||
-      e.screenshots < needed ||
-      stageProblem ||
-      missingCk.length
-    ) {
+    if (!e || !e.exists || e.screenshots < needed || missingCk.length) {
       if (!inconsistentJourneys.includes(r.journey))
         inconsistentJourneys.push(r.journey);
       certificationGaps.push(
-        `journey "${r.journey}" lacks on-disk evidence (${e ? `exists=${e.exists}, screenshots=${e.screenshots} of >=${needed}${stageProblem ? `, ${stageProblem}` : ''}${missingCk.length ? `, no capture for executed check(s) #${missingCk.join(', #')}` : ''}` : 'not audited'}); treated as incomplete`,
+        `journey "${r.journey}" lacks on-disk evidence (${e ? `exists=${e.exists}, screenshots=${e.screenshots} of >=${needed}${missingCk.length ? `, no capture for executed check(s) #${missingCk.join(', #')}` : ''}` : 'not audited'}); treated as incomplete`,
       );
     }
   }

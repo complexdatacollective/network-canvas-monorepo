@@ -263,6 +263,7 @@ try {
     );
     if (!offlineReal)
       throw new Error('offline flip did not take — walk would be meaningless');
+    await shot('offline-control');
   }
 
   // Phase 3: conduct the whole interview (offline unless --keep-online).

@@ -15,9 +15,10 @@ headless Playwright: a preflight gate, seven journeys in isolated browser
 profiles, independent verification of every reported failure, and a
 deterministic verdict. This skill is the procedure for one run: launch, wait,
 report, follow up. It deliberately covers what the Playwright E2E suite does
-not (service worker and offline behaviour, the full 30-stage Sample Protocol,
-the export format matrix, the security wizard). (Codex: the run needs Claude
-Code's Workflow tool — run this command from Claude Code.)
+not (service worker and offline behaviour, a complete interview conducted
+entirely offline against the deployed bits, the export format matrix, the
+security wizard). (Codex: the run needs Claude Code's Workflow tool — run
+this command from Claude Code.)
 
 ## Launch (Claude Code)
 
@@ -28,9 +29,9 @@ Code's Workflow tool — run this command from Claude Code.)
      (the dev site serves `main`'s pre-bump version until that PR merges),
      or a deployment of the hotfix branch for a hotfix (e.g. its PR's
      preview). The bare dev site is for ad-hoc `main` health checks.
-   - `journeys` — a subset of: `protocol-management`,
-     `conduct-sample-interview`, `session-management`, `data-export`,
-     `security-vault`, `pwa-offline`, `settings-and-chrome`. A subset run
+   - `journeys` — a subset of: `protocol-management`, `conduct-offline`,
+     `session-management`, `data-export`, `security-vault`, `pwa-offline`,
+     `settings-and-chrome`. A subset run
      returns `coverage: "partial"` and **never certifies a release** — use
      it for diagnosis and iteration, then run the full suite to certify.
    - `model` — `haiku` | `sonnet` | `opus` | `fable` for preflight and the

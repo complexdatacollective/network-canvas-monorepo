@@ -74,7 +74,7 @@ const PREFLIGHT = {
 
 const EXPECTED_CHECKS = {
   'protocol-management': 9,
-  'conduct-sample-interview': 7,
+  'conduct-offline': 6,
   'session-management': 8,
   'data-export': 7,
   'security-vault': 10,
@@ -142,9 +142,6 @@ const journey = (key, overrides = {}) => ({
   status: 'pass',
   checks: mkChecks(EXPECTED_CHECKS[key]),
   failures: [],
-  ...(key === 'conduct-sample-interview'
-    ? { traversedStages: Array.from({ length: 25 }, (_, i) => i + 1) }
-    : {}),
   ...overrides,
 });
 
@@ -737,10 +734,9 @@ test('evidence schema matches what the audit prompt produces', () => {
     !source.includes('stageCaptures'),
     'stageCaptures must not resurface',
   );
-  assert.match(
-    source,
-    /'stageNumbers',\s*\]/,
-    'required list names stageNumbers',
+  assert.ok(
+    !source.includes('stageNumbers'),
+    'stage-numbered evidence went with the sample-protocol walk',
   );
   assert.ok(
     source.includes('least one <node element'),
@@ -749,6 +745,10 @@ test('evidence schema matches what the audit prompt produces', () => {
   assert.ok(
     source.includes('.png FILENAMES ONLY'),
     'checkpoint extraction must be png-scoped',
+  );
+  assert.ok(
+    source.includes('scripts/interviewer-release-smoke-walker.mjs'),
+    'conduct-offline must invoke the committed walker',
   );
 });
 
@@ -976,35 +976,54 @@ test('every certification gap caps the verdict', async () => {
   );
 });
 
-test('conduct needs distinct per-stage captures, not raw totals', async () => {
-  const jr = {
-    'conduct-sample-interview': journey('conduct-sample-interview'),
-  };
-  const res = await run(
-    makeAgent(
-      jr,
-      {},
+test('conduct-offline validates like any journey via check captures', async () => {
+  const jr = { 'conduct-offline': journey('conduct-offline') };
+  const evidence = (checkpointNumbers) => ({
+    fingerprint: PREFLIGHT.fingerprint,
+    entries: [
       {
-        fingerprint: PREFLIGHT.fingerprint,
-        entries: [
-          {
-            journey: 'conduct-sample-interview',
-            exists: true,
-            screenshots: 40,
-            checkpointNumbers: [1, 2, 3, 4, 5, 6, 7],
-            stageNumbers: [],
-          },
-        ],
+        journey: 'conduct-offline',
+        exists: true,
+        screenshots: 13,
+        checkpointNumbers,
       },
-    ),
-    { journeys: ['conduct-sample-interview'] },
+    ],
+  });
+  const ok = await run(makeAgent(jr, {}, evidence([1, 2, 3, 4, 5, 6])), {
+    journeys: ['conduct-offline'],
+  });
+  assert.equal(ok.verdict, 'PASS');
+  // A walker run whose evidence lacks a check capture stays incomplete.
+  const partial = await run(makeAgent(jr, {}, evidence([1, 2, 3, 4, 5])), {
+    journeys: ['conduct-offline'],
+  });
+  assert.equal(partial.verdict, 'INCOMPLETE');
+  assert.ok(partial.certificationGaps.some((a) => a.includes('check(s) #6')));
+});
+
+test('a doubled-slash preflight workDir still matches normalized claims', async () => {
+  // macOS $TMPDIR ends in "/": preflight reports /tmp//x while an honest
+  // journey claims the normalized /tmp/x/<journey> — the SAME directory. A
+  // validation run proved the raw string comparison INCOMPLETEd four honest
+  // journeys over exactly this.
+  const base = makeAgent({ 'pwa-offline': journey('pwa-offline') });
+  const impl = async (prompt, opts) =>
+    opts.label === 'preflight'
+      ? { ...PREFLIGHT, workDir: '/tmp//x' }
+      : base(prompt, opts);
+  const res = await run(impl, { journeys: ['pwa-offline'] });
+  assert.equal(res.verdict, 'PASS');
+  // And the mirrored direction: a journey echoing a doubled-slash workDir
+  // verbatim claims the same directory as the normalized expectation.
+  const echoed = await run(
+    makeAgent({
+      'pwa-offline': journey('pwa-offline', {
+        artifactsDir: '/tmp//x/pwa-offline',
+      }),
+    }),
+    { journeys: ['pwa-offline'] },
   );
-  assert.equal(res.verdict, 'INCOMPLETE');
-  assert.ok(
-    res.certificationGaps.some((a) =>
-      a.includes('no capture for traversed stage(s)'),
-    ),
-  );
+  assert.equal(echoed.verdict, 'PASS');
 });
 
 test('dismissals bind to per-failure verifier captures', async () => {
@@ -1226,21 +1245,6 @@ test('cosmetic developer-origin variants never certify', async () => {
     });
     assert.equal(res.certifying, false, variant);
   }
-});
-
-test('repeated stage ids do not satisfy the conduct walk floor', async () => {
-  const jr = {
-    'conduct-sample-interview': journey('conduct-sample-interview', {
-      traversedStages: Array.from({ length: 25 }, () => 3),
-    }),
-  };
-  const res = await run(makeAgent(jr), {
-    journeys: ['conduct-sample-interview'],
-  });
-  assert.equal(res.verdict, 'INCOMPLETE');
-  assert.ok(
-    res.certificationGaps.some((a) => a.includes('distinct traversed stages')),
-  );
 });
 
 test('unevidenced severity downgrades keep the reported severity', async () => {
