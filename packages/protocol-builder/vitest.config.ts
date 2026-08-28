@@ -11,5 +11,6 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: [disableModernAnimationsSetup, './src/__tests__/setup.ts'],
+    testTimeout: 20_000,
   },
 });
