@@ -34,12 +34,14 @@
 // representative journeys of the deployed app — it certifies that a release
 // candidate basically works, end to end, on real deployed bits. It is NOT
 // an exhaustive behaviour suite; per-feature coverage belongs to the app's
-// unit and Playwright e2e suites. The conduct-offline journey runs the
-// committed walker (scripts/interviewer-release-smoke-walker.mjs) over the
-// six-stage release-smoke fixture protocol ENTIRELY OFFLINE — interfaces
-// are imported eagerly into one engine chunk, so broader stage-type
-// coverage adds no deployment risk coverage and belongs to the e2e and
-// Storybook suites. Documented harness limits (each has been evaluated and
+// unit and Playwright e2e suites. Two journeys run committed walkers:
+// conduct-offline (scripts/interviewer-release-smoke-walker.mjs — the
+// six-stage release-smoke fixture protocol conducted ENTIRELY OFFLINE;
+// interfaces are imported eagerly into one engine chunk, so broader
+// stage-type coverage adds no deployment risk coverage and belongs to the
+// e2e and Storybook suites) and security-vault
+// (scripts/interviewer-security-vault-walker.mjs — the full vault
+// lifecycle, cutting a ~90-minute agent-scripted journey to ~5 minutes). Documented harness limits (each has been evaluated and
 // declined with reasons in PR #1471/#1502 review threads):
 // native OS dialogs (showSaveFilePicker) and OS file-handler launches do
 // not exist in headless automation; biometric/WebAuthn needs virtual-
@@ -753,123 +755,76 @@ Return journey="data-export".`,
     key: 'security-vault',
     prompt: (
       ctx,
-    ) => `You are the "security-vault" journey of the Interviewer release smoke test: device-lock enrolment, unlock, step-up auth, and revocation.
+    ) => `You are the "security-vault" journey of the Interviewer release smoke test: device-lock enrolment, unlock, idle auto-lock, step-up auth at every gated boundary, encryption at rest, PIN rotation with cross-tab force-lock, revocation, passphrase enrolment, and the lock-screen reset path — driven by the repo's committed walker.
 ${driving(ctx.workDir, ctx.repoRoot)}
 
-Background: in a plain browser tab the app is immediately usable with NO lock
-("none" mode). Enrolment is reached at /welcome or Settings → Security → "Get
-started". The wizard dialog is titled "🔑 Secure this device"; its footer
-buttons carry data-testids wizard-cancel / wizard-back / wizard-next (label
-"Continue", "Finish" on the last step). PIN entry uses 8-segment code fields
-addressable as [data-testid="segmented-code-pin"] input and
-segmented-code-pin-confirm. A known-good passphrase: "correct-horse-battery-1".
+This journey is driven by the canonical walker — RUN it, never rebuild its
+driving logic yourself (its interactions are maintained in step with the
+app's e2e fixtures, and ad-hoc reimplementation is where this gate's past
+false failures and multi-hour runtimes came from):
 
-CHECKS:
-1. Enrol a PIN: /welcome → "Get started" → step through the wizard; on the
-   method step choose "PIN code" (radio with data-value="pin"); enter the
-   same 8-digit PIN twice; tick "I understand there is no recovery"; on the
-   lock-behaviour step verify "Require unlock when entering an interview"
-   defaults ON; finish ("Finish") → you land on / unlocked.
-2. Relock on reload: reload → lock screen "Welcome back". A WRONG 8-digit PIN
-   clears the field and the dialog stays; the correct PIN unlocks (entry
-   auto-submits when all 8 digits are typed).
-3. Manual lock, then idle auto-lock — one coherent sequence: click the
-   top-bar "Lock app" button → the lock screen appears immediately → unlock
-   with the PIN. Now set "Auto-lock after" to 1 minute (Settings →
-   Security), close Settings, and generate no input events for ~70 s — the
-   lock screen must appear ON ITS OWN (the useIdleTimer path — reload and
-   manual locks never exercise it). Unlock once more, restore "Auto-lock
-   after" to 15 minutes, close Settings, and finish by clicking "Lock app"
-   again so the journey continues from a locked app.
-4. Step-up on interview entry: unlock first — check 3 left the app locked.
-   Then install the Sample Protocol (toast!), "Start
-   new interview" with any case ID → a "Confirm your identity" dialog appears
-   BEFORE the interview starts; entering the PIN proceeds to the interview. Try a WRONG
-   8-digit PIN first: the dialog must reject it and NO session may be
-   created (the step-up gate accepting any credential is a bypass, and its
-   verify path is distinct from the lock screen's); only then proceed with
-   the correct PIN. Then EXIT the interview normally (the exit
-   setting is not yet enabled) back to the dashboard — the tabbed Settings
-   dialog exists only there — and exercise the EXPORT step-up call site
-   (distinct from interview entry): enable "Require unlock before
-   exporting data" (Settings → Security), generate one synthetic session (Settings →
-   Synthetic data), then on /data select it and export — the identity
-   dialog must gate the export BEFORE the export dialog appears; a wrong
-   PIN is rejected with no export started, the correct PIN proceeds.
-   Disable the setting afterwards.
-4b. Encryption is REAL, not just the chip: with the PIN enrolled and a
-   protocol + interview created, read the raw IndexedDB rows (database
-   "interviewer") via page.evaluate and assert the sensitive fields are
-   ciphertext — the session row's network/stageMetadata and the protocol
-   row's protocol/codebook must NOT be plaintext JSON (no readable node
-   names or codebook keys); plaintext there means the vault chip is lying
-   about data at rest. Record this inside check 4's result detail.
-5. Lock-screen guard on interview routes: check 4 ended back on the
-   dashboard, so FIRST re-enter the interview it created — Home → "Resume
-   last interview" pill (or /data → Resume), completing the identity
-   step-up if prompted — and confirm the URL is /interview/…. THEN reload →
-   the "Welcome back" lock screen appears WITHOUT the "Recover by
-   resetting" button (it is suppressed on interview routes). Unlock and
-   confirm the interview is still there.
-6. Change PIN: first EXIT the interview back to the dashboard (the button
-   named "Settings" on /interview/* is the interview engine's own menu —
-   text size and "Exit interview" only; the tabbed Settings dialog exists
-   only on the dashboard). Exit via that menu's "Exit interview" → confirm,
-   unlocking if prompted. Now, from the dashboard, exercise the EXIT
-   step-up call site coherently: enable "Require unlock when exiting an
-   interview" (Settings → Security), start a fresh interview (case ID
-   "exit-probe"), then exit via its menu — the identity dialog must gate
-   the exit; a wrong PIN is rejected and you REMAIN in the interview, the
-   correct PIN completes the exit back to the dashboard. Disable the
-   setting. Then dashboard Settings (gear,
-   data-testid="settings-trigger") → Security → "Change PIN" → submit a
-   WRONG current PIN first: the form must refuse the rotation (the
-   re-enrolment contract rejects an incorrect current credential even for
-   an unlocked user). Then the correct current PIN +
-   new PIN + confirm → then lock (top bar), assert the OLD PIN is REJECTED
-   (field clears, app stays locked — a change that leaves the old
-   credential valid has failed its purpose), and only then unlock with the
-   NEW PIN. Before rotating, open a SECOND page in the same
-   browser context and UNLOCK IT with the current (old) PIN — unlock state
-   is per-tab, so a fresh page starts locked and proves nothing —
-   positively establish it is usable; after the rotation completes in the
-   first page, the second must have force-locked itself (the cross-tab
-   storage listener — an unlocked stale tab still holding the old key
-   would encrypt rows the new vault cannot unwrap). After unlocking, assert the data created in checks 4–4b
-   SURVIVED the rotation and still decrypts: the protocol card is present
-   and the interview row is listed with its content intact — a rotation
-   that re-initialises an empty vault also "unlocks", and that signal
-   alone is worthless.
-7. Encryption chip: the status row's encryption chip
-   (data-testid="encryption-status-trigger") reads "Encrypted" while enrolled.
-8. Revoke: Settings → Security → the "Revoke device lock" row → "Revoke" →
-   confirm dialog "Revoke device lock and wipe data?" with confirm label
-   "Destroy device data" → after a reload the app is a clean slate: the
-   status row reads 0 protocols AND 0 interviews (check 4 created a
-   session — surviving session rows mean the wipe lied), the /data view is
-   empty, no lock, immediately usable.
-9. Passphrase enrolment (quick pass): /welcome again → choose "Passphrase" →
-   try a WEAK passphrase first (e.g. "short") — the wizard must refuse to
-   advance or show validation failure (the passphrase is the sole
-   protection for the data key in this mode; accepting weak secrets is a
-   security regression) — then
-   "correct-horse-battery-1" twice + the no-recovery checkbox → finish →
-   reload → submit a WRONG passphrase first via the "Passphrase" field
-   (data-testid="passphrase-input") and "Unlock" (unlock-submit) — it must
-   be rejected and the app stay locked (this verify path is separate from
-   the PIN's, and accepting any nonempty passphrase is a bypass) — then
-   unlock with the correct passphrase.
-10. Lock-screen reset path: FIRST install the Sample Protocol again AND
-    start + immediately exit one interview on it (complete the identity
-    step-up with the passphrase if prompted), so the reset has BOTH data
-    types to destroy — check 8's revoke already emptied the database, and
-    check 9 only re-enrolled the lock, so without this seeding the
-    "0 interviews" assertion starts at zero and passes even if the reset
-    fails to delete session rows. Then lock, "Recover by resetting" →
-    dialog "Reset all app data?" → "Permanently delete" → verify the
-    protocol AND the seeded interview are gone (0 protocols / 0 interviews
-    in the status row after reload, /data empty), not merely that the lock
-    cleared.
+  cd ${ctx.repoRoot} && node scripts/interviewer-security-vault-walker.mjs \\
+    --url ${url} --artifacts ${ctx.workDir}/security-vault
+
+Give that Bash call an explicit timeout of ~11 minutes — the walker enforces
+its own 10-minute hard watchdog (exit 2 = hang, with watchdog-timeout.png; a
+real idle-auto-lock wait of ~60 s is part of a normal run). It writes
+numbered evidence screenshots and result.json into the artifacts directory;
+the last stdout line is the result JSON. Exit codes: 0 all steps passed,
+1 step failures, 2 watchdog hang, 3 setup error — 2 and 3 are failed runs,
+never passes.
+
+Map the walker's result.json steps onto these CHECKS. A check passes ONLY
+when every step listed for it passed; quote the walker's step notes in each
+check's detail:
+1. PIN enrolment via the setup wizard, with "Require unlock when entering an
+   interview" defaulting ON: step "enrol-pin".
+2. Relock on reload, wrong PIN rejected, correct PIN auto-submits: step
+   "relock-and-wrong-pin".
+3. Manual lock and REAL idle auto-lock at the 1-minute setting: step
+   "manual-and-idle-lock".
+4. Step-up gates and encryption at rest: steps "stepup-interview-entry",
+   "phantom-after-entry-gated-exit", "stepup-export", and
+   "ciphertext-at-rest".
+5. Lock-screen guard on interview routes (recovery suppressed): step
+   "interview-route-lock-guard".
+6. Exit step-up and PIN rotation (cross-tab force-lock, old PIN rejected,
+   data survives): steps "phantom-after-resume-exit", "rotate-pin", and
+   "phantom-after-exit-gated-exit".
+7. Encryption chip reads Encrypted: step "encryption-chip".
+8. Revoke wipes protocols AND sessions, leaving an unlocked clean slate:
+   step "revoke-wipe".
+9. Passphrase enrolment (weak refused, wrong rejected): step
+   "passphrase-enrol".
+10. Lock-screen reset path destroys both seeded data types: steps
+    "reset-path" and "phantom-after-passphrase-exit".
+
+The "phantom-*" steps observe one KNOWN app defect (a stale "Confirm your
+identity" dialog left over Home after exiting an interview) at four exit
+sites. When any of them fail, record exactly ONE failure for the defect —
+bound to the lowest-numbered affected check, describing every failing site
+and quoting the walker's notes — rather than four duplicates. All other
+failed steps get their own failure records bound to their checks; step or
+gate failures are blocker (the vault contract is broken), the phantom
+defect is major (spurious auth dialog with a destructive control on a core
+flow). If the walker aborted early, every check it never reached is a
+FAILED check (missing coverage), never a skip.
+
+Evidence: after the run, copy the walker's screenshots to per-check names in
+the SAME artifacts directory (keep the originals; the ??- glob matches the
+walker's two-digit sequence prefix, which shifts with conditional captures):
+  cd ${ctx.workDir}/security-vault &&
+  cp ??-enrolled-home.png check1-enrol.png &&
+  cp ??-wrong-pin-rejected.png check2-wrongpin.png &&
+  cp ??-idle-locked.png check3-idle.png &&
+  cp ??-enter-stepup-wrong-pin.png check4-entry.png &&
+  cp ??-export-stepup-wrong-pin.png check4b-export.png &&
+  cp ??-interview-route-lock.png check5-routelock.png &&
+  cp ??-rotate-wrong-current.png check6-rotate.png &&
+  cp ??-encryption-chip.png check7-chip.png &&
+  cp ??-after-revoke.png check8-revoke.png &&
+  cp ??-weak-passphrase-refused.png check9-weak.png &&
+  cp ??-after-reset.png check10-reset.png
 
 Return journey="security-vault".`,
   },

@@ -756,6 +756,10 @@ test('evidence schema matches what the audit prompt produces', () => {
     source.includes('scripts/interviewer-release-smoke-walker.mjs'),
     'conduct-offline must invoke the committed walker',
   );
+  assert.ok(
+    source.includes('scripts/interviewer-security-vault-walker.mjs'),
+    'security-vault must invoke the committed walker',
+  );
 });
 
 test('preflight and audit embed the identical fingerprint command', () => {
