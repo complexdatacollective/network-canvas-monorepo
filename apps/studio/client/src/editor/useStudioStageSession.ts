@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   ProtocolBuilderSessionStore,
@@ -21,7 +21,18 @@ export type StudioStageSessionState =
       status: 'ready';
       session: ProtocolBuilderSession;
       message: string;
+      save: () => Promise<void>;
     };
+
+type SessionRuntime = Readonly<{
+  draftId: string;
+  sectionId: string;
+  store: ProtocolBuilderSessionStore;
+}>;
+
+function asError(error: unknown): Error {
+  return error instanceof Error ? error : new Error('Studio could not save.');
+}
 
 export function useStudioStageSession(params: {
   teamId: string;
@@ -35,6 +46,30 @@ export function useStudioStageSession(params: {
   const [state, setState] = useState<StudioStageSessionState>({
     status: 'loading',
   });
+  const latestDraft = useRef(params.draft);
+  const onCommitted = useRef(params.onCommitted);
+  const runtime = useRef<SessionRuntime | null>(null);
+  latestDraft.current = params.draft;
+  onCommitted.current = params.onCommitted;
+
+  useEffect(() => {
+    const current = runtime.current;
+    if (current === null || current.draftId !== params.draftId) return;
+
+    const incomingRevision = BigInt(params.draft.revision.sequence);
+    if (
+      incomingRevision < current.store.getSnapshot().manifestRevision.sequence
+    )
+      return;
+
+    current.store.receiveAuthoritativeUpdate({
+      protocolSections: params.draft.sections,
+      manifestRevision: {
+        sequence: incomingRevision,
+        hash: params.draft.revision.hash,
+      },
+    });
+  }, [params.draft, params.draftId]);
 
   useEffect(() => {
     if (params.stageId === null) {
@@ -46,7 +81,7 @@ export function useStudioStageSession(params: {
       kind: 'stage',
       stageId: params.stageId,
     });
-    const document = params.draft.sections[selectedSectionId];
+    const document = latestDraft.current.sections[selectedSectionId];
     if (document === undefined) {
       setState({
         status: 'failed',
@@ -56,9 +91,183 @@ export function useStudioStageSession(params: {
     }
 
     let active = true;
+    let acquiring = false;
     let renewal: ReturnType<typeof setInterval> | undefined;
-    let release: (() => Promise<void>) | undefined;
+    let retry: ReturnType<typeof setInterval> | undefined;
+    let currentLease: Readonly<{ leaseEpoch: string }> | null = null;
+    let store: ProtocolBuilderSessionStore;
+    let save: () => Promise<void>;
+    let committedFields: SectionDoc;
+    let clientSequence = 1n;
+    let commitFailure: Error | null = null;
+    let queue: Promise<void> = Promise.resolve();
     setState({ status: 'loading' });
+
+    const releaseLease = async (lease: Readonly<{ leaseEpoch: string }>) => {
+      await rpcClient.protocols.releaseSection({
+        teamId: params.teamId,
+        protocolId: params.protocolId,
+        draftId: params.draftId,
+        sectionId: selectedSectionId,
+        clientId: params.clientId,
+        leaseEpoch: lease.leaseEpoch,
+      });
+    };
+    const releaseLeaseInBackground = (
+      lease: Readonly<{ leaseEpoch: string }>,
+    ) => {
+      void releaseLease(lease).catch(() => undefined);
+    };
+
+    const stopRenewal = () => {
+      if (renewal !== undefined) clearInterval(renewal);
+      renewal = undefined;
+    };
+    const stopRetry = () => {
+      if (retry !== undefined) clearInterval(retry);
+      retry = undefined;
+    };
+
+    const showReady = (message: string) => {
+      if (active) setState({ status: 'ready', session: store, message, save });
+    };
+
+    const retryAcquisition = () => {
+      if (!active) return;
+      if (retry === undefined) {
+        retry = setInterval(() => void attemptPromotion(), 5_000);
+      }
+    };
+
+    const loseAccess = (error: unknown, message: string) => {
+      const lease = currentLease;
+      currentLease = null;
+      commitFailure = asError(error);
+      stopRenewal();
+      store.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+      showReady(message);
+      if (lease !== null) releaseLeaseInBackground(lease);
+      retryAcquisition();
+    };
+
+    const startRenewal = () => {
+      stopRenewal();
+      renewal = setInterval(() => {
+        const lease = currentLease;
+        if (lease === null) return;
+        void rpcClient.protocols
+          .renewSection({
+            teamId: params.teamId,
+            protocolId: params.protocolId,
+            draftId: params.draftId,
+            sectionId: selectedSectionId,
+            clientId: params.clientId,
+            leaseEpoch: lease.leaseEpoch,
+          })
+          .then((result) => {
+            if (
+              active &&
+              currentLease?.leaseEpoch === lease.leaseEpoch &&
+              !result.renewed
+            ) {
+              loseAccess(
+                new Error('screen lock expired'),
+                'Editing stopped because the screen lock was lost.',
+              );
+            }
+            return undefined;
+          })
+          .catch((error: unknown) => {
+            if (active && currentLease?.leaseEpoch === lease.leaseEpoch) {
+              loseAccess(
+                error,
+                'Editing stopped because the screen lock was lost.',
+              );
+            }
+          });
+      }, 10_000);
+    };
+
+    async function attemptPromotion(): Promise<void> {
+      if (!active || acquiring || currentLease !== null) return;
+      acquiring = true;
+      let acquiredLease: Readonly<{ leaseEpoch: string }> | null = null;
+      try {
+        const access = await rpcClient.protocols.acquireSection({
+          teamId: params.teamId,
+          protocolId: params.protocolId,
+          draftId: params.draftId,
+          sectionId: selectedSectionId,
+          clientId: params.clientId,
+        });
+        if (access.mode !== 'editable') return;
+        acquiredLease = access;
+        if (!active) {
+          await releaseLease(access).catch(() => undefined);
+          acquiredLease = null;
+          return;
+        }
+
+        const refreshed = await rpcClient.protocols.draft({
+          teamId: params.teamId,
+          protocolId: params.protocolId,
+          draftId: params.draftId,
+        });
+        if (!active) {
+          await releaseLease(access).catch(() => undefined);
+          acquiredLease = null;
+          return;
+        }
+        const refreshedDocument = refreshed.sections[selectedSectionId];
+        if (refreshedDocument === undefined) {
+          await releaseLease(access).catch(() => undefined);
+          acquiredLease = null;
+          setState({
+            status: 'failed',
+            message: 'The selected screen is no longer in this draft.',
+          });
+          return;
+        }
+
+        const refreshedStage = stageDraftFromDocument(refreshedDocument);
+        committedFields = structuredClone(refreshedStage.fields);
+        store.replaceAuthoritativeStage({
+          fields: refreshedStage.fields,
+          manifestRevision: {
+            sequence: BigInt(refreshed.revision.sequence),
+            hash: refreshed.revision.hash,
+          },
+        });
+        store.receiveAuthoritativeUpdate({
+          protocolSections: refreshed.sections,
+          manifestRevision: {
+            sequence: BigInt(refreshed.revision.sequence),
+            hash: refreshed.revision.hash,
+          },
+        });
+        latestDraft.current = refreshed;
+        currentLease = access;
+        acquiredLease = null;
+        clientSequence = 1n;
+        commitFailure = null;
+        store.setAccess({
+          mode: 'editable',
+          leaseOwner: params.clientId,
+          leaseEpoch: BigInt(access.leaseEpoch),
+        });
+        stopRetry();
+        startRenewal();
+        showReady('The screen lock is available. You can edit this screen.');
+        void Promise.resolve(onCommitted.current()).catch(() => undefined);
+      } catch {
+        if (acquiredLease !== null) {
+          void releaseLease(acquiredLease).catch(() => undefined);
+        }
+        retryAcquisition();
+      } finally {
+        acquiring = false;
+      }
+    }
 
     void rpcClient.protocols
       .acquireSection({
@@ -69,20 +278,27 @@ export function useStudioStageSession(params: {
         clientId: params.clientId,
       })
       .then((access) => {
-        if (!active) return undefined;
+        if (!active) {
+          if (access.mode === 'editable') {
+            void releaseLease(access).catch(() => undefined);
+          }
+          return undefined;
+        }
         const { identity, fields } = stageDraftFromDocument(document);
-        let committedFields: SectionDoc = structuredClone(fields);
-        let clientSequence = 1n;
-        let commitFailed = false;
-        let queue = Promise.resolve();
+        committedFields = structuredClone(fields);
 
-        const store = new ProtocolBuilderSessionStore({
+        save = async () => {
+          await queue;
+          if (commitFailure !== null) throw commitFailure;
+        };
+
+        store = new ProtocolBuilderSessionStore({
           identity,
           fields,
-          protocolSections: params.draft.sections,
+          protocolSections: latestDraft.current.sections,
           manifestRevision: {
-            sequence: BigInt(params.draft.revision.sequence),
-            hash: params.draft.revision.hash,
+            sequence: BigInt(latestDraft.current.revision.sequence),
+            hash: latestDraft.current.revision.hash,
           },
           access:
             access.mode === 'editable'
@@ -98,17 +314,18 @@ export function useStudioStageSession(params: {
               [selectedSectionId]: currentStage,
             }),
           onCommands: (batch) => {
-            if (access.mode !== 'editable') return;
+            const lease = currentLease;
+            if (lease === null) return;
             queue = queue
               .then(async () => {
-                if (commitFailed) return undefined;
+                if (commitFailure !== null) return undefined;
                 const revision = await rpcClient.protocols.commitSection({
                   teamId: params.teamId,
                   protocolId: params.protocolId,
                   draftId: params.draftId,
                   sectionId: selectedSectionId,
                   clientId: params.clientId,
-                  leaseEpoch: access.leaseEpoch,
+                  leaseEpoch: lease.leaseEpoch,
                   clientSequence: String(clientSequence++),
                   commands: [...batch.commands],
                 });
@@ -117,7 +334,7 @@ export function useStudioStageSession(params: {
                 ]);
                 store.receiveAuthoritativeUpdate({
                   protocolSections: {
-                    ...params.draft.sections,
+                    ...store.getSnapshot().protocolSections,
                     [selectedSectionId]: stageDocument(
                       identity,
                       committedFields,
@@ -136,76 +353,36 @@ export function useStudioStageSession(params: {
                     hash: revision.hash,
                   },
                 });
-                if (active) {
-                  setState({
-                    status: 'ready',
-                    session: store,
-                    message: 'Changes saved.',
-                  });
-                  await params.onCommitted();
-                }
+                showReady('Changes saved.');
+                void Promise.resolve(onCommitted.current()).catch(
+                  () => undefined,
+                );
                 return undefined;
               })
-              .catch(() => {
-                commitFailed = true;
-                store.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
-                if (active) {
-                  setState({
-                    status: 'ready',
-                    session: store,
-                    message:
-                      'Editing stopped because Studio could not save this screen.',
-                  });
-                }
-                return undefined;
+              .catch((error: unknown) => {
+                loseAccess(
+                  error,
+                  'Editing stopped because Studio could not save this screen.',
+                );
               });
           },
-          onFinish: async () => queue,
+          onFinish: async () => save(),
         });
-
-        setState({
-          status: 'ready',
-          session: store,
-          message:
-            access.mode === 'editable'
-              ? 'This screen is ready to edit.'
-              : 'This screen is open read-only because someone else is editing it.',
-        });
+        runtime.current = {
+          draftId: params.draftId,
+          sectionId: selectedSectionId,
+          store,
+        };
 
         if (access.mode === 'editable') {
-          const renew = async () => {
-            try {
-              const result = await rpcClient.protocols.renewSection({
-                teamId: params.teamId,
-                protocolId: params.protocolId,
-                draftId: params.draftId,
-                sectionId: selectedSectionId,
-                clientId: params.clientId,
-                leaseEpoch: access.leaseEpoch,
-              });
-              if (!result.renewed) throw new Error('lease expired');
-            } catch {
-              commitFailed = true;
-              store.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
-              if (active) {
-                setState({
-                  status: 'ready',
-                  session: store,
-                  message: 'Editing stopped because the screen lock was lost.',
-                });
-              }
-            }
-          };
-          renewal = setInterval(() => void renew(), 10_000);
-          release = () =>
-            rpcClient.protocols.releaseSection({
-              teamId: params.teamId,
-              protocolId: params.protocolId,
-              draftId: params.draftId,
-              sectionId: selectedSectionId,
-              clientId: params.clientId,
-              leaseEpoch: access.leaseEpoch,
-            });
+          currentLease = access;
+          startRenewal();
+          showReady('This screen is ready to edit.');
+        } else {
+          showReady(
+            'This screen is open read-only because someone else is editing it.',
+          );
+          retryAcquisition();
         }
         return undefined;
       })
@@ -221,14 +398,16 @@ export function useStudioStageSession(params: {
 
     return () => {
       active = false;
-      if (renewal !== undefined) clearInterval(renewal);
-      if (release !== undefined) void release().catch(() => undefined);
+      stopRenewal();
+      stopRetry();
+      if (runtime.current?.store === store) runtime.current = null;
+      const lease = currentLease;
+      currentLease = null;
+      if (lease !== null) void releaseLease(lease).catch(() => undefined);
     };
   }, [
     params.clientId,
-    params.draft,
     params.draftId,
-    params.onCommitted,
     params.protocolId,
     params.stageId,
     params.teamId,

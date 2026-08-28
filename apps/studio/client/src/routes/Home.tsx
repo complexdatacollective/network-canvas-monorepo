@@ -35,15 +35,16 @@ export default function Home() {
   );
   const createProtocol = useMutation(
     orpc.protocols.create.mutationOptions({
-      onSuccess: async (created) => {
-        if (teamId === null) return;
+      onSuccess: async (created, variables) => {
         await queryClient.invalidateQueries({
-          queryKey: orpc.protocols.list.key({ input: { teamId } }),
+          queryKey: orpc.protocols.list.key({
+            input: { teamId: variables.teamId },
+          }),
         });
         await navigate({
           to: '/teams/$teamId/protocols/$protocolId/drafts/$draftId',
           params: {
-            teamId,
+            teamId: variables.teamId,
             protocolId: created.protocolId,
             draftId: created.draftId,
           },
@@ -153,7 +154,7 @@ export default function Home() {
                             {protocol.name}
                           </span>
                           <span className="text-sm">
-                            Updated {protocol.updatedAt.toLocaleDateString()}
+                            Created {protocol.createdAt.toLocaleDateString()}
                           </span>
                         </Link>
                       )}
