@@ -105,6 +105,7 @@ const fixtures = vi.hoisted(() => {
       },
     ],
   };
+  const createProtocol = vi.fn();
   const authState: {
     activeTeam: typeof ACTIVE_TEAM_A | typeof ACTIVE_TEAM_B | undefined;
     activeMember:
@@ -139,6 +140,7 @@ const fixtures = vi.hoisted(() => {
     BETA_MEMBER,
     ACTIVE_TEAM_B,
     protocolsByTeam,
+    createProtocol,
     authState,
   };
 });
@@ -214,7 +216,7 @@ vi.mock('../../lib/api.ts', () => ({
       },
       create: {
         mutationOptions: (options: object) => ({
-          mutationFn: vi.fn(),
+          mutationFn: fixtures.createProtocol,
           ...options,
         }),
       },
@@ -240,7 +242,7 @@ function renderWorkspace() {
     </QueryClientProvider>
   );
   const view = render(ui);
-  return { ...view, rerenderWorkspace: () => view.rerender(ui) };
+  return { ...view, router, rerenderWorkspace: () => view.rerender(ui) };
 }
 
 beforeEach(() => {
@@ -260,6 +262,13 @@ beforeEach(() => {
   );
   authState.inviteMember.mockResolvedValue({ data: {}, error: null });
   authState.updateMemberRole.mockResolvedValue({ data: {}, error: null });
+  fixtures.createProtocol.mockImplementation(
+    (input: { protocolId: string; draftId: string }) =>
+      Promise.resolve({
+        protocolId: input.protocolId,
+        draftId: input.draftId,
+      }),
+  );
   authState.refetchActiveTeam.mockResolvedValue(undefined);
   authState.refetchActiveMember.mockResolvedValue(undefined);
 });
@@ -305,6 +314,38 @@ describe('Studio team workspace', () => {
     ).toBeInTheDocument();
     expect(await screen.findByText('Beta protocol')).toBeInTheDocument();
     expect(screen.queryByText('Alpha protocol')).not.toBeInTheDocument();
+  });
+
+  it('reuses the creation identity after a lost response', async () => {
+    fixtures.createProtocol
+      .mockRejectedValueOnce(new Error('response lost'))
+      .mockImplementationOnce(
+        (input: { protocolId: string; draftId: string }) =>
+          Promise.resolve({
+            protocolId: input.protocolId,
+            draftId: input.draftId,
+          }),
+      );
+    const { router } = renderWorkspace();
+
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: 'Protocol name' }),
+      { target: { value: 'Stable team protocol' } },
+    );
+    const create = screen.getByRole('button', { name: 'Create protocol' });
+    fireEvent.click(create);
+    await screen.findByText(/protocol could not be created/i);
+    fireEvent.click(create);
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toMatch(
+        /^\/teams\/team-a\/protocols\/[0-9a-f-]+\/drafts\/[0-9a-f-]+$/,
+      ),
+    );
+    expect(fixtures.createProtocol).toHaveBeenCalledTimes(2);
+    expect(fixtures.createProtocol.mock.calls[1]?.[0]).toEqual(
+      fixtures.createProtocol.mock.calls[0]?.[0],
+    );
   });
 
   it('creates an invitation with the selected team and role', async () => {

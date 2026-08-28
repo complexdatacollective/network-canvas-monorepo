@@ -46,6 +46,8 @@ export const ProtocolSummarySchema = z.object({
 
 export const CreateProtocolInputSchema = TeamScopedSchema.extend({
   name: z.string().min(1),
+  protocolId: z.uuid(),
+  draftId: z.uuid(),
 });
 
 export const CreateProtocolResultSchema = z.object({
@@ -134,4 +136,5 @@ export const AddInformationStageInputSchema = ProtocolDraftInputSchema.extend({
 export const MoveStageInputSchema = ProtocolDraftInputSchema.extend({
   stageId: z.string().min(1),
   toIndex: z.number().int().nonnegative(),
+  expectedRevision: DecimalSequenceSchema,
 });

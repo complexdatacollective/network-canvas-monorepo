@@ -2,9 +2,15 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAppRouter } from '../../router.tsx';
+
+const mocks = vi.hoisted(() => ({
+  createProtocol: vi.fn(),
+  listProtocols: vi.fn(),
+  useListOrganizations: vi.fn(),
+}));
 
 vi.mock('../../lib/auth.ts', () => ({
   authClient: {
@@ -18,11 +24,7 @@ vi.mock('../../lib/auth.ts', () => ({
       },
       isPending: false,
     }),
-    useListOrganizations: vi.fn().mockReturnValue({
-      data: [],
-      isPending: false,
-      isError: false,
-    }),
+    useListOrganizations: mocks.useListOrganizations,
     signOut: vi.fn(),
   },
 }));
@@ -42,13 +44,14 @@ vi.mock('../../lib/api.ts', () => ({
       list: {
         queryOptions: () => ({
           queryKey: ['protocols'],
-          queryFn: vi.fn().mockResolvedValue([]),
+          queryFn: mocks.listProtocols,
         }),
         key: () => ['protocols'],
       },
       create: {
-        mutationOptions: () => ({
-          mutationFn: vi.fn(),
+        mutationOptions: (options: object) => ({
+          mutationFn: mocks.createProtocol,
+          ...options,
         }),
       },
       draft: {
@@ -67,12 +70,23 @@ function renderHome() {
   const router = createAppRouter(
     createMemoryHistory({ initialEntries: ['/'] }),
   );
-  return render(
+  const view = render(
     <QueryClientProvider client={new QueryClient()}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
+  return { ...view, router };
 }
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.useListOrganizations.mockReturnValue({
+    data: [],
+    isPending: false,
+    isError: false,
+  });
+  mocks.listProtocols.mockResolvedValue([]);
+});
 
 describe('Home', () => {
   it('announces the server status through one persistent live region', async () => {

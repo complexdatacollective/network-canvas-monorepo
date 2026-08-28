@@ -1,5 +1,7 @@
 // The tenancy spine end to end through the RPC boundary: explicit teamId input
 // → membership check → TenantDb → team-scoped rows.
+import { randomUUID } from 'node:crypto';
+
 import { safe } from '@orpc/client';
 import type { RouterContractClient } from '@orpc/contract';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -62,6 +64,8 @@ describe.skipIf(!db)('team-scoped procedures', () => {
     const created = await client.protocols.create({
       teamId: 'team-a',
       name: 'Spine Proof',
+      protocolId: randomUUID(),
+      draftId: randomUUID(),
     });
     const listed = await client.protocols.list({ teamId: 'team-a' });
     expect(listed.map((protocol) => protocol.id)).toContain(created.protocolId);
@@ -75,6 +79,8 @@ describe.skipIf(!db)('team-scoped procedures', () => {
     const created = await client.protocols.create({
       teamId: 'team-a',
       name: 'Editor proof',
+      protocolId: randomUUID(),
+      draftId: randomUUID(),
     });
     const scope = {
       teamId: 'team-a',
@@ -85,10 +91,25 @@ describe.skipIf(!db)('team-scoped procedures', () => {
     const stageB = '22222222-2222-4222-8222-222222222222';
     await client.protocols.addInformationStage({ ...scope, stageId: stageA });
     await client.protocols.addInformationStage({ ...scope, stageId: stageB });
-    await client.protocols.moveStage({ ...scope, stageId: stageB, toIndex: 0 });
+    const beforeMove = await client.protocols.draft(scope);
+    await client.protocols.moveStage({
+      ...scope,
+      stageId: stageB,
+      toIndex: 0,
+      expectedRevision: beforeMove.revision.sequence,
+    });
 
     const opened = await client.protocols.draft(scope);
     expect(opened.sections.stageOrder).toEqual({ stages: [stageB, stageA] });
+    const staleMove = await safe(
+      client.protocols.moveStage({
+        ...scope,
+        stageId: stageA,
+        toIndex: 0,
+        expectedRevision: beforeMove.revision.sequence,
+      }),
+    );
+    expect(staleMove.error).not.toBeNull();
 
     const clientId = '33333333-3333-4333-8333-333333333333';
     const sectionId = `stage:${stageA}`;
@@ -158,6 +179,8 @@ describe.skipIf(!db)('team-scoped procedures', () => {
     const created = await client.protocols.create({
       teamId: 'team-a',
       name: 'A-only protocol',
+      protocolId: randomUUID(),
+      draftId: randomUUID(),
     });
     const inB = await client.protocols.list({ teamId: 'team-b' });
     expect(inB.map((protocol) => protocol.id)).not.toContain(

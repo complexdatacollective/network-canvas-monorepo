@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Alert } from '@codaco/fresco-ui/Alert';
 import { Badge } from '@codaco/fresco-ui/Badge';
@@ -223,6 +223,12 @@ function ActiveTeamWorkspace(props: {
   const teamId = props.team.id;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const creationAttempt = useRef<{
+    teamId: string;
+    name: string;
+    protocolId: string;
+    draftId: string;
+  } | null>(null);
   const protocols = useQuery(
     orpc.protocols.list.queryOptions({ input: { teamId } }),
   );
@@ -315,8 +321,21 @@ function ActiveTeamWorkspace(props: {
               className="mt-4 max-w-xl"
               onSubmit={async (values) => {
                 const name = typeof values.name === 'string' ? values.name : '';
+                const previousAttempt = creationAttempt.current;
+                const attempt =
+                  previousAttempt?.teamId === teamId &&
+                  previousAttempt.name === name
+                    ? previousAttempt
+                    : {
+                        teamId,
+                        name,
+                        protocolId: globalThis.crypto.randomUUID(),
+                        draftId: globalThis.crypto.randomUUID(),
+                      };
+                creationAttempt.current = attempt;
                 try {
-                  await createProtocol.mutateAsync({ teamId, name });
+                  await createProtocol.mutateAsync(attempt);
+                  creationAttempt.current = null;
                   return { success: true };
                 } catch {
                   return {
