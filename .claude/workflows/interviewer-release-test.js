@@ -573,24 +573,31 @@ Map the walker's result.json steps onto these CHECKS. A check passes ONLY
 when every step listed for it passed; quote the walker's step notes in each
 check's detail:
 1. Service worker + import: steps "sw-controlled" and "protocol-imported".
-2. Offline flip with positive control: step "offline-positive-control".
+2. Offline is real AND the app boots from the precache: steps
+   "offline-positive-control" and "offline-boot" (an offline reload must
+   remount the app from the service worker's cache).
 3. All six stages conducted offline: steps "session-started",
    "stage-information", "stage-egoform", "stage-quickadd",
    "stage-sociogram", "stage-dyadcensus", "stage-catbin".
 4. Finish flow completes: step "finish".
 5. Completed session on /data at 100% while STILL offline: step
    "persisted-offline".
-6. The row survives an online reload: step "persisted-online".
+6. The row survives an online reload AND the stored payload is intact
+   (nodes, layouts, categorical values, both edge types, ego): steps
+   "persisted-online" and "persisted-payload".
+A failed "setup" step means the walker could not start at all — report the
+journey as failed with that note and let the verifier adjudicate.
 
 Evidence: after the run, copy the walker's screenshots to per-check names
-in the SAME artifacts directory (keep the originals):
-  cd ${ctx.workDir}/conduct-offline && cp 01-sw-ready.png check1-sw.png &&
-  cp 02-protocol-imported.png check1b-imported.png &&
-  cp 03-offline-control.png check2-offline.png &&
-  cp 04-stage-information.png check3-stages.png &&
-  cp 10-finish-complete.png check4-finish.png &&
-  cp 11-data-row-offline.png check5-data-offline.png &&
-  cp 12-data-row-online.png check6-data-online.png
+in the SAME artifacts directory (keep the originals; the ??- glob matches
+the two-digit sequence prefix, which shifts with conditional captures):
+  cd ${ctx.workDir}/conduct-offline && cp ??-sw-ready.png check1-sw.png &&
+  cp ??-protocol-imported.png check1b-imported.png &&
+  cp ??-offline-boot.png check2-offline.png &&
+  cp ??-stage-information.png check3-stages.png &&
+  cp ??-finish-complete.png check4-finish.png &&
+  cp ??-data-row-offline.png check5-data-offline.png &&
+  cp ??-data-row-online.png check6-data-online.png
 
 For every failed walker step, record a failure bound to its check number,
 with the walker's note and screenshot paths as evidence: stage or
@@ -721,28 +728,36 @@ CHECKS:
    declaration — its absence is correct, do not fail on it) AND contains at
    least one <node element — the synthetic sessions carry network data, so
    a valid-but-empty document is silent data loss, not a pass;
-   each ego CSV has a header row and 1 data row, and the node and edge
-   partition CSVs contain data rows too (the synthetic sessions carry
-   network data — header-only partitions are silent CSV data loss).
+   each ego CSV has a header row and 1 data row, and the node partition
+   CSVs contain data rows too. Edge partitions are CONDITIONAL: unseeded
+   synthetic generation can legitimately produce a session with zero edges,
+   and the exporter intentionally emits a header-only edge CSV for it
+   (partitionByType) — so FIRST read each session's stored edge count from
+   IndexedDB, then require edge data rows exactly for the sessions that
+   have edges (a header-only edge CSV for a session with stored edges is
+   silent data loss; for an edge-less session it is correct).
    IDENTITY PAIRING: read the five case IDs from /data first; each must
    appear in exactly ONE GraphML file and its matching ego CSV — a payload
    filed under another session's name, duplicated, or missing is export
    corruption even when the counts add up.
 3. Export status column: the exported rows now show a timestamp/TimeAgo
    instead of "Not exported".
-4. GraphML-only: Settings → "Data export" → toggle "Export CSV" off (wait
-   for the switch to read back) and ALSO enable "Export node positions as
-   screen-coordinate pixels" → export again → the archive contains exactly
+4. GraphML-only: saving check 1's export CLEARED the table selection
+   (handleShareReady in useSessionMutations) — RESELECT all 5 sessions on
+   /data first. Then Settings → "Data export" → toggle "Export CSV" off
+   (wait for the switch to read back) and ALSO enable "Export node
+   positions as screen-coordinate pixels" → export again → the archive contains exactly
    FIVE .graphml files (one per selected session — fewer means sessions
    were dropped) and NO .csv files, and the GraphML node data now carries
    screen-coordinate attributes (keys containing "screen", e.g.
    *_screenSpaceX/Y) that were ABSENT from check 1's export — the flag
    must reach the output, not just persist as a setting. Disable the
    screen-coordinate toggle afterwards.
-5. CSV-only: toggle "Export CSV" back on and "Export GraphML" off → export →
-   the archive contains exactly FIVE *_ego.csv files (one per selected
-   session) plus the other CSV partitions and NO .graphml files. Restore
-   both on.
+5. CSV-only: check 4's save cleared the selection again — RESELECT all 5
+   sessions first. Toggle "Export CSV" back on and "Export GraphML" off →
+   export → the archive contains exactly FIVE *_ego.csv files (one per
+   selected session) plus the other CSV partitions and NO .graphml files.
+   Restore both on.
 6. Abandon before save: checks 1–5 already exported the original five
    sessions, so first generate ONE more synthetic session to get a fresh
    never-exported row. ARM a download listener BEFORE triggering the export
@@ -790,21 +805,28 @@ check's detail:
    "relock-and-wrong-pin".
 3. Manual lock and REAL idle auto-lock at the 1-minute setting: step
    "manual-and-idle-lock".
-4. Step-up gates and encryption at rest: steps "stepup-interview-entry",
-   "phantom-after-entry-gated-exit", "stepup-export", and
-   "ciphertext-at-rest".
+4. Step-up gates (a rejected credential creates no session) and encryption
+   at rest across sessions, protocols, AND assets: steps
+   "stepup-interview-entry", "phantom-after-entry-gated-exit",
+   "stepup-export", and "ciphertext-at-rest".
 5. Lock-screen guard on interview routes (recovery suppressed): step
    "interview-route-lock-guard".
 6. Exit step-up and PIN rotation (cross-tab force-lock, old PIN rejected,
-   data survives): steps "phantom-after-resume-exit", "rotate-pin", and
-   "phantom-after-exit-gated-exit".
+   exact seeded counts survive, and a session REMOUNTS under the rotated
+   vault): steps "phantom-after-resume-exit", "rotate-pin",
+   "phantom-after-exit-gated-exit", "rotate-decrypt-proof", and
+   "phantom-after-rotation-probe-exit".
 7. Encryption chip reads Encrypted: step "encryption-chip".
-8. Revoke wipes protocols AND sessions, leaving an unlocked clean slate:
-   step "revoke-wipe".
+8. Revoke wipes the RAW protocol, session, and asset stores, leaving an
+   unlocked clean slate: step "revoke-wipe".
 9. Passphrase enrolment (weak refused, wrong rejected): step
    "passphrase-enrol".
-10. Lock-screen reset path destroys both seeded data types: steps
-    "reset-path" and "phantom-after-passphrase-exit".
+10. Lock-screen reset path destroys both seeded data types down to the raw
+    stores, and no non-whitelisted console error accumulated across the
+    whole walk: steps "reset-path", "phantom-after-passphrase-exit", and
+    "console-errors".
+A failed "setup" step means the walker could not start at all — report the
+journey as failed with that note and let the verifier adjudicate.
 
 The "phantom-*" steps observe one KNOWN app defect (a stale "Confirm your
 identity" dialog left over Home after exiting an interview) at four exit
@@ -828,6 +850,7 @@ walker's two-digit sequence prefix, which shifts with conditional captures):
   cp ??-export-stepup-wrong-pin.png check4b-export.png &&
   cp ??-interview-route-lock.png check5-routelock.png &&
   cp ??-rotate-wrong-current.png check6-rotate.png &&
+  cp ??-rotate-decrypt-proof.png check6b-decrypt.png &&
   cp ??-encryption-chip.png check7-chip.png &&
   cp ??-after-revoke.png check8-revoke.png &&
   cp ??-weak-passphrase-refused.png check9-weak.png &&
@@ -1435,6 +1458,16 @@ for (const r of results.filter(Boolean)) {
         sevenSkipped ? { c: r.checks[6], n: 7 } : { c: r.checks[5], n: 6 },
       );
     }
+    // And a pair-skip is ONE condition: check 7 reuses check 6's artifact,
+    // so mismatched skip classes (schema-skew on 6, asset-unavailable on 7)
+    // describe an impossible run and must not certify.
+    if (
+      sixSkipped &&
+      sevenSkipped &&
+      r.checks[5].skipCode !== r.checks[6].skipCode
+    ) {
+      badSkips.push({ c: r.checks[6], n: 7 });
+    }
   }
   // Even a permitted skip must say why — a bare skipped status is not a
   // report of the environmental condition that allows it.
@@ -1507,14 +1540,17 @@ for (const r of results.filter(Boolean)) {
     ? evidence.entries.find((x) => x.journey === `verify-${r.journey}`)
     : null;
   // A dismissal is bound to ITS failure's on-disk capture — one unrelated
-  // screenshot must not clear every dismissed failure in the journey.
-  const dismissEvidenced = (n) =>
-    Boolean(
-      verifyEntry &&
-      verifyEntry.exists &&
-      verifyEntry.screenshots > 0 &&
-      (verifyEntry.checkpointNumbers ?? []).includes(n),
-    );
+  // screenshot must not clear every dismissed failure in the journey. The
+  // entry itself must also be internally POSSIBLE: an audit reporting fewer
+  // total screenshots than distinct failure-capture ids cannot evidence
+  // anything (a fabricated id list behind one real PNG must not clear two
+  // failures).
+  const dismissEvidenced = (n) => {
+    if (!verifyEntry || !verifyEntry.exists) return false;
+    const ids = [...new Set(verifyEntry.checkpointNumbers ?? [])];
+    if (verifyEntry.screenshots < ids.length) return false;
+    return verifyEntry.screenshots > 0 && ids.includes(n);
+  };
   let dismissalRejected = false;
   // Match verdicts to failures by the explicit "failure" id the verifier is
   // required to echo — never by description, never by position, never

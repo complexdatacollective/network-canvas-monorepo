@@ -19,6 +19,15 @@
   "ignoreDependencies": ["@typescript/typescript6"],
   "tags": ["-public"],
   "workspaces": {
+    // The release-test walkers are invoked with node by the
+    // interviewer-release-test workflow's journey agents (prompt text knip
+    // cannot parse), so they must be declared as entries. They deliberately
+    // resolve @playwright/test out of apps/interviewer's dependency tree via
+    // createRequire rather than adding a root dependency.
+    ".": {
+      "entry": ["scripts/interviewer-*-walker.mjs"],
+      "ignoreDependencies": ["@playwright/test"]
+    },
     "apps/networkcanvas.com": {
       "entry": ["lib/i18n/request.ts", "netlify/edge-functions/locale.ts"]
     },

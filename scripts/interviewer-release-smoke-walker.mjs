@@ -100,12 +100,30 @@ function finish(code) {
 }
 
 // --- browser --------------------------------------------------------------
-const browser = await chromium.launch();
-const context = await browser.newContext({
-  viewport: { width: 1280, height: 800 },
-});
-const page = await context.newPage();
-page.setDefaultTimeout(15_000);
+// Setup failures (missing/corrupt Chromium) must honour the documented
+// contract — exit 3 with a result.json — not escape as a bare rejection.
+let browser;
+let context;
+let page;
+try {
+  browser = await chromium.launch();
+  context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+  });
+  // REQUIRED in every context that loads the app: analytics defaults on, and
+  // a fresh profile would register a synthetic installation and emit real
+  // protocol/interview events to product analytics. Block before any page.
+  await context.route('**://ph-relay.networkcanvas.com/**', (r) => r.abort());
+  page = await context.newPage();
+  page.setDefaultTimeout(15_000);
+} catch (err) {
+  record(
+    'setup',
+    false,
+    `browser setup failed: ${err instanceof Error ? err.message : String(err)}`,
+  );
+  finish(3);
+}
 
 // A hang must fail loudly, never stall the release gate: hard watchdog.
 const watchdog = setTimeout(async () => {
@@ -151,15 +169,19 @@ async function nextStage() {
     .not.toBe(before);
 }
 
-// Click a control that may still be animating (the protocol deck): wait for
-// its bounding box to hold still across two samples first.
+// Click a control that may still be animating (the protocol deck's spring
+// can pause at identical coordinates mid-flight): require SUSTAINED
+// stability — three identical samples 250 ms apart — before clicking, per
+// the repo's documented deck-settle quirk.
 async function clickSettled(locator) {
   await expect(locator).toBeVisible();
-  for (let i = 0; i < 20; i += 1) {
-    const a = await locator.boundingBox();
-    await page.waitForTimeout(250);
+  let stable = 0;
+  let last = null;
+  for (let i = 0; i < 30 && stable < 3; i += 1) {
     const b = await locator.boundingBox();
-    if (a && b && a.x === b.x && a.y === b.y) break;
+    stable = b && last && b.x === last.x && b.y === last.y ? stable + 1 : 0;
+    last = b;
+    await page.waitForTimeout(250);
   }
   await locator.click();
 }
@@ -264,6 +286,19 @@ try {
     if (!offlineReal)
       throw new Error('offline flip did not take — walk would be meaningless');
     await shot('offline-control');
+    // A memory-resident SPA proves nothing about the precache: RELOAD while
+    // offline so the shell and engine must come out of the service worker's
+    // cache, and require the app to boot back to a usable Home.
+    await page.reload();
+    await expect(
+      page.getByRole('button', { name: 'Start new interview' }),
+    ).toBeVisible({ timeout: 20_000 });
+    record(
+      'offline-boot',
+      true,
+      'app reloaded from the precache while offline',
+    );
+    await shot('offline-boot');
   }
 
   // Phase 3: conduct the whole interview (offline unless --keep-online).
@@ -324,14 +359,26 @@ try {
   await nextStage();
 
   // Stage 5 — DyadCensus: dismiss intro, answer all three pairs (Yes for the
-  // first, No after), each answer auto-advancing to the next pair and the
-  // last one advancing the stage itself.
+  // first, No after). The ~350 ms auto-advance timer races a fixed sleep
+  // under load, so wait for the observable PAIR IDENTITY to change after
+  // each non-final answer (the DyadCensusFixture pattern) — the final answer
+  // advances the stage itself.
   await page.getByTestId('next-button').click();
   await expect(page.getByRole('radio').first()).toBeVisible();
   const dyadStepBefore = await stageStep().getAttribute('data-stage-step');
+  const pairLabels = () =>
+    page
+      .locator('.w-md')
+      .getByRole('button')
+      .allTextContents()
+      .then((t) => t.join('|'))
+      .catch(() => '');
   for (let pair = 0; pair < 3; pair += 1) {
+    const before = await pairLabels();
     await page.getByRole('radio', { name: pair === 0 ? 'Yes' : 'No' }).click();
-    await page.waitForTimeout(700); // selection animation + auto-advance
+    if (pair < 2) {
+      await expect.poll(pairLabels, { timeout: 15_000 }).not.toBe(before);
+    }
   }
   await expect
     .poll(() => stageStep().getAttribute('data-stage-step'), {
@@ -341,13 +388,16 @@ try {
   await shot('stage-dyadcensus');
   record('stage-dyadcensus', true, '3 pairs answered, stage auto-advanced');
 
-  // Stage 6 — CategoricalBin: one categorical write via keyboard DnD. The
-  // deployed build does not expose bin membership as role=option (verified
-  // empirically), so the oracle is the unplaced-drawer count dropping.
+  // Stage 6 — CategoricalBin: categorise ALL three nodes (three categorical
+  // writes across distinct bins). The deployed build does not expose bin
+  // membership as role=option (verified empirically), so the oracle is the
+  // unplaced-drawer count reaching zero.
   await dragNodeToBin('Alex', 'Work');
-  await expect(page.getByText('2 unplaced')).toBeVisible();
+  await dragNodeToBin('Blair', 'Social');
+  await dragNodeToBin('Casey', 'Family');
+  await expect(page.getByText('0 unplaced')).toBeVisible();
   await shot('stage-catbin');
-  record('stage-catbin', true, 'Alex categorised as Work (2 unplaced remain)');
+  record('stage-catbin', true, 'Alex→Work, Blair→Social, Casey→Family placed');
   await nextStage();
 
   // FinishSession.
@@ -407,6 +457,57 @@ try {
     await expectStableRow('data-row-online');
     record('persisted-online', true, 'row present after online reload');
   }
+
+  // Phase 6: the PAYLOAD survived, not just the row — a session whose
+  // network write was dropped still lists at 100%. Read the stored session
+  // raw (this profile is 'none' mode, so fields are plaintext) and assert
+  // every write path the walk exercised is present.
+  const payload = await page.evaluate(async () => {
+    const db = await new Promise((res, rej) => {
+      const req = indexedDB.open('interviewer');
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+    });
+    const sessions = await new Promise((res, rej) => {
+      const tx = db.transaction('sessions', 'readonly');
+      const rq = tx.objectStore('sessions').getAll();
+      rq.onsuccess = () => res(rq.result);
+      rq.onerror = () => rej(rq.error);
+    });
+    db.close();
+    const s = sessions[0];
+    if (!s?.network) return { found: false };
+    const nodes = s.network.nodes ?? [];
+    const edges = s.network.edges ?? [];
+    const attrs = nodes.map((n) => n.attributes ?? {});
+    const names = attrs.map((a) => a.name);
+    return {
+      found: true,
+      sessionCount: sessions.length,
+      nodeNames: names,
+      layouts: attrs.filter((a) => a.layout && typeof a.layout.x === 'number')
+        .length,
+      contexts: attrs.filter(
+        (a) => Array.isArray(a.context) && a.context.length,
+      ).length,
+      edgeTypes: [...new Set(edges.map((e) => e.type))].sort(),
+      egoName: (s.network.ego?.attributes ?? {}).ego_name ?? null,
+    };
+  });
+  const payloadOk =
+    payload.found &&
+    payload.sessionCount === 1 &&
+    ['Alex', 'Blair', 'Casey'].every((n) => payload.nodeNames.includes(n)) &&
+    payload.layouts === 3 &&
+    payload.contexts === 3 &&
+    payload.edgeTypes.includes('knows') &&
+    payload.edgeTypes.includes('friends') &&
+    payload.egoName === 'Smoke Tester';
+  record(
+    'persisted-payload',
+    payloadOk,
+    `stored network: nodes=${JSON.stringify(payload.nodeNames ?? [])} layouts=${payload.layouts ?? 0} contexts=${payload.contexts ?? 0} edgeTypes=${JSON.stringify(payload.edgeTypes ?? [])} ego=${JSON.stringify(payload.egoName ?? null)}`,
+  );
 
   clearTimeout(watchdog);
   await browser.close();

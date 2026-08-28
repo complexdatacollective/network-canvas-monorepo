@@ -1360,6 +1360,61 @@ test('an internally inconsistent audit entry cannot evidence a dismissal', async
   );
   assert.equal(res.verdict, 'BLOCK');
   assert.ok(res.unverifiedFailures.some((f) => f.description === 'real one'));
+  // Cardinality variant: one purported PNG cannot evidence two distinct
+  // failure captures — the id list is impossible and must clear nothing.
+  const jr2 = {
+    'pwa-offline': journey('pwa-offline', {
+      status: 'fail',
+      checks: mkChecks(10, { failAt: [1] }),
+      failures: [
+        {
+          severity: 'major',
+          description: 'f-one',
+          check: 1,
+          reproduction: 'r',
+        },
+        {
+          severity: 'major',
+          description: 'f-two',
+          check: 1,
+          reproduction: 'r',
+        },
+      ],
+    }),
+  };
+  const vr2 = {
+    'pwa-offline': {
+      verdicts: [1, 2].map((n) => ({
+        description: `f-${n === 1 ? 'one' : 'two'}`,
+        failure: n,
+        verdict: 'not-reproduced',
+        severity: 'minor',
+        explanation: 'n',
+      })),
+    },
+  };
+  const impossible = await run(
+    makeAgent(jr2, vr2, {
+      fingerprint: PREFLIGHT.fingerprint,
+      entries: [
+        {
+          journey: 'pwa-offline',
+          exists: true,
+          screenshots: 25,
+          checkpointNumbers: Array.from({ length: 10 }, (_, i) => i + 1),
+        },
+        {
+          journey: 'verify-pwa-offline',
+          exists: true,
+          screenshots: 1,
+          checkpointNumbers: [1, 2],
+        },
+      ],
+    }),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(impossible.verdict, 'BLOCK');
+  assert.equal(impossible.unverifiedFailures.length, 2);
 });
 
 test('structured skip codes gate schema-skew to hotfix runs', async () => {
@@ -1435,6 +1490,17 @@ test('structured skip codes gate schema-skew to hotfix runs', async () => {
     journeys: ['protocol-management'],
   });
   assert.equal(legitReject.verdict, 'PASS');
+  // A pair-skip is ONE condition: mismatched classes across 6/7 describe an
+  // impossible run and must not certify even where each class is allowed.
+  const mixed = await run(
+    makeAgent(
+      pm({ skipCodes: { 6: 'schema-skew', 7: 'asset-unavailable' } }),
+      {},
+      evidence,
+    ),
+    { journeys: ['protocol-management'], hotfix: true },
+  );
+  assert.equal(mixed.verdict, 'INCOMPLETE');
   // args.hotfix is strictly boolean — a truthy non-boolean must fail the
   // invocation rather than enable the hotfix skip class.
   await assert.rejects(

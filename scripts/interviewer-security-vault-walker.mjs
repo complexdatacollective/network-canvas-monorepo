@@ -73,15 +73,48 @@ function finish(code) {
   process.exit(code);
 }
 
-const browser = await chromium.launch();
-const context = await browser.newContext({
-  viewport: { width: 1280, height: 800 },
+// Setup failures (missing/corrupt Chromium) must honour the documented
+// contract — exit 3 with a result.json — not escape as a bare rejection.
+let browser;
+let context;
+let page;
+try {
+  browser = await chromium.launch();
+  context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+  });
+  // The relay is blocked in every context: analytics defaults on, and a fresh
+  // profile would otherwise emit real events to product analytics.
+  await context.route('**://ph-relay.networkcanvas.com/**', (r) => r.abort());
+  page = await context.newPage();
+  page.setDefaultTimeout(15_000);
+} catch (err) {
+  record(
+    'setup',
+    false,
+    `browser setup failed: ${err instanceof Error ? err.message : String(err)}`,
+  );
+  finish(3);
+}
+
+// Every non-whitelisted console error is reportable under the gate's shared
+// journey contract; collect them for a dedicated final step. Documented
+// noise: the meta frame-ancestors CSP notice, Cloudflare's blocked beacon,
+// and the ph-relay requests failed by the route abort above.
+const consoleErrors = [];
+const NOISE = [
+  /frame-ancestors.*ignored when delivered via a <meta> element/i,
+  /cloudflareinsights|Content Security Policy.*(inline|script)/i,
+  /ph-relay\.networkcanvas\.com/i,
+];
+page.on('console', (m) => {
+  if (m.type() !== 'error') return;
+  // Chromium's generic "Failed to load resource" text omits the URL — it
+  // lives in the message location, so match the noise patterns against both
+  // (the ph-relay aborts from our own route block land here).
+  const text = `${m.text()} ${m.location()?.url ?? ''}`;
+  if (!NOISE.some((p) => p.test(text))) consoleErrors.push(text.trim());
 });
-// The relay is blocked in every context: analytics defaults on, and a fresh
-// profile would otherwise emit real events to product analytics.
-await context.route('**://ph-relay.networkcanvas.com/**', (r) => r.abort());
-const page = await context.newPage();
-page.setDefaultTimeout(15_000);
 
 const watchdog = setTimeout(async () => {
   try {
@@ -330,6 +363,25 @@ try {
   await unlockPin(PIN);
   await expectUnlocked();
   await installSampleProtocol();
+  // Raw session count, readable regardless of encryption — the wrong-PIN
+  // rejection must not have created a session row.
+  const rawSessionCount = () =>
+    page.evaluate(async () => {
+      const db = await new Promise((res, rej) => {
+        const req = indexedDB.open('interviewer');
+        req.onsuccess = () => res(req.result);
+        req.onerror = () => rej(req.error);
+      });
+      const n = await new Promise((res, rej) => {
+        const tx = db.transaction('sessions', 'readonly');
+        const rq = tx.objectStore('sessions').count();
+        rq.onsuccess = () => res(rq.result);
+        rq.onerror = () => rej(rq.error);
+      });
+      db.close();
+      return n;
+    });
+  const sessionsBeforeGate = await rawSessionCount();
   await startInterview('vault-probe');
   await expect(
     page.getByRole('heading', { name: 'Confirm your identity' }),
@@ -337,10 +389,13 @@ try {
   const preStepUpUrl = page.url();
   await typeSegmented(page, 'pin', '87654321');
   await page.waitForTimeout(1500);
+  const sessionsAfterWrongPin = await rawSessionCount();
   const gateHeld =
     (await page
       .getByRole('heading', { name: 'Confirm your identity' })
-      .isVisible()) && !page.url().includes('/interview/');
+      .isVisible()) &&
+    !page.url().includes('/interview/') &&
+    sessionsAfterWrongPin === sessionsBeforeGate;
   await shot('enter-stepup-wrong-pin');
   await typeSegmented(page, 'pin', PIN);
   await expect(page).toHaveURL(/\/interview\//, { timeout: 15_000 });
@@ -422,12 +477,14 @@ try {
       Boolean(v) && typeof v.iv === 'string' && typeof v.ct === 'string';
     const sessions = await readAll('sessions');
     const protocols = await readAll('protocols');
+    const assets = await readAll('assets');
     db.close();
     // Encrypted rows carry an _enc envelope map and DROP the plaintext keys
-    // entirely (recordCrypto.ts encryptSession/encryptProtocol).
+    // entirely (recordCrypto.ts encryptSession/encryptProtocol/encryptAsset).
     return {
       sessionCount: sessions.length,
       protocolCount: protocols.length,
+      assetCount: assets.length,
       sessionsEncrypted: sessions.every(
         (s) => !('network' in s) && isEnvelope(s._enc?.network),
       ),
@@ -438,6 +495,9 @@ try {
           isEnvelope(p._enc?.protocol) &&
           isEnvelope(p._enc?.codebook),
       ),
+      assetsEncrypted: assets.every(
+        (a) => !('data' in a) && isEnvelope(a._enc?.data),
+      ),
       leaks: JSON.stringify({ sessions, protocols }).includes('"nodes"'),
     };
   });
@@ -445,10 +505,12 @@ try {
     'ciphertext-at-rest',
     cipher.sessionCount > 0 &&
       cipher.protocolCount > 0 &&
+      cipher.assetCount > 0 &&
       cipher.sessionsEncrypted &&
       cipher.protocolsEncrypted &&
+      cipher.assetsEncrypted &&
       !cipher.leaks,
-    `sessions=${cipher.sessionCount} protocols=${cipher.protocolCount} sessionsEncrypted=${cipher.sessionsEncrypted} protocolsEncrypted=${cipher.protocolsEncrypted} plaintextLeak=${cipher.leaks}`,
+    `sessions=${cipher.sessionCount} protocols=${cipher.protocolCount} assets=${cipher.assetCount} sessionsEncrypted=${cipher.sessionsEncrypted} protocolsEncrypted=${cipher.protocolsEncrypted} assetsEncrypted=${cipher.assetsEncrypted} plaintextLeak=${cipher.leaks}`,
   );
 
   // 5. Lock-screen guard on interview routes: re-enter the interview, reload,
@@ -517,7 +579,12 @@ try {
   await typeSegmented(page, 'nextPin', NEW_PIN);
   await typeSegmented(page, 'nextPinConfirm', NEW_PIN);
   await page.getByRole('button', { name: 'Save new PIN' }).click();
-  await page.waitForTimeout(2500); // PBKDF2 on the wrong current PIN
+  // The wrong-current PBKDF2 can outlast any fixed sleep under load: wait
+  // for the submit to leave its busy "Saving…" state and be enabled again —
+  // the form still being open at that point IS the refusal.
+  await expect(page.getByRole('button', { name: 'Save new PIN' })).toBeEnabled({
+    timeout: 30_000,
+  });
   const wrongCurrentRefused = await page
     .getByRole('button', { name: 'Save new PIN' })
     .isVisible()
@@ -546,21 +613,64 @@ try {
     .isVisible();
   await unlockPin(NEW_PIN);
   await expectUnlocked();
-  const dataSurvived =
-    (await page
-      .getByText('1 protocols')
-      .isVisible()
-      .catch(() => false)) &&
-    (await page
-      .getByText(/[0-9]+ interviews/)
-      .isVisible()
-      .catch(() => false));
+  // The EXACT seeded counts, not a pattern "0 interviews" would satisfy:
+  // vault-probe + the synthetic session + exit-probe = 3 sessions. Poll —
+  // the status row fades in after unlock, and an instant read races it.
+  let dataSurvived = true;
+  try {
+    // The status-row link's accessible name carries both exact counts in one
+    // element ("1 protocols 3 interviews") — bare getByText would strict-mode
+    // collide with the deck card's own "3 interviews" link.
+    await expect(
+      page.getByRole('link', { name: '1 protocols 3 interviews' }),
+    ).toBeVisible({ timeout: 15_000 });
+  } catch {
+    dataSurvived = false;
+    const dialogs = await page
+      .getByRole('dialog')
+      .count()
+      .catch(() => -1);
+    const aria = await page
+      .locator('body')
+      .ariaSnapshot()
+      .catch(() => '(aria snapshot failed)');
+    fs.writeFileSync(
+      path.join(artifactsDir, 'rotation-debug.txt'),
+      `url=${page.url()}\ndialogs=${dialogs}\n${aria}`,
+    );
+  }
   await shot('after-rotation');
   record(
     'rotate-pin',
     exitGateHeld && wrongCurrentRefused && oldPinRejected && dataSurvived,
-    `exit gate held=${exitGateHeld}; wrong current refused=${wrongCurrentRefused}; second tab force-locked; old PIN rejected=${oldPinRejected}; data survived=${dataSurvived}`,
+    `exit gate held=${exitGateHeld}; wrong current refused=${wrongCurrentRefused}; second tab force-locked; old PIN rejected=${oldPinRejected}; data survived=${dataSurvived} (1 protocols / 3 interviews exact)`,
   );
+
+  // The rotated vault must still DECRYPT the pre-rotation payload — counts
+  // are plaintext index fields and prove nothing. Reopen the vault-probe
+  // session (entry step-up now takes the NEW PIN) and require its stage to
+  // mount, which forces a read through the rewrapped DEK.
+  await page
+    .getByRole('group', { name: 'Home view' })
+    .getByText('Data')
+    .click();
+  await page
+    .getByRole('row', { name: /vault-probe/ })
+    .getByTestId('data-resume')
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Confirm your identity' }),
+  ).toBeVisible();
+  await typeSegmented(page, 'pin', NEW_PIN);
+  await expectStageMounted();
+  record(
+    'rotate-decrypt-proof',
+    true,
+    'vault-probe remounted under the rotated vault',
+  );
+  await shot('rotate-decrypt-proof');
+  await exitInterview();
+  await checkPhantomStepUp('phantom-after-rotation-probe-exit');
 
   // 7. Encryption chip.
   const chip = page.getByTestId('encryption-status-trigger');
@@ -588,16 +698,46 @@ try {
   await expect(page.getByText('0 protocols')).toBeVisible({ timeout: 15_000 });
   const noLockAfterRevoke =
     (await page.getByRole('heading', { name: 'Welcome back' }).count()) === 0;
+  // The visible 0/0 counters read from indexes — the wipe's promise is the
+  // RAW stores (assets included: the sample protocol definitely created
+  // asset rows). Inspect every data store directly.
+  const rawStoreCounts = () =>
+    page.evaluate(async () => {
+      const db = await new Promise((res, rej) => {
+        const req = indexedDB.open('interviewer');
+        req.onsuccess = () => res(req.result);
+        req.onerror = () => rej(req.error);
+      });
+      const count = (store) =>
+        new Promise((res, rej) => {
+          const tx = db.transaction(store, 'readonly');
+          const rq = tx.objectStore(store).count();
+          rq.onsuccess = () => res(rq.result);
+          rq.onerror = () => rej(rq.error);
+        });
+      const out = {
+        protocols: await count('protocols'),
+        sessions: await count('sessions'),
+        assets: await count('assets'),
+      };
+      db.close();
+      return out;
+    });
+  const afterRevoke = await rawStoreCounts();
   const wiped =
     (await page
       .getByText('0 interviews')
       .isVisible()
-      .catch(() => false)) && noLockAfterRevoke;
+      .catch(() => false)) &&
+    noLockAfterRevoke &&
+    afterRevoke.protocols === 0 &&
+    afterRevoke.sessions === 0 &&
+    afterRevoke.assets === 0;
   await shot('after-revoke');
   record(
     'revoke-wipe',
     wiped,
-    `0 protocols / 0 interviews, no lock, immediately usable=${wiped}`,
+    `0/0 counters, no lock, raw stores protocols=${afterRevoke.protocols} sessions=${afterRevoke.sessions} assets=${afterRevoke.assets}`,
   );
 
   // 9. Passphrase enrolment: a weak passphrase must refuse to advance; the
@@ -637,7 +777,7 @@ try {
   await page.getByTestId('passphrase-input').fill('definitely-wrong-1234');
   await page.getByTestId('unlock-submit').click();
   await page.waitForTimeout(1500);
-  const wrongPassphraseRejected = await page
+  const wrongUnlockRejected = await page
     .getByRole('heading', { name: 'Welcome back' })
     .isVisible();
   await page.getByTestId('passphrase-input').fill(PASSPHRASE);
@@ -645,8 +785,8 @@ try {
   await expectUnlocked();
   record(
     'passphrase-enrol',
-    weakRefused && wrongPassphraseRejected,
-    `weak refused=${weakRefused}; wrong rejected=${wrongPassphraseRejected}; correct unlocked`,
+    weakRefused && wrongUnlockRejected,
+    `weak refused=${weakRefused}; wrong rejected=${wrongUnlockRejected}; correct unlocked`,
   );
   await shot('passphrase-unlocked');
 
@@ -678,17 +818,31 @@ try {
   await page.waitForTimeout(2000);
   await page.reload();
   await expect(page.getByText('0 protocols')).toBeVisible({ timeout: 15_000 });
+  const afterReset = await rawStoreCounts();
   const resetClean =
     (await page
       .getByText('0 interviews')
       .isVisible()
       .catch(() => false)) &&
-    (await page.getByRole('heading', { name: 'Welcome back' }).count()) === 0;
+    (await page.getByRole('heading', { name: 'Welcome back' }).count()) === 0 &&
+    afterReset.protocols === 0 &&
+    afterReset.sessions === 0 &&
+    afterReset.assets === 0;
   await shot('after-reset');
   record(
     'reset-path',
     resetClean,
-    `protocol AND seeded interview destroyed (0/0), lock cleared=${resetClean}`,
+    `0/0 counters, lock cleared, raw stores protocols=${afterReset.protocols} sessions=${afterReset.sessions} assets=${afterReset.assets}`,
+  );
+
+  // Cross-cutting: every non-whitelisted console error collected across the
+  // whole walk is reportable under the gate's shared journey contract.
+  record(
+    'console-errors',
+    consoleErrors.length === 0,
+    consoleErrors.length
+      ? `${consoleErrors.length} non-whitelisted console error(s): ${consoleErrors.slice(0, 3).join(' || ').slice(0, 400)}`
+      : 'no non-whitelisted console errors across the walk',
   );
 
   clearTimeout(watchdog);
