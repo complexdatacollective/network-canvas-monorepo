@@ -402,6 +402,11 @@ function TeamManagement(props: {
             <TableBody>
               {props.team.members.map((member) => {
                 const name = member.user.name || member.user.email;
+                const memberIsOwner = member.role
+                  .split(',')
+                  .some((role) => role.trim() === 'owner');
+                const canEditRole =
+                  canManage && (canAssignOwner === true || !memberIsOwner);
                 return (
                   <TableRow key={member.id}>
                     <TableCell>
@@ -412,7 +417,7 @@ function TeamManagement(props: {
                     </TableCell>
                     <TableCell>{member.user.email}</TableCell>
                     <TableCell>
-                      {canManage ? (
+                      {canEditRole ? (
                         <>
                           <label
                             className="sr-only"

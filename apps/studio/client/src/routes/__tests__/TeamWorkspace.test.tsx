@@ -343,4 +343,15 @@ describe('Studio team workspace', () => {
     expect(screen.queryByRole('button', { name: 'Invite user' })).toBeNull();
     expect(screen.getAllByText('Member').length).toBeGreaterThan(0);
   });
+
+  it('shows an owner read-only while letting an admin manage other roles', async () => {
+    authState.activeMember = { ...COLLABORATOR, role: 'admin' };
+    renderWorkspace();
+
+    expect(
+      await screen.findByLabelText('Role for Team Collaborator'),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('Role for Owner Researcher')).toBeNull();
+    expect(screen.getByText('Owner')).toBeInTheDocument();
+  });
 });
