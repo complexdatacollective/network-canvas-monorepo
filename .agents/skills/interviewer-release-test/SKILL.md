@@ -101,6 +101,26 @@ cross-origin IndexedDB upgrade seeding, and header/raw-HTML fingerprinting
 validating run — unvalidated prompt text is where this gate's
 false-failure bugs have come from.
 
+## Changing this workflow
+
+The journey prompts are stateful natural-language programs with no unit
+harness — reading them, whether by an author or a reviewer, has proven
+insufficient to validate them. Two rules follow:
+
+- **A change to the journey prompts merges only after a full validation
+  run**: invoke the workflow from the edited branch (unpinned, against the
+  dev deployment is fine) and require a verdict free of gate-caused false
+  failures — every INCOMPLETE cause and failure record must trace to the
+  app or the deployment, never to the gate's own text. The offline suite
+  (`scripts/interviewer-release-test-workflow.test.mjs`) guards the
+  synthesis code; only execution guards the prompts.
+- **Review findings against prompt text are adjudicated by execution.**
+  Accept and fix synthesis-code findings directly (with a regression test,
+  mutation-checking the guard). Park plausible prompt-sequencing findings
+  until a validation run confirms or refutes them before rewriting the
+  text — blind textual repair has measurably introduced about one new
+  defect per review round.
+
 ## Follow up
 
 - Spin off a follow-up task for each confirmed app defect, carrying the
