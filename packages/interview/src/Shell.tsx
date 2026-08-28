@@ -424,7 +424,13 @@ const Shell = ({
   // autosaves would then persist that stale network back over the newer
   // record. Flush at teardown instead: the pending write is handed to onSync
   // synchronously (when no other write is on the wire), before the host can
-  // re-read the session.
+  // re-read the session. Two limits: the user-facing exit path additionally
+  // awaits the full flush before invoking onExit (Navigation.handleExit),
+  // because when a write IS on the wire the final snapshot can only be
+  // enqueued after it settles; and a host whose onSync needs state the
+  // teardown already destroyed (e.g. an idle lock that cleared its store
+  // encryption key before unmounting) still rejects the write — flushing
+  // here cannot resurrect host-side preconditions.
   useEffect(() => {
     return () => {
       void reduxStore.flushSync();
