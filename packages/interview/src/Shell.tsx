@@ -416,6 +416,21 @@ const Shell = ({
     [payload, stableOnSync, flags?.isDevelopment, trackerHolder],
   );
 
+  // Autosave holds pending session changes on a trailing debounce
+  // (syncMiddleware). If the Shell unmounts mid-window — the host navigated
+  // away, e.g. an interview exit or a lock screen — that timer would fire
+  // seconds AFTER the host moved on, racing whatever reads the stored session
+  // next: a prompt resume would hydrate the pre-write snapshot and its own
+  // autosaves would then persist that stale network back over the newer
+  // record. Flush at teardown instead: the pending write is handed to onSync
+  // synchronously (when no other write is on the wire), before the host can
+  // re-read the session.
+  useEffect(() => {
+    return () => {
+      void reduxStore.flushSync();
+    };
+  }, [reduxStore]);
+
   // In e2e mode, expose the live Redux store to Playwright tests so they can
   // inspect the network/session state directly instead of waiting for a sync
   // round-trip. Mirrors the pattern used by `__e2eMap` in Geospatial.

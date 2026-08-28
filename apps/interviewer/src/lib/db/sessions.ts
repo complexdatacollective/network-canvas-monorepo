@@ -236,11 +236,18 @@ export async function queryMatchingSessionIds(
   return ids;
 }
 
-export async function getSession(
-  id: string,
-): Promise<StoredSession | undefined> {
-  const row = await db.sessions.get(id);
-  return row ? decryptSession(row) : undefined;
+export function getSession(id: string): Promise<StoredSession | undefined> {
+  // This read joins the per-id mutation chain (below) so it can never overtake
+  // a write already enqueued in this tab. The interview Shell hands its final
+  // autosave to updateSession while unmounting on exit; a prompt resume's
+  // hydration read must wait for that write — hydrating from the pre-write row
+  // would render without the participant's latest answers, and the engine's
+  // next autosave would persist that stale network back over the newer stored
+  // record, silently destroying data.
+  return enqueueSessionMutation(id, async () => {
+    const row = await db.sessions.get(id);
+    return row ? decryptSession(row) : undefined;
+  });
 }
 
 export async function getSessionsByIds(
@@ -288,7 +295,9 @@ export async function createSession(args: {
 // per-id mutation goes through one promise chain keyed by id: each waits for
 // the previous one on the same id to settle before it reads. This serialises
 // updateSession against markSessionFinished/markSessionsExported too, so a
-// trailing sync can't clobber a completion/export marker.
+// trailing sync can't clobber a completion/export marker. getSession joins
+// the same chain so a single-session read observes every write this tab has
+// already enqueued (read-your-writes; see the comment on getSession).
 const updateChains = new Map<string, Promise<unknown>>();
 
 function enqueueSessionMutation<T>(
