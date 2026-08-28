@@ -3,11 +3,11 @@
 //
 // The sink (relay-sink.mjs) is aliased onto the PostHog relay's hostname for
 // every container in the lane's stack, so a Fresco container that tried to
-// send server-side analytics would connect to it. This script answers two
+// send server-side analytics would connect to it. This script answers three
 // questions about that, in one place, so the workflow's agent has nothing to
 // decide:
 //
-//   Was the sink actually watching?  It probes the sink FROM INSIDE the lane's
+//   Was the sink watching at all?  It probes the sink FROM INSIDE the lane's
 //   Fresco container, on every port the sink covers, using the relay's real
 //   hostname and a nonce generated here. A probe that comes back recorded
 //   proves the whole path the real thing would take — that container's
@@ -15,13 +15,20 @@
 //   recording what it receives. Without it, a sink that never started, or an
 //   alias that never took effect, would read exactly like a silent deployment.
 //
+//   Was it watching for the WHOLE window it reports on?  `docker logs`
+//   succeeds against a container that has already exited, and the probe
+//   records survive in it, so a sink checked only once would report a clean,
+//   well-controlled reading of a stretch it spent dead. Two inspections
+//   bracket the check, and the sink's own start-up announcement — which it
+//   writes exactly once — covers everything the lane did before it.
+//
 //   Did anything else connect?  Every connection the sink recorded that is not
 //   one of this invocation's probes is egress. That includes connections it
-//   could not identify: an unreadable connection is reported as egress, never
-//   dropped.
+//   could not identify, and ones it accepted but has not finished reading: an
+//   unidentified connection is reported as egress, never dropped.
 //
-// Exits non-zero, with "ok": false and a reason, whenever it cannot answer
-// either question. Usage: relay-sink-check.mjs --lane upgrade|fresh
+// Exits non-zero, with "ok": false and a reason, whenever it cannot answer any
+// of them. Usage: relay-sink-check.mjs --lane upgrade|fresh
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 
