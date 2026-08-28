@@ -80,9 +80,12 @@ wizard, not env vars, matching real bundled-MinIO deployments. Both stacks set
 analytics relay zero times: the browser loads posthog-js only once the server
 has confirmed analytics are on (`components/Providers/AnalyticsLoader.tsx` and
 `lib/posthog-client.ts`), so there is no earlier window in which it could call
-out. The fresh lane counts the requests that reach the relay, and the workflow
-fails the run on any of them — since that guarantee shipped, one request is a
-regression rather than a known limitation.
+out. Both surfaces that can start analytics are counted, because a regression
+in either is invisible to the other — the fresh lane reads the new-deployment
+dashboard, and the upgrade lane reads the participant-facing interview route,
+which hands `@codaco/interview` its own client. The workflow fails the run on
+any request from either: since that guarantee shipped, one is a regression
+rather than a known limitation.
 
 ### Reading the verdict
 
@@ -119,8 +122,8 @@ Findings are split by what they are evidence of, and the split is load-bearing:
 `failures` are release-gating problems with the candidate; `unaccounted` are
 problems with the run itself (a truncated checklist, an unexplained skip, a
 dead judge, a claim no artifact supports); `warnings` are hygiene and
-environment notes (leftover containers, analytics egress, an accepted dirty
-tree) that never flip a verdict. `untestedShippedChanges` lists pending
+environment notes (leftover containers, an accepted dirty tree) that never flip
+a verdict. `untestedShippedChanges` lists pending
 changesets shipping Fresco-facing behaviour no check exercised — a statement
 about the evidence rather than the build, so it caps certification through
 `coverageGaps` instead of failing the run. Either extend the checklists to

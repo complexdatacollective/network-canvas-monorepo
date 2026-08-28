@@ -97,6 +97,7 @@ const happyPath = () => ({
     area: 'integrity',
     pass: true,
     checks: passing(8),
+    analyticsRequests: 0,
   },
   'verify-crud': { area: 'crud', pass: true, checks: passing(8) },
   'verify-api-settings': {
@@ -2119,37 +2120,67 @@ test('the workflow only ever returns a documented verdict', async () => {
 // A deployment with analytics disabled loads posthog-js only once the server
 // has said analytics are on, so the relay hears from it exactly zero times.
 // Anything else is that guarantee having been lost in the build under test.
-test('a relay request from a DISABLE_ANALYTICS stack blocks the release', async () => {
-  const r = happyPath();
-  r['verify-fresh-setup'].analyticsRequests = 3;
-  const { result } = await run(r);
-  assert.equal(result.verdict, 'no-go');
-  assert.equal(result.releasable, false);
-  const egress = result.failures.find((f) => f.includes('analytics relay'));
-  assert.ok(egress, JSON.stringify(result.failures));
-  assert.match(egress, /3 request/);
-  // The old text excused the traffic as an unavoidable pre-hydration window.
-  // That window no longer exists, so the message must not resurrect it.
-  assert.ok(
-    !/hydration|unconditional|anonymous/.test(egress),
-    `the failure still describes the removed pre-hydration window: ${egress}`,
-  );
-  assert.ok(
-    !result.warnings.some((w) => w.includes('analytics relay')),
-    `the egress must gate rather than warn: ${JSON.stringify(result.warnings)}`,
-  );
-});
+//
+// Two surfaces start analytics by different paths — the dashboard through
+// AnalyticsLoader, the participant-facing interview route through
+// @codaco/interview's own resolveClient — so each is read separately and a
+// regression confined to either has to block on its own.
+const EGRESS_AREAS = [
+  ['verify-fresh-setup', 'fresh lane'],
+  ['verify-data-integrity', 'upgrade lane'],
+];
 
-test('an unreported relay count fails closed rather than reading as zero', async () => {
+for (const [label, lane] of EGRESS_AREAS) {
+  test(`a relay request seen by the ${lane} blocks the release`, async () => {
+    const r = happyPath();
+    r[label].analyticsRequests = 3;
+    const { result } = await run(r);
+    assert.equal(result.verdict, 'no-go');
+    assert.equal(result.releasable, false);
+    const egress = result.failures.find((f) => f.includes('analytics relay'));
+    assert.ok(egress, JSON.stringify(result.failures));
+    assert.match(egress, /3 request/);
+    assert.match(egress, new RegExp(lane));
+    // The old text excused the traffic as an unavoidable pre-hydration window.
+    // That window no longer exists, so the message must not resurrect it.
+    assert.ok(
+      !/hydration|unconditional|anonymous/.test(egress),
+      `the failure still describes the removed pre-hydration window: ${egress}`,
+    );
+    assert.ok(
+      !result.warnings.some((w) => w.includes('analytics relay')),
+      `the egress must gate rather than warn: ${JSON.stringify(result.warnings)}`,
+    );
+  });
+
+  test(`an unreported ${lane} relay count fails closed rather than reading as zero`, async () => {
+    const r = happyPath();
+    delete r[label].analyticsRequests;
+    const { result } = await run(r);
+    assert.equal(result.verdict, 'incomplete');
+    assert.equal(result.releasable, false);
+    assert.deepEqual(result.failures, []);
+    assert.ok(
+      result.unaccounted.some(
+        (u) => u.includes('analytics relay') && u.includes(lane),
+      ),
+      JSON.stringify(result.unaccounted),
+    );
+  });
+}
+
+// The whole point of reading two surfaces: the dashboard staying silent must
+// not vouch for the interview route, which is where a participant's browser
+// would be.
+test('a silent dashboard does not excuse the interview route', async () => {
   const r = happyPath();
-  delete r['verify-fresh-setup'].analyticsRequests;
+  r['verify-fresh-setup'].analyticsRequests = 0;
+  r['verify-data-integrity'].analyticsRequests = 1;
   const { result } = await run(r);
-  assert.equal(result.verdict, 'incomplete');
   assert.equal(result.releasable, false);
-  assert.deepEqual(result.failures, []);
   assert.ok(
-    result.unaccounted.some((u) => u.includes('analytics relay')),
-    JSON.stringify(result.unaccounted),
+    result.failures.some((f) => f.includes('interview route')),
+    JSON.stringify(result.failures),
   );
 });
 
@@ -2188,14 +2219,26 @@ test('the relay gate stays silent when the fresh setup never ran', async () => {
     );
 });
 
-test('the fresh setup agent is required to return the relay count', async () => {
+test('both egress agents are required to return the relay count', async () => {
   const { prompts } = await run(happyPath());
-  const setup = prompts.find((p) => p.label === 'verify-fresh-setup');
-  assert.ok(
-    setup.opts.schema.required.includes('analyticsRequests'),
-    'the gating field is optional in the schema, so an agent may omit it',
-  );
-  assert.match(setup.prompt, /ph-relay\.networkcanvas\.com/);
+  for (const [label] of EGRESS_AREAS) {
+    const a = prompts.find((p) => p.label === label);
+    assert.ok(
+      a.opts.schema.required.includes('analyticsRequests'),
+      `${label}: the gating field is optional in the schema, so an agent may omit it`,
+    );
+    assert.match(a.prompt, /ph-relay\.networkcanvas\.com/);
+  }
+});
+
+// The upgrade lane's instance ran the released image until the swap, and that
+// image predates the guarantee. A count taken from a tab it had already
+// touched would fail the candidate for its predecessor's traffic.
+test('the interview reading is taken from a tab opened after the swap', async () => {
+  const { prompts } = await run(happyPath());
+  const integrity = promptFor(prompts, 'verify-data-integrity');
+  assert.match(integrity, /FRESH tab/);
+  assert.match(integrity, /released image/);
 });
 
 test('a failed teardown warns without blocking the release', async () => {

@@ -251,6 +251,22 @@ const CHECKS_SCHEMA = {
   required: ['area', 'pass', 'checks'],
 };
 
+// For the two areas that also report how often the browser reached the
+// analytics relay. Gating, so the field is required: its absence must not be
+// readable as zero.
+const EGRESS_CHECKS_SCHEMA = {
+  ...CHECKS_SCHEMA,
+  properties: {
+    ...CHECKS_SCHEMA.properties,
+    analyticsRequests: {
+      type: 'number',
+      description:
+        'Requests to the analytics relay observed in the network log',
+    },
+  },
+  required: [...CHECKS_SCHEMA.required, 'analyticsRequests'],
+};
+
 const STACK_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -834,12 +850,13 @@ Record one check per numbered item:
 7. A persisted interview still RESUMES on the upgraded build — open one seeded incomplete interview at its /interview/<id> URL (id from the interviews table or psql per AGENT_NOTES) and verify the interview shell renders its current stage without an error screen.
 8. A sync round-trip still succeeds: the sync middleware only fires on a session STATE CHANGE, so an untouched stage sends nothing — use the shell's forward/back navigation control (shell chrome, not stage content) to advance or step the stage, and confirm a request to /interview/<id>/sync succeeds in the network log. THIS ITEM MAY BE SKIPPED, and only when stage validation blocks navigation in both directions so no state change can be produced; say so in notes.
 Do NOT interact with stage content; items 7 and 8 exercise Fresco's payload mapping and schema-version compatibility gate, not interview behaviour (the interview package covers that).
+Then, separately from the checks: the participant-facing interview route starts analytics by a different path from the dashboard, so it needs its own reading. Open that same /interview/<id> URL in a FRESH tab (an interview needs no sign-in), let it settle, then read THAT tab's network log and count every request to ph-relay.networkcanvas.com — attempted, failed and blocked alike — and report that exact count in analyticsRequests (0 if there were none). The tab must be one you opened yourself just now: this instance ran the released image until the swap, and a log carrying its traffic would describe the wrong build. Report what the log shows and nothing else; the workflow decides what the number means. Do not turn it into a ninth check.
 ${CHECK_DISCIPLINE}
 Set area="integrity".`,
     {
       label: 'verify-data-integrity',
       phase: 'Upgrade lane',
-      schema: CHECKS_SCHEMA,
+      schema: EGRESS_CHECKS_SCHEMA,
       ...UI,
     },
   );
@@ -929,19 +946,7 @@ Set area="freshSetup".`,
     {
       label: 'verify-fresh-setup',
       phase: 'Fresh lane',
-      schema: {
-        ...CHECKS_SCHEMA,
-        properties: {
-          ...CHECKS_SCHEMA.properties,
-          analyticsRequests: {
-            type: 'number',
-            description:
-              'Requests to the analytics relay observed in the network log',
-          },
-        },
-        // Gating, so its absence must not read as zero.
-        required: [...CHECKS_SCHEMA.required, 'analyticsRequests'],
-      },
+      schema: EGRESS_CHECKS_SCHEMA,
       ...UI,
     },
   );
@@ -1687,18 +1692,35 @@ if (upgradeLane?.upReleased?.ok === true) {
 // there is no window in which anything could call out first. Zero is therefore
 // the only correct count, and anything above it is the candidate having lost
 // that guarantee — a failure, not the known limitation it used to be.
-// Only the fresh lane can say this: it drives the pending image and nothing
-// else, whereas the upgrade lane's browsing starts against the released image,
-// which predates the fix and would fail a gate it is not the subject of.
-const analyticsRequests = counted(freshLane?.setup?.analyticsRequests);
-if (freshLane?.setup) {
-  if (analyticsRequests === null)
+//
+// Both surfaces report, because they start analytics by different paths and a
+// regression confined to either is invisible to the other: the dashboard goes
+// through AnalyticsLoader and lib/posthog-client.ts, while the participant-
+// facing interview route hands @codaco/interview its own client and that
+// package's resolveClient decides. The interview route is the one that matters
+// most and the one no dashboard reading covers.
+//
+// Neither count can describe the released image, which predates the guarantee:
+// the fresh lane runs the pending image and nothing else, and the integrity
+// agent reads a tab it opened after the upgrade swap.
+const egressSurfaces = [
+  ['fresh lane', 'the new-deployment dashboard', freshLane?.setup],
+  [
+    'upgrade lane',
+    'the participant-facing interview route',
+    upgradeLane?.integrity,
+  ],
+];
+for (const [lane, surface, result] of egressSurfaces) {
+  if (!result) continue;
+  const observed = counted(result.analyticsRequests);
+  if (observed === null)
     unaccounted.push(
-      `the fresh lane did not report a usable count of requests to the analytics relay ("${freshLane.setup.analyticsRequests ?? 'missing'}"), so nothing shows whether this DISABLE_ANALYTICS deployment stayed silent`,
+      `the ${lane} did not report a usable count of requests to the analytics relay ("${result.analyticsRequests ?? 'missing'}"), so nothing shows whether ${surface} stayed silent on this DISABLE_ANALYTICS deployment`,
     );
-  else if (analyticsRequests > 0)
+  else if (observed > 0)
     failures.push(
-      `the fresh lane observed ${analyticsRequests} request(s) to the analytics relay even though the stack sets DISABLE_ANALYTICS — a deployment with analytics disabled must never load PostHog at all`,
+      `the ${lane} observed ${observed} request(s) to the analytics relay from ${surface} even though the stack sets DISABLE_ANALYTICS — a deployment with analytics disabled must never load PostHog at all`,
     );
 }
 
