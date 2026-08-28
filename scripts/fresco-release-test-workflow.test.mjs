@@ -2112,27 +2112,90 @@ test('the workflow only ever returns a documented verdict', async () => {
 });
 
 // ---------------------------------------------------------------------------
-// Family 6 — environment, and the channels that must not gate a release
+// Family 6 — environment: what the deployment must not do, and the hygiene
+// channels that must not gate a release
 // ---------------------------------------------------------------------------
 
-test('observed analytics egress warns without blocking the release', async () => {
+// A deployment with analytics disabled loads posthog-js only once the server
+// has said analytics are on, so the relay hears from it exactly zero times.
+// Anything else is that guarantee having been lost in the build under test.
+test('a relay request from a DISABLE_ANALYTICS stack blocks the release', async () => {
   const r = happyPath();
   r['verify-fresh-setup'].analyticsRequests = 3;
   const { result } = await run(r);
-  assert.equal(result.verdict, 'go');
-  assert.equal(result.releasable, true);
+  assert.equal(result.verdict, 'no-go');
+  assert.equal(result.releasable, false);
+  const egress = result.failures.find((f) => f.includes('analytics relay'));
+  assert.ok(egress, JSON.stringify(result.failures));
+  assert.match(egress, /3 request/);
+  // The old text excused the traffic as an unavoidable pre-hydration window.
+  // That window no longer exists, so the message must not resurrect it.
   assert.ok(
-    result.warnings.some((w) => w.includes('analytics relay')),
-    JSON.stringify(result.warnings),
+    !/hydration|unconditional|anonymous/.test(egress),
+    `the failure still describes the removed pre-hydration window: ${egress}`,
   );
-  // The warning must not repeat a claim the implementation dropped: the pin is
-  // gone, so the traffic is anonymous rather than attributable to this test.
-  const egress = result.warnings.find((w) => w.includes('analytics relay'));
   assert.ok(
-    !egress.includes('pinned'),
-    `the warning still claims the installation id is pinned: ${egress}`,
+    !result.warnings.some((w) => w.includes('analytics relay')),
+    `the egress must gate rather than warn: ${JSON.stringify(result.warnings)}`,
   );
-  assert.match(egress, /anonymous/);
+});
+
+test('an unreported relay count fails closed rather than reading as zero', async () => {
+  const r = happyPath();
+  delete r['verify-fresh-setup'].analyticsRequests;
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.equal(result.releasable, false);
+  assert.deepEqual(result.failures, []);
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('analytics relay')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('a malformed relay count is not coerced into a clean observation', async () => {
+  // Number('0') is 0 and Number({}) is NaN: coercion would read a string, a
+  // fraction, a negative and a non-number alike as "the relay was silent".
+  const malformed = [
+    ['a string', '0'],
+    ['a fraction', 1.5],
+    ['a negative', -1],
+    ['null', null],
+    ['an object', {}],
+    ['NaN', Number.NaN],
+  ];
+  for (const [shown, value] of malformed) {
+    const r = happyPath();
+    r['verify-fresh-setup'].analyticsRequests = value;
+    const { result } = await run(r);
+    assert.equal(result.releasable, false, `${shown} certified the release`);
+    assert.deepEqual(result.failures, [], shown);
+    assert.ok(
+      result.unaccounted.some((u) => u.includes('analytics relay')),
+      `${shown}: ${JSON.stringify(result.unaccounted)}`,
+    );
+  }
+});
+
+test('the relay gate stays silent when the fresh setup never ran', async () => {
+  const r = happyPath();
+  r['up-fresh'] = { ok: false, error: 'prisma migrate deploy exited 1' };
+  const { result } = await run(r);
+  for (const line of [...result.failures, ...result.unaccounted])
+    assert.ok(
+      !line.includes('analytics relay'),
+      `a lane that never reached setup produced an analytics finding: ${line}`,
+    );
+});
+
+test('the fresh setup agent is required to return the relay count', async () => {
+  const { prompts } = await run(happyPath());
+  const setup = prompts.find((p) => p.label === 'verify-fresh-setup');
+  assert.ok(
+    setup.opts.schema.required.includes('analyticsRequests'),
+    'the gating field is optional in the schema, so an agent may omit it',
+  );
+  assert.match(setup.prompt, /ph-relay\.networkcanvas\.com/);
 });
 
 test('a failed teardown warns without blocking the release', async () => {

@@ -923,7 +923,7 @@ Record one check per numbered item, in order:
 9. The uploaded protocol is listed on the protocols page.
 10. In settings, create an API token (enable the data API if needed) and curl one documented endpoint with it: well-formed JSON.
 11. Analytics stay off: this stack sets DISABLE_ANALYTICS, so the settings privacy section must show analytics disabled AND read-only (an environment-locked notice rather than an operable switch).
-Then, separately from the checks: read the tab's network log for requests to ph-relay.networkcanvas.com and report how many were attempted in analyticsRequests (0 if none). This is an observation, not a check — do not fail anything on it.
+Then, separately from the checks: read the tab's network log and count every request to ph-relay.networkcanvas.com — attempted, failed and blocked alike — and report that exact count in analyticsRequests (0 if there were none). Report what the log shows and nothing else; the workflow decides what the number means. Do not turn it into a twelfth check.
 ${CHECK_DISCIPLINE}
 Set area="freshSetup".`,
     {
@@ -939,6 +939,8 @@ Set area="freshSetup".`,
               'Requests to the analytics relay observed in the network log',
           },
         },
+        // Gating, so its absence must not read as zero.
+        required: [...CHECKS_SCHEMA.required, 'analyticsRequests'],
       },
       ...UI,
     },
@@ -1680,11 +1682,25 @@ if (upgradeLane?.upReleased?.ok === true) {
 
 // --- environment ------------------------------------------------------------
 
-const analyticsRequests = Number(freshLane?.setup?.analyticsRequests) || 0;
-if (analyticsRequests > 0)
-  warnings.push(
-    `the fresh lane observed ${analyticsRequests} request(s) to the analytics relay even though the stack sets DISABLE_ANALYTICS — posthog.init runs unconditionally before the opt-out lands on hydration, so these carry an anonymous browser identity and are not attributable to this test`,
-  );
+// A deployment with analytics disabled must never contact the relay: the
+// browser loads posthog-js only after the server has said analytics are on, so
+// there is no window in which anything could call out first. Zero is therefore
+// the only correct count, and anything above it is the candidate having lost
+// that guarantee — a failure, not the known limitation it used to be.
+// Only the fresh lane can say this: it drives the pending image and nothing
+// else, whereas the upgrade lane's browsing starts against the released image,
+// which predates the fix and would fail a gate it is not the subject of.
+const analyticsRequests = counted(freshLane?.setup?.analyticsRequests);
+if (freshLane?.setup) {
+  if (analyticsRequests === null)
+    unaccounted.push(
+      `the fresh lane did not report a usable count of requests to the analytics relay ("${freshLane.setup.analyticsRequests ?? 'missing'}"), so nothing shows whether this DISABLE_ANALYTICS deployment stayed silent`,
+    );
+  else if (analyticsRequests > 0)
+    failures.push(
+      `the fresh lane observed ${analyticsRequests} request(s) to the analytics relay even though the stack sets DISABLE_ANALYTICS — a deployment with analytics disabled must never load PostHog at all`,
+    );
+}
 
 if (audit && !audit.stampExists)
   unaccounted.push(

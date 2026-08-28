@@ -29,14 +29,11 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres
       DATABASE_URL_UNPOOLED: postgresql://postgres:postgres@postgres:5432/postgres
       PUBLIC_URL: http://localhost:${FRESCO_PORT:-3210}
-      # Stops server-side capture and makes PostHogIdentify opt the browser out
-      # on hydration. It does NOT stop the client-side init that runs first:
-      # instrumentation-client.ts calls posthog.init unconditionally, so a
-      # recurring release test still emits anonymous pre-hydration traffic to
-      # the relay. Pinning INSTALLATION_ID does not help — PostHogIdentify
-      # returns at the opt-out before it would register or identify with it —
-      # so nothing here is pretending to. The fresh lane counts the requests
-      # that do reach the relay and the workflow reports them as a warning.
+      # Stops server-side capture, and stops the browser reaching the relay at
+      # all: posthog-js is loaded only once the server has confirmed analytics
+      # are on, so a stack that sets this makes no request to it. The fresh
+      # lane counts the requests that reach the relay and the workflow fails
+      # the run on any of them.
       DISABLE_ANALYTICS: 'true'
       COOKIE_SECURE: 'false'
       # Next standalone binds to $HOSTNAME (default: container id -> NIC IP),

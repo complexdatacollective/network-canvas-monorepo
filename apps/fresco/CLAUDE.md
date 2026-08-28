@@ -76,12 +76,13 @@ download capture via MinIO). `release-test/AGENT_NOTES.md` records the
 verified techniques for driving Fresco in the in-app browser. The directory is
 excluded from the public mirror. Storage is configured through the setup
 wizard, not env vars, matching real bundled-MinIO deployments. Both stacks set
-`DISABLE_ANALYTICS`, which stops server-side capture and opts the browser out
-on hydration — but not the unconditional `posthog.init` in
-`instrumentation-client.ts` that runs first, so a recurring gate still emits
-anonymous pre-hydration traffic to the relay. The fresh lane counts the
-requests that reach it and the workflow reports them as a warning rather than
-pretending they do not happen.
+`DISABLE_ANALYTICS`, and a deployment with analytics disabled must reach the
+analytics relay zero times: the browser loads posthog-js only once the server
+has confirmed analytics are on (`components/Providers/AnalyticsLoader.tsx` and
+`lib/posthog-client.ts`), so there is no earlier window in which it could call
+out. The fresh lane counts the requests that reach the relay, and the workflow
+fails the run on any of them — since that guarantee shipped, one request is a
+regression rather than a known limitation.
 
 ### Reading the verdict
 
