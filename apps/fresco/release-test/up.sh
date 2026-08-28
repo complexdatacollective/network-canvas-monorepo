@@ -46,7 +46,23 @@ compose() {
   docker compose -p "$PROJECT" -f "$SCRIPT_DIR/docker-compose.yml" "$@"
 }
 
-if [ "$KEEP_DATA" != "true" ]; then
+if [ "$KEEP_DATA" = "true" ]; then
+  # The upgrade swap. Remove the app container and the analytics sink together,
+  # so the log the release gate reads covers the pending image's lifetime and
+  # nothing before it: this stack ran the RELEASED image until now, and that
+  # image predates the guarantee the gate checks — failing the candidate for
+  # its predecessor's traffic would be as wrong as missing its own.
+  #
+  # Both, and in one command, because removing only the sink would leave the
+  # released app running while `up` starts the replacement and waits for it to
+  # be healthy. A delayed or background analytics connection made in that
+  # window would land in the new log and be read as the pending image's.
+  #
+  # Only the containers: the named volumes stay, which is what makes this a
+  # swap rather than a fresh install, and `up` recreates the app from the
+  # pending image so its migrate-and-start.sh runs against the seeded data.
+  compose rm -sf fresco relay-sink
+else
   compose down -v --remove-orphans
 fi
 

@@ -89,11 +89,69 @@ analytics repointed at any other ingestion host still fails, and each reports
 its total log size as a positive control — a log that recorded nothing cannot
 evidence silence. Any host outside the deployment fails the run.
 
-What this does **not** watch is server-side capture. `lib/posthog-server.ts`
-returns on `isAnalyticsDisabled()` before it constructs the posthog-node
-client, so a disabled deployment never builds one; that guard is covered by
-unit tests, not by this gate, because seeing the container's own egress needs
-a relay sink the harness does not have.
+Server-side capture is watched separately, because a browser network log
+describes what the _page_ sent and is structurally blind to what the Fresco
+_process_ sends. `lib/posthog-server.ts` returns on `isAnalyticsDisabled()`
+before `getPostHogServer()` constructs the posthog-node client, so a disabled
+deployment never builds one — and each stack proves that by aliasing the
+relay's hostname onto a sink container (`relay-sink` in the compose file,
+`release-test/scripts/relay-sink.mjs`) that records every connection it
+receives. `release-test/scripts/relay-sink-check.mjs` reads that log, and any
+connection fails the run.
+
+Each connection is written down twice — once when it is accepted, once when it
+has been classified — because classification cannot be immediate: a client that
+stalls, or sends less than a full identifying prefix, is unknown until the
+sink's timeout expires. A log written only at classification time is missing
+everything accepted in that window, so the reader counts an
+accepted-but-unclassified connection as egress. Nothing that has not identified
+itself as a probe is read as one.
+
+The sink also has to have been watching for the whole window it reports on.
+`docker logs` succeeds against a container that has already exited, and the
+probe records survive in it, so a sink inspected only once — before probing —
+would report a clean, well-controlled reading of a stretch it spent dead. The
+check inspects it again once the log is in hand and compares start times, which
+brackets the check itself; the sink announces itself exactly once when it binds,
+and requiring exactly one announcement covers everything the lane did before
+that.
+
+The governing rule for all of this is that **the log read is the last
+observation the check makes**. Every reading describes an interval, and its
+evidence comes from two samples taken at different moments — the inspections
+and the log. Whenever the verified interval extends past the log snapshot, a
+connection accepted in between is real, absent from the log, and reported as
+silence. Reading the log last makes its coverage a superset of the verified
+interval. Connections accepted between the final inspection and the read are
+then counted conservatively as egress, which is the right direction to err.
+
+The sink records connection attempts and never terminates TLS. posthog-node
+speaks https, so parsing requests would mean minting a certificate for the
+relay's name and trusting it inside the image under test — a container
+configured differently from the one that ships, handed a relay that appears to
+work. It would also buy nothing the gate uses: what it asks is whether the
+container reached off-box for analytics at all, and a connection attempt
+answers that completely while being recorded before any handshake can fail.
+Its positive control is the same idea as `networkLogEntries`, one step
+stronger: the check script dials the sink _from inside that lane's Fresco
+container_, at the relay's real hostname, on every port the sink covers,
+carrying a nonce it generated for that invocation — so a probe that comes back
+recorded proves the whole path real egress would take. Without it, a sink that
+never started reads exactly like a silent deployment. The app container and the
+sink are removed together at the swap (`up.sh --keep-data`), so the log covers
+the pending image's lifetime and never the released image's.
+
+Read it for what it is. The run provokes `captureEvent`/`captureException`
+heavily — `lib/activityFeed.ts` captures and flushes on every activity-feed
+entry — so a zero is real evidence about the cached `isAnalyticsDisabled()`
+guard. It is not evidence about the other one: `instrumentation.ts`'s
+`onRequestError` and the process listeners consult
+`isAnalyticsDisabledUncached()`, and neither is reachable on demand without
+shipping an error-injection affordance in the image under test. Those are
+covered by `lib/__tests__/instrumentation.test.ts` and
+`lib/__tests__/posthog-server.test.ts`, which assert silence with analytics
+disabled. What the sink adds over them is that any path which _does_ construct
+the client and send is caught, whichever guard let it through.
 
 ### Reading the verdict
 

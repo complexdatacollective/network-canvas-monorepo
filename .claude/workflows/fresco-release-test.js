@@ -288,6 +288,53 @@ const EGRESS_CHECKS_SCHEMA = {
   required: [...CHECKS_SCHEMA.required, 'externalHosts', 'networkLogEntries'],
 };
 
+// The third egress observation, and the only one that can see the container
+// itself. Both readings above come from a browser tab, so they describe what
+// the PAGE sent and are structurally blind to what the Fresco process sends:
+// lib/posthog-server.ts's posthog-node client would call the relay from inside
+// the container, where no log the browser keeps can see it. Each lane's stack
+// therefore aliases the relay's hostname onto a sink container that records
+// every connection it receives (release-test/docker-compose.yml and
+// scripts/relay-sink.mjs), and scripts/relay-sink-check.mjs reads that log.
+//
+// Every field is required, for the same reason the browser ones are: no
+// reading may be readable as silence.
+//
+// sinkPorts/probeSent/probeConnections are the positive control, and a
+// stronger one than networkLogEntries can be. relay-sink-check.mjs dials the
+// sink FROM INSIDE that lane's Fresco container, at the relay's real hostname,
+// on every port the sink covers, carrying a nonce it generated for that
+// invocation — so a probe that comes back recorded proves the entire path the
+// real thing would take: that container's resolution of that name, the sink
+// listening on that port, and the sink recording what it receives.
+const RELAY_SINK_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    ok: { type: 'boolean' },
+    sinkRunning: { type: 'boolean' },
+    sinkPorts: {
+      type: 'number',
+      description: 'How many ports the sink is meant to be listening on',
+    },
+    probeSent: {
+      type: 'number',
+      description:
+        "Ports the probe reached from inside the lane's Fresco container",
+    },
+    probeConnections: {
+      type: 'number',
+      description: "Probe connections the sink's log recorded for this run",
+    },
+    analyticsConnections: {
+      type: 'number',
+      description: 'Connections the sink recorded that were NOT those probes',
+    },
+    error: { type: 'string' },
+  },
+  required: ['ok'],
+};
+
 const STACK_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -740,6 +787,16 @@ if (expectedVersion && buildVersion && buildVersion !== expectedVersion)
     `the pending image is version ${buildVersion}, but this run certifies ${expectedVersion} — the wrong build is under test`,
   );
 
+// Deliberately gives the agent nothing to decide. The reading is a
+// deterministic script's own JSON — what the sink recorded, and whether the
+// probe that proves it was watching came back — and the workflow below reads
+// the numbers. An agent asked to interpret them could report a silence it did
+// not witness.
+const relaySinkPrompt = (lane) =>
+  `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run exactly this, once:
+node ${HARNESS}/scripts/relay-sink-check.mjs --lane ${lane}
+It prints ONE line of JSON and nothing else. Return its fields verbatim: ok, sinkRunning, sinkPorts, probeSent, probeConnections, analyticsConnections. On a non-zero exit it prints {"ok":false,"error":"..."} instead — return ok:false with that error and OMIT the counts rather than supplying numbers of your own. Do not interpret what the numbers mean, do not investigate anything they suggest, do not start or restart any container, and change nothing on disk. The workflow decides what they mean.`;
+
 // ---------------------------------------------------------------------------
 
 const runUpgradeLane = async () => {
@@ -920,10 +977,21 @@ Set area="apiSettings".`,
       ...UI,
     },
   );
+  // Last, so the sink's log covers every server-side event this lane could
+  // have provoked. Accounted for in the environment section below rather than
+  // in upgradeStages, which would report a missing result twice.
+  const relaySink = await agent(relaySinkPrompt('upgrade'), {
+    label: 'relay-sink-upgrade',
+    phase: 'Upgrade lane',
+    schema: RELAY_SINK_SCHEMA,
+    ...MECHANICAL,
+  });
+
   lane.capture = capture;
   lane.integrity = integrity;
   lane.crud = crud;
   lane.apiSettings = apiSettings;
+  lane.relaySink = relaySink;
 
   return lane;
 };
@@ -971,6 +1039,12 @@ Set area="freshSetup".`,
       ...UI,
     },
   );
+  lane.relaySink = await agent(relaySinkPrompt('fresh'), {
+    label: 'relay-sink-fresh',
+    phase: 'Fresh lane',
+    schema: RELAY_SINK_SCHEMA,
+    ...MECHANICAL,
+  });
   return lane;
 };
 
@@ -1765,6 +1839,110 @@ for (const [lane, surface, result] of egressSurfaces) {
   if (hosts.length)
     failures.push(
       `${surface} contacted ${hosts.length} host(s) outside this deployment — ${hosts.join(', ')} — even though the ${lane}'s stack sets DISABLE_ANALYTICS; a self-hosted deployment with analytics disabled sends nothing off-box`,
+    );
+}
+
+// The container's own egress, which neither reading above can see: a browser
+// network log describes what the PAGE sent, and lib/posthog-server.ts sends
+// from inside the Fresco process. Each lane's stack aliases the relay's
+// hostname onto a sink container, and relay-sink-check.mjs reports what it
+// recorded. `captureEvent` and `captureException` both return on
+// isAnalyticsDisabled() BEFORE getPostHogServer() constructs the posthog-node
+// client, so a DISABLE_ANALYTICS deployment never builds one and zero is the
+// only correct count.
+//
+// The sink records connection attempts rather than parsed requests. posthog-node
+// speaks https, so parsing would mean minting a certificate for the relay's
+// name and trusting it inside the image under test — testing a container
+// configured differently from the one that ships, and handing the deployment a
+// relay that appears to work. It would also buy nothing this gate uses: what it
+// asks is whether the container reached off-box for analytics at all, and a
+// connection attempt answers that completely while being recorded before any
+// handshake can fail.
+//
+// Each lane is read only once it is running the pending image — the fresh lane
+// from the start, the upgrade lane from the swap, which recreates the sink so
+// its log cannot carry the released image's traffic (up.sh).
+//
+// A zero is meaningful for the path the run actually provokes, and that path
+// is specifically captureEvent/captureException, which consult the cached
+// isAnalyticsDisabled(). lib/activityFeed.ts calls captureEvent for every
+// activity-feed entry and flushes immediately, so protocol uploads, interview
+// generation and participant CRUD all reach it, as do the setup wizard's
+// AppSetup event and the interview route's own. A build that lost THAT guard
+// would have connected many times over by the time this is read.
+//
+// It is not evidence about the other guard. instrumentation.ts's
+// onRequestError and posthog-server.ts's process listeners consult
+// isAnalyticsDisabledUncached() instead, and neither is reachable on demand:
+// one needs an error escaping a request handler, the other a failure outside
+// any request. Provoking them would mean shipping an error-injection
+// affordance in the image under test, or depending on some route's incidental
+// lack of error handling — a probe that would go quiet the moment someone
+// added a try/catch, and take this gate's meaning with it. Those two are
+// covered where they can be covered honestly: lib/__tests__/instrumentation.
+// test.ts and lib/__tests__/posthog-server.test.ts both assert silence with
+// analytics disabled. What the sink adds is that ANY path which does construct
+// the client and send is seen, whichever guard let it through.
+const relaySinks = [
+  ['fresh lane', freshLane?.up?.ok === true, freshLane?.relaySink],
+  ['upgrade lane', upgradeLane?.swap?.ok === true, upgradeLane?.relaySink],
+];
+for (const [lane, ran, sink] of relaySinks) {
+  if (!ran) continue;
+
+  if (sink?.ok !== true) {
+    unaccounted.push(
+      `the ${lane}'s analytics sink could not be read (${sink?.error ?? 'the sink-check agent returned no result'}), so nothing observed what its Fresco container sent`,
+    );
+    continue;
+  }
+  if (sink.sinkRunning !== true) {
+    unaccounted.push(
+      `the ${lane}'s analytics sink was not running, so a container that did call out would have gone unrecorded`,
+    );
+    continue;
+  }
+
+  // The positive control, before the negative assertion and for the same
+  // reason as the browser logs: a sink that never started, or a hostname alias
+  // that never took effect, records exactly what a silent container records.
+  // Every port must have answered the probe (a port the sink was not listening
+  // on would refuse egress rather than record it) and the log must show every
+  // probe that was sent (a sink that drops connections is not evidence of
+  // anything).
+  const ports = counted(sink.sinkPorts);
+  const sent = counted(sink.probeSent);
+  const recorded = counted(sink.probeConnections);
+  if (ports === null || ports === 0 || sent === null || recorded === null) {
+    unaccounted.push(
+      `the ${lane} reported no usable probe of its analytics sink (ports "${sink.sinkPorts ?? 'missing'}", sent "${sink.probeSent ?? 'missing'}", recorded "${sink.probeConnections ?? 'missing'}"), so nothing shows the sink was watching`,
+    );
+    continue;
+  }
+  // Equality in both directions, not merely "enough". The check script sends
+  // exactly one probe per port and fails outright if any of them cannot be
+  // sent, so a genuine reading always has sent === ports and recorded === sent.
+  // An undercount means the sink dropped what was sent to it and its silence
+  // proves nothing; an OVERCOUNT is a reading the script cannot produce at all,
+  // and a positive control that accepts impossible numbers is not one.
+  if (sent !== ports || recorded !== sent) {
+    unaccounted.push(
+      `the ${lane} reported ${sent} probe(s) sent across ${ports} sink port(s) and ${recorded} recorded — the check script sends exactly one per port and counts the records that came back, so this is not a reading it produced, and it cannot show that anything stayed silent`,
+    );
+    continue;
+  }
+
+  const connections = counted(sink.analyticsConnections);
+  if (connections === null) {
+    unaccounted.push(
+      `the ${lane} did not report what its analytics sink recorded ("${sink.analyticsConnections ?? 'missing'}"), so nothing shows whether its Fresco container called out`,
+    );
+    continue;
+  }
+  if (connections > 0)
+    failures.push(
+      `the ${lane}'s Fresco container opened ${connections} connection(s) to the analytics relay hostname even though its stack sets DISABLE_ANALYTICS — server-side capture returns before the posthog-node client is constructed, so a deployment with analytics disabled connects to it zero times`,
     );
 }
 
