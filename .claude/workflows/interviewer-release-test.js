@@ -324,12 +324,15 @@ times out is a signal to inspect, not to rerun with a bigger limit.
 Save a screenshot at every checkpoint — AT LEAST one per numbered check,
 named with the check's number as its filename prefix: check<N>-<slug>.png
 (e.g. check3-settings-tabs.png; extra captures like stage-<i>.png may sit
-alongside). The evidence audit verifies the EXACT set of check<N> prefixes
-on disk against the checks you executed and rejects the run as incomplete
-when any executed check has no capture of its own — under
+alongside). Every capture goes DIRECTLY inside
 ${workDir}/<your-journey-key>/
-and set artifactsDir to EXACTLY that directory — ${workDir}/<your-journey-key>
-— in your result; any other value is rejected by the verdict logic.
+— NO subdirectories: the evidence audit counts only that directory level
+(a shots/ or screenshots/ subfolder reads as zero captures and voids the
+run), verifies the EXACT set of check<N> prefixes on disk against the
+checks you executed, and rejects the run as incomplete when any executed
+check has no capture of its own. Set artifactsDir to EXACTLY that
+directory — ${workDir}/<your-journey-key> — in your result; any other
+value is rejected by the verdict logic.
 
 KNOWN APP QUIRKS — encode them, do NOT report them as bugs:
 - After importing/installing a protocol, wait for the "Protocol imported"
@@ -362,15 +365,19 @@ KNOWN APP QUIRKS — encode them, do NOT report them as bugs:
   key drops). Expected behaviour, not a bug.
 - Use generous timeouts: 15–20 s around import, interview mount, and stage
   changes; 30 s for synthetic-data generation.
-- EXACTLY three kinds of console error are expected noise, and no others:
+- EXACTLY four kinds of console error are expected noise, and no others:
   (a) "The Content Security Policy directive 'frame-ancestors' is ignored
   when delivered via a <meta> element"; (b) CSP script-src violations for
   Cloudflare's injected beacon — the blocked inline script and the blocked
   load of static.cloudflareinsights.com; (c) failed requests to
-  ph-relay.networkcanvas.com caused by the analytics block above. Ignore
-  those three verbatim patterns only. Report any other console error —
-  including any OTHER CSP violation, which on a candidate build may be a
-  real regression.
+  ph-relay.networkcanvas.com caused by the analytics block above; (d) the
+  "Protocol import failed while extracting MalformedNetcanvasError"
+  console.error that YOUR OWN deliberate garbage-file import triggers —
+  intentional catch-block diagnostics (importProtocol.ts) for a handled
+  path, expected only at the moment of that self-inflicted action; the
+  same error at any other time is reportable. Ignore those four patterns
+  only. Report any other console error — including any OTHER CSP
+  violation, which on a candidate build may be a real regression.
 
 TOKEN DISCIPLINE (this workflow is a recurring release gate — keep it lean):
 - Put assertions IN the Playwright script (expect/waitForSelector) and print
