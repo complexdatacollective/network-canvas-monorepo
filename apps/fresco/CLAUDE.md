@@ -107,6 +107,15 @@ everything accepted in that window, so the reader counts an
 accepted-but-unclassified connection as egress. Nothing that has not identified
 itself as a probe is read as one.
 
+The sink also has to have been watching for the whole window it reports on.
+`docker logs` succeeds against a container that has already exited, and the
+probe records survive in it, so a sink inspected only once — before probing —
+would report a clean, well-controlled reading of a stretch it spent dead. The
+check inspects it again once the log is in hand and compares start times, which
+brackets the check itself; the sink announces itself exactly once when it binds,
+and requiring exactly one announcement covers everything the lane did before
+that.
+
 The sink records connection attempts and never terminates TLS. posthog-node
 speaks https, so parsing requests would mean minting a certificate for the
 relay's name and trusting it inside the image under test — a container

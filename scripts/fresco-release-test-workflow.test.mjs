@@ -2640,6 +2640,7 @@ test('the log tally counts anything unidentified as egress', async () => {
     probeConnections: 2,
     analyticsConnections: 0,
     logLines: 5,
+    listeningRecords: 1,
   });
 
   // The race this exists for: accepted, not yet classified. The sink holds a
@@ -2671,7 +2672,12 @@ test('the log tally counts anything unidentified as egress', async () => {
   ].join('\n');
   assert.deepEqual(
     tally(`${clean}\n${stale}`, 'n1'),
-    { probeConnections: 2, analyticsConnections: 0, logLines: 7 },
+    {
+      probeConnections: 2,
+      analyticsConnections: 0,
+      logLines: 7,
+      listeningRecords: 1,
+    },
     'a stale probe must count as neither control nor egress',
   );
 
@@ -2679,6 +2685,49 @@ test('the log tally counts anything unidentified as egress', async () => {
   // probe count as "the sink was never shown to be watching".
   for (const empty of ['', null, undefined])
     assert.equal(tally(empty, 'n1').probeConnections, 0);
+
+  // The sink announces itself exactly once, when it binds. Any other number
+  // means its log does not cover one unbroken listening window — and a gap is
+  // a stretch in which egress met a closed port and left no trace.
+  assert.equal(tally(clean, 'n1').listeningRecords, 1);
+  assert.equal(tally('', 'n1').listeningRecords, 0);
+  assert.equal(
+    tally(`${clean}\n${line({ kind: 'listening', ports: [443, 80] })}`, 'n1')
+      .listeningRecords,
+    2,
+    'a second announcement means the sink restarted',
+  );
+});
+
+// `docker logs` succeeds against a container that has already exited, and the
+// probe records survive in it — so a sink inspected only once, at the start,
+// reports a clean and well-controlled reading of a window it spent dead.
+// Verified against the real thing: before this, stopping the sink two seconds
+// into the settle wait still produced ok:true with zero connections.
+test('the sink reader proves the sink outlived the window it reports on', () => {
+  const reader = readFileSync(
+    join(repoRoot, 'apps/fresco/release-test/scripts/relay-sink-check.mjs'),
+    'utf8',
+  );
+  // Inspected on both sides of the log read, not merely before probing.
+  const inspections = reader.match(/inspectSink\('/g) ?? [];
+  assert.equal(
+    inspections.length,
+    2,
+    'the sink must be inspected before probing AND after its log is read',
+  );
+  // The second inspection must read the log first, or it brackets nothing.
+  assert.ok(
+    reader.indexOf("raw = docker(['logs'") <
+      reader.indexOf("inspectSink('after reading its log')"),
+    'the second inspection must come after the log is in hand',
+  );
+  // A container that died and came back would report Running again, so the
+  // start times are compared rather than the flag alone.
+  assert.match(reader, /after\.startedAt !== before\.startedAt/);
+  // And the bracket only covers this check — the announcement count is what
+  // covers everything the lane did before it.
+  assert.match(reader, /listeningRecords !== 1/);
 });
 
 // tally() treats an accepted-but-unclassified connection as egress, which is

@@ -78,19 +78,29 @@ const reason = (error) =>
     .trim()
     .slice(0, 500);
 
-let sinkRunning = false;
-try {
-  sinkRunning =
-    docker([
+// Read together, so the pair can be compared later: a container that died and
+// came back would report Running again but with a different start time, and
+// the gap between them is a window in which connections were refused rather
+// than recorded.
+const inspectSink = (when) => {
+  try {
+    const [running, startedAt] = docker([
       'inspect',
       '--format',
-      '{{.State.Running}}',
+      '{{.State.Running}} {{.State.StartedAt}}',
       sinkContainer,
-    ]).trim() === 'true';
-} catch (error) {
-  fail(`could not inspect ${sinkContainer}: ${reason(error)}`);
-}
-if (!sinkRunning)
+    ])
+      .trim()
+      .split(' ');
+    return { running: running === 'true', startedAt };
+  } catch (error) {
+    fail(`could not inspect ${sinkContainer} ${when}: ${reason(error)}`);
+    return null;
+  }
+};
+
+const before = inspectSink('before probing');
+if (!before.running)
   fail(
     `${sinkContainer} is not running, so nothing observed what the ${lane} lane's container sent`,
   );
@@ -144,10 +154,35 @@ try {
   fail(`could not read ${sinkContainer} logs: ${reason(error)}`);
 }
 
+// `docker logs` succeeds against a container that has already exited, and the
+// probe records survive in it — so a sink that died after being probed would
+// otherwise report a clean, well-controlled reading of a window it spent dead.
+// Nothing between the first inspection and the log read may have gone
+// unobserved, so the sink is inspected again now that the log is in hand.
+const after = inspectSink('after reading its log');
+if (!after.running)
+  fail(
+    `${sinkContainer} stopped during the check, so anything the ${lane} lane's container sent after it died was refused rather than recorded`,
+  );
+if (after.startedAt !== before.startedAt)
+  fail(
+    `${sinkContainer} restarted during the check (${before.startedAt} -> ${after.startedAt}), leaving a window in which egress was refused rather than recorded`,
+  );
+
 // Only the sink's stdout: `docker logs` demultiplexes the container's streams,
 // and execFileSync returns stdout alone, so a runtime warning on stderr can
 // never be miscounted as a connection.
-const { probeConnections, analyticsConnections, logLines } = tally(raw, nonce);
+const { probeConnections, analyticsConnections, logLines, listeningRecords } =
+  tally(raw, nonce);
+
+// The pair of inspections brackets this check; this covers everything before
+// it. The sink announces itself once, when it binds, so a log carrying any
+// other number did not come from one continuously-listening sink — and the
+// lane's earlier work would have met a closed port without leaving a trace.
+if (listeningRecords !== 1)
+  fail(
+    `${sinkContainer} announced itself ${listeningRecords} time(s) rather than once, so its log does not cover one unbroken listening window`,
+  );
 
 process.stdout.write(
   `${JSON.stringify({

@@ -69,6 +69,11 @@ export function tally(raw, nonce) {
   const classified = new Map();
   let unreadable = 0;
   let logLines = 0;
+  // The sink writes exactly one of these, when it finishes binding. More than
+  // one means it restarted, and a restart leaves a gap in which connections
+  // were refused rather than recorded; none means this log did not come from a
+  // sink that ever started listening.
+  let listeningRecords = 0;
 
   for (const line of String(raw ?? '').split('\n')) {
     const text = line.trim();
@@ -81,7 +86,10 @@ export function tally(raw, nonce) {
       unreadable += 1;
       continue;
     }
-    if (entry?.kind === 'listening') continue;
+    if (entry?.kind === 'listening') {
+      listeningRecords += 1;
+      continue;
+    }
     if (!Number.isInteger(entry?.seq)) {
       unreadable += 1;
       continue;
@@ -102,5 +110,5 @@ export function tally(raw, nonce) {
     if (!entry || entry.kind !== 'probe') analyticsConnections += 1;
   }
 
-  return { probeConnections, analyticsConnections, logLines };
+  return { probeConnections, analyticsConnections, logLines, listeningRecords };
 }
