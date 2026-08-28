@@ -54,12 +54,12 @@ export function getPostHogSessionProperties(
  * the first. A deployment that started with analytics enabled would therefore
  * keep sending exceptions for the life of the process after being told not to.
  *
- * The reporting this gives up is small. Errors raised while handling a request
- * reach `onRequestError`, which checks the setting; errors thrown in `after`
- * callbacks are caught and logged by Next and never reached these listeners
- * anyway. What is left is failures outside any request — a module that throws
- * at startup, a stray timer — which a self-hosted operator sees in the server
- * log.
+ * Nothing is given up by leaving it off. Errors raised while handling a
+ * request reach `onRequestError`, which checks the setting; errors thrown in
+ * `after` callbacks are caught and logged by Next, and never reached these
+ * listeners anyway. Failures outside any request are reported by
+ * `installProcessErrorReporting` below, which does consult the setting, on
+ * every event.
  */
 export function getPostHogServer() {
   client ??= new PostHog(POSTHOG_API_KEY, {
@@ -68,6 +68,140 @@ export function getPostHogServer() {
     flushInterval: 0,
   });
   return client;
+}
+
+/**
+ * Reads the analytics setting without the cached helpers in
+ * `queries/appSettings`.
+ *
+ * Those use `use cache` + `cacheLife()`, which are unavailable both in the
+ * instrumentation context and in a process-level error handler, which can run
+ * at any moment rather than inside a request.
+ *
+ * The environment variable only forces analytics off, mirroring
+ * `getDisableAnalytics` — an unset or false value defers to the database.
+ */
+export async function isAnalyticsDisabledUncached() {
+  const { env } = await import('~/env');
+  if (env.DISABLE_ANALYTICS) return true;
+
+  try {
+    const { prisma } = await import('~/lib/db');
+    const setting = await prisma.appSettings.findUnique({
+      where: { key: 'disableAnalytics' },
+    });
+    return setting?.value === 'true';
+  } catch {
+    // Without the setting we can't tell whether this deployment consented
+    // to analytics, so stay silent rather than assume consent.
+    return true;
+  }
+}
+
+/** The installation ID, read the same way and for the same reason. */
+export async function resolveInstallationIdUncached() {
+  const { env } = await import('~/env');
+  if (env.INSTALLATION_ID) return env.INSTALLATION_ID;
+
+  try {
+    const { prisma } = await import('~/lib/db');
+    const result = await prisma.appSettings.findUnique({
+      where: { key: 'installationId' },
+    });
+    return result?.value ?? 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+// A process-level failure can repeat without limit — one broken interval can
+// reject forever — and each report costs a settings read as well as a request
+// to the relay. posthog-node's autocapture carried its own rate limiter; this
+// replaces it. Next logs every occurrence either way, so a dropped report
+// costs nothing an operator cannot see in the server log.
+const REPORT_WINDOW_MS = 60_000;
+const MAX_REPORTS_PER_WINDOW = 10;
+let windowStartedAt = 0;
+let reportsInWindow = 0;
+
+function withinReportBudget() {
+  const now = Date.now();
+
+  if (now - windowStartedAt >= REPORT_WINDOW_MS) {
+    windowStartedAt = now;
+    reportsInWindow = 0;
+  }
+
+  if (reportsInWindow >= MAX_REPORTS_PER_WINDOW) return false;
+
+  reportsInWindow += 1;
+  return true;
+}
+
+async function captureProcessError(
+  error: unknown,
+  mechanism: 'uncaughtException' | 'unhandledRejection',
+) {
+  // Telemetry must never throw, least of all here: an error escaping this
+  // handler would re-enter the very listener that is reporting.
+  try {
+    if (await isAnalyticsDisabledUncached()) return;
+
+    const distinctId = await resolveInstallationIdUncached();
+    const posthog = getPostHogServer();
+
+    posthog.captureException(error, distinctId, {
+      ...POSTHOG_APP_PROPERTIES,
+      installation_id: distinctId,
+      $source: 'server',
+      mechanism,
+      handled: false,
+    });
+
+    await flushPostHog();
+  } catch {
+    // swallow
+  }
+}
+
+let processErrorReportingInstalled = false;
+
+/**
+ * Reports failures that happen outside any request — a rejected promise nobody
+ * awaited, a callback that throws on a timer.
+ *
+ * Next reports errors raised while handling a request through
+ * `onRequestError`, and catches and logs the ones thrown in `after` callbacks,
+ * so neither reaches a process listener. What is left is genuinely
+ * out-of-request work, which nothing else reports. posthog-node offers
+ * `enableExceptionAutocapture` for this, but its listeners capture without
+ * consulting the deployment's analytics setting and cannot be removed once
+ * installed — see `getPostHogServer`. PostHog does not offer a Next-specific
+ * alternative, and their own guidance is that autocapture cannot be relied on
+ * under Next.
+ *
+ * These listeners consult the setting on every event instead of caching it, so
+ * they are correct whether analytics are on or off and need no teardown when a
+ * researcher changes the setting mid-run.
+ *
+ * Adding them does not change when the process exits. Next installs its own
+ * `uncaughtException` and `unhandledRejection` listeners precisely so that an
+ * unhandled error does not end the process, and it keeps logging every one of
+ * them regardless of what happens here.
+ */
+export function installProcessErrorReporting() {
+  if (processErrorReportingInstalled) return;
+  processErrorReportingInstalled = true;
+
+  process.on('uncaughtException', (error) => {
+    if (!withinReportBudget()) return;
+    void captureProcessError(error, 'uncaughtException');
+  });
+
+  process.on('unhandledRejection', (reason) => {
+    if (!withinReportBudget()) return;
+    void captureProcessError(reason, 'unhandledRejection');
+  });
 }
 
 // Dynamic imports to avoid pulling Prisma (node:path, node:url, etc.)

@@ -2,13 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   mockCaptureException,
-  mockFlushPostHog,
+  mockFlush,
   mockGetPostHogSessionProperties,
   mockFindUnique,
   mockEnv,
 } = vi.hoisted(() => ({
   mockCaptureException: vi.fn(),
-  mockFlushPostHog: vi.fn(),
+  mockFlush: vi.fn().mockResolvedValue(undefined),
   mockGetPostHogSessionProperties: vi.fn(),
   mockFindUnique: vi.fn(),
   mockEnv: { INSTALLATION_ID: 'install-123' } as {
@@ -17,11 +17,20 @@ const {
   },
 }));
 
-vi.mock('../../lib/posthog-server', () => ({
-  flushPostHog: mockFlushPostHog,
-  getPostHogServer: () => ({ captureException: mockCaptureException }),
+// The PostHog client itself is the only thing stubbed out. The settings and
+// installation-ID reads run for real against the mocked database and
+// environment below, so these tests still exercise the actual consent logic.
+vi.mock('posthog-node', () => {
+  const MockPostHog = vi.fn(function (this: Record<string, unknown>) {
+    this.captureException = mockCaptureException;
+    this.flush = mockFlush;
+  });
+  return { PostHog: MockPostHog };
+});
+
+vi.mock(import('../../lib/posthog-server'), async (importOriginal) => ({
+  ...(await importOriginal()),
   getPostHogSessionProperties: mockGetPostHogSessionProperties,
-  POSTHOG_SESSION_ID_HEADER: 'x-posthog-session-id',
 }));
 
 vi.mock('../../env', () => ({
@@ -29,6 +38,8 @@ vi.mock('../../env', () => ({
 }));
 
 vi.mock('../../fresco.config', () => ({
+  POSTHOG_API_KEY: 'test-api-key',
+  POSTHOG_PROXY_HOST: 'https://test.example.com',
   POSTHOG_APP_PROPERTIES: {
     app: 'Fresco',
     $app_name: 'Fresco',
@@ -87,7 +98,7 @@ describe('Fresco request-error instrumentation', () => {
         $source: 'server',
       }),
     );
-    expect(mockFlushPostHog).toHaveBeenCalledOnce();
+    expect(mockFlush).toHaveBeenCalledOnce();
   });
 
   it('sends nothing when DISABLE_ANALYTICS is set', async () => {
@@ -97,7 +108,7 @@ describe('Fresco request-error instrumentation', () => {
     await onRequestError(new Error('request failed'), REQUEST, CONTEXT);
 
     expect(mockCaptureException).not.toHaveBeenCalled();
-    expect(mockFlushPostHog).not.toHaveBeenCalled();
+    expect(mockFlush).not.toHaveBeenCalled();
   });
 
   it('sends nothing when the stored setting disables analytics', async () => {

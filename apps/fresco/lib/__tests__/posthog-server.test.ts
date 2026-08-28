@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   mockCapture,
@@ -7,6 +7,8 @@ const {
   mockGetDisableAnalytics,
   mockGetInstallationId,
   mockHeaders,
+  mockFindUnique,
+  mockEnv,
 } = vi.hoisted(() => ({
   mockCapture: vi.fn(),
   mockCaptureException: vi.fn(),
@@ -14,6 +16,8 @@ const {
   mockGetDisableAnalytics: vi.fn(),
   mockGetInstallationId: vi.fn(),
   mockHeaders: vi.fn(),
+  mockFindUnique: vi.fn(),
+  mockEnv: {} as { INSTALLATION_ID?: string; DISABLE_ANALYTICS?: boolean },
 }));
 
 vi.mock('posthog-node', () => {
@@ -34,6 +38,14 @@ vi.mock('next/headers', () => ({
   headers: mockHeaders,
 }));
 
+vi.mock('~/env', () => ({
+  env: mockEnv,
+}));
+
+vi.mock('~/lib/db', () => ({
+  prisma: { appSettings: { findUnique: mockFindUnique } },
+}));
+
 vi.mock('~/fresco.config', () => ({
   POSTHOG_API_KEY: 'test-api-key',
   POSTHOG_APP_PROPERTIES: {
@@ -50,6 +62,9 @@ describe('posthog-server', () => {
     vi.clearAllMocks();
     vi.resetModules();
     mockHeaders.mockResolvedValue(new Headers());
+    mockEnv.INSTALLATION_ID = 'install-123';
+    delete mockEnv.DISABLE_ANALYTICS;
+    mockFindUnique.mockResolvedValue(null);
   });
 
   describe('getPostHogServer', () => {
@@ -101,6 +116,173 @@ describe('posthog-server', () => {
       } finally {
         await realClient.shutdown();
       }
+    });
+  });
+
+  describe('installProcessErrorReporting', () => {
+    // The listeners are invoked directly rather than through `process.emit`,
+    // so the test never provokes the runner's own process-level handlers.
+    // Each event is looked up separately, so the listeners keep the argument
+    // types Node gives them.
+    const addedUncaught: NodeJS.UncaughtExceptionListener[] = [];
+    const addedRejection: NodeJS.UnhandledRejectionListener[] = [];
+
+    async function installAndGetListeners() {
+      const uncaughtBefore = process.listeners('uncaughtException');
+      const rejectionBefore = process.listeners('unhandledRejection');
+
+      const { installProcessErrorReporting } =
+        await import('../posthog-server');
+      installProcessErrorReporting();
+
+      const onUncaught = process
+        .listeners('uncaughtException')
+        .find((listener) => !uncaughtBefore.includes(listener));
+      const onRejection = process
+        .listeners('unhandledRejection')
+        .find((listener) => !rejectionBefore.includes(listener));
+
+      if (!onUncaught || !onRejection) {
+        throw new Error('Process error listeners were not installed.');
+      }
+
+      addedUncaught.push(onUncaught);
+      addedRejection.push(onRejection);
+
+      return {
+        reportUncaught: (error: Error) =>
+          onUncaught(error, 'uncaughtException'),
+        reportRejection: (reason: unknown) =>
+          onRejection(
+            reason,
+            Promise.reject(reason).catch(() => undefined),
+          ),
+      };
+    }
+
+    // Reporting is asynchronous — the listener hands off and returns — so give
+    // the settings read and the capture a chance to run before asserting.
+    const settle = async () => {
+      for (let tick = 0; tick < 5; tick += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    };
+
+    afterEach(() => {
+      for (const listener of addedUncaught.splice(0)) {
+        process.removeListener('uncaughtException', listener);
+      }
+      for (const listener of addedRejection.splice(0)) {
+        process.removeListener('unhandledRejection', listener);
+      }
+    });
+
+    it('reports an unhandled rejection', async () => {
+      const { reportRejection } = await installAndGetListeners();
+      const reason = new Error('nobody awaited this');
+
+      reportRejection(reason);
+      await settle();
+
+      expect(mockCaptureException).toHaveBeenCalledWith(
+        reason,
+        'install-123',
+        expect.objectContaining({
+          $source: 'server',
+          installation_id: 'install-123',
+          mechanism: 'unhandledRejection',
+          handled: false,
+        }),
+      );
+      expect(mockFlush).toHaveBeenCalled();
+    });
+
+    it('reports an uncaught exception', async () => {
+      const { reportUncaught } = await installAndGetListeners();
+      const error = new Error('thrown on a timer');
+
+      reportUncaught(error);
+      await settle();
+
+      expect(mockCaptureException).toHaveBeenCalledWith(
+        error,
+        'install-123',
+        expect.objectContaining({ mechanism: 'uncaughtException' }),
+      );
+    });
+
+    // The property posthog-node's own autocapture could not provide: the same
+    // installed listeners stop reporting the moment the researcher turns
+    // analytics off, without being torn down or replaced.
+    it('re-reads the setting on every event, so turning analytics off takes effect', async () => {
+      const { reportRejection } = await installAndGetListeners();
+
+      reportRejection(new Error('while analytics were on'));
+      await settle();
+      expect(mockCaptureException).toHaveBeenCalledTimes(1);
+
+      mockFindUnique.mockResolvedValue({
+        key: 'disableAnalytics',
+        value: 'true',
+      });
+
+      reportRejection(new Error('after analytics were turned off'));
+      await settle();
+      expect(mockCaptureException).toHaveBeenCalledTimes(1);
+    });
+
+    it('sends nothing when DISABLE_ANALYTICS is set', async () => {
+      mockEnv.DISABLE_ANALYTICS = true;
+      const { reportRejection } = await installAndGetListeners();
+
+      reportRejection(new Error('boom'));
+      await settle();
+
+      expect(mockCaptureException).not.toHaveBeenCalled();
+    });
+
+    it('stays silent when the setting cannot be read', async () => {
+      mockFindUnique.mockRejectedValue(new Error('database is down'));
+      const { reportRejection } = await installAndGetListeners();
+
+      reportRejection(new Error('boom'));
+      await settle();
+
+      expect(mockFindUnique).toHaveBeenCalled();
+      expect(mockCaptureException).not.toHaveBeenCalled();
+    });
+
+    // One broken interval can reject forever, and every report costs a
+    // settings read as well as a request to the relay.
+    it('caps a flood of repeats', async () => {
+      const { reportRejection } = await installAndGetListeners();
+
+      // Reported one at a time, so the assertion is about the budget rather
+      // than about how much of a burst happens to have drained.
+      for (let index = 0; index < 15; index += 1) {
+        reportRejection(new Error(`repeat ${index}`));
+        await settle();
+      }
+
+      expect(mockCaptureException).toHaveBeenCalledTimes(10);
+    });
+
+    it('installs its listeners only once', async () => {
+      const before = process.listeners('unhandledRejection');
+      const { installProcessErrorReporting } =
+        await import('../posthog-server');
+
+      installProcessErrorReporting();
+      installProcessErrorReporting();
+      installProcessErrorReporting();
+
+      const added = process
+        .listeners('unhandledRejection')
+        .filter((listener) => !before.includes(listener));
+      addedRejection.push(...added);
+      addedUncaught.push(...process.listeners('uncaughtException').slice(-1));
+
+      expect(added).toHaveLength(1);
     });
   });
 
