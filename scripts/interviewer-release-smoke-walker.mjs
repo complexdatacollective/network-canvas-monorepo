@@ -85,6 +85,9 @@ const result = {
   failures: [],
 };
 const consoleErrors = [];
+// Network-failure console lines are exempt ONLY while the walk has
+// deliberately cut the network — the same class while online is reportable.
+let deliberatelyOffline = false;
 function record(step, ok, note) {
   result.steps.push({ step, ok, note });
   console.log(`${ok ? 'PASS' : 'FAIL'} ${step}${note ? ` :: ${note}` : ''}`);
@@ -131,17 +134,24 @@ try {
     /Refused to execute inline script.*Content Security Policy/i,
     /cloudflareinsights/i,
     /ph-relay\.networkcanvas\.com/i,
-    // This walk is deliberately OFFLINE for its core phases: network
-    // resource-load failures (our own positive-control probe included) are
-    // the condition under test, not findings. App-level errors still
-    // surface — they are never "Failed to load resource" lines.
     /__offline-probe-/,
-    /Failed to load resource: net::ERR_(INTERNET_DISCONNECTED|FAILED)/,
   ];
   page.on('console', (m) => {
     if (m.type() !== 'error') return;
     const text = `${m.text()} ${m.location()?.url ?? ''}`;
-    if (!NOISE.some((p) => p.test(text))) consoleErrors.push(text.trim());
+    if (NOISE.some((p) => p.test(text))) return;
+    // While the walk has deliberately cut the network, resource-load
+    // failures are the condition under test, not findings; the same class
+    // while ONLINE is reportable. App-level errors still surface offline —
+    // they are never "Failed to load resource" lines.
+    if (
+      deliberatelyOffline &&
+      /Failed to load resource: net::ERR_(INTERNET_DISCONNECTED|FAILED)/.test(
+        text,
+      )
+    )
+      return;
+    consoleErrors.push(text.trim());
   });
 } catch (err) {
   record(
@@ -294,6 +304,7 @@ try {
   // fallback covers navigations only, so this falls through to the network).
   if (!keepOnline) {
     await context.setOffline(true);
+    deliberatelyOffline = true;
     const offlineReal = await page.evaluate(async () => {
       if (navigator.onLine) return false;
       try {
@@ -476,6 +487,7 @@ try {
   // Phase 5: back online, boot fresh from Home — the row survives a reload.
   if (!keepOnline) {
     await context.setOffline(false);
+    deliberatelyOffline = false;
     await page.goto(url);
     await expect(
       page.getByRole('button', { name: 'Start new interview' }),
