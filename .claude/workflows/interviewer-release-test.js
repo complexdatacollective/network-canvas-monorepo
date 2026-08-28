@@ -1343,6 +1343,23 @@ const automationIssues = [];
 const deadJourneys = [];
 const inconsistentJourneys = [];
 
+// A journey can also VANISH: when its pipeline stage throws (a terminal API
+// error surfacing as an exception rather than a null agent return), the
+// runtime drops the item to null and no {agentDied} marker is ever created.
+// Sweep the scheduled keys against what actually reported — proven live by
+// an OAuth-expiry run where a dead security-vault left deadJourneys empty
+// and coverage claiming full.
+{
+  const present = new Set(results.filter(Boolean).map((r) => r && r.journey));
+  for (const j of selected)
+    if (!present.has(j.key)) {
+      deadJourneys.push(j.key);
+      certificationGaps.push(
+        `journey "${j.key}" vanished without any result (its agent crashed); treated as incomplete`,
+      );
+    }
+}
+
 for (const r of results.filter(Boolean)) {
   if (r.agentDied) {
     deadJourneys.push(r.journey);

@@ -38,12 +38,18 @@ const runBody = new AsyncFunction(
 
 const phase = () => {};
 const log = () => {};
+// Mirrors the real runtime's semantics: a stage that throws drops the item
+// to null and skips its remaining stages.
 const pipeline = async (items, s1, s2) => {
   const out = [];
   for (const [i, item] of items.entries()) {
-    let r = await s1(item, item, i);
-    if (s2) r = await s2(r, item, i);
-    out.push(r);
+    try {
+      let r = await s1(item, item, i);
+      if (s2) r = await s2(r, item, i);
+      out.push(r);
+    } catch {
+      out.push(null);
+    }
   }
   return out;
 };
@@ -1466,4 +1472,26 @@ test('a dead journey is incomplete', async () => {
     journeys: ['pwa-offline'],
   });
   assert.equal(res.verdict, 'INCOMPLETE');
+});
+
+test('a journey whose agent throws cannot vanish from coverage', async () => {
+  // A terminal agent error can surface as a THROW inside the pipeline stage:
+  // the runtime drops the item to null with no agentDied marker, so only a
+  // scheduled-vs-reported sweep catches it (proven live by an OAuth-expiry
+  // run where a dead security-vault left deadJourneys empty).
+  const base = makeAgent({
+    'pwa-offline': journey('pwa-offline'),
+    'security-vault': journey('security-vault'),
+  });
+  const impl = async (prompt, opts) => {
+    if (opts.label === 'journey:security-vault')
+      throw new Error('API Error: 401 OAuth access token has expired');
+    return base(prompt, opts);
+  };
+  const res = await run(impl, {
+    journeys: ['pwa-offline', 'security-vault'],
+  });
+  assert.equal(res.verdict, 'INCOMPLETE');
+  assert.ok(res.deadJourneys.includes('security-vault'));
+  assert.ok(res.certificationGaps.some((a) => a.includes('vanished')));
 });
