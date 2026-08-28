@@ -8,6 +8,7 @@ import Button from '@codaco/fresco-ui/Button';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Form from '@codaco/fresco-ui/form/Form';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Spinner from '@codaco/fresco-ui/Spinner';
@@ -547,26 +548,53 @@ function StageForm(props: {
           }
         }}
       >
-        <Field
-          name="label"
-          label="Screen name"
-          component={InputField}
-          initialValue={typeof fields.label === 'string' ? fields.label : ''}
-          required
-          disabled={readOnly}
-        />
-        {hasTitle && (
-          <Field
-            name="title"
-            label="Page heading"
-            component={InputField}
-            initialValue={typeof fields.title === 'string' ? fields.title : ''}
-            required
-            disabled={readOnly}
-          />
-        )}
+        <StageFormFields fields={fields} readOnly={readOnly} />
         <SubmitButton disabled={readOnly}>Save screen</SubmitButton>
       </Form>
+    </>
+  );
+}
+
+function StageFormFields(props: {
+  fields: Readonly<Record<string, unknown>>;
+  readOnly: boolean;
+}) {
+  const label =
+    typeof props.fields.label === 'string' ? props.fields.label : '';
+  const title =
+    typeof props.fields.title === 'string' ? props.fields.title : '';
+  const hasTitle = typeof props.fields.title === 'string';
+  const setFieldValue = useFormStore((store) => store.setFieldValue);
+  const previous = useRef({ label, title });
+
+  useEffect(() => {
+    if (previous.current.label !== label) setFieldValue('label', label);
+    if (hasTitle && previous.current.title !== title) {
+      setFieldValue('title', title);
+    }
+    previous.current = { label, title };
+  }, [hasTitle, label, setFieldValue, title]);
+
+  return (
+    <>
+      <Field
+        name="label"
+        label="Screen name"
+        component={InputField}
+        initialValue={label}
+        required
+        disabled={props.readOnly}
+      />
+      {hasTitle && (
+        <Field
+          name="title"
+          label="Page heading"
+          component={InputField}
+          initialValue={title}
+          required
+          disabled={props.readOnly}
+        />
+      )}
     </>
   );
 }

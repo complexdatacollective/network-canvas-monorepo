@@ -145,6 +145,32 @@ describe('Studio editor shell', () => {
     );
   });
 
+  it('updates the screen fields when undoing and redoing a saved change', async () => {
+    renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    const title = screen.getByRole('textbox', { name: 'Page heading' });
+
+    fireEvent.change(label, { target: { value: 'Changed screen' } });
+    fireEvent.change(title, { target: { value: 'Changed heading' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save screen' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Undo' })).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+
+    await waitFor(() => {
+      expect(label).toHaveValue('Welcome');
+      expect(title).toHaveValue('Welcome');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Redo' }));
+    await waitFor(() => {
+      expect(label).toHaveValue('Changed screen');
+      expect(title).toHaveValue('Changed heading');
+    });
+  });
+
   it('keeps non-screen outline sections selectable', async () => {
     renderEditor();
     await screen.findByRole('heading', { name: 'Welcome' });
