@@ -493,6 +493,7 @@ function StageCanvas(props: {
     <StageForm
       key={props.sessionState.session.getSnapshot().editedSection.sectionId}
       session={props.sessionState.session}
+      save={props.sessionState.save}
       stage={props.stage}
       heading={props.heading}
     />
@@ -501,6 +502,7 @@ function StageCanvas(props: {
 
 function StageForm(props: {
   session: ProtocolBuilderSession;
+  save: () => Promise<void>;
   stage: SectionDoc | undefined;
   heading: string;
 }) {
@@ -533,13 +535,13 @@ function StageForm(props: {
             ...(hasTitle ? { title } : {}),
           });
           try {
-            await controller.finish();
+            await props.save();
             return { success: true };
           } catch {
             return {
               success: false,
               formErrors: [
-                'This screen could not be saved because the protocol is not valid.',
+                'This screen could not be saved. Wait a moment and try again.',
               ],
             };
           }
