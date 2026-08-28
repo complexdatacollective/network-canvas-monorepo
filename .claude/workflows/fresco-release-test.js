@@ -1920,9 +1920,15 @@ for (const [lane, ran, sink] of relaySinks) {
     );
     continue;
   }
-  if (sent < ports || recorded < sent) {
+  // Equality in both directions, not merely "enough". The check script sends
+  // exactly one probe per port and fails outright if any of them cannot be
+  // sent, so a genuine reading always has sent === ports and recorded === sent.
+  // An undercount means the sink dropped what was sent to it and its silence
+  // proves nothing; an OVERCOUNT is a reading the script cannot produce at all,
+  // and a positive control that accepts impossible numbers is not one.
+  if (sent !== ports || recorded !== sent) {
     unaccounted.push(
-      `the ${lane}'s analytics sink answered ${sent} of ${ports} port(s) and recorded ${recorded} of ${sent} probe(s) sent from its Fresco container — a sink that did not record what was sent to it cannot show that anything stayed silent`,
+      `the ${lane} reported ${sent} probe(s) sent across ${ports} sink port(s) and ${recorded} recorded — the check script sends exactly one per port and counts the records that came back, so this is not a reading it produced, and it cannot show that anything stayed silent`,
     );
     continue;
   }

@@ -2355,27 +2355,22 @@ for (const [label, lane] of SINK_AREAS) {
     }
   });
 
-  // The positive control. A sink that never started, or a hostname alias that
-  // never took effect, records exactly what a silent container records — so
-  // until the probe comes back, zero connections means nothing.
-  test(`a ${lane} sink that never answered its probe proves nothing`, async () => {
+  // The positive control, in two halves that must each fail on their own.
+  //
+  // Unusable: a field absent, or holding something that is not a count. The
+  // run cannot tell whether the sink was watching, and says so in those terms.
+  test(`a ${lane} sink whose probe cannot be read proves nothing`, async () => {
     for (const patch of [
-      { probeConnections: 0 },
       { probeConnections: undefined },
       { probeConnections: -1 },
       { probeConnections: 'lots' },
       { probeConnections: 1.5 },
-      { probeSent: 0 },
       { probeSent: undefined },
-      // Fewer ports probed than the sink covers: a port it was not listening
-      // on refuses egress rather than recording it.
-      { probeSent: 1 },
-      // The sink received more probes than its log shows: it drops
-      // connections, so its silence is not evidence.
-      { probeConnections: 1 },
-      { sinkPorts: 0 },
       { sinkPorts: undefined },
       { sinkPorts: 'two' },
+      // A sink covering no ports is unusable, not merely inconsistent: there
+      // is no port on which egress could have been recorded.
+      { sinkPorts: 0 },
     ]) {
       const r = happyPath();
       Object.assign(r[label], patch);
@@ -2389,8 +2384,37 @@ for (const [label, lane] of SINK_AREAS) {
         result.unaccounted.some(
           (u) =>
             u.includes(lane) &&
-            (u.includes('nothing shows the sink was watching') ||
-              u.includes('cannot show that anything stayed silent')),
+            u.includes('nothing shows the sink was watching'),
+        ),
+        `${shown}: ${JSON.stringify(result.unaccounted)}`,
+      );
+    }
+  });
+
+  // Readable but not a shape the check script can emit. It sends exactly one
+  // probe per port and fails outright if it cannot, so anything other than
+  // sent === ports === recorded is a reading it never produced — an
+  // over-report as much as an under-report.
+  test(`an impossible ${lane} probe count is not a positive control`, async () => {
+    for (const patch of [
+      { probeConnections: 0 },
+      { probeConnections: 1 },
+      { probeConnections: 3 },
+      { probeSent: 0 },
+      { probeSent: 1 },
+      { probeSent: 3 },
+      { sinkPorts: 1 },
+      { sinkPorts: 3 },
+    ]) {
+      const r = happyPath();
+      Object.assign(r[label], patch);
+      const { result } = await run(r);
+      const shown = JSON.stringify(patch);
+      assert.equal(result.releasable, false, `${shown} certified the release`);
+      assert.deepEqual(result.failures, [], shown);
+      assert.ok(
+        result.unaccounted.some(
+          (u) => u.includes(lane) && u.includes('not a reading it produced'),
         ),
         `${shown}: ${JSON.stringify(result.unaccounted)}`,
       );
