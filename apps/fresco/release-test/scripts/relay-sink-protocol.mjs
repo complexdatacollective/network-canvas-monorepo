@@ -112,3 +112,39 @@ export function tally(raw, nonce) {
 
   return { probeConnections, analyticsConnections, logLines, listeningRecords };
 }
+
+/**
+ * Decides whether the sink was watching for the whole window it reports on.
+ *
+ * Pure, and separate from the script that gathers the observations, because a
+ * decision embedded in a shell-driven script can only be checked by reading it
+ * — and reading a condition does not prove it still fires. Every branch here
+ * is exercised directly.
+ *
+ * Takes the two container inspections that bracket the check and the number of
+ * times the sink announced itself, and returns why the window is not
+ * trustworthy, or null if it is.
+ */
+export function windowIntegrity({ before, atClose, listeningRecords }) {
+  // Alive at the end, not merely at the start: `docker logs` succeeds against
+  // a container that has already exited, and the probe records survive in it,
+  // so a sink that died mid-check would otherwise report a clean reading of a
+  // window it spent dead.
+  if (!atClose?.running) return 'stopped';
+  // A container that died and came back reports Running again. Comparing start
+  // times is what separates the two — and an unreadable start time is not
+  // evidence of anything, so it fails rather than comparing equal to itself.
+  if (
+    typeof before?.startedAt !== 'string' ||
+    before.startedAt.length === 0 ||
+    atClose.startedAt !== before.startedAt
+  )
+    return 'restarted';
+  // The inspections bracket the check; this covers everything before it. The
+  // sink announces itself once when it binds, so any other number means its log
+  // does not span one unbroken listening window — and a gap is a stretch in
+  // which egress met a closed port and left no trace. It also catches a log
+  // that was rotated away beneath us, which loses the announcement.
+  if (listeningRecords !== 1) return 'announcements';
+  return null;
+}

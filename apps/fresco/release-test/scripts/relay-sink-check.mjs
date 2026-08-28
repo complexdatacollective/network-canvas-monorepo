@@ -30,6 +30,7 @@ import {
   SETTLE_WAIT_MS,
   SINK_PORTS,
   tally,
+  windowIntegrity,
 } from './relay-sink-protocol.mjs';
 
 const args = process.argv.slice(2);
@@ -147,6 +148,23 @@ for (const port of SINK_PORTS) {
 // connections are classified precisely rather than conservatively.
 await new Promise((resolve) => setTimeout(resolve, SETTLE_WAIT_MS));
 
+// THE LOG READ IS THE LAST OBSERVATION THIS CHECK MAKES.
+//
+// That ordering is the invariant, not an incidental arrangement. Everything
+// reported here describes an interval, and the evidence for it comes from two
+// samples taken at different moments — the container inspections, and the log.
+// Whenever the verified interval extends past the log snapshot, a connection
+// accepted in between is real, is not in the log, and is reported as silence.
+// Reading the log last makes the log's coverage a superset of the verified
+// interval, so that cannot happen: any connection accepted while the sink was
+// known to be alive was written down before this snapshot was taken.
+//
+// The cost is that connections accepted between the inspection and the read
+// are also included, and are counted conservatively as egress. That is the
+// right direction to err, and this is the last thing the lane does, so there
+// is nothing left to provoke one.
+const atClose = inspectSink('after settling');
+
 let raw = '';
 try {
   raw = docker(['logs', sinkContainer]);
@@ -154,35 +172,22 @@ try {
   fail(`could not read ${sinkContainer} logs: ${reason(error)}`);
 }
 
-// `docker logs` succeeds against a container that has already exited, and the
-// probe records survive in it — so a sink that died after being probed would
-// otherwise report a clean, well-controlled reading of a window it spent dead.
-// Nothing between the first inspection and the log read may have gone
-// unobserved, so the sink is inspected again now that the log is in hand.
-const after = inspectSink('after reading its log');
-if (!after.running)
-  fail(
-    `${sinkContainer} stopped during the check, so anything the ${lane} lane's container sent after it died was refused rather than recorded`,
-  );
-if (after.startedAt !== before.startedAt)
-  fail(
-    `${sinkContainer} restarted during the check (${before.startedAt} -> ${after.startedAt}), leaving a window in which egress was refused rather than recorded`,
-  );
-
 // Only the sink's stdout: `docker logs` demultiplexes the container's streams,
 // and execFileSync returns stdout alone, so a runtime warning on stderr can
 // never be miscounted as a connection.
 const { probeConnections, analyticsConnections, logLines, listeningRecords } =
   tally(raw, nonce);
 
-// The pair of inspections brackets this check; this covers everything before
-// it. The sink announces itself once, when it binds, so a log carrying any
-// other number did not come from one continuously-listening sink — and the
-// lane's earlier work would have met a closed port without leaving a trace.
-if (listeningRecords !== 1)
-  fail(
-    `${sinkContainer} announced itself ${listeningRecords} time(s) rather than once, so its log does not cover one unbroken listening window`,
-  );
+// Whether the sink was watching for the whole window it reports on. Decided in
+// the protocol module so every branch can be exercised directly rather than
+// read; this is only the wording.
+const WINDOW_FAILURES = {
+  stopped: `${sinkContainer} stopped during the check, so anything the ${lane} lane's container sent after it died was refused rather than recorded`,
+  restarted: `${sinkContainer} did not run unbroken across the check (${before.startedAt} -> ${atClose.startedAt}), leaving a window in which egress was refused rather than recorded`,
+  announcements: `${sinkContainer} announced itself ${listeningRecords} time(s) rather than once, so its log does not cover one unbroken listening window`,
+};
+const broken = windowIntegrity({ before, atClose, listeningRecords });
+if (broken) fail(WINDOW_FAILURES[broken]);
 
 process.stdout.write(
   `${JSON.stringify({

@@ -116,6 +116,15 @@ brackets the check itself; the sink announces itself exactly once when it binds,
 and requiring exactly one announcement covers everything the lane did before
 that.
 
+The governing rule for all of this is that **the log read is the last
+observation the check makes**. Every reading describes an interval, and its
+evidence comes from two samples taken at different moments — the inspections
+and the log. Whenever the verified interval extends past the log snapshot, a
+connection accepted in between is real, absent from the log, and reported as
+silence. Reading the log last makes its coverage a superset of the verified
+interval. Connections accepted between the final inspection and the read are
+then counted conservatively as egress, which is the right direction to err.
+
 The sink records connection attempts and never terminates TLS. posthog-node
 speaks https, so parsing requests would mean minting a certificate for the
 relay's name and trusting it inside the image under test — a container

@@ -2716,18 +2716,92 @@ test('the sink reader proves the sink outlived the window it reports on', () => 
     2,
     'the sink must be inspected before probing AND after its log is read',
   );
-  // The second inspection must read the log first, or it brackets nothing.
+  // THE INVARIANT: the log read is the last observation the check makes.
+  //
+  // Every reading here describes an interval, and its evidence comes from two
+  // samples taken at different moments — the inspections and the log. If the
+  // verified interval extends past the log snapshot, a connection accepted in
+  // between is real, absent from the log, and reported as silence. Reading the
+  // log last makes its coverage a superset of the verified interval, which is
+  // what rules that out. Four separate defects in this file were instances of
+  // exactly that mismatch, so the ordering is pinned rather than left to read
+  // naturally.
+  const lastInspect = reader.lastIndexOf('inspectSink(');
+  const logRead = reader.indexOf("raw = docker(['logs'");
+  assert.ok(logRead !== -1 && lastInspect !== -1, 'failed to locate both');
   assert.ok(
-    reader.indexOf("raw = docker(['logs'") <
-      reader.indexOf("inspectSink('after reading its log')"),
-    'the second inspection must come after the log is in hand',
+    lastInspect < logRead,
+    'the log must be read after every other observation, or the verified window outruns the evidence',
   );
-  // A container that died and came back would report Running again, so the
-  // start times are compared rather than the flag alone.
-  assert.match(reader, /after\.startedAt !== before\.startedAt/);
-  // And the bracket only covers this check — the announcement count is what
-  // covers everything the lane did before it.
-  assert.match(reader, /listeningRecords !== 1/);
+  // Nothing may observe the sink after the snapshot either.
+  assert.ok(
+    !/docker\(\[[\s\S]*?\]\)/.test(reader.slice(reader.indexOf('tally(raw'))),
+    'no further docker observation may follow the log snapshot',
+  );
+  // The decision itself is tested below, not read here — but the one line that
+  // acts on it is only wiring, and wiring is what source assertions can pin.
+  assert.match(
+    reader,
+    /windowIntegrity\(\{ before, atClose, listeningRecords \}\)/,
+  );
+  assert.match(reader, /if \(broken\) fail\(WINDOW_FAILURES\[broken\]\);/);
+});
+
+// The liveness decision, exercised rather than read. It lives in the protocol
+// module precisely so that disabling one of its branches fails a test — a
+// condition embedded in the shell-driven script could only be checked by
+// pattern-matching the source, which cannot tell a live guard from a dead one.
+test('the window is only trusted when the sink was watching throughout', async () => {
+  const { windowIntegrity } =
+    await import('../apps/fresco/release-test/scripts/relay-sink-protocol.mjs');
+  const at = '2026-08-28T09:00:00Z';
+  const sound = {
+    before: { running: true, startedAt: at },
+    atClose: { running: true, startedAt: at },
+    listeningRecords: 1,
+  };
+  assert.equal(windowIntegrity(sound), null);
+
+  // Dead at the end. `docker logs` still returns the probe records, so without
+  // this the check reports a clean reading of a window it spent stopped.
+  for (const atClose of [
+    { running: false, startedAt: at },
+    { running: undefined, startedAt: at },
+    undefined,
+  ])
+    assert.equal(windowIntegrity({ ...sound, atClose }), 'stopped');
+
+  // Died and came back: Running again, but not the same run.
+  assert.equal(
+    windowIntegrity({
+      ...sound,
+      atClose: { running: true, startedAt: '2026-08-28T09:00:30Z' },
+    }),
+    'restarted',
+  );
+  // An unreadable start time is not evidence of continuity, and must not
+  // compare equal to itself.
+  for (const before of [
+    { running: true, startedAt: undefined },
+    { running: true, startedAt: '' },
+    undefined,
+  ])
+    assert.equal(
+      windowIntegrity({
+        ...sound,
+        before,
+        atClose: { running: true, startedAt: before?.startedAt },
+      }),
+      'restarted',
+    );
+
+  // The bracket covers the check; the announcement count covers the lane
+  // before it. Two means a restart; none means a log that never held one.
+  for (const listeningRecords of [0, 2, undefined])
+    assert.equal(
+      windowIntegrity({ ...sound, listeningRecords }),
+      'announcements',
+    );
 });
 
 // tally() treats an accepted-but-unclassified connection as egress, which is
