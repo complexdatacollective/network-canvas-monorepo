@@ -813,9 +813,13 @@ check's detail:
    "seed-before-enrolment", "stepup-interview-entry",
    "phantom-after-entry-gated-exit", "stepup-export", and
    "ciphertext-at-rest".
-5. Lock-screen guard on interview routes (recovery suppressed) and
-   protocol assets DECRYPTING through the app after enrolment: steps
-   "interview-route-lock-guard" and "asset-decrypts-in-app".
+4d. The re-encryption sweep is proven END TO END: the session recorded
+   before any vault existed remounts through the app (its network
+   decrypted under the new vault) and the protocol's assets decrypt and
+   render: steps "sweep-decrypt-proof", "asset-decrypts-in-app", and
+   "phantom-after-sweep-probe-exit".
+5. Lock-screen guard on interview routes (recovery suppressed): step
+   "interview-route-lock-guard".
 6. Exit step-up and PIN rotation (cross-tab force-lock, old PIN rejected,
    exact seeded counts survive, and a session REMOUNTS under the rotated
    vault): steps "phantom-after-resume-exit", "rotate-pin",
@@ -855,6 +859,7 @@ walker's two-digit sequence prefix, which shifts with conditional captures):
   cp ??-export-stepup-wrong-pin.png check4b-export.png &&
   cp ??-interview-route-lock.png check5-routelock.png &&
   cp ??-rotate-wrong-current.png check6-rotate.png &&
+  cp ??-sweep-decrypt-proof.png check4c-sweep.png &&
   cp ??-rotate-decrypt-proof.png check6b-decrypt.png &&
   cp ??-encryption-chip.png check7-chip.png &&
   cp ??-after-revoke.png check8-revoke.png &&

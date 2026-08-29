@@ -682,8 +682,65 @@ try {
     `sessions=${cipher.sessionCount} (incl. the pre-enrolment row, so the re-encryption sweep is proven) protocols=${cipher.protocolCount} assets=${cipher.assetCount}/${preEnrol.assets} seeded sessionsEncrypted=${cipher.sessionsEncrypted} stageMetadataEnvelopes=${cipher.stageMetadataEnvelopes} protocolsEncrypted=${cipher.protocolsEncrypted} assetsEncrypted=${cipher.assetsEncrypted} plaintextLeak=${cipher.leaks}`,
   );
 
+  // 4c. The SWEPT row must be readable THROUGH THE APP, not merely
+  // enveloped at rest: resume the session recorded before any vault
+  // existed. Its network is decrypted on mount, so a sweep that produced
+  // well-shaped but undecryptable ciphertext (an AAD or key-selection
+  // regression) fails here — vault-probe, created after enrolment, could
+  // never expose that.
+  await page
+    .getByRole('group', { name: 'Home view' })
+    .getByText('Data')
+    .click();
+  await expect(page).toHaveURL(/\/data/);
+  await page
+    .getByRole('row', { name: /pre-enrol-probe/ })
+    .getByTestId('data-resume')
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Confirm your identity' }),
+  ).toBeVisible();
+  await typeSegmented(page, 'pin', PIN);
+  await expect(page).toHaveURL(/\/interview\//, { timeout: 15_000 });
+  await expectStageMounted();
+  record(
+    'sweep-decrypt-proof',
+    true,
+    'the pre-enrolment session remounted through the app after the re-encryption sweep (its network decrypted under the new vault)',
+  );
+  // Assets must DECRYPT through the app too: this stage renders the sample
+  // protocol's logo (assetManifest entry 1 of 10) via the interview's asset
+  // resolver, which reads and decrypts the stored asset row. POLL the
+  // intrinsic size — the blob <img> is attached before it has loaded, so a
+  // single read races a healthy decode.
+  let assetRendered = false;
+  for (let i = 0; i < 24 && !assetRendered; i += 1) {
+    assetRendered = await page
+      .locator('img[src^="blob:"]')
+      .first()
+      .evaluate(
+        (el) => el.complete && el.naturalWidth > 0 && el.naturalHeight > 0,
+      )
+      .catch(() => false);
+    if (!assetRendered) await page.waitForTimeout(500);
+  }
+  record(
+    'asset-decrypts-in-app',
+    assetRendered,
+    `protocol asset resolved, decrypted and fully loaded through the app after enrolment (blob image complete with non-zero intrinsic size=${assetRendered})`,
+  );
+  await shot('sweep-decrypt-proof');
+  await exitInterview();
+  await checkPhantomStepUp('phantom-after-sweep-probe-exit');
+
   // 5. Lock-screen guard on interview routes: re-enter the interview, reload,
   // the lock screen must NOT offer "Recover by resetting"; unlock resumes.
+  // (4c's exit landed back on Home, so open the Data view first.)
+  await page
+    .getByRole('group', { name: 'Home view' })
+    .getByText('Data')
+    .click();
+  await expect(page).toHaveURL(/\/data/);
   await page
     .getByRole('row', { name: /vault-probe/ })
     .getByTestId('data-resume')
@@ -703,21 +760,6 @@ try {
   await shot('interview-route-lock');
   await unlockPin(PIN);
   await expectStageMounted();
-  // Assets must DECRYPT through the app, not merely look enveloped at rest:
-  // the sample protocol's first Information stage renders its logo image
-  // (assetManifest entry 1 of 10) via the interview's asset resolver, which
-  // reads and decrypts the stored asset row. A rewritten/undecryptable row
-  // yields no rendered blob image.
-  const assetRendered = await page
-    .locator('img[src^="blob:"]')
-    .first()
-    .evaluate((el) => el.naturalWidth > 0 && el.naturalHeight > 0)
-    .catch(() => false);
-  record(
-    'asset-decrypts-in-app',
-    assetRendered,
-    `protocol asset resolved and rendered through the app after enrolment (blob image with non-zero intrinsic size=${assetRendered})`,
-  );
   record(
     'interview-route-lock-guard',
     recoverSuppressed,
