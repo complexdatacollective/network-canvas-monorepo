@@ -67,6 +67,15 @@ export const createSyncMiddleware = ({
     edges: ['leading', 'trailing'],
   });
 
+  // How many times `flush` will re-write when the participant changes an
+  // answer while its previous write is on the wire. Bounded because the caller
+  // is entitled to proceed: someone answering continuously must not be able to
+  // hold an interview exit — or an idle lock — open indefinitely. Two extra
+  // passes is far more than the single-digit milliseconds of a local write
+  // needs, and the caller that cannot wait (the Interviewer's lock) puts its
+  // own deadline around the whole call.
+  const FLUSH_MAX_PASSES = 3;
+
   // Write any pending session state right now instead of waiting out the
   // debounce window. Callers that end the session (finishing an interview)
   // must await this before telling the host, because hosts may refuse writes
@@ -79,11 +88,32 @@ export const createSyncMiddleware = ({
     // snapshot, and doSync refuses to start a second concurrent write.
     if (inFlight) await inFlight;
 
-    // The `catch` above already swallows and logs failures, so this never
-    // rejects. A failed final sync must not block the participant from
-    // finishing — they cannot act on the error, and blocking would strand
-    // them on the interview.
-    await doSync();
+    // Keep writing while the session keeps moving under us. A change made
+    // during a write cannot start its own — doSync refuses to run two at once
+    // — so the middleware can only re-arm it on the trailing debounce, which
+    // is exactly what a caller about to destroy this write's preconditions
+    // will never allow to run. Leaving after one pass would hand that caller a
+    // "flushed" store still holding the newest answers.
+    for (let pass = 0; pass < FLUSH_MAX_PASSES; pass += 1) {
+      const before = storeRef?.getState().session;
+
+      // The `catch` above already swallows and logs failures, so this never
+      // rejects. A failed final sync must not block the participant from
+      // finishing — they cannot act on the error, and blocking would strand
+      // them on the interview.
+      await doSync();
+
+      // Reference equality, not `sessionChanged`: this asks whether new state
+      // arrived during the write, which is the only thing another pass can
+      // help with. Comparing against `lastSyncedState` instead would also be
+      // true after a *failed* write and burn the remaining passes re-failing.
+      const after = storeRef?.getState().session;
+      if (!before || !after || before === after) return;
+
+      // New state landed mid-write, so doSync's retry path has armed the
+      // trailing edge for it. Take that snapshot now instead.
+      debouncedSync.cancel();
+    }
   };
 
   const middleware: Middleware<Record<string, never>, SyncMiddlewareState> = (

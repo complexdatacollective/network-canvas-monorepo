@@ -380,6 +380,82 @@ describe('syncMiddleware flush', () => {
     );
   });
 
+  it('keeps writing when an answer arrives during its own write', async () => {
+    const store = createTestStore(middleware);
+
+    // Let the leading edge fire and settle, so nothing is on the wire when the
+    // flush begins and the second write below is unambiguously the flush's.
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onSyncMock).toHaveBeenCalledTimes(1);
+
+    // The change sitting in the debounce window that the flush is called to
+    // rescue. Hold its write open so a newer answer can land mid-flight.
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:02.000Z' }));
+    let resolveFlushWrite!: () => void;
+    onSyncMock.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveFlushWrite = resolve;
+        }),
+    );
+
+    let settled = false;
+    const flushed = (async () => {
+      await flush();
+      settled = true;
+    })();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onSyncMock).toHaveBeenCalledTimes(2);
+
+    // The participant answers again while the flush's write is on the wire.
+    // doSync refuses to start a second concurrent write, so this snapshot can
+    // only reach storage on the trailing debounce — which the caller that is
+    // about to end the session will never let run.
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:03.000Z' }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(settled).toBe(false);
+
+    resolveFlushWrite();
+    await flushed;
+
+    // No timer advance: the newest answer was written by the flush itself.
+    expect(onSyncMock).toHaveBeenCalledTimes(3);
+    expect(onSyncMock).toHaveBeenLastCalledWith(
+      'interview-1',
+      expect.objectContaining({ lastUpdated: '2026-01-01T00:00:03.000Z' }),
+    );
+  });
+
+  it('gives up after a bounded number of passes when answers never stop', async () => {
+    const store = createTestStore(middleware);
+    let nextAnswer = 0;
+
+    // Every write has another answer land while it is on the wire, so the
+    // store is never quiet. The flush must still hand control back: a
+    // participant answering continuously cannot be allowed to hold an exit —
+    // or an idle lock — open forever.
+    onSyncMock.mockImplementation(async () => {
+      // Deferred a microtask so the dispatch lands after doSync has recorded
+      // the write as in flight — the shape a real answer arriving mid-write
+      // has, rather than re-entering doSync from inside onSync itself.
+      await Promise.resolve();
+      nextAnswer += 1;
+      store.dispatch(
+        mutateSession({ lastUpdated: `2026-01-01T00:00:0${nextAnswer}.000Z` }),
+      );
+    });
+
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:00.000Z' }));
+    await vi.advanceTimersByTimeAsync(0);
+
+    const callsBeforeFlush = onSyncMock.mock.calls.length;
+    await expect(flush()).resolves.toBeUndefined();
+    expect(onSyncMock.mock.calls.length - callsBeforeFlush).toBeLessThanOrEqual(
+      3,
+    );
+  });
+
   it('resolves rather than rejecting when the final sync fails', async () => {
     onSyncMock.mockRejectedValue(new Error('Vault locked'));
 
