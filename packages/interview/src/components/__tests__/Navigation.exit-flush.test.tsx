@@ -8,6 +8,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { createDebouncedSyncHandler } from '../../contract/debouncedSync';
 import type { InterviewPayload } from '../../contract/types';
 import Shell from '../../Shell';
 import { updateStageMetadata } from '../../store/modules/session';
@@ -80,17 +81,22 @@ const payload = {
 
 describe('Navigation exit flush', () => {
   it('invokes onExit only after the pending sync — including a write already on the wire — has flushed', async () => {
-    // First sync stays on the wire until released; later syncs resolve
+    // First write stays on the wire until released; later ones resolve
     // immediately. This reproduces the worst-case exit: a write in flight AND
-    // a newer snapshot still queued behind it.
+    // a newer snapshot still waiting behind it.
+    //
+    // Wrapped in the real batching helper because ordering writes is the
+    // host's job now — the engine offers changes and never runs the host's
+    // writes for it. Both shipped hosts wrap their handler exactly like this.
     let releaseFirstSync!: () => void;
     const firstSync = new Promise<void>((resolve) => {
       releaseFirstSync = resolve;
     });
-    const onSync = vi
+    const write = vi
       .fn<(id: string, session: unknown) => Promise<void>>()
       .mockImplementationOnce(() => firstSync)
       .mockResolvedValue(undefined);
+    const onSync = createDebouncedSyncHandler(write, { waitMs: 3000 });
     const onExit = vi.fn();
 
     render(
@@ -118,8 +124,10 @@ describe('Navigation exit flush', () => {
         }),
       );
     });
-    expect(onSync).toHaveBeenCalledTimes(1);
-    // Change B: queued behind the in-flight write on the trailing debounce.
+    // The host is handed the change on a microtask, not synchronously.
+    await act(async () => undefined);
+    expect(write).toHaveBeenCalledTimes(1);
+    // Change B: held by the host, behind the write already on the wire.
     act(() => {
       store.dispatch(
         updateStageMetadata({
@@ -137,26 +145,25 @@ describe('Navigation exit flush', () => {
       await within(dialog).findByRole('button', { name: 'Exit interview' }),
     );
 
-    // The exit is confirmed, so the final snapshot is offered to the host at
-    // once and marked as one that cannot be deferred — a host holding changes
-    // back only learns to stop when it is told. Control still stays here: the
-    // first write is on the wire, and the host has not been handed back yet.
-    await waitFor(() =>
-      expect(onSync).toHaveBeenLastCalledWith(
-        'session-1',
-        expect.objectContaining({
-          stageMetadata: { 0: [[0, 'a', 'b', false]] },
-        }),
-        { immediate: true },
-      ),
-    );
+    // The exit is confirmed and the final snapshot has been marked as one that
+    // cannot be deferred, but the host queues it behind the write already on
+    // the wire. Control must stay here until that finishes.
+    await act(async () => undefined);
+    expect(write).toHaveBeenCalledTimes(1);
     expect(onExit).not.toHaveBeenCalled();
 
     releaseFirstSync();
 
     await waitFor(() => expect(onExit).toHaveBeenCalledTimes(1));
-    // Change B reached the host before control returned.
-    expect(onSync.mock.invocationCallOrder.at(-1)).toBeLessThan(
+    // Change B was written, as an undeferrable write, before control returned.
+    expect(write).toHaveBeenLastCalledWith(
+      'session-1',
+      expect.objectContaining({
+        stageMetadata: { 0: [[0, 'a', 'b', false]] },
+      }),
+      { immediate: true },
+    );
+    expect(write.mock.invocationCallOrder.at(-1)).toBeLessThan(
       onExit.mock.invocationCallOrder[0] ?? 0,
     );
   });

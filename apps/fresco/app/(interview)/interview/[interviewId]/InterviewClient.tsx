@@ -24,6 +24,11 @@ import { POSTHOG_APP_NAME, POSTHOG_APP_VERSION } from '~/fresco.config';
 // before batching became this host's decision.
 const SYNC_DEBOUNCE_MS = 3000;
 
+// The fetch spec caps the combined body size of all in-flight keepalive
+// requests at 64KB and fails the request rather than truncating it. Stay under
+// it with room to spare.
+const KEEPALIVE_MAX_BYTES = 60_000;
+
 type Props = {
   payload: InterviewPayload;
   assetUrls: Record<string, string>;
@@ -72,14 +77,25 @@ export default function InterviewClient({
   const onSync = useMemo<SyncHandler>(
     () =>
       createDebouncedSyncHandler(
-        async (id, session) => {
+        async (id, session, { immediate }) => {
+          const body = JSON.stringify({
+            ...session,
+            currentStep: currentStepRef.current,
+          });
           const response = await fetch(`/interview/${id}/sync`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ...session,
-              currentStep: currentStepRef.current,
-            }),
+            body,
+            // An immediate write can be the last thing that happens before the
+            // document is destroyed — the engine flushes on pagehide, and a
+            // normal request dies with the page. keepalive lets it outlive the
+            // document, but the browser caps all keepalive bodies at 64KB and
+            // rejects anything larger outright, and a big network exceeds that.
+            // Ask for it only when the body fits; a larger one falls back to an
+            // ordinary request, which still survives the far more common case
+            // of the tab merely being backgrounded.
+            keepalive:
+              immediate && new Blob([body]).size <= KEEPALIVE_MAX_BYTES,
           });
           if (!response.ok) throw new Error('Sync failed');
         },

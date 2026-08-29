@@ -8,6 +8,7 @@ import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
+  createDebouncedSyncHandler,
   type FinishHandler,
   type InterviewPayload,
   type SessionPayload,
@@ -49,6 +50,11 @@ import { useHistoryBackGuard } from '~/lib/pwa/useHistoryBackGuard';
 const NAVIGATION_SAFE_AREA_CLASSNAMES = {
   vertical: 'pt-[calc(0.75rem_+_env(safe-area-inset-top))]',
 } as const;
+
+// Long enough to collapse the burst of updates one gesture can produce (an
+// automatic-layout settle dispatches one per node), short enough that a
+// participant could not put the device down inside it.
+const SYNC_BATCH_MS = 250;
 
 type LoadState =
   | { kind: 'loading' }
@@ -266,16 +272,28 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
 
   // `finishedAt` is written solely by markSessionFinished (via handleFinish).
   // The engine never sets session.finishTime for an in-progress session, so a
-  // trailing debounced sync landing after finish would otherwise rewrite it
-  // back to null and un-finish the interview.
-  const handleSync = useCallback(
-    async (id: string, session: SessionPayload) => {
-      await updateSession(id, {
-        network: session.network,
-        currentStep: currentStepRef.current,
-        stageMetadata: session.stageMetadata,
-      });
-    },
+  // sync landing after finish would otherwise rewrite it back to null and
+  // un-finish the interview.
+  //
+  // Writes go to a local encrypted database, so this batches only just enough
+  // to absorb the bursts the engine emits in one gesture — a sociogram's
+  // automatic layout dispatches an update per node when it settles, and each
+  // write re-encrypts the whole network. A window this short is imperceptible
+  // to a participant while collapsing a twenty-node settle to one write. The
+  // engine still forces a write through whenever one cannot be deferred, so
+  // nothing is held across an exit, a finish, or the app being backgrounded.
+  const handleSync = useMemo<SyncHandler>(
+    () =>
+      createDebouncedSyncHandler(
+        async (id, session) => {
+          await updateSession(id, {
+            network: session.network,
+            currentStep: currentStepRef.current,
+            stageMetadata: session.stageMetadata,
+          });
+        },
+        { waitMs: SYNC_BATCH_MS },
+      ),
     [],
   );
 

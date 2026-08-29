@@ -19,17 +19,24 @@ const sessionChanged = (a: SessionPayload, b: SessionPayload) =>
 const FLUSH_MAX_PASSES = 3;
 
 /**
- * Reports session changes to the host and guarantees that everything reported
+ * Reports session changes to the host, and guarantees that everything reported
  * has been written before the interview hands control back.
  *
- * The engine deliberately does NOT batch: every change is offered to the host
- * as it happens. Batching is a cost decision, and only the host knows the cost
- * of one write — the Interviewer writes to a local database and takes them all,
- * while a host posting over the network wraps its handler in
- * `createDebouncedSyncHandler`. What the engine keeps is the part a host cannot
- * do for itself: it never runs two writes at once, it re-writes when the
- * session moved during a write, it retries a write that failed, and it knows
- * the moments where deferring is not allowed.
+ * The engine deliberately does NOT batch, and does not coalesce: every change
+ * is offered to the host as it happens. Batching is a cost decision, and only
+ * the host knows what one write costs — so both hosts wrap their handler in
+ * `createDebouncedSyncHandler`, at intervals as far apart as their costs are.
+ *
+ * Coalescing here would defeat that rather than help it. Suppressing a change
+ * because an earlier write has not resolved hides it from the host, which then
+ * writes a snapshot that was already stale when its window closed. What the
+ * engine keeps is only what a host cannot know for itself: which changes matter
+ * (see `sessionChanged`), which writes have actually landed, and the moments
+ * where deferring is not allowed.
+ *
+ * Hosts must not run their own writes concurrently — a slow earlier write
+ * landing after a newer one would persist stale answers. `createDebouncedSyncHandler`
+ * guarantees this; a host writing its own handler owns it.
  */
 export const createSyncMiddleware = ({
   onSync,
@@ -40,13 +47,11 @@ export const createSyncMiddleware = ({
   flush: () => Promise<void>;
 } => {
   let lastSyncedState = {} as SessionPayload;
-  // The background write, or null when idle. Held as a promise (rather than a
-  // boolean) so callers can await a write that is already on the wire.
-  let inFlight: Promise<void> | null = null;
   let storeRef: { getState: () => SyncMiddlewareState } | null = null;
-  // Writes can overlap once a flush is involved (see `flush`), and a slower
-  // earlier write must not be allowed to report itself as the newest state
-  // when it lands. Ordering, not timing, decides the high-water mark.
+  // Several offers can be outstanding at once, and a host that coalesces them
+  // resolves them together. An earlier one must not then report its older
+  // snapshot as the newest state. Ordering, not timing, decides the high-water
+  // mark.
   let nextSequence = 0;
   let syncedSequence = -1;
 
@@ -76,32 +81,6 @@ export const createSyncMiddleware = ({
       });
   };
 
-  // The background path: one write at a time, and another straight after if the
-  // session moved while that one was on the wire. A burst of answers therefore
-  // costs two writes rather than one per answer, without any timer.
-  const syncPendingChanges = (): Promise<void> => {
-    if (inFlight) return inFlight;
-    if (!storeRef) return Promise.resolve();
-    const before = storeRef.getState().session;
-
-    const pending = write(false).finally(() => {
-      inFlight = null;
-      // Chase this write only if the session actually moved while it was on the
-      // wire — reference equality asks exactly that. Asking instead whether the
-      // store still differs from lastSyncedState would also be true after a
-      // *failed* write, and retrying a failure here would spin: this layer owns
-      // no timer to space attempts out, so the loop would be as tight as the
-      // microtask queue. A failed snapshot stays marked unsynced and is picked
-      // up by the next change or the next flush.
-      if (storeRef && storeRef.getState().session !== before) {
-        void syncPendingChanges();
-      }
-    });
-
-    inFlight = pending;
-    return pending;
-  };
-
   /**
    * Write everything outstanding now. Callers that end the session — finishing,
    * exiting, the document being hidden — must await this before handing control
@@ -111,13 +90,11 @@ export const createSyncMiddleware = ({
     for (let pass = 0; pass < FLUSH_MAX_PASSES; pass += 1) {
       const before = storeRef?.getState().session;
 
-      // Ask for the immediate write BEFORE awaiting anything already on the
-      // wire. A host that is holding changes back only learns it must stop when
-      // it sees `immediate`, so awaiting first would mean waiting out the very
-      // delay this call exists to cancel. That can briefly overlap a background
-      // write; the sequence guard in `write` keeps the high-water mark honest,
-      // and a batching host coalesces the two into one.
-      await Promise.all([write(true), inFlight]);
+      // A host holding changes back only learns it must stop when it sees
+      // `immediate`, and it queues this behind whatever it is already writing —
+      // so awaiting this one write is both the fastest way to cancel its delay
+      // and enough to know everything before it has landed.
+      await write(true);
 
       // Nothing moved while we wrote, so there is nothing another pass could
       // add. Reference equality asks exactly that question — comparing against
@@ -133,7 +110,6 @@ export const createSyncMiddleware = ({
   ) => {
     storeRef = store;
     lastSyncedState = store.getState().session;
-    inFlight = null;
     nextSequence = 0;
     syncedSequence = -1;
 
@@ -141,7 +117,7 @@ export const createSyncMiddleware = ({
       const result = next(action);
       const state = store.getState();
       if (!sessionChanged(state.session, lastSyncedState)) return result;
-      void syncPendingChanges();
+      void write(false);
       return result;
     };
   };

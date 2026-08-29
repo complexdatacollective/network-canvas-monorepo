@@ -103,7 +103,7 @@ describe('syncMiddleware', () => {
     expect(onSyncMock).not.toHaveBeenCalled();
   });
 
-  it('coalesces a burst into one follow-up write rather than one per change', async () => {
+  it('offers a change even while an earlier write is unresolved', async () => {
     let resolveFirst!: () => void;
     onSyncMock.mockImplementationOnce(
       () =>
@@ -117,19 +117,56 @@ describe('syncMiddleware', () => {
     await settle();
     expect(onSyncMock).toHaveBeenCalledTimes(1);
 
-    // Three more answers while that write is on the wire. Two writes should
-    // cover them all: never two at once, and never one apiece.
+    // Suppressing these until the first resolves would hide them from a host
+    // that batches, which would then write a snapshot already stale by the time
+    // its window closed. Deciding what to do with them is the host's job.
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:02.000Z' }));
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:03.000Z' }));
+    await settle();
+
+    expect(onSyncMock).toHaveBeenCalledTimes(3);
+    expect(onSyncMock).toHaveBeenLastCalledWith(
+      'interview-1',
+      expect.objectContaining({ lastUpdated: '2026-01-01T00:00:03.000Z' }),
+      { immediate: false },
+    );
+
+    resolveFirst();
+    await settle();
+  });
+
+  it('lets a batching host write the newest state, not the first of its window', async () => {
+    // The reason the engine does not coalesce. The host takes a burst — an
+    // automatic-layout settle dispatches one update per node — and rate-limits
+    // it to a single write, which must carry the last answer rather than the
+    // one that happened to open the window.
+    const write = vi.fn().mockResolvedValue(undefined);
+    const batching = createSyncMiddleware({
+      onSync: createDebouncedSyncHandler(write, { waitMs: 20 }),
+    });
+    const store = createTestStore(batching.middleware);
+
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
+    await settle();
+    expect(write).toHaveBeenCalledTimes(1);
+
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:02.000Z' }));
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:03.000Z' }));
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:04.000Z' }));
     await settle();
-    expect(onSyncMock).toHaveBeenCalledTimes(1);
 
-    resolveFirst();
-    await settle();
+    // One write for the whole burst...
+    expect(write).toHaveBeenCalledTimes(1);
 
-    expect(onSyncMock).toHaveBeenCalledTimes(2);
-    expect(onSyncMock).toHaveBeenLastCalledWith(
+    // ...and no flush here on purpose: a flush re-reads the store and would
+    // carry the newest answer whether or not the host ever saw it. Let the
+    // host's own window close, so what it writes is only what it was told.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 60));
+    });
+
+    expect(write).toHaveBeenCalledTimes(2);
+    expect(write).toHaveBeenLastCalledWith(
       'interview-1',
       expect.objectContaining({ lastUpdated: '2026-01-01T00:00:04.000Z' }),
       { immediate: false },
