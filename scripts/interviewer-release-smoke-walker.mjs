@@ -354,6 +354,49 @@ try {
       'app reloaded from the precache while offline',
     );
     await shot('offline-boot');
+    // Deferred runtime assets: the walk's stages never request the emitted
+    // worker chunks (auto-layout, export, mapbox workers), so their offline
+    // retrievability needs its own oracle — every worker asset the precache
+    // declares must actually be served while offline. GeospatialSearch's
+    // lazy chunk is NOT precached on the live deployment; Geospatial is
+    // documented online-only (map tiles are NetworkOnly and the app warns
+    // before an offline start), so that is recorded as an observation.
+    const deferred = await page.evaluate(async () => {
+      const names = await caches.keys();
+      const pre = names.find((n) => n.includes('precache'));
+      if (!pre) return { found: false };
+      const cache = await caches.open(pre);
+      const urls = (await cache.keys()).map((r) => r.url);
+      const workers = urls.filter((u) => /worker[-.][^/]*\.js/i.test(u));
+      const results = [];
+      for (const u of workers) {
+        try {
+          const resp = await fetch(u);
+          results.push({ url: u.split('/').pop(), ok: resp.ok });
+        } catch {
+          results.push({ url: u.split('/').pop(), ok: false });
+        }
+      }
+      return {
+        found: true,
+        total: urls.length,
+        workers: results,
+        autoLayoutPresent: urls.some((u) => /autoLayout\.worker-/.test(u)),
+        geospatialSearchPrecached: urls.some((u) =>
+          /geospatialsearch/i.test(u),
+        ),
+      };
+    });
+    const deferredOk =
+      deferred.found &&
+      deferred.autoLayoutPresent &&
+      deferred.workers.length > 0 &&
+      deferred.workers.every((w) => w.ok);
+    record(
+      'deferred-chunks-offline',
+      deferredOk,
+      `precache=${deferred.total ?? 0} entries; worker assets ${JSON.stringify(deferred.workers ?? [])}; autoLayout present=${deferred.autoLayoutPresent ?? false}; GeospatialSearch precached=${deferred.geospatialSearchPrecached ?? false} (observation — Geospatial is documented online-only)`,
+    );
   }
 
   // Phase 3: conduct the whole interview (offline unless --keep-online).
@@ -566,6 +609,7 @@ try {
         ),
       })),
       egoName: (s.network.ego?.attributes ?? {}).ego_name ?? null,
+      nodeCount: (s.network.nodes ?? []).length,
     };
   });
   // Values, not counts: each node must carry its EXACT category and its own
@@ -603,6 +647,7 @@ try {
   const payloadOk =
     payload.found &&
     payload.sessionCount === 1 &&
+    payload.nodeCount === 3 &&
     contextsExact &&
     layoutsDistinct &&
     edgesExact &&
@@ -610,7 +655,7 @@ try {
   record(
     'persisted-payload',
     payloadOk,
-    `stored network: ${JSON.stringify(byName)} edges=${JSON.stringify(edgeList)} expectedFriendsPair=${JSON.stringify(friendsPair)} ego=${JSON.stringify(payload.egoName ?? null)} contextsExact=${contextsExact} layoutsDistinct=${layoutsDistinct} edgesExact=${edgesExact}`,
+    `stored network: ${JSON.stringify(byName)} edges=${JSON.stringify(edgeList)} expectedFriendsPair=${JSON.stringify(friendsPair)} ego=${JSON.stringify(payload.egoName ?? null)} contextsExact=${contextsExact} layoutsDistinct=${layoutsDistinct} edgesExact=${edgesExact} nodeCount=${payload.nodeCount ?? 0}`,
   );
 
   // Cross-cutting: every non-whitelisted console error collected across the

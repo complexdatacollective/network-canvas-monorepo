@@ -573,9 +573,10 @@ Map the walker's result.json steps onto these CHECKS. A check passes ONLY
 when every step listed for it passed; quote the walker's step notes in each
 check's detail:
 1. Service worker + import: steps "sw-controlled" and "protocol-imported".
-2. Offline is real AND the app boots from the precache: steps
-   "offline-positive-control" and "offline-boot" (an offline reload must
-   remount the app from the service worker's cache).
+2. Offline is real, the app boots from the precache, and every deferred
+   worker asset the precache declares is served offline: steps
+   "offline-positive-control", "offline-boot", and
+   "deferred-chunks-offline".
 3. All six stages conducted offline: steps "session-started",
    "stage-information", "stage-egoform", "stage-quickadd",
    "stage-sociogram", "stage-dyadcensus", "stage-catbin".
