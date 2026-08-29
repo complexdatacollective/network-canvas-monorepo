@@ -116,14 +116,17 @@ describe('AuthProvider transitions', () => {
 
   it('coalesces overlapping lock attempts onto one drain', async () => {
     await authApi.enrolWithPin('12345678');
-    let releaseFlush!: () => void;
+    const releases: Array<() => void> = [];
     const flush = vi.fn(
       () =>
         new Promise<void>((resolve) => {
-          releaseFlush = resolve;
+          releases.push(resolve);
         }),
     );
     flushDisposers.push(registerPreLockFlush(flush));
+    const releaseFlush = () => {
+      for (const release of releases.splice(0)) release();
+    };
 
     render(
       <AuthProvider>
@@ -152,15 +155,18 @@ describe('AuthProvider transitions', () => {
 
   it('does not clear a key installed by an unlock that raced its drain', async () => {
     await authApi.enrolWithPin('12345678');
-    let releaseFlush!: () => void;
+    const releases: Array<() => void> = [];
     flushDisposers.push(
       registerPreLockFlush(
         () =>
           new Promise<void>((resolve) => {
-            releaseFlush = resolve;
+            releases.push(resolve);
           }),
       ),
     );
+    const releaseFlush = () => {
+      for (const release of releases.splice(0)) release();
+    };
 
     render(
       <AuthProvider>
@@ -197,6 +203,55 @@ describe('AuthProvider transitions', () => {
     releaseFlush();
     await waitFor(() => expect(getSessionDek()).toBe(freshKey));
     expect(screen.getByTestId('kind')).toHaveTextContent('unlocked');
+  });
+
+  it('does not absorb a fresh lock request into a doomed drain', async () => {
+    await authApi.enrolWithPin('12345678');
+    const releases: Array<() => void> = [];
+    const flush = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          releases.push(resolve);
+        }),
+    );
+    flushDisposers.push(registerPreLockFlush(flush));
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('kind')).toHaveTextContent('unlocked'),
+    );
+
+    // Same setup as above — a drain that a cross-tab force-lock and a fresh
+    // unlock have overtaken, so it is destined to do nothing.
+    await userEvent.click(screen.getByText('lock'));
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent('storage', { key: VAULT_STORAGE_KEY }),
+      );
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('kind')).toHaveTextContent('locked'),
+    );
+    await userEvent.click(screen.getByText('unlock'));
+    await waitFor(() =>
+      expect(screen.getByTestId('kind')).toHaveTextContent('unlocked'),
+    );
+
+    // The researcher now asks to lock again. That request is about the new
+    // key, so it must get its own drain — joining the doomed one would see it
+    // return without locking and leave the vault open on an explicit Lock.
+    await userEvent.click(screen.getByText('lock'));
+    expect(flush).toHaveBeenCalledTimes(2);
+
+    for (const release of releases.splice(0)) release();
+    await waitFor(() =>
+      expect(screen.getByTestId('kind')).toHaveTextContent('locked'),
+    );
+    expect(getSessionDek()).toBeNull();
   });
 
   it('force-locks on a cross-tab vault change without flushing first', async () => {

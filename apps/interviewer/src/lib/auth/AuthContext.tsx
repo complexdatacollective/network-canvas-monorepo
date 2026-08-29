@@ -107,32 +107,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // holders drain first. `runPreLockFlush` bounds its own wait, so a write that
   // hangs cannot keep the vault open past its idle deadline.
   //
-  // Concurrent calls share one drain rather than each opening their own. The
-  // idle timer can fire twice for a single deadline — its own timeout, then
-  // the visibility reconciliation on return — and a manual Lock can land on
-  // top of either, so without this every registered flush runs more than once
-  // and the vault stays open for as long as the slowest of them takes.
-  const lockInFlight = useRef<Promise<void> | null>(null);
+  // A lock is about one particular key, and both rules below follow from that.
+  // It may only clear the key it was asked to clear, and it may only be shared
+  // with another request asking to clear that same key.
+  //
+  // Sharing matters because the idle timer fires twice for a single deadline —
+  // its own timeout, then the visibility reconciliation on return — with a
+  // manual Lock able to land on top of either; without it, every registered
+  // flush runs more than once and the vault stays open for the slowest.
+  //
+  // Keying that sharing on the DEK matters because the cross-tab force-lock
+  // below does not queue behind a drain. It can lock mid-flush, and the
+  // researcher can then unlock from the lock screen it raised, so by the time
+  // a drain finishes the key it set out to clear may be gone or replaced. Such
+  // a drain must do nothing — but a lock requested *after* that unlock is a
+  // live request for the new key, and joining it to the doomed drain would
+  // discard it and leave the vault open. Different key, different drain.
+  //
+  // The reference only moves via setSessionDek, and re-enrolment rewraps the
+  // same DEK without calling it, so a PIN change can't misfire either rule.
+  const lockInFlight = useRef<{
+    key: CryptoKey | null;
+    // Identity of the drain that published this entry. `run` cannot serve as
+    // that identity: it is still being assigned while the drain body is
+    // written, so the body cannot name it.
+    token: object;
+    run: Promise<void>;
+  } | null>(null);
   const lock = useCallback(() => {
-    lockInFlight.current ??= (async () => {
+    const keyToClear = getSessionDek();
+    const pending = lockInFlight.current;
+    if (pending && pending.key === keyToClear) return pending.run;
+
+    const token = {};
+    const run = (async () => {
       try {
-        // Only ever clear the key this lock was asked to clear. Coalescing
-        // handles overlapping `lock` calls, but the cross-tab force-lock below
-        // does not queue behind anything — it can lock mid-drain, and the
-        // researcher can then unlock from the lock screen it raised. Reading
-        // custody back afterwards catches that: a changed key (or one dropped
-        // by someone else, leaving nothing to do) means this lock is stale.
-        // The reference only moves via setSessionDek, and re-enrolment rewraps
-        // the same DEK without calling it, so a PIN change can't misfire this.
-        const keyToClear = getSessionDek();
         await runPreLockFlush();
         if (getSessionDek() !== keyToClear) return;
         await lockImmediately();
       } finally {
-        lockInFlight.current = null;
+        // Only retire our own entry: a newer request for a different key may
+        // have replaced it while we drained.
+        if (lockInFlight.current?.token === token) lockInFlight.current = null;
       }
     })();
-    return lockInFlight.current;
+    lockInFlight.current = { key: keyToClear, token, run };
+    return run;
   }, [lockImmediately]);
 
   // The session DEK is per-tab module memory while the vault record is shared
