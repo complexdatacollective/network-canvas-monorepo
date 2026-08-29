@@ -79,12 +79,17 @@ export default function InterviewClient({
 
     return createDebouncedSyncHandler(
       async (id, session, { unloading }) => {
-        // An unloading write is issued rather than queued, so it can overlap a
-        // request already on the wire. Cancel that one: it carries an older
-        // snapshot, and this endpoint overwrites, so letting it land last would
-        // roll the server back. Every other write is queued behind its
-        // predecessor, so there is nothing to cancel.
-        if (unloading) inFlight?.abort();
+        // Cancel any request still running. Ordinary writes are queued one
+        // behind another, so the only thing that can still be here is an
+        // unloading write — those are issued rather than queued, precisely so
+        // they cannot be trapped behind a request dying with the document.
+        // That leaves it able to outlive a newer write and, since this
+        // endpoint overwrites, roll the server back to an older snapshot.
+        // Cancelling unconditionally covers both orders: a newer unloading
+        // write superseding an ordinary one, and — when a hidden tab is
+        // reopened before its keepalive POST resolves — an ordinary write
+        // superseding the unloading one.
+        inFlight?.abort();
 
         const controller = new AbortController();
         inFlight = controller;

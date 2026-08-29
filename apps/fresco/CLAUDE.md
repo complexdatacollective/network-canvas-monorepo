@@ -273,8 +273,10 @@ lib/
     participant exiting or finishing, or the tab being hidden), so shortening
     the interval is a cost decision and never a correctness one. An
     `unloading` write — the tab being hidden or closed — additionally asks for
-    `keepalive` when the body fits under the browser's 64KB cap, and cancels
-    the request it supersedes so an older snapshot cannot land last.
+    `keepalive` when the body fits under the browser's 64KB cap. Every write
+    cancels the request it supersedes, because an unloading write runs outside
+    the helper's queue and could otherwise land after a newer one; this route
+    overwrites, so the older snapshot would win.
 
 ## Conventions
 

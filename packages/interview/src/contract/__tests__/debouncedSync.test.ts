@@ -141,6 +141,27 @@ describe('createDebouncedSyncHandler', () => {
     );
   });
 
+  it('does not write faster than the rate limit when changes arrive mid-write', async () => {
+    // The window has to cover the write as well as the pause after it.
+    // Otherwise a change arriving while a request is on the wire is written
+    // the moment that request lands, and sustained answering on a slow link
+    // posts the whole network at request-latency cadence.
+    const write = vi.fn(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    });
+    const handler = createDebouncedSyncHandler(write, { waitMs: 3000 });
+
+    // Nine seconds of continuous answering, each write taking 500ms.
+    for (let i = 1; i <= 90; i += 1) {
+      void handler('interview-1', session(`${i}`), change);
+      await vi.advanceTimersByTimeAsync(100);
+    }
+
+    // The leading write plus roughly one per 3s window.
+    expect(write.mock.calls.length).toBeLessThanOrEqual(5);
+    expect(write.mock.calls.length).toBeGreaterThan(1);
+  });
+
   it('never puts two ordinary writes on the wire at once', async () => {
     let inFlight = 0;
     let concurrent = 0;

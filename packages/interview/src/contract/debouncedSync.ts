@@ -52,6 +52,11 @@ export function createDebouncedSyncHandler(
   // Set while we are inside `waitMs` of the last write. Its presence is what
   // makes a change wait; its absence is what lets one through immediately.
   let windowTimer: ReturnType<typeof setTimeout> | undefined;
+  // A write is on the wire. Counts as part of the closed window: a change
+  // arriving now must wait for the window that opens when this write lands, or
+  // sustained answering would write at request-latency cadence instead of once
+  // per `waitMs` — the rate limit defeated exactly when it matters most.
+  let writing = false;
   // Writes are appended here rather than started directly, which is what keeps
   // them ordered and stops two being on the wire at once.
   let queue: Promise<void> = Promise.resolve();
@@ -76,6 +81,7 @@ export function createDebouncedSyncHandler(
     closeWindow();
 
     const { id, session, options } = pending;
+    writing = true;
     const settling = waiters;
     pending = null;
     waiters = [];
@@ -88,6 +94,7 @@ export function createDebouncedSyncHandler(
       // treats a rejected sync as unsynced and offers the state again.
       for (const waiter of settling) waiter.reject(error);
     } finally {
+      writing = false;
       // Rate-limit from the write that just landed, and pick up anything that
       // arrived while it was on the wire once that window closes.
       openWindow();
@@ -117,7 +124,7 @@ export function createDebouncedSyncHandler(
       // worst the two land out of order and the server keeps the older
       // snapshot, which is exactly what queueing would have left it with.
       void runWrite();
-    } else if (options.immediate || windowTimer === undefined) {
+    } else if (options.immediate || (!writing && windowTimer === undefined)) {
       // The leading edge, and every change arriving after a quiet spell.
       enqueueWrite();
     }
