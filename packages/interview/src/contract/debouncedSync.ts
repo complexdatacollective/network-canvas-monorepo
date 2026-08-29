@@ -57,17 +57,23 @@ export function createDebouncedSyncHandler(
   // Set while we are inside `waitMs` of the last write. Its presence is what
   // makes a change wait; its absence is what lets one through immediately.
   let windowTimer: ReturnType<typeof setTimeout> | undefined;
-  // Writes that have been scheduled but not yet finished. Counted from the
-  // moment one is scheduled, not from the moment it starts: `runWrite` only
-  // begins a microtask later, and a change arriving in that gap would
-  // otherwise see a quiet handler and schedule a write of its own. Every such
-  // extra survives to drain whatever has accumulated the instant the write in
-  // front of it lands, so one gesture's worth of changes — an automatic-layout
-  // settle dispatches several in a single tick — buys that many writes at
-  // request latency, which is the rate limit defeated in the situation it
-  // exists for. Scheduled or running, a write will pick up `pending`, so
-  // either way there is nothing for a new change to do but wait.
-  let activeWrites = 0;
+  // Writes on the queue that have not finished. Counted from the moment one is
+  // scheduled, not from the moment it starts: `runWrite` only begins a
+  // microtask later, and a change arriving in that gap would otherwise see a
+  // quiet handler and schedule a write of its own. Every such extra survives to
+  // drain whatever has accumulated the instant the write in front of it lands,
+  // so one gesture's worth of changes — an automatic-layout settle dispatches
+  // several in a single tick — buys that many writes at request latency, which
+  // is the rate limit defeated in the situation it exists for. Scheduled or
+  // running, a queued write will pick up `pending`, so there is nothing for a
+  // new change to do but wait.
+  //
+  // Unloading writes are deliberately NOT counted. They are issued outside the
+  // queue because the document may die before a queued one could run, which
+  // equally means they may never settle — a keepalive request outlives the page
+  // and can hang. Letting one gate this would strand every answer given after a
+  // tab came back, waiting on a request nobody is left to care about.
+  let queuedWrites = 0;
   // Writes are appended here rather than started directly, which is what keeps
   // them ordered and stops two being on the wire at once.
   let queue: Promise<void> = Promise.resolve();
@@ -88,11 +94,8 @@ export function createDebouncedSyncHandler(
   };
 
   const runWrite = async (): Promise<void> => {
-    if (!pending) {
-      // Superseded: a slot ahead of this one already wrote the snapshot.
-      activeWrites -= 1;
-      return;
-    }
+    // Superseded: a slot ahead of this one already wrote the snapshot.
+    if (!pending) return;
     closeWindow();
 
     const { id, session, options } = pending;
@@ -108,7 +111,6 @@ export function createDebouncedSyncHandler(
       // treats a rejected sync as unsynced and offers the state again.
       for (const waiter of settling) waiter.reject(error);
     } finally {
-      activeWrites -= 1;
       // Rate-limit from the write that just landed, and pick up anything that
       // arrived while it was on the wire once that window closes.
       openWindow();
@@ -116,8 +118,14 @@ export function createDebouncedSyncHandler(
   };
 
   const enqueueWrite = () => {
-    activeWrites += 1;
-    queue = queue.then(runWrite);
+    queuedWrites += 1;
+    queue = queue.then(async () => {
+      try {
+        await runWrite();
+      } finally {
+        queuedWrites -= 1;
+      }
+    });
   };
 
   return (id, session, options) => {
@@ -133,7 +141,6 @@ export function createDebouncedSyncHandler(
     });
 
     if (options.unloading) {
-      activeWrites += 1;
       // Deliberately not queued. This is the document's last chance to write
       // anything, and a continuation waiting behind a request that dies with
       // the page never runs at all. Overlapping is never worse than that: at
@@ -142,7 +149,7 @@ export function createDebouncedSyncHandler(
       void runWrite();
     } else if (
       options.immediate ||
-      (activeWrites === 0 && windowTimer === undefined)
+      (queuedWrites === 0 && windowTimer === undefined)
     ) {
       // The leading edge, and every change arriving after a quiet spell.
       enqueueWrite();

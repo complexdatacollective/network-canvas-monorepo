@@ -188,6 +188,41 @@ describe('createDebouncedSyncHandler', () => {
     expect(write).toHaveBeenCalledTimes(1);
   });
 
+  it('does not let a stalled unloading write strand later answers', async () => {
+    // An unloading write is issued outside the queue because the document may
+    // die first — which equally means it may never settle, since a keepalive
+    // request outlives the page and can hang. If it gated the queue, every
+    // answer given after the tab came back would sit in memory waiting on it.
+    let releaseUnload!: () => void;
+    const write = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            releaseUnload = resolve;
+          }),
+      )
+      .mockResolvedValue(undefined);
+    const handler = createDebouncedSyncHandler(write, { waitMs: 3000 });
+
+    void handler('interview-1', session('01'), unloading);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(write).toHaveBeenCalledTimes(1);
+
+    // The tab came back and the participant answered again.
+    void handler('interview-1', session('02'), change);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(write).toHaveBeenCalledTimes(2);
+    expect(write).toHaveBeenLastCalledWith(
+      'interview-1',
+      expect.objectContaining({ lastUpdated: '02' }),
+      { immediate: false, unloading: false },
+    );
+
+    releaseUnload();
+  });
+
   it('never puts two ordinary writes on the wire at once', async () => {
     let inFlight = 0;
     let concurrent = 0;
