@@ -10,6 +10,7 @@ import {
 } from 'react';
 
 import { getSettings, updateSettings } from '../db/api';
+import { getSessionDek } from '../db/sessionKey';
 import { DEFAULT_SETTINGS } from '../db/types';
 import { VAULT_STORAGE_KEY } from '../vault/vaultStore';
 import * as authApi from './api';
@@ -115,7 +116,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const lock = useCallback(() => {
     lockInFlight.current ??= (async () => {
       try {
+        // Only ever clear the key this lock was asked to clear. Coalescing
+        // handles overlapping `lock` calls, but the cross-tab force-lock below
+        // does not queue behind anything — it can lock mid-drain, and the
+        // researcher can then unlock from the lock screen it raised. Reading
+        // custody back afterwards catches that: a changed key (or one dropped
+        // by someone else, leaving nothing to do) means this lock is stale.
+        // The reference only moves via setSessionDek, and re-enrolment rewraps
+        // the same DEK without calling it, so a PIN change can't misfire this.
+        const keyToClear = getSessionDek();
         await runPreLockFlush();
+        if (getSessionDek() !== keyToClear) return;
         await lockImmediately();
       } finally {
         lockInFlight.current = null;

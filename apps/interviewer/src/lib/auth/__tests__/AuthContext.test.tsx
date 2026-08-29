@@ -150,6 +150,55 @@ describe('AuthProvider transitions', () => {
     expect(flush).toHaveBeenCalledTimes(1);
   });
 
+  it('does not clear a key installed by an unlock that raced its drain', async () => {
+    await authApi.enrolWithPin('12345678');
+    let releaseFlush!: () => void;
+    flushDisposers.push(
+      registerPreLockFlush(
+        () =>
+          new Promise<void>((resolve) => {
+            releaseFlush = resolve;
+          }),
+      ),
+    );
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('kind')).toHaveTextContent('unlocked'),
+    );
+
+    // An idle lock starts draining, and while it waits another tab changes the
+    // vault. The force-lock does not queue behind the drain, so it locks now.
+    await userEvent.click(screen.getByText('lock'));
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent('storage', { key: VAULT_STORAGE_KEY }),
+      );
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('kind')).toHaveTextContent('locked'),
+    );
+
+    // The researcher unlocks from the lock screen that raised, installing a
+    // fresh DEK — all while the first lock is still draining.
+    await userEvent.click(screen.getByText('unlock'));
+    await waitFor(() =>
+      expect(screen.getByTestId('kind')).toHaveTextContent('unlocked'),
+    );
+    const freshKey = getSessionDek();
+    expect(freshKey).not.toBeNull();
+
+    // The stale lock finally finishes. It must not drop a key it was never
+    // asked to drop and bounce the researcher back to the lock screen.
+    releaseFlush();
+    await waitFor(() => expect(getSessionDek()).toBe(freshKey));
+    expect(screen.getByTestId('kind')).toHaveTextContent('unlocked');
+  });
+
   it('force-locks on a cross-tab vault change without flushing first', async () => {
     await authApi.enrolWithPin('12345678');
     const flush = vi.fn().mockResolvedValue(undefined);
