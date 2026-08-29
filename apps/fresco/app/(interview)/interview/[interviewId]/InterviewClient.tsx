@@ -76,9 +76,20 @@ export default function InterviewClient({
   // participant exiting or finishing, or the tab being hidden.
   const onSync = useMemo<SyncHandler>(() => {
     let inFlight: AbortController | null = null;
+    // One handler batches for one interview: it holds a single pending
+    // snapshot, so a handler reused across two would let the second replace the
+    // first while both sets of waiters were attached, resolving the first's
+    // promise with a write that discarded its state.
+    const ownerId = payload.session.id;
 
     return createDebouncedSyncHandler(
       async (id, session, { unloading }) => {
+        if (id !== ownerId) {
+          throw new Error(
+            `Sync for interview ${id} reached the handler for ${ownerId}`,
+          );
+        }
+
         // Cancel any request still running. Ordinary writes are queued one
         // behind another, so the only thing that can still be here is an
         // unloading write — those are issued rather than queued, precisely so
@@ -122,9 +133,6 @@ export default function InterviewClient({
       },
       { waitMs: SYNC_DEBOUNCE_MS },
     );
-    // Keyed by the interview it is hosting: one handler batches for one
-    // interview, or the second's snapshot would replace the first's while both
-    // sets of waiters are still attached.
   }, [payload.session.id]);
 
   const [finished, setFinished] = useState(false);

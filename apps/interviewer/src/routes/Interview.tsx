@@ -287,25 +287,30 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   // Writes go to a local encrypted database and are never deferred — see
   // SYNC_BATCH_MS. The wrapper is here to collapse the bursts the engine emits
   // in one gesture, not to delay anything.
-  const handleSync = useMemo<SyncHandler>(
-    () =>
-      createDebouncedSyncHandler(
-        async (id, session) => {
-          await updateSession(id, {
-            network: session.network,
-            currentStep: currentStepRef.current,
-            stageMetadata: session.stageMetadata,
-          });
-        },
-        { waitMs: SYNC_BATCH_MS },
-      ),
-    // Keyed by session: one handler batches for one interview. Sharing it
-    // across two would let the second's snapshot replace the first's while
-    // both sets of waiters are still attached, so the first would be reported
-    // as synced by a write that discarded it. This route re-renders rather
-    // than remounting when the id changes.
-    [sessionId],
-  );
+  const handleSync = useMemo<SyncHandler>(() => {
+    // One handler batches for one interview: it holds a single pending
+    // snapshot, so a handler reused across two would let the second replace the
+    // first while both sets of waiters were attached, resolving the first's
+    // promise with a write that discarded its state. This route re-renders
+    // rather than remounting when the id changes, so the handler is rebuilt for
+    // each session and refuses anything else outright.
+    const ownerId = sessionId;
+    return createDebouncedSyncHandler(
+      async (id, session) => {
+        if (id !== ownerId) {
+          throw new Error(
+            `Sync for interview ${id} reached the handler for ${ownerId}`,
+          );
+        }
+        await updateSession(id, {
+          network: session.network,
+          currentStep: currentStepRef.current,
+          stageMetadata: session.stageMetadata,
+        });
+      },
+      { waitMs: SYNC_BATCH_MS },
+    );
+  }, [sessionId]);
 
   const handleFinish = useCallback(async (id: string) => {
     await markSessionFinished(id);
