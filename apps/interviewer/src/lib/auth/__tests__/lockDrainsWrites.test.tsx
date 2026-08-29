@@ -4,6 +4,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createDebouncedSyncHandler } from '@codaco/interview';
 import type { NcNetwork } from '@codaco/shared-consts';
 import {
   entityAttributesProperty,
@@ -88,6 +89,29 @@ afterEach(() => {
   clearVault();
   setSessionDek(null);
 });
+
+// Stand in for the route's own handler: the same helper, at the same zero
+// window, writing through the same repository.
+function makeInterviewerSync() {
+  return createDebouncedSyncHandler(
+    async (id, session) => {
+      await updateSession(id, { network: session.network });
+    },
+    { waitMs: 0 },
+  );
+}
+
+const payloadFor = (network: NcNetwork) =>
+  ({
+    id: 'unused',
+    startTime: '2026-01-01T00:00:00.000Z',
+    finishTime: null,
+    exportTime: null,
+    lastUpdated: '2026-01-01T00:00:00.000Z',
+    network,
+  }) as unknown as Parameters<ReturnType<typeof makeInterviewerSync>>[1];
+
+const ordinary = { immediate: false, unloading: false };
 
 const settle = () =>
   act(async () => {
@@ -204,5 +228,43 @@ describe('locking with a session write outstanding', () => {
     await settle();
 
     expect(getSessionDek()).toBe(freshKey);
+  });
+
+  it('persists an answer the batching handler is still holding', async () => {
+    const session = await createSession({
+      protocolHash: 'h1',
+      protocolName: 'P',
+      caseId: 'c1',
+      initialNetwork: makeNetwork([]),
+    });
+
+    await renderUnlocked();
+    const onSync = makeInterviewerSync();
+
+    // First answer's write is held open inside its mutation...
+    const release = holdNextSessionRead();
+    void onSync(session.id, payloadFor(makeNetwork(['n1'])), ordinary);
+    await settle();
+
+    // ...so the second is buffered in the handler, not yet in the database
+    // queue at all. This is what the lock has to account for: draining only
+    // the repository's chains declares the pipeline quiet while an answer is
+    // still sitting one timer away from it.
+    void onSync(session.id, payloadFor(makeNetwork(['n1', 'n2'])), ordinary);
+    await settle();
+
+    const locking = userEvent.click(screen.getByText('lock'));
+    await settle();
+    release();
+    await locking;
+    await waitFor(() =>
+      expect(screen.getByTestId('kind')).toHaveTextContent('locked'),
+    );
+
+    expect(await authApi.unlockWithPin('12345678')).toEqual({ ok: true });
+    const stored = await getSession(session.id);
+    expect(
+      stored?.network.nodes.map((node) => node[entityPrimaryKeyProperty]),
+    ).toEqual(['n1', 'n2']);
   });
 });

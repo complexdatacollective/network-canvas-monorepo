@@ -63,6 +63,13 @@ const NAVIGATION_SAFE_AREA_CLASSNAMES = {
 // re-encryptions of the whole network. The only unwritten window is the
 // duration of a write already in progress — exactly what writing eagerly
 // would leave, and no more.
+//
+// Zero is also load-bearing for the idle lock. `whenSessionWritesSettle` waits
+// on the database queue, and an answer held here is not in that queue yet — it
+// enters it on a zero-delay timer when the write in front lands, which the
+// drain yields one macrotask to catch. Raise this and the drain stops covering
+// the handler's buffer, and a lock can clear the key out from under a held
+// answer. `lockDrainsWrites.test.tsx` fails if it is raised.
 const SYNC_BATCH_MS = 0;
 
 type LoadState =

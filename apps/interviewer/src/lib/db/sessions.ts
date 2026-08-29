@@ -328,15 +328,29 @@ function enqueueSessionMutation<T>(
  * any of that is outstanding makes it fail closed and loses the answers it was
  * carrying, so the idle lock waits for this first — see `AuthContext`.
  *
- * Bounded: a mutation that was already in flight can land while we wait, so
- * re-check, but never indefinitely. The caller is entitled to proceed, and it
- * puts its own deadline around this as well.
+ * An empty queue is not the same as a quiet pipeline. The route's sync handler
+ * batches (`createDebouncedSyncHandler`), so while one write is in flight a
+ * newer answer is held in the handler rather than queued here — and released on
+ * a zero-delay timer once that write lands. For an instant the queue is empty
+ * with an answer still one tick from entering it, and concluding "quiet" there
+ * clears the key out from under it. So yield a macrotask before believing an
+ * empty queue: the handler's timer was scheduled first and therefore runs
+ * first. This holds because that handler's window is zero; a host that held
+ * answers for longer would need the lock to wait on the handler itself.
+ *
+ * Bounded: a mutation already in flight can land while we wait, so re-check,
+ * but never indefinitely. The caller is entitled to proceed, and puts its own
+ * deadline around this as well.
  */
 export async function whenSessionWritesSettle(): Promise<void> {
-  for (let pass = 0; pass < 3 && updateChains.size > 0; pass += 1) {
+  for (let pass = 0; pass < 3; pass += 1) {
     // allSettled: a failed write is still a settled one, and this is a wait,
     // not a retry.
     await Promise.allSettled(updateChains.values());
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    if (updateChains.size === 0) return;
   }
 }
 
