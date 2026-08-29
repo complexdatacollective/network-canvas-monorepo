@@ -15,9 +15,10 @@ headless Playwright: a preflight gate, seven journeys in isolated browser
 profiles, independent verification of every reported failure, and a
 deterministic verdict. This skill is the procedure for one run: launch, wait,
 report, follow up. It deliberately covers what the Playwright E2E suite does
-not (service worker and offline behaviour, the full 30-stage Sample Protocol,
-the export format matrix, the security wizard). (Codex: the run needs Claude
-Code's Workflow tool — run this command from Claude Code.)
+not (service worker and offline behaviour, a complete interview conducted
+entirely offline against the deployed bits, the export format matrix, the
+security wizard). (Codex: the run needs Claude Code's Workflow tool — run
+this command from Claude Code.)
 
 ## Launch (Claude Code)
 
@@ -28,9 +29,9 @@ Code's Workflow tool — run this command from Claude Code.)
      (the dev site serves `main`'s pre-bump version until that PR merges),
      or a deployment of the hotfix branch for a hotfix (e.g. its PR's
      preview). The bare dev site is for ad-hoc `main` health checks.
-   - `journeys` — a subset of: `protocol-management`,
-     `conduct-sample-interview`, `session-management`, `data-export`,
-     `security-vault`, `pwa-offline`, `settings-and-chrome`. A subset run
+   - `journeys` — a subset of: `protocol-management`, `conduct-offline`,
+     `session-management`, `data-export`, `security-vault`, `pwa-offline`,
+     `settings-and-chrome`. A subset run
      returns `coverage: "partial"` and **never certifies a release** — use
      it for diagnosis and iteration, then run the full suite to certify.
    - `model` — `haiku` | `sonnet` | `opus` | `fable` for preflight and the
@@ -42,9 +43,20 @@ Code's Workflow tool — run this command from Claude Code.)
      different version, and a run WITHOUT it returns `certifying: false`
      with a "not release-certifying" banner — only a full-coverage, pinned
      run certifies.
+   - `hotfix` — pass `true` only when certifying a hotfix cut from an
+     older release line: it permits the documented pair-skip when the
+     newest development protocol's schema is newer than the candidate
+     supports. Every skip carries a machine-checked `skipCode` class, and
+     the `schema-skew` class is rejected in code on non-hotfix runs: on a
+     main-line candidate that rejection is a real protocol-support
+     regression and fails.
 2. Invoke the Workflow tool:
-   `Workflow({ name: 'interviewer-release-test-workflow', args: { url, expectedVersion, journeys, model } })`
+   `Workflow({ name: 'interviewer-release-test-workflow', args: { url, expectedVersion, hotfix, journeys, model } })`
    (equivalently `scriptPath: '<repo-root>/.claude/workflows/interviewer-release-test.js'`).
+   If the workflow file changed during the CURRENT session, invoke via
+   `scriptPath` — name resolution has been observed serving a stale
+   snapshot after a same-session scriptPath resume, and two validation
+   runs silently executed an old gate before this was caught.
    Requirements: a checkout of this monorepo with `pnpm install` done;
    preflight installs Playwright's chromium if missing.
 3. A full run takes roughly 25–40 minutes in the background. Wait for its
@@ -81,6 +93,38 @@ Lead with the verdict, then render the returned `summaryMarkdown`:
   run the full suite again to certify.
 - `BLOCKED` — preflight failed (target unreachable, tooling missing); fix
   and rerun.
+
+## Scope and known limits
+
+This is a smoke gate over representative journeys, not an exhaustive
+behaviour suite — per-feature coverage belongs to the app's unit and e2e
+suites. Harness limits, each evaluated and declined on the record: native
+OS dialogs and OS file-handler launches (no headless surface), biometric
+(needs virtual-authenticator infrastructure the e2e suite also excludes),
+cross-origin IndexedDB upgrade seeding, and header/raw-HTML fingerprinting
+(edge-injected per-request content). Propose new oracles only with a
+validating run — unvalidated prompt text is where this gate's
+false-failure bugs have come from.
+
+## Changing this workflow
+
+The journey prompts are stateful natural-language programs with no unit
+harness — reading them, whether by an author or a reviewer, has proven
+insufficient to validate them. Two rules follow:
+
+- **A change to the journey prompts merges only after a full validation
+  run**: invoke the workflow from the edited branch (unpinned, against the
+  dev deployment is fine) and require a verdict free of gate-caused false
+  failures — every INCOMPLETE cause and failure record must trace to the
+  app or the deployment, never to the gate's own text. The offline suite
+  (`scripts/interviewer-release-test-workflow.test.mjs`) guards the
+  synthesis code; only execution guards the prompts.
+- **Review findings against prompt text are adjudicated by execution.**
+  Accept and fix synthesis-code findings directly (with a regression test,
+  mutation-checking the guard). Park plausible prompt-sequencing findings
+  until a validation run confirms or refutes them before rewriting the
+  text — blind textual repair has measurably introduced about one new
+  defect per review round.
 
 ## Follow up
 

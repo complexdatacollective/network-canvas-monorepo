@@ -38,12 +38,18 @@ const runBody = new AsyncFunction(
 
 const phase = () => {};
 const log = () => {};
+// Mirrors the real runtime's semantics: a stage that throws drops the item
+// to null and skips its remaining stages.
 const pipeline = async (items, s1, s2) => {
   const out = [];
   for (const [i, item] of items.entries()) {
-    let r = await s1(item, item, i);
-    if (s2) r = await s2(r, item, i);
-    out.push(r);
+    try {
+      let r = await s1(item, item, i);
+      if (s2) r = await s2(r, item, i);
+      out.push(r);
+    } catch {
+      out.push(null);
+    }
   }
   return out;
 };
@@ -74,7 +80,7 @@ const PREFLIGHT = {
 
 const EXPECTED_CHECKS = {
   'protocol-management': 9,
-  'conduct-sample-interview': 7,
+  'conduct-offline': 6,
   'session-management': 8,
   'data-export': 7,
   'security-vault': 10,
@@ -82,16 +88,21 @@ const EXPECTED_CHECKS = {
   'settings-and-chrome': 9,
 };
 
-const mkChecks = (n, { failAt = [], skipAt = [] } = {}) =>
-  Array.from({ length: n }, (_, k) => ({
-    name: `${k + 1}. check`,
-    status: failAt.includes(k + 1)
+const mkChecks = (n, { failAt = [], skipAt = [], skipCodes = {} } = {}) =>
+  Array.from({ length: n }, (_, k) => {
+    const num = k + 1;
+    const status = failAt.includes(num)
       ? 'fail'
-      : skipAt.includes(k + 1)
+      : skipAt.includes(num)
         ? 'skipped'
-        : 'pass',
-    detail: 'x',
-  }));
+        : 'pass';
+    const c = { name: `${num}. check`, status, detail: 'x' };
+    if (status === 'skipped')
+      c.skipCode = Object.hasOwn(skipCodes, num)
+        ? skipCodes[num]
+        : 'environment-limit';
+    return c;
+  });
 
 // Canned-result agent: journeys get a valid artifactsDir injected unless the
 // fixture sets one; the evidence audit confirms every claimed directory
@@ -137,9 +148,6 @@ const journey = (key, overrides = {}) => ({
   status: 'pass',
   checks: mkChecks(EXPECTED_CHECKS[key]),
   failures: [],
-  ...(key === 'conduct-sample-interview'
-    ? { traversedStages: Array.from({ length: 25 }, (_, i) => i + 1) }
-    : {}),
   ...overrides,
 });
 
@@ -353,12 +361,19 @@ test('skips outside the whitelist and broken skip pairs are incomplete', async (
     const halfPair = await run(
       makeAgent({
         'protocol-management': journey('protocol-management', {
-          checks: mkChecks(9, { skipAt }),
+          checks: mkChecks(9, {
+            skipAt,
+            skipCodes: { 6: 'asset-unavailable', 7: 'asset-unavailable' },
+          }),
         }),
       }),
       { journeys: ['protocol-management'] },
     );
-    assert.equal(halfPair.verdict, 'INCOMPLETE', `lone skip of ${skipAt}`);
+    assert.equal(
+      halfPair.verdict,
+      'INCOMPLETE',
+      `lone skip of ${skipAt.join(', ')}`,
+    );
   }
 });
 
@@ -475,7 +490,10 @@ test('evidence must exist on disk with per-check identity', async () => {
     makeAgent(
       {
         'protocol-management': journey('protocol-management', {
-          checks: mkChecks(9, { skipAt: [6, 7] }),
+          checks: mkChecks(9, {
+            skipAt: [6, 7],
+            skipCodes: { 6: 'asset-unavailable', 7: 'asset-unavailable' },
+          }),
         }),
       },
       {},
@@ -722,10 +740,25 @@ test('evidence schema matches what the audit prompt produces', () => {
     !source.includes('stageCaptures'),
     'stageCaptures must not resurface',
   );
-  assert.match(
-    source,
-    /'stageNumbers',\s*\]/,
-    'required list names stageNumbers',
+  assert.ok(
+    !source.includes('stageNumbers'),
+    'stage-numbered evidence went with the sample-protocol walk',
+  );
+  assert.ok(
+    source.includes('least one <node element'),
+    'GraphML node-content oracle must stay in the export prompt',
+  );
+  assert.ok(
+    source.includes('.png FILENAMES ONLY'),
+    'checkpoint extraction must be png-scoped',
+  );
+  assert.ok(
+    source.includes('scripts/interviewer-release-smoke-walker.mjs'),
+    'conduct-offline must invoke the committed walker',
+  );
+  assert.ok(
+    source.includes('scripts/interviewer-security-vault-walker.mjs'),
+    'security-vault must invoke the committed walker',
   );
 });
 
@@ -760,7 +793,14 @@ test('hostile url and version args are rejected before interpolation', async () 
       expectedVersion: '1.0 `whoami`',
       journeys: ['pwa-offline'],
     }),
-    /plain version string/,
+    /semver version/,
+  );
+  await assert.rejects(
+    run(makeAgent({}), {
+      expectedVersion: 'unknown',
+      journeys: ['pwa-offline'],
+    }),
+    /semver version/,
   );
   const ok = await run(makeAgent({ 'pwa-offline': journey('pwa-offline') }), {
     url: 'https://deploy-preview-9--interviewer-pwa-dev.netlify.app',
@@ -946,35 +986,54 @@ test('every certification gap caps the verdict', async () => {
   );
 });
 
-test('conduct needs distinct per-stage captures, not raw totals', async () => {
-  const jr = {
-    'conduct-sample-interview': journey('conduct-sample-interview'),
-  };
-  const res = await run(
-    makeAgent(
-      jr,
-      {},
+test('conduct-offline validates like any journey via check captures', async () => {
+  const jr = { 'conduct-offline': journey('conduct-offline') };
+  const evidence = (checkpointNumbers) => ({
+    fingerprint: PREFLIGHT.fingerprint,
+    entries: [
       {
-        fingerprint: PREFLIGHT.fingerprint,
-        entries: [
-          {
-            journey: 'conduct-sample-interview',
-            exists: true,
-            screenshots: 40,
-            checkpointNumbers: [1, 2, 3, 4, 5, 6, 7],
-            stageNumbers: [],
-          },
-        ],
+        journey: 'conduct-offline',
+        exists: true,
+        screenshots: 13,
+        checkpointNumbers,
       },
-    ),
-    { journeys: ['conduct-sample-interview'] },
+    ],
+  });
+  const ok = await run(makeAgent(jr, {}, evidence([1, 2, 3, 4, 5, 6])), {
+    journeys: ['conduct-offline'],
+  });
+  assert.equal(ok.verdict, 'PASS');
+  // A walker run whose evidence lacks a check capture stays incomplete.
+  const partial = await run(makeAgent(jr, {}, evidence([1, 2, 3, 4, 5])), {
+    journeys: ['conduct-offline'],
+  });
+  assert.equal(partial.verdict, 'INCOMPLETE');
+  assert.ok(partial.certificationGaps.some((a) => a.includes('check(s) #6')));
+});
+
+test('a doubled-slash preflight workDir still matches normalized claims', async () => {
+  // macOS $TMPDIR ends in "/": preflight reports /tmp//x while an honest
+  // journey claims the normalized /tmp/x/<journey> — the SAME directory. A
+  // validation run proved the raw string comparison INCOMPLETEd four honest
+  // journeys over exactly this.
+  const base = makeAgent({ 'pwa-offline': journey('pwa-offline') });
+  const impl = async (prompt, opts) =>
+    opts.label === 'preflight'
+      ? { ...PREFLIGHT, workDir: '/tmp//x' }
+      : base(prompt, opts);
+  const res = await run(impl, { journeys: ['pwa-offline'] });
+  assert.equal(res.verdict, 'PASS');
+  // And the mirrored direction: a journey echoing a doubled-slash workDir
+  // verbatim claims the same directory as the normalized expectation.
+  const echoed = await run(
+    makeAgent({
+      'pwa-offline': journey('pwa-offline', {
+        artifactsDir: '/tmp//x/pwa-offline',
+      }),
+    }),
+    { journeys: ['pwa-offline'] },
   );
-  assert.equal(res.verdict, 'INCOMPLETE');
-  assert.ok(
-    res.certificationGaps.some((a) =>
-      a.includes('no capture for traversed stage(s)'),
-    ),
-  );
+  assert.equal(echoed.verdict, 'PASS');
 });
 
 test('dismissals bind to per-failure verifier captures', async () => {
@@ -1187,6 +1246,7 @@ test('cosmetic developer-origin variants never certify', async () => {
   );
   for (const variant of [
     'https://interviewer.networkcanvas.dev:443',
+    'https://interviewer.networkcanvas.dev:0443',
     'https://INTERVIEWER.networkcanvas.dev',
   ]) {
     const res = await run(makeAgent(jr), {
@@ -1195,21 +1255,6 @@ test('cosmetic developer-origin variants never certify', async () => {
     });
     assert.equal(res.certifying, false, variant);
   }
-});
-
-test('repeated stage ids do not satisfy the conduct walk floor', async () => {
-  const jr = {
-    'conduct-sample-interview': journey('conduct-sample-interview', {
-      traversedStages: Array.from({ length: 25 }, () => 3),
-    }),
-  };
-  const res = await run(makeAgent(jr), {
-    journeys: ['conduct-sample-interview'],
-  });
-  assert.equal(res.verdict, 'INCOMPLETE');
-  assert.ok(
-    res.certificationGaps.some((a) => a.includes('distinct traversed stages')),
-  );
 });
 
 test('unevidenced severity downgrades keep the reported severity', async () => {
@@ -1263,9 +1308,260 @@ test('unevidenced severity downgrades keep the reported severity', async () => {
   assert.notEqual(evidenced.verdict, 'BLOCK');
 });
 
+test('an internally inconsistent audit entry cannot evidence a dismissal', async () => {
+  const jr = {
+    'pwa-offline': journey('pwa-offline', {
+      status: 'fail',
+      checks: mkChecks(10, { failAt: [1] }),
+      failures: [
+        {
+          severity: 'major',
+          description: 'real one',
+          check: 1,
+          reproduction: 'r',
+        },
+      ],
+    }),
+  };
+  const vr = {
+    'pwa-offline': {
+      verdicts: [
+        {
+          description: 'real one',
+          failure: 1,
+          verdict: 'not-reproduced',
+          severity: 'minor',
+          explanation: 'n',
+        },
+      ],
+    },
+  };
+  const res = await run(
+    makeAgent(jr, vr, {
+      fingerprint: PREFLIGHT.fingerprint,
+      entries: [
+        {
+          journey: 'pwa-offline',
+          exists: true,
+          screenshots: 25,
+          checkpointNumbers: Array.from({ length: 10 }, (_, i) => i + 1),
+          stageNumbers: [],
+        },
+        {
+          journey: 'verify-pwa-offline',
+          exists: true,
+          screenshots: 0,
+          checkpointNumbers: [1],
+          stageNumbers: [],
+        },
+      ],
+    }),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(res.verdict, 'BLOCK');
+  assert.ok(res.unverifiedFailures.some((f) => f.description === 'real one'));
+  // Cardinality variant: one purported PNG cannot evidence two distinct
+  // failure captures — the id list is impossible and must clear nothing.
+  const jr2 = {
+    'pwa-offline': journey('pwa-offline', {
+      status: 'fail',
+      checks: mkChecks(10, { failAt: [1] }),
+      failures: [
+        {
+          severity: 'major',
+          description: 'f-one',
+          check: 1,
+          reproduction: 'r',
+        },
+        {
+          severity: 'major',
+          description: 'f-two',
+          check: 1,
+          reproduction: 'r',
+        },
+      ],
+    }),
+  };
+  const vr2 = {
+    'pwa-offline': {
+      verdicts: [1, 2].map((n) => ({
+        description: `f-${n === 1 ? 'one' : 'two'}`,
+        failure: n,
+        verdict: 'not-reproduced',
+        severity: 'minor',
+        explanation: 'n',
+      })),
+    },
+  };
+  const impossible = await run(
+    makeAgent(jr2, vr2, {
+      fingerprint: PREFLIGHT.fingerprint,
+      entries: [
+        {
+          journey: 'pwa-offline',
+          exists: true,
+          screenshots: 25,
+          checkpointNumbers: Array.from({ length: 10 }, (_, i) => i + 1),
+        },
+        {
+          journey: 'verify-pwa-offline',
+          exists: true,
+          screenshots: 1,
+          checkpointNumbers: [1, 2],
+        },
+      ],
+    }),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(impossible.verdict, 'BLOCK');
+  assert.equal(impossible.unverifiedFailures.length, 2);
+});
+
+test('structured skip codes gate schema-skew to hotfix runs', async () => {
+  const evidence = {
+    fingerprint: PREFLIGHT.fingerprint,
+    entries: [
+      {
+        journey: 'protocol-management',
+        exists: true,
+        screenshots: 7,
+        checkpointNumbers: [1, 2, 3, 4, 5, 8, 9],
+        stageNumbers: [],
+      },
+    ],
+  };
+  const pm = (opts) => ({
+    'protocol-management': journey('protocol-management', {
+      checks: mkChecks(9, { skipAt: [6, 7], ...opts }),
+    }),
+  });
+  const skew = pm({ skipCodes: { 6: 'schema-skew', 7: 'schema-skew' } });
+  // The declared class is what gates — even a paraphrase the old keyword
+  // matcher missed ("format version 9 exceeds this build's supported
+  // version 8") cannot certify a mainline run.
+  skew['protocol-management'].checks[5].detail =
+    'protocol format version 9 exceeds this build’s supported version 8';
+  const mainline = await run(makeAgent(skew, {}, evidence), {
+    journeys: ['protocol-management'],
+  });
+  assert.equal(mainline.verdict, 'INCOMPLETE');
+  const hotfix = await run(makeAgent(skew, {}, evidence), {
+    journeys: ['protocol-management'],
+    hotfix: true,
+  });
+  assert.equal(hotfix.verdict, 'PASS');
+  // Asset-unobtainable skips stay permitted in both modes.
+  const assetSkip = await run(
+    makeAgent(
+      pm({ skipCodes: { 6: 'asset-unavailable', 7: 'asset-unavailable' } }),
+      {},
+      evidence,
+    ),
+    { journeys: ['protocol-management'] },
+  );
+  assert.equal(assetSkip.verdict, 'PASS');
+  // A skip with no declared code fails closed even at a permitted position.
+  const uncoded = pm({});
+  delete uncoded['protocol-management'].checks[5].skipCode;
+  delete uncoded['protocol-management'].checks[6].skipCode;
+  const noCode = await run(makeAgent(uncoded, {}, evidence), {
+    journeys: ['protocol-management'],
+  });
+  assert.equal(noCode.verdict, 'INCOMPLETE');
+  // A code outside the position's permitted classes fails closed too.
+  const wrongClass = await run(
+    makeAgent(
+      pm({ skipCodes: { 6: 'environment-limit', 7: 'environment-limit' } }),
+      {},
+      evidence,
+    ),
+    { journeys: ['protocol-management'] },
+  );
+  assert.equal(wrongClass.verdict, 'INCOMPLETE');
+  // No free-text second-guessing of a permitted class: a genuine download
+  // failure may legitimately contain words like "rejected" (an HTTP 403) —
+  // the declared code classifies, the detail is evidence for humans.
+  const httpReject = pm({
+    skipCodes: { 6: 'asset-unavailable', 7: 'asset-unavailable' },
+  });
+  httpReject['protocol-management'].checks[5].detail =
+    'the release request was rejected with HTTP 403';
+  const legitReject = await run(makeAgent(httpReject, {}, evidence), {
+    journeys: ['protocol-management'],
+  });
+  assert.equal(legitReject.verdict, 'PASS');
+  // A pair-skip is ONE condition: mismatched classes across 6/7 describe an
+  // impossible run and must not certify even where each class is allowed.
+  const mixed = await run(
+    makeAgent(
+      pm({ skipCodes: { 6: 'schema-skew', 7: 'asset-unavailable' } }),
+      {},
+      evidence,
+    ),
+    { journeys: ['protocol-management'], hotfix: true },
+  );
+  assert.equal(mixed.verdict, 'INCOMPLETE');
+  // args.hotfix is strictly boolean — a truthy non-boolean must fail the
+  // invocation rather than enable the hotfix skip class.
+  await assert.rejects(
+    run(makeAgent(skew, {}, evidence), {
+      journeys: ['protocol-management'],
+      hotfix: 'false',
+    }),
+    /boolean/,
+  );
+});
+
+test('prompt-mandated environment-limit reasons never trip the skew trap', async () => {
+  // pwa-offline check 10's own instruction produces a detail containing
+  // "newer build" — the skew-consistency trap is scoped to positions where
+  // schema-skew is a permitted class, so this phrasing must certify.
+  const checks = mkChecks(10, { skipAt: [10] });
+  checks[9].detail =
+    'app update flow: no way to stage a newer build against a deployed site';
+  const res = await run(
+    makeAgent({ 'pwa-offline': journey('pwa-offline', { checks }) }),
+    { journeys: ['pwa-offline'] },
+  );
+  assert.equal(res.verdict, 'PASS');
+});
+
+test('prompts instruct the exact skip codes the validator demands', () => {
+  // Drift guard: every class in allowedSkips must be named by the journey
+  // prompt that is permitted to use it, or agents cannot comply.
+  for (const quoted of [
+    'skipCode "asset-unavailable"',
+    'skipCode "schema-skew"',
+    'skipCode "environment-limit"',
+  ])
+    assert.ok(source.includes(quoted), `prompt names ${quoted}`);
+});
+
 test('a dead journey is incomplete', async () => {
   const res = await run(makeAgent({ 'pwa-offline': null }), {
     journeys: ['pwa-offline'],
   });
   assert.equal(res.verdict, 'INCOMPLETE');
+});
+
+test('a journey whose agent throws cannot vanish from coverage', async () => {
+  // A terminal agent error can surface as a THROW inside the pipeline stage:
+  // the runtime drops the item to null with no agentDied marker, so only a
+  // scheduled-vs-reported sweep catches it (proven live by an OAuth-expiry
+  // run where a dead security-vault left deadJourneys empty).
+  const base = makeAgent({
+    'pwa-offline': journey('pwa-offline'),
+    'security-vault': journey('security-vault'),
+  });
+  const impl = async (prompt, opts) => {
+    if (opts.label === 'journey:security-vault')
+      throw new Error('API Error: 401 OAuth access token has expired');
+    return base(prompt, opts);
+  };
+  const res = await run(impl, {
+    journeys: ['pwa-offline', 'security-vault'],
+  });
+  assert.equal(res.verdict, 'INCOMPLETE');
+  assert.ok(res.deadJourneys.includes('security-vault'));
+  assert.ok(res.certificationGaps.some((a) => a.includes('vanished')));
 });
