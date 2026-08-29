@@ -27,11 +27,19 @@ export function registerPreLockFlush(flush: () => Promise<void>): () => void {
 
 // A flush that never settles must not hold the vault open past its idle
 // deadline, so the wait is bounded and the lock proceeds either way. Two
-// seconds is far more than an IndexedDB write of an interview network needs,
-// and is nothing against the shortest idle timeout the app offers (one minute).
-// Giving up is safe rather than destructive: a write that has already passed
-// its encrypt step completes against the key it captured, so the bound decides
-// only how long we wait — never whether an in-progress write survives.
+// seconds is far more than a local write of an interview network needs, and is
+// nothing against the shortest idle timeout the app offers (one minute).
+//
+// Giving up can still cost the write it was waiting on. `updateSession` queues
+// behind its per-session mutation chain and decrypts the stored row before it
+// ever reaches `encryptSession`, so a write short of that point fails closed
+// once the key is gone — the very loss this mechanism exists to prevent. That
+// is accepted rather than solved, because the alternative is worse: letting a
+// write capture and hold the DEK past the lock would let it persist under a key
+// the vault has already invalidated, which is exactly what the cross-tab
+// force-lock refuses to allow. Bounding the wait keeps that property whole and
+// still saves every write that finishes in time — outside a storage stall, all
+// of them, where today none of them survive.
 export const PRE_LOCK_FLUSH_TIMEOUT_MS = 2_000;
 
 /**

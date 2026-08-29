@@ -114,6 +114,42 @@ describe('AuthProvider transitions', () => {
     expect(getSessionDek()).toBeNull();
   });
 
+  it('coalesces overlapping lock attempts onto one drain', async () => {
+    await authApi.enrolWithPin('12345678');
+    let releaseFlush!: () => void;
+    const flush = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseFlush = resolve;
+        }),
+    );
+    flushDisposers.push(registerPreLockFlush(flush));
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('kind')).toHaveTextContent('unlocked'),
+    );
+
+    // The idle timer can fire twice for one deadline — its own timeout, then
+    // the visibility reconciliation on return — and a manual Lock can land on
+    // top of either. The second must join the first, not open its own window
+    // and go on to clear whatever DEK is installed when it finally finishes.
+    await userEvent.click(screen.getByText('lock'));
+    await userEvent.click(screen.getByText('lock'));
+    expect(flush).toHaveBeenCalledTimes(1);
+    expect(getSessionDek()).not.toBeNull();
+
+    releaseFlush();
+    await waitFor(() =>
+      expect(screen.getByTestId('kind')).toHaveTextContent('locked'),
+    );
+    expect(flush).toHaveBeenCalledTimes(1);
+  });
+
   it('force-locks on a cross-tab vault change without flushing first', async () => {
     await authApi.enrolWithPin('12345678');
     const flush = vi.fn().mockResolvedValue(undefined);
