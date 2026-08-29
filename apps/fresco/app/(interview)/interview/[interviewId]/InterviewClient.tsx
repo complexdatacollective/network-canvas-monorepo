@@ -6,6 +6,7 @@ import posthog from 'posthog-js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
+  createDebouncedSyncHandler,
   Shell,
   type AssetRequestHandler,
   type FinishHandler,
@@ -17,6 +18,11 @@ import {
 import InterviewCompleted from '~/app/(interview)/interview/_components/InterviewCompleted';
 import { env } from '~/env.js';
 import { POSTHOG_APP_NAME, POSTHOG_APP_VERSION } from '~/fresco.config';
+
+// Matches the interval the interview engine used to apply on every host's
+// behalf, so a participant's answers reach the server at the same rate as
+// before batching became this host's decision.
+const SYNC_DEBOUNCE_MS = 3000;
 
 type Props = {
   payload: InterviewPayload;
@@ -58,17 +64,29 @@ export default function InterviewClient({
     [setCurrentStep],
   );
 
-  const onSync = useCallback<SyncHandler>(async (id, session) => {
-    const response = await fetch(`/interview/${id}/sync`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...session,
-        currentStep: currentStepRef.current,
-      }),
-    });
-    if (!response.ok) throw new Error('Sync failed');
-  }, []);
+  // Every sync posts the whole network, so this host batches: the engine offers
+  // a write per change, and taking all of them would put a request on the wire
+  // for every answer. The wrapper still writes the first change straight away
+  // and stops batching whenever the engine says the write cannot wait — the
+  // participant exiting or finishing, or the tab being hidden.
+  const onSync = useMemo<SyncHandler>(
+    () =>
+      createDebouncedSyncHandler(
+        async (id, session) => {
+          const response = await fetch(`/interview/${id}/sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...session,
+              currentStep: currentStepRef.current,
+            }),
+          });
+          if (!response.ok) throw new Error('Sync failed');
+        },
+        { waitMs: SYNC_DEBOUNCE_MS },
+      ),
+    [],
+  );
 
   const [finished, setFinished] = useState(false);
 

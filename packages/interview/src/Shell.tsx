@@ -36,7 +36,6 @@ import type {
   InterviewerFlags,
   InterviewPayload,
   StepChangeHandler,
-  SyncFlushRegistrar,
   SyncHandler,
 } from './contract/types';
 import useInterviewNavigation from './hooks/useInterviewNavigation';
@@ -308,13 +307,6 @@ type ShellProps = {
   finishConfirmationDescription?: string;
   onExit?: () => void;
   /**
-   * Lend this Shell's autosave flush to the host so it can write pending
-   * answers before doing something the flush could not survive — see
-   * `SyncFlushRegistrar`. Hosts whose `onSync` works at any time (the common
-   * case) can leave this out; the Shell's own teardown flush covers them.
-   */
-  registerSyncFlush?: SyncFlushRegistrar;
-  /**
    * Adapt the Shell for reviewing an existing interview: stop at the final
    * authored stage, use review-specific exit messaging, and suppress interview
    * analytics. The host remains responsible for supplying non-persisting sync
@@ -378,7 +370,6 @@ const Shell = ({
   disableAnalytics = false,
   finishConfirmationDescription,
   onExit,
-  registerSyncFlush,
   reviewMode,
   hideNavigation,
   navigationOrientation,
@@ -425,38 +416,45 @@ const Shell = ({
     [payload, stableOnSync, flags?.isDevelopment, trackerHolder],
   );
 
-  // Autosave holds pending session changes on a trailing debounce
-  // (syncMiddleware). If the Shell unmounts mid-window — the host navigated
-  // away, e.g. an interview exit or a lock screen — that timer would fire
-  // seconds AFTER the host moved on, racing whatever reads the stored session
-  // next: a prompt resume would hydrate the pre-write snapshot and its own
-  // autosaves would then persist that stale network back over the newer
-  // record. Flush at teardown instead: the pending write is handed to onSync
-  // synchronously (when no other write is on the wire), before the host can
-  // re-read the session. Two limits: the user-facing exit path additionally
-  // awaits the full flush before invoking onExit (Navigation.handleExit),
-  // because when a write IS on the wire the final snapshot can only be
-  // enqueued after it settles; and a host whose onSync needs state the
-  // teardown already destroyed (e.g. an idle lock that cleared its store
-  // encryption key before unmounting) still rejects the write — flushing
-  // here cannot resurrect host-side preconditions, so such a host has to flush
-  // before it destroys them — which is what `registerSyncFlush` below is for.
+  // A host that batches writes (see createDebouncedSyncHandler) may be holding
+  // recent answers when the document goes away, and a hidden document is not
+  // promised any more script at all — mobile browsers suspend a backgrounded
+  // tab, and a suspended timer does not fire. Write now, while there is still a
+  // page to write from. This is the moment that matters most for an installed
+  // PWA: the device is put to sleep seconds after an answer, and whatever was
+  // being held would otherwise wait on a timer that only resumes minutes later,
+  // into a host that may by then have torn down what the write needed.
+  //
+  // pagehide covers the navigation/bfcache case the visibility change misses.
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const flushIfHidden = () => {
+      if (document.visibilityState === 'hidden') void reduxStore.flushSync();
+    };
+    const flushNow = () => void reduxStore.flushSync();
+    document.addEventListener('visibilitychange', flushIfHidden);
+    window.addEventListener('pagehide', flushNow);
+    return () => {
+      document.removeEventListener('visibilitychange', flushIfHidden);
+      window.removeEventListener('pagehide', flushNow);
+    };
+  }, [reduxStore]);
+
+  // Teardown backstop. The host has navigated away — an interview exit, a lock
+  // screen — so anything a batching host is still holding has to go now, before
+  // whatever reads the stored session next: a prompt resume would otherwise
+  // hydrate the pre-write snapshot and persist that stale network back over the
+  // newer record. Its one limit is that a host whose onSync needs state the
+  // teardown itself destroyed (an idle lock clearing its encryption key before
+  // unmounting) still rejects the write — flushing here cannot resurrect
+  // host-side preconditions. The user-facing exit path therefore awaits the
+  // full flush before invoking onExit (Navigation.handleExit) rather than
+  // relying on this.
   useEffect(() => {
     return () => {
       void reduxStore.flushSync();
     };
   }, [reduxStore]);
-
-  // Hand the flush to a host that needs to write pending answers at a moment of
-  // its own choosing. The Interviewer's idle lock is that moment: clearing the
-  // encryption key its `onSync` writes with is itself what unmounts this Shell,
-  // so the teardown flush above can only ever run after the key is gone. Given
-  // the flush up front, the host runs it while the key is still live and the
-  // teardown flush then finds nothing pending.
-  useEffect(() => {
-    if (!registerSyncFlush) return undefined;
-    return registerSyncFlush(reduxStore.flushSync);
-  }, [registerSyncFlush, reduxStore]);
 
   // In e2e mode, expose the live Redux store to Playwright tests so they can
   // inspect the network/session state directly instead of waiting for a sync

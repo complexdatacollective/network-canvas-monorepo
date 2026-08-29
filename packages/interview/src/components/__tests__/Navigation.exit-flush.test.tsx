@@ -137,24 +137,26 @@ describe('Navigation exit flush', () => {
       await within(dialog).findByRole('button', { name: 'Exit interview' }),
     );
 
-    // The exit is confirmed, but the first write is still on the wire — the
-    // host must not be handed control yet, and the queued snapshot must not
-    // have been submitted (doSync never runs two writes concurrently).
-    await waitFor(() => expect(onSync).toHaveBeenCalledTimes(1));
+    // The exit is confirmed, so the final snapshot is offered to the host at
+    // once and marked as one that cannot be deferred — a host holding changes
+    // back only learns to stop when it is told. Control still stays here: the
+    // first write is on the wire, and the host has not been handed back yet.
+    await waitFor(() =>
+      expect(onSync).toHaveBeenLastCalledWith(
+        'session-1',
+        expect.objectContaining({
+          stageMetadata: { 0: [[0, 'a', 'b', false]] },
+        }),
+        { immediate: true },
+      ),
+    );
     expect(onExit).not.toHaveBeenCalled();
 
     releaseFirstSync();
 
     await waitFor(() => expect(onExit).toHaveBeenCalledTimes(1));
-    // The final snapshot (change B) was written before control returned.
-    expect(onSync).toHaveBeenCalledTimes(2);
-    expect(onSync).toHaveBeenLastCalledWith(
-      'session-1',
-      expect.objectContaining({
-        stageMetadata: { 0: [[0, 'a', 'b', false]] },
-      }),
-    );
-    expect(onSync.mock.invocationCallOrder[1]).toBeLessThan(
+    // Change B reached the host before control returned.
+    expect(onSync.mock.invocationCallOrder.at(-1)).toBeLessThan(
       onExit.mock.invocationCallOrder[0] ?? 0,
     );
   });

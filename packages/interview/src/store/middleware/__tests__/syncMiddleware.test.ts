@@ -3,6 +3,7 @@ import {
   createAction,
   type UnknownAction,
 } from '@reduxjs/toolkit';
+import { act } from '@testing-library/react';
 import {
   afterEach,
   beforeEach,
@@ -13,6 +14,7 @@ import {
   vi,
 } from 'vitest';
 
+import { createDebouncedSyncHandler } from '../../../contract/debouncedSync';
 import type { SessionState } from '../../modules/session';
 import { createSyncMiddleware } from '../syncMiddleware';
 
@@ -61,35 +63,34 @@ let onSyncMock: Mock;
 let middleware: ReturnType<typeof createSyncMiddleware>['middleware'];
 let flush: ReturnType<typeof createSyncMiddleware>['flush'];
 
+// The middleware owns no timers: a change is offered to the host as it
+// happens. `settle` therefore just drains microtasks — anything observed after
+// it was provoked by the change, never by waiting.
+const settle = () => act(async () => undefined);
+
 beforeEach(() => {
-  vi.useFakeTimers();
   onSyncMock = vi.fn().mockResolvedValue(undefined);
-  vi.spyOn(console, 'log').mockImplementation(vi.fn());
   vi.spyOn(console, 'error').mockImplementation(vi.fn());
 
   ({ middleware, flush } = createSyncMiddleware({ onSync: onSyncMock }));
 });
 
 afterEach(() => {
-  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
 describe('syncMiddleware', () => {
-  it('syncs immediately on first state change (leading edge)', async () => {
+  it('offers every change to the host as it happens', async () => {
     const store = createTestStore(middleware);
 
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
-
-    // Leading edge fires synchronously inside the debounce call, which
-    // triggers the async onSync. Flush the microtask queue so the mock
-    // is invoked.
-    await vi.advanceTimersByTimeAsync(0);
+    await settle();
 
     expect(onSyncMock).toHaveBeenCalledTimes(1);
     expect(onSyncMock).toHaveBeenCalledWith(
       'interview-1',
       expect.objectContaining({ lastUpdated: '2026-01-01T00:00:01.000Z' }),
+      { immediate: false },
     );
   });
 
@@ -97,373 +98,279 @@ describe('syncMiddleware', () => {
     const store = createTestStore(middleware);
 
     store.dispatch(mutateSession({ promptIndex: 5 }));
-    await vi.advanceTimersByTimeAsync(3000);
+    await settle();
 
     expect(onSyncMock).not.toHaveBeenCalled();
   });
 
-  it('batches rapid changes and sends latest state on trailing edge', async () => {
-    const store = createTestStore(middleware);
-
-    // First change → leading edge sync
-    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
-    await vi.advanceTimersByTimeAsync(0);
-    expect(onSyncMock).toHaveBeenCalledTimes(1);
-
-    // Rapid subsequent changes within the 3s debounce window
-    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:02.000Z' }));
-    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:03.000Z' }));
-    await vi.advanceTimersByTimeAsync(0);
-
-    // Still only the initial sync — debounce absorbs these
-    expect(onSyncMock).toHaveBeenCalledTimes(1);
-
-    // Advance past the debounce window → trailing edge fires
-    await vi.advanceTimersByTimeAsync(3000);
-
-    expect(onSyncMock).toHaveBeenCalledTimes(2);
-    expect(onSyncMock).toHaveBeenLastCalledWith(
-      'interview-1',
-      expect.objectContaining({ lastUpdated: '2026-01-01T00:00:03.000Z' }),
-    );
-  });
-
-  it('does not lose changes made during an in-flight sync', async () => {
-    // Create an onSync that we can resolve manually to control timing
-    let resolveSync!: () => void;
-    onSyncMock.mockImplementation(
+  it('coalesces a burst into one follow-up write rather than one per change', async () => {
+    let resolveFirst!: () => void;
+    onSyncMock.mockImplementationOnce(
       () =>
         new Promise<void>((resolve) => {
-          resolveSync = resolve;
+          resolveFirst = resolve;
         }),
     );
-
     const store = createTestStore(middleware);
 
-    // First change → leading edge sync starts (in-flight)
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
-    await vi.advanceTimersByTimeAsync(0);
+    await settle();
     expect(onSyncMock).toHaveBeenCalledTimes(1);
 
-    // Change state while sync is in-flight
+    // Three more answers while that write is on the wire. Two writes should
+    // cover them all: never two at once, and never one apiece.
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:02.000Z' }));
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:03.000Z' }));
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:04.000Z' }));
+    await settle();
+    expect(onSyncMock).toHaveBeenCalledTimes(1);
 
-    // Resolve the in-flight sync → .finally() should detect dirty state
-    // and call debouncedSync(). The debounce timer is still active from the
-    // earlier calls, so the follow-up fires on the trailing edge.
-    resolveSync();
-    await vi.advanceTimersByTimeAsync(0);
+    resolveFirst();
+    await settle();
 
-    // Advance past the debounce window so the trailing edge fires
-    await vi.advanceTimersByTimeAsync(3000);
     expect(onSyncMock).toHaveBeenCalledTimes(2);
     expect(onSyncMock).toHaveBeenLastCalledWith(
       'interview-1',
-      expect.objectContaining({ lastUpdated: '2026-01-01T00:00:02.000Z' }),
+      expect.objectContaining({ lastUpdated: '2026-01-01T00:00:04.000Z' }),
+      { immediate: false },
     );
   });
 
   it('reads current state at sync time, not at dispatch time', async () => {
-    // Slow onSync so we can observe the trailing edge behavior
-    onSyncMock.mockImplementation(
+    let resolveFirst!: () => void;
+    onSyncMock.mockImplementationOnce(
       () =>
-        new Promise<void>((resolve) =>
-          // Resolve after a short delay
-          setTimeout(resolve, 100),
-        ),
+        new Promise<void>((resolve) => {
+          resolveFirst = resolve;
+        }),
     );
-
     const store = createTestStore(middleware);
 
-    // Leading edge sync fires with currentStep: 1
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
-    await vi.advanceTimersByTimeAsync(0);
+    await settle();
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:09.000Z' }));
+    resolveFirst();
+    await settle();
 
-    // Let the sync complete
-    await vi.advanceTimersByTimeAsync(100);
-
-    // More changes within the debounce window
-    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:05.000Z' }));
-
-    // Advance past debounce → trailing edge fires
-    await vi.advanceTimersByTimeAsync(3000);
-
-    // The trailing edge should have the latest state (currentStep: 5)
     expect(onSyncMock).toHaveBeenLastCalledWith(
-      expect.any(String),
-      expect.objectContaining({ lastUpdated: '2026-01-01T00:00:05.000Z' }),
+      'interview-1',
+      expect.objectContaining({ lastUpdated: '2026-01-01T00:00:09.000Z' }),
+      { immediate: false },
     );
+  });
+
+  it('does not sync when state is identical to the last synced state', async () => {
+    const store = createTestStore(middleware);
+
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
+    await settle();
+    expect(onSyncMock).toHaveBeenCalledTimes(1);
+
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
+    await settle();
+
+    expect(onSyncMock).toHaveBeenCalledTimes(1);
   });
 
   it('resets state when a new store connects', async () => {
-    const store1 = createTestStore(middleware);
+    const first = createTestStore(middleware);
+    first.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
+    await settle();
+    onSyncMock.mockClear();
 
-    // Trigger a sync on store 1
-    store1.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
-    await vi.advanceTimersByTimeAsync(0);
-    expect(onSyncMock).toHaveBeenCalledTimes(1);
-
-    // Create a new store with the same middleware (simulates navigating
-    // to a new interview). The middleware should reset its internal state.
-    const store2 = createTestStore(
+    // A remount hands the middleware a different store; nothing from the old
+    // one should be treated as already synced.
+    const second = createTestStore(
       middleware,
       makeSession({ id: 'interview-2' }),
     );
+    second.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:05.000Z' }));
+    await settle();
 
-    // A change on store 2 should trigger a sync, even though the state
-    // shape might overlap with store 1's last synced state.
-    store2.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
-    await vi.advanceTimersByTimeAsync(0);
-
-    expect(onSyncMock).toHaveBeenCalledTimes(2);
+    expect(onSyncMock).toHaveBeenCalledTimes(1);
     expect(onSyncMock).toHaveBeenLastCalledWith(
       'interview-2',
-      expect.objectContaining({ id: 'interview-2' }),
+      expect.objectContaining({ lastUpdated: '2026-01-01T00:00:05.000Z' }),
+      { immediate: false },
     );
   });
 
-  it('cancels pending debounce timers when a new store connects', async () => {
-    const store1 = createTestStore(middleware);
+  it('does not retry a failed write in a loop while nothing changes', async () => {
+    onSyncMock.mockRejectedValue(new Error('Sync failed'));
+    const store = createTestStore(middleware);
 
-    // Trigger leading edge + queue trailing
-    store1.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
-    store1.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:02.000Z' }));
-    await vi.advanceTimersByTimeAsync(0);
-    expect(onSyncMock).toHaveBeenCalledTimes(1);
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
+    await settle();
+    await settle();
 
-    // Connect a new store before the trailing edge fires
-    createTestStore(middleware, makeSession({ id: 'interview-2' }));
-
-    // Advance past the original debounce window
-    await vi.advanceTimersByTimeAsync(3000);
-
-    // The trailing edge from store 1 should NOT have fired — it was
-    // cancelled when store 2 connected.
+    // One attempt. There is no timer in this layer to space retries out, so a
+    // self-chasing retry would spin as fast as the microtask queue.
     expect(onSyncMock).toHaveBeenCalledTimes(1);
   });
 
-  it('handles sync errors without breaking subsequent syncs', async () => {
-    onSyncMock.mockRejectedValueOnce(new Error('Network error'));
-
+  it('retries a failed snapshot on the next change', async () => {
+    onSyncMock.mockRejectedValueOnce(new Error('Sync failed'));
     const store = createTestStore(middleware);
 
-    // First sync fails
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
-    await vi.advanceTimersByTimeAsync(0);
+    await settle();
     expect(onSyncMock).toHaveBeenCalledTimes(1);
 
-    // Second change should still trigger a sync
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:02.000Z' }));
-    await vi.advanceTimersByTimeAsync(3000);
+    await settle();
 
-    expect(onSyncMock).toHaveBeenCalledTimes(2);
-  });
-
-  it('retries the same snapshot after a failed sync with no further changes', async () => {
-    // First sync attempt rejects; the second (retry) resolves.
-    onSyncMock
-      .mockRejectedValueOnce(new Error('Vault locked'))
-      .mockResolvedValueOnce(undefined);
-
-    const store = createTestStore(middleware);
-
-    // A change triggers the leading-edge sync, which fails.
-    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
-    await vi.advanceTimersByTimeAsync(0);
-    expect(onSyncMock).toHaveBeenCalledTimes(1);
-
-    // No further user changes are made. The failed snapshot must not be
-    // silently dropped — the middleware must retry it on the debounce window.
-    await vi.advanceTimersByTimeAsync(3000);
-
+    // The failed write never advanced the high-water mark, so this carries both
+    // answers rather than only the newest.
     expect(onSyncMock).toHaveBeenCalledTimes(2);
     expect(onSyncMock).toHaveBeenLastCalledWith(
       'interview-1',
-      expect.objectContaining({ lastUpdated: '2026-01-01T00:00:01.000Z' }),
+      expect.objectContaining({ lastUpdated: '2026-01-01T00:00:02.000Z' }),
+      { immediate: false },
     );
   });
 
-  it('does not sync when state is identical to last synced state', async () => {
+  it('handles sync errors without breaking subsequent syncs', async () => {
+    onSyncMock.mockRejectedValueOnce(new Error('Sync failed'));
     const store = createTestStore(middleware);
 
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
-    await vi.advanceTimersByTimeAsync(0);
-    expect(onSyncMock).toHaveBeenCalledTimes(1);
+    await settle();
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:02.000Z' }));
+    await settle();
 
-    // Advance past debounce to clear the timer
-    await vi.advanceTimersByTimeAsync(3000);
-
-    // Dispatch the same value — state doesn't actually change in a
-    // meaningful way from the middleware's perspective if the reducer
-    // produces the same result, but our test reducer always spreads
-    // (creating a new object). The middleware uses deep equality, so
-    // it should still skip the sync.
-    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
-    await vi.advanceTimersByTimeAsync(3000);
-
-    // The trailing from the first cycle may fire, but the second dispatch
-    // should not produce an additional sync because the values match.
-    const callsWithStep1 = (
-      onSyncMock.mock.calls as [string, SessionState][]
-    ).filter((call) => call[1].lastUpdated === '2026-01-01T00:00:01.000Z');
-    // At most the leading + trailing of the first cycle
-    expect(callsWithStep1.length).toBeLessThanOrEqual(2);
-
-    // No call should have been made for the second dispatch
-    const allSteps = (onSyncMock.mock.calls as [string, SessionState][]).map(
-      (call) => call[1].lastUpdated,
-    );
-    expect(allSteps.every((step) => step === '2026-01-01T00:00:01.000Z')).toBe(
-      true,
-    );
+    expect(onSyncMock).toHaveBeenCalledTimes(2);
   });
 });
 
 describe('syncMiddleware flush', () => {
-  it('writes a pending change immediately without waiting out the debounce', async () => {
+  it('tells the host the write cannot be deferred', async () => {
     const store = createTestStore(middleware);
-
-    // Leading edge consumes the first change.
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
-    await vi.advanceTimersByTimeAsync(0);
-    expect(onSyncMock).toHaveBeenCalledTimes(1);
 
-    // A later change is now sitting in the trailing debounce window.
-    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:02.000Z' }));
-    expect(onSyncMock).toHaveBeenCalledTimes(1);
-
-    // No timer advance: flush must write it right now.
     await flush();
 
-    expect(onSyncMock).toHaveBeenCalledTimes(2);
     expect(onSyncMock).toHaveBeenLastCalledWith(
       'interview-1',
-      expect.objectContaining({ lastUpdated: '2026-01-01T00:00:02.000Z' }),
+      expect.objectContaining({ lastUpdated: '2026-01-01T00:00:01.000Z' }),
+      { immediate: true },
     );
   });
 
-  it('waits for an already in-flight sync before resolving', async () => {
-    let resolveSync!: () => void;
-    onSyncMock.mockImplementationOnce(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveSync = resolve;
-        }),
-    );
-
-    const store = createTestStore(middleware);
-
-    // Leading edge sync starts and stays in-flight.
-    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
-    await vi.advanceTimersByTimeAsync(0);
-    expect(onSyncMock).toHaveBeenCalledTimes(1);
-
-    // A newer answer arrives while that write is on the wire.
-    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:02.000Z' }));
-
-    let settled = false;
-    const flushed = flush().then(() => {
-      settled = true;
+  it('does not wait out a host that is holding changes back', async () => {
+    // A real batching host, on a window long enough that waiting it out would
+    // hang the test. Awaiting the parked write before signalling immediacy is
+    // exactly the mistake this guards: the host only learns it must stop
+    // batching when it is told, so the flush has to say so first.
+    const write = vi.fn().mockResolvedValue(undefined);
+    const batching = createSyncMiddleware({
+      onSync: createDebouncedSyncHandler(write, { waitMs: 60_000 }),
     });
+    const store = createTestStore(batching.middleware);
 
-    await vi.advanceTimersByTimeAsync(0);
-    expect(settled).toBe(false);
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
+    await settle();
+    expect(write).toHaveBeenCalledTimes(1);
 
-    resolveSync();
-    await flushed;
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:02.000Z' }));
+    await settle();
+    expect(write).toHaveBeenCalledTimes(1);
 
-    expect(settled).toBe(true);
-    expect(onSyncMock).toHaveBeenCalledTimes(2);
-    expect(onSyncMock).toHaveBeenLastCalledWith(
+    await batching.flush();
+
+    expect(write).toHaveBeenCalledTimes(2);
+    expect(write).toHaveBeenLastCalledWith(
       'interview-1',
       expect.objectContaining({ lastUpdated: '2026-01-01T00:00:02.000Z' }),
+      { immediate: true },
     );
   });
 
   it('keeps writing when an answer arrives during its own write', async () => {
-    const store = createTestStore(middleware);
+    // A batching host on a long window, so the only writes that can happen are
+    // the ones the flush forces. That makes the last answer's fate depend
+    // solely on whether the flush goes round again.
+    const write = vi.fn().mockResolvedValue(undefined);
+    const batching = createSyncMiddleware({
+      onSync: createDebouncedSyncHandler(write, { waitMs: 60_000 }),
+    });
+    const store = createTestStore(batching.middleware);
 
-    // Let the leading edge fire and settle, so nothing is on the wire when the
-    // flush begins and the second write below is unambiguously the flush's.
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
-    await vi.advanceTimersByTimeAsync(0);
-    expect(onSyncMock).toHaveBeenCalledTimes(1);
-
-    // The change sitting in the debounce window that the flush is called to
-    // rescue. Hold its write open so a newer answer can land mid-flight.
+    await settle();
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:02.000Z' }));
-    let resolveFlushWrite!: () => void;
-    onSyncMock.mockImplementationOnce(
+    await settle();
+
+    // Hold the flush's write open so a newer answer has somewhere to land.
+    let releaseWrite!: () => void;
+    write.mockImplementationOnce(
       () =>
         new Promise<void>((resolve) => {
-          resolveFlushWrite = resolve;
+          releaseWrite = resolve;
         }),
     );
 
     let settled = false;
-    const flushed = (async () => {
-      await flush();
+    const running = (async () => {
+      await batching.flush();
       settled = true;
     })();
-    await vi.advanceTimersByTimeAsync(0);
-    expect(onSyncMock).toHaveBeenCalledTimes(2);
+    await settle();
 
     // The participant answers again while the flush's write is on the wire.
-    // doSync refuses to start a second concurrent write, so this snapshot can
-    // only reach storage on the trailing debounce — which the caller that is
-    // about to end the session will never let run.
+    // The background path can only hand this to the host, which parks it for
+    // another 60s — so leaving after one pass would hand the caller a
+    // "flushed" store still holding the newest answer.
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:03.000Z' }));
-    await vi.advanceTimersByTimeAsync(0);
+    await settle();
     expect(settled).toBe(false);
 
-    resolveFlushWrite();
-    await flushed;
+    releaseWrite();
+    await running;
 
-    // No timer advance: the newest answer was written by the flush itself.
-    expect(onSyncMock).toHaveBeenCalledTimes(3);
-    expect(onSyncMock).toHaveBeenLastCalledWith(
+    expect(write).toHaveBeenLastCalledWith(
       'interview-1',
       expect.objectContaining({ lastUpdated: '2026-01-01T00:00:03.000Z' }),
+      { immediate: true },
     );
   });
 
   it('gives up after a bounded number of passes when answers never stop', async () => {
     const store = createTestStore(middleware);
-    let nextAnswer = 0;
+    let answers = 0;
 
-    // Every write has another answer land while it is on the wire, so the
-    // store is never quiet. The flush must still hand control back: a
-    // participant answering continuously cannot be allowed to hold an exit —
-    // or an idle lock — open forever.
     onSyncMock.mockImplementation(async () => {
-      // Deferred a microtask so the dispatch lands after doSync has recorded
-      // the write as in flight — the shape a real answer arriving mid-write
-      // has, rather than re-entering doSync from inside onSync itself.
+      // Deferred a microtask so the dispatch lands while the write is on the
+      // wire, the shape a real answer arriving mid-write has. The supply is
+      // capped only so the background write chain — which correctly keeps
+      // going while the session keeps moving — can end and let the test finish;
+      // the cap is well above the flush bound under test.
       await Promise.resolve();
-      nextAnswer += 1;
+      if (answers >= 8) return;
+      answers += 1;
       store.dispatch(
-        mutateSession({ lastUpdated: `2026-01-01T00:00:0${nextAnswer}.000Z` }),
+        mutateSession({ lastUpdated: `2026-01-01T00:00:0${answers}.000Z` }),
       );
     });
 
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:00.000Z' }));
-    await vi.advanceTimersByTimeAsync(0);
 
-    const callsBeforeFlush = onSyncMock.mock.calls.length;
     await expect(flush()).resolves.toBeUndefined();
-    expect(onSyncMock.mock.calls.length - callsBeforeFlush).toBeLessThanOrEqual(
-      3,
+
+    // Count only the flush's own writes — the background chain is correctly
+    // still going, and it is the flush that must be bounded: a participant
+    // answering continuously cannot be allowed to hold an interview exit open.
+    const flushWrites = onSyncMock.mock.calls.filter(
+      (call) => (call[2] as { immediate: boolean } | undefined)?.immediate,
     );
+    expect(flushWrites.length).toBeLessThanOrEqual(3);
+    expect(flushWrites.length).toBeGreaterThan(0);
   });
 
   it('resolves rather than rejecting when the final sync fails', async () => {
     onSyncMock.mockRejectedValue(new Error('Vault locked'));
-
     const store = createTestStore(middleware);
-
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
 
-    // Finishing must never be blocked by a failed write.
     await expect(flush()).resolves.toBeUndefined();
     expect(onSyncMock).toHaveBeenCalled();
   });

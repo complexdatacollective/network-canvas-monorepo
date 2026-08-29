@@ -56,9 +56,29 @@ export type InterviewPayload = {
   protocol: ProtocolPayload;
 };
 
+/**
+ * Why the engine is asking for this write.
+ *
+ * `immediate` marks the moments where deferring is not an option: the
+ * participant is leaving the interview, finishing it, or the document is being
+ * hidden and may never run script again. A host that batches writes must stop
+ * batching when it sees this, write the snapshot it was given, and resolve only
+ * once that write is durable.
+ *
+ * Ordinary changes arrive with `immediate: false`. The engine does not batch
+ * them — how often a change becomes a write is the host's decision, because
+ * only the host knows what a write costs. A local database write can happen on
+ * every change; a network request usually should not (see
+ * `createDebouncedSyncHandler`).
+ */
+export type SyncOptions = {
+  immediate: boolean;
+};
+
 export type SyncHandler = (
   interviewId: string,
   session: SessionPayload,
+  options: SyncOptions,
 ) => Promise<void>;
 
 export type FinishHandler = (
@@ -67,24 +87,6 @@ export type FinishHandler = (
 ) => Promise<void>;
 
 export type AssetRequestHandler = (assetId: string) => Promise<string>;
-
-/**
- * Lends the interview's autosave flush to the host, for hosts that must write
- * pending answers at a moment of their own choosing rather than at teardown.
- * The Shell calls this on mount with a function that immediately writes any
- * session state still held in the autosave debounce window, and calls the
- * returned disposer on unmount.
- *
- * The case this exists for is a host whose `onSync` depends on state that
- * teardown itself destroys — the Interviewer clears the encryption key its
- * store writes with when the vault locks, and clearing it is what unmounts the
- * Shell, so by the time the Shell's own teardown flush runs the write can only
- * fail. Registering lets that host flush first, while the key is still live.
- *
- * The registrar's identity must be stable across host re-renders, or the Shell
- * re-registers on every one.
- */
-export type SyncFlushRegistrar = (flush: () => Promise<void>) => () => void;
 
 /**
  * Participant-facing progress for the step the package is moving to. `progress`
