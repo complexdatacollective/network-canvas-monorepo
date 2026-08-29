@@ -35,6 +35,11 @@ import type { SessionPayload, SyncHandler, SyncOptions } from './types';
  *   cannot be awaited.
  * - A failed write rejects the promises waiting on it, so the engine's own
  *   retry still applies.
+ *
+ * One handler batches for one interview. It holds a single pending snapshot,
+ * so a handler shared between two would let the second replace the first while
+ * both sets of waiters were still attached — resolving the first interview's
+ * promise with a write that discarded its state. Create one per interview.
  */
 export function createDebouncedSyncHandler(
   write: SyncHandler,

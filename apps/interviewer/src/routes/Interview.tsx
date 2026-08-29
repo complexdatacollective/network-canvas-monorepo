@@ -299,7 +299,12 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         },
         { waitMs: SYNC_BATCH_MS },
       ),
-    [],
+    // Keyed by session: one handler batches for one interview. Sharing it
+    // across two would let the second's snapshot replace the first's while
+    // both sets of waiters are still attached, so the first would be reported
+    // as synced by a write that discarded it. This route re-renders rather
+    // than remounting when the id changes.
+    [sessionId],
   );
 
   const handleFinish = useCallback(async (id: string) => {

@@ -60,6 +60,11 @@ export const createSyncMiddleware = ({
   // mark.
   let nextSequence = 0;
   let syncedSequence = -1;
+  // The most recent snapshot handed to the host, landed or not. Distinct from
+  // `lastSyncedState`, which is the newest one known to be durable — the gap
+  // between them is what stops a completing write from re-offering state some
+  // other write already has in hand.
+  let lastOfferedState = {} as SessionPayload;
 
   const write = (options: SyncOptions): Promise<void> => {
     if (!storeRef) return Promise.resolve();
@@ -69,15 +74,32 @@ export const createSyncMiddleware = ({
     if (!sessionChanged(session, lastSyncedState)) return Promise.resolve();
     const sequence = nextSequence;
     nextSequence += 1;
+    lastOfferedState = session;
 
     return onSync(session.id, session, options)
       .then(() => {
         // Only advance the high-water mark once the write actually resolves,
         // so a failed write is not treated as synced, and only if nothing
         // newer has already landed.
-        if (sequence > syncedSequence) {
-          syncedSequence = sequence;
-          lastSyncedState = session;
+        if (sequence <= syncedSequence) return;
+        syncedSequence = sequence;
+        lastSyncedState = session;
+
+        // Advancing the mark can strand the live session. Eligibility above is
+        // measured against the last snapshot that LANDED, so a value edited and
+        // then reverted while this write was on the wire read as unchanged and
+        // was never offered — and now that the mark has moved to the transient
+        // value, the reverted one differs from it with nothing scheduled to
+        // write it. Re-check here rather than in `catch` as well: a failed write
+        // leaves the mark behind, so re-checking there would retry in a loop as
+        // tight as the microtask queue.
+        const live = storeRef?.getState().session;
+        if (
+          live &&
+          sessionChanged(live, lastSyncedState) &&
+          live !== lastOfferedState
+        ) {
+          void write(ORDINARY);
         }
       })
       .catch((e) => {
@@ -117,6 +139,7 @@ export const createSyncMiddleware = ({
   ) => {
     storeRef = store;
     lastSyncedState = store.getState().session;
+    lastOfferedState = lastSyncedState;
     nextSequence = 0;
     syncedSequence = -1;
 

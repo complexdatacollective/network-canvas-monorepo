@@ -173,6 +173,41 @@ describe('syncMiddleware', () => {
     );
   });
 
+  it('writes an answer reverted while an older write was on the wire', async () => {
+    // Eligibility is measured against the last snapshot that LANDED, so an
+    // answer edited and then changed back while the first write is in flight
+    // reads as unchanged and is never offered. When that write lands it moves
+    // the mark to the transient value, leaving the reverted one — the
+    // participant's actual answer — differing from it with nothing scheduled.
+    let resolveFirst!: () => void;
+    onSyncMock.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveFirst = resolve;
+        }),
+    );
+    const store = createTestStore(middleware);
+    const durable = store.getState().session.lastUpdated;
+
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:09.000Z' }));
+    await settle();
+    expect(onSyncMock).toHaveBeenCalledTimes(1);
+
+    store.dispatch(mutateSession({ lastUpdated: durable }));
+    await settle();
+
+    resolveFirst();
+    await settle();
+
+    // Without the re-check the last write carries the transient value and the
+    // store is left stale until some later action or flush.
+    expect(onSyncMock).toHaveBeenLastCalledWith(
+      'interview-1',
+      expect.objectContaining({ lastUpdated: durable }),
+      { immediate: false, unloading: false },
+    );
+  });
+
   it('reads current state at sync time, not at dispatch time', async () => {
     let resolveFirst!: () => void;
     onSyncMock.mockImplementationOnce(

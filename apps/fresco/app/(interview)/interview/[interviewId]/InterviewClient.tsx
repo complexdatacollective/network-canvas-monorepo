@@ -122,7 +122,10 @@ export default function InterviewClient({
       },
       { waitMs: SYNC_DEBOUNCE_MS },
     );
-  }, []);
+    // Keyed by the interview it is hosting: one handler batches for one
+    // interview, or the second's snapshot would replace the first's while both
+    // sets of waiters are still attached.
+  }, [payload.session.id]);
 
   const [finished, setFinished] = useState(false);
 
