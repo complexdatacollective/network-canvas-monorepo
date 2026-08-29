@@ -96,9 +96,16 @@ export function createDebouncedSyncHandler(
   const runWrite = async (): Promise<void> => {
     // Superseded: a slot ahead of this one already wrote the snapshot.
     if (!pending) return;
-    closeWindow();
 
     const { id, session, options } = pending;
+    // An unloading write is out of band, so it neither waits for the rate-limit
+    // window nor resets it. Closing the window here would leave the handler
+    // reading as quiet, letting the next ordinary answer straight through — and
+    // if this write never settles, which is the very reason it is not queued,
+    // nothing would re-arm the window at all. Every hide would then buy a free
+    // write, without bound.
+    const governsWindow = !options.unloading;
+    if (governsWindow) closeWindow();
     const settling = waiters;
     pending = null;
     waiters = [];
@@ -113,7 +120,7 @@ export function createDebouncedSyncHandler(
     } finally {
       // Rate-limit from the write that just landed, and pick up anything that
       // arrived while it was on the wire once that window closes.
-      openWindow();
+      if (governsWindow) openWindow();
     }
   };
 

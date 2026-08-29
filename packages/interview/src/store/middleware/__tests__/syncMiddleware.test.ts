@@ -438,6 +438,50 @@ describe('syncMiddleware flush', () => {
     expect(flushWrites.length).toBeGreaterThan(0);
   });
 
+  it('offers a reverted answer when flushed, rather than reporting nothing to do', async () => {
+    // The revert case again, this time on the flush path. The live session is
+    // momentarily equal to what is stored, so a durability check alone reads as
+    // "nothing to do" — but the write on the wire carries the value the
+    // participant discarded. Exiting there hands control back on a promise that
+    // persistence is correct, moments before it stops being. Getting the newer
+    // snapshot onto the wire is this layer's job; landing them in order is the
+    // host's, and the shipped handler queues them.
+    let resolveFirst!: () => void;
+    onSyncMock.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveFirst = resolve;
+        }),
+    );
+
+    const store = createTestStore(middleware);
+    const durable = store.getState().session.lastUpdated;
+
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:09.000Z' }));
+    await settle();
+    expect(onSyncMock).toHaveBeenCalledTimes(1);
+
+    store.dispatch(mutateSession({ lastUpdated: durable }));
+    await settle();
+
+    // The question is temporal, so the assertion has to be: AT THE MOMENT
+    // flush resolves, has the live session been handed to the host? Answering
+    // it afterwards proves nothing — the post-write re-check corrects this
+    // eventually either way, but by then the caller has already been told it
+    // was safe to exit.
+    let offeredWhenFlushResolved = false;
+    const flushed = flush().then(() => {
+      offeredWhenFlushResolved = onSyncMock.mock.calls.some(
+        (call) => (call[1] as { lastUpdated: string }).lastUpdated === durable,
+      );
+    });
+    await settle();
+    resolveFirst();
+    await flushed;
+
+    expect(offeredWhenFlushResolved).toBe(true);
+  });
+
   it('resolves rather than rejecting when the final sync fails', async () => {
     onSyncMock.mockRejectedValue(new Error('Vault locked'));
     const store = createTestStore(middleware);

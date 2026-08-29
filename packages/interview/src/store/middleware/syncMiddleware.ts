@@ -66,12 +66,23 @@ export const createSyncMiddleware = ({
   // other write already has in hand.
   let lastOfferedState = {} as SessionPayload;
 
+  // Being durable is not enough on its own to skip a write: a write already on
+  // the wire may be carrying something else, and when it lands it overwrites
+  // this. That is the revert case — an answer changed and changed back while
+  // the first write was in flight — where the live session momentarily equals
+  // what is stored and is about to stop equalling it. So there is work to do
+  // whenever the live session differs from what is durable OR from what was
+  // last handed to the host.
+  const needsWrite = (session: SessionPayload) =>
+    sessionChanged(session, lastSyncedState) ||
+    sessionChanged(session, lastOfferedState);
+
   const write = (options: SyncOptions): Promise<void> => {
     if (!storeRef) return Promise.resolve();
     const session = storeRef.getState().session;
-    // Nothing outstanding. A failed write leaves the high-water mark behind, so
-    // its snapshot still reads as changed here and is written again.
-    if (!sessionChanged(session, lastSyncedState)) return Promise.resolve();
+    // A failed write leaves the high-water mark behind, so its snapshot still
+    // reads as needing a write here and is written again.
+    if (!needsWrite(session)) return Promise.resolve();
     const sequence = nextSequence;
     nextSequence += 1;
     lastOfferedState = session;
@@ -94,11 +105,7 @@ export const createSyncMiddleware = ({
         // leaves the mark behind, so re-checking there would retry in a loop as
         // tight as the microtask queue.
         const live = storeRef?.getState().session;
-        if (
-          live &&
-          sessionChanged(live, lastSyncedState) &&
-          live !== lastOfferedState
-        ) {
+        if (live && sessionChanged(live, lastOfferedState)) {
           void write(ORDINARY);
         }
       })
@@ -145,8 +152,7 @@ export const createSyncMiddleware = ({
 
     return (next) => (action: unknown) => {
       const result = next(action);
-      const state = store.getState();
-      if (!sessionChanged(state.session, lastSyncedState)) return result;
+      if (!needsWrite(store.getState().session)) return result;
       void write(ORDINARY);
       return result;
     };

@@ -223,6 +223,37 @@ describe('createDebouncedSyncHandler', () => {
     releaseUnload();
   });
 
+  it('does not let an unloading write reset the rate limit', async () => {
+    // Every tab-hide sends one. If it closed the rate-limit window, the handler
+    // would read as quiet and the next answer would go straight out — and since
+    // an unloading write may never settle, nothing would re-arm the window
+    // either. Each hide would buy a free write, without bound.
+    const write = vi.fn(
+      (_id: string, _s: unknown, o: { unloading: boolean }) =>
+        o.unloading
+          ? new Promise<void>(() => undefined)
+          : new Promise<void>((resolve) => setTimeout(resolve, 200)),
+    );
+    const handler = createDebouncedSyncHandler(
+      write as unknown as Parameters<typeof createDebouncedSyncHandler>[0],
+      { waitMs: 3000 },
+    );
+
+    for (let cycle = 0; cycle < 10; cycle += 1) {
+      for (let i = 0; i < 5; i += 1) {
+        void handler('interview-1', session(`c${cycle}-${i}`), change);
+        await vi.advanceTimersByTimeAsync(100);
+      }
+      void handler('interview-1', session(`c${cycle}-hide`), unloading);
+      await vi.advanceTimersByTimeAsync(0);
+    }
+    await vi.advanceTimersByTimeAsync(5000);
+
+    const ordinary = write.mock.calls.filter((call) => !call[2].unloading);
+    // ~11s of answering at one write per 3s, plus the leading edge.
+    expect(ordinary.length).toBeLessThanOrEqual(6);
+  });
+
   it('never puts two ordinary writes on the wire at once', async () => {
     let inFlight = 0;
     let concurrent = 0;
