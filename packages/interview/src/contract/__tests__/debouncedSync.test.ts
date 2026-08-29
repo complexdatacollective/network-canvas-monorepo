@@ -162,6 +162,32 @@ describe('createDebouncedSyncHandler', () => {
     expect(write.mock.calls.length).toBeGreaterThan(1);
   });
 
+  it('does not let a burst in one tick buy a write apiece', async () => {
+    // A gesture can dispatch several session changes in a single tick — an
+    // automatic-layout settle emits one per node. Each is offered before the
+    // first scheduled write has had a chance to start, so a handler that only
+    // notices writes once they are running reads as quiet every time and
+    // schedules one write per change. Every extra then drains whatever has
+    // accumulated the moment the write in front of it lands.
+    const write = vi.fn(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    });
+    const handler = createDebouncedSyncHandler(write, { waitMs: 3000 });
+
+    for (let i = 1; i <= 10; i += 1) {
+      void handler('interview-1', session(`0${i}`), change);
+    }
+    await vi.advanceTimersByTimeAsync(0);
+    expect(write).toHaveBeenCalledTimes(1);
+
+    // One more while that write is on the wire, then land it. The window opens
+    // as it lands, so nothing further may go out for 3s.
+    void handler('interview-1', session('11'), change);
+    await vi.advanceTimersByTimeAsync(600);
+
+    expect(write).toHaveBeenCalledTimes(1);
+  });
+
   it('never puts two ordinary writes on the wire at once', async () => {
     let inFlight = 0;
     let concurrent = 0;
