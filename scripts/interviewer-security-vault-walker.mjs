@@ -554,7 +554,6 @@ try {
     // ciphertext at least as long as the GCM tag, whose DECODED bytes carry
     // none of the seeded plaintext markers — a wrapper with plaintext (or
     // empty strings) stuffed into ct must not certify.
-    const MARKERS = ['"nodes"', '"schemaVersion"', '"codebook"', '"stages"'];
     const decodeEnvelope = (v) => {
       if (!v || typeof v.iv !== 'string' || typeof v.ct !== 'string')
         return null;
@@ -567,19 +566,14 @@ try {
         return null;
       }
     };
-    const isEnvelope = (v) => {
-      const ct = decodeEnvelope(v);
-      return ct !== null && !MARKERS.some((m) => ct.includes(m));
-    };
-    // Assets are CSV/SVG/PNG/MOV — none carries the JSON markers, so their
-    // ciphertext must also be free of asset-shaped plaintext: media magic
-    // numbers, an SVG tag, or text-like content (real AES-GCM output is
-    // ~37% printable by chance; seeded CSV/SVG is ~100%).
-    const isAssetEnvelope = (v) => {
-      const ct = decodeEnvelope(v);
-      if (ct === null) return false;
-      if (ct.includes('PNG') || ct.includes('ftyp') || ct.includes('<svg'))
-        return false;
+    // Universal plaintext detector, independent of field shape: ANY
+    // serialized JSON (the protocol, the codebook's node/edge/ego map,
+    // stage metadata's response tuples) and any text asset is ~100%
+    // printable, while real AES-GCM output is ~37% printable by chance —
+    // so a text-like decoded ct is plaintext no matter which field holds
+    // it. Shape-specific marker lists provably miss fields (codebook,
+    // stageMetadata) whose serializations carry none of the markers.
+    const looksLikeText = (ct) => {
       const head = ct.slice(0, 200);
       let printable = 0;
       for (let i = 0; i < head.length; i += 1) {
@@ -587,7 +581,22 @@ try {
         if ((c >= 32 && c <= 126) || c === 9 || c === 10 || c === 13)
           printable += 1;
       }
-      return printable / head.length < 0.9;
+      return printable / head.length >= 0.9;
+    };
+    const isEnvelope = (v) => {
+      const ct = decodeEnvelope(v);
+      return ct !== null && !looksLikeText(ct);
+    };
+    // Binary assets (PNG/MOV) evade the text detector — their ciphertext
+    // must additionally be free of media magic numbers and the SVG tag.
+    const isAssetEnvelope = (v) => {
+      const ct = decodeEnvelope(v);
+      if (ct === null || looksLikeText(ct)) return false;
+      return !(
+        ct.includes('PNG') ||
+        ct.includes('ftyp') ||
+        ct.includes('<svg')
+      );
     };
     const sessions = await readAll('sessions');
     const protocols = await readAll('protocols');

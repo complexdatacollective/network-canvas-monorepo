@@ -22,7 +22,7 @@
 //   node scripts/interviewer-release-smoke-walker.mjs \
 //     --url https://interviewer.networkcanvas.dev \
 //     --artifacts /path/to/artifacts \
-//     [--protocol packages/protocols/e2e/release-smoke/release-smoke.netcanvas] \
+//     [--protocol packages/protocols/e2e/release-smoke/protocol.json] \
 //     [--case-id release-smoke] [--keep-online] [--timeout-ms 300000]
 //
 // Exit codes: 0 = all checks passed; 1 = one or more checks failed (see
@@ -54,12 +54,9 @@ function arg(name, fallback) {
 }
 const url = arg('url', 'https://interviewer.networkcanvas.dev');
 const artifactsDir = arg('artifacts', null);
-const protocolPath = path.resolve(
+const protocolSource = path.resolve(
   repoRoot,
-  arg(
-    'protocol',
-    'packages/protocols/e2e/release-smoke/release-smoke.netcanvas',
-  ),
+  arg('protocol', 'packages/protocols/e2e/release-smoke/protocol.json'),
 );
 const caseId = arg('case-id', 'release-smoke');
 const keepOnline = argv.includes('--keep-online');
@@ -69,11 +66,26 @@ if (!artifactsDir) {
   console.error('Missing required --artifacts <dir>');
   process.exit(3);
 }
-if (!fs.existsSync(protocolPath)) {
-  console.error(`Protocol file not found: ${protocolPath}`);
+if (!fs.existsSync(protocolSource)) {
+  console.error(`Protocol source not found: ${protocolSource}`);
   process.exit(3);
 }
 fs.mkdirSync(artifactsDir, { recursive: true });
+
+// The archive is BUILT from the reviewable protocol.json at run time (the
+// build-e2e-protocol.mjs pattern; a .netcanvas is a plain zip with
+// protocol.json at its root) — a committed binary could silently drift from
+// the JSON reviewers actually inspect. A prebuilt .netcanvas path is still
+// accepted for ad-hoc runs.
+let protocolPath = protocolSource;
+if (protocolSource.endsWith('.json')) {
+  const JSZip = require('jszip');
+  const zip = new JSZip();
+  zip.file('protocol.json', fs.readFileSync(protocolSource, 'utf8'));
+  const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+  protocolPath = path.join(artifactsDir, 'release-smoke.netcanvas');
+  fs.writeFileSync(protocolPath, buffer);
+}
 
 // --- result recording -----------------------------------------------------
 const result = {
@@ -578,7 +590,7 @@ try {
   // edge on the wrong dyad, or a duplicate, is corrupted relationship data.
   const edgeList = payload.edgeList ?? [];
   const sortedPair = (pair) =>
-    [...pair].sort((a, b) => String(a).localeCompare(String(b))).join('+');
+    [...pair].toSorted((a, b) => String(a).localeCompare(String(b))).join('+');
   const knowsEdges = edgeList.filter((e) => e.type === 'knows');
   const friendsEdges = edgeList.filter((e) => e.type === 'friends');
   const edgesExact =
