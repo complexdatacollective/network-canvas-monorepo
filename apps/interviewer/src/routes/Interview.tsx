@@ -25,6 +25,7 @@ import {
   buildResolvedAssets,
   makeAssetResolver,
 } from '~/lib/assets/assetResolver';
+import { registerPreLockFlush } from '~/lib/auth/preLockFlush';
 import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
 import {
   getProtocolByHash,
@@ -405,6 +406,13 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         initialStageOverrideIndex={state.initialStageOverrideIndex}
         finishConfirmationDescription="Finishing ends this interview. A researcher can mark it unfinished later if changes are needed."
         onExit={() => void handleExit()}
+        // Answers sitting in the engine's autosave debounce can only be written
+        // while the vault holds the encryption key, and an idle lock clears
+        // that key as the very act that unmounts this route. Lend the flush to
+        // the lock so it runs first. (In review mode `onSync` discards, so this
+        // registers a flush that writes nothing — harmless, and it keeps the
+        // wiring the same on both paths.)
+        registerSyncFlush={registerPreLockFlush}
         allowStageNavigation={allowStageNavigation}
         allowUserScaling
         initialTextScale={initialTextScale}

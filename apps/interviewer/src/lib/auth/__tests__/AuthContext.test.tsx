@@ -1,12 +1,13 @@
 import 'fake-indexeddb/auto';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getSessionDek, setSessionDek } from '../../db/sessionKey';
 import { clearVault, VAULT_STORAGE_KEY } from '../../vault/vaultStore';
 import * as authApi from '../api';
 import { AuthProvider, useAuth } from '../AuthContext';
+import { registerPreLockFlush } from '../preLockFlush';
 
 function Probe() {
   const auth = useAuth();
@@ -23,11 +24,15 @@ function Probe() {
   );
 }
 
+// The pre-lock registry is module state; make sure nothing outlives its test.
+const flushDisposers: Array<() => void> = [];
+
 beforeEach(() => {
   clearVault();
   setSessionDek(null);
 });
 afterEach(() => {
+  while (flushDisposers.length > 0) flushDisposers.pop()?.();
   clearVault();
   setSessionDek(null);
 });
@@ -74,6 +79,69 @@ describe('AuthProvider transitions', () => {
       expect(screen.getByTestId('kind')).toHaveTextContent('unlocked'),
     );
     expect(getSessionDek()).not.toBeNull();
+  });
+
+  it('runs registered pre-lock flushes while the DEK is still live', async () => {
+    await authApi.enrolWithPin('12345678');
+    // Stand in for the mounted interview's autosave flush. What it records is
+    // the whole point: a flush that runs after the key is cleared cannot
+    // encrypt anything, so recordCrypto would refuse the write and the answers
+    // it was carrying would be lost.
+    const dekSeenByFlush: Array<CryptoKey | null> = [];
+    flushDisposers.push(
+      registerPreLockFlush(async () => {
+        dekSeenByFlush.push(getSessionDek());
+      }),
+    );
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('kind')).toHaveTextContent('unlocked'),
+    );
+
+    await userEvent.click(screen.getByText('lock'));
+    await waitFor(() =>
+      expect(screen.getByTestId('kind')).toHaveTextContent('locked'),
+    );
+
+    expect(dekSeenByFlush).toHaveLength(1);
+    expect(dekSeenByFlush[0]).not.toBeNull();
+    // The window closes as soon as the flush is done.
+    expect(getSessionDek()).toBeNull();
+  });
+
+  it('force-locks on a cross-tab vault change without flushing first', async () => {
+    await authApi.enrolWithPin('12345678');
+    const flush = vi.fn().mockResolvedValue(undefined);
+    flushDisposers.push(registerPreLockFlush(flush));
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('kind')).toHaveTextContent('unlocked'),
+    );
+
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent('storage', { key: VAULT_STORAGE_KEY }),
+      );
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('kind')).toHaveTextContent('locked'),
+    );
+
+    // The other tab's vault record is already the live one, so this tab's DEK
+    // is stale: flushing under it would write rows the new vault can never
+    // decrypt — the exact corruption this force-lock exists to prevent.
+    expect(flush).not.toHaveBeenCalled();
+    expect(getSessionDek()).toBeNull();
   });
 
   it('a simulated reload (fresh holder, existing record) renders locked', async () => {

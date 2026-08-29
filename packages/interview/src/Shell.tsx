@@ -36,6 +36,7 @@ import type {
   InterviewerFlags,
   InterviewPayload,
   StepChangeHandler,
+  SyncFlushRegistrar,
   SyncHandler,
 } from './contract/types';
 import useInterviewNavigation from './hooks/useInterviewNavigation';
@@ -307,6 +308,13 @@ type ShellProps = {
   finishConfirmationDescription?: string;
   onExit?: () => void;
   /**
+   * Lend this Shell's autosave flush to the host so it can write pending
+   * answers before doing something the flush could not survive — see
+   * `SyncFlushRegistrar`. Hosts whose `onSync` works at any time (the common
+   * case) can leave this out; the Shell's own teardown flush covers them.
+   */
+  registerSyncFlush?: SyncFlushRegistrar;
+  /**
    * Adapt the Shell for reviewing an existing interview: stop at the final
    * authored stage, use review-specific exit messaging, and suppress interview
    * analytics. The host remains responsible for supplying non-persisting sync
@@ -370,6 +378,7 @@ const Shell = ({
   disableAnalytics = false,
   finishConfirmationDescription,
   onExit,
+  registerSyncFlush,
   reviewMode,
   hideNavigation,
   navigationOrientation,
@@ -430,12 +439,24 @@ const Shell = ({
   // enqueued after it settles; and a host whose onSync needs state the
   // teardown already destroyed (e.g. an idle lock that cleared its store
   // encryption key before unmounting) still rejects the write — flushing
-  // here cannot resurrect host-side preconditions.
+  // here cannot resurrect host-side preconditions, so such a host has to flush
+  // before it destroys them — which is what `registerSyncFlush` below is for.
   useEffect(() => {
     return () => {
       void reduxStore.flushSync();
     };
   }, [reduxStore]);
+
+  // Hand the flush to a host that needs to write pending answers at a moment of
+  // its own choosing. The Interviewer's idle lock is that moment: clearing the
+  // encryption key its `onSync` writes with is itself what unmounts this Shell,
+  // so the teardown flush above can only ever run after the key is gone. Given
+  // the flush up front, the host runs it while the key is still live and the
+  // teardown flush then finds nothing pending.
+  useEffect(() => {
+    if (!registerSyncFlush) return undefined;
+    return registerSyncFlush(reduxStore.flushSync);
+  }, [registerSyncFlush, reduxStore]);
 
   // In e2e mode, expose the live Redux store to Playwright tests so they can
   // inspect the network/session state directly instead of waiting for a sync

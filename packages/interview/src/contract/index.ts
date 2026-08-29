@@ -33,6 +33,7 @@ export type {
   SessionPayload,
   StepChangeHandler,
   StepChangeMeta,
+  SyncFlushRegistrar,
   SyncHandler,
 } from './types';
 export type { ResolvedRosterAsset, ResolveRosterAsset } from './rosterData';

@@ -80,6 +80,7 @@ type CapturedShellProps = {
     step: number,
     meta: { progress: number; totalSteps: number },
   ) => void;
+  registerSyncFlush: (flush: () => Promise<void>) => () => void;
   reviewMode: boolean;
 };
 
@@ -96,6 +97,8 @@ vi.mock('@codaco/interview', async (importOriginal) => {
     },
   };
 });
+
+import { registerPreLockFlush } from '~/lib/auth/preLockFlush';
 
 import { InterviewRoute } from '../Interview';
 
@@ -230,6 +233,22 @@ describe('InterviewRoute enter gate', () => {
     expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
     expect(requireFreshUnlockMock).not.toHaveBeenCalled();
     expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith('s1');
+  });
+
+  it('lends the Shell autosave flush to the vault lock', async () => {
+    getSettingsMock.mockResolvedValue({
+      requireUnlockOnEnter: false,
+      requireUnlockOnExit: false,
+      requireUnlockOnExport: false,
+    });
+
+    render(<InterviewRoute sessionId="s1" />);
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+
+    // Without this the interview's pending answers are only written when the
+    // Shell unmounts — which, on an idle lock, is after the encryption key
+    // they need has already been cleared.
+    expect(lastShellProps().registerSyncFlush).toBe(registerPreLockFlush);
   });
 
   it('hydrates the Shell payload with the canonical persisted network', async () => {

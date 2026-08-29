@@ -14,6 +14,7 @@ import { VAULT_STORAGE_KEY } from '../vault/vaultStore';
 import * as authApi from './api';
 import type { AuthMode } from './api';
 import { useIdleTimer } from './idle';
+import { runPreLockFlush } from './preLockFlush';
 
 export type AuthStateKind =
   | 'loading'
@@ -91,24 +92,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [refresh]);
 
-  const lock = useCallback(async () => {
+  // Drop the key now, with no window for anything to write first.
+  const lockImmediately = useCallback(async () => {
     await authApi.lock();
     await refresh();
   }, [refresh]);
+
+  // Anything still holding participant data in memory can only persist it while
+  // the DEK is live — past this point `recordCrypto` fails closed and the write
+  // is refused. A lock that fires while the mounted interview has answers in
+  // its autosave debounce would otherwise destroy them, so let the registered
+  // holders drain first. `runPreLockFlush` bounds its own wait, so a write that
+  // hangs cannot keep the vault open past its idle deadline.
+  const lock = useCallback(async () => {
+    await runPreLockFlush();
+    await lockImmediately();
+  }, [lockImmediately]);
 
   // The session DEK is per-tab module memory while the vault record is shared
   // localStorage. If another tab revokes and re-enrols, this tab's stale DEK
   // would encrypt rows the new vault can never decrypt (permanent data loss).
   // Force-lock this tab whenever the vault record changes in another tab so
-  // AuthGate re-gates and the next unlock derives a fresh DEK.
+  // AuthGate re-gates and the next unlock derives a fresh DEK. This is the one
+  // path that must NOT flush first: writing under the stale DEK is precisely
+  // the corruption this listener exists to prevent, and a revoke has already
+  // deleted the database those writes would land in.
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
       if (event.key !== VAULT_STORAGE_KEY) return;
-      void lock();
+      void lockImmediately();
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
-  }, [lock]);
+  }, [lockImmediately]);
 
   const idleTimeoutMs = state.idleTimeoutMinutes * 60_000;
   useIdleTimer({

@@ -69,6 +69,24 @@ export type FinishHandler = (
 export type AssetRequestHandler = (assetId: string) => Promise<string>;
 
 /**
+ * Lends the interview's autosave flush to the host, for hosts that must write
+ * pending answers at a moment of their own choosing rather than at teardown.
+ * The Shell calls this on mount with a function that immediately writes any
+ * session state still held in the autosave debounce window, and calls the
+ * returned disposer on unmount.
+ *
+ * The case this exists for is a host whose `onSync` depends on state that
+ * teardown itself destroys — the Interviewer clears the encryption key its
+ * store writes with when the vault locks, and clearing it is what unmounts the
+ * Shell, so by the time the Shell's own teardown flush runs the write can only
+ * fail. Registering lets that host flush first, while the key is still live.
+ *
+ * The registrar's identity must be stable across host re-renders, or the Shell
+ * re-registers on every one.
+ */
+export type SyncFlushRegistrar = (flush: () => Promise<void>) => () => void;
+
+/**
  * Participant-facing progress for the step the package is moving to. `progress`
  * is the 0–100 value shown in the interview's own progress bar (see
  * `getInterviewProgress`); `totalSteps` is the true number of steps including

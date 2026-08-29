@@ -130,4 +130,85 @@ describe('Shell unmount flush', () => {
       }),
     );
   });
+
+  it('lends the flush to a host registrar, and takes it back on unmount', async () => {
+    const onSync = vi.fn().mockResolvedValue(undefined);
+    // Stand in for the Interviewer's pre-lock registry: hold what the Shell
+    // hands over, and drop it when the Shell's disposer runs.
+    const registered: Array<() => Promise<void>> = [];
+    const registerSyncFlush = (flush: () => Promise<void>) => {
+      registered.push(flush);
+      return () => {
+        const index = registered.indexOf(flush);
+        if (index !== -1) registered.splice(index, 1);
+      };
+    };
+
+    const view = render(
+      <Shell
+        payload={payload}
+        onSync={onSync}
+        onFinish={() => Promise.resolve()}
+        onRequestAsset={() => Promise.resolve('')}
+        analytics={{ installationId: 'test', hostApp: 'test' }}
+        disableAnalytics
+        hideNavigation
+        registerSyncFlush={registerSyncFlush}
+        flags={{ isE2E: true }}
+      />,
+    );
+
+    const store = window.__interviewStore;
+    expect(store).toBeDefined();
+    if (!store) throw new Error('store not exposed');
+
+    expect(registered).toHaveLength(1);
+
+    // Same shape as above: a leading-edge write that settles, then a second
+    // change left waiting on the 3s trailing edge.
+    act(() => {
+      store.dispatch(
+        updateStageMetadata({
+          currentStep: 0,
+          metadata: [[0, 'a', 'b', true]],
+        }),
+      );
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    act(() => {
+      store.dispatch(
+        updateStageMetadata({
+          currentStep: 0,
+          metadata: [[0, 'a', 'b', false]],
+        }),
+      );
+    });
+    const callsBeforeFlush = onSync.mock.calls.length;
+
+    // The host flushes on its own terms — here, while it still holds whatever
+    // its onSync depends on — with the Shell still mounted and no timer run.
+    const hostFlush = registered[0];
+    if (!hostFlush) throw new Error('flush not registered');
+    await act(async () => {
+      await hostFlush();
+    });
+
+    expect(onSync.mock.calls.length).toBe(callsBeforeFlush + 1);
+    expect(onSync).toHaveBeenLastCalledWith(
+      'session-1',
+      expect.objectContaining({
+        stageMetadata: { 0: [[0, 'a', 'b', false]] },
+      }),
+    );
+
+    // Teardown now finds the store already synced, so the participant's
+    // answers are not written a second time...
+    const callsAfterFlush = onSync.mock.calls.length;
+    view.unmount();
+    expect(onSync.mock.calls.length).toBe(callsAfterFlush);
+    // ...and the host is not left holding a flush for an unmounted store.
+    expect(registered).toHaveLength(0);
+  });
 });

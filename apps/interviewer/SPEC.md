@@ -91,6 +91,7 @@ The lock screen reveals **nothing** about stored data — no protocol names, no 
 - **Idle auto-lock** with a user-configurable timeout: 1, 5, 15, 30, or 60 minutes (default 15). Not applied under "No security", since there is nothing to lock.
 - **Re-lock on extended focus loss** (losing focus for roughly 30 seconds) and whenever the tab reloads.
 - A "Lock now" action is always available in Settings.
+- Locking never costs the participant answers: any responses an in-progress interview is still holding are written to encrypted storage before the key is dropped. The app waits at most two seconds for that, so a storage problem cannot keep it unlocked.
 
 ### Recovery
 

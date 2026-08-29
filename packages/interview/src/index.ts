@@ -17,6 +17,7 @@ export type {
   SessionPayload,
   StepChangeHandler,
   StepChangeMeta,
+  SyncFlushRegistrar,
   SyncHandler,
 } from './contract/types';
 // Runtime
