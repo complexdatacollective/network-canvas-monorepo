@@ -814,12 +814,13 @@ check's detail:
    "phantom-after-entry-gated-exit", "stepup-export", and
    "ciphertext-at-rest".
 4d. The re-encryption sweep is proven END TO END: the session recorded
-   before any vault existed remounts through the app (its network
-   decrypted under the new vault) and the protocol's assets decrypt and
-   render: steps "sweep-decrypt-proof", "asset-decrypts-in-app", and
+   before any vault existed remounts through the app and the encrypted
+   export carries the response seeded before enrolment: steps
+   "encrypted-export-decrypts", "sweep-decrypt-proof", and
    "phantom-after-sweep-probe-exit".
-5. Lock-screen guard on interview routes (recovery suppressed): step
-   "interview-route-lock-guard".
+5. Lock-screen guard on interview routes (recovery suppressed) and
+   protocol assets decrypting through the app: steps
+   "interview-route-lock-guard" and "asset-decrypts-in-app".
 6. Exit step-up and PIN rotation (cross-tab force-lock, old PIN rejected,
    exact seeded counts survive, and a session REMOUNTS under the rotated
    vault): steps "phantom-after-resume-exit", "rotate-pin",
@@ -838,10 +839,11 @@ A failed "setup" step means the walker could not start at all — report the
 journey as failed with that note and let the verifier adjudicate.
 
 The "phantom-*" steps observe one KNOWN app defect (a stale "Confirm your
-identity" dialog left over Home after exiting an interview) at four exit
-sites. When any of them fail, record exactly ONE failure for the defect —
-bound to the lowest-numbered affected check, describing every failing site
-and quoting the walker's notes — rather than four duplicates. All other
+identity" dialog left over Home after exiting an interview) at several exit
+sites. When any of them fail, bind a failure record to EVERY affected check
+— the synthesis rejects a failed check with no failure record of its own —
+using the same description and root cause in each, and say in the detail
+that they share one cause rather than treating them as separate defects. All other
 failed steps get their own failure records bound to their checks; step or
 gate failures are blocker (the vault contract is broken), the phantom
 defect is major (spurious auth dialog with a destructive control on a core

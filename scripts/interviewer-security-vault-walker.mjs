@@ -50,6 +50,9 @@ const timeoutMs = Number(arg('timeout-ms', '600000'));
 const PIN = '31415926';
 const NEW_PIN = '27182818';
 const PASSPHRASE = 'correct-horse-battery-1';
+// A distinctive participant response seeded BEFORE enrolment: the sweep, the
+// remount, and the encrypted export must all preserve it.
+const SEEDED_RESPONSE = 'SweepProbe-Ego-Value';
 
 if (!artifactsDir) {
   console.error('Missing required --artifacts <dir>');
@@ -86,6 +89,14 @@ try {
   // The relay is blocked in every context: analytics defaults on, and a fresh
   // profile would otherwise emit real events to product analytics.
   await context.route('**://ph-relay.networkcanvas.com/**', (r) => r.abort());
+  // Force the plain-download rung the way the e2e suite does: Chromium
+  // prefers the native Save-As picker, which never emits Playwright's
+  // download event (apps/interviewer/e2e/fixtures/download-fixture.ts).
+  await context.addInitScript(() => {
+    delete window.showSaveFilePicker;
+    delete navigator.canShare;
+    delete navigator.share;
+  });
   page = await context.newPage();
   page.setDefaultTimeout(15_000);
 } catch (err) {
@@ -365,6 +376,51 @@ try {
   await installSampleProtocol();
   await startInterview('pre-enrol-probe');
   await expectStageMounted();
+  // Write a DISTINCTIVE participant response: a sweep that replaces every
+  // network with a valid-but-empty encrypted one would pass a mount-only
+  // proof. Jump straight to the Quick Add name generator via the stage
+  // drawer (stage navigation is on by default) and add a named node — the
+  // interaction the conduct walker already proves, and unlike the ego form
+  // it has no required-field gate blocking persistence.
+  await page.getByRole('button', { name: 'Go to another screen' }).click();
+  const seedDrawer = page.getByRole('dialog', { name: 'Go to another screen' });
+  await expect(seedDrawer).toBeVisible();
+  await seedDrawer
+    .getByRole('option', { name: 'Quick Add Name Generator' })
+    .click();
+  await expectStageMounted();
+  const quickToggle = page.getByTestId('quick-add-toggle');
+  if ((await quickToggle.getAttribute('aria-pressed')) !== 'true')
+    await quickToggle.click();
+  const quickInput = page.getByTestId('quick-add-input');
+  await quickInput.fill(SEEDED_RESPONSE);
+  await quickInput.press('Enter');
+  await expect(page.getByRole('option', { name: SEEDED_RESPONSE })).toBeVisible(
+    { timeout: 15_000 },
+  );
+  // Writes are fire-and-forget: confirm the value reached storage (plaintext
+  // here — no vault exists yet) before exiting.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          const db = await new Promise((res, rej) => {
+            const rq = indexedDB.open('interviewer');
+            rq.onsuccess = () => res(rq.result);
+            rq.onerror = () => rej(rq.error);
+          });
+          const rows = await new Promise((res, rej) => {
+            const tx = db.transaction('sessions', 'readonly');
+            const rq = tx.objectStore('sessions').getAll();
+            rq.onsuccess = () => res(rq.result);
+            rq.onerror = () => rej(rq.error);
+          });
+          db.close();
+          return JSON.stringify(rows);
+        }),
+      { timeout: 20_000 },
+    )
+    .toContain(SEEDED_RESPONSE);
   await exitInterview();
   await expect(
     page.getByRole('button', { name: 'Start new interview' }),
@@ -373,7 +429,7 @@ try {
   record(
     'seed-before-enrolment',
     preEnrol.protocols === 1 && preEnrol.sessions === 1 && preEnrol.assets > 0,
-    `seeded in none mode before any vault existed: protocols=${preEnrol.protocols} sessions=${preEnrol.sessions} assets=${preEnrol.assets}`,
+    `seeded in none mode before any vault existed: protocols=${preEnrol.protocols} sessions=${preEnrol.sessions} assets=${preEnrol.assets}, with the participant response "${SEEDED_RESPONSE}" persisted`,
   );
 
   // 1. Enrol a PIN via the 6-step wizard; the lock-behaviour step must show
@@ -551,7 +607,44 @@ try {
     timeout: 15_000,
   });
   await shot('export-gate-passed');
-  await page.getByRole('button', { name: 'Cancel' }).first().click();
+  // Let the export COMPLETE: an exporter that cannot decrypt vault-held
+  // sessions still shows this dialog, so cancelling here would certify a
+  // broken encrypted export. Reach "Archive ready", save the archive, and
+  // require the seeded participant response inside it — the data-export
+  // journey runs in an unsecured profile and cannot cover this path.
+  await expect(
+    page.getByRole('heading', { name: 'Archive ready' }),
+  ).toBeVisible({ timeout: 120_000 });
+  const downloadPromise = page.waitForEvent('download', { timeout: 60_000 });
+  await page.getByTestId('data-save-export').click();
+  const download = await downloadPromise;
+  const zipPath = path.join(artifactsDir, 'encrypted-export.zip');
+  await download.saveAs(zipPath);
+  const unzipDir = path.join(artifactsDir, 'encrypted-export');
+  fs.mkdirSync(unzipDir, { recursive: true });
+  const zip = await new (require('jszip'))().loadAsync(
+    fs.readFileSync(zipPath),
+  );
+  let exportCarriesSeed = false;
+  const exportedNames = [];
+  for (const [name, entry] of Object.entries(zip.files)) {
+    if (entry.dir) continue;
+    exportedNames.push(name);
+    const text = await entry.async('string');
+    fs.writeFileSync(path.join(unzipDir, path.basename(name)), text);
+    if (text.includes(SEEDED_RESPONSE)) exportCarriesSeed = true;
+  }
+  record(
+    'encrypted-export-decrypts',
+    exportCarriesSeed && exportedNames.length > 0,
+    `export from the encrypted vault produced ${exportedNames.length} archive entries and ${exportCarriesSeed ? 'CONTAINS' : 'is MISSING'} the seeded response "${SEEDED_RESPONSE}"`,
+  );
+  await shot('export-archive-ready');
+  // Saving closes the dialog itself ("Export complete" toast) — verified
+  // empirically; there is no Close control left to click.
+  await expect(page.getByText(/Exporting \d+ interview/)).toHaveCount(0, {
+    timeout: 15_000,
+  });
   await openSecuritySettings();
   await setToggle('Require unlock before exporting data', false);
   await closeSettings();
@@ -661,6 +754,18 @@ try {
       assetsEncrypted: assets.every(
         (a) => !('data' in a) && isAssetEnvelope(a._enc?.data),
       ),
+      // Every row must keep a well-formed representation with its metadata.
+      // Empirically the deployed build stores ALL sample-protocol assets
+      // (CSV rosters included) as kind 'blob' with a mime type; a row that
+      // lost its kind/mime, or gained an unknown one, fails here.
+      assetKinds: [
+        ...new Set(assets.map((a) => a._enc?.data?.kind ?? 'missing')),
+      ].sort(),
+      assetKindsWellFormed: assets.every((a) => {
+        const k = a._enc?.data?.kind;
+        if (k !== 'blob' && k !== 'string') return false;
+        return k !== 'blob' || typeof a._enc.data.mime === 'string';
+      }),
       leaks: JSON.stringify({ sessions, protocols }).includes('"nodes"'),
     };
   });
@@ -678,8 +783,9 @@ try {
       cipher.stageMetadataEnvelopes > 0 &&
       cipher.protocolsEncrypted &&
       cipher.assetsEncrypted &&
+      cipher.assetKindsWellFormed &&
       !cipher.leaks,
-    `sessions=${cipher.sessionCount} (incl. the pre-enrolment row, so the re-encryption sweep is proven) protocols=${cipher.protocolCount} assets=${cipher.assetCount}/${preEnrol.assets} seeded sessionsEncrypted=${cipher.sessionsEncrypted} stageMetadataEnvelopes=${cipher.stageMetadataEnvelopes} protocolsEncrypted=${cipher.protocolsEncrypted} assetsEncrypted=${cipher.assetsEncrypted} plaintextLeak=${cipher.leaks}`,
+    `sessions=${cipher.sessionCount} (incl. the pre-enrolment row, so the re-encryption sweep is proven) protocols=${cipher.protocolCount} assets=${cipher.assetCount}/${preEnrol.assets} seeded sessionsEncrypted=${cipher.sessionsEncrypted} stageMetadataEnvelopes=${cipher.stageMetadataEnvelopes} protocolsEncrypted=${cipher.protocolsEncrypted} assetsEncrypted=${cipher.assetsEncrypted} assetKinds=${JSON.stringify(cipher.assetKinds)} kindsWellFormed=${cipher.assetKindsWellFormed} plaintextLeak=${cipher.leaks}`,
   );
 
   // 4c. The SWEPT row must be readable THROUGH THE APP, not merely
@@ -703,31 +809,17 @@ try {
   await typeSegmented(page, 'pin', PIN);
   await expect(page).toHaveURL(/\/interview\//, { timeout: 15_000 });
   await expectStageMounted();
+  // The remount alone proves only that SOME network decrypted. The stronger
+  // proof already exists: the encrypted export above CONTAINS the response
+  // seeded before the vault existed, so the swept row decrypts WITH its
+  // participant data — a sweep that wrote valid-but-empty encrypted networks
+  // could not produce it. (A drawer-navigated UI re-read was tried and
+  // rejected: stage chrome varies per stage and made the oracle flaky, while
+  // the export is deterministic and end-to-end.)
   record(
     'sweep-decrypt-proof',
-    true,
-    'the pre-enrolment session remounted through the app after the re-encryption sweep (its network decrypted under the new vault)',
-  );
-  // Assets must DECRYPT through the app too: this stage renders the sample
-  // protocol's logo (assetManifest entry 1 of 10) via the interview's asset
-  // resolver, which reads and decrypts the stored asset row. POLL the
-  // intrinsic size — the blob <img> is attached before it has loaded, so a
-  // single read races a healthy decode.
-  let assetRendered = false;
-  for (let i = 0; i < 24 && !assetRendered; i += 1) {
-    assetRendered = await page
-      .locator('img[src^="blob:"]')
-      .first()
-      .evaluate(
-        (el) => el.complete && el.naturalWidth > 0 && el.naturalHeight > 0,
-      )
-      .catch(() => false);
-    if (!assetRendered) await page.waitForTimeout(500);
-  }
-  record(
-    'asset-decrypts-in-app',
-    assetRendered,
-    `protocol asset resolved, decrypted and fully loaded through the app after enrolment (blob image complete with non-zero intrinsic size=${assetRendered})`,
+    exportCarriesSeed,
+    `the pre-enrolment session remounted through the app after the re-encryption sweep, and the encrypted export carries its seeded response "${SEEDED_RESPONSE}" (seed present in export=${exportCarriesSeed})`,
   );
   await shot('sweep-decrypt-proof');
   await exitInterview();
@@ -760,6 +852,27 @@ try {
   await shot('interview-route-lock');
   await unlockPin(PIN);
   await expectStageMounted();
+  // Assets must DECRYPT through the app, not merely look enveloped at rest.
+  // This session sits on the Welcome stage, which renders the sample
+  // protocol's logo through the interview's asset resolver — a read of the
+  // stored asset row. POLL the intrinsic size: the blob <img> is attached
+  // before it has loaded, so a single read races a healthy decode.
+  let blobAssetOk = false;
+  for (let i = 0; i < 24 && !blobAssetOk; i += 1) {
+    blobAssetOk = await page
+      .locator('img[src^="blob:"]')
+      .first()
+      .evaluate(
+        (el) => el.complete && el.naturalWidth > 0 && el.naturalHeight > 0,
+      )
+      .catch(() => false);
+    if (!blobAssetOk) await page.waitForTimeout(500);
+  }
+  record(
+    'asset-decrypts-in-app',
+    blobAssetOk,
+    `protocol asset resolved, decrypted and fully loaded through the app after enrolment (blob image complete with non-zero intrinsic size=${blobAssetOk})`,
+  );
   record(
     'interview-route-lock-guard',
     recoverSuppressed,
