@@ -319,6 +319,27 @@ function enqueueSessionMutation<T>(
   return next;
 }
 
+/**
+ * Resolve once every session mutation enqueued so far has settled.
+ *
+ * These mutations read the vault key when they RUN, not when they are queued:
+ * `updateSession` waits its turn on the chain above, reads the stored row and
+ * decrypts it, and only then reaches `encryptSession`. Clearing the key while
+ * any of that is outstanding makes it fail closed and loses the answers it was
+ * carrying, so the idle lock waits for this first — see `AuthContext`.
+ *
+ * Bounded: a mutation that was already in flight can land while we wait, so
+ * re-check, but never indefinitely. The caller is entitled to proceed, and it
+ * puts its own deadline around this as well.
+ */
+export async function whenSessionWritesSettle(): Promise<void> {
+  for (let pass = 0; pass < 3 && updateChains.size > 0; pass += 1) {
+    // allSettled: a failed write is still a settled one, and this is a wait,
+    // not a retry.
+    await Promise.allSettled(updateChains.values());
+  }
+}
+
 export function updateSession(
   id: string,
   patch: Partial<StoredSession>,
