@@ -73,6 +73,17 @@ export type InterviewPayload = {
  */
 export type SyncOptions = {
   immediate: boolean;
+  /**
+   * The document is being hidden or unloaded and may never run script again —
+   * so this can be the last write it is able to make, and nothing may be left
+   * waiting on anything else to finish first. Always accompanied by
+   * `immediate`.
+   *
+   * A host whose writes leave the page should use a transport that outlives it
+   * (`fetch`'s `keepalive`) when it sees this, and must not queue the write
+   * behind a request that will die with the document.
+   */
+  unloading: boolean;
 };
 
 export type SyncHandler = (

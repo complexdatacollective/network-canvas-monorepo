@@ -74,35 +74,50 @@ export default function InterviewClient({
   // for every answer. The wrapper still writes the first change straight away
   // and stops batching whenever the engine says the write cannot wait — the
   // participant exiting or finishing, or the tab being hidden.
-  const onSync = useMemo<SyncHandler>(
-    () =>
-      createDebouncedSyncHandler(
-        async (id, session, { immediate }) => {
-          const body = JSON.stringify({
-            ...session,
-            currentStep: currentStepRef.current,
-          });
+  const onSync = useMemo<SyncHandler>(() => {
+    let inFlight: AbortController | null = null;
+
+    return createDebouncedSyncHandler(
+      async (id, session, { unloading }) => {
+        // An unloading write is issued rather than queued, so it can overlap a
+        // request already on the wire. Cancel that one: it carries an older
+        // snapshot, and this endpoint overwrites, so letting it land last would
+        // roll the server back. Every other write is queued behind its
+        // predecessor, so there is nothing to cancel.
+        if (unloading) inFlight?.abort();
+
+        const controller = new AbortController();
+        inFlight = controller;
+        const body = JSON.stringify({
+          ...session,
+          currentStep: currentStepRef.current,
+        });
+
+        try {
           const response = await fetch(`/interview/${id}/sync`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body,
-            // An immediate write can be the last thing that happens before the
-            // document is destroyed — the engine flushes on pagehide, and a
-            // normal request dies with the page. keepalive lets it outlive the
-            // document, but the browser caps all keepalive bodies at 64KB and
-            // rejects anything larger outright, and a big network exceeds that.
-            // Ask for it only when the body fits; a larger one falls back to an
-            // ordinary request, which still survives the far more common case
-            // of the tab merely being backgrounded.
+            signal: controller.signal,
+            // An unloading write is the last thing that happens before the
+            // document goes away, and a normal request dies with the page.
+            // keepalive lets it outlive the document, but the browser caps all
+            // keepalive bodies at 64KB and rejects anything larger outright,
+            // which a large network exceeds. Ask for it only when the body
+            // fits; a larger one falls back to an ordinary request, which still
+            // survives the far more common case of the tab merely being
+            // backgrounded rather than closed.
             keepalive:
-              immediate && new Blob([body]).size <= KEEPALIVE_MAX_BYTES,
+              unloading && new Blob([body]).size <= KEEPALIVE_MAX_BYTES,
           });
           if (!response.ok) throw new Error('Sync failed');
-        },
-        { waitMs: SYNC_DEBOUNCE_MS },
-      ),
-    [],
-  );
+        } finally {
+          if (inFlight === controller) inFlight = null;
+        }
+      },
+      { waitMs: SYNC_DEBOUNCE_MS },
+    );
+  }, []);
 
   const [finished, setFinished] = useState(false);
 

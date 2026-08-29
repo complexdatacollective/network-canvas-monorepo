@@ -429,9 +429,11 @@ const Shell = ({
   useEffect(() => {
     if (typeof document === 'undefined') return undefined;
     const flushIfHidden = () => {
-      if (document.visibilityState === 'hidden') void reduxStore.flushSync();
+      if (document.visibilityState === 'hidden') {
+        void reduxStore.flushSync({ unloading: true });
+      }
     };
-    const flushNow = () => void reduxStore.flushSync();
+    const flushNow = () => void reduxStore.flushSync({ unloading: true });
     document.addEventListener('visibilitychange', flushIfHidden);
     window.addEventListener('pagehide', flushNow);
     return () => {

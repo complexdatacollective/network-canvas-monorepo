@@ -5,7 +5,11 @@ import { isEqual, omit } from 'es-toolkit';
 
 import { ensureError } from '@codaco/shared-consts';
 
-import type { SessionPayload, SyncHandler } from '../../contract/types';
+import type {
+  SessionPayload,
+  SyncHandler,
+  SyncOptions,
+} from '../../contract/types';
 
 type SyncMiddlewareState = { session: SessionPayload };
 
@@ -17,6 +21,8 @@ const sessionChanged = (a: SessionPayload, b: SessionPayload) =>
 // continuously must not be able to hold an interview exit open. Two extra
 // passes is far more than a settled interview ever needs.
 const FLUSH_MAX_PASSES = 3;
+
+const ORDINARY: SyncOptions = { immediate: false, unloading: false };
 
 /**
  * Reports session changes to the host, and guarantees that everything reported
@@ -44,7 +50,7 @@ export const createSyncMiddleware = ({
   onSync: SyncHandler;
 }): {
   middleware: Middleware<Record<string, never>, SyncMiddlewareState>;
-  flush: () => Promise<void>;
+  flush: (options?: { unloading?: boolean }) => Promise<void>;
 } => {
   let lastSyncedState = {} as SessionPayload;
   let storeRef: { getState: () => SyncMiddlewareState } | null = null;
@@ -55,7 +61,7 @@ export const createSyncMiddleware = ({
   let nextSequence = 0;
   let syncedSequence = -1;
 
-  const write = (immediate: boolean): Promise<void> => {
+  const write = (options: SyncOptions): Promise<void> => {
     if (!storeRef) return Promise.resolve();
     const session = storeRef.getState().session;
     // Nothing outstanding. A failed write leaves the high-water mark behind, so
@@ -64,7 +70,7 @@ export const createSyncMiddleware = ({
     const sequence = nextSequence;
     nextSequence += 1;
 
-    return onSync(session.id, session, { immediate })
+    return onSync(session.id, session, options)
       .then(() => {
         // Only advance the high-water mark once the write actually resolves,
         // so a failed write is not treated as synced, and only if nothing
@@ -86,7 +92,8 @@ export const createSyncMiddleware = ({
    * exiting, the document being hidden — must await this before handing control
    * on, because a write attempted afterwards may be refused or never run at all.
    */
-  const flush = async (): Promise<void> => {
+  const flush = async ({ unloading = false } = {}): Promise<void> => {
+    const options: SyncOptions = { immediate: true, unloading };
     for (let pass = 0; pass < FLUSH_MAX_PASSES; pass += 1) {
       const before = storeRef?.getState().session;
 
@@ -94,7 +101,7 @@ export const createSyncMiddleware = ({
       // `immediate`, and it queues this behind whatever it is already writing —
       // so awaiting this one write is both the fastest way to cancel its delay
       // and enough to know everything before it has landed.
-      await write(true);
+      await write(options);
 
       // Nothing moved while we wrote, so there is nothing another pass could
       // add. Reference equality asks exactly that question — comparing against
@@ -117,7 +124,7 @@ export const createSyncMiddleware = ({
       const result = next(action);
       const state = store.getState();
       if (!sessionChanged(state.session, lastSyncedState)) return result;
-      void write(false);
+      void write(ORDINARY);
       return result;
     };
   };

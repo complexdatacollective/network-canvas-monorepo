@@ -1,4 +1,4 @@
-import type { SessionPayload, SyncHandler } from './types';
+import type { SessionPayload, SyncHandler, SyncOptions } from './types';
 
 /**
  * Wrap a `SyncHandler` so ordinary changes are batched instead of written one
@@ -22,7 +22,13 @@ import type { SessionPayload, SyncHandler } from './types';
  * - `immediate` cancels the wait and writes now. The engine sends it when the
  *   participant is exiting or finishing, or when the document is being hidden
  *   and may never run script again.
- * - Only one write is ever on the wire; writes run in order.
+ * - Only one write is on the wire at a time, and writes run in order — so a
+ *   caller awaiting a flush knows everything before it has landed too. The
+ *   single exception is an `unloading` write, which is issued straight away
+ *   rather than queued: the request in front of it is about to die with the
+ *   document, and a continuation waiting behind it would never run at all. A
+ *   host whose writes can then land out of order should make the newest one
+ *   win (Fresco cancels the request it supersedes).
  * - Every returned promise resolves when a write covering that change lands,
  *   so the engine can await a flush and know the answers are stored. This is
  *   why it is not `es-toolkit`'s `debounce`, whose `flush()` returns void and
@@ -35,7 +41,11 @@ export function createDebouncedSyncHandler(
   { waitMs }: { waitMs: number },
 ): SyncHandler {
   type Waiter = { resolve: () => void; reject: (error: unknown) => void };
-  type Pending = { id: string; session: SessionPayload; immediate: boolean };
+  type Pending = {
+    id: string;
+    session: SessionPayload;
+    options: SyncOptions;
+  };
 
   let pending: Pending | null = null;
   let waiters: Waiter[] = [];
@@ -65,13 +75,13 @@ export function createDebouncedSyncHandler(
     if (!pending) return;
     closeWindow();
 
-    const { id, session, immediate } = pending;
+    const { id, session, options } = pending;
     const settling = waiters;
     pending = null;
     waiters = [];
 
     try {
-      await write(id, session, { immediate });
+      await write(id, session, options);
       for (const waiter of settling) waiter.resolve();
     } catch (error) {
       // Hand the failure to whoever was waiting on this snapshot; the engine
@@ -89,15 +99,28 @@ export function createDebouncedSyncHandler(
   };
 
   return (id, session, options) => {
-    const immediate = options.immediate || (pending?.immediate ?? false);
-    pending = { id, session, immediate };
+    // Urgency accumulates: a change swept up by a later flush is written under
+    // that flush's terms, never demoted back to an ordinary write.
+    const merged: SyncOptions = {
+      immediate: options.immediate || (pending?.options.immediate ?? false),
+      unloading: options.unloading || (pending?.options.unloading ?? false),
+    };
+    pending = { id, session, options: merged };
     const settled = new Promise<void>((resolve, reject) => {
       waiters.push({ resolve, reject });
     });
 
-    // Write now when told to, and when no window is open — the latter is the
-    // leading edge, and also every change that arrives after a quiet spell.
-    if (options.immediate || windowTimer === undefined) enqueueWrite();
+    if (options.unloading) {
+      // Deliberately not queued. This is the document's last chance to write
+      // anything, and a continuation waiting behind a request that dies with
+      // the page never runs at all. Overlapping is never worse than that: at
+      // worst the two land out of order and the server keeps the older
+      // snapshot, which is exactly what queueing would have left it with.
+      void runWrite();
+    } else if (options.immediate || windowTimer === undefined) {
+      // The leading edge, and every change arriving after a quiet spell.
+      enqueueWrite();
+    }
 
     return settled;
   };

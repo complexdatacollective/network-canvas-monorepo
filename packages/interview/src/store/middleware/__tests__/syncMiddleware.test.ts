@@ -90,7 +90,7 @@ describe('syncMiddleware', () => {
     expect(onSyncMock).toHaveBeenCalledWith(
       'interview-1',
       expect.objectContaining({ lastUpdated: '2026-01-01T00:00:01.000Z' }),
-      { immediate: false },
+      { immediate: false, unloading: false },
     );
   });
 
@@ -128,7 +128,7 @@ describe('syncMiddleware', () => {
     expect(onSyncMock).toHaveBeenLastCalledWith(
       'interview-1',
       expect.objectContaining({ lastUpdated: '2026-01-01T00:00:03.000Z' }),
-      { immediate: false },
+      { immediate: false, unloading: false },
     );
 
     resolveFirst();
@@ -169,7 +169,7 @@ describe('syncMiddleware', () => {
     expect(write).toHaveBeenLastCalledWith(
       'interview-1',
       expect.objectContaining({ lastUpdated: '2026-01-01T00:00:04.000Z' }),
-      { immediate: false },
+      { immediate: false, unloading: false },
     );
   });
 
@@ -192,7 +192,7 @@ describe('syncMiddleware', () => {
     expect(onSyncMock).toHaveBeenLastCalledWith(
       'interview-1',
       expect.objectContaining({ lastUpdated: '2026-01-01T00:00:09.000Z' }),
-      { immediate: false },
+      { immediate: false, unloading: false },
     );
   });
 
@@ -228,7 +228,7 @@ describe('syncMiddleware', () => {
     expect(onSyncMock).toHaveBeenLastCalledWith(
       'interview-2',
       expect.objectContaining({ lastUpdated: '2026-01-01T00:00:05.000Z' }),
-      { immediate: false },
+      { immediate: false, unloading: false },
     );
   });
 
@@ -262,7 +262,7 @@ describe('syncMiddleware', () => {
     expect(onSyncMock).toHaveBeenLastCalledWith(
       'interview-1',
       expect.objectContaining({ lastUpdated: '2026-01-01T00:00:02.000Z' }),
-      { immediate: false },
+      { immediate: false, unloading: false },
     );
   });
 
@@ -289,7 +289,7 @@ describe('syncMiddleware flush', () => {
     expect(onSyncMock).toHaveBeenLastCalledWith(
       'interview-1',
       expect.objectContaining({ lastUpdated: '2026-01-01T00:00:01.000Z' }),
-      { immediate: true },
+      { immediate: true, unloading: false },
     );
   });
 
@@ -318,7 +318,7 @@ describe('syncMiddleware flush', () => {
     expect(write).toHaveBeenLastCalledWith(
       'interview-1',
       expect.objectContaining({ lastUpdated: '2026-01-01T00:00:02.000Z' }),
-      { immediate: true },
+      { immediate: true, unloading: false },
     );
   });
 
@@ -367,7 +367,7 @@ describe('syncMiddleware flush', () => {
     expect(write).toHaveBeenLastCalledWith(
       'interview-1',
       expect.objectContaining({ lastUpdated: '2026-01-01T00:00:03.000Z' }),
-      { immediate: true },
+      { immediate: true, unloading: false },
     );
   });
 

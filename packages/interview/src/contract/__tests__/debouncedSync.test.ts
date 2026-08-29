@@ -13,8 +13,10 @@ const session = (lastUpdated: string) =>
     network: { ego: { _uid: 'ego-1' }, nodes: [], edges: [] },
   }) as unknown as SessionPayload;
 
-const change = { immediate: false };
-const now = { immediate: true };
+const change = { immediate: false, unloading: false };
+const now = { immediate: true, unloading: false };
+// The document is going away and may never run script again.
+const unloading = { immediate: true, unloading: true };
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -37,7 +39,7 @@ describe('createDebouncedSyncHandler', () => {
     expect(write).toHaveBeenCalledWith(
       'interview-1',
       expect.objectContaining({ lastUpdated: '01' }),
-      { immediate: false },
+      { immediate: false, unloading: false },
     );
   });
 
@@ -60,7 +62,7 @@ describe('createDebouncedSyncHandler', () => {
     expect(write).toHaveBeenLastCalledWith(
       'interview-1',
       expect.objectContaining({ lastUpdated: '03' }),
-      { immediate: false },
+      { immediate: false, unloading: false },
     );
   });
 
@@ -102,7 +104,7 @@ describe('createDebouncedSyncHandler', () => {
     expect(write).toHaveBeenLastCalledWith(
       'interview-1',
       expect.objectContaining({ lastUpdated: '03' }),
-      { immediate: true },
+      { immediate: true, unloading: false },
     );
   });
 
@@ -139,7 +141,7 @@ describe('createDebouncedSyncHandler', () => {
     );
   });
 
-  it('never puts two writes on the wire at once', async () => {
+  it('never puts two ordinary writes on the wire at once', async () => {
     let inFlight = 0;
     let concurrent = 0;
     const write = vi.fn(async () => {
@@ -150,12 +152,79 @@ describe('createDebouncedSyncHandler', () => {
     });
     const handler = createDebouncedSyncHandler(write, { waitMs: 10 });
 
-    void handler('interview-1', session('01'), change);
-    void handler('interview-1', session('02'), now);
-    void handler('interview-1', session('03'), now);
-    void handler('interview-1', session('04'), now);
+    for (let i = 1; i <= 6; i += 1) {
+      void handler('interview-1', session(`0${i}`), change);
+      await vi.advanceTimersByTimeAsync(15);
+    }
     await vi.advanceTimersByTimeAsync(500);
 
     expect(concurrent).toBe(1);
+  });
+
+  it('issues an unloading write rather than queueing it behind one on the wire', async () => {
+    let releaseFirst!: () => void;
+    const write = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            releaseFirst = resolve;
+          }),
+      )
+      .mockResolvedValue(undefined);
+    const handler = createDebouncedSyncHandler(write, { waitMs: 3000 });
+
+    void handler('interview-1', session('01'), change);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(write).toHaveBeenCalledTimes(1);
+
+    // Queueing this behind the held write would be fatal at teardown: the
+    // request in front dies with the document and the continuation never runs,
+    // so the newest answers would never be sent at all.
+    void handler('interview-1', session('02'), unloading);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(write).toHaveBeenCalledTimes(2);
+    expect(write).toHaveBeenLastCalledWith(
+      'interview-1',
+      expect.objectContaining({ lastUpdated: '02' }),
+      { immediate: true, unloading: true },
+    );
+
+    releaseFirst();
+  });
+
+  it('collapses a burst into two writes with no wait at all', async () => {
+    // How the Interviewer is configured: never hold an answer on a timer, but
+    // still turn one gesture's worth of updates — an automatic-layout settle
+    // dispatches one per node — into a single write of the final state.
+    let releaseFirst!: () => void;
+    const write = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            releaseFirst = resolve;
+          }),
+      )
+      .mockResolvedValue(undefined);
+    const handler = createDebouncedSyncHandler(write, { waitMs: 0 });
+
+    void handler('interview-1', session('01'), change);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(write).toHaveBeenCalledTimes(1);
+
+    for (let i = 2; i <= 20; i += 1) {
+      void handler('interview-1', session(`${i}`), change);
+    }
+    releaseFirst();
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(write).toHaveBeenCalledTimes(2);
+    expect(write).toHaveBeenLastCalledWith(
+      'interview-1',
+      expect.objectContaining({ lastUpdated: '20' }),
+      { immediate: false, unloading: false },
+    );
   });
 });

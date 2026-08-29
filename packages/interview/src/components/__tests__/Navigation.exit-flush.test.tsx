@@ -161,7 +161,7 @@ describe('Navigation exit flush', () => {
       expect.objectContaining({
         stageMetadata: { 0: [[0, 'a', 'b', false]] },
       }),
-      { immediate: true },
+      { immediate: true, unloading: false },
     );
     expect(write.mock.invocationCallOrder.at(-1)).toBeLessThan(
       onExit.mock.invocationCallOrder[0] ?? 0,

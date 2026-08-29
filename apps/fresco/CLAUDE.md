@@ -271,7 +271,10 @@ lib/
     it: without it a request goes out per answer. The wrapper still writes
     immediately when the engine says a write cannot be deferred (the
     participant exiting or finishing, or the tab being hidden), so shortening
-    the interval is a cost decision and never a correctness one.
+    the interval is a cost decision and never a correctness one. An
+    `unloading` write — the tab being hidden or closed — additionally asks for
+    `keepalive` when the body fits under the browser's 64KB cap, and cancels
+    the request it supersedes so an older snapshot cannot land last.
 
 ## Conventions
 

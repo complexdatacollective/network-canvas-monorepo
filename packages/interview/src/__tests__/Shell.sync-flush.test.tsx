@@ -148,7 +148,7 @@ describe('Shell sync flushes', () => {
     expect(write).toHaveBeenLastCalledWith(
       'session-1',
       expect.objectContaining({ stageMetadata: { 0: [[0, 'a', 'b', false]] } }),
-      { immediate: true },
+      { immediate: true, unloading: true },
     );
   });
 
@@ -205,7 +205,7 @@ describe('Shell sync flushes', () => {
     expect(write).toHaveBeenLastCalledWith(
       'session-1',
       expect.objectContaining({ stageMetadata: { 0: [[0, 'a', 'b', false]] } }),
-      { immediate: true },
+      { immediate: true, unloading: false },
     );
   });
 });

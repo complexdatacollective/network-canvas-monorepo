@@ -78,7 +78,7 @@ type CapturedShellProps = {
   onSync: (
     id: string,
     session: SessionPayload,
-    options: { immediate: boolean },
+    options: { immediate: boolean; unloading: boolean },
   ) => Promise<void>;
   onStepChange: (
     step: number,
@@ -415,6 +415,7 @@ describe('InterviewRoute finish flow', () => {
     await act(async () => {
       await lastShellProps().onSync('s1', makeSyncPayload(), {
         immediate: true,
+        unloading: false,
       });
     });
 
@@ -438,6 +439,7 @@ describe('InterviewRoute finish flow', () => {
     await act(async () => {
       await onSync('s1', makeSyncPayload({ finishTime: null }), {
         immediate: true,
+        unloading: false,
       });
     });
 
@@ -528,7 +530,10 @@ describe('InterviewRoute finish flow', () => {
     const { onFinish, onStepChange, onSync } = lastShellProps();
 
     await act(async () => {
-      await onSync('s1', makeSyncPayload(), { immediate: true });
+      await onSync('s1', makeSyncPayload(), {
+        immediate: true,
+        unloading: false,
+      });
       onStepChange(2, { progress: 75, totalSteps: 4 });
       await onFinish('s1');
     });
@@ -549,7 +554,10 @@ describe('InterviewRoute finish flow', () => {
     const { onFinish, onStepChange, onSync } = lastShellProps();
 
     await act(async () => {
-      await onSync('s1', makeSyncPayload(), { immediate: true });
+      await onSync('s1', makeSyncPayload(), {
+        immediate: true,
+        unloading: false,
+      });
       onStepChange(2, { progress: 75, totalSteps: 4 });
       await onFinish('s1');
     });

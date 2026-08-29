@@ -51,10 +51,19 @@ const NAVIGATION_SAFE_AREA_CLASSNAMES = {
   vertical: 'pt-[calc(0.75rem_+_env(safe-area-inset-top))]',
 } as const;
 
-// Long enough to collapse the burst of updates one gesture can produce (an
-// automatic-layout settle dispatches one per node), short enough that a
-// participant could not put the device down inside it.
-const SYNC_BATCH_MS = 250;
+// Zero: this host never holds an answer on a timer. Anything held is an answer
+// that only the vault's encryption key can write, and the key is cleared on
+// idle lock — a wait here is a window in which answers can be lost.
+//
+// The wrapper still earns its place at zero, because collapsing does not come
+// from the wait. Writes go through its queue one at a time, and a change
+// arriving while one is on the wire replaces the pending snapshot rather than
+// queueing another write. An automatic-layout settle dispatches an update per
+// node, so a twenty-alter sociogram becomes two writes instead of twenty
+// re-encryptions of the whole network. The only unwritten window is the
+// duration of a write already in progress — exactly what writing eagerly
+// would leave, and no more.
+const SYNC_BATCH_MS = 0;
 
 type LoadState =
   | { kind: 'loading' }
@@ -275,13 +284,9 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   // sync landing after finish would otherwise rewrite it back to null and
   // un-finish the interview.
   //
-  // Writes go to a local encrypted database, so this batches only just enough
-  // to absorb the bursts the engine emits in one gesture — a sociogram's
-  // automatic layout dispatches an update per node when it settles, and each
-  // write re-encrypts the whole network. A window this short is imperceptible
-  // to a participant while collapsing a twenty-node settle to one write. The
-  // engine still forces a write through whenever one cannot be deferred, so
-  // nothing is held across an exit, a finish, or the app being backgrounded.
+  // Writes go to a local encrypted database and are never deferred — see
+  // SYNC_BATCH_MS. The wrapper is here to collapse the bursts the engine emits
+  // in one gesture, not to delay anything.
   const handleSync = useMemo<SyncHandler>(
     () =>
       createDebouncedSyncHandler(
