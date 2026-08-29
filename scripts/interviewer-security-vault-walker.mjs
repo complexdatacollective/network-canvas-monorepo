@@ -588,15 +588,18 @@ try {
       return ct !== null && !looksLikeText(ct);
     };
     // Binary assets (PNG/MOV) evade the text detector — their ciphertext
-    // must additionally be free of media magic numbers and the SVG tag.
+    // must additionally be free of media signatures AT THEIR FORMAT-DEFINED
+    // OFFSETS (a full-ciphertext substring scan of megabytes of pseudo-
+    // random bytes hits a 3-byte sequence like "PNG" by chance ~14% of the
+    // time, an intermittent false block): the PNG magic at byte 0, the
+    // MP4/MOV "ftyp" box at byte 4, and an SVG tag within the head.
     const isAssetEnvelope = (v) => {
       const ct = decodeEnvelope(v);
       if (ct === null || looksLikeText(ct)) return false;
-      return !(
-        ct.includes('PNG') ||
-        ct.includes('ftyp') ||
-        ct.includes('<svg')
-      );
+      const pngAtStart = ct.charCodeAt(0) === 0x89 && ct.slice(1, 4) === 'PNG';
+      const ftypAtFour = ct.slice(4, 8) === 'ftyp';
+      const svgInHead = ct.slice(0, 256).includes('<svg');
+      return !(pngAtStart || ftypAtFour || svgInHead);
     };
     const sessions = await readAll('sessions');
     const protocols = await readAll('protocols');

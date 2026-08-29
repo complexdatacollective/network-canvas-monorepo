@@ -26,7 +26,7 @@
     // createRequire rather than adding a root dependency.
     ".": {
       "entry": ["scripts/interviewer-*-walker.mjs"],
-      "ignoreDependencies": ["@playwright/test"]
+      "ignoreDependencies": ["@playwright/test", "jszip"]
     },
     "apps/networkcanvas.com": {
       "entry": ["lib/i18n/request.ts", "netlify/edge-functions/locale.ts"]
