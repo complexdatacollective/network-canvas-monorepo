@@ -107,11 +107,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // holders drain first. `runPreLockFlush` bounds its own wait, so a write that
   // hangs cannot keep the vault open past its idle deadline.
   //
-  // Concurrent calls share one lock rather than each opening a drain window:
-  // the idle timer can fire twice for a single deadline (its own timeout, then
-  // the visibility reconciliation on return), and a manual Lock can land on
-  // top of either. Without this, a straggler that was still draining while the
-  // participant unlocked would go on to clear the DEK that unlock installed.
+  // Concurrent calls share one drain rather than each opening their own. The
+  // idle timer can fire twice for a single deadline — its own timeout, then
+  // the visibility reconciliation on return — and a manual Lock can land on
+  // top of either, so without this every registered flush runs more than once
+  // and the vault stays open for as long as the slowest of them takes.
   const lockInFlight = useRef<Promise<void> | null>(null);
   const lock = useCallback(() => {
     lockInFlight.current ??= (async () => {
