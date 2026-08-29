@@ -63,29 +63,12 @@ const keepOnline = argv.includes('--keep-online');
 const timeoutMs = Number(arg('timeout-ms', '300000'));
 
 if (!artifactsDir) {
+  // Without an artifacts dir there is nowhere to write result.json — the
+  // one setup failure that cannot honour the structured contract.
   console.error('Missing required --artifacts <dir>');
   process.exit(3);
 }
-if (!fs.existsSync(protocolSource)) {
-  console.error(`Protocol source not found: ${protocolSource}`);
-  process.exit(3);
-}
 fs.mkdirSync(artifactsDir, { recursive: true });
-
-// The archive is BUILT from the reviewable protocol.json at run time (the
-// build-e2e-protocol.mjs pattern; a .netcanvas is a plain zip with
-// protocol.json at its root) — a committed binary could silently drift from
-// the JSON reviewers actually inspect. A prebuilt .netcanvas path is still
-// accepted for ad-hoc runs.
-let protocolPath = protocolSource;
-if (protocolSource.endsWith('.json')) {
-  const JSZip = require('jszip');
-  const zip = new JSZip();
-  zip.file('protocol.json', fs.readFileSync(protocolSource, 'utf8'));
-  const buffer = await zip.generateAsync({ type: 'nodebuffer' });
-  protocolPath = path.join(artifactsDir, 'release-smoke.netcanvas');
-  fs.writeFileSync(protocolPath, buffer);
-}
 
 // --- result recording -----------------------------------------------------
 const result = {
@@ -100,6 +83,11 @@ const consoleErrors = [];
 // Network-failure console lines are exempt ONLY while the walk has
 // deliberately cut the network — the same class while online is reportable.
 let deliberatelyOffline = false;
+function setupFailure(note) {
+  record('setup', false, note);
+  finish(3);
+}
+
 function record(step, ok, note) {
   result.steps.push({ step, ok, note });
   console.log(`${ok ? 'PASS' : 'FAIL'} ${step}${note ? ` :: ${note}` : ''}`);
@@ -113,6 +101,29 @@ function finish(code) {
   );
   console.log(JSON.stringify(result));
   process.exit(code);
+}
+
+// The archive is BUILT from the reviewable protocol.json at run time — a
+// committed binary could silently drift from the JSON reviewers inspect. A
+// prebuilt .netcanvas path is still accepted for ad-hoc runs. Failures here
+// are structured setup errors (result.json + exit 3), per the contract.
+let protocolPath = protocolSource;
+if (!fs.existsSync(protocolSource)) {
+  setupFailure(`protocol source not found: ${protocolSource}`);
+}
+if (protocolSource.endsWith('.json')) {
+  try {
+    const JSZip = require('jszip');
+    const zip = new JSZip();
+    zip.file('protocol.json', fs.readFileSync(protocolSource, 'utf8'));
+    const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+    protocolPath = path.join(artifactsDir, 'release-smoke.netcanvas');
+    fs.writeFileSync(protocolPath, buffer);
+  } catch (err) {
+    setupFailure(
+      `archive build failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 }
 
 // --- browser --------------------------------------------------------------
@@ -387,15 +398,29 @@ try {
         ),
       };
     });
+    // Named identities, not just "whatever was found": an omitted worker
+    // vanishes from the discovered list, so every() alone cannot see it.
+    // Offline-load-bearing set (all present on the live deployment):
+    // auto-layout (sociogram canvas), the fresco-ui search worker (stage
+    // navigation / roster filtering), and the export worker.
+    const EXPECTED_WORKERS = [
+      /autoLayout\.worker-/,
+      /search\.worker-/,
+      /exportWorker-/,
+    ];
+    const workerNames = (deferred.workers ?? []).map((w) => w.url);
+    const expectedPresent = EXPECTED_WORKERS.every((p) =>
+      workerNames.some((n) => p.test(n)),
+    );
     const deferredOk =
       deferred.found &&
-      deferred.autoLayoutPresent &&
+      expectedPresent &&
       deferred.workers.length > 0 &&
       deferred.workers.every((w) => w.ok);
     record(
       'deferred-chunks-offline',
       deferredOk,
-      `precache=${deferred.total ?? 0} entries; worker assets ${JSON.stringify(deferred.workers ?? [])}; autoLayout present=${deferred.autoLayoutPresent ?? false}; GeospatialSearch precached=${deferred.geospatialSearchPrecached ?? false} (observation — Geospatial is documented online-only)`,
+      `precache=${deferred.total ?? 0} entries; worker assets ${JSON.stringify(deferred.workers ?? [])}; expected workers (autoLayout/search/export) present=${expectedPresent}; GeospatialSearch precached=${deferred.geospatialSearchPrecached ?? false} (observation — Geospatial is documented online-only)`,
     );
   }
 

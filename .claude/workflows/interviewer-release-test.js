@@ -813,8 +813,9 @@ check's detail:
    "seed-before-enrolment", "stepup-interview-entry",
    "phantom-after-entry-gated-exit", "stepup-export", and
    "ciphertext-at-rest".
-5. Lock-screen guard on interview routes (recovery suppressed): step
-   "interview-route-lock-guard".
+5. Lock-screen guard on interview routes (recovery suppressed) and
+   protocol assets DECRYPTING through the app after enrolment: steps
+   "interview-route-lock-guard" and "asset-decrypts-in-app".
 6. Exit step-up and PIN rotation (cross-tab force-lock, old PIN rejected,
    exact seeded counts survive, and a session REMOUNTS under the rotated
    vault): steps "phantom-after-resume-exit", "rotate-pin",

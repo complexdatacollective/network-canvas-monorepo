@@ -327,6 +327,31 @@ async function checkPhantomStepUp(stepName) {
   );
 }
 
+// Raw store cardinalities, readable regardless of encryption state — used
+// both to seed the pre-enrolment baseline and to prove destructive wipes.
+const rawStoreCounts = () =>
+  page.evaluate(async () => {
+    const db = await new Promise((res, rej) => {
+      const req = indexedDB.open('interviewer');
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+    });
+    const count = (store) =>
+      new Promise((res, rej) => {
+        const tx = db.transaction(store, 'readonly');
+        const rq = tx.objectStore(store).count();
+        rq.onsuccess = () => res(rq.result);
+        rq.onerror = () => rej(rq.error);
+      });
+    const out = {
+      protocols: await count('protocols'),
+      sessions: await count('sessions'),
+      assets: await count('assets'),
+    };
+    db.close();
+    return out;
+  });
+
 // --- the walk -------------------------------------------------------------
 try {
   await page.goto(url);
@@ -344,10 +369,11 @@ try {
   await expect(
     page.getByRole('button', { name: 'Start new interview' }),
   ).toBeVisible({ timeout: 15_000 });
+  const preEnrol = await rawStoreCounts();
   record(
     'seed-before-enrolment',
-    true,
-    'protocol + session recorded in none mode before any vault existed',
+    preEnrol.protocols === 1 && preEnrol.sessions === 1 && preEnrol.assets > 0,
+    `seeded in none mode before any vault existed: protocols=${preEnrol.protocols} sessions=${preEnrol.sessions} assets=${preEnrol.assets}`,
   );
 
   // 1. Enrol a PIN via the 6-step wizard; the lock-behaviour step must show
@@ -644,14 +670,16 @@ try {
     // the vault existed — its envelope proves the re-encryption sweep),
     // vault-probe, and the synthetic session.
     cipher.sessionCount === 3 &&
-      cipher.protocolCount > 0 &&
-      cipher.assetCount > 0 &&
+      cipher.protocolCount === preEnrol.protocols &&
+      // EXACT seeded asset cardinality: a sweep that drops rows (leaving one
+      // enveloped asset behind) must not certify.
+      cipher.assetCount === preEnrol.assets &&
       cipher.sessionsEncrypted &&
       cipher.stageMetadataEnvelopes > 0 &&
       cipher.protocolsEncrypted &&
       cipher.assetsEncrypted &&
       !cipher.leaks,
-    `sessions=${cipher.sessionCount} (incl. the pre-enrolment row, so the re-encryption sweep is proven) protocols=${cipher.protocolCount} assets=${cipher.assetCount} sessionsEncrypted=${cipher.sessionsEncrypted} stageMetadataEnvelopes=${cipher.stageMetadataEnvelopes} protocolsEncrypted=${cipher.protocolsEncrypted} assetsEncrypted=${cipher.assetsEncrypted} plaintextLeak=${cipher.leaks}`,
+    `sessions=${cipher.sessionCount} (incl. the pre-enrolment row, so the re-encryption sweep is proven) protocols=${cipher.protocolCount} assets=${cipher.assetCount}/${preEnrol.assets} seeded sessionsEncrypted=${cipher.sessionsEncrypted} stageMetadataEnvelopes=${cipher.stageMetadataEnvelopes} protocolsEncrypted=${cipher.protocolsEncrypted} assetsEncrypted=${cipher.assetsEncrypted} plaintextLeak=${cipher.leaks}`,
   );
 
   // 5. Lock-screen guard on interview routes: re-enter the interview, reload,
@@ -675,6 +703,21 @@ try {
   await shot('interview-route-lock');
   await unlockPin(PIN);
   await expectStageMounted();
+  // Assets must DECRYPT through the app, not merely look enveloped at rest:
+  // the sample protocol's first Information stage renders its logo image
+  // (assetManifest entry 1 of 10) via the interview's asset resolver, which
+  // reads and decrypts the stored asset row. A rewritten/undecryptable row
+  // yields no rendered blob image.
+  const assetRendered = await page
+    .locator('img[src^="blob:"]')
+    .first()
+    .evaluate((el) => el.naturalWidth > 0 && el.naturalHeight > 0)
+    .catch(() => false);
+  record(
+    'asset-decrypts-in-app',
+    assetRendered,
+    `protocol asset resolved and rendered through the app after enrolment (blob image with non-zero intrinsic size=${assetRendered})`,
+  );
   record(
     'interview-route-lock-guard',
     recoverSuppressed,
@@ -849,30 +892,7 @@ try {
   const noLockAfterRevoke =
     (await page.getByRole('heading', { name: 'Welcome back' }).count()) === 0;
   // The visible 0/0 counters read from indexes — the wipe's promise is the
-  // RAW stores (assets included: the sample protocol definitely created
-  // asset rows). Inspect every data store directly.
-  const rawStoreCounts = () =>
-    page.evaluate(async () => {
-      const db = await new Promise((res, rej) => {
-        const req = indexedDB.open('interviewer');
-        req.onsuccess = () => res(req.result);
-        req.onerror = () => rej(req.error);
-      });
-      const count = (store) =>
-        new Promise((res, rej) => {
-          const tx = db.transaction(store, 'readonly');
-          const rq = tx.objectStore(store).count();
-          rq.onsuccess = () => res(rq.result);
-          rq.onerror = () => rej(rq.error);
-        });
-      const out = {
-        protocols: await count('protocols'),
-        sessions: await count('sessions'),
-        assets: await count('assets'),
-      };
-      db.close();
-      return out;
-    });
+  // RAW stores (assets included). rawStoreCounts inspects them directly.
   const afterRevoke = await rawStoreCounts();
   const wiped =
     (await page
