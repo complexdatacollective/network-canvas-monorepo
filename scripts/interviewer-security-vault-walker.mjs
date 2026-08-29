@@ -760,7 +760,7 @@ try {
       // lost its kind/mime, or gained an unknown one, fails here.
       assetKinds: [
         ...new Set(assets.map((a) => a._enc?.data?.kind ?? 'missing')),
-      ].sort(),
+      ].toSorted((x, y) => String(x).localeCompare(String(y))),
       assetKindsWellFormed: assets.every((a) => {
         const k = a._enc?.data?.kind;
         if (k !== 'blob' && k !== 'string') return false;
