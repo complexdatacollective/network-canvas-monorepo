@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getRouteApi, Link } from '@tanstack/react-router';
+import { getRouteApi, Link, useBlocker } from '@tanstack/react-router';
 import { ArrowDown, ArrowLeft, ArrowUp, Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -71,13 +71,35 @@ export default function Editor() {
   const [reconcilingMove, setReconcilingMove] = useState(false);
   const [moveRecoveryFailed, setMoveRecoveryFailed] = useState(false);
   const selectionInitialized = useRef(false);
-  const selectionRequestPending = useRef(false);
+  const discardRequestPending = useRef(false);
   const draft = useQuery(orpc.protocols.draft.queryOptions({ input: params }));
   const stages = useMemo(
     () => (draft.data ? stageOrder(draft.data.sections) : []),
     [draft.data],
   );
   const draftValidation = useDraftValidation(draft.data?.sections);
+
+  const confirmDiscardStageChanges = useCallback(
+    async (description: string) => {
+      if (discardRequestPending.current) return false;
+
+      discardRequestPending.current = true;
+      try {
+        const result = await confirm({
+          title: 'Discard unsaved screen changes?',
+          description,
+          confirmLabel: 'Discard changes',
+          cancelLabel: 'Keep editing',
+          intent: 'destructive',
+          onConfirm: () => undefined,
+        });
+        return result === true;
+      } finally {
+        discardRequestPending.current = false;
+      }
+    },
+    [confirm],
+  );
 
   const requestSelection = useCallback(
     async (nextSelection: Selection) => {
@@ -86,32 +108,36 @@ export default function Editor() {
         (nextSelection.kind !== 'stage' ||
           (selection.kind === 'stage' &&
             nextSelection.stageId === selection.stageId));
-      if (unchanged || selectionRequestPending.current) return;
+      if (unchanged) return;
 
-      if (!stageFormDirty) {
-        setSelection(nextSelection);
+      if (
+        stageFormDirty &&
+        !(await confirmDiscardStageChanges(
+          'The values in this screen have not been saved. Discard them and open another section?',
+        ))
+      ) {
         return;
       }
 
-      selectionRequestPending.current = true;
-      try {
-        await confirm({
-          title: 'Discard unsaved screen changes?',
-          description:
-            'The values in this screen have not been saved. Discard them and open another section?',
-          confirmLabel: 'Discard changes',
-          cancelLabel: 'Keep editing',
-          intent: 'destructive',
-          onConfirm: () => {
-            setSelection(nextSelection);
-          },
-        });
-      } finally {
-        selectionRequestPending.current = false;
-      }
+      setSelection(nextSelection);
     },
-    [confirm, selection, stageFormDirty],
+    [confirmDiscardStageChanges, selection, stageFormDirty],
   );
+
+  const shouldBlockNavigation = useCallback(async () => {
+    if (!stageFormDirty) return false;
+
+    const shouldDiscard = await confirmDiscardStageChanges(
+      'The values in this screen have not been saved. Discard them and leave the protocol editor?',
+    );
+    return !shouldDiscard;
+  }, [confirmDiscardStageChanges, stageFormDirty]);
+
+  useBlocker({
+    shouldBlockFn: shouldBlockNavigation,
+    enableBeforeUnload: stageFormDirty,
+    disabled: !stageFormDirty,
+  });
 
   useEffect(() => {
     if (draft.data && !selectionInitialized.current) {

@@ -61,17 +61,29 @@ vi.mock('../../lib/auth.ts', () => ({
       data: { user: { name: 'Researcher', email: 'r@example.com' } },
       isPending: false,
     }),
-    useListOrganizations: vi.fn(),
+    useListOrganizations: vi.fn().mockReturnValue({
+      data: [],
+      error: null,
+      isPending: false,
+    }),
     signOut: vi.fn(),
   },
 }));
 
 vi.mock('../../lib/api.ts', () => ({
   orpc: {
-    status: { queryOptions: vi.fn() },
+    status: {
+      queryOptions: () => ({
+        queryKey: ['status'],
+        queryFn: async () => ({ name: 'Studio', version: 'test' }),
+      }),
+    },
     protocols: {
       list: {
-        queryOptions: vi.fn(),
+        queryOptions: () => ({
+          queryKey: ['protocols'],
+          queryFn: async () => [],
+        }),
         key: () => ['protocols'],
       },
       create: { mutationOptions: vi.fn() },
@@ -147,7 +159,7 @@ function renderEditor() {
       ],
     }),
   );
-  return render(
+  const result = render(
     <QueryClientProvider
       client={
         new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -156,6 +168,7 @@ function renderEditor() {
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
+  return { ...result, router };
 }
 
 describe('Studio editor shell', () => {
@@ -302,9 +315,69 @@ describe('Studio editor shell', () => {
     fireEvent.click(
       await screen.findByRole('button', { name: 'Discard changes' }),
     );
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Screen name' })).toHaveValue(
+        'Follow-up',
+      ),
+    );
+  });
+
+  it('rebases the dirty baseline after a successful save', async () => {
+    const commit = deferred<{ sequence: string; hash: string }>();
+    vi.mocked(rpcClient.protocols.commitSection).mockReturnValueOnce(
+      commit.promise,
+    );
+    renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    fireEvent.change(label, { target: { value: 'Saved welcome' } });
+    const save = screen.getByRole('button', { name: 'Save screen' });
+    fireEvent.click(save);
+
+    await waitFor(() =>
+      expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(1),
+    );
+    await act(async () => {
+      commit.resolve({ sequence: '3', hash: 'revision-3' });
+      await commit.promise;
+    });
+    await waitFor(() => expect(save).toBeEnabled());
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Follow-upInformation' }),
+    );
+
+    expect(
+      screen.queryByRole('heading', {
+        name: 'Discard unsaved screen changes?',
+      }),
+    ).not.toBeInTheDocument();
     expect(
       await screen.findByRole('textbox', { name: 'Screen name' }),
     ).toHaveValue('Follow-up');
+  });
+
+  it('asks before leaving the editor with unsaved screen values', async () => {
+    const { router } = renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    fireEvent.change(label, { target: { value: 'Unsaved welcome' } });
+
+    fireEvent.click(screen.getByRole('link', { name: 'Back to protocols' }));
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Discard unsaved screen changes?',
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    await waitFor(() =>
+      expect(router.state.location.pathname).toContain('/drafts/'),
+    );
+    expect(label).toHaveValue('Unsaved welcome');
+
+    fireEvent.click(screen.getByRole('link', { name: 'Back to protocols' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
   });
 
   it('blocks another add attempt until an ambiguous failure is reconciled', async () => {
