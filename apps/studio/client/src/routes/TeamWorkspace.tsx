@@ -39,6 +39,29 @@ type ProtocolCreationAttempt = {
   protocolId: string;
   draftId: string;
 };
+
+type TeamRefreshRecovery = {
+  recoveredText: string;
+};
+
+type TeamMutationOutcome = {
+  commit: 'confirmed' | 'unknown';
+  refreshed: boolean;
+};
+
+async function reconcileTeamMutation<Result>(
+  mutation: () => Promise<Result>,
+  refresh: () => Promise<boolean>,
+): Promise<TeamMutationOutcome> {
+  let commit: TeamMutationOutcome['commit'] = 'confirmed';
+  try {
+    await mutation();
+  } catch {
+    commit = 'unknown';
+  }
+  return { commit, refreshed: await refresh() };
+}
+
 const TEAM_ROLE_OPTIONS = TEAM_ROLES.map((role) => ({
   value: role,
   label: roleLabel(role),
@@ -390,11 +413,17 @@ function TeamManagement(props: {
 }) {
   const activeTeam = authClient.useActiveOrganization();
   const activeMember = authClient.useActiveMember();
+  const team =
+    activeTeam.data?.id === props.team.id ? activeTeam.data : props.team;
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
   const [cancellingInvitationId, setCancellingInvitationId] = useState<
     string | null
   >(null);
   const [inviteFormKey, setInviteFormKey] = useState(0);
+  const [refreshRecovery, setRefreshRecovery] = useState<
+    TeamRefreshRecovery | undefined
+  >();
+  const [refreshingTeamDetails, setRefreshingTeamDetails] = useState(false);
   const [message, setMessage] = useState<
     { kind: 'success' | 'error'; text: string } | undefined
   >();
@@ -405,64 +434,132 @@ function TeamManagement(props: {
   const assignableRoles = canAssignOwner
     ? TEAM_ROLE_OPTIONS
     : TEAM_ROLE_OPTIONS.filter((role) => role.value !== 'owner');
-  const pendingInvitations = props.team.invitations.filter(
+  const pendingInvitations = team.invitations.filter(
     (invitation) =>
       invitation.status === 'pending' &&
       invitation.expiresAt.getTime() > Date.now(),
   );
 
-  const reconcileInvitations = async () => {
-    try {
-      await activeTeam.refetch();
-    } catch {
-      // Preserve the original invitation failure when reconciliation also
-      // fails. The next active-team refresh can still recover the list.
+  const refreshTeamState = async () => {
+    const results = await Promise.allSettled([
+      Promise.resolve().then(() => activeTeam.refetch()),
+      Promise.resolve().then(() => activeMember.refetch()),
+    ]);
+    return results.every((result) => result.status === 'fulfilled');
+  };
+
+  const retryTeamRefresh = async () => {
+    const recovery = refreshRecovery;
+    if (!recovery) return;
+    setRefreshingTeamDetails(true);
+    if (await refreshTeamState()) {
+      setRefreshRecovery(undefined);
+      setMessage({ kind: 'success', text: recovery.recoveredText });
     }
+    setRefreshingTeamDetails(false);
   };
 
   const updateRole = async (memberId: string, role: TeamRole) => {
     setUpdatingMemberId(memberId);
     setMessage(undefined);
-    try {
-      await rpcClient.team.updateMemberRole({
-        teamId: props.team.id,
-        memberId,
-        role,
-      });
-      await Promise.all([activeTeam.refetch(), activeMember.refetch()]);
-      setMessage({ kind: 'success', text: 'Team role updated.' });
-    } catch {
-      setMessage({
-        kind: 'error',
-        text: 'The team role could not be changed. Check that the team still has an owner, then try again.',
-      });
-    } finally {
+    setRefreshRecovery(undefined);
+    const outcome = await reconcileTeamMutation(
+      () =>
+        rpcClient.team.updateMemberRole({
+          teamId: team.id,
+          memberId,
+          role,
+        }),
+      refreshTeamState,
+    );
+    if (outcome.commit === 'unknown') {
+      if (outcome.refreshed) {
+        setMessage({
+          kind: 'error',
+          text: 'Studio could not confirm whether the team role changed. Team details were refreshed; review the current role before making another change.',
+        });
+      } else {
+        setMessage({
+          kind: 'error',
+          text: 'Studio could not confirm whether the team role changed, and team details could not be refreshed. Refresh them before making another change.',
+        });
+        setRefreshRecovery({
+          recoveredText:
+            'Team details refreshed. Review the current role before making another change.',
+        });
+      }
       setUpdatingMemberId(null);
+      return;
     }
+
+    if (outcome.refreshed) {
+      setMessage({ kind: 'success', text: 'Team role updated.' });
+    } else {
+      setMessage({
+        kind: 'success',
+        text: 'Team role updated, but the latest team details could not be refreshed.',
+      });
+      setRefreshRecovery({
+        recoveredText: 'Team role updated. Team details refreshed.',
+      });
+    }
+    setUpdatingMemberId(null);
   };
 
   const cancelInvitation = async (invitationId: string, email: string) => {
     setCancellingInvitationId(invitationId);
     setMessage(undefined);
-    try {
-      await rpcClient.team.cancelInvitation({
-        teamId: props.team.id,
-        invitationId,
-      });
-      await activeTeam.refetch();
+    setRefreshRecovery(undefined);
+    const outcome = await reconcileTeamMutation(
+      () =>
+        rpcClient.team.cancelInvitation({
+          teamId: team.id,
+          invitationId,
+        }),
+      refreshTeamState,
+    );
+    if (outcome.commit === 'unknown') {
+      if (outcome.refreshed) {
+        setMessage({
+          kind: 'error',
+          text: 'Studio could not confirm whether the invitation was cancelled. Team details were refreshed; check the pending invitations before trying again.',
+        });
+      } else {
+        setMessage({
+          kind: 'error',
+          text: 'Studio could not confirm whether the invitation was cancelled, and team details could not be refreshed. Refresh them before trying again.',
+        });
+        setRefreshRecovery({
+          recoveredText:
+            'Team details refreshed. Check the pending invitations before trying again.',
+        });
+      }
+      setCancellingInvitationId(null);
+      return;
+    }
+
+    if (outcome.refreshed) {
       setMessage({
         kind: 'success',
         text: `Invitation cancelled for ${email}.`,
       });
-    } catch {
+    } else {
       setMessage({
-        kind: 'error',
-        text: 'The invitation could not be cancelled. Wait a moment and try again.',
+        kind: 'success',
+        text: `Invitation cancelled for ${email}, but pending invitations could not be refreshed.`,
       });
-    } finally {
-      setCancellingInvitationId(null);
+      setRefreshRecovery({
+        recoveredText: `Invitation cancelled for ${email}. Team details refreshed.`,
+      });
     }
+    setCancellingInvitationId(null);
   };
+
+  const teamMutationBlocked =
+    updatingMemberId !== null ||
+    cancellingInvitationId !== null ||
+    refreshingTeamDetails ||
+    refreshRecovery !== undefined;
 
   return (
     <div className="flex flex-col gap-6">
@@ -478,8 +575,8 @@ function TeamManagement(props: {
             </Paragraph>
           </div>
           <Badge variant="secondary">
-            {props.team.members.length}{' '}
-            {props.team.members.length === 1 ? 'member' : 'members'}
+            {team.members.length}{' '}
+            {team.members.length === 1 ? 'member' : 'members'}
           </Badge>
         </div>
 
@@ -489,6 +586,17 @@ function TeamManagement(props: {
             variant={message.kind === 'error' ? 'destructive' : 'default'}
           >
             <span role="status">{message.text}</span>
+            {refreshRecovery && (
+              <Button
+                className="mt-3"
+                size="sm"
+                variant="outline"
+                disabled={refreshingTeamDetails}
+                onClick={() => void retryTeamRefresh()}
+              >
+                Refresh team details
+              </Button>
+            )}
           </Alert>
         )}
 
@@ -501,7 +609,7 @@ function TeamManagement(props: {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {props.team.members.map((member) => {
+            {team.members.map((member) => {
               const name = member.user.name || member.user.email;
               const memberIsOwner = member.role
                 .split(',')
@@ -532,7 +640,7 @@ function TeamManagement(props: {
                           size="sm"
                           value={member.role}
                           options={assignableRoles}
-                          disabled={updatingMemberId !== null}
+                          disabled={teamMutationBlocked}
                           onChange={(value) => {
                             if (!isTeamRole(value)) {
                               setMessage({
@@ -579,29 +687,61 @@ function TeamManagement(props: {
                   formErrors: ['Choose a valid role for this invitation.'],
                 };
               }
+              if (refreshRecovery) {
+                return {
+                  success: false,
+                  formErrors: [
+                    'Refresh team details before creating another invitation.',
+                  ],
+                };
+              }
               setMessage(undefined);
-              try {
-                await rpcClient.team.createInvitation({
-                  teamId: props.team.id,
-                  email,
-                  role,
-                });
-                await activeTeam.refetch();
+              const outcome = await reconcileTeamMutation(
+                () =>
+                  rpcClient.team.createInvitation({
+                    teamId: team.id,
+                    email,
+                    role,
+                  }),
+                refreshTeamState,
+              );
+              if (outcome.commit === 'unknown') {
+                if (!outcome.refreshed) {
+                  setMessage({
+                    kind: 'error',
+                    text: 'Studio could not confirm the invitation, and team details could not be refreshed.',
+                  });
+                  setRefreshRecovery({
+                    recoveredText:
+                      'Team details refreshed. Check the pending invitations before trying again.',
+                  });
+                }
+                return {
+                  success: false,
+                  formErrors: [
+                    outcome.refreshed
+                      ? 'Studio could not confirm the invitation. Pending invitations were refreshed; check the list before trying again.'
+                      : 'Refresh team details before trying to create another invitation.',
+                  ],
+                };
+              }
+
+              if (outcome.refreshed) {
                 setMessage({
                   kind: 'success',
                   text: `Invitation created for ${email}. Email delivery is queued.`,
                 });
-                setInviteFormKey((key) => key + 1);
-                return { success: true };
-              } catch {
-                await reconcileInvitations();
-                return {
-                  success: false,
-                  formErrors: [
-                    'Studio could not confirm the invitation. Pending invitations were refreshed; check the list before trying again.',
-                  ],
-                };
+              } else {
+                setMessage({
+                  kind: 'success',
+                  text: `Invitation created for ${email}. Email delivery is queued, but pending invitations could not be refreshed.`,
+                });
+                setRefreshRecovery({
+                  recoveredText: `Invitation created for ${email}. Team details refreshed.`,
+                });
               }
+              setInviteFormKey((key) => key + 1);
+              return { success: true };
             }}
           >
             <Field
@@ -658,7 +798,7 @@ function TeamManagement(props: {
                         variant="text"
                         color="destructive"
                         aria-label={`Cancel invitation for ${invitation.email}`}
-                        disabled={cancellingInvitationId !== null}
+                        disabled={teamMutationBlocked}
                         onClick={() =>
                           void cancelInvitation(invitation.id, invitation.email)
                         }

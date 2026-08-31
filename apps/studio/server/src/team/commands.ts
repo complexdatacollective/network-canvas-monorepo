@@ -329,8 +329,9 @@ export async function cancelTeamInvitation(
     }
     if (!invitation.role) throw new TeamCommandError('INVALID_ROLE');
     const roles = parseRoles(invitation.role);
-    if (roles.length !== 1) throw new TeamCommandError('INVALID_ROLE');
-    const role = roles[0]!;
+    // Better Auth historically stored role arrays as comma-separated values.
+    // Cancellation stays available for those rows, while acceptance below
+    // deliberately remains limited to one role for one new membership.
     await store.cancelInvitation(
       client,
       context.tenantDb.teamId,
@@ -338,11 +339,12 @@ export async function cancelTeamInvitation(
     );
     const event = {
       ...auditEventContext(auditContext),
+      eventVersion: 2,
       eventType: 'team.invitation.cancelled',
       subjectType: 'team_invitation',
       subjectId: invitation.id,
       subjectLabel: invitation.email,
-      details: { role },
+      details: { roles },
     } satisfies AuditEventInput;
     return {
       result: { invitationId: invitation.id, status: 'canceled' as const },

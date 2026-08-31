@@ -31,6 +31,15 @@ const CommonTeamAccessSucceededV1EventSchema =
     outcome: z.literal('succeeded'),
   }).strict();
 
+const CommonTeamAccessSucceededV2EventSchema = CommonUserEventSchema.extend({
+  eventVersion: z.literal(2),
+  category: z.literal('team_access'),
+  outcome: z.literal('succeeded'),
+  resourceType: z.null(),
+  resourceId: z.null(),
+  resourceLabel: z.null(),
+}).strict();
+
 const CommonTeamAccessDeniedV1EventSchema =
   CommonTeamAccessV1EventSchema.extend({
     outcome: z.literal('denied'),
@@ -69,6 +78,17 @@ const TeamInvitationCancelledV1EventSchema =
     subjectId: IdentifierSchema,
     subjectLabel: z.email().max(320),
     details: z.strictObject({ role: TeamRoleSchema }),
+  }).strict();
+
+const TeamInvitationCancelledV2EventSchema =
+  CommonTeamAccessSucceededV2EventSchema.extend({
+    eventType: z.literal('team.invitation.cancelled'),
+    subjectType: z.literal('team_invitation'),
+    subjectId: IdentifierSchema,
+    subjectLabel: z.email().max(320),
+    details: z.strictObject({
+      roles: z.array(TeamRoleSchema).min(1).max(3),
+    }),
   }).strict();
 
 const TeamInvitationAcceptedV1EventSchema =
@@ -204,6 +224,7 @@ export const AuditEventInputSchema = z.union([
   DeniedAttemptsRateLimitedV1EventSchema,
   TeamInvitationCreatedV1EventSchema,
   TeamInvitationCancelledV1EventSchema,
+  TeamInvitationCancelledV2EventSchema,
   TeamInvitationAcceptedV1EventSchema,
   TeamInvitationAcceptanceDeniedV1EventSchema,
   TeamInvitationAcceptanceFailedV1EventSchema,
@@ -212,11 +233,11 @@ export const AuditEventInputSchema = z.union([
 ]);
 
 export type AuditEventInput = z.infer<typeof AuditEventInputSchema>;
-export type AuditEventKey = AuditEventInput extends infer Event
-  ? Event extends AuditEventInput
+type AuditEventKeyFor<Event extends AuditEventInput> =
+  Event extends AuditEventInput
     ? `${Event['eventType']}@${Event['eventVersion']}`
-    : never
-  : never;
+    : never;
+export type AuditEventKey = AuditEventKeyFor<AuditEventInput>;
 
 type AuditEventDefinition = {
   inputSchema: z.ZodType<AuditEventInput>;
@@ -239,6 +260,16 @@ const FIXTURE_USER_COMMON = {
 const FIXTURE_TEAM_ACCESS_V1_COMMON = {
   ...FIXTURE_USER_COMMON,
   eventVersion: 1,
+  category: 'team_access',
+  outcome: 'succeeded',
+  resourceType: null,
+  resourceId: null,
+  resourceLabel: null,
+} as const;
+
+const FIXTURE_TEAM_ACCESS_V2_COMMON = {
+  ...FIXTURE_USER_COMMON,
+  eventVersion: 2,
   category: 'team_access',
   outcome: 'succeeded',
   resourceType: null,
@@ -371,6 +402,21 @@ export const AUDIT_EVENT_REGISTRY = {
       details: { role: 'member' },
     },
   },
+  'team.invitation.cancelled@2': {
+    inputSchema: TeamInvitationCancelledV2EventSchema,
+    title: 'Invitation cancelled',
+    detailFields: ['roles'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V2_COMMON,
+      eventType: 'team.invitation.cancelled',
+      subjectType: 'team_invitation',
+      subjectId: 'fixture-invitation',
+      subjectLabel: 'invitee@example.com',
+      details: { roles: ['admin', 'member'] },
+    },
+  },
   'team.invitation.accepted@1': {
     inputSchema: TeamInvitationAcceptedV1EventSchema,
     title: 'Invitation accepted',
@@ -456,14 +502,15 @@ export const AUDIT_EVENT_REGISTRY = {
   },
 } as const satisfies Record<AuditEventKey, AuditEventDefinition>;
 
-export function auditEventKey(
-  event: Pick<AuditEventInput, 'eventType' | 'eventVersion'>,
-): AuditEventKey {
-  return `${event.eventType}@${event.eventVersion}`;
+export function auditEventKey(event: AuditEventInput): AuditEventKey {
+  if (event.eventVersion === 2) {
+    return 'team.invitation.cancelled@2';
+  }
+  return `${event.eventType}@1`;
 }
 
 export function auditEventDefinition(
-  event: Pick<AuditEventInput, 'eventType' | 'eventVersion'>,
+  event: AuditEventInput,
 ): (typeof AUDIT_EVENT_REGISTRY)[AuditEventKey] {
   return AUDIT_EVENT_REGISTRY[auditEventKey(event)];
 }

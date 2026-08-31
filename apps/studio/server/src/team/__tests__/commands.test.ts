@@ -412,6 +412,22 @@ describe.skipIf(!db)('audited team commands', () => {
       },
     },
     {
+      label: 'legacy multi-role invitation',
+      errorCode: 'INVALID_ROLE',
+      failureCode: 'invalid_role',
+      arrange: async (
+        teamId: string,
+        invitationId: string,
+        invitee: Identity,
+      ) => {
+        await pool.query(
+          `UPDATE team_invitations SET role = 'admin,member' WHERE team_id = $1 AND id = $2`,
+          [teamId, invitationId],
+        );
+        await seedUser(pool, invitee);
+      },
+    },
+    {
       label: 'existing membership conflict',
       errorCode: 'CONFLICT',
       failureCode: 'conflict',
@@ -425,8 +441,8 @@ describe.skipIf(!db)('audited team commands', () => {
     },
   ] as const)(
     'records an immutable failed event for an authorized $label',
-    async ({ errorCode, failureCode, arrange }) => {
-      const teamId = `command-accept-failed-${failureCode}`;
+    async ({ label, errorCode, failureCode, arrange }) => {
+      const teamId = `command-accept-failed-${label.replaceAll(' ', '-')}`;
       const invitationId = randomUUID();
       await seedTeam(pool, teamId);
       const owner = identity(teamId, 'owner', 'owner');
@@ -1236,12 +1252,57 @@ describe.skipIf(!db)('audited team commands', () => {
       {
         event_type: 'team.invitation.cancelled',
         subject_label: 'invitee@example.com',
-        details: { role: 'admin' },
+        details: { roles: ['admin'] },
       },
     ]);
     expect(JSON.stringify(events.rows)).not.toMatch(
       /token|magic|password|requestBody/i,
     );
+  });
+
+  it('cancels and completely audits a legacy multi-role invitation', async () => {
+    const teamId = 'command-cancel-legacy-multi-role';
+    const invitationId = randomUUID();
+    await seedTeam(pool, teamId);
+    const owner = identity(teamId, 'owner', 'owner');
+    const invitee = identity(teamId, 'invitee', 'member');
+    await seedIdentity(pool, teamId, owner);
+    await seedInvitation(pool, {
+      id: invitationId,
+      teamId,
+      inviterId: owner.userId,
+      email: invitee.email,
+      role: invitee.role,
+    });
+    await pool.query(
+      `UPDATE team_invitations SET role = 'admin,member' WHERE team_id = $1 AND id = $2`,
+      [teamId, invitationId],
+    );
+
+    await expect(
+      cancelTeamInvitation(
+        {
+          tenantDb: createTenantDb(app, teamId),
+          principal: principal(owner),
+          requestId: randomUUID(),
+        },
+        { invitationId },
+      ),
+    ).resolves.toEqual({ invitationId, status: 'canceled' });
+
+    expect(
+      await pool.query(
+        `SELECT event_type, event_version, details
+         FROM audit_events WHERE team_id = $1`,
+        [teamId],
+      ),
+    ).toHaveProperty('rows', [
+      {
+        event_type: 'team.invitation.cancelled',
+        event_version: 2,
+        details: { roles: ['admin', 'member'] },
+      },
+    ]);
   });
 
   it('rolls the member update back when the audit insert fails', async () => {

@@ -6,7 +6,14 @@ import {
   auditEventKey,
   AuditEventInputSchema,
   parseAuditEventInput,
+  type AuditEventKey,
 } from '../events.ts';
+
+const retainedV2Key: AuditEventKey = 'team.invitation.cancelled@2';
+// @ts-expect-error -- event versions belong only to their registered event type.
+const invalidCrossProductKey: AuditEventKey = 'protocol.created@2';
+void retainedV2Key;
+void invalidCrossProductKey;
 
 describe('audit event registry', () => {
   it('has a complete valid definition and fixture for every event type', () => {
@@ -18,6 +25,7 @@ describe('audit event registry', () => {
       'team.invitation.acceptance_failed@1',
       'team.invitation.accepted@1',
       'team.invitation.cancelled@1',
+      'team.invitation.cancelled@2',
       'team.invitation.created@1',
       'team.member.role_change_denied@1',
       'team.member.role_change_failed@1',
