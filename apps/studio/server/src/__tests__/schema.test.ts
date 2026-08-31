@@ -79,10 +79,12 @@ describe('generated schema documentation', () => {
     expect(readmeSection).toContain('sections_immutable');
     expect(readmeSection).toContain('version_sections_insert_frozen');
     expect(readmeSection).toContain('audit_events_immutable');
+    expect(readmeSection).toContain('audit_team_isolation');
     expect(readmeSection).toContain(
       'Revokes UPDATE, DELETE, TRUNCATE from studio_app, studio_maintenance',
     );
     expect(svg).toContain('RLS policy team_isolation');
+    expect(svg).toContain('RLS policy audit_team_isolation');
     expect(svg).toContain('sidecar trigger sections_immutable');
     expect(svg).toContain('sidecar trigger audit_events_immutable');
   });

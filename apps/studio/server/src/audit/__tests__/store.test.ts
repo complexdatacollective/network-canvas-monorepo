@@ -78,6 +78,7 @@ describe.skipIf(!db)('immutable audit store', () => {
       'audit-lock-b',
       'audit-predicate-low',
       'audit-predicate-high',
+      'audit-timestamp',
     ]) {
       await seedTeam(pool, teamId);
     }
@@ -166,6 +167,17 @@ describe.skipIf(!db)('immutable audit store', () => {
       'rowCount',
       0,
     );
+    const maintenanceClient = await maintenance.connect();
+    try {
+      expect(
+        await store.listForTeam(maintenanceClient, 'audit-a'),
+      ).toHaveLength(0);
+      await expect(
+        store.append(maintenanceClient, invitationEvent('audit-a')),
+      ).rejects.toMatchObject({ code: '42501' });
+    } finally {
+      maintenanceClient.release();
+    }
     await expect(
       tenantA.transaction((client) =>
         store.append(client, invitationEvent('audit-b')),
@@ -179,6 +191,43 @@ describe.skipIf(!db)('immutable audit store', () => {
     } finally {
       ownerClient.release();
     }
+  });
+
+  it('records the insertion statement time rather than transaction start', async () => {
+    const tenant = createTenantDb(app, 'audit-timestamp');
+    const { transactionStarted, occurredAt } = await tenant.transaction(
+      async (client) => {
+        const started = await client.query<{ value: Date }>(
+          `SELECT transaction_timestamp() AS value`,
+        );
+        await client.query(`SELECT pg_sleep(0.02)`);
+        const event = await store.append(
+          client,
+          invitationEvent('audit-timestamp'),
+        );
+        return {
+          transactionStarted: started.rows[0]?.value,
+          occurredAt: event.occurredAt,
+        };
+      },
+    );
+    expect(transactionStarted).toBeInstanceOf(Date);
+    expect(occurredAt.getTime()).toBeGreaterThan(
+      transactionStarted?.getTime() ?? Number.POSITIVE_INFINITY,
+    );
+  });
+
+  it('keeps the unique sequence index and a separate chronological index', async () => {
+    const indexes = await pool.query<{ indexname: string }>(
+      `SELECT indexname FROM pg_indexes
+       WHERE schemaname = current_schema() AND tablename = 'audit_events'`,
+    );
+    const names = indexes.rows.map(({ indexname }) => indexname);
+    expect(names).toContain('audit_events_team_id_sequence_idx');
+    expect(names).toContain(
+      'audit_events_team_id_occurred_at_sequence_desc_idx',
+    );
+    expect(names).not.toContain('audit_events_team_id_sequence_desc_idx');
   });
 
   it('allocates a complete unique sequence under same-team concurrency', async () => {

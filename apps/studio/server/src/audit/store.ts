@@ -9,6 +9,21 @@ import { parseAuditEventInput, type AuditEventInput } from './events.ts';
 // unique team/sequence index remains the correctness backstop.
 export const AUDIT_SEQUENCE_LOCK_SEED = 4_021_775_688_147_131n;
 
+/**
+ * Serializes every audited command for one team before it reads or mutates
+ * domain state. Append calls this too so direct store callers retain safe
+ * sequence allocation; transaction-scoped advisory locks are re-entrant.
+ */
+export async function lockAuditTeam(
+  client: pg.PoolClient,
+  teamId: string,
+): Promise<void> {
+  await client.query(
+    `SELECT pg_advisory_xact_lock(hashtextextended($1, $2::bigint))`,
+    [teamId, AUDIT_SEQUENCE_LOCK_SEED.toString()],
+  );
+}
+
 export type AuditEvent = AuditEventInput & {
   id: string;
   sequence: string;
@@ -53,10 +68,7 @@ export class AuditStore {
     unvalidatedEvent: AuditEventInput,
   ): Promise<AuditEvent> {
     const event = parseAuditEventInput(unvalidatedEvent);
-    await client.query(
-      `SELECT pg_advisory_xact_lock(hashtextextended($1, $2::bigint))`,
-      [event.teamId, AUDIT_SEQUENCE_LOCK_SEED.toString()],
-    );
+    await lockAuditTeam(client, event.teamId);
     const previous = await client.query<{ sequence: string }>(
       `SELECT COALESCE(MAX(sequence), 0)::text AS sequence
        FROM audit_events

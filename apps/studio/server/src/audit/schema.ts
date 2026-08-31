@@ -4,6 +4,7 @@ import {
   check,
   index,
   jsonb,
+  pgPolicy,
   pgTable,
   smallint,
   text,
@@ -13,10 +14,20 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import {
-  teamIsolationPolicy,
+  TEAM_GUC,
   tenantTablesSql,
   TENANT_ROLES,
 } from '@codaco/studio-sync/rls';
+
+const AUDIT_TEAM_ISOLATION_PREDICATE = `team_id = NULLIF(current_setting('${TEAM_GUC}', true), '')`;
+
+function auditTeamIsolationPolicy() {
+  return pgPolicy('audit_team_isolation', {
+    for: 'all',
+    using: sql.raw(AUDIT_TEAM_ISOLATION_PREDICATE),
+    withCheck: sql.raw(AUDIT_TEAM_ISOLATION_PREDICATE),
+  });
+}
 
 const auditEvents = pgTable(
   'audit_events',
@@ -28,7 +39,7 @@ const auditEvents = pgTable(
     sequence: bigint('sequence', { mode: 'bigint' }).notNull(),
     occurredAt: timestamp('occurred_at', { withTimezone: true })
       .notNull()
-      .defaultNow(),
+      .default(sql`statement_timestamp()`),
     eventType: text('event_type').notNull(),
     eventVersion: smallint('event_version').notNull(),
     category: text('category').notNull(),
@@ -50,8 +61,9 @@ const auditEvents = pgTable(
       table.teamId,
       table.sequence,
     ),
-    index('audit_events_team_id_sequence_desc_idx').on(
+    index('audit_events_team_id_occurred_at_sequence_desc_idx').on(
       table.teamId,
+      table.occurredAt.desc(),
       table.sequence.desc(),
     ),
     index('audit_events_team_id_event_type_sequence_desc_idx').on(
@@ -104,7 +116,10 @@ const auditEvents = pgTable(
       'audit_events_details_object_check',
       sql`jsonb_typeof(${table.details}) = 'object'`,
     ),
-    teamIsolationPolicy(),
+    // Audit reads and writes always require explicit team context, including
+    // maintenance jobs. Unlike mutable tenant data, an accidental unscoped
+    // maintenance query must not be able to enumerate every team's history.
+    auditTeamIsolationPolicy(),
   ],
 );
 

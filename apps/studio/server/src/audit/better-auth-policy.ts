@@ -17,32 +17,26 @@ export const BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES = {
   'POST /api/auth/organization/create': {
     method: 'POST',
     path: '/api/auth/organization/create',
-    disposition: 'allowed',
-    audit: {
-      kind: 'none',
-      reason: 'Team-creation producer coverage is tracked by #1521.',
-    },
-    reason: 'No Studio team-creation workflow is currently exposed.',
+    disposition: 'blocked',
+    audit: { kind: 'required' },
+    reason:
+      'Team creation remains blocked until Studio owns its audited command.',
   },
   'POST /api/auth/organization/update': {
     method: 'POST',
     path: '/api/auth/organization/update',
-    disposition: 'allowed',
-    audit: {
-      kind: 'none',
-      reason: 'Team-settings producer coverage is tracked by #1521.',
-    },
-    reason: 'No Studio team-settings workflow is currently exposed.',
+    disposition: 'blocked',
+    audit: { kind: 'required' },
+    reason:
+      'Team updates remain blocked until Studio owns their audited command.',
   },
   'POST /api/auth/organization/delete': {
     method: 'POST',
     path: '/api/auth/organization/delete',
-    disposition: 'allowed',
-    audit: {
-      kind: 'denied-only',
-      reason: 'Better Auth is configured to reject team deletion.',
-    },
-    reason: 'disableOrganizationDeletion keeps this route fail-closed.',
+    disposition: 'blocked',
+    audit: { kind: 'required' },
+    reason:
+      'Team deletion remains blocked until Studio owns an audited purge command.',
   },
   'POST /api/auth/organization/set-active': {
     method: 'POST',
@@ -93,12 +87,10 @@ export const BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES = {
   'POST /api/auth/organization/accept-invitation': {
     method: 'POST',
     path: '/api/auth/organization/accept-invitation',
-    disposition: 'allowed',
-    audit: {
-      kind: 'none',
-      reason: 'Invitation-acceptance producer coverage is tracked by #1521.',
-    },
-    reason: 'The invitation-recipient workflow is not part of #1519.',
+    disposition: 'blocked',
+    audit: { kind: 'required' },
+    reason:
+      'Invitation acceptance remains blocked until Studio owns its audited command.',
   },
   'GET /api/auth/organization/get-invitation': {
     method: 'GET',
@@ -110,12 +102,10 @@ export const BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES = {
   'POST /api/auth/organization/reject-invitation': {
     method: 'POST',
     path: '/api/auth/organization/reject-invitation',
-    disposition: 'allowed',
-    audit: {
-      kind: 'none',
-      reason: 'Invitation-rejection producer coverage is tracked by #1521.',
-    },
-    reason: 'The invitation-recipient workflow is not part of #1519.',
+    disposition: 'blocked',
+    audit: { kind: 'required' },
+    reason:
+      'Invitation rejection remains blocked until Studio owns its audited command.',
   },
   'GET /api/auth/organization/list-invitations': {
     method: 'GET',

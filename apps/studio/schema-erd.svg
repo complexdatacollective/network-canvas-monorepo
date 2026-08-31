@@ -1005,7 +1005,7 @@
 <!-- audit_events -->
 <g id="audit_events" class="node">
 <title>audit_events</title>
-<g id="a_audit_events"><a xlink:title="audit_events&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger audit_events_immutable: BEFORE UPDATE OR DELETE calls audit_events_are_immutable()">
+<g id="a_audit_events"><a xlink:title="audit_events&#10;RLS policy audit_team_isolation; sidecar forces row&#45;level security; sidecar trigger audit_events_immutable: BEFORE UPDATE OR DELETE calls audit_events_are_immutable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="294.16" cy="-6768.24" rx="294.31" ry="851.21"/>
 <polygon fill="#1d71b8" stroke="transparent" points="88.16,-7308.24 88.16,-7368.24 500.16,-7368.24 500.16,-7308.24 88.16,-7308.24"/>
 <polygon fill="none" stroke="#29235c" points="88.16,-7308.24 88.16,-7368.24 500.16,-7368.24 500.16,-7308.24 88.16,-7308.24"/>

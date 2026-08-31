@@ -347,10 +347,15 @@ describe('audit mutation policy', () => {
 
   it('keeps every unaudited Better Auth team mutation blocked', () => {
     expect([...BLOCKED_BETTER_AUTH_TEAM_MUTATION_PATHS].toSorted()).toEqual([
+      '/api/auth/organization/accept-invitation',
       '/api/auth/organization/cancel-invitation',
+      '/api/auth/organization/create',
+      '/api/auth/organization/delete',
       '/api/auth/organization/invite-member',
       '/api/auth/organization/leave',
+      '/api/auth/organization/reject-invitation',
       '/api/auth/organization/remove-member',
+      '/api/auth/organization/update',
       '/api/auth/organization/update-member-role',
     ]);
     const client = readFileSync(
@@ -358,7 +363,7 @@ describe('audit mutation policy', () => {
       'utf8',
     );
     expect(client).not.toMatch(
-      /authClient\.organization\.(inviteMember|updateMemberRole|cancelInvitation|removeMember|leave)/,
+      /authClient\.organization\.(acceptInvitation|cancelInvitation|create|delete|inviteMember|leave|rejectInvitation|removeMember|update|updateMemberRole)/,
     );
   });
 

@@ -3,7 +3,11 @@ import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createTenantDb } from '@codaco/studio-sync/tenant';
+import {
+  createTenantDb,
+  type TenantDb,
+  type TenantTransactionOptions,
+} from '@codaco/studio-sync/tenant';
 
 import {
   createScratchSchema,
@@ -18,6 +22,7 @@ import {
   runAuditedMutation,
 } from '../../audit/command.ts';
 import type { AuditEventInput } from '../../audit/events.ts';
+import { AUDIT_SEQUENCE_LOCK_SEED } from '../../audit/store.ts';
 import type { SessionPrincipal } from '../../auth/service.ts';
 import {
   cancelTeamInvitation,
@@ -81,6 +86,32 @@ function principal(person: Identity): SessionPrincipal {
     emailVerified: true,
     name: person.name,
     sessionId: `${person.userId}-session`,
+  };
+}
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
+function signalTenantTransaction(
+  tenantDb: TenantDb,
+  signal: () => void,
+): TenantDb {
+  return {
+    teamId: tenantDb.teamId,
+    query: (text, values) => tenantDb.query(text, values),
+    transaction: <T>(
+      work: (client: pg.PoolClient) => Promise<T>,
+      opts?: TenantTransactionOptions,
+    ) =>
+      tenantDb.transaction(async (client) => {
+        signal();
+        return work(client);
+      }, opts),
   };
 }
 
@@ -177,6 +208,94 @@ describe.skipIf(!db)('audited team commands', () => {
         () => Promise.resolve({ result: undefined, events: unsafeEmpty }),
       ),
     ).rejects.toThrow('an audited command must produce at least one event');
+  });
+
+  it('takes the team audit lock before command work begins', async () => {
+    const teamId = 'command-prework-lock';
+    await seedTeam(pool, teamId);
+    const owner = identity(teamId, 'owner', 'owner');
+    await seedIdentity(pool, teamId, owner);
+    const context = {
+      tenantDb: createTenantDb(app, teamId),
+      principal: principal(owner),
+      requestId: randomUUID(),
+    };
+    const workStarted = deferred();
+    const releaseWork = deferred();
+    const event = {
+      ...auditEventContext(context),
+      eventType: 'team.invitation.created',
+      subjectType: 'team_invitation',
+      subjectId: randomUUID(),
+      subjectLabel: 'serialized@example.com',
+      details: { role: 'member' },
+    } satisfies AuditEventInput;
+
+    const command = runAuditedMutation(context, async () => {
+      workStarted.resolve();
+      await releaseWork.promise;
+      return { result: undefined, events: [event] };
+    });
+    await workStarted.promise;
+    try {
+      const contender = await app.query<{ acquired: boolean }>(
+        `SELECT pg_try_advisory_xact_lock(hashtextextended($1, $2::bigint)) AS acquired`,
+        [teamId, AUDIT_SEQUENCE_LOCK_SEED.toString()],
+      );
+      expect(contender.rows).toEqual([{ acquired: false }]);
+    } finally {
+      releaseWork.resolve();
+    }
+    await expect(command).resolves.toBeUndefined();
+  });
+
+  it('re-authorizes an actor after waiting for the team audit lock', async () => {
+    const teamId = 'command-actor-revoked';
+    await seedTeam(pool, teamId);
+    const owner = identity(teamId, 'owner', 'owner');
+    const admin = identity(teamId, 'admin', 'admin');
+    await seedIdentity(pool, teamId, owner);
+    await seedIdentity(pool, teamId, admin);
+    const holder = await pool.connect();
+    const transactionStarted = deferred();
+    try {
+      await holder.query('BEGIN');
+      await holder.query(
+        `SELECT pg_advisory_xact_lock(hashtextextended($1, $2::bigint))`,
+        [teamId, AUDIT_SEQUENCE_LOCK_SEED.toString()],
+      );
+      await holder.query(
+        `UPDATE team_members SET role = 'member' WHERE id = $1`,
+        [admin.memberId],
+      );
+
+      const tenantDb = signalTenantTransaction(
+        createTenantDb(app, teamId),
+        transactionStarted.resolve,
+      );
+      const command = createTeamInvitation(
+        {
+          tenantDb,
+          principal: principal(admin),
+          requestId: randomUUID(),
+        },
+        { email: 'must-not-land@example.com', role: 'member' },
+      );
+      await transactionStarted.promise;
+      await holder.query('COMMIT');
+
+      await expect(command).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      expect(
+        await pool.query(`SELECT id FROM team_invitations WHERE team_id = $1`, [
+          teamId,
+        ]),
+      ).toHaveProperty('rowCount', 0);
+    } catch (error) {
+      await holder.query('ROLLBACK').catch(() => undefined);
+      throw error;
+    } finally {
+      holder.release();
+    }
   });
 
   it('rejects events whose trusted actor context differs from the command', async () => {
@@ -422,6 +541,49 @@ describe.skipIf(!db)('audited team commands', () => {
       [teamId],
     );
     expect(events.rows).toEqual([{ event_type: 'team.invitation.created' }]);
+  });
+
+  it('keeps one owner when two owners concurrently demote themselves', async () => {
+    const teamId = 'command-concurrent-owners';
+    await seedTeam(pool, teamId);
+    const firstOwner = identity(teamId, 'first-owner', 'owner');
+    const secondOwner = identity(teamId, 'second-owner', 'owner');
+    await seedIdentity(pool, teamId, firstOwner);
+    await seedIdentity(pool, teamId, secondOwner);
+
+    const results = await Promise.allSettled(
+      [firstOwner, secondOwner].map((owner) =>
+        updateTeamMemberRole(
+          {
+            tenantDb: createTenantDb(app, teamId),
+            principal: principal(owner),
+            requestId: randomUUID(),
+          },
+          { memberId: owner.memberId, role: 'member' },
+        ),
+      ),
+    );
+    const successes = results.filter((result) => result.status === 'fulfilled');
+    const failures = results.filter((result) => result.status === 'rejected');
+    expect(successes).toHaveLength(1);
+    expect(failures).toHaveLength(1);
+    expect(failures[0]?.reason).toMatchObject({ code: 'LAST_OWNER' });
+
+    const memberships = await pool.query<{ role: string }>(
+      `SELECT role FROM team_members WHERE team_id = $1 ORDER BY id`,
+      [teamId],
+    );
+    expect(
+      memberships.rows.filter(({ role }) => role === 'owner'),
+    ).toHaveLength(1);
+    expect(
+      memberships.rows.filter(({ role }) => role === 'member'),
+    ).toHaveLength(1);
+    expect(
+      await pool.query(`SELECT id FROM audit_events WHERE team_id = $1`, [
+        teamId,
+      ]),
+    ).toHaveProperty('rowCount', 1);
   });
 
   it('creates and cancels an invitation without recording secret material', async () => {

@@ -130,7 +130,7 @@ export async function updateTeamMemberRole(
     if (
       targetIsOwner &&
       input.role !== 'owner' &&
-      (await store.countOwners(client, context.tenantDb.teamId)) <= 1
+      (await store.countLockedOwners(client, context.tenantDb.teamId)) <= 1
     ) {
       throw new TeamCommandError('LAST_OWNER');
     }

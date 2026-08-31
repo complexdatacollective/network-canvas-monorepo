@@ -4,7 +4,7 @@ import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import type { Principal } from '../auth/service.ts';
 import type { AuditEventInput } from './events.ts';
-import { AuditStore } from './store.ts';
+import { AuditStore, lockAuditTeam } from './store.ts';
 
 export type AuditedCommandContext = {
   tenantDb: TenantDb;
@@ -87,6 +87,7 @@ export async function runAuditedCommand<T>(
   work: (client: pg.PoolClient) => Promise<AuditedCommandDecision<T>>,
 ): Promise<T> {
   const decision = await context.tenantDb.transaction(async (client) => {
+    await lockAuditTeam(client, context.tenantDb.teamId);
     const result = await work(client);
     if (result.events.length === 0) {
       throw new Error('an audited command must produce at least one event');

@@ -113,7 +113,9 @@ describe.skipIf(!db)('row-level security', () => {
         table,
         enabled: true,
         forced: true,
-        policies: ['team_isolation'],
+        policies: [
+          table === 'audit_events' ? 'audit_team_isolation' : 'team_isolation',
+        ],
       })),
     );
     const others = rows.rows.filter((row) => !expected.includes(row.table));

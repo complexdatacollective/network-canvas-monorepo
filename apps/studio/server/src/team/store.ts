@@ -64,15 +64,20 @@ export class TeamStore {
     return rows.rows[0] ?? null;
   }
 
-  async countOwners(client: pg.PoolClient, teamId: string): Promise<number> {
-    const rows = await client.query<{ count: number }>(
-      `SELECT count(*)::int AS count
+  async countLockedOwners(
+    client: pg.PoolClient,
+    teamId: string,
+  ): Promise<number> {
+    const rows = await client.query<{ id: string }>(
+      `SELECT id
        FROM team_members
        WHERE team_id = $1
-         AND regexp_split_to_array(replace(role, ' ', ''), ',') @> ARRAY['owner']::text[]`,
+         AND regexp_split_to_array(replace(role, ' ', ''), ',') @> ARRAY['owner']::text[]
+       ORDER BY id
+       FOR UPDATE`,
       [teamId],
     );
-    return rows.rows[0]?.count ?? 0;
+    return rows.rowCount ?? 0;
   }
 
   async updateMemberRole(

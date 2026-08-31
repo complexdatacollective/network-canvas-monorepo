@@ -82,6 +82,17 @@ describe('studio server', () => {
       auth: stubAuthService({ handler }),
     });
     const bodies: Record<string, object> = {
+      '/api/auth/organization/create': {
+        name: 'Unaudited Team',
+        slug: 'unaudited-team',
+      },
+      '/api/auth/organization/update': {
+        organizationId: 'team-a',
+        data: { name: 'Unaudited Team' },
+      },
+      '/api/auth/organization/delete': {
+        organizationId: 'team-a',
+      },
       '/api/auth/organization/update-member-role': {
         organizationId: 'team-a',
         memberId: 'member-a',
@@ -93,6 +104,12 @@ describe('studio server', () => {
         role: 'member',
       },
       '/api/auth/organization/cancel-invitation': {
+        invitationId: 'invitation-a',
+      },
+      '/api/auth/organization/accept-invitation': {
+        invitationId: 'invitation-a',
+      },
+      '/api/auth/organization/reject-invitation': {
         invitationId: 'invitation-a',
       },
       '/api/auth/organization/remove-member': {
