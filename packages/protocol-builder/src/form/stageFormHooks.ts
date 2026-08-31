@@ -5,10 +5,11 @@ import {
   resolveFieldPath,
   useFieldNamespacePath,
 } from '@codaco/fresco-ui/form/FieldNamespace';
-import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import {
   formatObjectPath,
   getValue,
+  type ObjectPath,
+  omitValue,
 } from '@codaco/fresco-ui/form/utils/objectPath';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 
@@ -110,9 +111,8 @@ export function useStageHasAnyValue(paths: readonly string[]): boolean {
 
   const getSnapshot = useCallback(() => {
     const state = storeApi.getState();
-    const values = state.getFormValues();
     return latestPaths.current.some((path) =>
-      hasAnswer(resolveValue(state, values, committedFields, path)),
+      pathHasAnswer(state, committedFields, path),
     );
   }, [committedFields, key, storeApi]);
 
@@ -141,22 +141,75 @@ function hasAnswer(value: unknown): boolean {
 }
 
 /**
- * A field the form knows about answers for itself, even when its answer is
- * `undefined`.
+ * Whether anything has been entered at this path.
  *
- * That distinction is the whole point: switching a capability off parks a
- * dormant field holding `undefined` ON PURPOSE, and treating that as "no
- * answer here" would fall through to the value the stage was opened with —
- * so the capability would go on reporting itself as configured, and closing
- * it again would offer to delete content that is already gone.
+ * The form's knowledge outranks the draft it was opened from, path by path,
+ * because the form is where the researcher has been working:
+ *
+ * 1. A field registered at exactly this path answers for it, even when its
+ *    answer is `undefined` — switching a capability off parks that tombstone
+ *    ON PURPOSE, and reading it as "nothing known here" would fall back to the
+ *    value the stage was opened with and report the capability configured
+ *    again.
+ * 2. Otherwise every field the form holds BENEATH this path answers, mounted
+ *    or parked alike. A capability owning a container whose controls are all
+ *    hidden behind a collapsed group has no field at the container and nothing
+ *    in the assembled values, and its content would otherwise be invisible
+ *    here — so switching it off would skip the confirmation, skip the clear,
+ *    and leave the capability quietly active in the saved stage.
+ * 3. Whatever the committed draft holds, minus every sub-path the form has
+ *    since emptied.
  */
-function resolveValue(
+function pathHasAnswer(
   state: FormStoreState,
-  values: Record<string, FieldValue>,
   committedFields: StageFormDraft,
   path: string,
-): unknown {
-  const fieldState = state.getFieldState(path);
-  if (fieldState !== undefined) return fieldState.value;
-  return getValue(values, path) ?? getValue(committedFields, path);
+): boolean {
+  const target = safePath(path);
+  if (target === null) return false;
+
+  const exact = state.getFieldState(path);
+  if (exact !== undefined) return hasAnswer(exact.value);
+
+  const known = descendantRecords(state, target);
+  if (known.some((record) => hasAnswer(record.value))) return true;
+
+  // Every remaining known path is one the form knows is empty, so the draft's
+  // memory of it is out of date.
+  let committed = getValue(committedFields, target);
+  for (const record of known) {
+    committed = omitValue(committed, record.path.slice(target.length));
+  }
+  return hasAnswer(committed);
+}
+
+function descendantRecords(
+  state: FormStoreState,
+  target: ObjectPath,
+): { path: ObjectPath; value: unknown }[] {
+  const records: { path: ObjectPath; value: unknown }[] = [];
+
+  for (const source of [state.fields, state.dormantValues]) {
+    for (const [name, field] of source) {
+      const path = field.path ?? safePath(name);
+      if (
+        path === null ||
+        path.length <= target.length ||
+        !target.every((segment, index) => path[index] === segment)
+      ) {
+        continue;
+      }
+      records.push({ path, value: field.value });
+    }
+  }
+
+  return records;
+}
+
+function safePath(name: string): ObjectPath | null {
+  try {
+    return resolveFieldPath([], name);
+  } catch {
+    return null;
+  }
 }

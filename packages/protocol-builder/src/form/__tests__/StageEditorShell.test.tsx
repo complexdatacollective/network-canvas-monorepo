@@ -617,6 +617,76 @@ describe('StageEditorShell', () => {
     );
   });
 
+  it('sees content a capability is holding out of sight', async () => {
+    const user = userEvent.setup();
+    const session = createSession();
+    function ContainerCapability() {
+      const controller = useStageEditorController(session, 'stage-form');
+      const [advancedShown, setAdvancedShown] = useState(true);
+      return (
+        <StageEditorShell controller={controller}>
+          <BuilderSection
+            title="Skip logic"
+            capability={{
+              fields: ['skipLogic'],
+              confirmClear: {
+                title: 'This will clear your skip logic',
+                description: 'The rules you created will be deleted.',
+                confirmLabel: 'Clear skip logic',
+              },
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setAdvancedShown((shown) => !shown)}
+            >
+              Toggle advanced options
+            </button>
+            {advancedShown && (
+              <ProtocolField
+                name="skipLogic.destination"
+                label="Where the interview continues"
+                component={InputField}
+              />
+            )}
+          </BuilderSection>
+        </StageEditorShell>
+      );
+    }
+    render(
+      <DialogProvider>
+        <ContainerCapability />
+      </DialogProvider>,
+    );
+
+    await user.click(screen.getByRole('switch', { name: 'Skip logic' }));
+    await user.type(
+      await screen.findByRole('textbox', {
+        name: 'Where the interview continues',
+      }),
+      'finish',
+    );
+    // Now the only field carrying anything is parked out of sight: there is no
+    // field at the capability's own path, and nothing was in the draft this
+    // stage was opened with.
+    await user.click(
+      screen.getByRole('button', { name: 'Toggle advanced options' }),
+    );
+    await user.click(screen.getByRole('switch', { name: 'Skip logic' }));
+
+    // The researcher is asked before it goes, because there is something to
+    // lose — and switching off without asking would also skip the clearing,
+    // leaving skip logic active in a stage that says it has none.
+    await user.click(
+      await screen.findByRole('button', { name: 'Clear skip logic' }),
+    );
+    await waitFor(() =>
+      expect([...outlineItems()][0]?.textContent).toBe(
+        'Skip logicSwitched off',
+      ),
+    );
+  });
+
   it('explains a prerequisite before it explains a switch', async () => {
     const session = createSession();
     function DisabledCapability() {
