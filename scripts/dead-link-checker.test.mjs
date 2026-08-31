@@ -9,6 +9,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  BrowserVerifier,
   MAX_GITHUB_ERROR_ANNOTATIONS,
   PageSlotSemaphore,
   crawl,
@@ -325,6 +326,70 @@ test('browser page slots transfer directly to the oldest queued verifier', async
   await newcomer;
   assert.equal(newcomerAcquired, true);
   slots.release();
+});
+
+test('browser verification keeps the configured identity and final redirect status', async () => {
+  const frame = {};
+  const navigationRequest = { isNavigationRequest: () => true };
+  const response = (status) => ({
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => status,
+  });
+  const initial = response(403);
+  const redirect = response(302);
+  const final = response(404);
+  let responseListener;
+  let contextOptions;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      assert.equal(typeof responseListener, 'function');
+      responseListener(initial);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (_event, listener) => {
+      responseListener = listener;
+    },
+    url: () => 'https://publisher.test/missing',
+    waitForLoadState: async () => {},
+    waitForResponse: async (predicate) => {
+      assert.equal(typeof responseListener, 'function');
+      responseListener(redirect);
+      if (predicate(redirect)) return redirect;
+      responseListener(final);
+      assert.equal(predicate(final), true);
+      return final;
+    },
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async (options) => {
+      contextOptions = options;
+      return { newPage: async () => page };
+    },
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+    userAgent: 'NetworkCanvasLinkChecker/test',
+  });
+
+  try {
+    const outcome = await verifier.verify(
+      'https://publisher.test/challenge',
+      50,
+    );
+    assert.deepEqual(contextOptions, {
+      acceptDownloads: false,
+      userAgent: 'NetworkCanvasLinkChecker/test',
+    });
+    assert.equal(outcome.finalUrl, 'https://publisher.test/missing');
+    assert.equal(outcome.status, 404);
+  } finally {
+    await verifier.close();
+  }
 });
 
 test('renderers escape workflow commands and obey explicit color selection', () => {

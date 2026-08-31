@@ -162,13 +162,25 @@ export class PageSlotSemaphore {
   }
 }
 
-class BrowserVerifier {
+async function loadPlaywrightChromium() {
+  const { chromium } = await import('playwright');
+  return chromium;
+}
+
+export class BrowserVerifier {
+  #loadChromium;
   #pageSlots = new PageSlotSemaphore(MAX_BROWSER_PAGES);
   #resourcesPromise;
+  #userAgent;
+
+  constructor({ loadChromium = loadPlaywrightChromium, userAgent } = {}) {
+    this.#loadChromium = loadChromium;
+    this.#userAgent = userAgent;
+  }
 
   async #getResources() {
     this.#resourcesPromise ??= (async () => {
-      const { chromium } = await import('playwright');
+      const chromium = await this.#loadChromium();
       const browser = await chromium.launch({
         args: ['--disable-blink-features=AutomationControlled'],
         channel: 'chrome',
@@ -176,7 +188,10 @@ class BrowserVerifier {
         ignoreDefaultArgs: ['--enable-automation'],
       });
       try {
-        const context = await browser.newContext({ acceptDownloads: false });
+        const context = await browser.newContext({
+          acceptDownloads: false,
+          ...(this.#userAgent ? { userAgent: this.#userAgent } : {}),
+        });
         return { browser, context };
       } catch (error) {
         await browser.close();
@@ -226,10 +241,11 @@ class BrowserVerifier {
       // no follow-up navigation and remains 403 after the same timeout.
       if (navigation.status() === 403) {
         try {
-          await page.waitForResponse(
+          navigation = await page.waitForResponse(
             (response) =>
               response.request().isNavigationRequest() &&
               response.frame() === page.mainFrame() &&
+              (response.status() < 300 || response.status() >= 400) &&
               response.status() !== 403,
             { timeout },
           );
@@ -553,9 +569,11 @@ export async function crawl(
   inputURL,
   options,
   onProgress = () => {},
-  browserVerifier = new BrowserVerifier(),
+  browserVerifier,
 ) {
   const startedAtMilliseconds = Date.now();
+  const verifier =
+    browserVerifier ?? new BrowserVerifier({ userAgent: options.userAgent });
   const rootOrigin = new URL(inputURL).origin;
   const records = new Map();
   const results = [];
@@ -564,13 +582,9 @@ export async function crawl(
   const verifyInBrowser = async (record, fallback) => {
     let browserOutcome;
     try {
-      browserOutcome = await browserVerifier.verify(
-        record.url,
-        options.timeout,
-        {
-          captureHTML: record.recursive,
-        },
-      );
+      browserOutcome = await verifier.verify(record.url, options.timeout, {
+        captureHTML: record.recursive,
+      });
     } catch (error) {
       results.push(
         failureResult(
@@ -757,7 +771,7 @@ export async function crawl(
   try {
     await Promise.all(workers);
   } finally {
-    await browserVerifier.close();
+    await verifier.close();
   }
 
   const normalizedResults = results
