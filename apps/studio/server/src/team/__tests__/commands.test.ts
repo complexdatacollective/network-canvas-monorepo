@@ -188,6 +188,36 @@ describe.skipIf(!db)('audited team commands', () => {
     ]);
   });
 
+  it('snapshots the locked team label instead of joining a later rename', async () => {
+    const teamId = 'command-team-label';
+    await seedTeam(pool, teamId);
+    await pool.query(
+      `UPDATE teams SET name = 'Original Research Team' WHERE id = $1`,
+      [teamId],
+    );
+    const owner = identity(teamId, 'owner', 'owner');
+    await seedIdentity(pool, teamId, owner);
+
+    await createTeamInvitation(
+      {
+        tenantDb: createTenantDb(app, teamId),
+        principal: principal(owner),
+        requestId: randomUUID(),
+      },
+      { email: 'team-label@example.com', role: 'member' },
+    );
+    await pool.query(
+      `UPDATE teams SET name = 'Renamed Research Team' WHERE id = $1`,
+      [teamId],
+    );
+
+    const event = await pool.query<{ teamLabel: string }>(
+      `SELECT team_label AS "teamLabel" FROM audit_events WHERE team_id = $1`,
+      [teamId],
+    );
+    expect(event.rows).toEqual([{ teamLabel: 'Original Research Team' }]);
+  });
+
   it('rejects an empty event list even from an unsafe untyped caller', async () => {
     const teamId = 'command-empty-events';
     await seedTeam(pool, teamId);
@@ -222,20 +252,26 @@ describe.skipIf(!db)('audited team commands', () => {
     };
     const workStarted = deferred();
     const releaseWork = deferred();
-    const event = {
-      ...auditEventContext(context),
-      eventType: 'team.invitation.created',
-      subjectType: 'team_invitation',
-      subjectId: randomUUID(),
-      subjectLabel: 'serialized@example.com',
-      details: { role: 'member' },
-    } satisfies AuditEventInput;
-
-    const command = runAuditedMutation(context, async () => {
-      workStarted.resolve();
-      await releaseWork.promise;
-      return { result: undefined, events: [event] };
-    });
+    const command = runAuditedMutation(
+      context,
+      async (_client, auditContext) => {
+        workStarted.resolve();
+        await releaseWork.promise;
+        return {
+          result: undefined,
+          events: [
+            {
+              ...auditEventContext(auditContext),
+              eventType: 'team.invitation.created',
+              subjectType: 'team_invitation',
+              subjectId: randomUUID(),
+              subjectLabel: 'serialized@example.com',
+              details: { role: 'member' },
+            },
+          ],
+        };
+      },
+    );
     await workStarted.promise;
     try {
       const contender = await app.query<{ acquired: boolean }>(
@@ -309,7 +345,7 @@ describe.skipIf(!db)('audited team commands', () => {
       requestId: randomUUID(),
     };
     const baseEvent = {
-      ...auditEventContext(context),
+      ...auditEventContext({ ...context, teamLabel: teamId }),
       eventType: 'team.invitation.created',
       subjectType: 'team_invitation',
       subjectId: randomUUID(),
@@ -322,6 +358,15 @@ describe.skipIf(!db)('audited team commands', () => {
         Promise.resolve({
           result: undefined,
           events: [{ ...baseEvent, actorLabel: 'Forged actor' }],
+        }),
+      ),
+    ).rejects.toThrow('audit event context does not match its command');
+
+    await expect(
+      runAuditedMutation(context, () =>
+        Promise.resolve({
+          result: undefined,
+          events: [{ ...baseEvent, teamLabel: 'Forged team' }],
         }),
       ),
     ).rejects.toThrow('audit event context does not match its command');
@@ -354,7 +399,7 @@ describe.skipIf(!db)('audited team commands', () => {
       requestId: randomUUID(),
     };
     const succeededEvent = {
-      ...auditEventContext(context),
+      ...auditEventContext({ ...context, teamLabel: teamId }),
       eventType: 'team.invitation.created',
       subjectType: 'team_invitation',
       subjectId: randomUUID(),

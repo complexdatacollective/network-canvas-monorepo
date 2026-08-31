@@ -48,5 +48,11 @@ describe('audit event registry', () => {
         subjectLabel: `${'x'.repeat(321)}@example.com`,
       }),
     ).toThrow();
+    expect(() =>
+      AuditEventInputSchema.parse({
+        ...fixture,
+        teamLabel: 'x'.repeat(321),
+      }),
+    ).toThrow();
   });
 });

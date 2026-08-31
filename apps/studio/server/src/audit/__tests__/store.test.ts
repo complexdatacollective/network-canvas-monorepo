@@ -20,6 +20,7 @@ const store = new AuditStore();
 function invitationEvent(teamId: string): AuditEventInput {
   return {
     teamId,
+    teamLabel: teamId,
     eventType: 'team.invitation.created',
     eventVersion: 1,
     category: 'team_access',
@@ -92,6 +93,7 @@ describe.skipIf(!db)('immutable audit store', () => {
     const tenant = createTenantDb(app, 'audit-privileges');
     const first = await append(tenant, 'audit-privileges');
     expect(first.sequence).toBe('1');
+    expect(first.teamLabel).toBe('audit-privileges');
     const maintenanceTenant = createTenantDb(maintenance, 'audit-privileges');
     expect((await append(maintenanceTenant, 'audit-privileges')).sequence).toBe(
       '2',

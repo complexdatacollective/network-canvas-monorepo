@@ -19,14 +19,6 @@ export type TeamInvitation = {
 };
 
 export class TeamStore {
-  async lockTeam(client: pg.PoolClient, teamId: string): Promise<boolean> {
-    const team = await client.query(
-      `SELECT id FROM teams WHERE id = $1 FOR UPDATE`,
-      [teamId],
-    );
-    return team.rowCount === 1;
-  }
-
   async lockActorAndTarget(
     client: pg.PoolClient,
     input: { teamId: string; actorUserId: string; targetMemberId: string },

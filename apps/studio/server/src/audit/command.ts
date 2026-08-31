@@ -12,6 +12,17 @@ export type AuditedCommandContext = {
   requestId: string;
 };
 
+export type LockedAuditedCommandContext = AuditedCommandContext & {
+  teamLabel: string;
+};
+
+export class AuditCommandTeamNotFoundError extends Error {
+  constructor() {
+    super('audit command team not found');
+    this.name = 'AuditCommandTeamNotFoundError';
+  }
+}
+
 export type AuditedMutationResult<T> = {
   result: T;
   events: readonly [AuditEventInput, ...AuditEventInput[]];
@@ -34,9 +45,10 @@ function actorLabel(context: AuditedCommandContext): string {
   );
 }
 
-export function auditEventContext(context: AuditedCommandContext) {
+export function auditEventContext(context: LockedAuditedCommandContext) {
   return {
     teamId: context.tenantDb.teamId,
+    teamLabel: context.teamLabel,
     eventVersion: 1,
     category: 'team_access',
     outcome: 'succeeded',
@@ -50,7 +62,7 @@ export function auditEventContext(context: AuditedCommandContext) {
   } as const;
 }
 
-export function deniedAuditEventContext(context: AuditedCommandContext) {
+export function deniedAuditEventContext(context: LockedAuditedCommandContext) {
   return {
     ...auditEventContext(context),
     outcome: 'denied',
@@ -58,12 +70,13 @@ export function deniedAuditEventContext(context: AuditedCommandContext) {
 }
 
 function assertEventContext(
-  context: AuditedCommandContext,
+  context: LockedAuditedCommandContext,
   event: AuditEventInput,
   decisionStatus: AuditedCommandDecision<unknown>['status'],
 ): void {
   if (
     event.teamId !== context.tenantDb.teamId ||
+    event.teamLabel !== context.teamLabel ||
     event.actorKind !== 'user' ||
     event.actorId !== context.principal.userId ||
     event.actorLabel !== actorLabel(context) ||
@@ -84,16 +97,31 @@ function assertEventContext(
  */
 export async function runAuditedCommand<T>(
   context: AuditedCommandContext,
-  work: (client: pg.PoolClient) => Promise<AuditedCommandDecision<T>>,
+  work: (
+    client: pg.PoolClient,
+    auditContext: LockedAuditedCommandContext,
+  ) => Promise<AuditedCommandDecision<T>>,
 ): Promise<T> {
   const decision = await context.tenantDb.transaction(async (client) => {
     await lockAuditTeam(client, context.tenantDb.teamId);
-    const result = await work(client);
+    const team = await client.query<{ name: string }>(
+      `SELECT name FROM teams WHERE id = $1 FOR UPDATE`,
+      [context.tenantDb.teamId],
+    );
+    const lockedTeam = team.rows[0];
+    if (!lockedTeam) throw new AuditCommandTeamNotFoundError();
+    const teamName = lockedTeam.name.trim();
+    if (!teamName) throw new Error('audit command team name is empty');
+    const auditContext: LockedAuditedCommandContext = {
+      ...context,
+      teamLabel: teamName.slice(0, 320),
+    };
+    const result = await work(client, auditContext);
     if (result.events.length === 0) {
       throw new Error('an audited command must produce at least one event');
     }
     for (const event of result.events) {
-      assertEventContext(context, event, result.status);
+      assertEventContext(auditContext, event, result.status);
       await auditStore.append(client, event);
     }
     return result;
@@ -105,10 +133,13 @@ export async function runAuditedCommand<T>(
 
 export async function runAuditedMutation<T>(
   context: AuditedCommandContext,
-  work: (client: pg.PoolClient) => Promise<AuditedMutationResult<T>>,
+  work: (
+    client: pg.PoolClient,
+    auditContext: LockedAuditedCommandContext,
+  ) => Promise<AuditedMutationResult<T>>,
 ): Promise<T> {
-  return runAuditedCommand(context, async (client) => {
-    const mutation = await work(client);
+  return runAuditedCommand(context, async (client, auditContext) => {
+    const mutation = await work(client, auditContext);
     return { status: 'succeeded', ...mutation };
   });
 }

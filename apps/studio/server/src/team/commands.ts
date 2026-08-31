@@ -64,15 +64,6 @@ function memberLabel(member: LockedMember): string {
   return (member.name.trim() || member.email).slice(0, 320);
 }
 
-async function requireLockedTeam(
-  client: Parameters<TeamStore['lockTeam']>[0],
-  teamId: string,
-): Promise<void> {
-  if (!(await store.lockTeam(client, teamId))) {
-    throw new TeamCommandError('NOT_FOUND');
-  }
-}
-
 function requireManager(actor: LockedMember | null): LockedMember {
   if (!actor || !canManage(actor)) throw new TeamCommandError('FORBIDDEN');
   return actor;
@@ -84,8 +75,7 @@ export async function updateTeamMemberRole(
   context: AuditedCommandContext,
   input: { memberId: string; role: TeamRole },
 ): Promise<UpdatedTeamMember> {
-  return runAuditedCommand(context, async (client) => {
-    await requireLockedTeam(client, context.tenantDb.teamId);
+  return runAuditedCommand(context, async (client, auditContext) => {
     const members = await store.lockActorAndTarget(client, {
       teamId: context.tenantDb.teamId,
       actorUserId: context.principal.userId,
@@ -98,7 +88,7 @@ export async function updateTeamMemberRole(
       reason: 'insufficient_permission' | 'owner_role_requires_owner',
     ) => {
       const event = {
-        ...deniedAuditEventContext(context),
+        ...deniedAuditEventContext(auditContext),
         eventType: 'team.member.role_change_denied',
         subjectType: 'team_member',
         subjectId: target.id,
@@ -141,7 +131,7 @@ export async function updateTeamMemberRole(
       role: input.role,
     });
     const event = {
-      ...auditEventContext(context),
+      ...auditEventContext(auditContext),
       eventType: 'team.member.role_changed',
       subjectType: 'team_member',
       subjectId: target.id,
@@ -169,8 +159,7 @@ export async function createTeamInvitation(
   input: { email: string; role: TeamRole },
 ): Promise<CreatedTeamInvitation> {
   const email = EmailSchema.parse(input.email.trim().toLowerCase());
-  return runAuditedMutation(context, async (client) => {
-    await requireLockedTeam(client, context.tenantDb.teamId);
+  return runAuditedMutation(context, async (client, auditContext) => {
     const actor = requireManager(
       await store.lockActor(
         client,
@@ -212,7 +201,7 @@ export async function createTeamInvitation(
       inviterId: context.principal.userId,
     });
     const event = {
-      ...auditEventContext(context),
+      ...auditEventContext(auditContext),
       eventType: 'team.invitation.created',
       subjectType: 'team_invitation',
       subjectId: invitation.id,
@@ -241,8 +230,7 @@ export async function cancelTeamInvitation(
   context: AuditedCommandContext,
   input: { invitationId: string },
 ): Promise<CancelledTeamInvitation> {
-  return runAuditedMutation(context, async (client) => {
-    await requireLockedTeam(client, context.tenantDb.teamId);
+  return runAuditedMutation(context, async (client, auditContext) => {
     requireManager(
       await store.lockActor(
         client,
@@ -269,7 +257,7 @@ export async function cancelTeamInvitation(
       invitation.id,
     );
     const event = {
-      ...auditEventContext(context),
+      ...auditEventContext(auditContext),
       eventType: 'team.invitation.cancelled',
       subjectType: 'team_invitation',
       subjectId: invitation.id,

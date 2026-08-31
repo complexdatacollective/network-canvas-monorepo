@@ -4,6 +4,7 @@ import type pg from 'pg';
 import { contract } from '@codaco/studio-rpc';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
+import { AuditCommandTeamNotFoundError } from './audit/command.ts';
 import type { AuthService, Principal } from './auth/service.ts';
 import { type AuthCapabilities, getInstanceStatus } from './domain.ts';
 import { addStage, moveStage } from './protocol/draft-structure.ts';
@@ -37,6 +38,9 @@ async function handleTeamCommand<T>(work: () => Promise<T>): Promise<T> {
   try {
     return await work();
   } catch (error) {
+    if (error instanceof AuditCommandTeamNotFoundError) {
+      throw new ORPCError('NOT_FOUND');
+    }
     if (!(error instanceof TeamCommandError)) throw error;
     if (error.code === 'FORBIDDEN') throw new ORPCError('FORBIDDEN');
     if (error.code === 'NOT_FOUND') throw new ORPCError('NOT_FOUND');

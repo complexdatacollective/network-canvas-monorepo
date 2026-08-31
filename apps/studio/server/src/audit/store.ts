@@ -33,6 +33,7 @@ export type AuditEvent = AuditEventInput & {
 type AuditEventRow = {
   id: string;
   teamId: string;
+  teamLabel: string;
   sequence: string;
   occurredAt: Date;
   eventType: AuditEventInput['eventType'];
@@ -80,16 +81,16 @@ export class AuditStore {
     ).toString();
     const inserted = await client.query<AuditEventRow>(
       `INSERT INTO audit_events (
-         id, team_id, sequence, event_type, event_version, category, outcome,
+         id, team_id, team_label, sequence, event_type, event_version, category, outcome,
          actor_kind, actor_id, actor_label, subject_type, subject_id,
          subject_label, resource_type, resource_id, resource_label,
          request_id, details
        ) VALUES (
-         $1, $2, $3::bigint, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-         $14, $15, $16, $17::uuid, $18::jsonb
+         $1, $2, $3, $4::bigint, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+         $14, $15, $16, $17, $18::uuid, $19::jsonb
        )
        RETURNING
-         id, team_id AS "teamId", sequence::text AS sequence,
+         id, team_id AS "teamId", team_label AS "teamLabel", sequence::text AS sequence,
          occurred_at AS "occurredAt", event_type AS "eventType",
          event_version AS "eventVersion", category, outcome,
          actor_kind AS "actorKind", actor_id AS "actorId",
@@ -100,6 +101,7 @@ export class AuditStore {
       [
         randomUUID(),
         event.teamId,
+        event.teamLabel,
         sequence,
         event.eventType,
         event.eventVersion,
@@ -131,7 +133,7 @@ export class AuditStore {
     const limit = Math.min(Math.max(options.limit ?? 50, 1), 100);
     const rows = await client.query<AuditEventRow>(
       `SELECT
-         id, team_id AS "teamId", sequence::text AS sequence,
+         id, team_id AS "teamId", team_label AS "teamLabel", sequence::text AS sequence,
          occurred_at AS "occurredAt", event_type AS "eventType",
          event_version AS "eventVersion", category, outcome,
          actor_kind AS "actorKind", actor_id AS "actorId",

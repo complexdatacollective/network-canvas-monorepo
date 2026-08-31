@@ -7,6 +7,7 @@ const IdentifierSchema = z.string().min(1).max(255);
 
 const CommonUserEventSchema = z.strictObject({
   teamId: IdentifierSchema,
+  teamLabel: LabelSchema,
   eventVersion: z.literal(1),
   category: z.literal('team_access'),
   actorKind: z.literal('user'),
@@ -84,6 +85,7 @@ type AuditEventDefinition = {
 
 const FIXTURE_COMMON = {
   teamId: 'fixture-team',
+  teamLabel: 'Fixture team',
   eventVersion: 1,
   category: 'team_access',
   outcome: 'succeeded',

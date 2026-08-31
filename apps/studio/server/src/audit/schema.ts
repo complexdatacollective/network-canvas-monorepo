@@ -36,6 +36,7 @@ const auditEvents = pgTable(
     // Deliberately no foreign keys: deleting mutable domain or auth rows must
     // never cascade into immutable history.
     teamId: text('team_id').notNull(),
+    teamLabel: text('team_label').notNull(),
     sequence: bigint('sequence', { mode: 'bigint' }).notNull(),
     occurredAt: timestamp('occurred_at', { withTimezone: true })
       .notNull()
@@ -108,7 +109,8 @@ const auditEvents = pgTable(
     ),
     check(
       'audit_events_label_lengths_check',
-      sql`char_length(${table.actorLabel}) BETWEEN 1 AND 320
+      sql`char_length(${table.teamLabel}) BETWEEN 1 AND 320
+          AND char_length(${table.actorLabel}) BETWEEN 1 AND 320
           AND (${table.subjectLabel} IS NULL OR char_length(${table.subjectLabel}) BETWEEN 1 AND 320)
           AND (${table.resourceLabel} IS NULL OR char_length(${table.resourceLabel}) BETWEEN 1 AND 320)`,
     ),
