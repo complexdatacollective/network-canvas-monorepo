@@ -5,10 +5,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Alert } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Form from '@codaco/fresco-ui/form/Form';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Spinner from '@codaco/fresco-ui/Spinner';
@@ -23,6 +25,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { useStudioStageSession } from '../editor/useStudioStageSession.ts';
 import { orpc, rpcClient } from '../lib/api.ts';
+import { createUuid } from '../lib/createUuid.ts';
 
 const route = getRouteApi(
   '/authenticated/teams/$teamId/protocols/$protocolId/drafts/$draftId',
@@ -59,19 +62,56 @@ function stageLabel(document: SectionDoc | undefined, index: number): string {
 
 export default function Editor() {
   const params = route.useParams();
+  const { confirm } = useDialog();
   const queryClient = useQueryClient();
   const [selection, setSelection] = useState<Selection>({ kind: 'settings' });
+  const [stageFormDirty, setStageFormDirty] = useState(false);
   const [reconcilingAdd, setReconcilingAdd] = useState(false);
   const [addRecoveryFailed, setAddRecoveryFailed] = useState(false);
   const [reconcilingMove, setReconcilingMove] = useState(false);
   const [moveRecoveryFailed, setMoveRecoveryFailed] = useState(false);
   const selectionInitialized = useRef(false);
+  const selectionRequestPending = useRef(false);
   const draft = useQuery(orpc.protocols.draft.queryOptions({ input: params }));
   const stages = useMemo(
     () => (draft.data ? stageOrder(draft.data.sections) : []),
     [draft.data],
   );
   const draftValidation = useDraftValidation(draft.data?.sections);
+
+  const requestSelection = useCallback(
+    async (nextSelection: Selection) => {
+      const unchanged =
+        nextSelection.kind === selection.kind &&
+        (nextSelection.kind !== 'stage' ||
+          (selection.kind === 'stage' &&
+            nextSelection.stageId === selection.stageId));
+      if (unchanged || selectionRequestPending.current) return;
+
+      if (!stageFormDirty) {
+        setSelection(nextSelection);
+        return;
+      }
+
+      selectionRequestPending.current = true;
+      try {
+        await confirm({
+          title: 'Discard unsaved screen changes?',
+          description:
+            'The values in this screen have not been saved. Discard them and open another section?',
+          confirmLabel: 'Discard changes',
+          cancelLabel: 'Keep editing',
+          intent: 'destructive',
+          onConfirm: () => {
+            setSelection(nextSelection);
+          },
+        });
+      } finally {
+        selectionRequestPending.current = false;
+      }
+    },
+    [confirm, selection, stageFormDirty],
+  );
 
   useEffect(() => {
     if (draft.data && !selectionInitialized.current) {
@@ -118,13 +158,13 @@ export default function Editor() {
 
   const addStage = useMutation({
     mutationFn: async () => {
-      const stageId = globalThis.crypto.randomUUID();
+      const stageId = createUuid();
       await rpcClient.protocols.addInformationStage({ ...params, stageId });
       return stageId;
     },
     onSuccess: async (stageId) => {
       await refreshDraft();
-      setSelection({ kind: 'stage', stageId });
+      await requestSelection({ kind: 'stage', stageId });
     },
   });
   const moveStage = useMutation({
@@ -230,7 +270,7 @@ export default function Editor() {
               <ul className="m-0 flex list-none flex-col gap-2 p-0">
                 <OutlineButton
                   selected={selection.kind === 'settings'}
-                  onClick={() => setSelection({ kind: 'settings' })}
+                  onClick={() => void requestSelection({ kind: 'settings' })}
                 >
                   Settings
                 </OutlineButton>
@@ -318,7 +358,10 @@ export default function Editor() {
                                 selectedStageId === stageId ? 'page' : undefined
                               }
                               onClick={() =>
-                                setSelection({ kind: 'stage', stageId })
+                                void requestSelection({
+                                  kind: 'stage',
+                                  stageId,
+                                })
                               }
                             >
                               <span className="block truncate">
@@ -378,19 +421,21 @@ export default function Editor() {
                 </li>
                 <OutlineButton
                   selected={selection.kind === 'codebook'}
-                  onClick={() => setSelection({ kind: 'codebook' })}
+                  onClick={() => void requestSelection({ kind: 'codebook' })}
                 >
                   Codebook
                 </OutlineButton>
                 <OutlineButton
                   selected={selection.kind === 'assets'}
-                  onClick={() => setSelection({ kind: 'assets' })}
+                  onClick={() => void requestSelection({ kind: 'assets' })}
                 >
                   Assets
                 </OutlineButton>
                 <OutlineButton
                   selected={selection.kind === 'translations'}
-                  onClick={() => setSelection({ kind: 'translations' })}
+                  onClick={() =>
+                    void requestSelection({ kind: 'translations' })
+                  }
                 >
                   Translations
                 </OutlineButton>
@@ -405,6 +450,7 @@ export default function Editor() {
               <StageCanvas
                 sessionState={session}
                 stage={selectedStage}
+                onDirtyChange={setStageFormDirty}
                 heading={stageLabel(
                   selectedStage,
                   stages.indexOf(selection.stageId),
@@ -568,7 +614,12 @@ function StageCanvas(props: {
   sessionState: ReturnType<typeof useStudioStageSession>;
   stage: SectionDoc | undefined;
   heading: string;
+  onDirtyChange: (dirty: boolean) => void;
 }) {
+  useEffect(() => {
+    if (props.sessionState.status !== 'ready') props.onDirtyChange(false);
+  }, [props.onDirtyChange, props.sessionState.status]);
+
   if (props.sessionState.status === 'loading') {
     return (
       <div className="flex items-center gap-3">
@@ -587,6 +638,7 @@ function StageCanvas(props: {
       save={props.sessionState.save}
       stage={props.stage}
       heading={props.heading}
+      onDirtyChange={props.onDirtyChange}
     />
   );
 }
@@ -596,6 +648,7 @@ function StageForm(props: {
   save: () => Promise<void>;
   stage: SectionDoc | undefined;
   heading: string;
+  onDirtyChange: (dirty: boolean) => void;
 }) {
   const controller = useStageEditorController(props.session);
   const { fields } = controller.snapshot.editedSection;
@@ -638,11 +691,25 @@ function StageForm(props: {
           }
         }}
       >
+        <StageFormDirtyObserver onDirtyChange={props.onDirtyChange} />
         <StageFormFields fields={fields} readOnly={readOnly} />
         <SubmitButton disabled={readOnly}>Save screen</SubmitButton>
       </Form>
     </>
   );
+}
+
+function StageFormDirtyObserver(props: {
+  onDirtyChange: (dirty: boolean) => void;
+}) {
+  const dirty = useFormStore(selectIsFormDirty);
+
+  useEffect(() => {
+    props.onDirtyChange(dirty);
+    return () => props.onDirtyChange(false);
+  }, [dirty, props.onDirtyChange]);
+
+  return null;
 }
 
 function StageFormFields(props: {

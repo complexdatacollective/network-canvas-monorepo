@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
@@ -10,6 +11,7 @@ import { authClient } from '../lib/auth.ts';
 export default function AppLayout() {
   const { data: session, isPending } = authClient.useSession();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [signOutFailed, setSignOutFailed] = useState(false);
 
   useEffect(() => {
@@ -60,6 +62,7 @@ export default function AppLayout() {
                     setSignOutFailed(true);
                     return;
                   }
+                  queryClient.clear();
                   await navigate({ to: '/sign-in' });
                 } catch {
                   setSignOutFailed(true);

@@ -46,6 +46,7 @@
     "react-dom": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
+    "uuid": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"
   },

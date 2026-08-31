@@ -7,6 +7,8 @@ import {
   type RouterHistory,
 } from '@tanstack/react-router';
 
+import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+
 import { authClient } from './lib/auth.ts';
 import AppLayout from './routes/AppLayout.tsx';
 import Editor from './routes/Editor.tsx';
@@ -30,9 +32,15 @@ async function probeSession(): Promise<
   }
 }
 
-const rootRoute = createRootRoute({
-  component: Outlet,
-});
+function RootLayout() {
+  return (
+    <DialogProvider>
+      <Outlet />
+    </DialogProvider>
+  );
+}
+
+const rootRoute = createRootRoute({ component: RootLayout });
 
 const signInRoute = createRoute({
   getParentRoute: () => rootRoute,

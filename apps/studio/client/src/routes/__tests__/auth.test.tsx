@@ -94,16 +94,21 @@ const sessionNone = {
   error: null,
 } as unknown as UseSessionResult;
 
-function renderAt(path: string) {
+function renderWithClientAt(path: string) {
   const router = createAppRouter(
     createMemoryHistory({ initialEntries: [path] }),
   );
+  const queryClient = new QueryClient();
   render(
-    <QueryClientProvider client={new QueryClient()}>
+    <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
-  return router;
+  return { queryClient, router };
+}
+
+function renderAt(path: string) {
+  return renderWithClientAt(path).router;
 }
 
 beforeEach(() => {
@@ -189,7 +194,8 @@ describe('sign-out', () => {
       data: { success: true },
       error: null,
     } as unknown as Awaited<ReturnType<typeof authClient.signOut>>);
-    renderAt('/');
+    const { queryClient } = renderWithClientAt('/');
+    queryClient.setQueryData(['private-draft'], { name: 'Private draft' });
 
     fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
     await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
@@ -197,6 +203,9 @@ describe('sign-out', () => {
 
     closed.resolve();
     await waitFor(() => expect(mocked.signOut).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(queryClient.getQueryData(['private-draft'])).toBeUndefined(),
+    );
     unregister();
   });
 
