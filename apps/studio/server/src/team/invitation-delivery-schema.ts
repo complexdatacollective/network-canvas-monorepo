@@ -39,6 +39,7 @@ const invitationDeliveries = pgTable(
     sentAt: timestamp('sent_at', { withTimezone: true }),
     failedAt: timestamp('failed_at', { withTimezone: true }),
     suppressedAt: timestamp('suppressed_at', { withTimezone: true }),
+    uncertainAt: timestamp('uncertain_at', { withTimezone: true }),
     lastError: text('last_error'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
@@ -81,9 +82,9 @@ const invitationDeliveries = pgTable(
     ),
     check(
       'team_invitation_deliveries_terminal_state_check',
-      sql`num_nonnulls(${table.sentAt}, ${table.failedAt}, ${table.suppressedAt}) <= 1
+      sql`num_nonnulls(${table.sentAt}, ${table.failedAt}, ${table.suppressedAt}, ${table.uncertainAt}) <= 1
           AND (
-            num_nonnulls(${table.sentAt}, ${table.failedAt}, ${table.suppressedAt}) = 0
+            num_nonnulls(${table.sentAt}, ${table.failedAt}, ${table.suppressedAt}, ${table.uncertainAt}) = 0
             OR (${table.leaseOwner} IS NULL AND ${table.leaseExpiresAt} IS NULL)
           )`,
     ),

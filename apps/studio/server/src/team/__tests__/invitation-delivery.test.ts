@@ -210,6 +210,76 @@ describe.skipIf(!db)('invitation delivery outbox', () => {
     });
   });
 
+  it('does not retry after SMTP accepts mail but sent finalization is interrupted', async () => {
+    const invitation = await seedInvitation(scratch);
+    await enqueue(scratch, invitation);
+    const sendTeamInvitation = vi
+      .fn<InvitationMailer['sendTeamInvitation']>()
+      .mockResolvedValue(undefined);
+    await scratch.pool.query(`
+      CREATE FUNCTION interrupt_invitation_sent_finalization() RETURNS trigger AS $$
+      BEGIN
+        RAISE EXCEPTION 'sent finalization interrupted';
+      END;
+      $$ LANGUAGE plpgsql;
+      CREATE TRIGGER interrupt_invitation_sent_finalization
+        BEFORE UPDATE ON team_invitation_deliveries
+        FOR EACH ROW
+        WHEN (NEW.sent_at IS NOT NULL AND OLD.sent_at IS NULL)
+        EXECUTE FUNCTION interrupt_invitation_sent_finalization();
+    `);
+
+    const firstResult = await dispatcher(scratch.maintenance, {
+      sendTeamInvitation,
+    })
+      .runOnce()
+      .finally(async () => {
+        await scratch.pool.query(`
+          DROP TRIGGER interrupt_invitation_sent_finalization
+            ON team_invitation_deliveries;
+          DROP FUNCTION interrupt_invitation_sent_finalization();
+        `);
+      });
+    const afterInterruption = await scratch.pool.query<{
+      attempt_count: number;
+      failed_at: Date | null;
+      last_error: string;
+      lease_owner: string | null;
+      uncertain_at: Date | null;
+    }>(
+      `SELECT attempt_count, failed_at, last_error, lease_owner, uncertain_at
+       FROM team_invitation_deliveries
+       WHERE invitation_id = $1`,
+      [invitation.invitationId],
+    );
+    const secondResult = await dispatcher(scratch.maintenance, {
+      sendTeamInvitation,
+    }).runOnce();
+
+    expect(firstResult).toEqual({
+      claimed: 1,
+      sent: 0,
+      failed: 0,
+      suppressed: 0,
+    });
+    expect(afterInterruption.rows).toEqual([
+      {
+        attempt_count: 1,
+        failed_at: null,
+        last_error: 'sent finalization interrupted',
+        lease_owner: null,
+        uncertain_at: expect.any(Date),
+      },
+    ]);
+    expect(secondResult).toEqual({
+      claimed: 0,
+      sent: 0,
+      failed: 0,
+      suppressed: 0,
+    });
+    expect(sendTeamInvitation).toHaveBeenCalledOnce();
+  });
+
   it('stops retrying after the bounded attempt limit', async () => {
     const invitation = await seedInvitation(scratch);
     await enqueue(scratch, invitation);

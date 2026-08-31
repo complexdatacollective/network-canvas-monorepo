@@ -132,6 +132,7 @@ export class InvitationDeliveryDispatcher {
          AND delivery.sent_at IS NULL
          AND delivery.failed_at IS NULL
          AND delivery.suppressed_at IS NULL
+         AND delivery.uncertain_at IS NULL
          AND (
            delivery.lease_expires_at IS NULL
            OR delivery.lease_expires_at <= clock_timestamp()
@@ -157,6 +158,7 @@ export class InvitationDeliveryDispatcher {
        WHERE sent_at IS NULL
          AND failed_at IS NULL
          AND suppressed_at IS NULL
+         AND uncertain_at IS NULL
          AND attempt_count >= $1
          AND (
            lease_expires_at IS NULL
@@ -179,6 +181,7 @@ export class InvitationDeliveryDispatcher {
          WHERE delivery.sent_at IS NULL
            AND delivery.failed_at IS NULL
            AND delivery.suppressed_at IS NULL
+           AND delivery.uncertain_at IS NULL
            AND delivery.attempt_count < $3
            AND delivery.available_at <= clock_timestamp()
            AND (
@@ -228,6 +231,7 @@ export class InvitationDeliveryDispatcher {
          AND delivery.sent_at IS NULL
          AND delivery.failed_at IS NULL
          AND delivery.suppressed_at IS NULL
+         AND delivery.uncertain_at IS NULL
          AND invitation.status = 'pending'
          AND invitation.expires_at > clock_timestamp()`,
       [claim.id, this.workerId],
@@ -248,7 +252,8 @@ export class InvitationDeliveryDispatcher {
          AND lease_owner = $2
          AND sent_at IS NULL
          AND failed_at IS NULL
-         AND suppressed_at IS NULL`,
+         AND suppressed_at IS NULL
+         AND uncertain_at IS NULL`,
       [claim.id, this.workerId],
     );
     return suppressed.rowCount === 1;
@@ -263,7 +268,8 @@ export class InvitationDeliveryDispatcher {
          AND lease_owner = $2
          AND sent_at IS NULL
          AND failed_at IS NULL
-         AND suppressed_at IS NULL`,
+         AND suppressed_at IS NULL
+         AND uncertain_at IS NULL`,
       [claim.id, this.workerId, this.leaseMs],
     );
     return renewed.rowCount === 1;
@@ -333,7 +339,8 @@ export class InvitationDeliveryDispatcher {
          AND lease_owner = $2
          AND sent_at IS NULL
          AND failed_at IS NULL
-         AND suppressed_at IS NULL`,
+         AND suppressed_at IS NULL
+         AND uncertain_at IS NULL`,
       [
         claim.id,
         this.workerId,
@@ -356,10 +363,38 @@ export class InvitationDeliveryDispatcher {
          AND lease_owner = $2
          AND sent_at IS NULL
          AND failed_at IS NULL
-         AND suppressed_at IS NULL`,
+         AND suppressed_at IS NULL
+         AND uncertain_at IS NULL`,
       [claim.id, this.workerId],
     );
     return sent.rowCount === 1;
+  }
+
+  /**
+   * SMTP has accepted the message, but Studio could not prove that its sent
+   * marker committed. This is terminal for automatic dispatch: retrying could
+   * duplicate mail. A process crash still leaves the lease reclaimable, which
+   * preserves the outbox's at-least-once crash semantics.
+   */
+  private async recordUncertain(
+    claim: ClaimedInvitationDelivery,
+    error: unknown,
+  ): Promise<boolean> {
+    const uncertain = await this.pool.query(
+      `UPDATE team_invitation_deliveries
+       SET uncertain_at = clock_timestamp(),
+           lease_owner = NULL,
+           lease_expires_at = NULL,
+           last_error = $3
+       WHERE id = $1
+         AND lease_owner = $2
+         AND sent_at IS NULL
+         AND failed_at IS NULL
+         AND suppressed_at IS NULL
+         AND uncertain_at IS NULL`,
+      [claim.id, this.workerId, errorMessage(error)],
+    );
+    return uncertain.rowCount === 1;
   }
 
   async runOnce(): Promise<InvitationDeliveryResult> {
@@ -396,14 +431,6 @@ export class InvitationDeliveryDispatcher {
         role: claim.role,
         teamLabel: claim.teamLabel,
       });
-      const ownsLease = await heartbeat.stop();
-      const sent = ownsLease && (await this.recordSent(claim));
-      return {
-        claimed: 1,
-        sent: sent ? 1 : 0,
-        failed: exhausted,
-        suppressed,
-      };
     } catch (error) {
       const ownsLease = await heartbeat.stop();
       const failed = ownsLease && (await this.recordFailure(claim, error));
@@ -414,6 +441,27 @@ export class InvitationDeliveryDispatcher {
         suppressed,
       };
     }
+
+    const ownsLease = await heartbeat.stop();
+    if (!ownsLease) {
+      return { claimed: 1, sent: 0, failed: exhausted, suppressed };
+    }
+
+    let sent: boolean;
+    try {
+      sent = await this.recordSent(claim);
+    } catch (error) {
+      await this.recordUncertain(claim, error);
+      return { claimed: 1, sent: 0, failed: exhausted, suppressed };
+    }
+    if (sent) {
+      return { claimed: 1, sent: 1, failed: exhausted, suppressed };
+    }
+    await this.recordUncertain(
+      claim,
+      new Error('sent finalization did not retain delivery ownership'),
+    );
+    return { claimed: 1, sent: 0, failed: exhausted, suppressed };
   }
 }
 
