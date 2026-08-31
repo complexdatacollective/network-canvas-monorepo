@@ -109,7 +109,8 @@ async function InterviewContent({
     }
   });
 
-  const { payload, assetUrls, initialStep } = mapInterviewPayload(interview);
+  const { payload, assetUrls, initialStep, initialSyncRevision } =
+    mapInterviewPayload(interview);
 
   const installationId = (await getAppSetting('installationId')) ?? 'unknown';
   // Use the same helper as the rest of the app, so a DISABLE_ANALYTICS
@@ -121,6 +122,7 @@ async function InterviewContent({
       payload={payload}
       assetUrls={assetUrls}
       initialStep={initialStep}
+      initialSyncRevision={initialSyncRevision}
       installationId={installationId}
       disableAnalytics={disableAnalytics}
     />
