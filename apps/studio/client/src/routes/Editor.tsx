@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getRouteApi, Link } from '@tanstack/react-router';
+import { getRouteApi, Link, useBlocker } from '@tanstack/react-router';
 import { ArrowDown, ArrowLeft, ArrowUp, Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -71,13 +71,35 @@ export default function Editor() {
   const [reconcilingMove, setReconcilingMove] = useState(false);
   const [moveRecoveryFailed, setMoveRecoveryFailed] = useState(false);
   const selectionInitialized = useRef(false);
-  const selectionRequestPending = useRef(false);
+  const discardRequestPending = useRef(false);
   const draft = useQuery(orpc.protocols.draft.queryOptions({ input: params }));
   const stages = useMemo(
     () => (draft.data ? stageOrder(draft.data.sections) : []),
     [draft.data],
   );
   const draftValidation = useDraftValidation(draft.data?.sections);
+
+  const confirmDiscardStageChanges = useCallback(
+    async (description: string) => {
+      if (discardRequestPending.current) return false;
+
+      discardRequestPending.current = true;
+      try {
+        const result = await confirm({
+          title: 'Discard unsaved screen changes?',
+          description,
+          confirmLabel: 'Discard changes',
+          cancelLabel: 'Keep editing',
+          intent: 'destructive',
+          onConfirm: () => undefined,
+        });
+        return result === true;
+      } finally {
+        discardRequestPending.current = false;
+      }
+    },
+    [confirm],
+  );
 
   const requestSelection = useCallback(
     async (nextSelection: Selection) => {
@@ -86,32 +108,36 @@ export default function Editor() {
         (nextSelection.kind !== 'stage' ||
           (selection.kind === 'stage' &&
             nextSelection.stageId === selection.stageId));
-      if (unchanged || selectionRequestPending.current) return;
+      if (unchanged) return;
 
-      if (!stageFormDirty) {
-        setSelection(nextSelection);
+      if (
+        stageFormDirty &&
+        !(await confirmDiscardStageChanges(
+          'The values in this screen have not been saved. Discard them and open another section?',
+        ))
+      ) {
         return;
       }
 
-      selectionRequestPending.current = true;
-      try {
-        await confirm({
-          title: 'Discard unsaved screen changes?',
-          description:
-            'The values in this screen have not been saved. Discard them and open another section?',
-          confirmLabel: 'Discard changes',
-          cancelLabel: 'Keep editing',
-          intent: 'destructive',
-          onConfirm: () => {
-            setSelection(nextSelection);
-          },
-        });
-      } finally {
-        selectionRequestPending.current = false;
-      }
+      setSelection(nextSelection);
     },
-    [confirm, selection, stageFormDirty],
+    [confirmDiscardStageChanges, selection, stageFormDirty],
   );
+
+  const shouldBlockNavigation = useCallback(async () => {
+    if (!stageFormDirty) return false;
+
+    const shouldDiscard = await confirmDiscardStageChanges(
+      'The values in this screen have not been saved. Discard them and leave the protocol editor?',
+    );
+    return !shouldDiscard;
+  }, [confirmDiscardStageChanges, stageFormDirty]);
+
+  useBlocker({
+    shouldBlockFn: shouldBlockNavigation,
+    enableBeforeUnload: stageFormDirty,
+    disabled: !stageFormDirty,
+  });
 
   useEffect(() => {
     if (draft.data && !selectionInitialized.current) {
@@ -654,6 +680,18 @@ function StageForm(props: {
   const { fields } = controller.snapshot.editedSection;
   const readOnly = controller.snapshot.access.mode === 'readOnly';
   const hasTitle = typeof fields.title === 'string';
+  const label = typeof fields.label === 'string' ? fields.label : '';
+  const title = typeof fields.title === 'string' ? fields.title : '';
+  const [baseline, setBaseline] = useState({ label, title });
+
+  useEffect(() => {
+    if (controller.snapshot.pendingCommands.length !== 0) return;
+    setBaseline((current) =>
+      current.label === label && current.title === title
+        ? current
+        : { label, title },
+    );
+  }, [controller.snapshot.pendingCommands.length, label, title]);
 
   return (
     <>
@@ -671,12 +709,14 @@ function StageForm(props: {
       <Form
         className="mt-6"
         onSubmit={async (values) => {
-          const label = typeof values.label === 'string' ? values.label : '';
-          const title = typeof values.title === 'string' ? values.title : '';
+          const submittedLabel =
+            typeof values.label === 'string' ? values.label : '';
+          const submittedTitle =
+            typeof values.title === 'string' ? values.title : '';
           controller.changeFields({
             ...fields,
-            label,
-            ...(hasTitle ? { title } : {}),
+            label: submittedLabel,
+            ...(hasTitle ? { title: submittedTitle } : {}),
           });
           try {
             await props.save();
@@ -692,7 +732,11 @@ function StageForm(props: {
         }}
       >
         <StageFormDirtyObserver onDirtyChange={props.onDirtyChange} />
-        <StageFormFields fields={fields} readOnly={readOnly} />
+        <StageFormFields
+          fields={fields}
+          baseline={baseline}
+          readOnly={readOnly}
+        />
         <SubmitButton disabled={readOnly}>Save screen</SubmitButton>
       </Form>
     </>
@@ -714,6 +758,7 @@ function StageFormDirtyObserver(props: {
 
 function StageFormFields(props: {
   fields: Readonly<Record<string, unknown>>;
+  baseline: Readonly<{ label: string; title: string }>;
   readOnly: boolean;
 }) {
   const label =
@@ -738,7 +783,7 @@ function StageFormFields(props: {
         name="label"
         label="Screen name"
         component={InputField}
-        initialValue={label}
+        initialValue={props.baseline.label}
         required
         disabled={props.readOnly}
       />
@@ -747,7 +792,7 @@ function StageFormFields(props: {
           name="title"
           label="Page heading"
           component={InputField}
-          initialValue={title}
+          initialValue={props.baseline.title}
           required
           disabled={props.readOnly}
         />
