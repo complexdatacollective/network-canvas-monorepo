@@ -27,6 +27,22 @@ export function useStageInitialValue<T = unknown>(path: string): T | undefined {
 }
 
 /**
+ * Writes into the stage form by name or path. An unregistered name is parked
+ * as a dormant pending write and re-attaches when the field next mounts, so
+ * this reaches a field whose section is collapsed or switched off — which is
+ * exactly the case a capability has to clear.
+ */
+export function useSetStageValue(): (path: string, value: FieldValue) => void {
+  const { storeApi } = useStageEditorForm();
+  return useCallback(
+    (path: string, value: FieldValue) => {
+      storeApi.getState().setFieldValue(path, value);
+    },
+    [storeApi],
+  );
+}
+
+/**
  * Whether any of these paths currently holds a value.
  *
  * How an optional capability decides whether it is already switched on. It

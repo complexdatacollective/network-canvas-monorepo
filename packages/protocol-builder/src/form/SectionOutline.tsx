@@ -1,4 +1,4 @@
-import { AlertCircle, Check, Circle, MinusCircle } from 'lucide-react';
+import { AlertCircle, Check, Circle, Lock, MinusCircle } from 'lucide-react';
 import { useSyncExternalStore } from 'react';
 
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -31,9 +31,14 @@ const STATUS_PRESENTATION: Record<
     className: 'text-current/60',
   },
   complete: { label: 'Finished', icon: Check, className: 'text-success' },
-  disabled: {
+  switchedOff: {
     label: 'Switched off',
     icon: MinusCircle,
+    className: 'text-current/40',
+  },
+  unavailable: {
+    label: 'Not available yet',
+    icon: Lock,
     className: 'text-current/40',
   },
 };

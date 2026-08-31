@@ -804,11 +804,14 @@ function StageForm(props: {
                   ? 'save'
                   : null
             : null;
-          controller.changeFields({
-            ...fields,
+          // Merged into the draft the session holds at submit time, not into
+          // the one this render captured: a change acknowledged while the form
+          // was open must survive being saved over.
+          controller.changeFields((current) => ({
+            ...current,
             label: submittedLabel,
             ...(hasTitle ? { title: submittedTitle } : {}),
-          });
+          }));
           try {
             await props.save();
             return { success: true };

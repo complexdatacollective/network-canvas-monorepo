@@ -5,16 +5,27 @@ import { isBlankFieldValue } from './blankValue.ts';
 /**
  * What the outline says about one section.
  *
- * `disabled` is a property of the section itself — it is switched off, or the
- * host cannot edit it — so it is decided before any field is consulted. The
- * other three are read off the fields the section currently has registered,
- * in that order of severity.
+ * Availability is a property of the section itself, so it is decided before
+ * any field is consulted. The other three are read off the fields the section
+ * currently has registered, in that order of severity.
  */
 export type SectionOutlineStatus =
   | 'error'
   | 'incomplete'
   | 'complete'
-  | 'disabled';
+  | 'switchedOff'
+  | 'unavailable';
+
+/**
+ * Why a section is not asking for input.
+ *
+ * `switchedOff` is the researcher's decision — an optional capability they
+ * turned off. `unavailable` is the stage's own state: something the section
+ * depends on has not been chosen yet. They are not interchangeable, and
+ * neither of them describes a session that is merely read-only, where every
+ * section still has real progress worth reporting.
+ */
+export type SectionAvailability = 'available' | 'switchedOff' | 'unavailable';
 
 export type OutlineFieldRegistration = Readonly<{
   name: string;
@@ -27,14 +38,14 @@ export type OutlineFieldRegistration = Readonly<{
 export type OutlineSection = Readonly<{
   id: string;
   title: string;
-  disabled: boolean;
+  availability: SectionAvailability;
   fields: readonly OutlineFieldRegistration[];
 }>;
 
 type SectionRecord = {
   id: string;
   title: string;
-  disabled: boolean;
+  availability: SectionAvailability;
   element: HTMLElement | null;
 };
 
@@ -82,7 +93,7 @@ export class SectionOutlineStore {
         Object.freeze({
           id: record.id,
           title: record.title,
-          disabled: record.disabled,
+          availability: record.availability,
           fields: Object.freeze([
             ...(this.fieldsBySection.get(record.id)?.values() ?? []),
           ]),
@@ -108,7 +119,7 @@ export class SectionOutlineStore {
       this.sections.set(section.id, {
         id: section.id,
         title: section.title,
-        disabled: false,
+        availability: 'available',
         element: null,
       });
     }
@@ -134,10 +145,10 @@ export class SectionOutlineStore {
     this.changed();
   }
 
-  setSectionDisabled(id: string, disabled: boolean): void {
+  setSectionAvailability(id: string, availability: SectionAvailability): void {
     const record = this.sections.get(id);
-    if (!record || record.disabled === disabled) return;
-    record.disabled = disabled;
+    if (!record || record.availability === availability) return;
+    record.availability = availability;
     this.changed();
   }
 
@@ -200,7 +211,7 @@ export function sectionOutlineStatus(
   section: OutlineSection,
   reader: SectionFieldReader,
 ): SectionOutlineStatus {
-  if (section.disabled) return 'disabled';
+  if (section.availability !== 'available') return section.availability;
 
   let incomplete = false;
   for (const field of section.fields) {

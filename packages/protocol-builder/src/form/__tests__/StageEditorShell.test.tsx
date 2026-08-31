@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -128,6 +129,57 @@ function RefusingEditor({ session }: { session: ProtocolBuilderSession }) {
           component={InputField}
           required
         />
+      </BuilderSection>
+    </StageEditorShell>
+  );
+}
+
+/**
+ * A capability whose second field is behind a plain conditional render, so
+ * hiding it parks the value rather than discarding it — the shape of a
+ * collapsed group of advanced options inside a capability.
+ */
+function CapabilityEditor({
+  session,
+}: {
+  session: ProtocolBuilderSessionStore;
+}) {
+  const controller = useStageEditorController(session, 'stage-form');
+  const [advancedShown, setAdvancedShown] = useState(true);
+
+  return (
+    <StageEditorShell
+      controller={controller}
+      actions={({ formId }) => (
+        <SubmitButton form={formId}>Finished editing</SubmitButton>
+      )}
+    >
+      <BuilderSection
+        title="Interviewer guidance"
+        capability={{
+          fields: ['interviewScript', 'interviewScriptStyle'],
+          confirmClear: {
+            title: 'This will clear your interview script',
+            description: 'The text you entered will be deleted.',
+            confirmLabel: 'Clear script',
+          },
+        }}
+      >
+        <ProtocolField
+          name="interviewScript"
+          label="Interviewer script text"
+          component={InputField}
+        />
+        <button type="button" onClick={() => setAdvancedShown(false)}>
+          Hide advanced options
+        </button>
+        {advancedShown && (
+          <ProtocolField
+            name="interviewScriptStyle"
+            label="Script style"
+            component={InputField}
+          />
+        )}
       </BuilderSection>
     </StageEditorShell>
   );
@@ -334,6 +386,46 @@ describe('StageEditorShell', () => {
     );
   });
 
+  it('clears a capability\u2019s hidden fields when it is switched off', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      fields: {
+        ...initialFields,
+        interviewScript: 'Read this aloud',
+        interviewScriptStyle: 'formal',
+      },
+    });
+    render(
+      <DialogProvider>
+        <CapabilityEditor session={session} />
+      </DialogProvider>,
+    );
+
+    // Parked with its value intact, so closing the capability around it never
+    // unmounts it again.
+    await user.click(
+      screen.getByRole('button', { name: 'Hide advanced options' }),
+    );
+    await user.click(
+      screen.getByRole('switch', { name: 'Interviewer guidance' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Clear script' }));
+
+    await waitFor(() =>
+      expect([...outlineItems()][0]?.textContent).toBe(
+        'Interviewer guidanceSwitched off',
+      ),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    await waitFor(() => {
+      const { fields } = session.getSnapshot().editedSection;
+      expect(Object.hasOwn(fields, 'interviewScript')).toBe(false);
+      expect(Object.hasOwn(fields, 'interviewScriptStyle')).toBe(false);
+    });
+  });
+
   it('refuses to save a stage the session has made read-only', async () => {
     const onFinish = vi.fn();
     const { container } = renderEditor(
@@ -349,6 +441,11 @@ describe('StageEditorShell', () => {
     // The stage name sits outside any section's fieldset, so nothing but the
     // field itself can refuse to be edited here.
     expect(screen.getByRole('textbox', { name: 'Stage name' })).toBeDisabled();
+    // Read-only is not the same as switched off. A spectator still needs to
+    // see how much of the stage is done.
+    await waitFor(() =>
+      expect([...outlineItems()][1]?.textContent).toBe('Page contentFinished'),
+    );
 
     // A disabled button is the host's chrome, not the guarantee. Submitting
     // the form directly is what a keyboard, a stale render or another host's

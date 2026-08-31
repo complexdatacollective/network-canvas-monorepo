@@ -13,14 +13,15 @@ import {
 } from './session.ts';
 
 /**
- * A replacement draft, or a function handed the draft the session holds right
- * now. Prefer the function: a form assembles its next draft from the current
- * one, and the snapshot a component rendered against can be a revision behind
- * by the time a submit runs.
+ * Builds the next draft from the one the session holds right now.
+ *
+ * Deliberately not "a replacement draft". A caller assembling one from the
+ * snapshot it rendered against is a revision behind by the time a submit runs,
+ * and diffing that against the session's current fields would emit commands
+ * reverting everything that arrived in between. Being handed the current draft
+ * makes the safe thing the only thing a caller can write.
  */
-export type StageFormDraftChange =
-  | StageFormDraft
-  | ((current: StageFormDraft) => StageFormDraft);
+export type StageFormDraftChange = (current: StageFormDraft) => StageFormDraft;
 
 export type StageEditorController = Readonly<{
   formId: string;
@@ -56,14 +57,13 @@ export function useStageEditorController(
     () => ({
       formId,
       snapshot,
-      changeFields(next: StageFormDraftChange) {
-        // Diffed against what the session holds now, not against the snapshot
-        // this controller was memoised on: a change acknowledged between the
-        // last render and this call would otherwise be re-sent as a local
-        // command that overwrites it.
+      changeFields(update: StageFormDraftChange) {
+        // Both the draft handed out and the diff baseline are what the session
+        // holds NOW, not the snapshot this controller was memoised on, so a
+        // change acknowledged since the last render is neither re-sent nor
+        // reverted.
         const current = session.getSnapshot().editedSection.fields;
-        const resolved = typeof next === 'function' ? next(current) : next;
-        session.dispatch(commandsFromDraftChange(current, resolved));
+        session.dispatch(commandsFromDraftChange(current, update(current)));
       },
       setField(key: string, value: unknown) {
         const command: Command =

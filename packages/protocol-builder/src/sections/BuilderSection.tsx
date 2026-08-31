@@ -7,7 +7,10 @@ import {
   SectionScopeContext,
   useStageEditorForm,
 } from '../form/stageEditorContext.ts';
-import { useStageHasAnyValue } from '../form/stageFormHooks.ts';
+import {
+  useSetStageValue,
+  useStageHasAnyValue,
+} from '../form/stageFormHooks.ts';
 import { useOutlineSection } from '../form/useOutlineSection.ts';
 
 /**
@@ -68,6 +71,7 @@ export default function BuilderSection({
 }: BuilderSectionProps) {
   const { readOnly } = useStageEditorForm();
   const { confirm } = useDialog();
+  const setStageValue = useSetStageValue();
   const configured = useStageHasAnyValue(capability?.fields ?? NO_FIELDS);
   const [switchedOn, setSwitchedOn] = useState(configured);
   // Holding a value is itself proof the capability is on, so an undo that
@@ -76,9 +80,17 @@ export default function BuilderSection({
   // drifting out of step with it.
   const enabled = switchedOn || configured;
   const isDisabled = disabled || readOnly;
+  // A read-only session is deliberately absent here. Nothing can be edited in
+  // one, but every section still has real progress worth reporting, and
+  // saying "switched off" against all of them would tell a spectator the
+  // opposite of what is true.
   const { sectionId } = useOutlineSection(
     title,
-    isDisabled || (capability !== undefined && !enabled),
+    capability !== undefined && !enabled
+      ? 'switchedOff'
+      : disabled
+        ? 'unavailable'
+        : 'available',
   );
 
   const requestOpenChange = useCallback(
@@ -98,10 +110,18 @@ export default function BuilderSection({
       });
       if (confirmed !== true) return false;
 
+      // Every path the capability owns is cleared here rather than left to the
+      // panel's unmount. A field already parked by a collapsed group of
+      // advanced options does not unmount again when the capability closes
+      // around it, so its value would survive — and go on making the
+      // capability look configured, and be written back on save.
+      for (const path of capability?.fields ?? NO_FIELDS) {
+        setStageValue(path, undefined);
+      }
       setSwitchedOn(false);
       return true;
     },
-    [capability, configured, confirm],
+    [capability, configured, confirm, setStageValue],
   );
 
   const body = (

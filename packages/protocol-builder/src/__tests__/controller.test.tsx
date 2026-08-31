@@ -39,11 +39,10 @@ describe('useStageEditorController', () => {
     );
 
     await act(async () => {
-      result.current.changeFields({
+      result.current.changeFields((current) => ({
+        ...current,
         label: 'Renamed',
-        title: 'Welcome',
-        items: [],
-      });
+      }));
       await session.validate();
     });
 
@@ -53,6 +52,46 @@ describe('useStageEditorController', () => {
       commands: [{ op: 'set', key: 'label', value: 'Renamed' }],
     });
     expect(result.current.snapshot.editedSection.fields.label).toBe('Renamed');
+  });
+
+  it('does not revert a change that landed between render and submit', async () => {
+    const { onCommands, session } = createSession();
+    const { result } = renderHook(() =>
+      useStageEditorController(session, 'stage-form'),
+    );
+
+    // The controller a render captured, held across an update — which is what
+    // a submit handler closing over its render actually has when a save lands
+    // while the form is open.
+    const captured = result.current;
+
+    await act(async () => {
+      session.acknowledge({
+        fields: { label: 'Welcome', title: 'Renamed elsewhere', items: [] },
+        throughBatchId: 0,
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+      await session.validate();
+    });
+    onCommands.mockClear();
+
+    await act(async () => {
+      captured.changeFields((current) => ({
+        ...current,
+        label: 'Edited here',
+      }));
+      await session.validate();
+    });
+
+    // Only the edit, with nothing reverting the title that arrived in between.
+    expect(onCommands).toHaveBeenCalledTimes(1);
+    expect(onCommands).toHaveBeenCalledWith({
+      id: 1,
+      commands: [{ op: 'set', key: 'label', value: 'Edited here' }],
+    });
+    expect(result.current.snapshot.editedSection.fields.title).toBe(
+      'Renamed elsewhere',
+    );
   });
 
   it('uses identity-preserving array commands for row operations', async () => {

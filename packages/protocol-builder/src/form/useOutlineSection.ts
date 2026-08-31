@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from 'react';
 
+import type { SectionAvailability } from './outlineStore.ts';
 import { useStageEditorForm } from './stageEditorContext.ts';
 
 /**
@@ -14,7 +15,7 @@ import { useStageEditorForm } from './stageEditorContext.ts';
  */
 export function useOutlineSection(
   title: string,
-  disabled = false,
+  availability: SectionAvailability = 'available',
 ): Readonly<{ sectionId: string }> {
   const { outline } = useStageEditorForm();
   const sectionId = useId();
@@ -42,8 +43,8 @@ export function useOutlineSection(
   }, [outline, sectionId, title]);
 
   useEffect(() => {
-    outline.setSectionDisabled(sectionId, disabled);
-  }, [disabled, outline, sectionId]);
+    outline.setSectionAvailability(sectionId, availability);
+  }, [availability, outline, sectionId]);
 
   return { sectionId };
 }
