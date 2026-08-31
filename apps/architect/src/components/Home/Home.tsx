@@ -285,7 +285,7 @@ const Home = () => {
 
         {/* Hero section */}
 
-        <main className="laptop:px-0 mx-auto my-8 flex min-h-0 w-full max-w-7xl flex-1 flex-col overflow-x-hidden overflow-y-auto px-8">
+        <main className="laptop:px-0 mx-auto mt-8 flex min-h-0 w-full max-w-7xl flex-1 flex-col overflow-x-hidden overflow-y-auto px-8 pb-8">
           <div className="tablet-landscape:flex-row laptop:gap-4 flex min-h-0 w-full min-w-0 flex-1 flex-col items-stretch gap-6">
             <div
               aria-hidden
