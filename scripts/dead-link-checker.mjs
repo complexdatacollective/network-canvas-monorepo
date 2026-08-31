@@ -36,7 +36,9 @@
  * waits for JavaScript to reach a terminal main-frame response, finish loading
  * its document, and remain navigation-quiet for a short bounded interval.
  * Incomplete redirects and document loads remain verification failures, and
- * browser-only HTTP redirects obey the same maximum-hop rule as Node redirects.
+ * the entire sequence shares one request deadline so reload loops cannot retain
+ * a worker indefinitely. Browser-only HTTP redirects obey the same maximum-hop
+ * rule as Node redirects.
  *
  * Browser verification is not status suppression. Its final response is
  * authoritative: a browser-confirmed 403 (or any other >= 400 response) still
@@ -254,9 +256,19 @@ export class BrowserVerifier {
           mainFrameResponses.push(response);
         }
       });
+      const verificationDeadline = Date.now() + timeout;
+      const remainingTimeout = () => {
+        const remaining = verificationDeadline - Date.now();
+        if (remaining > 0) return remaining;
+        const error = new Error(
+          `Browser verification timed out after ${timeout}ms`,
+        );
+        error.name = 'TimeoutError';
+        throw error;
+      };
 
       const initialResponse = await page.goto(url, {
-        timeout,
+        timeout: remainingTimeout(),
         waitUntil: 'domcontentloaded',
       });
       if (!initialResponse) {
@@ -289,7 +301,7 @@ export class BrowserVerifier {
                 response.request().isNavigationRequest() &&
                 response.frame() === page.mainFrame() &&
                 isTerminalNavigation(response),
-              { timeout },
+              { timeout: remainingTimeout() },
             );
           } catch (error) {
             if (error?.name !== 'TimeoutError') throw error;
@@ -319,7 +331,9 @@ export class BrowserVerifier {
           // A terminal status is not enough for recursive pages: page.content()
           // must represent the completed document or links after a stalled
           // parser-blocking resource could silently disappear from the crawl.
-          await page.waitForLoadState('domcontentloaded', { timeout });
+          await page.waitForLoadState('domcontentloaded', {
+            timeout: remainingTimeout(),
+          });
 
           // A parser-blocking interstitial can navigate again before its own
           // DOMContentLoaded. The load-state wait follows the new document, so
@@ -341,8 +355,9 @@ export class BrowserVerifier {
           // terminal-response and document-load checks for any new navigation.
           const settleStart = mainFrameResponses.length;
           await page.waitForTimeout(
-            Math.min(BROWSER_NAVIGATION_SETTLE_MS, timeout),
+            Math.min(BROWSER_NAVIGATION_SETTLE_MS, remainingTimeout()),
           );
+          remainingTimeout();
           if (mainFrameResponses.length === settleStart) break;
           terminalResponse = await waitForTerminalResponse(settleStart);
         }

@@ -659,6 +659,59 @@ test('browser verification waits for a redirect scheduled after DOMContentLoaded
   }
 });
 
+test('browser verification bounds repeated challenge navigations by one deadline', async () => {
+  const frame = {};
+  const navigationRequest = { isNavigationRequest: () => true };
+  const response = (status) => ({
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => status,
+  });
+  const initial = response(403);
+  const interstitial = response(200);
+  let responseListener;
+  let settleCount = 0;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => 'https://publisher.test/reloading',
+    waitForLoadState: async () => {},
+    waitForResponse: async (predicate) => {
+      responseListener(interstitial);
+      assert.equal(predicate(interstitial), true);
+      return interstitial;
+    },
+    waitForTimeout: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      if (settleCount++ < 3) responseListener(response(200));
+    },
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    await assert.rejects(
+      verifier.verify('https://publisher.test/challenge', 15),
+      { name: 'TimeoutError' },
+    );
+  } finally {
+    await verifier.close();
+  }
+});
+
 test('renderers escape workflow commands and obey explicit color selection', () => {
   const failure = {
     error: 'bad%value\nsecond line',
