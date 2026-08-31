@@ -1,7 +1,14 @@
 import type { InferContractRouterOutputs } from '@orpc/contract';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { useSyncExternalStore } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { contract } from '@codaco/studio-rpc';
@@ -99,12 +106,12 @@ function renderWithClientAt(path: string) {
     createMemoryHistory({ initialEntries: [path] }),
   );
   const queryClient = new QueryClient();
-  render(
+  const view = render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
-  return { queryClient, router };
+  return { queryClient, router, ...view };
 }
 
 function renderAt(path: string) {
@@ -184,6 +191,39 @@ describe('route guard', () => {
 });
 
 describe('sign-out', () => {
+  it('clears private queries when a live session expires', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    let currentSession = sessionLive;
+    const listeners = new Set<() => void>();
+    function useReactiveSession() {
+      return useSyncExternalStore(
+        (listener) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+        () => currentSession,
+        () => currentSession,
+      );
+    }
+    mocked.useSession.mockImplementation(useReactiveSession);
+    const { queryClient, router } = renderWithClientAt('/');
+    await screen.findByText(/Signed in as Researcher/);
+    queryClient.setQueryData(['private-draft'], { name: 'Private draft' });
+
+    mocked.getSession.mockResolvedValue(signedOut);
+    act(() => {
+      currentSession = sessionNone;
+      for (const listener of listeners) listener();
+    });
+
+    await waitFor(() =>
+      expect(queryClient.getQueryData(['private-draft'])).toBeUndefined(),
+    );
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/sign-in'),
+    );
+  });
+
   it('closes editor sessions before clearing authentication', async () => {
     mocked.getSession.mockResolvedValue(signedIn);
     mocked.useSession.mockReturnValue(sessionLive);
