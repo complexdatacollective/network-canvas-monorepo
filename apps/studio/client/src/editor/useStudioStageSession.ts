@@ -43,15 +43,18 @@ export function useStudioStageSession(params: {
   stageId: string | null;
   draft: Draft;
   onCommitted: () => Promise<void> | void;
+  onAuthoritativeDraft: (draft: Draft) => void;
 }): StudioStageSessionState {
   const [state, setState] = useState<StudioStageSessionState>({
     status: 'loading',
   });
   const latestDraft = useRef(params.draft);
   const onCommitted = useRef(params.onCommitted);
+  const onAuthoritativeDraft = useRef(params.onAuthoritativeDraft);
   const runtime = useRef<SessionRuntime | null>(null);
   latestDraft.current = params.draft;
   onCommitted.current = params.onCommitted;
+  onAuthoritativeDraft.current = params.onAuthoritativeDraft;
 
   useEffect(() => {
     const current = runtime.current;
@@ -332,6 +335,7 @@ export function useStudioStageSession(params: {
             },
           });
           latestDraft.current = refreshed;
+          onAuthoritativeDraft.current(refreshed);
           return;
         }
         acquiredLease = access;
@@ -375,6 +379,7 @@ export function useStudioStageSession(params: {
           },
         });
         latestDraft.current = refreshed;
+        onAuthoritativeDraft.current(refreshed);
         currentLease = access;
         acquiredLease = null;
         clientSequence = BigInt(access.nextClientSequence);
@@ -443,6 +448,7 @@ export function useStudioStageSession(params: {
           return;
         }
         latestDraft.current = authoritativeDraft;
+        onAuthoritativeDraft.current(authoritativeDraft);
 
         const { identity, fields } = stageDraftFromDocument(
           authoritativeDocument,

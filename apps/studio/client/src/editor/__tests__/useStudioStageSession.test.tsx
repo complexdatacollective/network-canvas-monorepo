@@ -59,6 +59,7 @@ function renderSession(draft = DRAFT) {
         stageId: STAGE_ID,
         draft: currentDraft,
         onCommitted: vi.fn(),
+        onAuthoritativeDraft: vi.fn(),
       }),
     { initialProps: { currentDraft: draft } },
   );

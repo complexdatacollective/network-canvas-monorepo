@@ -43,6 +43,8 @@ type Selection =
   | { kind: 'stage'; stageId: string }
   | { kind: 'settings' | 'codebook' | 'assets' | 'translations' };
 
+type Draft = Awaited<ReturnType<typeof rpcClient.protocols.draft>>;
+
 type DraftValidation =
   | Readonly<{ status: 'pending'; issues: readonly [] }>
   | Readonly<{ status: 'valid'; issues: readonly [] }>
@@ -81,6 +83,17 @@ export default function Editor() {
   const selectionInitialized = useRef(false);
   const discardRequestPending = useRef(false);
   const draft = useQuery(orpc.protocols.draft.queryOptions({ input: params }));
+  const draftQueryKey = useMemo(
+    () =>
+      orpc.protocols.draft.key({
+        input: {
+          teamId: params.teamId,
+          protocolId: params.protocolId,
+          draftId: params.draftId,
+        },
+      }),
+    [params.draftId, params.protocolId, params.teamId],
+  );
   const stages = useMemo(
     () => (draft.data ? stageOrder(draft.data.sections) : []),
     [draft.data],
@@ -160,17 +173,27 @@ export default function Editor() {
   const refreshDraft = useCallback(async () => {
     await queryClient.invalidateQueries(
       {
-        queryKey: orpc.protocols.draft.key({
-          input: {
-            teamId: params.teamId,
-            protocolId: params.protocolId,
-            draftId: params.draftId,
-          },
-        }),
+        queryKey: draftQueryKey,
       },
       { throwOnError: true },
     );
-  }, [params.draftId, params.protocolId, params.teamId, queryClient]);
+  }, [draftQueryKey, queryClient]);
+
+  const publishAuthoritativeDraft = useCallback(
+    (refreshed: Draft) => {
+      queryClient.setQueryData<Draft>(draftQueryKey, (current) => {
+        if (
+          current !== undefined &&
+          BigInt(current.revision.sequence) >
+            BigInt(refreshed.revision.sequence)
+        ) {
+          return current;
+        }
+        return refreshed;
+      });
+    },
+    [draftQueryKey, queryClient],
+  );
 
   const selectedStageId = selection.kind === 'stage' ? selection.stageId : null;
   const session = useStudioStageSession({
@@ -188,6 +211,7 @@ export default function Editor() {
       sections: {},
     },
     onCommitted: refreshDraft,
+    onAuthoritativeDraft: publishAuthoritativeDraft,
   });
 
   const addStage = useMutation({

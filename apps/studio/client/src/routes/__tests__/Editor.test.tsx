@@ -9,7 +9,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { useSyncExternalStore } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { rpcClient } from '../../lib/api.ts';
 import { authClient } from '../../lib/auth.ts';
@@ -162,6 +162,10 @@ beforeEach(() => {
   });
   vi.mocked(rpcClient.protocols.draft).mockReset();
   vi.mocked(rpcClient.protocols.draft).mockResolvedValue(DRAFT);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 function renderEditor() {
@@ -722,5 +726,55 @@ describe('Studio editor shell', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Screen name' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Save screen' })).toBeDisabled();
+  });
+
+  it('publishes recurring spectator refreshes to the outline and canvas', async () => {
+    vi.useFakeTimers();
+    const refreshed = {
+      ...DRAFT,
+      revision: { sequence: '3', hash: 'revision-3' },
+      sections: {
+        ...DRAFT.sections,
+        [`stage:${STAGE_A}`]: {
+          ...DRAFT.sections[`stage:${STAGE_A}`],
+          label: 'Changed by collaborator',
+          title: 'Changed page heading',
+        },
+      },
+    };
+    vi.mocked(rpcClient.protocols.acquireSection).mockResolvedValue({
+      mode: 'readOnly',
+    });
+    vi.mocked(rpcClient.protocols.draft)
+      .mockResolvedValueOnce(DRAFT)
+      .mockResolvedValueOnce(refreshed);
+
+    const { queryClient } = renderEditor();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(screen.getByRole('textbox', { name: 'Screen name' })).toHaveValue(
+      'Welcome',
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+
+    expect(screen.getByRole('textbox', { name: 'Screen name' })).toHaveValue(
+      'Changed by collaborator',
+    );
+    expect(queryClient.getQueryData(['draft'])).toEqual(refreshed);
+    expect(
+      screen.getByRole('button', {
+        name: 'Changed by collaboratorInformation',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Changed by collaborator' }),
+    ).toBeInTheDocument();
   });
 });
