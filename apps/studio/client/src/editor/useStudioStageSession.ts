@@ -257,13 +257,15 @@ export function useStudioStageSession(params: {
       }, 10_000);
     };
 
+    const promotionCancelled = () => !active || currentLease !== null;
+
     async function attemptPromotion(): Promise<void> {
-      if (!active || acquiring || currentLease !== null) return;
+      if (promotionCancelled() || acquiring) return;
       acquiring = true;
       let acquiredLease: Readonly<{ leaseEpoch: string }> | null = null;
       try {
         await releaseBarrier;
-        if (!active || currentLease !== null) return;
+        if (promotionCancelled()) return;
         const access = await rpcClient.protocols.acquireSection({
           teamId: params.teamId,
           protocolId: params.protocolId,
