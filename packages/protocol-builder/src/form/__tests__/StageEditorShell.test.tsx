@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -424,6 +430,84 @@ describe('StageEditorShell', () => {
       expect(Object.hasOwn(fields, 'interviewScript')).toBe(false);
       expect(Object.hasOwn(fields, 'interviewScriptStyle')).toBe(false);
     });
+  });
+
+  it('shows the refreshed fields when the host replaces the same stage', async () => {
+    const user = userEvent.setup();
+    const session = createSession();
+    renderEditor(session);
+
+    await user.clear(screen.getByRole('textbox', { name: 'Page heading' }));
+    await user.type(
+      screen.getByRole('textbox', { name: 'Page heading' }),
+      'Typed before promotion',
+    );
+
+    // What a host does when a spectator is promoted to editor: the stage is
+    // the same, but its authoritative content is not the one this form was
+    // opened with.
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: {
+          label: 'Welcome',
+          title: 'Refreshed elsewhere',
+          items: [],
+        },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    // A field that merely re-registers keeps the value it was holding, so
+    // without a fresh form the promoted editor would show — and then save —
+    // what it had typed over a screen that had moved on.
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'Refreshed elsewhere',
+      ),
+    );
+  });
+
+  it('explains a prerequisite before it explains a switch', async () => {
+    const session = createSession();
+    function DisabledCapability() {
+      const controller = useStageEditorController(session, 'stage-form');
+      return (
+        <StageEditorShell controller={controller}>
+          <BuilderSection
+            title="Interviewer guidance"
+            disabled
+            capability={{
+              fields: ['interviewScript'],
+              confirmClear: {
+                title: 'This will clear your interview script',
+                description: 'The text you entered will be deleted.',
+                confirmLabel: 'Clear script',
+              },
+            }}
+          >
+            <ProtocolField
+              name="interviewScript"
+              label="Interviewer script text"
+              component={InputField}
+            />
+          </BuilderSection>
+        </StageEditorShell>
+      );
+    }
+    render(
+      <DialogProvider>
+        <DisabledCapability />
+      </DialogProvider>,
+    );
+
+    // The researcher cannot switch this on until the thing it depends on is
+    // chosen, so "switched off" would explain the wrong obstacle — and would
+    // explain it differently depending only on whether content already exists.
+    await waitFor(() =>
+      expect([...outlineItems()][0]?.textContent).toBe(
+        'Interviewer guidanceNot available yet',
+      ),
+    );
   });
 
   it('refuses to save a stage the session has made read-only', async () => {

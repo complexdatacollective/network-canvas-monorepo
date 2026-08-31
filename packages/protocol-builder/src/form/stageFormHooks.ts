@@ -1,7 +1,15 @@
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
 
+import {
+  type FieldNameMode,
+  resolveFieldPath,
+  useFieldNamespacePath,
+} from '@codaco/fresco-ui/form/FieldNamespace';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
-import { getValue } from '@codaco/fresco-ui/form/utils/objectPath';
+import {
+  formatObjectPath,
+  getValue,
+} from '@codaco/fresco-ui/form/utils/objectPath';
 
 import type { StageFormDraft } from '../session.ts';
 import { isBlankFieldValue } from './blankValue.ts';
@@ -14,16 +22,32 @@ import {
 type FormStoreState = ReturnType<StageFormStoreApi['getState']>;
 
 /**
- * A committed value, for a field's `initialValue`. Memoised because
- * `initialValue` is a dependency of the register effect inside `useField`: an
- * unstable one re-registers the field on every render.
+ * Where a field actually lives, and what the committed draft holds there.
+ *
+ * A field's name is not always its path: an enclosing `FieldNamespace`
+ * prefixes it, and `nameMode="opaque"` makes a name containing dots a single
+ * segment rather than a route through the document. Both are resolved here
+ * exactly as Fresco's `Field` resolves them, so the name the outline asks the
+ * store about and the path the committed value is read from are the ones the
+ * field is really registered under.
+ *
+ * The value is memoised because `initialValue` is a dependency of the effect
+ * that registers a field: an unstable one re-registers it on every render.
  */
-export function useStageInitialValue<T = unknown>(path: string): T | undefined {
+export function useResolvedFieldIdentity(
+  name: string,
+  nameMode: FieldNameMode = 'legacy',
+): Readonly<{ registeredName: string; committedValue: unknown }> {
   const { committedFields } = useStageEditorForm();
-  return useMemo(
-    () => getValue(committedFields, path) as T | undefined,
-    [committedFields, path],
-  );
+  const namespace = useFieldNamespacePath();
+
+  return useMemo(() => {
+    const path = resolveFieldPath(namespace, name, nameMode);
+    return {
+      registeredName: formatObjectPath(path),
+      committedValue: getValue(committedFields, path),
+    };
+  }, [committedFields, name, nameMode, namespace]);
 }
 
 /**

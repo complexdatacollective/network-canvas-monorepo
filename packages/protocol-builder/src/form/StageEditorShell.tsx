@@ -73,10 +73,19 @@ export type StageEditorShellProps = Readonly<{
  */
 export default function StageEditorShell(props: StageEditorShellProps) {
   const { identity } = props.controller.snapshot.editedSection;
+  const committed = useCommittedFields(props.controller.snapshot);
 
   return (
-    <FormStoreProvider key={`${identity.type}:${identity.id}`}>
-      <StageEditorFormBody {...props} />
+    // Keyed by the stage AND by which agreed draft is being edited. Fresco
+    // forms have no reinitialise, and a field that re-registers keeps the
+    // value it was holding rather than taking the new one — so a host
+    // replacing the authoritative fields for the SAME stage (a spectator
+    // being promoted to editor, a lease lost and rolled back) would leave
+    // stale values on screen, and save them over what it replaced.
+    <FormStoreProvider
+      key={`${identity.type}:${identity.id}:${committed.generation}`}
+    >
+      <StageEditorFormBody {...props} committedFields={committed.fields} />
     </FormStoreProvider>
   );
 }
@@ -86,13 +95,13 @@ function StageEditorFormBody({
   actions,
   children,
   className,
-}: StageEditorShellProps) {
+  committedFields,
+}: StageEditorShellProps & Readonly<{ committedFields: StageFormDraft }>) {
   const storeApi = useContext(FormStoreContext);
   const formRef = useRef<HTMLFormElement>(null);
   const outline = useMemo(() => new SectionOutlineStore(), []);
   const { snapshot, formId } = controller;
   const readOnly = snapshot.access.mode !== 'editable';
-  const committedFields = useCommittedFields(snapshot);
 
   const handleSubmit = useCallback<FormSubmitHandler>(
     async (values) => {
@@ -196,6 +205,12 @@ function StageEditorFormBody({
   );
 }
 
+type CommittedDraft = Readonly<{
+  fields: StageFormDraft;
+  /** Bumped each time the agreed draft is replaced by a different one. */
+  generation: number;
+}>;
+
 /**
  * The draft as it was last agreed with the host, held steady while the
  * researcher works.
@@ -205,20 +220,26 @@ function StageEditorFormBody({
  * saved state, not a live mirror of what is being typed. It moves only when
  * nothing local is outstanding, which is exactly when the session's draft IS
  * the agreed one.
+ *
+ * Compared by content, not identity: the session freezes a fresh object into
+ * every snapshot, and a snapshot lands whenever validation settles, so
+ * identity alone would count every one of those as a new agreed draft.
  */
-function useCommittedFields(snapshot: ProtocolBuilderSnapshot): StageFormDraft {
-  const committed = useRef(snapshot.editedSection.fields);
+function useCommittedFields(snapshot: ProtocolBuilderSnapshot): CommittedDraft {
+  const committed = useRef<CommittedDraft>({
+    fields: snapshot.editedSection.fields,
+    generation: 0,
+  });
   const { fields } = snapshot.editedSection;
-  // Compared by content, not identity. The session freezes a fresh object into
-  // every snapshot, and a snapshot lands whenever validation settles — so
-  // identity alone would hand every field a new `initialValue` a moment after
-  // the editor opened, and `initialValue` is a dependency of the effect that
-  // registers a field.
+
   if (
     snapshot.pendingCommands.length === 0 &&
-    canonicalize(committed.current) !== canonicalize(fields)
+    canonicalize(committed.current.fields) !== canonicalize(fields)
   ) {
-    committed.current = fields;
+    committed.current = {
+      fields,
+      generation: committed.current.generation + 1,
+    };
   }
   return committed.current;
 }

@@ -130,6 +130,50 @@ describe('stageDraftFromSubmission', () => {
     expect(draft.prompts).toEqual([{ id: 'b' }]);
   });
 
+  it('lets a nested hidden field win over the container it sits in', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: { parameters: { bounds: { min: 1 }, style: 'plain' } },
+      submittedValues: {},
+      // Insertion order puts the descendant first, which is what unmount order
+      // produces when the inner group collapses before the outer one.
+      dormantFields: [
+        {
+          name: 'parameters.bounds.min',
+          path: ['parameters', 'bounds', 'min'],
+          value: 5,
+        },
+        {
+          name: 'parameters',
+          path: ['parameters'],
+          value: { bounds: { min: 1 }, style: 'plain' },
+        },
+      ],
+    });
+
+    // The more specific field is the one the researcher actually edited, so
+    // the container it lives in must not be replayed over the top of it.
+    expect(draft.parameters).toEqual({ bounds: { min: 5 }, style: 'plain' });
+  });
+
+  it('removes a capability\u2019s paths even when a field inside was parked with a value', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: {
+        skipLogic: { action: 'SKIP', filter: { rules: [], join: 'OR' } },
+      },
+      submittedValues: {},
+      dormantFields: [
+        {
+          name: 'skipLogic.action',
+          path: ['skipLogic', 'action'],
+          value: 'SHOW',
+        },
+        { name: 'skipLogic', path: ['skipLogic'], value: undefined },
+      ],
+    });
+
+    expect(Object.hasOwn(draft, 'skipLogic')).toBe(false);
+  });
+
   it('does not write through into the draft it was given', () => {
     const currentFields = Object.freeze({
       label: 'Friends',

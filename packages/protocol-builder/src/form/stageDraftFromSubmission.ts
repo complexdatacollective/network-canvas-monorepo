@@ -59,20 +59,49 @@ export function stageDraftFromSubmission(
     ...submission.submittedValues,
   };
 
-  for (const dormant of submission.dormantFields) {
-    const path = dormant.path ?? safeFieldPath(dormant.name);
-    if (path === null || path.length === 0) continue;
+  const { writes, removals } = partitionDormant(submission.dormantFields);
 
-    if (dormant.value === undefined) {
-      draft = removePath(draft, path);
-      continue;
-    }
+  // Shallowest first, so a field registered at a container path cannot
+  // overwrite the edit made to a field registered inside it. Fresco's own
+  // assembly of mounted fields replays them in exactly this order, and the
+  // two have to agree or collapsing a section would restore a stale nested
+  // value that the mounted form had already replaced.
+  for (const write of writes.toSorted(
+    (a, b) => a.path.length - b.path.length,
+  )) {
     // `setValue` copies every container it traverses, so this cannot write
     // through into the session's own frozen snapshot.
-    setValue(draft, path, dormant.value);
+    setValue(draft, write.path, write.value);
+  }
+
+  // After the writes, never before them: a capability switched off removes
+  // the paths it owns, and a field parked inside it must not be written back
+  // afterwards.
+  for (const removal of removals) {
+    draft = removePath(draft, removal.path);
   }
 
   return draft;
+}
+
+type ResolvedDormant = Readonly<{ path: ObjectPath; value: FieldValue }>;
+
+function partitionDormant(
+  dormantFields: readonly DormantField[],
+): Readonly<{ writes: ResolvedDormant[]; removals: ResolvedDormant[] }> {
+  const writes: ResolvedDormant[] = [];
+  const removals: ResolvedDormant[] = [];
+
+  for (const dormant of dormantFields) {
+    const path = dormant.path ?? safeFieldPath(dormant.name);
+    if (path === null || path.length === 0) continue;
+    (dormant.value === undefined ? removals : writes).push({
+      path,
+      value: dormant.value,
+    });
+  }
+
+  return { writes, removals };
 }
 
 function safeFieldPath(name: string): ObjectPath | null {

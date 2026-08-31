@@ -7,7 +7,7 @@ import type {
 } from '@codaco/fresco-ui/form/Field/types';
 
 import { useSectionScope, useStageEditorForm } from './stageEditorContext.ts';
-import { useStageInitialValue } from './stageFormHooks.ts';
+import { useResolvedFieldIdentity } from './stageFormHooks.ts';
 
 /**
  * Props the form store owns. `Field` spreads caller props last, so a
@@ -70,18 +70,26 @@ export default function ProtocolField<C extends ValidFieldComponent>(
 ) {
   const { outline, readOnly } = useStageEditorForm();
   const sectionId = useSectionScope();
-  const { name, label, required } = props;
+  const { name, label, required, nameMode } = props;
   const isRequired = required === true || typeof required === 'string';
-  const committedValue = useStageInitialValue(name);
+  // Resolved the way `Field` resolves it — through any enclosing namespace and
+  // through `nameMode` — because that is the name the form store files the
+  // field under and the path the stage document holds it at. Reading the
+  // committed value from the root instead would start a namespaced or opaque
+  // field blank and then write that blank over what the author had.
+  const { registeredName, committedValue } = useResolvedFieldIdentity(
+    name,
+    nameMode,
+  );
 
   useEffect(() => {
     if (sectionId === null) return;
     return outline.registerField(sectionId, {
-      name,
+      name: registeredName,
       label,
       required: isRequired,
     });
-  }, [isRequired, label, name, outline, sectionId]);
+  }, [isRequired, label, outline, registeredName, sectionId]);
 
   const fieldProps = {
     ...stripStoreOwnedProps(props),

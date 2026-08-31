@@ -86,10 +86,14 @@ export default function BuilderSection({
   // opposite of what is true.
   const { sectionId } = useOutlineSection(
     title,
-    capability !== undefined && !enabled
-      ? 'switchedOff'
-      : disabled
-        ? 'unavailable'
+    // The prerequisite is asked about first. A section waiting on a choice the
+    // researcher has not made cannot be switched on at all, so saying it is
+    // switched off would explain the wrong thing — and would explain it
+    // differently depending only on whether the section already held content.
+    disabled
+      ? 'unavailable'
+      : capability !== undefined && !enabled
+        ? 'switchedOff'
         : 'available',
   );
 
