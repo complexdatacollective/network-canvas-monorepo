@@ -420,6 +420,33 @@ describe('useStudioStageSession', () => {
     view.unmount();
   });
 
+  it('does not overlap periodic lease renewals', async () => {
+    vi.useFakeTimers();
+    const firstRenewal = deferred<{ renewed: boolean }>();
+    vi.mocked(rpcClient.protocols.renewSection)
+      .mockReturnValueOnce(firstRenewal.promise)
+      .mockResolvedValue({ renewed: true });
+    const view = renderSession();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(view.result.current.status).toBe('ready');
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(rpcClient.protocols.renewSection).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      firstRenewal.resolve({ renewed: true });
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(rpcClient.protocols.renewSection).toHaveBeenCalledTimes(2);
+    view.unmount();
+  });
+
   it('keeps a slow promotion registered until its lease is released', async () => {
     vi.useFakeTimers();
     const acquisition = deferred<{

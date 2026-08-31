@@ -96,6 +96,7 @@ export function useStudioStageSession(params: {
     let active = true;
     let acquiring = false;
     let renewal: ReturnType<typeof setInterval> | undefined;
+    let renewalInFlight: Promise<void> | null = null;
     let retry: ReturnType<typeof setInterval> | undefined;
     let currentLease: Readonly<{ leaseEpoch: string }> | null = null;
     let store: ProtocolBuilderSessionStore;
@@ -139,10 +140,10 @@ export function useStudioStageSession(params: {
       lease: Readonly<{ leaseEpoch: string }>,
     ): Promise<Draft> => {
       let renewalFailure: Error | null = null;
-      let renewalInFlight: Promise<void> | null = null;
+      let refreshRenewalInFlight: Promise<void> | null = null;
       const renew = () => {
-        if (renewalInFlight !== null || renewalFailure !== null) return;
-        renewalInFlight = rpcClient.protocols
+        if (refreshRenewalInFlight !== null || renewalFailure !== null) return;
+        refreshRenewalInFlight = rpcClient.protocols
           .renewSection({
             teamId: params.teamId,
             protocolId: params.protocolId,
@@ -160,7 +161,7 @@ export function useStudioStageSession(params: {
             renewalFailure = asError(error);
           })
           .finally(() => {
-            renewalInFlight = null;
+            refreshRenewalInFlight = null;
           });
       };
       const refreshRenewal = setInterval(renew, 10_000);
@@ -170,7 +171,7 @@ export function useStudioStageSession(params: {
           protocolId: params.protocolId,
           draftId: params.draftId,
         });
-        const pendingRenewal = renewalInFlight;
+        const pendingRenewal = refreshRenewalInFlight;
         if (pendingRenewal !== null) await pendingRenewal;
         const renewalError = renewalFailure;
         if (renewalError !== null) throw renewalError;
@@ -216,9 +217,10 @@ export function useStudioStageSession(params: {
     const startRenewal = () => {
       stopRenewal();
       renewal = setInterval(() => {
+        if (renewalInFlight !== null) return;
         const lease = currentLease;
         if (lease === null) return;
-        void rpcClient.protocols
+        const attempt = rpcClient.protocols
           .renewSection({
             teamId: params.teamId,
             protocolId: params.protocolId,
@@ -248,6 +250,10 @@ export function useStudioStageSession(params: {
               );
             }
           });
+        renewalInFlight = attempt;
+        void attempt.then(() => {
+          if (renewalInFlight === attempt) renewalInFlight = null;
+        });
       }, 10_000);
     };
 
@@ -502,6 +508,8 @@ export function useStudioStageSession(params: {
       stopRetry();
       closePromise = initialization.then(async () => {
         await promotion;
+        const pendingRenewal = renewalInFlight;
+        if (pendingRenewal !== null) await pendingRenewal;
         await releaseBarrier;
         if (runtime.current?.store === store) runtime.current = null;
         const lease = currentLease;

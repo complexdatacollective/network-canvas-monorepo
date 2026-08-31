@@ -207,6 +207,42 @@ describe('Studio editor shell', () => {
     expect(document.getElementById('protocol-problems')).toHaveFocus();
   });
 
+  it('asks before discarding unsaved screen values during outline navigation', async () => {
+    renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    fireEvent.change(label, { target: { value: 'Unsaved welcome' } });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Follow-upInformation' }),
+    );
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Discard unsaved screen changes?',
+      }),
+    ).toBeInTheDocument();
+    expect(label).toHaveValue('Unsaved welcome');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('heading', {
+          name: 'Discard unsaved screen changes?',
+        }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(label).toHaveValue('Unsaved welcome');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Follow-upInformation' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
+    expect(
+      await screen.findByRole('textbox', { name: 'Screen name' }),
+    ).toHaveValue('Follow-up');
+  });
+
   it('blocks another add attempt until an ambiguous failure is reconciled', async () => {
     vi.mocked(rpcClient.protocols.addInformationStage).mockRejectedValueOnce(
       new Error('response lost'),
