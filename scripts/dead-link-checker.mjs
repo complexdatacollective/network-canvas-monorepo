@@ -125,17 +125,46 @@ class WorkQueue {
   }
 }
 
-class BrowserVerifier {
-  #activePages = 0;
-  #resourcesPromise;
+export class PageSlotSemaphore {
+  #available;
+  #limit;
   #waiters = [];
 
-  async #acquirePageSlot() {
-    if (this.#activePages >= MAX_BROWSER_PAGES) {
-      await new Promise((resolve) => this.#waiters.push(resolve));
+  constructor(limit) {
+    if (!Number.isSafeInteger(limit) || limit < 1) {
+      throw new RangeError('Page slot limit must be a positive integer');
     }
-    this.#activePages++;
+    this.#available = limit;
+    this.#limit = limit;
   }
+
+  async acquire() {
+    if (this.#available > 0) {
+      this.#available--;
+      return;
+    }
+    await new Promise((resolve) => this.#waiters.push(resolve));
+  }
+
+  release() {
+    const waiter = this.#waiters.shift();
+    if (waiter) {
+      // Keep the permit unavailable while transferring it directly. A later
+      // caller therefore cannot overtake the queued verifier before its
+      // promise continuation runs.
+      waiter();
+      return;
+    }
+    if (this.#available >= this.#limit) {
+      throw new Error('Cannot release an unacquired page slot');
+    }
+    this.#available++;
+  }
+}
+
+class BrowserVerifier {
+  #pageSlots = new PageSlotSemaphore(MAX_BROWSER_PAGES);
+  #resourcesPromise;
 
   async #getResources() {
     this.#resourcesPromise ??= (async () => {
@@ -157,11 +186,6 @@ class BrowserVerifier {
     return this.#resourcesPromise;
   }
 
-  #releasePageSlot() {
-    this.#activePages--;
-    this.#waiters.shift()?.();
-  }
-
   async close() {
     if (!this.#resourcesPromise) return;
     try {
@@ -173,7 +197,7 @@ class BrowserVerifier {
   }
 
   async verify(url, timeout, { captureHTML = false } = {}) {
-    await this.#acquirePageSlot();
+    await this.#pageSlots.acquire();
     let page;
     try {
       const { context } = await this.#getResources();
@@ -227,7 +251,7 @@ class BrowserVerifier {
       };
     } finally {
       await page?.close().catch(() => {});
-      this.#releasePageSlot();
+      this.#pageSlots.release();
     }
   }
 }

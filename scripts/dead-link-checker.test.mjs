@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   MAX_GITHUB_ERROR_ANNOTATIONS,
+  PageSlotSemaphore,
   crawl,
   formatGitHubAnnotation,
   formatGitHubSummary,
@@ -298,6 +299,32 @@ test('GitHub annotations are capped without truncating summaries or JSON reports
     await server.stop();
     await rm(directory, { force: true, recursive: true });
   }
+});
+
+test('browser page slots transfer directly to the oldest queued verifier', async () => {
+  const slots = new PageSlotSemaphore(1);
+  await slots.acquire();
+
+  let queuedAcquired = false;
+  const queued = slots.acquire().then(() => (queuedAcquired = true));
+
+  slots.release();
+
+  let newcomerAcquired = false;
+  const newcomer = slots.acquire().then(() => (newcomerAcquired = true));
+
+  await queued;
+  assert.equal(queuedAcquired, true);
+  assert.equal(
+    newcomerAcquired,
+    false,
+    'a newcomer cannot claim a slot already promised to the queued verifier',
+  );
+
+  slots.release();
+  await newcomer;
+  assert.equal(newcomerAcquired, true);
+  slots.release();
 });
 
 test('renderers escape workflow commands and obey explicit color selection', () => {
