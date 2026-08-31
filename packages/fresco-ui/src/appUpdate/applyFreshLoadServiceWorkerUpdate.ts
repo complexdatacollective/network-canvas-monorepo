@@ -92,18 +92,37 @@ function waitUntilInstallable(
   });
 }
 
+function getPendingUpdateWorker(
+  registration: ServiceWorkerRegistration,
+): ServiceWorker | null {
+  if (
+    registration.installing &&
+    registration.installing.state !== 'redundant'
+  ) {
+    return registration.installing;
+  }
+  if (registration.waiting && registration.waiting.state !== 'redundant') {
+    return registration.waiting;
+  }
+  return null;
+}
+
 function findUpdateWorker(
   registration: ServiceWorkerRegistration,
   updateCheckTimeoutMs: number,
 ): Promise<ServiceWorker | null> {
-  const existingWorker = registration.waiting ?? registration.installing;
-  if (existingWorker) return Promise.resolve(existingWorker);
-
   return new Promise((resolve) => {
     let settled = false;
     let postUpdateCheckId: number | undefined;
 
-    const currentWorker = () => registration.waiting ?? registration.installing;
+    // An installing worker supersedes a waiting worker: both can coexist while
+    // a newer update replaces one that was already waiting. Keep the existing
+    // worker as an offline fallback, but always complete update() before using
+    // it so an online launch cannot activate deployment B under deployment C's
+    // network-fetched HTML.
+    const existingWorker = getPendingUpdateWorker(registration);
+    const currentWorker = () =>
+      getPendingUpdateWorker(registration) ?? existingWorker;
 
     const finish = (worker: ServiceWorker | null) => {
       if (settled) return;
@@ -117,7 +136,10 @@ function findUpdateWorker(
     };
 
     const onUpdateFound = () => {
-      const worker = currentWorker();
+      // updatefound belongs to the newly created installing worker. Do not
+      // fall through to a pre-existing waiting worker if a browser exposes the
+      // event just before it updates the registration object.
+      const worker = registration.installing;
       if (worker) {
         finish(worker);
         return;
@@ -127,23 +149,20 @@ function findUpdateWorker(
       // check once more in a microtask so an implementation cannot strand the
       // boot loader in that tiny ordering gap.
       window.queueMicrotask(() => {
-        const deferredWorker = currentWorker();
+        const deferredWorker = registration.installing;
         if (deferredWorker) finish(deferredWorker);
       });
     };
 
+    // A timeout is uncertainty, not evidence that the pre-existing worker is
+    // newest. Continue startup on the current controller instead of activating
+    // stale B under network-fetched C HTML. An explicit update failure below
+    // may still use B as the best offline fallback.
     const timeoutId = window.setTimeout(
-      () => finish(currentWorker()),
+      () => finish(null),
       updateCheckTimeoutMs,
     );
     registration.addEventListener('updatefound', onUpdateFound);
-
-    // Close the race between the initial check and listener registration.
-    const workerAfterListening = currentWorker();
-    if (workerAfterListening) {
-      finish(workerAfterListening);
-      return;
-    }
 
     void (async () => {
       try {
@@ -276,10 +295,22 @@ export async function applyFreshLoadServiceWorkerUpdate({
   );
   if (!discoveredWorker) return false;
 
-  const waitingWorker = await waitUntilInstallable(
+  let waitingWorker = await waitUntilInstallable(
     discoveredWorker,
     activationTimeoutMs,
   );
+  if (!waitingWorker) {
+    // A newly discovered worker can fail installation and become redundant.
+    // In that case the browser preserves the older waiting worker; it remains
+    // the best offline update available and is safe to activate only now that
+    // the newer candidate has definitively failed.
+    const fallbackWorker = getPendingUpdateWorker(registration);
+    if (!fallbackWorker || fallbackWorker === discoveredWorker) return false;
+    waitingWorker = await waitUntilInstallable(
+      fallbackWorker,
+      activationTimeoutMs,
+    );
+  }
   if (!waitingWorker || shouldSkip()) return false;
   if (waitingWorker.state !== 'activated') {
     const activated = waitForActivationOrControllerChange(

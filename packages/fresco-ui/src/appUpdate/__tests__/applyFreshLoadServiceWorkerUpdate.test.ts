@@ -157,6 +157,116 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
     expect(reload).not.toHaveBeenCalled();
   });
 
+  it('checks past a pre-existing waiting worker and activates the newest worker', async () => {
+    const staleWaiting = createWorker('installed');
+    const newestInstalling = createWorker('installing');
+    const registration = createRegistration({
+      waiting: staleWaiting.worker,
+    });
+    let resolveUpdate: (
+      registration: ServiceWorkerRegistration,
+    ) => void = () => {};
+    registration.update.mockImplementation(
+      () =>
+        new Promise<ServiceWorkerRegistration>((resolve) => {
+          resolveUpdate = resolve;
+        }),
+    );
+    const serviceWorker = createServiceWorkerContainer({ registration });
+
+    const result = applyFreshLoadServiceWorkerUpdate({
+      serviceWorker,
+      reload: false,
+      shouldSkip: () => false,
+      updateCheckTimeoutMs: 50,
+      activationTimeoutMs: 50,
+    });
+
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    expect(registration.update).toHaveBeenCalledOnce();
+    expect(staleWaiting.postMessage).not.toHaveBeenCalled();
+
+    registration.installing = newestInstalling.worker;
+    registration.dispatchUpdateFound();
+    newestInstalling.setState('installed');
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+    expect(staleWaiting.postMessage).not.toHaveBeenCalled();
+    expect(newestInstalling.postMessage).toHaveBeenCalledWith({
+      type: 'SKIP_WAITING',
+    });
+
+    newestInstalling.setState('activated');
+    await expect(result).resolves.toBe(false);
+    resolveUpdate(registration);
+  });
+
+  it('activates a pre-existing waiting worker after the newest check finds no replacement', async () => {
+    const waiting = createWorker('installed');
+    const registration = createRegistration({ waiting: waiting.worker });
+    const serviceWorker = createServiceWorkerContainer({ registration });
+
+    const result = applyFreshLoadServiceWorkerUpdate({
+      serviceWorker,
+      reload: false,
+      shouldSkip: () => false,
+      updateCheckTimeoutMs: 50,
+      activationTimeoutMs: 50,
+    });
+
+    expect(waiting.postMessage).not.toHaveBeenCalled();
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    expect(registration.update).toHaveBeenCalledOnce();
+    expect(waiting.postMessage).toHaveBeenCalledWith({
+      type: 'SKIP_WAITING',
+    });
+
+    waiting.setState('activated');
+    await expect(result).resolves.toBe(false);
+  });
+
+  it('falls back to the older waiting worker when the newest installation becomes redundant', async () => {
+    const staleWaiting = createWorker('installed');
+    const newestInstalling = createWorker('installing');
+    const registration = createRegistration({
+      waiting: staleWaiting.worker,
+    });
+    let resolveUpdate: (
+      registration: ServiceWorkerRegistration,
+    ) => void = () => {};
+    registration.update.mockImplementation(
+      () =>
+        new Promise<ServiceWorkerRegistration>((resolve) => {
+          resolveUpdate = resolve;
+        }),
+    );
+    const serviceWorker = createServiceWorkerContainer({ registration });
+
+    const result = applyFreshLoadServiceWorkerUpdate({
+      serviceWorker,
+      reload: false,
+      shouldSkip: () => false,
+      updateCheckTimeoutMs: 50,
+      activationTimeoutMs: 50,
+    });
+
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    registration.installing = newestInstalling.worker;
+    registration.dispatchUpdateFound();
+    newestInstalling.setState('redundant');
+    registration.installing = null;
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+    expect(newestInstalling.postMessage).not.toHaveBeenCalled();
+    expect(staleWaiting.postMessage).toHaveBeenCalledWith({
+      type: 'SKIP_WAITING',
+    });
+
+    staleWaiting.setState('activated');
+    await expect(result).resolves.toBe(false);
+    resolveUpdate(registration);
+  });
+
   it('preserves a supplied legacy reload callback', async () => {
     const waiting = createWorker('installed');
     const registration = createRegistration({ waiting: waiting.worker });
@@ -256,6 +366,8 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
       activationTimeoutMs: 50,
     });
 
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    expect(registration.update).toHaveBeenCalledOnce();
     registration.installing = installing.worker;
     registration.dispatchUpdateFound();
     installing.setState('installed');
@@ -333,6 +445,34 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
       }),
     ).resolves.toBe(false);
 
+    resolveUpdate(registration);
+  });
+
+  it('does not activate a pre-existing waiting worker when the newest check times out', async () => {
+    const waiting = createWorker('installed');
+    let resolveUpdate: (
+      registration: ServiceWorkerRegistration,
+    ) => void = () => {};
+    const registration = createRegistration({ waiting: waiting.worker });
+    registration.update.mockReturnValue(
+      new Promise<ServiceWorkerRegistration>((resolve) => {
+        resolveUpdate = resolve;
+      }),
+    );
+    const serviceWorker = createServiceWorkerContainer({ registration });
+
+    await expect(
+      applyFreshLoadServiceWorkerUpdate({
+        serviceWorker,
+        reload: false,
+        shouldSkip: () => false,
+        updateCheckTimeoutMs: 1,
+        activationTimeoutMs: 50,
+      }),
+    ).resolves.toBe(false);
+
+    expect(registration.update).toHaveBeenCalledOnce();
+    expect(waiting.postMessage).not.toHaveBeenCalled();
     resolveUpdate(registration);
   });
 

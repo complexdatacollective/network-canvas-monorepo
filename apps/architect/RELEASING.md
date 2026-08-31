@@ -172,6 +172,10 @@ deliberately different update paths:
 - On a fresh navigation, the pre-render startup check activates a waiting
   worker while the static loading spinner remains visible. Startup then
   continues on the same navigation; activation never calls `reload()`.
+- The separate `/preview/` entry performs the same no-reload handoff before it
+  renders, so its shell and deferred interface chunks use the same controller.
+  Update discovery and activation remain bounded: on failure or timeout the
+  preview proceeds instead of leaving the popup permanently blank.
 - Once React has rendered, a newly discovered update remains in the **update
   available** state until the user opens the version indicator and chooses
   **Install and reload**. Neither `AppUpdateProvider` nor `vite-plugin-pwa` may
