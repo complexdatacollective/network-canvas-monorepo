@@ -256,8 +256,12 @@ describe('Studio editor shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
 
     await waitFor(() => {
-      expect(label).toHaveValue('Welcome');
-      expect(title).toHaveValue('Welcome');
+      expect(screen.getByRole('textbox', { name: 'Screen name' })).toHaveValue(
+        'Welcome',
+      );
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'Welcome',
+      );
     });
     await waitFor(() =>
       expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(2),
@@ -269,8 +273,12 @@ describe('Studio editor shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Redo' }));
     await waitFor(() => {
-      expect(label).toHaveValue('Changed screen');
-      expect(title).toHaveValue('Changed heading');
+      expect(screen.getByRole('textbox', { name: 'Screen name' })).toHaveValue(
+        'Changed screen',
+      );
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'Changed heading',
+      );
     });
     await waitFor(() =>
       expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(3),
@@ -365,6 +373,32 @@ describe('Studio editor shell', () => {
     expect(
       await screen.findByRole('textbox', { name: 'Screen name' }),
     ).toHaveValue('Follow-up');
+  });
+
+  it('preserves focus on the save control when a successful save rebases the form', async () => {
+    const commit = deferred<{ sequence: string; hash: string }>();
+    vi.mocked(rpcClient.protocols.commitSection).mockReturnValueOnce(
+      commit.promise,
+    );
+    renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    fireEvent.change(label, { target: { value: 'Saved welcome' } });
+    const save = screen.getByRole('button', { name: 'Save screen' });
+    save.focus();
+    expect(save).toHaveFocus();
+    fireEvent.click(save);
+
+    await waitFor(() =>
+      expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(1),
+    );
+    await act(async () => {
+      commit.resolve({ sequence: '3', hash: 'revision-3' });
+      await commit.promise;
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Save screen' })).toHaveFocus(),
+    );
   });
 
   it('asks before leaving the editor with unsaved screen values', async () => {
