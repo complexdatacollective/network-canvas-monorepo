@@ -1,0 +1,128 @@
+{
+  "name": "Release Smoke",
+  "description": "Purpose-built protocol for the Interviewer release smoke test. Six stages exercise every interview data-model write path (ego, node, layout, two edge-creation paths, categorical attribute) in a walk short enough to conduct entirely offline. Interfaces are imported eagerly in the engine bundle, so broader stage-type coverage belongs to the e2e and Storybook suites, not this gate.",
+  "schemaVersion": 8,
+  "lastModified": "2026-08-28T00:00:00.000Z",
+  "codebook": {
+    "node": {
+      "person": {
+        "name": "Person",
+        "color": "node-color-seq-1",
+        "shape": { "default": "circle" },
+        "variables": {
+          "name": {
+            "name": "name",
+            "type": "text",
+            "component": "Text",
+            "validation": { "required": true }
+          },
+          "layout": { "name": "layout", "type": "layout" },
+          "context": {
+            "name": "context",
+            "type": "categorical",
+            "options": [
+              { "label": "Work", "value": "work" },
+              { "label": "Social", "value": "social" },
+              { "label": "Family", "value": "family" }
+            ]
+          }
+        }
+      }
+    },
+    "edge": {
+      "knows": { "name": "Knows", "color": "edge-color-seq-1" },
+      "friends": { "name": "Friends", "color": "edge-color-seq-2" }
+    },
+    "ego": {
+      "variables": {
+        "ego_name": {
+          "name": "ego_name",
+          "type": "text",
+          "component": "Text",
+          "validation": { "required": true }
+        }
+      }
+    }
+  },
+  "stages": [
+    {
+      "id": "stage-info",
+      "type": "Information",
+      "label": "Welcome",
+      "title": "Welcome",
+      "items": [
+        {
+          "id": "item-1",
+          "type": "text",
+          "content": "# Release smoke\n\nThis short interview exercises every data write path."
+        }
+      ]
+    },
+    {
+      "id": "stage-ego",
+      "type": "EgoForm",
+      "label": "About you",
+      "introductionPanel": {
+        "title": "Introduction",
+        "text": "Tell us about **you**."
+      },
+      "form": {
+        "fields": [{ "variable": "ego_name", "prompt": "What is your name?" }]
+      }
+    },
+    {
+      "id": "stage-ng",
+      "type": "NameGeneratorQuickAdd",
+      "label": "Name people",
+      "subject": { "entity": "node", "type": "person" },
+      "quickAdd": "name",
+      "behaviours": { "minNodes": 1, "maxNodes": 8 },
+      "prompts": [{ "id": "p1", "text": "Who are the people you know?" }]
+    },
+    {
+      "id": "stage-socio",
+      "type": "Sociogram",
+      "label": "Place and connect",
+      "subject": { "entity": "node", "type": "person" },
+      "background": { "concentricCircles": 4, "skewedTowardCenter": true },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "Drag to place everyone; link people who know each other.",
+          "layout": { "layoutVariable": "layout" },
+          "edges": { "create": "knows", "display": ["knows"] }
+        }
+      ]
+    },
+    {
+      "id": "stage-dyad",
+      "type": "DyadCensus",
+      "label": "Friendships",
+      "subject": { "entity": "node", "type": "person" },
+      "introductionPanel": {
+        "title": "Friendships",
+        "text": "You will be asked about each pair of people you named."
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "Are these two people friends?",
+          "createEdge": "friends"
+        }
+      ]
+    },
+    {
+      "id": "stage-catbin",
+      "type": "CategoricalBin",
+      "label": "Context",
+      "subject": { "entity": "node", "type": "person" },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "How do you know each person?",
+          "variable": "context"
+        }
+      ]
+    }
+  ]
+}

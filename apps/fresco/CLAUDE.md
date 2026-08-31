@@ -264,6 +264,19 @@ lib/
   `<Shell>` in `app/(interview)/interview/[interviewId]/InterviewClient.tsx` and
   supplies the sync, finish, and asset-request handlers. Interview behaviour
   belongs in the package, not here.
+  - **Sync batching is Fresco's job, not the package's.** The engine offers a
+    write for every change, because only the host knows what one costs — and
+    here each one POSTs the whole network. `onSync` is therefore wrapped in the
+    package's `createDebouncedSyncHandler` at `SYNC_DEBOUNCE_MS`. Do not unwrap
+    it: without it a request goes out per answer. The wrapper still writes
+    immediately when the engine says a write cannot be deferred (the
+    participant exiting or finishing, or the tab being hidden), so shortening
+    the interval is a cost decision and never a correctness one. An
+    `unloading` write — the tab being hidden or closed — additionally asks for
+    `keepalive` when the body fits under the browser's 64KB cap. Every write
+    cancels the request it supersedes, because an unloading write runs outside
+    the helper's queue and could otherwise land after a newer one; this route
+    overwrites, so the older snapshot would win.
 
 ## Conventions
 

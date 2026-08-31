@@ -36,6 +36,7 @@ import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
 import type { UnavailableStage } from '../selectors/skip-logic';
 import type { NavigationOrientation } from '../Shell';
+import { useSyncFlush } from '../store/SyncFlushContext';
 import PassphrasePrompter from './PassphrasePrompter';
 import StagesMenu, { STAGES_MENU_LIST_ID } from './StagesMenu';
 
@@ -196,6 +197,7 @@ const Navigation = ({
 
   const { confirm } = useDialog();
   const portalContainer = usePortalContainer();
+  const flushPendingSync = useSyncFlush();
 
   // `menuOpen` drives the drawer panel; `menuSettled` drives the staggered
   // enter/exit of the cards inside it. On open we flip `menuSettled` only once
@@ -235,9 +237,18 @@ const Navigation = ({
       onConfirm: () => {},
     });
     if (confirmed === true) {
+      // Hand control back to the host only after pending session state is
+      // written. The Shell's unmount-cleanup flush alone cannot enqueue the
+      // final snapshot synchronously when a write is already on the wire (it
+      // must await that write first), so a host that navigates on exit —
+      // unmounting the Shell — could re-read the session between the
+      // in-flight write and the final one. Exit is the one teardown the
+      // Shell controls, so wait out the full flush here; it never rejects
+      // and typically resolves in milliseconds.
+      await flushPendingSync();
       onExit();
     }
-  }, [confirm, onExit, reviewMode]);
+  }, [confirm, onExit, reviewMode, flushPendingSync]);
 
   const closeMenu = useCallback(
     (immediate: boolean) => {

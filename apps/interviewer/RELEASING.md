@@ -166,8 +166,10 @@ version until that PR merges, so it can neither serve nor certify the
 version being shipped. Without `args`, the workflow drives
 `https://interviewer.networkcanvas.dev` — the current state of `main` —
 which is the right target for ad-hoc health checks between releases. Either
-way it runs every core user journey with headless Playwright: protocol management, the
-full Sample Protocol interview, session and data management, export in every
+way it runs every core user journey with headless Playwright: protocol management, a
+complete interview conducted entirely offline (the committed release-smoke
+walker over the six-stage fixture protocol, proving the precache serves the
+whole engine without network), session and data management, export in every
 format combination, device-lock enrolment through revocation, service-worker
 and offline behaviour, and settings. Each journey runs in its own isolated
 browser profile; every reported failure is independently re-examined by a
@@ -186,13 +188,15 @@ its own tree: open the hotfix branch's pull request into `main` (the
 merge-back the hotfix procedure requires anyway) BEFORE dispatching the
 Hotfix Release workflow — its Netlify deploy preview is the candidate.
 Certify that preview via
-`args: { url: "…", expectedVersion: "<the hotfix's bumped version>" }`,
+`args: { url: "…", expectedVersion: "<the hotfix's bumped version>",
+hotfix: true }` (the `hotfix` flag permits the documented dev-protocol
+schema-skew skip that only an older release line legitimately hits),
 then dispatch; never certify a hotfix against the developer site, and never
 dispatch production before the preview has its verdict.
 
 The workflow concentrates on what the Playwright E2E suite deliberately does
-not cover — the suite blocks service workers and conducts a lean fixture
-protocol, not the 30-stage Sample Protocol. It needs a checkout of this
+not cover — the suite blocks service workers and never touches the deployed
+bits, while this gate conducts its interview offline against them. It needs a checkout of this
 monorepo with dependencies installed (it installs Playwright's chromium on
 first use). When certifying, always pass both `url` (the candidate's deploy
 preview) and `expectedVersion` (the version that preview's tree ships) so a

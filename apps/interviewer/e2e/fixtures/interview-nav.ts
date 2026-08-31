@@ -46,6 +46,27 @@ export class InterviewNav {
       .not.toBe(before);
   }
 
+  async back(): Promise<void> {
+    const before = await this.stage.getAttribute('data-stage-step');
+    await this.page.getByTestId('previous-button').click();
+    await expect
+      .poll(async () => this.stage.getAttribute('data-stage-step'), {
+        timeout: 20_000,
+      })
+      .not.toBe(before);
+  }
+
+  // Exits an in-progress interview through the Shell's settings menu and its
+  // confirm dialog, landing back on Home.
+  async exitInterview(): Promise<void> {
+    await this.page.getByTestId('settings-button').click();
+    await this.page.getByTestId('exit-button').click();
+    const dialog = this.page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: 'Exit interview' }).click();
+    await expect(this.page).toHaveURL(/\/$/);
+  }
+
   async fillEgoName(value: string): Promise<void> {
     const field = this.page.locator('[data-field-name="ego_name"] input');
     await field.fill(value);

@@ -107,6 +107,10 @@ export async function updateSession(
   return dexieSessions.updateSession(id, patch);
 }
 
+export async function whenSessionWritesSettle(): Promise<void> {
+  return dexieSessions.whenSessionWritesSettle();
+}
+
 export async function markSessionFinished(id: string): Promise<void> {
   return dexieSessions.markSessionFinished(id);
 }
