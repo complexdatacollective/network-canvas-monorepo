@@ -12,7 +12,33 @@ type PwaCacheReclamationPluginOptions = {
   responseTimeoutMs?: number;
 };
 
+type CacheStorageMatcher = {
+  match: (request: Request) => Promise<Response | undefined>;
+};
+
 const BUILD_ID_PATTERN = /^[a-zA-Z0-9._-]+$/;
+
+// Workbox serializes this function into the generated worker, so every runtime
+// dependency (including the type guard) must stay inside its function body.
+// Vite configs execute in Node, where CacheStorage is not ambiently typed;
+// narrow the service-worker global at runtime instead of asserting its shape.
+export async function matchRetainedPwaAsset({
+  request,
+}: {
+  request: Request;
+}): Promise<Response> {
+  const isCacheStorageMatcher = (
+    candidate: unknown,
+  ): candidate is CacheStorageMatcher =>
+    typeof candidate === 'object' &&
+    candidate !== null &&
+    typeof Reflect.get(candidate, 'match') === 'function';
+
+  const cacheStorage: unknown = Reflect.get(globalThis, 'caches');
+  if (!isCacheStorageMatcher(cacheStorage)) return fetch(request);
+
+  return (await cacheStorage.match(request)) ?? fetch(request);
+}
 
 export function getPwaCacheReclamationScriptFileName(buildId: string): string {
   if (!BUILD_ID_PATTERN.test(buildId)) {

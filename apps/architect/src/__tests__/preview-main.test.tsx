@@ -17,8 +17,11 @@ const {
 vi.mock('react-dom/client', () => ({ createRoot }));
 vi.mock(
   '@codaco/fresco-ui/appUpdate/applyFreshLoadServiceWorkerUpdate',
-  () => ({ applyFreshLoadServiceWorkerUpdate, registerPwaBuildLease }),
+  () => ({ applyFreshLoadServiceWorkerUpdate }),
 );
+vi.mock('@codaco/fresco-ui/appUpdate/registerPwaBuildLease', () => ({
+  registerPwaBuildLease,
+}));
 vi.mock('../components/Errors', () => ({
   AppErrorBoundary: ({ children }: { children: ReactNode }) => children,
 }));

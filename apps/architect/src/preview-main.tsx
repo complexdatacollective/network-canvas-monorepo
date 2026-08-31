@@ -2,10 +2,8 @@ import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
 import { createRoot } from 'react-dom/client';
 
-import {
-  applyFreshLoadServiceWorkerUpdate,
-  registerPwaBuildLease,
-} from '@codaco/fresco-ui/appUpdate/applyFreshLoadServiceWorkerUpdate';
+import { applyFreshLoadServiceWorkerUpdate } from '@codaco/fresco-ui/appUpdate/applyFreshLoadServiceWorkerUpdate';
+import { registerPwaBuildLease } from '@codaco/fresco-ui/appUpdate/registerPwaBuildLease';
 
 import { AppErrorBoundary } from './components/Errors';
 import { PreviewHost } from './components/PreviewHost/PreviewHost';

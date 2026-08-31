@@ -4,10 +4,8 @@ import './styles/globals.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import {
-  applyFreshLoadServiceWorkerUpdate,
-  registerPwaBuildLease,
-} from '@codaco/fresco-ui/appUpdate/applyFreshLoadServiceWorkerUpdate';
+import { applyFreshLoadServiceWorkerUpdate } from '@codaco/fresco-ui/appUpdate/applyFreshLoadServiceWorkerUpdate';
+import { registerPwaBuildLease } from '@codaco/fresco-ui/appUpdate/registerPwaBuildLease';
 
 import App from './App';
 import {

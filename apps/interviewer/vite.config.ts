@@ -9,6 +9,7 @@ import { createPostHogSourceMapsPlugin } from '../../scripts/posthog-source-maps
 import {
   createPwaCacheReclamationPlugin,
   getPwaCacheReclamationScriptFileName,
+  matchRetainedPwaAsset,
 } from '../../scripts/pwa-cache-reclamation-plugin.ts';
 import { appVersion, createRendererConfig } from './vite.renderer.config';
 
@@ -219,12 +220,7 @@ export default defineConfig(() =>
                 sameOrigin &&
                 url.pathname.startsWith('/assets/') &&
                 /\.(?:js|css)$/i.test(url.pathname),
-              handler: async ({ request }) => {
-                const cacheStorage = Reflect.get(globalThis, 'caches') as {
-                  match: (request: Request) => Promise<Response | undefined>;
-                };
-                return (await cacheStorage.match(request)) ?? fetch(request);
-              },
+              handler: matchRetainedPwaAsset,
             },
             {
               // Stable PWA icons are replaced in place and must reach the

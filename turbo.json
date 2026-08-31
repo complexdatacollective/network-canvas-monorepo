@@ -101,6 +101,7 @@
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/**",
         "$TURBO_ROOT$/scripts/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/scripts/pwa-cache-reclamation-plugin.ts",
         "src/**",
         "scripts/**",
         "public/**",
@@ -145,6 +146,7 @@
         "$TURBO_ROOT$/packages/protocols/development/**",
         "$TURBO_ROOT$/packages/protocols/sample/**",
         "$TURBO_ROOT$/scripts/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/scripts/pwa-cache-reclamation-plugin.ts",
         "src/**",
         "scripts/**",
         "public/**",

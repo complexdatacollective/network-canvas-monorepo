@@ -174,8 +174,10 @@ deliberately different update paths:
   continues on the same navigation; activation never calls `reload()`.
 - The separate `/preview/` entry performs the same no-reload handoff before it
   renders, so its shell and deferred interface chunks use the same controller.
-  Update discovery and activation remain bounded: on failure or timeout the
-  preview proceeds instead of leaving the popup permanently blank.
+  Update discovery, installation, and activation remain bounded: on failure or
+  timeout the preview proceeds instead of leaving the popup permanently blank.
+  The opener keeps its payload handshake available for 55 seconds, covering the
+  handoff's complete 46-second healthy worst case plus scheduling headroom.
 - Once React has rendered, a newly discovered update remains in the **update
   available** state until the user opens the version indicator and chooses
   **Install and reload**. Neither `AppUpdateProvider` nor `vite-plugin-pwa` may

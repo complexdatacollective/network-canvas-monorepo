@@ -10,6 +10,7 @@ import {
 import {
   createPwaCacheReclamationWorkerSource,
   getPwaCacheReclamationScriptFileName,
+  matchRetainedPwaAsset,
 } from './pwa-cache-reclamation-plugin.ts';
 
 const APP_PREFIX = 'architect-';
@@ -17,6 +18,33 @@ const CURRENT_BUILD = 'architect-8.2.0-turbo-current';
 const OLD_BUILD = 'architect-8.1.0-turbo-old';
 const STALE_BUILD = 'architect-8.0.0-turbo-stale';
 const cacheName = (buildId) => `${buildId}-precache-v2-scope`;
+
+async function withTemporaryGlobals(properties, run) {
+  const descriptors = new Map(
+    Object.keys(properties).map((name) => [
+      name,
+      Object.getOwnPropertyDescriptor(globalThis, name),
+    ]),
+  );
+  try {
+    for (const [name, value] of Object.entries(properties)) {
+      Object.defineProperty(globalThis, name, {
+        configurable: true,
+        value,
+        writable: true,
+      });
+    }
+    await run();
+  } finally {
+    for (const [name, descriptor] of descriptors) {
+      if (descriptor) {
+        Object.defineProperty(globalThis, name, descriptor);
+      } else {
+        delete globalThis[name];
+      }
+    }
+  }
+}
 
 function createCacheStorage(initialNames, { metadataWriteFails = false } = {}) {
   const names = [...initialNames];
@@ -137,6 +165,61 @@ const modernClient = (id, buildId) => ({
   buildId,
   url: `https://architect.example/client/${id}`,
   postMessage() {},
+});
+
+describe('retained PWA asset handler', () => {
+  it('returns an exact cached response without reaching the network', async () => {
+    const request = new Request(
+      'https://architect.example/assets/old-chunk-hash.js',
+    );
+    let matchedRequest;
+    let fetchCalled = false;
+
+    await withTemporaryGlobals(
+      {
+        caches: {
+          async match(candidate) {
+            matchedRequest = candidate;
+            return new Response('cached old bundle');
+          },
+        },
+        async fetch() {
+          fetchCalled = true;
+          return new Response('network');
+        },
+      },
+      async () => {
+        const response = await matchRetainedPwaAsset({ request });
+        assert.equal(await response.text(), 'cached old bundle');
+      },
+    );
+
+    assert.equal(matchedRequest, request);
+    assert.equal(fetchCalled, false);
+  });
+
+  it('falls back to the network when CacheStorage is not available', async () => {
+    const request = new Request(
+      'https://interviewer.example/assets/current-chunk-hash.css',
+    );
+    let fetchedRequest;
+
+    await withTemporaryGlobals(
+      {
+        caches: undefined,
+        async fetch(candidate) {
+          fetchedRequest = candidate;
+          return new Response('network fallback');
+        },
+      },
+      async () => {
+        const response = await matchRetainedPwaAsset({ request });
+        assert.equal(await response.text(), 'network fallback');
+      },
+    );
+
+    assert.equal(fetchedRequest, request);
+  });
 });
 
 describe('PWA cache reclamation worker', () => {

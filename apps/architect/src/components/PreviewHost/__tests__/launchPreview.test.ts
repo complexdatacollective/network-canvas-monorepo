@@ -197,9 +197,9 @@ describe('launchPreview', () => {
     );
 
     // preview-main can use 3 seconds to find the registration, 3 seconds to
-    // discover an update, and 20 seconds to activate it before PreviewHost
-    // mounts and announces readiness.
-    await vi.advanceTimersByTimeAsync(26_000);
+    // discover an update, 20 seconds to install it, and another 20 seconds to
+    // activate it before PreviewHost mounts and announces readiness.
+    await vi.advanceTimersByTimeAsync(46_000);
     postReadyFromSource(popup);
 
     expect(await outcome).toEqual({
@@ -208,7 +208,7 @@ describe('launchPreview', () => {
     });
   });
 
-  it('rejects when no preview:ready arrives within 30 seconds', async () => {
+  it('rejects when no preview:ready arrives within 55 seconds', async () => {
     const promise = launchPreview({
       protocol: makeProtocol(),
       startStage: 0,
@@ -216,7 +216,7 @@ describe('launchPreview', () => {
       respectSkipLogic: false,
     });
     const expectation = expect(promise).rejects.toThrow(/didn't load/i);
-    await vi.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(55_000);
     await expectation;
   });
 
