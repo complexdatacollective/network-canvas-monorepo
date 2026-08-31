@@ -1,5 +1,40 @@
 # @codaco/protocol-validation
 
+## 13.0.0
+
+### Major Changes
+
+- c599dac: This release improves the reliability, accessibility, and recovery of protocol editing in Architect.
+
+  - Stage edits are now transactional: cancelling restores Codebook changes, incomplete settings remain open with actionable errors, and Information blocks retain their drafts while switching media types.
+  - Forms, rule builders, the Codebook, timeline, dialogs, and resource library now provide accurate labels, keyboard operation, focus restoration, and layouts that work on smaller screens. Undo and Redo operate one change at a time without recording no-op edits.
+  - A second tab now shows a read-only protocol instead of accepting changes it cannot save. Closing the editing tab restores editing from the saved copy, and deleting a protocol clears its history and releases associated resources.
+  - Protocol names, resource cards, variable identifiers, and stage editors are bounded on narrow screens. Duplicate resource filenames are distinguishable without changing the names stored in the protocol.
+  - Invalid imports, blocked edits, migration conflicts, preview completion, and deleted protocol routes now explain what happened and provide a safe recovery path.
+  - Recent protocols in the library now show their description, and starter templates show their stage, node type, and edge type counts.
+  - The CEGRM starter template now uses an available color for its Narrative Pedigree condition. Protocol colors are constrained to typed node, edge, ordinal, or categorical palette references; Narrative Pedigree and Geospatial resolve those references through the active theme. A protocol created from the previous release's CEGRM template will report a validation error on its condition color — open the stage editor and select one of the available colors to fix it. A downloaded protocol file with this problem must be corrected before it can be imported again. Neutral dialog actions remain distinct from white dialog surfaces.
+
+### Minor Changes
+
+- e9a6522: Protocol validation now catches references and variable uses that could previously produce missing or conflicting interview data.
+
+  - Form fields cannot write the same variable twice, and Family or Narrative Pedigree attributes cannot be overwritten by incompatible prompts, diseases, or interactions.
+  - Pedigree prompts, forms, and diseases now resolve their Codebook references during validation rather than failing silently during an interview.
+  - Prompt sort orders and roster display, search, and sort variables are included when collecting Codebook usage.
+  - Asset references are derived from schema metadata through the new `collectAssetReferences` helper.
+  - Malformed `.netcanvas` archives now produce structured `MalformedNetcanvasError` failures, with `loadNetcanvasArchive` and `describeProtocolFileError` available for actionable import messages.
+  - The pedigree value sets a protocol must carry — `RELATIONSHIP_TYPES`, `GAMETE_ROLES`, `BIOLOGICAL_SEX_VALUES`, their option lists, `FRAMING_IDS`, and `INHERITANCE_PATTERNS` — are now defined and exported here rather than in `@codaco/shared-consts`. They live inside the schema version that defines them, so editing shared constants can no longer change what a released schema accepts.
+  - Protocol colors must be palette references. Narrative Pedigree disease colors and Geospatial map colors no longer accept raw or empty strings, and disease colors must name one of the eight available node colors.
+  - Migrating a version 7 protocol now wraps node colors 9 and 10 (which the classic Architect palette offered) onto the eight-color palette, so those protocols import successfully instead of failing validation.
+  - Migrating a version 7 protocol whose forms collect the same attribute twice keeps the first field and removes the repeat — the repeated field never collected anything of its own — and the upgrade notes disclose the change.
+
+  Protocols containing one of the newly detected problems may now be reported as invalid even though the underlying problem was already present. This includes protocols whose pedigree option sets were edited away from the canonical values, protocols with duplicate form fields, protocols with an empty panel data source, and protocols using an unavailable or raw disease or map color — including protocols created from the CEGRM starter template as previously released. The remedy is to correct the protocol in Architect's editor (for example, by re-picking the disease color). An exported `.netcanvas` file containing one of these problems cannot be imported until it is corrected, because import validates before anything is stored.
+
+### Patch Changes
+
+- Updated dependencies ([e9a6522](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e9a652266ef9ddfa7fc42de1c8123bd7011c52a1), [fdb3b56](https://github.com/complexdatacollective/network-canvas-monorepo/commit/fdb3b56440f6cad89a44718d24ff725be3bb5e15))
+  - @codaco/shared-consts@6.0.0
+
 ## 12.1.1
 
 ### Patch Changes

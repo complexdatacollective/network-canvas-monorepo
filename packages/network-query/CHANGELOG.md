@@ -1,5 +1,13 @@
 # @codaco/network-query
 
+## 1.2.4
+
+### Patch Changes
+
+- Updated dependencies ([c599dac](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c599dacf78b18efb7d0c5c5fad4d38644a57e775), [e9a6522](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e9a652266ef9ddfa7fc42de1c8123bd7011c52a1), [fdb3b56](https://github.com/complexdatacollective/network-canvas-monorepo/commit/fdb3b56440f6cad89a44718d24ff725be3bb5e15))
+  - @codaco/protocol-validation@13.0.0
+  - @codaco/shared-consts@6.0.0
+
 ## 1.2.3
 
 ### Patch Changes
