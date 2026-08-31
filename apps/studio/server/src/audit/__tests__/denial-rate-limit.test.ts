@@ -33,10 +33,11 @@ describe('denied audit rate limiter', () => {
       await limiter.reserve('actor/team/operation', (summary) => {
         summaries.push(summary);
       }),
-    ).toEqual({ admitted: false });
+    ).toEqual({ admitted: false, reason: 'rate_limited' });
     now = 1_040;
     expect(await limiter.reserve('actor/team/operation')).toEqual({
       admitted: false,
+      reason: 'rate_limited',
     });
 
     expect(scheduled).toHaveLength(1);
@@ -74,7 +75,7 @@ describe('denied audit rate limiter', () => {
       await limiter.reserve('actor/team/operation', (summary) => {
         summaries.push(summary);
       }),
-    ).toEqual({ admitted: false });
+    ).toEqual({ admitted: false, reason: 'rate_limited' });
     expect(summaries).toEqual([]);
 
     await expect(limiter.flush({ timeoutMs: 100 })).resolves.toBe(true);
@@ -112,7 +113,7 @@ describe('denied audit rate limiter', () => {
         'actor/team/operation',
         () => new Promise<void>(() => undefined),
       ),
-    ).toEqual({ admitted: false });
+    ).toEqual({ admitted: false, reason: 'rate_limited' });
 
     const flush = limiter.flush({ timeoutMs: 100 });
     let flushSettled = false;
@@ -147,6 +148,90 @@ describe('denied audit rate limiter', () => {
 
     await complete(first, 'other');
     expect((await third).admitted).toBe(true);
+  });
+
+  it('bounds pending admission waiters without recording overload as a denial', async () => {
+    const scheduled: (() => void)[] = [];
+    const summaries: unknown[] = [];
+    const limiter = new DeniedAuditRateLimiter({
+      limit: 1,
+      maxWaitersPerKey: 1,
+      schedule: (task) => {
+        scheduled.push(task);
+        return () => undefined;
+      },
+    });
+    const active = limiter.reserve('actor/team/operation');
+    const queued = limiter.reserve('actor/team/operation', (summary) => {
+      summaries.push(summary);
+    });
+    const overloaded = limiter.reserve('actor/team/operation', (summary) => {
+      summaries.push(summary);
+    });
+    let overloadResult: Awaited<typeof overloaded> | undefined;
+    void overloaded.then((result) => {
+      overloadResult = result;
+      return undefined;
+    });
+
+    await Promise.resolve();
+    expect(overloadResult).toEqual({
+      admitted: false,
+      reason: 'overloaded',
+    });
+
+    await complete(active, 'denied');
+    await expect(queued).resolves.toEqual({
+      admitted: false,
+      reason: 'rate_limited',
+    });
+    expect(scheduled).toHaveLength(1);
+    scheduled[0]!();
+    expect(summaries).toEqual([
+      {
+        suppressedCount: 1,
+        firstSuppressedAt: expect.any(Number),
+        lastSuppressedAt: expect.any(Number),
+      },
+    ]);
+  });
+
+  it('recovers waiter capacity after a queued attempt is admitted', async () => {
+    const limiter = new DeniedAuditRateLimiter({
+      limit: 1,
+      maxWaitersPerKey: 1,
+    });
+    const active = limiter.reserve('actor/team/operation');
+    const queued = limiter.reserve('actor/team/operation');
+
+    expect(await limiter.reserve('actor/team/operation')).toEqual({
+      admitted: false,
+      reason: 'overloaded',
+    });
+    await complete(active, 'other');
+    const admittedFromQueue = await queued;
+    if (!admittedFromQueue.admitted) {
+      throw new Error('expected queued reservation to be admitted');
+    }
+
+    const recovered = limiter.reserve('actor/team/operation');
+    let recoveredSettled = false;
+    void recovered.then(() => {
+      recoveredSettled = true;
+      return undefined;
+    });
+    await Promise.resolve();
+    expect(recoveredSettled).toBe(false);
+
+    admittedFromQueue.complete('other');
+    const recoveredReservation = await recovered;
+    if (!recoveredReservation.admitted) {
+      throw new Error('expected recovered reservation to be admitted');
+    }
+    recoveredReservation.complete('other');
+    const afterRecovery = await limiter.reserve('actor/team/operation');
+    expect(afterRecovery.admitted).toBe(true);
+    if (afterRecovery.admitted) afterRecovery.complete('other');
   });
 
   it('waits for authorization outcomes instead of rejecting an authorized burst', async () => {
@@ -219,7 +304,10 @@ describe('denied audit rate limiter', () => {
 
     now = 1_010;
     await complete(second, 'denied');
-    expect(await queued).toEqual({ admitted: false });
+    expect(await queued).toEqual({
+      admitted: false,
+      reason: 'rate_limited',
+    });
     expect(scheduled).toHaveLength(1);
 
     now = 1_100;
@@ -245,6 +333,7 @@ describe('denied audit rate limiter', () => {
 
     expect(await limiter.reserve('actor/team/operation')).toEqual({
       admitted: false,
+      reason: 'rate_limited',
     });
     now += 100;
     expect((await limiter.reserve('actor/team/operation')).admitted).toBe(true);
@@ -264,7 +353,10 @@ describe('denied audit rate limiter', () => {
     const limiter = new DeniedAuditRateLimiter({ limit: 1, maxKeys: 1 });
     const first = limiter.reserve('first');
 
-    expect(await limiter.reserve('second')).toEqual({ admitted: false });
+    expect(await limiter.reserve('second')).toEqual({
+      admitted: false,
+      reason: 'overloaded',
+    });
     const queuedFirst = limiter.reserve('first');
 
     await complete(first, 'other');
@@ -331,6 +423,7 @@ describe('denied audit rate limiter', () => {
     ]);
     expect(await limiter.reserve('actor/team/operation')).toEqual({
       admitted: false,
+      reason: 'rate_limited',
     });
   });
 });

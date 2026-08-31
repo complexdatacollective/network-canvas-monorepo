@@ -48,6 +48,9 @@ async function handleTeamCommand<T>(work: () => Promise<T>): Promise<T> {
       throw new ORPCError('NOT_FOUND');
     }
     if (!(error instanceof TeamCommandError)) throw error;
+    if (error.code === 'OVERLOADED') {
+      throw new ORPCError('TOO_MANY_REQUESTS');
+    }
     if (error.code === 'FORBIDDEN') throw new ORPCError('FORBIDDEN');
     if (error.code === 'NOT_FOUND') throw new ORPCError('NOT_FOUND');
     if (error.code === 'CONFLICT') throw new ORPCError('CONFLICT');

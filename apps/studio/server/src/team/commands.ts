@@ -19,7 +19,10 @@ import {
   runAuditedCommand,
   runAuditedCommandWork,
 } from '../audit/command.ts';
-import { reserveDeniedAuditAttempt } from '../audit/denial-rate-limit.ts';
+import {
+  type DeniedAuditReservation,
+  reserveDeniedAuditAttempt,
+} from '../audit/denial-rate-limit.ts';
 import { createDeniedAuditSummaryWriter } from '../audit/denial-summary.ts';
 import type { AuditEventInput, DeniedAuditOperation } from '../audit/events.ts';
 import { enqueueInvitationDelivery } from './invitation-delivery-store.ts';
@@ -36,7 +39,8 @@ export type TeamCommandErrorCode =
   | 'NO_CHANGE'
   | 'LAST_OWNER'
   | 'INVALID_ROLE'
-  | 'DELIVERY_IN_PROGRESS';
+  | 'DELIVERY_IN_PROGRESS'
+  | 'OVERLOADED';
 
 export class TeamCommandError extends Error {
   readonly code: TeamCommandErrorCode;
@@ -77,11 +81,16 @@ function memberLabel(member: LockedMember): string {
   return (member.name.trim() || member.email).slice(0, 320);
 }
 
-function reserveDeniedTeamCommand(
+type AdmittedDeniedAuditReservation = Extract<
+  DeniedAuditReservation,
+  { admitted: true }
+>;
+
+async function reserveDeniedTeamCommand(
   context: AuditedCommandContext,
   operation: DeniedAuditOperation,
-) {
-  return reserveDeniedAuditAttempt(
+): Promise<AdmittedDeniedAuditReservation> {
+  const reservation = await reserveDeniedAuditAttempt(
     {
       actorId: context.principal.userId,
       teamId: context.tenantDb.teamId,
@@ -89,6 +98,12 @@ function reserveDeniedTeamCommand(
     },
     createDeniedAuditSummaryWriter(context, operation),
   );
+  if (!reservation.admitted) {
+    throw new TeamCommandError(
+      reservation.reason === 'overloaded' ? 'OVERLOADED' : 'FORBIDDEN',
+    );
+  }
+  return reservation;
 }
 
 export type UpdatedTeamMember = { memberId: string; role: TeamRole };
@@ -101,7 +116,6 @@ export async function updateTeamMemberRole(
     context,
     'team.updateMemberRole',
   );
-  if (!reservation.admitted) throw new TeamCommandError('FORBIDDEN');
 
   try {
     const result = await runAuditedCommand(
@@ -229,7 +243,6 @@ export async function createTeamInvitation(
     context,
     'team.createInvitation',
   );
-  if (!reservation.admitted) throw new TeamCommandError('FORBIDDEN');
 
   try {
     const result = await runAuditedCommand<CreatedTeamInvitation>(
@@ -348,7 +361,6 @@ export async function cancelTeamInvitation(
     context,
     'team.cancelInvitation',
   );
-  if (!reservation.admitted) throw new TeamCommandError('FORBIDDEN');
 
   try {
     const result = await runAuditedCommand<CancelledTeamInvitation>(
@@ -482,7 +494,6 @@ export async function acceptTeamInvitation(
     auditedContext,
     'team.acceptInvitation',
   );
-  if (!reservation.admitted) throw new TeamCommandError('FORBIDDEN');
 
   try {
     const result = await runAuditedCommand(

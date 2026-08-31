@@ -1,5 +1,6 @@
 const DEFAULT_WINDOW_MS = 60_000;
 const DEFAULT_MAX_KEYS = 10_000;
+const DEFAULT_MAX_WAITERS_PER_KEY = 25;
 const DEFAULT_FLUSH_TIMEOUT_MS = 5_000;
 
 const DENIED_AUDIT_EVENT_LIMIT = 5;
@@ -59,7 +60,7 @@ export type DeniedAuditFlushOptions = {
 };
 
 export type DeniedAuditReservation =
-  | { admitted: false }
+  | { admitted: false; reason: 'rate_limited' | 'overloaded' }
   | {
       admitted: true;
       complete: (outcome: 'denied' | 'other') => void;
@@ -69,16 +70,19 @@ export type DeniedAuditReservation =
  * A bounded process-local admission counter for denial-producing commands.
  * Reservations happen before a database transaction begins, so a burst cannot
  * queue an unbounded number of permanent denial writes behind a team's audit
- * lock. Excess requests wait outside that lock until an authorization outcome
- * frees capacity. Successful, unchanged, and domain-failed commands release
- * their slot; only confirmed authorization denials consume the fixed-window
- * allowance or cause waiting attempts to be suppressed.
+ * lock. A bounded number of excess requests wait outside that lock until an
+ * authorization outcome frees capacity; requests beyond that waiter cap are
+ * rejected as operational overload, not authorization denials. Successful,
+ * unchanged, and domain-failed commands release their slot; only confirmed
+ * authorization denials consume the fixed-window allowance or cause waiting
+ * attempts to be suppressed.
  */
 export class DeniedAuditRateLimiter {
   readonly #entries = new Map<string, DenialWindow>();
   readonly #limit: number;
   readonly #windowMs: number;
   readonly #maxKeys: number;
+  readonly #maxWaitersPerKey: number;
   readonly #now: () => number;
   readonly #schedule: DeniedAuditSummaryScheduler;
   readonly #scheduleFlushTimeout: DeniedAuditFlushTimeoutScheduler;
@@ -90,6 +94,7 @@ export class DeniedAuditRateLimiter {
     limit?: number;
     windowMs?: number;
     maxKeys?: number;
+    maxWaitersPerKey?: number;
     now?: () => number;
     schedule?: DeniedAuditSummaryScheduler;
     scheduleFlushTimeout?: DeniedAuditFlushTimeoutScheduler;
@@ -99,6 +104,14 @@ export class DeniedAuditRateLimiter {
     this.#limit = options?.limit ?? DENIED_AUDIT_EVENT_LIMIT;
     this.#windowMs = options?.windowMs ?? DEFAULT_WINDOW_MS;
     this.#maxKeys = options?.maxKeys ?? DEFAULT_MAX_KEYS;
+    this.#maxWaitersPerKey =
+      options?.maxWaitersPerKey ?? DEFAULT_MAX_WAITERS_PER_KEY;
+    if (
+      !Number.isSafeInteger(this.#maxWaitersPerKey) ||
+      this.#maxWaitersPerKey < 0
+    ) {
+      throw new RangeError('maxWaitersPerKey must be a non-negative integer');
+    }
     this.#now = options?.now ?? Date.now;
     this.#schedule = options?.schedule ?? scheduleSummary;
     this.#scheduleFlushTimeout =
@@ -259,7 +272,7 @@ export class DeniedAuditRateLimiter {
           waiter.attemptedAt,
           waiter.summaryWriter,
         );
-        waiter.resolve({ admitted: false });
+        waiter.resolve({ admitted: false, reason: 'rate_limited' });
       }
       return;
     }
@@ -293,7 +306,9 @@ export class DeniedAuditRateLimiter {
             break;
           }
         }
-        if (!oldestIdleKey) return { admitted: false };
+        if (!oldestIdleKey) {
+          return { admitted: false, reason: 'overloaded' };
+        }
         const oldestIdleWindow = this.#entries.get(oldestIdleKey);
         if (oldestIdleWindow) {
           this.#queueSummary(oldestIdleKey, oldestIdleWindow);
@@ -316,10 +331,13 @@ export class DeniedAuditRateLimiter {
     }
     if (window.denied >= this.#limit) {
       this.#recordSuppressed(key, window, now, summaryWriter);
-      return { admitted: false };
+      return { admitted: false, reason: 'rate_limited' };
     }
     if (window.denied + window.inFlight < this.#limit) {
       return this.#admit(key, window);
+    }
+    if (window.waiters.length >= this.#maxWaitersPerKey) {
+      return { admitted: false, reason: 'overloaded' };
     }
 
     return new Promise<DeniedAuditReservation>((resolve) => {

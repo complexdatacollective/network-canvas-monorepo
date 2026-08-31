@@ -85,10 +85,11 @@ describe.skipIf(!db)('denied audit summary', () => {
         await writer(summary);
         summaryWritten.resolve();
       }),
-    ).toEqual({ admitted: false });
+    ).toEqual({ admitted: false, reason: 'rate_limited' });
     now += 20_000;
     expect(await limiter.reserve('actor/team/operation')).toEqual({
       admitted: false,
+      reason: 'rate_limited',
     });
 
     expect(summaryTransactionCount).toBe(0);
