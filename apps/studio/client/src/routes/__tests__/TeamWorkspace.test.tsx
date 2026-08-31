@@ -258,6 +258,8 @@ function renderWorkspace() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  authState.refetchActiveTeam.mockReset();
+  authState.refetchActiveMember.mockReset();
   authState.activeTeam = ACTIVE_TEAM_A;
   authState.activeMember = OWNER;
   authState.activeTeamError = null;
@@ -500,8 +502,11 @@ describe('Studio team workspace', () => {
       email: 'new@example.com',
     };
     authState.refetchActiveTeam
-      .mockRejectedValueOnce(new Error('refresh failed'))
       .mockImplementationOnce(async () => {
+        authState.activeTeamError = new Error('refresh failed');
+      })
+      .mockImplementationOnce(async () => {
+        authState.activeTeamError = null;
         authState.activeTeam = {
           ...ACTIVE_TEAM_A,
           invitations: [...ACTIVE_TEAM_A.invitations, createdInvitation],
@@ -598,8 +603,11 @@ describe('Studio team workspace', () => {
 
   it('reports a confirmed role commit as successful and retries its failed refresh', async () => {
     authState.refetchActiveTeam
-      .mockRejectedValueOnce(new Error('refresh failed'))
       .mockImplementationOnce(async () => {
+        authState.activeTeamError = new Error('refresh failed');
+      })
+      .mockImplementationOnce(async () => {
+        authState.activeTeamError = null;
         authState.activeTeam = {
           ...ACTIVE_TEAM_A,
           members: [OWNER, { ...COLLABORATOR, role: 'admin' }],
@@ -633,6 +641,54 @@ describe('Studio team workspace', () => {
       await screen.findByLabelText('Role for Team Collaborator'),
     ).toHaveValue('admin');
     expect(fixtures.updateMemberRole).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps role recovery available when a retry resolves with an auth error', async () => {
+    authState.refetchActiveTeam
+      .mockImplementationOnce(async () => {
+        authState.activeTeamError = new Error('initial refresh failed');
+      })
+      .mockImplementationOnce(async () => {
+        authState.activeTeamError = new Error('retry refresh failed');
+      })
+      .mockImplementationOnce(async () => {
+        authState.activeTeamError = null;
+        authState.activeTeam = {
+          ...ACTIVE_TEAM_A,
+          members: [OWNER, { ...COLLABORATOR, role: 'admin' }],
+        };
+      });
+    renderWorkspace();
+
+    fireEvent.change(
+      await screen.findByLabelText('Role for Team Collaborator'),
+      { target: { value: 'admin' } },
+    );
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Refresh team details' }),
+    );
+    await waitFor(() =>
+      expect(authState.refetchActiveTeam).toHaveBeenCalledTimes(2),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Refresh team details' }),
+      ).toBeEnabled(),
+    );
+    expect(
+      screen.queryByText('Team role updated. Team details refreshed.'),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Refresh team details' }),
+    );
+    await screen.findByText('Team role updated. Team details refreshed.');
+    expect(authState.refetchActiveTeam).toHaveBeenCalledTimes(3);
+    expect(fixtures.updateMemberRole).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByLabelText('Role for Team Collaborator'),
+    ).toHaveValue('admin');
   });
 
   it('retries reconciliation instead of repeating an ambiguous role mutation', async () => {
@@ -756,9 +812,12 @@ describe('Studio team workspace', () => {
   });
 
   it('reports a confirmed cancellation as successful and retries its failed refresh', async () => {
-    authState.refetchActiveTeam
-      .mockRejectedValueOnce(new Error('refresh failed'))
+    authState.refetchActiveMember
       .mockImplementationOnce(async () => {
+        authState.activeMemberError = new Error('refresh failed');
+      })
+      .mockImplementationOnce(async () => {
+        authState.activeMemberError = null;
         authState.activeTeam = {
           ...ACTIVE_TEAM_A,
           invitations: ACTIVE_TEAM_A.invitations.map((invitation) =>

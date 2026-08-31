@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
 
 import { Alert } from '@codaco/fresco-ui/Alert';
 import { Badge } from '@codaco/fresco-ui/Badge';
@@ -60,6 +67,84 @@ async function reconcileTeamMutation<Result>(
     commit = 'unknown';
   }
   return { commit, refreshed: await refresh() };
+}
+
+type TeamRefreshState = {
+  activeMember: Pick<
+    ReturnType<typeof authClient.useActiveMember>,
+    'error' | 'refetch'
+  >;
+  activeTeam: Pick<
+    ReturnType<typeof authClient.useActiveOrganization>,
+    'error' | 'refetch'
+  >;
+};
+
+function useTeamStateRefresh(
+  activeTeam: TeamRefreshState['activeTeam'],
+  activeMember: TeamRefreshState['activeMember'],
+) {
+  const latestState = useRef<TeamRefreshState>({
+    activeMember,
+    activeTeam,
+  });
+  latestState.current = { activeMember, activeTeam };
+  const mounted = useRef(true);
+  const pendingInspections = useRef<Array<(refreshed: boolean) => void>>([]);
+  const refreshQueue = useRef<Promise<void>>(Promise.resolve());
+  const [inspectionVersion, requestInspection] = useReducer(
+    (version: number) => version + 1,
+    0,
+  );
+
+  useLayoutEffect(() => {
+    const inspections = pendingInspections.current.splice(0);
+    if (inspections.length === 0) return;
+    const refreshed =
+      latestState.current.activeTeam.error === null &&
+      latestState.current.activeMember.error === null;
+    for (const resolve of inspections) resolve(refreshed);
+  }, [inspectionVersion]);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      const inspections = pendingInspections.current.splice(0);
+      for (const resolve of inspections) resolve(false);
+    };
+  }, []);
+
+  return useCallback(() => {
+    const refresh = async () => {
+      const state = latestState.current;
+      const results = await Promise.allSettled([
+        Promise.resolve().then(() => state.activeTeam.refetch()),
+        Promise.resolve().then(() => state.activeMember.refetch()),
+      ]);
+      if (
+        !mounted.current ||
+        results.some((result) => result.status === 'rejected')
+      ) {
+        return false;
+      }
+
+      // Better Auth resolves refetch() after storing an error. Request one
+      // render after settlement so this inspects the resulting hook snapshots,
+      // rather than the successful promise or the closure that began the fetch.
+      return new Promise<boolean>((resolve) => {
+        pendingInspections.current.push(resolve);
+        requestInspection();
+      });
+    };
+
+    const outcome = refreshQueue.current.then(refresh, refresh);
+    refreshQueue.current = outcome.then(
+      () => undefined,
+      () => undefined,
+    );
+    return outcome;
+  }, []);
 }
 
 const TEAM_ROLE_OPTIONS = TEAM_ROLES.map((role) => ({
@@ -136,6 +221,9 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
   const activeTeamLoadError = activeTeam.error || activeMember.error;
   const activeTeamAccessPending =
     activeTeam.isPending || activeMember.isPending;
+  const activeTeamAccessUnavailable =
+    Boolean(activeTeamLoadError) &&
+    (!selectedTeam || !activeTeam.data || !membershipMatchesTeam);
 
   const retryActiveTeam = async () => {
     setRetryingActiveTeam(true);
@@ -218,7 +306,7 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
         )}
       </Surface>
 
-      {activeTeamLoadError ? (
+      {activeTeamAccessUnavailable ? (
         <Surface spacing="lg">
           <Alert variant="destructive">
             Studio could not load the active team and your access to it.
@@ -413,6 +501,7 @@ function TeamManagement(props: {
 }) {
   const activeTeam = authClient.useActiveOrganization();
   const activeMember = authClient.useActiveMember();
+  const refreshTeamState = useTeamStateRefresh(activeTeam, activeMember);
   const team =
     activeTeam.data?.id === props.team.id ? activeTeam.data : props.team;
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
@@ -439,14 +528,6 @@ function TeamManagement(props: {
       invitation.status === 'pending' &&
       invitation.expiresAt.getTime() > Date.now(),
   );
-
-  const refreshTeamState = async () => {
-    const results = await Promise.allSettled([
-      Promise.resolve().then(() => activeTeam.refetch()),
-      Promise.resolve().then(() => activeMember.refetch()),
-    ]);
-    return results.every((result) => result.status === 'fulfilled');
-  };
 
   const retryTeamRefresh = async () => {
     const recovery = refreshRecovery;
