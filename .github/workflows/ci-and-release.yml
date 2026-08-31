@@ -953,6 +953,7 @@ jobs:
       - name: Dead-link check
         env:
           DOCS_URL: ${{ steps.netlify-preview.outputs.url }}
+          NODE_OPTIONS: --import=${{ github.workspace }}/scripts/dead-link-check-fetch-user-agent.mjs
         # @jthrilly/dead-link-checker >=1.1.0 retries each request on transient
         # network errors (UND_ERR_SOCKET / connect timeouts), so a single flaky
         # fetch no longer fails the run. Retrying the whole crawl here was the
@@ -1147,6 +1148,7 @@ jobs:
           exit 1
       - name: Dead-link check
         env:
+          NODE_OPTIONS: --import=${{ github.workspace }}/scripts/dead-link-check-fetch-user-agent.mjs
           WEBSITE_URL: ${{ steps.netlify-preview.outputs.url }}
         run: npx --yes @jthrilly/dead-link-checker@^1.1.0 "$WEBSITE_URL/en-US/" -v --yes
 

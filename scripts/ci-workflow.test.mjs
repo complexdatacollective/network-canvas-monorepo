@@ -132,6 +132,15 @@ test('both public sites crawl their matching Netlify deploy previews', () => {
     );
     assert.match(previewJob, /@jthrilly\/dead-link-checker@\^1\.1\.0/);
     assert.match(previewJob, new RegExp(`"\\$${startPath}"`));
+
+    const deadLinkStep = parsedWorkflow.jobs[jobName].steps.find(
+      ({ name }) => name === 'Dead-link check',
+    );
+    assert.equal(
+      deadLinkStep?.env?.NODE_OPTIONS,
+      '--import=${{ github.workspace }}/scripts/dead-link-check-fetch-user-agent.mjs',
+      `${jobName} loads the browser-compatible fetch shim`,
+    );
   }
 
   const carryForward = job('carry-forward-statuses');
