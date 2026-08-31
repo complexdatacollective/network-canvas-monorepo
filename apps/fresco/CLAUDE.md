@@ -289,9 +289,10 @@ lib/
     moment it loaded — from having everything it writes discarded. The client
     also aborts the request it supersedes, but that is only to save wasted work:
     aborting a fetch does not stop a handler the server has already started, so
-    the ordering guarantee is the route's, not the client's. A request carrying
-    no `syncRevision` (a tab still running the bundle from before a deployment)
-    is applied unconditionally, as it was before the guard existed.
+    the ordering guarantee is the route's, not the client's. `syncRevision` is
+    required: an upgrade takes the deployment down, so no browser is left
+    running a bundle that does not send one, and there is no shape of request
+    that reaches the row without an order to be judged in.
 
 ## Conventions
 

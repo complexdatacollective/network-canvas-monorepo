@@ -52,10 +52,9 @@ const routeHandler = async (
      * never run at all), and the server may finish them in either order. This
      * is what lets the older one be discarded rather than committed last.
      *
-     * Optional so that a tab still running the bundle from before a deployment
-     * keeps syncing: those requests carry no number and are applied
-     * unconditionally, exactly as they were before this guard existed. A
-     * missing number costs ordering, never the write.
+     * Required, so there is no shape of request that reaches the row without an
+     * order to be judged in. An upgrade takes the deployment down, so there is
+     * no window in which a browser is running an older bundle against this.
      *
      * `lastUpdated` above is deliberately not used for this. It is a wall-clock
      * millisecond stamped by the interview reducer for a different purpose, so
@@ -65,7 +64,7 @@ const routeHandler = async (
      * is only as reliable as every future reducer case remembering to bump it.
      * This counter is owned by the code that issues the writes it orders.
      */
-    syncRevision: z.number().int().nonnegative().optional(),
+    syncRevision: z.number().int().nonnegative(),
   });
 
   const validatedRequest = Schema.safeParse(rawPayload);
@@ -96,28 +95,7 @@ const routeHandler = async (
     }
   }
 
-  const data = {
-    network,
-    currentStep,
-    stageMetadata: stageMetadata ?? undefined,
-    // `lastUpdated` is intentionally NOT taken from the client. Prisma's
-    // @updatedAt sets it server-side; trusting the client value let a
-    // participant backdate it (overwriting newer data) and corrupt the
-    // dashboard sort/filter/export ordering, which keys on this column.
-  };
-
   try {
-    if (syncRevision === undefined) {
-      await prisma.interview.update({
-        where: {
-          id: interviewId,
-        },
-        data,
-      });
-
-      return NextResponse.json({ success: true, applied: true });
-    }
-
     // The predicate is what makes a stale write a no-op, and it has to be part
     // of the write itself: reading the stored revision first and then updating
     // would leave a window in which the newer request commits in between.
@@ -125,7 +103,16 @@ const routeHandler = async (
     // of two concurrent writes the lower-numbered one matches nothing.
     const { count } = await prisma.interview.updateMany({
       where: { id: interviewId, syncRevision: { lt: syncRevision } },
-      data: { ...data, syncRevision },
+      data: {
+        network,
+        currentStep,
+        stageMetadata: stageMetadata ?? undefined,
+        syncRevision,
+        // `lastUpdated` is intentionally NOT taken from the client. Prisma's
+        // @updatedAt sets it server-side; trusting the client value let a
+        // participant backdate it (overwriting newer data) and corrupt the
+        // dashboard sort/filter/export ordering, which keys on this column.
+      },
     });
 
     if (count > 0) {

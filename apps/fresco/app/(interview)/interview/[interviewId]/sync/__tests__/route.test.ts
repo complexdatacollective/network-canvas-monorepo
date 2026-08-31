@@ -1,13 +1,13 @@
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { findUniqueMock, getAppSettingMock, updateMock, updateManyMock } =
-  vi.hoisted(() => ({
+const { findUniqueMock, getAppSettingMock, updateManyMock } = vi.hoisted(
+  () => ({
     findUniqueMock: vi.fn(),
     getAppSettingMock: vi.fn(),
-    updateMock: vi.fn(),
     updateManyMock: vi.fn(),
-  }));
+  }),
+);
 
 vi.mock('next/server', async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
@@ -18,7 +18,6 @@ vi.mock('~/lib/db', () => ({
   prisma: {
     interview: {
       findUnique: findUniqueMock,
-      update: updateMock,
       updateMany: updateManyMock,
     },
   },
@@ -65,6 +64,7 @@ function makeRequest(network: unknown, extra: Record<string, unknown> = {}) {
       network,
       currentStep: 2,
       lastUpdated: '2026-08-12T00:00:00.000Z',
+      syncRevision: 1,
       ...extra,
     }),
   });
@@ -123,7 +123,6 @@ describe('interview sync route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getAppSettingMock.mockResolvedValue(false);
-    updateMock.mockResolvedValue({});
     updateManyMock.mockResolvedValue({ count: 1 });
     findUniqueMock.mockResolvedValue(null);
   });
@@ -134,8 +133,8 @@ describe('interview sync route', () => {
     });
 
     expect(response.status).toBe(200);
-    expect(updateMock).toHaveBeenCalledWith({
-      where: { id: 'interview-1' },
+    expect(updateManyMock).toHaveBeenCalledWith({
+      where: { id: 'interview-1', syncRevision: { lt: 1 } },
       data: {
         network: {
           nodes: [
@@ -158,6 +157,7 @@ describe('interview sync route', () => {
         },
         currentStep: 2,
         stageMetadata: undefined,
+        syncRevision: 1,
       },
     });
   });
@@ -178,7 +178,7 @@ describe('interview sync route', () => {
     await expect(response.json()).resolves.toEqual({
       error: 'Invalid request body',
     });
-    expect(updateMock).not.toHaveBeenCalled();
+    expect(updateManyMock).not.toHaveBeenCalled();
   });
 
   it('keeps the generic HTTP 400 response for malformed JSON', async () => {
@@ -199,7 +199,7 @@ describe('interview sync route', () => {
     await expect(response.json()).resolves.toEqual({
       error: 'Invalid request body',
     });
-    expect(updateMock).not.toHaveBeenCalled();
+    expect(updateManyMock).not.toHaveBeenCalled();
   });
   describe('write ordering', () => {
     it('discards a write that lands after a newer one instead of rolling the interview back', async () => {
@@ -263,18 +263,28 @@ describe('interview sync route', () => {
       });
     });
 
-    it('still applies a write from a tab that sends no revision', async () => {
-      // A bundle loaded before this guard shipped keeps syncing across a
-      // deployment. Rejecting those requests would lose the rest of that
-      // participant's interview; they give up ordering, not the write.
-      const response = await post(makeRequest(networkNamed('legacy')));
+    it('refuses a write that carries no revision, rather than applying it unordered', async () => {
+      // There is no shape of request that reaches the row without an order to
+      // be judged in. An upgrade takes the deployment down, so no browser is
+      // left running a bundle that does not send one.
+      const request = new NextRequest(
+        'http://localhost/interview/interview-1/sync',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            id: 'interview-1',
+            network: networkNamed('unnumbered'),
+            currentStep: 2,
+            lastUpdated: '2026-08-12T00:00:00.000Z',
+          }),
+        },
+      );
 
-      expect(response.status).toBe(200);
+      const response = await post(request);
+
+      expect(response.status).toBe(400);
       expect(updateManyMock).not.toHaveBeenCalled();
-      expect(updateMock).toHaveBeenCalledWith({
-        where: { id: 'interview-1' },
-        data: expect.objectContaining({ network: networkNamed('legacy') }),
-      });
     });
 
     it('reports the stored revision when a finished interview is frozen', async () => {
@@ -297,7 +307,6 @@ describe('interview sync route', () => {
         syncRevision: 9,
       });
       expect(updateManyMock).not.toHaveBeenCalled();
-      expect(updateMock).not.toHaveBeenCalled();
     });
   });
 });

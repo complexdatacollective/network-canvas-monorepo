@@ -47,10 +47,8 @@ export function createInterviewSyncHandler({
 }: Args): SyncHandler {
   let inFlight: AbortController | null = null;
   // Numbers the writes this browser issues, so the server can tell which of two
-  // it is holding at once is the newer one. Assigned synchronously as each
-  // write goes out, which is what ties the numbering to issue order: a write
-  // issued later always carries a higher number than one issued before it,
-  // whatever order they then land in.
+  // it is holding at once is the newer one: a write issued later always carries
+  // a higher number than one issued before it, whatever order they then land in.
   let revision = initialSyncRevision;
 
   return createDebouncedSyncHandler(
@@ -76,6 +74,8 @@ export function createInterviewSyncHandler({
 
       const controller = new AbortController();
       inFlight = controller;
+      // Assigned synchronously, before anything can await: this is what ties
+      // the numbering to issue order. The route requires it on every write.
       revision += 1;
       const body = JSON.stringify({
         ...session,
