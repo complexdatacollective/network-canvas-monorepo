@@ -218,9 +218,10 @@ pnpm exec turbo run build --filter=@codaco/interviewer
 The app's `build` command runs Vite and then `scripts/assert-pwa-build.mjs`, which
 fails the build if the service worker, manifest, or icons are missing from
 `dist/`, or if a critical JS chunk (the interview engine, mapbox-gl, the entry
-point) got silently dropped from the workbox precache manifest. A deploy that
-passes this assertion is one that will actually boot offline; treat an assertion
-failure as a hard release blocker, not a warning to route around. The assertion
+point) or responsive stage-preview image got silently dropped from the Workbox
+precache manifest. A deploy that passes this assertion is one that will actually
+boot and render the interview menu offline; treat an assertion failure as a hard
+release blocker, not a warning to route around. The assertion
 also validates the emitted `_headers`: the service worker, HTML shell (including
 requested SPA deep links), manifest, and stable icons must use
 `no-store, no-cache, max-age=0, must-revalidate`, while only content-hashed
@@ -317,7 +318,7 @@ A failed upload fails the build rather than deploying unsymbolicated. Both
 variables are part of the Turbo cache key for `build`, so a production build can
 never replay a cached artefact whose maps were never uploaded, and
 `scripts/assert-pwa-build.mjs` fails if a map is left behind anywhere in `dist`
-(the workbox precache globs only `js`/`css`/`html`, so a stray map would ship
+(the Workbox precache globs do not include maps, so a stray map would ship
 silently otherwise).
 
 ## What used to be here

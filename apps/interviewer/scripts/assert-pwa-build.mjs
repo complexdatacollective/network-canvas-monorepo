@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Post-build assertion: a production PWA build must emit the SW + manifest +
-// icons, and every critical chunk (the interview engine, the entry) must be
-// precached — a chunk over the precache limit silently drops from the SW
-// manifest and breaks the offline boot.
+// icons, every critical chunk (the interview engine, the entry), and every
+// responsive stage-preview image must be precached. A missing critical asset
+// breaks either the offline boot or the first offline opening of the menu.
 import { readFileSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -107,10 +107,10 @@ for (const f of [
 }
 
 // generateSW inlines the precache manifest as `self.__WB_MANIFEST` replaced with
-// an array literal of { url, revision } entries. Every emitted .js asset chunk
-// must appear there — if workbox skipped one for size, it won't.
+// an array literal of { url, revision } entries. Every critical asset must
+// appear there — if Workbox skipped one or the glob omitted it, it won't.
 const precached = new Set(
-  [...sw.matchAll(/["']([^"']+\.js)["']/g)].map((m) =>
+  [...sw.matchAll(/["']([^"']+\.(?:js|webp))["']/g)].map((m) =>
     m[1].replace(/^\/+/, ''),
   ),
 );
@@ -123,6 +123,22 @@ try {
   fail('missing dist/assets');
 }
 const jsAssets = assetFiles.filter((f) => f.endsWith('.js'));
+const stagePreviewAssets = assetFiles.filter((f) =>
+  /\.4x3\.\d+-.*\.webp$/.test(f),
+);
+
+if (stagePreviewAssets.length === 0) {
+  fail('no 4:3 stage-preview assets found');
+}
+
+const missingStagePreviewAssets = stagePreviewAssets.filter(
+  (f) => !precached.has(`assets/${f}`),
+);
+if (missingStagePreviewAssets.length > 0) {
+  fail(
+    `stage-preview asset(s) excluded from precache: ${missingStagePreviewAssets.join(', ')}`,
+  );
+}
 
 // Source maps are emitted only to be uploaded to PostHog, and the upload
 // deletes them (see vite.config.ts). One surviving here would publish the
@@ -296,5 +312,5 @@ if (/index\.html/.test(assetHandoffRouteSource)) {
 }
 
 console.log(
-  `PWA build ok: ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s) precached`,
+  `PWA build ok: ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached`,
 );

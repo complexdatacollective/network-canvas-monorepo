@@ -44,8 +44,8 @@ const MAX_PRECACHE_BYTES = 12 * 1024 * 1024;
 // build — local, PR, Netlify preview — emits no maps at all. When they are
 // emitted they are `hidden` (no sourceMappingURL comment, so a browser never
 // requests them), and the plugin deletes them from dist once uploaded, so the
-// deployed site never serves a map and the workbox precache globs (js/css/html)
-// never see one. Both variables are declared in turbo.json's build `env` so an
+// deployed site never serves a map and the Workbox precache globs never see
+// one. Both variables are declared in turbo.json's build `env` so an
 // uploading build can never reuse a non-uploading cache entry.
 const posthogPersonalApiKey = process.env.POSTHOG_PERSONAL_API_KEY;
 const posthogProjectId = process.env.POSTHOG_PROJECT_ID;
@@ -119,7 +119,11 @@ export default defineConfig(() =>
           // bundle's retained precache (including between same-version dev
           // deploys and while offline).
           cacheId: pwaCacheId,
-          globPatterns: ['**/*.{js,css,html}'],
+          // The menu's responsive stage previews are not requested until an
+          // interview is already open. Precache every 4:3 candidate so a
+          // freshly installed app can render the menu on its first offline
+          // interview, regardless of which width Safari selects from srcset.
+          globPatterns: ['**/*.{js,css,html}', '**/*.4x3.*.webp'],
           // The Development protocol's bundled asset chunk (~33 MB, embeds a
           // 23 MB dev-only video — see bundledDevelopmentProtocol.ts) is only
           // ever fetched via a DEV-gated dynamic import(); production users
