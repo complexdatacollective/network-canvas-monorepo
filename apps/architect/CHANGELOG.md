@@ -1,5 +1,13 @@
 # @codaco/architect
 
+## 8.2.1
+
+### Patch Changes
+
+- 2f8fcdc: Make app updates reliable without reloading open work automatically. Fresh launches now activate an available update before the interface appears, updates found after rendering wait for an explicit install action, and the post-reload state reliably links to the release notes.
+- Updated dependencies ([2f8fcdc](https://github.com/complexdatacollective/network-canvas-monorepo/commit/2f8fcdc0c202678060501d2942645462c9cca77b), [301e8fe](https://github.com/complexdatacollective/network-canvas-monorepo/commit/301e8fefdf74b563545ef9c1ac3a0dd098a14bbc))
+  - @codaco/fresco-ui@6.2.0
+
 ## 8.2.0
 
 ### Minor Changes
