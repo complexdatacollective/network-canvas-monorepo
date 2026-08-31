@@ -23,7 +23,9 @@ function parseManifest(text, manifestPath) {
   try {
     manifest = JSON.parse(text);
   } catch (error) {
-    throw new Error(`Could not parse ${manifestPath}: ${error.message}`);
+    throw new Error(`Could not parse ${manifestPath}: ${error.message}`, {
+      cause: error,
+    });
   }
 
   if (typeof manifest !== 'object' || manifest === null) {
@@ -229,6 +231,7 @@ export async function checkNpmVersionCollisions({
     } catch (error) {
       throw new Error(
         `Could not verify ${candidate.name}@${candidate.version} against npm: ${error.message}`,
+        { cause: error },
       );
     }
 

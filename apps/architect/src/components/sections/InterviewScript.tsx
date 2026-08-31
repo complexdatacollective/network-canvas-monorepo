@@ -2,8 +2,8 @@ import { useCallback } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Section from '@codaco/fresco-ui/Section';
+import RichText from '@codaco/protocol-builder/fields/RichTextField';
 import ArchitectField from '~/components/Form/ArchitectField';
-import RichText from '~/components/Form/Fields/RichText/Field';
 import IssueAnchor from '~/components/IssueAnchor';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {

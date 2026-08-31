@@ -1,7 +1,7 @@
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Section from '@codaco/fresco-ui/Section';
+import RichText from '@codaco/protocol-builder/fields/RichTextField';
 import ArchitectField from '~/components/Form/ArchitectField';
-import RichText from '~/components/Form/Fields/RichText/Field';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
 

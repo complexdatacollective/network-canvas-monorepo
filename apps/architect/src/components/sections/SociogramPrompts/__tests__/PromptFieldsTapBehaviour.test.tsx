@@ -66,7 +66,7 @@ vi.mock(
   }),
 );
 
-vi.mock('~/components/Form/Fields/RichText/Field', () => ({
+vi.mock('@codaco/protocol-builder/fields/RichTextField', () => ({
   default: ({
     name,
     value,

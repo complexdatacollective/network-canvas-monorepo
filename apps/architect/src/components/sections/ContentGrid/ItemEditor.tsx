@@ -5,8 +5,8 @@ import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Section from '@codaco/fresco-ui/Section';
+import RichText from '@codaco/protocol-builder/fields/RichTextField';
 import ArchitectField from '~/components/Form/ArchitectField';
-import RichText from '~/components/Form/Fields/RichText/Field';
 
 import Audio from '../../Form/Fields/Audio';
 import Image from '../../Form/Fields/Image';

@@ -3,4 +3,7 @@
    @source that resolves against its src/ tree, so importing it here is
    enough to pull that scan in. */
 @import '@codaco/fresco-ui/styles.css';
+/* Architect renders protocol-builder's fields, whose utilities live in that
+   package's source and are invisible to a scanner pointed only here. */
+@import '@codaco/protocol-builder/styles.css';
 @import './architect-theme.css';

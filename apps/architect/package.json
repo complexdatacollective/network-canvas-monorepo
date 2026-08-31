@@ -24,6 +24,7 @@
     "@codaco/fresco-ui": "workspace:^",
     "@codaco/interface-images": "workspace:^",
     "@codaco/interview": "workspace:^",
+    "@codaco/protocol-builder": "workspace:^",
     "@codaco/protocol-utilities": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",
     "@codaco/protocols": "workspace:^",
@@ -53,9 +54,7 @@
     "redux": "^5.0.1",
     "redux-logger": "catalog:",
     "redux-remember": "^6.0.2",
-    "remark-parse": "^11.0.0",
     "tailwind-merge": "catalog:",
-    "unified": "^11.0.5",
     "uuid": "catalog:",
     "wouter": "^3.10.0",
     "zod": "catalog:"

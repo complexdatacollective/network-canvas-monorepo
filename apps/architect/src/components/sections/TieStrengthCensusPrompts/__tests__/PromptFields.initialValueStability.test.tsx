@@ -40,7 +40,7 @@ vi.mock('~/components/NewVariableWindow', () => ({
   useNewVariableWindowState: (initial: unknown) => [initial, () => undefined],
 }));
 
-vi.mock('~/components/Form/Fields/RichText/Field', () => ({
+vi.mock('@codaco/protocol-builder/fields/RichTextField', () => ({
   default: ({
     name,
     value,

@@ -1,6 +1,19 @@
-@layer components {
-  .protocol-builder-focus-target:focus-visible {
-    outline: 2px solid currentColor;
-    outline-offset: 0.25rem;
-  }
-}
+/*
+ * @codaco/protocol-builder — Tailwind class-scanner glue.
+ *
+ * This file's only job is to tell Tailwind v4 where this package's module
+ * files live, so a host's scanner emits the utility classes the stage editor
+ * references. Without it a host gets the components but not their layout —
+ * the section outline and the form collapse to the narrow single-column
+ * arrangement at every width, because the container-query utilities were
+ * never generated.
+ *
+ * It does NOT bring in the design-system foundation. The intended import
+ * order in a consumer's entry CSS is:
+ *
+ *   1. @codaco/tailwind-config/fresco.css   (Tailwind + theme)
+ *   2. @codaco/fresco-ui/styles.css
+ *   3. @codaco/protocol-builder/styles.css  (this file)
+ */
+
+@source './**/*.{js,ts,tsx}';

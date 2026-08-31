@@ -3,11 +3,12 @@ import { useMemo, useRef } from 'react';
 
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
+
 import {
   markdownToRichTextContent,
   richTextContentToMarkdown,
   type RichTextContent,
-} from '~/utils/markdownAdapter';
+} from '../markdown/markdownAdapter.ts';
 
 type RichTextFieldProps = CreateFormFieldProps<
   string,
@@ -38,7 +39,7 @@ const asRichTextContent = (value: unknown): RichTextContent | undefined =>
 
 /**
  * Markdown editor over a plain markdown string. Labelling belongs to the
- * surrounding field — pass it through `ArchitectField`'s `label`/`hint`.
+ * surrounding field — pass it through the field wrapper's `label`/`hint`.
  */
 const RichTextField = ({
   value,

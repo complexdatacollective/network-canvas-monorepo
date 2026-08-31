@@ -23,6 +23,13 @@ type SectionBaseProps = {
   title: ReactNode;
   description?: ReactNode;
   disabled?: boolean;
+  /**
+   * DOM id for the section element, so an outline elsewhere on the page can
+   * link to it. Supplying one also makes the section programmatically
+   * focusable: the outline moves focus here, and because the element is a
+   * region named by its own heading, arriving announces the section's title.
+   */
+  id?: string;
   children?: ReactNode;
 };
 
@@ -55,6 +62,7 @@ export default function Section({
   defaultOpen = true,
   onOpenChange,
   disabled = false,
+  id,
   children,
 }: SectionProps) {
   const titleId = useId();
@@ -124,6 +132,10 @@ export default function Section({
         noContainer
         spacing="none"
         shadow="sm"
+        id={id}
+        // Only a section an outline can address needs to receive focus, and
+        // -1 keeps it out of the tab sequence either way.
+        tabIndex={id === undefined ? undefined : -1}
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
         aria-disabled={disabled || undefined}

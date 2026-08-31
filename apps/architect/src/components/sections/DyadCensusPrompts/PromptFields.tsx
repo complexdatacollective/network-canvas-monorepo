@@ -1,7 +1,7 @@
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Section from '@codaco/fresco-ui/Section';
+import RichText from '@codaco/protocol-builder/fields/RichTextField';
 import ArchitectField from '~/components/Form/ArchitectField';
-import RichText from '~/components/Form/Fields/RichText/Field';
 
 import { EntitySelectControl as EntitySelectField } from '../fields/EntitySelectField/EntitySelectField';
 

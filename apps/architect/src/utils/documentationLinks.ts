@@ -1,11 +1,14 @@
-const DOCS_BASE_URL = 'https://documentation.networkcanvas.com/en';
+import {
+  DOCS_BASE_URL,
+  interfaceDocumentationUrl,
+  protocolAuthoringLinks,
+} from '@codaco/protocol-builder/interfaces/documentation';
 
-export const interfaceDocumentationUrl = (slug: string) =>
-  `${DOCS_BASE_URL}/design-protocols/interface-documentation/${slug}/`;
+export { interfaceDocumentationUrl };
 
 export const documentationLinks = {
   home: DOCS_BASE_URL,
-  skipLogic: `${DOCS_BASE_URL}/design-protocols/key-concepts/skip-logic/`,
+  skipLogic: protocolAuthoringLinks.skipLogic,
   networkFiltering: `${DOCS_BASE_URL}/design-protocols/key-concepts/network-filtering/`,
   resources: `${DOCS_BASE_URL}/design-protocols/key-concepts/resources/`,
   supportedResourceTypes: `${DOCS_BASE_URL}/design-protocols/key-concepts/resources/#supported-resource-types`,

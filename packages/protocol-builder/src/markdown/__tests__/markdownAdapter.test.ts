@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import type { RichTextContent } from '../markdownAdapter';
+import type { RichTextContent } from '../markdownAdapter.ts';
 import {
   markdownToRichTextContent,
   richTextContentToMarkdown,
-} from '../markdownAdapter';
+} from '../markdownAdapter.ts';
 
 const roundTrip = (value: string, inline = false) =>
   richTextContentToMarkdown(markdownToRichTextContent(value, inline), inline);

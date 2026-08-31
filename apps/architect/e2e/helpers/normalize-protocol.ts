@@ -1,7 +1,7 @@
 import {
   markdownToRichTextContent,
   richTextContentToMarkdown,
-} from '../../src/utils/markdownAdapter.js';
+} from '@codaco/protocol-builder/markdown/markdownAdapter';
 
 // Whole-document normalizer for the sample-protocol comparison: the built
 // protocol (read back from IndexedDB) and the canonical

@@ -4,8 +4,8 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import RichText from '@codaco/protocol-builder/fields/RichTextField';
 import type { OptionValue } from '~/components/Form/arrayFields/Option';
-import RichText from '~/components/Form/Fields/RichText/Field';
 
 import ArchitectField from './Form/ArchitectField';
 

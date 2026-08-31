@@ -12,10 +12,21 @@ import {
   type StageFormDraft,
 } from './session.ts';
 
+/**
+ * Builds the next draft from the one the session holds right now.
+ *
+ * Deliberately not "a replacement draft". A caller assembling one from the
+ * snapshot it rendered against is a revision behind by the time a submit runs,
+ * and diffing that against the session's current fields would emit commands
+ * reverting everything that arrived in between. Being handed the current draft
+ * makes the safe thing the only thing a caller can write.
+ */
+export type StageFormDraftChange = (current: StageFormDraft) => StageFormDraft;
+
 export type StageEditorController = Readonly<{
   formId: string;
   snapshot: ProtocolBuilderSnapshot;
-  changeFields(next: StageFormDraft): void;
+  changeFields(next: StageFormDraftChange): void;
   setField(key: string, value: unknown): void;
   unsetField(key: string): void;
   insertItem(key: string, index: number, item: unknown): void;
@@ -46,10 +57,13 @@ export function useStageEditorController(
     () => ({
       formId,
       snapshot,
-      changeFields(next: StageFormDraft) {
-        session.dispatch(
-          commandsFromDraftChange(snapshot.editedSection.fields, next),
-        );
+      changeFields(update: StageFormDraftChange) {
+        // Both the draft handed out and the diff baseline are what the session
+        // holds NOW, not the snapshot this controller was memoised on, so a
+        // change acknowledged since the last render is neither re-sent nor
+        // reverted.
+        const current = session.getSnapshot().editedSection.fields;
+        session.dispatch(commandsFromDraftChange(current, update(current)));
       },
       setField(key: string, value: unknown) {
         const command: Command =
