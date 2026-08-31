@@ -293,6 +293,14 @@ function renderWorkspace() {
   return { ...view, router, rerenderWorkspace: () => view.rerender(ui) };
 }
 
+function deferred<Value>() {
+  let resolve!: (value: Value) => void;
+  const promise = new Promise<Value>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   authState.activeTeam = ACTIVE_TEAM_A;
@@ -483,6 +491,88 @@ describe('Studio team workspace', () => {
     expect(
       await screen.findByText('Invitation created for new@example.com.'),
     ).toBeInTheDocument();
+  });
+
+  it('blocks team switching until invitation creation and reconciliation finish', async () => {
+    const invitation = deferred<{ data: object; error: null }>();
+    const reconciliation = deferred<void>();
+    authState.inviteMember.mockReturnValueOnce(invitation.promise);
+    authState.refetchActiveTeam.mockReturnValueOnce(reconciliation.promise);
+    renderWorkspace();
+
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: 'Email address' }),
+      { target: { value: 'pending-invite@example.com' } },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Invite user' }));
+
+    await waitFor(() => expect(authState.inviteMember).toHaveBeenCalledOnce());
+    expect(screen.getByLabelText('Active team')).toBeDisabled();
+    await act(async () => invitation.resolve({ data: {}, error: null }));
+    await waitFor(() =>
+      expect(authState.refetchActiveTeam).toHaveBeenCalledOnce(),
+    );
+    expect(screen.getByLabelText('Active team')).toBeDisabled();
+    await act(async () => reconciliation.resolve());
+    await waitFor(() =>
+      expect(screen.getByLabelText('Active team')).toBeEnabled(),
+    );
+  });
+
+  it('blocks team switching until a role update and reconciliation finish', async () => {
+    const roleUpdate = deferred<{ data: object; error: null }>();
+    const teamReconciliation = deferred<void>();
+    const memberReconciliation = deferred<void>();
+    authState.updateMemberRole.mockReturnValueOnce(roleUpdate.promise);
+    authState.refetchActiveTeam.mockReturnValueOnce(teamReconciliation.promise);
+    authState.refetchActiveMember.mockReturnValueOnce(
+      memberReconciliation.promise,
+    );
+    renderWorkspace();
+
+    fireEvent.change(
+      await screen.findByLabelText('Role for Team Collaborator'),
+      { target: { value: 'admin' } },
+    );
+
+    await waitFor(() =>
+      expect(authState.updateMemberRole).toHaveBeenCalledOnce(),
+    );
+    expect(screen.getByLabelText('Active team')).toBeDisabled();
+    await act(async () => roleUpdate.resolve({ data: {}, error: null }));
+    await waitFor(() => {
+      expect(authState.refetchActiveTeam).toHaveBeenCalledOnce();
+      expect(authState.refetchActiveMember).toHaveBeenCalledOnce();
+    });
+    expect(screen.getByLabelText('Active team')).toBeDisabled();
+    await act(async () => {
+      teamReconciliation.resolve();
+      memberReconciliation.resolve();
+    });
+    await waitFor(() =>
+      expect(screen.getByLabelText('Active team')).toBeEnabled(),
+    );
+  });
+
+  it('moves focus into the cleared invitation form after creation', async () => {
+    renderWorkspace();
+    const email = await screen.findByRole('textbox', {
+      name: 'Email address',
+    });
+    fireEvent.change(email, { target: { value: 'focused@example.com' } });
+    const invite = screen.getByRole('button', { name: 'Invite user' });
+    invite.focus();
+    fireEvent.click(invite);
+
+    expect(
+      await screen.findByText('Invitation created for focused@example.com.'),
+    ).toBeInTheDocument();
+    const clearedEmail = screen.getByRole('textbox', {
+      name: 'Email address',
+    });
+    expect(clearedEmail).not.toBe(email);
+    expect(clearedEmail).toHaveValue('');
+    expect(clearedEmail).toHaveFocus();
   });
 
   it('refetches pending invitations after an ambiguous creation failure', async () => {

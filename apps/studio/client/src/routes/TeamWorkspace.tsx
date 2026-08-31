@@ -101,6 +101,7 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
   const [creatingProtocolTeamId, setCreatingProtocolTeamId] = useState<
     string | null
   >(null);
+  const [mutatingTeamId, setMutatingTeamId] = useState<string | null>(null);
   const protocolCreationAttempts = useRef(
     new Map<string, ProtocolCreationAttempt>(),
   );
@@ -144,10 +145,21 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
     activeTeam.isRefetching ||
     activeMember.isRefetching;
   const protocolCreationPending = creatingProtocolTeamId !== null;
+  const teamMutationPending = mutatingTeamId !== null;
 
   const setProtocolCreationPending = useCallback(
     (teamId: string, pending: boolean) => {
       setCreatingProtocolTeamId((currentTeamId) => {
+        if (pending) return teamId;
+        return currentTeamId === teamId ? null : currentTeamId;
+      });
+    },
+    [],
+  );
+
+  const setTeamMutationPending = useCallback(
+    (teamId: string, pending: boolean) => {
+      setMutatingTeamId((currentTeamId) => {
         if (pending) return teamId;
         return currentTeamId === teamId ? null : currentTeamId;
       });
@@ -220,7 +232,8 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
                 activeTeamAccessPending ||
                 switchingTeamId !== null ||
                 retryingActiveTeam ||
-                protocolCreationPending
+                protocolCreationPending ||
+                teamMutationPending
               }
               onChange={(value) => {
                 const teamId = String(value);
@@ -233,7 +246,8 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
             {(activeTeamAccessPending ||
               switchingTeamId !== null ||
               retryingActiveTeam ||
-              protocolCreationPending) && <Spinner size="sm" />}
+              protocolCreationPending ||
+              teamMutationPending) && <Spinner size="sm" />}
           </div>
         </div>
         {switchError && (
@@ -267,6 +281,8 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
           creationAttempts={protocolCreationAttempts.current}
           protocolCreationPending={protocolCreationPending}
           setProtocolCreationPending={setProtocolCreationPending}
+          teamMutationPending={teamMutationPending}
+          setTeamMutationPending={setTeamMutationPending}
           isTeamStillActive={isTeamStillActive}
         />
       ) : (
@@ -290,6 +306,8 @@ function ActiveTeamWorkspace(props: {
   creationAttempts: Map<string, ProtocolCreationAttempt>;
   protocolCreationPending: boolean;
   setProtocolCreationPending: (teamId: string, pending: boolean) => void;
+  teamMutationPending: boolean;
+  setTeamMutationPending: (teamId: string, pending: boolean) => void;
   isTeamStillActive: (teamId: string) => boolean;
 }) {
   const teamId = props.team.id;
@@ -436,6 +454,8 @@ function ActiveTeamWorkspace(props: {
         team={props.team}
         activeMemberId={props.activeMemberId}
         activeMemberRole={props.activeMemberRole}
+        mutationPending={props.teamMutationPending}
+        setMutationPending={props.setTeamMutationPending}
       />
     </>
   );
@@ -447,11 +467,15 @@ function TeamManagement(props: {
   >;
   activeMemberId: string | undefined;
   activeMemberRole: string | undefined;
+  mutationPending: boolean;
+  setMutationPending: (teamId: string, pending: boolean) => void;
 }) {
   const activeTeam = authClient.useActiveOrganization();
   const activeMember = authClient.useActiveMember();
-  const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
   const [inviteFormKey, setInviteFormKey] = useState(0);
+  const mutationPendingRef = useRef(false);
+  const inviteFormRef = useRef<HTMLFormElement>(null);
+  const focusClearedInviteFormRef = useRef(false);
   const [message, setMessage] = useState<
     { kind: 'success' | 'error'; text: string } | undefined
   >();
@@ -465,6 +489,25 @@ function TeamManagement(props: {
       invitation.status === 'pending' &&
       invitation.expiresAt.getTime() > Date.now(),
   );
+
+  const beginMutation = () => {
+    if (mutationPendingRef.current) return false;
+    mutationPendingRef.current = true;
+    props.setMutationPending(props.team.id, true);
+    return true;
+  };
+
+  const finishMutation = () => {
+    mutationPendingRef.current = false;
+    props.setMutationPending(props.team.id, false);
+  };
+
+  useLayoutEffect(() => {
+    if (!focusClearedInviteFormRef.current) return;
+    focusClearedInviteFormRef.current = false;
+    const email = inviteFormRef.current?.elements.namedItem('email');
+    if (email instanceof HTMLInputElement) email.focus();
+  }, [inviteFormKey]);
 
   const reconcileInvitations = async () => {
     try {
@@ -480,7 +523,7 @@ function TeamManagement(props: {
   };
 
   const updateRole = async (memberId: string, role: TeamRole) => {
-    setUpdatingMemberId(memberId);
+    if (!beginMutation()) return;
     setMessage(undefined);
     try {
       const result = await authClient.organization.updateMemberRole({
@@ -504,7 +547,7 @@ function TeamManagement(props: {
         text: 'The team role could not be changed. Try again.',
       });
     } finally {
-      setUpdatingMemberId(null);
+      finishMutation();
     }
   };
 
@@ -581,7 +624,7 @@ function TeamManagement(props: {
                           size="sm"
                           value={editableRole}
                           options={assignableRoles}
-                          disabled={updatingMemberId !== null}
+                          disabled={props.mutationPending}
                           onChange={(value) => {
                             if (!isTeamRole(value)) {
                               setMessage({
@@ -619,6 +662,7 @@ function TeamManagement(props: {
         {canManage ? (
           <Form
             key={inviteFormKey}
+            ref={inviteFormRef}
             className="mt-4 grid items-end gap-4 md:grid-cols-[minmax(0,2fr)_minmax(10rem,1fr)_auto]"
             onSubmit={async (values) => {
               const email =
@@ -628,6 +672,12 @@ function TeamManagement(props: {
                 return {
                   success: false,
                   formErrors: ['Choose a valid role for this invitation.'],
+                };
+              }
+              if (!beginMutation()) {
+                return {
+                  success: false,
+                  formErrors: ['Wait for the current team change to finish.'],
                 };
               }
               setMessage(undefined);
@@ -651,6 +701,7 @@ function TeamManagement(props: {
                   kind: 'success',
                   text: `Invitation created for ${email}.`,
                 });
+                focusClearedInviteFormRef.current = true;
                 setInviteFormKey((key) => key + 1);
                 return { success: true };
               } catch {
@@ -661,6 +712,8 @@ function TeamManagement(props: {
                     'Studio could not confirm the invitation. Pending invitations were refreshed; check the list before trying again.',
                   ],
                 };
+              } finally {
+                finishMutation();
               }
             }}
           >
@@ -683,7 +736,9 @@ function TeamManagement(props: {
               initialValue="member"
               required
             />
-            <SubmitButton>Invite user</SubmitButton>
+            <SubmitButton disabled={props.mutationPending}>
+              Invite user
+            </SubmitButton>
           </Form>
         ) : (
           <Alert className="mt-4">
