@@ -656,7 +656,7 @@ retried request cannot double-create.
 
 ```text
 studies.create({ teamId, studyId, name })                  -> StudyDetail
-studies.list({ teamId })                                   -> StudySummary[]
+studies.list({ teamId, cursor?, limit? })                  -> { items: StudySummary[], nextCursor: string | null }
 studies.get({ teamId, studyId })                           -> StudyDetail
 studies.updateSettings({ teamId, studyId, patch })         -> StudyDetail
 studies.createWave({ teamId, studyId, waveId, name? })     -> StudyDetail
@@ -683,9 +683,17 @@ commands' within-team missing-resource mapping — the no-oracle property
 holds because RLS makes another team's study indistinguishable from a
 nonexistent one.
 
+`studies.list` is cursor-paginated from the start (`limit` defaults to 50,
+capped at 100, newest first) — study counts have no per-team cap, so an
+array-only contract would bake an unbounded response into the first RPC
+version; `audit.list` set the pagination shape.
+
 `studies.createWave`'s `waveId` is client-minted like `studies.create`'s
-`studyId`: a replayed request returns `unchanged` instead of silently
-appending an extra timepoint.
+`studyId`. A replay is only a replay when the stored identity matches: the
+command verifies the existing wave belongs to the requested study before
+returning `unchanged`, and a `waveId` already bound to a different study (or
+a `studyId` bound to different creation input) is a CONFLICT, never a
+false success — the protocol-creation pattern.
 
 `StudyDetail` includes the waves (id, number, name, pinned version id and
 version number) so the client renders a study without N+1 calls — and, once
@@ -693,8 +701,11 @@ the study has a protocol line, the **most recent 50 published versions of
 that line** (id, version number, label, published-at; newest first, plus any
 version a wave currently pins), because the rebind and go-live flows need
 version ids to offer and no protocol-contract procedure lists them. The
-bound keeps `StudyDetail` finite however long a protocol line lives, the
-same posture as the wave cap.
+count bound keeps `StudyDetail` finite however long a protocol line lives,
+the same posture as the wave cap — and the projection bounds each version
+`label` at 320 characters (the platform label bound), because
+`protocol_versions.label` is unrestricted text and one oversized label would
+otherwise repeat in every study read.
 Carrying them on the study response keeps this design off the protocol
 contract the editor track owns (D7); a general paginated published-version
 read procedure supersedes it if older versions ever need surfacing. Commands
@@ -765,7 +776,12 @@ their shape only where it constrains this schema:
   need their own parent-state Closed guards, exempting exactly those two
   delete paths, because §4.3's triggers cover only
   `studies` and `study_waves` — without them, a buggy write could still
-  modify an archived study's collected data. Sessions are modelled for
+  modify an archived study's collected data. The erasure exemption cannot
+  key on `current_user` (erasure runs as the same `studio_app` role as any
+  buggy delete): it must be a transaction-scoped marker only the audited
+  erasure command sets — a set-local GUC, the mechanism the tenant context
+  (`app.team_id`) already uses — and the guard's tests must prove an
+  ordinary application-role delete without the marker stays rejected. Sessions are modelled for
   cross-interview queryability (#1242 principle 6), not just export.
 - Both purge bottom-up under D6 with no cascades; participant erasure
   (#1270) deletes session rows through the same FK path and then recomputes
@@ -774,7 +790,12 @@ their shape only where it constrains this schema:
 Session-creating commands refuse any study whose state is not `live`; writes
 to already-started sessions are additionally permitted while `paused` within
 `pause_grace_minutes` of `paused_at` (D3) — the enforcement points for
-"Draft has no data" and Paused's "no new sessions".
+"Draft has no data" and Paused's "no new sessions". These commands lock the
+parent study row before reading its state and the wave's pin, in the same
+lock order the lifecycle and rebind commands use — otherwise a concurrent
+`pauseStudy` or `rebindWave` could commit between validation and insert,
+admitting a session onto a freshly paused study or capturing a stale
+version.
 
 ## 9. Verification
 
@@ -833,8 +854,9 @@ state is accepted, per the audit design's rule.
 - Draft protocol-line retarget clears wave pins and records the cleared pins
   in its event details.
 - Wave commands: `createWave` is Draft-only, refused for anonymous studies
-  and at the 50-wave cap, and a replay with the same client-minted wave id
-  returns `unchanged` instead of appending a timepoint; `deleteWave` refuses
+  and at the 50-wave cap; a replay with the same client-minted wave id in
+  the same study returns `unchanged`, while a wave id already bound to a
+  different study is a CONFLICT; `deleteWave` refuses
   any wave but the highest-numbered and refuses wave 1; a multi-wave managed
   study created through the commands goes live.
 - An anonymous study cannot go live with more than one wave; a managed
@@ -865,7 +887,8 @@ state is accepted, per the audit design's rule.
 - `studies.create` retried with the same client-minted id does not
   double-create.
 - `StudyDetail` lists the study's waves and, once a protocol line is set,
-  that line's published versions.
+  that line's newest published versions — capped at 50, labels bounded at
+  320 — and `studies.list` paginates by cursor with the page-size cap.
 - Names longer than 320 characters are bounded in labels; settings-update
   no-ops return unchanged without inventing an event.
 
