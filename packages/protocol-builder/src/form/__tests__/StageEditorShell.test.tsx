@@ -1261,6 +1261,134 @@ describe('StageEditorShell', () => {
     );
   });
 
+  it('does not let a submit that changed nothing explain a later redo', async () => {
+    const user = userEvent.setup();
+    const session = createSession({ onFinish: () => undefined });
+    renderEditor(session);
+
+    await user.clear(screen.getByRole('textbox', { name: 'Page heading' }));
+    await user.type(
+      screen.getByRole('textbox', { name: 'Page heading' }),
+      'A new heading',
+    );
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.title).toBe(
+        'A new heading',
+      ),
+    );
+
+    // Saving again without changing anything writes no commands, so nothing
+    // ever arrives for a marker to explain.
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    act(() => {
+      session.undo();
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'Welcome to the study',
+      ),
+    );
+
+    act(() => {
+      session.redo();
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'A new heading',
+      ),
+    );
+  });
+
+  it('empties a control elsewhere on the page when a capability is cleared', async () => {
+    const user = userEvent.setup();
+    const session = createSession();
+    function CompoundControl({
+      value,
+      onChange,
+      ...rest
+    }: {
+      value?: Record<string, unknown>;
+      onChange?: (next: Record<string, unknown>) => void;
+      id?: string;
+      disabled?: boolean;
+    }) {
+      return (
+        <input
+          {...rest}
+          type="text"
+          value={typeof value?.enabled === 'string' ? value.enabled : ''}
+          onChange={(event) => onChange?.({ enabled: event.target.value })}
+        />
+      );
+    }
+    // The control carrying the capability's path lives in ANOTHER section, so
+    // closing the capability does not unmount it — it stays registered,
+    // holding whatever the clear left in it.
+    function ControlElsewhere() {
+      const controller = useStageEditorController(session, 'stage-form');
+      return (
+        <StageEditorShell
+          controller={controller}
+          actions={({ formId }) => (
+            <SubmitButton form={formId}>Finished editing</SubmitButton>
+          )}
+        >
+          <BuilderSection title="Details">
+            <ProtocolField<typeof CompoundControl>
+              name="settings"
+              label="Settings"
+              component={CompoundControl}
+            />
+          </BuilderSection>
+          <BuilderSection
+            title="Advanced settings"
+            capability={{
+              fields: ['settings.enabled'],
+              confirmClear: {
+                title: 'This will clear your advanced settings',
+                description: 'The settings you chose will be deleted.',
+                confirmLabel: 'Clear settings',
+              },
+            }}
+          >
+            <ProtocolField
+              name="interviewScript"
+              label="Notes"
+              component={InputField}
+            />
+          </BuilderSection>
+        </StageEditorShell>
+      );
+    }
+    render(
+      <DialogProvider>
+        <ControlElsewhere />
+      </DialogProvider>,
+    );
+
+    await user.type(screen.getByRole('textbox', { name: 'Settings' }), 'yes');
+
+    // Open it, then switch it off: the capability's path is carried by the
+    // control in the other section, so there is something to lose.
+    await user.click(screen.getByRole('switch', { name: 'Advanced settings' }));
+    await user.click(screen.getByRole('switch', { name: 'Advanced settings' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Clear settings' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    // The control is still on screen and still registered. Emptying it has to
+    // take the container with it, or a blank `settings` reaches the stage.
+    expect(screen.getByRole('textbox', { name: 'Settings' })).toHaveValue('');
+    await waitFor(() =>
+      expect(
+        Object.hasOwn(session.getSnapshot().editedSection.fields, 'settings'),
+      ).toBe(false),
+    );
+  });
+
   it('explains a prerequisite before it explains a switch', async () => {
     const session = createSession();
     function DisabledCapability() {

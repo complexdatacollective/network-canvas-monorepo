@@ -325,6 +325,25 @@ describe('stageDraftFromSubmission', () => {
     expect(Object.hasOwn(draft, 'settings')).toBe(false);
   });
 
+  it('lets a control on screen outrank a hidden field inside it', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: { settings: { enabled: 'old' } },
+      // The mounted compound control's current value.
+      submittedValues: { settings: { enabled: 'shown' } },
+      mountedPaths: [['settings']],
+      // Parked earlier, from before the control above it was being edited.
+      dormantFields: [
+        {
+          name: 'settings.enabled',
+          path: ['settings', 'enabled'],
+          value: 'hidden',
+        },
+      ],
+    });
+
+    expect(draft.settings).toEqual({ enabled: 'shown' });
+  });
+
   it('does not write through into the draft it was given', () => {
     const currentFields = Object.freeze({
       label: 'Friends',

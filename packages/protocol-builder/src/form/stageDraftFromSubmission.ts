@@ -63,12 +63,15 @@ export function stageDraftFromSubmission(
 
   const { writes, removals } = partitionDormant(submission.dormantFields);
 
-  // A hidden CONTAINER is dropped outright when the form still has a field
-  // mounted inside it: the submitted values already carry that field's current
-  // edit, and replaying the container the researcher last saw would put the
-  // stale reading of a field they can still see back over it.
+  // A hidden field is dropped outright when the form still has a field mounted
+  // on either side of it. The submitted values already carry what that mounted
+  // field holds, and replaying around it would put a stale reading back over
+  // something the researcher can currently see — whether the hidden field is
+  // the container above it or a leaf inside it.
   const applicable = writes.filter(
-    (write) => !hasDescendantIn(submission.mountedPaths, write.path),
+    (write) =>
+      !hasDescendantIn(submission.mountedPaths, write.path) &&
+      !hasAncestorIn(submission.mountedPaths, write.path),
   );
 
   // Shallowest first, so a field registered at a container path cannot

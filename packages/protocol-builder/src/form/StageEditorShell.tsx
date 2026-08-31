@@ -143,8 +143,12 @@ function StageEditorFormBody({
             dormantFields: dormantFieldsOf(storeApi),
           });
           // Recorded so the draft moving to exactly this does not read as
-          // something moving under the form: it IS the form.
-          flushed.current = canonicalize(next);
+          // something moving under the form: it IS the form. A submit that
+          // changes nothing moves nothing, and leaving a marker for it would
+          // spend itself on some later arrival at the same content — a redo,
+          // most likely — and leave the controls showing what was undone.
+          const content = canonicalize(next);
+          flushed.current = content === canonicalize(current) ? null : content;
           return next;
         });
         await controller.finish();

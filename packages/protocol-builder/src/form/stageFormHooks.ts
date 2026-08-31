@@ -88,7 +88,11 @@ export function useClearStageValue(): (path: string) => void {
 
       pathOperations.clearValue(target);
 
-      for (const [name, field] of state.dormantValues) {
+      // Both maps: `clearValue` rewrites a REGISTERED ancestor to `{}` and
+      // leaves it there, and never reaches a dormant one at all. Either way an
+      // ancestor the clear emptied has to go, or the tombstone beneath it
+      // removes nothing and the empty container reaches the saved stage.
+      for (const [name, field] of [...state.fields, ...state.dormantValues]) {
         const ancestor = field.path ?? safePath(name);
         if (
           ancestor === null ||
