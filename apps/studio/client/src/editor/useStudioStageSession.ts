@@ -91,13 +91,12 @@ export function useStudioStageSession(params: {
       });
       return () => undefined;
     }
-    const initialDocument = document;
-
     let active = true;
     let acquiring = false;
     let renewal: ReturnType<typeof setInterval> | undefined;
     let renewalInFlight: Promise<void> | null = null;
     let retry: ReturnType<typeof setInterval> | undefined;
+    let initializationRetry: ReturnType<typeof setTimeout> | undefined;
     let currentLease: Readonly<{ leaseEpoch: string }> | null = null;
     let store: ProtocolBuilderSessionStore;
     let save: () => Promise<void>;
@@ -188,6 +187,18 @@ export function useStudioStageSession(params: {
     const stopRetry = () => {
       if (retry !== undefined) clearInterval(retry);
       retry = undefined;
+    };
+    const stopInitializationRetry = () => {
+      if (initializationRetry !== undefined) clearTimeout(initializationRetry);
+      initializationRetry = undefined;
+    };
+
+    const scheduleInitializationRetry = () => {
+      if (!active || initializationRetry !== undefined) return;
+      initializationRetry = setTimeout(() => {
+        initializationRetry = undefined;
+        if (active) initialization = initialize();
+      }, 5_000);
     };
 
     const showReady = (message: string) => {
@@ -354,33 +365,35 @@ export function useStudioStageSession(params: {
           return;
         }
 
-        let authoritativeDraft = latestDraft.current;
-        let authoritativeDocument: SectionDoc = initialDocument;
-        const latestDocument = authoritativeDraft.sections[selectedSectionId];
-        if (latestDocument !== undefined) {
-          authoritativeDocument = latestDocument;
-        }
-        if (access.mode === 'editable') {
-          authoritativeDraft = await refreshDraftWhileRenewingLease(access);
-          if (!active) {
+        const authoritativeDraft =
+          access.mode === 'editable'
+            ? await refreshDraftWhileRenewingLease(access)
+            : await rpcClient.protocols.draft({
+                teamId: params.teamId,
+                protocolId: params.protocolId,
+                draftId: params.draftId,
+              });
+        if (!active) {
+          if (access.mode === 'editable') {
             await releaseLease(access);
             acquiredLease = null;
-            return;
           }
-          const refreshedDocument =
-            authoritativeDraft.sections[selectedSectionId];
-          if (refreshedDocument === undefined) {
+          return;
+        }
+        const authoritativeDocument =
+          authoritativeDraft.sections[selectedSectionId];
+        if (authoritativeDocument === undefined) {
+          if (access.mode === 'editable') {
             await releaseLease(access);
             acquiredLease = null;
-            setState({
-              status: 'failed',
-              message: 'The selected screen is no longer in this draft.',
-            });
-            return;
           }
-          authoritativeDocument = refreshedDocument;
-          latestDraft.current = authoritativeDraft;
+          setState({
+            status: 'failed',
+            message: 'The selected screen is no longer in this draft.',
+          });
+          return;
         }
+        latestDraft.current = authoritativeDraft;
 
         const { identity, fields } = stageDraftFromDocument(
           authoritativeDocument,
@@ -495,8 +508,9 @@ export function useStudioStageSession(params: {
         if (active) {
           setState({
             status: 'failed',
-            message: 'This screen could not be opened. Try again.',
+            message: 'This screen could not be opened. Studio is trying again.',
           });
+          scheduleInitializationRetry();
         }
       }
     }
@@ -508,6 +522,7 @@ export function useStudioStageSession(params: {
       active = false;
       stopRenewal();
       stopRetry();
+      stopInitializationRetry();
       closePromise = initialization.then(async () => {
         await promotion;
         const pendingRenewal = renewalInFlight;

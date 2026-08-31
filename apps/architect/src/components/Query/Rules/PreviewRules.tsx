@@ -119,13 +119,16 @@ const RuleListItem = ({
 type RuleEditorSession = {
   /** Bumped per session; the `key` that gives each one a fresh field store. */
   id: number;
-  sourceId: string | null;
+  /** Preserved while closing so Motion can project the dialog back to its row. */
+  sourceId: string;
+  isNewItem: boolean;
   seed: EditableRule;
   open: boolean;
 };
 
 const RuleListEditor = ({
   item,
+  isNewItem,
   onSave,
   onCancel,
   getEditorTrigger,
@@ -141,7 +144,7 @@ const RuleListEditor = ({
   useEffect(() => {
     if (!item) {
       setSession((previous) =>
-        previous ? { ...previous, open: false, sourceId: null } : previous,
+        previous ? { ...previous, open: false } : previous,
       );
       return;
     }
@@ -153,11 +156,12 @@ const RuleListEditor = ({
       return {
         id: (previous?.id ?? 0) + 1,
         sourceId: item._internalId,
+        isNewItem,
         seed: toRule(item),
         open: true,
       };
     });
-  }, [item]);
+  }, [isNewItem, item]);
 
   if (!session) return null;
 
@@ -171,6 +175,7 @@ const RuleListEditor = ({
       onSave={(rule) => onSave?.(rule)}
       onCancel={onCancel}
       finalFocus={getEditorTrigger}
+      layoutId={session.isNewItem ? undefined : session.sourceId}
     />
   );
 };
