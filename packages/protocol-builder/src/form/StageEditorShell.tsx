@@ -274,12 +274,15 @@ function useCommittedFields(
 
   if (content !== seen.current) {
     seen.current = content;
+    // The marker describes ONE write, and is spent by the transition it
+    // explains. Undo and then redo returns the draft to that same content, and
+    // by then the controls are showing the undone values — a marker left
+    // standing would leave them there, to be saved back over the redo.
+    const ownFlush = content === flushed.current;
+    if (ownFlush) flushed.current = null;
     committed.current = {
       fields,
-      generation:
-        content === flushed.current
-          ? committed.current.generation
-          : committed.current.generation + 1,
+      generation: committed.current.generation + (ownFlush ? 0 : 1),
     };
   }
   return committed.current;

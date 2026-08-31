@@ -105,9 +105,15 @@ export function useClearStageValue(): (path: string) => void {
         // `{}`. An empty object is not "no capability" to the protocol schema,
         // and parking one would also stop the tombstone beneath it from
         // removing anything — leaving the empty container in the saved stage.
+        //
+        // Unless it is a ROW. Removing an array index leaves a hole rather
+        // than closing the gap, so an emptied row stays an empty row; taking
+        // one out is a deliberate array operation.
+        const emptied =
+          isEmptyDictionary(cleared) && typeof ancestor.at(-1) !== 'number';
         pathOperations.setFieldValue(
           ancestor,
-          isEmptyDictionary(cleared) ? undefined : (cleared as FieldValue),
+          emptied ? undefined : (cleared as FieldValue),
         );
       }
     },

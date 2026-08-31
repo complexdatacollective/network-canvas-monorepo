@@ -1134,6 +1134,133 @@ describe('StageEditorShell', () => {
     );
   });
 
+  it('shows the redone value after an undo is redone', async () => {
+    const user = userEvent.setup();
+    const session = createSession({ onFinish: () => undefined });
+    renderEditor(session);
+
+    await user.clear(screen.getByRole('textbox', { name: 'Page heading' }));
+    await user.type(
+      screen.getByRole('textbox', { name: 'Page heading' }),
+      'A new heading',
+    );
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.title).toBe(
+        'A new heading',
+      ),
+    );
+
+    act(() => {
+      session.undo();
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'Welcome to the study',
+      ),
+    );
+
+    // Back to the content this form submitted — but the controls have been
+    // rebuilt from the undo since, so returning to it is a move like any
+    // other.
+    act(() => {
+      session.redo();
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'A new heading',
+      ),
+    );
+  });
+
+  it('leaves an emptied row in the list when a capability inside it is cleared', async () => {
+    const user = userEvent.setup();
+    const session = createSession();
+    function RowControl({
+      value,
+      onChange,
+      ...rest
+    }: {
+      value?: Record<string, unknown>;
+      onChange?: (next: Record<string, unknown>) => void;
+      id?: string;
+      disabled?: boolean;
+    }) {
+      return (
+        <input
+          {...rest}
+          type="text"
+          value={
+            typeof value?.optionalSetting === 'string'
+              ? value.optionalSetting
+              : ''
+          }
+          onChange={(event) =>
+            onChange?.({ optionalSetting: event.target.value })
+          }
+        />
+      );
+    }
+    function RowCapability() {
+      const controller = useStageEditorController(session, 'stage-form');
+      const [shown, setShown] = useState(true);
+      return (
+        <StageEditorShell
+          controller={controller}
+          actions={({ formId }) => (
+            <SubmitButton form={formId}>Finished editing</SubmitButton>
+          )}
+        >
+          <BuilderSection
+            title="Row setting"
+            capability={{
+              fields: ['items[0].optionalSetting'],
+              confirmClear: {
+                title: 'This will clear the setting',
+                description: 'The value you entered will be deleted.',
+                confirmLabel: 'Clear setting',
+              },
+            }}
+          >
+            <button type="button" onClick={() => setShown((was) => !was)}>
+              Toggle the control
+            </button>
+            {shown && (
+              <ProtocolField<typeof RowControl>
+                name="items[0]"
+                label="First item"
+                component={RowControl}
+              />
+            )}
+          </BuilderSection>
+        </StageEditorShell>
+      );
+    }
+    render(
+      <DialogProvider>
+        <RowCapability />
+      </DialogProvider>,
+    );
+
+    await user.click(screen.getByRole('switch', { name: 'Row setting' }));
+    await user.type(
+      await screen.findByRole('textbox', { name: 'First item' }),
+      'on',
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Toggle the control' }),
+    );
+    await user.click(screen.getByRole('switch', { name: 'Row setting' }));
+    await user.click(screen.getByRole('button', { name: 'Clear setting' }));
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    // The row survives as an empty row. Removing its index would leave a hole
+    // and renumber nothing, which is not what clearing a setting means.
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.items).toEqual([{}]),
+    );
+  });
+
   it('explains a prerequisite before it explains a switch', async () => {
     const session = createSession();
     function DisabledCapability() {
