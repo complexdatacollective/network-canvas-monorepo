@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { rpcClient } from '../../lib/api.ts';
@@ -39,6 +45,14 @@ const DRAFT = {
     assets: {},
   },
 };
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((complete) => {
+    resolve = complete;
+  });
+  return { promise, resolve };
+}
 
 vi.mock('../../lib/auth.ts', () => ({
   authClient: {
@@ -94,6 +108,28 @@ vi.mock('../../lib/api.ts', () => ({
 beforeEach(() => {
   queryDraft.mockReset();
   queryDraft.mockResolvedValue(DRAFT);
+  vi.mocked(rpcClient.protocols.acquireSection).mockReset();
+  vi.mocked(rpcClient.protocols.acquireSection).mockResolvedValue({
+    mode: 'editable',
+    leaseEpoch: '1',
+    nextClientSequence: '1',
+  });
+  vi.mocked(rpcClient.protocols.renewSection).mockReset();
+  vi.mocked(rpcClient.protocols.renewSection).mockResolvedValue({
+    renewed: true,
+  });
+  vi.mocked(rpcClient.protocols.releaseSection).mockReset();
+  vi.mocked(rpcClient.protocols.releaseSection).mockResolvedValue(undefined);
+  vi.mocked(rpcClient.protocols.commitSection).mockReset();
+  vi.mocked(rpcClient.protocols.commitSection).mockResolvedValue({
+    sequence: '3',
+    hash: 'revision-3',
+  });
+  vi.mocked(rpcClient.protocols.addInformationStage).mockReset();
+  vi.mocked(rpcClient.protocols.addInformationStage).mockResolvedValue({
+    sequence: '3',
+    hash: 'r3',
+  });
   vi.mocked(rpcClient.protocols.moveStage).mockReset();
   vi.mocked(rpcClient.protocols.moveStage).mockResolvedValue({
     sequence: '3',
@@ -167,6 +203,13 @@ describe('Studio editor shell', () => {
   });
 
   it('updates the screen fields when undoing and redoing a saved change', async () => {
+    const firstCommit = deferred<{ sequence: string; hash: string }>();
+    const undoCommit = deferred<{ sequence: string; hash: string }>();
+    const redoCommit = deferred<{ sequence: string; hash: string }>();
+    vi.mocked(rpcClient.protocols.commitSection)
+      .mockReturnValueOnce(firstCommit.promise)
+      .mockReturnValueOnce(undoCommit.promise)
+      .mockReturnValueOnce(redoCommit.promise);
     renderEditor();
     const label = await screen.findByRole('textbox', { name: 'Screen name' });
     const title = screen.getByRole('textbox', { name: 'Page heading' });
@@ -176,6 +219,13 @@ describe('Studio editor shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save screen' }));
 
     await waitFor(() =>
+      expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(1),
+    );
+    await act(async () => {
+      firstCommit.resolve({ sequence: '3', hash: 'revision-3' });
+      await firstCommit.promise;
+    });
+    await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Undo' })).toBeEnabled(),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
@@ -184,11 +234,25 @@ describe('Studio editor shell', () => {
       expect(label).toHaveValue('Welcome');
       expect(title).toHaveValue('Welcome');
     });
+    await waitFor(() =>
+      expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(2),
+    );
+    await act(async () => {
+      undoCommit.resolve({ sequence: '4', hash: 'revision-4' });
+      await undoCommit.promise;
+    });
 
     fireEvent.click(screen.getByRole('button', { name: 'Redo' }));
     await waitFor(() => {
       expect(label).toHaveValue('Changed screen');
       expect(title).toHaveValue('Changed heading');
+    });
+    await waitFor(() =>
+      expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(3),
+    );
+    await act(async () => {
+      redoCommit.resolve({ sequence: '5', hash: 'revision-5' });
+      await redoCommit.promise;
     });
   });
 
