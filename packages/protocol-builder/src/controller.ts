@@ -12,10 +12,20 @@ import {
   type StageFormDraft,
 } from './session.ts';
 
+/**
+ * A replacement draft, or a function handed the draft the session holds right
+ * now. Prefer the function: a form assembles its next draft from the current
+ * one, and the snapshot a component rendered against can be a revision behind
+ * by the time a submit runs.
+ */
+export type StageFormDraftChange =
+  | StageFormDraft
+  | ((current: StageFormDraft) => StageFormDraft);
+
 export type StageEditorController = Readonly<{
   formId: string;
   snapshot: ProtocolBuilderSnapshot;
-  changeFields(next: StageFormDraft): void;
+  changeFields(next: StageFormDraftChange): void;
   setField(key: string, value: unknown): void;
   unsetField(key: string): void;
   insertItem(key: string, index: number, item: unknown): void;
@@ -46,10 +56,14 @@ export function useStageEditorController(
     () => ({
       formId,
       snapshot,
-      changeFields(next: StageFormDraft) {
-        session.dispatch(
-          commandsFromDraftChange(snapshot.editedSection.fields, next),
-        );
+      changeFields(next: StageFormDraftChange) {
+        // Diffed against what the session holds now, not against the snapshot
+        // this controller was memoised on: a change acknowledged between the
+        // last render and this call would otherwise be re-sent as a local
+        // command that overwrites it.
+        const current = session.getSnapshot().editedSection.fields;
+        const resolved = typeof next === 'function' ? next(current) : next;
+        session.dispatch(commandsFromDraftChange(current, resolved));
       },
       setField(key: string, value: unknown) {
         const command: Command =
