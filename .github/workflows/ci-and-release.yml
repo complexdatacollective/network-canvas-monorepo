@@ -952,14 +952,13 @@ jobs:
           exit 1
       - name: Dead-link check
         env:
+          DEAD_LINK_CHECK_USER_AGENT: >-
+            Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)
+            Chrome/120.0.0.0 Safari/537.36 NetworkCanvasLinkChecker/1.0
           DOCS_URL: ${{ steps.netlify-preview.outputs.url }}
-          NODE_OPTIONS: --import=${{ github.workspace }}/scripts/dead-link-check-fetch-user-agent.mjs
-        # @jthrilly/dead-link-checker >=1.1.0 retries each request on transient
-        # network errors (UND_ERR_SOCKET / connect timeouts), so a single flaky
-        # fetch no longer fails the run. Retrying the whole crawl here was the
-        # wrong layer — it multiplied exposure to the per-request flake instead
-        # of recovering from it — so a single invocation is now correct.
-        run: npx --yes @jthrilly/dead-link-checker@^1.1.0 "$DOCS_URL" -v --yes
+        run: >-
+          node scripts/dead-link-checker.mjs "$DOCS_URL" -v --yes
+          --user-agent="$DEAD_LINK_CHECK_USER_AGENT"
       - name: Redirect test
         working-directory: apps/documentation
         env:
@@ -1148,9 +1147,13 @@ jobs:
           exit 1
       - name: Dead-link check
         env:
-          NODE_OPTIONS: --import=${{ github.workspace }}/scripts/dead-link-check-fetch-user-agent.mjs
+          DEAD_LINK_CHECK_USER_AGENT: >-
+            Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)
+            Chrome/120.0.0.0 Safari/537.36 NetworkCanvasLinkChecker/1.0
           WEBSITE_URL: ${{ steps.netlify-preview.outputs.url }}
-        run: npx --yes @jthrilly/dead-link-checker@^1.1.0 "$WEBSITE_URL/en-US/" -v --yes
+        run: >-
+          node scripts/dead-link-checker.mjs "$WEBSITE_URL/en-US/" -v --yes
+          --user-agent="$DEAD_LINK_CHECK_USER_AGENT"
 
   interview-e2e:
     # Runs when the policy requires the interview suite. The Dockerized suite

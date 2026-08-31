@@ -130,16 +130,17 @@ test('both public sites crawl their matching Netlify deploy previews', () => {
       /previewUrl\.hostname === 'app\.netlify\.com'/,
       'the ignored-deploy fallback only accepts Netlify dashboard URLs',
     );
-    assert.match(previewJob, /@jthrilly\/dead-link-checker@\^1\.1\.0/);
+    assert.match(previewJob, /node scripts\/dead-link-checker\.mjs/);
     assert.match(previewJob, new RegExp(`"\\$${startPath}"`));
+    assert.match(previewJob, /--user-agent="\$DEAD_LINK_CHECK_USER_AGENT"/);
 
     const deadLinkStep = parsedWorkflow.jobs[jobName].steps.find(
       ({ name }) => name === 'Dead-link check',
     );
-    assert.equal(
-      deadLinkStep?.env?.NODE_OPTIONS,
-      '--import=${{ github.workspace }}/scripts/dead-link-check-fetch-user-agent.mjs',
-      `${jobName} loads the browser-compatible fetch shim`,
+    assert.match(
+      deadLinkStep?.env?.DEAD_LINK_CHECK_USER_AGENT,
+      /^Mozilla\/5\.0 .* NetworkCanvasLinkChecker\/1\.0$/,
+      `${jobName} supplies a browser-compatible user agent`,
     );
   }
 

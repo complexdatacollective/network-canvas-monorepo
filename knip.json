@@ -28,9 +28,7 @@
       "entry": [
         "scripts/interviewer-*-walker.mjs",
         // Invoked by the CI workflow through POSTHOG_CLI_BINARY_PATH.
-        "scripts/posthog-cli-upload-stub.mjs",
-        // Preloaded by the dead-link workflow steps through NODE_OPTIONS.
-        "scripts/dead-link-check-fetch-user-agent.mjs"
+        "scripts/posthog-cli-upload-stub.mjs"
       ],
       "ignoreDependencies": [
         "@playwright/test",
