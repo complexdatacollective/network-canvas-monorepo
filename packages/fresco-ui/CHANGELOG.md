@@ -1,5 +1,19 @@
 # @codaco/fresco-ui
 
+## 6.2.0
+
+### Minor Changes
+
+- 301e8fe: `Section` now accepts an optional `id`, so a form outline elsewhere on the page
+  can link to a section and move focus to it — arriving announces the section's
+  own title. Field path utilities are also available on their own subpath
+  (`@codaco/fresco-ui/form/utils/objectPath`), for reading and removing a value
+  at the structural path a field is stored under.
+
+### Patch Changes
+
+- 2f8fcdc: Make app updates reliable without reloading open work automatically. Fresh launches now activate an available update before the interface appears, updates found after rendering wait for an explicit install action, and the post-reload state reliably links to the release notes.
+
 ## 6.1.0
 
 ### Minor Changes
