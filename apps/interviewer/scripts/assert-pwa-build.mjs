@@ -65,10 +65,35 @@ if (/\.clientsClaim\(\)/.test(sw)) {
 if (/\.cleanupOutdatedCaches\(\)/.test(sw)) {
   fail('generated worker deletes precaches still needed by older clients');
 }
-if (/Reflect\.get\(globalThis,"caches"\)/.test(sw)) {
-  fail('navigation fallback searches retained precaches globally');
+const reclamationFile = `pwa-cache-reclamation-${precachePrefix}.js`;
+if (!sw.includes(reclamationFile)) {
+  fail('generated worker does not import its build-specific cache reclaimer');
 }
-
+let reclamationWorker;
+try {
+  reclamationWorker = readFileSync(path.join(dist, reclamationFile), 'utf8');
+} catch {
+  fail(`missing dist/${reclamationFile}`);
+}
+if (
+  !reclamationWorker.includes(`const currentBuildId = "${precachePrefix}"`) ||
+  !reclamationWorker.includes('includeUncontrolled: true') ||
+  !reclamationWorker.includes('if (!leasedBuildIds) return;') ||
+  !reclamationWorker.includes('data.type !== leaseResponseType') ||
+  !reclamationWorker.includes('caches.delete(cacheName)')
+) {
+  fail(
+    'cache reclaimer does not require complete build leases before deletion',
+  );
+}
+if (
+  [...reclamationWorker.matchAll(/self\.registration\.waiting/g)].length < 2 ||
+  [...reclamationWorker.matchAll(/self\.registration\.installing/g)].length <
+    2 ||
+  [...reclamationWorker.matchAll(/readActiveBuild\(\)/g)].length < 2
+) {
+  fail('cache reclaimer does not recheck worker ownership and pending updates');
+}
 for (const f of [
   'manifest.webmanifest',
   'pwa-192x192.png',
@@ -164,6 +189,10 @@ const interviewRoute = sw.slice(
   interviewCacheRoute.index,
   freshShellRoute.index,
 );
+const assetHandoffRouteIndex = sw.indexOf(
+  'pathname.startsWith("/assets/")',
+  freshShellRoute.index,
+);
 const imagesRouteIndex = sw.indexOf(
   'cacheName:"interviewer-images"',
   freshShellRoute.index,
@@ -171,14 +200,53 @@ const imagesRouteIndex = sw.indexOf(
 if (imagesRouteIndex === -1) {
   fail('missing interviewer image-cache route after navigation routes');
 }
-const freshShellRouteSource = sw.slice(freshShellRoute.index, imagesRouteIndex);
+if (
+  assetHandoffRouteIndex === -1 ||
+  assetHandoffRouteIndex > imagesRouteIndex
+) {
+  fail('missing exact-hash asset handoff route after navigation routes');
+}
+const imagesRouteEnd = sw.indexOf(
+  'cacheName:"interviewer-fonts"',
+  imagesRouteIndex,
+);
+const imagesRouteSource = sw.slice(
+  Math.max(freshShellRoute.index, imagesRouteIndex - 600),
+  imagesRouteEnd,
+);
+if (imagesRouteEnd === -1 || !imagesRouteSource.includes('&&![')) {
+  fail('interviewer image-cache route does not exclude stable PWA icons');
+}
+for (const stableIconPath of [
+  '/apple-touch-icon-180x180.png',
+  '/pwa-64x64.png',
+  '/pwa-192x192.png',
+  '/pwa-512x512.png',
+  '/maskable-icon-512x512.png',
+  '/interviewer-icon.png',
+]) {
+  if (!imagesRouteSource.includes(`"${stableIconPath}"`)) {
+    fail(
+      `interviewer image-cache route includes stable icon ${stableIconPath}`,
+    );
+  }
+}
+const freshShellRouteSource = sw.slice(
+  freshShellRoute.index,
+  assetHandoffRouteIndex,
+);
+const assetHandoffRouteSource = sw.slice(
+  assetHandoffRouteIndex,
+  imagesRouteIndex,
+);
 if (!/\.CacheOnly\(\{/.test(interviewRoute)) {
   fail('/interview/ navigation does not force the active cached shell');
 }
-if (
-  !interviewRoute.includes(`cacheName:"${precachePrefix}-interview-navigation"`)
-) {
-  fail('/interview/ cache-only route is not isolated to this build');
+if (!interviewRoute.includes('cacheName:"interviewer-interview-navigation"')) {
+  fail('/interview/ cache-only route does not use its shared empty cache');
+}
+if (interviewRoute.includes(`${precachePrefix}-interview-navigation`)) {
+  fail('/interview/ empty cache must not accumulate per build');
 }
 if (!/\.NetworkOnly\(\{plugins:\[/.test(freshShellRouteSource)) {
   fail('fresh navigation does not use the non-caching network strategy');
@@ -206,7 +274,27 @@ if (
 if (/\.NetworkFirst\(/.test(interviewRoute + freshShellRouteSource)) {
   fail('navigation runtime-caches HTML from a different app bundle');
 }
+if (
+  /caches\.match|Reflect\.get\(globalThis,"caches"\)/.test(
+    interviewRoute + freshShellRouteSource,
+  )
+) {
+  fail('navigation fallback searches retained precaches globally');
+}
+if (
+  !/\/assets\//.test(assetHandoffRouteSource) ||
+  !/js\|css/.test(assetHandoffRouteSource) ||
+  !/caches\.match|Reflect\.get\(globalThis,"caches"\)/.test(
+    assetHandoffRouteSource,
+  ) ||
+  !/fetch\(/.test(assetHandoffRouteSource)
+) {
+  fail('old-bundle JS/CSS cannot fall back to retained precaches');
+}
+if (/index\.html/.test(assetHandoffRouteSource)) {
+  fail('exact-hash asset handoff must not search retained HTML shells');
+}
 
 console.log(
-  `PWA build ok: ${precachePrefix} retained independently; active-precache navigation fallbacks; no client claim/old-precache cleanup; ${critical.length} critical chunk(s) precached`,
+  `PWA build ok: ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s) precached`,
 );

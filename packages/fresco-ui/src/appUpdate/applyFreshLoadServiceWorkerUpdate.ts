@@ -2,6 +2,8 @@ const SKIP_WAITING_MESSAGE = { type: 'SKIP_WAITING' } as const;
 const DEFAULT_UPDATE_CHECK_TIMEOUT_MS = 3_000;
 const DEFAULT_ACTIVATION_TIMEOUT_MS = 20_000;
 
+export { registerPwaBuildLease } from './registerPwaBuildLease';
+
 type ServiceWorkerContainerLike = Pick<
   ServiceWorkerContainer,
   'addEventListener' | 'controller' | 'getRegistration' | 'removeEventListener'

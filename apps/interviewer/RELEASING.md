@@ -221,9 +221,12 @@ fails the build if the service worker, manifest, or icons are missing from
 point) got silently dropped from the workbox precache manifest. A deploy that
 passes this assertion is one that will actually boot offline; treat an assertion
 failure as a hard release blocker, not a warning to route around. The assertion
-also validates the emitted `_headers`: the service worker, HTML shell, manifest,
-and stable icons must use `no-store, no-cache, max-age=0, must-revalidate`, while
-only content-hashed `/assets/*` may use a one-year immutable cache.
+also validates the emitted `_headers`: the service worker, HTML shell (including
+requested SPA deep links), manifest, and stable icons must use
+`no-store, no-cache, max-age=0, must-revalidate`, while only content-hashed
+`/assets/*` may use a one-year immutable cache. The generated worker assertion
+also ensures its image runtime cache excludes every stable PWA icon, because
+Cache API writes would otherwise bypass those HTTP directives.
 
 The production custom domain is fronted by Cloudflare, so this repository rule
 is necessary but cannot override an account-level Browser Cache TTL rule. Keep
@@ -282,13 +285,19 @@ installs the update. There is no forced-update mechanism and none should be
 added — see the interview-active guard above.
 
 The worker deliberately uses `clientsClaim: false`, a build-scoped precache,
-and no `cleanupOutdatedCaches`. Turbo's task fingerprint names deployed build
-artifacts, so two same-version developer deployments with different assets
-cannot prune each other's caches. Activating a release therefore does not
-replace the controller or remove hashed lazy assets underneath another open
-interview tab; that tab and its cache remain usable offline until it navigates.
-Offline navigation fallbacks resolve through the active worker's own precache,
-not a global search across those retained caches.
+and no blanket `cleanupOutdatedCaches`. Turbo's task fingerprint names deployed
+build artifacts, so two same-version developer deployments with different
+assets cannot prune each other's caches. Service-worker activation advances
+every client already using the registration, even without `clientsClaim`; it
+does not reload those documents. The new worker therefore resolves an older
+interview's exact content-hashed JS/CSS URLs across retained precaches, while
+HTML navigation fallbacks remain pinned to the active worker's own precache.
+This keeps the older loaded bundle usable offline without risking an ambiguous
+`index.html` match. Each page also reports its compiled build ID to the worker.
+The worker reclaims only precaches that no responsive open page has leased;
+any legacy, frozen, or nonresponding page blocks cleanup, and an installing or
+waiting worker blocks it as well. This preserves open work without allowing
+old build caches to accumulate indefinitely.
 `scripts/assert-pwa-build.mjs` verifies these generated-worker invariants.
 
 ## PostHog source maps

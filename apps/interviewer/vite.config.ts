@@ -6,6 +6,10 @@ import { defineConfig, mergeConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 import { createPostHogSourceMapsPlugin } from '../../scripts/posthog-source-maps-plugin.ts';
+import {
+  createPwaCacheReclamationPlugin,
+  getPwaCacheReclamationScriptFileName,
+} from '../../scripts/pwa-cache-reclamation-plugin.ts';
 import { appVersion, createRendererConfig } from './vite.renderer.config';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -19,6 +23,8 @@ const pwaBuildId = process.env.TURBO_HASH
   ? `turbo-${process.env.TURBO_HASH}`
   : `direct-${randomUUID()}`;
 const pwaCacheId = `interviewer-${appVersion}-${pwaBuildId}`;
+const pwaCacheReclamationScript =
+  getPwaCacheReclamationScriptFileName(pwaCacheId);
 // The app background (theme-base scheme-dark --background, oklch(0.28 0.09 281)
 // as sRGB). Drives the installed-PWA titlebar (with index.html's theme-color
 // meta, which must match) and the splash background.
@@ -47,7 +53,14 @@ const uploadSourceMaps = !!posthogPersonalApiKey && !!posthogProjectId;
 
 export default defineConfig(() =>
   mergeConfig(createRendererConfig({ outDir: 'dist', port: 5180 }), {
+    define: {
+      __PWA_BUILD_ID__: JSON.stringify(pwaCacheId),
+    },
     plugins: [
+      createPwaCacheReclamationPlugin({
+        appCachePrefix: 'interviewer-',
+        buildId: pwaCacheId,
+      }),
       VitePWA({
         registerType: 'prompt',
         injectRegister: false,
@@ -98,10 +111,12 @@ export default defineConfig(() =>
           // App and worker maps are uploaded before Workbox runs. The service
           // worker itself is not part of PostHog's browser error reporting.
           sourcemap: false,
-          // Every built bundle keeps its own precache. A newly activated worker
-          // must not prune hashed lazy assets that an older, still-open
-          // interview can need (including between same-version dev deploys and
-          // while offline).
+          importScripts: [pwaCacheReclamationScript],
+          // Every built bundle keeps its own precache. Activation moves every
+          // client already using this registration onto the new worker, so the
+          // exact-hash asset route below must still be able to read an older
+          // bundle's retained precache (including between same-version dev
+          // deploys and while offline).
           cacheId: pwaCacheId,
           globPatterns: ['**/*.{js,css,html}'],
           // The Development protocol's bundled asset chunk (~33 MB, embeds a
@@ -118,9 +133,10 @@ export default defineConfig(() =>
           // cached index.html before the runtime navigation route can fetch
           // the newest shell.
           directoryIndex: null,
-          // Old controllers retain their versioned precaches until the browser
-          // evicts them; claiming their clients or deleting their caches would
-          // strand lazy imports in open interview tabs.
+          // Keep older build caches while an open interview can still request
+          // its lazy chunks. `clientsClaim: false` avoids claiming pages that
+          // were not already controlled; skipWaiting activation still advances
+          // all clients that already use this registration.
           cleanupOutdatedCaches: false,
           clientsClaim: false,
           maximumFileSizeToCacheInBytes: MAX_PRECACHE_BYTES,
@@ -137,11 +153,11 @@ export default defineConfig(() =>
                 url.pathname.startsWith('/interview/'),
               handler: 'CacheOnly',
               options: {
-                // This build-specific runtime cache intentionally remains
-                // empty. CacheOnly throws on its miss, which invokes
+                // This shared runtime cache intentionally remains empty.
+                // CacheOnly throws on its miss, which invokes
                 // PrecacheFallbackPlugin.handlerDidError and returns the
                 // active worker's own precached shell without a network read.
-                cacheName: `${pwaCacheId}-interview-navigation`,
+                cacheName: 'interviewer-interview-navigation',
                 precacheFallback: { fallbackURL: 'index.html' },
               },
             },
@@ -194,7 +210,36 @@ export default defineConfig(() =>
               },
             },
             {
-              urlPattern: /\.(?:png|jpg|jpeg|svg|webp|gif)$/i,
+              // skipWaiting activation advances every already-controlled tab,
+              // including an interview that deliberately did not request the
+              // update. If its old bundle later imports an old lazy chunk, the
+              // new worker can read that exact content-hashed JS/CSS URL from
+              // the retained precache. Stable HTML is intentionally excluded.
+              urlPattern: ({ sameOrigin, url }) =>
+                sameOrigin &&
+                url.pathname.startsWith('/assets/') &&
+                /\.(?:js|css)$/i.test(url.pathname),
+              handler: async ({ request }) => {
+                const cacheStorage = Reflect.get(globalThis, 'caches') as {
+                  match: (request: Request) => Promise<Response | undefined>;
+                };
+                return (await cacheStorage.match(request)) ?? fetch(request);
+              },
+            },
+            {
+              // Stable PWA icons are replaced in place and must reach the
+              // network so their no-store response headers can take effect.
+              // Other images keep the existing bounded offline cache.
+              urlPattern: ({ url }) =>
+                /\.(?:png|jpg|jpeg|svg|webp|gif)$/i.test(url.pathname) &&
+                ![
+                  '/apple-touch-icon-180x180.png',
+                  '/pwa-64x64.png',
+                  '/pwa-192x192.png',
+                  '/pwa-512x512.png',
+                  '/maskable-icon-512x512.png',
+                  '/interviewer-icon.png',
+                ].includes(url.pathname),
               handler: 'CacheFirst',
               options: {
                 cacheName: 'interviewer-images',

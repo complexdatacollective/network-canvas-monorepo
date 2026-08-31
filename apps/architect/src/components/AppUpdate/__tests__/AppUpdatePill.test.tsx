@@ -17,7 +17,7 @@ vi.mock('../AppUpdateProvider', () => ({
 import AppUpdatePill from '../AppUpdatePill';
 
 describe('AppUpdatePill', () => {
-  it('explains that installing leaves other Architect tabs running', () => {
+  it('warns about this tab while explaining that other tabs keep running', () => {
     render(<AppUpdatePill />);
 
     fireEvent.click(
@@ -26,7 +26,7 @@ describe('AppUpdatePill', () => {
 
     expect(
       screen.getByText(
-        'Installing the update will reload only this tab. Other open Architect tabs will keep running until they are reloaded.',
+        'Installing the update will reload only this tab. Any unsaved work in this tab will be lost. Other open Architect tabs will keep running until they are reloaded.',
       ),
     ).toBeInTheDocument();
     expect(

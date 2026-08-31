@@ -93,8 +93,9 @@ const assertDirectiveSet = (path, actualValue, expectedDirectives) => {
 /**
  * Assert the deploy cache contract for one production PWA `_headers` file.
  * Stable entry points must never be stored; only content-hashed assets are
- * immutable. `/*` is deliberately forbidden from setting Cache-Control so a
- * wildcard rule cannot conflict with the immutable assets rule.
+ * immutable. Netlify matches `_headers` against the requested URL before an
+ * SPA rewrite, so `/*` must cover deep-link HTML requests. Its more-specific
+ * `/assets/*` rule replaces Cache-Control for content-hashed assets.
  */
 export const assertPwaCacheHeaders = ({ additionalStablePaths = [], text }) => {
   const rules = parseHeaderRules(text);
@@ -107,14 +108,11 @@ export const assertPwaCacheHeaders = ({ additionalStablePaths = [], text }) => {
     rulesByPath.set(rule.path, rule);
   }
 
-  const wildcardCacheControl = rulesByPath
-    .get('/*')
-    ?.headers.get('cache-control');
-  if (wildcardCacheControl !== undefined) {
-    throw new Error(
-      'Cache-Control must not be set on /* because it can conflict with /assets/*',
-    );
-  }
+  assertDirectiveSet(
+    '/*',
+    rulesByPath.get('/*')?.headers.get('cache-control'),
+    NO_STORE_DIRECTIVES,
+  );
 
   for (const stablePath of [
     ...COMMON_STABLE_PWA_PATHS,

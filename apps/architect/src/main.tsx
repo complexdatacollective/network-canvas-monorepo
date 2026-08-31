@@ -6,7 +6,10 @@ import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
-import { applyFreshLoadServiceWorkerUpdate } from '@codaco/fresco-ui/appUpdate/applyFreshLoadServiceWorkerUpdate';
+import {
+  applyFreshLoadServiceWorkerUpdate,
+  registerPwaBuildLease,
+} from '@codaco/fresco-ui/appUpdate/applyFreshLoadServiceWorkerUpdate';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { PortalContainerProvider } from '@codaco/fresco-ui/PortalContainer';
 import { Toaster } from '@codaco/fresco-ui/Toast';
@@ -28,6 +31,11 @@ import {
   requestPersistentStorage,
   requestPersistentStorageOnFirstInteraction,
 } from './utils/pwa';
+
+// Register before the startup update check: skipWaiting moves every existing
+// tab to the new worker, which must retain the precache for each tab's compiled
+// bundle until that tab closes or reloads.
+registerPwaBuildLease(__PWA_BUILD_ID__);
 
 // Capture the PWA install prompt before React mounts — the event fires early and
 // is one-shot.

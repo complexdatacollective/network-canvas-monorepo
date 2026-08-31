@@ -55,8 +55,11 @@ describe('PWA cache headers', () => {
     );
   });
 
-  it('rejects a wildcard cache rule that could override immutable assets', () => {
-    const broken = `/*\n  Cache-Control: no-store, no-cache, max-age=0, must-revalidate\n${sourceHeaders('interviewer')}`;
+  it('rejects missing no-store coverage for rewritten SPA deep links', () => {
+    const broken = sourceHeaders('interviewer').replace(
+      '/*\n  Cache-Control: no-store, no-cache, max-age=0, must-revalidate\n',
+      '',
+    );
 
     assert.throws(
       () =>
@@ -64,7 +67,23 @@ describe('PWA cache headers', () => {
           additionalStablePaths: ['/interviewer-icon.png'],
           text: broken,
         }),
-      /Cache-Control must not be set on \/\*/,
+      /missing Cache-Control for \/\*/,
+    );
+  });
+
+  it('rejects cacheable rewritten SPA deep links', () => {
+    const broken = sourceHeaders('interviewer').replace(
+      '/*\n  Cache-Control: no-store, no-cache, max-age=0, must-revalidate',
+      '/*\n  Cache-Control: public, max-age=86400, must-revalidate',
+    );
+
+    assert.throws(
+      () =>
+        assertPwaCacheHeaders({
+          additionalStablePaths: ['/interviewer-icon.png'],
+          text: broken,
+        }),
+      /invalid Cache-Control for \/\*.*max-age=86400/,
     );
   });
 });
