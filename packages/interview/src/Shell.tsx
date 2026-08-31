@@ -416,21 +416,42 @@ const Shell = ({
     [payload, stableOnSync, flags?.isDevelopment, trackerHolder],
   );
 
-  // Autosave holds pending session changes on a trailing debounce
-  // (syncMiddleware). If the Shell unmounts mid-window — the host navigated
-  // away, e.g. an interview exit or a lock screen — that timer would fire
-  // seconds AFTER the host moved on, racing whatever reads the stored session
-  // next: a prompt resume would hydrate the pre-write snapshot and its own
-  // autosaves would then persist that stale network back over the newer
-  // record. Flush at teardown instead: the pending write is handed to onSync
-  // synchronously (when no other write is on the wire), before the host can
-  // re-read the session. Two limits: the user-facing exit path additionally
-  // awaits the full flush before invoking onExit (Navigation.handleExit),
-  // because when a write IS on the wire the final snapshot can only be
-  // enqueued after it settles; and a host whose onSync needs state the
-  // teardown already destroyed (e.g. an idle lock that cleared its store
-  // encryption key before unmounting) still rejects the write — flushing
-  // here cannot resurrect host-side preconditions.
+  // A host that batches writes (see createDebouncedSyncHandler) may be holding
+  // recent answers when the document goes away, and a hidden document is not
+  // promised any more script at all — mobile browsers suspend a backgrounded
+  // tab, and a suspended timer does not fire. Write now, while there is still a
+  // page to write from. This is the moment that matters most for an installed
+  // PWA: the device is put to sleep seconds after an answer, and whatever was
+  // being held would otherwise wait on a timer that only resumes minutes later,
+  // into a host that may by then have torn down what the write needed.
+  //
+  // pagehide covers the navigation/bfcache case the visibility change misses.
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const flushIfHidden = () => {
+      if (document.visibilityState === 'hidden') {
+        void reduxStore.flushSync({ unloading: true });
+      }
+    };
+    const flushNow = () => void reduxStore.flushSync({ unloading: true });
+    document.addEventListener('visibilitychange', flushIfHidden);
+    window.addEventListener('pagehide', flushNow);
+    return () => {
+      document.removeEventListener('visibilitychange', flushIfHidden);
+      window.removeEventListener('pagehide', flushNow);
+    };
+  }, [reduxStore]);
+
+  // Teardown backstop. The host has navigated away — an interview exit, a lock
+  // screen — so anything a batching host is still holding has to go now, before
+  // whatever reads the stored session next: a prompt resume would otherwise
+  // hydrate the pre-write snapshot and persist that stale network back over the
+  // newer record. Its one limit is that a host whose onSync needs state the
+  // teardown itself destroyed (an idle lock clearing its encryption key before
+  // unmounting) still rejects the write — flushing here cannot resurrect
+  // host-side preconditions. The user-facing exit path therefore awaits the
+  // full flush before invoking onExit (Navigation.handleExit) rather than
+  // relying on this.
   useEffect(() => {
     return () => {
       void reduxStore.flushSync();

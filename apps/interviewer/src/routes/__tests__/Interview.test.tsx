@@ -75,7 +75,11 @@ type CapturedShellProps = {
   payload: InterviewPayload;
   onExit: () => void;
   onFinish: (id: string) => Promise<void>;
-  onSync: (id: string, session: SessionPayload) => Promise<void>;
+  onSync: (
+    id: string,
+    session: SessionPayload,
+    options: { immediate: boolean; unloading: boolean },
+  ) => Promise<void>;
   onStepChange: (
     step: number,
     meta: { progress: number; totalSteps: number },
@@ -406,8 +410,13 @@ describe('InterviewRoute finish flow', () => {
     await screen.findByTestId('shell-mounted');
     updateSessionMock.mockClear();
 
+    // `immediate` so the host's batching window does not defer the write past
+    // the assertion; what is being checked is the patch, not the timing.
     await act(async () => {
-      await lastShellProps().onSync('s1', makeSyncPayload());
+      await lastShellProps().onSync('s1', makeSyncPayload(), {
+        immediate: true,
+        unloading: false,
+      });
     });
 
     const patch = updateSessionMock.mock.calls.at(-1)?.[1];
@@ -425,10 +434,13 @@ describe('InterviewRoute finish flow', () => {
     await screen.findByText('Interview complete');
 
     updateSessionMock.mockClear();
-    // A debounced sync fired after finish still carries finishTime: null
-    // (the engine never sets it for an in-progress session).
+    // A sync landing after finish still carries finishTime: null (the engine
+    // never sets it for an in-progress session).
     await act(async () => {
-      await onSync('s1', makeSyncPayload({ finishTime: null }));
+      await onSync('s1', makeSyncPayload({ finishTime: null }), {
+        immediate: true,
+        unloading: false,
+      });
     });
 
     for (const call of updateSessionMock.mock.calls) {
@@ -518,7 +530,10 @@ describe('InterviewRoute finish flow', () => {
     const { onFinish, onStepChange, onSync } = lastShellProps();
 
     await act(async () => {
-      await onSync('s1', makeSyncPayload());
+      await onSync('s1', makeSyncPayload(), {
+        immediate: true,
+        unloading: false,
+      });
       onStepChange(2, { progress: 75, totalSteps: 4 });
       await onFinish('s1');
     });
@@ -539,7 +554,10 @@ describe('InterviewRoute finish flow', () => {
     const { onFinish, onStepChange, onSync } = lastShellProps();
 
     await act(async () => {
-      await onSync('s1', makeSyncPayload());
+      await onSync('s1', makeSyncPayload(), {
+        immediate: true,
+        unloading: false,
+      });
       onStepChange(2, { progress: 75, totalSteps: 4 });
       await onFinish('s1');
     });

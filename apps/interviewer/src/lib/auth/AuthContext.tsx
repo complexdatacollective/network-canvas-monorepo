@@ -8,7 +8,12 @@ import {
   useState,
 } from 'react';
 
-import { getSettings, updateSettings } from '../db/api';
+import {
+  getSettings,
+  updateSettings,
+  whenSessionWritesSettle,
+} from '../db/api';
+import { getSessionDek } from '../db/sessionKey';
 import { DEFAULT_SETTINGS } from '../db/types';
 import { VAULT_STORAGE_KEY } from '../vault/vaultStore';
 import * as authApi from './api';
@@ -60,6 +65,25 @@ export type AuthContextValue = AuthState & AuthActions;
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
+// A stalled write must not hold the vault open past its idle deadline, so the
+// drain below is bounded and the lock proceeds either way. Two seconds is far
+// more than the local writes it waits on need. Giving up costs what locking
+// without the drain would have cost anyway, so the bound only decides how long
+// we wait — never whether a write that finishes in time survives.
+const LOCK_DRAIN_TIMEOUT_MS = 2_000;
+
+async function drainSessionWrites(): Promise<void> {
+  let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<void>((resolve) => {
+    deadlineTimer = setTimeout(resolve, LOCK_DRAIN_TIMEOUT_MS);
+  });
+  try {
+    await Promise.race([whenSessionWritesSettle(), deadline]);
+  } finally {
+    clearTimeout(deadlineTimer);
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     kind: 'loading',
@@ -91,24 +115,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [refresh]);
 
-  const lock = useCallback(async () => {
+  // Drop the key now, with no window for anything to finish writing first.
+  const lockImmediately = useCallback(async () => {
     await authApi.lock();
     await refresh();
   }, [refresh]);
+
+  // A session write reads the vault key when it runs, not when it is queued —
+  // it waits its turn on the per-session chain, reads the stored row and
+  // decrypts it, and only then encrypts. Clearing the key while any of that is
+  // outstanding makes it fail closed and loses the answers it carried, which on
+  // a frozen tab is exactly the moment an idle lock fires. Let those writes
+  // settle first.
+  const lock = useCallback(async () => {
+    const keyToClear = getSessionDek();
+    await drainSessionWrites();
+    // Only clear the key this lock was asked to clear. The cross-tab
+    // force-lock below does not queue behind this drain, so it can lock
+    // mid-drain and the researcher can then unlock from the lock screen it
+    // raised; clearing now would drop a key this lock was never asked about.
+    // The reference only moves via setSessionDek, and re-enrolment rewraps the
+    // same DEK without calling it, so a PIN change cannot misfire this.
+    if (getSessionDek() !== keyToClear) return;
+    await lockImmediately();
+  }, [lockImmediately]);
 
   // The session DEK is per-tab module memory while the vault record is shared
   // localStorage. If another tab revokes and re-enrols, this tab's stale DEK
   // would encrypt rows the new vault can never decrypt (permanent data loss).
   // Force-lock this tab whenever the vault record changes in another tab so
-  // AuthGate re-gates and the next unlock derives a fresh DEK.
+  // AuthGate re-gates and the next unlock derives a fresh DEK. This is the one
+  // path that must NOT wait for outstanding writes: they would be writing under
+  // a DEK the other tab has already replaced, which is precisely the corruption
+  // this listener exists to prevent, and a revoke has already deleted the
+  // database they would land in.
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
       if (event.key !== VAULT_STORAGE_KEY) return;
-      void lock();
+      void lockImmediately();
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
-  }, [lock]);
+  }, [lockImmediately]);
 
   const idleTimeoutMs = state.idleTimeoutMinutes * 60_000;
   useIdleTimer({

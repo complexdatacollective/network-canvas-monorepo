@@ -56,9 +56,40 @@ export type InterviewPayload = {
   protocol: ProtocolPayload;
 };
 
+/**
+ * Why the engine is asking for this write.
+ *
+ * `immediate` marks the moments where deferring is not an option: the
+ * participant is leaving the interview, finishing it, or the document is being
+ * hidden and may never run script again. A host that batches writes must stop
+ * batching when it sees this, write the snapshot it was given, and resolve only
+ * once that write is durable.
+ *
+ * Ordinary changes arrive with `immediate: false`. The engine does not batch
+ * them — how often a change becomes a write is the host's decision, because
+ * only the host knows what a write costs. A local database write can happen on
+ * every change; a network request usually should not (see
+ * `createDebouncedSyncHandler`).
+ */
+export type SyncOptions = {
+  immediate: boolean;
+  /**
+   * The document is being hidden or unloaded and may never run script again —
+   * so this can be the last write it is able to make, and nothing may be left
+   * waiting on anything else to finish first. Always accompanied by
+   * `immediate`.
+   *
+   * A host whose writes leave the page should use a transport that outlives it
+   * (`fetch`'s `keepalive`) when it sees this, and must not queue the write
+   * behind a request that will die with the document.
+   */
+  unloading: boolean;
+};
+
 export type SyncHandler = (
   interviewId: string,
   session: SessionPayload,
+  options: SyncOptions,
 ) => Promise<void>;
 
 export type FinishHandler = (
