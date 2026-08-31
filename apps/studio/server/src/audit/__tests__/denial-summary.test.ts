@@ -32,7 +32,7 @@ describe.skipIf(!db)('denied audit summary', () => {
     await dispose();
   });
 
-  it('appends one immutable event without locking once per suppressed attempt', async () => {
+  it('flushes one immutable pending summary before shutdown', async () => {
     const teamId = 'denied-summary-team';
     await seedTeam(pool, teamId);
     const principal: SessionPrincipal = {
@@ -45,6 +45,7 @@ describe.skipIf(!db)('denied audit summary', () => {
     };
     let now = Date.parse('2026-08-31T10:00:00.000Z');
     let scheduled: (() => void) | undefined;
+    let summaryTimerCancelled = false;
     let summaryTransactionCount = 0;
     const tenantDb = createTenantDb(app, teamId);
     const summaryWritten = Promise.withResolvers<void>();
@@ -68,7 +69,9 @@ describe.skipIf(!db)('denied audit summary', () => {
       now: () => now,
       schedule: (task) => {
         scheduled = task;
-        return () => undefined;
+        return () => {
+          summaryTimerCancelled = true;
+        };
       },
       onSummaryError: summaryWritten.reject,
     });
@@ -89,11 +92,11 @@ describe.skipIf(!db)('denied audit summary', () => {
     });
 
     expect(summaryTransactionCount).toBe(0);
-    now += 30_000;
     if (!scheduled) throw new Error('expected a scheduled summary');
-    scheduled();
+    await expect(limiter.flush()).resolves.toBe(true);
     await summaryWritten.promise;
 
+    expect(summaryTimerCancelled).toBe(true);
     expect(summaryTransactionCount).toBe(1);
     const events = await pool.query<{
       id: string;

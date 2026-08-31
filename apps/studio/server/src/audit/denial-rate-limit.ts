@@ -1,5 +1,6 @@
 const DEFAULT_WINDOW_MS = 60_000;
 const DEFAULT_MAX_KEYS = 10_000;
+const DEFAULT_FLUSH_TIMEOUT_MS = 5_000;
 
 const DENIED_AUDIT_EVENT_LIMIT = 5;
 
@@ -37,11 +38,25 @@ type DeniedAuditSummaryScheduler = (
   delayMs: number,
 ) => () => void;
 
+type DeniedAuditFlushTimeoutScheduler = (
+  task: () => void,
+  delayMs: number,
+) => () => void;
+
 function scheduleSummary(task: () => void, delayMs: number): () => void {
   const timer = setTimeout(task, delayMs);
   timer.unref();
   return () => clearTimeout(timer);
 }
+
+function scheduleFlushTimeout(task: () => void, delayMs: number): () => void {
+  const timer = setTimeout(task, delayMs);
+  return () => clearTimeout(timer);
+}
+
+export type DeniedAuditFlushOptions = {
+  timeoutMs?: number;
+};
 
 export type DeniedAuditReservation =
   | { admitted: false }
@@ -66,7 +81,10 @@ export class DeniedAuditRateLimiter {
   readonly #maxKeys: number;
   readonly #now: () => number;
   readonly #schedule: DeniedAuditSummaryScheduler;
+  readonly #scheduleFlushTimeout: DeniedAuditFlushTimeoutScheduler;
   readonly #onSummaryError: (error: unknown) => void;
+  readonly #onFlushTimeout: (pendingWrites: number) => void;
+  readonly #summaryWrites = new Set<Promise<void>>();
 
   constructor(options?: {
     limit?: number;
@@ -74,13 +92,17 @@ export class DeniedAuditRateLimiter {
     maxKeys?: number;
     now?: () => number;
     schedule?: DeniedAuditSummaryScheduler;
+    scheduleFlushTimeout?: DeniedAuditFlushTimeoutScheduler;
     onSummaryError?: (error: unknown) => void;
+    onFlushTimeout?: (pendingWrites: number) => void;
   }) {
     this.#limit = options?.limit ?? DENIED_AUDIT_EVENT_LIMIT;
     this.#windowMs = options?.windowMs ?? DEFAULT_WINDOW_MS;
     this.#maxKeys = options?.maxKeys ?? DEFAULT_MAX_KEYS;
     this.#now = options?.now ?? Date.now;
     this.#schedule = options?.schedule ?? scheduleSummary;
+    this.#scheduleFlushTimeout =
+      options?.scheduleFlushTimeout ?? scheduleFlushTimeout;
     this.#onSummaryError =
       options?.onSummaryError ??
       ((error) => {
@@ -92,6 +114,36 @@ export class DeniedAuditRateLimiter {
           },
         );
       });
+    this.#onFlushTimeout =
+      options?.onFlushTimeout ??
+      ((pendingWrites) => {
+        process.emitWarning(
+          'Timed out flushing denied-attempt audit summaries during shutdown.',
+          {
+            type: 'StudioAuditWarning',
+            code: 'STUDIO_DENIED_AUDIT_FLUSH_TIMEOUT',
+            detail: JSON.stringify({ pendingWrites }),
+          },
+        );
+      });
+  }
+
+  #trackSummaryWrite(
+    writer: DeniedAuditSummaryWriter,
+    summary: DeniedAuditSummary,
+  ): void {
+    let result: void | Promise<void>;
+    try {
+      result = writer(summary);
+    } catch (error) {
+      this.#onSummaryError(error);
+      return;
+    }
+    const write = Promise.resolve(result).catch(this.#onSummaryError);
+    this.#summaryWrites.add(write);
+    void write.finally(() => {
+      this.#summaryWrites.delete(write);
+    });
   }
 
   #queueSummary(key: string, window: DenialWindow): void {
@@ -114,17 +166,43 @@ export class DeniedAuditRateLimiter {
       firstSuppressedAt: window.firstSuppressedAt,
       lastSuppressedAt: window.lastSuppressedAt,
     } satisfies DeniedAuditSummary;
-    try {
-      Promise.resolve(writer(summary)).catch(this.#onSummaryError);
-    } catch (error) {
-      this.#onSummaryError(error);
-    }
+    this.#trackSummaryWrite(writer, summary);
     if (
       this.#now() - window.startedAt >= this.#windowMs &&
       this.#entries.get(key) === window
     ) {
       this.#entries.delete(key);
     }
+  }
+
+  /** Flushes pending immutable summaries before their process-local timers die. */
+  async flush(options: DeniedAuditFlushOptions = {}): Promise<boolean> {
+    for (const [key, window] of this.#entries) {
+      this.#queueSummary(key, window);
+      if (window.summaryQueued && this.#entries.get(key) === window) {
+        this.#entries.delete(key);
+      }
+    }
+    const pending = [...this.#summaryWrites];
+    if (pending.length === 0) return true;
+
+    const timeoutMs = options.timeoutMs ?? DEFAULT_FLUSH_TIMEOUT_MS;
+    return new Promise<boolean>((resolve) => {
+      let settled = false;
+      const cancelTimeout = this.#scheduleFlushTimeout(() => {
+        if (settled) return;
+        settled = true;
+        this.#onFlushTimeout(pending.length);
+        resolve(false);
+      }, timeoutMs);
+      void Promise.all(pending).then(() => {
+        if (settled) return undefined;
+        settled = true;
+        cancelTimeout();
+        resolve(true);
+        return undefined;
+      });
+    });
   }
 
   #recordSuppressed(
@@ -268,4 +346,10 @@ export function reserveDeniedAuditAttempt(
     JSON.stringify([input.actorId, input.teamId, input.operation]),
     summaryWriter,
   );
+}
+
+export function flushDeniedAuditSummaries(
+  options?: DeniedAuditFlushOptions,
+): Promise<boolean> {
+  return deniedAuditRateLimiter.flush(options);
 }

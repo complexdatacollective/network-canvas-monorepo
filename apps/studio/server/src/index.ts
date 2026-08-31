@@ -7,6 +7,7 @@ import type { Context } from 'hono';
 import { WebSocketServer } from 'ws';
 
 import { createApp } from './app.ts';
+import { flushDeniedAuditSummaries } from './audit/denial-rate-limit.ts';
 import { createMailer } from './auth/email.ts';
 import {
   createMaintenancePool,
@@ -207,12 +208,15 @@ function shutdown() {
   );
   void Promise.all(closing).then(() => {
     server.close(() => {
+      // Suppression summaries use the application pool, so give their
+      // bounded flush a chance to become immutable before closing database
+      // resources. The outer ten-second backstop still caps total shutdown.
       void Promise.all([
         invitationDeliveryWorker?.stop(),
-        pool?.end(),
-        maintenancePool?.end(),
+        flushDeniedAuditSummaries(),
       ])
         .catch(() => undefined)
+        .then(() => Promise.all([pool?.end(), maintenancePool?.end()]))
         .finally(() => {
           process.exit(0);
         });

@@ -54,6 +54,81 @@ describe('denied audit rate limiter', () => {
     ]);
   });
 
+  it('flushes a scheduled suppression summary before process shutdown', async () => {
+    const scheduled: (() => void)[] = [];
+    const summaries: unknown[] = [];
+    let cancelled = 0;
+    const limiter = new DeniedAuditRateLimiter({
+      limit: 1,
+      windowMs: 60_000,
+      schedule: (task) => {
+        scheduled.push(task);
+        return () => {
+          cancelled += 1;
+        };
+      },
+    });
+    const denied = limiter.reserve('actor/team/operation');
+    await complete(denied, 'denied');
+    expect(
+      await limiter.reserve('actor/team/operation', (summary) => {
+        summaries.push(summary);
+      }),
+    ).toEqual({ admitted: false });
+    expect(summaries).toEqual([]);
+
+    await expect(limiter.flush({ timeoutMs: 100 })).resolves.toBe(true);
+
+    expect(cancelled).toBe(1);
+    expect(summaries).toEqual([
+      {
+        suppressedCount: 1,
+        firstSuppressedAt: expect.any(Number),
+        lastSuppressedAt: expect.any(Number),
+      },
+    ]);
+    scheduled[0]!();
+    expect(summaries).toHaveLength(1);
+  });
+
+  it('bounds shutdown when a summary writer does not settle', async () => {
+    let flushTimeout: (() => void) | undefined;
+    const timeoutSignals: number[] = [];
+    const limiter = new DeniedAuditRateLimiter({
+      limit: 1,
+      schedule: () => () => undefined,
+      scheduleFlushTimeout: (task) => {
+        flushTimeout = task;
+        return () => undefined;
+      },
+      onFlushTimeout: (pendingWrites) => {
+        timeoutSignals.push(pendingWrites);
+      },
+    });
+    const denied = limiter.reserve('actor/team/operation');
+    await complete(denied, 'denied');
+    expect(
+      await limiter.reserve(
+        'actor/team/operation',
+        () => new Promise<void>(() => undefined),
+      ),
+    ).toEqual({ admitted: false });
+
+    const flush = limiter.flush({ timeoutMs: 100 });
+    let flushSettled = false;
+    void flush.then(() => {
+      flushSettled = true;
+      return undefined;
+    });
+    await Promise.resolve();
+    expect(flushSettled).toBe(false);
+
+    if (!flushTimeout) throw new Error('expected a bounded flush timeout');
+    flushTimeout();
+    await expect(flush).resolves.toBe(false);
+    expect(timeoutSignals).toEqual([1]);
+  });
+
   it('queues excess in-flight attempts before the database boundary', async () => {
     const limiter = new DeniedAuditRateLimiter({ limit: 2 });
     const first = limiter.reserve('actor/team/operation');
