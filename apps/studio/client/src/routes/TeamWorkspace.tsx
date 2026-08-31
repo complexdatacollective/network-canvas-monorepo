@@ -354,6 +354,16 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
             />
           </div>
           <div className="flex items-center gap-3">
+            {selectedTeam && canManageTeam(activeMember.data?.role) && (
+              <Button asChild size="sm" variant="outline">
+                <Link
+                  to="/teams/$teamId/activity"
+                  params={{ teamId: selectedTeam.id }}
+                >
+                  Activity
+                </Link>
+              </Button>
+            )}
             {selectedTeam && <Badge>Currently active</Badge>}
             {(activeTeamAccessPending ||
               switchingTeamId !== null ||

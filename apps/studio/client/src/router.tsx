@@ -17,6 +17,7 @@ import Editor from './routes/Editor.tsx';
 import ErrorScreen, { ServerUnreachableError } from './routes/ErrorScreen.tsx';
 import Home from './routes/Home.tsx';
 import SignIn from './routes/SignIn.tsx';
+import TeamActivity from './routes/TeamActivity.tsx';
 
 async function probeSession(): Promise<
   'signedIn' | 'signedOut' | 'unreachable'
@@ -105,10 +106,16 @@ const editorRoute = createRoute({
   component: Editor,
 });
 
+const teamActivityRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/teams/$teamId/activity',
+  component: TeamActivity,
+});
+
 const routeTree = rootRoute.addChildren([
   signInRoute,
   invitationRoute,
-  authenticatedRoute.addChildren([indexRoute, editorRoute]),
+  authenticatedRoute.addChildren([indexRoute, editorRoute, teamActivityRoute]),
 ]);
 
 export function createAppRouter(history?: RouterHistory) {
