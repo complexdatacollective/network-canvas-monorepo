@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { rpcClient } from '../../lib/api.ts';
+import { closeStudioEditorSessions } from '../sessionLifecycle.ts';
 import { useStudioStageSession } from '../useStudioStageSession.ts';
 
 const STAGE_ID = '11111111-1111-4111-8111-111111111111';
@@ -215,6 +216,53 @@ describe('useStudioStageSession', () => {
         expect.objectContaining({ leaseEpoch: '1' }),
       ),
     );
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+    await expect(view.result.current.save()).resolves.toBeUndefined();
+  });
+
+  it('releases a lost lease before attempting to reacquire it', async () => {
+    vi.useFakeTimers();
+    const commit = deferred<{ sequence: string; hash: string }>();
+    vi.mocked(rpcClient.protocols.commitSection).mockReturnValueOnce(
+      commit.promise,
+    );
+    vi.mocked(rpcClient.protocols.renewSection).mockRejectedValueOnce(
+      new Error('network interrupted'),
+    );
+    const view = renderSession();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(view.result.current.status).toBe('ready');
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+
+    act(() => {
+      if (view.result.current.status !== 'ready') throw new Error('not ready');
+      view.result.current.session.dispatch([
+        { op: 'set', key: 'label', value: 'Changed' },
+      ]);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(rpcClient.protocols.acquireSection).toHaveBeenCalledTimes(1);
+    expect(rpcClient.protocols.releaseSection).not.toHaveBeenCalled();
+
+    await act(async () => {
+      commit.resolve({ sequence: '3', hash: 'revision-3' });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(rpcClient.protocols.releaseSection).toHaveBeenCalledTimes(1);
+    expect(rpcClient.protocols.acquireSection).toHaveBeenCalledTimes(2);
+    expect(
+      vi.mocked(rpcClient.protocols.releaseSection).mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      vi.mocked(rpcClient.protocols.acquireSection).mock
+        .invocationCallOrder[1]!,
+    );
+    view.unmount();
   });
 
   it('drains an active commit before releasing a lost lease', async () => {
@@ -347,6 +395,81 @@ describe('useStudioStageSession', () => {
       title: 'Changed by collaborator',
     });
     expect(rpcClient.protocols.draft).toHaveBeenCalledTimes(1);
+  });
+
+  it('renews an acquired lease while its authoritative draft is loading', async () => {
+    vi.useFakeTimers();
+    const draft = deferred<typeof DRAFT>();
+    vi.mocked(rpcClient.protocols.draft).mockReturnValueOnce(draft.promise);
+    const view = renderSession();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    expect(rpcClient.protocols.renewSection).toHaveBeenCalledWith(
+      expect.objectContaining({ leaseEpoch: '1' }),
+    );
+    expect(view.result.current.status).toBe('loading');
+
+    await act(async () => {
+      draft.resolve(DRAFT);
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(view.result.current.status).toBe('ready');
+    view.unmount();
+  });
+
+  it('keeps a slow promotion registered until its lease is released', async () => {
+    vi.useFakeTimers();
+    const acquisition = deferred<{
+      mode: 'editable';
+      leaseEpoch: string;
+      nextClientSequence: string;
+    }>();
+    const release = deferred<void>();
+    vi.mocked(rpcClient.protocols.acquireSection)
+      .mockResolvedValueOnce({ mode: 'readOnly' })
+      .mockReturnValueOnce(acquisition.promise);
+    vi.mocked(rpcClient.protocols.releaseSection).mockReturnValueOnce(
+      release.promise,
+    );
+    const view = renderSession();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(5_000);
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(rpcClient.protocols.acquireSection).toHaveBeenCalledTimes(2);
+
+    view.unmount();
+    let closed = false;
+    const closing = closeStudioEditorSessions().then(() => {
+      closed = true;
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(closed).toBe(false);
+
+    await act(async () => {
+      acquisition.resolve({
+        mode: 'editable',
+        leaseEpoch: '7',
+        nextClientSequence: '1',
+      });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(rpcClient.protocols.releaseSection).toHaveBeenCalledWith(
+      expect.objectContaining({ leaseEpoch: '7' }),
+    );
+    expect(closed).toBe(false);
+
+    await act(async () => {
+      release.resolve();
+      await closing;
+    });
+    expect(closed).toBe(true);
   });
 
   it('releases an editable lease that resolves after unmount', async () => {

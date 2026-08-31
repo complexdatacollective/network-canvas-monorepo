@@ -25,7 +25,8 @@
   },
   "dependencies": {
     "@codaco/protocol-validation": "workspace:^",
-    "@codaco/studio-sync": "workspace:^"
+    "@codaco/studio-sync": "workspace:^",
+    "uuid": "catalog:"
   },
   "devDependencies": {
     "@codaco/fresco-ui": "workspace:^",

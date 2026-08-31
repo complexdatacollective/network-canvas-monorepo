@@ -1,3 +1,5 @@
+import { v4 as uuid } from 'uuid';
+
 import {
   CurrentProtocolSchema,
   type CurrentProtocol,
@@ -186,7 +188,7 @@ export class AuthoritativeConflictError extends Error {
 
 export function createStageIdentity(
   type: StageType,
-  createId: () => string = () => globalThis.crypto.randomUUID(),
+  createId: () => string = () => uuid({}),
 ): StageIdentity {
   const id = createId();
   if (id === '') throw new Error('stage identity must be non-empty');

@@ -14,6 +14,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { orpc } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
+import { createUuid } from '../lib/createUuid.ts';
 
 export default function Home() {
   const status = useQuery(orpc.status.queryOptions());
@@ -193,8 +194,8 @@ export default function Home() {
                       : {
                           teamId,
                           name,
-                          protocolId: globalThis.crypto.randomUUID(),
-                          draftId: globalThis.crypto.randomUUID(),
+                          protocolId: createUuid(),
+                          draftId: createUuid(),
                         };
                   creationAttempt.current = attempt;
                   try {

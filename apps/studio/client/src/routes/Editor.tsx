@@ -23,6 +23,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { useStudioStageSession } from '../editor/useStudioStageSession.ts';
 import { orpc, rpcClient } from '../lib/api.ts';
+import { createUuid } from '../lib/createUuid.ts';
 
 const route = getRouteApi(
   '/authenticated/teams/$teamId/protocols/$protocolId/drafts/$draftId',
@@ -118,7 +119,7 @@ export default function Editor() {
 
   const addStage = useMutation({
     mutationFn: async () => {
-      const stageId = globalThis.crypto.randomUUID();
+      const stageId = createUuid();
       await rpcClient.protocols.addInformationStage({ ...params, stageId });
       return stageId;
     },
