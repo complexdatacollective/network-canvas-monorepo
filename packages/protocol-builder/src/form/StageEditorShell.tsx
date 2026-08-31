@@ -1,6 +1,7 @@
 import { LayoutGroup } from 'motion/react';
 import {
   type ReactNode,
+  type RefObject,
   useCallback,
   useContext,
   useEffect,
@@ -76,7 +77,11 @@ export type StageEditorShellProps = Readonly<{
  */
 export default function StageEditorShell(props: StageEditorShellProps) {
   const { identity } = props.controller.snapshot.editedSection;
-  const committed = useCommittedFields(props.controller.snapshot);
+  // The content this form itself last wrote into the session. Everything else
+  // that moves the draft — undo, redo, an acknowledgement, an authoritative
+  // replacement — moved it out from under the controls on screen.
+  const flushed = useRef<string | null>(null);
+  const committed = useCommittedFields(props.controller.snapshot, flushed);
 
   return (
     // Keyed by the stage AND by which agreed draft is being edited. Fresco
@@ -88,7 +93,11 @@ export default function StageEditorShell(props: StageEditorShellProps) {
     <FormStoreProvider
       key={`${identity.type}:${identity.id}:${committed.generation}`}
     >
-      <StageEditorFormBody {...props} committedFields={committed.fields} />
+      <StageEditorFormBody
+        {...props}
+        committedFields={committed.fields}
+        flushed={flushed}
+      />
     </FormStoreProvider>
   );
 }
@@ -99,7 +108,12 @@ function StageEditorFormBody({
   children,
   className,
   committedFields,
-}: StageEditorShellProps & Readonly<{ committedFields: StageFormDraft }>) {
+  flushed,
+}: StageEditorShellProps &
+  Readonly<{
+    committedFields: StageFormDraft;
+    flushed: RefObject<string | null>;
+  }>) {
   const storeApi = useContext(FormStoreContext);
   const formRef = useRef<HTMLFormElement>(null);
   const outline = useMemo(() => new SectionOutlineStore(), []);
@@ -121,14 +135,18 @@ function StageEditorFormBody({
         // session refuses a write from a lease it no longer holds. That is an
         // ordinary lease transition, and it belongs in the form's own errors
         // rather than in a rejected submit promise.
-        controller.changeFields((current) =>
-          stageDraftFromSubmission({
+        controller.changeFields((current) => {
+          const next = stageDraftFromSubmission({
             currentFields: current,
             submittedValues: values as Record<string, FieldValue>,
             mountedPaths: mountedPathsOf(storeApi),
             dormantFields: dormantFieldsOf(storeApi),
-          }),
-        );
+          });
+          // Recorded so the draft moving to exactly this does not read as
+          // something moving under the form: it IS the form.
+          flushed.current = canonicalize(next);
+          return next;
+        });
         await controller.finish();
         return { success: true };
       } catch (error) {
@@ -143,7 +161,7 @@ function StageEditorFormBody({
         };
       }
     },
-    [controller, readOnly, storeApi],
+    [controller, flushed, readOnly, storeApi],
   );
 
   const { formProps, formErrors } = useForm({
@@ -228,33 +246,40 @@ type CommittedDraft = Readonly<{
 }>;
 
 /**
- * The draft as it was last agreed with the host, held steady while the
- * researcher works.
+ * The draft the controls were built from, and a count of how often it has been
+ * replaced beneath them.
  *
- * Every field seeds its `initialValue` from this, and `initialValue` is what
- * the form compares against to decide a field is dirty — so it has to be the
- * saved state, not a live mirror of what is being typed. It moves only when
- * nothing local is outstanding, which is exactly when the session's draft IS
- * the agreed one.
+ * Typing never reaches the session, so the draft moves for exactly two kinds
+ * of reason: this form flushing its own values on submit, and everything else
+ * — undo, redo, an acknowledgement, an authoritative replacement, a rollback
+ * after a lost lease. Only the second kind is a surprise to the controls on
+ * screen, and only it advances the generation the form store is keyed by.
+ *
+ * The distinction has to be made here rather than from `pendingCommands`,
+ * which cannot tell an undo from a submit: both leave a batch outstanding. A
+ * form left mounted through an undo goes on showing the value that was just
+ * undone, and writes it back over the undo when saved.
  *
  * Compared by content, not identity: the session freezes a fresh object into
- * every snapshot, and a snapshot lands whenever validation settles, so
- * identity alone would count every one of those as a new agreed draft.
+ * every snapshot, and one lands whenever validation settles.
  */
-function useCommittedFields(snapshot: ProtocolBuilderSnapshot): CommittedDraft {
-  const committed = useRef<CommittedDraft>({
-    fields: snapshot.editedSection.fields,
-    generation: 0,
-  });
+function useCommittedFields(
+  snapshot: ProtocolBuilderSnapshot,
+  flushed: RefObject<string | null>,
+): CommittedDraft {
   const { fields } = snapshot.editedSection;
+  const committed = useRef<CommittedDraft>({ fields, generation: 0 });
+  const seen = useRef(canonicalize(fields));
+  const content = canonicalize(fields);
 
-  if (
-    snapshot.pendingCommands.length === 0 &&
-    canonicalize(committed.current.fields) !== canonicalize(fields)
-  ) {
+  if (content !== seen.current) {
+    seen.current = content;
     committed.current = {
       fields,
-      generation: committed.current.generation + 1,
+      generation:
+        content === flushed.current
+          ? committed.current.generation
+          : committed.current.generation + 1,
     };
   }
   return committed.current;

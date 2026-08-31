@@ -303,6 +303,28 @@ describe('stageDraftFromSubmission', () => {
     expect(draft.settings).toEqual({ other: 'kept' });
   });
 
+  it('removes a container a clear emptied rather than saving it blank', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: { settings: { enabled: true } },
+      submittedValues: {},
+      mountedPaths: [],
+      // What clearing `settings.enabled` leaves when the only control holding
+      // it was a parked compound field owning `settings`: the tombstone, and
+      // the ancestor emptied along with it.
+      dormantFields: [
+        {
+          name: 'settings.enabled',
+          path: ['settings', 'enabled'],
+          value: undefined,
+        },
+        { name: 'settings', path: ['settings'], value: undefined },
+      ],
+    });
+
+    // Not `{ settings: {} }`, which is not "no capability" to the schema.
+    expect(Object.hasOwn(draft, 'settings')).toBe(false);
+  });
+
   it('does not write through into the draft it was given', () => {
     const currentFields = Object.freeze({
       label: 'Friends',

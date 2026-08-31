@@ -97,10 +97,18 @@ export function useClearStageValue(): (path: string) => void {
         ) {
           continue;
         }
-        const cleared = omitValue(field.value, target.slice(ancestor.length));
+        const relative = target.slice(ancestor.length);
+        const cleared = clearInside(field.value, relative);
         // Identity is `omitValue` reporting that it held nothing there.
         if (cleared === field.value) continue;
-        pathOperations.setFieldValue(ancestor, cleared as FieldValue);
+        // An ancestor the clear emptied goes too, rather than being parked as
+        // `{}`. An empty object is not "no capability" to the protocol schema,
+        // and parking one would also stop the tombstone beneath it from
+        // removing anything — leaving the empty container in the saved stage.
+        pathOperations.setFieldValue(
+          ancestor,
+          isEmptyDictionary(cleared) ? undefined : (cleared as FieldValue),
+        );
       }
     },
     [storeApi],
@@ -248,6 +256,38 @@ function readInside(value: unknown, relative: ObjectPath): unknown {
   // Every node reachable inside a container field's value is itself a value.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return getValue(value as Record<string, unknown>, relative);
+}
+
+/**
+ * A copy of `value` with `relative` removed, and with any container that
+ * removal emptied removed as well.
+ *
+ * The same rule the submit merge applies to the stage draft, applied here to
+ * one field's value: an emptied object is not a value the schema accepts,
+ * while an emptied ROW stays, because removing an array index leaves a hole
+ * rather than closing the gap.
+ */
+function clearInside(value: unknown, relative: ObjectPath): unknown {
+  const removed = omitValue(value, relative);
+  if (removed === value) return value;
+
+  let next = removed;
+  for (let depth = relative.length - 1; depth >= 1; depth -= 1) {
+    const ancestorPath = relative.slice(0, depth);
+    if (!isEmptyDictionary(readInside(next, ancestorPath))) break;
+    if (typeof ancestorPath.at(-1) === 'number') break;
+    next = omitValue(next, ancestorPath);
+  }
+  return next;
+}
+
+function isEmptyDictionary(value: unknown): boolean {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.keys(value).length === 0
+  );
 }
 
 /**

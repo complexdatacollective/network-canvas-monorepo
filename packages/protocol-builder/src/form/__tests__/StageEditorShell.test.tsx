@@ -1018,6 +1018,122 @@ describe('StageEditorShell', () => {
     );
   });
 
+  it('shows the undone value after the host undoes a change', async () => {
+    const user = userEvent.setup();
+    const session = createSession({ onFinish: () => undefined });
+    renderEditor(session);
+
+    await user.clear(screen.getByRole('textbox', { name: 'Page heading' }));
+    await user.type(
+      screen.getByRole('textbox', { name: 'Page heading' }),
+      'A new heading',
+    );
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.title).toBe(
+        'A new heading',
+      ),
+    );
+
+    // What a host's undo control does. The controls were built from the draft
+    // this replaces, so leaving them mounted would go on showing the value
+    // that was just undone — and write it back on the next save.
+    act(() => {
+      session.undo();
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'Welcome to the study',
+      ),
+    );
+  });
+
+  it('saves no trace of a capability cleared out of the control above it', async () => {
+    const user = userEvent.setup();
+    const session = createSession();
+    function CompoundControl({
+      value,
+      onChange,
+      ...rest
+    }: {
+      value?: Record<string, unknown>;
+      onChange?: (next: Record<string, unknown>) => void;
+      id?: string;
+      disabled?: boolean;
+    }) {
+      return (
+        <input
+          {...rest}
+          type="text"
+          value={typeof value?.enabled === 'string' ? value.enabled : ''}
+          onChange={(event) => onChange?.({ enabled: event.target.value })}
+        />
+      );
+    }
+    function OnlyProperty() {
+      const controller = useStageEditorController(session, 'stage-form');
+      const [shown, setShown] = useState(true);
+      return (
+        <StageEditorShell
+          controller={controller}
+          actions={({ formId }) => (
+            <SubmitButton form={formId}>Finished editing</SubmitButton>
+          )}
+        >
+          <BuilderSection
+            title="Advanced settings"
+            capability={{
+              fields: ['settings.enabled'],
+              confirmClear: {
+                title: 'This will clear your advanced settings',
+                description: 'The settings you chose will be deleted.',
+                confirmLabel: 'Clear settings',
+              },
+            }}
+          >
+            <button type="button" onClick={() => setShown((was) => !was)}>
+              Toggle the control
+            </button>
+            {shown && (
+              <ProtocolField<typeof CompoundControl>
+                name="settings"
+                label="Settings"
+                component={CompoundControl}
+              />
+            )}
+          </BuilderSection>
+        </StageEditorShell>
+      );
+    }
+    render(
+      <DialogProvider>
+        <OnlyProperty />
+      </DialogProvider>,
+    );
+
+    await user.click(screen.getByRole('switch', { name: 'Advanced settings' }));
+    await user.type(
+      await screen.findByRole('textbox', { name: 'Settings' }),
+      'yes',
+    );
+    // The capability's path is the only thing this parked control holds.
+    await user.click(
+      screen.getByRole('button', { name: 'Toggle the control' }),
+    );
+    await user.click(screen.getByRole('switch', { name: 'Advanced settings' }));
+    await user.click(screen.getByRole('button', { name: 'Clear settings' }));
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    // Emptying the control that carried it has to take the container with it.
+    // An empty object left behind is not "no capability" to the schema.
+    await waitFor(() =>
+      expect(
+        Object.hasOwn(session.getSnapshot().editedSection.fields, 'settings'),
+      ).toBe(false),
+    );
+  });
+
   it('explains a prerequisite before it explains a switch', async () => {
     const session = createSession();
     function DisabledCapability() {
