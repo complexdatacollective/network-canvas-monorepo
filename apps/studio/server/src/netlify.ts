@@ -11,10 +11,13 @@ import { readEnv } from './env.ts';
 //     lane ever detects a stale schema.
 //   - the WebSocket server and shutdown drain — /ws cannot be served here and
 //     is excluded from `config.path` below
+//   - background invitation delivery — no durable scheduler invokes this
+//     function, so RPC invitation creation is explicitly unavailable rather
+//     than committing an outbox job that nothing can drain
 
 const env = readEnv();
 const pool = env.db ? createPool(env.db) : undefined;
-const app = createApp(env, { pool });
+const app = createApp(env, { invitationDeliveryAvailable: false, pool });
 
 export default async function handler(request: Request): Promise<Response> {
   return app.fetch(request);

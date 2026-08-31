@@ -5,7 +5,6 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   LeaseRejectedError,
-  SyncServer,
   UnknownDraftError,
   UnknownSectionError,
 } from '@codaco/studio-sync/server';
@@ -15,6 +14,7 @@ import {
   DraftStructureError,
   addCodebookEntity,
   addStage,
+  moveStage,
   removeCodebookEntity,
   removeStage,
 } from '../draft-structure.ts';
@@ -25,6 +25,7 @@ import {
   TEST_TEAM_ID,
   baseProtocol,
   makeStoreSchema,
+  makeTestSyncServer,
   storeDb,
   waitForLockWait,
 } from './helpers.ts';
@@ -72,6 +73,46 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     expect(rows.rows[0]).toEqual({ count: 1 });
   });
 
+  it('createProtocol can participate in an existing transaction and reports idempotence', async () => {
+    const protocolId = randomUUID();
+    const draftId = randomUUID();
+    const params = { protocol: baseProtocol(), protocolId, draftId };
+
+    await tenantDb.transaction(async (client) => {
+      await expect(store.createProtocol(params, client)).resolves.toEqual({
+        protocolId,
+        draftId,
+        created: true,
+      });
+      await expect(store.createProtocol(params, client)).resolves.toEqual({
+        protocolId,
+        draftId,
+        created: false,
+      });
+    });
+
+    expect(await store.getDraftDocument(draftId)).toEqual(baseProtocol());
+  });
+
+  it('createProtocol rolls back with its supplied transaction', async () => {
+    const protocolId = randomUUID();
+    const draftId = randomUUID();
+
+    await expect(
+      tenantDb.transaction(async (client) => {
+        await store.createProtocol(
+          { protocol: baseProtocol(), protocolId, draftId },
+          client,
+        );
+        throw new Error('rollback create');
+      }),
+    ).rejects.toThrow('rollback create');
+
+    await expect(
+      store.getProtocolDraftMetadata(protocolId, draftId),
+    ).rejects.toThrow(/no draft/);
+  });
+
   it('reads protocol draft metadata without loading section documents', async () => {
     const { protocolId, draftId } = await store.createProtocol({
       protocol: baseProtocol(),
@@ -98,7 +139,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(tenantDb);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'stage:nameGenerator1', 'tab-1');
     expect(lease).not.toBeNull();
     await sync.commit({
@@ -113,6 +154,42 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       stages: { id: string; label: string }[];
     };
     expect(document.stages[0]!.label).toBe('Renamed');
+  });
+
+  it('sync commits can share an existing transaction and preserve deduplication', async () => {
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    const sync = makeTestSyncServer(tenantDb);
+    const lease = await sync.acquire(draftId, 'settings', 'transaction-tab');
+    expect(lease).not.toBeNull();
+    const params = {
+      draftId,
+      sectionId: 'settings',
+      owner: 'transaction-tab',
+      epoch: lease!.epoch,
+      clientSeq: 1n,
+      commands: [
+        { op: 'set' as const, key: 'description', value: 'Transactional' },
+      ],
+    };
+
+    await expect(
+      tenantDb.transaction(async (client) => {
+        const result = await sync.commit(params, client);
+        expect(result.deduped).toBe(false);
+        throw new Error('rollback commit');
+      }),
+    ).rejects.toThrow('rollback commit');
+
+    const committed = await tenantDb.transaction((client) =>
+      sync.commit(params, client),
+    );
+    expect(committed.deduped).toBe(false);
+    const replayed = await tenantDb.transaction((client) =>
+      sync.commit(params, client),
+    );
+    expect(replayed).toEqual({ ...committed, deduped: true });
   });
 
   it('addStage inserts section and order entry in one manifest advance', async () => {
@@ -143,6 +220,62 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     expect(document.stages.map((stage) => stage.id)).toEqual([
       'nameGenerator1',
       'info1',
+      'sociogram1',
+    ]);
+  });
+
+  it('structural mutations can share an existing transaction', async () => {
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+
+    const result = await tenantDb.transaction(async (client) => {
+      const added = await addStage(
+        tenantDb,
+        {
+          draftId,
+          stage: {
+            id: 'transactionalInfo',
+            type: 'Information',
+            label: 'Transactional',
+            title: 'Transactional',
+            items: [],
+          },
+          index: 1,
+        },
+        client,
+      );
+      const moved = await moveStage(
+        tenantDb,
+        {
+          draftId,
+          stageId: 'transactionalInfo',
+          toIndex: 0,
+          expectedRevision: added.manifestSeq,
+        },
+        client,
+      );
+      const unchanged = await moveStage(
+        tenantDb,
+        {
+          draftId,
+          stageId: 'transactionalInfo',
+          toIndex: 0,
+          expectedRevision: moved.manifestSeq,
+        },
+        client,
+      );
+      return { added, moved, unchanged };
+    });
+
+    expect(result.moved.manifestSeq).toBe(result.added.manifestSeq + 1n);
+    expect(result.unchanged).toEqual(result.moved);
+    const document = (await store.getDraftDocument(draftId)) as {
+      stages: { id: string }[];
+    };
+    expect(document.stages.map((stage) => stage.id)).toEqual([
+      'transactionalInfo',
+      'nameGenerator1',
       'sociogram1',
     ]);
   });
@@ -329,7 +462,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(tenantDb);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'stageOrder', 'editor-tab');
     expect(lease).not.toBeNull();
 
@@ -362,7 +495,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(tenantDb);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(
       draftId,
       'codebook:edge:knows',
@@ -396,7 +529,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(tenantDb);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'settings', 'commit-tab');
 
     const blocker = await db.connect();
@@ -472,7 +605,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(tenantDb);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'stageOrder', 'tab-1');
     await sync.commit({
       draftId,
@@ -493,7 +626,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(tenantDb);
+    const sync = makeTestSyncServer(tenantDb);
     await sync.acquire(draftId, 'stage:sociogram1', 'editor-tab');
     await removeStage(tenantDb, { draftId, stageId: 'sociogram1' });
 
@@ -506,7 +639,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(tenantDb);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'settings', 'editor-tab');
     await store.discardDraft(draftId);
 
@@ -529,7 +662,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(tenantDb);
+    const sync = makeTestSyncServer(tenantDb);
     await sync.acquire(draftId, 'settings', 'tab-1');
     await store.discardDraft(draftId);
 

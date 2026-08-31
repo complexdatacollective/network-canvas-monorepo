@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import type pg from 'pg';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { forceExpire, SyncServer } from '@codaco/studio-sync/server';
 import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import {
@@ -12,10 +13,28 @@ import {
   reachableDb,
   seedTeam,
 } from '../../__tests__/support/postgres.ts';
+import { createProtocolSyncTransactionExecutor } from '../sync.ts';
 
 export const storeDb = await reachableDb();
 
 export const TEST_TEAM_ID = 'team-test';
+
+export function makeTestSyncServer(db: TenantDb, ttlMs?: number): SyncServer {
+  return new SyncServer(db, createProtocolSyncTransactionExecutor(db), ttlMs);
+}
+
+export function expireLease(
+  db: TenantDb,
+  draftId: string,
+  sectionId: string,
+): Promise<void> {
+  return forceExpire(
+    db,
+    createProtocolSyncTransactionExecutor(db),
+    draftId,
+    sectionId,
+  );
+}
 
 export const GC_OPTS = {
   retainManifestsPerDraft: 0,

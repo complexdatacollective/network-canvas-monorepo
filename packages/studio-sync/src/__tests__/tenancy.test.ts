@@ -4,7 +4,7 @@ import type { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
-  SyncServer,
+  type SyncServer,
   UnknownDraftError,
   UnknownSectionDocumentError,
   UnknownSectionError,
@@ -16,6 +16,7 @@ import {
   dbAvailable,
   makeDraft,
   makeServer,
+  makeTestSyncServer,
 } from './helpers.ts';
 
 describe.skipIf(!dbAvailable)('team isolation', () => {
@@ -27,7 +28,7 @@ describe.skipIf(!dbAvailable)('team isolation', () => {
   beforeAll(async () => {
     let app: Pool;
     ({ db, app, server, dispose } = await makeServer('sync_tenancy'));
-    otherServer = new SyncServer(createTenantDb(app, 'team-other'));
+    otherServer = makeTestSyncServer(createTenantDb(app, 'team-other'));
   });
   afterAll(async () => {
     await dispose();

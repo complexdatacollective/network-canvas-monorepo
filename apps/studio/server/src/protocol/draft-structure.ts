@@ -9,6 +9,7 @@ import {
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
+import { runNoAuditTenantTransaction } from '../audit/transaction.ts';
 import { assertSectionValid } from './validate.ts';
 
 export class DraftStructureError extends Error {}
@@ -147,6 +148,7 @@ async function advanceManifest(
 export async function addStage(
   db: TenantDb,
   params: { draftId: string; stage: SectionDoc; index?: number },
+  client?: pg.PoolClient,
 ): Promise<StructuralResult> {
   const stageId = params.stage.id;
   if (typeof stageId !== 'string' || stageId === '') {
@@ -156,8 +158,8 @@ export async function addStage(
   assertSectionValid(id, params.stage);
 
   const teamId = db.teamId;
-  return db.transaction(async (client) => {
-    const head = await lockHead(client, teamId, params.draftId);
+  const add = async (transactionClient: pg.PoolClient) => {
+    const head = await lockHead(transactionClient, teamId, params.draftId);
     if (head.sectionHashes[id] !== undefined) {
       throw new DraftStructureError(`stage ${stageId} already exists`);
     }
@@ -166,23 +168,27 @@ export async function addStage(
     if (orderHash === undefined) {
       throw new DraftStructureError('draft has no stageOrder section');
     }
-    const order = stageOrderOf(await loadDoc(client, teamId, orderHash));
+    const order = stageOrderOf(
+      await loadDoc(transactionClient, teamId, orderHash),
+    );
     const index = params.index ?? order.length;
     if (!Number.isInteger(index) || index < 0 || index > order.length) {
       throw new DraftStructureError(`stage index ${index} out of range`);
     }
     const newOrder = [...order];
     newOrder.splice(index, 0, stageId);
-    await fenceLeases(client, teamId, params.draftId, [orderId, id]);
+    await fenceLeases(transactionClient, teamId, params.draftId, [orderId, id]);
     return advanceManifest(
-      client,
+      transactionClient,
       teamId,
       params.draftId,
       head,
       { [id]: params.stage, [orderId]: { stages: newOrder } },
       [],
     );
-  });
+  };
+  if (client !== undefined) return add(client);
+  return runNoAuditTenantTransaction(db, 'protocol.addStage', add);
 }
 
 export async function removeStage(
@@ -191,28 +197,32 @@ export async function removeStage(
 ): Promise<StructuralResult> {
   const id = sectionId({ kind: 'stage', stageId: params.stageId });
   const teamId = db.teamId;
-  return db.transaction(async (client) => {
-    const head = await lockHead(client, teamId, params.draftId);
-    if (head.sectionHashes[id] === undefined) {
-      throw new DraftStructureError(`no stage ${params.stageId} in draft`);
-    }
-    const orderId = sectionId({ kind: 'stageOrder' });
-    const orderHash = head.sectionHashes[orderId];
-    if (orderHash === undefined) {
-      throw new DraftStructureError('draft has no stageOrder section');
-    }
-    const order = stageOrderOf(await loadDoc(client, teamId, orderHash));
-    const newOrder = order.filter((entry) => entry !== params.stageId);
-    await fenceLeases(client, teamId, params.draftId, [orderId, id]);
-    return advanceManifest(
-      client,
-      teamId,
-      params.draftId,
-      head,
-      { [orderId]: { stages: newOrder } },
-      [id],
-    );
-  });
+  return runNoAuditTenantTransaction(
+    db,
+    'protocol.removeStage',
+    async (client) => {
+      const head = await lockHead(client, teamId, params.draftId);
+      if (head.sectionHashes[id] === undefined) {
+        throw new DraftStructureError(`no stage ${params.stageId} in draft`);
+      }
+      const orderId = sectionId({ kind: 'stageOrder' });
+      const orderHash = head.sectionHashes[orderId];
+      if (orderHash === undefined) {
+        throw new DraftStructureError('draft has no stageOrder section');
+      }
+      const order = stageOrderOf(await loadDoc(client, teamId, orderHash));
+      const newOrder = order.filter((entry) => entry !== params.stageId);
+      await fenceLeases(client, teamId, params.draftId, [orderId, id]);
+      return advanceManifest(
+        client,
+        teamId,
+        params.draftId,
+        head,
+        { [orderId]: { stages: newOrder } },
+        [id],
+      );
+    },
+  );
 }
 
 export async function moveStage(
@@ -223,10 +233,11 @@ export async function moveStage(
     toIndex: number;
     expectedRevision: bigint;
   },
+  client?: pg.PoolClient,
 ): Promise<StructuralResult> {
   const teamId = db.teamId;
-  return db.transaction(async (client) => {
-    const head = await lockHead(client, teamId, params.draftId);
+  const move = async (transactionClient: pg.PoolClient) => {
+    const head = await lockHead(transactionClient, teamId, params.draftId);
     if (head.headSeq !== params.expectedRevision) {
       throw new DraftStructureError(
         `draft changed from revision ${params.expectedRevision} to ${head.headSeq}`,
@@ -237,7 +248,9 @@ export async function moveStage(
     if (orderHash === undefined) {
       throw new DraftStructureError('draft has no stageOrder section');
     }
-    const order = stageOrderOf(await loadDoc(client, teamId, orderHash));
+    const order = stageOrderOf(
+      await loadDoc(transactionClient, teamId, orderHash),
+    );
     const fromIndex = order.indexOf(params.stageId);
     if (fromIndex === -1) {
       throw new DraftStructureError(`no stage ${params.stageId} in draft`);
@@ -259,16 +272,18 @@ export async function moveStage(
       throw new DraftStructureError(`no stage ${params.stageId} in draft`);
     }
     newOrder.splice(params.toIndex, 0, stageId);
-    await fenceLeases(client, teamId, params.draftId, [orderId]);
+    await fenceLeases(transactionClient, teamId, params.draftId, [orderId]);
     return advanceManifest(
-      client,
+      transactionClient,
       teamId,
       params.draftId,
       head,
       { [orderId]: { stages: newOrder } },
       [],
     );
-  });
+  };
+  if (client !== undefined) return move(client);
+  return runNoAuditTenantTransaction(db, 'protocol.moveStage', move);
 }
 
 export type CodebookEntityRef =
@@ -298,21 +313,25 @@ export async function addCodebookEntity(
   const id = entitySectionId(params.ref);
   assertSectionValid(id, params.definition);
   const teamId = db.teamId;
-  return db.transaction(async (client) => {
-    const head = await lockHead(client, teamId, params.draftId);
-    if (head.sectionHashes[id] !== undefined) {
-      throw new DraftStructureError(`codebook section ${id} already exists`);
-    }
-    await fenceLeases(client, teamId, params.draftId, [id]);
-    return advanceManifest(
-      client,
-      teamId,
-      params.draftId,
-      head,
-      { [id]: params.definition },
-      [],
-    );
-  });
+  return runNoAuditTenantTransaction(
+    db,
+    'protocol.addCodebookEntity',
+    async (client) => {
+      const head = await lockHead(client, teamId, params.draftId);
+      if (head.sectionHashes[id] !== undefined) {
+        throw new DraftStructureError(`codebook section ${id} already exists`);
+      }
+      await fenceLeases(client, teamId, params.draftId, [id]);
+      return advanceManifest(
+        client,
+        teamId,
+        params.draftId,
+        head,
+        { [id]: params.definition },
+        [],
+      );
+    },
+  );
 }
 
 export async function removeCodebookEntity(
@@ -321,12 +340,16 @@ export async function removeCodebookEntity(
 ): Promise<StructuralResult> {
   const id = entitySectionId(params.ref);
   const teamId = db.teamId;
-  return db.transaction(async (client) => {
-    const head = await lockHead(client, teamId, params.draftId);
-    if (head.sectionHashes[id] === undefined) {
-      throw new DraftStructureError(`no codebook section ${id} in draft`);
-    }
-    await fenceLeases(client, teamId, params.draftId, [id]);
-    return advanceManifest(client, teamId, params.draftId, head, {}, [id]);
-  });
+  return runNoAuditTenantTransaction(
+    db,
+    'protocol.removeCodebookEntity',
+    async (client) => {
+      const head = await lockHead(client, teamId, params.draftId);
+      if (head.sectionHashes[id] === undefined) {
+        throw new DraftStructureError(`no codebook section ${id} in draft`);
+      }
+      await fenceLeases(client, teamId, params.draftId, [id]);
+      return advanceManifest(client, teamId, params.draftId, head, {}, [id]);
+    },
+  );
 }

@@ -41,11 +41,18 @@ type Trigger = {
   functionName: string;
 };
 
+type Revocation = {
+  privileges: string;
+  table: string;
+  roles: string;
+};
+
 type SchemaMetadata = {
   policies: Policy[];
   roles: Role[];
   forcedTables: string[];
   triggers: Trigger[];
+  revocations: Revocation[];
 };
 
 export type SchemaDocs = {
@@ -89,7 +96,15 @@ function extractMetadata(
     functionName: functionName!,
   }));
 
-  return { policies, roles, forcedTables, triggers };
+  const revocations = [
+    ...sidecarSql.matchAll(/REVOKE\s+([^;]+?)\s+ON\s+(\w+)\s+FROM\s+([^;]+);/g),
+  ].map(([, privileges, table, revocationRoles]) => ({
+    privileges: compactSql(privileges!),
+    table: table!,
+    roles: compactSql(revocationRoles!),
+  }));
+
+  return { policies, roles, forcedTables, triggers, revocations };
 }
 
 function tableNotes(metadata: SchemaMetadata): Map<string, string> {
@@ -220,7 +235,7 @@ function renderSidecarTable(metadata: SchemaMetadata): string[] {
     ],
     [
       'All Studio tables',
-      `Both roles receive SELECT, INSERT, UPDATE, and DELETE through the access sidecar.`,
+      `Both roles initially receive SELECT, INSERT, UPDATE, and DELETE through the access sidecar; table-specific revocations below are applied afterwards.`,
     ],
     [
       codeList(metadata.forcedTables),
@@ -229,6 +244,10 @@ function renderSidecarTable(metadata: SchemaMetadata): string[] {
     ...[...triggersByTable].map(([table, triggers]) => [
       `\`${table}\``,
       triggers.map(triggerDescription).join('; '),
+    ]),
+    ...metadata.revocations.map(({ privileges, table, roles }) => [
+      `\`${table}\` privileges`,
+      `Revokes ${privileges} from ${roles}.`,
     ]),
   ];
 

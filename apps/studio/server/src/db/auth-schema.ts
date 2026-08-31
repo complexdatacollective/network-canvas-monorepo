@@ -1,9 +1,11 @@
 // On a better-auth bump: `npx -y @better-auth/cli@latest generate --config
 // scripts/auth-cli-config.ts`, diff, and fold in changes without altering
 // existing physical names or types.
+import { sql } from 'drizzle-orm';
 import {
   bigint,
   boolean,
+  check,
   index,
   integer,
   pgTable,
@@ -102,16 +104,22 @@ const rateLimit = pgTable('rateLimit', {
 // plugin's schema overrides in src/auth/better-auth.ts (#1249). Property keys
 // are snake_case because the drizzle adapter resolves overridden field names
 // against them.
-export const teams = pgTable('teams', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  slug: text('slug').notNull().unique(),
-  logo: text('logo'),
-  created_at: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  metadata: text('metadata'),
-});
+export const teams = pgTable(
+  'teams',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    slug: text('slug').notNull().unique(),
+    logo: text('logo'),
+    created_at: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    metadata: text('metadata'),
+  },
+  (table) => [
+    check('teams_name_nonblank_check', sql`${table.name} ~ '[^[:space:]]'`),
+  ],
+);
 
 const team_members = pgTable(
   'team_members',
@@ -160,6 +168,9 @@ const team_invitations = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
   },
   (table) => [
+    // Supports the composite outbox FK, which proves a queued delivery's
+    // team_id belongs to its invitation rather than merely trusting a caller.
+    uniqueIndex('team_invitations_id_team_id_idx').on(table.id, table.team_id),
     index('team_invitations_team_id_idx').on(table.team_id),
     index('team_invitations_email_idx').on(table.email),
   ],

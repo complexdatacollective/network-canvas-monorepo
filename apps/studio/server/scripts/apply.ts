@@ -10,6 +10,7 @@ import type pg from 'pg';
 
 import { SCHEMA_FINGERPRINT } from '../src/db/fingerprint.generated.ts';
 import {
+  PRE_PUSH_MIGRATIONS,
   SCHEMA,
   SCHEMA_LOCK_KEY,
   SIDECARS,
@@ -31,7 +32,11 @@ export function renderDrizzleSchemaStatements(): Promise<string[]> {
 }
 
 export async function renderSchemaStatements(): Promise<string[]> {
-  return [...(await renderDrizzleSchemaStatements()), ...SIDECARS];
+  return [
+    ...PRE_PUSH_MIGRATIONS,
+    ...(await renderDrizzleSchemaStatements()),
+    ...SIDECARS,
+  ];
 }
 
 export async function computeSchemaFingerprint(): Promise<string> {
@@ -68,6 +73,7 @@ export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
     if (stamped.rows[0]?.present) {
       await lock.query('delete from "schemaFingerprint"');
     }
+    await lock.query(PRE_PUSH_MIGRATIONS.join('\n'));
     const push = await pushSchema(SCHEMA, drizzle({ client: pool }));
     await push.apply();
     await lock.query(SIDECARS.join('\n'));

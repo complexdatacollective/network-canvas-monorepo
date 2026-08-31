@@ -47,6 +47,18 @@ describe.skipIf(!db)('team-scoped procedures', () => {
     for (const teamId of ['team-a', 'team-b']) {
       await seedTeam(scratch.pool, teamId);
     }
+    await scratch.pool.query(
+      `INSERT INTO "user" (id, name, email, "emailVerified")
+       VALUES ($1, $2, $3, true)`,
+      [PRINCIPAL.userId, PRINCIPAL.name, PRINCIPAL.email],
+    );
+    for (const teamId of ['team-a', 'team-b']) {
+      await scratch.pool.query(
+        `INSERT INTO team_members (id, team_id, user_id, role)
+         VALUES ($1, $2, $3, 'member')`,
+        [`membership-${teamId}`, teamId, PRINCIPAL.userId],
+      );
+    }
     memberships = { 'team-a': { role: 'member' } };
     const auth = stubAuthService({
       getSession: () => Promise.resolve(PRINCIPAL),

@@ -77,6 +77,7 @@ describe.skipIf(!db)('row-level security', () => {
       .toSorted();
     // Spelled out so a new tenant table cannot slip in without a policy.
     expect(expected).toEqual([
+      'audit_events',
       'command_log',
       'drafts',
       'leases',
@@ -85,6 +86,7 @@ describe.skipIf(!db)('row-level security', () => {
       'protocol_versions',
       'protocols',
       'sections',
+      'team_invitation_deliveries',
       'version_sections',
     ]);
 
@@ -112,7 +114,9 @@ describe.skipIf(!db)('row-level security', () => {
         table,
         enabled: true,
         forced: true,
-        policies: ['team_isolation'],
+        policies: [
+          table === 'audit_events' ? 'audit_team_isolation' : 'team_isolation',
+        ],
       })),
     );
     const others = rows.rows.filter((row) => !expected.includes(row.table));

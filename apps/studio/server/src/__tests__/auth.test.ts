@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createApp } from '../app.ts';
 import { createBetterAuthService } from '../auth/better-auth.ts';
-import type { SessionPrincipal } from '../auth/service.ts';
+import type { AuthService, SessionPrincipal } from '../auth/service.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
@@ -184,6 +184,26 @@ async function signInWithMagicLink(pool: pg.Pool, prefix: string) {
   return { app, auth, email, cookie };
 }
 
+function callBetterAuthOrganizationRoute(
+  auth: AuthService,
+  path: `/api/auth/organization/${string}`,
+  cookie: string,
+  body: object,
+): Promise<Response> {
+  if (!env.auth) throw new Error('dev env must configure auth');
+  return auth.handler(
+    new Request(new URL(path, env.auth.baseUrl), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'origin': env.auth.baseUrl,
+        cookie,
+      },
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
 describe.skipIf(!db)('magic-link sign-in', () => {
   it('signs in end to end: send, verify, session, me', async () => {
     if (!db) throw new Error('unreachable');
@@ -219,17 +239,16 @@ describe.skipIf(!db)('teams (organization plugin)', () => {
       );
       const me = await createRpcClient(app, { cookie }).me();
 
-      // Through the plugin's own endpoint: exercises the drizzle adapter
-      // against the folded team tables end to end.
-      const create = await app.request('/api/auth/organization/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'origin': 'http://localhost:5173',
-          cookie,
-        },
-        body: JSON.stringify({ name: 'My Study Group', slug: 'my-studies' }),
-      });
+      // Call the plugin handler directly in this integration test. Studio's
+      // public forwarding boundary blocks organization creation until the
+      // application owns an audited command, while this still exercises the
+      // adapter against the folded team tables end to end.
+      const create = await callBetterAuthOrganizationRoute(
+        auth,
+        '/api/auth/organization/create',
+        cookie,
+        { name: 'My Study Group', slug: 'my-studies' },
+      );
       expect(create.status).toBe(200);
       const team = (await create.json()) as { id: string; slug: string };
       expect(team.slug).toBe('my-studies');
@@ -260,30 +279,24 @@ describe.skipIf(!db)('teams (organization plugin)', () => {
     const scratch = await createScratchSchema(db);
     try {
       await provisionScratchSchema(scratch.pool);
-      const { app, cookie } = await signInWithMagicLink(scratch.app, 'owner');
-      const create = await app.request('/api/auth/organization/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'origin': 'http://localhost:5173',
-          cookie,
-        },
-        body: JSON.stringify({ name: 'Doomed', slug: 'doomed' }),
-      });
+      const { auth, cookie } = await signInWithMagicLink(scratch.app, 'owner');
+      const create = await callBetterAuthOrganizationRoute(
+        auth,
+        '/api/auth/organization/create',
+        cookie,
+        { name: 'Doomed', slug: 'doomed' },
+      );
       expect(create.status).toBe(200);
       const team = (await create.json()) as { id: string };
 
       // The owner would otherwise be allowed to delete it, orphaning every
       // sync-side row that names the team without a foreign key.
-      const deleted = await app.request('/api/auth/organization/delete', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'origin': 'http://localhost:5173',
-          cookie,
-        },
-        body: JSON.stringify({ organizationId: team.id }),
-      });
+      const deleted = await callBetterAuthOrganizationRoute(
+        auth,
+        '/api/auth/organization/delete',
+        cookie,
+        { organizationId: team.id },
+      );
       expect(deleted.status).not.toBe(200);
       expect(await deleted.json()).toMatchObject({
         code: 'ORGANIZATION_DELETION_DISABLED',

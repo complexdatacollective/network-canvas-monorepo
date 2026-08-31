@@ -1,7 +1,6 @@
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { SyncServer } from '@codaco/studio-sync/server';
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import { ProtocolStore } from '../store.ts';
@@ -10,6 +9,7 @@ import {
   TEST_TEAM_ID,
   baseProtocol,
   makeStoreSchema,
+  makeTestSyncServer,
   readFixtureProtocol,
   storeDb,
 } from './helpers.ts';
@@ -19,7 +19,7 @@ async function setDescription(
   draftId: string,
   description: string,
 ) {
-  const sync = new SyncServer(db);
+  const sync = makeTestSyncServer(db);
   const owner = `tab-${description}`;
   const lease = await sync.acquire(draftId, 'settings', owner);
   await sync.commit({
@@ -106,7 +106,7 @@ describe.skipIf(!storeDb)('publishDraft', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(tenantDb);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(
       draftId,
       'stage:nameGenerator1',

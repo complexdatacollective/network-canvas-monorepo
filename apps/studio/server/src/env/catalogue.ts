@@ -146,24 +146,25 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
   PUBLIC_URL: {
     group: 'Authentication',
     summary:
-      'The browser-facing origin. Cookies and magic-link URLs are minted against it.',
+      'The browser-facing origin. Cookies, magic-link URLs, and team-invitation URLs are minted against it.',
     deployment: 'Required whenever `DATABASE_URL` is set.',
     devDefault: DEV.baseUrl,
     example: 'https://studio.example.org',
   },
   SMTP_URL: {
     group: 'Authentication',
-    summary: 'SMTP transport magic-link email is sent through.',
+    summary:
+      'SMTP transport sign-in and team-invitation email is sent through.',
     deployment:
-      'Unset ⇒ magic-link sends refuse. A sign-in link is never written to the log outside development.',
+      'Unset ⇒ magic-link sends refuse and team invitations cannot be created. A sign-in or invitation link is never written to the log outside development.',
     example: 'smtp://user:password@smtp.example.org:587',
   },
   EMAIL_FROM: {
     group: 'Authentication',
-    summary: 'From address on magic-link email.',
+    summary: 'From address on sign-in and team-invitation email.',
     deployment: 'Required alongside `SMTP_URL`, and refused without it.',
     devDefault: DEV.emailFrom,
-    example: 'signin@studio.example.org',
+    example: 'studio@studio.example.org',
   },
   GOOGLE_CLIENT_ID: {
     group: 'Authentication',

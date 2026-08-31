@@ -4,33 +4,88 @@ import type pg from 'pg';
 import { contract } from '@codaco/studio-rpc';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
+import { AuditCommandTeamNotFoundError } from './audit/command.ts';
 import type { AuthService, Principal } from './auth/service.ts';
 import { type AuthCapabilities, getInstanceStatus } from './domain.ts';
-import { addStage, moveStage } from './protocol/draft-structure.ts';
-import { emptyProtocol } from './protocol/sectionize.ts';
+import {
+  addAuditedInformationStage,
+  commitAuditedProtocolSection,
+  createAuditedProtocol,
+  moveAuditedProtocolStage,
+  ProtocolCommandAuthorizationError,
+} from './protocol/commands.ts';
 import { ProtocolStore } from './protocol/store.ts';
 import { createProtocolSyncServer } from './protocol/sync.ts';
+import {
+  acceptTeamInvitation,
+  cancelTeamInvitation,
+  createTeamInvitation,
+  TeamCommandError,
+  updateTeamMemberRole,
+} from './team/commands.ts';
 
 // The SPA's internal surface: unpublished and free-moving within the
 // deploy-compatibility rules on #1245 — its only client is the Studio SPA.
 
 export type RpcContext = {
   principal: Principal | null;
+  requestId: string;
 };
 
 const os = implement(contract).$context<RpcContext>();
 
 const requireUser = os.middleware(({ context, next }) => {
-  const { principal } = context;
+  const { principal, requestId } = context;
   if (!principal) throw new ORPCError('UNAUTHORIZED');
-  return next({ context: { principal } });
+  return next({ context: { principal, requestId } });
 });
+
+async function handleTeamCommand<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (error instanceof AuditCommandTeamNotFoundError) {
+      throw new ORPCError('NOT_FOUND');
+    }
+    if (!(error instanceof TeamCommandError)) throw error;
+    if (error.code === 'OVERLOADED') {
+      throw new ORPCError('TOO_MANY_REQUESTS');
+    }
+    if (error.code === 'FORBIDDEN') throw new ORPCError('FORBIDDEN');
+    if (error.code === 'NOT_FOUND') throw new ORPCError('NOT_FOUND');
+    if (error.code === 'CONFLICT') throw new ORPCError('CONFLICT');
+    if (error.code === 'DELIVERY_IN_PROGRESS') {
+      throw new ORPCError('CONFLICT');
+    }
+    throw new ORPCError('BAD_REQUEST');
+  }
+}
+
+async function handleAuditedProtocolCommand<T>(
+  work: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (error instanceof ProtocolCommandAuthorizationError) {
+      throw new ORPCError('FORBIDDEN');
+    }
+    if (error instanceof AuditCommandTeamNotFoundError) {
+      throw new ORPCError('NOT_FOUND');
+    }
+    throw error;
+  }
+}
 
 export function createRpcRouter(
   caps: AuthCapabilities,
-  deps: { auth: AuthService; pool?: pg.Pool },
+  deps: {
+    auth: AuthService;
+    invitationDeliveryAvailable: boolean;
+    pool?: pg.Pool;
+  },
 ) {
-  const { auth, pool } = deps;
+  const { auth, invitationDeliveryAvailable, pool } = deps;
   // Tenancy is checked per request against an explicit teamId in the
   // procedure input — never the session's active team. A non-member and a
   // nonexistent team both read FORBIDDEN, so the check is not an existence
@@ -49,6 +104,7 @@ export function createRpcRouter(
       return next({
         context: {
           principal,
+          requestId: context.requestId,
           team: { id: input.teamId, role: membership.role },
           tenantDb: createTenantDb(pool, input.teamId),
         },
@@ -64,17 +120,83 @@ export function createRpcRouter(
       emailVerified: context.principal.emailVerified,
       name: context.principal.name,
     })),
+    team: {
+      acceptInvitation: os.team.acceptInvitation
+        .use(requireUser)
+        .handler(({ context, input }) => {
+          if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
+          return handleTeamCommand(() =>
+            acceptTeamInvitation(
+              {
+                pool,
+                principal: context.principal,
+                requestId: context.requestId,
+              },
+              input,
+            ),
+          );
+        }),
+      updateMemberRole: os.team.updateMemberRole
+        .use(requireTeam)
+        .handler(({ context, input }) =>
+          handleTeamCommand(() =>
+            updateTeamMemberRole(
+              {
+                tenantDb: context.tenantDb,
+                principal: context.principal,
+                requestId: context.requestId,
+              },
+              { memberId: input.memberId, role: input.role },
+            ),
+          ),
+        ),
+      createInvitation: os.team.createInvitation
+        .use(requireTeam)
+        .handler(({ context, input }) => {
+          if (!invitationDeliveryAvailable) {
+            throw new ORPCError('SERVICE_UNAVAILABLE');
+          }
+          return handleTeamCommand(() =>
+            createTeamInvitation(
+              {
+                tenantDb: context.tenantDb,
+                principal: context.principal,
+                requestId: context.requestId,
+              },
+              { email: input.email, role: input.role },
+            ),
+          );
+        }),
+      cancelInvitation: os.team.cancelInvitation
+        .use(requireTeam)
+        .handler(({ context, input }) =>
+          handleTeamCommand(() =>
+            cancelTeamInvitation(
+              {
+                tenantDb: context.tenantDb,
+                principal: context.principal,
+                requestId: context.requestId,
+              },
+              { invitationId: input.invitationId },
+            ),
+          ),
+        ),
+    },
     protocols: {
       create: os.protocols.create
         .use(requireTeam)
-        .handler(async ({ context, input }) => {
-          const store = new ProtocolStore(context.tenantDb);
-          return store.createProtocol({
-            protocol: emptyProtocol(input.name),
-            protocolId: input.protocolId,
-            draftId: input.draftId,
-          });
-        }),
+        .handler(({ context, input }) =>
+          handleAuditedProtocolCommand(() =>
+            createAuditedProtocol(
+              {
+                tenantDb: context.tenantDb,
+                principal: context.principal,
+                requestId: context.requestId,
+              },
+              input,
+            ),
+          ),
+        ),
       list: os.protocols.list
         .use(requireTeam)
         .handler(({ context }) =>
@@ -136,26 +258,18 @@ export function createRpcRouter(
         }),
       commitSection: os.protocols.commitSection
         .use(requireTeam)
-        .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
-            input.protocolId,
-            input.draftId,
-          );
-          const result = await createProtocolSyncServer(
-            context.tenantDb,
-          ).commit({
-            draftId: input.draftId,
-            sectionId: input.sectionId,
-            owner: `${context.principal.userId}:${input.clientId}`,
-            epoch: BigInt(input.leaseEpoch),
-            clientSeq: BigInt(input.clientSequence),
-            commands: input.commands,
-          });
-          return {
-            sequence: String(result.manifestSeq),
-            hash: result.manifestHash,
-          };
-        }),
+        .handler(({ context, input }) =>
+          handleAuditedProtocolCommand(() =>
+            commitAuditedProtocolSection(
+              {
+                tenantDb: context.tenantDb,
+                principal: context.principal,
+                requestId: context.requestId,
+              },
+              input,
+            ),
+          ),
+        ),
       renewSection: os.protocols.renewSection
         .use(requireTeam)
         .handler(async ({ context, input }) => {
@@ -190,44 +304,32 @@ export function createRpcRouter(
         }),
       addInformationStage: os.protocols.addInformationStage
         .use(requireTeam)
-        .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
-            input.protocolId,
-            input.draftId,
-          );
-          const result = await addStage(context.tenantDb, {
-            draftId: input.draftId,
-            stage: {
-              id: input.stageId,
-              type: 'Information',
-              label: 'Untitled screen',
-              title: 'Untitled screen',
-              items: [],
-            },
-          });
-          return {
-            sequence: String(result.manifestSeq),
-            hash: result.manifestHash,
-          };
-        }),
+        .handler(({ context, input }) =>
+          handleAuditedProtocolCommand(() =>
+            addAuditedInformationStage(
+              {
+                tenantDb: context.tenantDb,
+                principal: context.principal,
+                requestId: context.requestId,
+              },
+              input,
+            ),
+          ),
+        ),
       moveStage: os.protocols.moveStage
         .use(requireTeam)
-        .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
-            input.protocolId,
-            input.draftId,
-          );
-          const result = await moveStage(context.tenantDb, {
-            draftId: input.draftId,
-            stageId: input.stageId,
-            toIndex: input.toIndex,
-            expectedRevision: BigInt(input.expectedRevision),
-          });
-          return {
-            sequence: String(result.manifestSeq),
-            hash: result.manifestHash,
-          };
-        }),
+        .handler(({ context, input }) =>
+          handleAuditedProtocolCommand(() =>
+            moveAuditedProtocolStage(
+              {
+                tenantDb: context.tenantDb,
+                principal: context.principal,
+                requestId: context.requestId,
+              },
+              input,
+            ),
+          ),
+        ),
     },
   };
 }

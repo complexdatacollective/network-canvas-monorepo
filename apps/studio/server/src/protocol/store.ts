@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
+import type pg from 'pg';
+
 import {
   type CurrentProtocol,
   type ProtocolValidationIssue,
@@ -17,6 +19,7 @@ import {
 } from '@codaco/studio-sync/taxonomy';
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
+import { runNoAuditTenantTransaction } from '../audit/transaction.ts';
 import { type ProtocolChange, diffProtocolSections } from './diff.ts';
 import { insertDraftRows } from './draft-rows.ts';
 import { sectionizeProtocol } from './sectionize.ts';
@@ -59,6 +62,21 @@ export type ProtocolRow = {
   name: string;
   createdAt: Date;
   updatedAt: Date;
+};
+
+type CreateProtocolResult = {
+  protocolId: string;
+  draftId: string;
+};
+
+type CreateProtocolParams = {
+  protocol: CurrentProtocol;
+  protocolId?: string;
+  draftId?: string;
+};
+
+type CreateProtocolTransactionResult = CreateProtocolResult & {
+  created: boolean;
 };
 
 type EditableProtocolRow = Omit<ProtocolRow, 'draftId'> & { draftId: string };
@@ -136,26 +154,34 @@ export class ProtocolStore {
 
   // Sections are write-time validated; the document is not required to pass
   // whole-protocol validation until publish.
-  async createProtocol(params: {
-    protocol: CurrentProtocol;
-    protocolId?: string;
-    draftId?: string;
-  }): Promise<{ protocolId: string; draftId: string }> {
+  async createProtocol(
+    params: CreateProtocolParams,
+  ): Promise<CreateProtocolResult>;
+  async createProtocol(
+    params: CreateProtocolParams,
+    client: pg.PoolClient,
+  ): Promise<CreateProtocolTransactionResult>;
+  async createProtocol(
+    params: CreateProtocolParams,
+    client?: pg.PoolClient,
+  ): Promise<CreateProtocolResult | CreateProtocolTransactionResult> {
     const protocolId = params.protocolId ?? randomUUID();
     const draftId = params.draftId ?? randomUUID();
     const sections = sectionizeProtocol(params.protocol);
     assertNoValidationFailures(sections);
 
     const teamId = this.db.teamId;
-    return this.db.transaction(async (client) => {
-      const inserted = await client.query(
+    const create = async (
+      transactionClient: pg.PoolClient,
+    ): Promise<CreateProtocolTransactionResult> => {
+      const inserted = await transactionClient.query(
         `INSERT INTO protocols (id, team_id, name) VALUES ($1, $2, $3)
          ON CONFLICT (id) DO NOTHING
          RETURNING id`,
         [protocolId, teamId, params.protocol.name],
       );
       if (inserted.rowCount === 0) {
-        const existing = await client.query(
+        const existing = await transactionClient.query(
           `SELECT p.name, pd.draft_id
            FROM protocols p
            JOIN protocol_drafts pd
@@ -167,20 +193,28 @@ export class ProtocolStore {
           | { name: string; draft_id: string }
           | undefined;
         if (row?.name === params.protocol.name && row.draft_id === draftId) {
-          return { protocolId, draftId };
+          return { protocolId, draftId, created: false };
         }
         throw new ProtocolStoreError(
           `protocol creation identity ${protocolId} is already in use`,
         );
       }
-      await insertDraftRows(client, teamId, draftId, sections);
-      await client.query(
+      await insertDraftRows(transactionClient, teamId, draftId, sections);
+      await transactionClient.query(
         `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id)
          VALUES ($1, $2, $3)`,
         [draftId, teamId, protocolId],
       );
-      return { protocolId, draftId };
-    });
+      return { protocolId, draftId, created: true };
+    };
+
+    if (client !== undefined) return create(client);
+    const result = await runNoAuditTenantTransaction(
+      this.db,
+      'protocol.create',
+      create,
+    );
+    return { protocolId: result.protocolId, draftId: result.draftId };
   }
 
   async createDraftFromVersion(params: {
@@ -189,38 +223,44 @@ export class ProtocolStore {
   }): Promise<{ draftId: string; protocolId: string }> {
     const draftId = params.draftId ?? randomUUID();
     const teamId = this.db.teamId;
-    return this.db.transaction(async (client) => {
-      const version = await client.query(
-        `SELECT protocol_id FROM protocol_versions
+    return runNoAuditTenantTransaction(
+      this.db,
+      'protocol.createDraftFromVersion',
+      async (client) => {
+        const version = await client.query(
+          `SELECT protocol_id FROM protocol_versions
          WHERE id = $1 AND team_id = $2`,
-        [params.versionId, teamId],
-      );
-      const versionRow = version.rows[0] as { protocol_id: string } | undefined;
-      if (versionRow === undefined) {
-        throw new ProtocolStoreError(`no version ${params.versionId}`);
-      }
-      const pins = await client.query(
-        `SELECT vs.section_id, vs.section_hash, s.doc
+          [params.versionId, teamId],
+        );
+        const versionRow = version.rows[0] as
+          | { protocol_id: string }
+          | undefined;
+        if (versionRow === undefined) {
+          throw new ProtocolStoreError(`no version ${params.versionId}`);
+        }
+        const pins = await client.query(
+          `SELECT vs.section_id, vs.section_hash, s.doc
          FROM version_sections vs
          JOIN sections s ON s.team_id = vs.team_id AND s.hash = vs.section_hash
          WHERE vs.version_id = $1 AND vs.team_id = $2`,
-        [params.versionId, teamId],
-      );
-      const sections: Record<string, SectionDoc> = {};
-      for (const row of pins.rows as {
-        section_id: string;
-        doc: SectionDoc;
-      }[]) {
-        sections[row.section_id] = row.doc;
-      }
-      await insertDraftRows(client, teamId, draftId, sections);
-      await client.query(
-        `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id, based_on_version_id)
+          [params.versionId, teamId],
+        );
+        const sections: Record<string, SectionDoc> = {};
+        for (const row of pins.rows as {
+          section_id: string;
+          doc: SectionDoc;
+        }[]) {
+          sections[row.section_id] = row.doc;
+        }
+        await insertDraftRows(client, teamId, draftId, sections);
+        await client.query(
+          `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id, based_on_version_id)
          VALUES ($1, $2, $3, $4)`,
-        [draftId, teamId, versionRow.protocol_id, params.versionId],
-      );
-      return { draftId, protocolId: versionRow.protocol_id };
-    });
+          [draftId, teamId, versionRow.protocol_id, params.versionId],
+        );
+        return { draftId, protocolId: versionRow.protocol_id };
+      },
+    );
   }
 
   async getDraftSections(draftId: string): Promise<DraftSections> {
@@ -370,79 +410,85 @@ export class ProtocolStore {
     const name = typeof settings?.name === 'string' ? settings.name : null;
 
     const teamId = this.db.teamId;
-    return this.db.transaction(async (client): Promise<PublishResult> => {
-      const lockedHead = await client.query(
-        `SELECT head_seq, head_manifest_hash FROM drafts
+    return runNoAuditTenantTransaction(
+      this.db,
+      'protocol.publishDraft',
+      async (client): Promise<PublishResult> => {
+        const lockedHead = await client.query(
+          `SELECT head_seq, head_manifest_hash FROM drafts
          WHERE id = $1 AND team_id = $2 FOR UPDATE`,
-        [params.draftId, teamId],
-      );
-      const lockedRow = lockedHead.rows[0] as
-        | { head_seq: string; head_manifest_hash: string }
-        | undefined;
-      if (lockedRow === undefined) {
-        throw new ProtocolStoreError(`no draft ${params.draftId}`);
-      }
-      if (lockedRow.head_manifest_hash !== head.headManifestHash) {
-        return {
-          status: 'conflict',
-          headManifestHash: lockedRow.head_manifest_hash,
-        };
-      }
-
-      const draftRow = await client.query(
-        `SELECT protocol_id, based_on_version_id FROM protocol_drafts
-         WHERE draft_id = $1 AND team_id = $2`,
-        [params.draftId, teamId],
-      );
-      const draft = draftRow.rows[0] as
-        | { protocol_id: string; based_on_version_id: string | null }
-        | undefined;
-      if (draft === undefined) {
-        throw new ProtocolStoreError(
-          `draft ${params.draftId} belongs to no protocol`,
+          [params.draftId, teamId],
         );
-      }
-
-      await client.query(
-        `SELECT 1 FROM protocols WHERE id = $1 AND team_id = $2 FOR UPDATE`,
-        [draft.protocol_id, teamId],
-      );
-
-      const versionHash = versionContentHash(head.sectionHashes);
-      const existing = await client.query(
-        `SELECT id, version_number FROM protocol_versions
-         WHERE protocol_id = $1 AND version_hash = $2 AND team_id = $3`,
-        [draft.protocol_id, versionHash, teamId],
-      );
-      const existingRow = existing.rows[0] as
-        | { id: string; version_number: number }
-        | undefined;
-      if (existingRow !== undefined) {
-        return {
-          status: 'unchanged',
-          versionId: existingRow.id,
-          versionNumber: existingRow.version_number,
-        };
-      }
-
-      let migratedFrom: string | null = null;
-      if (draft.based_on_version_id !== null) {
-        const basis = await client.query(
-          `SELECT schema_version FROM protocol_versions
-           WHERE id = $1 AND team_id = $2`,
-          [draft.based_on_version_id, teamId],
-        );
-        const basisRow = basis.rows[0] as
-          | { schema_version: number }
+        const lockedRow = lockedHead.rows[0] as
+          | { head_seq: string; head_manifest_hash: string }
           | undefined;
-        if (basisRow !== undefined && basisRow.schema_version < schemaVersion) {
-          migratedFrom = draft.based_on_version_id;
+        if (lockedRow === undefined) {
+          throw new ProtocolStoreError(`no draft ${params.draftId}`);
         }
-      }
+        if (lockedRow.head_manifest_hash !== head.headManifestHash) {
+          return {
+            status: 'conflict',
+            headManifestHash: lockedRow.head_manifest_hash,
+          };
+        }
 
-      const versionId = randomUUID();
-      const inserted = await client.query(
-        `INSERT INTO protocol_versions
+        const draftRow = await client.query(
+          `SELECT protocol_id, based_on_version_id FROM protocol_drafts
+         WHERE draft_id = $1 AND team_id = $2`,
+          [params.draftId, teamId],
+        );
+        const draft = draftRow.rows[0] as
+          | { protocol_id: string; based_on_version_id: string | null }
+          | undefined;
+        if (draft === undefined) {
+          throw new ProtocolStoreError(
+            `draft ${params.draftId} belongs to no protocol`,
+          );
+        }
+
+        await client.query(
+          `SELECT 1 FROM protocols WHERE id = $1 AND team_id = $2 FOR UPDATE`,
+          [draft.protocol_id, teamId],
+        );
+
+        const versionHash = versionContentHash(head.sectionHashes);
+        const existing = await client.query(
+          `SELECT id, version_number FROM protocol_versions
+         WHERE protocol_id = $1 AND version_hash = $2 AND team_id = $3`,
+          [draft.protocol_id, versionHash, teamId],
+        );
+        const existingRow = existing.rows[0] as
+          | { id: string; version_number: number }
+          | undefined;
+        if (existingRow !== undefined) {
+          return {
+            status: 'unchanged',
+            versionId: existingRow.id,
+            versionNumber: existingRow.version_number,
+          };
+        }
+
+        let migratedFrom: string | null = null;
+        if (draft.based_on_version_id !== null) {
+          const basis = await client.query(
+            `SELECT schema_version FROM protocol_versions
+           WHERE id = $1 AND team_id = $2`,
+            [draft.based_on_version_id, teamId],
+          );
+          const basisRow = basis.rows[0] as
+            | { schema_version: number }
+            | undefined;
+          if (
+            basisRow !== undefined &&
+            basisRow.schema_version < schemaVersion
+          ) {
+            migratedFrom = draft.based_on_version_id;
+          }
+        }
+
+        const versionId = randomUUID();
+        const inserted = await client.query(
+          `INSERT INTO protocol_versions
            (id, protocol_id, team_id, version_number, label, version_hash,
             manifest, schema_version, source_draft_id, source_manifest_hash,
             migrated_from_version_id)
@@ -455,37 +501,38 @@ export class ProtocolStore {
          FROM protocol_versions v
          WHERE v.protocol_id = $2 AND v.team_id = $10
          RETURNING version_number`,
-        [
-          versionId,
-          draft.protocol_id,
-          params.label ?? null,
-          versionHash,
-          params.draftId,
-          String(head.headSeq),
-          schemaVersion,
-          head.headManifestHash,
-          migratedFrom,
-          teamId,
-        ],
-      );
-      const versionNumber = (inserted.rows[0] as { version_number: number })
-        .version_number;
-      for (const [id, hash] of Object.entries(head.sectionHashes)) {
-        await client.query(
-          `INSERT INTO version_sections (version_id, team_id, section_id, section_hash)
+          [
+            versionId,
+            draft.protocol_id,
+            params.label ?? null,
+            versionHash,
+            params.draftId,
+            String(head.headSeq),
+            schemaVersion,
+            head.headManifestHash,
+            migratedFrom,
+            teamId,
+          ],
+        );
+        const versionNumber = (inserted.rows[0] as { version_number: number })
+          .version_number;
+        for (const [id, hash] of Object.entries(head.sectionHashes)) {
+          await client.query(
+            `INSERT INTO version_sections (version_id, team_id, section_id, section_hash)
            VALUES ($1, $2, $3, $4)`,
-          [versionId, teamId, id, hash],
-        );
-      }
-      if (name !== null) {
-        await client.query(
-          `UPDATE protocols SET name = $2, updated_at = now()
+            [versionId, teamId, id, hash],
+          );
+        }
+        if (name !== null) {
+          await client.query(
+            `UPDATE protocols SET name = $2, updated_at = now()
            WHERE id = $1 AND team_id = $3`,
-          [draft.protocol_id, name, teamId],
-        );
-      }
-      return { status: 'published', versionId, versionNumber, versionHash };
-    });
+            [draft.protocol_id, name, teamId],
+          );
+        }
+        return { status: 'published', versionId, versionNumber, versionHash };
+      },
+    );
   }
 
   async getVersionSections(versionId: string): Promise<{
@@ -609,31 +656,35 @@ export class ProtocolStore {
   // Section documents are left for garbage collection.
   async discardDraft(draftId: string): Promise<void> {
     const teamId = this.db.teamId;
-    await this.db.transaction(async (client) => {
-      await client.query(
-        `SELECT 1 FROM drafts WHERE id = $1 AND team_id = $2 FOR UPDATE`,
-        [draftId, teamId],
-      );
-      await client.query(
-        `DELETE FROM leases WHERE draft_id = $1 AND team_id = $2`,
-        [draftId, teamId],
-      );
-      await client.query(
-        `DELETE FROM command_log WHERE draft_id = $1 AND team_id = $2`,
-        [draftId, teamId],
-      );
-      await client.query(
-        `DELETE FROM protocol_drafts WHERE draft_id = $1 AND team_id = $2`,
-        [draftId, teamId],
-      );
-      await client.query(
-        `DELETE FROM manifests WHERE draft_id = $1 AND team_id = $2`,
-        [draftId, teamId],
-      );
-      await client.query(`DELETE FROM drafts WHERE id = $1 AND team_id = $2`, [
-        draftId,
-        teamId,
-      ]);
-    });
+    await runNoAuditTenantTransaction(
+      this.db,
+      'protocol.discardDraft',
+      async (client) => {
+        await client.query(
+          `SELECT 1 FROM drafts WHERE id = $1 AND team_id = $2 FOR UPDATE`,
+          [draftId, teamId],
+        );
+        await client.query(
+          `DELETE FROM leases WHERE draft_id = $1 AND team_id = $2`,
+          [draftId, teamId],
+        );
+        await client.query(
+          `DELETE FROM command_log WHERE draft_id = $1 AND team_id = $2`,
+          [draftId, teamId],
+        );
+        await client.query(
+          `DELETE FROM protocol_drafts WHERE draft_id = $1 AND team_id = $2`,
+          [draftId, teamId],
+        );
+        await client.query(
+          `DELETE FROM manifests WHERE draft_id = $1 AND team_id = $2`,
+          [draftId, teamId],
+        );
+        await client.query(
+          `DELETE FROM drafts WHERE id = $1 AND team_id = $2`,
+          [draftId, teamId],
+        );
+      },
+    );
   }
 }

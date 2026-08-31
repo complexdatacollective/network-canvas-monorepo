@@ -13,6 +13,7 @@ import {
 import { SCHEMA_FINGERPRINT } from '../db/fingerprint.generated.ts';
 import {
   checkSchema,
+  SIDECARS,
   SCHEMA_TABLES,
   type StaleSchema,
   schemaProblemMessage,
@@ -45,6 +46,14 @@ describe('fingerprint constant', () => {
   it('is resynced by a script package.json declares', () => {
     expect(readManifestScripts()).toHaveProperty('sync-fingerprint');
   });
+
+  it('applies audit immutability after every general privilege grant', () => {
+    const sql = SIDECARS.join('\n');
+    expect(sql.lastIndexOf('REVOKE UPDATE, DELETE, TRUNCATE')).toBeGreaterThan(
+      sql.lastIndexOf('GRANT SELECT, INSERT, UPDATE, DELETE'),
+    );
+    expect(SIDECARS.at(-1)).toContain('audit_events_are_immutable');
+  });
 });
 
 describe('generated schema documentation', () => {
@@ -69,8 +78,19 @@ describe('generated schema documentation', () => {
     expect(readmeSection).toContain('studio_maintenance');
     expect(readmeSection).toContain('sections_immutable');
     expect(readmeSection).toContain('version_sections_insert_frozen');
+    expect(readmeSection).toContain('invitation_delivery_payload_immutable');
+    expect(readmeSection).toContain('audit_events_immutable');
+    expect(readmeSection).toContain('audit_team_isolation');
+    expect(readmeSection).toContain(
+      'Revokes UPDATE, DELETE, TRUNCATE from studio_app, studio_maintenance',
+    );
     expect(svg).toContain('RLS policy team_isolation');
+    expect(svg).toContain('RLS policy audit_team_isolation');
     expect(svg).toContain('sidecar trigger sections_immutable');
+    expect(svg).toContain(
+      'sidecar trigger invitation_delivery_payload_immutable',
+    );
+    expect(svg).toContain('sidecar trigger audit_events_immutable');
   });
 
   it('has a standalone regeneration command', () => {
@@ -115,6 +135,7 @@ describe.skipIf(!db)('schema verification', () => {
       );
       expect(tables.rows.map((r) => r.table_name).toSorted()).toEqual([
         'account',
+        'audit_events',
         'command_log',
         'drafts',
         'leases',
@@ -126,6 +147,7 @@ describe.skipIf(!db)('schema verification', () => {
         'schemaFingerprint',
         'sections',
         'session',
+        'team_invitation_deliveries',
         'team_invitations',
         'team_members',
         'teams',
@@ -210,6 +232,37 @@ describe.skipIf(!db)('schema verification', () => {
 
 // drizzle-kit push introspects `public`, so these run in scratch databases.
 describe.skipIf(!db)('schema application', () => {
+  it('normalizes legacy blank team names before enforcing the current schema', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await applySchema(pool);
+      await pool.query(
+        'ALTER TABLE teams DROP CONSTRAINT IF EXISTS teams_name_nonblank_check',
+      );
+      await pool.query(
+        `INSERT INTO teams (id, name, slug) VALUES ('legacy-team', E' \t ', 'legacy-team')`,
+      );
+
+      await applySchema(pool);
+
+      const migrated = await pool.query<{ name: string }>(
+        `SELECT name FROM teams WHERE id = 'legacy-team'`,
+      );
+      expect(migrated.rows[0]?.name).toBe('Team legacy-team');
+
+      await expect(
+        pool.query(
+          `INSERT INTO teams (id, name, slug) VALUES ('new-team', '   ', 'new-team')`,
+        ),
+      ).rejects.toMatchObject({ constraint: 'teams_name_nonblank_check' });
+
+      await applySchema(pool);
+      const remigrated = await pool.query<{ name: string }>(
+        `SELECT name FROM teams WHERE id = 'legacy-team'`,
+      );
+      expect(remigrated.rows[0]?.name).toBe('Team legacy-team');
+    });
+  });
+
   it('provisions and stamps a fresh database', async () => {
     await withScratch(createScratchDatabase, async (pool) => {
       const outcome = await applySchema(pool);

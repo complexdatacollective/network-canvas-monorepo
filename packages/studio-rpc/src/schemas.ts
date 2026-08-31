@@ -11,6 +11,14 @@ import { z } from 'zod';
 
 export const SOCIAL_PROVIDERS = ['google', 'microsoft'] as const;
 export type SocialProvider = (typeof SOCIAL_PROVIDERS)[number];
+export const TEAM_ROLES = ['owner', 'admin', 'member'] as const;
+export const TeamRoleSchema = z.enum(TEAM_ROLES);
+export type TeamRole = z.infer<typeof TeamRoleSchema>;
+export const TeamInvitationIdSchema = z
+  .string()
+  .min(1)
+  .max(255)
+  .regex(/^[A-Za-z0-9_-]+$/);
 
 export const StatusSchema = z.object({
   name: z.string(),
@@ -36,6 +44,54 @@ export const TeamScopedSchema = z.object({
   teamId: z.string().min(1),
 });
 
+export const UpdateTeamMemberRoleInputSchema = TeamScopedSchema.extend({
+  memberId: z.string().min(1),
+  role: TeamRoleSchema,
+});
+
+export const UpdateTeamMemberRoleResultSchema = z.object({
+  memberId: z.string().min(1),
+  role: TeamRoleSchema,
+});
+
+export const CreateTeamInvitationInputSchema = TeamScopedSchema.extend({
+  email: z.email().max(320),
+  role: TeamRoleSchema,
+});
+
+export const CreateTeamInvitationResultSchema = z.object({
+  invitationId: TeamInvitationIdSchema,
+  email: z.email().max(320),
+  role: TeamRoleSchema,
+  status: z.literal('pending'),
+  expiresAt: z.date(),
+});
+
+export const CancelTeamInvitationInputSchema = TeamScopedSchema.extend({
+  invitationId: TeamInvitationIdSchema,
+});
+
+export const CancelTeamInvitationResultSchema = z.object({
+  invitationId: TeamInvitationIdSchema,
+  status: z.literal('canceled'),
+});
+
+// Acceptance deliberately has no teamId: the authenticated invitee is not a
+// member yet, so the server resolves and locks the invitation's team instead
+// of trusting a tenant chosen by the browser.
+export const AcceptTeamInvitationInputSchema = z.object({
+  invitationId: TeamInvitationIdSchema,
+});
+
+export const AcceptTeamInvitationResultSchema = z.object({
+  invitationId: TeamInvitationIdSchema,
+  teamId: z.string().min(1).max(255),
+  teamName: z.string().min(1).max(320),
+  memberId: z.string().min(1).max(255),
+  role: TeamRoleSchema,
+  status: z.literal('accepted'),
+});
+
 export const ProtocolSummarySchema = z.object({
   id: z.uuid(),
   draftId: z.uuid().nullable(),
@@ -44,8 +100,16 @@ export const ProtocolSummarySchema = z.object({
   updatedAt: z.date(),
 });
 
+export const ProtocolNameSchema = z
+  .string()
+  .min(1)
+  .max(320)
+  .refine((name) => name.trim().length > 0, {
+    error: 'Protocol name must contain a non-whitespace character',
+  });
+
 export const CreateProtocolInputSchema = TeamScopedSchema.extend({
-  name: z.string().min(1),
+  name: ProtocolNameSchema,
   protocolId: z.uuid(),
   draftId: z.uuid(),
 });
@@ -73,7 +137,7 @@ export const ProtocolDraftSchema = z.object({
 });
 
 const SectionScopedSchema = ProtocolDraftInputSchema.extend({
-  sectionId: z.string().min(1),
+  sectionId: z.string().min(1).max(255),
   clientId: z.uuid(),
 });
 
@@ -112,7 +176,9 @@ const CommandSchema = z.discriminatedUnion('op', [
 export const CommitSectionInputSchema = SectionScopedSchema.extend({
   leaseEpoch: DecimalSequenceSchema,
   clientSequence: DecimalSequenceSchema,
-  commands: z.array(CommandSchema).min(1),
+  // Audit records the bounded operation count and kinds, never the command
+  // values. Keep that summary and the commit work itself predictably bounded.
+  commands: z.array(CommandSchema).min(1).max(1_000),
 });
 
 export const ManifestRevisionSchema = z.object({
