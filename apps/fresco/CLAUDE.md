@@ -266,17 +266,32 @@ lib/
   belongs in the package, not here.
   - **Sync batching is Fresco's job, not the package's.** The engine offers a
     write for every change, because only the host knows what one costs — and
-    here each one POSTs the whole network. `onSync` is therefore wrapped in the
-    package's `createDebouncedSyncHandler` at `SYNC_DEBOUNCE_MS`. Do not unwrap
-    it: without it a request goes out per answer. The wrapper still writes
+    here each one POSTs the whole network. The handler lives in
+    `createInterviewSyncHandler.ts` and is wrapped in the package's
+    `createDebouncedSyncHandler` at `SYNC_DEBOUNCE_MS`. Do not unwrap it:
+    without it a request goes out per answer. The wrapper still writes
     immediately when the engine says a write cannot be deferred (the
     participant exiting or finishing, or the tab being hidden), so shortening
     the interval is a cost decision and never a correctness one. An
     `unloading` write — the tab being hidden or closed — additionally asks for
-    `keepalive` when the body fits under the browser's 64KB cap. Every write
-    cancels the request it supersedes, because an unloading write runs outside
-    the helper's queue and could otherwise land after a newer one; this route
-    overwrites, so the older snapshot would win.
+    `keepalive` when the body fits under the browser's 64KB cap.
+  - **Two syncs for one interview can be in flight at once, and the server
+    decides which one counts.** An `unloading` write is issued rather than
+    queued, because a request waiting behind one that dies with the document
+    would never run at all — so it can overlap an ordinary write and the two can
+    finish in either order. The handler numbers each write it issues in
+    `syncRevision`, counting up from the value the row held when the page
+    rendered (`initialSyncRevision`, threaded through `mapInterviewPayload`),
+    and the route applies a write only when its number is higher than the
+    stored one. A write that lost its race is discarded instead of rolling the
+    participant's answers back. The route reports the stored revision and the
+    handler resumes from it, which is what stops a second tab — behind from the
+    moment it loaded — from having everything it writes discarded. The client
+    also aborts the request it supersedes, but that is only to save wasted work:
+    aborting a fetch does not stop a handler the server has already started, so
+    the ordering guarantee is the route's, not the client's. A request carrying
+    no `syncRevision` (a tab still running the bundle from before a deployment)
+    is applied unconditionally, as it was before the guard existed.
 
 ## Conventions
 

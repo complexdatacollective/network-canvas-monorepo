@@ -44,6 +44,28 @@ const routeHandler = async (
     currentStep: z.number(),
     stageMetadata: StageMetadataSchema.optional(),
     lastUpdated: z.string(),
+    /**
+     * Position of this write in the browser's own sequence of syncs — see
+     * `createInterviewSyncHandler`. Two syncs for one interview can be in
+     * flight at once (an `unloading` write is issued rather than queued,
+     * because a request waiting behind one that dies with the document would
+     * never run at all), and the server may finish them in either order. This
+     * is what lets the older one be discarded rather than committed last.
+     *
+     * Optional so that a tab still running the bundle from before a deployment
+     * keeps syncing: those requests carry no number and are applied
+     * unconditionally, exactly as they were before this guard existed. A
+     * missing number costs ordering, never the write.
+     *
+     * `lastUpdated` above is deliberately not used for this. It is a wall-clock
+     * millisecond stamped by the interview reducer for a different purpose, so
+     * it is coarse (two changes in one millisecond tie, and the later write
+     * would be dropped), it can move backwards if the participant's device
+     * clock is corrected — silently discarding every write afterwards — and it
+     * is only as reliable as every future reducer case remembering to bump it.
+     * This counter is owned by the code that issues the writes it orders.
+     */
+    syncRevision: z.number().int().nonnegative().optional(),
   });
 
   const validatedRequest = Schema.safeParse(rawPayload);
@@ -54,38 +76,88 @@ const routeHandler = async (
     return invalidRequest(validatedRequest.error);
   }
 
-  const { network, currentStep, stageMetadata } = validatedRequest.data;
+  const { network, currentStep, stageMetadata, syncRevision } =
+    validatedRequest.data;
 
   const freezeEnabled = await getAppSetting('freezeInterviewsAfterCompletion');
 
   if (freezeEnabled) {
     const interview = await prisma.interview.findUnique({
       where: { id: interviewId },
-      select: { finishTime: true },
+      select: { finishTime: true, syncRevision: true },
     });
 
     if (interview?.finishTime) {
-      return NextResponse.json({ success: true });
+      return NextResponse.json({
+        success: true,
+        applied: false,
+        syncRevision: interview.syncRevision,
+      });
     }
   }
 
+  const data = {
+    network,
+    currentStep,
+    stageMetadata: stageMetadata ?? undefined,
+    // `lastUpdated` is intentionally NOT taken from the client. Prisma's
+    // @updatedAt sets it server-side; trusting the client value let a
+    // participant backdate it (overwriting newer data) and corrupt the
+    // dashboard sort/filter/export ordering, which keys on this column.
+  };
+
   try {
-    await prisma.interview.update({
-      where: {
-        id: interviewId,
-      },
-      data: {
-        network,
-        currentStep,
-        stageMetadata: stageMetadata ?? undefined,
-        // `lastUpdated` is intentionally NOT taken from the client. Prisma's
-        // @updatedAt sets it server-side; trusting the client value let a
-        // participant backdate it (overwriting newer data) and corrupt the
-        // dashboard sort/filter/export ordering, which keys on this column.
-      },
+    if (syncRevision === undefined) {
+      await prisma.interview.update({
+        where: {
+          id: interviewId,
+        },
+        data,
+      });
+
+      return NextResponse.json({ success: true, applied: true });
+    }
+
+    // The predicate is what makes a stale write a no-op, and it has to be part
+    // of the write itself: reading the stored revision first and then updating
+    // would leave a window in which the newer request commits in between.
+    // Postgres re-evaluates the WHERE clause after waiting on the row lock, so
+    // of two concurrent writes the lower-numbered one matches nothing.
+    const { count } = await prisma.interview.updateMany({
+      where: { id: interviewId, syncRevision: { lt: syncRevision } },
+      data: { ...data, syncRevision },
     });
 
-    return NextResponse.json({ success: true });
+    if (count > 0) {
+      return NextResponse.json({ success: true, applied: true, syncRevision });
+    }
+
+    // Nothing matched, which means either the row holds a revision at least as
+    // high as this one — a write that lost its race, and the interview already
+    // holds newer state — or there is no such interview at all. Only the second
+    // is a failure, so tell them apart rather than reporting success for a
+    // write that had nowhere to land.
+    const current = await prisma.interview.findUnique({
+      where: { id: interviewId },
+      select: { syncRevision: true },
+    });
+
+    if (!current) {
+      return NextResponse.json(
+        { error: 'Interview not found' },
+        { status: 404 },
+      );
+    }
+
+    // Reporting the stored revision lets the client resume from it. Without
+    // that, a second tab — which seeded its counter when it loaded, and is
+    // therefore behind the tab that has been writing since — would have every
+    // write it ever makes discarded, rather than the one that overtook another.
+    return NextResponse.json({
+      success: true,
+      applied: false,
+      syncRevision: current.syncRevision,
+    });
   } catch (e) {
     const error = ensureError(e);
     return NextResponse.json(
