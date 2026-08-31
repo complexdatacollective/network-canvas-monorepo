@@ -25,6 +25,7 @@ describe('audit event registry', () => {
       'team.invitation.acceptance_failed@1',
       'team.invitation.accepted@1',
       'team.invitation.cancellation_denied@1',
+      'team.invitation.cancellation_failed@1',
       'team.invitation.cancelled@1',
       'team.invitation.cancelled@2',
       'team.invitation.created@1',

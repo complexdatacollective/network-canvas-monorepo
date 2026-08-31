@@ -191,6 +191,34 @@ export class TeamStore {
     return rows.rows[0] ?? null;
   }
 
+  /**
+   * Locks an invitation's delivery row after the invitation itself is locked.
+   * A non-null owner remains in flight even if its lease is nominally expired:
+   * the prior SMTP call may still complete until a dispatcher reclaims it.
+   */
+  async lockInvitationDeliveryInFlight(
+    client: pg.PoolClient,
+    teamId: string,
+    invitationId: string,
+  ): Promise<boolean> {
+    // The application role deliberately cannot UPDATE the maintenance-owned
+    // outbox, so it cannot take a row-level FOR UPDATE lock there. This
+    // transaction-scoped advisory lock is also acquired non-blockingly by the
+    // claim statement, closing the check/cancel race without widening DML
+    // privileges or holding a transaction across SMTP.
+    await client.query(
+      `SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))`,
+      [teamId, invitationId],
+    );
+    const delivery = await client.query<{ leaseOwner: string | null }>(
+      `SELECT lease_owner AS "leaseOwner"
+       FROM team_invitation_deliveries
+       WHERE team_id = $1 AND invitation_id = $2`,
+      [teamId, invitationId],
+    );
+    return delivery.rows[0]?.leaseOwner != null;
+  }
+
   async lockMembershipSet(
     client: pg.PoolClient,
     teamId: string,

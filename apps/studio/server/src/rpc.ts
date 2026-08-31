@@ -51,6 +51,9 @@ async function handleTeamCommand<T>(work: () => Promise<T>): Promise<T> {
     if (error.code === 'FORBIDDEN') throw new ORPCError('FORBIDDEN');
     if (error.code === 'NOT_FOUND') throw new ORPCError('NOT_FOUND');
     if (error.code === 'CONFLICT') throw new ORPCError('CONFLICT');
+    if (error.code === 'DELIVERY_IN_PROGRESS') {
+      throw new ORPCError('CONFLICT');
+    }
     throw new ORPCError('BAD_REQUEST');
   }
 }

@@ -11,6 +11,7 @@ import {
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
 import type { InvitationMailer } from '../../auth/email.ts';
+import { cancelTeamInvitation } from '../commands.ts';
 import {
   InvitationDeliveryDispatcher,
   InvitationDeliveryRoleError,
@@ -21,6 +22,7 @@ const db = await reachableDb();
 
 const TEAM_ID = 'invitation-delivery-team';
 const INVITER_ID = 'invitation-delivery-inviter';
+const INVITER_MEMBER_ID = 'invitation-delivery-inviter-member';
 
 type ScratchSchema = Awaited<ReturnType<typeof createScratchSchema>>;
 
@@ -88,6 +90,14 @@ function dispatcher(
   });
 }
 
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
 describe.skipIf(!db)('invitation delivery outbox', () => {
   let scratch: ScratchSchema;
 
@@ -104,6 +114,11 @@ describe.skipIf(!db)('invitation delivery outbox', () => {
     await scratch.pool.query(
       `INSERT INTO teams (id, name, slug) VALUES ($1, 'Invitation Delivery Team', $1)`,
       [TEAM_ID],
+    );
+    await scratch.pool.query(
+      `INSERT INTO team_members (id, team_id, user_id, role)
+       VALUES ($1, $2, $3, 'owner')`,
+      [INVITER_MEMBER_ID, TEAM_ID, INVITER_ID],
     );
   });
 
@@ -304,6 +319,159 @@ describe.skipIf(!db)('invitation delivery outbox', () => {
     releaseSend?.();
     await expect(firstRun).resolves.toMatchObject({ claimed: 1, sent: 1 });
     expect(sendTeamInvitation).toHaveBeenCalledOnce();
+  });
+
+  it('keeps a slow send claimed so a second worker cannot deliver it', async () => {
+    const invitation = await seedInvitation(scratch);
+    await enqueue(scratch, invitation);
+    const slowSend = deferred();
+    const sendTeamInvitation = vi
+      .fn<InvitationMailer['sendTeamInvitation']>()
+      .mockReturnValueOnce(slowSend.promise)
+      .mockResolvedValue(undefined);
+    const first = dispatcher(
+      scratch.maintenance,
+      { sendTeamInvitation },
+      { leaseMs: 150 },
+    );
+    const second = dispatcher(
+      scratch.maintenance,
+      { sendTeamInvitation },
+      { leaseMs: 150 },
+    );
+
+    const firstRun = first.runOnce();
+    await vi.waitFor(() => expect(sendTeamInvitation).toHaveBeenCalledOnce());
+    // PostgreSQL's clock advances past the original lease while Node remains
+    // free to run the ownership-checked heartbeat.
+    await scratch.maintenance.query(`SELECT pg_sleep(0.45)`);
+    const secondResult = await second.runOnce();
+    slowSend.resolve();
+    const firstResult = await firstRun;
+
+    expect(secondResult.claimed).toBe(0);
+    expect(firstResult).toMatchObject({ claimed: 1, sent: 1 });
+    expect(sendTeamInvitation).toHaveBeenCalledOnce();
+  });
+
+  it('does not report or persist sent after losing delivery ownership', async () => {
+    const invitation = await seedInvitation(scratch);
+    await enqueue(scratch, invitation);
+    const slowSend = deferred();
+    const sendTeamInvitation = vi
+      .fn<InvitationMailer['sendTeamInvitation']>()
+      .mockReturnValue(slowSend.promise);
+    const delivery = dispatcher(
+      scratch.maintenance,
+      { sendTeamInvitation },
+      { leaseMs: 5_000 },
+    );
+
+    const deliveryRun = delivery.runOnce();
+    await vi.waitFor(() => expect(sendTeamInvitation).toHaveBeenCalledOnce());
+    const replacementOwner = randomUUID();
+    await scratch.maintenance.query(
+      `UPDATE team_invitation_deliveries
+       SET lease_owner = $2,
+           lease_expires_at = clock_timestamp() + INTERVAL '5 seconds'
+       WHERE invitation_id = $1`,
+      [invitation.invitationId, replacementOwner],
+    );
+    slowSend.resolve();
+
+    await expect(deliveryRun).resolves.toMatchObject({ claimed: 1, sent: 0 });
+    expect(
+      await scratch.pool.query(
+        `SELECT lease_owner, sent_at
+         FROM team_invitation_deliveries WHERE invitation_id = $1`,
+        [invitation.invitationId],
+      ),
+    ).toHaveProperty('rows', [
+      { lease_owner: replacementOwner, sent_at: null },
+    ]);
+  });
+
+  it('lets cancellation win its invitation lock before a worker can claim', async () => {
+    const invitation = await seedInvitation(scratch);
+    await enqueue(scratch, invitation);
+    const sendTeamInvitation = vi
+      .fn<InvitationMailer['sendTeamInvitation']>()
+      .mockResolvedValue(undefined);
+    const delivery = dispatcher(scratch.maintenance, { sendTeamInvitation });
+    const tenant = createTenantDb(scratch.app, TEAM_ID);
+
+    await tenant.transaction(async (client) => {
+      await client.query(
+        `SELECT id FROM team_invitations
+         WHERE team_id = $1 AND id = $2
+         FOR UPDATE`,
+        [TEAM_ID, invitation.invitationId],
+      );
+      await expect(delivery.runOnce()).resolves.toMatchObject({ claimed: 0 });
+      await client.query(
+        `UPDATE team_invitations SET status = 'canceled'
+         WHERE team_id = $1 AND id = $2`,
+        [TEAM_ID, invitation.invitationId],
+      );
+    });
+
+    await expect(delivery.runOnce()).resolves.toMatchObject({ suppressed: 1 });
+    expect(sendTeamInvitation).not.toHaveBeenCalled();
+  });
+
+  it('rejects and audits cancellation after delivery has begun', async () => {
+    const invitation = await seedInvitation(scratch);
+    await enqueue(scratch, invitation);
+    const slowSend = deferred();
+    const sendTeamInvitation = vi
+      .fn<InvitationMailer['sendTeamInvitation']>()
+      .mockReturnValue(slowSend.promise);
+    const delivery = dispatcher(scratch.maintenance, { sendTeamInvitation });
+
+    const deliveryRun = delivery.runOnce();
+    await vi.waitFor(() => expect(sendTeamInvitation).toHaveBeenCalledOnce());
+    await expect(
+      cancelTeamInvitation(
+        {
+          tenantDb: createTenantDb(scratch.app, TEAM_ID),
+          principal: {
+            kind: 'user',
+            userId: INVITER_ID,
+            email: 'inviter@example.com',
+            emailVerified: true,
+            name: 'Inviting Researcher',
+            sessionId: 'invitation-delivery-session',
+          },
+          requestId: randomUUID(),
+        },
+        { invitationId: invitation.invitationId },
+      ),
+    ).rejects.toMatchObject({ code: 'DELIVERY_IN_PROGRESS' });
+
+    expect(
+      await scratch.pool.query(
+        `SELECT status FROM team_invitations WHERE id = $1`,
+        [invitation.invitationId],
+      ),
+    ).toHaveProperty('rows', [{ status: 'pending' }]);
+    expect(
+      await scratch.pool.query(
+        `SELECT event_type, outcome, subject_id, details
+         FROM audit_events
+         WHERE team_id = $1 AND subject_id = $2`,
+        [TEAM_ID, invitation.invitationId],
+      ),
+    ).toHaveProperty('rows', [
+      {
+        event_type: 'team.invitation.cancellation_failed',
+        outcome: 'failed',
+        subject_id: invitation.invitationId,
+        details: { failureCode: 'delivery_in_progress' },
+      },
+    ]);
+
+    slowSend.resolve();
+    await expect(deliveryRun).resolves.toMatchObject({ sent: 1 });
   });
 
   it('suppresses pending deliveries after their invitations are canceled or expire', async () => {

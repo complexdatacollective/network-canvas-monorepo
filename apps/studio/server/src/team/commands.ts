@@ -35,7 +35,8 @@ export type TeamCommandErrorCode =
   | 'CONFLICT'
   | 'NO_CHANGE'
   | 'LAST_OWNER'
-  | 'INVALID_ROLE';
+  | 'INVALID_ROLE'
+  | 'DELIVERY_IN_PROGRESS';
 
 export class TeamCommandError extends Error {
   readonly code: TeamCommandErrorCode;
@@ -387,6 +388,27 @@ export async function cancelTeamInvitation(
         // Better Auth historically stored role arrays as comma-separated values.
         // Cancellation stays available for those rows, while acceptance below
         // deliberately remains limited to one role for one new membership.
+        if (
+          await store.lockInvitationDeliveryInFlight(
+            client,
+            context.tenantDb.teamId,
+            invitation.id,
+          )
+        ) {
+          const event = {
+            ...failedAuditEventContext(auditContext),
+            eventType: 'team.invitation.cancellation_failed',
+            subjectType: 'team_invitation',
+            subjectId: invitation.id,
+            subjectLabel: invitation.email,
+            details: { failureCode: 'delivery_in_progress' },
+          } satisfies AuditEventInput;
+          return {
+            status: 'failed' as const,
+            error: new TeamCommandError('DELIVERY_IN_PROGRESS'),
+            events: [event] as const,
+          };
+        }
         await store.cancelInvitation(
           client,
           context.tenantDb.teamId,

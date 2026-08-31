@@ -114,6 +114,17 @@ const TeamInvitationCancellationDeniedV1EventSchema =
     }),
   }).strict();
 
+const TeamInvitationCancellationFailedV1EventSchema =
+  CommonTeamAccessFailedV1EventSchema.extend({
+    eventType: z.literal('team.invitation.cancellation_failed'),
+    subjectType: z.literal('team_invitation'),
+    subjectId: IdentifierSchema,
+    subjectLabel: z.email().max(320),
+    details: z.strictObject({
+      failureCode: z.literal('delivery_in_progress'),
+    }),
+  }).strict();
+
 const TeamInvitationAcceptedV1EventSchema =
   CommonTeamAccessSucceededV1EventSchema.extend({
     eventType: z.literal('team.invitation.accepted'),
@@ -252,6 +263,7 @@ export const AuditEventInputSchema = z.union([
   TeamInvitationCancelledV1EventSchema,
   TeamInvitationCancelledV2EventSchema,
   TeamInvitationCancellationDeniedV1EventSchema,
+  TeamInvitationCancellationFailedV1EventSchema,
   TeamInvitationAcceptedV1EventSchema,
   TeamInvitationAcceptanceDeniedV1EventSchema,
   TeamInvitationAcceptanceFailedV1EventSchema,
@@ -477,6 +489,22 @@ export const AUDIT_EVENT_REGISTRY = {
       subjectId: null,
       subjectLabel: null,
       details: { reason: 'insufficient_permission' },
+    },
+  },
+  'team.invitation.cancellation_failed@1': {
+    inputSchema: TeamInvitationCancellationFailedV1EventSchema,
+    title: 'Invitation cancellation failed',
+    detailFields: ['failureCode'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V1_COMMON,
+      outcome: 'failed',
+      eventType: 'team.invitation.cancellation_failed',
+      subjectType: 'team_invitation',
+      subjectId: 'fixture-invitation',
+      subjectLabel: 'invitee@example.com',
+      details: { failureCode: 'delivery_in_progress' },
     },
   },
   'team.invitation.accepted@1': {

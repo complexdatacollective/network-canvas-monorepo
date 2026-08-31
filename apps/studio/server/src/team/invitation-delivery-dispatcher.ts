@@ -25,6 +25,10 @@ type ClaimedInvitationDelivery = {
   attemptCount: number;
 };
 
+type InvitationDeliveryLeaseHeartbeat = {
+  stop(): Promise<boolean>;
+};
+
 export type InvitationDeliveryResult = {
   claimed: number;
   sent: number;
@@ -166,7 +170,9 @@ export class InvitationDeliveryDispatcher {
   private async claim(): Promise<ClaimedInvitationDelivery | null> {
     const claimed = await this.pool.query<ClaimedInvitationDelivery>(
       `WITH candidate AS (
-         SELECT delivery.id
+         SELECT delivery.id,
+                invitation.team_id,
+                invitation.id AS invitation_id
          FROM team_invitation_deliveries delivery
          JOIN team_invitations invitation
            ON invitation.id = delivery.invitation_id
@@ -182,14 +188,21 @@ export class InvitationDeliveryDispatcher {
            AND invitation.status = 'pending'
            AND invitation.expires_at > clock_timestamp()
          ORDER BY delivery.available_at, delivery.created_at, delivery.id
-         FOR UPDATE OF delivery SKIP LOCKED
+         FOR UPDATE OF invitation, delivery SKIP LOCKED
          LIMIT 1
+       ), coordinated_candidate AS (
+         SELECT id
+         FROM candidate
+         WHERE pg_try_advisory_xact_lock(
+           hashtext(team_id),
+           hashtext(invitation_id)
+         )
        )
        UPDATE team_invitation_deliveries delivery
        SET lease_owner = $1,
            lease_expires_at = clock_timestamp() + make_interval(secs => $2::float / 1000),
            attempt_count = delivery.attempt_count + 1
-       FROM candidate
+       FROM coordinated_candidate candidate
        WHERE delivery.id = candidate.id
        RETURNING delivery.id,
                  delivery.invitation_id AS "invitationId",
@@ -222,16 +235,78 @@ export class InvitationDeliveryDispatcher {
     return current.rowCount === 1;
   }
 
-  private async suppressClaim(claim: ClaimedInvitationDelivery): Promise<void> {
-    await this.pool.query(
+  private async suppressClaim(
+    claim: ClaimedInvitationDelivery,
+  ): Promise<boolean> {
+    const suppressed = await this.pool.query(
       `UPDATE team_invitation_deliveries
        SET suppressed_at = clock_timestamp(),
            lease_owner = NULL,
            lease_expires_at = NULL,
            last_error = 'invitation is no longer deliverable'
-       WHERE id = $1 AND lease_owner = $2 AND sent_at IS NULL`,
+       WHERE id = $1
+         AND lease_owner = $2
+         AND sent_at IS NULL
+         AND failed_at IS NULL
+         AND suppressed_at IS NULL`,
       [claim.id, this.workerId],
     );
+    return suppressed.rowCount === 1;
+  }
+
+  private async renewLease(claim: ClaimedInvitationDelivery): Promise<boolean> {
+    const renewed = await this.pool.query(
+      `UPDATE team_invitation_deliveries
+       SET lease_expires_at = clock_timestamp()
+         + make_interval(secs => $3::float / 1000)
+       WHERE id = $1
+         AND lease_owner = $2
+         AND sent_at IS NULL
+         AND failed_at IS NULL
+         AND suppressed_at IS NULL`,
+      [claim.id, this.workerId, this.leaseMs],
+    );
+    return renewed.rowCount === 1;
+  }
+
+  private startLeaseHeartbeat(
+    claim: ClaimedInvitationDelivery,
+  ): InvitationDeliveryLeaseHeartbeat {
+    const heartbeatMs = Math.max(1, Math.floor(this.leaseMs / 3));
+    let ownsLease = true;
+    let stopped = false;
+    let timer: NodeJS.Timeout | undefined;
+    let active: Promise<void> = Promise.resolve();
+
+    const schedule = () => {
+      if (stopped || !ownsLease) return;
+      timer = setTimeout(() => {
+        active = this.renewLease(claim)
+          .then((renewed) => {
+            ownsLease = renewed;
+            return undefined;
+          })
+          .catch(() => {
+            // A failed renewal makes ownership uncertain. The SMTP call cannot
+            // be canceled reliably, so leave the row reclaimable and never
+            // report or persist an outcome from this worker.
+            ownsLease = false;
+            return undefined;
+          })
+          .finally(schedule);
+      }, heartbeatMs);
+      timer.unref();
+    };
+
+    schedule();
+    return {
+      stop: async () => {
+        stopped = true;
+        if (timer) clearTimeout(timer);
+        await active;
+        return ownsLease;
+      },
+    };
   }
 
   private retryDelayMs(attemptCount: number): number {
@@ -242,9 +317,9 @@ export class InvitationDeliveryDispatcher {
   private async recordFailure(
     claim: ClaimedInvitationDelivery,
     error: unknown,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const exhausted = claim.attemptCount >= this.maxAttempts;
-    await this.pool.query(
+    const recorded = await this.pool.query(
       `UPDATE team_invitation_deliveries
        SET lease_owner = NULL,
            lease_expires_at = NULL,
@@ -254,7 +329,11 @@ export class InvitationDeliveryDispatcher {
              ELSE clock_timestamp() + make_interval(secs => $5::float / 1000)
            END,
            failed_at = CASE WHEN $4::boolean THEN clock_timestamp() ELSE NULL END
-       WHERE id = $1 AND lease_owner = $2 AND sent_at IS NULL`,
+       WHERE id = $1
+         AND lease_owner = $2
+         AND sent_at IS NULL
+         AND failed_at IS NULL
+         AND suppressed_at IS NULL`,
       [
         claim.id,
         this.workerId,
@@ -263,6 +342,24 @@ export class InvitationDeliveryDispatcher {
         this.retryDelayMs(claim.attemptCount),
       ],
     );
+    return recorded.rowCount === 1;
+  }
+
+  private async recordSent(claim: ClaimedInvitationDelivery): Promise<boolean> {
+    const sent = await this.pool.query(
+      `UPDATE team_invitation_deliveries
+       SET sent_at = clock_timestamp(),
+           lease_owner = NULL,
+           lease_expires_at = NULL,
+           last_error = NULL
+       WHERE id = $1
+         AND lease_owner = $2
+         AND sent_at IS NULL
+         AND failed_at IS NULL
+         AND suppressed_at IS NULL`,
+      [claim.id, this.workerId],
+    );
+    return sent.rowCount === 1;
   }
 
   async runOnce(): Promise<InvitationDeliveryResult> {
@@ -275,12 +372,12 @@ export class InvitationDeliveryDispatcher {
     }
 
     if (!(await this.remainsDeliverable(claim))) {
-      await this.suppressClaim(claim);
+      const claimSuppressed = await this.suppressClaim(claim);
       return {
         claimed: 1,
         sent: 0,
         failed: exhausted,
-        suppressed: suppressed + 1,
+        suppressed: suppressed + (claimSuppressed ? 1 : 0),
       };
     }
 
@@ -288,6 +385,7 @@ export class InvitationDeliveryDispatcher {
       `/invitations/${encodeURIComponent(claim.invitationId)}`,
       this.publicBaseUrl,
     ).toString();
+    const heartbeat = this.startLeaseHeartbeat(claim);
     try {
       await this.mailer.sendTeamInvitation({
         email: claim.email,
@@ -298,19 +396,23 @@ export class InvitationDeliveryDispatcher {
         role: claim.role,
         teamLabel: claim.teamLabel,
       });
-      await this.pool.query(
-        `UPDATE team_invitation_deliveries
-         SET sent_at = clock_timestamp(),
-             lease_owner = NULL,
-             lease_expires_at = NULL,
-             last_error = NULL
-         WHERE id = $1 AND lease_owner = $2 AND sent_at IS NULL`,
-        [claim.id, this.workerId],
-      );
-      return { claimed: 1, sent: 1, failed: exhausted, suppressed };
+      const ownsLease = await heartbeat.stop();
+      const sent = ownsLease && (await this.recordSent(claim));
+      return {
+        claimed: 1,
+        sent: sent ? 1 : 0,
+        failed: exhausted,
+        suppressed,
+      };
     } catch (error) {
-      await this.recordFailure(claim, error);
-      return { claimed: 1, sent: 0, failed: exhausted + 1, suppressed };
+      const ownsLease = await heartbeat.stop();
+      const failed = ownsLease && (await this.recordFailure(claim, error));
+      return {
+        claimed: 1,
+        sent: 0,
+        failed: exhausted + (failed ? 1 : 0),
+        suppressed,
+      };
     }
   }
 }
