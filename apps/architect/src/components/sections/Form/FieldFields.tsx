@@ -2,8 +2,8 @@ import { omit } from 'es-toolkit/compat';
 
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Section from '@codaco/fresco-ui/Section';
+import RichText from '@codaco/protocol-builder/fields/RichTextField';
 import ArchitectField from '~/components/Form/ArchitectField';
-import RichText from '~/components/Form/Fields/RichText/Field';
 import IssueAnchor from '~/components/IssueAnchor';
 
 import ValidationSection from '../ValidationSection';

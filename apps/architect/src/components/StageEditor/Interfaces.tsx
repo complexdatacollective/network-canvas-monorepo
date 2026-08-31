@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react';
 
+import { INTERFACE_NAMES } from '@codaco/protocol-builder/interfaces/interfaceNames';
 import type { StageType } from '@codaco/protocol-validation';
 import {
   AnonymisationExplanation,
@@ -48,7 +49,6 @@ import Diseases from '~/components/sections/NarrativePedigree/Diseases';
 import SourceStage from '~/components/sections/NarrativePedigree/SourceStage';
 import NodeConfiguration from '~/components/sections/NodeConfiguration/NodeConfiguration';
 import { FilteredNodeType } from '~/components/sections/NodeType';
-import { INTERFACE_NAMES } from '~/config/interfaceNames';
 import { interfaceDocumentationUrl } from '~/utils/documentationLinks';
 
 import { getInterfaceTemplate } from './interfaceTemplates';

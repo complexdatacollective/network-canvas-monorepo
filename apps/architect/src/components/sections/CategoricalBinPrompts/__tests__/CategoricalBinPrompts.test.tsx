@@ -42,7 +42,7 @@ vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
 
 // Likewise the rich text fields, so a test can supply the required prompt
 // text without driving TipTap's contenteditable through jsdom.
-vi.mock('~/components/Form/Fields/RichText/Field', () => ({
+vi.mock('@codaco/protocol-builder/fields/RichTextField', () => ({
   default: ({
     name,
     value,

@@ -45,7 +45,7 @@ vi.mock('~/components/NewVariableWindow', () => ({
 
 // The rich text fields, so a test can supply the required prompt text and
 // negative label without driving TipTap's contenteditable through jsdom.
-vi.mock('~/components/Form/Fields/RichText/Field', () => ({
+vi.mock('@codaco/protocol-builder/fields/RichTextField', () => ({
   default: ({
     name,
     value,

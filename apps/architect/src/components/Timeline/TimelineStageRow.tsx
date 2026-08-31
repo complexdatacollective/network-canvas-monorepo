@@ -5,7 +5,7 @@ import { useCallback, useRef, type MouseEvent, type PointerEvent } from 'react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import { useKeyboardReorder } from '@codaco/fresco-ui/dnd/useKeyboardReorder';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import { interfaceDisplayName } from '~/config/interfaceNames';
+import { interfaceDisplayName } from '@codaco/protocol-builder/interfaces/interfaceNames';
 import filterIcon from '~/images/timeline/filter-icon.svg';
 import skipLogicIcon from '~/images/timeline/skip-logic-icon.svg';
 import { cx } from '~/utils/cva';

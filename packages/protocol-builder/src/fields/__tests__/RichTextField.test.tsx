@@ -1,21 +1,21 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import Form from '@codaco/fresco-ui/form/Form';
 
-import ArchitectField from '../../ArchitectField';
-import RichTextField from './Field';
+import RichTextField from '../RichTextField.tsx';
 
 describe('RichTextField', () => {
   it('renders required semantics and the seeded markdown through the shared field', async () => {
     render(
       <Form onSubmit={() => ({ success: true })}>
-        <ArchitectField
+        <Field
           name="prompt"
           label="Prompt text"
           component={RichTextField}
           initialValue="Who do you know?"
-          validation={{ required: true }}
+          required
         />
       </Form>,
     );

@@ -12,6 +12,10 @@
   "type": "module",
   "exports": {
     "./controller": "./src/controller.ts",
+    "./fields/RichTextField": "./src/fields/RichTextField.tsx",
+    "./interfaces/documentation": "./src/interfaces/documentation.ts",
+    "./interfaces/interfaceNames": "./src/interfaces/interfaceNames.ts",
+    "./markdown/markdownAdapter": "./src/markdown/markdownAdapter.ts",
     "./session": "./src/session.ts",
     "./stage-editor-contract": "./src/stage-editor-contract.ts",
     "./styles.css": "./src/styles.css"
@@ -26,6 +30,10 @@
   "dependencies": {
     "@codaco/protocol-validation": "workspace:^",
     "@codaco/studio-sync": "workspace:^",
+    "es-toolkit": "catalog:",
+    "lucide-react": "catalog:",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5",
     "uuid": "catalog:"
   },
   "devDependencies": {
@@ -40,10 +48,12 @@
     "@tailwindcss/vite": "catalog:",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "jsdom": "catalog:",
+    "motion": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "storybook": "catalog:",
@@ -55,6 +65,7 @@
   "peerDependencies": {
     "@codaco/fresco-ui": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
+    "motion": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "tailwindcss": "catalog:"

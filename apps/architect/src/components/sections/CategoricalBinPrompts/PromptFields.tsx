@@ -5,12 +5,12 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Section from '@codaco/fresco-ui/Section';
+import RichTextField from '@codaco/protocol-builder/fields/RichTextField';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import Options, {
   optionsValidation,
 } from '~/components/Form/arrayFields/Options';
-import RichTextField from '~/components/Form/Fields/RichText/Field';
 import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,

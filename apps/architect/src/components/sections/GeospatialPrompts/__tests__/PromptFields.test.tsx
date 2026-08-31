@@ -9,7 +9,7 @@ import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider
 
 // The rich text field is a TipTap editor; a plain input carries the value in
 // jsdom (the CategoricalBinPrompts test's mock, verbatim in spirit).
-vi.mock('~/components/Form/Fields/RichText/Field', () => ({
+vi.mock('@codaco/protocol-builder/fields/RichTextField', () => ({
   default: ({ value }: { value?: unknown }) => (
     <input
       aria-label="Prompt text"

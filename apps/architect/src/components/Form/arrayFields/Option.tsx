@@ -16,6 +16,11 @@ import { ArrayFieldDragHandle } from '@codaco/fresco-ui/form/fields/ArrayField/A
 import type { ArrayFieldItemProps } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
+import {
+  markdownToRichTextContent,
+  richTextContentToMarkdown,
+  type RichTextContent,
+} from '@codaco/protocol-builder/markdown/markdownAdapter';
 import type { VariableOptions } from '@codaco/protocol-validation';
 import { toCanonicalText } from '@codaco/shared-consts';
 import {
@@ -24,11 +29,6 @@ import {
   isOptionValueEmpty,
 } from '~/components/Options/optionCompleteness';
 import { cx } from '~/utils/cva';
-import {
-  markdownToRichTextContent,
-  richTextContentToMarkdown,
-  type RichTextContent,
-} from '~/utils/markdownAdapter';
 
 import RowField from './RowField';
 

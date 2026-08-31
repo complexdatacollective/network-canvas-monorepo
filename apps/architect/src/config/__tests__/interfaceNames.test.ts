@@ -1,22 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
+import { INTERFACE_NAMES } from '@codaco/protocol-builder/interfaces/interfaceNames';
 import type { StageType } from '@codaco/protocol-validation';
 import { INTERFACE_TYPES } from '~/components/Screens/NewStageScreen/interfaceOptions';
 import { getInterface } from '~/components/StageEditor/Interfaces';
-import { INTERFACE_NAMES, interfaceDisplayName } from '~/config/interfaceNames';
 
 const stageTypes = Object.keys(INTERFACE_NAMES) as StageType[];
 
-describe('INTERFACE_NAMES', () => {
-  it('names every stage type the schema defines', () => {
-    // `Record<StageType, string>` already makes a missing entry a build error;
-    // this catches the other half — a name that is present but empty.
-    expect(stageTypes.length).toBeGreaterThan(0);
-    for (const stageType of stageTypes) {
-      expect(INTERFACE_NAMES[stageType].trim()).not.toBe('');
-    }
-  });
-
+/**
+ * The map itself lives in `@codaco/protocol-builder`, which owns interface
+ * metadata for every host. What stays here is the part only Architect can
+ * assert: that every Architect surface naming an interface reads that one map
+ * rather than deriving or restating a name of its own.
+ */
+describe('INTERFACE_NAMES in Architect', () => {
   /**
    * The New Stage screen used to hold its own copy of these titles, and the
    * stage timeline read the researcher-facing name of an interface out of that
@@ -64,7 +61,6 @@ describe('INTERFACE_NAMES', () => {
       const namesShown = new Set([
         INTERFACE_NAMES[stageType],
         getInterface(stageType).name,
-        interfaceDisplayName(stageType),
         optionTitles.get(stageType),
       ]);
 
@@ -73,33 +69,5 @@ describe('INTERFACE_NAMES', () => {
         namesShown: [INTERFACE_NAMES[stageType]],
       });
     }
-  });
-});
-
-describe('interfaceDisplayName', () => {
-  it('answers for every stage type', () => {
-    for (const stageType of stageTypes) {
-      expect(interfaceDisplayName(stageType)).toBe(INTERFACE_NAMES[stageType]);
-    }
-  });
-
-  /**
-   * A stage `type` read back out of a protocol is a plain string, and an
-   * imported `.netcanvas` authored against a newer schema can name an
-   * interface this build has never heard of. A display surface has to be able
-   * to ask about one without being thrown at — the stage editor's own
-   * `getInterface` throws for exactly this case, which is right when the answer
-   * decides what to RENDER and wrong when it decides what to CALL something.
-   */
-  it('says nothing, rather than throwing, about a stage type it does not know', () => {
-    expect(() => interfaceDisplayName('SomeFutureInterface')).not.toThrow();
-    expect(interfaceDisplayName('SomeFutureInterface')).toBeUndefined();
-  });
-
-  // The map is an ordinary object, so an inherited key must not answer as a
-  // name: a protocol's stage `type` is arbitrary text from a file.
-  it('does not answer with an inherited property', () => {
-    expect(interfaceDisplayName('toString')).toBeUndefined();
-    expect(interfaceDisplayName('constructor')).toBeUndefined();
   });
 });

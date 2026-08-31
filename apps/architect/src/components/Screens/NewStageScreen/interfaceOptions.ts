@@ -1,5 +1,5 @@
+import { INTERFACE_NAMES } from '@codaco/protocol-builder/interfaces/interfaceNames';
 import type { StageType } from '@codaco/protocol-validation';
-import { INTERFACE_NAMES } from '~/config/interfaceNames';
 
 const CATEGORIES = {
   GENERATORS: 'Name and Edge Generators',
@@ -70,7 +70,7 @@ export type InterfaceType = {
 /**
  * Everything about an interface EXCEPT what it is called. The title is not
  * written here: it is the same researcher-facing name the stage timeline
- * announces, so both read it from `~/config/interfaceNames`. Held apart, the
+ * announces, so both read it from `@codaco/protocol-builder`. Held apart, the
  * two drifted for six interfaces.
  */
 type InterfaceDefinition = Omit<InterfaceType, 'title'>;

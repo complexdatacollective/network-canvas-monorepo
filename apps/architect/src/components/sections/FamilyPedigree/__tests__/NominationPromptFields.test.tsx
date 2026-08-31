@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 
-vi.mock('~/components/Form/Fields/RichText/Field', () => ({
+vi.mock('@codaco/protocol-builder/fields/RichTextField', () => ({
   default: ({
     id,
     value,
