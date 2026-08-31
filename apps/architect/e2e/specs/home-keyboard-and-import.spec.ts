@@ -42,6 +42,44 @@ const seedOneProtocol = async (
   await seed(protocol, { name });
 };
 
+test('keeps the protocol library shadow inside the home scrollport', async ({
+  architectPage,
+}) => {
+  await architectPage.goto('/');
+
+  const bottomClearance = await architectPage
+    .getByRole('tablist', { name: 'Protocol library' })
+    .evaluate((tablist) => {
+      let panel = tablist.parentElement;
+      while (panel && getComputedStyle(panel).boxShadow === 'none') {
+        panel = panel.parentElement;
+      }
+      if (!panel) {
+        throw new Error('Could not find the shadow-casting library panel');
+      }
+
+      let scrollport = panel.parentElement;
+      while (
+        scrollport &&
+        !['auto', 'scroll'].includes(getComputedStyle(scrollport).overflowY)
+      ) {
+        scrollport = scrollport.parentElement;
+      }
+      if (!scrollport) {
+        throw new Error('Could not find the library panel scrollport');
+      }
+
+      return (
+        scrollport.getBoundingClientRect().bottom -
+        panel.getBoundingClientRect().bottom
+      );
+    });
+
+  // The panel's medium elevation needs the page's existing 2rem bottom gap
+  // inside the scrollport. At zero clearance the scrollport clips the shadow.
+  expect(bottomClearance).toBeGreaterThanOrEqual(32);
+});
+
 test('arrow keys move between row menu actions, and Escape returns to the Actions button', async ({
   architectPage,
   seed,
