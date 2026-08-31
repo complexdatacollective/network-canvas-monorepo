@@ -670,7 +670,7 @@ export async function run(
   }
 
   const { inputURL, options } = parsed;
-  const showProgress = options.format === 'text' && Boolean(stdout.isTTY);
+  const showProgress = options.format === 'text' && stdout.isTTY;
   if (showProgress) stdout.write(`Checking ${inputURL}\n`);
   const report = await crawl(inputURL, options, (checked, total) => {
     if (showProgress) stdout.write(`\rChecked ${checked}/${total} URLs`);
@@ -686,7 +686,7 @@ export async function run(
   if (options.format === 'json') {
     stdout.write(json);
   } else {
-    const color = Boolean(stdout.isTTY) && !('NO_COLOR' in environment);
+    const color = stdout.isTTY && !('NO_COLOR' in environment);
     stdout.write(formatTextReport(report, { color, verbose: options.verbose }));
   }
   return report.failures.length === 0 ? 0 : 1;
