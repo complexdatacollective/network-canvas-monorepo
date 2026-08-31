@@ -130,6 +130,31 @@ const TeamMemberRoleChangeFailedV1EventSchema =
     details: z.strictObject({ failureCode: z.literal('last_owner') }),
   }).strict();
 
+export const DENIED_AUDIT_OPERATIONS = [
+  'team.acceptInvitation',
+  'team.updateMemberRole',
+] as const;
+export type DeniedAuditOperation = (typeof DENIED_AUDIT_OPERATIONS)[number];
+
+const DeniedAttemptsRateLimitedV1EventSchema = CommonUserEventSchema.extend({
+  eventVersion: z.literal(1),
+  eventType: z.literal('security.denied_attempts.rate_limited'),
+  category: z.literal('security'),
+  outcome: z.literal('denied'),
+  subjectType: z.null(),
+  subjectId: z.null(),
+  subjectLabel: z.null(),
+  resourceType: z.null(),
+  resourceId: z.null(),
+  resourceLabel: z.null(),
+  details: z.strictObject({
+    operation: z.enum(DENIED_AUDIT_OPERATIONS),
+    suppressedCount: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+    firstSuppressedAt: z.iso.datetime({ offset: true }),
+    lastSuppressedAt: z.iso.datetime({ offset: true }),
+  }),
+}).strict();
+
 const ProtocolOperationTypeSchema = z.enum([
   'set',
   'unset',
@@ -176,6 +201,7 @@ export const AuditEventInputSchema = z.union([
   TeamMemberRoleChangedV1EventSchema,
   TeamMemberRoleChangeDeniedV1EventSchema,
   TeamMemberRoleChangeFailedV1EventSchema,
+  DeniedAttemptsRateLimitedV1EventSchema,
   TeamInvitationCreatedV1EventSchema,
   TeamInvitationCancelledV1EventSchema,
   TeamInvitationAcceptedV1EventSchema,
@@ -282,6 +308,37 @@ export const AUDIT_EVENT_REGISTRY = {
       subjectId: null,
       subjectLabel: null,
       details: { failureCode: 'last_owner' },
+    },
+  },
+  'security.denied_attempts.rate_limited@1': {
+    inputSchema: DeniedAttemptsRateLimitedV1EventSchema,
+    title: 'Denied attempts rate limited',
+    detailFields: [
+      'operation',
+      'suppressedCount',
+      'firstSuppressedAt',
+      'lastSuppressedAt',
+    ],
+    sensitiveFields: [],
+    createsAlert: true,
+    fixture: {
+      ...FIXTURE_USER_COMMON,
+      eventVersion: 1,
+      eventType: 'security.denied_attempts.rate_limited',
+      category: 'security',
+      outcome: 'denied',
+      subjectType: null,
+      subjectId: null,
+      subjectLabel: null,
+      resourceType: null,
+      resourceId: null,
+      resourceLabel: null,
+      details: {
+        operation: 'team.updateMemberRole',
+        suppressedCount: 3,
+        firstSuppressedAt: '2026-08-31T10:00:00.000Z',
+        lastSuppressedAt: '2026-08-31T10:00:42.000Z',
+      },
     },
   },
   'team.invitation.created@1': {

@@ -32,6 +32,7 @@ import {
 export {
   SOCIAL_PROVIDERS,
   TEAM_ROLES,
+  ProtocolNameSchema,
   TeamRoleSchema,
   TeamInvitationIdSchema,
   type SocialProvider,

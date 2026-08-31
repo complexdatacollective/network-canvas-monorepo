@@ -21,7 +21,8 @@ import {
   runAuditedMutation,
 } from '../audit/command.ts';
 import { reserveDeniedAuditAttempt } from '../audit/denial-rate-limit.ts';
-import type { AuditEventInput } from '../audit/events.ts';
+import { createDeniedAuditSummaryWriter } from '../audit/denial-summary.ts';
+import type { AuditEventInput, DeniedAuditOperation } from '../audit/events.ts';
 import { enqueueInvitationDelivery } from './invitation-delivery-store.ts';
 import { TeamStore, type LockedMember } from './store.ts';
 
@@ -81,17 +82,30 @@ function requireManager(actor: LockedMember | null): LockedMember {
   return actor;
 }
 
+function reserveDeniedTeamCommand(
+  context: AuditedCommandContext,
+  operation: DeniedAuditOperation,
+) {
+  return reserveDeniedAuditAttempt(
+    {
+      actorId: context.principal.userId,
+      teamId: context.tenantDb.teamId,
+      operation,
+    },
+    createDeniedAuditSummaryWriter(context, operation),
+  );
+}
+
 export type UpdatedTeamMember = { memberId: string; role: TeamRole };
 
 export async function updateTeamMemberRole(
   context: AuditedCommandContext,
   input: { memberId: string; role: TeamRole },
 ): Promise<UpdatedTeamMember> {
-  const reservation = reserveDeniedAuditAttempt({
-    actorId: context.principal.userId,
-    teamId: context.tenantDb.teamId,
-    operation: 'team.updateMemberRole',
-  });
+  const reservation = reserveDeniedTeamCommand(
+    context,
+    'team.updateMemberRole',
+  );
   if (!reservation.admitted) throw new TeamCommandError('FORBIDDEN');
 
   try {
@@ -368,20 +382,20 @@ export async function acceptTeamInvitation(
   // same refusal to the caller. Only a server-resolved tenant can receive a
   // bounded immutable denial event.
   if (!teamId) throw new TeamCommandError('FORBIDDEN');
-  const reservation = reserveDeniedAuditAttempt({
-    actorId: context.principal.userId,
-    teamId,
-    operation: 'team.acceptInvitation',
-  });
+  const auditedContext = {
+    tenantDb: createTenantDb(context.pool, teamId),
+    principal: context.principal,
+    requestId: context.requestId,
+  } satisfies AuditedCommandContext;
+  const reservation = reserveDeniedTeamCommand(
+    auditedContext,
+    'team.acceptInvitation',
+  );
   if (!reservation.admitted) throw new TeamCommandError('FORBIDDEN');
 
   try {
     const result = await runAuditedCommand(
-      {
-        tenantDb: createTenantDb(context.pool, teamId),
-        principal: context.principal,
-        requestId: context.requestId,
-      },
+      auditedContext,
       async (client, auditContext) => {
         const invitation = await store.lockInvitation(
           client,

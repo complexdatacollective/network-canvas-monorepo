@@ -13,6 +13,7 @@ describe('audit event registry', () => {
     expect(Object.keys(AUDIT_EVENT_REGISTRY).toSorted()).toEqual([
       'protocol.created@1',
       'protocol.draft.committed@1',
+      'security.denied_attempts.rate_limited@1',
       'team.invitation.acceptance_denied@1',
       'team.invitation.acceptance_failed@1',
       'team.invitation.accepted@1',
@@ -29,11 +30,30 @@ describe('audit event registry', () => {
       expect(definition.title.length).toBeGreaterThan(0);
       expect(definition.detailFields.length).toBeGreaterThan(0);
       expect(definition.sensitiveFields).toEqual([]);
-      expect(definition.createsAlert).toBe(false);
+      expect(definition.createsAlert).toBe(
+        key === 'security.denied_attempts.rate_limited@1',
+      );
       const parsed = parseAuditEventInput(definition.fixture);
       expect(auditEventKey(parsed)).toBe(key);
       expect(auditEventDefinition(parsed)).toBe(definition);
     }
+  });
+
+  it('keeps rate-limit summaries bounded and timestamped', () => {
+    const fixture =
+      AUDIT_EVENT_REGISTRY['security.denied_attempts.rate_limited@1'].fixture;
+    expect(parseAuditEventInput(fixture).details).toEqual({
+      operation: 'team.updateMemberRole',
+      suppressedCount: 3,
+      firstSuppressedAt: '2026-08-31T10:00:00.000Z',
+      lastSuppressedAt: '2026-08-31T10:00:42.000Z',
+    });
+    expect(() =>
+      parseAuditEventInput({
+        ...fixture,
+        details: { ...fixture.details, suppressedCount: 0 },
+      }),
+    ).toThrow();
   });
 
   it('rejects an unknown retained-event version instead of applying v1 rules', () => {

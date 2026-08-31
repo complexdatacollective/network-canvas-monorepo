@@ -114,6 +114,42 @@ function assertEventContext(
   }
 }
 
+async function runWithLockedAuditContext<T>(
+  context: AuditedCommandContext,
+  work: (
+    client: pg.PoolClient,
+    auditContext: LockedAuditedCommandContext,
+  ) => Promise<T>,
+): Promise<T> {
+  return context.tenantDb.transaction(async (client) => {
+    await lockAuditTeam(client, context.tenantDb.teamId);
+    const team = await client.query<{ name: string }>(
+      `SELECT name FROM teams WHERE id = $1 FOR UPDATE`,
+      [context.tenantDb.teamId],
+    );
+    const lockedTeam = team.rows[0];
+    if (!lockedTeam) throw new AuditCommandTeamNotFoundError();
+    const teamName = lockedTeam.name.trim();
+    if (!teamName) throw new Error('audit command team name is empty');
+    return work(client, {
+      ...context,
+      teamLabel: teamName.slice(0, 320),
+    });
+  });
+}
+
+/** Appends a server-owned observation that is not coupled to a domain write. */
+export async function appendAuditedEvent(
+  context: AuditedCommandContext,
+  buildEvent: (context: LockedAuditedCommandContext) => AuditEventInput,
+): Promise<void> {
+  await runWithLockedAuditContext(context, async (client, auditContext) => {
+    const event = buildEvent(auditContext);
+    assertEventContext(auditContext, event, event.outcome);
+    await auditStore.append(client, event);
+  });
+}
+
 export type AuditedCommandFailure = {
   error: Error;
   events: readonly [AuditEventInput, ...AuditEventInput[]];
@@ -163,31 +199,21 @@ export async function runAuditedCommand<T>(
     auditContext: LockedAuditedCommandContext,
   ) => Promise<AuditedCommandDecision<T>>,
 ): Promise<T> {
-  const decision = await context.tenantDb.transaction(async (client) => {
-    await lockAuditTeam(client, context.tenantDb.teamId);
-    const team = await client.query<{ name: string }>(
-      `SELECT name FROM teams WHERE id = $1 FOR UPDATE`,
-      [context.tenantDb.teamId],
-    );
-    const lockedTeam = team.rows[0];
-    if (!lockedTeam) throw new AuditCommandTeamNotFoundError();
-    const teamName = lockedTeam.name.trim();
-    if (!teamName) throw new Error('audit command team name is empty');
-    const auditContext: LockedAuditedCommandContext = {
-      ...context,
-      teamLabel: teamName.slice(0, 320),
-    };
-    const result = await work(client, auditContext);
-    if (result.status === 'unchanged') return result;
-    if (result.events.length === 0) {
-      throw new Error('an audited command must produce at least one event');
-    }
-    for (const event of result.events) {
-      assertEventContext(auditContext, event, result.status);
-      await auditStore.append(client, event);
-    }
-    return result;
-  });
+  const decision = await runWithLockedAuditContext(
+    context,
+    async (client, auditContext) => {
+      const result = await work(client, auditContext);
+      if (result.status === 'unchanged') return result;
+      if (result.events.length === 0) {
+        throw new Error('an audited command must produce at least one event');
+      }
+      for (const event of result.events) {
+        assertEventContext(auditContext, event, result.status);
+        await auditStore.append(client, event);
+      }
+      return result;
+    },
+  );
 
   if (decision.status === 'denied' || decision.status === 'failed') {
     throw decision.error;

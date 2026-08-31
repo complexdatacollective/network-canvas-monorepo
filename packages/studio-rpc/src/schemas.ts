@@ -100,8 +100,16 @@ export const ProtocolSummarySchema = z.object({
   updatedAt: z.date(),
 });
 
+export const ProtocolNameSchema = z
+  .string()
+  .min(1)
+  .max(320)
+  .refine((name) => name.trim().length > 0, {
+    error: 'Protocol name must contain a non-whitespace character',
+  });
+
 export const CreateProtocolInputSchema = TeamScopedSchema.extend({
-  name: z.string().min(1).max(320),
+  name: ProtocolNameSchema,
   protocolId: z.uuid(),
   draftId: z.uuid(),
 });

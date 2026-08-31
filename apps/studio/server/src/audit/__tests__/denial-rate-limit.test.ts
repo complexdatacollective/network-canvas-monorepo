@@ -11,6 +11,48 @@ function complete(
 }
 
 describe('denied audit rate limiter', () => {
+  it('emits one exact summary for every window containing suppressed attempts', () => {
+    let now = 1_000;
+    const scheduled: (() => void)[] = [];
+    const summaries: unknown[] = [];
+    const limiter = new DeniedAuditRateLimiter({
+      limit: 1,
+      windowMs: 100,
+      now: () => now,
+      schedule: (task) => {
+        scheduled.push(task);
+        return () => undefined;
+      },
+    });
+    const denied = limiter.reserve('actor/team/operation');
+    complete(denied, 'denied');
+
+    now = 1_010;
+    expect(
+      limiter.reserve('actor/team/operation', (summary) => {
+        summaries.push(summary);
+      }),
+    ).toEqual({ admitted: false });
+    now = 1_040;
+    expect(limiter.reserve('actor/team/operation')).toEqual({
+      admitted: false,
+    });
+
+    expect(scheduled).toHaveLength(1);
+    expect(summaries).toEqual([]);
+    now = 1_100;
+    scheduled[0]!();
+    scheduled[0]!();
+
+    expect(summaries).toEqual([
+      {
+        suppressedCount: 2,
+        firstSuppressedAt: 1_010,
+        lastSuppressedAt: 1_040,
+      },
+    ]);
+  });
+
   it('counts in-flight attempts before the database boundary', () => {
     const limiter = new DeniedAuditRateLimiter({ limit: 2 });
     const first = limiter.reserve('actor/team/operation');
@@ -77,6 +119,44 @@ describe('denied audit rate limiter', () => {
     expect(limiter.reserve('actor/team/operation').admitted).toBe(true);
     complete(expired, 'other');
 
+    expect(limiter.reserve('actor/team/operation')).toEqual({
+      admitted: false,
+    });
+  });
+
+  it('does not let a stale summary timer replace or delete a newer window', () => {
+    let now = 1_000;
+    const scheduled: (() => void)[] = [];
+    const summaries: unknown[] = [];
+    const limiter = new DeniedAuditRateLimiter({
+      limit: 1,
+      windowMs: 100,
+      now: () => now,
+      schedule: (task) => {
+        scheduled.push(task);
+        return () => undefined;
+      },
+    });
+    const denied = limiter.reserve('actor/team/operation');
+    complete(denied, 'denied');
+    now = 1_010;
+    limiter.reserve('actor/team/operation', (summary) => {
+      summaries.push(summary);
+    });
+
+    now = 1_100;
+    const replacement = limiter.reserve('actor/team/operation');
+    expect(replacement.admitted).toBe(true);
+    scheduled[0]!();
+    complete(replacement, 'denied');
+
+    expect(summaries).toEqual([
+      {
+        suppressedCount: 1,
+        firstSuppressedAt: 1_010,
+        lastSuppressedAt: 1_010,
+      },
+    ]);
     expect(limiter.reserve('actor/team/operation')).toEqual({
       admitted: false,
     });

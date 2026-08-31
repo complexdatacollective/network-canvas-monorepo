@@ -1,5 +1,6 @@
 import type pg from 'pg';
 
+import { ProtocolNameSchema } from '@codaco/studio-rpc';
 import type { Command } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -113,11 +114,12 @@ export function createAuditedProtocol(
     draftId: string;
   },
 ): Promise<CreatedProtocol> {
+  const protocolName = ProtocolNameSchema.parse(input.name).trim();
   return runAuditedCommand(context, async (client, auditContext) => {
     await lockProtocolActorMembership(client, context);
     const result = await new ProtocolStore(context.tenantDb).createProtocol(
       {
-        protocol: emptyProtocol(input.name),
+        protocol: emptyProtocol(protocolName),
         protocolId: input.protocolId,
         draftId: input.draftId,
       },
@@ -132,7 +134,7 @@ export function createAuditedProtocol(
     const event = {
       ...protocolEventContext(auditContext, {
         protocolId: result.protocolId,
-        protocolLabel: input.name,
+        protocolLabel: protocolName,
       }),
       eventType: 'protocol.created',
       details: { draftId: result.draftId },
