@@ -395,13 +395,16 @@ test('published Classic releases advance latest and rebuild the website', () => 
   );
 });
 
-test('pull requests lint only changed files and merge groups skip lint', () => {
+test('lint runs the whole repository through turbo and merge groups skip it', () => {
   const lint = job('lint');
   assert.ok(lint, 'lint job exists');
   assert.match(lint, /github\.event_name != 'merge_group'/);
-  assert.match(lint, /fetch-depth: 0/);
-  assert.match(lint, /pnpm lint:changed HEAD\^1/);
   assert.match(lint, /pnpm exec turbo run \/\/#lint/);
+  // The changed-file lane is gone: no diff, so no deep history, and no
+  // separate codegen step now that the task reaches fresco#codegen itself.
+  assert.doesNotMatch(lint, /lint:changed/);
+  assert.doesNotMatch(lint, /fetch-depth/);
+  assert.doesNotMatch(lint, /turbo run fresco#codegen/);
 });
 
 test('short quality checks share one setup without joining the critical path', () => {

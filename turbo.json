@@ -326,10 +326,15 @@
       "persistent": true
     },
     "//#lint": {
+      // This task is the whole lint gate, so its inputs must cover every
+      // extension oxfmt checks as well as every extension oxlint reads, plus
+      // the two ignore files both tools consult. An under-declared glob here
+      // means a cache hit that silently skips the check for that file type.
       "inputs": [
-        "**/*.{ts,tsx,js,jsx,mjs,cjs,json}",
-        "**/biome.json",
+        "**/*.{cjs,cts,js,jsx,mjs,mts,ts,tsx,vue}",
+        "**/*.{astro,css,gql,graphql,html,json,jsonc,less,md,mdx,scss,svelte,toml,yaml,yml}",
         ".gitignore",
+        ".prettierignore",
         "!**/dist/**",
         "!**/out/**",
         "!**/.next/**",
