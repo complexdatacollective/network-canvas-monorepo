@@ -204,7 +204,18 @@ export function createRpcRouter(
           );
           if (!lease) return { mode: 'readOnly' as const };
 
-          const resume = await syncServer.resume(input.draftId, owner);
+          let resume: Awaited<ReturnType<typeof syncServer.resume>>;
+          try {
+            resume = await syncServer.resume(input.draftId, owner);
+          } catch (error) {
+            // Acquisition and resume are separate transactions. If the
+            // sequence lookup fails after the lease commits, expire the exact
+            // epoch so a client that never received it cannot block editors.
+            await syncServer
+              .release(input.draftId, input.sectionId, owner, lease.epoch)
+              .catch(() => undefined);
+            throw error;
+          }
           const lastApplied = resume.lastApplied[input.sectionId];
           const nextClientSequence =
             lastApplied?.epoch === lease.epoch
