@@ -244,8 +244,12 @@ describe('Studio editor shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
 
     await waitFor(() => {
-      expect(label).toHaveValue('Welcome');
-      expect(title).toHaveValue('Welcome');
+      expect(screen.getByRole('textbox', { name: 'Screen name' })).toHaveValue(
+        'Welcome',
+      );
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'Welcome',
+      );
     });
     await waitFor(() =>
       expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(2),
@@ -257,8 +261,12 @@ describe('Studio editor shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Redo' }));
     await waitFor(() => {
-      expect(label).toHaveValue('Changed screen');
-      expect(title).toHaveValue('Changed heading');
+      expect(screen.getByRole('textbox', { name: 'Screen name' })).toHaveValue(
+        'Changed screen',
+      );
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'Changed heading',
+      );
     });
     await waitFor(() =>
       expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(3),

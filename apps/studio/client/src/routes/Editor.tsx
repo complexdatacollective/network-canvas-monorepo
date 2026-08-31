@@ -1,7 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi, Link, useBlocker } from '@tanstack/react-router';
 import { ArrowDown, ArrowLeft, ArrowUp, Plus } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { Alert } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
@@ -682,15 +689,17 @@ function StageForm(props: {
   const hasTitle = typeof fields.title === 'string';
   const label = typeof fields.label === 'string' ? fields.label : '';
   const title = typeof fields.title === 'string' ? fields.title : '';
-  const [baseline, setBaseline] = useState({ label, title });
+  const baseline = useRef({ label, title });
+  const [baselineVersion, setBaselineVersion] = useState(0);
 
   useEffect(() => {
     if (controller.snapshot.pendingCommands.length !== 0) return;
-    setBaseline((current) =>
-      current.label === label && current.title === title
-        ? current
-        : { label, title },
-    );
+    if (baseline.current.label === label && baseline.current.title === title) {
+      return;
+    }
+
+    baseline.current = { label, title };
+    setBaselineVersion((version) => version + 1);
   }, [controller.snapshot.pendingCommands.length, label, title]);
 
   return (
@@ -707,6 +716,7 @@ function StageForm(props: {
         </Alert>
       )}
       <Form
+        key={baselineVersion}
         className="mt-6"
         onSubmit={async (values) => {
           const submittedLabel =
@@ -734,7 +744,7 @@ function StageForm(props: {
         <StageFormDirtyObserver onDirtyChange={props.onDirtyChange} />
         <StageFormFields
           fields={fields}
-          baseline={baseline}
+          baseline={baseline.current}
           readOnly={readOnly}
         />
         <SubmitButton disabled={readOnly}>Save screen</SubmitButton>
@@ -748,7 +758,7 @@ function StageFormDirtyObserver(props: {
 }) {
   const dirty = useFormStore(selectIsFormDirty);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     props.onDirtyChange(dirty);
     return () => props.onDirtyChange(false);
   }, [dirty, props.onDirtyChange]);
