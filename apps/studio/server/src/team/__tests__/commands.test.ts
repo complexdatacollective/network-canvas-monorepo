@@ -27,6 +27,7 @@ import type { AuditEventInput } from '../../audit/events.ts';
 import { AUDIT_SEQUENCE_LOCK_SEED } from '../../audit/store.ts';
 import type { SessionPrincipal } from '../../auth/service.ts';
 import {
+  acceptTeamInvitation,
   cancelTeamInvitation,
   createTeamInvitation,
   TeamCommandError,
@@ -81,6 +82,40 @@ async function seedIdentity(
   );
 }
 
+async function seedUser(pool: pg.Pool, person: Identity): Promise<void> {
+  await pool.query(
+    `INSERT INTO "user" (id, name, email, "emailVerified")
+     VALUES ($1, $2, $3, true)`,
+    [person.userId, person.name, person.email],
+  );
+}
+
+async function seedInvitation(
+  pool: pg.Pool,
+  input: {
+    id: string;
+    teamId: string;
+    inviterId: string;
+    email: string;
+    role: Identity['role'];
+    expiresAt?: Date;
+  },
+): Promise<void> {
+  await pool.query(
+    `INSERT INTO team_invitations (
+       id, team_id, email, role, status, expires_at, inviter_id
+     ) VALUES ($1, $2, $3, $4, 'pending', $5, $6)`,
+    [
+      input.id,
+      input.teamId,
+      input.email,
+      input.role,
+      input.expiresAt ?? new Date(Date.now() + 86_400_000),
+      input.inviterId,
+    ],
+  );
+}
+
 function principal(person: Identity): SessionPrincipal {
   return {
     kind: 'user',
@@ -131,6 +166,359 @@ describe.skipIf(!db)('audited team commands', () => {
 
   afterAll(async () => {
     await dispose();
+  });
+
+  it('accepts an invitation atomically and treats a lost-response replay as unchanged', async () => {
+    const teamId = 'command-accept-invitation';
+    const invitationId = randomUUID();
+    await seedTeam(pool, teamId);
+    const owner = identity(teamId, 'owner', 'owner');
+    const invitee = identity(teamId, 'invitee', 'admin');
+    await seedIdentity(pool, teamId, owner);
+    await seedUser(pool, invitee);
+    await seedInvitation(pool, {
+      id: invitationId,
+      teamId,
+      inviterId: owner.userId,
+      email: invitee.email,
+      role: invitee.role,
+    });
+
+    const first = await acceptTeamInvitation(
+      {
+        pool: app,
+        principal: principal(invitee),
+        requestId: randomUUID(),
+      },
+      { invitationId },
+    );
+    const replay = await acceptTeamInvitation(
+      {
+        pool: app,
+        principal: principal(invitee),
+        requestId: randomUUID(),
+      },
+      { invitationId },
+    );
+
+    expect(replay).toEqual(first);
+    expect(first).toMatchObject({
+      invitationId,
+      teamId,
+      teamName: teamId,
+      role: 'admin',
+      status: 'accepted',
+    });
+    const state = await pool.query<{
+      status: string;
+      memberId: string;
+      role: string;
+    }>(
+      `SELECT i.status, m.id AS "memberId", m.role
+       FROM team_invitations i
+       JOIN team_members m ON m.team_id = i.team_id
+       WHERE i.id = $1 AND m.user_id = $2`,
+      [invitationId, invitee.userId],
+    );
+    expect(state.rows).toEqual([
+      {
+        status: 'accepted',
+        memberId: first.memberId,
+        role: 'admin',
+      },
+    ]);
+    const events = await pool.query<{
+      eventType: string;
+      actorId: string;
+      subjectId: string;
+      subjectLabel: string;
+      details: unknown;
+    }>(
+      `SELECT event_type AS "eventType", actor_id AS "actorId",
+              subject_id AS "subjectId", subject_label AS "subjectLabel",
+              details
+       FROM audit_events WHERE team_id = $1 ORDER BY sequence`,
+      [teamId],
+    );
+    expect(events.rows).toEqual([
+      {
+        eventType: 'team.invitation.accepted',
+        actorId: invitee.userId,
+        subjectId: invitationId,
+        subjectLabel: invitee.email,
+        details: { role: 'admin', memberId: first.memberId },
+      },
+    ]);
+  });
+
+  it('requires the matching verified account and a live pending invitation', async () => {
+    const teamId = 'command-accept-guards';
+    await seedTeam(pool, teamId);
+    const owner = identity(teamId, 'owner', 'owner');
+    const invitee = identity(teamId, 'invitee', 'member');
+    const wrongUser = identity(teamId, 'wrong-user', 'member');
+    await seedIdentity(pool, teamId, owner);
+    await seedUser(pool, invitee);
+    await seedUser(pool, wrongUser);
+    const liveId = randomUUID();
+    const expiredId = randomUUID();
+    await seedInvitation(pool, {
+      id: liveId,
+      teamId,
+      inviterId: owner.userId,
+      email: invitee.email,
+      role: 'member',
+    });
+    await seedInvitation(pool, {
+      id: expiredId,
+      teamId,
+      inviterId: owner.userId,
+      email: invitee.email,
+      role: 'member',
+      expiresAt: new Date(Date.now() - 60_000),
+    });
+
+    await expect(
+      acceptTeamInvitation(
+        {
+          pool: app,
+          principal: principal(wrongUser),
+          requestId: randomUUID(),
+        },
+        { invitationId: liveId },
+      ),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(
+      acceptTeamInvitation(
+        {
+          pool: app,
+          principal: { ...principal(invitee), emailVerified: false },
+          requestId: randomUUID(),
+        },
+        { invitationId: liveId },
+      ),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(
+      acceptTeamInvitation(
+        {
+          pool: app,
+          principal: principal(invitee),
+          requestId: randomUUID(),
+        },
+        { invitationId: expiredId },
+      ),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(
+      acceptTeamInvitation(
+        {
+          pool: app,
+          principal: principal(invitee),
+          requestId: randomUUID(),
+        },
+        { invitationId: randomUUID() },
+      ),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+    const memberships = await pool.query(
+      `SELECT id FROM team_members WHERE team_id = $1 AND user_id = $2`,
+      [teamId, invitee.userId],
+    );
+    expect(memberships.rowCount).toBe(0);
+    const events = await pool.query<{
+      actor_id: string;
+      event_type: string;
+      details: unknown;
+    }>(
+      `SELECT actor_id, event_type, details
+       FROM audit_events WHERE team_id = $1 ORDER BY sequence`,
+      [teamId],
+    );
+    expect(events.rows).toEqual([
+      {
+        actor_id: wrongUser.userId,
+        event_type: 'team.invitation.acceptance_denied',
+        details: { reason: 'email_mismatch' },
+      },
+      {
+        actor_id: invitee.userId,
+        event_type: 'team.invitation.acceptance_denied',
+        details: { reason: 'email_unverified' },
+      },
+      {
+        actor_id: invitee.userId,
+        event_type: 'team.invitation.acceptance_denied',
+        details: { reason: 'invitation_unavailable' },
+      },
+    ]);
+  });
+
+  it('rate-limits immutable wrong-account denial events before the team lock', async () => {
+    const teamId = 'command-accept-denial-limit';
+    const invitationId = randomUUID();
+    await seedTeam(pool, teamId);
+    const owner = identity(teamId, 'owner', 'owner');
+    const invitee = identity(teamId, 'invitee', 'member');
+    const wrongUser = identity(teamId, 'wrong-user', 'member');
+    await seedIdentity(pool, teamId, owner);
+    await seedUser(pool, invitee);
+    await seedUser(pool, wrongUser);
+    await seedInvitation(pool, {
+      id: invitationId,
+      teamId,
+      inviterId: owner.userId,
+      email: invitee.email,
+      role: invitee.role,
+    });
+
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      await expect(
+        acceptTeamInvitation(
+          {
+            pool: app,
+            principal: principal(wrongUser),
+            requestId: randomUUID(),
+          },
+          { invitationId },
+        ),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    }
+
+    expect(
+      await pool.query(
+        `SELECT id FROM audit_events
+         WHERE team_id = $1
+           AND actor_id = $2
+           AND event_type = 'team.invitation.acceptance_denied'`,
+        [teamId, wrongUser.userId],
+      ),
+    ).toHaveProperty('rowCount', 5);
+  });
+
+  it.each([
+    {
+      label: 'invalid invitation role',
+      errorCode: 'INVALID_ROLE',
+      failureCode: 'invalid_role',
+      arrange: async (
+        teamId: string,
+        invitationId: string,
+        invitee: Identity,
+      ) => {
+        await pool.query(
+          `UPDATE team_invitations SET role = 'corrupt' WHERE team_id = $1 AND id = $2`,
+          [teamId, invitationId],
+        );
+        await seedUser(pool, invitee);
+      },
+    },
+    {
+      label: 'existing membership conflict',
+      errorCode: 'CONFLICT',
+      failureCode: 'conflict',
+      arrange: async (
+        teamId: string,
+        _invitationId: string,
+        invitee: Identity,
+      ) => {
+        await seedIdentity(pool, teamId, invitee);
+      },
+    },
+  ] as const)(
+    'records an immutable failed event for an authorized $label',
+    async ({ errorCode, failureCode, arrange }) => {
+      const teamId = `command-accept-failed-${failureCode}`;
+      const invitationId = randomUUID();
+      await seedTeam(pool, teamId);
+      const owner = identity(teamId, 'owner', 'owner');
+      const invitee = identity(teamId, 'invitee', 'member');
+      await seedIdentity(pool, teamId, owner);
+      await seedInvitation(pool, {
+        id: invitationId,
+        teamId,
+        inviterId: owner.userId,
+        email: invitee.email,
+        role: invitee.role,
+      });
+      await arrange(teamId, invitationId, invitee);
+
+      await expect(
+        acceptTeamInvitation(
+          {
+            pool: app,
+            principal: principal(invitee),
+            requestId: randomUUID(),
+          },
+          { invitationId },
+        ),
+      ).rejects.toMatchObject({ code: errorCode });
+
+      expect(
+        await pool.query(
+          `SELECT event_type, outcome, subject_id, details
+           FROM audit_events WHERE team_id = $1`,
+          [teamId],
+        ),
+      ).toHaveProperty('rows', [
+        {
+          event_type: 'team.invitation.acceptance_failed',
+          outcome: 'failed',
+          subject_id: null,
+          details: { failureCode },
+        },
+      ]);
+      expect(
+        await pool.query(
+          `SELECT id FROM team_members WHERE team_id = $1 AND user_id = $2`,
+          [teamId, invitee.userId],
+        ),
+      ).toHaveProperty('rowCount', failureCode === 'conflict' ? 1 : 0);
+      expect(
+        await pool.query(
+          `SELECT status FROM team_invitations WHERE team_id = $1 AND id = $2`,
+          [teamId, invitationId],
+        ),
+      ).toHaveProperty('rows', [{ status: 'pending' }]);
+    },
+  );
+
+  it('serializes concurrent acceptance into one membership and one event', async () => {
+    const teamId = 'command-concurrent-accept';
+    const invitationId = randomUUID();
+    await seedTeam(pool, teamId);
+    const owner = identity(teamId, 'owner', 'owner');
+    const invitee = identity(teamId, 'invitee', 'member');
+    await seedIdentity(pool, teamId, owner);
+    await seedUser(pool, invitee);
+    await seedInvitation(pool, {
+      id: invitationId,
+      teamId,
+      inviterId: owner.userId,
+      email: invitee.email,
+      role: invitee.role,
+    });
+
+    const results = await Promise.all(
+      [randomUUID(), randomUUID()].map((requestId) =>
+        acceptTeamInvitation(
+          { pool: app, principal: principal(invitee), requestId },
+          { invitationId },
+        ),
+      ),
+    );
+    expect(results[1]).toEqual(results[0]);
+    expect(
+      await pool.query(
+        `SELECT id FROM team_members WHERE team_id = $1 AND user_id = $2`,
+        [teamId, invitee.userId],
+      ),
+    ).toMatchObject({ rowCount: 1 });
+    expect(
+      await pool.query(
+        `SELECT id FROM audit_events
+         WHERE team_id = $1 AND event_type = 'team.invitation.accepted'`,
+        [teamId],
+      ),
+    ).toMatchObject({ rowCount: 1 });
   });
 
   it('changes a role with exact actor, target, before/after, and request context', async () => {
@@ -789,6 +1177,26 @@ describe.skipIf(!db)('audited team commands', () => {
     expect(created.expiresAt.getTime()).toBeLessThan(
       Date.now() + 49 * 60 * 60 * 1000,
     );
+    const delivery = await pool.query<{
+      email: string;
+      role: string;
+      team_label: string;
+      inviter_label: string;
+      expires_at: Date;
+    }>(
+      `SELECT email, role, team_label, inviter_label, expires_at
+       FROM team_invitation_deliveries WHERE invitation_id = $1`,
+      [created.invitationId],
+    );
+    expect(delivery.rows).toEqual([
+      {
+        email: 'invitee@example.com',
+        role: 'admin',
+        team_label: teamId,
+        inviter_label: owner.name,
+        expires_at: created.expiresAt,
+      },
+    ]);
     await expect(
       createTeamInvitation(
         { tenantDb, principal: principal(owner), requestId: randomUUID() },

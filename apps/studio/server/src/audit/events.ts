@@ -71,6 +71,44 @@ const TeamInvitationCancelledV1EventSchema =
     details: z.strictObject({ role: TeamRoleSchema }),
   }).strict();
 
+const TeamInvitationAcceptedV1EventSchema =
+  CommonTeamAccessSucceededV1EventSchema.extend({
+    eventType: z.literal('team.invitation.accepted'),
+    subjectType: z.literal('team_invitation'),
+    subjectId: IdentifierSchema,
+    subjectLabel: z.email().max(320),
+    details: z.strictObject({
+      role: TeamRoleSchema,
+      memberId: IdentifierSchema,
+    }),
+  }).strict();
+
+const TeamInvitationAcceptanceDeniedV1EventSchema =
+  CommonTeamAccessDeniedV1EventSchema.extend({
+    eventType: z.literal('team.invitation.acceptance_denied'),
+    subjectType: z.literal('team_invitation'),
+    subjectId: IdentifierSchema,
+    subjectLabel: z.email().max(320),
+    details: z.strictObject({
+      reason: z.enum([
+        'email_mismatch',
+        'email_unverified',
+        'invitation_unavailable',
+      ]),
+    }),
+  }).strict();
+
+const TeamInvitationAcceptanceFailedV1EventSchema =
+  CommonTeamAccessFailedV1EventSchema.extend({
+    eventType: z.literal('team.invitation.acceptance_failed'),
+    subjectType: z.null(),
+    subjectId: z.null(),
+    subjectLabel: z.null(),
+    details: z.strictObject({
+      failureCode: z.enum(['invalid_role', 'conflict']),
+    }),
+  }).strict();
+
 const TeamMemberRoleChangeDeniedV1EventSchema =
   CommonTeamAccessDeniedV1EventSchema.extend({
     eventType: z.literal('team.member.role_change_denied'),
@@ -140,6 +178,9 @@ export const AuditEventInputSchema = z.union([
   TeamMemberRoleChangeFailedV1EventSchema,
   TeamInvitationCreatedV1EventSchema,
   TeamInvitationCancelledV1EventSchema,
+  TeamInvitationAcceptedV1EventSchema,
+  TeamInvitationAcceptanceDeniedV1EventSchema,
+  TeamInvitationAcceptanceFailedV1EventSchema,
   ProtocolCreatedV1EventSchema,
   ProtocolDraftCommittedV1EventSchema,
 ]);
@@ -271,6 +312,53 @@ export const AUDIT_EVENT_REGISTRY = {
       subjectId: 'fixture-invitation',
       subjectLabel: 'invitee@example.com',
       details: { role: 'member' },
+    },
+  },
+  'team.invitation.accepted@1': {
+    inputSchema: TeamInvitationAcceptedV1EventSchema,
+    title: 'Invitation accepted',
+    detailFields: ['role', 'memberId'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V1_COMMON,
+      eventType: 'team.invitation.accepted',
+      subjectType: 'team_invitation',
+      subjectId: 'fixture-invitation',
+      subjectLabel: 'invitee@example.com',
+      details: { role: 'member', memberId: 'fixture-member' },
+    },
+  },
+  'team.invitation.acceptance_denied@1': {
+    inputSchema: TeamInvitationAcceptanceDeniedV1EventSchema,
+    title: 'Invitation acceptance denied',
+    detailFields: ['reason'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V1_COMMON,
+      outcome: 'denied',
+      eventType: 'team.invitation.acceptance_denied',
+      subjectType: 'team_invitation',
+      subjectId: 'fixture-invitation',
+      subjectLabel: 'invitee@example.com',
+      details: { reason: 'email_mismatch' },
+    },
+  },
+  'team.invitation.acceptance_failed@1': {
+    inputSchema: TeamInvitationAcceptanceFailedV1EventSchema,
+    title: 'Invitation acceptance failed',
+    detailFields: ['failureCode'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V1_COMMON,
+      outcome: 'failed',
+      eventType: 'team.invitation.acceptance_failed',
+      subjectType: null,
+      subjectId: null,
+      subjectLabel: null,
+      details: { failureCode: 'conflict' },
     },
   },
   'protocol.created@1': {

@@ -6,6 +6,10 @@ import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '@codaco/studio-sync/schema';
 
 import { AUDIT_SIDECAR_SQL, AUDIT_TABLES } from '../audit/schema.ts';
 import { PROTOCOL_SIDECAR_SQL, PROTOCOL_TABLES } from '../protocol/schema.ts';
+import {
+  INVITATION_DELIVERY_SIDECAR_SQL,
+  INVITATION_DELIVERY_TABLES,
+} from '../team/invitation-delivery-schema.ts';
 import { ACCESS_SIDECAR_SQL } from './access.ts';
 import { AUTH_TABLES } from './auth-schema.ts';
 import { SCHEMA_FINGERPRINT } from './fingerprint.generated.ts';
@@ -29,16 +33,18 @@ export const SCHEMA = {
   ...SYNC_TABLES,
   ...PROTOCOL_TABLES,
   ...AUDIT_TABLES,
+  ...INVITATION_DELIVERY_TABLES,
   schemaFingerprint,
 };
 
 // Order matters: sync creates the roles, access grants the general table
-// privileges, and audit runs last to revoke its immutable table's mutating
-// privileges after every broad grant.
+// privileges, then the invitation outbox and immutable audit log apply their
+// narrower role-specific revocations after every broad grant.
 export const SIDECARS = [
   SYNC_SIDECAR_SQL,
   PROTOCOL_SIDECAR_SQL,
   ACCESS_SIDECAR_SQL,
+  INVITATION_DELIVERY_SIDECAR_SQL,
   AUDIT_SIDECAR_SQL,
 ];
 

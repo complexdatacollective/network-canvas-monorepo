@@ -52,4 +52,33 @@ describe('denied audit rate limiter', () => {
 
     expect(limiter.reserve('first').admitted).toBe(true);
   });
+
+  it('fails closed instead of evicting a reservation that is in flight', () => {
+    const limiter = new DeniedAuditRateLimiter({ limit: 1, maxKeys: 1 });
+    const first = limiter.reserve('first');
+
+    expect(limiter.reserve('second')).toEqual({ admitted: false });
+    expect(limiter.reserve('first')).toEqual({ admitted: false });
+
+    complete(first, 'other');
+    expect(limiter.reserve('second').admitted).toBe(true);
+  });
+
+  it('does not let a stale completion delete a replacement window', () => {
+    let now = 1_000;
+    const limiter = new DeniedAuditRateLimiter({
+      limit: 1,
+      windowMs: 100,
+      now: () => now,
+    });
+    const expired = limiter.reserve('actor/team/operation');
+
+    now += 100;
+    expect(limiter.reserve('actor/team/operation').admitted).toBe(true);
+    complete(expired, 'other');
+
+    expect(limiter.reserve('actor/team/operation')).toEqual({
+      admitted: false,
+    });
+  });
 });

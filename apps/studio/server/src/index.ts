@@ -7,13 +7,22 @@ import type { Context } from 'hono';
 import { WebSocketServer } from 'ws';
 
 import { createApp } from './app.ts';
-import { createPool, isMissingRoleError } from './db/pool.ts';
+import { createMailer } from './auth/email.ts';
+import {
+  createMaintenancePool,
+  createPool,
+  isMissingRoleError,
+} from './db/pool.ts';
 import {
   checkSchema,
   type SchemaState,
   schemaProblemMessage,
 } from './db/schema.ts';
 import { readEnv } from './env.ts';
+import {
+  type InvitationDeliveryWorker,
+  startInvitationDeliveryWorker,
+} from './team/invitation-delivery-dispatcher.ts';
 import { STUDIO_VERSION } from './version.ts';
 
 // The server entry, development and production both: one Node process serving
@@ -25,6 +34,24 @@ import { STUDIO_VERSION } from './version.ts';
 
 const env = readEnv();
 const pool = env.db ? createPool(env.db) : undefined;
+const maintenancePool = env.db ? createMaintenancePool(env.db) : undefined;
+let invitationDeliveryWorker: InvitationDeliveryWorker | undefined;
+
+function startDatabaseWorkers(): void {
+  if (
+    invitationDeliveryWorker ||
+    !maintenancePool ||
+    !env.auth ||
+    env.auth.mailer.kind === 'refuse'
+  ) {
+    return;
+  }
+  invitationDeliveryWorker = startInvitationDeliveryWorker({
+    pool: maintenancePool,
+    mailer: createMailer(env.auth.mailer),
+    publicBaseUrl: env.auth.baseUrl,
+  });
+}
 
 // Stale everywhere and absent-in-production are resolved answers, not
 // transient failures: retrying re-reads the same fingerprint every three
@@ -57,6 +84,7 @@ if (pool) {
           exitIfFatal(state);
           if (state.kind === 'current') {
             clearInterval(retry);
+            startDatabaseWorkers();
             // oxlint-disable-next-line no-console -- boot diagnostics
             console.log('Database schema current.');
           }
@@ -82,7 +110,11 @@ if (pool) {
   try {
     const state = await checkSchema(pool);
     exitIfFatal(state);
-    if (state.kind === 'absent') waitForSchema();
+    if (state.kind === 'absent') {
+      waitForSchema();
+    } else {
+      startDatabaseWorkers();
+    }
   } catch (error) {
     // The pool runs as a role the schema apply creates, so a never-applied
     // database refuses the connection before the fingerprint can be read.
@@ -99,7 +131,12 @@ if (pool) {
   }
 }
 
-const app = createApp(env, { pool });
+const app = createApp(env, {
+  invitationDeliveryAvailable: Boolean(
+    env.auth && env.auth.mailer.kind !== 'refuse',
+  ),
+  pool,
+});
 
 // Default matches the Docker image layout: dist/index.js next to a client/
 // directory. `pnpm start` overrides via CLIENT_DIST for the local layout.
@@ -170,10 +207,17 @@ function shutdown() {
   );
   void Promise.all(closing).then(() => {
     server.close(() => {
-      void Promise.resolve(pool?.end())
+      void Promise.all([
+        invitationDeliveryWorker?.stop(),
+        pool?.end(),
+        maintenancePool?.end(),
+      ])
         .catch(() => undefined)
-        .then(() => process.exit(0));
+        .finally(() => {
+          process.exit(0);
+        });
     });
+    return undefined;
   });
 }
 process.on('SIGTERM', shutdown);

@@ -8,8 +8,10 @@ import {
 } from '@tanstack/react-router';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import { TeamInvitationIdSchema } from '@codaco/studio-rpc';
 
 import { authClient } from './lib/auth.ts';
+import AcceptInvitation from './routes/AcceptInvitation.tsx';
 import AppLayout from './routes/AppLayout.tsx';
 import Editor from './routes/Editor.tsx';
 import ErrorScreen, { ServerUnreachableError } from './routes/ErrorScreen.tsx';
@@ -45,14 +47,33 @@ const rootRoute = createRootRoute({ component: RootLayout });
 const signInRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/sign-in',
-  validateSearch: (search): { error?: string } =>
-    typeof search.error === 'string' ? { error: search.error } : {},
-  beforeLoad: async () => {
+  validateSearch: (search): { error?: string; invitationId?: string } => {
+    const invitationId = TeamInvitationIdSchema.safeParse(search.invitationId);
+    return {
+      ...(typeof search.error === 'string' ? { error: search.error } : {}),
+      ...(invitationId.success ? { invitationId: invitationId.data } : {}),
+    };
+  },
+  beforeLoad: async ({ search }) => {
     if ((await probeSession()) === 'signedIn') {
-      throw redirect({ to: '/' });
+      throw search.invitationId
+        ? redirect({
+            to: '/invitations/$invitationId',
+            params: { invitationId: search.invitationId },
+          })
+        : redirect({ to: '/' });
     }
   },
   component: SignIn,
+});
+
+const invitationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/invitations/$invitationId',
+  component: () => {
+    const { invitationId } = invitationRoute.useParams();
+    return <AcceptInvitation invitationId={invitationId} />;
+  },
 });
 
 const authenticatedRoute = createRoute({
@@ -86,6 +107,7 @@ const editorRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   signInRoute,
+  invitationRoute,
   authenticatedRoute.addChildren([indexRoute, editorRoute]),
 ]);
 

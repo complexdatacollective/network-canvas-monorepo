@@ -455,7 +455,9 @@ describe('Studio team workspace', () => {
       }),
     );
     expect(
-      await screen.findByText('Invitation created for new@example.com.'),
+      await screen.findByText(
+        'Invitation created for new@example.com. Email delivery is queued.',
+      ),
     ).toBeInTheDocument();
   });
 

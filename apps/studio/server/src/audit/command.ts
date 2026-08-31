@@ -119,22 +119,27 @@ export type AuditedCommandFailure = {
   events: readonly [AuditEventInput, ...AuditEventInput[]];
 };
 
+type AuditedCommandWorkResult<T> =
+  | AuditedMutationResult<T>
+  | { status: 'unchanged'; result: T };
+
 /**
  * Runs authorized domain work behind a savepoint. A classified synchronous
  * failure rolls back target locks and mutations acquired after the savepoint,
  * then returns a bounded failed decision for the outer audited transaction to
- * append while its team and authorization locks remain held.
+ * append while its team and authorization locks remain held. Idempotent work
+ * may return unchanged after its replay evidence has been checked.
  */
 export async function runAuditedCommandWork<T>(
   client: pg.PoolClient,
-  work: () => Promise<AuditedMutationResult<T>>,
+  work: () => Promise<AuditedCommandWorkResult<T>>,
   classifyFailure: (error: unknown) => AuditedCommandFailure | null,
 ): Promise<AuditedCommandDecision<T>> {
   await client.query('SAVEPOINT studio_audited_command_work');
   try {
-    const mutation = await work();
+    const result = await work();
     await client.query('RELEASE SAVEPOINT studio_audited_command_work');
-    return { status: 'succeeded', ...mutation };
+    return 'status' in result ? result : { status: 'succeeded', ...result };
   } catch (error) {
     await client.query('ROLLBACK TO SAVEPOINT studio_audited_command_work');
     await client.query('RELEASE SAVEPOINT studio_audited_command_work');

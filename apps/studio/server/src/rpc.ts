@@ -17,6 +17,7 @@ import {
 import { ProtocolStore } from './protocol/store.ts';
 import { createProtocolSyncServer } from './protocol/sync.ts';
 import {
+  acceptTeamInvitation,
   cancelTeamInvitation,
   createTeamInvitation,
   TeamCommandError,
@@ -72,9 +73,13 @@ async function handleAuditedProtocolCommand<T>(
 
 export function createRpcRouter(
   caps: AuthCapabilities,
-  deps: { auth: AuthService; pool?: pg.Pool },
+  deps: {
+    auth: AuthService;
+    invitationDeliveryAvailable: boolean;
+    pool?: pg.Pool;
+  },
 ) {
-  const { auth, pool } = deps;
+  const { auth, invitationDeliveryAvailable, pool } = deps;
   // Tenancy is checked per request against an explicit teamId in the
   // procedure input — never the session's active team. A non-member and a
   // nonexistent team both read FORBIDDEN, so the check is not an existence
@@ -110,6 +115,21 @@ export function createRpcRouter(
       name: context.principal.name,
     })),
     team: {
+      acceptInvitation: os.team.acceptInvitation
+        .use(requireUser)
+        .handler(({ context, input }) => {
+          if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
+          return handleTeamCommand(() =>
+            acceptTeamInvitation(
+              {
+                pool,
+                principal: context.principal,
+                requestId: context.requestId,
+              },
+              input,
+            ),
+          );
+        }),
       updateMemberRole: os.team.updateMemberRole
         .use(requireTeam)
         .handler(({ context, input }) =>
@@ -126,8 +146,11 @@ export function createRpcRouter(
         ),
       createInvitation: os.team.createInvitation
         .use(requireTeam)
-        .handler(({ context, input }) =>
-          handleTeamCommand(() =>
+        .handler(({ context, input }) => {
+          if (!invitationDeliveryAvailable) {
+            throw new ORPCError('SERVICE_UNAVAILABLE');
+          }
+          return handleTeamCommand(() =>
             createTeamInvitation(
               {
                 tenantDb: context.tenantDb,
@@ -136,8 +159,8 @@ export function createRpcRouter(
               },
               { email: input.email, role: input.role },
             ),
-          ),
-        ),
+          );
+        }),
       cancelInvitation: os.team.cancelInvitation
         .use(requireTeam)
         .handler(({ context, input }) =>

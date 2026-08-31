@@ -6,6 +6,7 @@ export type AuditPolicy =
 // Every currently exposed meaningful domain mutation is required. Lease-only
 // coordination remains excluded by the audit design.
 export const RPC_MUTATION_AUDIT_POLICIES = {
+  'team.acceptInvitation': { kind: 'required' },
   'team.updateMemberRole': { kind: 'required' },
   'team.createInvitation': { kind: 'required' },
   'team.cancelInvitation': { kind: 'required' },

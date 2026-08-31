@@ -29,7 +29,7 @@ const PROVIDERS: Record<SocialProvider, { label: string; icon: ReactNode }> = {
 const MAGIC_LINK_ERRORS = new Set(['EXPIRED_TOKEN', 'INVALID_TOKEN']);
 
 export default function SignIn() {
-  const { error } = route.useSearch();
+  const { error, invitationId } = route.useSearch();
   const status = useQuery(orpc.status.queryOptions());
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [socialPending, setSocialPending] = useState<SocialProvider | null>(
@@ -53,6 +53,12 @@ export default function SignIn() {
 
   const magicLink = auth ? auth.magicLink : true;
   const socialProviders = auth?.socialProviders ?? [];
+  const callbackURL = invitationId
+    ? `/invitations/${encodeURIComponent(invitationId)}`
+    : '/';
+  const errorCallbackURL = invitationId
+    ? `/sign-in?invitationId=${encodeURIComponent(invitationId)}`
+    : '/sign-in';
 
   const signInWith = async (provider: SocialProvider) => {
     setSocialFailed(false);
@@ -60,9 +66,9 @@ export default function SignIn() {
     try {
       const result = await authClient.signIn.social({
         provider,
-        callbackURL: '/',
+        callbackURL,
         // better-auth appends its own ?error=<code> on failure.
-        errorCallbackURL: '/sign-in',
+        errorCallbackURL,
       });
       if (result.error) {
         setSocialPending(null);
@@ -117,8 +123,8 @@ export default function SignIn() {
                     try {
                       result = await authClient.signIn.magicLink({
                         email,
-                        callbackURL: '/',
-                        errorCallbackURL: '/sign-in',
+                        callbackURL,
+                        errorCallbackURL,
                       });
                     } catch {
                       // Unhandled, a rejection would leave the form stuck

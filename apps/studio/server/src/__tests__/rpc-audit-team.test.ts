@@ -58,7 +58,13 @@ describe.skipIf(!db)('audited team RPC', () => {
           teamId === 'rpc-audit-team' ? { role: membershipRole } : null,
         ),
     });
-    client = createRpcClient(createApp(readEnv(), { auth, pool: scratch.app }));
+    client = createRpcClient(
+      createApp(readEnv(), {
+        auth,
+        invitationDeliveryAvailable: true,
+        pool: scratch.app,
+      }),
+    );
   });
 
   afterAll(async () => {
@@ -127,5 +133,112 @@ describe.skipIf(!db)('audited team RPC', () => {
       }),
     );
     expect(error).toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('refuses to create invitations when this instance cannot deliver email', async () => {
+    const env = readEnv();
+    if (!env.auth) throw new Error('test auth environment is unavailable');
+    const auth = stubAuthService({
+      getSession: () => Promise.resolve(PRINCIPAL),
+      getMembership: (_userId, teamId) =>
+        Promise.resolve(teamId === 'rpc-audit-team' ? { role: 'owner' } : null),
+    });
+    const unavailableClient = createRpcClient(
+      createApp(
+        { ...env, auth: { ...env.auth, mailer: { kind: 'refuse' } } },
+        { auth, invitationDeliveryAvailable: true, pool },
+      ),
+    );
+
+    const { error } = await safe(
+      unavailableClient.team.createInvitation({
+        teamId: 'rpc-audit-team',
+        email: 'cannot-deliver@example.com',
+        role: 'member',
+      }),
+    );
+
+    expect(error).toMatchObject({ code: 'SERVICE_UNAVAILABLE' });
+    expect(
+      await pool.query(
+        `SELECT id FROM team_invitations WHERE email = 'cannot-deliver@example.com'`,
+      ),
+    ).toHaveProperty('rowCount', 0);
+  });
+
+  it('refuses to queue an invitation when the runtime has no dispatcher', async () => {
+    const auth = stubAuthService({
+      getSession: () => Promise.resolve(PRINCIPAL),
+      getMembership: (_userId, teamId) =>
+        Promise.resolve(teamId === 'rpc-audit-team' ? { role: 'owner' } : null),
+    });
+    const serverlessClient = createRpcClient(
+      createApp(readEnv(), {
+        auth,
+        invitationDeliveryAvailable: false,
+        pool,
+      }),
+    );
+
+    const { error } = await safe(
+      serverlessClient.team.createInvitation({
+        teamId: 'rpc-audit-team',
+        email: 'undrainable@example.com',
+        role: 'member',
+      }),
+    );
+
+    expect(error).toMatchObject({ code: 'SERVICE_UNAVAILABLE' });
+    expect(
+      await pool.query(
+        `SELECT id FROM team_invitations WHERE email = 'undrainable@example.com'`,
+      ),
+    ).toHaveProperty('rowCount', 0);
+  });
+
+  it('lets the authenticated invitee accept without an existing membership', async () => {
+    const invitationId = 'rpc-audit-accept-invitation';
+    const invitee: SessionPrincipal = {
+      kind: 'user',
+      userId: 'rpc-audit-invitee-user',
+      email: 'rpc-audit-invitee@example.com',
+      emailVerified: true,
+      name: 'RPC Audit Invitee',
+      sessionId: 'rpc-audit-invitee-session',
+    };
+    await pool.query(
+      `INSERT INTO "user" (id, name, email, "emailVerified")
+       VALUES ($1, $2, $3, true)`,
+      [invitee.userId, invitee.name, invitee.email],
+    );
+    await pool.query(
+      `INSERT INTO team_invitations (
+         id, team_id, email, role, status, expires_at, inviter_id
+       ) VALUES ($1, 'rpc-audit-team', $2, 'admin', 'pending',
+                 CURRENT_TIMESTAMP + INTERVAL '1 day', $3)`,
+      [invitationId, invitee.email, PRINCIPAL.userId],
+    );
+    const inviteeAuth = stubAuthService({
+      getSession: () => Promise.resolve(invitee),
+      getMembership: () => Promise.resolve(null),
+    });
+    const inviteeClient = createRpcClient(
+      createApp(readEnv(), { auth: inviteeAuth, pool }),
+    );
+
+    await expect(
+      inviteeClient.team.acceptInvitation({ invitationId }),
+    ).resolves.toMatchObject({
+      invitationId,
+      teamId: 'rpc-audit-team',
+      role: 'admin',
+      status: 'accepted',
+    });
+    const membership = await pool.query<{ role: string }>(
+      `SELECT role FROM team_members
+       WHERE team_id = 'rpc-audit-team' AND user_id = $1`,
+      [invitee.userId],
+    );
+    expect(membership.rows).toEqual([{ role: 'admin' }]);
   });
 });

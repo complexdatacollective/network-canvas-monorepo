@@ -14,6 +14,11 @@ export type SocialProvider = (typeof SOCIAL_PROVIDERS)[number];
 export const TEAM_ROLES = ['owner', 'admin', 'member'] as const;
 export const TeamRoleSchema = z.enum(TEAM_ROLES);
 export type TeamRole = z.infer<typeof TeamRoleSchema>;
+export const TeamInvitationIdSchema = z
+  .string()
+  .min(1)
+  .max(255)
+  .regex(/^[A-Za-z0-9_-]+$/);
 
 export const StatusSchema = z.object({
   name: z.string(),
@@ -55,7 +60,7 @@ export const CreateTeamInvitationInputSchema = TeamScopedSchema.extend({
 });
 
 export const CreateTeamInvitationResultSchema = z.object({
-  invitationId: z.string().min(1),
+  invitationId: TeamInvitationIdSchema,
   email: z.email().max(320),
   role: TeamRoleSchema,
   status: z.literal('pending'),
@@ -63,12 +68,28 @@ export const CreateTeamInvitationResultSchema = z.object({
 });
 
 export const CancelTeamInvitationInputSchema = TeamScopedSchema.extend({
-  invitationId: z.string().min(1),
+  invitationId: TeamInvitationIdSchema,
 });
 
 export const CancelTeamInvitationResultSchema = z.object({
-  invitationId: z.string().min(1),
+  invitationId: TeamInvitationIdSchema,
   status: z.literal('canceled'),
+});
+
+// Acceptance deliberately has no teamId: the authenticated invitee is not a
+// member yet, so the server resolves and locks the invitation's team instead
+// of trusting a tenant chosen by the browser.
+export const AcceptTeamInvitationInputSchema = z.object({
+  invitationId: TeamInvitationIdSchema,
+});
+
+export const AcceptTeamInvitationResultSchema = z.object({
+  invitationId: TeamInvitationIdSchema,
+  teamId: z.string().min(1).max(255),
+  teamName: z.string().min(1).max(320),
+  memberId: z.string().min(1).max(255),
+  role: TeamRoleSchema,
+  status: z.literal('accepted'),
 });
 
 export const ProtocolSummarySchema = z.object({

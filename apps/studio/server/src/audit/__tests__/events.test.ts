@@ -13,6 +13,9 @@ describe('audit event registry', () => {
     expect(Object.keys(AUDIT_EVENT_REGISTRY).toSorted()).toEqual([
       'protocol.created@1',
       'protocol.draft.committed@1',
+      'team.invitation.acceptance_denied@1',
+      'team.invitation.acceptance_failed@1',
+      'team.invitation.accepted@1',
       'team.invitation.cancelled@1',
       'team.invitation.created@1',
       'team.member.role_change_denied@1',

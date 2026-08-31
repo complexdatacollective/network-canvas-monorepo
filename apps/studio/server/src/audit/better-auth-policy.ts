@@ -89,8 +89,7 @@ export const BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES = {
     path: '/api/auth/organization/accept-invitation',
     disposition: 'blocked',
     audit: { kind: 'required' },
-    reason:
-      'Invitation acceptance remains blocked until Studio owns its audited command.',
+    reason: 'Studio owns invitation acceptance through team.acceptInvitation.',
   },
   'GET /api/auth/organization/get-invitation': {
     method: 'GET',

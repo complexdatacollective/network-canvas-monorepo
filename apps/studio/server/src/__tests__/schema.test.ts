@@ -78,6 +78,7 @@ describe('generated schema documentation', () => {
     expect(readmeSection).toContain('studio_maintenance');
     expect(readmeSection).toContain('sections_immutable');
     expect(readmeSection).toContain('version_sections_insert_frozen');
+    expect(readmeSection).toContain('invitation_delivery_payload_immutable');
     expect(readmeSection).toContain('audit_events_immutable');
     expect(readmeSection).toContain('audit_team_isolation');
     expect(readmeSection).toContain(
@@ -86,6 +87,9 @@ describe('generated schema documentation', () => {
     expect(svg).toContain('RLS policy team_isolation');
     expect(svg).toContain('RLS policy audit_team_isolation');
     expect(svg).toContain('sidecar trigger sections_immutable');
+    expect(svg).toContain(
+      'sidecar trigger invitation_delivery_payload_immutable',
+    );
     expect(svg).toContain('sidecar trigger audit_events_immutable');
   });
 
@@ -143,6 +147,7 @@ describe.skipIf(!db)('schema verification', () => {
         'schemaFingerprint',
         'sections',
         'session',
+        'team_invitation_deliveries',
         'team_invitations',
         'team_members',
         'teams',

@@ -86,6 +86,7 @@ describe.skipIf(!db)('row-level security', () => {
       'protocol_versions',
       'protocols',
       'sections',
+      'team_invitation_deliveries',
       'version_sections',
     ]);
 

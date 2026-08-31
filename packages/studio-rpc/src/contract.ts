@@ -2,6 +2,8 @@ import { oc } from '@orpc/contract';
 import { z } from 'zod';
 
 import {
+  AcceptTeamInvitationInputSchema,
+  AcceptTeamInvitationResultSchema,
   AcquireSectionInputSchema,
   AcquireSectionResultSchema,
   AddInformationStageInputSchema,
@@ -31,6 +33,7 @@ export {
   SOCIAL_PROVIDERS,
   TEAM_ROLES,
   TeamRoleSchema,
+  TeamInvitationIdSchema,
   type SocialProvider,
   type TeamRole,
 } from './schemas.ts';
@@ -55,6 +58,9 @@ export const contract = {
   /** The signed-in researcher; refuses UNAUTHORIZED without a session. */
   me: oc.output(MeSchema),
   team: {
+    acceptInvitation: oc
+      .input(AcceptTeamInvitationInputSchema)
+      .output(AcceptTeamInvitationResultSchema),
     updateMemberRole: oc
       .input(UpdateTeamMemberRoleInputSchema)
       .output(UpdateTeamMemberRoleResultSchema),

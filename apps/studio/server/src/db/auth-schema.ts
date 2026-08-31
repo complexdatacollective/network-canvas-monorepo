@@ -160,6 +160,9 @@ const team_invitations = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
   },
   (table) => [
+    // Supports the composite outbox FK, which proves a queued delivery's
+    // team_id belongs to its invitation rather than merely trusting a caller.
+    uniqueIndex('team_invitations_id_team_id_idx').on(table.id, table.team_id),
     index('team_invitations_team_id_idx').on(table.team_id),
     index('team_invitations_email_idx').on(table.email),
   ],

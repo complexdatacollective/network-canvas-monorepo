@@ -7,6 +7,7 @@ type DenialWindow = {
   startedAt: number;
   denied: number;
   inFlight: number;
+  suppressed: number;
 };
 
 export type DeniedAuditReservation =
@@ -51,13 +52,24 @@ export class DeniedAuditRateLimiter {
     }
     if (!window) {
       if (this.#entries.size >= this.#maxKeys) {
-        const oldestKey = this.#entries.keys().next().value;
-        if (typeof oldestKey === 'string') this.#entries.delete(oldestKey);
+        let oldestIdleKey: string | undefined;
+        for (const [candidateKey, candidate] of this.#entries) {
+          if (candidate.inFlight === 0) {
+            oldestIdleKey = candidateKey;
+            break;
+          }
+        }
+        if (!oldestIdleKey) return { admitted: false };
+        this.#entries.delete(oldestIdleKey);
       }
-      window = { startedAt: now, denied: 0, inFlight: 0 };
+      window = { startedAt: now, denied: 0, inFlight: 0, suppressed: 0 };
       this.#entries.set(key, window);
     }
     if (window.denied + window.inFlight >= this.#limit) {
+      window.suppressed = Math.min(
+        Number.MAX_SAFE_INTEGER,
+        window.suppressed + 1,
+      );
       return { admitted: false };
     }
 
@@ -70,7 +82,11 @@ export class DeniedAuditRateLimiter {
         completed = true;
         window.inFlight--;
         if (outcome === 'denied') window.denied++;
-        if (window.denied === 0 && window.inFlight === 0) {
+        if (
+          this.#entries.get(key) === window &&
+          window.denied === 0 &&
+          window.inFlight === 0
+        ) {
           this.#entries.delete(key);
         }
       },

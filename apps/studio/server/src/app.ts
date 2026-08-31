@@ -43,6 +43,8 @@ const BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES: ReadonlyMap<
 
 type CreateAppDeps = {
   auth?: AuthService;
+  /** True only for an entrypoint that starts a supported outbox dispatcher. */
+  invitationDeliveryAvailable?: boolean;
   pool?: pg.Pool;
 };
 
@@ -121,7 +123,15 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     app.use('/rpc/*', requireSameOrigin(env.auth.baseUrl));
   }
   app.use('/rpc/*', createPrincipalMiddleware(auth));
-  const rpcHandler = new RPCHandler(createRpcRouter(authCaps, { auth, pool }));
+  const rpcHandler = new RPCHandler(
+    createRpcRouter(authCaps, {
+      auth,
+      invitationDeliveryAvailable: Boolean(
+        deps.invitationDeliveryAvailable && authCaps.magicLink,
+      ),
+      pool,
+    }),
+  );
   app.use('/rpc/*', async (c, next) => {
     const { matched, response } = await rpcHandler.handle(c.req.raw, {
       prefix: '/rpc',

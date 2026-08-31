@@ -1,10 +1,17 @@
 import { randomUUID } from 'node:crypto';
 
+import type pg from 'pg';
 import { z } from 'zod';
 
-import { TeamRoleSchema, type TeamRole } from '@codaco/studio-rpc';
+import {
+  TeamInvitationIdSchema,
+  TeamRoleSchema,
+  type TeamRole,
+} from '@codaco/studio-rpc';
+import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import {
+  auditActorEventContext,
   auditEventContext,
   type AuditedCommandContext,
   deniedAuditEventContext,
@@ -15,10 +22,12 @@ import {
 } from '../audit/command.ts';
 import { reserveDeniedAuditAttempt } from '../audit/denial-rate-limit.ts';
 import type { AuditEventInput } from '../audit/events.ts';
+import { enqueueInvitationDelivery } from './invitation-delivery-store.ts';
 import { TeamStore, type LockedMember } from './store.ts';
 
 const EmailSchema = z.email().max(320);
 const INVITATION_LIMIT = 100;
+const MEMBERSHIP_LIMIT = 100;
 
 export type TeamCommandErrorCode =
   | 'FORBIDDEN'
@@ -248,6 +257,15 @@ export async function createTeamInvitation(
       role: input.role,
       inviterId: context.principal.userId,
     });
+    await enqueueInvitationDelivery(client, {
+      invitationId: invitation.id,
+      teamId: context.tenantDb.teamId,
+      email: invitation.email,
+      role: input.role,
+      teamLabel: auditContext.teamLabel,
+      inviterLabel: auditActorEventContext(auditContext).actorLabel,
+      expiresAt: invitation.expiresAt,
+    });
     const event = {
       ...auditEventContext(auditContext),
       eventType: 'team.invitation.created',
@@ -317,4 +335,197 @@ export async function cancelTeamInvitation(
       events: [event],
     };
   });
+}
+
+export type AcceptedTeamInvitation = {
+  invitationId: string;
+  teamId: string;
+  teamName: string;
+  memberId: string;
+  role: TeamRole;
+  status: 'accepted';
+};
+
+export type InvitationCommandContext = {
+  pool: pg.Pool;
+  principal: AuditedCommandContext['principal'];
+  requestId: string;
+};
+
+/**
+ * Invitation acceptance is the one team command whose authenticated actor is
+ * not a member yet. The browser supplies only the opaque invitation id; this
+ * command resolves the tenant, then locks and revalidates all invitation and
+ * membership evidence inside the ordinary audited team transaction.
+ */
+export async function acceptTeamInvitation(
+  context: InvitationCommandContext,
+  input: { invitationId: string },
+): Promise<AcceptedTeamInvitation> {
+  const invitationId = TeamInvitationIdSchema.parse(input.invitationId);
+  const teamId = await store.findInvitationTeamId(context.pool, invitationId);
+  // Unknown, expired, cancelled, and wrong-account invitations all expose the
+  // same refusal to the caller. Only a server-resolved tenant can receive a
+  // bounded immutable denial event.
+  if (!teamId) throw new TeamCommandError('FORBIDDEN');
+  const reservation = reserveDeniedAuditAttempt({
+    actorId: context.principal.userId,
+    teamId,
+    operation: 'team.acceptInvitation',
+  });
+  if (!reservation.admitted) throw new TeamCommandError('FORBIDDEN');
+
+  try {
+    const result = await runAuditedCommand(
+      {
+        tenantDb: createTenantDb(context.pool, teamId),
+        principal: context.principal,
+        requestId: context.requestId,
+      },
+      async (client, auditContext) => {
+        const invitation = await store.lockInvitation(
+          client,
+          teamId,
+          invitationId,
+        );
+        if (!invitation) throw new TeamCommandError('FORBIDDEN');
+        const denied = (
+          reason:
+            | 'email_mismatch'
+            | 'email_unverified'
+            | 'invitation_unavailable',
+        ) => {
+          const event = {
+            ...deniedAuditEventContext(auditContext),
+            eventType: 'team.invitation.acceptance_denied',
+            subjectType: 'team_invitation',
+            subjectId: invitation.id,
+            subjectLabel: invitation.email,
+            details: { reason },
+          } satisfies AuditEventInput;
+          return {
+            status: 'denied' as const,
+            error: new TeamCommandError('FORBIDDEN'),
+            events: [event] as const,
+          };
+        };
+        if (!context.principal.emailVerified) {
+          return denied('email_unverified');
+        }
+        if (
+          invitation.email.toLowerCase() !==
+          context.principal.email.trim().toLowerCase()
+        ) {
+          return denied('email_mismatch');
+        }
+        if (
+          (invitation.status !== 'pending' &&
+            invitation.status !== 'accepted') ||
+          (invitation.status === 'pending' &&
+            invitation.expiresAt.getTime() <= Date.now())
+        ) {
+          return denied('invitation_unavailable');
+        }
+        return runAuditedCommandWork(
+          client,
+          async () => {
+            if (!invitation.role) {
+              throw new TeamCommandError('INVALID_ROLE');
+            }
+            const roles = parseRoles(invitation.role);
+            if (roles.length !== 1) {
+              throw new TeamCommandError('INVALID_ROLE');
+            }
+            const role = roles[0]!;
+
+            const memberships = await store.lockMembershipSet(
+              client,
+              teamId,
+              context.principal.userId,
+            );
+            if (invitation.status === 'accepted') {
+              if (!memberships.existing) {
+                throw new TeamCommandError('CONFLICT');
+              }
+              const existingRoles = parseRoles(memberships.existing.role);
+              if (existingRoles.length !== 1) {
+                throw new TeamCommandError('INVALID_ROLE');
+              }
+              return {
+                status: 'unchanged' as const,
+                result: {
+                  invitationId,
+                  teamId,
+                  teamName: auditContext.teamLabel,
+                  memberId: memberships.existing.id,
+                  role: existingRoles[0]!,
+                  status: 'accepted' as const,
+                },
+              };
+            }
+            if (memberships.existing || memberships.count >= MEMBERSHIP_LIMIT) {
+              throw new TeamCommandError('CONFLICT');
+            }
+
+            const memberId = randomUUID();
+            await store.createMember(client, {
+              id: memberId,
+              teamId,
+              userId: context.principal.userId,
+              role,
+            });
+            await store.acceptInvitation(client, teamId, invitationId);
+            const event = {
+              ...auditEventContext(auditContext),
+              eventType: 'team.invitation.accepted',
+              subjectType: 'team_invitation',
+              subjectId: invitationId,
+              subjectLabel: invitation.email,
+              details: { role, memberId },
+            } satisfies AuditEventInput;
+            return {
+              result: {
+                invitationId,
+                teamId,
+                teamName: auditContext.teamLabel,
+                memberId,
+                role,
+                status: 'accepted' as const,
+              },
+              events: [event],
+            };
+          },
+          (error) => {
+            if (
+              !(error instanceof TeamCommandError) ||
+              (error.code !== 'INVALID_ROLE' && error.code !== 'CONFLICT')
+            ) {
+              return null;
+            }
+            const event = {
+              ...failedAuditEventContext(auditContext),
+              eventType: 'team.invitation.acceptance_failed',
+              subjectType: null,
+              subjectId: null,
+              subjectLabel: null,
+              details: {
+                failureCode:
+                  error.code === 'INVALID_ROLE' ? 'invalid_role' : 'conflict',
+              },
+            } satisfies AuditEventInput;
+            return { error, events: [event] };
+          },
+        );
+      },
+    );
+    reservation.complete('other');
+    return result;
+  } catch (error) {
+    reservation.complete(
+      error instanceof TeamCommandError && error.code === 'FORBIDDEN'
+        ? 'denied'
+        : 'other',
+    );
+    throw error;
+  }
 }

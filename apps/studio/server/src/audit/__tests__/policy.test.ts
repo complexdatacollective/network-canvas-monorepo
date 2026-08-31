@@ -51,7 +51,9 @@ function typescriptFiles(root: string): string[] {
     if (entry.isDirectory()) {
       return entry.name === '__tests__' ? [] : typescriptFiles(path);
     }
-    return entry.isFile() && path.endsWith('.ts') ? [path] : [];
+    return entry.isFile() && (path.endsWith('.ts') || path.endsWith('.tsx'))
+      ? [path]
+      : [];
   });
 }
 
@@ -283,6 +285,9 @@ describe('audit mutation policy', () => {
     expect(RPC_MUTATION_AUDIT_POLICIES['team.updateMemberRole']).toEqual({
       kind: 'required',
     });
+    expect(RPC_MUTATION_AUDIT_POLICIES['team.acceptInvitation']).toEqual({
+      kind: 'required',
+    });
     expect(RPC_MUTATION_AUDIT_POLICIES['team.createInvitation']).toEqual({
       kind: 'required',
     });
@@ -370,13 +375,13 @@ describe('audit mutation policy', () => {
       '/api/auth/organization/update',
       '/api/auth/organization/update-member-role',
     ]);
-    const client = readFileSync(
-      resolve(REPO_ROOT, 'apps/studio/client/src/routes/TeamWorkspace.tsx'),
-      'utf8',
+    const forbiddenMutation =
+      /authClient\.organization\.(acceptInvitation|cancelInvitation|create|delete|inviteMember|leave|rejectInvitation|removeMember|update|updateMemberRole)/;
+    const clientRoot = resolve(REPO_ROOT, 'apps/studio/client/src');
+    const bypasses = typescriptFiles(clientRoot).filter((file) =>
+      forbiddenMutation.test(readFileSync(file, 'utf8')),
     );
-    expect(client).not.toMatch(
-      /authClient\.organization\.(acceptInvitation|cancelInvitation|create|delete|inviteMember|leave|rejectInvitation|removeMember|update|updateMemberRole)/,
-    );
+    expect(bypasses.map((file) => relative(REPO_ROOT, file))).toEqual([]);
   });
 
   it('keeps the writable team store behind audited commands', () => {

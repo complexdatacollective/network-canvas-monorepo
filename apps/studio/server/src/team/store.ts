@@ -18,7 +18,25 @@ export type TeamInvitation = {
   expiresAt: Date;
 };
 
+export type LockedMembershipSet = {
+  count: number;
+  existing: LockedMember | null;
+};
+
 export class TeamStore {
+  async findInvitationTeamId(
+    pool: pg.Pool,
+    invitationId: string,
+  ): Promise<string | null> {
+    const rows = await pool.query<{ teamId: string }>(
+      `SELECT team_id AS "teamId"
+       FROM team_invitations
+       WHERE id = $1`,
+      [invitationId],
+    );
+    return rows.rows[0]?.teamId ?? null;
+  }
+
   async lockActorAndTarget(
     client: pg.PoolClient,
     input: { teamId: string; actorUserId: string; targetMemberId: string },
@@ -166,6 +184,57 @@ export class TeamStore {
       [teamId, invitationId],
     );
     return rows.rows[0] ?? null;
+  }
+
+  async lockMembershipSet(
+    client: pg.PoolClient,
+    teamId: string,
+    userId: string,
+  ): Promise<LockedMembershipSet> {
+    const rows = await client.query<LockedMember>(
+      `SELECT m.id, m.user_id AS "userId", m.role, u.name, u.email
+       FROM team_members m
+       JOIN "user" u ON u.id = m.user_id
+       WHERE m.team_id = $1
+       ORDER BY m.id
+       FOR UPDATE OF m`,
+      [teamId],
+    );
+    return {
+      count: rows.rowCount ?? 0,
+      existing: rows.rows.find((member) => member.userId === userId) ?? null,
+    };
+  }
+
+  async createMember(
+    client: pg.PoolClient,
+    input: {
+      id: string;
+      teamId: string;
+      userId: string;
+      role: TeamRole;
+    },
+  ): Promise<void> {
+    await client.query(
+      `INSERT INTO team_members (id, team_id, user_id, role)
+       VALUES ($1, $2, $3, $4)`,
+      [input.id, input.teamId, input.userId, input.role],
+    );
+  }
+
+  async acceptInvitation(
+    client: pg.PoolClient,
+    teamId: string,
+    invitationId: string,
+  ): Promise<void> {
+    const updated = await client.query(
+      `UPDATE team_invitations SET status = 'accepted'
+       WHERE team_id = $1 AND id = $2 AND status = 'pending'`,
+      [teamId, invitationId],
+    );
+    if (updated.rowCount !== 1) {
+      throw new Error('locked invitation disappeared before acceptance');
+    }
   }
 
   async cancelInvitation(

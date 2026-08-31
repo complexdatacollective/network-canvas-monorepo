@@ -589,7 +589,7 @@ function TeamManagement(props: {
                 await activeTeam.refetch();
                 setMessage({
                   kind: 'success',
-                  text: `Invitation created for ${email}.`,
+                  text: `Invitation created for ${email}. Email delivery is queued.`,
                 });
                 setInviteFormKey((key) => key + 1);
                 return { success: true };
