@@ -364,9 +364,10 @@ describe('Studio team workspace', () => {
       target: { value: TEAM_B.id },
     });
     await waitFor(() =>
-      expect(authState.setActive).toHaveBeenCalledWith({
-        organizationId: TEAM_B.id,
-      }),
+      expect(authState.setActive).toHaveBeenCalledWith(
+        { organizationId: TEAM_B.id },
+        { disableSignal: true },
+      ),
     );
     view.rerenderWorkspace();
 
@@ -377,6 +378,152 @@ describe('Studio team workspace', () => {
     ).toBeInTheDocument();
     expect(await screen.findByText('Beta protocol')).toBeInTheDocument();
     expect(screen.queryByText('Alpha protocol')).not.toBeInTheDocument();
+  });
+
+  it('reconciles active access after a lost switch response', async () => {
+    authState.setActive.mockRejectedValueOnce(new Error('response lost'));
+    authState.refetchActiveTeam.mockImplementationOnce(async () => {
+      authState.activeTeam = ACTIVE_TEAM_B;
+      act(() => authStore.notify());
+    });
+    authState.refetchActiveMember.mockImplementationOnce(async () => {
+      authState.activeMember = BETA_MEMBER;
+      act(() => authStore.notify());
+    });
+    renderWorkspace();
+
+    fireEvent.change(await screen.findByLabelText('Active team'), {
+      target: { value: TEAM_B.id },
+    });
+
+    expect(
+      await screen.findByText(/studio could not switch teams/i),
+    ).toBeInTheDocument();
+    expect(authState.refetchActiveTeam).toHaveBeenCalledOnce();
+    expect(authState.refetchActiveMember).toHaveBeenCalledOnce();
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Beta research team protocols',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('reconciles cleared active access after a rejected switch', async () => {
+    authState.setActive.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'team is no longer available' },
+    });
+    authState.refetchActiveTeam.mockImplementationOnce(async () => {
+      authState.activeTeam = undefined;
+      act(() => authStore.notify());
+    });
+    authState.refetchActiveMember.mockImplementationOnce(async () => {
+      authState.activeMember = undefined;
+      act(() => authStore.notify());
+    });
+    renderWorkspace();
+
+    fireEvent.change(await screen.findByLabelText('Active team'), {
+      target: { value: TEAM_B.id },
+    });
+
+    expect(
+      await screen.findByText(/studio could not switch teams/i),
+    ).toBeInTheDocument();
+    expect(authState.refetchActiveTeam).toHaveBeenCalledOnce();
+    expect(authState.refetchActiveMember).toHaveBeenCalledOnce();
+    await waitFor(() =>
+      expect(screen.getByLabelText('Active team')).toHaveValue(''),
+    );
+    expect(screen.queryByText('Alpha protocol')).not.toBeInTheDocument();
+  });
+
+  it('prevents a delayed automatic refresh from overwriting a later switch', async () => {
+    const firstTeamReconciliation = deferred<void>();
+    const firstMemberReconciliation = deferred<void>();
+    const launchAutomaticRefresh = deferred<void>();
+    const finishAutomaticRefresh = deferred<void>();
+    let persistedTeam = ACTIVE_TEAM_A;
+    let persistedMember = OWNER;
+    let setActiveCalls = 0;
+    let teamRefetchCalls = 0;
+    let memberRefetchCalls = 0;
+
+    authState.setActive.mockImplementation(
+      (
+        input: { organizationId: string },
+        fetchOptions?: { disableSignal?: boolean },
+      ) => {
+        setActiveCalls += 1;
+        if (input.organizationId === TEAM_B.id) {
+          persistedTeam = ACTIVE_TEAM_B;
+          persistedMember = BETA_MEMBER;
+        } else {
+          persistedTeam = ACTIVE_TEAM_A;
+          persistedMember = OWNER;
+        }
+
+        if (setActiveCalls === 1 && !fetchOptions?.disableSignal) {
+          void launchAutomaticRefresh.promise.then(async () => {
+            const staleTeam = persistedTeam;
+            const staleMember = persistedMember;
+            await finishAutomaticRefresh.promise;
+            authState.activeTeam = staleTeam;
+            authState.activeMember = staleMember;
+            act(() => authStore.notify());
+          });
+        }
+
+        return Promise.resolve({ data: persistedTeam, error: null });
+      },
+    );
+    authState.refetchActiveTeam.mockImplementation(async () => {
+      teamRefetchCalls += 1;
+      const response = persistedTeam;
+      if (teamRefetchCalls === 1) await firstTeamReconciliation.promise;
+      authState.activeTeam = response;
+      act(() => authStore.notify());
+    });
+    authState.refetchActiveMember.mockImplementation(async () => {
+      memberRefetchCalls += 1;
+      const response = persistedMember;
+      if (memberRefetchCalls === 1) await firstMemberReconciliation.promise;
+      authState.activeMember = response;
+      act(() => authStore.notify());
+    });
+    renderWorkspace();
+
+    fireEvent.change(await screen.findByLabelText('Active team'), {
+      target: { value: TEAM_B.id },
+    });
+    await waitFor(() =>
+      expect(authState.refetchActiveTeam).toHaveBeenCalledOnce(),
+    );
+    await act(async () => launchAutomaticRefresh.resolve());
+    await act(async () => firstTeamReconciliation.resolve());
+    await waitFor(() =>
+      expect(authState.refetchActiveMember).toHaveBeenCalledOnce(),
+    );
+    await act(async () => firstMemberReconciliation.resolve());
+    await waitFor(() =>
+      expect(screen.getByLabelText('Active team')).toBeEnabled(),
+    );
+
+    fireEvent.change(screen.getByLabelText('Active team'), {
+      target: { value: TEAM_A.id },
+    });
+    await waitFor(() => expect(authState.setActive).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.getByLabelText('Active team')).toHaveValue(TEAM_A.id),
+    );
+
+    await act(async () => finishAutomaticRefresh.resolve());
+    expect(screen.getByLabelText('Active team')).toHaveValue(TEAM_A.id);
+    expect(authState.setActive).toHaveBeenNthCalledWith(
+      1,
+      { organizationId: TEAM_B.id },
+      { disableSignal: true },
+    );
   });
 
   it('reuses the creation identity after a lost response', async () => {
@@ -434,9 +581,10 @@ describe('Studio team workspace', () => {
       target: { value: TEAM_B.id },
     });
     await waitFor(() =>
-      expect(authState.setActive).toHaveBeenLastCalledWith({
-        organizationId: TEAM_B.id,
-      }),
+      expect(authState.setActive).toHaveBeenLastCalledWith(
+        { organizationId: TEAM_B.id },
+        { disableSignal: true },
+      ),
     );
     view.rerenderWorkspace();
     await screen.findByRole('heading', {
@@ -447,9 +595,10 @@ describe('Studio team workspace', () => {
       target: { value: TEAM_A.id },
     });
     await waitFor(() =>
-      expect(authState.setActive).toHaveBeenLastCalledWith({
-        organizationId: TEAM_A.id,
-      }),
+      expect(authState.setActive).toHaveBeenLastCalledWith(
+        { organizationId: TEAM_A.id },
+        { disableSignal: true },
+      ),
     );
     view.rerenderWorkspace();
 
