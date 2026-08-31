@@ -47,8 +47,11 @@ Protocols are previewed in a local browser tab using the bundled `@codaco/interv
 Architect is an offline-first PWA. On a fresh navigation it checks for and
 activates a waiting service worker before React renders, leaving the static
 loading spinner visible while that completes; activation does not navigate or
-reload the page. If an update becomes available after the app has rendered, the
-version indicator offers its release notes and an **Install and reload** action.
+reload the page. Each release uses its own precache and the worker does not
+claim existing clients, so older open editor tabs keep their original worker
+and lazy assets, including offline. If an update becomes available after the
+app has rendered, the version indicator offers its release notes and an
+**Install and reload** action.
 The app never reloads for an update until the user chooses that action. After
 the new version starts, the indicator shows the recently updated state and
 links to what changed.

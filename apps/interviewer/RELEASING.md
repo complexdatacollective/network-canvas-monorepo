@@ -281,6 +281,12 @@ tabs: they keep running their current build until the researcher explicitly
 installs the update. There is no forced-update mechanism and none should be
 added — see the interview-active guard above.
 
+The worker deliberately uses `clientsClaim: false`, a release-versioned
+precache, and no `cleanupOutdatedCaches`. Activating a release therefore does
+not replace the controller or remove hashed lazy assets underneath another open
+interview tab; that tab and its cache remain usable offline until it navigates.
+`scripts/assert-pwa-build.mjs` verifies these generated-worker invariants.
+
 ## PostHog source maps
 
 Only the production release job sets `POSTHOG_PERSONAL_API_KEY` and

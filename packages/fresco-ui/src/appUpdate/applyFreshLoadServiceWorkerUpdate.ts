@@ -12,6 +12,11 @@ type FreshLoadServiceWorkerUpdateOptions = {
   activationTimeoutMs?: number;
   serviceWorker?: ServiceWorkerContainerLike;
   shouldSkip?: () => boolean;
+  /**
+   * Pass `false` to activate under a boot loader without navigating. Existing
+   * callers retain the historical default reload and `true` return contract.
+   */
+  reload?: false | (() => void);
 };
 
 type InstallServiceWorkerUpdateOptions = {
@@ -250,6 +255,7 @@ export async function applyFreshLoadServiceWorkerUpdate({
   activationTimeoutMs = DEFAULT_ACTIVATION_TIMEOUT_MS,
   serviceWorker = getServiceWorkerContainer(),
   shouldSkip = () => false,
+  reload = () => window.location.reload(),
 }: FreshLoadServiceWorkerUpdateOptions = {}): Promise<boolean> {
   if (!serviceWorker || !serviceWorker.controller || shouldSkip()) {
     return false;
@@ -273,14 +279,20 @@ export async function applyFreshLoadServiceWorkerUpdate({
     activationTimeoutMs,
   );
   if (!waitingWorker || shouldSkip()) return false;
-  if (waitingWorker.state === 'activated') return true;
+  if (waitingWorker.state !== 'activated') {
+    const activated = waitForActivationOrControllerChange(
+      serviceWorker,
+      waitingWorker,
+      activationTimeoutMs,
+    );
+    waitingWorker.postMessage(SKIP_WAITING_MESSAGE);
 
-  const activated = waitForActivationOrControllerChange(
-    serviceWorker,
-    waitingWorker,
-    activationTimeoutMs,
-  );
-  waitingWorker.postMessage(SKIP_WAITING_MESSAGE);
+    if (!(await activated)) return false;
+  }
 
-  return activated;
+  // `true` historically tells boot code that this helper reloaded and startup
+  // must stop. Explicit no-reload callers continue startup after activation.
+  if (reload === false) return false;
+  reload();
+  return true;
 }

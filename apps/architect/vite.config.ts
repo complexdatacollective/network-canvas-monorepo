@@ -140,6 +140,10 @@ export default defineConfig(({ mode }) => {
           // App and worker maps are uploaded before Workbox runs. The service
           // worker itself is not part of PostHog's browser error reporting.
           sourcemap: false,
+          // Every released bundle keeps its own precache. A newly activated
+          // worker must not prune hashed lazy assets that an older, still-open
+          // Architect tab can need (including while offline).
+          cacheId: `architect-${version}`,
           globPatterns: ['**/*.{js,css,html}'],
           // vite-plugin-pwa defaults this to index.html; disable it so it
           // cannot shadow the runtime navigation route below.
@@ -148,8 +152,11 @@ export default defineConfig(({ mode }) => {
           // cached index.html before the runtime navigation route can fetch
           // the newest shell.
           directoryIndex: null,
-          cleanupOutdatedCaches: true,
-          clientsClaim: true,
+          // Old controllers retain their versioned precaches until the browser
+          // evicts them; claiming their clients or deleting their caches would
+          // strand lazy imports in open editor tabs.
+          cleanupOutdatedCaches: false,
+          clientsClaim: false,
           maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
           runtimeCaching: [
             {

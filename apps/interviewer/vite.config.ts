@@ -87,6 +87,10 @@ export default defineConfig(() =>
           // App and worker maps are uploaded before Workbox runs. The service
           // worker itself is not part of PostHog's browser error reporting.
           sourcemap: false,
+          // Every released bundle keeps its own precache. A newly activated
+          // worker must not prune hashed lazy assets that an older, still-open
+          // interview can need (including while offline).
+          cacheId: `interviewer-${appVersion}`,
           globPatterns: ['**/*.{js,css,html}'],
           // The Development protocol's bundled asset chunk (~33 MB, embeds a
           // 23 MB dev-only video — see bundledDevelopmentProtocol.ts) is only
@@ -102,8 +106,11 @@ export default defineConfig(() =>
           // cached index.html before the runtime navigation route can fetch
           // the newest shell.
           directoryIndex: null,
-          cleanupOutdatedCaches: true,
-          clientsClaim: true,
+          // Old controllers retain their versioned precaches until the browser
+          // evicts them; claiming their clients or deleting their caches would
+          // strand lazy imports in open interview tabs.
+          cleanupOutdatedCaches: false,
+          clientsClaim: false,
           maximumFileSizeToCacheInBytes: MAX_PRECACHE_BYTES,
           runtimeCaching: [
             {

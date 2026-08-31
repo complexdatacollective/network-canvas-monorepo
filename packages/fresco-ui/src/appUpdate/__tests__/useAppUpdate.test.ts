@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import useAppUpdate from '../useAppUpdate';
+import useAppUpdate, { FRESH_LOAD_AUTO_APPLY_MS } from '../useAppUpdate';
 
 const okEmptyList = { ok: true, json: async () => [] };
 
@@ -65,6 +65,28 @@ describe('version-change detection', () => {
 });
 
 describe('manual installation', () => {
+  it('preserves deprecated auto-apply options as inert patch-compatible inputs', async () => {
+    const installUpdate = vi.fn().mockResolvedValue(true);
+    const checkUnsavedWork = vi.fn().mockReturnValue(false);
+    const { result } = renderHook(() =>
+      useAppUpdate({
+        app: 'architect',
+        currentVersion: '2.0.0',
+        needRefresh: true,
+        installUpdate,
+        hasUnsavedWork: false,
+        checkUnsavedWork,
+        autoApplyWindowMs: 0,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('available'));
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    expect(FRESH_LOAD_AUTO_APPLY_MS).toBe(20_000);
+    expect(checkUnsavedWork).not.toHaveBeenCalled();
+    expect(installUpdate).not.toHaveBeenCalled();
+  });
+
   it('never installs an available update without a user request', async () => {
     const installUpdate = vi.fn().mockResolvedValue(true);
     const { result } = renderHook(() =>

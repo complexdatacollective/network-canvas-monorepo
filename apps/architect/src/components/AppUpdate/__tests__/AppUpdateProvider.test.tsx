@@ -1,6 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+type JsdomVirtualConsole = {
+  on: (event: 'jsdomError', listener: (error: Error) => void) => void;
+  off: (event: 'jsdomError', listener: (error: Error) => void) => void;
+};
+
 const { mockInstallServiceWorkerUpdate, mockUseAppUpdate, mockUseRegisterSW } =
   vi.hoisted(() => ({
     mockInstallServiceWorkerUpdate: vi.fn(),
@@ -49,7 +54,22 @@ describe('AppUpdateProvider', () => {
       onNeedReload?: () => void;
     };
     expect(options.onNeedReload).toBeTypeOf('function');
-    expect(options.onNeedReload?.()).toBeUndefined();
+
+    // jsdom makes Location.reload non-configurable, so observe its underlying
+    // jsdomError event. This fails if the callback attempts a real navigation.
+    const virtualConsole = (
+      window as unknown as { _virtualConsole?: JsdomVirtualConsole }
+    )._virtualConsole;
+    expect(virtualConsole).toBeDefined();
+    if (!virtualConsole) throw new Error('jsdom virtual console unavailable');
+    const navigationError = vi.fn();
+    virtualConsole.on('jsdomError', navigationError);
+    try {
+      options.onNeedReload?.();
+    } finally {
+      virtualConsole.off('jsdomError', navigationError);
+    }
+    expect(navigationError).not.toHaveBeenCalled();
     expect(mockInstallServiceWorkerUpdate).not.toHaveBeenCalled();
 
     expect(mockUseAppUpdate).toHaveBeenCalledWith({

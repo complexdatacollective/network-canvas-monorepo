@@ -103,7 +103,7 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
     expect(serviceWorker.getRegistration).not.toHaveBeenCalled();
   });
 
-  it('activates an already waiting worker before app startup continues without reloading', async () => {
+  it('preserves the legacy default reload and true return contract', async () => {
     const browserWindow = window;
     const reload = vi.fn();
     vi.stubGlobal('window', {
@@ -133,7 +133,49 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
     waiting.setState('activated');
 
     await expect(result).resolves.toBe(true);
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it('activates in explicit no-reload mode and returns false so startup continues', async () => {
+    const waiting = createWorker('installed');
+    const registration = createRegistration({ waiting: waiting.worker });
+    const serviceWorker = createServiceWorkerContainer({ registration });
+    const reload = vi.fn();
+
+    const result = applyFreshLoadServiceWorkerUpdate({
+      serviceWorker,
+      reload: false,
+      shouldSkip: () => false,
+      updateCheckTimeoutMs: 50,
+      activationTimeoutMs: 50,
+    });
+
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    waiting.setState('activated');
+
+    await expect(result).resolves.toBe(false);
     expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('preserves a supplied legacy reload callback', async () => {
+    const waiting = createWorker('installed');
+    const registration = createRegistration({ waiting: waiting.worker });
+    const serviceWorker = createServiceWorkerContainer({ registration });
+    const reload = vi.fn();
+
+    const result = applyFreshLoadServiceWorkerUpdate({
+      serviceWorker,
+      reload,
+      shouldSkip: () => false,
+      updateCheckTimeoutMs: 50,
+      activationTimeoutMs: 50,
+    });
+
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    waiting.setState('activated');
+
+    await expect(result).resolves.toBe(true);
+    expect(reload).toHaveBeenCalledOnce();
   });
 
   it('waits for an installing update to become waiting before activating it', async () => {
@@ -143,6 +185,7 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
 
     const result = applyFreshLoadServiceWorkerUpdate({
       serviceWorker,
+      reload: false,
       shouldSkip: () => false,
       updateCheckTimeoutMs: 50,
       activationTimeoutMs: 50,
@@ -161,7 +204,7 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
 
     serviceWorker.dispatchControllerChange();
 
-    await expect(result).resolves.toBe(true);
+    await expect(result).resolves.toBe(false);
   });
 
   it('observes updatefound before update resolves and waits for its installing worker', async () => {
@@ -180,6 +223,7 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
 
     const result = applyFreshLoadServiceWorkerUpdate({
       serviceWorker,
+      reload: false,
       shouldSkip: () => false,
       updateCheckTimeoutMs: 50,
       activationTimeoutMs: 50,
@@ -195,7 +239,7 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
     });
 
     installing.setState('activated');
-    await expect(result).resolves.toBe(true);
+    await expect(result).resolves.toBe(false);
     resolveUpdate(registration);
   });
 
@@ -210,6 +254,7 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
 
     const result = applyFreshLoadServiceWorkerUpdate({
       serviceWorker,
+      reload: false,
       shouldSkip: () => false,
       updateCheckTimeoutMs: 50,
       activationTimeoutMs: 50,
@@ -222,7 +267,7 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
     });
 
     installing.setState('activated');
-    await expect(result).resolves.toBe(true);
+    await expect(result).resolves.toBe(false);
   });
 
   it('continues startup when the update check fails', async () => {

@@ -52,6 +52,7 @@ const warmCaches = () => {
 
 async function startApp(): Promise<void> {
   await applyFreshLoadServiceWorkerUpdate({
+    reload: false,
     shouldSkip: () =>
       isCriticalOperationInProgress() || hasPendingLaunchFiles(),
   });

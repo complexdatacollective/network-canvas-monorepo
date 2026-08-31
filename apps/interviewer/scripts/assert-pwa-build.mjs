@@ -38,6 +38,20 @@ try {
   fail('missing dist/sw.js');
 }
 
+const packageJson = JSON.parse(
+  readFileSync(path.join(appRoot, 'package.json'), 'utf8'),
+);
+const expectedPrecachePrefix = `interviewer-${packageJson.version}`;
+if (!sw.includes(`setCacheNameDetails({prefix:"${expectedPrecachePrefix}"})`)) {
+  fail(`precache is not isolated to app version ${packageJson.version}`);
+}
+if (/\.clientsClaim\(\)/.test(sw)) {
+  fail('generated worker claims clients loaded by an older app bundle');
+}
+if (/\.cleanupOutdatedCaches\(\)/.test(sw)) {
+  fail('generated worker deletes precaches still needed by older clients');
+}
+
 for (const f of [
   'manifest.webmanifest',
   'pwa-192x192.png',
@@ -130,5 +144,5 @@ if (
 }
 
 console.log(
-  `PWA build ok: sw.js + manifest + icons emitted; ${critical.length} critical chunk(s) precached`,
+  `PWA build ok: ${expectedPrecachePrefix} retained independently; no client claim/old-precache cleanup; ${critical.length} critical chunk(s) precached`,
 );

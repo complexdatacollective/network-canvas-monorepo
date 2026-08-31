@@ -19,6 +19,12 @@ export type UseAppUpdateOptions = {
   currentVersion: string;
   needRefresh: boolean;
   installUpdate: InstallAppUpdate;
+  /** @deprecated Updates are never installed automatically. */
+  hasUnsavedWork?: boolean;
+  /** @deprecated Updates are never installed automatically. */
+  checkUnsavedWork?: () => boolean;
+  /** @deprecated Updates are never installed automatically. */
+  autoApplyWindowMs?: number;
 };
 
 export type UseAppUpdateResult = {
@@ -30,6 +36,9 @@ export type UseAppUpdateResult = {
 
 const lastVersionKey = (app: AppId) => `nc:lastLaunchedVersion:${app}`;
 const pendingUpdateKey = (app: AppId) => `nc:pendingAppUpdate:${app}`;
+
+/** @deprecated Updates are never installed automatically. */
+export const FRESH_LOAD_AUTO_APPLY_MS = 20_000;
 
 // Records the current version and reports whether the previous launch ran a
 // different one. Called once (guarded by a ref) so the write happens exactly

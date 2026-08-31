@@ -40,6 +40,7 @@ initFileLaunchCapture();
 
 async function startApp(): Promise<void> {
   await applyFreshLoadServiceWorkerUpdate({
+    reload: false,
     shouldSkip: () =>
       window.location.pathname.startsWith('/interview/') ||
       hasPendingLaunchFiles(),

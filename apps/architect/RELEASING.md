@@ -182,6 +182,12 @@ until the researcher explicitly installs the update. Do not add an automatic
 post-render reload path: open editor drafts, dialogs, imports, and exports make
 that data-destructive.
 
+The worker deliberately uses `clientsClaim: false`, a release-versioned
+precache, and no `cleanupOutdatedCaches`. Activating a release therefore does
+not replace the controller or remove hashed lazy assets underneath another open
+editor tab; that tab and its cache remain usable offline until it navigates.
+`scripts/assert-pwa-build.mjs` verifies these generated-worker invariants.
+
 ## PostHog source maps
 
 The public PostHog project key is a compiled-in constant shared by every
