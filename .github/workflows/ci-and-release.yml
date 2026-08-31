@@ -534,12 +534,21 @@ jobs:
         id: scripts
         continue-on-error: true
         run: pnpm test:scripts
-      - name: Build shared packages and Background Creator
+      - name: Build shared packages and release-sensitive apps
         id: build
         continue-on-error: true
-        # Background Creator has no E2E suite, so exercise its complete Vite
-        # build before the post-merge production release job runs it.
-        run: pnpm exec turbo run build --filter='./packages/*' --filter=@codaco/background-creator
+        # Background Creator has no E2E suite. Architect and Interviewer's
+        # PostHog source-map path is credential-gated and otherwise runs only
+        # after a release PR merges. A local CLI stub exercises app and worker
+        # source-map processing plus deletion without contacting PostHog.
+        env:
+          POSTHOG_PERSONAL_API_KEY: ci-release-build-preflight
+          POSTHOG_PROJECT_ID: '1'
+          POSTHOG_CLI_BINARY_PATH: ${{ github.workspace }}/scripts/posthog-cli-upload-stub.mjs
+        run: |
+          pnpm exec turbo run build --filter='./packages/*' --filter=@codaco/background-creator
+          pnpm --filter=@codaco/architect build
+          pnpm --filter=@codaco/interviewer build
       - name: Typecheck workspaces
         id: typecheck
         continue-on-error: true

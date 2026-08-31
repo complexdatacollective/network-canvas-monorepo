@@ -17,8 +17,9 @@
 // Usage:
 //   node scripts/mirror-app.mjs --app <appDir> --repo <owner/name> --version <version> [--branch <name>] [--with-lockfile]
 // Env:
-//   LEGACY_RELEASE_GH_TOKEN  cross-repo token with Contents + Workflows write
-//                            (classic PAT: repo + workflow; required to push)
+//   LEGACY_RELEASE_GH_TOKEN  cross-repo token with Contents write (classic PAT:
+//                            repo; add workflow only when intentionally changing
+//                            the mirrored Fresco publisher; required to push)
 //   MONOREPO_SHA             source commit sha (recorded in the commit message)
 //   GITHUB_OUTPUT            when set, `mirror_sha=<sha>` is appended for the workflow
 //   MIRROR_DRY_RUN           when "true", stage + commit locally but skip the push
@@ -36,7 +37,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, relative, resolve, sep } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { parseCatalog, resolveManifest } from './resolve-manifest.mjs';
@@ -123,8 +124,8 @@ const APP_MIRROR_OVERRIDES = {
       // The local release-testing harness references monorepo paths and must
       // not ship in the standalone tree.
       'release-test',
-      // The standalone Fresco repository must contain no GitHub Actions
-      // workflows, including docker-publish.yml.
+      // Arbitrary app-local workflows must not reach the standalone repo. The
+      // one release-critical publisher is restored explicitly below.
       '.github/workflows',
     ],
   },
@@ -405,6 +406,23 @@ function main() {
   console.error(`[mirror] staging ${appName} -> ${staging}`);
 
   stageSource(appDir, staging, overrides.extraExcludes);
+
+  if (appName === 'fresco') {
+    // The push to Fresco/main is only useful if it still triggers the external
+    // repository's image publisher. Keep that one workflow source-controlled
+    // here while the directory-level exclusion above blocks every other local
+    // or future workflow from leaking into the release mirror.
+    const workflow = '.github/workflows/docker-publish.yml';
+    const source = join(appDir, workflow);
+    const destination = join(staging, workflow);
+    if (!existsSync(source)) {
+      throw new Error(
+        `Fresco mirror requires ${source}; without it a release cannot publish the GHCR image.`,
+      );
+    }
+    mkdirSync(dirname(destination), { recursive: true });
+    cpSync(source, destination);
+  }
 
   const { manifest: resolved, dropped } = resolveManifest(appDir);
   if (overrides.restorePackageManager) {

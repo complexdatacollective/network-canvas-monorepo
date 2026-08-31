@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
@@ -13,7 +19,7 @@ function git(cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 }
 
-test('Fresco mirror omits all GitHub Actions workflows', (t) => {
+test('Fresco mirror keeps only its GHCR publisher workflow', (t) => {
   const directory = mkdtempSync(join(tmpdir(), 'fresco-mirror-test-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
 
@@ -90,8 +96,20 @@ test('Fresco mirror omits all GitHub Actions workflows', (t) => {
   ).split('\n');
 
   assert.ok(mirroredPaths.includes('.github/FUNDING.yml'));
+  assert.deepEqual(
+    mirroredPaths.filter((path) => path.startsWith('.github/workflows/')),
+    ['.github/workflows/docker-publish.yml'],
+  );
   assert.equal(
-    mirroredPaths.some((path) => path.startsWith('.github/workflows/')),
-    false,
+    git(
+      directory,
+      `--git-dir=${remote}`,
+      'show',
+      'main:.github/workflows/docker-publish.yml',
+    ),
+    readFileSync(
+      join(fresco, '.github', 'workflows', 'docker-publish.yml'),
+      'utf8',
+    ).trim(),
   );
 });
