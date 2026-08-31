@@ -117,8 +117,13 @@ moment backfills become risky (D4).
 
 An ordinary one-off study is simply a single-wave study. Draft-only wave
 add/remove commands exist from the start (§5.2) so multi-wave studies are
-creatable through the audited path, but the UI does not surface waves until
-#1267 builds wave management. #1267 then becomes additive columns
+creatable through the audited path. The UI does not surface wave
+_management_ (adding, removing, windows, progression) until #1267 — but the
+study detail screen does show each wave's version pin with a minimal
+selector from the start (§7), because pinning is a go-live precondition and
+without it go-live could never be completed from the UI; on a single-wave
+study this simply reads as "the study's protocol version". #1267 then
+becomes additive columns
 (`opens_at`/`closes_at` windows — nullable, backfill-free) plus feature work
 — progression behavior and management screens — on an existing spine.
 
@@ -403,19 +408,22 @@ timestamp); the close history lives in the audit log.
 
 ### 4.2 `study_waves`
 
-| Column                | Type          | Contract                                                                                    |
-| --------------------- | ------------- | ------------------------------------------------------------------------------------------- |
-| `id`                  | `uuid`        | Client-minted, server-validated primary key (idempotent creation, §6)                       |
-| `study_id`            | `uuid`        | Required; composite FK `(study_id, team_id)` → `studies (id, team_id)`                      |
-| `team_id`             | `text`        | Required tenant key                                                                         |
-| `wave_number`         | `integer`     | Required, `>= 1`; `unique(study_id, wave_number)`                                           |
-| `name`                | `text`        | Nullable display name ("Baseline", "6-month follow-up")                                     |
-| `protocol_version_id` | `uuid`        | Nullable until go-live; composite FK `(protocol_version_id, team_id)` → `protocol_versions` |
-| `created_at`          | `timestamptz` | Required, default now                                                                       |
+| Column                | Type          | Contract                                                                                                                                                                                                                             |
+| --------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`                  | `uuid`        | Client-minted, server-validated primary key (idempotent creation, §6). The one exception is wave 1, which `createStudy` inserts with a server-generated id — its creation is already idempotent through the study's client-minted id |
+| `study_id`            | `uuid`        | Required; composite FK `(study_id, team_id)` → `studies (id, team_id)`                                                                                                                                                               |
+| `team_id`             | `text`        | Required tenant key                                                                                                                                                                                                                  |
+| `wave_number`         | `integer`     | Required, `>= 1`; `unique(study_id, wave_number)`                                                                                                                                                                                    |
+| `name`                | `text`        | Nullable display name ("Baseline", "6-month follow-up")                                                                                                                                                                              |
+| `protocol_version_id` | `uuid`        | Nullable until go-live; composite FK `(protocol_version_id, team_id)` → `protocol_versions`                                                                                                                                          |
+| `created_at`          | `timestamptz` | Required, default now                                                                                                                                                                                                                |
 
 Constraints and indexes:
 
 - `unique(id, team_id)` so sessions (#1297) can composite-FK to the wave;
+- `unique(id, study_id, team_id)` so a session can composite-FK its wave
+  **through the study id** — the same-study proof for §8's session rules,
+  shipped now so sessions need no wave migration;
 - `unique(study_id, wave_number)` and `CHECK (wave_number >= 1)`;
 - `index(team_id)` team-first;
 - `teamIsolationPolicy()` and sidecar registration.
@@ -525,7 +533,7 @@ performs the write through the store, and returns its typed events.
 | `createWave`           | draft               | member                                     | Appends the next `wave_number`, optional name; client-minted wave id (replay returns `unchanged`); refused for anonymous studies (D5) and beyond the 50-wave cap |
 | `updateWave`           | draft, live, paused | member (draft); owner/admin (live, paused) | Display name only in v1; #1267 extends with windows                                                                                                              |
 | `deleteWave`           | draft               | member                                     | Highest-numbered wave only, never wave 1 (§4.2)                                                                                                                  |
-| `rebindWave`           | draft, live, paused | owner/admin                                | Pins a wave to a published version of the study's protocol line (D2)                                                                                             |
+| `rebindWave`           | draft, live, paused | member (draft); owner/admin (live, paused) | Pins a wave to a published version of the study's protocol line (D2) — Draft pinning is configuration under D8; rebinding a live wave changes active delivery    |
 | `goLive`               | draft               | owner/admin                                | Preconditions in §5.3; refused while `deletion_requested_at` is set                                                                                              |
 | `reopenStudy`          | closed              | owner/admin                                | Shares §5.3's precondition helper; clears `closed_at` and `paused_at`; refused while `deletion_requested_at` is set; emits its own event                         |
 | `pauseStudy`           | live                | owner/admin                                | Sets `paused_at`                                                                                                                                                 |
@@ -562,14 +570,14 @@ helper, validated against locked rows:
    first;
 2. the study has a protocol line (`protocol_id` non-null);
 3. every wave pins a published version, and every pinned version belongs to
-   that protocol line (D2);
-4. an anonymous study has exactly one wave (D5); and
-5. on the **first** go-live, `went_live_at` is set and `participation_mode`
-   freezes (D5) — subsequent transitions never unfreeze it.
+   that protocol line (D2); and
+4. an anonymous study has exactly one wave (D5).
 
 A precondition failure is a typed domain error naming the failed
 precondition; the study is unchanged (see §5.2's synchronous-failure
-classification).
+classification). On success, the **first** go-live additionally sets
+`went_live_at` and freezes `participation_mode` (D5) — a transition effect,
+not a checkable precondition, and subsequent transitions never unfreeze it.
 
 ### 5.4 Audit events
 
@@ -681,12 +689,15 @@ appending an extra timepoint.
 
 `StudyDetail` includes the waves (id, number, name, pinned version id and
 version number) so the client renders a study without N+1 calls — and, once
-the study has a protocol line, the **published versions of that line** (id,
-version number, label, published-at), because the rebind and go-live flows
-need version ids to offer and no protocol-contract procedure lists them.
+the study has a protocol line, the **most recent 50 published versions of
+that line** (id, version number, label, published-at; newest first, plus any
+version a wave currently pins), because the rebind and go-live flows need
+version ids to offer and no protocol-contract procedure lists them. The
+bound keeps `StudyDetail` finite however long a protocol line lives, the
+same posture as the wave cap.
 Carrying them on the study response keeps this design off the protocol
-contract the editor track owns (D7); a general published-version read
-procedure may supersede it later. Commands
+contract the editor track owns (D7); a general paginated published-version
+read procedure supersedes it if older versions ever need surfacing. Commands
 assume a user principal today; when API tokens (#1288) arrive, the
 `Principal` `kind` discriminant gates which study operations a token may
 perform — a conscious assumption, recorded here.
@@ -702,8 +713,10 @@ team-parameterized route is the flat editor route. PR 5 introduces a shared
 the editor route already applies.
 
 - `/teams/$teamId/studies` — list with empty state and create flow;
-- `/teams/$teamId/studies/$studyId` — detail: state, protocol line, waves and
-  pins, settings; per-state editability mirrored from the transition map;
+- `/teams/$teamId/studies/$studyId` — detail: state, protocol line, waves
+  with their version pins and a minimal pin selector (fed by `StudyDetail`'s
+  version list — the piece that makes go-live completable from the UI, per
+  D1), settings; per-state editability mirrored from the transition map;
 - lifecycle controls with confirmation dialogs (go-live shows the
   preconditions checklist; close and delete explain their consequences);
 - the deletion request/cancel flow with its grace-window messaging ships in
@@ -721,14 +734,22 @@ These tables ship with #1263 and #1297, not here. The study spine commits to
 their shape only where it constrains this schema:
 
 - A **participant** belongs to exactly one study (composite FK to
-  `studies (id, team_id)`); identity that spans waves is minted here, which
+  `studies (id, team_id)`, with its own `unique(id, study_id, team_id)` so
+  sessions can prove same-study membership); identity that spans waves is
+  minted here, which
   is what prior-wave data resolution (#1302) consumes. PII lives only on
   this record — including the participant's IANA time zone, which
   scheduling (#1304) makes first-class — keeping the encryption tier's
   blast radius (#1258) off the study row.
-- An **interview session** belongs to a wave (composite FK to
-  `study_waves (id, team_id)`) and, in managed studies, to a participant;
-  anonymous sessions carry a null participant. It carries its own
+- An **interview session** carries a denormalized `study_id` alongside its
+  wave and participant references, proven honest by composite foreign keys
+  through the `unique(id, study_id, team_id)` constraints on both parents —
+  `(wave_id, study_id, team_id)` → `study_waves` and, in managed studies,
+  `(participant_id, study_id, team_id)` → participants. Without the shared
+  `study_id`, a session could validly link a wave from study A to a
+  participant from study B, corrupting attribution and letting one study's
+  participant erasure reach another study's data. Anonymous sessions carry a
+  null participant. The session also carries its own
   **immutable `protocol_version_id`**, captured from the wave's pin at
   session creation — the wave's pin says what new sessions will run, the
   session's own pin says what this session ran, so rebinding a wave (D2)
@@ -736,11 +757,13 @@ their shape only where it constrains this schema:
   records delivery mode and
   the initiating researcher (#1297), the current stage, network data, and
   start/finish timestamps, and becomes immutable on finalization — an
-  immutability that must be UPDATE-only or carry the same maintenance-role
-  exemption as §4.3, or it would block the purge and erasure paths exactly
-  as an unexempted wave trigger would. Participant and session tables also
-  need their own parent-state Closed guards (with the DELETE-scoped
-  maintenance and erasure exemptions), because §4.3's triggers cover only
+  immutability that MUST be **UPDATE-only**: deletes stay possible, because
+  both the maintenance-role purge _and_ the participant-erasure command
+  (which runs as the application role — a maintenance-only exemption would
+  strand it) legitimately delete finalized sessions, each through its own
+  audited path. Participant and session tables also
+  need their own parent-state Closed guards, exempting exactly those two
+  delete paths, because §4.3's triggers cover only
   `studies` and `study_waves` — without them, a buggy write could still
   modify an archived study's collected data. Sessions are modelled for
   cross-interview queryability (#1242 principle 6), not just export.
@@ -797,7 +820,7 @@ state is accepted, per the audit design's rule.
 - Concurrency: two racing transitions on one study serialize under the row
   lock and exactly one succeeds; a `requestStudyDeletion` racing `goLive`
   cannot interleave into a live study carrying the marker.
-- Go-live and reopen enforce all five preconditions (§5.3); each failure
+- Go-live and reopen enforce all four preconditions (§5.3); each failure
   names its precondition and changes nothing; both are refused while the
   deletion marker is set, and the purge query's state check ignores a live
   study even with an expired marker.
@@ -816,9 +839,9 @@ state is accepted, per the audit design's rule.
   study created through the commands goes live.
 - An anonymous study cannot go live with more than one wave; a managed
   multi-wave study can.
-- A member's `updateStudySettings` / `updateWave` succeeds while Draft and
-  is refused once the study is live or paused (owner/admin required) — the
-  D8 Draft-only boundary.
+- A member's `updateStudySettings` / `updateWave` / `rebindWave` succeeds
+  while Draft and is refused once the study is live or paused (owner/admin
+  required) — the D8 Draft-only boundary.
 - Deletion request/cancel enforce owner/admin and Draft/Closed;
   `requestStudyDeletion` persists `purge_after` from the grace window in
   force at request time, and a repeat request returns `unchanged` without
@@ -906,7 +929,7 @@ The study model is complete when:
 - every command in §5.2 commits atomically with its typed event or not at
   all, the transition map refuses every undefined transition, and the
   elevated commands record their denial events;
-- go-live and reopen enforce the five preconditions, freeze participation
+- go-live and reopen enforce the four preconditions, freeze participation
   mode, and refuse a study marked for deletion;
 - a closed study is read-only at the database level (deny-by-default) and
   reopenable through the audited command;
