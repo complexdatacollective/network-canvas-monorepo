@@ -87,7 +87,14 @@ export function stageDraftFromSubmission(
   // After the writes, never before them: a capability switched off removes
   // the paths it owns, and a field parked inside it must not be written back
   // afterwards.
+  //
+  // Filtered the same way the writes are, and for the same reason. A
+  // capability switched off and then reopened before saving still has the
+  // tombstone its switch-off left at the container path, while its controls
+  // are back on screen holding what the researcher has since typed. Removing
+  // the container then would throw away values they are looking at.
   for (const removal of removals) {
+    if (hasMountedDescendant(submission.mountedPaths, removal.path)) continue;
     draft = removePath(draft, removal.path);
   }
 

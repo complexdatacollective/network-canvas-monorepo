@@ -8,7 +8,7 @@ import {
   useStageEditorForm,
 } from '../form/stageEditorContext.ts';
 import {
-  useSetStageValue,
+  useClearStageValue,
   useStageHasAnyValue,
 } from '../form/stageFormHooks.ts';
 import { useOutlineSection } from '../form/useOutlineSection.ts';
@@ -71,7 +71,7 @@ export default function BuilderSection({
 }: BuilderSectionProps) {
   const { readOnly } = useStageEditorForm();
   const { confirm } = useDialog();
-  const setStageValue = useSetStageValue();
+  const clearStageValue = useClearStageValue();
   const configured = useStageHasAnyValue(capability?.fields ?? NO_FIELDS);
   const [switchedOn, setSwitchedOn] = useState(configured);
   // Holding a value is itself proof the capability is on, so an undo that
@@ -120,12 +120,12 @@ export default function BuilderSection({
       // around it, so its value would survive — and go on making the
       // capability look configured, and be written back on save.
       for (const path of capability?.fields ?? NO_FIELDS) {
-        setStageValue(path, undefined);
+        clearStageValue(path);
       }
       setSwitchedOn(false);
       return true;
     },
-    [capability, configured, confirm, setStageValue],
+    [capability, clearStageValue, configured, confirm],
   );
 
   const body = (

@@ -224,6 +224,22 @@ describe('stageDraftFromSubmission', () => {
     expect(draft.items).toEqual([{}, { id: 'second' }]);
   });
 
+  it('keeps a capability the researcher switched off and then reopened', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: {},
+      // Its controls are back on screen, holding what has been typed since.
+      submittedValues: { skipLogic: { action: 'SHOW' } },
+      mountedPaths: [['skipLogic', 'action']],
+      // The tombstone the switch-off left behind, still parked at the
+      // container because nothing remounted under that exact name.
+      dormantFields: [
+        { name: 'skipLogic', path: ['skipLogic'], value: undefined },
+      ],
+    });
+
+    expect(draft.skipLogic).toEqual({ action: 'SHOW' });
+  });
+
   it('does not write through into the draft it was given', () => {
     const currentFields = Object.freeze({
       label: 'Friends',

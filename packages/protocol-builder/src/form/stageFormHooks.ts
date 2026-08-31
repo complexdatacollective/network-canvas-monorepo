@@ -51,16 +51,20 @@ export function useResolvedFieldIdentity(
 }
 
 /**
- * Writes into the stage form by name or path. An unregistered name is parked
- * as a dormant pending write and re-attaches when the field next mounts, so
- * this reaches a field whose section is collapsed or switched off — which is
- * exactly the case a capability has to clear.
+ * Clears everything at a path in the stage form, descendants included.
+ *
+ * The structural operation rather than a write of `undefined`, because a
+ * capability may own a CONTAINER path while the fields inside it are
+ * separately registered — and some of those may already be dormant behind a
+ * collapsed group of advanced options. Parking a tombstone at the container
+ * leaves those untouched, so reopening the group would restore content the
+ * researcher had just confirmed deleting.
  */
-export function useSetStageValue(): (path: string, value: FieldValue) => void {
+export function useClearStageValue(): (path: string) => void {
   const { storeApi } = useStageEditorForm();
   return useCallback(
-    (path: string, value: FieldValue) => {
-      storeApi.getState().setFieldValue(path, value);
+    (path: string) => {
+      storeApi.getState().clearValue(path);
     },
     [storeApi],
   );

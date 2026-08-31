@@ -540,6 +540,83 @@ describe('StageEditorShell', () => {
     );
   });
 
+  it('clears a hidden part of a container capability for good', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      fields: {
+        ...initialFields,
+        skipLogic: { action: 'SKIP', destination: 'finish' },
+      },
+    });
+    function ContainerCapability() {
+      const controller = useStageEditorController(session, 'stage-form');
+      const [advancedShown, setAdvancedShown] = useState(true);
+      return (
+        <StageEditorShell controller={controller}>
+          <BuilderSection
+            title="Skip logic"
+            capability={{
+              fields: ['skipLogic'],
+              confirmClear: {
+                title: 'This will clear your skip logic',
+                description: 'The rules you created will be deleted.',
+                confirmLabel: 'Clear skip logic',
+              },
+            }}
+          >
+            <ProtocolField
+              name="skipLogic.action"
+              label="What this stage does"
+              component={InputField}
+            />
+            <button
+              type="button"
+              onClick={() => setAdvancedShown((shown) => !shown)}
+            >
+              Toggle advanced options
+            </button>
+            {advancedShown && (
+              <ProtocolField
+                name="skipLogic.destination"
+                label="Where the interview continues"
+                component={InputField}
+              />
+            )}
+          </BuilderSection>
+        </StageEditorShell>
+      );
+    }
+    render(
+      <DialogProvider>
+        <ContainerCapability />
+      </DialogProvider>,
+    );
+
+    // Parked with its value intact, inside the capability rather than at it —
+    // so closing the capability around it never unmounts it, and a tombstone
+    // left at the container path does not reach it.
+    await user.click(
+      screen.getByRole('button', { name: 'Toggle advanced options' }),
+    );
+    await user.click(screen.getByRole('switch', { name: 'Skip logic' }));
+    await user.click(screen.getByRole('button', { name: 'Clear skip logic' }));
+
+    await user.click(screen.getByRole('switch', { name: 'Skip logic' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Toggle advanced options' }),
+    );
+
+    // Bringing the hidden part back must not hand over content the researcher
+    // has already confirmed deleting.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', {
+          name: 'Where the interview continues',
+        }),
+      ).toHaveValue(''),
+    );
+  });
+
   it('explains a prerequisite before it explains a switch', async () => {
     const session = createSession();
     function DisabledCapability() {
