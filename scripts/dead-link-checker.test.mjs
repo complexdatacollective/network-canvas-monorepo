@@ -924,6 +924,71 @@ test('browser verification accepts a follow-up no-content response', async () =>
   }
 });
 
+test('browser verification treats a cached 304 revalidation as terminal', async () => {
+  const frame = {};
+  const navigationRequest = { isNavigationRequest: () => true };
+  const response = (status, url) => ({
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => status,
+    url: () => url,
+  });
+  const initial = response(403, 'https://publisher.test/challenge');
+  const recovered = response(200, 'https://publisher.test/revalidated');
+  const revalidated = response(304, 'https://publisher.test/revalidated');
+  let responseListener;
+  let settleCount = 0;
+  let waitForResponseCount = 0;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => 'https://publisher.test/revalidated',
+    waitForLoadState: async () => {},
+    waitForResponse: async (predicate) => {
+      if (waitForResponseCount++ === 0) {
+        responseListener(recovered);
+        assert.equal(predicate(recovered), true);
+        return recovered;
+      }
+      throw new Error('cached 304 was not treated as terminal');
+    },
+    waitForTimeout: async () => {
+      if (settleCount++ === 0) responseListener(revalidated);
+    },
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    const outcome = await verifier.verify(
+      'https://publisher.test/challenge',
+      50,
+    );
+    assert.deepEqual(outcome, {
+      contentType: 'text/html',
+      finalUrl: 'https://publisher.test/revalidated',
+      html: null,
+      redirects: [],
+      status: 304,
+    });
+  } finally {
+    await verifier.close();
+  }
+});
+
 test('browser verification rejects a response-free non-HTTP commit', async () => {
   const frame = {};
   const navigationRequest = { isNavigationRequest: () => true };
@@ -1779,6 +1844,39 @@ test('browser verification distinguishes challenged links from real 403 response
     assert.equal(recovered.status, 200);
   } finally {
     globalThis.fetch = nativeFetch;
+    await root.stop();
+    await external.stop();
+  }
+});
+
+test('browser-confirmed 304 revalidation is not a redirect error', async () => {
+  const external = await startServer((_request, response) => {
+    response.statusCode = 403;
+    response.end('forbidden to non-browser clients');
+  });
+  const root = await startServer((_request, response) => {
+    html(response, `<a href="${external.origin}/cached">cached</a>`);
+  });
+  const browserVerifier = {
+    async close() {},
+    async verify(url) {
+      return {
+        finalUrl: url,
+        redirects: [],
+        status: 304,
+      };
+    },
+  };
+  const { options } = parseArguments([root.origin, '--delay=0', '--retries=0']);
+
+  try {
+    const report = await crawl(root.origin, options, () => {}, browserVerifier);
+    assert.equal(report.failures.length, 0);
+    const cached = report.results.find(({ url }) => url.endsWith('/cached'));
+    assert.ok(cached);
+    assert.equal(cached.ok, true);
+    assert.equal(cached.status, 304);
+  } finally {
     await root.stop();
     await external.stop();
   }

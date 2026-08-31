@@ -47,7 +47,8 @@
  * replaces it. Incomplete redirects and document loads remain verification
  * failures, and the entire sequence shares one request deadline so reload
  * loops cannot retain a worker indefinitely. Browser-only HTTP redirects obey
- * the same maximum-hop rule as Node redirects. Browser navigations that become
+ * the same maximum-hop rule as Node redirects. A browser 304 is a completed
+ * cache revalidation, not a redirect. Browser navigations that become
  * downloads or return 204 No Content are the exceptions to requiring a
  * document load: Playwright rejects goto in those cases, so the captured HTTP
  * response verifies the non-HTML target without saving a file or inventing a
@@ -81,15 +82,19 @@ const BASE_RETRY_DELAY_MS = 500;
 const MAX_BROWSER_PAGES = 4;
 const BROWSER_NAVIGATION_SETTLE_MS = 500;
 
+function isBrowserRedirectStatus(status) {
+  return status >= 300 && status < 400 && status !== 304;
+}
+
 function isTerminalNavigation(response) {
-  return response.status() < 300 || response.status() >= 400;
+  return !isBrowserRedirectStatus(response.status());
 }
 
 function browserRedirects(mainFrameResponses) {
   const redirects = [];
   for (let index = 0; index < mainFrameResponses.length - 1; index++) {
     const response = mainFrameResponses[index];
-    if (response.status() < 300 || response.status() >= 400) continue;
+    if (!isBrowserRedirectStatus(response.status())) continue;
     redirects.push({
       from: response.url(),
       status: response.status(),
@@ -892,7 +897,7 @@ export async function crawl(
       return;
     }
 
-    if (browserOutcome.status >= 300 && browserOutcome.status < 400) {
+    if (isBrowserRedirectStatus(browserOutcome.status)) {
       results.push(
         failureResult(
           record,
