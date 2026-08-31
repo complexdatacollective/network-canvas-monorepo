@@ -31,14 +31,15 @@ continue to provide authentication, sessions, active-team selection, and
 read-only organization data, but a client-visible Better Auth endpoint must not
 remain as an unaudited alternative for a mutation Studio owns.
 
-The immutable foundation and current team-administration producers are the next
-Studio implementation slice. They will establish the mandatory audited-command
-seam and audit the team actions already exposed in the UI. A team activity
-screen and export follow on that foundation. Protocol, study, participant,
-interview-data, credential, and integration producers are added as those
-capabilities become writable. Data-egress alerts are derived from the same
-immutable events through a transactional outbox; they depend on the broader
-observability and notification work but do not block the initial audit log.
+The immutable foundation, current team-administration producers, and every
+protocol mutation already exposed by Studio are the next implementation slice.
+They will establish the mandatory audited-command seam and audit the team and
+protocol actions that are callable today. A team activity screen and export
+follow on that foundation. Later protocol, study, participant, interview-data,
+credential, and integration producers are added as those capabilities become
+writable. Data-egress alerts are derived from the same immutable events through
+a transactional outbox; they depend on the broader observability and
+notification work but do not block the initial audit log.
 
 ## 2. Requirements
 
@@ -206,17 +207,25 @@ The server owns a discriminated `AuditEventInput` union. Each member fixes its
 `eventType`, `eventVersion`, `category`, subject/resource kinds, and `details`
 schema. The writer does not accept an arbitrary string plus arbitrary JSON.
 
-Every event type is registered with:
+Every emitted `(event_type, event_version)` pair is registered with:
 
 - its input validator;
 - its human-readable title and detail renderer;
 - its sensitive-field/redaction rules;
 - whether it requires an alert-outbox row; and
-- its test fixture.
+- its test fixture; and
+- its RPC/output schema.
 
-An exhaustive registry test fails when a union member lacks any of these
-entries. Responses exposed through `@codaco/studio-rpc` use a separate output
-schema that is the wire allowlist.
+The pair, rather than `event_type` alone, is the registry key. Introducing a
+new version adds a new entry; it never replaces or mutates the validator,
+renderer, redaction policy, fixture, or wire allowlist for a version already
+emitted. All historical versions are retained for the installation lifetime.
+An exhaustive registry test fails when a union member lacks any entry, when an
+entry lacks one of these artifacts, or when a previously shipped pair is
+removed. Responses exposed through `@codaco/studio-rpc` select the matching
+versioned output schema as the wire allowlist. Unknown future pairs still use
+the safe generic presentation described in section 10 and never fall back to a
+different known version's renderer or disclosure policy.
 
 ### 4.5 Data-minimization rules
 
@@ -349,6 +358,16 @@ lease renewal. It may record the protocol and draft ids, revision, affected
 section ids/categories, operation types, and operation count. It does not
 store the patch or section contents.
 
+`protocols.create` is already exposed through Studio RPC and creates both a
+protocol and its initial draft. Slice A therefore converts that procedure to an
+audited domain command and emits `protocol.created` in the same transaction,
+with bounded protocol/draft ids and the protocol-name display snapshot. At the
+Slice A cutoff, the mutation-surface inventory MUST identify every other
+callable protocol write (RPC, synchronization endpoint, worker, or HTTP route):
+each one is either converted to its declared protocol event or blocked before
+the immutable log is presented as authoritative. Only protocol mutations that
+are not yet callable may remain in the later producer-expansion slice.
+
 **Studies, participants, and research data**
 
 - study creation, settings changes, protocol assignment/version changes,
@@ -369,7 +388,8 @@ creates each producer, using the naming rules in this specification.
   deletion;
 - denied high-risk access or mutation attempts when a team can be established
   without creating an existence oracle; and
-- `audit.export.started`, `audit.export.failed`, and `audit.corrected`.
+- `audit.export.started`, `audit.export.completed`, `audit.export.failed`, and
+  `audit.corrected`.
 
 ### 7.2 Do not record these actions
 
@@ -400,12 +420,18 @@ signal; an audit outage must never cause an unauthorized action to succeed.
 `failed` covers both an important asynchronous operation whose committed
 attempt later fails and an authorized, audit-relevant synchronous attempt that
 rolls back because a domain invariant or execution step rejects it. For the
-synchronous case, the executor first rolls back the primary transaction, then
-opens a separate audit-only transaction containing the original request id,
-server-established team and actor, event type, and a bounded stable failure
-reason. It never copies exception text, a stack, request data, or partially
-mutated state. Failure of this secondary append cannot turn the failed action
-into success; it produces a critical operational signal.
+synchronous case, the executor uses one outer transaction. It acquires the
+per-team ordering lock and the applicable authorization locks first, then
+creates a savepoint around the target locks and domain work. When that work
+fails, the executor rolls back to the savepoint, appends the bounded `failed`
+event in the still-open outer transaction, and commits before releasing the
+team and authorization locks. The event therefore remains ordered before a
+role revocation or other team command that was waiting while the failed attempt
+ran. Its payload contains only the original request id, server-established team
+and actor, event type, and a bounded stable failure code; it never copies
+exception text, a stack, request data, or partially mutated state. If the
+failure append itself fails, the outer transaction rolls back and a critical
+operational signal is emitted without changing the original failed result.
 
 Denied requests are rate-limited before any per-team audit advisory lock or
 append. A bounded, expiring operational counter is keyed by authenticated
@@ -440,14 +466,36 @@ append(client: pg.PoolClient, event: AuditEventInput): Promise<AuditEvent>
 
 It cannot acquire its own pool transaction. Requiring the existing client
 makes accidental non-atomic use visible in code review and types. The command
-context uses a discriminated actor union: an authenticated user principal, an
-authenticated API-token principal, or a server-owned system actor carrying a
-bounded stable id/label. System contexts can be constructed only through a
-server-internal capability that is unavailable to RPC input and client
-packages; workers never fabricate a user principal. The event builder also
-receives the request/operation id, explicit team id, and server-read
-before/after values. No generic client-facing “emit audit event” procedure
-exists.
+context separates the event actor from the authorization mechanism. Its event
+actor is an authenticated user principal, an authenticated API-token
+principal, or a server-owned system actor carrying a bounded stable id/label.
+Its authorization context is a separate discriminated union whose variants
+define the server evidence and locks required before work can run:
+
+- `member`: lock the actor's current membership row and authorize its locked
+  roles for the explicit team and operation;
+- `invitation`: authenticate the user, lock and validate the current invitation
+  row (including team, intended address, state, expiry, and one-time secret
+  proof) and authorize only its specific accept/reject capability; no existing
+  membership row is required;
+- `api_token`: lock the token/credential row and validate its team binding,
+  scopes, expiry, and revocation state; no user membership is fabricated;
+- `system`: require an opaque server-internal capability for the exact job and
+  operation, plus the durable job/outbox row lock when one exists; it is
+  unavailable to RPC input and client packages; and
+- `team_bootstrap`: authenticate the creating user before membership exists,
+  allocate the server-controlled team id, acquire that id's advisory lock,
+  confirm it is unused, and atomically insert the team, initial owner
+  membership, and `team.created` event.
+
+The union prevents a valid invitation, token, system job, or bootstrap command
+from being forced through a nonexistent member row while keeping each path
+fail-closed. A context factory constructs each variant from server-controlled
+authentication/capability state; workers never fabricate a user principal and
+clients never choose the authorization variant. The event builder also
+receives the request/operation id, explicit team id, locked team-label snapshot
+(or the newly inserted label for bootstrap), and server-read before/after
+values. No generic client-facing “emit audit event” procedure exists.
 
 ### 8.2 Audited domain commands
 
@@ -485,30 +533,42 @@ event. A mutation deliberately classified as `none` uses a separate explicit
 path carrying a static reason that appears in the command registry. There is no
 boolean flag that can silently disable auditing.
 
-An audit-required mutation follows this order inside the executor's
+An audit-required mutation follows this order inside the executor's outer
 transaction:
 
 1. acquire the transaction-wide per-team audited-command advisory lock;
-2. lock the team row and capture its current bounded `team_label` snapshot;
-3. lock the actor's current membership/authorization state and authorize the
-   explicit team and operation;
-4. lock and read the current target state;
-5. validate invariants using that locked state;
-6. write the domain change;
-7. append the event using the same `pg.PoolClient`; and
-8. when applicable, insert an alert-outbox row referencing the event.
+2. lock the team row and capture its current bounded `team_label` snapshot
+   (except the explicit team-bootstrap variant, which confirms the reserved id
+   is unused and retains the validated proposed label under the same advisory
+   lock);
+3. branch on the authorization-context discriminant, acquire the variant's
+   membership, invitation, API-token, system-capability/job, or bootstrap locks,
+   and authorize the explicit team and operation from that locked state;
+4. establish a savepoint for audited target validation and domain work;
+5. lock and read the current target state;
+6. validate invariants using that locked state;
+7. write the domain change;
+8. append the event using the same `pg.PoolClient`; and
+9. when applicable, insert an alert-outbox row referencing the event.
 
 The team command lock uses the same centralized key and lock ordering as
 sequence allocation, so a concurrent demotion/removal cannot commit before an
-already-authorized privileged action. Owner-affecting commands acquire it
-before reading the owner set and lock/recheck all memberships relevant to the
-last-owner invariant; two concurrent owner demotions therefore serialize
-rather than each observing the other owner. All paths use the lock order team,
-actor membership, target memberships/resources to avoid deadlocks.
+already-authorized privileged action or its synchronously recorded failure.
+Owner-affecting commands acquire it before reading the owner set and
+lock/recheck all memberships relevant to the last-owner invariant; two
+concurrent owner demotions therefore serialize rather than each observing the
+other owner. All paths use the lock order team, authorization-variant state,
+then target memberships/resources to avoid deadlocks. Locks needed to preserve
+authorization and team ordering are acquired before the savepoint and remain
+held if domain work rolls back to it.
 
-Any thrown error rolls back all three writes. Side effects that cannot
-participate in PostgreSQL—email, webhooks, or object-store work—are driven from
-a committed outbox, never performed between the mutation and audit append.
+An audit/event/outbox error rolls back all writes. An authorized domain failure
+classified for synchronous recording is caught at the savepoint boundary and
+uses the `failed` path in section 7.3; unexpected setup or authorization errors
+remain denial/operational failures rather than committing partial domain state.
+Side effects that cannot participate in PostgreSQL—email, webhooks, or
+object-store work—are driven from a committed outbox, never performed between
+the mutation and audit append.
 
 Protocol stores that already own transactions are refactored to accept the
 executor's client or are invoked from a domain command that owns the
@@ -516,22 +576,23 @@ transaction. Audit context is not optional on a required path, and the
 implementation must not append a second, post-commit “best effort” event.
 
 Sensitive reads and egress use a sibling `runAuditedRead` executor. It acquires
-the same per-team command lock, locks the team and actor-membership rows, and
-authorizes from that locked current state before it materializes a bounded
-response (or a committed export-job / one-time-download record). The locks are
-held through the audit/outbox commit, so a concurrent demotion or removal is
-ordered after the already-authorized read rather than committing in the middle
-of it. The executor only then releases response data or permits an external
-side effect. If the audit transaction fails, no response body, download
-capability, webhook, email, or object-storage result is released. Streaming
-implementations must stage behind that committed boundary; they may not start
-sending bytes and attempt a best-effort audit append afterward.
+the same per-team command lock, locks the team and the applicable discriminated
+authorization state from section 8.1, and authorizes from that locked current
+state before it materializes a bounded response (or a committed export-job /
+one-time-download record). The locks are held through the audit/outbox commit,
+so a concurrent revocation of that membership, invitation, token, or system
+job is ordered after the already-authorized read rather than committing in the
+middle of it. The executor only then releases response data or permits an
+external side effect. If the audit transaction fails, no response body,
+download capability, webhook, email, or object-storage result is released.
+Streaming implementations must stage behind that committed boundary; they may
+not start sending bytes and attempt a best-effort audit append afterward.
 
 Authorization denials use the committed decision path in section 7.3.
-Authorized synchronous failures use the separate post-rollback audit-only path
+Authorized synchronous failures use the outer-transaction/savepoint path
 defined there. These are deliberately distinct from successful mutation
-atomicity: no failed domain state is committed, while the important attempt
-remains observable.
+atomicity: no failed domain state is committed, while the important attempt is
+recorded before the executor releases the locks that establish team order.
 
 ### 8.3 Database responsibility and trigger boundary
 
@@ -633,32 +694,62 @@ CSV export is initiated only by a same-origin-protected unsafe request:
 
 ```text
 POST /api/teams/:teamId/audit-exports
-{ filters } -> CSV response or short-lived, single-use download handle
+{ filters } -> CSV response or { jobId, status: "pending" }
+
+GET /api/teams/:teamId/audit-exports/:jobId
+-> { status: "pending" | "failed" }
+ | { status: "ready", downloadHandle, expiresAt }
 ```
 
 The route requires the same Origin/CSRF protection as other mutations; it is
 never a `GET` that navigation, link preview, crawler, or browser prefetch can
-trigger. If a handle is returned, the handle is bound to the requesting actor
-and team, expires promptly, carries no credentials in its contents, and its
-download `GET` performs no new audit mutation.
+trigger. The status route reveals only jobs belonging to the requesting actor
+and team. A ready handle is bound to that actor and team, expires promptly,
+carries no credentials in its contents, and its download `GET` performs no new
+audit mutation. Polling status is an ordinary bounded metadata read and does
+not create repeated events.
 
 Every response in the export flow uses `Cache-Control: no-store`, including a
 direct CSV response, the response carrying a one-time handle, and the
 handle-based download. Consuming or expiring a handle therefore cannot be
 undermined by a browser or intermediary replaying cached sensitive content.
 
-At the start of export, the server captures the visible high-water sequence
-and materializes the filtered rows in one repeatable-read snapshot. The row
-query and its count are explicitly capped by `sequence <= highWater`, and the
-recorded count comes from that exact materialized dataset rather than a later
-read-committed query. Before returning a handle or sending the first CSV byte
-it commits `audit.export.started` with the filters, row count, and high-water
-sequence.
+The export service has explicit configuration limits for direct-response row
+count and serialized CSV bytes. Under `runAuditedRead`, it captures the visible
+high-water sequence and performs only a bounded preflight/materialization: the
+query is constrained by `sequence <= highWater` and `directRowLimit + 1`, and
+CSV serialization stops as soon as `directByteLimit + 1` would be reached.
+Because every event field is independently bounded, this path has a strict
+memory, transaction-duration, and lock-hold ceiling. It never counts or
+materializes the team's unbounded lifetime history while holding the team
+lock.
+
+If both budgets are satisfied, the direct path uses that exact bounded dataset
+and count, commits `audit.export.started` with `deliveryMode = 'direct'`, the
+filters, row count, byte count, and high-water sequence, then returns the CSV.
 The exported file therefore does not recursively include its own later event.
-If the server can authoritatively detect a later generation or transfer
-failure, it appends `audit.export.failed` referencing the start event; a client
-disconnect alone is not reported as a definitive failure. The file contains
-exact UTC timestamps, sequence, stable ids, display labels,
+
+If either budget would be exceeded, the same short locked transaction instead
+creates an `audit_export_jobs` row/outbox task and commits
+`audit.export.started` with `deliveryMode = 'staged'`, the immutable filters,
+high-water sequence, configured budgets, and the bounded preflight result. It
+then releases the team lock. A system-capability worker generates the full CSV
+to private staged storage from rows constrained by the captured
+`sequence <= highWater`; it MUST NOT hold the per-team audited-command lock
+while querying, serializing, or uploading the full dataset. After successful
+staging, a second short audited transaction records `audit.export.completed`
+with the exact generated row and byte counts and creates the short-lived,
+single-use actor/team-bound download handle. No handle or partial artifact is
+released before that commit. A failed worker deletes any partial artifact and
+appends `audit.export.failed` in a short ordered transaction referencing the
+start event. A client disconnect alone is not reported as a definitive
+generation failure.
+
+Direct materialization and asynchronous generation each read their delivered
+rows in one repeatable-read snapshot bounded by the captured high-water
+sequence. The direct start event and staged completion event record counts from
+the exact generated dataset rather than a later read-committed query. The file
+contains exact UTC timestamps, sequence, stable ids, display labels,
 type/category/outcome, and a bounded JSON details column. It never exposes
 internal stack traces or operational logs.
 
@@ -768,9 +859,11 @@ changeset for the affected Studio workspace packages.
   event.
 - A domain failure rolls back its event, and an audit insert failure rolls back
   its domain mutation.
-- An authorized synchronous failure rolls back domain state and commits one
-  bounded `failed` event separately; failure of that append emits a critical
-  operational signal without changing the command result.
+- An authorized synchronous failure rolls domain work back to a savepoint and
+  commits one bounded `failed` event from the outer transaction while its team
+  and authorization locks remain held. A queued revocation is sequenced after
+  that event; failure of the append rolls back the outer transaction and emits
+  a critical operational signal without changing the command result.
 - The generated schema fingerprint, schema inventory, README section, and ERD
   remain synchronized.
 
@@ -784,6 +877,9 @@ changeset for the affected Studio workspace packages.
 - Concurrent owner demotions cannot both pass the last-owner invariant, and a
   concurrent actor revocation prevents the actor's privileged command from
   committing afterward.
+- Member, invitation, API-token, system-capability, and team-bootstrap commands
+  each authorize from and lock only their discriminated server-owned evidence;
+  valid non-member contexts do not require or fabricate a membership row.
 - A relevant denied action produces the defined denial event without exposing
   whether an unknown team exists.
 - Denial throttling runs before the per-team lock; excess attempts create at
@@ -796,15 +892,26 @@ changeset for the affected Studio workspace packages.
 - Every runtime-registered Better Auth organization route has an exact audit
   classification, and every team/access mutation without a Studio-owned
   audited command is refused, proving there is no unaudited bypass.
+- `protocols.create` and every other protocol mutation callable at the Slice A
+  cutoff either commit their declared event atomically or are refused. Protocol
+  creation stores `protocol.created` without copying the initial protocol body.
+- Registry tests address validator, renderer, redaction, alert, fixture, and
+  RPC/output-schema entries by `(event_type, event_version)` and prove that
+  adding a new version retains and correctly renders every previously emitted
+  version.
 - Audit list/get enforce current role permissions, RLS, filters, cursor order,
   page limits, and output redaction.
 - A sensitive read returns no data when its required audit/outbox transaction
   fails.
 - Export requires a same-origin-protected `POST`, stops at its high-water
-  sequence, records one export event without recursively exporting it, and
-  neutralizes every formula-leading string cell before CSV escaping. Direct
-  and handle-based responses are `no-store`, and the recorded row count equals
-  the exact high-water-bounded dataset delivered to the caller.
+  sequence, records its events without recursively exporting them, and
+  neutralizes every formula-leading string cell before CSV escaping. The direct
+  path proves both row and serialized-byte caps before response materialization.
+  Crossing either cap creates a staged job; its worker generates the full
+  high-water-bounded file without holding the team command lock, and only a
+  short completion transaction publishes the one-time handle. Direct and
+  handle-based responses are `no-store`, and the recorded completed row/byte
+  counts equal the exact dataset delivered to the caller.
 
 ### 13.3 UI and end-to-end tests
 
@@ -823,33 +930,42 @@ or the expected type is changed—before its new expected state is accepted.
 
 ## 14. Delivery plan
 
-### Slice A — immutable foundation and current team administration (#1519)
+### Slice A — immutable foundation and current writable commands (#1519)
 
 Bring this slice into the current Studio team-workspace phase:
 
 1. add the immutable/RLS audit schema, typed event registry, append store, and
    database tests;
-2. add Studio-owned role-change and invitation commands;
+2. add Studio-owned role-change, invitation, and `protocols.create` commands;
 3. inventory every configured Better Auth organization route and block every
    team/access mutation path that lacks a Studio-owned audited command;
-4. emit the team/access events for those commands; and
-5. include the Studio schema artifacts and changeset.
+4. inventory every currently callable protocol mutation across RPC,
+   synchronization, worker, and HTTP surfaces and either emit its declared
+   protocol event atomically or block it;
+5. key all event validation/rendering/redaction/output artifacts by
+   `(event_type, event_version)` and retain every emitted version;
+6. emit the team/access and protocol events for those commands; and
+7. include the Studio schema artifacts and changeset.
 
 This is the minimum slice that makes the currently demonstrated role and
-invitation functionality accountable. It should follow or stack on #1515.
+invitation functionality and the already-exposed protocol creation command
+accountable. It should follow or stack on #1515.
 
 ### Slice B — team activity UI and export (#1520)
 
 Add the authorized list/get contract, activity route, filters, detail view,
-pagination, CSV export, and integration/E2E coverage. Slice B depends on Slice
-A and can be stacked while Slice A is reviewed.
+pagination, bounded direct CSV export, asynchronously staged large export, and
+integration/E2E coverage. Slice B depends on Slice A and can be stacked while
+Slice A is reviewed.
 
 ### Slice C — producer expansion and egress alerts (#1521)
 
-As protocol, study, participant, data API, credential, and integration features
-land, add their event producers as acceptance criteria of the owning feature.
-Add the alert outbox and notification delivery with #1252. This preserves the
-Phase 7 production-readiness work without delaying the team audit foundation.
+As additional protocol, study, participant, data API, credential, and
+integration features become writable, add their event producers as acceptance
+criteria of the owning feature. This slice excludes protocol mutations already
+callable at the Slice A cutoff. Add the alert outbox and notification delivery
+with #1252. This preserves the Phase 7 production-readiness work without
+delaying the team audit foundation.
 
 ## 15. GitHub tracking
 
@@ -875,9 +991,15 @@ visible. It is complete when:
 - current team role and invitation mutations cannot succeed without their
   event, and every other configured team/access mutation remains blocked until
   it has an audited command;
+- every protocol mutation callable when Slice A ships, including
+  `protocols.create`, cannot succeed without its event or is blocked;
 - owner/admin users can query and export their team's isolated, ordered log;
 - ordinary members and other teams cannot access it;
-- event payloads pass the data-minimization rules;
+- event payloads pass the data-minimization rules, and every emitted event
+  version retains its exact validator, renderer, redaction rules, fixture, and
+  output schema;
+- direct exports are strictly row/byte bounded and larger exports are staged
+  asynchronously without holding the team command lock during generation;
 - concurrency, rollback, RLS, privilege, authorization, and UI tests pass;
 - the event producer policy is included in acceptance criteria for every later
   potentially important Studio action; and
