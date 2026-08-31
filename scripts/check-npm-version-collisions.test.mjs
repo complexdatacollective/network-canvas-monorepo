@@ -110,7 +110,19 @@ test('accepts a changed public version when npm returns 404', async (t) => {
   const checked = await checkNpmVersionCollisions({
     repoRoot,
     baseRef,
-    fetchImpl: async () => ({ status: 404 }),
+    fetchImpl: async (url) =>
+      url.endsWith('/2.0.0')
+        ? { status: 404 }
+        : {
+            status: 200,
+            json: async () => ({
+              time: {
+                '1.0.0': '2026-01-01T00:00:00.000Z',
+                'created': '2026-01-01T00:00:00.000Z',
+                'modified': '2026-01-01T00:00:00.000Z',
+              },
+            }),
+          },
   });
 
   assert.deepEqual(checked, [
@@ -168,7 +180,10 @@ test('checks a renamed public package even when its version is unchanged', async
   const checked = await checkNpmVersionCollisions({
     repoRoot,
     baseRef,
-    fetchImpl: async () => ({ status: 404 }),
+    fetchImpl: async (url) =>
+      url.endsWith('/1.0.0')
+        ? { status: 404 }
+        : { status: 200, json: async () => ({ time: {} }) },
   });
 
   assert.deepEqual(checked, [
@@ -197,7 +212,10 @@ test('checks a newly public package even when its version is unchanged', async (
   const checked = await checkNpmVersionCollisions({
     repoRoot,
     baseRef,
-    fetchImpl: async () => ({ status: 404 }),
+    fetchImpl: async (url) =>
+      url.endsWith('/1.0.0')
+        ? { status: 404 }
+        : { status: 200, json: async () => ({ time: {} }) },
   });
 
   assert.deepEqual(checked, [
@@ -208,6 +226,48 @@ test('checks a newly public package even when its version is unchanged', async (
       version: '1.0.0',
     },
   ]);
+});
+
+test('rejects an unpublished version retained in npm package history', async (t) => {
+  const { baseRef, repoRoot } = repository(
+    t,
+    { 'network-exporters': exportersV1 },
+    { 'network-exporters': exportersV2 },
+  );
+
+  await assert.rejects(
+    checkNpmVersionCollisions({
+      repoRoot,
+      baseRef,
+      fetchImpl: async (url) =>
+        url.endsWith('/2.0.0')
+          ? { status: 404 }
+          : {
+              status: 200,
+              json: async () => ({
+                time: { '2.0.0': '2026-01-01T00:00:00.000Z' },
+              }),
+            },
+    }),
+    /npm version collision: @codaco\/network-exporters@2\.0\.0 was previously published and unpublished/,
+  );
+});
+
+test('fails closed when npm has no package history', async (t) => {
+  const { baseRef, repoRoot } = repository(
+    t,
+    { 'network-exporters': exportersV1 },
+    { 'network-exporters': exportersV2 },
+  );
+
+  await assert.rejects(
+    checkNpmVersionCollisions({
+      repoRoot,
+      baseRef,
+      fetchImpl: async () => ({ status: 404 }),
+    }),
+    /npm has no package metadata, which is indistinguishable from a fully unpublished package/,
+  );
 });
 
 test('fails closed when npm returns a server error', async (t) => {

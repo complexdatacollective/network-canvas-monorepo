@@ -58,6 +58,12 @@ export function npmVersionUrl(registryUrl, packageName, version) {
   return new URL(`${encodedName}/${encodeURIComponent(version)}`, base).href;
 }
 
+function npmPackageUrl(registryUrl, packageName) {
+  const base = registryUrl.endsWith('/') ? registryUrl : `${registryUrl}/`;
+  const encodedName = encodeURIComponent(packageName).replace(/^%40/, '@');
+  return new URL(encodedName, base).href;
+}
+
 export function changedPublicPackageVersions({ repoRoot, baseRef }) {
   git(repoRoot, ['rev-parse', '--verify', `${baseRef}^{commit}`]);
 
@@ -134,12 +140,76 @@ export async function checkNpmVersionCollisions({
       );
     }
 
-    if (response.status === 404) continue;
     if (response.status === 200) {
       throw new Error(
         `npm version collision: ${candidate.name}@${candidate.version} already exists. ` +
           `Choose a new version before merging; npm versions are immutable.`,
       );
+    }
+
+    if (response.status === 404) {
+      // npm removes an unpublished version from the exact-version endpoint but
+      // retains its publication timestamp in the full package document.
+      const packageUrl = npmPackageUrl(registryUrl, candidate.name);
+      let packageResponse;
+      try {
+        packageResponse = await fetchImpl(packageUrl, {
+          headers: { accept: 'application/json' },
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+      } catch (error) {
+        throw new Error(
+          `Could not verify npm publication history for ${candidate.name}: ${error.message}`,
+          { cause: error },
+        );
+      }
+
+      if (packageResponse.status === 404) {
+        throw new Error(
+          `Could not prove ${candidate.name}@${candidate.version} is publishable: ` +
+            `npm has no package metadata, which is indistinguishable from a fully unpublished package.`,
+        );
+      }
+      if (packageResponse.status !== 200) {
+        throw new Error(
+          `Could not verify npm publication history for ${candidate.name}: ` +
+            `registry returned HTTP ${packageResponse.status}.`,
+        );
+      }
+
+      let packument;
+      try {
+        packument = await packageResponse.json();
+      } catch (error) {
+        throw new Error(
+          `Could not parse npm publication history for ${candidate.name}: ${error.message}`,
+          { cause: error },
+        );
+      }
+
+      if (
+        typeof packument !== 'object' ||
+        packument === null ||
+        typeof packument.time !== 'object' ||
+        packument.time === null ||
+        Array.isArray(packument.time)
+      ) {
+        throw new Error(
+          `Could not verify npm publication history for ${candidate.name}: ` +
+            `registry metadata has no version history.`,
+        );
+      }
+
+      if (
+        Object.prototype.hasOwnProperty.call(packument.time, candidate.version)
+      ) {
+        throw new Error(
+          `npm version collision: ${candidate.name}@${candidate.version} was previously published and unpublished. ` +
+            `Choose a new version before merging; npm versions are immutable.`,
+        );
+      }
+
+      continue;
     }
 
     throw new Error(
