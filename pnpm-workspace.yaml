@@ -51,9 +51,10 @@ catalog:
   # Keep in lock-step with `playwright` below (grouped in .github/dependabot.yml);
   # the interview-e2e Docker image tag is derived from this resolved version.
   '@playwright/test': ^1.62.1
+  '@posthog/cli': ^0.7.34
   '@posthog/nextjs-config': ^1.9.68
+  '@posthog/plugin-utils': ^1.1.2
   '@posthog/react': ^1.10.3
-  '@posthog/rollup-plugin': ^1.4.7
   '@radix-ui/react-slot': ^1.2.4
   '@reduxjs/toolkit': ^2.12.0
   '@storybook/addon-a11y': ^10.5.10

@@ -706,6 +706,8 @@ function StageForm(props: {
   const title = typeof fields.title === 'string' ? fields.title : '';
   const baseline = useRef({ label, title });
   const [baselineVersion, setBaselineVersion] = useState(0);
+  const saveButton = useRef<HTMLButtonElement>(null);
+  const restoreSaveButtonFocus = useRef(false);
 
   useEffect(() => {
     if (controller.snapshot.pendingCommands.length !== 0) return;
@@ -716,6 +718,12 @@ function StageForm(props: {
     baseline.current = { label, title };
     setBaselineVersion((version) => version + 1);
   }, [controller.snapshot.pendingCommands.length, label, title]);
+
+  useLayoutEffect(() => {
+    if (!restoreSaveButtonFocus.current) return;
+    restoreSaveButtonFocus.current = false;
+    saveButton.current?.focus();
+  }, [baselineVersion]);
 
   return (
     <>
@@ -738,6 +746,10 @@ function StageForm(props: {
             typeof values.label === 'string' ? values.label : '';
           const submittedTitle =
             typeof values.title === 'string' ? values.title : '';
+          restoreSaveButtonFocus.current =
+            document.activeElement === saveButton.current &&
+            (submittedLabel !== baseline.current.label ||
+              (hasTitle && submittedTitle !== baseline.current.title));
           controller.changeFields({
             ...fields,
             label: submittedLabel,
@@ -747,6 +759,7 @@ function StageForm(props: {
             await props.save();
             return { success: true };
           } catch {
+            restoreSaveButtonFocus.current = false;
             return {
               success: false,
               formErrors: [
@@ -762,7 +775,9 @@ function StageForm(props: {
           baseline={baseline.current}
           readOnly={readOnly}
         />
-        <SubmitButton disabled={readOnly}>Save screen</SubmitButton>
+        <SubmitButton ref={saveButton} disabled={readOnly}>
+          Save screen
+        </SubmitButton>
       </Form>
     </>
   );
