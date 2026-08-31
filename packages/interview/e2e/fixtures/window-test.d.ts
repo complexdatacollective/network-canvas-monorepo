@@ -5,7 +5,6 @@ import type { FinishBehavior } from '../host/src/mockCallbacks.js';
 declare global {
   // `interface` is required (not `type`) so this declaration MERGES with
   // the global Window from lib.dom.d.ts.
-  // biome-ignore lint/style/useConsistentTypeDefinitions: declaration merging
   interface Window {
     __test: {
       installProtocol(protocol: ProtocolPayload): void;

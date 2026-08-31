@@ -125,7 +125,6 @@ export function PreviewHost() {
     number | null
   >(null);
   const onRequestAsset = useAssetResolver(protocolId);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: retryNonce is the deliberate retrigger key
   useEffect(() => {
     const opener = window.opener as Window | null;
     if (!opener) return;

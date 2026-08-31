@@ -56,7 +56,7 @@ export type ExtractValue<C extends ValidFieldComponent> =
  * over `C extends ValidFieldComponent`, so `React.ComponentProps<C>`
  * recovers the consumer's concrete prop shape at every call site.
  */
-// biome-ignore lint/suspicious/noExplicitAny: see comment above
+// oxlint-disable-next-line typescript/no-explicit-any -- see comment above
 export type ValidFieldComponent = React.ComponentType<any>;
 
 // ═══════════════════════════════════════════════════════════════

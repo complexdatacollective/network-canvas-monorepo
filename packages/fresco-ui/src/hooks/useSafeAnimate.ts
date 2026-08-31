@@ -55,7 +55,7 @@ export function useSafeAnimate<T extends Element = HTMLDivElement>() {
       complete: voidFn,
       pause: voidFn,
       play: voidFn,
-      // biome-ignore lint/suspicious/noThenProperty: Motion's animation handle is thenable; the noop must match that contract so `await animate(...)` resolves.
+      // oxlint-disable-next-line unicorn/no-thenable -- Motion's animation handle is thenable; the noop must match that contract so `await animate(...)` resolves.
       then: (resolve?: () => void) => {
         resolve?.();
         return noop;

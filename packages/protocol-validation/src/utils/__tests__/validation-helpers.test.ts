@@ -738,7 +738,7 @@ describe('Validation Helpers', () => {
             name: 'Person',
             color: 'node-color-seq-1',
             variables: {
-              // biome-ignore lint/suspicious/noExplicitAny: Testing malformed data
+              // oxlint-disable-next-line typescript/no-explicit-any -- Testing malformed data
               malformed: 'not an object' as any,
               normal: {
                 name: 'Normal Variable',

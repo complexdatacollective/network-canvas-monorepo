@@ -23,7 +23,7 @@ export default function useSafeLocalStorage<T>(
 
         const safeNewValue = schema.safeParse(rawValue);
         if (!safeNewValue.success) {
-          // biome-ignore lint/suspicious/noConsole: Intentionally surfaces schema-invalid stored data so devs notice and migrate.
+          // oxlint-disable-next-line no-console -- Intentionally surfaces schema-invalid stored data so devs notice and migrate.
           console.log('Existing data was invalid. Discarding.');
           storage[1](initialData); // Not sure why, but destructuring value and setValue above causes TS errors.
           return initialData;

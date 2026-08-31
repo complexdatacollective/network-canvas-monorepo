@@ -300,7 +300,6 @@ export function Sidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const locale = useLocale() as Locale;
   const segments = pathname.split('/');
-  // biome-ignore lint/style/noNonNullAssertion: path structure is known
   const section = segments[2]! as Section;
   const sidebarContainerRef = useRef<HTMLDivElement>(null);
   const [sidebarData, setSidebarData] = useState<TSideBar | null>(null);
@@ -310,7 +309,7 @@ export function Sidebar({ className }: { className?: string }) {
       .then((res) => res.json())
       .then((data) => setSidebarData(data as TSideBar))
       .catch((error) => {
-        // biome-ignore lint/suspicious/noConsole: Error logging for sidebar data loading failure
+        // oxlint-disable-next-line no-console -- Error logging for sidebar data loading failure
         console.error('Failed to load sidebar data:', error);
       });
   }, []);

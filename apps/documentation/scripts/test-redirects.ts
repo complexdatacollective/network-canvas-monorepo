@@ -1,5 +1,4 @@
 #!/usr/bin/env tsx
-/** biome-ignore-all lint/suspicious/noConsole: test logging */
 /**
  * Tests redirect rules against a live deployment
  * Verifies that redirects work correctly on the actual site
