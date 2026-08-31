@@ -118,7 +118,7 @@ schema and fingerprint pipeline.
 | `id`             | `uuid`          | Server-generated primary key                               |
 | `team_id`        | `text`          | Required tenant key; deliberately no cascading foreign key |
 | `sequence`       | `bigint`        | Required per-team order; unique with `team_id`             |
-| `occurred_at`    | `timestamptz`   | Required database default `CURRENT_TIMESTAMP`              |
+| `occurred_at`    | `timestamptz`   | Required database default `statement_timestamp()`          |
 | `event_type`     | `text`          | Stable machine name such as `team.member.role_changed`     |
 | `event_version`  | `smallint`      | Payload schema version, initially `1`                      |
 | `category`       | `text`          | One of the categories in section 4.3                       |
@@ -140,12 +140,21 @@ known values. `actor_id` is required unless `actor_kind = 'system'`. Event
 payload validation remains in the typed server writer because each event type
 has a different `details` shape.
 
+`statement_timestamp()` records the start of the insert statement rather than
+the start of a possibly long or lock-blocked transaction. `occurred_at` is a
+display and date-filter value; `sequence` remains the authoritative order.
+
 Indexes:
 
-- unique `(team_id, sequence)`;
-- `(team_id, sequence DESC)` for the primary activity feed;
+- unique `(team_id, sequence)`, which also serves the newest-first primary
+  activity feed through a backward B-tree scan;
+- `(team_id, occurred_at DESC, sequence DESC)` for bounded date-range scans;
 - `(team_id, event_type, sequence DESC)` for event filtering; and
 - `(team_id, actor_id, sequence DESC)` for actor filtering.
+
+There is deliberately no separate `(team_id, sequence DESC)` index: PostgreSQL
+can scan the unique ascending B-tree backward, and duplicating it would add
+write amplification and lifetime storage to the highest-volume table.
 
 The primary feed cursor is the last returned `sequence`. It requests events
 with a lower sequence, so equal timestamps, clock adjustments, and concurrent
@@ -254,10 +263,14 @@ protocol, study, or participant cannot remove its history.
 
 ### 5.3 Row-level security
 
-`audit_events` uses `teamIsolationPolicy()` and is included in the complete
-tenant-table inventory supplied to `tenantTablesSql(...)`. RLS is enabled and
-forced. The schema test that enumerates team tables must fail if the audit
-table is not covered.
+`audit_events` uses an audit-specific forced-RLS policy and is included in the
+complete tenant-table inventory. Unlike the general maintenance policy, the
+audit policy requires `app.team_id` to be set and equal to the row's `team_id`
+for both `studio_app` and `studio_maintenance`. Maintenance work that needs
+audit access therefore opens one explicit `TenantDb` scope per team; a
+maintenance connection with missing context sees no rows and cannot insert.
+The schema test that enumerates team tables must fail if the audit table is not
+covered, and an integration test guards the stricter maintenance predicate.
 
 RLS prevents cross-team reads and writes. The RPC layer separately verifies
 the caller's membership and required role against the explicit `teamId`; it
@@ -368,21 +381,39 @@ meaningful server-side commit boundaries.
 ### 7.3 Outcomes and denied attempts
 
 Successful writes use `outcome = 'succeeded'` and share the transaction with
-the action. An expected domain failure that leaves state unchanged does not
-pretend to be a successful event.
+the action.
 
 Denied attempts are recorded for actions with elevated security relevance—for
 example, role escalation, sensitive export, PII access, token use, or audit-log
 access—when Studio can establish the target team without changing the
 non-member/unknown-team response. The denial writer uses the authenticated
-principal and server-derived target. If the audit write for a denial fails,
-the requested action remains denied and the server emits a critical
-operational signal; an audit outage must never cause an unauthorized action to
-succeed.
+principal and server-derived target. Authorization work returns a typed
+`denied` decision rather than throwing inside the primary transaction; the
+executor commits the denial event with no domain mutation and only then
+translates the decision into the RPC authorization error. If that append fails,
+the requested action remains denied and the server emits a critical operational
+signal; an audit outage must never cause an unauthorized action to succeed.
 
-`failed` is reserved for an important asynchronous operation whose attempt is
-itself a committed fact, such as a bulk export job that later fails. Ordinary
-transaction rollbacks do not leave a misleading failed audit row.
+`failed` covers both an important asynchronous operation whose committed
+attempt later fails and an authorized, audit-relevant synchronous attempt that
+rolls back because a domain invariant or execution step rejects it. For the
+synchronous case, the executor first rolls back the primary transaction, then
+opens a separate audit-only transaction containing the original request id,
+server-established team and actor, event type, and a bounded stable failure
+reason. It never copies exception text, a stack, request data, or partially
+mutated state. Failure of this secondary append cannot turn the failed action
+into success; it produces a critical operational signal.
+
+Denied requests are rate-limited before any per-team audit advisory lock or
+append. A bounded, expiring operational counter is keyed by authenticated
+actor, team, and operation. Attempts within the policy threshold receive
+individual immutable events. Excess attempts are still denied but update the
+bounded counter, and at most one immutable
+`security.denied_attempts.rate_limited` summary per actor/team/operation/window
+records the suppressed count and first/last timestamps. Unknown teams never
+receive events. This preserves security visibility without allowing a caller
+to grow permanent storage or serialize a team's legitimate audit commands at
+an unbounded rate.
 
 ## 8. Command and transaction architecture
 
@@ -405,10 +436,15 @@ append(client: pg.PoolClient, event: AuditEventInput): Promise<AuditEvent>
 ```
 
 It cannot acquire its own pool transaction. Requiring the existing client
-makes accidental non-atomic use visible in code review and types. The event
-builder receives an authenticated `Principal`, request id, explicit team id,
-and server-read before/after values; no generic client-facing “emit audit
-event” procedure exists.
+makes accidental non-atomic use visible in code review and types. The command
+context uses a discriminated actor union: an authenticated user principal, an
+authenticated API-token principal, or a server-owned system actor carrying a
+bounded stable id/label. System contexts can be constructed only through a
+server-internal capability that is unavailable to RPC input and client
+packages; workers never fabricate a user principal. The event builder also
+receives the request/operation id, explicit team id, and server-read
+before/after values. No generic client-facing “emit audit event” procedure
+exists.
 
 ### 8.2 Audited domain commands
 
@@ -446,14 +482,25 @@ event. A mutation deliberately classified as `none` uses a separate explicit
 path carrying a static reason that appears in the command registry. There is no
 boolean flag that can silently disable auditing.
 
-An audit-required mutation follows this order inside the executor's transaction:
+An audit-required mutation follows this order inside the executor's
+transaction:
 
-1. authorize the actor for the explicit team and operation;
-2. lock and read the current target state;
-3. validate invariants using that locked state;
-4. write the domain change;
-5. append the event using the same `pg.PoolClient`; and
-6. when applicable, insert an alert-outbox row referencing the event.
+1. acquire the transaction-wide per-team audited-command advisory lock;
+2. lock the actor's current membership/authorization state and authorize the
+   explicit team and operation;
+3. lock and read the current target state;
+4. validate invariants using that locked state;
+5. write the domain change;
+6. append the event using the same `pg.PoolClient`; and
+7. when applicable, insert an alert-outbox row referencing the event.
+
+The team command lock uses the same centralized key and lock ordering as
+sequence allocation, so a concurrent demotion/removal cannot commit before an
+already-authorized privileged action. Owner-affecting commands acquire it
+before reading the owner set and lock/recheck all memberships relevant to the
+last-owner invariant; two concurrent owner demotions therefore serialize
+rather than each observing the other owner. All paths use the lock order team,
+actor membership, target memberships/resources to avoid deadlocks.
 
 Any thrown error rolls back all three writes. Side effects that cannot
 participate in PostgreSQL—email, webhooks, or object-store work—are driven from
@@ -463,6 +510,21 @@ Protocol stores that already own transactions are refactored to accept the
 executor's client or are invoked from a domain command that owns the
 transaction. Audit context is not optional on a required path, and the
 implementation must not append a second, post-commit “best effort” event.
+
+Sensitive reads and egress use a sibling `runAuditedRead` executor. It
+authorizes and materializes a bounded response (or a committed export-job /
+one-time-download record), appends the required audit event and alert-outbox
+row, commits, and only then releases response data or permits an external side
+effect. If the audit transaction fails, no response body, download capability,
+webhook, email, or object-storage result is released. Streaming implementations
+must stage behind that committed boundary; they may not start sending bytes
+and attempt a best-effort audit append afterward.
+
+Authorization denials use the committed decision path in section 7.3.
+Authorized synchronous failures use the separate post-rollback audit-only path
+defined there. These are deliberately distinct from successful mutation
+atomicity: no failed domain state is committed, while the important attempt
+remains observable.
 
 ### 8.3 Database responsibility and trigger boundary
 
@@ -486,23 +548,35 @@ transaction required by this specification. An `after` hook is therefore not
 an acceptable producer for an atomic success event.
 
 Studio must own commands for organization mutations exposed by the product.
+Before Slice A is complete, the implementation inventories the exact
+method/path surface registered by the configured Better Auth organization
+plugin at runtime. Every route is classified and a test fails if an upgrade
+adds an unclassified endpoint. Every route that can mutate team,
+membership/access, or invitation state is blocked unless a Studio-owned
+audited command already replaces it—including create/update organization,
+accept/reject invitation, remove/leave member, ownership change, and the three
+initial commands below. A workflow not yet present in the UI is not evidence
+that its authenticated HTTP endpoint is unreachable.
+
 The first slice replaces direct client calls for role changes and invitations:
 
 - `team.updateMemberRole`
 - `team.createInvitation`
 - `team.cancelInvitation`
 
-Acceptance/rejection, member removal, ownership transfer, team settings, and
-any future enabled organization mutation must use the same pattern before the
-audit log is declared complete. Each command uses Studio's database and
+Acceptance/rejection, member removal/leave, team creation/settings, ownership
+transfer, and any future enabled organization mutation remain blocked until
+they use the same pattern. Each command uses Studio's database and
 authorization seams, preserves Better Auth's required invariants, and commits
-the organization-table write with the audit event.
+the organization-table write with the audit event. Session-only active-team
+selection and POST-shaped read endpoints may remain available only under an
+exact documented `none` classification.
 
-Once a Studio command owns a mutation, the corresponding direct
-`/api/auth/organization/*` mutation endpoint is blocked for the SPA and tested
-as blocked. Better Auth read/session endpoints may remain available. It is not
-acceptable to leave a second endpoint that can perform the same write without
-an event.
+The direct `/api/auth/organization/*` mutation endpoints are blocked at the
+server boundary, not merely hidden from the SPA, and are tested as blocked.
+Better Auth read/session endpoints may remain available. It is not acceptable
+to leave any callable endpoint that can perform a team/access write without an
+event.
 
 Every other server-side mutation must make its audit classification explicit:
 `required`, `denied-only`, or `none` with a documented reason. A command
@@ -511,11 +585,13 @@ write path (synchronization, worker, maintenance job, or future public API)
 must register at its domain boundary. Review cannot accept a new mutation with
 an unclassified audit policy.
 
-For `team.updateMemberRole`, the transaction locks the membership, captures
-the previous role, enforces the last-owner/ownership constraints, writes the
-new role, and appends `team.member.role_changed`. A no-op request either returns
-the unchanged member without an event or is rejected consistently; it never
-creates a false “changed” record.
+For `team.updateMemberRole`, the transaction first acquires the per-team
+audited-command lock, then locks the actor and target memberships, captures the
+previous role, locks/rechecks the owner set, enforces the
+last-owner/ownership constraints, writes the new role, and appends
+`team.member.role_changed`. A no-op request either returns the unchanged member
+without an event or is rejected consistently; it never creates a false
+“changed” record.
 
 ## 9. Internal API
 
@@ -546,14 +622,22 @@ parameterized. The list response contains only fields needed by the feed;
 events both return the same not-found/forbidden policy used by the team RPC
 surface, without becoming a cross-team oracle.
 
-CSV export uses a dedicated authenticated streaming HTTP route:
+CSV export is initiated only by a same-origin-protected unsafe request:
 
 ```text
-GET /api/teams/:teamId/audit.csv?...filters
+POST /api/teams/:teamId/audit-exports
+{ filters } -> CSV response or short-lived, single-use download handle
 ```
 
+The route requires the same Origin/CSRF protection as other mutations; it is
+never a `GET` that navigation, link preview, crawler, or browser prefetch can
+trigger. If a handle is returned, the handle is bound to the requesting actor
+and team, expires promptly, carries no credentials in its contents, and its
+download `GET` performs no new audit mutation.
+
 At the start of export, the server captures the visible high-water sequence
-and row count. Before sending the first CSV byte it appends
+and row count. Before returning a handle or sending the first CSV byte it
+commits
 `audit.export.started` with the filters, row count, and high-water sequence.
 The exported file therefore does not recursively include its own later event.
 If the server can authoritatively detect a later generation or transfer
@@ -562,6 +646,14 @@ disconnect alone is not reported as a definitive failure. The file contains
 exact UTC timestamps, sequence, stable ids, display labels,
 type/category/outcome, and a bounded JSON details column. It never exposes
 internal stack traces or operational logs.
+
+Every string cell—including actor, subject and resource labels, event type,
+request id, and serialized details—is passed through the shared CSV cell
+sanitizer or an equivalent audited helper before RFC 4180 escaping. Values
+whose first character is `=`, `+`, `-`, `@`, tab, or carriage return are
+prefixed with a single quote so spreadsheet software treats member-controlled
+content as literal text. Export tests include hostile values for every formula
+trigger and verify both neutralization and ordinary CSV quoting.
 
 ## 10. Team activity interface
 
@@ -645,18 +737,25 @@ changeset for the affected Studio workspace packages.
 
 ### 13.1 Database integration tests
 
-- `studio_app` and `studio_maintenance` can insert and select team-visible
-  audit rows but cannot update, delete, or truncate them.
+- `studio_app` and `studio_maintenance` can insert and select audit rows only
+  with matching explicit team context, and cannot update, delete, or truncate
+  them; missing maintenance context sees no rows.
 - The immutable trigger rejects update/delete even through a privileged test
   connection unless deliberately disabled by the database owner.
 - Forced RLS hides another team's rows and rejects cross-team insert attempts.
 - Missing team context sees no rows.
 - Concurrent appends for one team produce unique, increasing committed
   sequences; concurrent appends for separate teams do not contend on one lock.
+- `occurred_at` reflects the insert statement rather than transaction start;
+  date-window queries use the team/timestamp/sequence index, and the schema has
+  no redundant reverse-sequence index.
 - User, membership, invitation, and resource deletion cannot cascade to an
   event.
 - A domain failure rolls back its event, and an audit insert failure rolls back
   its domain mutation.
+- An authorized synchronous failure rolls back domain state and commits one
+  bounded `failed` event separately; failure of that append emits a critical
+  operational signal without changing the command result.
 - The generated schema fingerprint, schema inventory, README section, and ERD
   remain synchronized.
 
@@ -665,16 +764,26 @@ changeset for the affected Studio workspace packages.
 - An owner/admin role change stores the exact actor, member, previous role,
   new role, request id, and success outcome.
 - Last-owner and unauthorized role changes do not change membership.
+- Concurrent owner demotions cannot both pass the last-owner invariant, and a
+  concurrent actor revocation prevents the actor's privileged command from
+  committing afterward.
 - A relevant denied action produces the defined denial event without exposing
   whether an unknown team exists.
+- Denial throttling runs before the per-team lock; excess attempts create at
+  most one bounded summary per policy window rather than one permanent row per
+  request.
 - Invitation creation/cancellation and acceptance/rejection create the defined
   events and never store a token or magic link.
-- The direct Better Auth mutation routes covered by Studio commands are
-  refused, proving there is no unaudited bypass.
+- Every runtime-registered Better Auth organization route has an exact audit
+  classification, and every team/access mutation without a Studio-owned
+  audited command is refused, proving there is no unaudited bypass.
 - Audit list/get enforce current role permissions, RLS, filters, cursor order,
   page limits, and output redaction.
-- Export enforces `audit.export`, stops at its high-water sequence, and records
-  one export event without recursively exporting it.
+- A sensitive read returns no data when its required audit/outbox transaction
+  fails.
+- Export requires a same-origin-protected `POST`, stops at its high-water
+  sequence, records one export event without recursively exporting it, and
+  neutralizes every formula-leading string cell before CSV escaping.
 
 ### 13.3 UI and end-to-end tests
 
@@ -700,7 +809,8 @@ Bring this slice into the current Studio team-workspace phase:
 1. add the immutable/RLS audit schema, typed event registry, append store, and
    database tests;
 2. add Studio-owned role-change and invitation commands;
-3. block the corresponding direct Better Auth mutation paths;
+3. inventory every configured Better Auth organization route and block every
+   team/access mutation path that lacks a Studio-owned audited command;
 4. emit the team/access events for those commands; and
 5. include the Studio schema artifacts and changeset.
 
@@ -742,7 +852,8 @@ visible. It is complete when:
 - the database prevents application and maintenance roles from mutating audit
   history;
 - current team role and invitation mutations cannot succeed without their
-  event and have no direct unaudited route;
+  event, and every other configured team/access mutation remains blocked until
+  it has an audited command;
 - owner/admin users can query and export their team's isolated, ordered log;
 - ordinary members and other teams cannot access it;
 - event payloads pass the data-minimization rules;
