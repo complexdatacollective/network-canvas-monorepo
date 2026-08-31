@@ -54,9 +54,6 @@ release-builds
 /packages/protocol-validation/src/__tests__/data
 **/src/__tests__/.cache
 
-# Serena cache: https://github.com/oraios/serena/issues/283
-/.serena/cache
-
 apps/documentation/public/sidebar.json
 
 # Superpowers brainstorm sessions
