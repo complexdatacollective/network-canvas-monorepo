@@ -1,0 +1,4 @@
+{
+  "$comment": "Add an exact manifestPath, name, version, and reason only in the pull request that needs first-publication approval; existing entries cannot be reused.",
+  "approvals": []
+}

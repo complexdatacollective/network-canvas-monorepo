@@ -5,8 +5,10 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import { collectWorkspacePackages } from './release-e2e-policy.mjs';
+
 const DEFAULT_REGISTRY_URL = 'https://registry.npmjs.org/';
-const PACKAGE_MANIFEST_PATHSPEC = ':(glob)packages/*/package.json';
+const FIRST_PUBLICATION_APPROVALS_PATH = '.github/npm-first-publications.json';
 
 function git(repoRoot, args) {
   return execFileSync('git', args, {
@@ -50,6 +52,84 @@ function manifestAtRef(repoRoot, ref, manifestPath) {
   );
 }
 
+function firstPublicationApprovalKey({ manifestPath, name, version }) {
+  return `${manifestPath}\0${name}\0${version}`;
+}
+
+function parseFirstPublicationApprovals(document, source) {
+  if (
+    typeof document !== 'object' ||
+    document === null ||
+    !Array.isArray(document.approvals)
+  ) {
+    throw new Error(`${source} must contain an approvals array.`);
+  }
+
+  const approvals = new Map();
+  for (const [index, approval] of document.approvals.entries()) {
+    if (
+      typeof approval !== 'object' ||
+      approval === null ||
+      typeof approval.manifestPath !== 'string' ||
+      typeof approval.name !== 'string' ||
+      typeof approval.version !== 'string' ||
+      typeof approval.reason !== 'string' ||
+      approval.reason.trim().length === 0
+    ) {
+      throw new Error(
+        `${source} approval ${index + 1} must contain manifestPath, name, version, and a non-empty reason.`,
+      );
+    }
+
+    const key = firstPublicationApprovalKey(approval);
+    if (approvals.has(key)) {
+      throw new Error(
+        `${source} contains a duplicate approval for ${approval.name}@${approval.version}.`,
+      );
+    }
+    approvals.set(key, approval);
+  }
+
+  return approvals;
+}
+
+function firstPublicationApprovalsAtRef(repoRoot, ref) {
+  const document = manifestAtRef(
+    repoRoot,
+    ref,
+    FIRST_PUBLICATION_APPROVALS_PATH,
+  );
+  if (document === null) return new Map();
+  return parseFirstPublicationApprovals(
+    document,
+    `${FIRST_PUBLICATION_APPROVALS_PATH} at ${ref}`,
+  );
+}
+
+function addedFirstPublicationApprovals(repoRoot, baseRef) {
+  let currentDocument;
+  try {
+    currentDocument = parseManifest(
+      readFileSync(
+        path.join(repoRoot, FIRST_PUBLICATION_APPROVALS_PATH),
+        'utf8',
+      ),
+      FIRST_PUBLICATION_APPROVALS_PATH,
+    );
+  } catch (error) {
+    if (error.code === 'ENOENT') return new Map();
+    throw error;
+  }
+
+  const current = parseFirstPublicationApprovals(
+    currentDocument,
+    FIRST_PUBLICATION_APPROVALS_PATH,
+  );
+  const previous = firstPublicationApprovalsAtRef(repoRoot, baseRef);
+
+  return new Map([...current].filter(([key]) => !previous.has(key)));
+}
+
 export function npmVersionUrl(registryUrl, packageName, version) {
   const base = registryUrl.endsWith('/') ? registryUrl : `${registryUrl}/`;
   // npm's scoped-package endpoint keeps the leading @ readable but must encode
@@ -67,6 +147,13 @@ function npmPackageUrl(registryUrl, packageName) {
 export function changedPublicPackageVersions({ repoRoot, baseRef }) {
   git(repoRoot, ['rev-parse', '--verify', `${baseRef}^{commit}`]);
 
+  const workspaceManifestPaths = new Set(
+    [...collectWorkspacePackages(repoRoot).values()].map(
+      ({ dir }) => `${dir}/package.json`,
+    ),
+  );
+  if (workspaceManifestPaths.size === 0) return [];
+
   const output = git(repoRoot, [
     'diff',
     '--name-only',
@@ -74,14 +161,14 @@ export function changedPublicPackageVersions({ repoRoot, baseRef }) {
     baseRef,
     'HEAD',
     '--',
-    PACKAGE_MANIFEST_PATHSPEC,
+    ...workspaceManifestPaths,
   ]);
 
   if (!output) return [];
 
   const changed = [];
   for (const manifestPath of output.split('\n')) {
-    if (!/^packages\/[^/]+\/package\.json$/.test(manifestPath)) continue;
+    if (!workspaceManifestPaths.has(manifestPath)) continue;
 
     const current = parseManifest(
       readFileSync(path.join(repoRoot, manifestPath), 'utf8'),
@@ -125,6 +212,11 @@ export async function checkNpmVersionCollisions({
   timeoutMs = 15_000,
 }) {
   const candidates = changedPublicPackageVersions({ repoRoot, baseRef });
+  const firstPublicationApprovals = addedFirstPublicationApprovals(
+    repoRoot,
+    baseRef,
+  );
+  const usedFirstPublicationApprovals = new Set();
 
   for (const candidate of candidates) {
     const url = npmVersionUrl(registryUrl, candidate.name, candidate.version);
@@ -165,9 +257,16 @@ export async function checkNpmVersionCollisions({
       }
 
       if (packageResponse.status === 404) {
+        const approvalKey = firstPublicationApprovalKey(candidate);
+        if (firstPublicationApprovals.has(approvalKey)) {
+          usedFirstPublicationApprovals.add(approvalKey);
+          continue;
+        }
+
         throw new Error(
           `Could not prove ${candidate.name}@${candidate.version} is publishable: ` +
-            `npm has no package metadata, which is indistinguishable from a fully unpublished package.`,
+            `npm has no package metadata, which is indistinguishable from a fully unpublished package. ` +
+            `For a genuinely new package, add an exact, reasoned approval to ${FIRST_PUBLICATION_APPROVALS_PATH} in this pull request.`,
         );
       }
       if (packageResponse.status !== 200) {
@@ -215,6 +314,16 @@ export async function checkNpmVersionCollisions({
     throw new Error(
       `Could not verify ${candidate.name}@${candidate.version} against npm: ` +
         `registry returned HTTP ${response.status}.`,
+    );
+  }
+
+  const unusedFirstPublicationApprovals = [...firstPublicationApprovals]
+    .filter(([key]) => !usedFirstPublicationApprovals.has(key))
+    .map(([, approval]) => `${approval.name}@${approval.version}`);
+  if (unusedFirstPublicationApprovals.length > 0) {
+    throw new Error(
+      `Unused first-publication approval(s): ${unusedFirstPublicationApprovals.join(', ')}. ` +
+        `Approvals must be added only in the pull request that first needs them.`,
     );
   }
 

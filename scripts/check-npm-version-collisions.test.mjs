@@ -19,7 +19,10 @@ function git(repoRoot, ...args) {
 }
 
 function writeManifest(repoRoot, directory, manifest) {
-  const packageDirectory = path.join(repoRoot, 'packages', directory);
+  const packageDirectory = path.join(
+    repoRoot,
+    directory.includes('/') ? directory : path.join('packages', directory),
+  );
   mkdirSync(packageDirectory, { recursive: true });
   writeFileSync(
     path.join(packageDirectory, 'package.json'),
@@ -27,7 +30,21 @@ function writeManifest(repoRoot, directory, manifest) {
   );
 }
 
-function repository(t, basePackages, changedPackages) {
+function writeFirstPublicationApprovals(repoRoot, approvals) {
+  const githubDirectory = path.join(repoRoot, '.github');
+  mkdirSync(githubDirectory, { recursive: true });
+  writeFileSync(
+    path.join(githubDirectory, 'npm-first-publications.json'),
+    `${JSON.stringify({ approvals }, null, 2)}\n`,
+  );
+}
+
+function repository(
+  t,
+  basePackages,
+  changedPackages,
+  { baseApprovals = [], changedApprovals = baseApprovals } = {},
+) {
   const repoRoot = mkdtempSync(
     path.join(tmpdir(), 'npm-version-collision-test-'),
   );
@@ -41,6 +58,7 @@ function repository(t, basePackages, changedPackages) {
   for (const [directory, manifest] of Object.entries(basePackages)) {
     writeManifest(repoRoot, directory, manifest);
   }
+  writeFirstPublicationApprovals(repoRoot, baseApprovals);
   git(repoRoot, 'add', '.');
   git(repoRoot, 'commit', '-m', 'base');
   const baseRef = git(repoRoot, 'rev-parse', 'HEAD');
@@ -48,6 +66,7 @@ function repository(t, basePackages, changedPackages) {
   for (const [directory, manifest] of Object.entries(changedPackages)) {
     writeManifest(repoRoot, directory, manifest);
   }
+  writeFirstPublicationApprovals(repoRoot, changedApprovals);
   git(repoRoot, 'add', '.');
   git(repoRoot, 'commit', '-m', 'change');
 
@@ -97,6 +116,42 @@ test('rejects a changed public version that npm already serves', async (t) => {
 
   assert.deepEqual(requested, [
     'https://registry.npmjs.org/@codaco%2Fnetwork-exporters/2.0.0',
+  ]);
+});
+
+test('checks public packages in tooling workspaces', async (t) => {
+  const { baseRef, repoRoot } = repository(
+    t,
+    {
+      'tooling/tailwind': {
+        name: '@codaco/tailwind-config',
+        version: '1.3.0',
+      },
+    },
+    {
+      'tooling/tailwind': {
+        name: '@codaco/tailwind-config',
+        version: '2.0.0',
+      },
+    },
+  );
+
+  await assert.rejects(
+    checkNpmVersionCollisions({
+      repoRoot,
+      baseRef,
+      fetchImpl: async () => ({ status: 200 }),
+    }),
+    /npm version collision: @codaco\/tailwind-config@2\.0\.0 already exists/,
+  );
+
+  assert.deepEqual(changedPublicPackageVersions({ repoRoot, baseRef }), [
+    {
+      manifestPath: 'tooling/tailwind/package.json',
+      name: '@codaco/tailwind-config',
+      previousVersion: '1.3.0',
+      version: '2.0.0',
+    },
   ]);
 });
 
@@ -267,6 +322,105 @@ test('fails closed when npm has no package history', async (t) => {
       fetchImpl: async () => ({ status: 404 }),
     }),
     /npm has no package metadata, which is indistinguishable from a fully unpublished package/,
+  );
+});
+
+test('accepts a first publication only with an exact approval added in the pull request', async (t) => {
+  const approval = {
+    manifestPath: 'packages/new-package/package.json',
+    name: '@codaco/new-package',
+    version: '1.0.0',
+    reason: 'Initial publication approved in this pull request.',
+  };
+  const { baseRef, repoRoot } = repository(
+    t,
+    {},
+    {
+      'new-package': {
+        name: '@codaco/new-package',
+        version: '1.0.0',
+      },
+    },
+    { changedApprovals: [approval] },
+  );
+
+  const checked = await checkNpmVersionCollisions({
+    repoRoot,
+    baseRef,
+    fetchImpl: async () => ({ status: 404 }),
+  });
+
+  assert.deepEqual(checked, [
+    {
+      manifestPath: 'packages/new-package/package.json',
+      name: '@codaco/new-package',
+      previousVersion: null,
+      version: '1.0.0',
+    },
+  ]);
+});
+
+test('does not reuse a first-publication approval already present on the base branch', async (t) => {
+  const approval = {
+    manifestPath: 'packages/new-package/package.json',
+    name: '@codaco/new-package',
+    version: '1.0.0',
+    reason: 'Historical approval must not bypass a later tombstone.',
+  };
+  const { baseRef, repoRoot } = repository(
+    t,
+    {
+      'new-package': {
+        name: '@codaco/new-package',
+        version: '0.9.0',
+      },
+    },
+    {
+      'new-package': {
+        name: '@codaco/new-package',
+        version: '1.0.0',
+      },
+    },
+    { baseApprovals: [approval] },
+  );
+
+  await assert.rejects(
+    checkNpmVersionCollisions({
+      repoRoot,
+      baseRef,
+      fetchImpl: async () => ({ status: 404 }),
+    }),
+    /add an exact, reasoned approval .* in this pull request/,
+  );
+});
+
+test('rejects a first-publication approval that no current candidate uses', async (t) => {
+  const { baseRef, repoRoot } = repository(
+    t,
+    { 'network-exporters': exportersV1 },
+    { 'network-exporters': exportersV2 },
+    {
+      changedApprovals: [
+        {
+          manifestPath: 'packages/other/package.json',
+          name: '@codaco/other',
+          version: '1.0.0',
+          reason: 'This approval does not match the changed package.',
+        },
+      ],
+    },
+  );
+
+  await assert.rejects(
+    checkNpmVersionCollisions({
+      repoRoot,
+      baseRef,
+      fetchImpl: async (url) =>
+        url.endsWith('/2.0.0')
+          ? { status: 404 }
+          : { status: 200, json: async () => ({ time: {} }) },
+    }),
+    /Unused first-publication approval\(s\): @codaco\/other@1\.0\.0/,
   );
 });
 
