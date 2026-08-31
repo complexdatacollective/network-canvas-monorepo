@@ -47,10 +47,11 @@
  * replaces it. Incomplete redirects and document loads remain verification
  * failures, and the entire sequence shares one request deadline so reload
  * loops cannot retain a worker indefinitely. Browser-only HTTP redirects obey
- * the same maximum-hop rule as Node redirects. A browser navigation that
- * becomes a download is the one exception to requiring a document load:
- * Playwright rejects goto in that case, so the captured HTTP response verifies
- * the non-HTML target without saving the file.
+ * the same maximum-hop rule as Node redirects. Browser navigations that become
+ * downloads or return 204 No Content are the exceptions to requiring a
+ * document load: Playwright rejects goto in those cases, so the captured HTTP
+ * response verifies the non-HTML target without saving a file or inventing a
+ * document.
  *
  * Browser verification is not status suppression. Its final response is
  * authoritative: a browser-confirmed 403 (or any other >= 400 response) still
@@ -318,22 +319,24 @@ export class BrowserVerifier {
           waitUntil: 'domcontentloaded',
         });
       } catch (error) {
-        const downloadResponse = mainFrameResponses.at(-1);
+        const nonDocumentResponse = mainFrameResponses.at(-1);
+        const isDownload =
+          error instanceof Error &&
+          error.message.includes('Download is starting');
         if (
-          !(error instanceof Error) ||
-          !error.message.includes('Download is starting') ||
-          !downloadResponse
+          !nonDocumentResponse ||
+          (!isDownload && nonDocumentResponse.status() !== 204)
         ) {
           throw error;
         }
 
-        const contentType = downloadResponse.headers()['content-type'] ?? '';
+        const contentType = nonDocumentResponse.headers()['content-type'] ?? '';
         return {
           contentType,
-          finalUrl: downloadResponse.url(),
+          finalUrl: nonDocumentResponse.url(),
           html: null,
           redirects: browserRedirects(mainFrameResponses),
-          status: downloadResponse.status(),
+          status: nonDocumentResponse.status(),
         };
       }
       if (!initialResponse) {

@@ -742,6 +742,57 @@ test('browser verification accepts a successful download response', async () => 
   }
 });
 
+test('browser verification accepts a successful no-content response', async () => {
+  const frame = {};
+  const navigationRequest = { isNavigationRequest: () => true };
+  const noContentResponse = {
+    frame: () => frame,
+    headers: () => ({}),
+    request: () => navigationRequest,
+    status: () => 204,
+    url: () => 'https://publisher.test/no-content',
+  };
+  let responseListener;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(noContentResponse);
+      throw new Error(
+        'page.goto: net::ERR_ABORTED at https://publisher.test/no-content',
+      );
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => 'about:blank',
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    const outcome = await verifier.verify(
+      'https://publisher.test/no-content',
+      50,
+      { captureHTML: true },
+    );
+    assert.deepEqual(outcome, {
+      contentType: '',
+      finalUrl: 'https://publisher.test/no-content',
+      html: null,
+      redirects: [],
+      status: 204,
+    });
+  } finally {
+    await verifier.close();
+  }
+});
+
 test('browser verification rejects a response-free non-HTTP commit', async () => {
   const frame = {};
   const navigationRequest = { isNavigationRequest: () => true };
