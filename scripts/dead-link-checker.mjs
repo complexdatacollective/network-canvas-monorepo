@@ -32,7 +32,9 @@
  * launched lazily, shared by the whole crawl, and limited to four open pages.
  * It runs headed under Xvfb in CI because the affected challenge provider also
  * rejects automated headless Chrome. For a challenge response, the verifier
- * waits for JavaScript to cause a subsequent main-frame navigation.
+ * waits for JavaScript to reach a terminal main-frame response and finish
+ * loading its document; incomplete redirects and document loads remain
+ * verification failures.
  *
  * Browser verification is not status suppression. Its final response is
  * authoritative: a browser-confirmed 403 (or any other >= 400 response) still
@@ -60,6 +62,10 @@ const BROWSER_VERIFIABLE_REQUEST_ERRORS = new Set([
 const MAX_RETRY_DELAY_MS = 30_000;
 const BASE_RETRY_DELAY_MS = 500;
 const MAX_BROWSER_PAGES = 4;
+
+function isTerminalNavigation(response) {
+  return response.status() < 300 || response.status() >= 400;
+}
 
 // Keep annotations useful without flooding the Actions log. The JSON artifact
 // and job summary remain complete when a crawl exceeds this limit.
@@ -217,13 +223,13 @@ export class BrowserVerifier {
     try {
       const { context } = await this.#getResources();
       page = await context.newPage();
-      let navigation;
+      const mainFrameResponses = [];
       page.on('response', (response) => {
         if (
           response.request().isNavigationRequest() &&
           response.frame() === page.mainFrame()
         ) {
-          navigation = response;
+          mainFrameResponses.push(response);
         }
       });
 
@@ -234,24 +240,50 @@ export class BrowserVerifier {
       if (!initialResponse) {
         throw new Error(`Browser navigation returned no response for ${url}`);
       }
-      navigation ??= initialResponse;
+      let navigation = initialResponse;
 
       // A browser challenge initially responds with 403, executes JavaScript,
       // and then navigates the main frame again. A genuine forbidden page has
       // no follow-up navigation and remains 403 after the same timeout.
       if (navigation.status() === 403) {
-        try {
-          navigation = await page.waitForResponse(
-            (response) =>
-              response.request().isNavigationRequest() &&
-              response.frame() === page.mainFrame() &&
-              (response.status() < 300 || response.status() >= 400) &&
-              response.status() !== 403,
-            { timeout },
-          );
+        const initialResponseIndex =
+          mainFrameResponses.indexOf(initialResponse);
+        const followupStart =
+          initialResponseIndex === -1
+            ? mainFrameResponses.length
+            : initialResponseIndex + 1;
+        const followupResponses = () => mainFrameResponses.slice(followupStart);
+        let terminalResponse = followupResponses().find(isTerminalNavigation);
+
+        if (!terminalResponse) {
+          try {
+            terminalResponse = await page.waitForResponse(
+              (response) =>
+                response.request().isNavigationRequest() &&
+                response.frame() === page.mainFrame() &&
+                isTerminalNavigation(response),
+              { timeout },
+            );
+          } catch (error) {
+            if (error?.name !== 'TimeoutError') throw error;
+
+            // Recheck responses captured by the always-on listener in case a
+            // terminal response arrived at the wait boundary. A timeout with
+            // no follow-up means this was a genuine 403. Once any redirect or
+            // navigation starts, however, failing to reach a terminal response
+            // is a verification failure rather than a successful 3xx result.
+            terminalResponse = followupResponses().find(isTerminalNavigation);
+            if (!terminalResponse && followupResponses().length > 0)
+              throw error;
+          }
+        }
+
+        if (terminalResponse) {
+          navigation = terminalResponse;
+          // A terminal status is not enough for recursive pages: page.content()
+          // must represent the completed document or links after a stalled
+          // parser-blocking resource could silently disappear from the crawl.
           await page.waitForLoadState('domcontentloaded', { timeout });
-        } catch (error) {
-          if (error?.name !== 'TimeoutError') throw error;
         }
       }
 

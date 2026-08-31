@@ -392,6 +392,108 @@ test('browser verification keeps the configured identity and final redirect stat
   }
 });
 
+test('browser verification rejects a challenge redirect without a terminal response', async () => {
+  const frame = {};
+  const navigationRequest = { isNavigationRequest: () => true };
+  const response = (status) => ({
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => status,
+  });
+  const initial = response(403);
+  const redirect = response(302);
+  let responseListener;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (_event, listener) => {
+      responseListener = listener;
+    },
+    url: () => 'https://publisher.test/hanging',
+    waitForLoadState: async () => {},
+    waitForResponse: async (predicate) => {
+      responseListener(redirect);
+      assert.equal(predicate(redirect), false);
+      throw Object.assign(new Error('terminal response timed out'), {
+        name: 'TimeoutError',
+      });
+    },
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    await assert.rejects(
+      verifier.verify('https://publisher.test/challenge', 50),
+      /terminal response timed out/,
+    );
+  } finally {
+    await verifier.close();
+  }
+});
+
+test('browser verification propagates terminal document load timeouts', async () => {
+  const frame = {};
+  const navigationRequest = { isNavigationRequest: () => true };
+  const response = (status) => ({
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => status,
+  });
+  const initial = response(403);
+  const final = response(200);
+  let responseListener;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (_event, listener) => {
+      responseListener = listener;
+    },
+    url: () => 'https://publisher.test/incomplete-document',
+    waitForLoadState: async () => {
+      throw Object.assign(new Error('document load timed out'), {
+        name: 'TimeoutError',
+      });
+    },
+    waitForResponse: async (predicate) => {
+      responseListener(final);
+      assert.equal(predicate(final), true);
+      return final;
+    },
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    await assert.rejects(
+      verifier.verify('https://publisher.test/challenge', 50),
+      /document load timed out/,
+    );
+  } finally {
+    await verifier.close();
+  }
+});
+
 test('renderers escape workflow commands and obey explicit color selection', () => {
   const failure = {
     error: 'bad%value\nsecond line',
