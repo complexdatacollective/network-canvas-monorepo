@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { Alert } from '@codaco/fresco-ui/Alert';
 import { Badge } from '@codaco/fresco-ui/Badge';
@@ -62,12 +68,25 @@ function roleLabel(role: string): string {
   }
 }
 
-function canManageTeam(role: string | undefined): boolean {
+function teamRoles(role: string | undefined): string[] {
   return (
-    role?.split(',').some((entry) => {
-      const normalized = entry.trim();
-      return normalized === 'owner' || normalized === 'admin';
-    }) ?? false
+    role
+      ?.split(',')
+      .map((entry) => entry.trim())
+      .filter((entry) => entry !== '') ?? []
+  );
+}
+
+function teamRolesLabel(role: string): string {
+  const roles = teamRoles(role);
+  return roles.length === 0
+    ? 'Unassigned'
+    : roles.map((entry) => roleLabel(entry)).join(', ');
+}
+
+function canManageTeam(role: string | undefined): boolean {
+  return teamRoles(role).some(
+    (entry) => entry === 'owner' || entry === 'admin',
   );
 }
 
@@ -79,6 +98,9 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
   const [switchingTeamId, setSwitchingTeamId] = useState<string | null>(null);
   const [retryingActiveTeam, setRetryingActiveTeam] = useState(false);
   const [switchError, setSwitchError] = useState(false);
+  const [creatingProtocolTeamId, setCreatingProtocolTeamId] = useState<
+    string | null
+  >(null);
   const protocolCreationAttempts = useRef(
     new Map<string, ProtocolCreationAttempt>(),
   );
@@ -107,13 +129,36 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
   );
 
   const activeTeamId = activeTeam.data?.id;
+  const activeTeamIdRef = useRef(activeTeamId);
+  useLayoutEffect(() => {
+    activeTeamIdRef.current = activeTeamId;
+  }, [activeTeamId]);
   const selectedTeam = props.teams.find((team) => team.id === activeTeamId);
   const membershipMatchesTeam =
     selectedTeam !== undefined &&
     activeMember.data?.organizationId === selectedTeam.id;
   const activeTeamLoadError = activeTeam.error || activeMember.error;
   const activeTeamAccessPending =
-    activeTeam.isPending || activeMember.isPending;
+    activeTeam.isPending ||
+    activeMember.isPending ||
+    activeTeam.isRefetching ||
+    activeMember.isRefetching;
+  const protocolCreationPending = creatingProtocolTeamId !== null;
+
+  const setProtocolCreationPending = useCallback(
+    (teamId: string, pending: boolean) => {
+      setCreatingProtocolTeamId((currentTeamId) => {
+        if (pending) return teamId;
+        return currentTeamId === teamId ? null : currentTeamId;
+      });
+    },
+    [],
+  );
+
+  const isTeamStillActive = useCallback(
+    (teamId: string) => activeTeamIdRef.current === teamId,
+    [],
+  );
 
   const retryActiveTeam = async () => {
     setRetryingActiveTeam(true);
@@ -174,7 +219,8 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
               disabled={
                 activeTeamAccessPending ||
                 switchingTeamId !== null ||
-                retryingActiveTeam
+                retryingActiveTeam ||
+                protocolCreationPending
               }
               onChange={(value) => {
                 const teamId = String(value);
@@ -186,7 +232,8 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
             {selectedTeam && <Badge>Currently active</Badge>}
             {(activeTeamAccessPending ||
               switchingTeamId !== null ||
-              retryingActiveTeam) && <Spinner size="sm" />}
+              retryingActiveTeam ||
+              protocolCreationPending) && <Spinner size="sm" />}
           </div>
         </div>
         {switchError && (
@@ -218,6 +265,9 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
           activeMemberId={activeMember.data?.id}
           activeMemberRole={activeMember.data?.role}
           creationAttempts={protocolCreationAttempts.current}
+          protocolCreationPending={protocolCreationPending}
+          setProtocolCreationPending={setProtocolCreationPending}
+          isTeamStillActive={isTeamStillActive}
         />
       ) : (
         <Surface spacing="lg">
@@ -238,6 +288,9 @@ function ActiveTeamWorkspace(props: {
   activeMemberId: string | undefined;
   activeMemberRole: string | undefined;
   creationAttempts: Map<string, ProtocolCreationAttempt>;
+  protocolCreationPending: boolean;
+  setProtocolCreationPending: (teamId: string, pending: boolean) => void;
+  isTeamStillActive: (teamId: string) => boolean;
 }) {
   const teamId = props.team.id;
   const queryClient = useQueryClient();
@@ -253,6 +306,7 @@ function ActiveTeamWorkspace(props: {
             input: { teamId: variables.teamId },
           }),
         });
+        if (!props.isTeamStillActive(variables.teamId)) return;
         await navigate({
           to: '/teams/$teamId/protocols/$protocolId/drafts/$draftId',
           params: {
@@ -345,6 +399,7 @@ function ActiveTeamWorkspace(props: {
                         draftId: createUuid(),
                       };
                 props.creationAttempts.set(teamId, attempt);
+                props.setProtocolCreationPending(teamId, true);
                 try {
                   await createProtocol.mutateAsync(attempt);
                   if (props.creationAttempts.get(teamId) === attempt) {
@@ -358,6 +413,8 @@ function ActiveTeamWorkspace(props: {
                       'The protocol could not be created. Wait a moment and try again.',
                     ],
                   };
+                } finally {
+                  props.setProtocolCreationPending(teamId, false);
                 }
               }}
             >
@@ -367,7 +424,9 @@ function ActiveTeamWorkspace(props: {
                 component={InputField}
                 required
               />
-              <SubmitButton>Create protocol</SubmitButton>
+              <SubmitButton disabled={props.protocolCreationPending}>
+                Create protocol
+              </SubmitButton>
             </Form>
           </section>
         </div>
@@ -390,15 +449,14 @@ function TeamManagement(props: {
   activeMemberRole: string | undefined;
 }) {
   const activeTeam = authClient.useActiveOrganization();
+  const activeMember = authClient.useActiveMember();
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
   const [inviteFormKey, setInviteFormKey] = useState(0);
   const [message, setMessage] = useState<
     { kind: 'success' | 'error'; text: string } | undefined
   >();
   const canManage = canManageTeam(props.activeMemberRole);
-  const canAssignOwner = props.activeMemberRole
-    ?.split(',')
-    .some((role) => role.trim() === 'owner');
+  const canAssignOwner = teamRoles(props.activeMemberRole).includes('owner');
   const assignableRoles = canAssignOwner
     ? TEAM_ROLE_OPTIONS
     : TEAM_ROLE_OPTIONS.filter((role) => role.value !== 'owner');
@@ -417,6 +475,10 @@ function TeamManagement(props: {
     }
   };
 
+  const reconcileRoleChange = async () => {
+    await Promise.allSettled([activeTeam.refetch(), activeMember.refetch()]);
+  };
+
   const updateRole = async (memberId: string, role: TeamRole) => {
     setUpdatingMemberId(memberId);
     setMessage(undefined);
@@ -426,16 +488,17 @@ function TeamManagement(props: {
         role,
         organizationId: props.team.id,
       });
+      await reconcileRoleChange();
       if (result.error) {
         setMessage({
           kind: 'error',
           text: 'The team role could not be changed. Check that the team still has an owner, then try again.',
         });
       } else {
-        await activeTeam.refetch();
         setMessage({ kind: 'success', text: 'Team role updated.' });
       }
     } catch {
+      await reconcileRoleChange();
       setMessage({
         kind: 'error',
         text: 'The team role could not be changed. Try again.',
@@ -484,11 +547,16 @@ function TeamManagement(props: {
           <TableBody>
             {props.team.members.map((member) => {
               const name = member.user.name || member.user.email;
-              const memberIsOwner = member.role
-                .split(',')
-                .some((role) => role.trim() === 'owner');
+              const roles = teamRoles(member.role);
+              const editableRole =
+                roles.length === 1 && isTeamRole(roles[0])
+                  ? roles[0]
+                  : undefined;
+              const memberIsOwner = roles.includes('owner');
               const canEditRole =
-                canManage && (canAssignOwner === true || !memberIsOwner);
+                editableRole !== undefined &&
+                canManage &&
+                (canAssignOwner || !memberIsOwner);
               return (
                 <TableRow key={member.id}>
                   <TableCell>
@@ -511,7 +579,7 @@ function TeamManagement(props: {
                           id={`member-role-${member.id}`}
                           name={`member-role-${member.id}`}
                           size="sm"
-                          value={member.role}
+                          value={editableRole}
                           options={assignableRoles}
                           disabled={updatingMemberId !== null}
                           onChange={(value) => {
@@ -527,7 +595,9 @@ function TeamManagement(props: {
                         />
                       </>
                     ) : (
-                      <Badge variant="outline">{roleLabel(member.role)}</Badge>
+                      <Badge variant="outline">
+                        {teamRolesLabel(member.role)}
+                      </Badge>
                     )}
                   </TableCell>
                 </TableRow>
@@ -636,7 +706,7 @@ function TeamManagement(props: {
               {pendingInvitations.map((invitation) => (
                 <TableRow key={invitation.id}>
                   <TableCell>{invitation.email}</TableCell>
-                  <TableCell>{roleLabel(invitation.role)}</TableCell>
+                  <TableCell>{teamRolesLabel(invitation.role)}</TableCell>
                   <TableCell>
                     {invitation.expiresAt.toLocaleDateString()}
                   </TableCell>
