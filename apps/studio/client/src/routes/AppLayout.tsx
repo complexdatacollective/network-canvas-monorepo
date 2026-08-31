@@ -18,7 +18,10 @@ export default function AppLayout() {
   useEffect(() => {
     if (!isPending && !session) {
       queryClient.clear();
-      void navigate({ to: '/sign-in' });
+      // Authentication has already gone away, so there is no valid editor
+      // state to keep. A dirty-form blocker must not strand the researcher in
+      // a private route after its cached data has been cleared.
+      void navigate({ to: '/sign-in', ignoreBlocker: true });
     }
   }, [isPending, session, navigate, queryClient]);
 
