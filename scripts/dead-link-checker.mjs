@@ -37,7 +37,8 @@
  * provider also rejects automated headless Chrome. After either kind of Node
  * mismatch, the verifier waits for the browser document to reach a terminal
  * main-frame response, finish loading, and remain navigation-quiet for a short
- * bounded interval. Both navigation starts and responses are tracked, so a
+ * bounded interval. Both navigation starts and responses are tracked, and
+ * starts remain explicitly outstanding until their response arrives, so a
  * request that stalls before response headers cannot look quiet. Incomplete
  * redirects and document loads remain verification failures, and the entire
  * sequence shares one request deadline so reload loops cannot retain a worker
@@ -245,6 +246,7 @@ export class BrowserVerifier {
       page = await context.newPage();
       const mainFrameRequests = [];
       const mainFrameResponses = [];
+      const outstandingMainFrameRequests = new Set();
       page.on('popup', (popup) => {
         spawnedPages.add(popup);
         void popup.close().catch(() => {});
@@ -255,6 +257,7 @@ export class BrowserVerifier {
           response.frame() === page.mainFrame()
         ) {
           mainFrameResponses.push(response);
+          outstandingMainFrameRequests.delete(response.request());
         }
       });
       page.on('request', (request) => {
@@ -263,6 +266,7 @@ export class BrowserVerifier {
           request.frame() === page.mainFrame()
         ) {
           mainFrameRequests.push(request);
+          outstandingMainFrameRequests.add(request);
         }
       });
       const verificationDeadline = Date.now() + timeout;
@@ -389,7 +393,8 @@ export class BrowserVerifier {
         remainingTimeout();
         if (
           mainFrameResponses.length === settleStart &&
-          mainFrameRequests.length === settleRequestStart
+          mainFrameRequests.length === settleRequestStart &&
+          outstandingMainFrameRequests.size === 0
         ) {
           break;
         }

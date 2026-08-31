@@ -896,6 +896,69 @@ test('browser verification waits when navigation starts without a response', asy
   }
 });
 
+test('browser verification waits when navigation is pending before settling', async () => {
+  const frame = {};
+  const navigationRequest = {
+    frame: () => frame,
+    isNavigationRequest: () => true,
+  };
+  const response = (status) => ({
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => status,
+  });
+  const initial = response(403);
+  const interstitial = response(200);
+  let requestListener;
+  let responseListener;
+  let loadCount = 0;
+  let waitForResponseCount = 0;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'request') requestListener = listener;
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => 'https://publisher.test/slow-navigation',
+    waitForLoadState: async () => {
+      if (loadCount++ === 0) requestListener(navigationRequest);
+    },
+    waitForResponse: async (predicate) => {
+      if (waitForResponseCount++ === 0) {
+        responseListener(interstitial);
+        assert.equal(predicate(interstitial), true);
+        return interstitial;
+      }
+      throw Object.assign(new Error('pending navigation timed out'), {
+        name: 'TimeoutError',
+      });
+    },
+    waitForTimeout: async () => {},
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    await assert.rejects(
+      verifier.verify('https://publisher.test/challenge', 50),
+      /pending navigation timed out/,
+    );
+  } finally {
+    await verifier.close();
+  }
+});
+
 test('renderers escape workflow commands and obey explicit color selection', () => {
   const failure = {
     error: 'bad%value\nsecond line',
