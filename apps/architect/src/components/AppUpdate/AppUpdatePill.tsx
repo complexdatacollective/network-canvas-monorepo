@@ -4,7 +4,7 @@ import { appVersion } from '~/utils/appVersion';
 import { useAppUpdateContext } from './AppUpdateProvider';
 
 const UNSAVED_WORK_CAVEAT =
-  'Reloading updates this tab and any other open Architect tabs; unsaved changes in progress will be lost.';
+  'Installing the update will reload only this tab. Other open Architect tabs will keep running until they are reloaded.';
 
 export default function AppUpdatePill() {
   const { status, availableVersion, releaseNotes, install } =
