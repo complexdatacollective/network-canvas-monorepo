@@ -29,12 +29,14 @@
  * that omit an intermediate certificate trusted through the browser's issuer
  * cache. Only those two known mismatches -- a Node 403 or
  * UNABLE_TO_VERIFY_LEAF_SIGNATURE -- are rechecked in Chrome. Chrome is
- * launched lazily, shared by the whole crawl, and limited to four open pages.
- * It runs headed under Xvfb in CI because the affected challenge provider also
+ * launched lazily, shared by the whole crawl, and limited to four open checked
+ * pages; popups are closed immediately so they cannot bypass that limit. It
+ * runs headed under Xvfb in CI because the affected challenge provider also
  * rejects automated headless Chrome. For a challenge response, the verifier
- * waits for JavaScript to reach a terminal main-frame response and finish
- * loading its document; incomplete redirects and document loads remain
- * verification failures.
+ * waits for JavaScript to reach a terminal main-frame response, finish loading
+ * its document, and remain navigation-quiet for a short bounded interval.
+ * Incomplete redirects and document loads remain verification failures, and
+ * browser-only HTTP redirects obey the same maximum-hop rule as Node redirects.
  *
  * Browser verification is not status suppression. Its final response is
  * authoritative: a browser-confirmed 403 (or any other >= 400 response) still
@@ -62,9 +64,24 @@ const BROWSER_VERIFIABLE_REQUEST_ERRORS = new Set([
 const MAX_RETRY_DELAY_MS = 30_000;
 const BASE_RETRY_DELAY_MS = 500;
 const MAX_BROWSER_PAGES = 4;
+const BROWSER_NAVIGATION_SETTLE_MS = 500;
 
 function isTerminalNavigation(response) {
   return response.status() < 300 || response.status() >= 400;
+}
+
+function browserRedirects(mainFrameResponses) {
+  const redirects = [];
+  for (let index = 0; index < mainFrameResponses.length - 1; index++) {
+    const response = mainFrameResponses[index];
+    if (response.status() < 300 || response.status() >= 400) continue;
+    redirects.push({
+      from: response.url(),
+      status: response.status(),
+      to: mainFrameResponses[index + 1].url(),
+    });
+  }
+  return redirects;
 }
 
 // Keep annotations useful without flooding the Actions log. The JSON artifact
@@ -220,10 +237,15 @@ export class BrowserVerifier {
   async verify(url, timeout, { captureHTML = false } = {}) {
     await this.#pageSlots.acquire();
     let page;
+    const spawnedPages = new Set();
     try {
       const { context } = await this.#getResources();
       page = await context.newPage();
       const mainFrameResponses = [];
+      page.on('popup', (popup) => {
+        spawnedPages.add(popup);
+        void popup.close().catch(() => {});
+      });
       page.on('response', (response) => {
         if (
           response.request().isNavigationRequest() &&
@@ -253,9 +275,14 @@ export class BrowserVerifier {
             ? mainFrameResponses.length
             : initialResponseIndex + 1;
         const followupResponses = () => mainFrameResponses.slice(followupStart);
-        let terminalResponse = followupResponses().find(isTerminalNavigation);
-
-        if (!terminalResponse) {
+        const terminalResponseAfter = (start) =>
+          mainFrameResponses.slice(start).findLast(isTerminalNavigation);
+        const waitForTerminalResponse = async (
+          start,
+          { allowNoFollowup = false } = {},
+        ) => {
+          let terminalResponse = terminalResponseAfter(start);
+          if (terminalResponse) return terminalResponse;
           try {
             terminalResponse = await page.waitForResponse(
               (response) =>
@@ -272,13 +299,22 @@ export class BrowserVerifier {
             // no follow-up means this was a genuine 403. Once any redirect or
             // navigation starts, however, failing to reach a terminal response
             // is a verification failure rather than a successful 3xx result.
-            terminalResponse = followupResponses().find(isTerminalNavigation);
-            if (!terminalResponse && followupResponses().length > 0)
+            terminalResponse = terminalResponseAfter(start);
+            if (
+              !terminalResponse &&
+              (!allowNoFollowup || mainFrameResponses.length > start)
+            ) {
               throw error;
+            }
           }
-        }
+          return terminalResponseAfter(start) ?? terminalResponse;
+        };
 
-        if (terminalResponse) {
+        let terminalResponse = await waitForTerminalResponse(followupStart, {
+          allowNoFollowup: true,
+        });
+
+        while (terminalResponse) {
           navigation = terminalResponse;
           // A terminal status is not enough for recursive pages: page.content()
           // must represent the completed document or links after a stalled
@@ -291,6 +327,24 @@ export class BrowserVerifier {
           // observed by then rather than the interstitial that began the wait.
           navigation =
             followupResponses().findLast(isTerminalNavigation) ?? navigation;
+
+          const latestResponse = followupResponses().at(-1);
+          if (latestResponse && !isTerminalNavigation(latestResponse)) {
+            terminalResponse = await waitForTerminalResponse(
+              mainFrameResponses.length,
+            );
+            continue;
+          }
+
+          // DOMContentLoaded handlers and short timers may schedule one more
+          // navigation. Require a bounded quiet interval, then repeat the
+          // terminal-response and document-load checks for any new navigation.
+          const settleStart = mainFrameResponses.length;
+          await page.waitForTimeout(
+            Math.min(BROWSER_NAVIGATION_SETTLE_MS, timeout),
+          );
+          if (mainFrameResponses.length === settleStart) break;
+          terminalResponse = await waitForTerminalResponse(settleStart);
         }
       }
 
@@ -302,10 +356,12 @@ export class BrowserVerifier {
           captureHTML && contentType.includes('text/html')
             ? await page.content()
             : null,
+        redirects: browserRedirects(mainFrameResponses),
         status: navigation.status(),
       };
     } finally {
       await page?.close().catch(() => {});
+      await Promise.allSettled([...spawnedPages].map((popup) => popup.close()));
       this.#pageSlots.release();
     }
   }
@@ -639,6 +695,28 @@ export async function crawl(
       return;
     }
 
+    if (browserOutcome.redirects.length > options.maxRedirects) {
+      const redirects = browserOutcome.redirects.slice(
+        0,
+        options.maxRedirects + 1,
+      );
+      const exceededRedirect = redirects.at(-1);
+      results.push(
+        failureResult(
+          record,
+          {
+            error: `Exceeded ${options.maxRedirects} redirect hops`,
+            finalUrl: exceededRedirect.to,
+            redirects,
+            status: exceededRedirect.status,
+          },
+          'redirect-error',
+        ),
+      );
+      onProgress(results.length, records.size);
+      return;
+    }
+
     if (browserOutcome.status >= 400) {
       results.push(
         failureResult(
@@ -646,7 +724,7 @@ export async function crawl(
           {
             error: `HTTP ${browserOutcome.status}`,
             finalUrl: browserOutcome.finalUrl,
-            redirects: fallback.redirects,
+            redirects: browserOutcome.redirects,
             status: browserOutcome.status,
           },
           'http-error',
@@ -673,7 +751,7 @@ export async function crawl(
       finalUrl: browserOutcome.finalUrl,
       kind: null,
       ok: true,
-      redirects: fallback.redirects,
+      redirects: browserOutcome.redirects,
       status: browserOutcome.status,
       url: record.url,
     });

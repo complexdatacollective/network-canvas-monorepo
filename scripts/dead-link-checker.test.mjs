@@ -331,15 +331,16 @@ test('browser page slots transfer directly to the oldest queued verifier', async
 test('browser verification keeps the configured identity and final redirect status', async () => {
   const frame = {};
   const navigationRequest = { isNavigationRequest: () => true };
-  const response = (status) => ({
+  const response = (status, url) => ({
     frame: () => frame,
     headers: () => ({ 'content-type': 'text/html' }),
     request: () => navigationRequest,
     status: () => status,
+    url: () => url,
   });
-  const initial = response(403);
-  const redirect = response(302);
-  const final = response(404);
+  const initial = response(403, 'https://publisher.test/challenge');
+  const redirect = response(302, 'https://publisher.test/challenge');
+  const final = response(404, 'https://publisher.test/missing');
   let responseListener;
   let contextOptions;
   const page = {
@@ -350,8 +351,8 @@ test('browser verification keeps the configured identity and final redirect stat
       return initial;
     },
     mainFrame: () => frame,
-    on: (_event, listener) => {
-      responseListener = listener;
+    on: (event, listener) => {
+      if (event === 'response') responseListener = listener;
     },
     url: () => 'https://publisher.test/missing',
     waitForLoadState: async () => {},
@@ -363,6 +364,7 @@ test('browser verification keeps the configured identity and final redirect stat
       assert.equal(predicate(final), true);
       return final;
     },
+    waitForTimeout: async () => {},
   };
   const browser = {
     close: async () => {},
@@ -386,6 +388,13 @@ test('browser verification keeps the configured identity and final redirect stat
       userAgent: 'NetworkCanvasLinkChecker/test',
     });
     assert.equal(outcome.finalUrl, 'https://publisher.test/missing');
+    assert.deepEqual(outcome.redirects, [
+      {
+        from: 'https://publisher.test/challenge',
+        status: 302,
+        to: 'https://publisher.test/missing',
+      },
+    ]);
     assert.equal(outcome.status, 404);
   } finally {
     await verifier.close();
@@ -411,8 +420,8 @@ test('browser verification rejects a challenge redirect without a terminal respo
       return initial;
     },
     mainFrame: () => frame,
-    on: (_event, listener) => {
-      responseListener = listener;
+    on: (event, listener) => {
+      if (event === 'response') responseListener = listener;
     },
     url: () => 'https://publisher.test/hanging',
     waitForLoadState: async () => {},
@@ -423,6 +432,7 @@ test('browser verification rejects a challenge redirect without a terminal respo
         name: 'TimeoutError',
       });
     },
+    waitForTimeout: async () => {},
   };
   const browser = {
     close: async () => {},
@@ -461,8 +471,8 @@ test('browser verification propagates terminal document load timeouts', async ()
       return initial;
     },
     mainFrame: () => frame,
-    on: (_event, listener) => {
-      responseListener = listener;
+    on: (event, listener) => {
+      if (event === 'response') responseListener = listener;
     },
     url: () => 'https://publisher.test/incomplete-document',
     waitForLoadState: async () => {
@@ -475,6 +485,7 @@ test('browser verification propagates terminal document load timeouts', async ()
       assert.equal(predicate(final), true);
       return final;
     },
+    waitForTimeout: async () => {},
   };
   const browser = {
     close: async () => {},
@@ -514,8 +525,8 @@ test('browser verification reports the response for the document that finishes l
       return initial;
     },
     mainFrame: () => frame,
-    on: (_event, listener) => {
-      responseListener = listener;
+    on: (event, listener) => {
+      if (event === 'response') responseListener = listener;
     },
     url: () => 'https://publisher.test/missing',
     waitForLoadState: async () => responseListener(final),
@@ -523,6 +534,108 @@ test('browser verification reports the response for the document that finishes l
       responseListener(interstitial);
       assert.equal(predicate(interstitial), true);
       return interstitial;
+    },
+    waitForTimeout: async () => {},
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    const outcome = await verifier.verify(
+      'https://publisher.test/challenge',
+      50,
+    );
+    assert.equal(outcome.finalUrl, 'https://publisher.test/missing');
+    assert.equal(outcome.status, 404);
+  } finally {
+    await verifier.close();
+  }
+});
+
+test('browser verification closes popups spawned by the checked page', async () => {
+  const frame = {};
+  const navigationRequest = { isNavigationRequest: () => true };
+  const initial = {
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => 200,
+  };
+  let popupListener;
+  let popupClosed = false;
+  let responseListener;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      await popupListener?.({
+        close: async () => {
+          popupClosed = true;
+        },
+      });
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'popup') popupListener = listener;
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => 'https://publisher.test/ok',
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    await verifier.verify('https://publisher.test/ok', 50);
+    assert.equal(popupClosed, true);
+  } finally {
+    await verifier.close();
+  }
+});
+
+test('browser verification waits for a redirect scheduled after DOMContentLoaded', async () => {
+  const frame = {};
+  const navigationRequest = { isNavigationRequest: () => true };
+  const response = (status) => ({
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => status,
+  });
+  const initial = response(403);
+  const interstitial = response(200);
+  const final = response(404);
+  let responseListener;
+  let settleCount = 0;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => 'https://publisher.test/missing',
+    waitForLoadState: async () => {},
+    waitForResponse: async (predicate) => {
+      responseListener(interstitial);
+      assert.equal(predicate(interstitial), true);
+      return interstitial;
+    },
+    waitForTimeout: async () => {
+      if (settleCount++ === 0) responseListener(final);
     },
   };
   const browser = {
@@ -538,6 +651,7 @@ test('browser verification reports the response for the document that finishes l
       'https://publisher.test/challenge',
       50,
     );
+    assert.equal(settleCount, 2);
     assert.equal(outcome.finalUrl, 'https://publisher.test/missing');
     assert.equal(outcome.status, 404);
   } finally {
@@ -772,6 +886,7 @@ test('browser verification distinguishes challenged links from real 403 response
       browserChecks.push(url);
       return {
         finalUrl: url,
+        redirects: [],
         status:
           url.endsWith('/browser-ok') || url.endsWith('/browser-tls-ok')
             ? 200
@@ -817,6 +932,56 @@ test('browser verification distinguishes challenged links from real 403 response
     assert.equal(recovered.status, 200);
   } finally {
     globalThis.fetch = nativeFetch;
+    await root.stop();
+    await external.stop();
+  }
+});
+
+test('browser-only redirects obey the configured maximum', async () => {
+  const external = await startServer((_request, response) => {
+    response.statusCode = 403;
+    response.end('forbidden to non-browser clients');
+  });
+  const root = await startServer((_request, response) => {
+    html(response, `<a href="${external.origin}/challenge">challenge</a>`);
+  });
+  const browserVerifier = {
+    async close() {},
+    async verify(url) {
+      return {
+        finalUrl: `${external.origin}/final`,
+        redirects: [
+          {
+            from: url,
+            status: 302,
+            to: `${external.origin}/final`,
+          },
+        ],
+        status: 200,
+      };
+    },
+  };
+  const { options } = parseArguments([
+    root.origin,
+    '--delay=0',
+    '--max-redirects=0',
+    '--retries=0',
+  ]);
+
+  try {
+    const report = await crawl(root.origin, options, () => {}, browserVerifier);
+    assert.equal(report.failures.length, 1);
+    assert.equal(report.failures[0].kind, 'redirect-error');
+    assert.equal(report.failures[0].error, 'Exceeded 0 redirect hops');
+    assert.equal(report.failures[0].finalUrl, `${external.origin}/final`);
+    assert.deepEqual(report.failures[0].redirects, [
+      {
+        from: `${external.origin}/challenge`,
+        status: 302,
+        to: `${external.origin}/final`,
+      },
+    ]);
+  } finally {
     await root.stop();
     await external.stop();
   }
