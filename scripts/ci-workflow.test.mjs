@@ -133,6 +133,15 @@ test('both public sites crawl their matching Netlify deploy previews', () => {
     assert.match(previewJob, /node scripts\/dead-link-checker\.mjs/);
     assert.match(previewJob, new RegExp(`"\\$${startPath}"`));
     assert.match(previewJob, /--user-agent="\$DEAD_LINK_CHECK_USER_AGENT"/);
+    assert.match(previewJob, /uses: actions\/checkout@/);
+    assert.match(previewJob, /uses: pnpm\/setup@/);
+    assert.match(previewJob, /uses: actions\/setup-node@/);
+    assert.match(previewJob, /pnpm install --frozen-lockfile --ignore-scripts/);
+    assert.ok(
+      previewJob.indexOf('uses: actions/checkout@') <
+        previewJob.indexOf('node scripts/dead-link-checker.mjs'),
+      `${jobName} checks out the local checker before running it`,
+    );
 
     const deadLinkStep = parsedWorkflow.jobs[jobName].steps.find(
       ({ name }) => name === 'Dead-link check',

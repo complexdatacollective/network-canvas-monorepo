@@ -1145,6 +1145,17 @@ jobs:
           done
           echo "::error::Netlify documentation preview is not reachable at $DOCS_URL"
           exit 1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+        with:
+          install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Dead-link check
         env:
           DEAD_LINK_CHECK_USER_AGENT: >-
