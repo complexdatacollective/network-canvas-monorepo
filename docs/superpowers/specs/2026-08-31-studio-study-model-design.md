@@ -162,9 +162,10 @@ Transition legality, per-state editability, and go-live preconditions live in
 `study/commands.ts` as a typed transition map — the command layer already
 holds the locked row and the permission decision, and only commands know the
 caller's intent. There is **one audited command per transition** — `goLive`,
-`pause`, `resume`, `close`, `reopen` — rather than a generic `setState`: each
-transition has different preconditions and a different event. `reopen` is a
-distinct command (allowed only from Closed) that shares `goLive`'s
+`pauseStudy`, `resumeStudy`, `closeStudy`, `reopenStudy` — rather than a
+generic `setState`: each transition has different preconditions and a
+different event. `reopenStudy` is a distinct command (allowed only from
+Closed) that shares `goLive`'s
 precondition helper but emits `study.reopened@1`; calling either procedure
 from a state it does not serve is a typed conflict, never a silent remap.
 
@@ -234,9 +235,10 @@ participant data-rights operations), so the deletion mechanics here are
 decided by this document, not inherited.
 
 The grace window is a `deletion_requested_at` marker: an audited
-`requestDeletion` command sets it (recording who, and the effective purge
-date), an audited `cancelDeletion` clears it — "recoverable during grace"
-falls out for free. While the marker is set, `goLive` and `reopen` refuse
+`requestStudyDeletion` command sets it (recording who, and the effective
+purge date), an audited `cancelStudyDeletion` clears it — "recoverable during
+grace" falls out for free. While the marker is set, `goLive` and
+`reopenStudy` refuse
 with a typed conflict ("cancel the deletion first"): a study scheduled for
 destruction can never be collecting data when the purge arrives. After the
 configured window, a background job running as the maintenance role purges
@@ -352,8 +354,8 @@ audit revocations; anywhere before the audit sidecar satisfies it.
 | `settings`              | `jsonb`       | Required, default `{}`; Zod-validated delivery settings (D9)                                                          |
 | `deletion_requested_at` | `timestamptz` | Nullable soft-delete marker (D6)                                                                                      |
 | `went_live_at`          | `timestamptz` | Nullable evidence of the first go-live; never a state substitute                                                      |
-| `paused_at`             | `timestamptz` | Nullable; set by `pause`, cleared by `resume`; the grace-window anchor                                                |
-| `closed_at`             | `timestamptz` | Nullable evidence of the most recent close; cleared by `reopen`                                                       |
+| `paused_at`             | `timestamptz` | Nullable; set by `pauseStudy`, cleared by `resumeStudy`; the grace-window anchor                                      |
+| `closed_at`             | `timestamptz` | Nullable evidence of the most recent close; cleared by `reopenStudy`                                                  |
 | `created_at`            | `timestamptz` | Required, default now                                                                                                 |
 | `updated_at`            | `timestamptz` | Required, default now                                                                                                 |
 
@@ -373,7 +375,7 @@ Constraints and indexes:
 
 `went_live_at` records the **first** go-live and is not cleared by pause,
 close, or reopen — it is the participation-mode freeze evidence (D5).
-`closed_at` is cleared by `reopen` (a live study must not carry a close
+`closed_at` is cleared by `reopenStudy` (a live study must not carry a close
 timestamp); the close history lives in the audit log.
 
 ### 4.2 `study_waves`
@@ -750,8 +752,9 @@ state is accepted, per the audit design's rule.
   those beyond it, and appends `study.deletion.purged@1` with a system actor
   in the purge transaction (absent when the purge is deliberately broken —
   the oracle-can-fail probe).
-- Denied-attempt coverage: a member calling `goLive`, `reopen`, `close`, or
-  `requestDeletion` receives FORBIDDEN **and** the corresponding
+- Denied-attempt coverage: a member calling `goLive`, `reopenStudy`,
+  `closeStudy`, or `requestStudyDeletion` receives FORBIDDEN **and** the
+  corresponding
   `*_denied@1` event under the rate limiter; member-level and reversible
   operations produce no denial event.
 - `studies.create` retried with the same client-minted id does not
