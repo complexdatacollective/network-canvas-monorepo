@@ -26,6 +26,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { orpc } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
 import { createUuid } from '../lib/createUuid.ts';
+import { studioEmailPattern } from '../lib/emailValidation.ts';
 
 type Team = NonNullable<
   ReturnType<typeof authClient.useListOrganizations>['data']
@@ -33,6 +34,12 @@ type Team = NonNullable<
 
 const TEAM_ROLES = ['owner', 'admin', 'member'] as const;
 type TeamRole = (typeof TEAM_ROLES)[number];
+type ProtocolCreationAttempt = {
+  teamId: string;
+  name: string;
+  protocolId: string;
+  draftId: string;
+};
 const TEAM_ROLE_OPTIONS = TEAM_ROLES.map((role) => ({
   value: role,
   label: roleLabel(role),
@@ -72,6 +79,9 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
   const [switchingTeamId, setSwitchingTeamId] = useState<string | null>(null);
   const [retryingActiveTeam, setRetryingActiveTeam] = useState(false);
   const [switchError, setSwitchError] = useState(false);
+  const protocolCreationAttempts = useRef(
+    new Map<string, ProtocolCreationAttempt>(),
+  );
 
   const switchToTeam = useCallback(
     async (teamId: string) => {
@@ -102,6 +112,8 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
     selectedTeam !== undefined &&
     activeMember.data?.organizationId === selectedTeam.id;
   const activeTeamLoadError = activeTeam.error || activeMember.error;
+  const activeTeamAccessPending =
+    activeTeam.isPending || activeMember.isPending;
 
   const retryActiveTeam = async () => {
     setRetryingActiveTeam(true);
@@ -121,7 +133,7 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
     if (
       firstTeam !== undefined &&
       selectedTeam === undefined &&
-      !activeTeam.isPending &&
+      !activeTeamAccessPending &&
       switchingTeamId === null &&
       !activeTeam.error &&
       !switchError
@@ -129,8 +141,8 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
       void switchToTeam(firstTeam.id);
     }
   }, [
-    activeTeam.isPending,
     activeTeam.error,
+    activeTeamAccessPending,
     props.teams,
     selectedTeam,
     switchError,
@@ -159,7 +171,11 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
                 value: team.id,
                 label: team.name,
               }))}
-              disabled={switchingTeamId !== null || retryingActiveTeam}
+              disabled={
+                activeTeamAccessPending ||
+                switchingTeamId !== null ||
+                retryingActiveTeam
+              }
               onChange={(value) => {
                 const teamId = String(value);
                 if (teamId !== '') void switchToTeam(teamId);
@@ -168,7 +184,7 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
           </div>
           <div className="flex items-center gap-3">
             {selectedTeam && <Badge>Currently active</Badge>}
-            {(activeTeam.isPending ||
+            {(activeTeamAccessPending ||
               switchingTeamId !== null ||
               retryingActiveTeam) && <Spinner size="sm" />}
           </div>
@@ -201,6 +217,7 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
           team={activeTeam.data}
           activeMemberId={activeMember.data?.id}
           activeMemberRole={activeMember.data?.role}
+          creationAttempts={protocolCreationAttempts.current}
         />
       ) : (
         <Surface spacing="lg">
@@ -220,16 +237,11 @@ function ActiveTeamWorkspace(props: {
   >;
   activeMemberId: string | undefined;
   activeMemberRole: string | undefined;
+  creationAttempts: Map<string, ProtocolCreationAttempt>;
 }) {
   const teamId = props.team.id;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const creationAttempt = useRef<{
-    teamId: string;
-    name: string;
-    protocolId: string;
-    draftId: string;
-  } | null>(null);
   const protocols = useQuery(
     orpc.protocols.list.queryOptions({ input: { teamId } }),
   );
@@ -322,10 +334,9 @@ function ActiveTeamWorkspace(props: {
               className="mt-4 max-w-xl"
               onSubmit={async (values) => {
                 const name = typeof values.name === 'string' ? values.name : '';
-                const previousAttempt = creationAttempt.current;
+                const previousAttempt = props.creationAttempts.get(teamId);
                 const attempt =
-                  previousAttempt?.teamId === teamId &&
-                  previousAttempt.name === name
+                  previousAttempt?.name === name
                     ? previousAttempt
                     : {
                         teamId,
@@ -333,10 +344,12 @@ function ActiveTeamWorkspace(props: {
                         protocolId: createUuid(),
                         draftId: createUuid(),
                       };
-                creationAttempt.current = attempt;
+                props.creationAttempts.set(teamId, attempt);
                 try {
                   await createProtocol.mutateAsync(attempt);
-                  creationAttempt.current = null;
+                  if (props.creationAttempts.get(teamId) === attempt) {
+                    props.creationAttempts.delete(teamId);
+                  }
                   return { success: true };
                 } catch {
                   return {
@@ -394,6 +407,15 @@ function TeamManagement(props: {
       invitation.status === 'pending' &&
       invitation.expiresAt.getTime() > Date.now(),
   );
+
+  const reconcileInvitations = async () => {
+    try {
+      await activeTeam.refetch();
+    } catch {
+      // Preserve the original invitation failure when reconciliation also
+      // fails. The next active-team refresh can still recover the list.
+    }
+  };
 
   const updateRole = async (memberId: string, role: TeamRole) => {
     setUpdatingMemberId(memberId);
@@ -546,10 +568,11 @@ function TeamManagement(props: {
                   organizationId: props.team.id,
                 });
                 if (result.error) {
+                  await reconcileInvitations();
                   return {
                     success: false,
                     formErrors: [
-                      'The invitation could not be created. The person may already be a member or have a pending invitation.',
+                      'Studio could not confirm the invitation. Pending invitations were refreshed; check the list before trying again.',
                     ],
                   };
                 }
@@ -561,10 +584,11 @@ function TeamManagement(props: {
                 setInviteFormKey((key) => key + 1);
                 return { success: true };
               } catch {
+                await reconcileInvitations();
                 return {
                   success: false,
                   formErrors: [
-                    'The invitation could not be created. Wait a moment and try again.',
+                    'Studio could not confirm the invitation. Pending invitations were refreshed; check the list before trying again.',
                   ],
                 };
               }
@@ -577,6 +601,9 @@ function TeamManagement(props: {
               type="email"
               autoComplete="email"
               required
+              pattern={studioEmailPattern(
+                'The email address of the person you want to invite.',
+              )}
             />
             <Field
               name="role"

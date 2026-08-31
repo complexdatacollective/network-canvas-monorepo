@@ -120,6 +120,8 @@ const fixtures = vi.hoisted(() => {
     refetchActiveMember: ReturnType<typeof vi.fn>;
     activeTeamError: Error | null;
     activeMemberError: Error | null;
+    activeTeamPending: boolean;
+    activeMemberPending: boolean;
   } = {
     activeTeam: undefined,
     activeMember: undefined,
@@ -130,6 +132,8 @@ const fixtures = vi.hoisted(() => {
     refetchActiveMember: vi.fn(),
     activeTeamError: null,
     activeMemberError: null,
+    activeTeamPending: false,
+    activeMemberPending: false,
   };
   return {
     TEAM_A,
@@ -170,13 +174,13 @@ vi.mock('../../lib/auth.ts', () => ({
     }),
     useActiveOrganization: vi.fn(() => ({
       data: fixtures.authState.activeTeam,
-      isPending: false,
+      isPending: fixtures.authState.activeTeamPending,
       error: fixtures.authState.activeTeamError,
       refetch: fixtures.authState.refetchActiveTeam,
     })),
     useActiveMember: vi.fn(() => ({
       data: fixtures.authState.activeMember,
-      isPending: false,
+      isPending: fixtures.authState.activeMemberPending,
       error: fixtures.authState.activeMemberError,
       refetch: fixtures.authState.refetchActiveMember,
     })),
@@ -251,11 +255,16 @@ beforeEach(() => {
   authState.activeMember = OWNER;
   authState.activeTeamError = null;
   authState.activeMemberError = null;
+  authState.activeTeamPending = false;
+  authState.activeMemberPending = false;
   authState.setActive.mockImplementation(
     (input: { organizationId: string }) => {
       if (input.organizationId === TEAM_B.id) {
         authState.activeTeam = ACTIVE_TEAM_B;
         authState.activeMember = BETA_MEMBER;
+      } else if (input.organizationId === TEAM_A.id) {
+        authState.activeTeam = ACTIVE_TEAM_A;
+        authState.activeMember = OWNER;
       }
       return Promise.resolve({ data: authState.activeTeam, error: null });
     },
@@ -348,6 +357,62 @@ describe('Studio team workspace', () => {
     );
   });
 
+  it('retains each team creation identity while switching away and back', async () => {
+    fixtures.createProtocol
+      .mockRejectedValueOnce(new Error('response lost'))
+      .mockImplementationOnce(
+        (input: { protocolId: string; draftId: string }) =>
+          Promise.resolve({
+            protocolId: input.protocolId,
+            draftId: input.draftId,
+          }),
+      );
+    const view = renderWorkspace();
+
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: 'Protocol name' }),
+      { target: { value: 'Persistent retry protocol' } },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Create protocol' }));
+    await screen.findByText(/protocol could not be created/i);
+
+    fireEvent.change(screen.getByLabelText('Active team'), {
+      target: { value: TEAM_B.id },
+    });
+    await waitFor(() =>
+      expect(authState.setActive).toHaveBeenLastCalledWith({
+        organizationId: TEAM_B.id,
+      }),
+    );
+    view.rerenderWorkspace();
+    await screen.findByRole('heading', {
+      name: 'Beta research team protocols',
+    });
+
+    fireEvent.change(screen.getByLabelText('Active team'), {
+      target: { value: TEAM_A.id },
+    });
+    await waitFor(() =>
+      expect(authState.setActive).toHaveBeenLastCalledWith({
+        organizationId: TEAM_A.id,
+      }),
+    );
+    view.rerenderWorkspace();
+
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: 'Protocol name' }),
+      { target: { value: 'Persistent retry protocol' } },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Create protocol' }));
+
+    await waitFor(() =>
+      expect(fixtures.createProtocol).toHaveBeenCalledTimes(2),
+    );
+    expect(fixtures.createProtocol.mock.calls[1]?.[0]).toEqual(
+      fixtures.createProtocol.mock.calls[0]?.[0],
+    );
+  });
+
   it('creates an invitation with the selected team and role', async () => {
     renderWorkspace();
     const email = await screen.findByRole('textbox', {
@@ -372,6 +437,53 @@ describe('Studio team workspace', () => {
     expect(
       await screen.findByText('Invitation created for new@example.com.'),
     ).toBeInTheDocument();
+  });
+
+  it('refetches pending invitations after an ambiguous creation failure', async () => {
+    const reconciledInvitation = {
+      ...ACTIVE_TEAM_A.invitations[0]!,
+      id: 'invitation-reconciled',
+      email: 'reconciled@example.com',
+    };
+    authState.inviteMember.mockRejectedValueOnce(new Error('response lost'));
+    authState.refetchActiveTeam.mockImplementationOnce(async () => {
+      const reconciledTeam = {
+        ...ACTIVE_TEAM_A,
+        invitations: [...ACTIVE_TEAM_A.invitations, reconciledInvitation],
+      };
+      authState.activeTeam = reconciledTeam;
+    });
+    const view = renderWorkspace();
+
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: 'Email address' }),
+      { target: { value: 'reconciled@example.com' } },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Invite user' }));
+
+    expect(
+      await screen.findByText(/could not confirm the invitation/i),
+    ).toBeInTheDocument();
+    expect(authState.refetchActiveTeam).toHaveBeenCalledTimes(1);
+    view.rerenderWorkspace();
+    expect(
+      await screen.findByText('reconciled@example.com'),
+    ).toBeInTheDocument();
+  });
+
+  it('validates invitation email before submitting it', async () => {
+    renderWorkspace();
+
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: 'Email address' }),
+      { target: { value: 'not-an-email' } },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Invite user' }));
+
+    expect(
+      await screen.findByText('Enter a valid email address.'),
+    ).toBeInTheDocument();
+    expect(authState.inviteMember).not.toHaveBeenCalled();
   });
 
   it('updates a member role in the active team', async () => {
@@ -437,6 +549,27 @@ describe('Studio team workspace', () => {
     expect(await screen.findByText('Loading team access…')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Invite user' })).toBeNull();
     expect(screen.queryByText('Beta protocol')).toBeNull();
+  });
+
+  it('disables team switching until both access hooks finish loading', async () => {
+    authState.activeMemberPending = true;
+    const memberPendingView = renderWorkspace();
+
+    expect(await screen.findByLabelText('Active team')).toBeDisabled();
+    memberPendingView.unmount();
+
+    authState.activeMemberPending = false;
+    authState.activeTeamPending = true;
+    const teamPendingView = renderWorkspace();
+
+    expect(await screen.findByLabelText('Active team')).toBeDisabled();
+    teamPendingView.unmount();
+
+    authState.activeTeamPending = false;
+    authState.activeMemberPending = false;
+    renderWorkspace();
+
+    expect(await screen.findByLabelText('Active team')).toBeEnabled();
   });
 
   it('ignores the empty team placeholder', async () => {
