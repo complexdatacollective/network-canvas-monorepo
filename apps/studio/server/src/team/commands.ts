@@ -18,7 +18,6 @@ import {
   failedAuditEventContext,
   runAuditedCommand,
   runAuditedCommandWork,
-  runAuditedMutation,
 } from '../audit/command.ts';
 import { reserveDeniedAuditAttempt } from '../audit/denial-rate-limit.ts';
 import { createDeniedAuditSummaryWriter } from '../audit/denial-summary.ts';
@@ -75,11 +74,6 @@ function isOwner(member: LockedMember): boolean {
 
 function memberLabel(member: LockedMember): string {
   return (member.name.trim() || member.email).slice(0, 320);
-}
-
-function requireManager(actor: LockedMember | null): LockedMember {
-  if (!actor || !canManage(actor)) throw new TeamCommandError('FORBIDDEN');
-  return actor;
 }
 
 function reserveDeniedTeamCommand(
@@ -230,75 +224,114 @@ export async function createTeamInvitation(
   input: { email: string; role: TeamRole },
 ): Promise<CreatedTeamInvitation> {
   const email = EmailSchema.parse(input.email.trim().toLowerCase());
-  return runAuditedMutation(context, async (client, auditContext) => {
-    const actor = requireManager(
-      await store.lockActor(
-        client,
-        context.tenantDb.teamId,
-        context.principal.userId,
-      ),
-    );
-    if (input.role === 'owner' && !isOwner(actor)) {
-      throw new TeamCommandError('FORBIDDEN');
-    }
-    if (
-      (await store.hasMemberWithEmail(
-        client,
-        context.tenantDb.teamId,
-        email,
-      )) ||
-      (await store.hasLivePendingInvitation(
-        client,
-        context.tenantDb.teamId,
-        email,
-      ))
-    ) {
-      throw new TeamCommandError('CONFLICT');
-    }
-    if (
-      (await store.countLivePendingInvitations(
-        client,
-        context.tenantDb.teamId,
-      )) >= INVITATION_LIMIT
-    ) {
-      throw new TeamCommandError('CONFLICT');
-    }
+  const reservation = reserveDeniedTeamCommand(
+    context,
+    'team.createInvitation',
+  );
+  if (!reservation.admitted) throw new TeamCommandError('FORBIDDEN');
 
-    const invitation = await store.createInvitation(client, {
-      id: randomUUID(),
-      teamId: context.tenantDb.teamId,
-      email,
-      role: input.role,
-      inviterId: context.principal.userId,
-    });
-    await enqueueInvitationDelivery(client, {
-      invitationId: invitation.id,
-      teamId: context.tenantDb.teamId,
-      email: invitation.email,
-      role: input.role,
-      teamLabel: auditContext.teamLabel,
-      inviterLabel: auditActorEventContext(auditContext).actorLabel,
-      expiresAt: invitation.expiresAt,
-    });
-    const event = {
-      ...auditEventContext(auditContext),
-      eventType: 'team.invitation.created',
-      subjectType: 'team_invitation',
-      subjectId: invitation.id,
-      subjectLabel: invitation.email,
-      details: { role: input.role },
-    } satisfies AuditEventInput;
-    return {
-      result: {
-        invitationId: invitation.id,
-        email: invitation.email,
-        role: input.role,
-        status: 'pending' as const,
-        expiresAt: invitation.expiresAt,
+  try {
+    const result = await runAuditedCommand<CreatedTeamInvitation>(
+      context,
+      async (client, auditContext) => {
+        const actor = await store.lockActor(
+          client,
+          context.tenantDb.teamId,
+          context.principal.userId,
+        );
+        const denied = (
+          reason: 'insufficient_permission' | 'owner_role_requires_owner',
+        ) => {
+          const event = {
+            ...deniedAuditEventContext(auditContext),
+            eventType: 'team.invitation.creation_denied',
+            subjectType: null,
+            subjectId: null,
+            subjectLabel: null,
+            details: { requestedRole: input.role, reason },
+          } satisfies AuditEventInput;
+          return {
+            status: 'denied' as const,
+            error: new TeamCommandError('FORBIDDEN'),
+            events: [event] as const,
+          };
+        };
+        if (!actor || !canManage(actor)) {
+          return denied('insufficient_permission');
+        }
+        if (input.role === 'owner' && !isOwner(actor)) {
+          return denied('owner_role_requires_owner');
+        }
+        if (
+          (await store.hasMemberWithEmail(
+            client,
+            context.tenantDb.teamId,
+            email,
+          )) ||
+          (await store.hasLivePendingInvitation(
+            client,
+            context.tenantDb.teamId,
+            email,
+          ))
+        ) {
+          throw new TeamCommandError('CONFLICT');
+        }
+        if (
+          (await store.countLivePendingInvitations(
+            client,
+            context.tenantDb.teamId,
+          )) >= INVITATION_LIMIT
+        ) {
+          throw new TeamCommandError('CONFLICT');
+        }
+
+        const invitation = await store.createInvitation(client, {
+          id: randomUUID(),
+          teamId: context.tenantDb.teamId,
+          email,
+          role: input.role,
+          inviterId: context.principal.userId,
+        });
+        await enqueueInvitationDelivery(client, {
+          invitationId: invitation.id,
+          teamId: context.tenantDb.teamId,
+          email: invitation.email,
+          role: input.role,
+          teamLabel: auditContext.teamLabel,
+          inviterLabel: auditActorEventContext(auditContext).actorLabel,
+          expiresAt: invitation.expiresAt,
+        });
+        const event = {
+          ...auditEventContext(auditContext),
+          eventType: 'team.invitation.created',
+          subjectType: 'team_invitation',
+          subjectId: invitation.id,
+          subjectLabel: invitation.email,
+          details: { role: input.role },
+        } satisfies AuditEventInput;
+        return {
+          status: 'succeeded' as const,
+          result: {
+            invitationId: invitation.id,
+            email: invitation.email,
+            role: input.role,
+            status: 'pending' as const,
+            expiresAt: invitation.expiresAt,
+          },
+          events: [event] as const,
+        };
       },
-      events: [event],
-    };
-  });
+    );
+    reservation.complete('other');
+    return result;
+  } catch (error) {
+    reservation.complete(
+      error instanceof TeamCommandError && error.code === 'FORBIDDEN'
+        ? 'denied'
+        : 'other',
+    );
+    throw error;
+  }
 }
 
 export type CancelledTeamInvitation = {
@@ -310,47 +343,81 @@ export async function cancelTeamInvitation(
   context: AuditedCommandContext,
   input: { invitationId: string },
 ): Promise<CancelledTeamInvitation> {
-  return runAuditedMutation(context, async (client, auditContext) => {
-    requireManager(
-      await store.lockActor(
-        client,
-        context.tenantDb.teamId,
-        context.principal.userId,
-      ),
+  const reservation = reserveDeniedTeamCommand(
+    context,
+    'team.cancelInvitation',
+  );
+  if (!reservation.admitted) throw new TeamCommandError('FORBIDDEN');
+
+  try {
+    const result = await runAuditedCommand<CancelledTeamInvitation>(
+      context,
+      async (client, auditContext) => {
+        const actor = await store.lockActor(
+          client,
+          context.tenantDb.teamId,
+          context.principal.userId,
+        );
+        if (!actor || !canManage(actor)) {
+          const event = {
+            ...deniedAuditEventContext(auditContext),
+            eventType: 'team.invitation.cancellation_denied',
+            subjectType: null,
+            subjectId: null,
+            subjectLabel: null,
+            details: { reason: 'insufficient_permission' },
+          } satisfies AuditEventInput;
+          return {
+            status: 'denied' as const,
+            error: new TeamCommandError('FORBIDDEN'),
+            events: [event] as const,
+          };
+        }
+        const invitation = await store.lockInvitation(
+          client,
+          context.tenantDb.teamId,
+          input.invitationId,
+        );
+        if (!invitation) throw new TeamCommandError('NOT_FOUND');
+        if (invitation.status !== 'pending') {
+          throw new TeamCommandError('NO_CHANGE');
+        }
+        if (!invitation.role) throw new TeamCommandError('INVALID_ROLE');
+        const roles = parseRoles(invitation.role);
+        // Better Auth historically stored role arrays as comma-separated values.
+        // Cancellation stays available for those rows, while acceptance below
+        // deliberately remains limited to one role for one new membership.
+        await store.cancelInvitation(
+          client,
+          context.tenantDb.teamId,
+          invitation.id,
+        );
+        const event = {
+          ...auditEventContext(auditContext),
+          eventVersion: 2,
+          eventType: 'team.invitation.cancelled',
+          subjectType: 'team_invitation',
+          subjectId: invitation.id,
+          subjectLabel: invitation.email,
+          details: { roles },
+        } satisfies AuditEventInput;
+        return {
+          status: 'succeeded' as const,
+          result: { invitationId: invitation.id, status: 'canceled' as const },
+          events: [event] as const,
+        };
+      },
     );
-    const invitation = await store.lockInvitation(
-      client,
-      context.tenantDb.teamId,
-      input.invitationId,
+    reservation.complete('other');
+    return result;
+  } catch (error) {
+    reservation.complete(
+      error instanceof TeamCommandError && error.code === 'FORBIDDEN'
+        ? 'denied'
+        : 'other',
     );
-    if (!invitation) throw new TeamCommandError('NOT_FOUND');
-    if (invitation.status !== 'pending') {
-      throw new TeamCommandError('NO_CHANGE');
-    }
-    if (!invitation.role) throw new TeamCommandError('INVALID_ROLE');
-    const roles = parseRoles(invitation.role);
-    // Better Auth historically stored role arrays as comma-separated values.
-    // Cancellation stays available for those rows, while acceptance below
-    // deliberately remains limited to one role for one new membership.
-    await store.cancelInvitation(
-      client,
-      context.tenantDb.teamId,
-      invitation.id,
-    );
-    const event = {
-      ...auditEventContext(auditContext),
-      eventVersion: 2,
-      eventType: 'team.invitation.cancelled',
-      subjectType: 'team_invitation',
-      subjectId: invitation.id,
-      subjectLabel: invitation.email,
-      details: { roles },
-    } satisfies AuditEventInput;
-    return {
-      result: { invitationId: invitation.id, status: 'canceled' as const },
-      events: [event],
-    };
-  });
+    throw error;
+  }
 }
 
 export type AcceptedTeamInvitation = {

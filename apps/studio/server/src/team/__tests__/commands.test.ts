@@ -951,6 +951,25 @@ describe.skipIf(!db)('audited team commands', () => {
         { email: 'forbidden@example.com', role: 'member' },
       ),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    expect(
+      await pool.query(
+        `SELECT outcome, subject_id, subject_label, details
+         FROM audit_events
+         WHERE team_id = $1
+           AND event_type = 'team.invitation.creation_denied'`,
+        [teamId],
+      ),
+    ).toHaveProperty('rows', [
+      {
+        outcome: 'denied',
+        subject_id: null,
+        subject_label: null,
+        details: {
+          requestedRole: 'member',
+          reason: 'insufficient_permission',
+        },
+      },
+    ]);
   });
 
   it('commits an immutable denial event before refusing role escalation', async () => {
@@ -1014,6 +1033,172 @@ describe.skipIf(!db)('audited team commands', () => {
         [denied.rows[0]!.id],
       ),
     ).rejects.toThrow('audit events are immutable');
+  });
+
+  it('commits an immutable denial event before refusing an owner invitation from an admin', async () => {
+    const teamId = 'command-owner-invitation-denied';
+    await seedTeam(pool, teamId);
+    const admin = identity(teamId, 'admin', 'admin');
+    await seedIdentity(pool, teamId, admin);
+    const requestId = randomUUID();
+
+    await expect(
+      createTeamInvitation(
+        {
+          tenantDb: createTenantDb(app, teamId),
+          principal: principal(admin),
+          requestId,
+        },
+        { email: 'prospective-owner@example.com', role: 'owner' },
+      ),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+    expect(
+      await pool.query(`SELECT id FROM team_invitations WHERE team_id = $1`, [
+        teamId,
+      ]),
+    ).toHaveProperty('rowCount', 0);
+    expect(
+      await pool.query(
+        `SELECT invitation_id FROM team_invitation_deliveries
+         WHERE team_id = $1`,
+        [teamId],
+      ),
+    ).toHaveProperty('rowCount', 0);
+    const denied = await pool.query<{
+      id: string;
+      outcome: string;
+      eventType: string;
+      actorId: string;
+      subjectId: string | null;
+      subjectLabel: string | null;
+      requestId: string;
+      details: unknown;
+    }>(
+      `SELECT id, outcome, event_type AS "eventType", actor_id AS "actorId",
+              subject_id AS "subjectId", subject_label AS "subjectLabel",
+              request_id AS "requestId", details
+       FROM audit_events WHERE team_id = $1`,
+      [teamId],
+    );
+    expect(denied.rows).toEqual([
+      {
+        id: expect.any(String),
+        outcome: 'denied',
+        eventType: 'team.invitation.creation_denied',
+        actorId: admin.userId,
+        subjectId: null,
+        subjectLabel: null,
+        requestId,
+        details: {
+          requestedRole: 'owner',
+          reason: 'owner_role_requires_owner',
+        },
+      },
+    ]);
+    await expect(
+      pool.query(`DELETE FROM audit_events WHERE id = $1`, [
+        denied.rows[0]!.id,
+      ]),
+    ).rejects.toThrow('audit events are immutable');
+  });
+
+  it('bounds repeated denied owner invitations before starting another team transaction', async () => {
+    const teamId = 'command-owner-invitation-denial-limit';
+    await seedTeam(pool, teamId);
+    const admin = identity(teamId, 'admin', 'admin');
+    await seedIdentity(pool, teamId, admin);
+    let transactionCount = 0;
+    const tenantDb = signalTenantTransaction(
+      createTenantDb(app, teamId),
+      () => transactionCount++,
+    );
+
+    for (let attempt = 0; attempt < 6; attempt++) {
+      await expect(
+        createTeamInvitation(
+          {
+            tenantDb,
+            principal: principal(admin),
+            requestId: randomUUID(),
+          },
+          { email: `prospective-owner-${attempt}@example.com`, role: 'owner' },
+        ),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    }
+
+    expect(transactionCount).toBe(5);
+    expect(
+      await pool.query(
+        `SELECT id FROM audit_events
+         WHERE team_id = $1
+           AND event_type = 'team.invitation.creation_denied'`,
+        [teamId],
+      ),
+    ).toHaveProperty('rowCount', 5);
+    expect(
+      await pool.query(`SELECT id FROM team_invitations WHERE team_id = $1`, [
+        teamId,
+      ]),
+    ).toHaveProperty('rowCount', 0);
+    expect(
+      await pool.query(
+        `SELECT invitation_id FROM team_invitation_deliveries
+         WHERE team_id = $1`,
+        [teamId],
+      ),
+    ).toHaveProperty('rowCount', 0);
+  });
+
+  it('records an established member denial without exposing the requested invitation', async () => {
+    const teamId = 'command-invitation-cancellation-denied';
+    await seedTeam(pool, teamId);
+    const owner = identity(teamId, 'owner', 'owner');
+    const member = identity(teamId, 'member', 'member');
+    await seedIdentity(pool, teamId, owner);
+    await seedIdentity(pool, teamId, member);
+    const invitationId = `${teamId}-invitation`;
+    await seedInvitation(pool, {
+      id: invitationId,
+      teamId,
+      inviterId: owner.userId,
+      email: 'invitee-to-protect@example.com',
+      role: 'member',
+    });
+    const requestId = randomUUID();
+
+    await expect(
+      cancelTeamInvitation(
+        {
+          tenantDb: createTenantDb(app, teamId),
+          principal: principal(member),
+          requestId,
+        },
+        { invitationId },
+      ),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+    expect(
+      await pool.query(`SELECT status FROM team_invitations WHERE id = $1`, [
+        invitationId,
+      ]),
+    ).toHaveProperty('rows', [{ status: 'pending' }]);
+    expect(
+      await pool.query(
+        `SELECT event_type, outcome, subject_id, subject_label, request_id, details
+         FROM audit_events WHERE team_id = $1`,
+        [teamId],
+      ),
+    ).toHaveProperty('rows', [
+      {
+        event_type: 'team.invitation.cancellation_denied',
+        outcome: 'denied',
+        subject_id: null,
+        subject_label: null,
+        request_id: requestId,
+        details: { reason: 'insufficient_permission' },
+      },
+    ]);
   });
 
   it('bounds repeated denied role-change events before starting another team transaction', async () => {

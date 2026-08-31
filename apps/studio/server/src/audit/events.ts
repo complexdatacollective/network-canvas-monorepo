@@ -71,6 +71,18 @@ const TeamInvitationCreatedV1EventSchema =
     details: z.strictObject({ role: TeamRoleSchema }),
   }).strict();
 
+const TeamInvitationCreationDeniedV1EventSchema =
+  CommonTeamAccessDeniedV1EventSchema.extend({
+    eventType: z.literal('team.invitation.creation_denied'),
+    subjectType: z.null(),
+    subjectId: z.null(),
+    subjectLabel: z.null(),
+    details: z.strictObject({
+      requestedRole: TeamRoleSchema,
+      reason: z.enum(['insufficient_permission', 'owner_role_requires_owner']),
+    }),
+  }).strict();
+
 const TeamInvitationCancelledV1EventSchema =
   CommonTeamAccessSucceededV1EventSchema.extend({
     eventType: z.literal('team.invitation.cancelled'),
@@ -88,6 +100,17 @@ const TeamInvitationCancelledV2EventSchema =
     subjectLabel: z.email().max(320),
     details: z.strictObject({
       roles: z.array(TeamRoleSchema).min(1).max(3),
+    }),
+  }).strict();
+
+const TeamInvitationCancellationDeniedV1EventSchema =
+  CommonTeamAccessDeniedV1EventSchema.extend({
+    eventType: z.literal('team.invitation.cancellation_denied'),
+    subjectType: z.null(),
+    subjectId: z.null(),
+    subjectLabel: z.null(),
+    details: z.strictObject({
+      reason: z.literal('insufficient_permission'),
     }),
   }).strict();
 
@@ -152,6 +175,8 @@ const TeamMemberRoleChangeFailedV1EventSchema =
 
 export const DENIED_AUDIT_OPERATIONS = [
   'team.acceptInvitation',
+  'team.cancelInvitation',
+  'team.createInvitation',
   'team.updateMemberRole',
 ] as const;
 export type DeniedAuditOperation = (typeof DENIED_AUDIT_OPERATIONS)[number];
@@ -223,8 +248,10 @@ export const AuditEventInputSchema = z.union([
   TeamMemberRoleChangeFailedV1EventSchema,
   DeniedAttemptsRateLimitedV1EventSchema,
   TeamInvitationCreatedV1EventSchema,
+  TeamInvitationCreationDeniedV1EventSchema,
   TeamInvitationCancelledV1EventSchema,
   TeamInvitationCancelledV2EventSchema,
+  TeamInvitationCancellationDeniedV1EventSchema,
   TeamInvitationAcceptedV1EventSchema,
   TeamInvitationAcceptanceDeniedV1EventSchema,
   TeamInvitationAcceptanceFailedV1EventSchema,
@@ -387,6 +414,25 @@ export const AUDIT_EVENT_REGISTRY = {
       details: { role: 'member' },
     },
   },
+  'team.invitation.creation_denied@1': {
+    inputSchema: TeamInvitationCreationDeniedV1EventSchema,
+    title: 'Invitation creation denied',
+    detailFields: ['requestedRole', 'reason'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V1_COMMON,
+      outcome: 'denied',
+      eventType: 'team.invitation.creation_denied',
+      subjectType: null,
+      subjectId: null,
+      subjectLabel: null,
+      details: {
+        requestedRole: 'owner',
+        reason: 'owner_role_requires_owner',
+      },
+    },
+  },
   'team.invitation.cancelled@1': {
     inputSchema: TeamInvitationCancelledV1EventSchema,
     title: 'Invitation cancelled',
@@ -415,6 +461,22 @@ export const AUDIT_EVENT_REGISTRY = {
       subjectId: 'fixture-invitation',
       subjectLabel: 'invitee@example.com',
       details: { roles: ['admin', 'member'] },
+    },
+  },
+  'team.invitation.cancellation_denied@1': {
+    inputSchema: TeamInvitationCancellationDeniedV1EventSchema,
+    title: 'Invitation cancellation denied',
+    detailFields: ['reason'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V1_COMMON,
+      outcome: 'denied',
+      eventType: 'team.invitation.cancellation_denied',
+      subjectType: null,
+      subjectId: null,
+      subjectLabel: null,
+      details: { reason: 'insufficient_permission' },
     },
   },
   'team.invitation.accepted@1': {
