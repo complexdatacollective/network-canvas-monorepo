@@ -17,8 +17,10 @@
 // Usage:
 //   node scripts/mirror-app.mjs --app <appDir> --repo <owner/name> --version <version> [--branch <name>] [--with-lockfile]
 // Env:
-//   LEGACY_RELEASE_GH_TOKEN  cross-repo token with Contents + Workflows write
-//                            (classic PAT: repo + workflow; required to push)
+//   LEGACY_RELEASE_GH_TOKEN  cross-repo token with Contents write (classic PAT:
+//                            repo). Fresco workflow changes are pre-applied with
+//                            maintainer credentials and must already match before
+//                            this release-only token pushes app source.
 //   MONOREPO_SHA             source commit sha (recorded in the commit message)
 //   GITHUB_OUTPUT            when set, `mirror_sha=<sha>` is appended for the workflow
 //   MIRROR_DRY_RUN           when "true", stage + commit locally but skip the push
@@ -36,7 +38,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, relative, resolve, sep } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { parseCatalog, resolveManifest } from './resolve-manifest.mjs';
@@ -72,6 +74,45 @@ coverage/
 // thrown error, so LEGACY_RELEASE_GH_TOKEN never reaches the logs.
 function redact(text) {
   return String(text ?? '').replace(/\/\/[^/@\s]+@/g, '//***@');
+}
+
+export function assertCommitPinnedActionUses(workflowPath, contents) {
+  const unpinned = [];
+  const usesPattern = /^\s*(?:-\s*)?uses:\s*([^\s#]+)/gm;
+
+  for (const match of contents.matchAll(usesPattern)) {
+    const action = match[1];
+    if (action.startsWith('./')) continue;
+
+    const separator = action.lastIndexOf('@');
+    const ref = separator === -1 ? '' : action.slice(separator + 1);
+    if (!/^[0-9a-f]{40}$/.test(ref)) unpinned.push(action);
+  }
+
+  if (unpinned.length > 0) {
+    throw new Error(
+      `${workflowPath} must pin every external action to a full commit SHA; found ${unpinned.join(', ')}`,
+    );
+  }
+}
+
+export function assertFrescoPublisherContract({
+  workflow,
+  trackedWorkflows,
+  sourceContents,
+  targetContents,
+}) {
+  if (trackedWorkflows.length !== 1 || trackedWorkflows[0] !== workflow) {
+    throw new Error(
+      `Fresco mirror must already contain exactly ${workflow}; found ${trackedWorkflows.join(', ') || 'no workflows'}. Refusing to add or remove workflow files with the release token.`,
+    );
+  }
+
+  if (targetContents !== sourceContents) {
+    throw new Error(
+      `${workflow} in complexdatacollective/Fresco must already match the monorepo copy. Pre-apply the workflow change with maintainer credentials before releasing; the release token intentionally cannot modify workflows.`,
+    );
+  }
 }
 
 function run(cmd, args, opts = {}) {
@@ -123,8 +164,9 @@ const APP_MIRROR_OVERRIDES = {
       // The local release-testing harness references monorepo paths and must
       // not ship in the standalone tree.
       'release-test',
-      // The standalone Fresco repository must contain no GitHub Actions
-      // workflows, including docker-publish.yml.
+      // Arbitrary app-local workflows must not reach the standalone repo. The
+      // release-critical publisher is restored explicitly below, then checked
+      // against the target before any mirror commit is created.
       '.github/workflows',
     ],
   },
@@ -406,6 +448,24 @@ function main() {
 
   stageSource(appDir, staging, overrides.extraExcludes);
 
+  if (appName === 'fresco') {
+    // The push to Fresco/main is only useful if it still triggers the external
+    // repository's image publisher. Keep that one workflow source-controlled
+    // here while the directory-level exclusion above blocks every other local
+    // or future workflow from leaking into the release mirror.
+    const workflow = '.github/workflows/docker-publish.yml';
+    const source = join(appDir, workflow);
+    const destination = join(staging, workflow);
+    if (!existsSync(source)) {
+      throw new Error(
+        `Fresco mirror requires ${source}; without it a release cannot publish the GHCR image.`,
+      );
+    }
+    assertCommitPinnedActionUses(workflow, readFileSync(source, 'utf8'));
+    mkdirSync(dirname(destination), { recursive: true });
+    cpSync(source, destination);
+  }
+
   const { manifest: resolved, dropped } = resolveManifest(appDir);
   if (overrides.restorePackageManager) {
     const root = JSON.parse(
@@ -481,6 +541,27 @@ function main() {
     cloneUrl,
     checkout,
   ]);
+
+  if (appName === 'fresco') {
+    const workflow = '.github/workflows/docker-publish.yml';
+    const source = readFileSync(join(appDir, workflow), 'utf8');
+    const target = join(checkout, workflow);
+    const trackedWorkflows = capture('git', [
+      '-C',
+      checkout,
+      'ls-files',
+      '.github/workflows',
+    ])
+      .split('\n')
+      .filter(Boolean);
+
+    assertFrescoPublisherContract({
+      workflow,
+      trackedWorkflows,
+      sourceContents: source,
+      targetContents: existsSync(target) ? readFileSync(target, 'utf8') : '',
+    });
+  }
 
   run('git', ['-C', checkout, 'rm', '-r', '--quiet', '.']);
   copyTree(staging, checkout, ['.git']);

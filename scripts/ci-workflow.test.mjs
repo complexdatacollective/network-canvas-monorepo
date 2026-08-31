@@ -600,13 +600,24 @@ test('normal-lane apps do not get separate generated release PRs', () => {
   );
 });
 
-test('Background Creator is built before merge despite having no E2E suite', () => {
+test('release-sensitive app builds run before merge', () => {
   const supportJob = job('quality-support');
   assert.ok(supportJob, 'quality support job exists');
   assert.match(
     supportJob,
     /turbo run build --filter='\.\/packages\/\*' --filter=@codaco\/background-creator/,
   );
+  assert.match(
+    supportJob,
+    /POSTHOG_PERSONAL_API_KEY: ci-release-build-preflight/,
+  );
+  assert.match(supportJob, /POSTHOG_PROJECT_ID: '1'/);
+  assert.match(
+    supportJob,
+    /POSTHOG_CLI_BINARY_PATH: \$\{\{ github\.workspace \}\}\/scripts\/posthog-cli-upload-stub\.mjs/,
+  );
+  assert.match(supportJob, /pnpm --filter=@codaco\/architect build/);
+  assert.match(supportJob, /pnpm --filter=@codaco\/interviewer build/);
 });
 
 test('stable app versions deploy to their Netlify production sites', () => {

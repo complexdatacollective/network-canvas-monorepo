@@ -1,10 +1,10 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import posthogSourceMaps from '@posthog/rollup-plugin';
 import { defineConfig, mergeConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+import { createPostHogSourceMapsPlugin } from '../../scripts/posthog-source-maps-plugin.ts';
 import { appVersion, createRendererConfig } from './vite.renderer.config';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -31,6 +31,7 @@ const MAX_PRECACHE_BYTES = 12 * 1024 * 1024;
 // uploading build can never reuse a non-uploading cache entry.
 const posthogPersonalApiKey = process.env.POSTHOG_PERSONAL_API_KEY;
 const posthogProjectId = process.env.POSTHOG_PROJECT_ID;
+const posthogCliBinaryPath = process.env.POSTHOG_CLI_BINARY_PATH;
 const uploadSourceMaps = !!posthogPersonalApiKey && !!posthogProjectId;
 
 export default defineConfig(() =>
@@ -83,6 +84,9 @@ export default defineConfig(() =>
           ],
         },
         workbox: {
+          // App and worker maps are uploaded before Workbox runs. The service
+          // worker itself is not part of PostHog's browser error reporting.
+          sourcemap: false,
           globPatterns: ['**/*.{js,css,html}'],
           // The Development protocol's bundled asset chunk (~33 MB, embeds a
           // 23 MB dev-only video — see bundledDevelopmentProtocol.ts) is only
@@ -244,13 +248,14 @@ export default defineConfig(() =>
           ],
         },
       }),
-      // Last: its writeBundle hook rewrites the emitted chunks (injecting the
-      // chunk ids PostHog matches maps by) and must see the final output.
+      // Last: its writeBundle hook processes the completed output directory,
+      // including worker bundles that Vite emits as assets.
       ...(uploadSourceMaps
         ? [
-            posthogSourceMaps({
+            createPostHogSourceMapsPlugin({
               personalApiKey: posthogPersonalApiKey,
               projectId: posthogProjectId,
+              cliBinaryPath: posthogCliBinaryPath,
               sourcemaps: {
                 enabled: true,
                 releaseName: 'Interviewer',

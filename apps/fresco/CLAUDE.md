@@ -37,7 +37,13 @@ Releases flow one way:
 Consequences worth remembering:
 
 - `apps/fresco/.github/` contains only the mirror's Docker publish workflow. CI
-  for development runs from the monorepo's own workflows.
+  for development runs from the monorepo's own workflows. The release token has
+  contents-write permission only: before mirroring, the publisher in the
+  external repo must already be byte-identical to this source-controlled copy,
+  and no other workflows may be present. To change the publisher, first apply
+  the exact change to the external repo with a maintainer credential that can
+  update workflows; the normal mirror then carries the identical file forward
+  without adding, changing, or deleting workflow files.
 - The `Dockerfile` builds the _mirrored_ tree, so it assumes a standalone,
   single-package pnpm project. If you change what it copies, check
   `scripts/mirror-app.mjs` still produces those files.
