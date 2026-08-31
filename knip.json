@@ -25,8 +25,17 @@
     // resolve @playwright/test out of apps/interviewer's dependency tree via
     // createRequire rather than adding a root dependency.
     ".": {
-      "entry": ["scripts/interviewer-*-walker.mjs"],
-      "ignoreDependencies": ["@playwright/test", "jszip"]
+      "entry": [
+        "scripts/interviewer-*-walker.mjs",
+        // Invoked by the CI workflow through POSTHOG_CLI_BINARY_PATH.
+        "scripts/posthog-cli-upload-stub.mjs"
+      ],
+      "ignoreDependencies": [
+        "@playwright/test",
+        "jszip",
+        // Resolved by @posthog/plugin-utils and spawned by path at build time.
+        "@posthog/cli"
+      ]
     },
     "apps/networkcanvas.com": {
       "entry": ["lib/i18n/request.ts", "netlify/edge-functions/locale.ts"]
