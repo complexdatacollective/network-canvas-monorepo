@@ -9,7 +9,12 @@ import {
   type PreviewPayload,
 } from './messages';
 
-const HANDSHAKE_TIMEOUT_MS = 10_000;
+// preview-main can spend up to 3 seconds finding the registration, 3 seconds
+// discovering an update, 20 seconds waiting for its installation, and another
+// 20 seconds activating it before PreviewHost mounts and announces readiness.
+// Keep a buffer above that 46-second pre-render handoff so the opener never
+// gives up on a healthy preview waiting for its matching controller.
+const HANDSHAKE_TIMEOUT_MS = 55_000;
 const POPUP_CLOSED_POLL_MS = 1_000;
 
 type LaunchOptions = {

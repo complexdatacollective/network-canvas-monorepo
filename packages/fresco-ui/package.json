@@ -168,6 +168,7 @@
     "./form/hooks/useForm": "./src/form/hooks/useForm.ts",
     "./appUpdate/useAppUpdate": "./src/appUpdate/useAppUpdate.ts",
     "./appUpdate/applyFreshLoadServiceWorkerUpdate": "./src/appUpdate/applyFreshLoadServiceWorkerUpdate.ts",
+    "./appUpdate/registerPwaBuildLease": "./src/appUpdate/registerPwaBuildLease.ts",
     "./appUpdate/serviceWorkerUpdate": "./src/appUpdate/applyFreshLoadServiceWorkerUpdate.ts",
     "./appUpdate/AppUpdateIndicator": "./src/appUpdate/AppUpdateIndicator.tsx"
   },
@@ -777,6 +778,10 @@
       "./appUpdate/applyFreshLoadServiceWorkerUpdate": {
         "types": "./dist/appUpdate/applyFreshLoadServiceWorkerUpdate.d.ts",
         "default": "./dist/appUpdate/applyFreshLoadServiceWorkerUpdate.js"
+      },
+      "./appUpdate/registerPwaBuildLease": {
+        "types": "./dist/appUpdate/registerPwaBuildLease.d.ts",
+        "default": "./dist/appUpdate/registerPwaBuildLease.js"
       },
       "./appUpdate/serviceWorkerUpdate": {
         "types": "./dist/appUpdate/applyFreshLoadServiceWorkerUpdate.d.ts",

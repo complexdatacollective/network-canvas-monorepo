@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   type AppId,
@@ -18,31 +18,12 @@ export type UseAppUpdateOptions = {
   app: AppId;
   currentVersion: string;
   needRefresh: boolean;
-  hasUnsavedWork: boolean;
   installUpdate: InstallAppUpdate;
-  /**
-   * Re-checked at the moment auto-apply would reload the app, in place of
-   * `hasUnsavedWork`.
-   *
-   * `hasUnsavedWork` is a rendered value, so a host that derives it from
-   * anything coalesced — a debounced mirror of an editor's live values, say —
-   * can still be reporting "no work in progress" for an edit the user has
-   * already typed. Auto-apply reloads without asking, so it is the one consumer
-   * that cannot tolerate that lag. A host in that position passes this to make
-   * the check synchronous at the decision point; it may flush whatever it needs
-   * to first, since it runs inside an effect.
-   *
-   * Only auto-apply consults it. `hasUnsavedWork` still drives the manual
-   * button and the dialog, where a render-time value is what's wanted.
-   */
+  /** @deprecated Updates are never installed automatically. */
+  hasUnsavedWork?: boolean;
+  /** @deprecated Updates are never installed automatically. */
   checkUnsavedWork?: () => boolean;
-  /**
-   * How long after mount an update may still be auto-applied. Auto-apply is for
-   * updates present at (or detected shortly after) a fresh load; an update the
-   * hourly poll surfaces later in a long-lived session is not reloaded under the
-   * user — it waits behind the manual button. Defaults to
-   * {@link FRESH_LOAD_AUTO_APPLY_MS}.
-   */
+  /** @deprecated Updates are never installed automatically. */
   autoApplyWindowMs?: number;
 };
 
@@ -53,14 +34,11 @@ export type UseAppUpdateResult = {
   install: InstallAppUpdate;
 };
 
-// Auto-apply is a fresh-load affordance: an update already waiting when the app
-// loads (or one the initial service-worker check surfaces within this window) is
-// applied automatically when no work is in progress. After the window closes,
-// updates found by the hourly poll surface the manual button instead of
-// reloading a long-lived idle session.
-export const FRESH_LOAD_AUTO_APPLY_MS = 20_000;
-
 const lastVersionKey = (app: AppId) => `nc:lastLaunchedVersion:${app}`;
+const pendingUpdateKey = (app: AppId) => `nc:pendingAppUpdate:${app}`;
+
+/** @deprecated Updates are never installed automatically. */
+export const FRESH_LOAD_AUTO_APPLY_MS = 20_000;
 
 // Records the current version and reports whether the previous launch ran a
 // different one. Called once (guarded by a ref) so the write happens exactly
@@ -68,8 +46,13 @@ const lastVersionKey = (app: AppId) => `nc:lastLaunchedVersion:${app}`;
 function detectJustUpdated(app: AppId, currentVersion: string): boolean {
   try {
     const previous = localStorage.getItem(lastVersionKey(app));
+    const requestedUpdate =
+      localStorage.getItem(pendingUpdateKey(app)) !== null;
+    localStorage.removeItem(pendingUpdateKey(app));
     localStorage.setItem(lastVersionKey(app), currentVersion);
-    return previous !== null && previous !== currentVersion;
+    return (
+      requestedUpdate || (previous !== null && previous !== currentVersion)
+    );
   } catch {
     return false;
   }
@@ -79,10 +62,7 @@ export default function useAppUpdate({
   app,
   currentVersion,
   needRefresh,
-  hasUnsavedWork,
   installUpdate,
-  checkUnsavedWork,
-  autoApplyWindowMs = FRESH_LOAD_AUTO_APPLY_MS,
 }: UseAppUpdateOptions): UseAppUpdateResult {
   const [justUpdated, setJustUpdated] = useState(false);
   const [releaseNotes, setReleaseNotes] = useState<
@@ -93,12 +73,6 @@ export default function useAppUpdate({
   >();
 
   const detectedRef = useRef(false);
-  const autoAppliedRef = useRef(false);
-  const freshLoadWindowOpenRef = useRef(true);
-  const hasUnsavedWorkRef = useRef(hasUnsavedWork);
-  hasUnsavedWorkRef.current = hasUnsavedWork;
-  const checkUnsavedWorkRef = useRef(checkUnsavedWork);
-  checkUnsavedWorkRef.current = checkUnsavedWork;
 
   // Version-change detection runs exactly once.
   useEffect(() => {
@@ -106,36 +80,6 @@ export default function useAppUpdate({
     detectedRef.current = true;
     setJustUpdated(detectJustUpdated(app, currentVersion));
   }, [app, currentVersion]);
-
-  // Close the fresh-load auto-apply window a short time after mount.
-  useEffect(() => {
-    const id = window.setTimeout(() => {
-      freshLoadWindowOpenRef.current = false;
-    }, autoApplyWindowMs);
-    return () => window.clearTimeout(id);
-  }, [autoApplyWindowMs]);
-
-  // One-shot auto-apply, limited to a fresh load: the first time an update is
-  // pending, apply it only if we're still within the fresh-load window and no
-  // work is in progress. An update surfaced later (the hourly poll, or one that
-  // arrives while work is in progress) falls through to the manual button.
-  useEffect(() => {
-    if (!needRefresh || autoAppliedRef.current) return;
-    autoAppliedRef.current = true;
-    // Prefer the host's synchronous check: the rendered `hasUnsavedWork` can
-    // lag work the user has already done (see `checkUnsavedWork`), and this
-    // branch reloads without asking.
-    const unsavedWork = checkUnsavedWorkRef.current
-      ? checkUnsavedWorkRef.current()
-      : hasUnsavedWorkRef.current;
-    if (freshLoadWindowOpenRef.current && !unsavedWork) {
-      void Promise.resolve()
-        .then(installUpdate)
-        .catch(() => {
-          // Leave needRefresh unchanged so the user can retry manually.
-        });
-    }
-  }, [needRefresh, installUpdate]);
 
   // An available update means we just completed an online SW check — fetch the
   // latest notes and cache them so the dialog (and the post-reload "updated"
@@ -145,17 +89,18 @@ export default function useAppUpdate({
     let active = true;
     setReleaseNotes((prev) => (prev && prev !== 'loading' ? prev : 'loading'));
     void fetchLatestReleaseNotes(app).then((notes) => {
-      if (!active) return;
+      if (!active) return undefined;
       if (!notes) {
         // Fetch failed (offline / rate-limited / release not yet published):
         // fall back to "unavailable" rather than a stuck loading state, but keep
         // any good cached value we already had.
         setReleaseNotes((prev) => (prev === 'loading' ? null : prev));
-        return;
+        return undefined;
       }
       writeCachedNotes(app, notes);
       setReleaseNotes(notes);
       setAvailableVersion(notes.version);
+      return undefined;
     });
     return () => {
       active = false;
@@ -174,13 +119,14 @@ export default function useAppUpdate({
     let active = true;
     setReleaseNotes('loading');
     void fetchReleaseNotesForVersion(app, currentVersion).then((notes) => {
-      if (!active) return;
+      if (!active) return undefined;
       if (!notes) {
         setReleaseNotes((prev) => (prev === 'loading' ? null : prev));
-        return;
+        return undefined;
       }
       writeCachedNotes(app, notes);
       setReleaseNotes(notes);
+      return undefined;
     });
     return () => {
       active = false;
@@ -193,5 +139,33 @@ export default function useAppUpdate({
       ? 'updated'
       : 'idle';
 
-  return { status, availableVersion, releaseNotes, install: installUpdate };
+  const install = useCallback(async () => {
+    try {
+      localStorage.setItem(pendingUpdateKey(app), currentVersion);
+    } catch {
+      // The update can still be installed when storage is unavailable; only
+      // the post-reload "recently updated" state will be unavailable.
+    }
+
+    try {
+      const result = await installUpdate();
+      if (result === false) {
+        try {
+          localStorage.removeItem(pendingUpdateKey(app));
+        } catch {
+          // Storage is best-effort, as above.
+        }
+      }
+      return result;
+    } catch (error) {
+      try {
+        localStorage.removeItem(pendingUpdateKey(app));
+      } catch {
+        // Storage is best-effort, as above.
+      }
+      throw error;
+    }
+  }, [app, currentVersion, installUpdate]);
+
+  return { status, availableVersion, releaseNotes, install };
 }

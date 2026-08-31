@@ -7,6 +7,7 @@ import { Provider } from 'react-redux';
 
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import { applyFreshLoadServiceWorkerUpdate } from '@codaco/fresco-ui/appUpdate/applyFreshLoadServiceWorkerUpdate';
+import { registerPwaBuildLease } from '@codaco/fresco-ui/appUpdate/registerPwaBuildLease';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { PortalContainerProvider } from '@codaco/fresco-ui/PortalContainer';
 import { Toaster } from '@codaco/fresco-ui/Toast';
@@ -28,6 +29,11 @@ import {
   requestPersistentStorage,
   requestPersistentStorageOnFirstInteraction,
 } from './utils/pwa';
+
+// Register before the startup update check: skipWaiting moves every existing
+// tab to the new worker, which must retain the precache for each tab's compiled
+// bundle until that tab closes or reloads.
+registerPwaBuildLease(__PWA_BUILD_ID__);
 
 // Capture the PWA install prompt before React mounts — the event fires early and
 // is one-shot.
@@ -51,14 +57,11 @@ const warmCaches = () => {
 };
 
 async function startApp(): Promise<void> {
-  if (
-    await applyFreshLoadServiceWorkerUpdate({
-      shouldSkip: () =>
-        isCriticalOperationInProgress() || hasPendingLaunchFiles(),
-    })
-  ) {
-    return;
-  }
+  await applyFreshLoadServiceWorkerUpdate({
+    reload: false,
+    shouldSkip: () =>
+      isCriticalOperationInProgress() || hasPendingLaunchFiles(),
+  });
 
   // redux-remember restores only the active library id. Load its canonical
   // protocol body from IndexedDB before mounting any direct /protocol route.

@@ -220,7 +220,22 @@ fails the build if the service worker, manifest, or icons are missing from
 `dist/`, or if a critical JS chunk (the interview engine, mapbox-gl, the entry
 point) got silently dropped from the workbox precache manifest. A deploy that
 passes this assertion is one that will actually boot offline; treat an assertion
-failure as a hard release blocker, not a warning to route around.
+failure as a hard release blocker, not a warning to route around. The assertion
+also validates the emitted `_headers`: the service worker, HTML shell (including
+requested SPA deep links), manifest, and stable icons must use
+`no-store, no-cache, max-age=0, must-revalidate`, while only content-hashed
+`/assets/*` may use a one-year immutable cache. The generated worker assertion
+also ensures its image runtime cache excludes every stable PWA icon, because
+Cache API writes would otherwise bypass those HTTP directives.
+
+The production custom domain is fronted by Cloudflare, so this repository rule
+is necessary but cannot override an account-level Browser Cache TTL rule. Keep
+Cloudflare set to **Respect Existing Headers** (with no cache rule that replaces
+these origin directives), and verify `/`, `/sw.js`, `/index.html`, and
+`/manifest.webmanifest` return the no-store policy after each release. A
+response with a positive browser `max-age` is a release blocker even when the
+build assertion passed, because it means an intermediary replaced the emitted
+contract.
 
 ## Manual setup required (one-time)
 
@@ -248,24 +263,42 @@ self-apply on every visit. `AppUpdateProvider` (`src/components/AppUpdate/AppUpd
 polls for a new version hourly and on load, driving the shared `@codaco/fresco-ui`
 update indicator (`AppUpdatePill`, rendered in `StatusRow`):
 
-- A pending update present at (or detected shortly after) a fresh load, while
-  no interview is in progress, is applied automatically — a reload lands the
-  researcher on the newest version, and the version indicator then shows a
-  "was updated" state with the changelog.
+- On a fresh navigation outside an active interview, the pre-render startup
+  check activates a waiting worker while the static loading screen remains
+  visible. Startup then continues on the same navigation; activation never
+  calls `reload()`.
 - An update the hourly poll surfaces later in a long-lived session, or one that
-  arrives while an interview is in progress, is not reloaded under the
-  researcher — it surfaces on the version indicator as an "update available"
-  control that opens a dialog with the release changelog and an **Install and
-  reload** action.
-- While an interview is in progress (`/interview/*`), auto-apply is withheld —
-  the update is held until the researcher returns to the dashboard, so a reload
-  never interrupts data collection.
+  arrives after any app UI has rendered, stays in the **update available** state
+  until the researcher opens the version indicator and chooses **Install and
+  reload**. Neither `AppUpdateProvider` nor `vite-plugin-pwa` may reload the
+  page independently.
+- While an interview is in progress (`/interview/*`), the fresh-load activation
+  check is skipped. The update can only reload that active interview if the
+  researcher explicitly chooses **Install and reload**; it never happens
+  automatically.
+- After a user-requested reload, the version indicator shows the recently
+  updated state and exposes the changelog for the running version.
 
 Because of this, a production deploy is not instantaneous for already-open
-tabs: a researcher mid-session on the previous build keeps running it until
-they leave the interview and either the auto-apply or the "update available"
-control catches up. There is no forced-update mechanism and none should be
+tabs: they keep running their current build until the researcher explicitly
+installs the update. There is no forced-update mechanism and none should be
 added — see the interview-active guard above.
+
+The worker deliberately uses `clientsClaim: false`, a build-scoped precache,
+and no blanket `cleanupOutdatedCaches`. Turbo's task fingerprint names deployed
+build artifacts, so two same-version developer deployments with different
+assets cannot prune each other's caches. Service-worker activation advances
+every client already using the registration, even without `clientsClaim`; it
+does not reload those documents. The new worker therefore resolves an older
+interview's exact content-hashed JS/CSS URLs across retained precaches, while
+HTML navigation fallbacks remain pinned to the active worker's own precache.
+This keeps the older loaded bundle usable offline without risking an ambiguous
+`index.html` match. Each page also reports its compiled build ID to the worker.
+The worker reclaims only precaches that no responsive open page has leased;
+any legacy, frozen, or nonresponding page blocks cleanup, and an installing or
+waiting worker blocks it as well. This preserves open work without allowing
+old build caches to accumulate indefinitely.
+`scripts/assert-pwa-build.mjs` verifies these generated-worker invariants.
 
 ## PostHog source maps
 
