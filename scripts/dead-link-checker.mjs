@@ -29,17 +29,20 @@
  * that omit an intermediate certificate trusted through the browser's issuer
  * cache. Only those two known mismatches -- a Node 403 or
  * UNABLE_TO_VERIFY_LEAF_SIGNATURE -- are rechecked in Chrome. Chrome is
- * launched lazily, shared by the whole crawl, and limited to four open checked
- * pages; popups are closed immediately so they cannot bypass that limit. It
- * runs headed under Xvfb in CI because the affected challenge provider also
- * rejects automated headless Chrome. For a challenge response, the verifier
- * waits for JavaScript to reach a terminal main-frame response, finish loading
- * its document, and remain navigation-quiet for a short bounded interval. Both
- * navigation starts and responses are tracked, so a request that stalls before
- * response headers cannot look quiet. Incomplete redirects and document loads
- * remain verification failures, and the entire sequence shares one request
- * deadline so reload loops cannot retain a worker indefinitely. Browser-only
- * HTTP redirects obey the same maximum-hop rule as Node redirects.
+ * launched lazily and shared by the whole crawl, but every checked link gets a
+ * fresh browser context so cookies, storage, cache state, and service workers
+ * cannot make later results depend on crawl order. At most four contexts are
+ * open at once; popups are closed immediately so they cannot bypass that
+ * limit. Chrome runs headed under Xvfb in CI because the affected challenge
+ * provider also rejects automated headless Chrome. After either kind of Node
+ * mismatch, the verifier waits for the browser document to reach a terminal
+ * main-frame response, finish loading, and remain navigation-quiet for a short
+ * bounded interval. Both navigation starts and responses are tracked, so a
+ * request that stalls before response headers cannot look quiet. Incomplete
+ * redirects and document loads remain verification failures, and the entire
+ * sequence shares one request deadline so reload loops cannot retain a worker
+ * indefinitely. Browser-only HTTP redirects obey the same maximum-hop rule as
+ * Node redirects.
  *
  * Browser verification is not status suppression. Its final response is
  * authoritative: a browser-confirmed 403 (or any other >= 400 response) still
@@ -213,16 +216,7 @@ export class BrowserVerifier {
         headless: false,
         ignoreDefaultArgs: ['--enable-automation'],
       });
-      try {
-        const context = await browser.newContext({
-          acceptDownloads: false,
-          ...(this.#userAgent ? { userAgent: this.#userAgent } : {}),
-        });
-        return { browser, context };
-      } catch (error) {
-        await browser.close();
-        throw error;
-      }
+      return { browser };
     })();
     return this.#resourcesPromise;
   }
@@ -239,10 +233,15 @@ export class BrowserVerifier {
 
   async verify(url, timeout, { captureHTML = false } = {}) {
     await this.#pageSlots.acquire();
+    let context;
     let page;
     const spawnedPages = new Set();
     try {
-      const { context } = await this.#getResources();
+      const { browser } = await this.#getResources();
+      context = await browser.newContext({
+        acceptDownloads: false,
+        ...(this.#userAgent ? { userAgent: this.#userAgent } : {}),
+      });
       page = await context.newPage();
       const mainFrameRequests = [];
       const mainFrameResponses = [];
@@ -286,110 +285,115 @@ export class BrowserVerifier {
       }
       let navigation = initialResponse;
 
+      const initialResponseIndex = mainFrameResponses.indexOf(initialResponse);
+      const initialRequestIndex = mainFrameRequests.indexOf(
+        initialResponse.request(),
+      );
+      const followupStart =
+        initialResponseIndex === -1
+          ? mainFrameResponses.length
+          : initialResponseIndex + 1;
+      const followupRequestStart =
+        initialRequestIndex === -1
+          ? mainFrameRequests.length
+          : initialRequestIndex + 1;
+      const followupResponses = () => mainFrameResponses.slice(followupStart);
+      const terminalResponseAfter = (start) =>
+        mainFrameResponses.slice(start).findLast(isTerminalNavigation);
+      const waitForTerminalResponse = async (
+        start,
+        {
+          allowNoFollowup = false,
+          requestStart = mainFrameRequests.length,
+        } = {},
+      ) => {
+        let terminalResponse = terminalResponseAfter(start);
+        if (terminalResponse) return terminalResponse;
+        try {
+          terminalResponse = await page.waitForResponse(
+            (response) =>
+              response.request().isNavigationRequest() &&
+              response.frame() === page.mainFrame() &&
+              isTerminalNavigation(response),
+            { timeout: remainingTimeout() },
+          );
+        } catch (error) {
+          if (error?.name !== 'TimeoutError') throw error;
+
+          // Recheck responses captured by the always-on listener in case a
+          // terminal response arrived at the wait boundary. A timeout with
+          // no follow-up means this was a genuine 403. Once any redirect or
+          // navigation starts, however, failing to reach a terminal response
+          // is a verification failure rather than a successful 3xx result.
+          terminalResponse = terminalResponseAfter(start);
+          if (
+            !terminalResponse &&
+            (!allowNoFollowup ||
+              mainFrameResponses.length > start ||
+              mainFrameRequests.length > requestStart)
+          ) {
+            throw error;
+          }
+        }
+        return terminalResponseAfter(start) ?? terminalResponse;
+      };
+
       // A browser challenge initially responds with 403, executes JavaScript,
       // and then navigates the main frame again. A genuine forbidden page has
       // no follow-up navigation and remains 403 after the same timeout.
+      let terminalResponse;
       if (navigation.status() === 403) {
-        const initialResponseIndex =
-          mainFrameResponses.indexOf(initialResponse);
-        const initialRequestIndex = mainFrameRequests.indexOf(
-          initialResponse.request(),
-        );
-        const followupStart =
-          initialResponseIndex === -1
-            ? mainFrameResponses.length
-            : initialResponseIndex + 1;
-        const followupRequestStart =
-          initialRequestIndex === -1
-            ? mainFrameRequests.length
-            : initialRequestIndex + 1;
-        const followupResponses = () => mainFrameResponses.slice(followupStart);
-        const terminalResponseAfter = (start) =>
-          mainFrameResponses.slice(start).findLast(isTerminalNavigation);
-        const waitForTerminalResponse = async (
-          start,
-          {
-            allowNoFollowup = false,
-            requestStart = mainFrameRequests.length,
-          } = {},
-        ) => {
-          let terminalResponse = terminalResponseAfter(start);
-          if (terminalResponse) return terminalResponse;
-          try {
-            terminalResponse = await page.waitForResponse(
-              (response) =>
-                response.request().isNavigationRequest() &&
-                response.frame() === page.mainFrame() &&
-                isTerminalNavigation(response),
-              { timeout: remainingTimeout() },
-            );
-          } catch (error) {
-            if (error?.name !== 'TimeoutError') throw error;
-
-            // Recheck responses captured by the always-on listener in case a
-            // terminal response arrived at the wait boundary. A timeout with
-            // no follow-up means this was a genuine 403. Once any redirect or
-            // navigation starts, however, failing to reach a terminal response
-            // is a verification failure rather than a successful 3xx result.
-            terminalResponse = terminalResponseAfter(start);
-            if (
-              !terminalResponse &&
-              (!allowNoFollowup ||
-                mainFrameResponses.length > start ||
-                mainFrameRequests.length > requestStart)
-            ) {
-              throw error;
-            }
-          }
-          return terminalResponseAfter(start) ?? terminalResponse;
-        };
-
-        let terminalResponse = await waitForTerminalResponse(followupStart, {
+        terminalResponse = await waitForTerminalResponse(followupStart, {
           allowNoFollowup: true,
           requestStart: followupRequestStart,
         });
+      } else if (isTerminalNavigation(navigation)) {
+        // TLS recovery can arrive at an apparently successful document that
+        // schedules a client-side navigation after DOMContentLoaded. Give it
+        // the same bounded settling treatment as a recovered 403 challenge.
+        terminalResponse = navigation;
+      }
 
-        while (terminalResponse) {
-          navigation = terminalResponse;
-          // A terminal status is not enough for recursive pages: page.content()
-          // must represent the completed document or links after a stalled
-          // parser-blocking resource could silently disappear from the crawl.
-          await page.waitForLoadState('domcontentloaded', {
-            timeout: remainingTimeout(),
-          });
+      while (terminalResponse) {
+        navigation = terminalResponse;
+        // A terminal status is not enough for recursive pages: page.content()
+        // must represent the completed document or links after a stalled
+        // parser-blocking resource could silently disappear from the crawl.
+        await page.waitForLoadState('domcontentloaded', {
+          timeout: remainingTimeout(),
+        });
 
-          // A parser-blocking interstitial can navigate again before its own
-          // DOMContentLoaded. The load-state wait follows the new document, so
-          // bind status and headers to the last terminal main-frame response
-          // observed by then rather than the interstitial that began the wait.
-          navigation =
-            followupResponses().findLast(isTerminalNavigation) ?? navigation;
+        // A parser-blocking interstitial can navigate again before its own
+        // DOMContentLoaded. The load-state wait follows the new document, so
+        // bind status and headers to the last terminal main-frame response
+        // observed by then rather than the interstitial that began the wait.
+        navigation =
+          followupResponses().findLast(isTerminalNavigation) ?? navigation;
 
-          const latestResponse = followupResponses().at(-1);
-          if (latestResponse && !isTerminalNavigation(latestResponse)) {
-            terminalResponse = await waitForTerminalResponse(
-              mainFrameResponses.length,
-            );
-            continue;
-          }
-
-          // DOMContentLoaded handlers and short timers may schedule one more
-          // navigation. Require a bounded quiet interval, then repeat the
-          // terminal-response and document-load checks for any new navigation.
-          const settleRequestStart = mainFrameRequests.length;
-          const settleStart = mainFrameResponses.length;
-          await page.waitForTimeout(
-            Math.min(BROWSER_NAVIGATION_SETTLE_MS, remainingTimeout()),
+        const latestResponse = followupResponses().at(-1);
+        if (latestResponse && !isTerminalNavigation(latestResponse)) {
+          terminalResponse = await waitForTerminalResponse(
+            mainFrameResponses.length,
           );
-          remainingTimeout();
-          if (
-            mainFrameResponses.length === settleStart &&
-            mainFrameRequests.length === settleRequestStart
-          ) {
-            break;
-          }
-          terminalResponse = await waitForTerminalResponse(settleStart);
+          continue;
         }
+
+        // DOMContentLoaded handlers and short timers may schedule one more
+        // navigation. Require a bounded quiet interval, then repeat the
+        // terminal-response and document-load checks for any new navigation.
+        const settleRequestStart = mainFrameRequests.length;
+        const settleStart = mainFrameResponses.length;
+        await page.waitForTimeout(
+          Math.min(BROWSER_NAVIGATION_SETTLE_MS, remainingTimeout()),
+        );
+        remainingTimeout();
+        if (
+          mainFrameResponses.length === settleStart &&
+          mainFrameRequests.length === settleRequestStart
+        ) {
+          break;
+        }
+        terminalResponse = await waitForTerminalResponse(settleStart);
       }
 
       const contentType = navigation.headers()['content-type'] ?? '';
@@ -406,6 +410,7 @@ export class BrowserVerifier {
     } finally {
       await page?.close().catch(() => {});
       await Promise.allSettled([...spawnedPages].map((popup) => popup.close()));
+      if (context?.close) await context.close().catch(() => {});
       this.#pageSlots.release();
     }
   }

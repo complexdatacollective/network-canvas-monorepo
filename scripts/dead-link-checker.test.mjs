@@ -401,6 +401,68 @@ test('browser verification keeps the configured identity and final redirect stat
   }
 });
 
+test('browser verification isolates storage between checked links', async () => {
+  let browserLaunches = 0;
+  let closedContexts = 0;
+  let createdContexts = 0;
+  const browser = {
+    close: async () => {},
+    newContext: async () => {
+      createdContexts++;
+      const frame = {};
+      const navigationRequest = {
+        frame: () => frame,
+        isNavigationRequest: () => true,
+      };
+      const response = {
+        frame: () => frame,
+        headers: () => ({ 'content-type': 'text/html' }),
+        request: () => navigationRequest,
+        status: () => 200,
+      };
+      let responseListener;
+      const page = {
+        close: async () => {},
+        goto: async () => {
+          responseListener(response);
+          return response;
+        },
+        mainFrame: () => frame,
+        on: (event, listener) => {
+          if (event === 'response') responseListener = listener;
+        },
+        url: () => 'https://publisher.test/ok',
+        waitForLoadState: async () => {},
+        waitForTimeout: async () => {},
+      };
+      return {
+        close: async () => {
+          closedContexts++;
+        },
+        newPage: async () => page,
+      };
+    },
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({
+      launch: async () => {
+        browserLaunches++;
+        return browser;
+      },
+    }),
+  });
+
+  try {
+    await verifier.verify('https://publisher.test/first', 50);
+    await verifier.verify('https://publisher.test/second', 50);
+    assert.equal(browserLaunches, 1, 'the Chrome process remains shared');
+    assert.equal(createdContexts, 2, 'each link gets a fresh browser context');
+    assert.equal(closedContexts, 2, 'each isolated context is closed');
+  } finally {
+    await verifier.close();
+  }
+});
+
 test('browser verification rejects a challenge redirect without a terminal response', async () => {
   const frame = {};
   const navigationRequest = { isNavigationRequest: () => true };
@@ -586,6 +648,8 @@ test('browser verification closes popups spawned by the checked page', async () 
       if (event === 'response') responseListener = listener;
     },
     url: () => 'https://publisher.test/ok',
+    waitForLoadState: async () => {},
+    waitForTimeout: async () => {},
   };
   const browser = {
     close: async () => {},
@@ -653,6 +717,66 @@ test('browser verification waits for a redirect scheduled after DOMContentLoaded
     );
     assert.equal(settleCount, 2);
     assert.equal(outcome.finalUrl, 'https://publisher.test/missing');
+    assert.equal(outcome.status, 404);
+  } finally {
+    await verifier.close();
+  }
+});
+
+test('browser verification settles post-load navigation after TLS recovery', async () => {
+  const frame = {};
+  const navigationRequest = {
+    frame: () => frame,
+    isNavigationRequest: () => true,
+  };
+  const response = (status) => ({
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => status,
+  });
+  const initial = response(200);
+  const final = response(404);
+  let requestListener;
+  let responseListener;
+  let settleCount = 0;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'request') requestListener = listener;
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => 'https://publisher.test/missing',
+    waitForLoadState: async () => {},
+    waitForResponse: async () => {
+      throw new Error('the terminal response was already observed');
+    },
+    waitForTimeout: async () => {
+      if (settleCount++ === 0) {
+        requestListener(navigationRequest);
+        responseListener(final);
+      }
+    },
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    const outcome = await verifier.verify(
+      'https://publisher.test/tls-recovery',
+      50,
+    );
+    assert.equal(settleCount, 2);
     assert.equal(outcome.status, 404);
   } finally {
     await verifier.close();
