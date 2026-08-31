@@ -211,19 +211,27 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
     async (teamId: string) => {
       setSwitchingTeamId(teamId);
       setSwitchError(false);
+      let switchFailed = false;
       try {
-        const result = await authClient.organization.setActive({
-          organizationId: teamId,
-        });
-        if (result.error) {
-          setSwitchError(true);
-        } else {
-          await refetchActiveTeam();
-          await refetchActiveMember();
-        }
+        const result = await authClient.organization.setActive(
+          { organizationId: teamId },
+          // Better Auth otherwise schedules its own delayed active-team
+          // refresh. Studio reconciles both access queries below, so suppress
+          // that overlapping request and keep one authoritative refresh path.
+          { disableSignal: true },
+        );
+        switchFailed = result.error !== null;
       } catch {
-        setSwitchError(true);
+        switchFailed = true;
       } finally {
+        const reconciliation = await Promise.allSettled([
+          refetchActiveTeam(),
+          refetchActiveMember(),
+        ]);
+        if (reconciliation.some((result) => result.status === 'rejected')) {
+          switchFailed = true;
+        }
+        setSwitchError(switchFailed);
         setSwitchingTeamId(null);
       }
     },
