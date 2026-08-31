@@ -11,7 +11,6 @@ type FreshLoadServiceWorkerUpdateOptions = {
   updateCheckTimeoutMs?: number;
   activationTimeoutMs?: number;
   serviceWorker?: ServiceWorkerContainerLike;
-  reload?: () => void;
   shouldSkip?: () => boolean;
 };
 
@@ -50,75 +49,114 @@ function withTimeout<T>(
   });
 }
 
-function waitUntilInstalled(
+function waitUntilInstallable(
   worker: ServiceWorker,
+  timeoutMs: number,
 ): Promise<ServiceWorker | null> {
-  if (worker.state === 'installed') return Promise.resolve(worker);
-  if (worker.state === 'activated' || worker.state === 'redundant') {
-    return Promise.resolve(null);
+  if (worker.state === 'installed' || worker.state === 'activated') {
+    return Promise.resolve(worker);
   }
+  if (worker.state === 'redundant') return Promise.resolve(null);
 
   return new Promise((resolve) => {
-    const onStateChange = () => {
-      if (worker.state === 'installed') {
-        worker.removeEventListener('statechange', onStateChange);
-        resolve(worker);
-        return;
-      }
+    let settled = false;
 
-      if (worker.state === 'activated' || worker.state === 'redundant') {
-        worker.removeEventListener('statechange', onStateChange);
-        resolve(null);
+    const finish = (result: ServiceWorker | null) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      worker.removeEventListener('statechange', onStateChange);
+      resolve(result);
+    };
+
+    const onStateChange = () => {
+      if (worker.state === 'installed' || worker.state === 'activated') {
+        finish(worker);
+      } else if (worker.state === 'redundant') {
+        finish(null);
       }
     };
 
+    const timeoutId = window.setTimeout(() => finish(null), timeoutMs);
     worker.addEventListener('statechange', onStateChange);
+
+    // Close the race between the state checks above and attaching the listener.
+    onStateChange();
   });
 }
 
-async function findWaitingWorker(
+function findUpdateWorker(
   registration: ServiceWorkerRegistration,
   updateCheckTimeoutMs: number,
-  activationTimeoutMs: number,
 ): Promise<ServiceWorker | null> {
-  if (registration.waiting) return registration.waiting;
+  const existingWorker = registration.waiting ?? registration.installing;
+  if (existingWorker) return Promise.resolve(existingWorker);
 
-  const updateChecked = await withTimeout(
-    registration.update(),
-    updateCheckTimeoutMs,
-    null,
-  );
-  if (!updateChecked) return null;
+  return new Promise((resolve) => {
+    let settled = false;
+    let postUpdateCheckId: number | undefined;
 
-  if (registration.waiting) return registration.waiting;
-  if (registration.installing) {
-    return withTimeout(
-      waitUntilInstalled(registration.installing),
-      activationTimeoutMs,
-      null,
-    );
-  }
+    const currentWorker = () => registration.waiting ?? registration.installing;
 
-  return null;
-}
+    const finish = (worker: ServiceWorker | null) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      if (postUpdateCheckId !== undefined) {
+        window.clearTimeout(postUpdateCheckId);
+      }
+      registration.removeEventListener('updatefound', onUpdateFound);
+      resolve(worker);
+    };
 
-function waitForControllerChange(
-  serviceWorker: ServiceWorkerContainerLike,
-  activationTimeoutMs: number,
-): Promise<boolean> {
-  return withTimeout(
-    new Promise<boolean>((resolve) => {
-      const onControllerChange = () => {
-        resolve(true);
-      };
+    const onUpdateFound = () => {
+      const worker = currentWorker();
+      if (worker) {
+        finish(worker);
+        return;
+      }
 
-      serviceWorker.addEventListener('controllerchange', onControllerChange, {
-        once: true,
+      // `installing` is specified to be populated before `updatefound`, but
+      // check once more in a microtask so an implementation cannot strand the
+      // boot loader in that tiny ordering gap.
+      window.queueMicrotask(() => {
+        const deferredWorker = currentWorker();
+        if (deferredWorker) finish(deferredWorker);
       });
-    }),
-    activationTimeoutMs,
-    false,
-  );
+    };
+
+    const timeoutId = window.setTimeout(
+      () => finish(currentWorker()),
+      updateCheckTimeoutMs,
+    );
+    registration.addEventListener('updatefound', onUpdateFound);
+
+    // Close the race between the initial check and listener registration.
+    const workerAfterListening = currentWorker();
+    if (workerAfterListening) {
+      finish(workerAfterListening);
+      return;
+    }
+
+    void (async () => {
+      try {
+        await registration.update();
+        if (settled) return;
+        const worker = currentWorker();
+        if (worker) {
+          finish(worker);
+          return;
+        }
+
+        // The update promise and `updatefound` are separate notifications.
+        // Give the event task one turn to populate `installing` before
+        // concluding that the check found no update.
+        postUpdateCheckId = window.setTimeout(() => finish(currentWorker()), 0);
+      } catch {
+        finish(currentWorker());
+      }
+    })();
+  });
 }
 
 function waitForActivationOrControllerChange(
@@ -211,7 +249,6 @@ export async function applyFreshLoadServiceWorkerUpdate({
   updateCheckTimeoutMs = DEFAULT_UPDATE_CHECK_TIMEOUT_MS,
   activationTimeoutMs = DEFAULT_ACTIVATION_TIMEOUT_MS,
   serviceWorker = getServiceWorkerContainer(),
-  reload = () => window.location.reload(),
   shouldSkip = () => false,
 }: FreshLoadServiceWorkerUpdateOptions = {}): Promise<boolean> {
   if (!serviceWorker || !serviceWorker.controller || shouldSkip()) {
@@ -225,22 +262,25 @@ export async function applyFreshLoadServiceWorkerUpdate({
   );
   if (!registration) return false;
 
-  const waitingWorker = await findWaitingWorker(
+  const discoveredWorker = await findUpdateWorker(
     registration,
     updateCheckTimeoutMs,
+  );
+  if (!discoveredWorker) return false;
+
+  const waitingWorker = await waitUntilInstallable(
+    discoveredWorker,
     activationTimeoutMs,
   );
   if (!waitingWorker || shouldSkip()) return false;
+  if (waitingWorker.state === 'activated') return true;
 
-  const controllerChange = waitForControllerChange(
+  const activated = waitForActivationOrControllerChange(
     serviceWorker,
+    waitingWorker,
     activationTimeoutMs,
   );
   waitingWorker.postMessage(SKIP_WAITING_MESSAGE);
 
-  if (!(await controllerChange)) return false;
-  if (shouldSkip()) return false;
-
-  reload();
-  return true;
+  return activated;
 }

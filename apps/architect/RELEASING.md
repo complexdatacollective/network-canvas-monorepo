@@ -148,7 +148,39 @@ missing the service worker, manifest, or icons, or if any emitted JS chunk was
 dropped from the workbox precache manifest (e.g. for exceeding the size limit) —
 which would 404 offline and break the offline boot. Treat an assertion failure as
 a hard release blocker. Architect asserts that _every_ chunk is precached because
-it uses no `globIgnores`.
+it uses no `globIgnores`. The assertion also validates the emitted `_headers`:
+the service worker, HTML shells, manifest, and stable icons must use
+`no-store, no-cache, max-age=0, must-revalidate`, while only content-hashed
+`/assets/*` may use a one-year immutable cache.
+
+The production custom domain is fronted by Cloudflare, so this repository rule
+is necessary but cannot override an account-level Browser Cache TTL rule. Keep
+Cloudflare set to **Respect Existing Headers** (with no cache rule that replaces
+these origin directives), and verify `/`, `/sw.js`, `/index.html`, and
+`/manifest.webmanifest` return the no-store policy after each release. A
+response with a positive browser `max-age` is a release blocker even when the
+build assertion passed, because it means an intermediary replaced the emitted
+contract.
+
+## Service worker update propagation
+
+The service worker (`registerType: 'prompt'`, see `vite.config.ts`) has two
+deliberately different update paths:
+
+- On a fresh navigation, the pre-render startup check activates a waiting
+  worker while the static loading spinner remains visible. Startup then
+  continues on the same navigation; activation never calls `reload()`.
+- Once React has rendered, a newly discovered update remains in the **update
+  available** state until the user opens the version indicator and chooses
+  **Install and reload**. Neither `AppUpdateProvider` nor `vite-plugin-pwa` may
+  reload the page independently.
+- After that user-requested reload, the version indicator shows the recently
+  updated state and exposes the release notes for the running version.
+
+This means an already-open Architect tab continues running its current version
+until the researcher explicitly installs the update. Do not add an automatic
+post-render reload path: open editor drafts, dialogs, imports, and exports make
+that data-destructive.
 
 ## PostHog source maps
 

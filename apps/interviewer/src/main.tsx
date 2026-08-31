@@ -39,15 +39,11 @@ if (import.meta.hot) {
 initFileLaunchCapture();
 
 async function startApp(): Promise<void> {
-  if (
-    await applyFreshLoadServiceWorkerUpdate({
-      shouldSkip: () =>
-        window.location.pathname.startsWith('/interview/') ||
-        hasPendingLaunchFiles(),
-    })
-  ) {
-    return;
-  }
+  await applyFreshLoadServiceWorkerUpdate({
+    shouldSkip: () =>
+      window.location.pathname.startsWith('/interview/') ||
+      hasPendingLaunchFiles(),
+  });
 
   // Do not request at startup: Firefox may show a permission prompt, while
   // WebKit and Chromium judge silent grants using interaction/engagement

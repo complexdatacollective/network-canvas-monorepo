@@ -19,7 +19,6 @@ describe('version-change detection', () => {
         app: 'architect',
         currentVersion: '2.0.0',
         needRefresh: false,
-        hasUnsavedWork: false,
         installUpdate: vi.fn().mockResolvedValue(true),
       }),
     );
@@ -35,7 +34,6 @@ describe('version-change detection', () => {
         app: 'architect',
         currentVersion: '2.0.0',
         needRefresh: false,
-        hasUnsavedWork: false,
         installUpdate: vi.fn().mockResolvedValue(true),
       }),
     );
@@ -54,7 +52,6 @@ describe('version-change detection', () => {
         app: 'architect',
         currentVersion: '2.0.0',
         needRefresh: false,
-        hasUnsavedWork: false,
         installUpdate: vi.fn().mockResolvedValue(true),
       }),
     );
@@ -67,117 +64,116 @@ describe('version-change detection', () => {
   });
 });
 
-describe('auto-apply', () => {
-  it('applies the update once when one is pending and no work is in progress', async () => {
+describe('manual installation', () => {
+  it('never installs an available update without a user request', async () => {
     const installUpdate = vi.fn().mockResolvedValue(true);
     const { result } = renderHook(() =>
       useAppUpdate({
         app: 'interviewer',
         currentVersion: '2.0.0',
         needRefresh: true,
-        hasUnsavedWork: false,
-        installUpdate,
-      }),
-    );
-    await waitFor(() => expect(installUpdate).toHaveBeenCalledOnce());
-    expect(result.current.status).toBe('available');
-  });
-
-  it('keeps the manual update available when auto-apply rejects', async () => {
-    const installUpdate = vi.fn().mockRejectedValue(new Error('activation'));
-    const { result } = renderHook(() =>
-      useAppUpdate({
-        app: 'interviewer',
-        currentVersion: '2.0.0',
-        needRefresh: true,
-        hasUnsavedWork: false,
         installUpdate,
       }),
     );
 
-    await waitFor(() => expect(installUpdate).toHaveBeenCalledOnce());
-    expect(result.current.status).toBe('available');
-  });
-
-  it('defers to the manual button when work is in progress', async () => {
-    const installUpdate = vi.fn().mockResolvedValue(true);
-    const { result } = renderHook(() =>
-      useAppUpdate({
-        app: 'interviewer',
-        currentVersion: '2.0.0',
-        needRefresh: true,
-        hasUnsavedWork: true,
-        installUpdate,
-      }),
-    );
     await waitFor(() => expect(result.current.status).toBe('available'));
+    await Promise.resolve();
     expect(installUpdate).not.toHaveBeenCalled();
+    expect(result.current.status).toBe('available');
   });
 
-  it('consults checkUnsavedWork over a stale hasUnsavedWork before auto-applying', async () => {
-    // The host's rendered `hasUnsavedWork` can lag work already done — an
-    // editor mirroring its live values on a debounce reports pristine for an
-    // edit typed inside the coalescing window. Auto-apply reloads without
-    // asking, so it must re-check synchronously rather than trust the render.
-    const installUpdate = vi.fn().mockResolvedValue(true);
-    const checkUnsavedWork = vi.fn().mockReturnValue(true);
+  it('records a pending update before invoking the user-requested install', async () => {
+    const installUpdate = vi.fn(() => {
+      expect(localStorage.getItem('nc:pendingAppUpdate:interviewer')).toBe(
+        '2.0.0',
+      );
+      return true;
+    });
+    const { result } = renderHook(() =>
+      useAppUpdate({
+        app: 'interviewer',
+        currentVersion: '2.0.0',
+        needRefresh: true,
+        installUpdate,
+      }),
+    );
+
+    await expect(result.current.install()).resolves.toBe(true);
+    expect(installUpdate).toHaveBeenCalledOnce();
+    expect(localStorage.getItem('nc:pendingAppUpdate:interviewer')).toBe(
+      '2.0.0',
+    );
+  });
+
+  it('clears the pending marker when installation reports failure', async () => {
+    const installUpdate = vi.fn().mockResolvedValue(false);
+    const { result } = renderHook(() =>
+      useAppUpdate({
+        app: 'interviewer',
+        currentVersion: '2.0.0',
+        needRefresh: true,
+        installUpdate,
+      }),
+    );
+
+    await expect(result.current.install()).resolves.toBe(false);
+    expect(localStorage.getItem('nc:pendingAppUpdate:interviewer')).toBeNull();
+  });
+
+  it('clears the pending marker and preserves a rejected installation', async () => {
+    const error = new Error('activation failed');
+    const installUpdate = vi.fn().mockRejectedValue(error);
     const { result } = renderHook(() =>
       useAppUpdate({
         app: 'architect',
         currentVersion: '2.0.0',
         needRefresh: true,
-        hasUnsavedWork: false,
-        checkUnsavedWork,
         installUpdate,
       }),
     );
 
-    await waitFor(() => expect(result.current.status).toBe('available'));
-    expect(checkUnsavedWork).toHaveBeenCalled();
-    expect(installUpdate).not.toHaveBeenCalled();
+    await expect(result.current.install()).rejects.toBe(error);
+    expect(localStorage.getItem('nc:pendingAppUpdate:architect')).toBeNull();
   });
 
-  it('still auto-applies when checkUnsavedWork reports nothing in progress', async () => {
-    const installUpdate = vi.fn().mockResolvedValue(true);
-    const checkUnsavedWork = vi.fn().mockReturnValue(false);
-    renderHook(() =>
+  it('reports recently updated after a requested reload even when the recorded version already matches', async () => {
+    localStorage.setItem('nc:lastLaunchedVersion:architect', '2.0.0');
+    localStorage.setItem('nc:pendingAppUpdate:architect', '2.0.0');
+
+    const { result } = renderHook(() =>
       useAppUpdate({
         app: 'architect',
         currentVersion: '2.0.0',
-        needRefresh: true,
-        // Deliberately the opposite of the check, to prove which one auto-apply
-        // reads.
-        hasUnsavedWork: true,
-        checkUnsavedWork,
-        installUpdate,
+        needRefresh: false,
+        installUpdate: vi.fn().mockResolvedValue(true),
       }),
     );
 
-    await waitFor(() => expect(installUpdate).toHaveBeenCalled());
+    await waitFor(() => expect(result.current.status).toBe('updated'));
+    expect(localStorage.getItem('nc:pendingAppUpdate:architect')).toBeNull();
+    expect(localStorage.getItem('nc:pendingAppUpdate:interviewer')).toBeNull();
   });
 
-  it('does not auto-apply an update surfaced after the fresh-load window', async () => {
-    const installUpdate = vi.fn().mockResolvedValue(true);
-    const { result, rerender } = renderHook(
-      ({ needRefresh }: { needRefresh: boolean }) =>
-        useAppUpdate({
-          app: 'architect',
-          currentVersion: '2.0.0',
-          needRefresh,
-          hasUnsavedWork: false,
-          installUpdate,
-          autoApplyWindowMs: 10,
-        }),
-      { initialProps: { needRefresh: false } },
+  it('keeps pending update markers isolated by app', async () => {
+    localStorage.setItem('nc:lastLaunchedVersion:interviewer', '2.0.0');
+    localStorage.setItem('nc:pendingAppUpdate:architect', '2.0.0');
+
+    const { result } = renderHook(() =>
+      useAppUpdate({
+        app: 'interviewer',
+        currentVersion: '2.0.0',
+        needRefresh: false,
+        installUpdate: vi.fn().mockResolvedValue(true),
+      }),
     );
 
-    // Let the fresh-load window elapse before the update is detected (as the
-    // hourly poll would in a long-lived idle session).
-    await new Promise((resolve) => setTimeout(resolve, 40));
-    rerender({ needRefresh: true });
-
-    await waitFor(() => expect(result.current.status).toBe('available'));
-    expect(installUpdate).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(localStorage.getItem('nc:lastLaunchedVersion:interviewer')).toBe(
+        '2.0.0',
+      ),
+    );
+    expect(result.current.status).toBe('idle');
+    expect(localStorage.getItem('nc:pendingAppUpdate:architect')).toBe('2.0.0');
   });
 });
 
@@ -199,7 +195,6 @@ describe('release-notes state', () => {
         app: 'architect',
         currentVersion: '2.0.0',
         needRefresh: true,
-        hasUnsavedWork: true, // suppress auto-apply so the test doesn't reload
         installUpdate: vi.fn().mockResolvedValue(true),
       }),
     );

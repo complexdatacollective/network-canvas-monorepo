@@ -11,6 +11,8 @@ import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { assertPwaCacheHeaders } from '../../../scripts/assert-pwa-cache-headers.mjs';
+
 const appRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
@@ -21,6 +23,19 @@ const fail = (msg) => {
   console.error(`PWA build assertion failed: ${msg}`);
   process.exit(1);
 };
+
+try {
+  assertPwaCacheHeaders({
+    additionalStablePaths: [
+      '/preview/',
+      '/preview/index.html',
+      '/architect-icon.png',
+    ],
+    text: readFileSync(path.join(dist, '_headers'), 'utf8'),
+  });
+} catch (error) {
+  fail(error instanceof Error ? error.message : String(error));
+}
 
 let sw;
 try {

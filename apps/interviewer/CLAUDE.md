@@ -100,7 +100,7 @@ Step-up auth (re-authenticate before a sensitive action, without relocking the w
 - **Install banner**: `InstallBanner` (mounted on Home) urges installing before collecting data and maps browser-storage danger to a shared intent: WebKit's proactive cleanup is high risk, Firefox's storage-pressure eviction is medium risk, and Chromium's rare automatic eviction is low risk. Installation protects against routine cleanup. One-tap install uses `src/lib/pwa/installPrompt.ts` (`beforeinstallprompt` where supported; Apple platforms get Share-menu instructions). Dismissal lasts one session.
 - **Storage durability**: `src/lib/storage.ts` requests persistent (non-evictable) storage and surfaces usage/quota in Settings and `StatusRow`.
 - **Offline UX**: `useOnline` (re-exported through `OnlineStatusProvider` from `@codaco/interview`) is the single source of online/offline state app-wide. `protocolRequiresInternet.ts` flags protocols with a Geospatial stage (online map tiles); `NewSessionForm` warns before starting one offline. The Geospatial stage's own offline error boundary and persistent offline indicator live in the `@codaco/interview` package, not here.
-- **Netlify**: `public/_headers` (no-cache on `sw.js`/`index.html`/manifest/icons so a release always revalidates; long-cache immutable on hashed `assets/*`) and `public/_redirects` (SPA fallback to `index.html`). See `RELEASING.md` for the deploy pipeline.
+- **Netlify**: `public/_headers` (no-store on `sw.js`/`index.html`/manifest/icons so a release cannot reuse a stable entry point; long-cache immutable on hashed `assets/*`) and `public/_redirects` (SPA fallback to `index.html`). See `RELEASING.md` for the deploy pipeline and Cloudflare requirement.
 
 ## Conventions
 

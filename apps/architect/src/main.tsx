@@ -51,14 +51,10 @@ const warmCaches = () => {
 };
 
 async function startApp(): Promise<void> {
-  if (
-    await applyFreshLoadServiceWorkerUpdate({
-      shouldSkip: () =>
-        isCriticalOperationInProgress() || hasPendingLaunchFiles(),
-    })
-  ) {
-    return;
-  }
+  await applyFreshLoadServiceWorkerUpdate({
+    shouldSkip: () =>
+      isCriticalOperationInProgress() || hasPendingLaunchFiles(),
+  });
 
   // redux-remember restores only the active library id. Load its canonical
   // protocol body from IndexedDB before mounting any direct /protocol route.
