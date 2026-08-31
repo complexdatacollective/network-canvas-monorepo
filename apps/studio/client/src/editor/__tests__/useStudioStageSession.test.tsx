@@ -64,6 +64,21 @@ function renderSession(draft = DRAFT) {
   );
 }
 
+function draftAt(sequence: string, label: string) {
+  return {
+    ...DRAFT,
+    revision: { sequence, hash: `revision-${sequence}` },
+    sections: {
+      ...DRAFT.sections,
+      [`stage:${STAGE_ID}`]: {
+        ...DRAFT.sections[`stage:${STAGE_ID}`],
+        label,
+        title: label,
+      },
+    },
+  };
+}
+
 beforeEach(() => {
   vi.mocked(rpcClient.protocols.acquireSection).mockReset();
   vi.mocked(rpcClient.protocols.acquireSection).mockResolvedValue({
@@ -149,6 +164,95 @@ describe('useStudioStageSession', () => {
       title: 'Changed by the active editor',
     });
     expect(rpcClient.protocols.draft).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes a spectator after every occupied lease retry', async () => {
+    vi.useFakeTimers();
+    vi.mocked(rpcClient.protocols.acquireSection).mockResolvedValue({
+      mode: 'readOnly',
+    });
+    vi.mocked(rpcClient.protocols.draft)
+      .mockResolvedValueOnce(DRAFT)
+      .mockResolvedValueOnce(draftAt('3', 'First collaborator commit'))
+      .mockResolvedValueOnce(draftAt('4', 'Second collaborator commit'));
+
+    const view = renderSession();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(view.result.current.status).toBe('ready');
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+    expect(
+      view.result.current.session.getSnapshot().editedSection.fields,
+    ).toMatchObject({
+      label: 'First collaborator commit',
+      title: 'First collaborator commit',
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+    expect(
+      view.result.current.session.getSnapshot().editedSection.fields,
+    ).toMatchObject({
+      label: 'Second collaborator commit',
+      title: 'Second collaborator commit',
+    });
+    expect(rpcClient.protocols.acquireSection).toHaveBeenCalledTimes(3);
+    expect(rpcClient.protocols.draft).toHaveBeenCalledTimes(3);
+    view.unmount();
+  });
+
+  it('serializes spectator refreshes and ignores a stale completion', async () => {
+    vi.useFakeTimers();
+    const slowRefresh = deferred<typeof DRAFT>();
+    const newestDraft = draftAt('4', 'Newer authoritative refresh');
+    vi.mocked(rpcClient.protocols.acquireSection).mockResolvedValue({
+      mode: 'readOnly',
+    });
+    vi.mocked(rpcClient.protocols.draft)
+      .mockResolvedValueOnce(DRAFT)
+      .mockReturnValueOnce(slowRefresh.promise)
+      .mockResolvedValueOnce(draftAt('5', 'Newest collaborator commit'));
+
+    const view = renderSession();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(5_000);
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+    expect(rpcClient.protocols.acquireSection).toHaveBeenCalledTimes(2);
+    expect(rpcClient.protocols.draft).toHaveBeenCalledTimes(2);
+
+    act(() => view.rerender({ currentDraft: newestDraft }));
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+    expect(
+      view.result.current.session.getSnapshot().editedSection.fields,
+    ).toMatchObject({ label: 'Newer authoritative refresh' });
+
+    await act(async () => {
+      slowRefresh.resolve(draftAt('3', 'Stale collaborator commit'));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(
+      view.result.current.session.getSnapshot().editedSection.fields,
+    ).toMatchObject({ label: 'Newer authoritative refresh' });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(rpcClient.protocols.acquireSection).toHaveBeenCalledTimes(3);
+    expect(rpcClient.protocols.draft).toHaveBeenCalledTimes(3);
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+    expect(
+      view.result.current.session.getSnapshot().editedSection.fields,
+    ).toMatchObject({ label: 'Newest collaborator commit' });
+    view.unmount();
   });
 
   it('retries a failed initial acquisition with the same client identity', async () => {

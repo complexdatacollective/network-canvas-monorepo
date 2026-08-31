@@ -58,10 +58,19 @@ export function useStudioStageSession(params: {
     if (current === null || current.draftId !== params.draftId) return;
 
     const incomingRevision = BigInt(params.draft.revision.sequence);
-    if (
-      incomingRevision < current.store.getSnapshot().manifestRevision.sequence
-    )
-      return;
+    const snapshot = current.store.getSnapshot();
+    if (incomingRevision < snapshot.manifestRevision.sequence) return;
+
+    const incomingDocument = params.draft.sections[current.sectionId];
+    if (snapshot.access.mode === 'readOnly' && incomingDocument !== undefined) {
+      current.store.replaceAuthoritativeStage({
+        fields: stageDraftFromDocument(incomingDocument).fields,
+        manifestRevision: {
+          sequence: incomingRevision,
+          hash: params.draft.revision.hash,
+        },
+      });
+    }
 
     current.store.receiveAuthoritativeUpdate({
       protocolSections: params.draft.sections,
@@ -284,7 +293,47 @@ export function useStudioStageSession(params: {
           sectionId: selectedSectionId,
           clientId: leaseClientId,
         });
-        if (access.mode !== 'editable') return;
+        if (access.mode !== 'editable') {
+          const refreshed = await rpcClient.protocols.draft({
+            teamId: params.teamId,
+            protocolId: params.protocolId,
+            draftId: params.draftId,
+          });
+          if (promotionCancelled()) return;
+
+          const incomingRevision = BigInt(refreshed.revision.sequence);
+          if (incomingRevision < store.getSnapshot().manifestRevision.sequence)
+            return;
+
+          const refreshedDocument = refreshed.sections[selectedSectionId];
+          if (refreshedDocument === undefined) {
+            stopRetry();
+            setState({
+              status: 'failed',
+              message: 'The selected screen is no longer in this draft.',
+            });
+            return;
+          }
+
+          const refreshedStage = stageDraftFromDocument(refreshedDocument);
+          committedFields = structuredClone(refreshedStage.fields);
+          store.replaceAuthoritativeStage({
+            fields: refreshedStage.fields,
+            manifestRevision: {
+              sequence: incomingRevision,
+              hash: refreshed.revision.hash,
+            },
+          });
+          store.receiveAuthoritativeUpdate({
+            protocolSections: refreshed.sections,
+            manifestRevision: {
+              sequence: incomingRevision,
+              hash: refreshed.revision.hash,
+            },
+          });
+          latestDraft.current = refreshed;
+          return;
+        }
         acquiredLease = access;
         if (!active) {
           await releaseLease(access).catch(() => undefined);
