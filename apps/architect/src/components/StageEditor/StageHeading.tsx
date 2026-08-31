@@ -96,10 +96,18 @@ export const HeadingInput = ({
   'aria-describedby': ariaDescribedBy,
 }: HeadingInputProps) => {
   const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    // Reachable by paste and by drop, neither of which `onKeyDown` sees.
-    // Collapsing to a space keeps the whole pasted name rather than discarding
-    // everything after the first break.
-    onChange?.(event.target.value.replace(/\s*[\r\n]+\s*/g, ' '));
+    // Reachable by paste and by drop, neither of which `onKeyDown` sees. A
+    // space rather than nothing, so two pasted lines do not run together into
+    // one word.
+    //
+    // One space per break, and deliberately NOT the surrounding whitespace as
+    // well: `maxLength` is the browser's, applied to the raw value before this
+    // runs. Anything that shortened the string here would hand the cap
+    // characters to discard that the finished name had room for — an indented
+    // 51-character paste that normalises to 45 came back cut at 44. Preserving
+    // the length costs a run of spaces where the paste was indented, which the
+    // researcher can see and tidy; the truncation silently took real text.
+    onChange?.(event.target.value.replace(/[\r\n]/g, ' '));
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {

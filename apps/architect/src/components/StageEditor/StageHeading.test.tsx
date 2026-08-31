@@ -97,16 +97,28 @@ describe('HeadingInput', () => {
     expect(screen.getAllByRole('textbox')).toHaveLength(1);
   });
 
-  it('collapses line breaks pasted into the name onto a single line', () => {
+  it('puts a pasted name on one line without shortening it', () => {
     const onChange = vi.fn();
 
-    render(<HeadingInput name="label" value="" onChange={onChange} />);
+    render(
+      <HeadingInput
+        name="label"
+        value=""
+        onChange={onChange}
+        characterLimit={50}
+      />,
+    );
 
+    const pasted = 'Close ties\n   and weak ties';
     fireEvent.change(screen.getByRole('textbox'), {
-      target: { value: 'Close ties\nand weak ties\r\nboth' },
+      target: { value: pasted },
     });
 
-    expect(onChange).toHaveBeenCalledWith('Close ties and weak ties both');
+    expect(onChange).toHaveBeenCalledWith('Close ties    and weak ties');
+    // Length-preserving on purpose. `maxLength` is the browser's and lands on
+    // the raw value first, so a normalisation that shortened the string would
+    // leave the cap discarding characters the finished name had room for.
+    expect(onChange.mock.calls[0]?.[0]).toHaveLength(pasted.length);
   });
 
   it('submits the form on Enter rather than typing a line break into the name', () => {
