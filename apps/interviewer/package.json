@@ -1,6 +1,6 @@
 {
   "name": "@codaco/interviewer",
-  "version": "8.2.0",
+  "version": "8.2.1",
   "private": true,
   "description": "A tool for conducting Network Canvas Interviews.",
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
