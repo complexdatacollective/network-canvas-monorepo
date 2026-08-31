@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useCallback, useMemo, useRef, useSyncExternalStore } from 'react';
 
 import {
   type FieldNameMode,
@@ -10,9 +10,9 @@ import {
   formatObjectPath,
   getValue,
 } from '@codaco/fresco-ui/form/utils/objectPath';
+import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 
 import type { StageFormDraft } from '../session.ts';
-import { isBlankFieldValue } from './blankValue.ts';
 import {
   type StageFormStoreApi,
   useStageEditorForm,
@@ -91,9 +91,13 @@ export function useSetStageValue(): (path: string, value: FieldValue) => void {
  */
 export function useStageHasAnyValue(paths: readonly string[]): boolean {
   const { storeApi, committedFields } = useStageEditorForm();
-  // The paths are the dependency, not the array carrying them: a section that
-  // spells its list inline hands over a new array on every render.
-  const key = paths.join(' ');
+  // The paths themselves are the dependency, not the array carrying them: a
+  // section that spells its list inline hands over a new array every render.
+  // Serialised as JSON rather than joined, because a path may legally contain
+  // whatever separator a join would pick — `["prompt text"]` contains a space.
+  const key = JSON.stringify(paths);
+  const latestPaths = useRef(paths);
+  latestPaths.current = paths;
 
   const subscribe = useCallback(
     (onStoreChange: () => void) => storeApi.subscribe(onStoreChange),
@@ -103,18 +107,33 @@ export function useStageHasAnyValue(paths: readonly string[]): boolean {
   const getSnapshot = useCallback(() => {
     const state = storeApi.getState();
     const values = state.getFormValues();
-    return key
-      .split(' ')
-      .some(
-        (path) =>
-          path !== '' &&
-          !isBlankFieldValue(
-            resolveValue(state, values, committedFields, path),
-          ),
-      );
+    return latestPaths.current.some((path) =>
+      hasAnswer(resolveValue(state, values, committedFields, path)),
+    );
   }, [committedFields, key, storeApi]);
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+}
+
+/**
+ * Whether anything has actually been entered at this value.
+ *
+ * A capability may own a CONTAINER path while its controls register the leaves
+ * inside it, and merely mounting those controls assembles an object —
+ * `{ action: undefined, destination: undefined }` — which is not an answer to
+ * anything. Asking the question of the leaves instead is what stops an
+ * untouched capability from reporting itself as configured, and then offering
+ * to delete content nobody entered.
+ */
+function hasAnswer(value: unknown): boolean {
+  if (isUnanswered(value)) return false;
+  if (Array.isArray(value)) return value.some(hasAnswer);
+  // `isUnanswered` already ruled out null, so anything left of object type is
+  // a real container.
+  if (typeof value === 'object') {
+    return Object.values(value as Record<string, unknown>).some(hasAnswer);
+  }
+  return true;
 }
 
 /**

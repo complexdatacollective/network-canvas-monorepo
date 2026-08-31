@@ -8,6 +8,7 @@ import {
   useRef,
 } from 'react';
 
+import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import FormErrorsList from '@codaco/fresco-ui/form/FormErrors';
 import { useForm } from '@codaco/fresco-ui/form/hooks/useForm';
 import FormStoreProvider, {
@@ -18,6 +19,7 @@ import type {
   FormSubmitHandler,
 } from '@codaco/fresco-ui/form/store/types';
 import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
+import type { ObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { canonicalize } from '@codaco/studio-sync/apply';
 
@@ -122,6 +124,7 @@ function StageEditorFormBody({
           stageDraftFromSubmission({
             currentFields: current,
             submittedValues: values as Record<string, FieldValue>,
+            mountedPaths: mountedPathsOf(storeApi),
             dormantFields: dormantFieldsOf(storeApi),
           }),
         );
@@ -263,6 +266,18 @@ function failureMessage(error: unknown): string {
  * hidden behind a collapsed group would look identical to one that was
  * deliberately thrown away.
  */
+/**
+ * Where every field the form still has mounted lives.
+ *
+ * The submitted values are assembled from these, so a hidden container that
+ * encloses one of them must not be replayed over the top of what they hold.
+ */
+function mountedPathsOf(storeApi: StageFormStoreApi): ObjectPath[] {
+  return [...storeApi.getState().fields].map(
+    ([name, field]) => field.path ?? resolveFieldPath([], name),
+  );
+}
+
 function dormantFieldsOf(storeApi: StageFormStoreApi): DormantField[] {
   return [...storeApi.getState().dormantValues].map(([name, field]) => ({
     name,

@@ -31,6 +31,8 @@ export type StageDraftSubmission = Readonly<{
   currentFields: StageFormDraft;
   /** What the form handed the submit handler: mounted fields only. */
   submittedValues: Readonly<Record<string, FieldValue>>;
+  /** Where the still-mounted fields live, so a hidden one cannot outrank them. */
+  mountedPaths: readonly ObjectPath[];
   dormantFields: readonly DormantField[];
 }>;
 
@@ -61,12 +63,20 @@ export function stageDraftFromSubmission(
 
   const { writes, removals } = partitionDormant(submission.dormantFields);
 
+  // A hidden CONTAINER is dropped outright when the form still has a field
+  // mounted inside it: the submitted values already carry that field's current
+  // edit, and replaying the container the researcher last saw would put the
+  // stale reading of a field they can still see back over it.
+  const applicable = writes.filter(
+    (write) => !hasMountedDescendant(submission.mountedPaths, write.path),
+  );
+
   // Shallowest first, so a field registered at a container path cannot
   // overwrite the edit made to a field registered inside it. Fresco's own
   // assembly of mounted fields replays them in exactly this order, and the
   // two have to agree or collapsing a section would restore a stale nested
   // value that the mounted form had already replaced.
-  for (const write of writes.toSorted(
+  for (const write of applicable.toSorted(
     (a, b) => a.path.length - b.path.length,
   )) {
     // `setValue` copies every container it traverses, so this cannot write
@@ -104,6 +114,17 @@ function partitionDormant(
   return { writes, removals };
 }
 
+function hasMountedDescendant(
+  mountedPaths: readonly ObjectPath[],
+  path: ObjectPath,
+): boolean {
+  return mountedPaths.some(
+    (mounted) =>
+      mounted.length > path.length &&
+      path.every((segment, index) => mounted[index] === segment),
+  );
+}
+
 function safeFieldPath(name: string): ObjectPath | null {
   try {
     return resolveFieldPath([], name);
@@ -131,6 +152,12 @@ function removePath(draft: SectionDoc, path: ObjectPath): SectionDoc {
   for (let depth = path.length - 1; depth >= 1; depth -= 1) {
     const ancestorPath = path.slice(0, depth);
     if (!isEmptyDictionary(getValue(next, ancestorPath))) break;
+    // An emptied ROW is left in place. `omitValue` turns an omitted array
+    // index into an `undefined` hole rather than renumbering the entries
+    // around it, so pruning here would punch a gap in a list of prompts or
+    // items. Removing a row is a deliberate array operation, not a
+    // consequence of clearing one of its settings.
+    if (typeof ancestorPath.at(-1) === 'number') break;
     next = omitValue(next, ancestorPath) as SectionDoc;
   }
   return next;

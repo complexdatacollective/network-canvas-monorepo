@@ -1,11 +1,11 @@
-import { type FocusEvent, useId } from 'react';
+import { useId } from 'react';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { cx } from '@codaco/fresco-ui/utils/cva';
 
+import StageNameInput from '../fields/StageNameInput.tsx';
 import ProtocolField from '../form/ProtocolField.tsx';
 import {
   SectionScopeContext,
@@ -14,60 +14,8 @@ import {
 import { useOutlineSection } from '../form/useOutlineSection.ts';
 import { interfaceDisplayName } from '../interfaces/interfaceNames.ts';
 
-/** The character limit is the input's own; it is not a validation rule. */
+/** The character limit is the control's own; it is not a validation rule. */
 const STAGE_NAME_LIMIT = 50;
-
-type HeadingInputProps = {
-  'id'?: string;
-  'name'?: string;
-  'value'?: string;
-  'onChange'?: (value: string) => void;
-  'onBlur'?: (event: FocusEvent<HTMLInputElement>) => void;
-  'placeholder'?: string;
-  /**
-   * A hard cap on typed characters. Not called `maxLength`: that name belongs
-   * to Fresco's validation catalogue, where it would become an error after the
-   * fact instead of the input's own limit.
-   */
-  'characterLimit'?: number;
-  'autoFocus'?: boolean;
-  'disabled'?: boolean;
-  'readOnly'?: boolean;
-  'aria-required'?: boolean;
-  'aria-invalid'?: boolean;
-  'aria-labelledby'?: string;
-  'aria-describedby'?: string;
-};
-
-/**
- * The stage's name, at the size of the page's own heading — because it is:
- * naming the stage is the first thing a researcher does and the thing they
- * recognise it by afterwards. The label and any error come from the field
- * around it, so this is only the control.
- */
-export function HeadingInput({
-  value = '',
-  onChange,
-  characterLimit,
-  'aria-invalid': ariaInvalid,
-  ...rest
-}: HeadingInputProps) {
-  return (
-    <input
-      {...rest}
-      type="text"
-      value={value}
-      onChange={(event) => onChange?.(event.target.value)}
-      maxLength={characterLimit}
-      aria-invalid={ariaInvalid}
-      className={cx(
-        headingVariants({ level: 'h1', margin: 'none' }),
-        'focusable w-full border-none bg-transparent p-0 outline-none placeholder:opacity-40',
-        ariaInvalid && 'text-destructive',
-      )}
-    />
-  );
-}
 
 /**
  * What this host calls a stage.
@@ -145,9 +93,9 @@ export default function StageNameSection({
         </Paragraph>
       )}
       <SectionScopeContext value={sectionId}>
-        <ProtocolField<typeof HeadingInput>
+        <ProtocolField<typeof StageNameInput>
           name="label"
-          component={HeadingInput}
+          component={StageNameInput}
           // The hero input is the visible heading, so the label exists for
           // assistive technology — but it still has to exist, because it is
           // what the outline and a host's problem panel call this field.

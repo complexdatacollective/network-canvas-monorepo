@@ -1,6 +1,5 @@
 import type { FieldState } from '@codaco/fresco-ui/form/store/types';
-
-import { isBlankFieldValue } from './blankValue.ts';
+import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 
 /**
  * What the outline says about one section.
@@ -86,10 +85,18 @@ export class SectionOutlineStore {
   };
 
   getSnapshot = (): readonly OutlineSection[] => {
-    if (this.cachedVersion === this.version) return this.cachedSnapshot;
+    const ordered = this.orderedRecords();
+    // Order is re-derived on every read, and only the SNAPSHOT is cached.
+    // Sections can be reordered without any of them registering, being
+    // renamed, or changing availability — nothing would bump the version — and
+    // a cache keyed on the version alone would keep serving an order the page
+    // no longer has.
+    if (this.cachedVersion === this.version && this.sameOrder(ordered)) {
+      return this.cachedSnapshot;
+    }
     this.cachedVersion = this.version;
     this.cachedSnapshot = Object.freeze(
-      this.orderedRecords().map((record) =>
+      ordered.map((record) =>
         Object.freeze({
           id: record.id,
           title: record.title,
@@ -174,6 +181,15 @@ export class SectionOutlineStore {
     };
   }
 
+  private sameOrder(ordered: readonly SectionRecord[]): boolean {
+    return (
+      ordered.length === this.cachedSnapshot.length &&
+      ordered.every(
+        (record, index) => record.id === this.cachedSnapshot[index]?.id,
+      )
+    );
+  }
+
   private orderedRecords(): SectionRecord[] {
     return [...this.sections.values()].toSorted(compareByDocumentPosition);
   }
@@ -219,7 +235,7 @@ export function sectionOutlineStatus(
     if (errors !== null && errors.length > 0) return 'error';
     if (
       field.required &&
-      isBlankFieldValue(reader.getFieldState(field.name)?.value)
+      isUnanswered(reader.getFieldState(field.name)?.value)
     ) {
       incomplete = true;
     }

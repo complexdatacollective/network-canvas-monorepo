@@ -467,6 +467,79 @@ describe('StageEditorShell', () => {
     );
   });
 
+  it('does not call a whitespace-only answer finished', async () => {
+    renderEditor(
+      createSession({ fields: { label: '   ', title: '  ', items: [] } }),
+    );
+
+    // Fresco's required validator trims, so a form that accepted this would
+    // reject it on submit. The outline has to say the same thing the submit
+    // will.
+    await waitFor(() => expect(outlineItems()).toHaveLength(3));
+    expect([...outlineItems()].map((item) => item.textContent)).toEqual([
+      'Stage nameNot finished',
+      'Page contentNot finished',
+      'Interviewer guidanceSwitched off',
+    ]);
+  });
+
+  it('does not treat merely opening a capability as configuring it', async () => {
+    const user = userEvent.setup();
+    const session = createSession();
+    // A capability that owns a CONTAINER path while its controls register the
+    // parts inside it — the shape skip logic has.
+    function ContainerCapability() {
+      const controller = useStageEditorController(session, 'stage-form');
+      return (
+        <StageEditorShell controller={controller}>
+          <BuilderSection
+            title="Skip logic"
+            capability={{
+              fields: ['skipLogic'],
+              confirmClear: {
+                title: 'This will clear your skip logic',
+                description: 'The rules you created will be deleted.',
+                confirmLabel: 'Clear skip logic',
+              },
+            }}
+          >
+            <ProtocolField
+              name="skipLogic.action"
+              label="What this stage does"
+              component={InputField}
+            />
+            <ProtocolField
+              name="skipLogic.destination"
+              label="Where the interview continues"
+              component={InputField}
+            />
+          </BuilderSection>
+        </StageEditorShell>
+      );
+    }
+    render(
+      <DialogProvider>
+        <ContainerCapability />
+      </DialogProvider>,
+    );
+
+    // Opening it mounts the controls, which is enough for the form to assemble
+    // an object at the capability's own path — but nobody has entered anything.
+    await user.click(screen.getByRole('switch', { name: 'Skip logic' }));
+    await screen.findByRole('textbox', { name: 'What this stage does' });
+    await user.click(screen.getByRole('switch', { name: 'Skip logic' }));
+
+    // No confirmation, because there is nothing to lose.
+    expect(
+      screen.queryByRole('button', { name: 'Clear skip logic' }),
+    ).toBeNull();
+    await waitFor(() =>
+      expect([...outlineItems()][0]?.textContent).toBe(
+        'Skip logicSwitched off',
+      ),
+    );
+  });
+
   it('explains a prerequisite before it explains a switch', async () => {
     const session = createSession();
     function DisabledCapability() {

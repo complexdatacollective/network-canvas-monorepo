@@ -10,6 +10,7 @@ describe('stageDraftFromSubmission', () => {
         skipLogic: { action: 'SKIP', filter: { rules: [], join: 'OR' } },
       },
       submittedValues: { label: 'Close friends' },
+      mountedPaths: [],
       dormantFields: [],
     });
 
@@ -23,6 +24,7 @@ describe('stageDraftFromSubmission', () => {
     const draft = stageDraftFromSubmission({
       currentFields: { label: 'Friends', title: 'Old title' },
       submittedValues: { label: 'Friends' },
+      mountedPaths: [],
       dormantFields: [{ name: 'title', path: ['title'], value: 'New title' }],
     });
 
@@ -33,6 +35,7 @@ describe('stageDraftFromSubmission', () => {
     const draft = stageDraftFromSubmission({
       currentFields: { label: 'Friends', interviewScript: 'Read this aloud' },
       submittedValues: { label: 'Friends' },
+      mountedPaths: [],
       dormantFields: [
         {
           name: 'interviewScript',
@@ -59,6 +62,7 @@ describe('stageDraftFromSubmission', () => {
         },
       },
       submittedValues: { label: 'Friends' },
+      mountedPaths: [],
       dormantFields: [
         {
           name: 'skipLogic.action',
@@ -89,6 +93,7 @@ describe('stageDraftFromSubmission', () => {
         skipLogic: { action: 'SKIP', filter: { rules: [], join: 'OR' } },
       },
       submittedValues: {},
+      mountedPaths: [],
       dormantFields: [
         {
           name: 'skipLogic.destination',
@@ -108,6 +113,7 @@ describe('stageDraftFromSubmission', () => {
     const draft = stageDraftFromSubmission({
       currentFields: { behaviours: {}, interviewScript: 'Notes' },
       submittedValues: {},
+      mountedPaths: [],
       dormantFields: [
         {
           name: 'interviewScript',
@@ -124,6 +130,7 @@ describe('stageDraftFromSubmission', () => {
     const draft = stageDraftFromSubmission({
       currentFields: { prompts: [{ id: 'a' }, { id: 'b' }] },
       submittedValues: { prompts: [{ id: 'b' }] },
+      mountedPaths: [],
       dormantFields: [],
     });
 
@@ -136,6 +143,7 @@ describe('stageDraftFromSubmission', () => {
       submittedValues: {},
       // Insertion order puts the descendant first, which is what unmount order
       // produces when the inner group collapses before the outer one.
+      mountedPaths: [],
       dormantFields: [
         {
           name: 'parameters.bounds.min',
@@ -161,6 +169,7 @@ describe('stageDraftFromSubmission', () => {
         skipLogic: { action: 'SKIP', filter: { rules: [], join: 'OR' } },
       },
       submittedValues: {},
+      mountedPaths: [],
       dormantFields: [
         {
           name: 'skipLogic.action',
@@ -174,6 +183,47 @@ describe('stageDraftFromSubmission', () => {
     expect(Object.hasOwn(draft, 'skipLogic')).toBe(false);
   });
 
+  it('lets a field still on screen outrank the container hiding around it', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: { parameters: { bounds: { min: 1 }, style: 'plain' } },
+      // The mounted leaf's current edit, as the form assembled it.
+      submittedValues: { parameters: { bounds: { min: 9 } } },
+      mountedPaths: [['parameters', 'bounds', 'min']],
+      dormantFields: [
+        {
+          name: 'parameters',
+          path: ['parameters'],
+          value: { bounds: { min: 1 }, style: 'plain' },
+        },
+      ],
+    });
+
+    // Replaying the container the researcher last saw would put the stale
+    // reading of a field they can still see back over what it now holds.
+    expect(draft.parameters).toEqual({ bounds: { min: 9 } });
+  });
+
+  it('leaves an emptied row in place rather than punching a hole in the list', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: { items: [{ optionalSetting: 'on' }, { id: 'second' }] },
+      submittedValues: {},
+      mountedPaths: [],
+      dormantFields: [
+        {
+          name: 'items[0].optionalSetting',
+          path: ['items', 0, 'optionalSetting'],
+          value: undefined,
+        },
+      ],
+    });
+
+    // Removing an array index leaves an `undefined` hole rather than closing
+    // the gap, so an emptied row must survive as an empty row. Taking a row
+    // out is a deliberate array operation, not a side effect of clearing one
+    // of its settings.
+    expect(draft.items).toEqual([{}, { id: 'second' }]);
+  });
+
   it('does not write through into the draft it was given', () => {
     const currentFields = Object.freeze({
       label: 'Friends',
@@ -183,6 +233,7 @@ describe('stageDraftFromSubmission', () => {
     const draft = stageDraftFromSubmission({
       currentFields,
       submittedValues: {},
+      mountedPaths: [],
       dormantFields: [
         {
           name: 'mapOptions.style',
@@ -200,6 +251,7 @@ describe('stageDraftFromSubmission', () => {
     const draft = stageDraftFromSubmission({
       currentFields: { label: 'Friends' },
       submittedValues: {},
+      mountedPaths: [],
       dormantFields: [{ name: '__proto__.polluted', value: 'yes' }],
     });
 

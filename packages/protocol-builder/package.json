@@ -13,6 +13,7 @@
   "exports": {
     "./controller": "./src/controller.ts",
     "./fields/RichTextField": "./src/fields/RichTextField.tsx",
+    "./fields/StageNameInput": "./src/fields/StageNameInput.tsx",
     "./interfaces/documentation": "./src/interfaces/documentation.ts",
     "./interfaces/interfaceNames": "./src/interfaces/interfaceNames.ts",
     "./markdown/markdownAdapter": "./src/markdown/markdownAdapter.ts",
