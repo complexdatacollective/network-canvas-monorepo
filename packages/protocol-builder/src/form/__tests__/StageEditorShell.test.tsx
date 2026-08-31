@@ -869,6 +869,155 @@ describe('StageEditorShell', () => {
     ).toBeInTheDocument();
   });
 
+  it('sees a capability carried by a control that is hidden above it', async () => {
+    const user = userEvent.setup();
+    const session = createSession();
+    function CompoundControl({
+      value,
+      onChange,
+      ...rest
+    }: {
+      value?: Record<string, unknown>;
+      onChange?: (next: Record<string, unknown>) => void;
+      id?: string;
+      disabled?: boolean;
+    }) {
+      return (
+        <input
+          {...rest}
+          type="text"
+          value={typeof value?.enabled === 'string' ? value.enabled : ''}
+          onChange={(event) => onChange?.({ enabled: event.target.value })}
+        />
+      );
+    }
+    function HiddenAncestor() {
+      const controller = useStageEditorController(session, 'stage-form');
+      const [shown, setShown] = useState(true);
+      return (
+        <StageEditorShell controller={controller}>
+          <BuilderSection
+            title="Advanced settings"
+            capability={{
+              fields: ['settings.enabled'],
+              confirmClear: {
+                title: 'This will clear your advanced settings',
+                description: 'The settings you chose will be deleted.',
+                confirmLabel: 'Clear settings',
+              },
+            }}
+          >
+            <button type="button" onClick={() => setShown((was) => !was)}>
+              Toggle the control
+            </button>
+            {shown && (
+              <ProtocolField<typeof CompoundControl>
+                name="settings"
+                label="Settings"
+                component={CompoundControl}
+              />
+            )}
+          </BuilderSection>
+        </StageEditorShell>
+      );
+    }
+    render(
+      <DialogProvider>
+        <HiddenAncestor />
+      </DialogProvider>,
+    );
+
+    await user.click(screen.getByRole('switch', { name: 'Advanced settings' }));
+    await user.type(
+      await screen.findByRole('textbox', { name: 'Settings' }),
+      'yes',
+    );
+    // Parked whole, with the capability's value inside it.
+    await user.click(
+      screen.getByRole('button', { name: 'Toggle the control' }),
+    );
+    await user.click(screen.getByRole('switch', { name: 'Advanced settings' }));
+
+    expect(
+      await screen.findByRole('button', { name: 'Clear settings' }),
+    ).toBeInTheDocument();
+
+    // And confirming has to reach into that parked control, or the value it is
+    // still holding is replayed into the stage on save.
+    await user.click(screen.getByRole('button', { name: 'Clear settings' }));
+    await user.click(screen.getByRole('switch', { name: 'Advanced settings' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Toggle the control' }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Settings' })).toHaveValue(''),
+    );
+  });
+
+  it('clears a capability whose path is a name rather than a route', async () => {
+    const user = userEvent.setup();
+    const session = createSession();
+    function OpaqueCapability() {
+      const controller = useStageEditorController(session, 'stage-form');
+      const [shown, setShown] = useState(true);
+      return (
+        <StageEditorShell controller={controller}>
+          <BuilderSection
+            title="Prompt override"
+            capability={{
+              // A protocol-authored key, canonically formatted. It is one
+              // name containing a space, not a route through anything.
+              fields: ['["prompt text"]'],
+              confirmClear: {
+                title: 'This will clear your prompt override',
+                description: 'The text you entered will be deleted.',
+                confirmLabel: 'Clear override',
+              },
+            }}
+          >
+            <button type="button" onClick={() => setShown((was) => !was)}>
+              Toggle the control
+            </button>
+            {shown && (
+              <ProtocolField
+                name="prompt text"
+                nameMode="opaque"
+                label="Prompt text"
+                component={InputField}
+              />
+            )}
+          </BuilderSection>
+        </StageEditorShell>
+      );
+    }
+    render(
+      <DialogProvider>
+        <OpaqueCapability />
+      </DialogProvider>,
+    );
+
+    await user.click(screen.getByRole('switch', { name: 'Prompt override' }));
+    await user.type(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+      'Ask about work',
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Toggle the control' }),
+    );
+    await user.click(screen.getByRole('switch', { name: 'Prompt override' }));
+    await user.click(screen.getByRole('button', { name: 'Clear override' }));
+
+    await user.click(screen.getByRole('switch', { name: 'Prompt override' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Toggle the control' }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Prompt text' })).toHaveValue(
+        '',
+      ),
+    );
+  });
+
   it('explains a prerequisite before it explains a switch', async () => {
     const session = createSession();
     function DisabledCapability() {

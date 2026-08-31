@@ -5,6 +5,7 @@ import {
   resolveFieldPath,
   useFieldNamespacePath,
 } from '@codaco/fresco-ui/form/FieldNamespace';
+import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import {
   formatObjectPath,
   getValue,
@@ -52,20 +53,55 @@ export function useResolvedFieldIdentity(
 }
 
 /**
- * Clears everything at a path in the stage form, descendants included.
+ * Empties a path in the stage form, and everything that reaches it.
  *
- * The structural operation rather than a write of `undefined`, because a
- * capability may own a CONTAINER path while the fields inside it are
- * separately registered — and some of those may already be dormant behind a
- * collapsed group of advanced options. Parking a tombstone at the container
- * leaves those untouched, so reopening the group would restore content the
- * researcher had just confirmed deleting.
+ * Confirming a deletion has to leave nothing holding the value anywhere, or
+ * some later reader finds it again and the deletion undoes itself. Three
+ * places can hold it, so all three are cleared:
+ *
+ * - the path itself and everything beneath it, which is what Fresco's
+ *   structural `clearValue` does;
+ * - the registered fields ABOVE it, which `clearValue` drops the sub-path out
+ *   of for the reason its own comment gives — a container still holding a
+ *   sub-path shows nothing while the inner fields are mounted, and surfaces it
+ *   again once they are not;
+ * - the DORMANT fields above it, which `clearValue` does not reach. Exactly
+ *   the same staleness, one map over: a compound control hidden behind
+ *   progressive disclosure keeps its whole object, and replays the cleared
+ *   value back into the stage on save.
+ *
+ * Addressed structurally throughout. A capability may own a path whose name is
+ * opaque — a protocol-authored variable id containing a dot, or a key with a
+ * space — and the string API would read that as a route rather than a name.
  */
 export function useClearStageValue(): (path: string) => void {
   const { storeApi } = useStageEditorForm();
   return useCallback(
     (path: string) => {
-      storeApi.getState().clearValue(path);
+      const state = storeApi.getState();
+      const target = safePath(path);
+      const pathOperations = state.pathOperations;
+      if (target === null || pathOperations === undefined) {
+        state.clearValue(path);
+        return;
+      }
+
+      pathOperations.clearValue(target);
+
+      for (const [name, field] of state.dormantValues) {
+        const ancestor = field.path ?? safePath(name);
+        if (
+          ancestor === null ||
+          ancestor.length >= target.length ||
+          !ancestor.every((segment, index) => target[index] === segment)
+        ) {
+          continue;
+        }
+        const cleared = omitValue(field.value, target.slice(ancestor.length));
+        // Identity is `omitValue` reporting that it held nothing there.
+        if (cleared === field.value) continue;
+        pathOperations.setFieldValue(ancestor, cleared as FieldValue);
+      }
     },
     [storeApi],
   );
@@ -171,61 +207,91 @@ function pathHasAnswer(
   const target = safePath(path);
   if (target === null) return false;
 
-  const exact = state.getFieldState(path);
-  if (exact !== undefined && hasAnswer(exact.value)) return true;
+  const records = formRecords(state);
+  const exact = records.find((record) => samePath(record.path, target));
+  if (exact && hasAnswer(exact.value)) return true;
 
-  const known = descendantRecords(state, target);
-  if (known.some((record) => hasAnswer(record.value))) return true;
+  const below = records.filter((record) => isBelow(record.path, target));
+  if (below.some((record) => hasAnswer(record.value))) return true;
 
-  // A compound control registered ABOVE this path supplies what sits at it —
-  // a single field owning `settings` answers for `settings.enabled`. Read from
-  // the mounted fields only, and asked before any tombstone can veto, for the
-  // same reason the descendants are: clearing a capability empties this path
-  // out of its ancestors too, so anything still here arrived afterwards.
+  // A compound control registered ABOVE this path carries what sits at it —
+  // one field owning `settings` answers for `settings.enabled`. The assembled
+  // values cover the mounted ones; the records cover the parked ones.
   if (hasAnswer(getValue(state.getFormValues(), target))) return true;
+  if (
+    records.some(
+      (record) =>
+        isAbove(record.path, target) &&
+        hasAnswer(readInside(record.value, target.slice(record.path.length))),
+    )
+  ) {
+    return true;
+  }
 
-  // A record at exactly this path, holding nothing, with nothing beneath or
-  // above it holding anything either. That is the form saying the path is
-  // empty, and it outranks whatever the draft was opened with — otherwise
-  // clearing a capability would be undone by the draft's memory of it.
-  if (exact !== undefined) return false;
+  // A record at exactly this path holding nothing, with nothing above or below
+  // it holding anything either. That is the form saying the path is empty, and
+  // it outranks whatever the draft was opened with — otherwise clearing a
+  // capability would be undone by the draft's memory of it.
+  if (exact) return false;
 
   // Every remaining known path is one the form knows is empty, so the draft's
   // memory of it is out of date.
   let committed = getValue(committedFields, target);
-  for (const record of known) {
+  for (const record of below) {
     committed = omitValue(committed, record.path.slice(target.length));
   }
   return hasAnswer(committed);
 }
 
-function descendantRecords(
-  state: FormStoreState,
-  target: ObjectPath,
-): { path: ObjectPath; value: unknown }[] {
-  const records: { path: ObjectPath; value: unknown }[] = [];
-
-  for (const source of [state.fields, state.dormantValues]) {
-    for (const [name, field] of source) {
-      const path = field.path ?? safePath(name);
-      if (
-        path === null ||
-        path.length <= target.length ||
-        !target.every((segment, index) => path[index] === segment)
-      ) {
-        continue;
-      }
-      records.push({ path, value: field.value });
-    }
-  }
-
-  return records;
+function readInside(value: unknown, relative: ObjectPath): unknown {
+  if (typeof value !== 'object' || value === null) return undefined;
+  // Every node reachable inside a container field's value is itself a value.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return getValue(value as Record<string, unknown>, relative);
 }
 
-function safePath(name: string): ObjectPath | null {
+/**
+ * A capability's path, read as a path.
+ *
+ * Canonical parsing rather than legacy, so a name is not mistaken for a route
+ * through the document: `["prompt text"]` is one protocol-authored key
+ * containing a space, and `skipLogic.action` is two segments. Both are what
+ * `formatObjectPath` produces, which is how every other path here is spelled.
+ */
+function safePath(
+  name: string,
+  mode: FieldNameMode = 'path',
+): ObjectPath | null {
   try {
-    return resolveFieldPath([], name);
+    return resolveFieldPath([], name, mode);
   } catch {
     return null;
   }
 }
+
+/** Every field the form holds, mounted or parked, addressed structurally. */
+function formRecords(
+  state: FormStoreState,
+): { path: ObjectPath; value: unknown }[] {
+  const records: { path: ObjectPath; value: unknown }[] = [];
+  for (const source of [state.fields, state.dormantValues]) {
+    for (const [name, field] of source) {
+      // A stored path is authoritative; a name without one is a plain field
+      // whose own name is its path.
+      const path = field.path ?? safePath(name, 'legacy');
+      if (path !== null) records.push({ path, value: field.value });
+    }
+  }
+  return records;
+}
+
+const samePath = (a: ObjectPath, b: ObjectPath) =>
+  a.length === b.length && a.every((segment, index) => b[index] === segment);
+
+const isBelow = (candidate: ObjectPath, path: ObjectPath) =>
+  candidate.length > path.length &&
+  path.every((segment, index) => candidate[index] === segment);
+
+const isAbove = (candidate: ObjectPath, path: ObjectPath) =>
+  candidate.length < path.length &&
+  candidate.every((segment, index) => path[index] === segment);

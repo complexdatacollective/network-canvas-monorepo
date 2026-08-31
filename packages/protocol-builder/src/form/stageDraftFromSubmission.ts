@@ -106,13 +106,16 @@ export function stageDraftFromSubmission(
   ];
   for (const removal of removals) {
     if (hasDescendantIn(livePaths, removal.path)) continue;
-    // The same protection from above. A capability path re-entered through a
-    // compound control registered on an ancestor is carried by that ancestor's
-    // value, not by a field of its own — and clearing the capability empties
-    // the path out of its ancestors too, so a value still there arrived after
-    // the tombstone did.
+    // The same protection from above, but only from a control the researcher
+    // can currently see. A capability path re-entered through a compound
+    // control registered on an ancestor is carried by that ancestor's value
+    // rather than by a field of its own, and clearing empties the path out of
+    // every ancestor — so a MOUNTED ancestor still carrying it arrived after
+    // the tombstone. A dormant one carries no such assurance: it is the shape
+    // a stale copy takes, and letting it veto would quietly undo a deletion
+    // the researcher confirmed.
     if (
-      hasAncestorIn(livePaths, removal.path) &&
+      hasAncestorIn(submission.mountedPaths, removal.path) &&
       getValue(draft, removal.path) !== undefined
     ) {
       continue;
