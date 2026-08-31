@@ -27,7 +27,6 @@ const FancyParagraph = (props: ComponentProps<typeof Paragraph>) => {
     const segments = word.split(' ');
     return segments.map((segment, innerIndex) => (
       <span
-        // biome-ignore lint/suspicious/noArrayIndexKey: word index won't change
         key={`${outerIndex}-${innerIndex}`}
         className="relative top-[-0.75em] mb-[-1em] inline-block overflow-hidden"
       >
@@ -51,7 +50,6 @@ const FancyParagraph = (props: ComponentProps<typeof Paragraph>) => {
           renderWord(word, index)
         ) : (
           <motion.span
-            // biome-ignore lint/suspicious/noArrayIndexKey: word index won't change
             key={index}
             custom={index}
             variants={variants}

@@ -177,7 +177,6 @@ export const HeadingInput = ({
         aria-multiline={false}
         placeholder={placeholder}
         maxLength={characterLimit}
-        // biome-ignore lint/a11y/noAutofocus: stage name is the primary action in this hero
         autoFocus={autoFocus}
         disabled={disabled}
         readOnly={readOnly}

@@ -49,6 +49,5 @@ declare const exports: undefined;
 
 // Map react-recompose types to @types/recompose declarations
 declare module 'react-recompose' {
-  // biome-ignore lint/correctness/noUndeclaredDependencies: reexporting types from @types/recompose for compatibility
   export * from 'recompose';
 }
