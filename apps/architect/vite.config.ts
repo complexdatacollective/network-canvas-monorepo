@@ -169,7 +169,11 @@ export default defineConfig(({ mode }) => {
           // bundle's retained precache (including between same-version dev
           // deploys and while offline).
           cacheId: pwaCacheId,
-          globPatterns: ['**/*.{js,css,html}'],
+          // Screen thumbnails are not guaranteed to be requested before the
+          // installed app loses its connection. Precache every responsive
+          // 4:3 candidate so the chooser and timeline work on first offline
+          // use, regardless of which width Safari selects from srcset.
+          globPatterns: ['**/*.{js,css,html}', '**/*.4x3.*.webp'],
           // vite-plugin-pwa defaults this to index.html; disable it so it
           // cannot shadow the runtime navigation route below.
           navigateFallback: undefined,

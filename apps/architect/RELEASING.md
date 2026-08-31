@@ -144,11 +144,13 @@ declaration bundling can exceed Node's default heap during a clean build.
 Netlify preview builds and the CI release job run `pnpm exec turbo run build
 --filter=@codaco/architect`. The app's `build` command runs Vite and then
 `scripts/assert-pwa-build.mjs`. That assertion fails the build if `dist/` is
-missing the service worker, manifest, or icons, or if any emitted JS chunk was
-dropped from the workbox precache manifest (e.g. for exceeding the size limit) —
-which would 404 offline and break the offline boot. Treat an assertion failure as
-a hard release blocker. Architect asserts that _every_ chunk is precached because
-it uses no `globIgnores`. The assertion also validates the emitted `_headers`:
+missing the service worker, manifest, or icons, or if any emitted JS chunk or
+responsive screen-preview image was dropped from the Workbox precache manifest
+(e.g. for exceeding the size limit) — which would 404 offline and break either
+the offline boot or first rendering of screen thumbnails. Treat an assertion
+failure as a hard release blocker. Architect asserts that _every_ chunk is
+precached because it uses no `globIgnores`. The assertion also validates the
+emitted `_headers`:
 the service worker, HTML shells (including requested SPA deep links), manifest,
 and stable icons must use `no-store, no-cache, max-age=0, must-revalidate`, while
 only content-hashed `/assets/*` may use a one-year immutable cache. The generated

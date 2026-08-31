@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Post-build assertion: a production PWA build must emit the SW + manifest +
-// icons, and every emitted JS chunk must be precached. A chunk over the workbox
-// `maximumFileSizeToCacheInBytes` limit silently drops from the SW precache
-// manifest and 404s offline, breaking the offline boot. Architect precaches all
-// JS (no `globIgnores`), so any excluded chunk is a real regression. (Sibling of
+// icons, every emitted JS chunk, and every responsive stage-preview image must
+// be precached. A missing critical asset breaks either the offline boot or the
+// first offline rendering of screen thumbnails. Architect precaches all JS (no
+// `globIgnores`), so any excluded chunk is a real regression. (Sibling of
 // apps/interviewer/scripts/assert-pwa-build.mjs, which instead checks named
 // critical chunks because it intentionally excludes its dev-protocol chunk.)
 import { readFileSync } from 'node:fs';
@@ -113,9 +113,9 @@ for (const f of [
 }
 
 // generateSW inlines the precache manifest as an array of { url, revision }
-// entries; collect every precached .js url.
+// entries; collect every precached critical-asset URL.
 const precached = new Set(
-  [...sw.matchAll(/["']([^"']+\.js)["']/g)].map((m) =>
+  [...sw.matchAll(/["']([^"']+\.(?:js|webp))["']/g)].map((m) =>
     m[1].replace(/^\/+/, ''),
   ),
 );
@@ -130,6 +130,21 @@ const jsAssets = assetFiles
   .filter((f) => f.endsWith('.js'))
   .map((f) => `assets/${f}`);
 if (jsAssets.length === 0) fail('no JS chunks emitted to dist/assets');
+const stagePreviewAssets = assetFiles
+  .filter((f) => /\.4x3\.\d+-.*\.webp$/.test(f))
+  .map((f) => `assets/${f}`);
+if (stagePreviewAssets.length === 0) {
+  fail('no 4:3 stage-preview assets found');
+}
+
+const missingStagePreviewAssets = stagePreviewAssets.filter(
+  (url) => !precached.has(url),
+);
+if (missingStagePreviewAssets.length > 0) {
+  fail(
+    `stage-preview asset(s) excluded from precache: ${missingStagePreviewAssets.join(', ')}`,
+  );
+}
 
 // Source maps are emitted only to be uploaded to PostHog, and the upload
 // deletes them (see vite.config.ts). One surviving here would publish the
@@ -272,5 +287,5 @@ if (excluded.length > 0) {
 }
 
 console.log(
-  `PWA build ok: ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle handoff; no client claim; lease-gated old-precache cleanup; entry ${entry} + all ${jsAssets.length} JS chunks precached`,
+  `PWA build ok: ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle handoff; no client claim; lease-gated old-precache cleanup; entry ${entry} + all ${jsAssets.length} JS chunks and ${stagePreviewAssets.length} stage-preview assets precached`,
 );

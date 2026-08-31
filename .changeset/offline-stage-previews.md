@@ -1,5 +1,6 @@
 ---
+'@codaco/architect': patch
 '@codaco/interviewer': patch
 ---
 
-Keep interview screen preview images available in the stage menu when the installed app is used offline.
+Keep screen preview images available when the installed Architect or Interviewer app is used offline.
