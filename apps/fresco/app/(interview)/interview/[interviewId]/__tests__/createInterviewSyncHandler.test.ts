@@ -336,6 +336,30 @@ describe('createInterviewSyncHandler', () => {
     expect(state.revision).toBe(1);
   });
 
+  it('does not retry against a frozen interview, which will never accept a write', async () => {
+    // Freezing declines every write permanently. Reading that as a lost race
+    // would double every request and then report a failure the engine logs on
+    // repeat — for an interview that is over and already holds its final state.
+    const frozen = vi.fn(() => ({
+      success: true,
+      applied: false,
+      frozen: true,
+      syncRevision: 4,
+    }));
+    const { fetchMock } = makeAutoFetch(frozen);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const onSync = createInterviewSyncHandler({
+      interviewId: 'interview-1',
+      initialSyncRevision: 4,
+      getCurrentStep: () => 0,
+    });
+
+    await onSync('interview-1', sessionWith('after-finish'), ORDINARY);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('batches ordinary changes and writes the newest of them', async () => {
     const { apply } = makeServer();
     const { fetchMock, bodies } = makeAutoFetch(apply);

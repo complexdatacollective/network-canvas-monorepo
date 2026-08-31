@@ -318,9 +318,12 @@ describe('interview sync route', () => {
       expect(updateManyMock).not.toHaveBeenCalled();
     });
 
-    it('reports the stored revision when a finished interview is frozen', async () => {
-      // The route writes nothing here, so the client would otherwise keep
-      // counting up from a number the row never reaches.
+    it('marks a frozen interview as frozen, not merely as a write that lost a race', async () => {
+      // Freezing declines every write permanently, so a client must not read it
+      // as being overtaken and rewrite: it would be declined again and report a
+      // failure on every change. The stored revision is still reported, since
+      // the route writes nothing and the client would otherwise keep counting
+      // up from a number the row never reaches.
       getAppSettingMock.mockResolvedValue(true);
       findUniqueMock.mockResolvedValue({
         finishTime: new Date('2026-08-12T00:00:00.000Z'),
@@ -335,6 +338,7 @@ describe('interview sync route', () => {
       await expect(response.json()).resolves.toEqual({
         success: true,
         applied: false,
+        frozen: true,
         syncRevision: 9,
       });
       expect(updateManyMock).not.toHaveBeenCalled();

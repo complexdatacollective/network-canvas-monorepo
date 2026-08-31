@@ -103,9 +103,15 @@ const routeHandler = async (
     });
 
     if (interview?.finishTime) {
+      // Flagged, not just reported as unapplied: freezing declines every write
+      // permanently, so this is nothing like losing a race to a newer one. A
+      // client that read it as one would rewrite, be declined again, and report
+      // a failure on every change — for an interview that is over and already
+      // holds its final state.
       return NextResponse.json({
         success: true,
         applied: false,
+        frozen: true,
         syncRevision: interview.syncRevision,
       });
     }

@@ -33,6 +33,8 @@ type SyncOutcome = {
   applied: boolean | undefined;
   /** The revision the row holds now, if the response said. */
   stored: number | undefined;
+  /** The interview is finished and frozen, so no write will ever be taken. */
+  frozen: boolean;
 };
 
 async function readOutcome(response: Response): Promise<SyncOutcome> {
@@ -43,16 +45,17 @@ async function readOutcome(response: Response): Promise<SyncOutcome> {
   try {
     const result: unknown = await response.json();
     if (typeof result !== 'object' || result === null) {
-      return { applied: undefined, stored: undefined };
+      return { applied: undefined, stored: undefined, frozen: false };
     }
     const applied = 'applied' in result ? result.applied : undefined;
     const stored = 'syncRevision' in result ? result.syncRevision : undefined;
     return {
       applied: typeof applied === 'boolean' ? applied : undefined,
       stored: typeof stored === 'number' ? stored : undefined,
+      frozen: 'frozen' in result && result.frozen === true,
     };
   } catch {
-    return { applied: undefined, stored: undefined };
+    return { applied: undefined, stored: undefined, frozen: false };
   }
 }
 
@@ -154,6 +157,11 @@ export function createInterviewSyncHandler({
       const first = await post(session, mine, unloading);
 
       if (first.applied !== false) return;
+
+      // The interview is finished and frozen, so no write will ever be taken.
+      // Rewriting would be declined again and report a failure the engine logs
+      // on every change afterwards.
+      if (first.frozen) return;
 
       // The row kept what it had. Returning here would be a claim the engine
       // acts on: it marks the snapshot durable and stops offering it, so if the

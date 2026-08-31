@@ -302,7 +302,9 @@ lib/
     otherwise rewrites once, numbered from the reported revision. Something that
     is not this tab moved the row, which in practice means a second tab open on
     the same interview. Overtaken again, it reports failure rather than claim a
-    durability it did not achieve.
+    durability it did not achieve. A frozen interview is flagged as such rather
+    than reported as a write that lost a race, because it declines every write
+    permanently and rewriting would fail on every change from then on.
   - **The route bounds how far one write may advance the revision**
     (`MAX_REVISION_ADVANCE`). The endpoint is unauthenticated, so without it a
     single crafted request could park the row at the largest value the column
