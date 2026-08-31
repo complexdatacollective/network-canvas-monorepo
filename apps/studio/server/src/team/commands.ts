@@ -3,11 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
 
-import {
-  TeamInvitationIdSchema,
-  TeamRoleSchema,
-  type TeamRole,
-} from '@codaco/studio-rpc';
+import { TeamInvitationIdSchema, type TeamRole } from '@codaco/studio-rpc';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import {
@@ -26,6 +22,7 @@ import {
 import { createDeniedAuditSummaryWriter } from '../audit/denial-summary.ts';
 import type { AuditEventInput, DeniedAuditOperation } from '../audit/events.ts';
 import { enqueueInvitationDelivery } from './invitation-delivery-store.ts';
+import { tryParseRoles } from './roles.ts';
 import { TeamStore, type LockedMember } from './store.ts';
 
 const EmailSchema = z.email().max(320);
@@ -55,17 +52,9 @@ export class TeamCommandError extends Error {
 const store = new TeamStore();
 
 function parseRoles(value: string): TeamRole[] {
-  const roles = value
-    .split(',')
-    .map((role) => role.trim())
-    .flatMap((role) => {
-      const parsed = TeamRoleSchema.safeParse(role);
-      return parsed.success ? [parsed.data] : [];
-    });
-  if (roles.length === 0 || roles.join(',') !== value.replaceAll(' ', '')) {
-    throw new TeamCommandError('INVALID_ROLE');
-  }
-  return [...new Set(roles)];
+  const roles = tryParseRoles(value);
+  if (!roles) throw new TeamCommandError('INVALID_ROLE');
+  return roles;
 }
 
 function canManage(member: LockedMember): boolean {
