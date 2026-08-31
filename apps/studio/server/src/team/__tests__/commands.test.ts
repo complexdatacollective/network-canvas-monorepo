@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type pg from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   createTenantDb,
@@ -347,6 +347,68 @@ describe.skipIf(!db)('audited team commands', () => {
       {
         actor_id: invitee.userId,
         event_type: 'team.invitation.acceptance_denied',
+        details: { reason: 'invitation_unavailable' },
+      },
+    ]);
+  });
+
+  it('uses the database clock when accepting an invitation from a lagging application host', async () => {
+    const teamId = 'command-accept-database-clock';
+    const invitationId = randomUUID();
+    await seedTeam(pool, teamId);
+    const owner = identity(teamId, 'owner', 'owner');
+    const invitee = identity(teamId, 'invitee', 'member');
+    await seedIdentity(pool, teamId, owner);
+    await seedUser(pool, invitee);
+    await seedInvitation(pool, {
+      id: invitationId,
+      teamId,
+      inviterId: owner.userId,
+      email: invitee.email,
+      role: invitee.role,
+    });
+    await pool.query(
+      `UPDATE team_invitations
+       SET expires_at = clock_timestamp() - INTERVAL '1 minute'
+       WHERE id = $1`,
+      [invitationId],
+    );
+
+    // Model an application host whose clock is years behind PostgreSQL. The
+    // authorization decision must remain unchanged because PostgreSQL owns the
+    // invitation lifetime.
+    const applicationClock = vi
+      .spyOn(Date, 'now')
+      .mockReturnValue(new Date('2000-01-01T00:00:00.000Z').getTime());
+    try {
+      await expect(
+        acceptTeamInvitation(
+          {
+            pool: app,
+            principal: principal(invitee),
+            requestId: randomUUID(),
+          },
+          { invitationId },
+        ),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    } finally {
+      applicationClock.mockRestore();
+    }
+
+    const memberships = await pool.query(
+      `SELECT id FROM team_members WHERE team_id = $1 AND user_id = $2`,
+      [teamId, invitee.userId],
+    );
+    expect(memberships.rowCount).toBe(0);
+    const events = await pool.query<{ outcome: string; details: unknown }>(
+      `SELECT outcome, details
+       FROM audit_events
+       WHERE team_id = $1 AND event_type = 'team.invitation.acceptance_denied'`,
+      [teamId],
+    );
+    expect(events.rows).toEqual([
+      {
+        outcome: 'denied',
         details: { reason: 'invitation_unavailable' },
       },
     ]);

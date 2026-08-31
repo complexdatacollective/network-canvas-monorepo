@@ -18,6 +18,10 @@ export type TeamInvitation = {
   expiresAt: Date;
 };
 
+export type LockedTeamInvitation = TeamInvitation & {
+  isLive: boolean;
+};
+
 export type LockedMembershipSet = {
   count: number;
   existing: LockedMember | null;
@@ -128,7 +132,7 @@ export class TeamStore {
       `SELECT 1
        FROM team_invitations
        WHERE team_id = $1 AND lower(email) = $2 AND status = 'pending'
-         AND expires_at > CURRENT_TIMESTAMP
+         AND expires_at > clock_timestamp()
        LIMIT 1`,
       [teamId, email],
     );
@@ -143,7 +147,7 @@ export class TeamStore {
       `SELECT count(*)::int AS count
        FROM team_invitations
        WHERE team_id = $1 AND status = 'pending'
-         AND expires_at > CURRENT_TIMESTAMP`,
+         AND expires_at > clock_timestamp()`,
       [teamId],
     );
     return rows.rows[0]?.count ?? 0;
@@ -162,7 +166,7 @@ export class TeamStore {
     const inserted = await client.query<TeamInvitation>(
       `INSERT INTO team_invitations (
          id, team_id, email, role, status, expires_at, inviter_id
-       ) VALUES ($1, $2, $3, $4, 'pending', CURRENT_TIMESTAMP + INTERVAL '48 hours', $5)
+       ) VALUES ($1, $2, $3, $4, 'pending', clock_timestamp() + INTERVAL '48 hours', $5)
        RETURNING id, email, role, status, expires_at AS "expiresAt"`,
       [input.id, input.teamId, input.email, input.role, input.inviterId],
     );
@@ -175,9 +179,10 @@ export class TeamStore {
     client: pg.PoolClient,
     teamId: string,
     invitationId: string,
-  ): Promise<TeamInvitation | null> {
-    const rows = await client.query<TeamInvitation>(
-      `SELECT id, email, role, status, expires_at AS "expiresAt"
+  ): Promise<LockedTeamInvitation | null> {
+    const rows = await client.query<LockedTeamInvitation>(
+      `SELECT id, email, role, status, expires_at AS "expiresAt",
+              expires_at > clock_timestamp() AS "isLive"
        FROM team_invitations
        WHERE team_id = $1 AND id = $2
        FOR UPDATE`,

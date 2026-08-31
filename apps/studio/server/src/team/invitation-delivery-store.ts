@@ -41,7 +41,7 @@ export async function enqueueInvitationDelivery(
        AND lower(invitation.email) = lower($4)
        AND invitation.role = $5
        AND invitation.status = 'pending'
-       AND invitation.expires_at > statement_timestamp()
+       AND invitation.expires_at > clock_timestamp()
        AND abs(extract(epoch FROM invitation.expires_at - $8::timestamptz)) < 0.001
      ON CONFLICT (invitation_id) DO NOTHING
      RETURNING id AS "deliveryId", invitation_id AS "invitationId"`,

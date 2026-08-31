@@ -437,8 +437,7 @@ export async function acceptTeamInvitation(
         if (
           (invitation.status !== 'pending' &&
             invitation.status !== 'accepted') ||
-          (invitation.status === 'pending' &&
-            invitation.expiresAt.getTime() <= Date.now())
+          (invitation.status === 'pending' && !invitation.isLive)
         ) {
           return denied('invitation_unavailable');
         }
