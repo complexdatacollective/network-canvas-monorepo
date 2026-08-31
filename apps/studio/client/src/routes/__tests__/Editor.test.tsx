@@ -9,7 +9,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { useSyncExternalStore } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { rpcClient } from '../../lib/api.ts';
 import { authClient } from '../../lib/auth.ts';
@@ -162,6 +162,10 @@ beforeEach(() => {
   });
   vi.mocked(rpcClient.protocols.draft).mockReset();
   vi.mocked(rpcClient.protocols.draft).mockResolvedValue(DRAFT);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 function renderEditor() {
@@ -401,6 +405,94 @@ describe('Studio editor shell', () => {
     );
   });
 
+  it.each(['Screen name', 'Page heading'] as const)(
+    'preserves focus on %s when an Enter-submitted save rebases the form',
+    async (fieldName) => {
+      const commit = deferred<{ sequence: string; hash: string }>();
+      vi.mocked(rpcClient.protocols.commitSection).mockReturnValueOnce(
+        commit.promise,
+      );
+      renderEditor();
+      const field = await screen.findByRole('textbox', { name: fieldName });
+      fireEvent.change(field, { target: { value: 'Saved value' } });
+      field.focus();
+      expect(field).toHaveFocus();
+      const form = field.closest('form');
+      expect(form).not.toBeNull();
+      if (form === null) throw new Error('Screen form was not rendered.');
+      fireEvent.submit(form);
+
+      await waitFor(() =>
+        expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(1),
+      );
+      await act(async () => {
+        commit.resolve({ sequence: '3', hash: 'revision-3' });
+        await commit.promise;
+      });
+
+      await waitFor(() =>
+        expect(screen.getByRole('textbox', { name: fieldName })).toHaveFocus(),
+      );
+    },
+  );
+
+  it.each([
+    { action: 'Undo', expectedCommitCount: 1 },
+    { action: 'Redo', expectedCommitCount: 2 },
+  ] as const)(
+    'disables $action while the screen form has unsaved values',
+    async ({ action, expectedCommitCount }) => {
+      const saveCommit = deferred<{ sequence: string; hash: string }>();
+      const undoCommit = deferred<{ sequence: string; hash: string }>();
+      vi.mocked(rpcClient.protocols.commitSection)
+        .mockReturnValueOnce(saveCommit.promise)
+        .mockReturnValueOnce(undoCommit.promise);
+      renderEditor();
+      const initialLabel = await screen.findByRole('textbox', {
+        name: 'Screen name',
+      });
+      fireEvent.change(initialLabel, {
+        target: { value: 'First saved change' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Save screen' }));
+      await waitFor(() =>
+        expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(1),
+      );
+      await act(async () => {
+        saveCommit.resolve({ sequence: '3', hash: 'revision-3' });
+        await saveCommit.promise;
+      });
+
+      if (action === 'Redo') {
+        const undo = await screen.findByRole('button', { name: 'Undo' });
+        await waitFor(() => expect(undo).toBeEnabled());
+        fireEvent.click(undo);
+        await waitFor(() =>
+          expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(2),
+        );
+        await act(async () => {
+          undoCommit.resolve({ sequence: '4', hash: 'revision-4' });
+          await undoCommit.promise;
+        });
+      }
+
+      const historyAction = await screen.findByRole('button', { name: action });
+      await waitFor(() => expect(historyAction).toBeEnabled());
+      const label = screen.getByRole('textbox', { name: 'Screen name' });
+      fireEvent.change(label, { target: { value: 'Unsaved typing' } });
+
+      await waitFor(() => expect(historyAction).toBeDisabled());
+      expect(historyAction).toHaveAccessibleDescription(
+        'Save or discard your screen changes to use Undo and Redo.',
+      );
+      fireEvent.click(historyAction);
+      expect(label).toHaveValue('Unsaved typing');
+      expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(
+        expectedCommitCount,
+      );
+    },
+  );
+
   it('asks before leaving the editor with unsaved screen values', async () => {
     const { router } = renderEditor();
     const label = await screen.findByRole('textbox', { name: 'Screen name' });
@@ -537,6 +629,48 @@ describe('Studio editor shell', () => {
     );
   });
 
+  it('disables the old screen form while a confirmed add is in flight', async () => {
+    const add = deferred<{ sequence: string; hash: string }>();
+    const refresh = deferred<typeof DRAFT>();
+    vi.mocked(rpcClient.protocols.addInformationStage).mockReturnValueOnce(
+      add.promise,
+    );
+    renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    fireEvent.change(label, { target: { value: 'Discard this value' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
+    await waitFor(() =>
+      expect(rpcClient.protocols.addInformationStage).toHaveBeenCalledTimes(1),
+    );
+
+    expect(label).toBeDisabled();
+    expect(
+      screen.getByRole('textbox', { name: 'Page heading' }),
+    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save screen' })).toBeDisabled();
+    expect(label.closest('form')).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByText('Adding a new screen…')).toBeInTheDocument();
+
+    const queryCountBeforeRefresh = queryDraft.mock.calls.length;
+    queryDraft.mockReturnValueOnce(refresh.promise);
+    await act(async () => {
+      add.resolve({ sequence: '3', hash: 'revision-3' });
+      await add.promise;
+    });
+    await waitFor(() =>
+      expect(queryDraft.mock.calls.length).toBeGreaterThan(
+        queryCountBeforeRefresh,
+      ),
+    );
+
+    expect(label).toBeDisabled();
+    expect(label.closest('form')).toHaveAttribute('aria-busy', 'true');
+  });
+
   it('blocks another add attempt until an ambiguous failure is reconciled', async () => {
     vi.mocked(rpcClient.protocols.addInformationStage).mockRejectedValueOnce(
       new Error('response lost'),
@@ -592,5 +726,55 @@ describe('Studio editor shell', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Screen name' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Save screen' })).toBeDisabled();
+  });
+
+  it('publishes recurring spectator refreshes to the outline and canvas', async () => {
+    vi.useFakeTimers();
+    const refreshed = {
+      ...DRAFT,
+      revision: { sequence: '3', hash: 'revision-3' },
+      sections: {
+        ...DRAFT.sections,
+        [`stage:${STAGE_A}`]: {
+          ...DRAFT.sections[`stage:${STAGE_A}`],
+          label: 'Changed by collaborator',
+          title: 'Changed page heading',
+        },
+      },
+    };
+    vi.mocked(rpcClient.protocols.acquireSection).mockResolvedValue({
+      mode: 'readOnly',
+    });
+    vi.mocked(rpcClient.protocols.draft)
+      .mockResolvedValueOnce(DRAFT)
+      .mockResolvedValueOnce(refreshed);
+
+    const { queryClient } = renderEditor();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(screen.getByRole('textbox', { name: 'Screen name' })).toHaveValue(
+      'Welcome',
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+
+    expect(screen.getByRole('textbox', { name: 'Screen name' })).toHaveValue(
+      'Changed by collaborator',
+    );
+    expect(queryClient.getQueryData(['draft'])).toEqual(refreshed);
+    expect(
+      screen.getByRole('button', {
+        name: 'Changed by collaboratorInformation',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Changed by collaborator' }),
+    ).toBeInTheDocument();
   });
 });
