@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { Link, Outlet, useNavigate } from '@tanstack/react-router';
+import { Link, Outlet, useNavigate, useRouter } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
 import { Alert } from '@codaco/fresco-ui/Alert';
@@ -11,6 +11,7 @@ import { authClient } from '../lib/auth.ts';
 export default function AppLayout() {
   const { data: session, isPending } = authClient.useSession();
   const navigate = useNavigate();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [signOutFailed, setSignOutFailed] = useState(false);
 
@@ -52,8 +53,12 @@ export default function AppLayout() {
               setSignOutFailed(false);
               void (async () => {
                 try {
-                  await closeStudioEditorSessions();
                   await navigate({ to: '/' });
+                  // Editor route blockers settle before navigate resolves. A
+                  // cancelled discard leaves us on the editor route, so stop
+                  // before closing its lease or clearing authentication.
+                  if (router.state.location.pathname !== '/') return;
+                  await closeStudioEditorSessions();
                   const result = await authClient.signOut();
                   // better-fetch resolves failed requests with an error field
                   // instead of throwing; a failed sign-out leaves the cookie

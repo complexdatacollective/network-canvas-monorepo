@@ -33,6 +33,7 @@ const PRINCIPAL: SessionPrincipal = {
 
 describe.skipIf(!db)('team-scoped procedures', () => {
   let dispose: () => Promise<void>;
+  let ownerPool: Parameters<typeof provisionScratchSchema>[0];
   let memberships: Record<string, { role: string }>;
   let client: RouterContractClient<typeof contract>;
   let anonymousClient: RouterContractClient<typeof contract>;
@@ -41,6 +42,7 @@ describe.skipIf(!db)('team-scoped procedures', () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
     const scratch = await createScratchSchema(db);
     dispose = scratch.dispose;
+    ownerPool = scratch.pool;
     await provisionScratchSchema(scratch.pool);
     for (const teamId of ['team-a', 'team-b']) {
       await seedTeam(scratch.pool, teamId);
@@ -158,6 +160,49 @@ describe.skipIf(!db)('team-scoped procedures', () => {
       clientId,
       leaseEpoch: lease.leaseEpoch,
     });
+  });
+
+  it('releases an acquired section when resume post-processing fails', async () => {
+    const created = await client.protocols.create({
+      teamId: 'team-a',
+      name: 'Resume failure proof',
+      protocolId: randomUUID(),
+      draftId: randomUUID(),
+    });
+    const scope = {
+      teamId: 'team-a',
+      protocolId: created.protocolId,
+      draftId: created.draftId,
+    };
+    const stageId = randomUUID();
+    const sectionId = `stage:${stageId}`;
+    await client.protocols.addInformationStage({ ...scope, stageId });
+
+    await ownerPool.query(
+      'ALTER TABLE command_log RENAME TO command_log_unavailable',
+    );
+    try {
+      const failed = await safe(
+        client.protocols.acquireSection({
+          ...scope,
+          sectionId,
+          clientId: randomUUID(),
+        }),
+      );
+      expect(failed.error).not.toBeNull();
+    } finally {
+      await ownerPool.query(
+        'ALTER TABLE command_log_unavailable RENAME TO command_log',
+      );
+    }
+
+    await expect(
+      client.protocols.acquireSection({
+        ...scope,
+        sectionId,
+        clientId: randomUUID(),
+      }),
+    ).resolves.toMatchObject({ mode: 'editable' });
   });
 
   it('refuses a non-member team and an unknown team identically', async () => {

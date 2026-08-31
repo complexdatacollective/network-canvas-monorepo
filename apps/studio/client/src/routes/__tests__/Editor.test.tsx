@@ -11,6 +11,7 @@ import {
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { rpcClient } from '../../lib/api.ts';
+import { authClient } from '../../lib/auth.ts';
 import { createAppRouter } from '../../router.tsx';
 
 const STAGE_A = '11111111-1111-4111-8111-111111111111';
@@ -118,6 +119,7 @@ vi.mock('../../lib/api.ts', () => ({
 }));
 
 beforeEach(() => {
+  vi.mocked(authClient.signOut).mockReset();
   queryDraft.mockReset();
   queryDraft.mockResolvedValue(DRAFT);
   vi.mocked(rpcClient.protocols.acquireSection).mockReset();
@@ -378,6 +380,33 @@ describe('Studio editor shell', () => {
       await screen.findByRole('button', { name: 'Discard changes' }),
     );
     await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+  });
+
+  it('keeps the editor session open when dirty sign-out is cancelled', async () => {
+    const { router } = renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    fireEvent.change(label, { target: { value: 'Unsaved welcome' } });
+    vi.mocked(rpcClient.protocols.releaseSection).mockClear();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Discard unsaved screen changes?',
+      }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('heading', {
+          name: 'Discard unsaved screen changes?',
+        }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(router.state.location.pathname).toContain('/drafts/');
+    expect(label).toHaveValue('Unsaved welcome');
+    expect(rpcClient.protocols.releaseSection).not.toHaveBeenCalled();
+    expect(authClient.signOut).not.toHaveBeenCalled();
   });
 
   it('blocks another add attempt until an ambiguous failure is reconciled', async () => {
