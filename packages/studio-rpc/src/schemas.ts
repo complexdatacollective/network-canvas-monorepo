@@ -204,3 +204,96 @@ export const MoveStageInputSchema = ProtocolDraftInputSchema.extend({
   toIndex: z.number().int().nonnegative(),
   expectedRevision: DecimalSequenceSchema,
 });
+
+// Mirrors the audit_events category/outcome/actor-kind CHECK constraints; a
+// new value requires a schema migration, which the fingerprint pipeline keeps
+// in lockstep with deployed code.
+export const AUDIT_CATEGORIES = [
+  'team_access',
+  'protocol',
+  'study',
+  'participant_data',
+  'data_egress',
+  'credential',
+  'integration',
+  'security',
+  'audit',
+] as const;
+export const AuditCategorySchema = z.enum(AUDIT_CATEGORIES);
+export type AuditCategory = z.infer<typeof AuditCategorySchema>;
+
+export const AUDIT_OUTCOMES = ['succeeded', 'denied', 'failed'] as const;
+export const AuditOutcomeSchema = z.enum(AUDIT_OUTCOMES);
+export type AuditOutcome = z.infer<typeof AuditOutcomeSchema>;
+
+const AUDIT_ACTOR_KINDS = ['user', 'api_token', 'system'] as const;
+export const AuditActorKindSchema = z.enum(AUDIT_ACTOR_KINDS);
+
+// Sequences are per-team bigints represented as base-10 strings on the wire;
+// clients display and round-trip them but never do arithmetic on them. The
+// cursor is the last returned sequence and pages request `sequence < cursor`.
+export const AuditListInputSchema = TeamScopedSchema.extend({
+  cursor: DecimalSequenceSchema.optional(),
+  limit: z.number().int().min(1).max(100).optional(),
+  categories: z
+    .array(AuditCategorySchema)
+    .min(1)
+    .max(AUDIT_CATEGORIES.length)
+    .optional(),
+  eventTypes: z.array(z.string().min(1).max(120)).min(1).max(20).optional(),
+  actorId: z.string().min(1).max(255).optional(),
+  outcomes: z
+    .array(AuditOutcomeSchema)
+    .min(1)
+    .max(AUDIT_OUTCOMES.length)
+    .optional(),
+  from: z.date().optional(),
+  to: z.date().optional(),
+});
+
+const AuditActorSchema = z.object({
+  kind: AuditActorKindSchema,
+  id: z.string().nullable(),
+  label: z.string(),
+});
+
+const AuditEventReferenceSchema = z.object({
+  type: z.string(),
+  id: z.string().nullable(),
+  label: z.string().nullable(),
+});
+
+// `title` and `rendered` come from the server's versioned event registry; an
+// event pair this build does not register renders generically (machine type,
+// no details) rather than borrowing another version's renderer.
+export const AuditEventSummarySchema = z.object({
+  id: z.uuid(),
+  sequence: DecimalSequenceSchema,
+  occurredAt: z.date(),
+  eventType: z.string(),
+  eventVersion: z.number().int(),
+  category: AuditCategorySchema,
+  outcome: AuditOutcomeSchema,
+  actor: AuditActorSchema,
+  subject: AuditEventReferenceSchema.nullable(),
+  resource: AuditEventReferenceSchema.nullable(),
+  title: z.string(),
+  rendered: z.boolean(),
+});
+export type AuditEventSummary = z.infer<typeof AuditEventSummarySchema>;
+
+export const AuditListOutputSchema = z.object({
+  items: z.array(AuditEventSummarySchema),
+  nextCursor: DecimalSequenceSchema.nullable(),
+});
+
+export const AuditGetInputSchema = TeamScopedSchema.extend({
+  eventId: z.uuid(),
+});
+
+export const AuditEventDetailSchema = AuditEventSummarySchema.extend({
+  teamLabel: z.string(),
+  requestId: z.uuid(),
+  details: z.record(z.string(), z.unknown()),
+});
+export type AuditEventDetail = z.infer<typeof AuditEventDetailSchema>;

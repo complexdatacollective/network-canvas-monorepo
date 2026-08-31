@@ -7,6 +7,10 @@ import {
   AcquireSectionInputSchema,
   AcquireSectionResultSchema,
   AddInformationStageInputSchema,
+  AuditEventDetailSchema,
+  AuditGetInputSchema,
+  AuditListInputSchema,
+  AuditListOutputSchema,
   CancelTeamInvitationInputSchema,
   CancelTeamInvitationResultSchema,
   CommitSectionInputSchema,
@@ -30,11 +34,20 @@ import {
 } from './schemas.ts';
 
 export {
+  AUDIT_CATEGORIES,
+  AUDIT_OUTCOMES,
+  AuditActorKindSchema,
+  AuditCategorySchema,
+  AuditOutcomeSchema,
   SOCIAL_PROVIDERS,
   TEAM_ROLES,
   ProtocolNameSchema,
   TeamRoleSchema,
   TeamInvitationIdSchema,
+  type AuditCategory,
+  type AuditEventDetail,
+  type AuditEventSummary,
+  type AuditOutcome,
   type SocialProvider,
   type TeamRole,
 } from './schemas.ts';
@@ -97,5 +110,14 @@ export const contract = {
       .input(AddInformationStageInputSchema)
       .output(ManifestRevisionSchema),
     moveStage: oc.input(MoveStageInputSchema).output(ManifestRevisionSchema),
+  },
+  /**
+   * The team's immutable activity record. Reads require the audit.read
+   * permission (built-in owner/admin until #1257); ordering and cursors are
+   * per-team sequences, never timestamps.
+   */
+  audit: {
+    list: oc.input(AuditListInputSchema).output(AuditListOutputSchema),
+    get: oc.input(AuditGetInputSchema).output(AuditEventDetailSchema),
   },
 };

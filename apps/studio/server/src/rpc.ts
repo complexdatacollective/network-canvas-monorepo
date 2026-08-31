@@ -2,9 +2,23 @@ import { implement, ORPCError } from '@orpc/server';
 import type pg from 'pg';
 
 import { contract } from '@codaco/studio-rpc';
-import { createTenantDb } from '@codaco/studio-sync/tenant';
+import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
-import { AuditCommandTeamNotFoundError } from './audit/command.ts';
+import {
+  appendAuditedEvent,
+  auditActorEventContext,
+  AuditCommandTeamNotFoundError,
+  type AuditedCommandContext,
+} from './audit/command.ts';
+import { reserveDeniedAuditAttempt } from './audit/denial-rate-limit.ts';
+import { createDeniedAuditSummaryWriter } from './audit/denial-summary.ts';
+import { rolesGrantAuditPermission } from './audit/permissions.ts';
+import {
+  renderAuditEventDetail,
+  renderAuditEventSummary,
+} from './audit/render.ts';
+import { AuditStore, clampAuditListLimit } from './audit/store.ts';
+import { runNoAuditTenantTransaction } from './audit/transaction.ts';
 import type { AuthService, Principal } from './auth/service.ts';
 import { type AuthCapabilities, getInstanceStatus } from './domain.ts';
 import {
@@ -23,6 +37,7 @@ import {
   TeamCommandError,
   updateTeamMemberRole,
 } from './team/commands.ts';
+import { tryParseRoles } from './team/roles.ts';
 
 // The SPA's internal surface: unpublished and free-moving within the
 // deploy-compatibility rules on #1245 — its only client is the Studio SPA.
@@ -33,6 +48,70 @@ export type RpcContext = {
 };
 
 const os = implement(contract).$context<RpcContext>();
+
+const auditStore = new AuditStore();
+
+type TeamRpcContext = {
+  principal: Principal;
+  requestId: string;
+  team: { id: string; role: string };
+  tenantDb: TenantDb;
+};
+
+/**
+ * Explicit audit.read check against the caller's membership for the explicit
+ * teamId. A member without the permission is denied with a committed,
+ * rate-limited audit.read_denied event (design §7.3: audit-log access is
+ * security-relevant); a failed denial append still denies.
+ */
+async function requireAuditRead(
+  context: TeamRpcContext,
+  procedure: 'audit.list' | 'audit.get',
+): Promise<void> {
+  const roles = tryParseRoles(context.team.role) ?? [];
+  if (rolesGrantAuditPermission(roles, 'audit.read')) return;
+
+  const auditedContext: AuditedCommandContext = {
+    tenantDb: context.tenantDb,
+    principal: context.principal,
+    requestId: context.requestId,
+  };
+  const reservation = await reserveDeniedAuditAttempt(
+    {
+      actorId: context.principal.userId,
+      teamId: context.team.id,
+      operation: 'audit.read',
+    },
+    createDeniedAuditSummaryWriter(auditedContext, 'audit.read'),
+  );
+  if (!reservation.admitted) {
+    throw new ORPCError(
+      reservation.reason === 'overloaded' ? 'TOO_MANY_REQUESTS' : 'FORBIDDEN',
+    );
+  }
+  try {
+    await appendAuditedEvent(auditedContext, (auditContext) => ({
+      ...auditActorEventContext(auditContext),
+      eventVersion: 1,
+      eventType: 'audit.read_denied',
+      category: 'audit',
+      outcome: 'denied',
+      subjectType: null,
+      subjectId: null,
+      subjectLabel: null,
+      resourceType: null,
+      resourceId: null,
+      resourceLabel: null,
+      details: { procedure, reason: 'insufficient_permission' },
+    }));
+    reservation.complete('denied');
+  } catch {
+    // The append already emitted its operational signal; the request stays
+    // denied either way.
+    reservation.complete('other');
+  }
+  throw new ORPCError('FORBIDDEN');
+}
 
 const requireUser = os.middleware(({ context, next }) => {
   const { principal, requestId } = context;
@@ -330,6 +409,47 @@ export function createRpcRouter(
             ),
           ),
         ),
+    },
+    audit: {
+      list: os.audit.list
+        .use(requireTeam)
+        .handler(async ({ context, input }) => {
+          await requireAuditRead(context, 'audit.list');
+          const events = await runNoAuditTenantTransaction(
+            context.tenantDb,
+            'audit.list',
+            (client) =>
+              auditStore.listForTeam(client, input.teamId, {
+                beforeSequence: input.cursor,
+                limit: input.limit,
+                categories: input.categories,
+                eventTypes: input.eventTypes,
+                actorId: input.actorId,
+                outcomes: input.outcomes,
+                occurredFrom: input.from,
+                occurredTo: input.to,
+              }),
+          );
+          const last = events.at(-1);
+          return {
+            items: events.map(renderAuditEventSummary),
+            nextCursor:
+              last && events.length === clampAuditListLimit(input.limit)
+                ? last.sequence
+                : null,
+          };
+        }),
+      get: os.audit.get.use(requireTeam).handler(async ({ context, input }) => {
+        await requireAuditRead(context, 'audit.get');
+        const event = await runNoAuditTenantTransaction(
+          context.tenantDb,
+          'audit.get',
+          (client) =>
+            auditStore.getForTeam(client, input.teamId, input.eventId),
+        );
+        if (!event) throw new ORPCError('NOT_FOUND');
+        return renderAuditEventDetail(event);
+      }),
     },
   };
 }
