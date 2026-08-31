@@ -840,10 +840,14 @@ jobs:
 
   docs-preview-checks:
     needs: detect
-    if: |
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.user.login != 'dependabot[bot]' &&
-      needs.detect.outputs.docs == 'true'
+    # Documentation and Website are separately gated products. Crawl both
+    # paired previews only when one of their generated release PRs is being
+    # validated; ordinary feature PRs must not run the dead-link checker.
+    if: >-
+      github.event_name == 'pull_request'
+      && needs.detect.outputs.docs == 'true'
+      && (github.head_ref == 'changeset-release/documentation'
+      || github.head_ref == 'changeset-release/website')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -966,10 +970,13 @@ jobs:
 
   website-preview-checks:
     needs: detect
-    if: |
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.user.login != 'dependabot[bot]' &&
-      needs.detect.outputs.website == 'true'
+    # Keep this condition paired with docs-preview-checks: either public-site
+    # release validates both sites because they link to each other's routes.
+    if: >-
+      github.event_name == 'pull_request'
+      && needs.detect.outputs.website == 'true'
+      && (github.head_ref == 'changeset-release/documentation'
+      || github.head_ref == 'changeset-release/website')
     runs-on: ubuntu-latest
     # Budgets two sequential 15-minute Netlify status polls (website, then
     # documentation) plus the reachability probes and the crawl itself.

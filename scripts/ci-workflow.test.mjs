@@ -84,7 +84,7 @@ test('detect never runs on push-to-main (its consumers are PR/dispatch only)', (
   assert.match(detectJob, /inputs\.interview_e2e_benchmark == true/);
 });
 
-test('both public sites crawl their matching Netlify deploy previews', () => {
+test('both public sites are crawled only for their generated release PRs', () => {
   const detectJob = job('detect');
   assert.ok(detectJob, 'detect job exists');
   assert.match(detectJob, /docs: \$\{\{ steps\.flags\.outputs\.docs \}\}/);
@@ -119,6 +119,21 @@ test('both public sites crawl their matching Netlify deploy previews', () => {
     assert.match(
       previewJob,
       new RegExp(`needs\\.detect\\.outputs\\.${flag} == 'true'`),
+    );
+    assert.match(
+      previewJob,
+      /github\.head_ref == 'changeset-release\/documentation'/,
+      `${jobName} runs for a Documentation release PR`,
+    );
+    assert.match(
+      previewJob,
+      /github\.head_ref == 'changeset-release\/website'/,
+      `${jobName} runs for a Website release PR`,
+    );
+    assert.doesNotMatch(
+      previewJob,
+      /startsWith\(github\.head_ref, 'changeset-release\/'\)/,
+      `${jobName} does not run for unrelated release lanes`,
     );
     assert.match(previewJob, new RegExp(`const siteName = '${siteName}'`));
     assert.match(
