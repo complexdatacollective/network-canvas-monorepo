@@ -801,6 +801,74 @@ describe('StageEditorShell', () => {
     ).toBeInTheDocument();
   });
 
+  it('sees a capability filled in by a control that owns its parent', async () => {
+    const user = userEvent.setup();
+    const session = createSession();
+    // One compound control owns `settings`; the capability owns a path inside
+    // it, and no field is registered there.
+    function CompoundControl({
+      value,
+      onChange,
+      ...rest
+    }: {
+      value?: Record<string, unknown>;
+      onChange?: (next: Record<string, unknown>) => void;
+      id?: string;
+      disabled?: boolean;
+    }) {
+      return (
+        <input
+          {...rest}
+          type="text"
+          value={typeof value?.enabled === 'string' ? value.enabled : ''}
+          onChange={(event) => onChange?.({ enabled: event.target.value })}
+        />
+      );
+    }
+    function NestedCapability() {
+      const controller = useStageEditorController(session, 'stage-form');
+      return (
+        <StageEditorShell controller={controller}>
+          <BuilderSection
+            title="Advanced settings"
+            capability={{
+              fields: ['settings.enabled'],
+              confirmClear: {
+                title: 'This will clear your advanced settings',
+                description: 'The settings you chose will be deleted.',
+                confirmLabel: 'Clear settings',
+              },
+            }}
+          >
+            <ProtocolField<typeof CompoundControl>
+              name="settings"
+              label="Settings"
+              component={CompoundControl}
+            />
+          </BuilderSection>
+        </StageEditorShell>
+      );
+    }
+    render(
+      <DialogProvider>
+        <NestedCapability />
+      </DialogProvider>,
+    );
+
+    await user.click(screen.getByRole('switch', { name: 'Advanced settings' }));
+    await user.type(
+      await screen.findByRole('textbox', { name: 'Settings' }),
+      'yes',
+    );
+    await user.click(screen.getByRole('switch', { name: 'Advanced settings' }));
+
+    // The value reaches the capability's path from the control above it, so
+    // there is something to lose and the researcher has to be asked.
+    expect(
+      await screen.findByRole('button', { name: 'Clear settings' }),
+    ).toBeInTheDocument();
+  });
+
   it('explains a prerequisite before it explains a switch', async () => {
     const session = createSession();
     function DisabledCapability() {

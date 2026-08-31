@@ -265,6 +265,44 @@ describe('stageDraftFromSubmission', () => {
     expect(draft.skipLogic).toEqual({ action: 'SHOW' });
   });
 
+  it('keeps a capability re-entered through a control that owns its parent', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: {},
+      // One compound control registered at `settings` carries the value that
+      // sits at `settings.enabled`; no field of its own is registered there.
+      submittedValues: { settings: { enabled: true } },
+      mountedPaths: [['settings']],
+      // The tombstone left when the capability was switched off earlier.
+      dormantFields: [
+        {
+          name: 'settings.enabled',
+          path: ['settings', 'enabled'],
+          value: undefined,
+        },
+      ],
+    });
+
+    expect(draft.settings).toEqual({ enabled: true });
+  });
+
+  it('still clears a capability its mounted parent no longer carries', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: { settings: { enabled: true, other: 'kept' } },
+      // The parent is mounted and no longer holds the cleared path.
+      submittedValues: { settings: { other: 'kept' } },
+      mountedPaths: [['settings']],
+      dormantFields: [
+        {
+          name: 'settings.enabled',
+          path: ['settings', 'enabled'],
+          value: undefined,
+        },
+      ],
+    });
+
+    expect(draft.settings).toEqual({ other: 'kept' });
+  });
+
   it('does not write through into the draft it was given', () => {
     const currentFields = Object.freeze({
       label: 'Friends',

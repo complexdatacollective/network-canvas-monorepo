@@ -106,6 +106,17 @@ export function stageDraftFromSubmission(
   ];
   for (const removal of removals) {
     if (hasDescendantIn(livePaths, removal.path)) continue;
+    // The same protection from above. A capability path re-entered through a
+    // compound control registered on an ancestor is carried by that ancestor's
+    // value, not by a field of its own — and clearing the capability empties
+    // the path out of its ancestors too, so a value still there arrived after
+    // the tombstone did.
+    if (
+      hasAncestorIn(livePaths, removal.path) &&
+      getValue(draft, removal.path) !== undefined
+    ) {
+      continue;
+    }
     draft = removePath(draft, removal.path);
   }
 
@@ -140,6 +151,17 @@ function hasDescendantIn(
     (candidate) =>
       candidate.length > path.length &&
       path.every((segment, index) => candidate[index] === segment),
+  );
+}
+
+function hasAncestorIn(
+  candidates: readonly ObjectPath[],
+  path: ObjectPath,
+): boolean {
+  return candidates.some(
+    (candidate) =>
+      candidate.length < path.length &&
+      candidate.every((segment, index) => path[index] === segment),
   );
 }
 
