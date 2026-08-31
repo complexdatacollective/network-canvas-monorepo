@@ -5,6 +5,7 @@ import { parseArgs } from 'node:util';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { type SectionDoc, canonicalize } from '@codaco/studio-sync/apply';
+import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import { createOwnerPool, createPool } from '../src/db/pool.ts';
@@ -13,7 +14,6 @@ import { isLocalDatabase, readEnv } from '../src/env.ts';
 import type { FieldChange, ProtocolChange } from '../src/protocol/diff.ts';
 import { addStage, removeStage } from '../src/protocol/draft-structure.ts';
 import { ProtocolStore } from '../src/protocol/store.ts';
-import { parseSectionId, sectionId } from '../src/protocol/taxonomy.ts';
 import { applySchema } from './apply.ts';
 
 // Shows what a protocol looks like inside the store, because no RPC procedure

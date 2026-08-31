@@ -15,6 +15,16 @@ class IntersectionObserverStub {
 globalThis.IntersectionObserver =
   IntersectionObserverStub as unknown as typeof IntersectionObserver;
 
+// Dialog content uses Fresco's scroll area, which observes its viewport and
+// children. jsdom does not implement ResizeObserver.
+class ResizeObserverStub {
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+}
+globalThis.ResizeObserver =
+  ResizeObserverStub as unknown as typeof ResizeObserver;
+
 // jsdom implements neither element nor window smooth scrolling; the form
 // system scrolls to the first invalid field on submit.
 Element.prototype.scrollTo =

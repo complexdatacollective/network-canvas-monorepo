@@ -1,0 +1,6 @@
+@layer components {
+  .protocol-builder-focus-target:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 0.25rem;
+  }
+}

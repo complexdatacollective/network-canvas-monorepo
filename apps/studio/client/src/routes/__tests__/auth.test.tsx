@@ -1,11 +1,19 @@
 import type { InferContractRouterOutputs } from '@orpc/contract';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { useSyncExternalStore } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { contract } from '@codaco/studio-rpc';
 
+import { registerStudioEditorSession } from '../../editor/sessionLifecycle.ts';
 import { authClient } from '../../lib/auth.ts';
 import { createAppRouter } from '../../router.tsx';
 
@@ -13,6 +21,7 @@ vi.mock('../../lib/auth.ts', () => ({
   authClient: {
     getSession: vi.fn(),
     useSession: vi.fn(),
+    useListOrganizations: vi.fn(),
     signIn: { magicLink: vi.fn(), social: vi.fn() },
     signOut: vi.fn(),
   },
@@ -34,7 +43,24 @@ vi.mock('../../lib/api.ts', () => ({
         queryFn: () => currentStatus,
       }),
     },
+    protocols: {
+      list: {
+        queryOptions: () => ({
+          queryKey: ['protocols'],
+          queryFn: () => [],
+        }),
+        key: () => ['protocols'],
+      },
+      create: {
+        mutationOptions: () => ({ mutationFn: vi.fn() }),
+      },
+      draft: {
+        queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
+        key: () => ['draft'],
+      },
+    },
   },
+  rpcClient: { protocols: {} },
 }));
 
 const mocked = vi.mocked(authClient, true);
@@ -43,6 +69,14 @@ type GetSessionResult = Awaited<ReturnType<typeof authClient.getSession>>;
 type UseSessionResult = ReturnType<typeof authClient.useSession>;
 type MagicLinkResult = Awaited<ReturnType<typeof authClient.signIn.magicLink>>;
 type SocialResult = Awaited<ReturnType<typeof authClient.signIn.social>>;
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((complete) => {
+    resolve = complete;
+  });
+  return { promise, resolve };
+}
 
 const SESSION = {
   user: {
@@ -67,16 +101,21 @@ const sessionNone = {
   error: null,
 } as unknown as UseSessionResult;
 
-function renderAt(path: string) {
+function renderWithClientAt(path: string) {
   const router = createAppRouter(
     createMemoryHistory({ initialEntries: [path] }),
   );
-  render(
-    <QueryClientProvider client={new QueryClient()}>
+  const queryClient = new QueryClient();
+  const view = render(
+    <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
-  return router;
+  return { queryClient, router, ...view };
+}
+
+function renderAt(path: string) {
+  return renderWithClientAt(path).router;
 }
 
 beforeEach(() => {
@@ -84,6 +123,11 @@ beforeEach(() => {
   currentStatus = STATUS;
   mocked.getSession.mockResolvedValue(signedOut);
   mocked.useSession.mockReturnValue(sessionNone);
+  mocked.useListOrganizations.mockReturnValue({
+    data: [],
+    isPending: false,
+    error: null,
+  } as unknown as ReturnType<typeof authClient.useListOrganizations>);
 });
 
 describe('route guard', () => {
@@ -147,6 +191,64 @@ describe('route guard', () => {
 });
 
 describe('sign-out', () => {
+  it('clears private queries when a live session expires', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    let currentSession = sessionLive;
+    const listeners = new Set<() => void>();
+    function useReactiveSession() {
+      return useSyncExternalStore(
+        (listener) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+        () => currentSession,
+        () => currentSession,
+      );
+    }
+    mocked.useSession.mockImplementation(useReactiveSession);
+    const { queryClient, router } = renderWithClientAt('/');
+    await screen.findByText(/Signed in as Researcher/);
+    queryClient.setQueryData(['private-draft'], { name: 'Private draft' });
+
+    mocked.getSession.mockResolvedValue(signedOut);
+    act(() => {
+      currentSession = sessionNone;
+      for (const listener of listeners) listener();
+    });
+
+    await waitFor(() =>
+      expect(queryClient.getQueryData(['private-draft'])).toBeUndefined(),
+    );
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/sign-in'),
+    );
+  });
+
+  it('closes editor sessions before clearing authentication', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    mocked.useSession.mockReturnValue(sessionLive);
+    const closed = deferred<void>();
+    const close = vi.fn(() => closed.promise);
+    const unregister = registerStudioEditorSession(close);
+    mocked.signOut.mockResolvedValue({
+      data: { success: true },
+      error: null,
+    } as unknown as Awaited<ReturnType<typeof authClient.signOut>>);
+    const { queryClient } = renderWithClientAt('/');
+    queryClient.setQueryData(['private-draft'], { name: 'Private draft' });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+    expect(mocked.signOut).not.toHaveBeenCalled();
+
+    closed.resolve();
+    await waitFor(() => expect(mocked.signOut).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(queryClient.getQueryData(['private-draft'])).toBeUndefined(),
+    );
+    unregister();
+  });
+
   it('stays put and reports failure when sign-out does not complete', async () => {
     mocked.getSession.mockResolvedValue(signedIn);
     mocked.useSession.mockReturnValue(sessionLive);

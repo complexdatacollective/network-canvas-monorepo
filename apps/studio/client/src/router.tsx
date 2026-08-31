@@ -7,8 +7,11 @@ import {
   type RouterHistory,
 } from '@tanstack/react-router';
 
+import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+
 import { authClient } from './lib/auth.ts';
 import AppLayout from './routes/AppLayout.tsx';
+import Editor from './routes/Editor.tsx';
 import ErrorScreen, { ServerUnreachableError } from './routes/ErrorScreen.tsx';
 import Home from './routes/Home.tsx';
 import SignIn from './routes/SignIn.tsx';
@@ -29,9 +32,15 @@ async function probeSession(): Promise<
   }
 }
 
-const rootRoute = createRootRoute({
-  component: Outlet,
-});
+function RootLayout() {
+  return (
+    <DialogProvider>
+      <Outlet />
+    </DialogProvider>
+  );
+}
+
+const rootRoute = createRootRoute({ component: RootLayout });
 
 const signInRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -69,9 +78,15 @@ const indexRoute = createRoute({
   component: Home,
 });
 
+const editorRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/teams/$teamId/protocols/$protocolId/drafts/$draftId',
+  component: Editor,
+});
+
 const routeTree = rootRoute.addChildren([
   signInRoute,
-  authenticatedRoute.addChildren([indexRoute]),
+  authenticatedRoute.addChildren([indexRoute, editorRoute]),
 ]);
 
 export function createAppRouter(history?: RouterHistory) {

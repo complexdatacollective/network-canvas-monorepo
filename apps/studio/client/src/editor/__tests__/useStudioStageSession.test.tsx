@@ -1,0 +1,733 @@
+// @vitest-environment jsdom
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { rpcClient } from '../../lib/api.ts';
+import { closeStudioEditorSessions } from '../sessionLifecycle.ts';
+import { useStudioStageSession } from '../useStudioStageSession.ts';
+
+const STAGE_ID = '11111111-1111-4111-8111-111111111111';
+const DRAFT = {
+  protocol: {
+    id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    draftId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    name: 'Session proof',
+    createdAt: new Date('2026-08-28T00:00:00Z'),
+    updatedAt: new Date('2026-08-28T00:00:00Z'),
+  },
+  revision: { sequence: '2', hash: 'revision-2' },
+  sections: {
+    settings: {},
+    stageOrder: { stages: [STAGE_ID] },
+    [`stage:${STAGE_ID}`]: {
+      id: STAGE_ID,
+      type: 'Information',
+      label: 'Welcome',
+      title: 'Welcome',
+      items: [],
+    },
+  },
+};
+
+vi.mock('../../lib/api.ts', () => ({
+  rpcClient: {
+    protocols: {
+      acquireSection: vi.fn(),
+      renewSection: vi.fn(),
+      releaseSection: vi.fn(),
+      commitSection: vi.fn(),
+      draft: vi.fn(),
+    },
+  },
+}));
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((complete) => {
+    resolve = complete;
+  });
+  return { promise, resolve };
+}
+
+function renderSession(draft = DRAFT) {
+  return renderHook(
+    ({ currentDraft }) =>
+      useStudioStageSession({
+        teamId: 'team-a',
+        protocolId: DRAFT.protocol.id,
+        draftId: DRAFT.protocol.draftId,
+        stageId: STAGE_ID,
+        draft: currentDraft,
+        onCommitted: vi.fn(),
+        onAuthoritativeDraft: vi.fn(),
+      }),
+    { initialProps: { currentDraft: draft } },
+  );
+}
+
+function draftAt(sequence: string, label: string) {
+  return {
+    ...DRAFT,
+    revision: { sequence, hash: `revision-${sequence}` },
+    sections: {
+      ...DRAFT.sections,
+      [`stage:${STAGE_ID}`]: {
+        ...DRAFT.sections[`stage:${STAGE_ID}`],
+        label,
+        title: label,
+      },
+    },
+  };
+}
+
+beforeEach(() => {
+  vi.mocked(rpcClient.protocols.acquireSection).mockReset();
+  vi.mocked(rpcClient.protocols.acquireSection).mockResolvedValue({
+    mode: 'editable',
+    leaseEpoch: '1',
+    nextClientSequence: '1',
+  });
+  vi.mocked(rpcClient.protocols.renewSection).mockReset();
+  vi.mocked(rpcClient.protocols.renewSection).mockResolvedValue({
+    renewed: true,
+  });
+  vi.mocked(rpcClient.protocols.releaseSection).mockReset();
+  vi.mocked(rpcClient.protocols.releaseSection).mockResolvedValue(undefined);
+  vi.mocked(rpcClient.protocols.commitSection).mockReset();
+  vi.mocked(rpcClient.protocols.commitSection).mockResolvedValue({
+    sequence: '3',
+    hash: 'revision-3',
+  });
+  vi.mocked(rpcClient.protocols.draft).mockReset();
+  vi.mocked(rpcClient.protocols.draft).mockResolvedValue(DRAFT);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe('useStudioStageSession', () => {
+  it('refreshes authoritative fields after acquiring an editable lease', async () => {
+    vi.mocked(rpcClient.protocols.draft).mockResolvedValueOnce({
+      ...DRAFT,
+      revision: { sequence: '3', hash: 'revision-3' },
+      sections: {
+        ...DRAFT.sections,
+        [`stage:${STAGE_ID}`]: {
+          ...DRAFT.sections[`stage:${STAGE_ID}`],
+          label: 'Changed before acquisition',
+          title: 'Changed before acquisition',
+        },
+      },
+    });
+
+    const view = renderSession();
+    await waitFor(() => expect(view.result.current.status).toBe('ready'));
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+
+    expect(
+      view.result.current.session.getSnapshot().editedSection.fields,
+    ).toMatchObject({
+      label: 'Changed before acquisition',
+      title: 'Changed before acquisition',
+    });
+    expect(rpcClient.protocols.draft).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes authoritative fields after acquiring read-only access', async () => {
+    vi.mocked(rpcClient.protocols.acquireSection).mockResolvedValueOnce({
+      mode: 'readOnly',
+    });
+    vi.mocked(rpcClient.protocols.draft).mockResolvedValueOnce({
+      ...DRAFT,
+      revision: { sequence: '3', hash: 'revision-3' },
+      sections: {
+        ...DRAFT.sections,
+        [`stage:${STAGE_ID}`]: {
+          ...DRAFT.sections[`stage:${STAGE_ID}`],
+          label: 'Changed by the active editor',
+          title: 'Changed by the active editor',
+        },
+      },
+    });
+
+    const view = renderSession();
+    await waitFor(() => expect(view.result.current.status).toBe('ready'));
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+
+    expect(view.result.current.session.getSnapshot().access.mode).toBe(
+      'readOnly',
+    );
+    expect(
+      view.result.current.session.getSnapshot().editedSection.fields,
+    ).toMatchObject({
+      label: 'Changed by the active editor',
+      title: 'Changed by the active editor',
+    });
+    expect(rpcClient.protocols.draft).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes a spectator after every occupied lease retry', async () => {
+    vi.useFakeTimers();
+    vi.mocked(rpcClient.protocols.acquireSection).mockResolvedValue({
+      mode: 'readOnly',
+    });
+    vi.mocked(rpcClient.protocols.draft)
+      .mockResolvedValueOnce(DRAFT)
+      .mockResolvedValueOnce(draftAt('3', 'First collaborator commit'))
+      .mockResolvedValueOnce(draftAt('4', 'Second collaborator commit'));
+
+    const view = renderSession();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(view.result.current.status).toBe('ready');
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+    expect(
+      view.result.current.session.getSnapshot().editedSection.fields,
+    ).toMatchObject({
+      label: 'First collaborator commit',
+      title: 'First collaborator commit',
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+    expect(
+      view.result.current.session.getSnapshot().editedSection.fields,
+    ).toMatchObject({
+      label: 'Second collaborator commit',
+      title: 'Second collaborator commit',
+    });
+    expect(rpcClient.protocols.acquireSection).toHaveBeenCalledTimes(3);
+    expect(rpcClient.protocols.draft).toHaveBeenCalledTimes(3);
+    view.unmount();
+  });
+
+  it('serializes spectator refreshes and ignores a stale completion', async () => {
+    vi.useFakeTimers();
+    const slowRefresh = deferred<typeof DRAFT>();
+    const newestDraft = draftAt('4', 'Newer authoritative refresh');
+    vi.mocked(rpcClient.protocols.acquireSection).mockResolvedValue({
+      mode: 'readOnly',
+    });
+    vi.mocked(rpcClient.protocols.draft)
+      .mockResolvedValueOnce(DRAFT)
+      .mockReturnValueOnce(slowRefresh.promise)
+      .mockResolvedValueOnce(draftAt('5', 'Newest collaborator commit'));
+
+    const view = renderSession();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(5_000);
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+    expect(rpcClient.protocols.acquireSection).toHaveBeenCalledTimes(2);
+    expect(rpcClient.protocols.draft).toHaveBeenCalledTimes(2);
+
+    act(() => view.rerender({ currentDraft: newestDraft }));
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+    expect(
+      view.result.current.session.getSnapshot().editedSection.fields,
+    ).toMatchObject({ label: 'Newer authoritative refresh' });
+
+    await act(async () => {
+      slowRefresh.resolve(draftAt('3', 'Stale collaborator commit'));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(
+      view.result.current.session.getSnapshot().editedSection.fields,
+    ).toMatchObject({ label: 'Newer authoritative refresh' });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(rpcClient.protocols.acquireSection).toHaveBeenCalledTimes(3);
+    expect(rpcClient.protocols.draft).toHaveBeenCalledTimes(3);
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+    expect(
+      view.result.current.session.getSnapshot().editedSection.fields,
+    ).toMatchObject({ label: 'Newest collaborator commit' });
+    view.unmount();
+  });
+
+  it('retries a failed initial acquisition with the same client identity', async () => {
+    vi.useFakeTimers();
+    vi.mocked(rpcClient.protocols.acquireSection)
+      .mockRejectedValueOnce(new Error('response lost'))
+      .mockResolvedValueOnce({
+        mode: 'editable',
+        leaseEpoch: '1',
+        nextClientSequence: '1',
+      });
+
+    const view = renderSession();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(rpcClient.protocols.acquireSection).toHaveBeenCalledTimes(1);
+    const firstClientId = vi.mocked(rpcClient.protocols.acquireSection).mock
+      .calls[0]![0].clientId;
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+
+    expect(rpcClient.protocols.acquireSection).toHaveBeenCalledTimes(2);
+    expect(
+      vi.mocked(rpcClient.protocols.acquireSection).mock.calls[1]![0].clientId,
+    ).toBe(firstClientId);
+    expect(view.result.current.status).toBe('ready');
+    view.unmount();
+  });
+
+  it('retries after an authoritative refresh fails post-acquisition', async () => {
+    vi.useFakeTimers();
+    vi.mocked(rpcClient.protocols.acquireSection)
+      .mockResolvedValueOnce({
+        mode: 'editable',
+        leaseEpoch: '1',
+        nextClientSequence: '1',
+      })
+      .mockResolvedValueOnce({
+        mode: 'editable',
+        leaseEpoch: '2',
+        nextClientSequence: '1',
+      });
+    vi.mocked(rpcClient.protocols.draft)
+      .mockRejectedValueOnce(new Error('refresh interrupted'))
+      .mockResolvedValueOnce(DRAFT);
+
+    const view = renderSession();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(rpcClient.protocols.releaseSection).toHaveBeenCalledWith(
+      expect.objectContaining({ leaseEpoch: '1' }),
+    );
+    const firstClientId = vi.mocked(rpcClient.protocols.acquireSection).mock
+      .calls[0]![0].clientId;
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+
+    expect(rpcClient.protocols.acquireSection).toHaveBeenCalledTimes(2);
+    expect(
+      vi.mocked(rpcClient.protocols.acquireSection).mock.calls[1]![0].clientId,
+    ).toBe(firstClientId);
+    expect(view.result.current.status).toBe('ready');
+    view.unmount();
+  });
+
+  it('keeps the same leased session when a committed draft refresh arrives', async () => {
+    const view = renderSession();
+    await waitFor(() => expect(view.result.current.status).toBe('ready'));
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+    const originalSession = view.result.current.session;
+
+    view.rerender({
+      currentDraft: {
+        ...DRAFT,
+        revision: { sequence: '3', hash: 'revision-3' },
+      },
+    });
+
+    expect(view.result.current.status).toBe('ready');
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+    expect(view.result.current.session).toBe(originalSession);
+    expect(rpcClient.protocols.acquireSection).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a failed commit to the save caller and fences editing', async () => {
+    vi.mocked(rpcClient.protocols.commitSection).mockRejectedValueOnce(
+      new Error('commit failed'),
+    );
+    const view = renderSession();
+    await waitFor(() => expect(view.result.current.status).toBe('ready'));
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+
+    await act(async () => {
+      if (view.result.current.status !== 'ready') throw new Error('not ready');
+      view.result.current.session.dispatch([
+        { op: 'set', key: 'label', value: 'Changed' },
+      ]);
+      if (view.result.current.status !== 'ready') throw new Error('not ready');
+      await expect(view.result.current.save()).rejects.toThrow('commit failed');
+    });
+
+    expect(view.result.current.status).toBe('ready');
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+    expect(view.result.current.session.getSnapshot().access.mode).toBe(
+      'readOnly',
+    );
+  });
+
+  it('continues client sequencing when an existing lease is reacquired', async () => {
+    vi.mocked(rpcClient.protocols.acquireSection).mockResolvedValueOnce({
+      mode: 'editable',
+      leaseEpoch: '4',
+      nextClientSequence: '7',
+    });
+    const view = renderSession();
+    await waitFor(() => expect(view.result.current.status).toBe('ready'));
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+
+    act(() => {
+      if (view.result.current.status !== 'ready') throw new Error('not ready');
+      view.result.current.session.dispatch([
+        { op: 'set', key: 'label', value: 'Changed' },
+      ]);
+    });
+
+    await waitFor(() =>
+      expect(rpcClient.protocols.commitSection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          leaseEpoch: '4',
+          clientSequence: '7',
+        }),
+      ),
+    );
+  });
+
+  it('drains a pending commit before releasing its lease', async () => {
+    const commit = deferred<{ sequence: string; hash: string }>();
+    vi.mocked(rpcClient.protocols.commitSection).mockReturnValueOnce(
+      commit.promise,
+    );
+    const view = renderSession();
+    await waitFor(() => expect(view.result.current.status).toBe('ready'));
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+
+    act(() => {
+      if (view.result.current.status !== 'ready') throw new Error('not ready');
+      view.result.current.session.dispatch([
+        { op: 'set', key: 'label', value: 'Changed' },
+      ]);
+    });
+    await waitFor(() =>
+      expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(1),
+    );
+
+    view.unmount();
+    expect(rpcClient.protocols.releaseSection).not.toHaveBeenCalled();
+
+    commit.resolve({ sequence: '3', hash: 'revision-3' });
+    await waitFor(() =>
+      expect(rpcClient.protocols.releaseSection).toHaveBeenCalledWith(
+        expect.objectContaining({ leaseEpoch: '1' }),
+      ),
+    );
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+    await expect(view.result.current.save()).resolves.toBeUndefined();
+  });
+
+  it('releases a lost lease before attempting to reacquire it', async () => {
+    vi.useFakeTimers();
+    const commit = deferred<{ sequence: string; hash: string }>();
+    vi.mocked(rpcClient.protocols.commitSection).mockReturnValueOnce(
+      commit.promise,
+    );
+    vi.mocked(rpcClient.protocols.renewSection).mockRejectedValueOnce(
+      new Error('network interrupted'),
+    );
+    const view = renderSession();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(view.result.current.status).toBe('ready');
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+
+    act(() => {
+      if (view.result.current.status !== 'ready') throw new Error('not ready');
+      view.result.current.session.dispatch([
+        { op: 'set', key: 'label', value: 'Changed' },
+      ]);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(rpcClient.protocols.acquireSection).toHaveBeenCalledTimes(1);
+    expect(rpcClient.protocols.releaseSection).not.toHaveBeenCalled();
+
+    await act(async () => {
+      commit.resolve({ sequence: '3', hash: 'revision-3' });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(rpcClient.protocols.releaseSection).toHaveBeenCalledTimes(1);
+    expect(rpcClient.protocols.acquireSection).toHaveBeenCalledTimes(2);
+    expect(
+      vi.mocked(rpcClient.protocols.releaseSection).mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      vi.mocked(rpcClient.protocols.acquireSection).mock
+        .invocationCallOrder[1]!,
+    );
+    view.unmount();
+  });
+
+  it('drains an active commit before releasing a lost lease', async () => {
+    vi.useFakeTimers();
+    const commit = deferred<{ sequence: string; hash: string }>();
+    vi.mocked(rpcClient.protocols.commitSection).mockReturnValueOnce(
+      commit.promise,
+    );
+    vi.mocked(rpcClient.protocols.renewSection).mockRejectedValueOnce(
+      new Error('network interrupted'),
+    );
+    const view = renderSession();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(view.result.current.status).toBe('ready');
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+
+    act(() => {
+      if (view.result.current.status !== 'ready') throw new Error('not ready');
+      view.result.current.session.dispatch([
+        { op: 'set', key: 'label', value: 'Changed' },
+      ]);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(rpcClient.protocols.releaseSection).not.toHaveBeenCalled();
+
+    commit.resolve({ sequence: '3', hash: 'revision-3' });
+    vi.useRealTimers();
+    await waitFor(() =>
+      expect(rpcClient.protocols.releaseSection).toHaveBeenCalledWith(
+        expect.objectContaining({ leaseEpoch: '1' }),
+      ),
+    );
+  });
+
+  it('fences a replacement session from stale lease cleanup', async () => {
+    const commit = deferred<{ sequence: string; hash: string }>();
+    vi.mocked(rpcClient.protocols.commitSection).mockReturnValueOnce(
+      commit.promise,
+    );
+    const first = renderSession();
+    await waitFor(() => expect(first.result.current.status).toBe('ready'));
+    if (first.result.current.status !== 'ready') throw new Error('not ready');
+
+    act(() => {
+      if (first.result.current.status !== 'ready') throw new Error('not ready');
+      first.result.current.session.dispatch([
+        { op: 'set', key: 'label', value: 'Changed' },
+      ]);
+    });
+    await waitFor(() =>
+      expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(1),
+    );
+    const firstClientId = vi.mocked(rpcClient.protocols.acquireSection).mock
+      .calls[0]![0].clientId;
+
+    first.unmount();
+    const replacement = renderSession();
+    await waitFor(() =>
+      expect(replacement.result.current.status).toBe('ready'),
+    );
+    const replacementClientId = vi.mocked(rpcClient.protocols.acquireSection)
+      .mock.calls[1]![0].clientId;
+    expect(replacementClientId).not.toBe(firstClientId);
+
+    commit.resolve({ sequence: '3', hash: 'revision-3' });
+    await waitFor(() =>
+      expect(rpcClient.protocols.releaseSection).toHaveBeenCalledWith(
+        expect.objectContaining({ clientId: firstClientId, leaseEpoch: '1' }),
+      ),
+    );
+    expect(rpcClient.protocols.releaseSection).not.toHaveBeenCalledWith(
+      expect.objectContaining({ clientId: replacementClientId }),
+    );
+    replacement.unmount();
+  });
+
+  it('promotes a spectator after the editing lease becomes available', async () => {
+    vi.useFakeTimers();
+    vi.mocked(rpcClient.protocols.draft).mockResolvedValue({
+      ...DRAFT,
+      revision: { sequence: '3', hash: 'revision-3' },
+      sections: {
+        ...DRAFT.sections,
+        [`stage:${STAGE_ID}`]: {
+          ...DRAFT.sections[`stage:${STAGE_ID}`],
+          label: 'Changed by collaborator',
+          title: 'Changed by collaborator',
+        },
+      },
+    });
+    vi.mocked(rpcClient.protocols.acquireSection)
+      .mockResolvedValueOnce({ mode: 'readOnly' })
+      .mockResolvedValueOnce({
+        mode: 'editable',
+        leaseEpoch: '2',
+        nextClientSequence: '1',
+      });
+    const view = renderSession();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(view.result.current.status).toBe('ready');
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+    expect(view.result.current.session.getSnapshot().access.mode).toBe(
+      'readOnly',
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+
+    expect(view.result.current.status).toBe('ready');
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+    expect(view.result.current.session.getSnapshot().access.mode).toBe(
+      'editable',
+    );
+    expect(
+      view.result.current.session.getSnapshot().editedSection.fields,
+    ).toMatchObject({
+      label: 'Changed by collaborator',
+      title: 'Changed by collaborator',
+    });
+    expect(rpcClient.protocols.draft).toHaveBeenCalledTimes(2);
+  });
+
+  it('renews an acquired lease while its authoritative draft is loading', async () => {
+    vi.useFakeTimers();
+    const draft = deferred<typeof DRAFT>();
+    vi.mocked(rpcClient.protocols.draft).mockReturnValueOnce(draft.promise);
+    const view = renderSession();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    expect(rpcClient.protocols.renewSection).toHaveBeenCalledWith(
+      expect.objectContaining({ leaseEpoch: '1' }),
+    );
+    expect(view.result.current.status).toBe('loading');
+
+    await act(async () => {
+      draft.resolve(DRAFT);
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(view.result.current.status).toBe('ready');
+    view.unmount();
+  });
+
+  it('does not overlap periodic lease renewals', async () => {
+    vi.useFakeTimers();
+    const firstRenewal = deferred<{ renewed: boolean }>();
+    vi.mocked(rpcClient.protocols.renewSection)
+      .mockReturnValueOnce(firstRenewal.promise)
+      .mockResolvedValue({ renewed: true });
+    const view = renderSession();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(view.result.current.status).toBe('ready');
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(rpcClient.protocols.renewSection).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      firstRenewal.resolve({ renewed: true });
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(rpcClient.protocols.renewSection).toHaveBeenCalledTimes(2);
+    view.unmount();
+  });
+
+  it('keeps a slow promotion registered until its lease is released', async () => {
+    vi.useFakeTimers();
+    const acquisition = deferred<{
+      mode: 'editable';
+      leaseEpoch: string;
+      nextClientSequence: string;
+    }>();
+    const release = deferred<void>();
+    vi.mocked(rpcClient.protocols.acquireSection)
+      .mockResolvedValueOnce({ mode: 'readOnly' })
+      .mockReturnValueOnce(acquisition.promise);
+    vi.mocked(rpcClient.protocols.releaseSection).mockReturnValueOnce(
+      release.promise,
+    );
+    const view = renderSession();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(5_000);
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(rpcClient.protocols.acquireSection).toHaveBeenCalledTimes(2);
+
+    view.unmount();
+    let closed = false;
+    const closing = closeStudioEditorSessions().then(() => {
+      closed = true;
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(closed).toBe(false);
+
+    await act(async () => {
+      acquisition.resolve({
+        mode: 'editable',
+        leaseEpoch: '7',
+        nextClientSequence: '1',
+      });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(rpcClient.protocols.releaseSection).toHaveBeenCalledWith(
+      expect.objectContaining({ leaseEpoch: '7' }),
+    );
+    expect(closed).toBe(false);
+
+    await act(async () => {
+      release.resolve();
+      await closing;
+    });
+    expect(closed).toBe(true);
+  });
+
+  it('releases an editable lease that resolves after unmount', async () => {
+    const acquisition = deferred<{
+      mode: 'editable';
+      leaseEpoch: string;
+      nextClientSequence: string;
+    }>();
+    vi.mocked(rpcClient.protocols.acquireSection).mockReturnValueOnce(
+      acquisition.promise,
+    );
+    const view = renderSession();
+    view.unmount();
+
+    acquisition.resolve({
+      mode: 'editable',
+      leaseEpoch: '7',
+      nextClientSequence: '1',
+    });
+
+    await waitFor(() =>
+      expect(rpcClient.protocols.releaseSection).toHaveBeenCalledWith(
+        expect.objectContaining({ leaseEpoch: '7' }),
+      ),
+    );
+  });
+});

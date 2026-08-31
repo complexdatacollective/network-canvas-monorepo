@@ -13,9 +13,11 @@
   "exports": {
     "./apply": "./src/apply.ts",
     "./client": "./src/client.ts",
+    "./protocol-document": "./src/protocol-document.ts",
     "./server": "./src/server.ts",
     "./rls": "./src/rls.ts",
     "./schema": "./src/schema.ts",
+    "./taxonomy": "./src/taxonomy.ts",
     "./tenant": "./src/tenant.ts"
   },
   "scripts": {

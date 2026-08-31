@@ -3,8 +3,7 @@ import {
   type CurrentProtocol,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
-
-import { sectionId } from './taxonomy.ts';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 /** @public */
 export class SectionizeError extends Error {}

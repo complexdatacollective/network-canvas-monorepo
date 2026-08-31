@@ -1,42 +1,39 @@
-import type { SectionDoc } from '@codaco/studio-sync/apply';
-
+import type { SectionDoc } from './apply.ts';
 import { parseSectionId } from './taxonomy.ts';
 
-export class AssemblyError extends Error {}
+export class ProtocolAssemblyError extends Error {}
 
 function stageOrderOf(doc: SectionDoc): string[] {
   const order = doc.stages;
-  if (
-    !Array.isArray(order) ||
-    order.some((entry) => typeof entry !== 'string')
-  ) {
-    throw new AssemblyError('stageOrder section is not a list of stage ids');
+  if (!isStringArray(order)) {
+    throw new ProtocolAssemblyError(
+      'stageOrder section is not a list of stage ids',
+    );
   }
-  return order as string[];
+  return order;
 }
 
-// Deliberately schema-version-agnostic — it merges whatever the settings
-// section carries — so a stored version at an older schema assembles exactly
-// as fielded for migration.
-export function assembleProtocol(
-  sections: Record<string, SectionDoc>,
+function isStringArray(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) && value.every((entry) => typeof entry === 'string')
+  );
+}
+
+/**
+ * Assemble the client-safe section model into a protocol-shaped document.
+ * Callers must run the canonical protocol schema before treating it as valid.
+ */
+export function assembleProtocolSections(
+  sections: Readonly<Record<string, SectionDoc>>,
 ): Record<string, unknown> {
   let settings: SectionDoc | undefined;
   let stageOrder: string[] | undefined;
   let ego: SectionDoc | undefined;
   let assets: SectionDoc | undefined;
   const stageDocs = new Map<string, SectionDoc>();
-  // Null prototypes: '__proto__' is a schema-valid type id, and assigning it
-  // into an ordinary object invokes the prototype setter instead of adding an
-  // entry, silently losing the entity.
-  const node: Record<string, SectionDoc> = Object.create(null) as Record<
-    string,
-    SectionDoc
-  >;
-  const edge: Record<string, SectionDoc> = Object.create(null) as Record<
-    string,
-    SectionDoc
-  >;
+  // Null prototypes preserve schema-valid `__proto__` entity ids.
+  const node: Record<string, SectionDoc> = Object.create(null);
+  const edge: Record<string, SectionDoc> = Object.create(null);
 
   for (const [id, doc] of Object.entries(sections)) {
     const ref = parseSectionId(id);
@@ -66,23 +63,26 @@ export function assembleProtocol(
   }
 
   if (settings === undefined) {
-    throw new AssemblyError('missing settings section');
+    throw new ProtocolAssemblyError('missing settings section');
   }
   if (stageOrder === undefined) {
-    throw new AssemblyError('missing stageOrder section');
+    throw new ProtocolAssemblyError('missing stageOrder section');
   }
 
   const stages = stageOrder.map((stageId) => {
     const doc = stageDocs.get(stageId);
     if (doc === undefined) {
-      throw new AssemblyError(`stageOrder names missing stage ${stageId}`);
+      throw new ProtocolAssemblyError(
+        `stageOrder names missing stage ${stageId}`,
+      );
     }
     stageDocs.delete(stageId);
     return doc;
   });
   if (stageDocs.size > 0) {
-    const orphans = [...stageDocs.keys()].join(', ');
-    throw new AssemblyError(`stages missing from stageOrder: ${orphans}`);
+    throw new ProtocolAssemblyError(
+      `stages missing from stageOrder: ${[...stageDocs.keys()].join(', ')}`,
+    );
   }
 
   const codebook: Record<string, unknown> = {};
