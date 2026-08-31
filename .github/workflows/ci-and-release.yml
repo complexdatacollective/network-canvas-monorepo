@@ -517,6 +517,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
+          # The npm version guard compares changed package manifests with the
+          # pull request's base commit. A shallow checkout cannot prove that
+          # comparison and must not turn registry uncertainty into a pass.
+          fetch-depth: 0
       - uses: ./.github/actions/turbo-ci-setup
       - name: Check unused files, exports, and dependencies
         id: knip
@@ -530,6 +534,21 @@ jobs:
         id: compat-protocols
         continue-on-error: true
         run: pnpm check:compat-protocols
+      - name: Check changed public package versions are unoccupied on npm
+        id: npm_versions
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" != "pull_request" ]]; then
+            echo "npm version collision check is only required for pull requests"
+            exit 0
+          fi
+          if [[ -z "$BASE_SHA" ]]; then
+            echo "::error::Pull request base SHA is unavailable"
+            exit 1
+          fi
+          node scripts/check-npm-version-collisions.mjs --base "$BASE_SHA"
       - name: Test repository scripts
         id: scripts
         continue-on-error: true
@@ -559,6 +578,7 @@ jobs:
           KNIP_OUTCOME: ${{ steps.knip.outcome }}
           CHANGESETS_OUTCOME: ${{ steps.changesets.outcome }}
           COMPAT_PROTOCOLS_OUTCOME: ${{ steps.compat-protocols.outcome }}
+          NPM_VERSIONS_OUTCOME: ${{ steps.npm_versions.outcome }}
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
@@ -568,6 +588,7 @@ jobs:
             "knip=$KNIP_OUTCOME" \
             "changesets=$CHANGESETS_OUTCOME" \
             "compat-protocols=$COMPAT_PROTOCOLS_OUTCOME" \
+            "npm-versions=$NPM_VERSIONS_OUTCOME" \
             "scripts=$SCRIPTS_OUTCOME" \
             "build=$BUILD_OUTCOME" \
             "typecheck=$TYPECHECK_OUTCOME"; do
