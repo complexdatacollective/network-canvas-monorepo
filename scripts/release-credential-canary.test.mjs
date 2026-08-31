@@ -27,6 +27,15 @@ test('release credential canary dry-runs every cross-repository push', () => {
     ),
     ['Fresco:main', 'Architect:master', 'Interviewer:master'],
   );
+  assert.match(
+    script,
+    /repos\/\$\{repository\}\/rules\/branches\/\$\{branch\}/,
+  );
+  assert.match(script, /jq 'length'/);
+  assert.match(
+    script,
+    /effective branch rules; the canary cannot prove the release push is allowed/,
+  );
 
   const continuedScript = script.replace(/\\\n\s*/g, ' ');
   const pushCommands = continuedScript
