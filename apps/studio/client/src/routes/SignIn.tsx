@@ -16,6 +16,7 @@ import type { SocialProvider } from '@codaco/studio-rpc';
 
 import { orpc } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
+import { studioEmailPattern } from '../lib/emailValidation.ts';
 import { GoogleIcon, MicrosoftIcon } from './ProviderIcons.tsx';
 
 const route = getRouteApi('/sign-in');
@@ -135,11 +136,9 @@ export default function SignIn() {
                     component={InputField}
                     type="email"
                     required
-                    pattern={{
-                      regex: '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$',
-                      hint: 'The address you use for Studio.',
-                      errorMessage: 'Enter a valid email address.',
-                    }}
+                    pattern={studioEmailPattern(
+                      'The address you use for Studio.',
+                    )}
                     autoComplete="email"
                   />
                   <SubmitButton>Send sign-in link</SubmitButton>

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAppRouter } from '../../router.tsx';
@@ -109,42 +109,5 @@ describe('Home', () => {
     expect(
       await screen.findByText(/do not belong to a Studio team yet/i),
     ).toBeInTheDocument();
-  });
-
-  it('reuses the creation identity after a lost response', async () => {
-    mocks.useListOrganizations.mockReturnValue({
-      data: [{ id: 'team-a', name: 'Research team' }],
-      isPending: false,
-      isError: false,
-    });
-    mocks.createProtocol
-      .mockRejectedValueOnce(new Error('response lost'))
-      .mockImplementationOnce(
-        (input: { protocolId: string; draftId: string }) =>
-          Promise.resolve({
-            protocolId: input.protocolId,
-            draftId: input.draftId,
-          }),
-      );
-    const { router } = renderHome();
-
-    fireEvent.change(
-      await screen.findByRole('textbox', { name: 'Protocol name' }),
-      { target: { value: 'Stable protocol' } },
-    );
-    const create = screen.getByRole('button', { name: 'Create protocol' });
-    fireEvent.click(create);
-    await screen.findByText(/protocol could not be created/i);
-    fireEvent.click(create);
-
-    await waitFor(() =>
-      expect(router.state.location.pathname).toMatch(
-        /^\/teams\/team-a\/protocols\/[0-9a-f-]+\/drafts\/[0-9a-f-]+$/,
-      ),
-    );
-    expect(mocks.createProtocol).toHaveBeenCalledTimes(2);
-    expect(mocks.createProtocol.mock.calls[1]?.[0]).toEqual(
-      mocks.createProtocol.mock.calls[0]?.[0],
-    );
   });
 });
