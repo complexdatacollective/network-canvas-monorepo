@@ -1,5 +1,27 @@
 # @codaco/tailwind-config
 
+## 1.3.0
+
+### Minor Changes
+
+- e9a6522: The new `ui-disabled` and `ui-enabled` variants match both native and ARIA-disabled controls. `Button` uses these variants for availability-dependent styles, so overrides should use forms such as `ui-enabled:hover:…` instead of `hover:enabled:…`.
+
+### Patch Changes
+
+- 3e10128: Keep a category's name visible when the people in it have long names. In the
+  Categorise People screen, each category circle summarises who it holds by naming
+  the first person in it. A long enough name grew that summary past the circle and
+  pushed the category's own name off the top edge, leaving a circle of text with
+  nothing saying which category it was.
+
+  The summary now shortens with an ellipsis instead of growing, the count of
+  everyone else in the category stays on its own line so it survives the
+  shortening, and both the category name and the summary sit inside the circle
+  rather than running under its edge. Tapping the category still opens it to show
+  everyone in full.
+
+- 469d404: Scope the `focus-styles` transition to the outline properties it animates. `transition-all` captured every property on a `:focus-visible` element, re-tweening each frame of script-driven animations (a node's press scale, a dragged node's position) through a 200ms ease and smearing them visibly behind the input.
+
 ## 1.2.2
 
 ### Patch Changes
