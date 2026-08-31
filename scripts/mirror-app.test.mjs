@@ -12,7 +12,10 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { assertCommitPinnedActionUses } from './mirror-app.mjs';
+import {
+  assertCommitPinnedActionUses,
+  assertFrescoPublisherContract,
+} from './mirror-app.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SCRIPT = join(REPO_ROOT, 'scripts', 'mirror-app.mjs');
@@ -42,11 +45,46 @@ test('Fresco publisher pins every external action to a commit SHA', () => {
   );
 });
 
+test('Fresco publisher must already match the mirror target', () => {
+  const workflow = '.github/workflows/docker-publish.yml';
+  const contents =
+    'steps:\n  - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f\n';
+
+  assert.doesNotThrow(() =>
+    assertFrescoPublisherContract({
+      workflow,
+      trackedWorkflows: [workflow],
+      sourceContents: contents,
+      targetContents: contents,
+    }),
+  );
+  assert.throws(
+    () =>
+      assertFrescoPublisherContract({
+        workflow,
+        trackedWorkflows: [workflow, '.github/workflows/target-owned.yml'],
+        sourceContents: contents,
+        targetContents: contents,
+      }),
+    /must already contain exactly/,
+  );
+  assert.throws(
+    () =>
+      assertFrescoPublisherContract({
+        workflow,
+        trackedWorkflows: [workflow],
+        sourceContents: contents,
+        targetContents: 'name: Drifted publisher\n',
+      }),
+    /must already match the monorepo copy/,
+  );
+});
+
 function git(cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 }
 
-test('Fresco mirror keeps only its GHCR publisher workflow', (t) => {
+test('Fresco mirror keeps only its matching GHCR publisher workflow', (t) => {
   const directory = mkdtempSync(join(tmpdir(), 'fresco-mirror-test-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
 
@@ -63,9 +101,11 @@ test('Fresco mirror keeps only its GHCR publisher workflow', (t) => {
     `${JSON.stringify({ extends: '@codaco/tsconfig/web.json' }, null, 2)}\n`,
   );
   writeFileSync(join(fresco, '.github', 'FUNDING.yml'), 'github: codaco\n');
+  const publisherWorkflow =
+    'name: Publish container\nsteps:\n  - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f\n';
   writeFileSync(
     join(fresco, '.github', 'workflows', 'docker-publish.yml'),
-    'name: Publish container\n',
+    publisherWorkflow,
   );
   writeFileSync(
     join(fresco, '.github', 'workflows', 'future-action.yaml'),
@@ -79,8 +119,8 @@ test('Fresco mirror keeps only its GHCR publisher workflow', (t) => {
   git(seed, 'config', 'user.name', 'ci');
   writeFileSync(join(seed, 'README.md'), 'mirror target\n');
   writeFileSync(
-    join(seed, '.github', 'workflows', 'target-owned.yml'),
-    'name: Target workflow\n',
+    join(seed, '.github', 'workflows', 'docker-publish.yml'),
+    publisherWorkflow,
   );
   git(seed, 'add', '.');
   git(seed, 'commit', '-m', 'Initialize mirror target');

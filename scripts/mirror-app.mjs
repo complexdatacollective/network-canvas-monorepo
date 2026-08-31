@@ -18,8 +18,9 @@
 //   node scripts/mirror-app.mjs --app <appDir> --repo <owner/name> --version <version> [--branch <name>] [--with-lockfile]
 // Env:
 //   LEGACY_RELEASE_GH_TOKEN  cross-repo token with Contents write (classic PAT:
-//                            repo; add workflow only when intentionally changing
-//                            the mirrored Fresco publisher; required to push)
+//                            repo). Fresco workflow changes are pre-applied with
+//                            maintainer credentials and must already match before
+//                            this release-only token pushes app source.
 //   MONOREPO_SHA             source commit sha (recorded in the commit message)
 //   GITHUB_OUTPUT            when set, `mirror_sha=<sha>` is appended for the workflow
 //   MIRROR_DRY_RUN           when "true", stage + commit locally but skip the push
@@ -95,6 +96,25 @@ export function assertCommitPinnedActionUses(workflowPath, contents) {
   }
 }
 
+export function assertFrescoPublisherContract({
+  workflow,
+  trackedWorkflows,
+  sourceContents,
+  targetContents,
+}) {
+  if (trackedWorkflows.length !== 1 || trackedWorkflows[0] !== workflow) {
+    throw new Error(
+      `Fresco mirror must already contain exactly ${workflow}; found ${trackedWorkflows.join(', ') || 'no workflows'}. Refusing to add or remove workflow files with the release token.`,
+    );
+  }
+
+  if (targetContents !== sourceContents) {
+    throw new Error(
+      `${workflow} in complexdatacollective/Fresco must already match the monorepo copy. Pre-apply the workflow change with maintainer credentials before releasing; the release token intentionally cannot modify workflows.`,
+    );
+  }
+}
+
 function run(cmd, args, opts = {}) {
   const result = spawnSync(cmd, args, { stdio: 'inherit', ...opts });
   if (result.error) throw result.error;
@@ -145,7 +165,8 @@ const APP_MIRROR_OVERRIDES = {
       // not ship in the standalone tree.
       'release-test',
       // Arbitrary app-local workflows must not reach the standalone repo. The
-      // one release-critical publisher is restored explicitly below.
+      // release-critical publisher is restored explicitly below, then checked
+      // against the target before any mirror commit is created.
       '.github/workflows',
     ],
   },
@@ -520,6 +541,27 @@ function main() {
     cloneUrl,
     checkout,
   ]);
+
+  if (appName === 'fresco') {
+    const workflow = '.github/workflows/docker-publish.yml';
+    const source = readFileSync(join(appDir, workflow), 'utf8');
+    const target = join(checkout, workflow);
+    const trackedWorkflows = capture('git', [
+      '-C',
+      checkout,
+      'ls-files',
+      '.github/workflows',
+    ])
+      .split('\n')
+      .filter(Boolean);
+
+    assertFrescoPublisherContract({
+      workflow,
+      trackedWorkflows,
+      sourceContents: source,
+      targetContents: existsSync(target) ? readFileSync(target, 'utf8') : '',
+    });
+  }
 
   run('git', ['-C', checkout, 'rm', '-r', '--quiet', '.']);
   copyTree(staging, checkout, ['.git']);
