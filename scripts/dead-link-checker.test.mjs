@@ -712,6 +712,66 @@ test('browser verification bounds repeated challenge navigations by one deadline
   }
 });
 
+test('browser verification waits when navigation starts without a response', async () => {
+  const frame = {};
+  const navigationRequest = {
+    frame: () => frame,
+    isNavigationRequest: () => true,
+  };
+  const response = (status) => ({
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => status,
+  });
+  const initial = response(403);
+  const interstitial = response(200);
+  let requestListener;
+  let responseListener;
+  let waitForResponseCount = 0;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'request') requestListener = listener;
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => 'https://publisher.test/slow-navigation',
+    waitForLoadState: async () => {},
+    waitForResponse: async (predicate) => {
+      if (waitForResponseCount++ === 0) {
+        responseListener(interstitial);
+        assert.equal(predicate(interstitial), true);
+        return interstitial;
+      }
+      throw Object.assign(new Error('slow navigation timed out'), {
+        name: 'TimeoutError',
+      });
+    },
+    waitForTimeout: async () => requestListener?.(navigationRequest),
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    await assert.rejects(
+      verifier.verify('https://publisher.test/challenge', 50),
+      /slow navigation timed out/,
+    );
+  } finally {
+    await verifier.close();
+  }
+});
+
 test('renderers escape workflow commands and obey explicit color selection', () => {
   const failure = {
     error: 'bad%value\nsecond line',
@@ -1034,6 +1094,41 @@ test('browser-only redirects obey the configured maximum', async () => {
         to: `${external.origin}/final`,
       },
     ]);
+  } finally {
+    await root.stop();
+    await external.stop();
+  }
+});
+
+test('browser verification rejects a final unfollowed redirect response', async () => {
+  const external = await startServer((_request, response) => {
+    response.statusCode = 403;
+    response.end('forbidden to non-browser clients');
+  });
+  const root = await startServer((_request, response) => {
+    html(response, `<a href="${external.origin}/challenge">challenge</a>`);
+  });
+  const browserVerifier = {
+    async close() {},
+    async verify(url) {
+      return {
+        finalUrl: url,
+        redirects: [],
+        status: 302,
+      };
+    },
+  };
+  const { options } = parseArguments([root.origin, '--delay=0', '--retries=0']);
+
+  try {
+    const report = await crawl(root.origin, options, () => {}, browserVerifier);
+    assert.equal(report.failures.length, 1);
+    assert.equal(report.failures[0].kind, 'redirect-error');
+    assert.equal(
+      report.failures[0].error,
+      'Browser navigation stopped at HTTP 302',
+    );
+    assert.equal(report.failures[0].status, 302);
   } finally {
     await root.stop();
     await external.stop();

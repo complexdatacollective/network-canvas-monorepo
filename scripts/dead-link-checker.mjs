@@ -34,11 +34,12 @@
  * runs headed under Xvfb in CI because the affected challenge provider also
  * rejects automated headless Chrome. For a challenge response, the verifier
  * waits for JavaScript to reach a terminal main-frame response, finish loading
- * its document, and remain navigation-quiet for a short bounded interval.
- * Incomplete redirects and document loads remain verification failures, and
- * the entire sequence shares one request deadline so reload loops cannot retain
- * a worker indefinitely. Browser-only HTTP redirects obey the same maximum-hop
- * rule as Node redirects.
+ * its document, and remain navigation-quiet for a short bounded interval. Both
+ * navigation starts and responses are tracked, so a request that stalls before
+ * response headers cannot look quiet. Incomplete redirects and document loads
+ * remain verification failures, and the entire sequence shares one request
+ * deadline so reload loops cannot retain a worker indefinitely. Browser-only
+ * HTTP redirects obey the same maximum-hop rule as Node redirects.
  *
  * Browser verification is not status suppression. Its final response is
  * authoritative: a browser-confirmed 403 (or any other >= 400 response) still
@@ -243,6 +244,7 @@ export class BrowserVerifier {
     try {
       const { context } = await this.#getResources();
       page = await context.newPage();
+      const mainFrameRequests = [];
       const mainFrameResponses = [];
       page.on('popup', (popup) => {
         spawnedPages.add(popup);
@@ -254,6 +256,14 @@ export class BrowserVerifier {
           response.frame() === page.mainFrame()
         ) {
           mainFrameResponses.push(response);
+        }
+      });
+      page.on('request', (request) => {
+        if (
+          request.isNavigationRequest() &&
+          request.frame() === page.mainFrame()
+        ) {
+          mainFrameRequests.push(request);
         }
       });
       const verificationDeadline = Date.now() + timeout;
@@ -282,16 +292,26 @@ export class BrowserVerifier {
       if (navigation.status() === 403) {
         const initialResponseIndex =
           mainFrameResponses.indexOf(initialResponse);
+        const initialRequestIndex = mainFrameRequests.indexOf(
+          initialResponse.request(),
+        );
         const followupStart =
           initialResponseIndex === -1
             ? mainFrameResponses.length
             : initialResponseIndex + 1;
+        const followupRequestStart =
+          initialRequestIndex === -1
+            ? mainFrameRequests.length
+            : initialRequestIndex + 1;
         const followupResponses = () => mainFrameResponses.slice(followupStart);
         const terminalResponseAfter = (start) =>
           mainFrameResponses.slice(start).findLast(isTerminalNavigation);
         const waitForTerminalResponse = async (
           start,
-          { allowNoFollowup = false } = {},
+          {
+            allowNoFollowup = false,
+            requestStart = mainFrameRequests.length,
+          } = {},
         ) => {
           let terminalResponse = terminalResponseAfter(start);
           if (terminalResponse) return terminalResponse;
@@ -314,7 +334,9 @@ export class BrowserVerifier {
             terminalResponse = terminalResponseAfter(start);
             if (
               !terminalResponse &&
-              (!allowNoFollowup || mainFrameResponses.length > start)
+              (!allowNoFollowup ||
+                mainFrameResponses.length > start ||
+                mainFrameRequests.length > requestStart)
             ) {
               throw error;
             }
@@ -324,6 +346,7 @@ export class BrowserVerifier {
 
         let terminalResponse = await waitForTerminalResponse(followupStart, {
           allowNoFollowup: true,
+          requestStart: followupRequestStart,
         });
 
         while (terminalResponse) {
@@ -353,12 +376,18 @@ export class BrowserVerifier {
           // DOMContentLoaded handlers and short timers may schedule one more
           // navigation. Require a bounded quiet interval, then repeat the
           // terminal-response and document-load checks for any new navigation.
+          const settleRequestStart = mainFrameRequests.length;
           const settleStart = mainFrameResponses.length;
           await page.waitForTimeout(
             Math.min(BROWSER_NAVIGATION_SETTLE_MS, remainingTimeout()),
           );
           remainingTimeout();
-          if (mainFrameResponses.length === settleStart) break;
+          if (
+            mainFrameResponses.length === settleStart &&
+            mainFrameRequests.length === settleRequestStart
+          ) {
+            break;
+          }
           terminalResponse = await waitForTerminalResponse(settleStart);
         }
       }
@@ -724,6 +753,23 @@ export async function crawl(
             finalUrl: exceededRedirect.to,
             redirects,
             status: exceededRedirect.status,
+          },
+          'redirect-error',
+        ),
+      );
+      onProgress(results.length, records.size);
+      return;
+    }
+
+    if (browserOutcome.status >= 300 && browserOutcome.status < 400) {
+      results.push(
+        failureResult(
+          record,
+          {
+            error: `Browser navigation stopped at HTTP ${browserOutcome.status}`,
+            finalUrl: browserOutcome.finalUrl,
+            redirects: browserOutcome.redirects,
+            status: browserOutcome.status,
           },
           'redirect-error',
         ),
