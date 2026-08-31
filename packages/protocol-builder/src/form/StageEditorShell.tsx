@@ -129,6 +129,7 @@ function StageEditorFormBody({
         return { success: false, formErrors: [READ_ONLY_MESSAGE] };
       }
 
+      let written: string | null = null;
       try {
         // Inside the guarded block with the finish it precedes: access can be
         // revoked between the render that read it and this submit, and the
@@ -142,18 +143,24 @@ function StageEditorFormBody({
             mountedPaths: mountedPathsOf(storeApi),
             dormantFields: dormantFieldsOf(storeApi),
           });
-          // Recorded so the draft moving to exactly this does not read as
-          // something moving under the form: it IS the form. A submit that
-          // changes nothing moves nothing, and leaving a marker for it would
-          // spend itself on some later arrival at the same content — a redo,
-          // most likely — and leave the controls showing what was undone.
+          // A submit that changes nothing moves nothing, so it has no
+          // transition to explain and leaves no marker: one left standing
+          // would spend itself on some later arrival at the same content — a
+          // redo, most likely — and leave the controls showing what was undone.
           const content = canonicalize(next);
-          flushed.current = content === canonicalize(current) ? null : content;
+          written = content === canonicalize(current) ? null : content;
           return next;
         });
+        // Recorded only once the session has accepted the write, so that the
+        // draft arriving at exactly this content does not read as something
+        // moving under the form: it IS the form. A refused write moves
+        // nothing, and its marker would be spent later on an unrelated
+        // arrival, leaving the controls showing a draft that had moved on.
+        flushed.current = written;
         await controller.finish();
         return { success: true };
       } catch (error) {
+        flushed.current = null;
         return {
           success: false,
           formErrors:

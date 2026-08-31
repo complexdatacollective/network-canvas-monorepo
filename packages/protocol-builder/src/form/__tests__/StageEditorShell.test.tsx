@@ -6,7 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -1389,6 +1389,137 @@ describe('StageEditorShell', () => {
     );
   });
 
+  it('clears a hidden value that was never an answer', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      // Present, but not an answer: `hasAnswer` reads whitespace as blank, so
+      // nothing will offer to confirm its deletion.
+      fields: { ...initialFields, interviewScript: '   ' },
+    });
+    function BlankCapability() {
+      const controller = useStageEditorController(session, 'stage-form');
+      const [shown, setShown] = useState(true);
+      return (
+        <StageEditorShell
+          controller={controller}
+          actions={({ formId }) => (
+            <SubmitButton form={formId}>Finished editing</SubmitButton>
+          )}
+        >
+          <BuilderSection
+            title="Interviewer guidance"
+            capability={{
+              fields: ['interviewScript'],
+              confirmClear: {
+                title: 'This will clear your interview script',
+                description: 'The text you entered will be deleted.',
+                confirmLabel: 'Clear script',
+              },
+            }}
+          >
+            <button type="button" onClick={() => setShown((was) => !was)}>
+              Toggle the control
+            </button>
+            {shown && (
+              <ProtocolField
+                name="interviewScript"
+                label="Interviewer script text"
+                component={InputField}
+              />
+            )}
+          </BuilderSection>
+        </StageEditorShell>
+      );
+    }
+    render(
+      <DialogProvider>
+        <BlankCapability />
+      </DialogProvider>,
+    );
+
+    await user.click(
+      screen.getByRole('switch', { name: 'Interviewer guidance' }),
+    );
+    // Parked while the section is still open, so closing the section cannot
+    // discard it.
+    await user.click(
+      screen.getByRole('button', { name: 'Toggle the control' }),
+    );
+    await user.click(
+      screen.getByRole('switch', { name: 'Interviewer guidance' }),
+    );
+
+    // Nothing to confirm, because nothing there was an answer — but switching
+    // it off still has to mean off.
+    expect(screen.queryByRole('button', { name: 'Clear script' })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+    await waitFor(() =>
+      expect(
+        Object.hasOwn(
+          session.getSnapshot().editedSection.fields,
+          'interviewScript',
+        ),
+      ).toBe(false),
+    );
+  });
+
+  it('does not rebuild its own controls when it saves them', async () => {
+    const user = userEvent.setup();
+    const session = createSession({ onFinish: () => undefined });
+    let mounts = 0;
+    function MountCounter() {
+      useEffect(() => {
+        mounts += 1;
+      }, []);
+      return null;
+    }
+    function CountingEditor() {
+      const controller = useStageEditorController(session, 'stage-form');
+      return (
+        <StageEditorShell
+          controller={controller}
+          actions={({ formId }) => (
+            <SubmitButton form={formId}>Finished editing</SubmitButton>
+          )}
+        >
+          <BuilderSection title="Page content">
+            <MountCounter />
+            <ProtocolField
+              name="title"
+              label="Page heading"
+              component={InputField}
+              required
+            />
+          </BuilderSection>
+        </StageEditorShell>
+      );
+    }
+    render(
+      <DialogProvider>
+        <CountingEditor />
+      </DialogProvider>,
+    );
+    await waitFor(() => expect(mounts).toBe(1));
+
+    await user.clear(screen.getByRole('textbox', { name: 'Page heading' }));
+    await user.type(
+      screen.getByRole('textbox', { name: 'Page heading' }),
+      'A new heading',
+    );
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.title).toBe(
+        'A new heading',
+      ),
+    );
+
+    // The form store is keyed by the draft, and saving moves the draft — but
+    // to the very values these controls are already showing. Rebuilding them
+    // for that would throw away focus and scroll position on every save.
+    expect(mounts).toBe(1);
+  });
+
   it('explains a prerequisite before it explains a switch', async () => {
     const session = createSession();
     function DisabledCapability() {
@@ -1428,6 +1559,65 @@ describe('StageEditorShell', () => {
     await waitFor(() =>
       expect([...outlineItems()][0]?.textContent).toBe(
         'Interviewer guidanceNot available yet',
+      ),
+    );
+  });
+
+  it('does not remember a write the session refused', async () => {
+    const user = userEvent.setup();
+    const session = createSession();
+    const refusing: ProtocolBuilderSession = {
+      subscribe: (listener) => session.subscribe(listener),
+      getSnapshot: () => session.getSnapshot(),
+      getServerSnapshot: () => session.getServerSnapshot(),
+      dispatch: () => {
+        throw new SessionReadOnlyError();
+      },
+      undo: () => session.undo(),
+      redo: () => session.redo(),
+      validate: () => session.validate(),
+      requestCompoundEdit: (request) => session.requestCompoundEdit(request),
+      finish: () => session.finish(),
+    };
+
+    render(
+      <DialogProvider>
+        <RefusingEditor session={refusing} />
+      </DialogProvider>,
+    );
+
+    await user.clear(screen.getByRole('textbox', { name: 'Page heading' }));
+    await user.type(
+      screen.getByRole('textbox', { name: 'Page heading' }),
+      'Refused heading',
+    );
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+    await screen.findByText('This stage is read-only', { exact: false });
+
+    // The draft moves elsewhere, then arrives at the content the refused
+    // submit had attempted. Nothing this form wrote ever landed, so this is an
+    // external change like any other and the controls have to follow it.
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: { label: 'Welcome', title: 'Somewhere else', items: [] },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'Somewhere else',
+      ),
+    );
+
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: { label: 'Welcome', title: 'Refused heading', items: [] },
+        manifestRevision: { sequence: 3n, hash: 'revision-3' },
+      });
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'Refused heading',
       ),
     );
   });

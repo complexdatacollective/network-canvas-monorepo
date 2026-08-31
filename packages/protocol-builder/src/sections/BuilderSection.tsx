@@ -99,20 +99,27 @@ export default function BuilderSection({
 
   const requestOpenChange = useCallback(
     async (open: boolean) => {
-      if (open || !configured) {
-        setSwitchedOn(open);
+      if (open) {
+        setSwitchedOn(true);
         return true;
       }
 
-      const confirmed = await confirm({
-        title: capability?.confirmClear.title ?? '',
-        description: capability?.confirmClear.description ?? '',
-        confirmLabel: capability?.confirmClear.confirmLabel ?? '',
-        cancelLabel: 'Cancel',
-        intent: 'warning',
-        onConfirm: () => undefined,
-      });
-      if (confirmed !== true) return false;
+      // Asked only when there is something to lose, but cleared either way.
+      // A field can hold a value that is present without being an answer —
+      // whitespace, an empty list, a container of blanks — and if it is parked
+      // behind a collapsed group the panel's own discard never reaches it, so
+      // it would be replayed into a capability the editor says is off.
+      if (configured) {
+        const confirmed = await confirm({
+          title: capability?.confirmClear.title ?? '',
+          description: capability?.confirmClear.description ?? '',
+          confirmLabel: capability?.confirmClear.confirmLabel ?? '',
+          cancelLabel: 'Cancel',
+          intent: 'warning',
+          onConfirm: () => undefined,
+        });
+        if (confirmed !== true) return false;
+      }
 
       // Every path the capability owns is cleared here rather than left to the
       // panel's unmount. A field already parked by a collapsed group of
