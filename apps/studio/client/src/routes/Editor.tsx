@@ -197,7 +197,9 @@ export default function Editor() {
     },
     onSuccess: async (stageId) => {
       await refreshDraft();
-      await requestSelection({ kind: 'stage', stageId });
+      // Dirty changes were confirmed before the server mutation. Selecting
+      // directly avoids asking again after the new screen already exists.
+      setSelection({ kind: 'stage', stageId });
     },
   });
   const moveStage = useMutation({
@@ -234,6 +236,19 @@ export default function Editor() {
     } finally {
       setReconcilingMove(false);
     }
+  };
+
+  const requestAddStage = async () => {
+    if (
+      stageFormDirty &&
+      !(await confirmDiscardStageChanges(
+        'The values in this screen have not been saved. Discard them and add a new screen?',
+      ))
+    ) {
+      return;
+    }
+
+    addStage.mutate();
   };
 
   if (draft.isPending) {
@@ -317,7 +332,7 @@ export default function Editor() {
                       disabled={
                         addStage.isPending || addStage.isError || reconcilingAdd
                       }
-                      onClick={() => addStage.mutate()}
+                      onClick={() => void requestAddStage()}
                     >
                       Add
                     </Button>

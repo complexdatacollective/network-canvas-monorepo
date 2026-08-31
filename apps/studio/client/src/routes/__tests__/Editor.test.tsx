@@ -8,6 +8,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { useSyncExternalStore } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { rpcClient } from '../../lib/api.ts';
@@ -119,6 +120,16 @@ vi.mock('../../lib/api.ts', () => ({
 }));
 
 beforeEach(() => {
+  vi.mocked(authClient.getSession).mockReset();
+  vi.mocked(authClient.getSession).mockResolvedValue({
+    data: { user: {} },
+    error: null,
+  });
+  vi.mocked(authClient.useSession).mockReset();
+  vi.mocked(authClient.useSession).mockReturnValue({
+    data: { user: { name: 'Researcher', email: 'r@example.com' } },
+    isPending: false,
+  } as ReturnType<typeof authClient.useSession>);
   vi.mocked(authClient.signOut).mockReset();
   queryDraft.mockReset();
   queryDraft.mockResolvedValue(DRAFT);
@@ -161,16 +172,15 @@ function renderEditor() {
       ],
     }),
   );
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   const result = render(
-    <QueryClientProvider
-      client={
-        new QueryClient({ defaultOptions: { queries: { retry: false } } })
-      }
-    >
+    <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
-  return { ...result, router };
+  return { ...result, queryClient, router };
 }
 
 describe('Studio editor shell', () => {
@@ -415,6 +425,90 @@ describe('Studio editor shell', () => {
     expect(label).toHaveValue('Unsaved welcome');
     expect(rpcClient.protocols.releaseSection).not.toHaveBeenCalled();
     expect(authClient.signOut).not.toHaveBeenCalled();
+  });
+
+  it('bypasses the dirty blocker when the live session expires', async () => {
+    const sessionLive = {
+      data: { user: { name: 'Researcher', email: 'r@example.com' } },
+      isPending: false,
+    } as ReturnType<typeof authClient.useSession>;
+    const sessionNone = {
+      data: null,
+      isPending: false,
+    } as ReturnType<typeof authClient.useSession>;
+    let currentSession = sessionLive;
+    const listeners = new Set<() => void>();
+    function useReactiveSession() {
+      return useSyncExternalStore(
+        (listener) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+        () => currentSession,
+        () => currentSession,
+      );
+    }
+    vi.mocked(authClient.useSession).mockImplementation(useReactiveSession);
+    const { queryClient, router } = renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    fireEvent.change(label, { target: { value: 'Unsaved welcome' } });
+    queryClient.setQueryData(['private-draft'], { name: 'Private draft' });
+    vi.mocked(authClient.getSession).mockResolvedValue({
+      data: null,
+      error: null,
+    });
+
+    act(() => {
+      currentSession = sessionNone;
+      for (const listener of listeners) listener();
+    });
+
+    await waitFor(() =>
+      expect(queryClient.getQueryData(['private-draft'])).toBeUndefined(),
+    );
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/sign-in'),
+    );
+    expect(
+      screen.queryByRole('heading', {
+        name: 'Discard unsaved screen changes?',
+      }),
+    ).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(rpcClient.protocols.releaseSection).toHaveBeenCalledTimes(1),
+    );
+  });
+
+  it('does not add a screen when dirty-edit confirmation is cancelled', async () => {
+    renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    fireEvent.change(label, { target: { value: 'Unsaved welcome' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Discard unsaved screen changes?',
+      }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('heading', {
+          name: 'Discard unsaved screen changes?',
+        }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(rpcClient.protocols.addInformationStage).not.toHaveBeenCalled();
+    expect(label).toHaveValue('Unsaved welcome');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
+    await waitFor(() =>
+      expect(rpcClient.protocols.addInformationStage).toHaveBeenCalledTimes(1),
+    );
   });
 
   it('blocks another add attempt until an ambiguous failure is reconciled', async () => {
