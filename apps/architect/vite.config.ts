@@ -1,12 +1,12 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import posthogSourceMaps from '@posthog/rollup-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+import { createPostHogSourceMapsPlugin } from '../../scripts/posthog-source-maps-plugin.ts';
 import { version } from './package.json';
 import { createProtocolSourceAuthoringPlugin } from './scripts/protocol-source-authoring';
 
@@ -74,6 +74,7 @@ export default defineConfig(({ mode }) => {
   // `env` so an uploading build can never reuse a non-uploading cache entry.
   const posthogPersonalApiKey = env.POSTHOG_PERSONAL_API_KEY;
   const posthogProjectId = env.POSTHOG_PROJECT_ID;
+  const posthogCliBinaryPath = env.POSTHOG_CLI_BINARY_PATH;
   const uploadSourceMaps = !!posthogPersonalApiKey && !!posthogProjectId;
 
   return {
@@ -136,6 +137,9 @@ export default defineConfig(({ mode }) => {
           ],
         },
         workbox: {
+          // App and worker maps are uploaded before Workbox runs. The service
+          // worker itself is not part of PostHog's browser error reporting.
+          sourcemap: false,
           globPatterns: ['**/*.{js,css,html}'],
           // vite-plugin-pwa defaults this to index.html; disable it so it
           // cannot shadow the runtime navigation route below.
@@ -314,13 +318,14 @@ export default defineConfig(({ mode }) => {
           ],
         },
       }),
-      // Last: its writeBundle hook rewrites the emitted chunks (injecting the
-      // chunk ids PostHog matches maps by) and must see the final output.
+      // Last: its writeBundle hook processes the completed output directory,
+      // including worker bundles that Vite emits as assets.
       ...(uploadSourceMaps
         ? [
-            posthogSourceMaps({
+            createPostHogSourceMapsPlugin({
               personalApiKey: posthogPersonalApiKey,
               projectId: posthogProjectId,
+              cliBinaryPath: posthogCliBinaryPath || undefined,
               sourcemaps: {
                 enabled: true,
                 releaseName: 'Architect',

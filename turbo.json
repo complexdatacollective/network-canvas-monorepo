@@ -100,6 +100,7 @@
       "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/**",
+        "$TURBO_ROOT$/scripts/posthog-source-maps-plugin.ts",
         "src/**",
         "scripts/**",
         "public/**",
@@ -143,6 +144,7 @@
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/development/**",
         "$TURBO_ROOT$/packages/protocols/sample/**",
+        "$TURBO_ROOT$/scripts/posthog-source-maps-plugin.ts",
         "src/**",
         "scripts/**",
         "public/**",

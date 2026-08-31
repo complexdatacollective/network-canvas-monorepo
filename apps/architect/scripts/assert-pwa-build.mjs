@@ -63,9 +63,11 @@ if (jsAssets.length === 0) fail('no JS chunks emitted to dist/assets');
 // Source maps are emitted only to be uploaded to PostHog, and the upload
 // deletes them (see vite.config.ts). One surviving here would publish the
 // app's full source with the deploy.
-const strayMaps = assetFiles.filter((f) => f.endsWith('.map'));
+const strayMaps = (await readdir(dist, { recursive: true })).filter((f) =>
+  f.endsWith('.map'),
+);
 if (strayMaps.length > 0) {
-  fail(`source map(s) left in dist/assets: ${strayMaps.join(', ')}`);
+  fail(`source map(s) left in dist: ${strayMaps.join(', ')}`);
 }
 
 // The entry module (referenced by index.html) boots the app; it must be
