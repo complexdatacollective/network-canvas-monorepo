@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   MAX_GITHUB_ERROR_ANNOTATIONS,
+  crawl,
   formatGitHubAnnotation,
   formatGitHubSummary,
   formatTextReport,
@@ -497,6 +498,80 @@ test('external redirects and transient responses are followed and retried', asyn
     assert.equal(failure.redirects.length, 1);
     assert.equal(transientRequests, 2);
   } finally {
+    await root.stop();
+    await external.stop();
+  }
+});
+
+test('browser verification distinguishes challenged links from real 403 responses', async () => {
+  const browserChecks = /** @type {string[]} */ ([]);
+  let browserClosed = false;
+  const nativeFetch = globalThis.fetch;
+  const external = await startServer((_request, response) => {
+    response.statusCode = 403;
+    response.end('forbidden to non-browser clients');
+  });
+  const root = await startServer((_request, response) => {
+    html(
+      response,
+      `<a href="${external.origin}/browser-ok">browser ok</a>
+       <a href="${external.origin}/still-forbidden">still forbidden</a>
+       <a href="https://tls-error.test/browser-tls-ok">TLS recovery</a>`,
+    );
+  });
+  const browserVerifier = {
+    async close() {
+      browserClosed = true;
+    },
+    async verify(url) {
+      browserChecks.push(url);
+      return {
+        finalUrl: url,
+        status:
+          url.endsWith('/browser-ok') || url.endsWith('/browser-tls-ok')
+            ? 200
+            : 403,
+      };
+    },
+  };
+  const { options } = parseArguments([root.origin, '--delay=0', '--retries=0']);
+
+  try {
+    globalThis.fetch = (url, init) => {
+      const requestURL =
+        url instanceof Request ? url.url : url instanceof URL ? url.href : url;
+      if (requestURL === 'https://tls-error.test/browser-tls-ok') {
+        return Promise.reject(
+          Object.assign(new TypeError('fetch failed'), {
+            cause: { code: 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' },
+          }),
+        );
+      }
+      return nativeFetch(url, init);
+    };
+    const report = await crawl(root.origin, options, () => {}, browserVerifier);
+
+    assert.deepEqual(
+      browserChecks.toSorted((left, right) => left.localeCompare(right)),
+      [
+        `${external.origin}/browser-ok`,
+        `${external.origin}/still-forbidden`,
+        'https://tls-error.test/browser-tls-ok',
+      ],
+    );
+    assert.equal(browserClosed, true);
+    assert.deepEqual(
+      report.failures.map(({ status, url }) => ({ status, url })),
+      [{ status: 403, url: `${external.origin}/still-forbidden` }],
+    );
+    const recovered = report.results.find(({ url }) =>
+      url.endsWith('/browser-ok'),
+    );
+    assert.ok(recovered);
+    assert.equal(recovered.ok, true);
+    assert.equal(recovered.status, 200);
+  } finally {
+    globalThis.fetch = nativeFetch;
     await root.stop();
     await external.stop();
   }

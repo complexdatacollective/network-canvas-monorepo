@@ -11,8 +11,12 @@ import { JSDOM } from 'jsdom';
 
 const REPORT_SCHEMA_VERSION = 1;
 const TRANSIENT_STATUSES = new Set([429, 502, 503, 504]);
+const BROWSER_VERIFIABLE_REQUEST_ERRORS = new Set([
+  'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+]);
 const MAX_RETRY_DELAY_MS = 30_000;
 const BASE_RETRY_DELAY_MS = 500;
+const MAX_BROWSER_PAGES = 4;
 
 // Keep annotations useful without flooding the Actions log. The JSON artifact
 // and job summary remain complete when a crawl exceeds this limit.
@@ -75,6 +79,113 @@ class WorkQueue {
     this.#pending--;
     if (this.#pending !== 0 || this.#items.length !== 0) return;
     for (const waiter of this.#waiters.splice(0)) waiter(null);
+  }
+}
+
+class BrowserVerifier {
+  #activePages = 0;
+  #resourcesPromise;
+  #waiters = [];
+
+  async #acquirePageSlot() {
+    if (this.#activePages >= MAX_BROWSER_PAGES) {
+      await new Promise((resolve) => this.#waiters.push(resolve));
+    }
+    this.#activePages++;
+  }
+
+  async #getResources() {
+    this.#resourcesPromise ??= (async () => {
+      const { chromium } = await import('playwright');
+      const browser = await chromium.launch({
+        args: ['--disable-blink-features=AutomationControlled'],
+        channel: 'chrome',
+        headless: false,
+        ignoreDefaultArgs: ['--enable-automation'],
+      });
+      try {
+        const context = await browser.newContext({ acceptDownloads: false });
+        return { browser, context };
+      } catch (error) {
+        await browser.close();
+        throw error;
+      }
+    })();
+    return this.#resourcesPromise;
+  }
+
+  #releasePageSlot() {
+    this.#activePages--;
+    this.#waiters.shift()?.();
+  }
+
+  async close() {
+    if (!this.#resourcesPromise) return;
+    try {
+      const { browser } = await this.#resourcesPromise;
+      await browser.close();
+    } catch {
+      // A launch failure is already attached to each unresolved result.
+    }
+  }
+
+  async verify(url, timeout, { captureHTML = false } = {}) {
+    await this.#acquirePageSlot();
+    let page;
+    try {
+      const { context } = await this.#getResources();
+      page = await context.newPage();
+      let navigation;
+      page.on('response', (response) => {
+        if (
+          response.request().isNavigationRequest() &&
+          response.frame() === page.mainFrame()
+        ) {
+          navigation = response;
+        }
+      });
+
+      const initialResponse = await page.goto(url, {
+        timeout,
+        waitUntil: 'domcontentloaded',
+      });
+      if (!initialResponse) {
+        throw new Error(`Browser navigation returned no response for ${url}`);
+      }
+      navigation ??= initialResponse;
+
+      // A browser challenge initially responds with 403, executes JavaScript,
+      // and then navigates the main frame again. A genuine forbidden page has
+      // no follow-up navigation and remains 403 after the same timeout.
+      if (navigation.status() === 403) {
+        try {
+          await page.waitForResponse(
+            (response) =>
+              response.request().isNavigationRequest() &&
+              response.frame() === page.mainFrame() &&
+              response.status() !== 403,
+            { timeout },
+          );
+          await page.waitForLoadState('domcontentloaded', { timeout });
+        } catch (error) {
+          if (error?.name !== 'TimeoutError') throw error;
+        }
+      }
+
+      const contentType = navigation.headers()['content-type'] ?? '';
+      return {
+        contentType,
+        finalUrl: page.url(),
+        html:
+          captureHTML && contentType.includes('text/html')
+            ? await page.content()
+            : null,
+        status: navigation.status(),
+      };
+    } finally {
+      await page?.close().catch(() => {});
+      this.#releasePageSlot();
+    }
   }
 }
 
@@ -371,12 +482,83 @@ function failureResult(record, details, kind) {
   };
 }
 
-export async function crawl(inputURL, options, onProgress = () => {}) {
+export async function crawl(
+  inputURL,
+  options,
+  onProgress = () => {},
+  browserVerifier = new BrowserVerifier(),
+) {
   const startedAtMilliseconds = Date.now();
   const rootOrigin = new URL(inputURL).origin;
   const records = new Map();
   const results = [];
   const queue = new WorkQueue();
+
+  const verifyInBrowser = async (record, fallback) => {
+    let browserOutcome;
+    try {
+      browserOutcome = await browserVerifier.verify(
+        record.url,
+        options.timeout,
+        {
+          captureHTML: record.recursive,
+        },
+      );
+    } catch (error) {
+      results.push(
+        failureResult(
+          record,
+          {
+            ...fallback,
+            error: `${fallback.error}; browser verification failed: ${errorDetail(error, options.timeout)}`,
+          },
+          fallback.kind,
+        ),
+      );
+      onProgress(results.length, records.size);
+      return;
+    }
+
+    if (browserOutcome.status >= 400) {
+      results.push(
+        failureResult(
+          record,
+          {
+            error: `HTTP ${browserOutcome.status}`,
+            finalUrl: browserOutcome.finalUrl,
+            redirects: fallback.redirects,
+            status: browserOutcome.status,
+          },
+          'http-error',
+        ),
+      );
+      onProgress(results.length, records.size);
+      return;
+    }
+
+    if (
+      record.recursive &&
+      new URL(browserOutcome.finalUrl).origin === rootOrigin &&
+      browserOutcome.html
+    ) {
+      for (const link of extractLinks(
+        browserOutcome.html,
+        browserOutcome.finalUrl,
+      )) {
+        enqueue(link, browserOutcome.finalUrl);
+      }
+    }
+    results.push({
+      error: null,
+      finalUrl: browserOutcome.finalUrl,
+      kind: null,
+      ok: true,
+      redirects: fallback.redirects,
+      status: browserOutcome.status,
+      url: record.url,
+    });
+    onProgress(results.length, records.size);
+  };
 
   const enqueue = (url, foundOn = null) => {
     const existing = records.get(url);
@@ -395,19 +577,19 @@ export async function crawl(inputURL, options, onProgress = () => {}) {
       try {
         outcome = await fetchFollowingRedirects(record.url, options);
       } catch (error) {
-        results.push(
-          failureResult(
-            record,
-            {
-              error: errorDetail(error, options.timeout),
-              finalUrl: record.url,
-              redirects: [],
-              status: null,
-            },
-            'request-error',
-          ),
-        );
-        onProgress(results.length, records.size);
+        const failure = {
+          error: errorDetail(error, options.timeout),
+          finalUrl: record.url,
+          kind: 'request-error',
+          redirects: [],
+          status: null,
+        };
+        if (BROWSER_VERIFIABLE_REQUEST_ERRORS.has(error?.cause?.code)) {
+          await verifyInBrowser(record, failure);
+        } else {
+          results.push(failureResult(record, failure, failure.kind));
+          onProgress(results.length, records.size);
+        }
         return;
       }
 
@@ -418,6 +600,18 @@ export async function crawl(inputURL, options, onProgress = () => {}) {
       }
 
       const { finalUrl, redirects, response } = outcome;
+      if (response.status === 403) {
+        await releaseBody(response);
+        await verifyInBrowser(record, {
+          error: 'HTTP 403',
+          finalUrl,
+          kind: 'http-error',
+          redirects,
+          status: 403,
+        });
+        return;
+      }
+
       if (response.status >= 400) {
         await releaseBody(response);
         results.push(
@@ -493,7 +687,11 @@ export async function crawl(inputURL, options, onProgress = () => {}) {
       if (options.delay > 0) await sleep(options.delay);
     }
   });
-  await Promise.all(workers);
+  try {
+    await Promise.all(workers);
+  } finally {
+    await browserVerifier.close();
+  }
 
   const normalizedResults = results
     .map((result) => ({

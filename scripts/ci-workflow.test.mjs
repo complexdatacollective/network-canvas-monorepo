@@ -138,6 +138,11 @@ test('both public sites crawl their matching Netlify deploy previews', () => {
       'the ignored-deploy fallback only accepts Netlify dashboard URLs',
     );
     assert.match(previewJob, /node scripts\/dead-link-checker\.mjs/);
+    assert.match(
+      previewJob,
+      /xvfb-run --auto-servernum node scripts\/dead-link-checker\.mjs/,
+      'the checker can launch headed Chrome for browser verification',
+    );
     assert.match(previewJob, new RegExp(`"\\$${startPath}"`));
     assert.match(previewJob, /--user-agent="\$DEAD_LINK_CHECK_USER_AGENT"/);
     assert.match(previewJob, /--github-actions/);
