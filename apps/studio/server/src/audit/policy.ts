@@ -3,29 +3,16 @@ export type AuditPolicy =
   | { kind: 'denied-only'; reason: string }
   | { kind: 'none'; reason: string };
 
-// The team commands are required now. Existing protocol producers are
-// explicitly recorded as the reviewed #1521 transition rather than silently
-// bypassing the policy; leases are permanently excluded by the audit design.
+// Every currently exposed meaningful domain mutation is required. Lease-only
+// coordination remains excluded by the audit design.
 export const RPC_MUTATION_AUDIT_POLICIES = {
   'team.updateMemberRole': { kind: 'required' },
   'team.createInvitation': { kind: 'required' },
   'team.cancelInvitation': { kind: 'required' },
-  'protocols.create': {
-    kind: 'none',
-    reason: 'Protocol producer coverage is delivered by #1521.',
-  },
-  'protocols.commitSection': {
-    kind: 'none',
-    reason: 'Meaningful protocol commit events are delivered by #1521.',
-  },
-  'protocols.addInformationStage': {
-    kind: 'none',
-    reason: 'Meaningful protocol commit events are delivered by #1521.',
-  },
-  'protocols.moveStage': {
-    kind: 'none',
-    reason: 'Meaningful protocol commit events are delivered by #1521.',
-  },
+  'protocols.create': { kind: 'required' },
+  'protocols.commitSection': { kind: 'required' },
+  'protocols.addInformationStage': { kind: 'required' },
+  'protocols.moveStage': { kind: 'required' },
   'protocols.acquireSection': {
     kind: 'none',
     reason: 'Lease acquisition is explicitly excluded from the team audit log.',

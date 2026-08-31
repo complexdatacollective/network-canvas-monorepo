@@ -34,6 +34,13 @@ export type AuditedCommandDecision<T> =
       status: 'denied';
       error: Error;
       events: readonly [AuditEventInput, ...AuditEventInput[]];
+    }
+  | {
+      // An idempotent replay or domain no-op completed without a mutation, so
+      // it must neither invent a success event nor weaken the non-empty event
+      // contract for a command that actually changed state.
+      status: 'unchanged';
+      result: T;
     };
 
 const auditStore = new AuditStore();
@@ -45,17 +52,23 @@ function actorLabel(context: AuditedCommandContext): string {
   );
 }
 
-export function auditEventContext(context: LockedAuditedCommandContext) {
+export function auditActorEventContext(context: LockedAuditedCommandContext) {
   return {
     teamId: context.tenantDb.teamId,
     teamLabel: context.teamLabel,
-    eventVersion: 1,
-    category: 'team_access',
-    outcome: 'succeeded',
     actorKind: 'user',
     actorId: context.principal.userId,
     actorLabel: actorLabel(context),
     requestId: context.requestId,
+  } as const;
+}
+
+export function auditEventContext(context: LockedAuditedCommandContext) {
+  return {
+    ...auditActorEventContext(context),
+    eventVersion: 1,
+    category: 'team_access',
+    outcome: 'succeeded',
     resourceType: null,
     resourceId: null,
     resourceLabel: null,
@@ -72,7 +85,7 @@ export function deniedAuditEventContext(context: LockedAuditedCommandContext) {
 function assertEventContext(
   context: LockedAuditedCommandContext,
   event: AuditEventInput,
-  decisionStatus: AuditedCommandDecision<unknown>['status'],
+  decisionStatus: 'succeeded' | 'denied',
 ): void {
   if (
     event.teamId !== context.tenantDb.teamId ||
@@ -92,8 +105,9 @@ function assertEventContext(
 /**
  * Runs a command whose authorization decision is itself auditable. A denied
  * decision appends its event and commits no domain mutation, then throws only
- * after that transaction has committed. If the denial event cannot be
- * written, the requested action still never runs.
+ * after that transaction has committed. An idempotent replay or domain no-op
+ * returns unchanged without inventing an event. If a required event cannot be
+ * written, the requested action still never commits.
  */
 export async function runAuditedCommand<T>(
   context: AuditedCommandContext,
@@ -117,6 +131,7 @@ export async function runAuditedCommand<T>(
       teamLabel: teamName.slice(0, 320),
     };
     const result = await work(client, auditContext);
+    if (result.status === 'unchanged') return result;
     if (result.events.length === 0) {
       throw new Error('an audited command must produce at least one event');
     }

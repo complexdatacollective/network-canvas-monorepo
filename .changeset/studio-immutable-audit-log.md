@@ -5,4 +5,4 @@
 '@codaco/studio-sync': minor
 ---
 
-Record team invitation and member-role changes in a transactionally immutable, team-isolated audit log, and route team administration through audited Studio commands.
+Record team administration and current protocol mutations in a transactionally immutable, team-isolated audit log, and route those Studio commands through the audited transaction boundary.

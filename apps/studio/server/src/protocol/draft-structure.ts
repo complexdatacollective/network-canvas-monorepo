@@ -148,6 +148,7 @@ async function advanceManifest(
 export async function addStage(
   db: TenantDb,
   params: { draftId: string; stage: SectionDoc; index?: number },
+  client?: pg.PoolClient,
 ): Promise<StructuralResult> {
   const stageId = params.stage.id;
   if (typeof stageId !== 'string' || stageId === '') {
@@ -157,37 +158,37 @@ export async function addStage(
   assertSectionValid(id, params.stage);
 
   const teamId = db.teamId;
-  return runNoAuditTenantTransaction(
-    db,
-    'protocol.addStage',
-    async (client) => {
-      const head = await lockHead(client, teamId, params.draftId);
-      if (head.sectionHashes[id] !== undefined) {
-        throw new DraftStructureError(`stage ${stageId} already exists`);
-      }
-      const orderId = sectionId({ kind: 'stageOrder' });
-      const orderHash = head.sectionHashes[orderId];
-      if (orderHash === undefined) {
-        throw new DraftStructureError('draft has no stageOrder section');
-      }
-      const order = stageOrderOf(await loadDoc(client, teamId, orderHash));
-      const index = params.index ?? order.length;
-      if (!Number.isInteger(index) || index < 0 || index > order.length) {
-        throw new DraftStructureError(`stage index ${index} out of range`);
-      }
-      const newOrder = [...order];
-      newOrder.splice(index, 0, stageId);
-      await fenceLeases(client, teamId, params.draftId, [orderId, id]);
-      return advanceManifest(
-        client,
-        teamId,
-        params.draftId,
-        head,
-        { [id]: params.stage, [orderId]: { stages: newOrder } },
-        [],
-      );
-    },
-  );
+  const add = async (transactionClient: pg.PoolClient) => {
+    const head = await lockHead(transactionClient, teamId, params.draftId);
+    if (head.sectionHashes[id] !== undefined) {
+      throw new DraftStructureError(`stage ${stageId} already exists`);
+    }
+    const orderId = sectionId({ kind: 'stageOrder' });
+    const orderHash = head.sectionHashes[orderId];
+    if (orderHash === undefined) {
+      throw new DraftStructureError('draft has no stageOrder section');
+    }
+    const order = stageOrderOf(
+      await loadDoc(transactionClient, teamId, orderHash),
+    );
+    const index = params.index ?? order.length;
+    if (!Number.isInteger(index) || index < 0 || index > order.length) {
+      throw new DraftStructureError(`stage index ${index} out of range`);
+    }
+    const newOrder = [...order];
+    newOrder.splice(index, 0, stageId);
+    await fenceLeases(transactionClient, teamId, params.draftId, [orderId, id]);
+    return advanceManifest(
+      transactionClient,
+      teamId,
+      params.draftId,
+      head,
+      { [id]: params.stage, [orderId]: { stages: newOrder } },
+      [],
+    );
+  };
+  if (client !== undefined) return add(client);
+  return runNoAuditTenantTransaction(db, 'protocol.addStage', add);
 }
 
 export async function removeStage(
@@ -232,56 +233,57 @@ export async function moveStage(
     toIndex: number;
     expectedRevision: bigint;
   },
+  client?: pg.PoolClient,
 ): Promise<StructuralResult> {
   const teamId = db.teamId;
-  return runNoAuditTenantTransaction(
-    db,
-    'protocol.moveStage',
-    async (client) => {
-      const head = await lockHead(client, teamId, params.draftId);
-      if (head.headSeq !== params.expectedRevision) {
-        throw new DraftStructureError(
-          `draft changed from revision ${params.expectedRevision} to ${head.headSeq}`,
-        );
-      }
-      const orderId = sectionId({ kind: 'stageOrder' });
-      const orderHash = head.sectionHashes[orderId];
-      if (orderHash === undefined) {
-        throw new DraftStructureError('draft has no stageOrder section');
-      }
-      const order = stageOrderOf(await loadDoc(client, teamId, orderHash));
-      const fromIndex = order.indexOf(params.stageId);
-      if (fromIndex === -1) {
-        throw new DraftStructureError(`no stage ${params.stageId} in draft`);
-      }
-      if (params.toIndex < 0 || params.toIndex >= order.length) {
-        throw new DraftStructureError(
-          `stage index ${params.toIndex} out of range`,
-        );
-      }
-      if (fromIndex === params.toIndex) {
-        return {
-          manifestSeq: head.headSeq,
-          manifestHash: head.headManifestHash,
-        };
-      }
-      const newOrder = [...order];
-      const [stageId] = newOrder.splice(fromIndex, 1);
-      if (stageId === undefined) {
-        throw new DraftStructureError(`no stage ${params.stageId} in draft`);
-      }
-      newOrder.splice(params.toIndex, 0, stageId);
-      await fenceLeases(client, teamId, params.draftId, [orderId]);
-      return advanceManifest(
-        client,
-        teamId,
-        params.draftId,
-        head,
-        { [orderId]: { stages: newOrder } },
-        [],
+  const move = async (transactionClient: pg.PoolClient) => {
+    const head = await lockHead(transactionClient, teamId, params.draftId);
+    if (head.headSeq !== params.expectedRevision) {
+      throw new DraftStructureError(
+        `draft changed from revision ${params.expectedRevision} to ${head.headSeq}`,
       );
-    },
-  );
+    }
+    const orderId = sectionId({ kind: 'stageOrder' });
+    const orderHash = head.sectionHashes[orderId];
+    if (orderHash === undefined) {
+      throw new DraftStructureError('draft has no stageOrder section');
+    }
+    const order = stageOrderOf(
+      await loadDoc(transactionClient, teamId, orderHash),
+    );
+    const fromIndex = order.indexOf(params.stageId);
+    if (fromIndex === -1) {
+      throw new DraftStructureError(`no stage ${params.stageId} in draft`);
+    }
+    if (params.toIndex < 0 || params.toIndex >= order.length) {
+      throw new DraftStructureError(
+        `stage index ${params.toIndex} out of range`,
+      );
+    }
+    if (fromIndex === params.toIndex) {
+      return {
+        manifestSeq: head.headSeq,
+        manifestHash: head.headManifestHash,
+      };
+    }
+    const newOrder = [...order];
+    const [stageId] = newOrder.splice(fromIndex, 1);
+    if (stageId === undefined) {
+      throw new DraftStructureError(`no stage ${params.stageId} in draft`);
+    }
+    newOrder.splice(params.toIndex, 0, stageId);
+    await fenceLeases(transactionClient, teamId, params.draftId, [orderId]);
+    return advanceManifest(
+      transactionClient,
+      teamId,
+      params.draftId,
+      head,
+      { [orderId]: { stages: newOrder } },
+      [],
+    );
+  };
+  if (client !== undefined) return move(client);
+  return runNoAuditTenantTransaction(db, 'protocol.moveStage', move);
 }
 
 export type CodebookEntityRef =

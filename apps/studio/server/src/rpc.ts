@@ -7,8 +7,13 @@ import { createTenantDb } from '@codaco/studio-sync/tenant';
 import { AuditCommandTeamNotFoundError } from './audit/command.ts';
 import type { AuthService, Principal } from './auth/service.ts';
 import { type AuthCapabilities, getInstanceStatus } from './domain.ts';
-import { addStage, moveStage } from './protocol/draft-structure.ts';
-import { emptyProtocol } from './protocol/sectionize.ts';
+import {
+  addAuditedInformationStage,
+  commitAuditedProtocolSection,
+  createAuditedProtocol,
+  moveAuditedProtocolStage,
+  ProtocolCommandAuthorizationError,
+} from './protocol/commands.ts';
 import { ProtocolStore } from './protocol/store.ts';
 import { createProtocolSyncServer } from './protocol/sync.ts';
 import {
@@ -46,6 +51,22 @@ async function handleTeamCommand<T>(work: () => Promise<T>): Promise<T> {
     if (error.code === 'NOT_FOUND') throw new ORPCError('NOT_FOUND');
     if (error.code === 'CONFLICT') throw new ORPCError('CONFLICT');
     throw new ORPCError('BAD_REQUEST');
+  }
+}
+
+async function handleAuditedProtocolCommand<T>(
+  work: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (error instanceof ProtocolCommandAuthorizationError) {
+      throw new ORPCError('FORBIDDEN');
+    }
+    if (error instanceof AuditCommandTeamNotFoundError) {
+      throw new ORPCError('NOT_FOUND');
+    }
+    throw error;
   }
 }
 
@@ -135,14 +156,18 @@ export function createRpcRouter(
     protocols: {
       create: os.protocols.create
         .use(requireTeam)
-        .handler(async ({ context, input }) => {
-          const store = new ProtocolStore(context.tenantDb);
-          return store.createProtocol({
-            protocol: emptyProtocol(input.name),
-            protocolId: input.protocolId,
-            draftId: input.draftId,
-          });
-        }),
+        .handler(({ context, input }) =>
+          handleAuditedProtocolCommand(() =>
+            createAuditedProtocol(
+              {
+                tenantDb: context.tenantDb,
+                principal: context.principal,
+                requestId: context.requestId,
+              },
+              input,
+            ),
+          ),
+        ),
       list: os.protocols.list
         .use(requireTeam)
         .handler(({ context }) =>
@@ -193,26 +218,18 @@ export function createRpcRouter(
         }),
       commitSection: os.protocols.commitSection
         .use(requireTeam)
-        .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
-            input.protocolId,
-            input.draftId,
-          );
-          const result = await createProtocolSyncServer(
-            context.tenantDb,
-          ).commit({
-            draftId: input.draftId,
-            sectionId: input.sectionId,
-            owner: `${context.principal.userId}:${input.clientId}`,
-            epoch: BigInt(input.leaseEpoch),
-            clientSeq: BigInt(input.clientSequence),
-            commands: input.commands,
-          });
-          return {
-            sequence: String(result.manifestSeq),
-            hash: result.manifestHash,
-          };
-        }),
+        .handler(({ context, input }) =>
+          handleAuditedProtocolCommand(() =>
+            commitAuditedProtocolSection(
+              {
+                tenantDb: context.tenantDb,
+                principal: context.principal,
+                requestId: context.requestId,
+              },
+              input,
+            ),
+          ),
+        ),
       renewSection: os.protocols.renewSection
         .use(requireTeam)
         .handler(async ({ context, input }) => {
@@ -247,44 +264,32 @@ export function createRpcRouter(
         }),
       addInformationStage: os.protocols.addInformationStage
         .use(requireTeam)
-        .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
-            input.protocolId,
-            input.draftId,
-          );
-          const result = await addStage(context.tenantDb, {
-            draftId: input.draftId,
-            stage: {
-              id: input.stageId,
-              type: 'Information',
-              label: 'Untitled screen',
-              title: 'Untitled screen',
-              items: [],
-            },
-          });
-          return {
-            sequence: String(result.manifestSeq),
-            hash: result.manifestHash,
-          };
-        }),
+        .handler(({ context, input }) =>
+          handleAuditedProtocolCommand(() =>
+            addAuditedInformationStage(
+              {
+                tenantDb: context.tenantDb,
+                principal: context.principal,
+                requestId: context.requestId,
+              },
+              input,
+            ),
+          ),
+        ),
       moveStage: os.protocols.moveStage
         .use(requireTeam)
-        .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
-            input.protocolId,
-            input.draftId,
-          );
-          const result = await moveStage(context.tenantDb, {
-            draftId: input.draftId,
-            stageId: input.stageId,
-            toIndex: input.toIndex,
-            expectedRevision: BigInt(input.expectedRevision),
-          });
-          return {
-            sequence: String(result.manifestSeq),
-            hash: result.manifestHash,
-          };
-        }),
+        .handler(({ context, input }) =>
+          handleAuditedProtocolCommand(() =>
+            moveAuditedProtocolStage(
+              {
+                tenantDb: context.tenantDb,
+                principal: context.principal,
+                requestId: context.requestId,
+              },
+              input,
+            ),
+          ),
+        ),
     },
   };
 }

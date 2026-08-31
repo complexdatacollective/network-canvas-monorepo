@@ -8,7 +8,8 @@ import type { AuditPolicy } from './policy.ts';
 export const NO_AUDIT_TRANSACTION_POLICIES = {
   'protocol.create': {
     kind: 'none',
-    reason: 'Protocol producer coverage is delivered by #1521.',
+    reason:
+      'The transaction-owning store path supports isolated store workflows; the Studio RPC supplies an audited command client.',
   },
   'protocol.createDraftFromVersion': {
     kind: 'none',
@@ -24,7 +25,8 @@ export const NO_AUDIT_TRANSACTION_POLICIES = {
   },
   'protocol.addStage': {
     kind: 'none',
-    reason: 'Meaningful protocol commit events are delivered by #1521.',
+    reason:
+      'The transaction-owning structure path supports isolated store workflows; the Studio RPC supplies an audited command client.',
   },
   'protocol.removeStage': {
     kind: 'none',
@@ -32,7 +34,8 @@ export const NO_AUDIT_TRANSACTION_POLICIES = {
   },
   'protocol.moveStage': {
     kind: 'none',
-    reason: 'Meaningful protocol commit events are delivered by #1521.',
+    reason:
+      'The transaction-owning structure path supports isolated store workflows; the Studio RPC supplies an audited command client.',
   },
   'protocol.addCodebookEntity': {
     kind: 'none',
@@ -84,7 +87,8 @@ export const NO_AUDIT_TRANSACTION_POLICIES = {
   },
   'sync.commit': {
     kind: 'none',
-    reason: 'Meaningful protocol commit events are delivered by #1521.',
+    reason:
+      'The generic sync package owns standalone commit transactions; the Studio RPC supplies an audited command client.',
   },
   'sync.resume': {
     kind: 'none',

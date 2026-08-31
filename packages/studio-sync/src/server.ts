@@ -278,23 +278,26 @@ export class SyncServer {
    * constraint, per-draft serialization via the draft-head row lock, and the
    * command-log append — all in one transaction.
    */
-  async commit(params: {
-    draftId: string;
-    sectionId: string;
-    owner: string;
-    epoch: bigint;
-    clientSeq: bigint;
-    commands: Command[];
-  }): Promise<CommitResult> {
+  async commit(
+    params: {
+      draftId: string;
+      sectionId: string;
+      owner: string;
+      epoch: bigint;
+      clientSeq: bigint;
+      commands: Command[];
+    },
+    client?: pg.PoolClient,
+  ): Promise<CommitResult> {
     const { draftId, sectionId, owner, epoch, clientSeq, commands } = params;
     const teamId = this.db.teamId;
-    return this.executeTransaction('commit', async (client) => {
+    const commit = async (transactionClient: pg.PoolClient) => {
       // Per-draft serialization: every commit advances the head under this
       // row lock, so concurrent section commits cannot fork the chain. Taken
       // FIRST — the dedup and lease checks below are only meaningful at the
       // serialization point. (Lock order is head-then-lease in every
       // transaction, so the two locks cannot deadlock.)
-      const head = await client.query(
+      const head = await transactionClient.query(
         `SELECT head_seq, head_manifest_hash FROM drafts
          WHERE id = $1 AND team_id = $2 FOR UPDATE`,
         [draftId, teamId],
@@ -311,7 +314,7 @@ export class SyncServer {
       // expired or been taken over — a commit that succeeded but lost its
       // acknowledgement must never read as rejected, or the client rolls
       // back state the server already persisted.
-      const dup = await client.query(
+      const dup = await transactionClient.query(
         `SELECT manifest_seq FROM command_log
          WHERE draft_id = $1 AND section_id = $2 AND owner = $3 AND epoch = $4
            AND client_seq = $5 AND team_id = $6`,
@@ -321,7 +324,7 @@ export class SyncServer {
         const seq = BigInt(
           (dup.rows[0] as { manifest_seq: string }).manifest_seq,
         );
-        const m = await client.query(
+        const m = await transactionClient.query(
           `SELECT hash, section_hashes FROM manifests
            WHERE draft_id = $1 AND seq = $2 AND team_id = $3`,
           [draftId, String(seq), teamId],
@@ -350,7 +353,7 @@ export class SyncServer {
       // transaction may have waited on the draft-head lock for longer than
       // the TTL, and now() would still report the moment it started, so a
       // lease that expired while queueing would validate.
-      const lease = await client.query(
+      const lease = await transactionClient.query(
         `SELECT 1 FROM leases
          WHERE draft_id = $1 AND section_id = $2 AND owner = $3 AND epoch = $4
            AND team_id = $5
@@ -362,7 +365,7 @@ export class SyncServer {
         throw new LeaseRejectedError('lease not held (owner/epoch/expiry)');
       }
 
-      const manifest = await client.query(
+      const manifest = await transactionClient.query(
         `SELECT section_hashes FROM manifests
          WHERE draft_id = $1 AND seq = $2 AND team_id = $3`,
         [draftId, headRow.head_seq, teamId],
@@ -375,7 +378,7 @@ export class SyncServer {
       if (currentHash === undefined) {
         throw new LeaseRejectedError(`unknown section ${sectionId}`);
       }
-      const currentDoc = await client.query(
+      const currentDoc = await transactionClient.query(
         `SELECT doc FROM sections WHERE team_id = $1 AND hash = $2`,
         [teamId, currentHash],
       );
@@ -387,7 +390,7 @@ export class SyncServer {
       );
       this.validateSection?.(sectionId, newDoc, Object.keys(sectionHashes));
       const newSectionHash = contentHash(newDoc);
-      await client.query(
+      await transactionClient.query(
         `INSERT INTO sections (team_id, hash, doc) VALUES ($1, $2, $3)
          ON CONFLICT (team_id, hash) DO UPDATE
            SET created_at = clock_timestamp(), unreferenced_at = NULL`,
@@ -400,7 +403,7 @@ export class SyncServer {
         sectionHashes,
         headRow.head_manifest_hash,
       );
-      await client.query(
+      await transactionClient.query(
         `INSERT INTO manifests (draft_id, team_id, seq, hash, parent_hash, section_hashes)
          VALUES ($1, $2, $3, $4, $5, $6)`,
         [
@@ -412,12 +415,12 @@ export class SyncServer {
           sectionHashes,
         ],
       );
-      await client.query(
+      await transactionClient.query(
         `UPDATE drafts SET head_seq = $2, head_manifest_hash = $3
          WHERE id = $1 AND team_id = $4`,
         [draftId, String(newSeq), newManifestHash, teamId],
       );
-      await client.query(
+      await transactionClient.query(
         `INSERT INTO command_log (draft_id, team_id, section_id, owner, epoch, client_seq, commands, manifest_seq)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [
@@ -438,7 +441,9 @@ export class SyncServer {
         manifestHash: newManifestHash,
         sectionHash: newSectionHash,
       };
-    });
+    };
+    if (client !== undefined) return commit(client);
+    return this.executeTransaction('commit', commit);
   }
 
   /**

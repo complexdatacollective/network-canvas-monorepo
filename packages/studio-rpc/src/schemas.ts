@@ -80,7 +80,7 @@ export const ProtocolSummarySchema = z.object({
 });
 
 export const CreateProtocolInputSchema = TeamScopedSchema.extend({
-  name: z.string().min(1),
+  name: z.string().min(1).max(320),
   protocolId: z.uuid(),
   draftId: z.uuid(),
 });
@@ -108,7 +108,7 @@ export const ProtocolDraftSchema = z.object({
 });
 
 const SectionScopedSchema = ProtocolDraftInputSchema.extend({
-  sectionId: z.string().min(1),
+  sectionId: z.string().min(1).max(255),
   clientId: z.uuid(),
 });
 
@@ -147,7 +147,9 @@ const CommandSchema = z.discriminatedUnion('op', [
 export const CommitSectionInputSchema = SectionScopedSchema.extend({
   leaseEpoch: DecimalSequenceSchema,
   clientSequence: DecimalSequenceSchema,
-  commands: z.array(CommandSchema).min(1),
+  // Audit records the bounded operation count and kinds, never the command
+  // values. Keep that summary and the commit work itself predictably bounded.
+  commands: z.array(CommandSchema).min(1).max(1_000),
 });
 
 export const ManifestRevisionSchema = z.object({

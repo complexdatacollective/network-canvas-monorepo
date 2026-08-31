@@ -289,6 +289,18 @@ describe('audit mutation policy', () => {
     expect(RPC_MUTATION_AUDIT_POLICIES['team.cancelInvitation']).toEqual({
       kind: 'required',
     });
+    expect(RPC_MUTATION_AUDIT_POLICIES['protocols.create']).toEqual({
+      kind: 'required',
+    });
+    expect(RPC_MUTATION_AUDIT_POLICIES['protocols.commitSection']).toEqual({
+      kind: 'required',
+    });
+    expect(
+      RPC_MUTATION_AUDIT_POLICIES['protocols.addInformationStage'],
+    ).toEqual({ kind: 'required' });
+    expect(RPC_MUTATION_AUDIT_POLICIES['protocols.moveStage']).toEqual({
+      kind: 'required',
+    });
     assertReasons(RPC_MUTATION_AUDIT_POLICIES);
     assertReasons(NON_RPC_MUTATION_AUDIT_POLICIES);
     assertReasons(NO_AUDIT_TRANSACTION_POLICIES);

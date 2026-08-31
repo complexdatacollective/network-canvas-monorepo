@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
+import type pg from 'pg';
+
 import {
   type CurrentProtocol,
   type ProtocolValidationIssue,
@@ -60,6 +62,21 @@ export type ProtocolRow = {
   name: string;
   createdAt: Date;
   updatedAt: Date;
+};
+
+type CreateProtocolResult = {
+  protocolId: string;
+  draftId: string;
+};
+
+type CreateProtocolParams = {
+  protocol: CurrentProtocol;
+  protocolId?: string;
+  draftId?: string;
+};
+
+type CreateProtocolTransactionResult = CreateProtocolResult & {
+  created: boolean;
 };
 
 type EditableProtocolRow = Omit<ProtocolRow, 'draftId'> & { draftId: string };
@@ -137,55 +154,67 @@ export class ProtocolStore {
 
   // Sections are write-time validated; the document is not required to pass
   // whole-protocol validation until publish.
-  async createProtocol(params: {
-    protocol: CurrentProtocol;
-    protocolId?: string;
-    draftId?: string;
-  }): Promise<{ protocolId: string; draftId: string }> {
+  async createProtocol(
+    params: CreateProtocolParams,
+  ): Promise<CreateProtocolResult>;
+  async createProtocol(
+    params: CreateProtocolParams,
+    client: pg.PoolClient,
+  ): Promise<CreateProtocolTransactionResult>;
+  async createProtocol(
+    params: CreateProtocolParams,
+    client?: pg.PoolClient,
+  ): Promise<CreateProtocolResult | CreateProtocolTransactionResult> {
     const protocolId = params.protocolId ?? randomUUID();
     const draftId = params.draftId ?? randomUUID();
     const sections = sectionizeProtocol(params.protocol);
     assertNoValidationFailures(sections);
 
     const teamId = this.db.teamId;
-    return runNoAuditTenantTransaction(
-      this.db,
-      'protocol.create',
-      async (client) => {
-        const inserted = await client.query(
-          `INSERT INTO protocols (id, team_id, name) VALUES ($1, $2, $3)
+    const create = async (
+      transactionClient: pg.PoolClient,
+    ): Promise<CreateProtocolTransactionResult> => {
+      const inserted = await transactionClient.query(
+        `INSERT INTO protocols (id, team_id, name) VALUES ($1, $2, $3)
          ON CONFLICT (id) DO NOTHING
          RETURNING id`,
-          [protocolId, teamId, params.protocol.name],
-        );
-        if (inserted.rowCount === 0) {
-          const existing = await client.query(
-            `SELECT p.name, pd.draft_id
+        [protocolId, teamId, params.protocol.name],
+      );
+      if (inserted.rowCount === 0) {
+        const existing = await transactionClient.query(
+          `SELECT p.name, pd.draft_id
            FROM protocols p
            JOIN protocol_drafts pd
              ON pd.protocol_id = p.id AND pd.team_id = p.team_id
            WHERE p.id = $1 AND p.team_id = $2`,
-            [protocolId, teamId],
-          );
-          const row = existing.rows[0] as
-            | { name: string; draft_id: string }
-            | undefined;
-          if (row?.name === params.protocol.name && row.draft_id === draftId) {
-            return { protocolId, draftId };
-          }
-          throw new ProtocolStoreError(
-            `protocol creation identity ${protocolId} is already in use`,
-          );
-        }
-        await insertDraftRows(client, teamId, draftId, sections);
-        await client.query(
-          `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id)
-         VALUES ($1, $2, $3)`,
-          [draftId, teamId, protocolId],
+          [protocolId, teamId],
         );
-        return { protocolId, draftId };
-      },
+        const row = existing.rows[0] as
+          | { name: string; draft_id: string }
+          | undefined;
+        if (row?.name === params.protocol.name && row.draft_id === draftId) {
+          return { protocolId, draftId, created: false };
+        }
+        throw new ProtocolStoreError(
+          `protocol creation identity ${protocolId} is already in use`,
+        );
+      }
+      await insertDraftRows(transactionClient, teamId, draftId, sections);
+      await transactionClient.query(
+        `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id)
+         VALUES ($1, $2, $3)`,
+        [draftId, teamId, protocolId],
+      );
+      return { protocolId, draftId, created: true };
+    };
+
+    if (client !== undefined) return create(client);
+    const result = await runNoAuditTenantTransaction(
+      this.db,
+      'protocol.create',
+      create,
     );
+    return { protocolId: result.protocolId, draftId: result.draftId };
   }
 
   async createDraftFromVersion(params: {
