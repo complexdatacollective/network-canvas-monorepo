@@ -620,6 +620,25 @@ test('release-sensitive app builds run before merge', () => {
   assert.match(supportJob, /pnpm --filter=@codaco\/interviewer build/);
 });
 
+test('changed public npm versions are checked against the registry before merge', () => {
+  const supportJob = job('quality-support');
+  assert.ok(supportJob, 'quality support job exists');
+  assert.match(supportJob, /fetch-depth: 0/);
+  assert.match(
+    supportJob,
+    /id: npm_versions[\s\S]*?continue-on-error: true[\s\S]*?BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
+  );
+  assert.match(
+    supportJob,
+    /if \[\[ "\$GITHUB_EVENT_NAME" != "pull_request" \]\]; then[\s\S]*?node scripts\/check-npm-version-collisions\.mjs --base "\$BASE_SHA"/,
+  );
+  assert.match(
+    supportJob,
+    /NPM_VERSIONS_OUTCOME: \$\{\{ steps\.npm_versions\.outcome \}\}/,
+  );
+  assert.match(supportJob, /"npm-versions=\$NPM_VERSIONS_OUTCOME"/);
+});
+
 test('stable app versions deploy to their Netlify production sites', () => {
   const detectJob = job('apps-release-detect');
   assert.ok(detectJob, 'apps release detector exists');
