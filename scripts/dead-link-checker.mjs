@@ -38,10 +38,12 @@
  * mismatch, the verifier waits for the browser document to reach a terminal
  * main-frame response, finish loading, and remain navigation-quiet for a short
  * bounded interval. Both navigation starts and responses are tracked, and
- * starts remain explicitly outstanding until their response arrives, so a
- * request that stalls before response headers cannot look quiet. Incomplete
- * redirects and document loads remain verification failures, and the entire
- * sequence shares one request deadline so reload loops cannot retain a worker
+ * starts remain explicitly outstanding until their response or failure event
+ * arrives, so a request that stalls before response headers cannot look quiet.
+ * Superseded/aborted requests are retired; another navigation failure remains
+ * an error unless a later terminal document replaces it. Incomplete redirects
+ * and document loads remain verification failures, and the entire sequence
+ * shares one request deadline so reload loops cannot retain a worker
  * indefinitely. Browser-only HTTP redirects obey the same maximum-hop rule as
  * Node redirects.
  *
@@ -247,6 +249,7 @@ export class BrowserVerifier {
       const mainFrameRequests = [];
       const mainFrameResponses = [];
       const outstandingMainFrameRequests = new Set();
+      let unrecoveredNavigationFailure = '';
       page.on('popup', (popup) => {
         spawnedPages.add(popup);
         void popup.close().catch(() => {});
@@ -258,6 +261,9 @@ export class BrowserVerifier {
         ) {
           mainFrameResponses.push(response);
           outstandingMainFrameRequests.delete(response.request());
+          if (isTerminalNavigation(response)) {
+            unrecoveredNavigationFailure = '';
+          }
         }
       });
       page.on('request', (request) => {
@@ -267,6 +273,20 @@ export class BrowserVerifier {
         ) {
           mainFrameRequests.push(request);
           outstandingMainFrameRequests.add(request);
+        }
+      });
+      page.on('requestfailed', (request) => {
+        if (
+          request.isNavigationRequest() &&
+          request.frame() === page.mainFrame()
+        ) {
+          outstandingMainFrameRequests.delete(request);
+          const errorText = String(
+            request.failure()?.errorText ?? 'unknown error',
+          );
+          if (!errorText.includes('ERR_ABORTED')) {
+            unrecoveredNavigationFailure = errorText;
+          }
         }
       });
       const verificationDeadline = Date.now() + timeout;
@@ -330,6 +350,12 @@ export class BrowserVerifier {
           // navigation starts, however, failing to reach a terminal response
           // is a verification failure rather than a successful 3xx result.
           terminalResponse = terminalResponseAfter(start);
+          if (!terminalResponse && unrecoveredNavigationFailure) {
+            throw new Error(
+              `Browser navigation failed: ${unrecoveredNavigationFailure}`,
+              { cause: error },
+            );
+          }
           if (
             !terminalResponse &&
             (!allowNoFollowup ||
@@ -391,6 +417,11 @@ export class BrowserVerifier {
           Math.min(BROWSER_NAVIGATION_SETTLE_MS, remainingTimeout()),
         );
         remainingTimeout();
+        if (unrecoveredNavigationFailure) {
+          throw new Error(
+            `Browser navigation failed: ${unrecoveredNavigationFailure}`,
+          );
+        }
         if (
           mainFrameResponses.length === settleStart &&
           mainFrameRequests.length === settleRequestStart &&

@@ -959,6 +959,145 @@ test('browser verification waits when navigation is pending before settling', as
   }
 });
 
+test('browser verification retires an aborted navigation replaced by a terminal response', async () => {
+  const frame = {};
+  const request = (errorText) => ({
+    failure: () => (errorText ? { errorText } : null),
+    frame: () => frame,
+    isNavigationRequest: () => true,
+  });
+  const initialRequest = request();
+  const abortedRequest = request('net::ERR_ABORTED');
+  const replacementRequest = request();
+  const response = (status, navigationRequest) => ({
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => status,
+  });
+  const initial = response(403, initialRequest);
+  const interstitial = response(200, initialRequest);
+  const final = response(200, replacementRequest);
+  let requestFailedListener;
+  let requestListener;
+  let responseListener;
+  let settleCount = 0;
+  let waitForResponseCount = 0;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'request') requestListener = listener;
+      if (event === 'requestfailed') requestFailedListener = listener;
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => 'https://publisher.test/recovered',
+    waitForLoadState: async () => {},
+    waitForResponse: async (predicate) => {
+      if (waitForResponseCount++ === 0) {
+        responseListener(interstitial);
+        assert.equal(predicate(interstitial), true);
+        return interstitial;
+      }
+      throw Object.assign(new Error('stale aborted request timed out'), {
+        name: 'TimeoutError',
+      });
+    },
+    waitForTimeout: async () => {
+      if (settleCount++ === 0) {
+        requestListener(abortedRequest);
+        requestFailedListener?.(abortedRequest);
+        requestListener(replacementRequest);
+        responseListener(final);
+      }
+    },
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    const outcome = await verifier.verify(
+      'https://publisher.test/challenge',
+      50,
+    );
+    assert.equal(settleCount, 2);
+    assert.equal(outcome.status, 200);
+  } finally {
+    await verifier.close();
+  }
+});
+
+test('browser verification rejects an unrecovered navigation failure', async () => {
+  const frame = {};
+  const initialRequest = {
+    frame: () => frame,
+    isNavigationRequest: () => true,
+  };
+  const failedRequest = {
+    failure: () => ({ errorText: 'net::ERR_NAME_NOT_RESOLVED' }),
+    frame: () => frame,
+    isNavigationRequest: () => true,
+  };
+  const initial = {
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => initialRequest,
+    status: () => 200,
+  };
+  let requestFailedListener;
+  let requestListener;
+  let responseListener;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'request') requestListener = listener;
+      if (event === 'requestfailed') requestFailedListener = listener;
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => 'https://publisher.test/navigation-failed',
+    waitForLoadState: async () => {},
+    waitForResponse: async () => {
+      throw Object.assign(new Error('navigation timed out'), {
+        name: 'TimeoutError',
+      });
+    },
+    waitForTimeout: async () => {
+      requestListener(failedRequest);
+      requestFailedListener?.(failedRequest);
+    },
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    await assert.rejects(
+      verifier.verify('https://publisher.test/tls-recovery', 50),
+      /net::ERR_NAME_NOT_RESOLVED/,
+    );
+  } finally {
+    await verifier.close();
+  }
+});
+
 test('renderers escape workflow commands and obey explicit color selection', () => {
   const failure = {
     error: 'bad%value\nsecond line',
