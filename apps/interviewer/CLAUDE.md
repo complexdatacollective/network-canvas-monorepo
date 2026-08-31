@@ -25,7 +25,7 @@ pnpm test:storybook    # vitest run --project=storybook
 pnpm storybook         # Storybook dev server on :6006
 ```
 
-`build` is the command CI deploys with. It runs Vite and then fails if the service worker, manifest, or icons are missing from `dist/`, or if a critical JS chunk (interview engine, entry point) got silently dropped from the workbox precache manifest. Treat an `assert-pwa-build.mjs` failure as a real bug, not noise.
+`build` is the command CI deploys with. It runs Vite and then fails if the service worker, manifest, or icons are missing from `dist/`, or if a critical JS chunk (interview engine, entry point) or responsive stage-preview image got silently dropped from the Workbox precache manifest. Treat an `assert-pwa-build.mjs` failure as a real bug, not noise.
 
 ## Source Surface
 

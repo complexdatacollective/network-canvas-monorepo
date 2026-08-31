@@ -169,7 +169,11 @@ export default defineConfig(({ mode }) => {
           // bundle's retained precache (including between same-version dev
           // deploys and while offline).
           cacheId: pwaCacheId,
-          globPatterns: ['**/*.{js,css,html}'],
+          // Screen thumbnails are not guaranteed to be requested before the
+          // installed app loses its connection. Precache every responsive
+          // 4:3 candidate so the chooser and timeline work on first offline
+          // use, regardless of which width Safari selects from srcset.
+          globPatterns: ['**/*.{js,css,html}', '**/*.4x3.*.webp'],
           // vite-plugin-pwa defaults this to index.html; disable it so it
           // cannot shadow the runtime navigation route below.
           navigateFallback: undefined,
@@ -277,14 +281,16 @@ export default defineConfig(({ mode }) => {
             {
               // skipWaiting activation advances every already-controlled tab,
               // not just the fresh tab that requested it. An older app bundle
-              // can therefore ask the new worker for an old lazy chunk. Vite's
-              // JS/CSS filenames are content-hashed, so an exact global cache
-              // lookup is unambiguous and lets that tab keep working offline.
-              // Never broaden this to stable HTML URLs such as index.html.
+              // can therefore ask the new worker for an old lazy chunk or
+              // responsive screen preview. These filenames are content-hashed,
+              // so an exact global cache lookup is unambiguous and lets that
+              // tab keep working offline. Never broaden this to stable HTML or
+              // image URLs such as index.html or PWA icons.
               urlPattern: ({ sameOrigin, url }) =>
                 sameOrigin &&
                 url.pathname.startsWith('/assets/') &&
-                /\.(?:js|css)$/i.test(url.pathname),
+                (/\.(?:js|css)$/i.test(url.pathname) ||
+                  /\.4x3\.\d+-[^/]+\.webp$/i.test(url.pathname)),
               handler: matchRetainedPwaAsset,
             },
             {
