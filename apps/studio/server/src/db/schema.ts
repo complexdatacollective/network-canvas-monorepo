@@ -56,6 +56,21 @@ export const SCHEMA_TABLES = Object.values(SCHEMA)
 
 export const SCHEMA_LOCK_KEY = 4021775688147129;
 
+// Runs under the schema advisory lock before drizzle-kit reconciles new
+// constraints. Better Auth formerly accepted whitespace-only organization
+// names, so those legacy rows must be made valid before the database begins
+// enforcing the nonblank team-name contract. The predicate makes this safe to
+// rerun and the to_regclass guard makes it safe for a fresh database.
+export const PRE_PUSH_MIGRATIONS = [
+  `DO $$ BEGIN
+    IF to_regclass('"teams"') IS NOT NULL THEN
+      UPDATE teams
+      SET name = 'Team ' || id
+      WHERE name !~ '[^[:space:]]';
+    END IF;
+  END $$;`,
+] as const;
+
 export type StaleSchema = {
   kind: 'stale';
   /** `unstamped` is a database carrying the tables but no fingerprint row. */

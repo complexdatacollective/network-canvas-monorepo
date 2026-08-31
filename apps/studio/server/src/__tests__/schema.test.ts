@@ -232,6 +232,37 @@ describe.skipIf(!db)('schema verification', () => {
 
 // drizzle-kit push introspects `public`, so these run in scratch databases.
 describe.skipIf(!db)('schema application', () => {
+  it('normalizes legacy blank team names before enforcing the current schema', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await applySchema(pool);
+      await pool.query(
+        'ALTER TABLE teams DROP CONSTRAINT IF EXISTS teams_name_nonblank_check',
+      );
+      await pool.query(
+        `INSERT INTO teams (id, name, slug) VALUES ('legacy-team', E' \t ', 'legacy-team')`,
+      );
+
+      await applySchema(pool);
+
+      const migrated = await pool.query<{ name: string }>(
+        `SELECT name FROM teams WHERE id = 'legacy-team'`,
+      );
+      expect(migrated.rows[0]?.name).toBe('Team legacy-team');
+
+      await expect(
+        pool.query(
+          `INSERT INTO teams (id, name, slug) VALUES ('new-team', '   ', 'new-team')`,
+        ),
+      ).rejects.toMatchObject({ constraint: 'teams_name_nonblank_check' });
+
+      await applySchema(pool);
+      const remigrated = await pool.query<{ name: string }>(
+        `SELECT name FROM teams WHERE id = 'legacy-team'`,
+      );
+      expect(remigrated.rows[0]?.name).toBe('Team legacy-team');
+    });
+  });
+
   it('provisions and stamps a fresh database', async () => {
     await withScratch(createScratchDatabase, async (pool) => {
       const outcome = await applySchema(pool);

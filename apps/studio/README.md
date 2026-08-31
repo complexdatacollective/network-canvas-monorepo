@@ -131,10 +131,16 @@ functions and triggers, which Drizzle cannot express, ride in raw-SQL sidecar
 exports beside their tables — as do the parts of row-level security that
 drizzle-kit does not manage: the roles, `FORCE ROW LEVEL SECURITY`, and the
 grants (see [Tenancy](#tenancy)). `server/src/db/schema.ts` collects all of it
-into the `SCHEMA` and `SIDECARS` exports that `server/scripts/apply.ts` applies.
-The policies themselves are `pgPolicy` entries on the table definitions, which
-is why `drizzle-kit` is pinned to the 1.0 release candidate: the stable line's
-`push` silently drops their `USING`/`WITH CHECK` expressions.
+into the `SCHEMA`, `PRE_PUSH_MIGRATIONS`, and `SIDECARS` exports that
+`server/scripts/apply.ts` applies. The pre-push list is reserved for bounded,
+idempotent compatibility repairs that must precede a new constraint; its first
+entry gives legacy whitespace-only team names a deterministic `Team <id>`
+fallback before the nonblank-name check is installed. It runs under the schema
+advisory lock and is included in the fingerprint, but is not a replacement for
+the versioned migration system required before release. The policies themselves
+are `pgPolicy` entries on the table definitions, which is why `drizzle-kit` is
+pinned to the 1.0 release candidate: the stable line's `push` silently drops
+their `USING`/`WITH CHECK` expressions.
 
 <!-- generated:schema-docs start -->
 
@@ -146,7 +152,7 @@ is why `drizzle-kit` is pinned to the 1.0 release candidate: the stable line's
 
 Open the image for the full-size diagram. Tables with row-level security or trigger sidecars carry those details as SVG tooltips. The diagram shows physical foreign-key constraints; deliberately unconstrained logical references are not drawn as relationships. The renderer uses `1`/`*` edge endpoints, so optionality remains visible through each column's not-null marker rather than the edge.
 
-Schema fingerprint: `ab1a88cb438ac00fe1731e5438d9dc01ba72180d3f86d91b2fa3f964e3b3df6a`.
+Schema fingerprint: `b975069cd3f9562748ba72a5e6a2158b33675872f35d4c6605d33cba93910d4b`.
 
 Sidecar behavior that cannot be represented as ERD relationships:
 
