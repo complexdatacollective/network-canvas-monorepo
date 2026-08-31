@@ -117,6 +117,7 @@ schema and fingerprint pipeline.
 | ---------------- | --------------- | ---------------------------------------------------------- |
 | `id`             | `uuid`          | Server-generated primary key                               |
 | `team_id`        | `text`          | Required tenant key; deliberately no cascading foreign key |
+| `team_label`     | `text`          | Required bounded display snapshot of the team name         |
 | `sequence`       | `bigint`        | Required per-team order; unique with `team_id`             |
 | `occurred_at`    | `timestamptz`   | Required database default `statement_timestamp()`          |
 | `event_type`     | `text`          | Stable machine name such as `team.member.role_changed`     |
@@ -138,7 +139,9 @@ schema and fingerprint pipeline.
 Database checks constrain `category`, `outcome`, and `actor_kind` to their
 known values. `actor_id` is required unless `actor_kind = 'system'`. Event
 payload validation remains in the typed server writer because each event type
-has a different `details` shape.
+has a different `details` shape. `team_label` is captured from the locked team
+row in the same transaction as the event; activity and export rendering never
+join the mutable current team name to reinterpret older history.
 
 `statement_timestamp()` records the start of the insert statement rather than
 the start of a possibly long or lock-blocked transaction. `occurred_at` is a
@@ -486,13 +489,14 @@ An audit-required mutation follows this order inside the executor's
 transaction:
 
 1. acquire the transaction-wide per-team audited-command advisory lock;
-2. lock the actor's current membership/authorization state and authorize the
+2. lock the team row and capture its current bounded `team_label` snapshot;
+3. lock the actor's current membership/authorization state and authorize the
    explicit team and operation;
-3. lock and read the current target state;
-4. validate invariants using that locked state;
-5. write the domain change;
-6. append the event using the same `pg.PoolClient`; and
-7. when applicable, insert an alert-outbox row referencing the event.
+4. lock and read the current target state;
+5. validate invariants using that locked state;
+6. write the domain change;
+7. append the event using the same `pg.PoolClient`; and
+8. when applicable, insert an alert-outbox row referencing the event.
 
 The team command lock uses the same centralized key and lock ordering as
 sequence allocation, so a concurrent demotion/removal cannot commit before an
@@ -511,14 +515,17 @@ executor's client or are invoked from a domain command that owns the
 transaction. Audit context is not optional on a required path, and the
 implementation must not append a second, post-commit “best effort” event.
 
-Sensitive reads and egress use a sibling `runAuditedRead` executor. It
-authorizes and materializes a bounded response (or a committed export-job /
-one-time-download record), appends the required audit event and alert-outbox
-row, commits, and only then releases response data or permits an external side
-effect. If the audit transaction fails, no response body, download capability,
-webhook, email, or object-storage result is released. Streaming implementations
-must stage behind that committed boundary; they may not start sending bytes
-and attempt a best-effort audit append afterward.
+Sensitive reads and egress use a sibling `runAuditedRead` executor. It acquires
+the same per-team command lock, locks the team and actor-membership rows, and
+authorizes from that locked current state before it materializes a bounded
+response (or a committed export-job / one-time-download record). The locks are
+held through the audit/outbox commit, so a concurrent demotion or removal is
+ordered after the already-authorized read rather than committing in the middle
+of it. The executor only then releases response data or permits an external
+side effect. If the audit transaction fails, no response body, download
+capability, webhook, email, or object-storage result is released. Streaming
+implementations must stage behind that committed boundary; they may not start
+sending bytes and attempt a best-effort audit append afterward.
 
 Authorization denials use the committed decision path in section 7.3.
 Authorized synchronous failures use the separate post-rollback audit-only path
@@ -635,10 +642,18 @@ trigger. If a handle is returned, the handle is bound to the requesting actor
 and team, expires promptly, carries no credentials in its contents, and its
 download `GET` performs no new audit mutation.
 
+Every response in the export flow uses `Cache-Control: no-store`, including a
+direct CSV response, the response carrying a one-time handle, and the
+handle-based download. Consuming or expiring a handle therefore cannot be
+undermined by a browser or intermediary replaying cached sensitive content.
+
 At the start of export, the server captures the visible high-water sequence
-and row count. Before returning a handle or sending the first CSV byte it
-commits
-`audit.export.started` with the filters, row count, and high-water sequence.
+and materializes the filtered rows in one repeatable-read snapshot. The row
+query and its count are explicitly capped by `sequence <= highWater`, and the
+recorded count comes from that exact materialized dataset rather than a later
+read-committed query. Before returning a handle or sending the first CSV byte
+it commits `audit.export.started` with the filters, row count, and high-water
+sequence.
 The exported file therefore does not recursively include its own later event.
 If the server can authoritatively detect a later generation or transfer
 failure, it appends `audit.export.failed` referencing the start event; a client
@@ -763,6 +778,8 @@ changeset for the affected Studio workspace packages.
 
 - An owner/admin role change stores the exact actor, member, previous role,
   new role, request id, and success outcome.
+- Every event snapshots the team label from the locked team row, and a later
+  team rename cannot change the label rendered for existing history.
 - Last-owner and unauthorized role changes do not change membership.
 - Concurrent owner demotions cannot both pass the last-owner invariant, and a
   concurrent actor revocation prevents the actor's privileged command from
@@ -772,8 +789,10 @@ changeset for the affected Studio workspace packages.
 - Denial throttling runs before the per-team lock; excess attempts create at
   most one bounded summary per policy window rather than one permanent row per
   request.
-- Invitation creation/cancellation and acceptance/rejection create the defined
-  events and never store a token or magic link.
+- Invitation creation/cancellation create the defined events and never store a
+  token or magic link. Slice A proves the direct acceptance/rejection endpoints
+  remain refused; their later Studio-owned commands must add event tests when
+  those producers land.
 - Every runtime-registered Better Auth organization route has an exact audit
   classification, and every team/access mutation without a Studio-owned
   audited command is refused, proving there is no unaudited bypass.
@@ -783,7 +802,9 @@ changeset for the affected Studio workspace packages.
   fails.
 - Export requires a same-origin-protected `POST`, stops at its high-water
   sequence, records one export event without recursively exporting it, and
-  neutralizes every formula-leading string cell before CSV escaping.
+  neutralizes every formula-leading string cell before CSV escaping. Direct
+  and handle-based responses are `no-store`, and the recorded row count equals
+  the exact high-water-bounded dataset delivered to the caller.
 
 ### 13.3 UI and end-to-end tests
 
