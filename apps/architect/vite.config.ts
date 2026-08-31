@@ -281,14 +281,16 @@ export default defineConfig(({ mode }) => {
             {
               // skipWaiting activation advances every already-controlled tab,
               // not just the fresh tab that requested it. An older app bundle
-              // can therefore ask the new worker for an old lazy chunk. Vite's
-              // JS/CSS filenames are content-hashed, so an exact global cache
-              // lookup is unambiguous and lets that tab keep working offline.
-              // Never broaden this to stable HTML URLs such as index.html.
+              // can therefore ask the new worker for an old lazy chunk or
+              // responsive screen preview. These filenames are content-hashed,
+              // so an exact global cache lookup is unambiguous and lets that
+              // tab keep working offline. Never broaden this to stable HTML or
+              // image URLs such as index.html or PWA icons.
               urlPattern: ({ sameOrigin, url }) =>
                 sameOrigin &&
                 url.pathname.startsWith('/assets/') &&
-                /\.(?:js|css)$/i.test(url.pathname),
+                (/\.(?:js|css)$/i.test(url.pathname) ||
+                  /\.4x3\.\d+-[^/]+\.webp$/i.test(url.pathname)),
               handler: matchRetainedPwaAsset,
             },
             {

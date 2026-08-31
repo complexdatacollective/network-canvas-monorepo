@@ -217,13 +217,15 @@ export default defineConfig(() =>
             {
               // skipWaiting activation advances every already-controlled tab,
               // including an interview that deliberately did not request the
-              // update. If its old bundle later imports an old lazy chunk, the
-              // new worker can read that exact content-hashed JS/CSS URL from
-              // the retained precache. Stable HTML is intentionally excluded.
+              // update. If its old bundle later requests an old lazy chunk or
+              // responsive stage preview, the new worker can read that exact
+              // content-hashed URL from the retained precache. Stable HTML and
+              // image URLs such as index.html and PWA icons stay excluded.
               urlPattern: ({ sameOrigin, url }) =>
                 sameOrigin &&
                 url.pathname.startsWith('/assets/') &&
-                /\.(?:js|css)$/i.test(url.pathname),
+                (/\.(?:js|css)$/i.test(url.pathname) ||
+                  /\.4x3\.\d+-[^/]+\.webp$/i.test(url.pathname)),
               handler: matchRetainedPwaAsset,
             },
             {

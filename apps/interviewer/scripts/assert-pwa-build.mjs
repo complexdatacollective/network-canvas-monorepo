@@ -300,17 +300,21 @@ if (
 if (
   !/\/assets\//.test(assetHandoffRouteSource) ||
   !/js\|css/.test(assetHandoffRouteSource) ||
+  !/4x3/.test(assetHandoffRouteSource) ||
+  !/webp/.test(assetHandoffRouteSource) ||
   !/caches\.match|Reflect\.get\(globalThis,"caches"\)/.test(
     assetHandoffRouteSource,
   ) ||
   !/fetch\(/.test(assetHandoffRouteSource)
 ) {
-  fail('old-bundle JS/CSS cannot fall back to retained precaches');
+  fail(
+    'old-bundle JS/CSS and stage-preview WebPs cannot fall back to retained precaches',
+  );
 }
 if (/index\.html/.test(assetHandoffRouteSource)) {
   fail('exact-hash asset handoff must not search retained HTML shells');
 }
 
 console.log(
-  `PWA build ok: ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached`,
+  `PWA build ok: ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached`,
 );
