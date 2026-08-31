@@ -528,6 +528,8 @@ export type RuleEditorProps = {
   onSave: (rule: EditableRule) => void;
   onCancel: () => void;
   finalFocus?: DialogFormProps['finalFocus'];
+  /** Matches an existing ArrayField row to this dialog for its shared morph. */
+  layoutId?: DialogFormProps['layoutId'];
 };
 
 /**
@@ -551,6 +553,7 @@ const RuleEditor = ({
   onSave,
   onCancel,
   finalFocus,
+  layoutId,
 }: RuleEditorProps) => {
   const handleSubmit = (values: Record<string, FieldValue>) => {
     const rule = toRule(values, seed);
@@ -582,6 +585,7 @@ const RuleEditor = ({
       onSubmit={handleSubmit}
       size="editor"
       finalFocus={finalFocus}
+      layoutId={layoutId}
     >
       <RuleEditorFields
         seed={seed}
