@@ -494,6 +494,57 @@ test('browser verification propagates terminal document load timeouts', async ()
   }
 });
 
+test('browser verification reports the response for the document that finishes loading', async () => {
+  const frame = {};
+  const navigationRequest = { isNavigationRequest: () => true };
+  const response = (status) => ({
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => status,
+  });
+  const initial = response(403);
+  const interstitial = response(200);
+  const final = response(404);
+  let responseListener;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (_event, listener) => {
+      responseListener = listener;
+    },
+    url: () => 'https://publisher.test/missing',
+    waitForLoadState: async () => responseListener(final),
+    waitForResponse: async (predicate) => {
+      responseListener(interstitial);
+      assert.equal(predicate(interstitial), true);
+      return interstitial;
+    },
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    const outcome = await verifier.verify(
+      'https://publisher.test/challenge',
+      50,
+    );
+    assert.equal(outcome.finalUrl, 'https://publisher.test/missing');
+    assert.equal(outcome.status, 404);
+  } finally {
+    await verifier.close();
+  }
+});
+
 test('renderers escape workflow commands and obey explicit color selection', () => {
   const failure = {
     error: 'bad%value\nsecond line',

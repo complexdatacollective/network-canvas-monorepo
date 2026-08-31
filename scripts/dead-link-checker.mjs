@@ -284,6 +284,13 @@ export class BrowserVerifier {
           // must represent the completed document or links after a stalled
           // parser-blocking resource could silently disappear from the crawl.
           await page.waitForLoadState('domcontentloaded', { timeout });
+
+          // A parser-blocking interstitial can navigate again before its own
+          // DOMContentLoaded. The load-state wait follows the new document, so
+          // bind status and headers to the last terminal main-frame response
+          // observed by then rather than the interstitial that began the wait.
+          navigation =
+            followupResponses().findLast(isTerminalNavigation) ?? navigation;
         }
       }
 
