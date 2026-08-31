@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type RefObject,
 } from 'react';
 
 import { Alert } from '@codaco/fresco-ui/Alert';
@@ -498,6 +499,7 @@ export default function Editor() {
               <StageCanvas
                 sessionState={session}
                 stage={selectedStage}
+                addingStage={addStage.isPending}
                 onDirtyChange={setStageFormDirty}
                 heading={stageLabel(
                   selectedStage,
@@ -521,7 +523,11 @@ export default function Editor() {
               Inspector
             </Heading>
             {session.status === 'ready' && selection.kind === 'stage' ? (
-              <Inspector session={session.session} message={session.message} />
+              <Inspector
+                session={session.session}
+                message={session.message}
+                formDirty={stageFormDirty}
+              />
             ) : (
               <>
                 <Paragraph>
@@ -662,6 +668,7 @@ function StageCanvas(props: {
   sessionState: ReturnType<typeof useStudioStageSession>;
   stage: SectionDoc | undefined;
   heading: string;
+  addingStage: boolean;
   onDirtyChange: (dirty: boolean) => void;
 }) {
   useEffect(() => {
@@ -686,6 +693,7 @@ function StageCanvas(props: {
       save={props.sessionState.save}
       stage={props.stage}
       heading={props.heading}
+      addingStage={props.addingStage}
       onDirtyChange={props.onDirtyChange}
     />
   );
@@ -696,6 +704,7 @@ function StageForm(props: {
   save: () => Promise<void>;
   stage: SectionDoc | undefined;
   heading: string;
+  addingStage: boolean;
   onDirtyChange: (dirty: boolean) => void;
 }) {
   const controller = useStageEditorController(props.session);
@@ -706,8 +715,10 @@ function StageForm(props: {
   const title = typeof fields.title === 'string' ? fields.title : '';
   const baseline = useRef({ label, title });
   const [baselineVersion, setBaselineVersion] = useState(0);
+  const labelInput = useRef<HTMLInputElement>(null);
+  const titleInput = useRef<HTMLInputElement>(null);
   const saveButton = useRef<HTMLButtonElement>(null);
-  const restoreSaveButtonFocus = useRef(false);
+  const restoreFocus = useRef<'label' | 'title' | 'save' | null>(null);
 
   useEffect(() => {
     if (controller.snapshot.pendingCommands.length !== 0) return;
@@ -720,9 +731,15 @@ function StageForm(props: {
   }, [controller.snapshot.pendingCommands.length, label, title]);
 
   useLayoutEffect(() => {
-    if (!restoreSaveButtonFocus.current) return;
-    restoreSaveButtonFocus.current = false;
-    saveButton.current?.focus();
+    const target = restoreFocus.current;
+    if (target === null) return;
+    restoreFocus.current = null;
+    const controls = {
+      label: labelInput,
+      title: titleInput,
+      save: saveButton,
+    };
+    controls[target].current?.focus();
   }, [baselineVersion]);
 
   return (
@@ -738,18 +755,31 @@ function StageForm(props: {
           This screen is read-only while another editor holds its lock.
         </Alert>
       )}
+      {props.addingStage && (
+        <Paragraph role="status">Adding a new screen…</Paragraph>
+      )}
       <Form
         key={baselineVersion}
         className="mt-6"
+        aria-busy={props.addingStage}
         onSubmit={async (values) => {
           const submittedLabel =
             typeof values.label === 'string' ? values.label : '';
           const submittedTitle =
             typeof values.title === 'string' ? values.title : '';
-          restoreSaveButtonFocus.current =
-            document.activeElement === saveButton.current &&
-            (submittedLabel !== baseline.current.label ||
-              (hasTitle && submittedTitle !== baseline.current.title));
+          const hasChanges =
+            submittedLabel !== baseline.current.label ||
+            (hasTitle && submittedTitle !== baseline.current.title);
+          const activeElement = document.activeElement;
+          restoreFocus.current = hasChanges
+            ? activeElement === labelInput.current
+              ? 'label'
+              : activeElement === titleInput.current
+                ? 'title'
+                : activeElement === saveButton.current
+                  ? 'save'
+                  : null
+            : null;
           controller.changeFields({
             ...fields,
             label: submittedLabel,
@@ -759,7 +789,7 @@ function StageForm(props: {
             await props.save();
             return { success: true };
           } catch {
-            restoreSaveButtonFocus.current = false;
+            restoreFocus.current = null;
             return {
               success: false,
               formErrors: [
@@ -773,9 +803,11 @@ function StageForm(props: {
         <StageFormFields
           fields={fields}
           baseline={baseline.current}
-          readOnly={readOnly}
+          disabled={readOnly || props.addingStage}
+          labelInput={labelInput}
+          titleInput={titleInput}
         />
-        <SubmitButton ref={saveButton} disabled={readOnly}>
+        <SubmitButton ref={saveButton} disabled={readOnly || props.addingStage}>
           Save screen
         </SubmitButton>
       </Form>
@@ -799,7 +831,9 @@ function StageFormDirtyObserver(props: {
 function StageFormFields(props: {
   fields: Readonly<Record<string, unknown>>;
   baseline: Readonly<{ label: string; title: string }>;
-  readOnly: boolean;
+  disabled: boolean;
+  labelInput: RefObject<HTMLInputElement | null>;
+  titleInput: RefObject<HTMLInputElement | null>;
 }) {
   const label =
     typeof props.fields.label === 'string' ? props.fields.label : '';
@@ -823,18 +857,20 @@ function StageFormFields(props: {
         name="label"
         label="Screen name"
         component={InputField}
+        ref={props.labelInput}
         initialValue={props.baseline.label}
         required
-        disabled={props.readOnly}
+        disabled={props.disabled}
       />
       {hasTitle && (
         <Field
           name="title"
           label="Page heading"
           component={InputField}
+          ref={props.titleInput}
           initialValue={props.baseline.title}
           required
-          disabled={props.readOnly}
+          disabled={props.disabled}
         />
       )}
     </>
@@ -844,6 +880,7 @@ function StageFormFields(props: {
 function Inspector(props: {
   session: ProtocolBuilderSession;
   message: string;
+  formDirty: boolean;
 }) {
   const controller = useStageEditorController(
     props.session,
@@ -869,8 +906,13 @@ function Inspector(props: {
         <Button
           size="sm"
           variant="outline"
+          aria-describedby={
+            props.formDirty ? 'history-disabled-reason' : undefined
+          }
           disabled={
-            !snapshot.history.canUndo || snapshot.access.mode !== 'editable'
+            props.formDirty ||
+            !snapshot.history.canUndo ||
+            snapshot.access.mode !== 'editable'
           }
           onClick={controller.undo}
         >
@@ -879,14 +921,24 @@ function Inspector(props: {
         <Button
           size="sm"
           variant="outline"
+          aria-describedby={
+            props.formDirty ? 'history-disabled-reason' : undefined
+          }
           disabled={
-            !snapshot.history.canRedo || snapshot.access.mode !== 'editable'
+            props.formDirty ||
+            !snapshot.history.canRedo ||
+            snapshot.access.mode !== 'editable'
           }
           onClick={controller.redo}
         >
           Redo
         </Button>
       </div>
+      {props.formDirty && (
+        <Paragraph id="history-disabled-reason" className="text-sm">
+          Save or discard your screen changes to use Undo and Redo.
+        </Paragraph>
+      )}
       <ProtocolProblems validation={snapshot.validation} />
     </div>
   );
