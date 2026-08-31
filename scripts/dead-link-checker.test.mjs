@@ -33,7 +33,13 @@ test('the user-agent option applies to every link request', async () => {
     userAgents.push(request.headers['user-agent']);
     if (request.url === '/') {
       response.setHeader('content-type', 'text/html');
-      response.end('<a href="/linked">linked page</a>');
+      response.end(`
+        <a href="/linked">linked page</a>
+        <a href="data:text/plain,inline">inline data</a>
+        <a href="vbscript:msgbox('unsafe')">VBScript</a>
+        <a href="mailto:test@example.com">email</a>
+        <a href="javascript:void(0)">JavaScript</a>
+      `);
       return;
     }
 
@@ -57,6 +63,7 @@ test('the user-agent option applies to every link request', async () => {
 
     assert.equal(result.code, 0, result.stderr);
     assert.deepEqual(userAgents, [userAgent, userAgent]);
+    assert.doesNotMatch(result.stdout, /data:|vbscript:|mailto:|javascript:/);
   } finally {
     server.close();
     await once(server, 'close');

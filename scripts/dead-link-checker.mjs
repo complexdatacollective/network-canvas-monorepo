@@ -121,14 +121,16 @@ async function checkLinks(url, origin) {
       (acc, link) => {
         try {
           const href = link.getAttribute('href')?.trim() || '';
-          if (
-            href &&
-            !href.startsWith('mailto:') &&
-            !href.startsWith('javascript:') &&
-            !href.startsWith('#') &&
-            href !== 'about:blank'
-          ) {
-            const resolvedLink = new URL(href.split('#')[0], url).href;
+          if (href && !href.startsWith('#')) {
+            const resolvedURL = new URL(href.split('#')[0], url);
+            if (
+              resolvedURL.protocol !== 'http:' &&
+              resolvedURL.protocol !== 'https:'
+            ) {
+              return acc;
+            }
+
+            const resolvedLink = resolvedURL.href;
             const normalizedLink = resolvedLink.endsWith('/')
               ? resolvedLink.slice(0, -1)
               : resolvedLink;
