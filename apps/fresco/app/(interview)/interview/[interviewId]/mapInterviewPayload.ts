@@ -12,6 +12,7 @@ export function mapInterviewPayload(
   payload: InterviewPayload;
   assetUrls: Record<string, string>;
   initialStep: number;
+  initialSyncRevision: number;
 } {
   const { protocol, ...session } = source;
 
@@ -68,5 +69,13 @@ export function mapInterviewPayload(
     },
   };
 
-  return { payload, assetUrls, initialStep: session.currentStep };
+  return {
+    payload,
+    assetUrls,
+    initialStep: session.currentStep,
+    // The sync handler numbers its writes upwards from here. It is not part of
+    // `InterviewPayload` because it belongs to this host's transport rather
+    // than to the interview the engine runs.
+    initialSyncRevision: session.syncRevision,
+  };
 }

@@ -82,6 +82,42 @@ function getEdgeCount(page: Page): Promise<number> {
   return page.locator('svg line[visibility="visible"]').count();
 }
 
+// Reads the stored session's network node count straight from IndexedDB.
+// Vault mode is 'none' in this suite, so `network` is plaintext on the row.
+// Returns null only when the row is absent; a failed read rejects (failing
+// the test) rather than becoming a value an assertion could compare.
+function readStoredNodeCount(
+  page: Page,
+  sessionId: string,
+): Promise<number | null> {
+  return page.evaluate(
+    (id) =>
+      new Promise<number | null>((resolve, reject) => {
+        const req = indexedDB.open('interviewer');
+        req.onerror = () => reject(new Error('indexedDB.open failed'));
+        req.onsuccess = () => {
+          const get = req.result
+            .transaction('sessions', 'readonly')
+            .objectStore('sessions')
+            .get(id);
+          get.onerror = () => reject(new Error('sessions.get failed'));
+          get.onsuccess = () => {
+            const row = get.result as
+              | { network?: { nodes?: unknown[] } }
+              | undefined;
+            if (!row) return resolve(null);
+            const nodes = row.network?.nodes;
+            if (!Array.isArray(nodes)) {
+              return reject(new Error('session row has no plaintext network'));
+            }
+            resolve(nodes.length);
+          };
+        };
+      }),
+    sessionId,
+  );
+}
+
 async function connectNodes(
   page: Page,
   fromLabel: string,
@@ -212,6 +248,48 @@ test.describe('conducting an interview', () => {
       'data-stage-step',
       stepBefore ?? '1',
     );
+  });
+
+  test('resuming immediately after exit keeps the just-added alter', async ({
+    protocol,
+    interviewNav,
+    page,
+  }) => {
+    await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
+    await interviewNav.startNewSession('P04');
+    const sessionId = /\/interview\/([^/?#]+)/.exec(page.url())?.[1] ?? '';
+    expect(sessionId).not.toBe('');
+
+    await interviewNav.next(); // Information -> EgoForm
+    await interviewNav.fillEgoName('Ada');
+    await expect(page.getByTestId('next-button')).toHaveClass(/bg-success/);
+    await interviewNav.next(); // EgoForm -> NameGeneratorQuickAdd
+
+    await interviewNav.quickAddNode('LossProbe');
+
+    // Exit and resume PROMPTLY: the engine autosaves on a 3s trailing
+    // debounce, so the alter added above is still in the debounce window when
+    // we leave. Before the fix (Shell unmount flush + getSession joining the
+    // session write chain), a resume within that window hydrated the
+    // pre-write network — the alter rendered missing — and the resumed
+    // engine's next autosave wrote that stale network back over the stored
+    // row, destroying the alter. Do not add waits between these steps: the
+    // promptness is what this test guards.
+    await interviewNav.exitInterview();
+    await page.getByRole('button', { name: /Resume last interview/ }).click();
+    await interviewNav.waitForStage();
+
+    // The just-added alter must be rendered on the resumed stage.
+    await expect(page.getByRole('option', { name: 'LossProbe' })).toBeVisible();
+
+    // Ordinary navigation after the resume must not clobber the stored
+    // network (this is the write that destroyed the alter pre-fix).
+    await interviewNav.next(); // NameGeneratorQuickAdd -> Sociogram
+    await interviewNav.back(); // Sociogram -> NameGeneratorQuickAdd
+    await expect(page.getByRole('option', { name: 'LossProbe' })).toBeVisible();
+    await expect
+      .poll(() => readStoredNodeCount(page, sessionId), { timeout: 10_000 })
+      .toBe(1);
   });
 
   test('places nodes on the sociogram canvas and connects them', async ({

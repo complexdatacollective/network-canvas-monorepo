@@ -79,7 +79,7 @@ The app is gated by one of four mutually exclusive modes, chosen during first-ru
 | `biometric`  | WebAuthn platform authenticator (Touch ID, Windows Hello, etc.) via the PRF extension, **plus** a mandatory recovery passphrase enrolled in the same step — losing the authenticator doesn't mean losing the data. Not offered in macOS Chromium installed-PWA windows, where the browser can't reach the iCloud Keychain authenticator (crbug.com/364926914); unlock there falls back to the recovery passphrase. |
 | `none`       | No app-layer protection; data is stored unencrypted.                                                                                                                                                                                                                                                                                                                                                               |
 
-Unlocking derives a data-encryption key (DEK) that lives only in memory for the life of the tab — reloading the page, locking, an idle timeout, or losing focus for ~30 seconds all drop it and re-lock the app. See [CLAUDE.md](./CLAUDE.md#vault--auth) for the cryptographic detail.
+Unlocking derives a data-encryption key (DEK) that lives only in memory for the life of the tab — reloading the page, locking, or the idle timeout all drop it and re-lock the app. Time spent with the tab hidden counts toward that idle window, reconciled against wall-clock time when the tab comes back. Locking waits up to two seconds for outstanding interview writes to settle first, so it can't clear the key out from under an answer still being encrypted. See [CLAUDE.md](./CLAUDE.md#vault--auth) for the cryptographic detail.
 
 ## Offline behaviour
 

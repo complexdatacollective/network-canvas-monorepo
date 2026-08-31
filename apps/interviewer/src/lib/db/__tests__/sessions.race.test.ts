@@ -38,7 +38,8 @@ vi.mock('../recordCrypto', async (importOriginal) => {
 // Import AFTER the mock so sessions.ts binds the wrapped encryptSession.
 const { db } = await import('../db');
 const { setSessionDek } = await import('../sessionKey');
-const { createSession, updateSession } = await import('../sessions');
+const { createSession, getSession, updateSession } =
+  await import('../sessions');
 
 async function makeDek(): Promise<CryptoKey> {
   return crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, [
@@ -121,5 +122,57 @@ describe('updateSession against concurrent writers', () => {
     await expect(pending).resolves.toBeUndefined();
 
     expect(await db.sessions.get(created.id)).toBeUndefined();
+  });
+
+  // The exit→resume data-loss race: the interview Shell hands its final
+  // autosave to updateSession while unmounting, and a prompt resume issues a
+  // hydration read while that write is still committing. If the read returns
+  // the pre-write row, the resumed interview renders without the
+  // participant's latest answers and its own autosaves then persist the stale
+  // network back over the newer record — so getSession must queue behind
+  // every write already enqueued for the same id.
+  it('getSession waits for an in-flight updateSession instead of returning the pre-write row', async () => {
+    const created = await createSession({
+      protocolHash: 'hash',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork: network,
+    });
+
+    const pause = pauseNextEncrypt();
+    const pending = updateSession(created.id, {
+      network: {
+        ...network,
+        nodes: [
+          {
+            [entityPrimaryKeyProperty]: 'node-1',
+            type: 'person',
+            [entityAttributesProperty]: {},
+          },
+        ],
+      },
+    });
+    await pause.reached;
+
+    // The hydration read, issued while the write is suspended between its
+    // read and its commit.
+    let settled = false;
+    const read = getSession(created.id).then((session) => {
+      settled = true;
+      return session;
+    });
+
+    // Negative assertion: the read must still be pending while the write is.
+    // No event fires when a wrongly-unqueued read completes, so a macrotask
+    // turn is the oracle — it gives a read that bypassed the chain time to
+    // finish its get+decrypt and flip `settled`.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(settled).toBe(false);
+
+    pause.release();
+    await pending;
+
+    const session = await read;
+    expect(session?.network.nodes).toHaveLength(1);
   });
 });

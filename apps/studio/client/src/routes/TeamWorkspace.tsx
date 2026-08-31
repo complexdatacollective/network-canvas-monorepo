@@ -26,6 +26,7 @@ import { TEAM_ROLES, type TeamRole } from '@codaco/studio-rpc';
 
 import { orpc, rpcClient } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
+import { createUuid } from '../lib/createUuid.ts';
 
 type Team = NonNullable<
   ReturnType<typeof authClient.useListOrganizations>['data']
@@ -328,8 +329,8 @@ function ActiveTeamWorkspace(props: {
                     : {
                         teamId,
                         name,
-                        protocolId: globalThis.crypto.randomUUID(),
-                        draftId: globalThis.crypto.randomUUID(),
+                        protocolId: createUuid(),
+                        draftId: createUuid(),
                       };
                 creationAttempt.current = attempt;
                 try {

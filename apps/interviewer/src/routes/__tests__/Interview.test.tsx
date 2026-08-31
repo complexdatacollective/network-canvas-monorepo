@@ -6,20 +6,34 @@ import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-s
 
 const navigateMock = vi.fn();
 const useSearchMock = vi.fn(() => '');
+const useRouteMock = vi.fn<() => [boolean, { sessionId?: string } | null]>(
+  () => [true, { sessionId: 's1' }],
+);
 vi.mock('wouter', () => ({
   useLocation: () => ['/interview/s1', navigateMock],
   useSearch: () => useSearchMock(),
+  useRoute: () => useRouteMock(),
 }));
 
 const requireFreshUnlockMock = vi.fn();
 const getAuthorizedInterviewIdMock = vi.fn<() => string | null>();
 const setAuthorizedInterviewIdMock = vi.fn();
+// The real provider hands out a context value whose function identities can
+// change across provider re-renders. Tests that simulate such a re-render swap
+// in a fresh set of wrappers via refreshStepUpContextIdentities().
+const makeStepUpContext = () => ({
+  requireFreshUnlock: () =>
+    requireFreshUnlockMock() as Promise<{ ok: boolean }>,
+  getAuthorizedInterviewId: () => getAuthorizedInterviewIdMock(),
+  setAuthorizedInterviewId: (id: string | null) =>
+    setAuthorizedInterviewIdMock(id),
+});
+let stepUpContext = makeStepUpContext();
+function refreshStepUpContextIdentities() {
+  stepUpContext = makeStepUpContext();
+}
 vi.mock('~/lib/auth/StepUpAuthProvider', () => ({
-  useStepUpAuth: () => ({
-    requireFreshUnlock: requireFreshUnlockMock,
-    getAuthorizedInterviewId: getAuthorizedInterviewIdMock,
-    setAuthorizedInterviewId: setAuthorizedInterviewIdMock,
-  }),
+  useStepUpAuth: () => stepUpContext,
 }));
 
 const getSettingsMock = vi.fn();
@@ -61,7 +75,11 @@ type CapturedShellProps = {
   payload: InterviewPayload;
   onExit: () => void;
   onFinish: (id: string) => Promise<void>;
-  onSync: (id: string, session: SessionPayload) => Promise<void>;
+  onSync: (
+    id: string,
+    session: SessionPayload,
+    options: { immediate: boolean; unloading: boolean },
+  ) => Promise<void>;
   onStepChange: (
     step: number,
     meta: { progress: number; totalSteps: number },
@@ -180,6 +198,8 @@ beforeEach(() => {
   requireFreshUnlockMock.mockResolvedValue({ ok: true });
   getAuthorizedInterviewIdMock.mockReturnValue(null);
   useSearchMock.mockReturnValue('');
+  useRouteMock.mockReturnValue([true, { sessionId: 's1' }]);
+  refreshStepUpContextIdentities();
 });
 
 describe('InterviewRoute enter gate', () => {
@@ -320,6 +340,49 @@ describe('InterviewRoute exit gate', () => {
   });
 });
 
+describe('InterviewRoute exit transition', () => {
+  // App.tsx's AnimatePresence page transition keeps this route mounted (with
+  // live context subscriptions) while its exit fade plays after navigation
+  // away. A load-effect re-run in that window used to re-fire the enter gate —
+  // the exit had just cleared the entry authorization, so a phantom
+  // "Confirm your identity" prompt (with destructive recovery armed, since the
+  // live path is Home) opened over Home and nothing ever resolved it.
+  it('does not re-run the enter gate or re-authorize while exiting', async () => {
+    getSettingsMock.mockResolvedValue({
+      requireUnlockOnEnter: true,
+      requireUnlockOnExit: false,
+      requireUnlockOnExport: false,
+    });
+    // Entry was authorized on Home (NewSessionForm) before navigating here.
+    getAuthorizedInterviewIdMock.mockReturnValue('s1');
+
+    const { rerender } = render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    expect(requireFreshUnlockMock).not.toHaveBeenCalled();
+
+    await invoke(lastShellProps().onExit);
+    expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
+    expect(navigateMock).toHaveBeenCalledWith('/', { replace: true });
+
+    // The exit-fade window: the live location is Home, the authorization is
+    // cleared, and the provider re-render handed out fresh context function
+    // identities — which is what re-ran the load effect.
+    getAuthorizedInterviewIdMock.mockReturnValue(null);
+    useRouteMock.mockReturnValue([false, null]);
+    refreshStepUpContextIdentities();
+    setAuthorizedInterviewIdMock.mockClear();
+    rerender(<InterviewRoute sessionId="s1" />);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // No phantom step-up prompt over Home…
+    expect(requireFreshUnlockMock).not.toHaveBeenCalled();
+    // …and the entry authorization the exit just cleared stays cleared.
+    expect(setAuthorizedInterviewIdMock).not.toHaveBeenCalledWith('s1');
+  });
+});
+
 describe('InterviewRoute finish flow', () => {
   beforeEach(() => {
     getSettingsMock.mockResolvedValue({
@@ -347,8 +410,13 @@ describe('InterviewRoute finish flow', () => {
     await screen.findByTestId('shell-mounted');
     updateSessionMock.mockClear();
 
+    // `immediate` so the host's batching window does not defer the write past
+    // the assertion; what is being checked is the patch, not the timing.
     await act(async () => {
-      await lastShellProps().onSync('s1', makeSyncPayload());
+      await lastShellProps().onSync('s1', makeSyncPayload(), {
+        immediate: true,
+        unloading: false,
+      });
     });
 
     const patch = updateSessionMock.mock.calls.at(-1)?.[1];
@@ -366,10 +434,13 @@ describe('InterviewRoute finish flow', () => {
     await screen.findByText('Interview complete');
 
     updateSessionMock.mockClear();
-    // A debounced sync fired after finish still carries finishTime: null
-    // (the engine never sets it for an in-progress session).
+    // A sync landing after finish still carries finishTime: null (the engine
+    // never sets it for an in-progress session).
     await act(async () => {
-      await onSync('s1', makeSyncPayload({ finishTime: null }));
+      await onSync('s1', makeSyncPayload({ finishTime: null }), {
+        immediate: true,
+        unloading: false,
+      });
     });
 
     for (const call of updateSessionMock.mock.calls) {
@@ -459,7 +530,10 @@ describe('InterviewRoute finish flow', () => {
     const { onFinish, onStepChange, onSync } = lastShellProps();
 
     await act(async () => {
-      await onSync('s1', makeSyncPayload());
+      await onSync('s1', makeSyncPayload(), {
+        immediate: true,
+        unloading: false,
+      });
       onStepChange(2, { progress: 75, totalSteps: 4 });
       await onFinish('s1');
     });
@@ -480,7 +554,10 @@ describe('InterviewRoute finish flow', () => {
     const { onFinish, onStepChange, onSync } = lastShellProps();
 
     await act(async () => {
-      await onSync('s1', makeSyncPayload());
+      await onSync('s1', makeSyncPayload(), {
+        immediate: true,
+        unloading: false,
+      });
       onStepChange(2, { progress: 75, totalSteps: 4 });
       await onFinish('s1');
     });

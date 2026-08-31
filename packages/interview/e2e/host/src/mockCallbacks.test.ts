@@ -18,7 +18,10 @@ function makeSession(): SessionPayload {
 describe('mockSync', () => {
   it('is a no-op (Shell owns state in Redux; tests read it via window.__interviewStore)', async () => {
     await expect(
-      mockSync('interview-1', makeSession()),
+      mockSync('interview-1', makeSession(), {
+        immediate: false,
+        unloading: false,
+      }),
     ).resolves.toBeUndefined();
   });
 });

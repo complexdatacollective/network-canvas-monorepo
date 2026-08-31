@@ -416,6 +416,48 @@ const Shell = ({
     [payload, stableOnSync, flags?.isDevelopment, trackerHolder],
   );
 
+  // A host that batches writes (see createDebouncedSyncHandler) may be holding
+  // recent answers when the document goes away, and a hidden document is not
+  // promised any more script at all — mobile browsers suspend a backgrounded
+  // tab, and a suspended timer does not fire. Write now, while there is still a
+  // page to write from. This is the moment that matters most for an installed
+  // PWA: the device is put to sleep seconds after an answer, and whatever was
+  // being held would otherwise wait on a timer that only resumes minutes later,
+  // into a host that may by then have torn down what the write needed.
+  //
+  // pagehide covers the navigation/bfcache case the visibility change misses.
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const flushIfHidden = () => {
+      if (document.visibilityState === 'hidden') {
+        void reduxStore.flushSync({ unloading: true });
+      }
+    };
+    const flushNow = () => void reduxStore.flushSync({ unloading: true });
+    document.addEventListener('visibilitychange', flushIfHidden);
+    window.addEventListener('pagehide', flushNow);
+    return () => {
+      document.removeEventListener('visibilitychange', flushIfHidden);
+      window.removeEventListener('pagehide', flushNow);
+    };
+  }, [reduxStore]);
+
+  // Teardown backstop. The host has navigated away — an interview exit, a lock
+  // screen — so anything a batching host is still holding has to go now, before
+  // whatever reads the stored session next: a prompt resume would otherwise
+  // hydrate the pre-write snapshot and persist that stale network back over the
+  // newer record. Its one limit is that a host whose onSync needs state the
+  // teardown itself destroyed (an idle lock clearing its encryption key before
+  // unmounting) still rejects the write — flushing here cannot resurrect
+  // host-side preconditions. The user-facing exit path therefore awaits the
+  // full flush before invoking onExit (Navigation.handleExit) rather than
+  // relying on this.
+  useEffect(() => {
+    return () => {
+      void reduxStore.flushSync();
+    };
+  }, [reduxStore]);
+
   // In e2e mode, expose the live Redux store to Playwright tests so they can
   // inspect the network/session state directly instead of waiting for a sync
   // round-trip. Mirrors the pattern used by `__e2eMap` in Geospatial.

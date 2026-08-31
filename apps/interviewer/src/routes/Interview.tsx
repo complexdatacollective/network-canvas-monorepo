@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useSearch } from 'wouter';
+import { useLocation, useRoute, useSearch } from 'wouter';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
@@ -8,6 +8,7 @@ import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
+  createDebouncedSyncHandler,
   type FinishHandler,
   type InterviewPayload,
   type SessionPayload,
@@ -50,6 +51,27 @@ const NAVIGATION_SAFE_AREA_CLASSNAMES = {
   vertical: 'pt-[calc(0.75rem_+_env(safe-area-inset-top))]',
 } as const;
 
+// Zero: this host never holds an answer on a timer. Anything held is an answer
+// that only the vault's encryption key can write, and the key is cleared on
+// idle lock — a wait here is a window in which answers can be lost.
+//
+// The wrapper still earns its place at zero, because collapsing does not come
+// from the wait. Writes go through its queue one at a time, and a change
+// arriving while one is on the wire replaces the pending snapshot rather than
+// queueing another write. An automatic-layout settle dispatches an update per
+// node, so a twenty-alter sociogram becomes two writes instead of twenty
+// re-encryptions of the whole network. The only unwritten window is the
+// duration of a write already in progress — exactly what writing eagerly
+// would leave, and no more.
+//
+// Zero is also load-bearing for the idle lock. `whenSessionWritesSettle` waits
+// on the database queue, and an answer held here is not in that queue yet — it
+// enters it on a zero-delay timer when the write in front lands, which the
+// drain yields one macrotask to catch. Raise this and the drain stops covering
+// the handler's buffer, and a lock can clear the key out from under a held
+// answer. `lockDrainsWrites.test.tsx` fails if it is raised.
+const SYNC_BATCH_MS = 0;
+
 type LoadState =
   | { kind: 'loading' }
   | { kind: 'missing' }
@@ -75,6 +97,17 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     getAuthorizedInterviewId,
     setAuthorizedInterviewId,
   } = useStepUpAuth();
+  // App.tsx's AnimatePresence page transition keeps this route mounted — with
+  // live context subscriptions and effects — while its exit fade plays after
+  // navigation away. The load effect must treat that window as inert:
+  // re-running the enter gate there raises a step-up prompt over Home that
+  // nothing ever resolves, and re-writing the entry authorization re-arms what
+  // the gated exit just cleared.
+  const [interviewRouteMatches, interviewRouteParams] = useRoute(
+    '/interview/:sessionId',
+  );
+  const isLiveRoute =
+    interviewRouteMatches && interviewRouteParams.sessionId === sessionId;
   const [finished, setFinished] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [allowStageNavigation, setAllowStageNavigation] = useState(false);
@@ -135,6 +168,9 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   }, [requireFreshUnlock, goHome, setAuthorizedInterviewId]);
 
   useEffect(() => {
+    // Exit-fade window (see isLiveRoute above): do nothing at all — no gate,
+    // no authorization write, no state update.
+    if (!isLiveRoute) return undefined;
     let active = true;
     const load = async () => {
       const settings = await getSettings();
@@ -233,6 +269,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     getAuthorizedInterviewId,
     setAuthorizedInterviewId,
     reviewRequested,
+    isLiveRoute,
   ]);
 
   const { client: posthogClient, enabled: analyticsEnabled } = useAnalytics();
@@ -251,18 +288,36 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
 
   // `finishedAt` is written solely by markSessionFinished (via handleFinish).
   // The engine never sets session.finishTime for an in-progress session, so a
-  // trailing debounced sync landing after finish would otherwise rewrite it
-  // back to null and un-finish the interview.
-  const handleSync = useCallback(
-    async (id: string, session: SessionPayload) => {
-      await updateSession(id, {
-        network: session.network,
-        currentStep: currentStepRef.current,
-        stageMetadata: session.stageMetadata,
-      });
-    },
-    [],
-  );
+  // sync landing after finish would otherwise rewrite it back to null and
+  // un-finish the interview.
+  //
+  // Writes go to a local encrypted database and are never deferred — see
+  // SYNC_BATCH_MS. The wrapper is here to collapse the bursts the engine emits
+  // in one gesture, not to delay anything.
+  const handleSync = useMemo<SyncHandler>(() => {
+    // One handler batches for one interview: it holds a single pending
+    // snapshot, so a handler reused across two would let the second replace the
+    // first while both sets of waiters were attached, resolving the first's
+    // promise with a write that discarded its state. This route re-renders
+    // rather than remounting when the id changes, so the handler is rebuilt for
+    // each session and refuses anything else outright.
+    const ownerId = sessionId;
+    return createDebouncedSyncHandler(
+      async (id, session) => {
+        if (id !== ownerId) {
+          throw new Error(
+            `Sync for interview ${id} reached the handler for ${ownerId}`,
+          );
+        }
+        await updateSession(id, {
+          network: session.network,
+          currentStep: currentStepRef.current,
+          stageMetadata: session.stageMetadata,
+        });
+      },
+      { waitMs: SYNC_BATCH_MS },
+    );
+  }, [sessionId]);
 
   const handleFinish = useCallback(async (id: string) => {
     await markSessionFinished(id);

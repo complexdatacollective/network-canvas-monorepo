@@ -11,6 +11,7 @@ import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document'
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { rpcClient } from '../lib/api.ts';
+import { createUuid } from '../lib/createUuid.ts';
 import { registerStudioEditorSession } from './sessionLifecycle.ts';
 
 type Draft = Awaited<ReturnType<typeof rpcClient.protocols.draft>>;
@@ -81,7 +82,7 @@ export function useStudioStageSession(params: {
       kind: 'stage',
       stageId: params.stageId,
     });
-    const leaseClientId = globalThis.crypto.randomUUID();
+    const leaseClientId = createUuid();
     const document = latestDraft.current.sections[selectedSectionId];
     if (document === undefined) {
       setState({
@@ -95,6 +96,7 @@ export function useStudioStageSession(params: {
     let active = true;
     let acquiring = false;
     let renewal: ReturnType<typeof setInterval> | undefined;
+    let renewalInFlight: Promise<void> | null = null;
     let retry: ReturnType<typeof setInterval> | undefined;
     let currentLease: Readonly<{ leaseEpoch: string }> | null = null;
     let store: ProtocolBuilderSessionStore;
@@ -105,6 +107,7 @@ export function useStudioStageSession(params: {
     let queue: Promise<void> = Promise.resolve();
     let initialization: Promise<void> = Promise.resolve();
     let promotion: Promise<void> = Promise.resolve();
+    let releaseBarrier: Promise<void> = Promise.resolve();
     let closePromise: Promise<void> | null = null;
     setState({ status: 'loading' });
 
@@ -120,13 +123,62 @@ export function useStudioStageSession(params: {
     };
     const releaseLeaseAfterQueue = (
       lease: Readonly<{ leaseEpoch: string }>,
-    ) => {
-      void queue
-        .then(
-          () => releaseLease(lease),
-          () => releaseLease(lease),
+    ): Promise<void> => {
+      const pendingQueue = queue;
+      releaseBarrier = releaseBarrier
+        .then(() =>
+          pendingQueue.then(
+            () => releaseLease(lease),
+            () => releaseLease(lease),
+          ),
         )
         .catch(() => undefined);
+      return releaseBarrier;
+    };
+
+    const refreshDraftWhileRenewingLease = async (
+      lease: Readonly<{ leaseEpoch: string }>,
+    ): Promise<Draft> => {
+      let renewalFailure: Error | null = null;
+      let refreshRenewalInFlight: Promise<void> | null = null;
+      const renew = () => {
+        if (refreshRenewalInFlight !== null || renewalFailure !== null) return;
+        refreshRenewalInFlight = rpcClient.protocols
+          .renewSection({
+            teamId: params.teamId,
+            protocolId: params.protocolId,
+            draftId: params.draftId,
+            sectionId: selectedSectionId,
+            clientId: leaseClientId,
+            leaseEpoch: lease.leaseEpoch,
+          })
+          .then((result) => {
+            if (!result.renewed) {
+              renewalFailure = new Error('screen lock expired');
+            }
+          })
+          .catch((error: unknown) => {
+            renewalFailure = asError(error);
+          })
+          .finally(() => {
+            refreshRenewalInFlight = null;
+          });
+      };
+      const refreshRenewal = setInterval(renew, 10_000);
+      try {
+        const refreshed = await rpcClient.protocols.draft({
+          teamId: params.teamId,
+          protocolId: params.protocolId,
+          draftId: params.draftId,
+        });
+        const pendingRenewal = refreshRenewalInFlight;
+        if (pendingRenewal !== null) await pendingRenewal;
+        const renewalError = renewalFailure;
+        if (renewalError !== null) throw renewalError;
+        return refreshed;
+      } finally {
+        clearInterval(refreshRenewal);
+      }
     };
 
     const stopRenewal = () => {
@@ -146,7 +198,7 @@ export function useStudioStageSession(params: {
       if (!active) return;
       if (retry === undefined) {
         retry = setInterval(() => {
-          promotion = attemptPromotion();
+          if (!acquiring) promotion = attemptPromotion();
         }, 5_000);
       }
     };
@@ -165,9 +217,10 @@ export function useStudioStageSession(params: {
     const startRenewal = () => {
       stopRenewal();
       renewal = setInterval(() => {
+        if (renewalInFlight !== null) return;
         const lease = currentLease;
         if (lease === null) return;
-        void rpcClient.protocols
+        const attempt = rpcClient.protocols
           .renewSection({
             teamId: params.teamId,
             protocolId: params.protocolId,
@@ -197,14 +250,22 @@ export function useStudioStageSession(params: {
               );
             }
           });
+        renewalInFlight = attempt;
+        void attempt.then(() => {
+          if (renewalInFlight === attempt) renewalInFlight = null;
+        });
       }, 10_000);
     };
 
+    const promotionCancelled = () => !active || currentLease !== null;
+
     async function attemptPromotion(): Promise<void> {
-      if (!active || acquiring || currentLease !== null) return;
+      if (promotionCancelled() || acquiring) return;
       acquiring = true;
       let acquiredLease: Readonly<{ leaseEpoch: string }> | null = null;
       try {
+        await releaseBarrier;
+        if (promotionCancelled()) return;
         const access = await rpcClient.protocols.acquireSection({
           teamId: params.teamId,
           protocolId: params.protocolId,
@@ -220,11 +281,7 @@ export function useStudioStageSession(params: {
           return;
         }
 
-        const refreshed = await rpcClient.protocols.draft({
-          teamId: params.teamId,
-          protocolId: params.protocolId,
-          draftId: params.draftId,
-        });
+        const refreshed = await refreshDraftWhileRenewingLease(access);
         if (!active) {
           await releaseLease(access).catch(() => undefined);
           acquiredLease = null;
@@ -273,7 +330,7 @@ export function useStudioStageSession(params: {
         void Promise.resolve(onCommitted.current()).catch(() => undefined);
       } catch {
         if (acquiredLease !== null) {
-          void releaseLease(acquiredLease).catch(() => undefined);
+          void releaseLeaseAfterQueue(acquiredLease);
         }
         retryAcquisition();
       } finally {
@@ -304,11 +361,7 @@ export function useStudioStageSession(params: {
           authoritativeDocument = latestDocument;
         }
         if (access.mode === 'editable') {
-          authoritativeDraft = await rpcClient.protocols.draft({
-            teamId: params.teamId,
-            protocolId: params.protocolId,
-            draftId: params.draftId,
-          });
+          authoritativeDraft = await refreshDraftWhileRenewingLease(access);
           if (!active) {
             await releaseLease(access);
             acquiredLease = null;
@@ -376,6 +429,7 @@ export function useStudioStageSession(params: {
                   clientSequence: String(clientSequence++),
                   commands: [...batch.commands],
                 });
+                commitFailure = null;
                 committedFields = applyCommands(committedFields, [
                   ...batch.commands,
                 ]);
@@ -456,6 +510,9 @@ export function useStudioStageSession(params: {
       stopRetry();
       closePromise = initialization.then(async () => {
         await promotion;
+        const pendingRenewal = renewalInFlight;
+        if (pendingRenewal !== null) await pendingRenewal;
+        await releaseBarrier;
         if (runtime.current?.store === store) runtime.current = null;
         const lease = currentLease;
         currentLease = null;
@@ -470,8 +527,7 @@ export function useStudioStageSession(params: {
     const unregister = registerStudioEditorSession(close);
 
     return () => {
-      unregister();
-      void close().catch(() => undefined);
+      void close().then(unregister, unregister);
     };
   }, [params.draftId, params.protocolId, params.stageId, params.teamId]);
 
