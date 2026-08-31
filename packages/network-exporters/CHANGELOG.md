@@ -1,5 +1,13 @@
 # @codaco/network-exporters
 
+## 2.0.1
+
+### Patch Changes
+
+- Republish the intended 2.0.0 release under an available npm version. The
+  `@codaco/network-exporters@2.0.0` version was already occupied by an unrelated
+  legacy artifact, so Changesets skipped publishing the current package.
+
 ## 2.0.0
 
 ### Major Changes
