@@ -99,6 +99,24 @@ function browserRedirects(mainFrameResponses) {
   return redirects;
 }
 
+function isNonDocumentNavigation(response) {
+  const contentDisposition = response.headers()['content-disposition'] ?? '';
+  return (
+    response.status() === 204 ||
+    /^\s*attachment(?:\s*;|$)/i.test(contentDisposition)
+  );
+}
+
+function nonDocumentOutcome(response, mainFrameResponses) {
+  return {
+    contentType: response.headers()['content-type'] ?? '',
+    finalUrl: response.url(),
+    html: null,
+    redirects: browserRedirects(mainFrameResponses),
+    status: response.status(),
+  };
+}
+
 // Keep annotations useful without flooding the Actions log. The JSON artifact
 // and job summary remain complete when a crawl exceeds this limit.
 export const MAX_GITHUB_ERROR_ANNOTATIONS = 50;
@@ -330,14 +348,7 @@ export class BrowserVerifier {
           throw error;
         }
 
-        const contentType = nonDocumentResponse.headers()['content-type'] ?? '';
-        return {
-          contentType,
-          finalUrl: nonDocumentResponse.url(),
-          html: null,
-          redirects: browserRedirects(mainFrameResponses),
-          status: nonDocumentResponse.status(),
-        };
+        return nonDocumentOutcome(nonDocumentResponse, mainFrameResponses);
       }
       if (!initialResponse) {
         throw new Error(`Browser navigation returned no response for ${url}`);
@@ -434,6 +445,9 @@ export class BrowserVerifier {
       }
 
       while (terminalResponse) {
+        if (isNonDocumentNavigation(terminalResponse)) {
+          return nonDocumentOutcome(terminalResponse, mainFrameResponses);
+        }
         await waitForResponseCommit(terminalResponse);
         navigation = terminalResponse;
         // A terminal status is not enough for recursive pages: page.content()

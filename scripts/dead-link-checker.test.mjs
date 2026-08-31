@@ -793,6 +793,137 @@ test('browser verification accepts a successful no-content response', async () =
   }
 });
 
+test('browser verification accepts a follow-up download response', async () => {
+  const frame = {};
+  const navigationRequest = { isNavigationRequest: () => true };
+  const initial = {
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => 403,
+    url: () => 'https://publisher.test/challenge',
+  };
+  const downloadResponse = {
+    frame: () => frame,
+    headers: () => ({
+      'content-disposition': 'attachment; filename="report.pdf"',
+      'content-type': 'application/pdf',
+    }),
+    request: () => navigationRequest,
+    status: () => 200,
+    url: () => 'https://publisher.test/report.pdf',
+  };
+  let responseListener;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => 'https://publisher.test/challenge',
+    waitForLoadState: async () => {
+      throw new Error('a download has no document to load');
+    },
+    waitForResponse: async (predicate) => {
+      responseListener(downloadResponse);
+      assert.equal(predicate(downloadResponse), true);
+      return downloadResponse;
+    },
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    const outcome = await verifier.verify(
+      'https://publisher.test/challenge',
+      50,
+      { captureHTML: true },
+    );
+    assert.deepEqual(outcome, {
+      contentType: 'application/pdf',
+      finalUrl: 'https://publisher.test/report.pdf',
+      html: null,
+      redirects: [],
+      status: 200,
+    });
+  } finally {
+    await verifier.close();
+  }
+});
+
+test('browser verification accepts a follow-up no-content response', async () => {
+  const frame = {};
+  const navigationRequest = { isNavigationRequest: () => true };
+  const initial = {
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => 403,
+    url: () => 'https://publisher.test/challenge',
+  };
+  const noContentResponse = {
+    frame: () => frame,
+    headers: () => ({}),
+    request: () => navigationRequest,
+    status: () => 204,
+    url: () => 'https://publisher.test/no-content',
+  };
+  let responseListener;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => 'https://publisher.test/challenge',
+    waitForLoadState: async () => {
+      throw new Error('a 204 has no document to load');
+    },
+    waitForResponse: async (predicate) => {
+      responseListener(noContentResponse);
+      assert.equal(predicate(noContentResponse), true);
+      return noContentResponse;
+    },
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    const outcome = await verifier.verify(
+      'https://publisher.test/challenge',
+      50,
+      { captureHTML: true },
+    );
+    assert.deepEqual(outcome, {
+      contentType: '',
+      finalUrl: 'https://publisher.test/no-content',
+      html: null,
+      redirects: [],
+      status: 204,
+    });
+  } finally {
+    await verifier.close();
+  }
+});
+
 test('browser verification rejects a response-free non-HTTP commit', async () => {
   const frame = {};
   const navigationRequest = { isNavigationRequest: () => true };
