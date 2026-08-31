@@ -5,10 +5,11 @@ import { expect, type Locator, type Page } from '@playwright/test';
 //   navigates (`params.set('type', ...)`, `params.set('insertAtIndex', ...)`,
 //   `/protocol/stage/new?...`), and `/protocol/stage/:stageId` (Routes.tsx)
 //   matches `stageId="new"` to StageEditorPage.
-// - The stage-name input is a plain `<input aria-label="Stage name">`
-//   (StageHeading.tsx's `HeadingInput`) — not wrapped by the `data-field-name`
-//   seam (it's a bare input, not a form field),
-//   so `getByRole('textbox', { name: 'Stage name' })` is the only way in.
+// - The stage-name control is a bare `<textarea>` named "Stage name"
+//   (StageHeading.tsx's `HeadingInput`, a textarea so a long name wraps rather
+//   than being cut off) — not wrapped by the `data-field-name` seam (it's a
+//   bare control, not a form field), so `getByRole('textbox', { name: 'Stage
+//   name' })` is the only way in.
 // - `section()`/`field()` match the two seams the rest of the suite relies on:
 //   fresco-ui's `Section` renders a named `<section>` landmark through its
 //   heading; `UnconnectedField` (fresco-ui/form/Field/UnconnectedField.tsx) stamps

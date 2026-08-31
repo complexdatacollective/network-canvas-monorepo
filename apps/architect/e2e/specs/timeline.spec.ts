@@ -283,7 +283,7 @@ test('inserts a new Information stage at the clicked index', async ({
     ),
   );
 
-  // StageHeading.tsx's stage-name input is `aria-label="Stage name"`.
+  // StageHeading.tsx's stage-name textarea is named "Stage name".
   await architectPage
     .getByRole('textbox', { name: 'Stage name' })
     .fill('Inserted Info Stage');
