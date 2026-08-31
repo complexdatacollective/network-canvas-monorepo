@@ -1,5 +1,99 @@
 # @codaco/interview
 
+## 9.0.0
+
+### Major Changes
+
+- e9a6522: Interview session updates now remove cleared entity attributes instead of retaining null-valued keys. Legacy session payloads remain readable and are normalized without losing valid empty values such as `false`, `0`, empty text, or empty selections.
+
+  This is a breaking data-shape change for hosts that inspect `SessionPayload` or sync callbacks: attribute absence is now the unset state.
+
+- bd06a52: Interviews no longer lose their most recent answers when the app locks. If the device was put away while the last few answers were still waiting to be saved, and the security timeout had passed by the time the app was reopened, it locked before those answers reached storage and up to a few seconds of responses were discarded. Answers now reach storage within a fraction of a second of being given rather than waiting out a shared timer, and anything still outstanding is written the moment the app is put into the background — before the device can suspend it.
+
+  **Breaking for hosts of `@codaco/interview`.** The engine no longer batches writes on the host's behalf, and no longer holds a change back while an earlier write is unresolved. `onSync` is called for every change as it happens, because only the host knows what one write costs. Hosts wrap their handler in the new `createDebouncedSyncHandler`, which rate-limits ordinary changes to one write per interval carrying the newest state, and never runs two writes at once. A host writing its own handler must not run its writes concurrently: a slow earlier write landing after a newer one would persist stale answers.
+
+  `SyncHandler` gains a third argument. `immediate` marks the writes that must not be deferred — the participant exiting or finishing — and a batching host must stop batching when it sees it. `unloading` additionally marks the ones the document may not survive: it is being hidden or unloaded and may never run script again, so the host should use a transport that outlives it and must not queue the write behind a request that will die with it. Handlers that ignore the argument keep type-checking, so hosts that write eagerly need no change.
+
+  The Shell also now flushes on `visibilitychange` and `pagehide`. A hidden document is not promised any more script, so anything still outstanding goes out while there is still a page to write from — which is what makes an installed PWA safe to put to sleep seconds after an answer.
+
+### Minor Changes
+
+- e9a6522: Interview forms and interfaces now communicate unanswered, loading, error, and completion states more accurately.
+
+  - Required yes/no questions start unselected, required scales no longer announce a value before one is chosen, and blocked submission focuses the first unanswered question.
+  - Optional blanks no longer produce unrelated validation errors, comparisons use participant-facing question text, and each unanswered field reports a single useful message.
+  - Name Generator rosters and external panels distinguish loading, empty, exhausted, and no-match states. Quick-add controls expose valid accessible names and descriptions.
+  - Location search restores focus after selection, announces results and failures, and ignores stale responses.
+  - Family Pedigree person editing no longer crashes or discards work, and completeness checks reject missing or duplicate ego records.
+  - Dialogs and history toolbars retain keyboard focus, including confirmations presented by an interview host.
+
+- 43c7746: The owner that hands out interview asset URLs is now part of the public contract.
+
+  For anyone embedding the interview engine, `createAssetUrlOwner` is available
+  from `@codaco/interview/contract`. It gives a host one live URL per asset
+  however many parts of a screen ask for it at once, replaces that URL when a
+  newer copy of the asset arrives, and takes every URL back when the host is
+  finished with it, so interview data stays decrypted in memory for no longer than
+  it is on screen.
+
+- c37a801: Applications now derive their protocol schema compatibility from the interview runtime they embed, instead of hard-coding a version number, and each application can upgrade stored protocols when a future schema version ships.
+
+  - `@codaco/interview` exports its supported protocol schema version as `COMPATIBLE_PROTOCOL_SCHEMA_VERSION` (from `@codaco/interview/protocol-schema-version`). Fresco and Interviewer read it for import limits, stored-data migration, and interview payloads; Architect derives its own compatibility from `@codaco/protocol-validation` directly.
+  - Interviewer checks stored protocols at launch. A protocol saved under an older schema version is migrated, re-identified under its new content hash, and its interview sessions and media follow it in a single transaction, with a notification when this happens. A protocol that cannot be migrated is left untouched, with a message directing you to repair it in Architect.
+  - Architect upgrades a library protocol automatically when you open it, with a notification, leaving the protocol untouched if the upgrade cannot complete. Protocols made with a newer version of Architect are refused with an explanation instead of opening incorrectly.
+  - Fresco's deployment migration targets the runtime's supported version rather than a fixed number, and an interview can no longer start from a protocol stored under a version the runtime does not support — it reports the mismatch instead.
+
+  Nothing changes for existing data today — every stored protocol is already at the current schema version. This machinery exists so a future schema version change cannot orphan interview sessions or mislabel stored protocols.
+
+### Patch Changes
+
+- c599dac: This release improves the reliability, accessibility, and recovery of protocol editing in Architect.
+
+  - Stage edits are now transactional: cancelling restores Codebook changes, incomplete settings remain open with actionable errors, and Information blocks retain their drafts while switching media types.
+  - Forms, rule builders, the Codebook, timeline, dialogs, and resource library now provide accurate labels, keyboard operation, focus restoration, and layouts that work on smaller screens. Undo and Redo operate one change at a time without recording no-op edits.
+  - A second tab now shows a read-only protocol instead of accepting changes it cannot save. Closing the editing tab restores editing from the saved copy, and deleting a protocol clears its history and releases associated resources.
+  - Protocol names, resource cards, variable identifiers, and stage editors are bounded on narrow screens. Duplicate resource filenames are distinguishable without changing the names stored in the protocol.
+  - Invalid imports, blocked edits, migration conflicts, preview completion, and deleted protocol routes now explain what happened and provide a safe recovery path.
+  - Recent protocols in the library now show their description, and starter templates show their stage, node type, and edge type counts.
+  - The CEGRM starter template now uses an available color for its Narrative Pedigree condition. Protocol colors are constrained to typed node, edge, ordinal, or categorical palette references; Narrative Pedigree and Geospatial resolve those references through the active theme. A protocol created from the previous release's CEGRM template will report a validation error on its condition color — open the stage editor and select one of the available colors to fix it. A downloaded protocol file with this problem must be corrected before it can be imported again. Neutral dialog actions remain distinct from white dialog surfaces.
+
+- eec63f8: Use one canonical force-directed automatic layout profile across Narrative, Sociogram, and Network Composer interfaces.
+- 3e10128: Keep a category's name visible when the people in it have long names. In the
+  Categorise People screen, each category circle summarises who it holds by naming
+  the first person in it. A long enough name grew that summary past the circle and
+  pushed the category's own name off the top edge, leaving a circle of text with
+  nothing saying which category it was.
+
+  The summary now shortens with an ellipsis instead of growing, the count of
+  everyone else in the category stays on its own line so it survives the
+  shortening, and both the category name and the summary sit inside the circle
+  rather than running under its edge. Tapping the category still opens it to show
+  everyone in full.
+
+- b51ef59: Prevent malicious form field paths from modifying object prototypes while preserving dotted protocol variable identifiers and nested field namespaces.
+- e9a6522: Network Composer's Undo and Redo controls now retain keyboard focus when the corresponding history becomes empty.
+- 06bc1e9: The quick add usage hint on name generator stages no longer promises that the box stays open when only one more item can be added.
+- 7ca985f: Keep fitted node labels accurate as fluid type changes, make long labels scroll within the available viewport when revealed, and release keyboard press feedback when activation moves focus into an opened form.
+- c78135c: Stop offering click affordances for nodes that cannot be clicked. A collection with no selection, a node list with no tap handler, and a name generator stage with no form each handed their items a click handler that did nothing, so nodes showed a pointer cursor and press feedback for a tap that could never have an effect.
+- 4ea26a7: Fixed a race that could permanently lose answers added just before exiting an
+  interview. Autosaves are debounced, so an answer given moments before exiting
+  could still be waiting to save when the interview closed; resuming promptly
+  then loaded the session without it, and the next screen change saved that
+  stale copy back over the stored interview. The interview runtime now writes
+  any pending autosave as the interview closes, and Interviewer waits for
+  in-flight session writes before loading a session, so a fast exit-and-resume
+  always shows — and keeps — every answer.
+- f03b1e4: Names that are too long for a node now shrink to fit instead of being cut off, so most are readable in full at a glance. A name that is still too long at the smallest readable size can be read in full by pressing and holding it, or by moving to it with the keyboard. Holding never moves or selects the person, and letting go leaves everything exactly as it was.
+
+  For developers, the Node component is now the single gesture recognizer for its own pointer sequence: hosts declare `onClick`, `onLongPress`, and `onDragStart`/`onDragMove`/`onDragEnd`, and the node classifies each gesture as exactly one of them and renders every visual and accessibility consequence itself — press animation, hold indicator, grab/grabbing cursor, pointer capture, `aria-grabbed`, `aria-pressed` from `selected`, and a tab stop whenever focusing does something. Canvas hosts implement drag effects through `useCanvasDrag`'s callback API instead of attaching their own pointer listeners.
+
+  Compatibility: the names `onDrag`, `onDragStart`, and `onDragEnd` were already omitted from Node's props before this release (and at runtime were claimed by Motion's own gesture system, so they never received native HTML5 drag events); they now form Node's pointer-gesture drag API. `onClick` handlers written for a plain button remain assignable — the new `details` argument is optional in the type and always supplied at runtime.
+
+- Updated dependencies ([c599dac](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c599dacf78b18efb7d0c5c5fad4d38644a57e775), [e9a6522](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e9a652266ef9ddfa7fc42de1c8123bd7011c52a1), [fdb3b56](https://github.com/complexdatacollective/network-canvas-monorepo/commit/fdb3b56440f6cad89a44718d24ff725be3bb5e15))
+  - @codaco/protocol-validation@13.0.0
+  - @codaco/shared-consts@6.0.0
+  - @codaco/network-query@1.2.4
+
 ## 8.0.0
 
 ### Patch Changes

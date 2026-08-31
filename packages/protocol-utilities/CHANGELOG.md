@@ -1,5 +1,44 @@
 # @codaco/protocol-utilities
 
+## 4.0.0
+
+### Major Changes
+
+- c599dac: This release improves the reliability, accessibility, and recovery of protocol editing in Architect.
+
+  - Stage edits are now transactional: cancelling restores Codebook changes, incomplete settings remain open with actionable errors, and Information blocks retain their drafts while switching media types.
+  - Forms, rule builders, the Codebook, timeline, dialogs, and resource library now provide accurate labels, keyboard operation, focus restoration, and layouts that work on smaller screens. Undo and Redo operate one change at a time without recording no-op edits.
+  - A second tab now shows a read-only protocol instead of accepting changes it cannot save. Closing the editing tab restores editing from the saved copy, and deleting a protocol clears its history and releases associated resources.
+  - Protocol names, resource cards, variable identifiers, and stage editors are bounded on narrow screens. Duplicate resource filenames are distinguishable without changing the names stored in the protocol.
+  - Invalid imports, blocked edits, migration conflicts, preview completion, and deleted protocol routes now explain what happened and provide a safe recovery path.
+  - Recent protocols in the library now show their description, and starter templates show their stage, node type, and edge type counts.
+  - The CEGRM starter template now uses an available color for its Narrative Pedigree condition. Protocol colors are constrained to typed node, edge, ordinal, or categorical palette references; Narrative Pedigree and Geospatial resolve those references through the active theme. A protocol created from the previous release's CEGRM template will report a validation error on its condition color — open the stage editor and select one of the available colors to fix it. A downloaded protocol file with this problem must be corrected before it can be imported again. Neutral dialog actions remain distinct from white dialog surfaces.
+
+- e9a6522: Synthetic interview attribute setters now accept only defined `VariableValue` values, and generated networks no longer fill unanswered attributes with null placeholders.
+
+  This is a breaking API change. Use `unsetNodeAttribute` or `unsetEdgeAttribute` when a generated entity should keep an attribute absent.
+
+### Minor Changes
+
+- 23d0fab: Generated networks now draw realistic full names ("First Last") for name variables, falling back to a first name only when a declared maximum length has no room for one, and adding a middle name only when a minimum demands it. The set of variables treated as names now mirrors the interview runtime's label resolution — anything whose name contains "name" — so every value a node would actually display exercises label fitting. Seeded output changes as a result: the same seed draws different values than previous releases.
+
+### Patch Changes
+
+- e9a6522: Synthetic protocol and interview utilities now respect interface-owned variables, duplicate form-variable rules, and the stricter Family and Narrative Pedigree reference constraints enforced by protocol validation.
+- c37a801: Applications now derive their protocol schema compatibility from the interview runtime they embed, instead of hard-coding a version number, and each application can upgrade stored protocols when a future schema version ships.
+
+  - `@codaco/interview` exports its supported protocol schema version as `COMPATIBLE_PROTOCOL_SCHEMA_VERSION` (from `@codaco/interview/protocol-schema-version`). Fresco and Interviewer read it for import limits, stored-data migration, and interview payloads; Architect derives its own compatibility from `@codaco/protocol-validation` directly.
+  - Interviewer checks stored protocols at launch. A protocol saved under an older schema version is migrated, re-identified under its new content hash, and its interview sessions and media follow it in a single transaction, with a notification when this happens. A protocol that cannot be migrated is left untouched, with a message directing you to repair it in Architect.
+  - Architect upgrades a library protocol automatically when you open it, with a notification, leaving the protocol untouched if the upgrade cannot complete. Protocols made with a newer version of Architect are refused with an explanation instead of opening incorrectly.
+  - Fresco's deployment migration targets the runtime's supported version rather than a fixed number, and an interview can no longer start from a protocol stored under a version the runtime does not support — it reports the mismatch instead.
+
+  Nothing changes for existing data today — every stored protocol is already at the current schema version. This machinery exists so a future schema version change cannot orphan interview sessions or mislabel stored protocols.
+
+- Updated dependencies ([c599dac](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c599dacf78b18efb7d0c5c5fad4d38644a57e775), [e9a6522](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e9a652266ef9ddfa7fc42de1c8123bd7011c52a1), [fdb3b56](https://github.com/complexdatacollective/network-canvas-monorepo/commit/fdb3b56440f6cad89a44718d24ff725be3bb5e15))
+  - @codaco/protocol-validation@13.0.0
+  - @codaco/shared-consts@6.0.0
+  - @codaco/network-query@1.2.4
+
 ## 3.2.1
 
 ### Patch Changes

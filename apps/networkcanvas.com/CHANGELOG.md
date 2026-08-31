@@ -1,5 +1,11 @@
 # networkcanvas.com
 
+## 0.4.3
+
+### Patch Changes
+
+- Add a new publication that used Network Canvas to map inter-organisational school networks.
+
 ## 0.4.2
 
 ### Patch Changes

@@ -1,7 +1,35 @@
-import { render, screen, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+
+vi.mock('../RuleEditor', () => ({
+  default: ({
+    open,
+    onCancel,
+    layoutId,
+  }: {
+    open: boolean;
+    onCancel: () => void;
+    layoutId?: string;
+  }) => (
+    <div
+      data-testid="rule-editor"
+      data-open={open || undefined}
+      data-layout-id={layoutId}
+    >
+      <button type="button" onClick={onCancel}>
+        Close test editor
+      </button>
+    </div>
+  ),
+}));
 
 import PreviewRules from '../PreviewRules';
 import type { Rule } from '../validateRule';
@@ -143,5 +171,27 @@ describe('PreviewRules', () => {
     expect(
       screen.getByText('No rules have been created yet.'),
     ).toBeInTheDocument();
+  });
+
+  it('keeps an existing row identity on its editor through the close morph', async () => {
+    renderRules([RULES[0]!]);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Edit rule:.*Dee$/ }));
+    const editor = await screen.findByTestId('rule-editor');
+    expect(editor).toHaveAttribute('data-layout-id', 'rule-1');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close test editor' }));
+    await waitFor(() => expect(editor).not.toHaveAttribute('data-open'));
+    expect(editor).toHaveAttribute('data-layout-id', 'rule-1');
+  });
+
+  it('does not invent a shared-layout source for a new rule', async () => {
+    renderRules([]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add new rule' }));
+
+    expect(await screen.findByTestId('rule-editor')).not.toHaveAttribute(
+      'data-layout-id',
+    );
   });
 });
