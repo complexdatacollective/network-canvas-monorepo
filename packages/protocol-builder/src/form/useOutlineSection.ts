@@ -1,4 +1,4 @@
-import { useEffect, useId } from 'react';
+import { useEffect, useId, useRef } from 'react';
 
 import { useStageEditorForm } from './stageEditorContext.ts';
 
@@ -19,13 +19,26 @@ export function useOutlineSection(
   const { outline } = useStageEditorForm();
   const sectionId = useId();
 
+  // The title is deliberately absent from this effect's dependencies. A
+  // section registering is a lifecycle event — it takes the fields inside it
+  // with it — and being renamed is not one: the fields do not remount, so
+  // unregistering here would empty the section's field list and leave the
+  // renamed section reporting itself as finished.
+  const initialTitle = useRef(title);
   useEffect(() => {
-    const unregister = outline.registerSection({ id: sectionId, title });
+    const unregister = outline.registerSection({
+      id: sectionId,
+      title: initialTitle.current,
+    });
     // Looked up rather than held by a ref: the element belongs to whichever
     // component renders the section's chrome. The outline needs it only to
     // order sections by where they sit on the page.
     outline.setSectionElement(sectionId, document.getElementById(sectionId));
     return unregister;
+  }, [outline, sectionId]);
+
+  useEffect(() => {
+    outline.setSectionTitle(sectionId, title);
   }, [outline, sectionId, title]);
 
   useEffect(() => {

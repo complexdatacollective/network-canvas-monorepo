@@ -37,8 +37,6 @@ export type StageEditorFormContextValue = Readonly<{
   identity: StageIdentity;
   readOnly: boolean;
   outline: SectionOutlineStore;
-  /** True once a submit attempt has failed. */
-  submitFailed: boolean;
 }>;
 
 export const StageEditorFormContext =

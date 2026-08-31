@@ -6,7 +6,6 @@ import {
   useId,
   useMemo,
   useRef,
-  useState,
 } from 'react';
 
 import FormErrorsList from '@codaco/fresco-ui/form/FormErrors';
@@ -20,11 +19,13 @@ import type {
 } from '@codaco/fresco-ui/form/store/types';
 import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+import { canonicalize } from '@codaco/studio-sync/apply';
 
 import type { StageEditorController } from '../controller.ts';
 import {
   InvalidProtocolDraftError,
   type ProtocolBuilderSnapshot,
+  SessionReadOnlyError,
   type StageFormDraft,
 } from '../session.ts';
 import { SectionOutlineStore } from './outlineStore.ts';
@@ -88,7 +89,6 @@ function StageEditorFormBody({
 }: StageEditorShellProps) {
   const storeApi = useContext(FormStoreContext);
   const formRef = useRef<HTMLFormElement>(null);
-  const [submitFailed, setSubmitFailed] = useState(false);
   const outline = useMemo(() => new SectionOutlineStore(), []);
   const { snapshot, formId } = controller;
   const readOnly = snapshot.access.mode !== 'editable';
@@ -103,26 +103,30 @@ function StageEditorFormBody({
         return { success: false, formErrors: [READ_ONLY_MESSAGE] };
       }
 
-      controller.changeFields((current) =>
-        stageDraftFromSubmission({
-          currentFields: current,
-          submittedValues: values as Record<string, FieldValue>,
-          dormantFields: dormantFieldsOf(storeApi),
-        }),
-      );
-
       try {
+        // Inside the guarded block with the finish it precedes: access can be
+        // revoked between the render that read it and this submit, and the
+        // session refuses a write from a lease it no longer holds. That is an
+        // ordinary lease transition, and it belongs in the form's own errors
+        // rather than in a rejected submit promise.
+        controller.changeFields((current) =>
+          stageDraftFromSubmission({
+            currentFields: current,
+            submittedValues: values as Record<string, FieldValue>,
+            dormantFields: dormantFieldsOf(storeApi),
+          }),
+        );
         await controller.finish();
-        setSubmitFailed(false);
         return { success: true };
       } catch (error) {
-        setSubmitFailed(true);
         return {
           success: false,
           formErrors:
             error instanceof InvalidProtocolDraftError
               ? error.issues.map((issue) => issue.message)
-              : [failureMessage(error)],
+              : error instanceof SessionReadOnlyError
+                ? [READ_ONLY_MESSAGE]
+                : [failureMessage(error)],
         };
       }
     },
@@ -132,7 +136,6 @@ function StageEditorFormBody({
   const { formProps, formErrors } = useForm({
     onSubmit: handleSubmit,
     onSubmitInvalid: (errors) => {
-      setSubmitFailed(true);
       // Scoped to this form's own markup: an item dialog open over the editor
       // renders the same field names, and an unscoped search can hand this
       // form's failed submit a control belonging to the dialog above it.
@@ -153,7 +156,6 @@ function StageEditorFormBody({
             identity: snapshot.editedSection.identity,
             readOnly,
             outline,
-            submitFailed,
           },
     [
       committedFields,
@@ -163,7 +165,6 @@ function StageEditorFormBody({
       readOnly,
       snapshot.editedSection.identity,
       storeApi,
-      submitFailed,
     ],
   );
 
@@ -207,8 +208,17 @@ function StageEditorFormBody({
  */
 function useCommittedFields(snapshot: ProtocolBuilderSnapshot): StageFormDraft {
   const committed = useRef(snapshot.editedSection.fields);
-  if (snapshot.pendingCommands.length === 0) {
-    committed.current = snapshot.editedSection.fields;
+  const { fields } = snapshot.editedSection;
+  // Compared by content, not identity. The session freezes a fresh object into
+  // every snapshot, and a snapshot lands whenever validation settles — so
+  // identity alone would hand every field a new `initialValue` a moment after
+  // the editor opened, and `initialValue` is a dependency of the effect that
+  // registers a field.
+  if (
+    snapshot.pendingCommands.length === 0 &&
+    canonicalize(committed.current) !== canonicalize(fields)
+  ) {
+    committed.current = fields;
   }
   return committed.current;
 }

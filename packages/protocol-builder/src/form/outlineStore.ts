@@ -120,6 +120,13 @@ export class SectionOutlineStore {
     };
   }
 
+  setSectionTitle(id: string, title: string): void {
+    const record = this.sections.get(id);
+    if (!record || record.title === title) return;
+    record.title = title;
+    this.changed();
+  }
+
   setSectionElement(id: string, element: HTMLElement | null): void {
     const record = this.sections.get(id);
     if (!record || record.element === element) return;

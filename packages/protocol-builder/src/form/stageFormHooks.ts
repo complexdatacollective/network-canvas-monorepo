@@ -1,9 +1,17 @@
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
 
+import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import { getValue } from '@codaco/fresco-ui/form/utils/objectPath';
 
+import type { StageFormDraft } from '../session.ts';
 import { isBlankFieldValue } from './blankValue.ts';
-import { useStageEditorForm } from './stageEditorContext.ts';
+import {
+  type StageFormStoreApi,
+  useStageEditorForm,
+} from './stageEditorContext.ts';
+
+/** fresco-ui does not publish its store type, so it is recovered from the api. */
+type FormStoreState = ReturnType<StageFormStoreApi['getState']>;
 
 /**
  * A committed value, for a field's `initialValue`. Memoised because
@@ -57,17 +65,35 @@ export function useStageHasAnyValue(paths: readonly string[]): boolean {
     const values = state.getFormValues();
     return key
       .split(' ')
-      .some((path) =>
-        Boolean(
-          path &&
+      .some(
+        (path) =>
+          path !== '' &&
           !isBlankFieldValue(
-            state.getFieldState(path)?.value ??
-              getValue(values, path) ??
-              getValue(committedFields, path),
+            resolveValue(state, values, committedFields, path),
           ),
-        ),
       );
   }, [committedFields, key, storeApi]);
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+}
+
+/**
+ * A field the form knows about answers for itself, even when its answer is
+ * `undefined`.
+ *
+ * That distinction is the whole point: switching a capability off parks a
+ * dormant field holding `undefined` ON PURPOSE, and treating that as "no
+ * answer here" would fall through to the value the stage was opened with —
+ * so the capability would go on reporting itself as configured, and closing
+ * it again would offer to delete content that is already gone.
+ */
+function resolveValue(
+  state: FormStoreState,
+  values: Record<string, FieldValue>,
+  committedFields: StageFormDraft,
+  path: string,
+): unknown {
+  const fieldState = state.getFieldState(path);
+  if (fieldState !== undefined) return fieldState.value;
+  return getValue(values, path) ?? getValue(committedFields, path);
 }

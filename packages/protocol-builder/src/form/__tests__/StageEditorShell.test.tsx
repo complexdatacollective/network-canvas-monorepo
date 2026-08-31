@@ -13,7 +13,9 @@ import StageNameSection from '../../sections/StageNameSection.tsx';
 import {
   createStageIdentity,
   type FinishRequest,
+  type ProtocolBuilderSession,
   ProtocolBuilderSessionStore,
+  SessionReadOnlyError,
 } from '../../session.ts';
 import ProtocolField from '../ProtocolField.tsx';
 import StageEditorShell from '../StageEditorShell.tsx';
@@ -50,7 +52,13 @@ function createSession(
   });
 }
 
-function Editor({ session }: { session: ProtocolBuilderSessionStore }) {
+function Editor({
+  session,
+  pageContentTitle = 'Page content',
+}: {
+  session: ProtocolBuilderSessionStore;
+  pageContentTitle?: string;
+}) {
   const controller = useStageEditorController(session, 'stage-form');
 
   return (
@@ -63,7 +71,7 @@ function Editor({ session }: { session: ProtocolBuilderSessionStore }) {
       )}
     >
       <StageNameSection position={{ index: 1, total: 3 }} />
-      <BuilderSection title="Page content">
+      <BuilderSection title={pageContentTitle}>
         <ProtocolField
           name="title"
           label="Page heading"
@@ -92,11 +100,36 @@ function Editor({ session }: { session: ProtocolBuilderSessionStore }) {
   );
 }
 
-function renderEditor(session: ProtocolBuilderSessionStore) {
+function renderEditor(
+  session: ProtocolBuilderSessionStore,
+  pageContentTitle?: string,
+) {
   return render(
     <DialogProvider>
-      <Editor session={session} />
+      <Editor session={session} pageContentTitle={pageContentTitle} />
     </DialogProvider>,
+  );
+}
+
+function RefusingEditor({ session }: { session: ProtocolBuilderSession }) {
+  const controller = useStageEditorController(session, 'stage-form');
+
+  return (
+    <StageEditorShell
+      controller={controller}
+      actions={({ formId }) => (
+        <SubmitButton form={formId}>Finished editing</SubmitButton>
+      )}
+    >
+      <BuilderSection title="Page content">
+        <ProtocolField
+          name="title"
+          label="Page heading"
+          component={InputField}
+          required
+        />
+      </BuilderSection>
+    </StageEditorShell>
   );
 }
 
@@ -189,6 +222,56 @@ describe('StageEditorShell', () => {
     expect(Object.hasOwn(request.stageDocument, 'interviewScript')).toBe(false);
   });
 
+  it('reports a capability the researcher switched off as switched off', async () => {
+    const user = userEvent.setup();
+    renderEditor(
+      createSession({
+        fields: { ...initialFields, interviewScript: 'Read this aloud' },
+      }),
+    );
+    await waitFor(() => expect(outlineItems()).toHaveLength(3));
+    expect([...outlineItems()][2]?.textContent).toBe(
+      'Interviewer guidanceFinished',
+    );
+
+    await user.click(
+      screen.getByRole('switch', { name: 'Interviewer guidance' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Clear script' }));
+
+    // The value the capability owned is gone, so the section is off — not
+    // still reading as configured from the draft it was opened with.
+    await waitFor(() =>
+      expect([...outlineItems()][2]?.textContent).toBe(
+        'Interviewer guidanceSwitched off',
+      ),
+    );
+  });
+
+  it('keeps a section\u2019s fields when only its title changes', async () => {
+    const session = createSession({ fields: { label: 'Welcome', items: [] } });
+    const { rerender } = renderEditor(session);
+    await waitFor(() =>
+      expect([...outlineItems()][1]?.textContent).toBe(
+        'Page contentNot finished',
+      ),
+    );
+
+    rerender(
+      <DialogProvider>
+        <Editor session={session} pageContentTitle="Screen content" />
+      </DialogProvider>,
+    );
+
+    // Renaming a section says nothing about what is inside it: its required
+    // field is still empty, so it is still unfinished.
+    await waitFor(() =>
+      expect([...outlineItems()][1]?.textContent).toBe(
+        'Screen contentNot finished',
+      ),
+    );
+  });
+
   it('keeps a switched-off capability out of the way until it is asked for', async () => {
     renderEditor(createSession());
 
@@ -208,6 +291,46 @@ describe('StageEditorShell', () => {
       expect(
         screen.getAllByText('This field is required.', { exact: false }),
       ).toHaveLength(1),
+    );
+  });
+
+  it('reports a lease lost between opening the form and saving it', async () => {
+    const user = userEvent.setup();
+    const session = createSession();
+    // Access is still editable to everything that rendered, and the session
+    // refuses the write anyway — the shape of losing a lease between the last
+    // render and the submit.
+    const refusing: ProtocolBuilderSession = {
+      subscribe: (listener) => session.subscribe(listener),
+      getSnapshot: () => session.getSnapshot(),
+      getServerSnapshot: () => session.getServerSnapshot(),
+      dispatch: () => {
+        throw new SessionReadOnlyError();
+      },
+      undo: () => session.undo(),
+      redo: () => session.redo(),
+      validate: () => session.validate(),
+      requestCompoundEdit: (request) => session.requestCompoundEdit(request),
+      finish: () => session.finish(),
+    };
+
+    render(
+      <DialogProvider>
+        <RefusingEditor session={refusing} />
+      </DialogProvider>,
+    );
+
+    await user.clear(screen.getByRole('textbox', { name: 'Page heading' }));
+    await user.type(
+      screen.getByRole('textbox', { name: 'Page heading' }),
+      'A new heading',
+    );
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText('This stage is read-only', { exact: false }),
+      ).toBeInTheDocument(),
     );
   });
 
