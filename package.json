@@ -31,6 +31,7 @@
     "@types/node": "catalog:",
     "@typescript/typescript6": "catalog:",
     "husky": "^9.1.7",
+    "jsdom": "catalog:",
     "knip": "^6.26.0",
     "lint-staged": "^17.0.8",
     "oxfmt": "^0.63.0",

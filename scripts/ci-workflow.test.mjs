@@ -98,13 +98,20 @@ test('both public sites crawl their matching Netlify deploy previews', () => {
     'a change to either public site triggers both preview crawls',
   );
 
-  for (const [jobName, flag, siteName, startPath] of [
-    ['docs-preview-checks', 'docs', 'documentation-dev', 'DOCS_URL'],
+  for (const [jobName, flag, siteName, startPath, reportName] of [
+    [
+      'docs-preview-checks',
+      'docs',
+      'documentation-dev',
+      'DOCS_URL',
+      'docs-dead-link-report',
+    ],
     [
       'website-preview-checks',
       'website',
       'networkcanvasdotdev',
       'WEBSITE_URL/en-US/',
+      'website-dead-link-report',
     ],
   ]) {
     const previewJob = job(jobName);
@@ -130,8 +137,45 @@ test('both public sites crawl their matching Netlify deploy previews', () => {
       /previewUrl\.hostname === 'app\.netlify\.com'/,
       'the ignored-deploy fallback only accepts Netlify dashboard URLs',
     );
-    assert.match(previewJob, /@jthrilly\/dead-link-checker@\^1\.1\.0/);
+    assert.match(previewJob, /node scripts\/dead-link-checker\.mjs/);
     assert.match(previewJob, new RegExp(`"\\$${startPath}"`));
+    assert.match(previewJob, /--user-agent="\$DEAD_LINK_CHECK_USER_AGENT"/);
+    assert.match(previewJob, /--github-actions/);
+    assert.match(
+      previewJob,
+      new RegExp(`--report="\\$RUNNER_TEMP/${reportName}\\.json"`),
+    );
+    assert.doesNotMatch(previewJob, /dead-link-checker\.mjs[^\n]* (-v|--yes)/);
+    assert.match(previewJob, /uses: actions\/checkout@/);
+    assert.match(previewJob, /uses: pnpm\/setup@/);
+    assert.match(previewJob, /uses: actions\/setup-node@/);
+    assert.match(previewJob, /pnpm install --frozen-lockfile --ignore-scripts/);
+    assert.ok(
+      previewJob.indexOf('uses: actions/checkout@') <
+        previewJob.indexOf('node scripts/dead-link-checker.mjs'),
+      `${jobName} checks out the local checker before running it`,
+    );
+
+    const deadLinkStep = parsedWorkflow.jobs[jobName].steps.find(
+      ({ name }) => name === 'Dead-link check',
+    );
+    assert.match(
+      deadLinkStep?.env?.DEAD_LINK_CHECK_USER_AGENT,
+      /^Mozilla\/5\.0 .* NetworkCanvasLinkChecker\/1\.0$/,
+      `${jobName} supplies a browser-compatible user agent`,
+    );
+
+    const uploadStep = parsedWorkflow.jobs[jobName].steps.find(
+      ({ name }) => name === 'Upload dead-link report',
+    );
+    assert.equal(uploadStep?.if, 'always()');
+    assert.match(uploadStep?.uses, /^actions\/upload-artifact@/);
+    assert.equal(uploadStep?.with?.name, reportName);
+    assert.equal(
+      uploadStep?.with?.path,
+      `\${{ runner.temp }}/${reportName}.json`,
+    );
+    assert.equal(uploadStep?.with?.['if-no-files-found'], 'error');
   }
 
   const carryForward = job('carry-forward-statuses');
