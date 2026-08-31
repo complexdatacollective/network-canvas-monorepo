@@ -36,6 +36,11 @@ export type AuditedCommandDecision<T> =
       events: readonly [AuditEventInput, ...AuditEventInput[]];
     }
   | {
+      status: 'failed';
+      error: Error;
+      events: readonly [AuditEventInput, ...AuditEventInput[]];
+    }
+  | {
       // An idempotent replay or domain no-op completed without a mutation, so
       // it must neither invent a success event nor weaken the non-empty event
       // contract for a command that actually changed state.
@@ -82,10 +87,17 @@ export function deniedAuditEventContext(context: LockedAuditedCommandContext) {
   } as const;
 }
 
+export function failedAuditEventContext(context: LockedAuditedCommandContext) {
+  return {
+    ...auditEventContext(context),
+    outcome: 'failed',
+  } as const;
+}
+
 function assertEventContext(
   context: LockedAuditedCommandContext,
   event: AuditEventInput,
-  decisionStatus: 'succeeded' | 'denied',
+  decisionStatus: 'succeeded' | 'denied' | 'failed',
 ): void {
   if (
     event.teamId !== context.tenantDb.teamId ||
@@ -99,6 +111,36 @@ function assertEventContext(
   }
   if (event.outcome !== decisionStatus) {
     throw new Error('audit event outcome does not match its command decision');
+  }
+}
+
+export type AuditedCommandFailure = {
+  error: Error;
+  events: readonly [AuditEventInput, ...AuditEventInput[]];
+};
+
+/**
+ * Runs authorized domain work behind a savepoint. A classified synchronous
+ * failure rolls back target locks and mutations acquired after the savepoint,
+ * then returns a bounded failed decision for the outer audited transaction to
+ * append while its team and authorization locks remain held.
+ */
+export async function runAuditedCommandWork<T>(
+  client: pg.PoolClient,
+  work: () => Promise<AuditedMutationResult<T>>,
+  classifyFailure: (error: unknown) => AuditedCommandFailure | null,
+): Promise<AuditedCommandDecision<T>> {
+  await client.query('SAVEPOINT studio_audited_command_work');
+  try {
+    const mutation = await work();
+    await client.query('RELEASE SAVEPOINT studio_audited_command_work');
+    return { status: 'succeeded', ...mutation };
+  } catch (error) {
+    await client.query('ROLLBACK TO SAVEPOINT studio_audited_command_work');
+    await client.query('RELEASE SAVEPOINT studio_audited_command_work');
+    const failure = classifyFailure(error);
+    if (!failure) throw error;
+    return { status: 'failed', ...failure };
   }
 }
 
@@ -142,7 +184,9 @@ export async function runAuditedCommand<T>(
     return result;
   });
 
-  if (decision.status === 'denied') throw decision.error;
+  if (decision.status === 'denied' || decision.status === 'failed') {
+    throw decision.error;
+  }
   return decision.result;
 }
 

@@ -36,6 +36,11 @@ const CommonTeamAccessDeniedV1EventSchema =
     outcome: z.literal('denied'),
   }).strict();
 
+const CommonTeamAccessFailedV1EventSchema =
+  CommonTeamAccessV1EventSchema.extend({
+    outcome: z.literal('failed'),
+  }).strict();
+
 const TeamMemberRoleChangedV1EventSchema =
   CommonTeamAccessSucceededV1EventSchema.extend({
     eventType: z.literal('team.member.role_changed'),
@@ -76,6 +81,15 @@ const TeamMemberRoleChangeDeniedV1EventSchema =
       requestedRoles: z.array(TeamRoleSchema).min(1).max(3),
       reason: z.enum(['insufficient_permission', 'owner_role_requires_owner']),
     }),
+  }).strict();
+
+const TeamMemberRoleChangeFailedV1EventSchema =
+  CommonTeamAccessFailedV1EventSchema.extend({
+    eventType: z.literal('team.member.role_change_failed'),
+    subjectType: z.null(),
+    subjectId: z.null(),
+    subjectLabel: z.null(),
+    details: z.strictObject({ failureCode: z.literal('last_owner') }),
   }).strict();
 
 const ProtocolOperationTypeSchema = z.enum([
@@ -123,6 +137,7 @@ const ProtocolDraftCommittedV1EventSchema =
 export const AuditEventInputSchema = z.union([
   TeamMemberRoleChangedV1EventSchema,
   TeamMemberRoleChangeDeniedV1EventSchema,
+  TeamMemberRoleChangeFailedV1EventSchema,
   TeamInvitationCreatedV1EventSchema,
   TeamInvitationCancelledV1EventSchema,
   ProtocolCreatedV1EventSchema,
@@ -210,6 +225,22 @@ export const AUDIT_EVENT_REGISTRY = {
         requestedRoles: ['owner'],
         reason: 'owner_role_requires_owner',
       },
+    },
+  },
+  'team.member.role_change_failed@1': {
+    inputSchema: TeamMemberRoleChangeFailedV1EventSchema,
+    title: 'Member role change failed',
+    detailFields: ['failureCode'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V1_COMMON,
+      outcome: 'failed',
+      eventType: 'team.member.role_change_failed',
+      subjectType: null,
+      subjectId: null,
+      subjectLabel: null,
+      details: { failureCode: 'last_owner' },
     },
   },
   'team.invitation.created@1': {

@@ -18,7 +18,9 @@ import {
 import {
   auditEventContext,
   type AuditedMutationResult,
+  failedAuditEventContext,
   runAuditedCommand,
+  runAuditedCommandWork,
   runAuditedMutation,
 } from '../../audit/command.ts';
 import type { AuditEventInput } from '../../audit/events.ts';
@@ -27,6 +29,7 @@ import type { SessionPrincipal } from '../../auth/service.ts';
 import {
   cancelTeamInvitation,
   createTeamInvitation,
+  TeamCommandError,
   updateTeamMemberRole,
 } from '../commands.ts';
 
@@ -547,7 +550,44 @@ describe.skipIf(!db)('audited team commands', () => {
     ).rejects.toThrow('audit events are immutable');
   });
 
-  it('rejects last-owner and no-op changes without a false success event', async () => {
+  it('bounds repeated denied role-change events before starting another team transaction', async () => {
+    const teamId = 'command-role-denied-rate-limit';
+    await seedTeam(pool, teamId);
+    const owner = identity(teamId, 'owner', 'owner');
+    const member = identity(teamId, 'member', 'member');
+    await seedIdentity(pool, teamId, owner);
+    await seedIdentity(pool, teamId, member);
+    let transactionCount = 0;
+    const tenantDb = signalTenantTransaction(
+      createTenantDb(app, teamId),
+      () => transactionCount++,
+    );
+
+    for (let attempt = 0; attempt < 6; attempt++) {
+      await expect(
+        updateTeamMemberRole(
+          {
+            tenantDb,
+            principal: principal(member),
+            requestId: randomUUID(),
+          },
+          { memberId: owner.memberId, role: 'member' },
+        ),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    }
+
+    expect(transactionCount).toBe(5);
+    expect(
+      await pool.query(
+        `SELECT id FROM audit_events
+         WHERE team_id = $1
+           AND event_type = 'team.member.role_change_denied'`,
+        [teamId],
+      ),
+    ).toHaveProperty('rowCount', 5);
+  });
+
+  it('records a bounded failure for last-owner rejection without a false success event', async () => {
     const teamId = 'command-last-owner';
     await seedTeam(pool, teamId);
     const owner = identity(teamId, 'owner', 'owner');
@@ -581,11 +621,88 @@ describe.skipIf(!db)('audited team commands', () => {
       [owner.memberId],
     );
     expect(state.rows).toEqual([{ role: 'owner' }]);
-    const events = await pool.query<{ event_type: string }>(
-      `SELECT event_type FROM audit_events WHERE team_id = $1`,
+    const events = await pool.query<{
+      event_type: string;
+      outcome: string;
+      subject_id: string | null;
+      details: unknown;
+    }>(
+      `SELECT event_type, outcome, subject_id, details
+       FROM audit_events WHERE team_id = $1 ORDER BY sequence`,
       [teamId],
     );
-    expect(events.rows).toEqual([{ event_type: 'team.invitation.created' }]);
+    expect(events.rows).toEqual([
+      {
+        event_type: 'team.member.role_change_failed',
+        outcome: 'failed',
+        subject_id: null,
+        details: { failureCode: 'last_owner' },
+      },
+      {
+        event_type: 'team.invitation.created',
+        outcome: 'succeeded',
+        subject_id: positive.invitationId,
+        details: { role: 'member' },
+      },
+    ]);
+  });
+
+  it('rolls classified domain mutations back to a savepoint before committing their failure event', async () => {
+    const teamId = 'command-domain-savepoint';
+    await seedTeam(pool, teamId);
+    const owner = identity(teamId, 'owner', 'owner');
+    await seedIdentity(pool, teamId, owner);
+    const context = {
+      tenantDb: createTenantDb(app, teamId),
+      principal: principal(owner),
+      requestId: randomUUID(),
+    };
+
+    await expect(
+      runAuditedCommand(context, async (client, auditContext) =>
+        runAuditedCommandWork(
+          client,
+          async () => {
+            await client.query(
+              `UPDATE team_members SET role = 'member' WHERE id = $1`,
+              [owner.memberId],
+            );
+            throw new TeamCommandError('LAST_OWNER');
+          },
+          (error) => {
+            if (!(error instanceof TeamCommandError)) return null;
+            const event = {
+              ...failedAuditEventContext(auditContext),
+              eventType: 'team.member.role_change_failed',
+              subjectType: null,
+              subjectId: null,
+              subjectLabel: null,
+              details: { failureCode: 'last_owner' },
+            } satisfies AuditEventInput;
+            return { error, events: [event] };
+          },
+        ),
+      ),
+    ).rejects.toMatchObject({ code: 'LAST_OWNER' });
+
+    expect(
+      await pool.query(`SELECT role FROM team_members WHERE id = $1`, [
+        owner.memberId,
+      ]),
+    ).toHaveProperty('rows', [{ role: 'owner' }]);
+    expect(
+      await pool.query(
+        `SELECT event_type, outcome, details
+         FROM audit_events WHERE team_id = $1`,
+        [teamId],
+      ),
+    ).toHaveProperty('rows', [
+      {
+        event_type: 'team.member.role_change_failed',
+        outcome: 'failed',
+        details: { failureCode: 'last_owner' },
+      },
+    ]);
   });
 
   it('keeps one owner when two owners concurrently demote themselves', async () => {
@@ -624,11 +741,30 @@ describe.skipIf(!db)('audited team commands', () => {
     expect(
       memberships.rows.filter(({ role }) => role === 'member'),
     ).toHaveLength(1);
-    expect(
-      await pool.query(`SELECT id FROM audit_events WHERE team_id = $1`, [
-        teamId,
-      ]),
-    ).toHaveProperty('rowCount', 1);
+    const events = await pool.query<{
+      sequence: string;
+      event_type: string;
+      outcome: string;
+      details: unknown;
+    }>(
+      `SELECT sequence::text, event_type, outcome, details
+       FROM audit_events WHERE team_id = $1 ORDER BY sequence`,
+      [teamId],
+    );
+    expect(events.rows).toEqual([
+      {
+        sequence: '1',
+        event_type: 'team.member.role_changed',
+        outcome: 'succeeded',
+        details: { previousRoles: ['owner'], newRoles: ['member'] },
+      },
+      {
+        sequence: '2',
+        event_type: 'team.member.role_change_failed',
+        outcome: 'failed',
+        details: { failureCode: 'last_owner' },
+      },
+    ]);
   });
 
   it('creates and cancels an invitation without recording secret material', async () => {

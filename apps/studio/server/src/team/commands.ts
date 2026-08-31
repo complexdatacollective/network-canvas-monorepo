@@ -8,9 +8,12 @@ import {
   auditEventContext,
   type AuditedCommandContext,
   deniedAuditEventContext,
+  failedAuditEventContext,
   runAuditedCommand,
+  runAuditedCommandWork,
   runAuditedMutation,
 } from '../audit/command.ts';
+import { reserveDeniedAuditAttempt } from '../audit/denial-rate-limit.ts';
 import type { AuditEventInput } from '../audit/events.ts';
 import { TeamStore, type LockedMember } from './store.ts';
 
@@ -75,75 +78,120 @@ export async function updateTeamMemberRole(
   context: AuditedCommandContext,
   input: { memberId: string; role: TeamRole },
 ): Promise<UpdatedTeamMember> {
-  return runAuditedCommand(context, async (client, auditContext) => {
-    const members = await store.lockActorAndTarget(client, {
-      teamId: context.tenantDb.teamId,
-      actorUserId: context.principal.userId,
-      targetMemberId: input.memberId,
-    });
-    const target = members.target;
-    if (!target) throw new TeamCommandError('NOT_FOUND');
-
-    const denied = (
-      reason: 'insufficient_permission' | 'owner_role_requires_owner',
-    ) => {
-      const event = {
-        ...deniedAuditEventContext(auditContext),
-        eventType: 'team.member.role_change_denied',
-        subjectType: 'team_member',
-        subjectId: target.id,
-        subjectLabel: memberLabel(target),
-        details: { requestedRoles: [input.role], reason },
-      } satisfies AuditEventInput;
-      return {
-        status: 'denied' as const,
-        error: new TeamCommandError('FORBIDDEN'),
-        events: [event] as const,
-      };
-    };
-
-    const actor = members.actor;
-    if (!actor || !canManage(actor)) {
-      return denied('insufficient_permission');
-    }
-
-    const actorIsOwner = isOwner(actor);
-    const targetIsOwner = isOwner(target);
-    if ((targetIsOwner || input.role === 'owner') && !actorIsOwner) {
-      return denied('owner_role_requires_owner');
-    }
-
-    const previousRoles = parseRoles(target.role);
-    if (previousRoles.length === 1 && previousRoles[0] === input.role) {
-      throw new TeamCommandError('NO_CHANGE');
-    }
-    if (
-      targetIsOwner &&
-      input.role !== 'owner' &&
-      (await store.countLockedOwners(client, context.tenantDb.teamId)) <= 1
-    ) {
-      throw new TeamCommandError('LAST_OWNER');
-    }
-
-    await store.updateMemberRole(client, {
-      teamId: context.tenantDb.teamId,
-      memberId: target.id,
-      role: input.role,
-    });
-    const event = {
-      ...auditEventContext(auditContext),
-      eventType: 'team.member.role_changed',
-      subjectType: 'team_member',
-      subjectId: target.id,
-      subjectLabel: memberLabel(target),
-      details: { previousRoles, newRoles: [input.role] },
-    } satisfies AuditEventInput;
-    return {
-      status: 'succeeded',
-      result: { memberId: target.id, role: input.role },
-      events: [event],
-    };
+  const reservation = reserveDeniedAuditAttempt({
+    actorId: context.principal.userId,
+    teamId: context.tenantDb.teamId,
+    operation: 'team.updateMemberRole',
   });
+  if (!reservation.admitted) throw new TeamCommandError('FORBIDDEN');
+
+  try {
+    const result = await runAuditedCommand(
+      context,
+      async (client, auditContext) => {
+        const members = await store.lockActorAndTarget(client, {
+          teamId: context.tenantDb.teamId,
+          actorUserId: context.principal.userId,
+          targetMemberId: input.memberId,
+        });
+        const target = members.target;
+        if (!target) throw new TeamCommandError('NOT_FOUND');
+
+        const denied = (
+          reason: 'insufficient_permission' | 'owner_role_requires_owner',
+        ) => {
+          const event = {
+            ...deniedAuditEventContext(auditContext),
+            eventType: 'team.member.role_change_denied',
+            subjectType: 'team_member',
+            subjectId: target.id,
+            subjectLabel: memberLabel(target),
+            details: { requestedRoles: [input.role], reason },
+          } satisfies AuditEventInput;
+          return {
+            status: 'denied' as const,
+            error: new TeamCommandError('FORBIDDEN'),
+            events: [event] as const,
+          };
+        };
+
+        const actor = members.actor;
+        if (!actor || !canManage(actor)) {
+          return denied('insufficient_permission');
+        }
+
+        const actorIsOwner = isOwner(actor);
+        const targetIsOwner = isOwner(target);
+        if ((targetIsOwner || input.role === 'owner') && !actorIsOwner) {
+          return denied('owner_role_requires_owner');
+        }
+
+        const previousRoles = parseRoles(target.role);
+        if (previousRoles.length === 1 && previousRoles[0] === input.role) {
+          throw new TeamCommandError('NO_CHANGE');
+        }
+        return runAuditedCommandWork(
+          client,
+          async () => {
+            if (
+              targetIsOwner &&
+              input.role !== 'owner' &&
+              (await store.countLockedOwners(
+                client,
+                context.tenantDb.teamId,
+              )) <= 1
+            ) {
+              throw new TeamCommandError('LAST_OWNER');
+            }
+
+            await store.updateMemberRole(client, {
+              teamId: context.tenantDb.teamId,
+              memberId: target.id,
+              role: input.role,
+            });
+            const event = {
+              ...auditEventContext(auditContext),
+              eventType: 'team.member.role_changed',
+              subjectType: 'team_member',
+              subjectId: target.id,
+              subjectLabel: memberLabel(target),
+              details: { previousRoles, newRoles: [input.role] },
+            } satisfies AuditEventInput;
+            return {
+              result: { memberId: target.id, role: input.role },
+              events: [event],
+            };
+          },
+          (error) => {
+            if (
+              !(error instanceof TeamCommandError) ||
+              error.code !== 'LAST_OWNER'
+            ) {
+              return null;
+            }
+            const event = {
+              ...failedAuditEventContext(auditContext),
+              eventType: 'team.member.role_change_failed',
+              subjectType: null,
+              subjectId: null,
+              subjectLabel: null,
+              details: { failureCode: 'last_owner' },
+            } satisfies AuditEventInput;
+            return { error, events: [event] };
+          },
+        );
+      },
+    );
+    reservation.complete('other');
+    return result;
+  } catch (error) {
+    reservation.complete(
+      error instanceof TeamCommandError && error.code === 'FORBIDDEN'
+        ? 'denied'
+        : 'other',
+    );
+    throw error;
+  }
 }
 
 export type CreatedTeamInvitation = {

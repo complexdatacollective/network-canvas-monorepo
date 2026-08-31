@@ -16,6 +16,7 @@ describe('audit event registry', () => {
       'team.invitation.cancelled@1',
       'team.invitation.created@1',
       'team.member.role_change_denied@1',
+      'team.member.role_change_failed@1',
       'team.member.role_changed@1',
     ]);
 
