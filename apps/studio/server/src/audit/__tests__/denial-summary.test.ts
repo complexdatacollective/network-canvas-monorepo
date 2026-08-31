@@ -72,19 +72,19 @@ describe.skipIf(!db)('denied audit summary', () => {
       },
       onSummaryError: summaryWritten.reject,
     });
-    const first = limiter.reserve('actor/team/operation');
+    const first = await limiter.reserve('actor/team/operation');
     if (!first.admitted) throw new Error('expected admitted reservation');
     first.complete('denied');
 
     now += 10_000;
     expect(
-      limiter.reserve('actor/team/operation', async (summary) => {
+      await limiter.reserve('actor/team/operation', async (summary) => {
         await writer(summary);
         summaryWritten.resolve();
       }),
     ).toEqual({ admitted: false });
     now += 20_000;
-    expect(limiter.reserve('actor/team/operation')).toEqual({
+    expect(await limiter.reserve('actor/team/operation')).toEqual({
       admitted: false,
     });
 

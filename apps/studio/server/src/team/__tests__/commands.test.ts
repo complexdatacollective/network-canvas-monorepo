@@ -1150,6 +1150,49 @@ describe.skipIf(!db)('audited team commands', () => {
     ).toHaveProperty('rowCount', 0);
   });
 
+  it('does not reject or misclassify a concurrent authorized invitation burst', async () => {
+    const teamId = 'command-authorized-invitation-burst';
+    await seedTeam(pool, teamId);
+    const owner = identity(teamId, 'owner', 'owner');
+    await seedIdentity(pool, teamId, owner);
+    const context = {
+      tenantDb: createTenantDb(app, teamId),
+      principal: principal(owner),
+    };
+
+    const results = await Promise.all(
+      Array.from({ length: 6 }, (_, attempt) =>
+        createTeamInvitation(
+          { ...context, requestId: randomUUID() },
+          {
+            email: `authorized-burst-${attempt}@example.com`,
+            role: 'member',
+          },
+        ),
+      ),
+    );
+
+    expect(results).toHaveLength(6);
+    expect(new Set(results.map(({ invitationId }) => invitationId)).size).toBe(
+      6,
+    );
+    expect(
+      await pool.query(
+        `SELECT event_type, outcome, count(*)::int AS count
+         FROM audit_events
+         WHERE team_id = $1
+         GROUP BY event_type, outcome`,
+        [teamId],
+      ),
+    ).toHaveProperty('rows', [
+      {
+        event_type: 'team.invitation.created',
+        outcome: 'succeeded',
+        count: 6,
+      },
+    ]);
+  });
+
   it('records an established member denial without exposing the requested invitation', async () => {
     const teamId = 'command-invitation-cancellation-denied';
     await seedTeam(pool, teamId);
@@ -1559,6 +1602,10 @@ describe.skipIf(!db)('audited team commands', () => {
     const member = identity(teamId, 'member', 'member');
     await seedIdentity(pool, teamId, owner);
     await seedIdentity(pool, teamId, member);
+    const requestId = randomUUID();
+    const warning = vi
+      .spyOn(process, 'emitWarning')
+      .mockImplementation(() => undefined);
     await pool.query(`
       CREATE FUNCTION reject_test_audit_insert() RETURNS trigger AS $$
       BEGIN
@@ -1575,7 +1622,7 @@ describe.skipIf(!db)('audited team commands', () => {
           {
             tenantDb: createTenantDb(app, teamId),
             principal: principal(owner),
-            requestId: randomUUID(),
+            requestId,
           },
           { memberId: member.memberId, role: 'admin' },
         ),
@@ -1587,6 +1634,33 @@ describe.skipIf(!db)('audited team commands', () => {
       `);
     }
 
+    expect(warning).toHaveBeenCalledTimes(1);
+    expect(warning.mock.calls[0]![0]).toBe(
+      'Required immutable audit event append failed; transaction will roll back.',
+    );
+    expect(warning.mock.calls[0]![1]).toMatchObject({
+      type: 'StudioAuditError',
+      code: 'STUDIO_AUDIT_APPEND_FAILED',
+    });
+    const warningOptions = warning.mock.calls[0]![1];
+    if (typeof warningOptions !== 'object' || warningOptions === null) {
+      throw new Error('expected structured audit warning options');
+    }
+    const detail = Reflect.get(warningOptions, 'detail');
+    if (typeof detail !== 'string') {
+      throw new Error('expected structured audit warning detail');
+    }
+    expect(JSON.parse(detail)).toEqual({
+      eventType: 'team.member.role_changed',
+      eventVersion: 1,
+      outcome: 'succeeded',
+      teamId,
+      requestId,
+      causeName: 'error',
+      causeMessage: 'test audit insert rejected',
+    });
+    warning.mockRestore();
+
     const state = await pool.query<{ role: string }>(
       `SELECT role FROM team_members WHERE id = $1`,
       [member.memberId],
@@ -1597,6 +1671,77 @@ describe.skipIf(!db)('audited team commands', () => {
       [teamId],
     );
     expect(events.rowCount).toBe(0);
+  });
+
+  it('signals and rolls back when a denial audit insert fails', async () => {
+    const teamId = 'command-denial-audit-failure';
+    await seedTeam(pool, teamId);
+    const owner = identity(teamId, 'owner', 'owner');
+    const member = identity(teamId, 'member', 'member');
+    await seedIdentity(pool, teamId, owner);
+    await seedIdentity(pool, teamId, member);
+    const requestId = randomUUID();
+    const warning = vi
+      .spyOn(process, 'emitWarning')
+      .mockImplementation(() => undefined);
+    await pool.query(`
+      CREATE FUNCTION reject_test_denial_audit_insert() RETURNS trigger AS $$
+      BEGIN
+        RAISE EXCEPTION 'test denial audit insert rejected';
+      END;
+      $$ LANGUAGE plpgsql;
+      CREATE TRIGGER reject_test_denial_audit_insert
+        BEFORE INSERT ON audit_events
+        FOR EACH ROW EXECUTE FUNCTION reject_test_denial_audit_insert();
+    `);
+    try {
+      await expect(
+        updateTeamMemberRole(
+          {
+            tenantDb: createTenantDb(app, teamId),
+            principal: principal(member),
+            requestId,
+          },
+          { memberId: owner.memberId, role: 'member' },
+        ),
+      ).rejects.toThrow('test denial audit insert rejected');
+    } finally {
+      await pool.query(`
+        DROP TRIGGER reject_test_denial_audit_insert ON audit_events;
+        DROP FUNCTION reject_test_denial_audit_insert();
+      `);
+    }
+
+    expect(warning).toHaveBeenCalledTimes(1);
+    const warningOptions = warning.mock.calls[0]![1];
+    if (typeof warningOptions !== 'object' || warningOptions === null) {
+      throw new Error('expected structured audit warning options');
+    }
+    const detail = Reflect.get(warningOptions, 'detail');
+    if (typeof detail !== 'string') {
+      throw new Error('expected structured audit warning detail');
+    }
+    expect(JSON.parse(detail)).toEqual({
+      eventType: 'team.member.role_change_denied',
+      eventVersion: 1,
+      outcome: 'denied',
+      teamId,
+      requestId,
+      causeName: 'error',
+      causeMessage: 'test denial audit insert rejected',
+    });
+    warning.mockRestore();
+
+    expect(
+      await pool.query(`SELECT role FROM team_members WHERE id = $1`, [
+        owner.memberId,
+      ]),
+    ).toHaveProperty('rows', [{ role: 'owner' }]);
+    expect(
+      await pool.query(`SELECT id FROM audit_events WHERE team_id = $1`, [
+        teamId,
+      ]),
+    ).toHaveProperty('rowCount', 0);
   });
 
   it('retains history after mutable users, memberships, and invitations cascade', async () => {

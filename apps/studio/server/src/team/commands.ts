@@ -96,7 +96,7 @@ export async function updateTeamMemberRole(
   context: AuditedCommandContext,
   input: { memberId: string; role: TeamRole },
 ): Promise<UpdatedTeamMember> {
-  const reservation = reserveDeniedTeamCommand(
+  const reservation = await reserveDeniedTeamCommand(
     context,
     'team.updateMemberRole',
   );
@@ -224,7 +224,7 @@ export async function createTeamInvitation(
   input: { email: string; role: TeamRole },
 ): Promise<CreatedTeamInvitation> {
   const email = EmailSchema.parse(input.email.trim().toLowerCase());
-  const reservation = reserveDeniedTeamCommand(
+  const reservation = await reserveDeniedTeamCommand(
     context,
     'team.createInvitation',
   );
@@ -343,7 +343,7 @@ export async function cancelTeamInvitation(
   context: AuditedCommandContext,
   input: { invitationId: string },
 ): Promise<CancelledTeamInvitation> {
-  const reservation = reserveDeniedTeamCommand(
+  const reservation = await reserveDeniedTeamCommand(
     context,
     'team.cancelInvitation',
   );
@@ -456,7 +456,7 @@ export async function acceptTeamInvitation(
     principal: context.principal,
     requestId: context.requestId,
   } satisfies AuditedCommandContext;
-  const reservation = reserveDeniedTeamCommand(
+  const reservation = await reserveDeniedTeamCommand(
     auditedContext,
     'team.acceptInvitation',
   );

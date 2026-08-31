@@ -50,6 +50,36 @@ export type AuditedCommandDecision<T> =
 
 const auditStore = new AuditStore();
 
+async function appendRequiredAuditEvent(
+  client: pg.PoolClient,
+  event: AuditEventInput,
+): Promise<void> {
+  try {
+    await auditStore.append(client, event);
+  } catch (error) {
+    const cause =
+      error instanceof Error
+        ? { causeName: error.name, causeMessage: error.message }
+        : { causeName: typeof error, causeMessage: String(error) };
+    process.emitWarning(
+      'Required immutable audit event append failed; transaction will roll back.',
+      {
+        type: 'StudioAuditError',
+        code: 'STUDIO_AUDIT_APPEND_FAILED',
+        detail: JSON.stringify({
+          eventType: event.eventType,
+          eventVersion: event.eventVersion,
+          outcome: event.outcome,
+          teamId: event.teamId,
+          requestId: event.requestId,
+          ...cause,
+        }),
+      },
+    );
+    throw error;
+  }
+}
+
 function actorLabel(context: AuditedCommandContext): string {
   return (context.principal.name.trim() || context.principal.email).slice(
     0,
@@ -146,7 +176,7 @@ export async function appendAuditedEvent(
   await runWithLockedAuditContext(context, async (client, auditContext) => {
     const event = buildEvent(auditContext);
     assertEventContext(auditContext, event, event.outcome);
-    await auditStore.append(client, event);
+    await appendRequiredAuditEvent(client, event);
   });
 }
 
@@ -209,7 +239,7 @@ export async function runAuditedCommand<T>(
       }
       for (const event of result.events) {
         assertEventContext(auditContext, event, result.status);
-        await auditStore.append(client, event);
+        await appendRequiredAuditEvent(client, event);
       }
       return result;
     },

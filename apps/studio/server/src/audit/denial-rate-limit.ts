@@ -13,6 +13,13 @@ type DenialWindow = {
   summaryQueued: boolean;
   summaryWriter: DeniedAuditSummaryWriter | null;
   cancelSummary: (() => void) | null;
+  waiters: DeniedAuditWaiter[];
+};
+
+type DeniedAuditWaiter = {
+  attemptedAt: number;
+  summaryWriter: DeniedAuditSummaryWriter | null;
+  resolve: (reservation: DeniedAuditReservation) => void;
 };
 
 export type DeniedAuditSummary = {
@@ -47,8 +54,10 @@ export type DeniedAuditReservation =
  * A bounded process-local admission counter for denial-producing commands.
  * Reservations happen before a database transaction begins, so a burst cannot
  * queue an unbounded number of permanent denial writes behind a team's audit
- * lock. Successful, unchanged, and domain-failed commands release their slot;
- * only confirmed authorization denials consume the fixed-window allowance.
+ * lock. Excess requests wait outside that lock until an authorization outcome
+ * frees capacity. Successful, unchanged, and domain-failed commands release
+ * their slot; only confirmed authorization denials consume the fixed-window
+ * allowance or cause waiting attempts to be suppressed.
  */
 export class DeniedAuditRateLimiter {
   readonly #entries = new Map<string, DenialWindow>();
@@ -118,10 +127,78 @@ export class DeniedAuditRateLimiter {
     }
   }
 
-  reserve(
+  #recordSuppressed(
+    key: string,
+    window: DenialWindow,
+    attemptedAt: number,
+    summaryWriter?: DeniedAuditSummaryWriter | null,
+  ): void {
+    window.suppressed = Math.min(
+      Number.MAX_SAFE_INTEGER,
+      window.suppressed + 1,
+    );
+    window.firstSuppressedAt ??= attemptedAt;
+    window.lastSuppressedAt = attemptedAt;
+    window.summaryWriter ??= summaryWriter ?? null;
+    if (window.summaryWriter && !window.cancelSummary) {
+      window.cancelSummary = this.#schedule(
+        () => this.#queueSummary(key, window),
+        Math.max(0, window.startedAt + this.#windowMs - this.#now()),
+      );
+    }
+  }
+
+  #admit(key: string, window: DenialWindow): DeniedAuditReservation {
+    window.inFlight++;
+    let completed = false;
+    return {
+      admitted: true,
+      complete: (outcome) => {
+        if (completed) return;
+        completed = true;
+        window.inFlight--;
+        if (outcome === 'denied') window.denied++;
+        this.#drainWaiters(key, window);
+        if (
+          this.#entries.get(key) === window &&
+          window.denied === 0 &&
+          window.inFlight === 0 &&
+          window.waiters.length === 0 &&
+          window.suppressed === 0
+        ) {
+          this.#entries.delete(key);
+        }
+      },
+    };
+  }
+
+  #drainWaiters(key: string, window: DenialWindow): void {
+    if (window.denied >= this.#limit) {
+      for (const waiter of window.waiters.splice(0)) {
+        this.#recordSuppressed(
+          key,
+          window,
+          waiter.attemptedAt,
+          waiter.summaryWriter,
+        );
+        waiter.resolve({ admitted: false });
+      }
+      return;
+    }
+
+    while (
+      window.waiters.length > 0 &&
+      window.denied + window.inFlight < this.#limit
+    ) {
+      const waiter = window.waiters.shift()!;
+      waiter.resolve(this.#admit(key, window));
+    }
+  }
+
+  async reserve(
     key: string,
     summaryWriter?: DeniedAuditSummaryWriter,
-  ): DeniedAuditReservation {
+  ): Promise<DeniedAuditReservation> {
     const now = this.#now();
     let window = this.#entries.get(key);
     if (window && now - window.startedAt >= this.#windowMs) {
@@ -155,45 +232,25 @@ export class DeniedAuditRateLimiter {
         summaryQueued: false,
         summaryWriter: null,
         cancelSummary: null,
+        waiters: [],
       };
       this.#entries.set(key, window);
     }
-    if (window.denied + window.inFlight >= this.#limit) {
-      window.suppressed = Math.min(
-        Number.MAX_SAFE_INTEGER,
-        window.suppressed + 1,
-      );
-      window.firstSuppressedAt ??= now;
-      window.lastSuppressedAt = now;
-      window.summaryWriter ??= summaryWriter ?? null;
-      if (window.summaryWriter && !window.cancelSummary) {
-        window.cancelSummary = this.#schedule(
-          () => this.#queueSummary(key, window),
-          Math.max(0, window.startedAt + this.#windowMs - now),
-        );
-      }
+    if (window.denied >= this.#limit) {
+      this.#recordSuppressed(key, window, now, summaryWriter);
       return { admitted: false };
     }
+    if (window.denied + window.inFlight < this.#limit) {
+      return this.#admit(key, window);
+    }
 
-    window.inFlight++;
-    let completed = false;
-    return {
-      admitted: true,
-      complete: (outcome) => {
-        if (completed) return;
-        completed = true;
-        window.inFlight--;
-        if (outcome === 'denied') window.denied++;
-        if (
-          this.#entries.get(key) === window &&
-          window.denied === 0 &&
-          window.inFlight === 0 &&
-          window.suppressed === 0
-        ) {
-          this.#entries.delete(key);
-        }
-      },
-    };
+    return new Promise<DeniedAuditReservation>((resolve) => {
+      window.waiters.push({
+        attemptedAt: now,
+        summaryWriter: summaryWriter ?? null,
+        resolve,
+      });
+    });
   }
 }
 
@@ -206,7 +263,7 @@ export function reserveDeniedAuditAttempt(
     operation: string;
   },
   summaryWriter?: DeniedAuditSummaryWriter,
-): DeniedAuditReservation {
+): Promise<DeniedAuditReservation> {
   return deniedAuditRateLimiter.reserve(
     JSON.stringify([input.actorId, input.teamId, input.operation]),
     summaryWriter,
