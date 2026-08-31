@@ -135,6 +135,7 @@
     "./form/store/types": "./src/form/store/types.ts",
     "./form/utils/focusFirstError": "./src/form/utils/focusFirstError.ts",
     "./form/utils/getInputState": "./src/form/utils/getInputState.ts",
+    "./form/utils/objectPath": "./src/form/utils/objectPath.ts",
     "./form/utils/ymd": "./src/form/utils/ymd.ts",
     "./form/validation/helpers": "./src/form/validation/helpers.tsx",
     "./styles.css": "./src/styles.css",
@@ -646,6 +647,10 @@
       "./form/utils/getInputState": {
         "types": "./dist/form/utils/getInputState.d.ts",
         "default": "./dist/form/utils/getInputState.js"
+      },
+      "./form/utils/objectPath": {
+        "types": "./dist/form/utils/objectPath.d.ts",
+        "default": "./dist/form/utils/objectPath.js"
       },
       "./form/utils/ymd": {
         "types": "./dist/form/utils/ymd.d.ts",
