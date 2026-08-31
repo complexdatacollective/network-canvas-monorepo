@@ -1,14 +1,31 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { createServer } from 'node:http';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
-const checkerPath = new URL('./dead-link-checker.mjs', import.meta.url);
+import {
+  MAX_GITHUB_ERROR_ANNOTATIONS,
+  formatGitHubAnnotation,
+  formatGitHubSummary,
+  formatTextReport,
+  parseArguments,
+  retryDelayMilliseconds,
+  run,
+} from './dead-link-checker.mjs';
 
-function runChecker(...args) {
+const checkerPath = fileURLToPath(
+  new URL('./dead-link-checker.mjs', import.meta.url),
+);
+
+function runChecker(args, { env = {} } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [checkerPath.pathname, ...args], {
+    const child = spawn(process.execPath, [checkerPath, ...args], {
+      env: { ...process.env, ...env },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let stdout = '';
@@ -27,45 +44,506 @@ function runChecker(...args) {
   });
 }
 
-test('the user-agent option applies to every link request', async () => {
-  const userAgents = [];
-  const server = createServer((request, response) => {
-    userAgents.push(request.headers['user-agent']);
-    if (request.url === '/') {
-      response.setHeader('content-type', 'text/html');
-      response.end(`
-        <a href="/linked">linked page</a>
-        <a href="data:text/plain,inline">inline data</a>
-        <a href="vbscript:msgbox('unsafe')">VBScript</a>
-        <a href="mailto:test@example.com">email</a>
-        <a href="javascript:void(0)">JavaScript</a>
-      `);
-      return;
-    }
-
-    response.end('ok');
-  });
+async function startServer(handler) {
+  const server = createServer(handler);
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
-
   const address = server.address();
   assert.notEqual(typeof address, 'string');
   assert.ok(address);
+  return {
+    origin: `http://127.0.0.1:${address.port}`,
+    async stop() {
+      server.close();
+      await once(server, 'close');
+    },
+  };
+}
+
+function html(response, body, status = 200) {
+  response.statusCode = status;
+  response.setHeader('content-type', 'text/html');
+  response.end(body);
+}
+
+function jsonResult(result) {
+  assert.equal(result.stderr, '');
+  return JSON.parse(result.stdout);
+}
+
+test('the user-agent option applies to every link request', async () => {
+  const userAgents = [];
+  const server = await startServer((request, response) => {
+    userAgents.push(request.headers['user-agent']);
+    if (request.url === '/') {
+      html(
+        response,
+        `
+          <a href="/linked">linked page</a>
+          <a href="data:text/plain,inline">inline data</a>
+          <a href="vbscript:msgbox('unsafe')">VBScript</a>
+          <a href="mailto:test@example.com">email</a>
+          <a href="javascript:void(0)">JavaScript</a>
+        `,
+      );
+      return;
+    }
+    response.end('ok');
+  });
 
   try {
     const userAgent =
       'Mozilla/5.0 BrowserSignature/1.0 NetworkCanvasLinkChecker/1.0';
-    const result = await runChecker(
-      `http://127.0.0.1:${address.port}`,
+    const result = await runChecker([
+      server.origin,
       '--yes',
+      '--delay=0',
       `--user-agent=${userAgent}`,
-    );
+    ]);
 
     assert.equal(result.code, 0, result.stderr);
     assert.deepEqual(userAgents, [userAgent, userAgent]);
     assert.doesNotMatch(result.stdout, /data:|vbscript:|mailto:|javascript:/);
   } finally {
-    server.close();
-    await once(server, 'close');
+    await server.stop();
   }
+});
+
+test('text output ends with one deterministic failure block and every referrer', async () => {
+  const server = await startServer((request, response) => {
+    if (request.url === '/') {
+      html(response, '<a href="/source-b">B</a><a href="/source-a">A</a>');
+      return;
+    }
+    if (request.url === '/source-a' || request.url === '/source-b') {
+      html(response, '<a href="/missing">missing</a>');
+      return;
+    }
+    response.statusCode = 404;
+    response.end('missing');
+  });
+
+  try {
+    const result = await runChecker([
+      server.origin,
+      '--concurrent=3',
+      '--delay=0',
+    ]);
+    assert.equal(result.code, 1, result.stderr);
+    assert.equal(result.stderr, '');
+    assert.equal(
+      result.stdout.includes('\u001B['),
+      false,
+      'pipes never receive ANSI',
+    );
+    assert.match(
+      result.stdout,
+      /Discovered: 4 \| Checked: 4 \| Passed: 3 \| Failed: 1/,
+    );
+    assert.equal(result.stdout.match(/❌ Failed URLs/g)?.length, 1);
+    assert.ok(
+      result.stdout.endsWith(
+        `❌ Failed URLs (1):\n- ${server.origin}/missing\n  Status: HTTP 404\n  Found on:\n    - ${server.origin}/source-a\n    - ${server.origin}/source-b\n`,
+      ),
+      result.stdout,
+    );
+  } finally {
+    await server.stop();
+  }
+});
+
+test('JSON, report files, annotations, and job summaries share one report', async () => {
+  const server = await startServer((request, response) => {
+    if (request.url === '/') {
+      html(response, '<a href="/bad%25value">bad</a>');
+      return;
+    }
+    response.statusCode = 503;
+    response.setHeader('retry-after', '0');
+    response.end('unavailable');
+  });
+  const directory = await mkdtemp(join(tmpdir(), 'dead-link-checker-'));
+  const reportPath = join(directory, 'report.json');
+  const summaryPath = join(directory, 'summary.md');
+
+  try {
+    const result = await runChecker(
+      [
+        server.origin,
+        '--format=json',
+        '--delay=0',
+        '--retries=0',
+        `--report=${reportPath}`,
+        '--github-actions',
+      ],
+      { env: { GITHUB_STEP_SUMMARY: summaryPath } },
+    );
+    assert.equal(result.code, 1);
+    const report = JSON.parse(result.stdout);
+    assert.deepEqual(JSON.parse(await readFile(reportPath, 'utf8')), report);
+    assert.equal(report.schemaVersion, 1);
+    assert.equal(report.target, `${server.origin}/`);
+    assert.match(report.startedAt, /^\d{4}-\d{2}-\d{2}T/);
+    assert.ok(Number.isInteger(report.durationMs) && report.durationMs >= 0);
+    assert.deepEqual(report.summary, {
+      checked: 2,
+      discovered: 2,
+      failed: 1,
+      passed: 1,
+    });
+    assert.deepEqual(report.failures, [report.results[1]]);
+    assert.equal(report.results[0].kind, null);
+    assert.equal(report.failures[0].kind, 'http-error');
+    assert.match(result.stderr, /^::error title=Dead link returned HTTP 503::/);
+    assert.match(result.stderr, /bad%2525value/);
+    assert.equal(result.stderr.trim().split('\n').length, 1);
+
+    const summary = await readFile(summaryPath, 'utf8');
+    assert.match(summary, /^### Dead-link check/m);
+    assert.match(summary, /\*\*1 failed\*\*/);
+    assert.match(summary, /bad%25value/);
+  } finally {
+    await server.stop();
+    await rm(directory, { force: true, recursive: true });
+  }
+});
+
+test('a body timeout after headers becomes a reportable request failure', async () => {
+  const server = await startServer((_request, response) => {
+    response.writeHead(200, { 'content-type': 'text/html' });
+    response.flushHeaders();
+    setTimeout(() => response.end('<p>late body</p>'), 100);
+  });
+
+  try {
+    const result = await runChecker([
+      server.origin,
+      '--format=json',
+      '--timeout=20',
+      '--retries=0',
+      '--delay=0',
+    ]);
+    assert.equal(result.code, 1, result.stderr);
+    const report = jsonResult(result);
+    assert.deepEqual(report.summary, {
+      checked: 1,
+      discovered: 1,
+      failed: 1,
+      passed: 0,
+    });
+    assert.equal(report.failures[0].kind, 'request-error');
+    assert.equal(report.failures[0].status, null);
+    assert.match(report.failures[0].error, /timed out/i);
+  } finally {
+    await server.stop();
+  }
+});
+
+test('GitHub annotations are capped without truncating summaries or JSON reports', async () => {
+  assert.equal(MAX_GITHUB_ERROR_ANNOTATIONS, 50);
+  const failureCount = 53;
+  const failurePaths = Array.from(
+    { length: failureCount },
+    (_, index) => `/failure-${String(index).padStart(3, '0')}`,
+  );
+  const server = await startServer((request, response) => {
+    if (request.url === '/') {
+      html(
+        response,
+        failurePaths.map((path) => `<a href="${path}">bad</a>`).join(''),
+      );
+      return;
+    }
+    response.statusCode = 404;
+    response.end('missing');
+  });
+  const directory = await mkdtemp(join(tmpdir(), 'dead-link-checker-cap-'));
+  const reportPath = join(directory, 'report.json');
+  const summaryPath = join(directory, 'summary.md');
+
+  try {
+    const result = await runChecker(
+      [
+        server.origin,
+        '--format=json',
+        '--delay=0',
+        '--retries=0',
+        `--report=${reportPath}`,
+        '--github-actions',
+      ],
+      { env: { GITHUB_STEP_SUMMARY: summaryPath } },
+    );
+    assert.equal(result.code, 1);
+    const annotations = result.stderr
+      .trim()
+      .split('\n')
+      .filter((line) => line.startsWith('::error'));
+    assert.equal(annotations.length, 50);
+    assert.match(
+      result.stderr,
+      /::warning title=Additional dead links omitted from annotations::3 additional failures/,
+    );
+
+    const report = JSON.parse(await readFile(reportPath, 'utf8'));
+    assert.equal(report.failures.length, failureCount);
+    assert.equal(report.summary.failed, failureCount);
+    const lastFailureURL = `${server.origin}${failurePaths.at(-1)}`;
+    assert.equal(report.failures.at(-1).url, lastFailureURL);
+    assert.match(
+      await readFile(summaryPath, 'utf8'),
+      new RegExp(lastFailureURL),
+    );
+  } finally {
+    await server.stop();
+    await rm(directory, { force: true, recursive: true });
+  }
+});
+
+test('renderers escape workflow commands and obey explicit color selection', () => {
+  const failure = {
+    error: 'bad%value\nsecond line',
+    finalUrl: 'https://example.test/failure',
+    foundOn: ['https://example.test/a,b:c|d'],
+    kind: 'request-error',
+    ok: false,
+    redirects: [],
+    status: null,
+    url: 'https://example.test/failure',
+  };
+  const report = {
+    durationMs: 1,
+    failures: [failure],
+    results: [failure],
+    schemaVersion: 1,
+    startedAt: '2026-01-01T00:00:00.000Z',
+    summary: { checked: 1, discovered: 1, failed: 1, passed: 0 },
+    target: 'https://example.test/',
+  };
+
+  assert.equal(
+    formatGitHubAnnotation(failure),
+    '::error title=Dead link request failed::https://example.test/failure%0Abad%25value%0Asecond line%0AFound on:%0A- https://example.test/a,b:c|d',
+  );
+  assert.match(formatGitHubSummary(report), /a,b:c\\\|d/);
+  assert.equal(
+    formatTextReport(report, { color: true }).includes('\u001B[31m'),
+    true,
+  );
+  assert.equal(
+    formatTextReport(report, { color: false }).includes('\u001B['),
+    false,
+  );
+});
+
+test('strict argument validation rejects values that previously produced false success', async () => {
+  for (const args of [
+    ['https://example.test', '--concurrent=0'],
+    ['https://example.test', '--concurrent=2x'],
+    ['https://example.test', '--delay=-1'],
+    ['https://example.test', '--timeout=0'],
+    ['https://example.test', '--format=yaml'],
+    ['https://example.test', '--unknown=value'],
+    ['https://example.test', 'https://extra.test'],
+  ]) {
+    assert.throws(
+      () => parseArguments(args),
+      { name: 'Error' },
+      args.join(' '),
+    );
+  }
+
+  let stderr = '';
+  const code = await run(['https://example.test', '--concurrent=NaN'], {
+    stderr: { write: (value) => (stderr += value) },
+    stdout: { isTTY: false, write() {} },
+  });
+  assert.equal(code, 2);
+  assert.match(stderr, /--concurrent must be an integer/);
+  assert.match(stderr, /Usage:/);
+});
+
+test('--concurrent keeps workers alive for links discovered after startup', async () => {
+  let active = 0;
+  let maxActive = 0;
+  const server = await startServer((request, response) => {
+    if (request.url === '/') {
+      html(
+        response,
+        Array.from(
+          { length: 6 },
+          (_, index) => `<a href="/work-${index}">work</a>`,
+        ).join(''),
+      );
+      return;
+    }
+    active++;
+    maxActive = Math.max(maxActive, active);
+    setTimeout(() => {
+      active--;
+      response.end('ok');
+    }, 80);
+  });
+
+  try {
+    const result = await runChecker([
+      server.origin,
+      '--concurrent=3',
+      '--delay=0',
+    ]);
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(maxActive, 3);
+  } finally {
+    await server.stop();
+  }
+});
+
+test('redirects use their final URL, recurse internally, and detect loops', async () => {
+  const server = await startServer((request, response) => {
+    if (request.url === '/') {
+      html(
+        response,
+        '<a href="/go">go</a><a href="/loop">loop</a><a href="/too-many">too many</a>',
+      );
+      return;
+    }
+    if (request.url === '/go') {
+      response.writeHead(302, { location: '/page' });
+      response.end();
+      return;
+    }
+    if (request.url === '/page') {
+      html(response, '<a href="/missing">missing</a>');
+      return;
+    }
+    if (request.url === '/loop') {
+      response.writeHead(302, { location: '/loop' });
+      response.end();
+      return;
+    }
+    if (request.url === '/too-many') {
+      response.writeHead(302, { location: '/hop' });
+      response.end();
+      return;
+    }
+    if (request.url === '/hop') {
+      response.writeHead(302, { location: '/page' });
+      response.end();
+      return;
+    }
+    response.statusCode = 404;
+    response.end('missing');
+  });
+
+  try {
+    const result = await runChecker([
+      server.origin,
+      '--format=json',
+      '--delay=0',
+      '--max-redirects=1',
+    ]);
+    assert.equal(result.code, 1, result.stderr);
+    const report = jsonResult(result);
+    const redirected = report.results.find(({ url }) => url.endsWith('/go'));
+    assert.equal(redirected.finalUrl, `${server.origin}/page`);
+    assert.equal(redirected.redirects.length, 1);
+    const missing = report.failures.find(({ url }) => url.endsWith('/missing'));
+    assert.deepEqual(missing.foundOn, [`${server.origin}/page`]);
+    const loop = report.failures.find(({ url }) => url.endsWith('/loop'));
+    assert.match(loop.error, /Redirect loop/);
+    assert.equal(loop.kind, 'redirect-error');
+    const tooMany = report.failures.find(({ url }) =>
+      url.endsWith('/too-many'),
+    );
+    assert.match(tooMany.error, /Exceeded 1 redirect hops/);
+  } finally {
+    await server.stop();
+  }
+});
+
+test('external redirects and transient responses are followed and retried', async () => {
+  let transientRequests = 0;
+  const external = await startServer((request, response) => {
+    if (request.url === '/redirect') {
+      response.writeHead(301, { location: '/transient' });
+      response.end();
+      return;
+    }
+    transientRequests++;
+    if (transientRequests === 1) {
+      response.writeHead(503, { 'retry-after': '0' });
+      response.end('retry');
+      return;
+    }
+    response.statusCode = 404;
+    response.end('missing');
+  });
+  const root = await startServer((_request, response) => {
+    html(response, `<a href="${external.origin}/redirect">external</a>`);
+  });
+
+  try {
+    const result = await runChecker([
+      root.origin,
+      '--format=json',
+      '--delay=0',
+    ]);
+    assert.equal(result.code, 1, result.stderr);
+    const report = jsonResult(result);
+    const failure = report.failures[0];
+    assert.equal(failure.url, `${external.origin}/redirect`);
+    assert.equal(failure.finalUrl, `${external.origin}/transient`);
+    assert.equal(failure.status, 404);
+    assert.equal(failure.kind, 'http-error');
+    assert.equal(failure.redirects.length, 1);
+    assert.equal(transientRequests, 2);
+  } finally {
+    await root.stop();
+    await external.stop();
+  }
+});
+
+test('timeouts are reported as link failures and retry delays are capped and deterministic', async () => {
+  const server = await startServer((_request, response) => {
+    setTimeout(() => response.end('late'), 100);
+  });
+
+  try {
+    const result = await runChecker([
+      server.origin,
+      '--format=json',
+      '--timeout=20',
+      '--retries=0',
+      '--delay=0',
+    ]);
+    assert.equal(result.code, 1, result.stderr);
+    const report = jsonResult(result);
+    assert.equal(report.failures[0].status, null);
+    assert.equal(report.failures[0].kind, 'request-error');
+    assert.equal(report.failures[0].error, 'Request timed out after 20ms');
+  } finally {
+    await server.stop();
+  }
+
+  assert.equal(
+    retryDelayMilliseconds({
+      attempt: 1,
+      retryAfter: '120',
+      url: 'https://example.test',
+    }),
+    30_000,
+  );
+  const delay = retryDelayMilliseconds({
+    attempt: 2,
+    retryAfter: null,
+    url: 'https://example.test',
+  });
+  assert.equal(
+    delay,
+    retryDelayMilliseconds({
+      attempt: 2,
+      retryAfter: null,
+      url: 'https://example.test',
+    }),
+  );
+  assert.ok(delay >= 1_000 && delay <= 1_200, delay);
 });

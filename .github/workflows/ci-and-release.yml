@@ -957,8 +957,17 @@ jobs:
             Chrome/120.0.0.0 Safari/537.36 NetworkCanvasLinkChecker/1.0
           DOCS_URL: ${{ steps.netlify-preview.outputs.url }}
         run: >-
-          node scripts/dead-link-checker.mjs "$DOCS_URL" -v --yes
+          node scripts/dead-link-checker.mjs "$DOCS_URL" --github-actions
+          --report="$RUNNER_TEMP/docs-dead-link-report.json"
           --user-agent="$DEAD_LINK_CHECK_USER_AGENT"
+      - name: Upload dead-link report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: docs-dead-link-report
+          path: ${{ runner.temp }}/docs-dead-link-report.json
+          if-no-files-found: error
+          retention-days: 7
       - name: Redirect test
         working-directory: apps/documentation
         env:
@@ -1163,8 +1172,17 @@ jobs:
             Chrome/120.0.0.0 Safari/537.36 NetworkCanvasLinkChecker/1.0
           WEBSITE_URL: ${{ steps.netlify-preview.outputs.url }}
         run: >-
-          node scripts/dead-link-checker.mjs "$WEBSITE_URL/en-US/" -v --yes
+          node scripts/dead-link-checker.mjs "$WEBSITE_URL/en-US/" --github-actions
+          --report="$RUNNER_TEMP/website-dead-link-report.json"
           --user-agent="$DEAD_LINK_CHECK_USER_AGENT"
+      - name: Upload dead-link report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: website-dead-link-report
+          path: ${{ runner.temp }}/website-dead-link-report.json
+          if-no-files-found: error
+          retention-days: 7
 
   interview-e2e:
     # Runs when the policy requires the interview suite. The Dockerized suite
