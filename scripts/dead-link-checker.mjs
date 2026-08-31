@@ -3,6 +3,49 @@
 // SPDX-License-Identifier: MIT
 // Adapted from @jthrilly/dead-link-checker v1.1.0, released under the MIT
 // License by Joshua Melville: https://www.npmjs.com/package/@jthrilly/dead-link-checker
+
+/**
+ * Dead-link checker design
+ *
+ * The input URL is the root of a same-origin crawl. We parse HTML and enqueue
+ * links recursively only while pages remain on that origin; external links are
+ * still followed to their final destination and checked, but their pages do
+ * not expand the crawl. Each normalized URL is checked once, while every page
+ * that referred to it is retained for the report.
+ *
+ * Ordinary checks use Node's fetch implementation because it is substantially
+ * faster and cheaper than opening a browser page for every URL. Redirects are
+ * followed manually so redirect loops, missing or invalid Location headers,
+ * excessive hops, and the actual final URL remain visible. Transient HTTP
+ * responses and request failures are retried with bounded backoff (honouring
+ * Retry-After); unused response bodies are cancelled so concurrent checks do
+ * not exhaust fetch's connection pool. The caller may provide an explicit
+ * User-Agent, but status semantics never change: any final status >= 400 is an
+ * error, including 403.
+ *
+ * A small browser-verification path exists because some otherwise public sites
+ * do not give Node the response that a person receives in a browser. Common
+ * examples are JavaScript/CDN challenges that initially return 403 and servers
+ * that omit an intermediate certificate trusted through the browser's issuer
+ * cache. Only those two known mismatches -- a Node 403 or
+ * UNABLE_TO_VERIFY_LEAF_SIGNATURE -- are rechecked in Chrome. Chrome is
+ * launched lazily, shared by the whole crawl, and limited to four open pages.
+ * It runs headed under Xvfb in CI because the affected challenge provider also
+ * rejects automated headless Chrome. For a challenge response, the verifier
+ * waits for JavaScript to cause a subsequent main-frame navigation.
+ *
+ * Browser verification is not status suppression. Its final response is
+ * authoritative: a browser-confirmed 403 (or any other >= 400 response) still
+ * fails the check, and a browser launch/navigation failure preserves the
+ * original failure with the browser error attached. This differs deliberately
+ * from the old package's external-redirect shortcut: stopping before the final
+ * destination would make the run faster, but could report a genuinely dead
+ * redirected link as healthy.
+ *
+ * Workers may finish out of order, so results and referrers are sorted before
+ * output. Human-readable text, JSON artifacts, GitHub annotations, and the job
+ * summary are all rendered from that same deterministic report.
+ */
 import { appendFile, writeFile } from 'node:fs/promises';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { pathToFileURL } from 'node:url';
