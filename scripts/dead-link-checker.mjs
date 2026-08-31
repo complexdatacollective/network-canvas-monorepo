@@ -36,16 +36,18 @@
  * limit. Chrome runs headed under Xvfb in CI because the affected challenge
  * provider also rejects automated headless Chrome. After either kind of Node
  * mismatch, the verifier waits for the browser document to reach a terminal
- * main-frame response, finish loading, and remain navigation-quiet for a short
- * bounded interval. Both navigation starts and responses are tracked, and
- * starts remain explicitly outstanding until their response or failure event
- * arrives, so a request that stalls before response headers cannot look quiet.
- * Superseded/aborted requests are retired; another navigation failure remains
- * an error unless a later terminal document replaces it. Incomplete redirects
- * and document loads remain verification failures, and the entire sequence
- * shares one request deadline so reload loops cannot retain a worker
- * indefinitely. Browser-only HTTP redirects obey the same maximum-hop rule as
- * Node redirects.
+ * main-frame response, commit that navigation, finish loading, and remain
+ * navigation-quiet for a short bounded interval. Binding the load wait to a
+ * commit after the selected response prevents the preceding document's
+ * DOMContentLoaded state from satisfying it. Both navigation starts and
+ * responses are tracked, and starts remain explicitly outstanding until their
+ * response or failure event arrives, so a request that stalls before response
+ * headers cannot look quiet. Superseded/aborted requests are retired; another
+ * navigation failure remains an error unless a later terminal document
+ * replaces it. Incomplete redirects and document loads remain verification
+ * failures, and the entire sequence shares one request deadline so reload
+ * loops cannot retain a worker indefinitely. Browser-only HTTP redirects obey
+ * the same maximum-hop rule as Node redirects.
  *
  * Browser verification is not status suppression. Its final response is
  * authoritative: a browser-confirmed 403 (or any other >= 400 response) still
@@ -249,6 +251,8 @@ export class BrowserVerifier {
       const mainFrameRequests = [];
       const mainFrameResponses = [];
       const outstandingMainFrameRequests = new Set();
+      const responseCommitBaselines = new WeakMap();
+      let mainFrameCommitCount = 0;
       let unrecoveredNavigationFailure = '';
       page.on('popup', (popup) => {
         spawnedPages.add(popup);
@@ -259,12 +263,16 @@ export class BrowserVerifier {
           response.request().isNavigationRequest() &&
           response.frame() === page.mainFrame()
         ) {
+          responseCommitBaselines.set(response, mainFrameCommitCount);
           mainFrameResponses.push(response);
           outstandingMainFrameRequests.delete(response.request());
           if (isTerminalNavigation(response)) {
             unrecoveredNavigationFailure = '';
           }
         }
+      });
+      page.on('framenavigated', (frame) => {
+        if (frame === page.mainFrame()) mainFrameCommitCount++;
       });
       page.on('request', (request) => {
         if (
@@ -367,6 +375,20 @@ export class BrowserVerifier {
         }
         return terminalResponseAfter(start) ?? terminalResponse;
       };
+      const waitForResponseCommit = async (response) => {
+        // page.goto already waited for the initial document's DOMContentLoaded.
+        // Playwright Page always exposes waitForEvent; the guard keeps injected
+        // unit-test doubles that model only response behavior lightweight.
+        if (response === initialResponse || !page.waitForEvent) return;
+        const commitBaseline =
+          responseCommitBaselines.get(response) ?? mainFrameCommitCount;
+        if (mainFrameCommitCount <= commitBaseline) {
+          await page.waitForEvent('framenavigated', {
+            predicate: (frame) => frame === page.mainFrame(),
+            timeout: remainingTimeout(),
+          });
+        }
+      };
 
       // A browser challenge initially responds with 403, executes JavaScript,
       // and then navigates the main frame again. A genuine forbidden page has
@@ -385,6 +407,7 @@ export class BrowserVerifier {
       }
 
       while (terminalResponse) {
+        await waitForResponseCommit(terminalResponse);
         navigation = terminalResponse;
         // A terminal status is not enough for recursive pages: page.content()
         // must represent the completed document or links after a stalled

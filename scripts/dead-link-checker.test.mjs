@@ -567,6 +567,70 @@ test('browser verification propagates terminal document load timeouts', async ()
   }
 });
 
+test('browser verification binds document loading to the selected navigation', async () => {
+  const frame = {};
+  const navigationRequest = { isNavigationRequest: () => true };
+  const response = (status) => ({
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => status,
+  });
+  const initial = response(403);
+  const final = response(200);
+  let committedFinalDocument = false;
+  let frameNavigatedListener;
+  let responseListener;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'framenavigated') frameNavigatedListener = listener;
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => 'https://publisher.test/stalled-document',
+    waitForEvent: async (event, { predicate }) => {
+      assert.equal(event, 'framenavigated');
+      assert.equal(predicate(frame), true);
+      committedFinalDocument = true;
+      frameNavigatedListener(frame);
+      return frame;
+    },
+    waitForLoadState: async () => {
+      if (!committedFinalDocument) return;
+      throw Object.assign(new Error('selected document load timed out'), {
+        name: 'TimeoutError',
+      });
+    },
+    waitForResponse: async (predicate) => {
+      responseListener(final);
+      assert.equal(predicate(final), true);
+      return final;
+    },
+    waitForTimeout: async () => {},
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    await assert.rejects(
+      verifier.verify('https://publisher.test/challenge', 50),
+      /selected document load timed out/,
+    );
+  } finally {
+    await verifier.close();
+  }
+});
+
 test('browser verification reports the response for the document that finishes loading', async () => {
   const frame = {};
   const navigationRequest = { isNavigationRequest: () => true };
