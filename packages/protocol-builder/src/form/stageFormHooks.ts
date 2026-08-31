@@ -146,13 +146,15 @@ function hasAnswer(value: unknown): boolean {
  * The form's knowledge outranks the draft it was opened from, path by path,
  * because the form is where the researcher has been working:
  *
- * 1. A field registered at exactly this path answers for it, even when its
- *    answer is `undefined` — switching a capability off parks that tombstone
- *    ON PURPOSE, and reading it as "nothing known here" would fall back to the
- *    value the stage was opened with and report the capability configured
- *    again.
- * 2. Otherwise every field the form holds BENEATH this path answers, mounted
- *    or parked alike. A capability owning a container whose controls are all
+ * 1. Anything the form holds AT or BENEATH this path, mounted or parked
+ *    alike, counts as an answer. Both are asked before either can veto,
+ *    because clearing a container capability parks a tombstone at the
+ *    container itself — and content entered after that tombstone lives
+ *    beneath it, where the tombstone has no standing to speak for it.
+ * 2. A tombstone with nothing beneath it means empty, and stops there:
+ *    switching a capability off parks that record ON PURPOSE, and falling
+ *    through would report the capability configured again from the draft it
+ *    was opened with. A capability owning a container whose controls are all
  *    hidden behind a collapsed group has no field at the container and nothing
  *    in the assembled values, and its content would otherwise be invisible
  *    here — so switching it off would skip the confirmation, skip the clear,
@@ -169,10 +171,16 @@ function pathHasAnswer(
   if (target === null) return false;
 
   const exact = state.getFieldState(path);
-  if (exact !== undefined) return hasAnswer(exact.value);
+  if (exact !== undefined && hasAnswer(exact.value)) return true;
 
   const known = descendantRecords(state, target);
   if (known.some((record) => hasAnswer(record.value))) return true;
+
+  // A record at exactly this path, holding nothing, with nothing beneath it
+  // holding anything either. That is the form saying the path is empty, and it
+  // outranks whatever the draft was opened with — otherwise clearing a
+  // capability would be undone by the draft's memory of it.
+  if (exact !== undefined) return false;
 
   // Every remaining known path is one the form knows is empty, so the draft's
   // memory of it is out of date.

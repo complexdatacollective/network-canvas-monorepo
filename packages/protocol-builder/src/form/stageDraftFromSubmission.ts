@@ -68,7 +68,7 @@ export function stageDraftFromSubmission(
   // edit, and replaying the container the researcher last saw would put the
   // stale reading of a field they can still see back over it.
   const applicable = writes.filter(
-    (write) => !hasMountedDescendant(submission.mountedPaths, write.path),
+    (write) => !hasDescendantIn(submission.mountedPaths, write.path),
   );
 
   // Shallowest first, so a field registered at a container path cannot
@@ -93,8 +93,19 @@ export function stageDraftFromSubmission(
   // tombstone its switch-off left at the container path, while its controls
   // are back on screen holding what the researcher has since typed. Removing
   // the container then would throw away values they are looking at.
+  //
+  // "Beneath it" covers the parked writes as well as the mounted fields. A
+  // capability switched off, reopened, edited, and hidden again leaves the
+  // switch-off's tombstone at the container while the values entered since sit
+  // dormant inside it — and those values are the newer knowledge. A switch-off
+  // that came AFTER them cannot be in this position, because clearing a
+  // capability empties everything beneath it too.
+  const livePaths = [
+    ...submission.mountedPaths,
+    ...applicable.map((write) => write.path),
+  ];
   for (const removal of removals) {
-    if (hasMountedDescendant(submission.mountedPaths, removal.path)) continue;
+    if (hasDescendantIn(livePaths, removal.path)) continue;
     draft = removePath(draft, removal.path);
   }
 
@@ -121,14 +132,14 @@ function partitionDormant(
   return { writes, removals };
 }
 
-function hasMountedDescendant(
-  mountedPaths: readonly ObjectPath[],
+function hasDescendantIn(
+  candidates: readonly ObjectPath[],
   path: ObjectPath,
 ): boolean {
-  return mountedPaths.some(
-    (mounted) =>
-      mounted.length > path.length &&
-      path.every((segment, index) => mounted[index] === segment),
+  return candidates.some(
+    (candidate) =>
+      candidate.length > path.length &&
+      path.every((segment, index) => candidate[index] === segment),
   );
 }
 

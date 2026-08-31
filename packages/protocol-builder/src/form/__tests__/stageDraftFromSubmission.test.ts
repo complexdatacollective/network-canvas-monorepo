@@ -163,24 +163,49 @@ describe('stageDraftFromSubmission', () => {
     expect(draft.parameters).toEqual({ bounds: { min: 5 }, style: 'plain' });
   });
 
-  it('removes a capability\u2019s paths even when a field inside was parked with a value', () => {
+  it('removes a switched-off capability along with everything inside it', () => {
     const draft = stageDraftFromSubmission({
       currentFields: {
         skipLogic: { action: 'SKIP', filter: { rules: [], join: 'OR' } },
       },
       submittedValues: {},
       mountedPaths: [],
+      // What clearing a capability leaves behind: the container and every
+      // path beneath it, all emptied together.
       dormantFields: [
         {
           name: 'skipLogic.action',
           path: ['skipLogic', 'action'],
-          value: 'SHOW',
+          value: undefined,
         },
         { name: 'skipLogic', path: ['skipLogic'], value: undefined },
       ],
     });
 
     expect(Object.hasOwn(draft, 'skipLogic')).toBe(false);
+  });
+
+  it('keeps what was entered inside a capability after it was switched off', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: {},
+      submittedValues: {},
+      // Nothing is mounted: the controls were hidden again before saving.
+      mountedPaths: [],
+      dormantFields: [
+        // The tombstone the switch-off left at the container…
+        { name: 'skipLogic', path: ['skipLogic'], value: undefined },
+        // …and what the researcher typed after switching it back on. Clearing
+        // a capability empties everything beneath it, so a descendant still
+        // holding a value can only have been written since.
+        {
+          name: 'skipLogic.action',
+          path: ['skipLogic', 'action'],
+          value: 'SHOW',
+        },
+      ],
+    });
+
+    expect(draft.skipLogic).toEqual({ action: 'SHOW' });
   });
 
   it('lets a field still on screen outrank the container hiding around it', () => {

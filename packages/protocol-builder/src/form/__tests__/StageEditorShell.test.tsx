@@ -687,6 +687,120 @@ describe('StageEditorShell', () => {
     );
   });
 
+  it('follows the page when a nested component reorders its sections', async () => {
+    const user = userEvent.setup();
+    const session = createSession();
+    // The order lives in a component of its own, so reordering re-renders that
+    // subtree and nothing else — the outline beside it is never told.
+    function ReorderableSections() {
+      const [reversed, setReversed] = useState(false);
+      const sections = ['Introduction', 'Closing'];
+      const shown = reversed ? [...sections].toReversed() : sections;
+      return (
+        <>
+          <button type="button" onClick={() => setReversed(true)}>
+            Reverse the sections
+          </button>
+          {shown.map((title) => (
+            <BuilderSection key={title} title={title}>
+              <ProtocolField
+                name={title === 'Introduction' ? 'title' : 'label'}
+                label={`${title} text`}
+                component={InputField}
+              />
+            </BuilderSection>
+          ))}
+        </>
+      );
+    }
+    function Host() {
+      const controller = useStageEditorController(session, 'stage-form');
+      return (
+        <StageEditorShell controller={controller}>
+          <ReorderableSections />
+        </StageEditorShell>
+      );
+    }
+    render(
+      <DialogProvider>
+        <Host />
+      </DialogProvider>,
+    );
+
+    await waitFor(() => expect(outlineItems()).toHaveLength(2));
+    expect([...outlineItems()].map((item) => item.textContent)).toEqual([
+      'IntroductionFinished',
+      'ClosingFinished',
+    ]);
+
+    await user.click(
+      screen.getByRole('button', { name: 'Reverse the sections' }),
+    );
+
+    await waitFor(() =>
+      expect([...outlineItems()].map((item) => item.textContent)).toEqual([
+        'ClosingFinished',
+        'IntroductionFinished',
+      ]),
+    );
+  });
+
+  it('asks again about content entered after a capability was cleared', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      fields: { ...initialFields, skipLogic: { action: 'SKIP' } },
+    });
+    function ContainerCapability() {
+      const controller = useStageEditorController(session, 'stage-form');
+      return (
+        <StageEditorShell controller={controller}>
+          <BuilderSection
+            title="Skip logic"
+            capability={{
+              fields: ['skipLogic'],
+              confirmClear: {
+                title: 'This will clear your skip logic',
+                description: 'The rules you created will be deleted.',
+                confirmLabel: 'Clear skip logic',
+              },
+            }}
+          >
+            <ProtocolField
+              name="skipLogic.action"
+              label="What this stage does"
+              component={InputField}
+            />
+          </BuilderSection>
+        </StageEditorShell>
+      );
+    }
+    render(
+      <DialogProvider>
+        <ContainerCapability />
+      </DialogProvider>,
+    );
+
+    // Clearing it parks a record at the capability's own path, holding
+    // nothing.
+    await user.click(screen.getByRole('switch', { name: 'Skip logic' }));
+    await user.click(screen.getByRole('button', { name: 'Clear skip logic' }));
+
+    // What is typed now lives BENEATH that record, which has no standing to
+    // say the capability is empty any more.
+    await user.click(screen.getByRole('switch', { name: 'Skip logic' }));
+    await user.type(
+      await screen.findByRole('textbox', { name: 'What this stage does' }),
+      'SHOW',
+    );
+    await user.click(screen.getByRole('switch', { name: 'Skip logic' }));
+
+    // Asked again, because there is something to lose again — and a switch-off
+    // that skipped the question would skip the clearing with it.
+    expect(
+      await screen.findByRole('button', { name: 'Clear skip logic' }),
+    ).toBeInTheDocument();
+  });
+
   it('explains a prerequisite before it explains a switch', async () => {
     const session = createSession();
     function DisabledCapability() {

@@ -138,6 +138,18 @@ export class SectionOutlineStore {
     };
   }
 
+  /**
+   * Re-reads where the sections sit, and tells subscribers if they have moved.
+   *
+   * Re-deriving the order inside `getSnapshot` is not enough on its own:
+   * `useSyncExternalStore` only calls it when something notifies or the
+   * component re-renders, and a nested component reordering its own sections
+   * does neither to the outline beside it.
+   */
+  revalidateOrder(): void {
+    if (!this.sameOrder(this.orderedRecords())) this.changed();
+  }
+
   setSectionTitle(id: string, title: string): void {
     const record = this.sections.get(id);
     if (!record || record.title === title) return;

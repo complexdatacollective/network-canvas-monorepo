@@ -3,6 +3,7 @@ import {
   type ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useId,
   useMemo,
   useRef,
@@ -154,6 +155,18 @@ function StageEditorFormBody({
       focusFirstError(errors, formRef.current);
     },
   });
+
+  // The outline lists the sections in the order they appear on the page, and
+  // nothing tells it when that order changes: a component reordering sections
+  // from its own state re-renders itself, not the outline beside it. Watching
+  // the form's own subtree is what closes that gap.
+  useEffect(() => {
+    const form = formRef.current;
+    if (form === null) return;
+    const observer = new MutationObserver(() => outline.revalidateOrder());
+    observer.observe(form, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [outline]);
 
   const layoutGroupId = useId();
   const context = useMemo(
