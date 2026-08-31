@@ -178,6 +178,33 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
     expect(reload).toHaveBeenCalledOnce();
   });
 
+  it('does not reload a legacy caller that becomes protected during activation', async () => {
+    const waiting = createWorker('installed');
+    const registration = createRegistration({ waiting: waiting.worker });
+    const serviceWorker = createServiceWorkerContainer({ registration });
+    const reload = vi.fn();
+    let shouldSkip = false;
+
+    const result = applyFreshLoadServiceWorkerUpdate({
+      serviceWorker,
+      reload,
+      shouldSkip: () => shouldSkip,
+      updateCheckTimeoutMs: 50,
+      activationTimeoutMs: 50,
+    });
+
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    expect(waiting.postMessage).toHaveBeenCalledWith({
+      type: 'SKIP_WAITING',
+    });
+
+    shouldSkip = true;
+    waiting.setState('activated');
+
+    await expect(result).resolves.toBe(false);
+    expect(reload).not.toHaveBeenCalled();
+  });
+
   it('waits for an installing update to become waiting before activating it', async () => {
     const installing = createWorker('installing');
     const registration = createRegistration({ installing: installing.worker });

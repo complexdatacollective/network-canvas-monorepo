@@ -292,7 +292,9 @@ export async function applyFreshLoadServiceWorkerUpdate({
 
   // `true` historically tells boot code that this helper reloaded and startup
   // must stop. Explicit no-reload callers continue startup after activation.
-  if (reload === false) return false;
+  // A legacy reload-mode caller can become protected while activation is in
+  // flight, so honor the predicate once more before navigating it.
+  if (reload === false || shouldSkip()) return false;
   reload();
   return true;
 }

@@ -47,15 +47,32 @@ try {
 const packageJson = JSON.parse(
   readFileSync(path.join(appRoot, 'package.json'), 'utf8'),
 );
-const expectedPrecachePrefix = `architect-${packageJson.version}`;
-if (!sw.includes(`setCacheNameDetails({prefix:"${expectedPrecachePrefix}"})`)) {
-  fail(`precache is not isolated to app version ${packageJson.version}`);
+const expectedPrecachePrefixStart = `architect-${packageJson.version}-`;
+const precachePrefix = sw.match(
+  /setCacheNameDetails\(\{prefix:"([^"]+)"\}\)/,
+)?.[1];
+const buildId = precachePrefix?.slice(expectedPrecachePrefixStart.length);
+const isTurboBuildId = /^turbo-[a-f\d]{16}$/.test(buildId ?? '');
+const isDirectBuildId =
+  /^direct-[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/.test(
+    buildId ?? '',
+  );
+if (
+  !precachePrefix?.startsWith(expectedPrecachePrefixStart) ||
+  (!isTurboBuildId && !isDirectBuildId)
+) {
+  fail(
+    `precache is not isolated to app version ${packageJson.version} and its build artifact`,
+  );
 }
 if (/\.clientsClaim\(\)/.test(sw)) {
   fail('generated worker claims clients loaded by an older app bundle');
 }
 if (/\.cleanupOutdatedCaches\(\)/.test(sw)) {
   fail('generated worker deletes precaches still needed by older clients');
+}
+if (/Reflect\.get\(globalThis,"caches"\)/.test(sw)) {
+  fail('navigation fallback searches retained precaches globally');
 }
 
 for (const f of [
@@ -115,8 +132,51 @@ if (!/url:"preview\/index\.html"/.test(sw)) {
   fail('preview/index.html missing from precache manifest');
 }
 
-if (!/new URL\("preview\/index\.html",/.test(sw)) {
-  fail('missing /preview/ offline fallback in generated service worker');
+const previewRouteIndex = sw.indexOf('pathname.startsWith("/preview/")');
+const freshShellMatcher = /![$\w]+\.pathname\.startsWith\("\/preview\/"\)/g;
+freshShellMatcher.lastIndex = Math.max(previewRouteIndex, 0);
+const freshShellRoute = freshShellMatcher.exec(sw);
+if (previewRouteIndex === -1 || freshShellRoute?.index === undefined) {
+  fail('missing preview/fresh-shell navigation routes');
+}
+
+const imageRouteIndex = sw.indexOf('cacheName:"architect-images"');
+if (imageRouteIndex === -1 || imageRouteIndex < freshShellRoute.index) {
+  fail('missing architect image-cache route after navigation routes');
+}
+
+const previewRoute = sw.slice(previewRouteIndex, freshShellRoute.index);
+const freshShellRouteSource = sw.slice(freshShellRoute.index, imageRouteIndex);
+const assertCurrentPrecacheFallback = (route, fallbackURL, name) => {
+  if (!/\.NetworkOnly\(\{plugins:\[/.test(route)) {
+    fail(`${name} navigation does not use the non-caching network strategy`);
+  }
+  if (!/new AbortController/.test(route) || !/3e3/.test(route)) {
+    fail(`${name} navigation lost its three-second offline bound`);
+  }
+  if (
+    !/fetchDidSucceed/.test(route) ||
+    !/fetchDidFail/.test(route) ||
+    !/clearTimeout/.test(route)
+  ) {
+    fail(`${name} navigation does not clear its completed request timeout`);
+  }
+  const fallbackPattern = new RegExp(
+    `\\.PrecacheFallbackPlugin\\(\\{fallbackURL:"${fallbackURL.replaceAll('.', '\\.')}"\\}\\)`,
+  );
+  if (!fallbackPattern.test(route)) {
+    fail(`${name} navigation does not use the active worker's precache`);
+  }
+};
+
+assertCurrentPrecacheFallback(previewRoute, 'preview/index.html', 'preview');
+assertCurrentPrecacheFallback(
+  freshShellRouteSource,
+  'index.html',
+  'fresh-shell',
+);
+if (/\.NetworkFirst\(/.test(previewRoute + freshShellRouteSource)) {
+  fail('navigation runtime-caches HTML from a different app bundle');
 }
 
 // No globIgnores means every emitted chunk should be precached; an excluded one
@@ -129,5 +189,5 @@ if (excluded.length > 0) {
 }
 
 console.log(
-  `PWA build ok: ${expectedPrecachePrefix} retained independently; no client claim/old-precache cleanup; entry ${entry} + all ${jsAssets.length} JS chunks precached`,
+  `PWA build ok: ${precachePrefix} retained independently; active-precache navigation fallbacks; no client claim/old-precache cleanup; entry ${entry} + all ${jsAssets.length} JS chunks precached`,
 );

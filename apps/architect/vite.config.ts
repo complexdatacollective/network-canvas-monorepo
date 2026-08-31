@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -63,6 +64,15 @@ const injectCspMeta = (): Plugin => ({
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, rootDir, '');
+  // This ID belongs to the generated bundle, not just its package release. Dev
+  // deploys can publish several different bundles at the same package version;
+  // sharing a precache between them would let the newer worker prune files that
+  // a still-open tab needs. Turbo's task fingerprint makes its built/restored
+  // artifacts deterministic; direct Vite builds get a one-off namespace.
+  const pwaBuildId = env.TURBO_HASH
+    ? `turbo-${env.TURBO_HASH}`
+    : `direct-${randomUUID()}`;
+  const pwaCacheId = `architect-${version}-${pwaBuildId}`;
 
   // PostHog needs source maps to symbolicate the exceptions posthog-js reports
   // (see src/analytics.ts). The credentials are set only on the production
@@ -140,10 +150,11 @@ export default defineConfig(({ mode }) => {
           // App and worker maps are uploaded before Workbox runs. The service
           // worker itself is not part of PostHog's browser error reporting.
           sourcemap: false,
-          // Every released bundle keeps its own precache. A newly activated
-          // worker must not prune hashed lazy assets that an older, still-open
-          // Architect tab can need (including while offline).
-          cacheId: `architect-${version}`,
+          // Every built bundle keeps its own precache. A newly activated worker
+          // must not prune hashed lazy assets that an older, still-open
+          // Architect tab can need (including between same-version dev deploys
+          // and while offline).
+          cacheId: pwaCacheId,
           globPatterns: ['**/*.{js,css,html}'],
           // vite-plugin-pwa defaults this to index.html; disable it so it
           // cannot shadow the runtime navigation route below.
@@ -167,54 +178,39 @@ export default defineConfig(({ mode }) => {
                 sameOrigin &&
                 request.mode === 'navigate' &&
                 url.pathname.startsWith('/preview/'),
-              handler: async ({ request }) => {
-                let timeoutId: ReturnType<typeof setTimeout> | undefined;
-
-                try {
-                  const networkTimeout = new Promise<Response>((_, reject) => {
-                    timeoutId = setTimeout(
-                      () => reject(new Error('Preview request timed out')),
-                      3_000,
-                    );
-                  });
-
-                  return await Promise.race([fetch(request), networkTimeout]);
-                } catch (error) {
-                  const cacheStorage: unknown = Reflect.get(
-                    globalThis,
-                    'caches',
-                  );
-                  const serviceWorkerLocation: unknown = Reflect.get(
-                    globalThis,
-                    'location',
-                  );
-                  const cacheMatch: unknown =
-                    typeof cacheStorage === 'object' && cacheStorage !== null
-                      ? Reflect.get(cacheStorage, 'match')
-                      : undefined;
-                  const locationHref: unknown =
-                    typeof serviceWorkerLocation === 'object' &&
-                    serviceWorkerLocation !== null
-                      ? Reflect.get(serviceWorkerLocation, 'href')
-                      : undefined;
-
-                  if (
-                    typeof cacheMatch !== 'function' ||
-                    typeof locationHref !== 'string'
-                  ) {
-                    throw error;
-                  }
-
-                  const fallback: unknown = await cacheMatch.call(
-                    cacheStorage,
-                    new URL('preview/index.html', locationHref).href,
-                    { ignoreSearch: true },
-                  );
-                  if (fallback instanceof Response) return fallback;
-                  throw error;
-                } finally {
-                  if (timeoutId !== undefined) clearTimeout(timeoutId);
-                }
+              handler: 'NetworkOnly',
+              options: {
+                plugins: [
+                  {
+                    requestWillFetch: async ({ request, state }) => {
+                      const controller = new AbortController();
+                      if (state) {
+                        state.navigationTimeoutId = setTimeout(
+                          () => controller.abort(),
+                          3_000,
+                        );
+                      }
+                      return new Request(request, {
+                        signal: controller.signal,
+                      });
+                    },
+                    fetchDidSucceed: async ({ response, state }) => {
+                      const timeoutId: unknown = state?.navigationTimeoutId;
+                      if (typeof timeoutId === 'number')
+                        clearTimeout(timeoutId);
+                      return response;
+                    },
+                    fetchDidFail: async ({ state }) => {
+                      const timeoutId: unknown = state?.navigationTimeoutId;
+                      if (typeof timeoutId === 'number')
+                        clearTimeout(timeoutId);
+                    },
+                  },
+                ],
+                // Workbox resolves this through the active worker's
+                // PrecacheController. Do not use global caches.match(): old
+                // bundle precaches are deliberately retained for older tabs.
+                precacheFallback: { fallbackURL: 'preview/index.html' },
               },
             },
             {
@@ -228,54 +224,39 @@ export default defineConfig(({ mode }) => {
                 sameOrigin &&
                 request.mode === 'navigate' &&
                 !url.pathname.startsWith('/preview/'),
-              handler: async ({ request }) => {
-                let timeoutId: ReturnType<typeof setTimeout> | undefined;
-
-                try {
-                  const networkTimeout = new Promise<Response>((_, reject) => {
-                    timeoutId = setTimeout(
-                      () => reject(new Error('Navigation request timed out')),
-                      3_000,
-                    );
-                  });
-
-                  return await Promise.race([fetch(request), networkTimeout]);
-                } catch (error) {
-                  const cacheStorage: unknown = Reflect.get(
-                    globalThis,
-                    'caches',
-                  );
-                  const serviceWorkerLocation: unknown = Reflect.get(
-                    globalThis,
-                    'location',
-                  );
-                  const cacheMatch: unknown =
-                    typeof cacheStorage === 'object' && cacheStorage !== null
-                      ? Reflect.get(cacheStorage, 'match')
-                      : undefined;
-                  const locationHref: unknown =
-                    typeof serviceWorkerLocation === 'object' &&
-                    serviceWorkerLocation !== null
-                      ? Reflect.get(serviceWorkerLocation, 'href')
-                      : undefined;
-
-                  if (
-                    typeof cacheMatch !== 'function' ||
-                    typeof locationHref !== 'string'
-                  ) {
-                    throw error;
-                  }
-
-                  const fallback: unknown = await cacheMatch.call(
-                    cacheStorage,
-                    new URL('index.html', locationHref).href,
-                    { ignoreSearch: true },
-                  );
-                  if (fallback instanceof Response) return fallback;
-                  throw error;
-                } finally {
-                  if (timeoutId !== undefined) clearTimeout(timeoutId);
-                }
+              handler: 'NetworkOnly',
+              options: {
+                plugins: [
+                  {
+                    requestWillFetch: async ({ request, state }) => {
+                      const controller = new AbortController();
+                      if (state) {
+                        state.navigationTimeoutId = setTimeout(
+                          () => controller.abort(),
+                          3_000,
+                        );
+                      }
+                      return new Request(request, {
+                        signal: controller.signal,
+                      });
+                    },
+                    fetchDidSucceed: async ({ response, state }) => {
+                      const timeoutId: unknown = state?.navigationTimeoutId;
+                      if (typeof timeoutId === 'number')
+                        clearTimeout(timeoutId);
+                      return response;
+                    },
+                    fetchDidFail: async ({ state }) => {
+                      const timeoutId: unknown = state?.navigationTimeoutId;
+                      if (typeof timeoutId === 'number')
+                        clearTimeout(timeoutId);
+                    },
+                  },
+                ],
+                // PrecacheFallbackPlugin reads only this active worker's
+                // precache, even though older bundle caches remain available
+                // to their existing clients.
+                precacheFallback: { fallbackURL: 'index.html' },
               },
             },
             {

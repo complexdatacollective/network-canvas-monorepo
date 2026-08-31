@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -8,6 +9,16 @@ import { createPostHogSourceMapsPlugin } from '../../scripts/posthog-source-maps
 import { appVersion, createRendererConfig } from './vite.renderer.config';
 
 const here = dirname(fileURLToPath(import.meta.url));
+// This ID belongs to the generated bundle, not just its package release. Dev
+// deploys can publish several different bundles at the same package version;
+// sharing a precache between them would let the newer worker prune files that
+// a still-open interview needs. Turbo's task fingerprint makes its
+// built/restored artifacts deterministic; direct Vite builds get a one-off
+// namespace.
+const pwaBuildId = process.env.TURBO_HASH
+  ? `turbo-${process.env.TURBO_HASH}`
+  : `direct-${randomUUID()}`;
+const pwaCacheId = `interviewer-${appVersion}-${pwaBuildId}`;
 // The app background (theme-base scheme-dark --background, oklch(0.28 0.09 281)
 // as sRGB). Drives the installed-PWA titlebar (with index.html's theme-color
 // meta, which must match) and the splash background.
@@ -87,10 +98,11 @@ export default defineConfig(() =>
           // App and worker maps are uploaded before Workbox runs. The service
           // worker itself is not part of PostHog's browser error reporting.
           sourcemap: false,
-          // Every released bundle keeps its own precache. A newly activated
-          // worker must not prune hashed lazy assets that an older, still-open
-          // interview can need (including while offline).
-          cacheId: `interviewer-${appVersion}`,
+          // Every built bundle keeps its own precache. A newly activated worker
+          // must not prune hashed lazy assets that an older, still-open
+          // interview can need (including between same-version dev deploys and
+          // while offline).
+          cacheId: pwaCacheId,
           globPatterns: ['**/*.{js,css,html}'],
           // The Development protocol's bundled asset chunk (~33 MB, embeds a
           // 23 MB dev-only video — see bundledDevelopmentProtocol.ts) is only
@@ -123,36 +135,14 @@ export default defineConfig(() =>
                 sameOrigin &&
                 request.mode === 'navigate' &&
                 url.pathname.startsWith('/interview/'),
-              handler: async () => {
-                const cacheStorage: unknown = Reflect.get(globalThis, 'caches');
-                const serviceWorkerLocation: unknown = Reflect.get(
-                  globalThis,
-                  'location',
-                );
-                const cacheMatch: unknown =
-                  typeof cacheStorage === 'object' && cacheStorage !== null
-                    ? Reflect.get(cacheStorage, 'match')
-                    : undefined;
-                const locationHref: unknown =
-                  typeof serviceWorkerLocation === 'object' &&
-                  serviceWorkerLocation !== null
-                    ? Reflect.get(serviceWorkerLocation, 'href')
-                    : undefined;
-
-                if (
-                  typeof cacheMatch !== 'function' ||
-                  typeof locationHref !== 'string'
-                ) {
-                  throw new Error('Unable to read precached interview shell');
-                }
-
-                const fallback: unknown = await cacheMatch.call(
-                  cacheStorage,
-                  new URL('index.html', locationHref).href,
-                  { ignoreSearch: true },
-                );
-                if (fallback instanceof Response) return fallback;
-                throw new Error('Missing precached interview shell');
+              handler: 'CacheOnly',
+              options: {
+                // This build-specific runtime cache intentionally remains
+                // empty. CacheOnly throws on its miss, which invokes
+                // PrecacheFallbackPlugin.handlerDidError and returns the
+                // active worker's own precached shell without a network read.
+                cacheName: `${pwaCacheId}-interview-navigation`,
+                precacheFallback: { fallbackURL: 'index.html' },
               },
             },
             {
@@ -168,54 +158,39 @@ export default defineConfig(() =>
                 sameOrigin &&
                 request.mode === 'navigate' &&
                 !url.pathname.startsWith('/interview/'),
-              handler: async ({ request }) => {
-                let timeoutId: ReturnType<typeof setTimeout> | undefined;
-
-                try {
-                  const networkTimeout = new Promise<Response>((_, reject) => {
-                    timeoutId = setTimeout(
-                      () => reject(new Error('Navigation request timed out')),
-                      3_000,
-                    );
-                  });
-
-                  return await Promise.race([fetch(request), networkTimeout]);
-                } catch (error) {
-                  const cacheStorage: unknown = Reflect.get(
-                    globalThis,
-                    'caches',
-                  );
-                  const serviceWorkerLocation: unknown = Reflect.get(
-                    globalThis,
-                    'location',
-                  );
-                  const cacheMatch: unknown =
-                    typeof cacheStorage === 'object' && cacheStorage !== null
-                      ? Reflect.get(cacheStorage, 'match')
-                      : undefined;
-                  const locationHref: unknown =
-                    typeof serviceWorkerLocation === 'object' &&
-                    serviceWorkerLocation !== null
-                      ? Reflect.get(serviceWorkerLocation, 'href')
-                      : undefined;
-
-                  if (
-                    typeof cacheMatch !== 'function' ||
-                    typeof locationHref !== 'string'
-                  ) {
-                    throw error;
-                  }
-
-                  const fallback: unknown = await cacheMatch.call(
-                    cacheStorage,
-                    new URL('index.html', locationHref).href,
-                    { ignoreSearch: true },
-                  );
-                  if (fallback instanceof Response) return fallback;
-                  throw error;
-                } finally {
-                  if (timeoutId !== undefined) clearTimeout(timeoutId);
-                }
+              handler: 'NetworkOnly',
+              options: {
+                plugins: [
+                  {
+                    requestWillFetch: async ({ request, state }) => {
+                      const controller = new AbortController();
+                      if (state) {
+                        state.navigationTimeoutId = setTimeout(
+                          () => controller.abort(),
+                          3_000,
+                        );
+                      }
+                      return new Request(request, {
+                        signal: controller.signal,
+                      });
+                    },
+                    fetchDidSucceed: async ({ response, state }) => {
+                      const timeoutId: unknown = state?.navigationTimeoutId;
+                      if (typeof timeoutId === 'number')
+                        clearTimeout(timeoutId);
+                      return response;
+                    },
+                    fetchDidFail: async ({ state }) => {
+                      const timeoutId: unknown = state?.navigationTimeoutId;
+                      if (typeof timeoutId === 'number')
+                        clearTimeout(timeoutId);
+                    },
+                  },
+                ],
+                // Workbox resolves this through the active worker's
+                // PrecacheController. Do not use global caches.match(): old
+                // bundle precaches are deliberately retained for older tabs.
+                precacheFallback: { fallbackURL: 'index.html' },
               },
             },
             {

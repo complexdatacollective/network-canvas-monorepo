@@ -182,10 +182,14 @@ until the researcher explicitly installs the update. Do not add an automatic
 post-render reload path: open editor drafts, dialogs, imports, and exports make
 that data-destructive.
 
-The worker deliberately uses `clientsClaim: false`, a release-versioned
-precache, and no `cleanupOutdatedCaches`. Activating a release therefore does
-not replace the controller or remove hashed lazy assets underneath another open
+The worker deliberately uses `clientsClaim: false`, a build-scoped precache,
+and no `cleanupOutdatedCaches`. Turbo's task fingerprint names deployed build
+artifacts, so two same-version developer deployments with different assets
+cannot prune each other's caches. Activating a release therefore does not
+replace the controller or remove hashed lazy assets underneath another open
 editor tab; that tab and its cache remain usable offline until it navigates.
+Offline navigation fallbacks resolve through the active worker's own precache,
+not a global search across those retained caches.
 `scripts/assert-pwa-build.mjs` verifies these generated-worker invariants.
 
 ## PostHog source maps

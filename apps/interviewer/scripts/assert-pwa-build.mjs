@@ -41,15 +41,32 @@ try {
 const packageJson = JSON.parse(
   readFileSync(path.join(appRoot, 'package.json'), 'utf8'),
 );
-const expectedPrecachePrefix = `interviewer-${packageJson.version}`;
-if (!sw.includes(`setCacheNameDetails({prefix:"${expectedPrecachePrefix}"})`)) {
-  fail(`precache is not isolated to app version ${packageJson.version}`);
+const expectedPrecachePrefixStart = `interviewer-${packageJson.version}-`;
+const precachePrefix = sw.match(
+  /setCacheNameDetails\(\{prefix:"([^"]+)"\}\)/,
+)?.[1];
+const buildId = precachePrefix?.slice(expectedPrecachePrefixStart.length);
+const isTurboBuildId = /^turbo-[a-f\d]{16}$/.test(buildId ?? '');
+const isDirectBuildId =
+  /^direct-[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/.test(
+    buildId ?? '',
+  );
+if (
+  !precachePrefix?.startsWith(expectedPrecachePrefixStart) ||
+  (!isTurboBuildId && !isDirectBuildId)
+) {
+  fail(
+    `precache is not isolated to app version ${packageJson.version} and its build artifact`,
+  );
 }
 if (/\.clientsClaim\(\)/.test(sw)) {
   fail('generated worker claims clients loaded by an older app bundle');
 }
 if (/\.cleanupOutdatedCaches\(\)/.test(sw)) {
   fail('generated worker deletes precaches still needed by older clients');
+}
+if (/Reflect\.get\(globalThis,"caches"\)/.test(sw)) {
+  fail('navigation fallback searches retained precaches globally');
 }
 
 for (const f of [
@@ -133,7 +150,7 @@ if (
 }
 
 const interviewFallbackIndex = sw.indexOf(
-  'new URL("index.html"',
+  '.PrecacheFallbackPlugin({fallbackURL:"index.html"})',
   interviewCacheRoute.index,
 );
 if (
@@ -143,6 +160,53 @@ if (
   fail('/interview/ navigation route must fall back to precached index.html');
 }
 
+const interviewRoute = sw.slice(
+  interviewCacheRoute.index,
+  freshShellRoute.index,
+);
+const imagesRouteIndex = sw.indexOf(
+  'cacheName:"interviewer-images"',
+  freshShellRoute.index,
+);
+if (imagesRouteIndex === -1) {
+  fail('missing interviewer image-cache route after navigation routes');
+}
+const freshShellRouteSource = sw.slice(freshShellRoute.index, imagesRouteIndex);
+if (!/\.CacheOnly\(\{/.test(interviewRoute)) {
+  fail('/interview/ navigation does not force the active cached shell');
+}
+if (
+  !interviewRoute.includes(`cacheName:"${precachePrefix}-interview-navigation"`)
+) {
+  fail('/interview/ cache-only route is not isolated to this build');
+}
+if (!/\.NetworkOnly\(\{plugins:\[/.test(freshShellRouteSource)) {
+  fail('fresh navigation does not use the non-caching network strategy');
+}
+if (
+  !/new AbortController/.test(freshShellRouteSource) ||
+  !/3e3/.test(freshShellRouteSource)
+) {
+  fail('fresh navigation lost its three-second offline bound');
+}
+if (
+  !/fetchDidSucceed/.test(freshShellRouteSource) ||
+  !/fetchDidFail/.test(freshShellRouteSource) ||
+  !/clearTimeout/.test(freshShellRouteSource)
+) {
+  fail('fresh navigation does not clear its completed request timeout');
+}
+if (
+  !/\.PrecacheFallbackPlugin\(\{fallbackURL:"index\.html"\}\)/.test(
+    freshShellRouteSource,
+  )
+) {
+  fail('fresh navigation does not use the active worker precache');
+}
+if (/\.NetworkFirst\(/.test(interviewRoute + freshShellRouteSource)) {
+  fail('navigation runtime-caches HTML from a different app bundle');
+}
+
 console.log(
-  `PWA build ok: ${expectedPrecachePrefix} retained independently; no client claim/old-precache cleanup; ${critical.length} critical chunk(s) precached`,
+  `PWA build ok: ${precachePrefix} retained independently; active-precache navigation fallbacks; no client claim/old-precache cleanup; ${critical.length} critical chunk(s) precached`,
 );
