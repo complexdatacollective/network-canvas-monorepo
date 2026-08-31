@@ -27,6 +27,7 @@ function makeSource(schemaVersion: number): NonNullable<GetInterviewByIdQuery> {
     currentStep: 3,
     stageMetadata: null,
     isSynthetic: false,
+    syncRevision: 7,
     protocol: {
       id: 'protocol-1',
       hash: 'abc123',
@@ -55,6 +56,16 @@ describe('mapInterviewPayload', () => {
     );
     expect(payload.protocol.hash).toBe('abc123');
     expect(initialStep).toBe(3);
+  });
+
+  it('carries the row’s stored sync revision through, so writes are numbered from it', () => {
+    // Numbering from zero instead would make every write a reloaded tab makes
+    // older than what is stored, and the endpoint would discard all of them.
+    const { initialSyncRevision } = mapInterviewPayload(
+      makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION),
+    );
+
+    expect(initialSyncRevision).toBe(7);
   });
 
   it('refuses a protocol row stored below the compatible version rather than mislabelling it', () => {
