@@ -75,6 +75,26 @@ function redact(text) {
   return String(text ?? '').replace(/\/\/[^/@\s]+@/g, '//***@');
 }
 
+export function assertCommitPinnedActionUses(workflowPath, contents) {
+  const unpinned = [];
+  const usesPattern = /^\s*(?:-\s*)?uses:\s*([^\s#]+)/gm;
+
+  for (const match of contents.matchAll(usesPattern)) {
+    const action = match[1];
+    if (action.startsWith('./')) continue;
+
+    const separator = action.lastIndexOf('@');
+    const ref = separator === -1 ? '' : action.slice(separator + 1);
+    if (!/^[0-9a-f]{40}$/.test(ref)) unpinned.push(action);
+  }
+
+  if (unpinned.length > 0) {
+    throw new Error(
+      `${workflowPath} must pin every external action to a full commit SHA; found ${unpinned.join(', ')}`,
+    );
+  }
+}
+
 function run(cmd, args, opts = {}) {
   const result = spawnSync(cmd, args, { stdio: 'inherit', ...opts });
   if (result.error) throw result.error;
@@ -420,6 +440,7 @@ function main() {
         `Fresco mirror requires ${source}; without it a release cannot publish the GHCR image.`,
       );
     }
+    assertCommitPinnedActionUses(workflow, readFileSync(source, 'utf8'));
     mkdirSync(dirname(destination), { recursive: true });
     cpSync(source, destination);
   }

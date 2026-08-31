@@ -12,8 +12,35 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import { assertCommitPinnedActionUses } from './mirror-app.mjs';
+
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SCRIPT = join(REPO_ROOT, 'scripts', 'mirror-app.mjs');
+
+test('Fresco publisher pins every external action to a commit SHA', () => {
+  const workflowPath = join(
+    REPO_ROOT,
+    'apps',
+    'fresco',
+    '.github',
+    'workflows',
+    'docker-publish.yml',
+  );
+  assert.doesNotThrow(() =>
+    assertCommitPinnedActionUses(
+      workflowPath,
+      readFileSync(workflowPath, 'utf8'),
+    ),
+  );
+  assert.throws(
+    () =>
+      assertCommitPinnedActionUses(
+        workflowPath,
+        'steps:\n  - uses: docker/login-action@v4\n',
+      ),
+    /must pin every external action to a full commit SHA.*docker\/login-action@v4/,
+  );
+});
 
 function git(cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
