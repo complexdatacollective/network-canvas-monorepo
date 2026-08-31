@@ -118,6 +118,108 @@ describe('useStudioStageSession', () => {
     expect(rpcClient.protocols.draft).toHaveBeenCalledTimes(1);
   });
 
+  it('refreshes authoritative fields after acquiring read-only access', async () => {
+    vi.mocked(rpcClient.protocols.acquireSection).mockResolvedValueOnce({
+      mode: 'readOnly',
+    });
+    vi.mocked(rpcClient.protocols.draft).mockResolvedValueOnce({
+      ...DRAFT,
+      revision: { sequence: '3', hash: 'revision-3' },
+      sections: {
+        ...DRAFT.sections,
+        [`stage:${STAGE_ID}`]: {
+          ...DRAFT.sections[`stage:${STAGE_ID}`],
+          label: 'Changed by the active editor',
+          title: 'Changed by the active editor',
+        },
+      },
+    });
+
+    const view = renderSession();
+    await waitFor(() => expect(view.result.current.status).toBe('ready'));
+    if (view.result.current.status !== 'ready') throw new Error('not ready');
+
+    expect(view.result.current.session.getSnapshot().access.mode).toBe(
+      'readOnly',
+    );
+    expect(
+      view.result.current.session.getSnapshot().editedSection.fields,
+    ).toMatchObject({
+      label: 'Changed by the active editor',
+      title: 'Changed by the active editor',
+    });
+    expect(rpcClient.protocols.draft).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries a failed initial acquisition with the same client identity', async () => {
+    vi.useFakeTimers();
+    vi.mocked(rpcClient.protocols.acquireSection)
+      .mockRejectedValueOnce(new Error('response lost'))
+      .mockResolvedValueOnce({
+        mode: 'editable',
+        leaseEpoch: '1',
+        nextClientSequence: '1',
+      });
+
+    const view = renderSession();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(rpcClient.protocols.acquireSection).toHaveBeenCalledTimes(1);
+    const firstClientId = vi.mocked(rpcClient.protocols.acquireSection).mock
+      .calls[0]![0].clientId;
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+
+    expect(rpcClient.protocols.acquireSection).toHaveBeenCalledTimes(2);
+    expect(
+      vi.mocked(rpcClient.protocols.acquireSection).mock.calls[1]![0].clientId,
+    ).toBe(firstClientId);
+    expect(view.result.current.status).toBe('ready');
+    view.unmount();
+  });
+
+  it('retries after an authoritative refresh fails post-acquisition', async () => {
+    vi.useFakeTimers();
+    vi.mocked(rpcClient.protocols.acquireSection)
+      .mockResolvedValueOnce({
+        mode: 'editable',
+        leaseEpoch: '1',
+        nextClientSequence: '1',
+      })
+      .mockResolvedValueOnce({
+        mode: 'editable',
+        leaseEpoch: '2',
+        nextClientSequence: '1',
+      });
+    vi.mocked(rpcClient.protocols.draft)
+      .mockRejectedValueOnce(new Error('refresh interrupted'))
+      .mockResolvedValueOnce(DRAFT);
+
+    const view = renderSession();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(rpcClient.protocols.releaseSection).toHaveBeenCalledWith(
+      expect.objectContaining({ leaseEpoch: '1' }),
+    );
+    const firstClientId = vi.mocked(rpcClient.protocols.acquireSection).mock
+      .calls[0]![0].clientId;
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+
+    expect(rpcClient.protocols.acquireSection).toHaveBeenCalledTimes(2);
+    expect(
+      vi.mocked(rpcClient.protocols.acquireSection).mock.calls[1]![0].clientId,
+    ).toBe(firstClientId);
+    expect(view.result.current.status).toBe('ready');
+    view.unmount();
+  });
+
   it('keeps the same leased session when a committed draft refresh arrives', async () => {
     const view = renderSession();
     await waitFor(() => expect(view.result.current.status).toBe('ready'));
@@ -350,7 +452,7 @@ describe('useStudioStageSession', () => {
 
   it('promotes a spectator after the editing lease becomes available', async () => {
     vi.useFakeTimers();
-    vi.mocked(rpcClient.protocols.draft).mockResolvedValueOnce({
+    vi.mocked(rpcClient.protocols.draft).mockResolvedValue({
       ...DRAFT,
       revision: { sequence: '3', hash: 'revision-3' },
       sections: {
@@ -394,7 +496,7 @@ describe('useStudioStageSession', () => {
       label: 'Changed by collaborator',
       title: 'Changed by collaborator',
     });
-    expect(rpcClient.protocols.draft).toHaveBeenCalledTimes(1);
+    expect(rpcClient.protocols.draft).toHaveBeenCalledTimes(2);
   });
 
   it('renews an acquired lease while its authoritative draft is loading', async () => {

@@ -17,9 +17,10 @@ export default function AppLayout() {
 
   useEffect(() => {
     if (!isPending && !session) {
+      queryClient.clear();
       void navigate({ to: '/sign-in' });
     }
-  }, [isPending, session, navigate]);
+  }, [isPending, session, navigate, queryClient]);
 
   return (
     <div className="flex h-full flex-col">
