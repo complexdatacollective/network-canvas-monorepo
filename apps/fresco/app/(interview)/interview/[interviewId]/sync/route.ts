@@ -11,6 +11,22 @@ import { captureException, flushPostHog } from '~/lib/posthog-server';
 import { getAppSetting } from '~/queries/appSettings';
 
 /**
+ * How far one accepted write may move the revision on. The client sends the
+ * stored value plus one; the slack covers numbers burnt by writes that never
+ * landed, which a participant on a failing connection accumulates.
+ *
+ * A bound is needed because this endpoint is unauthenticated. Without one, a
+ * single crafted request could set the row to the maximum a PostgreSQL
+ * `INTEGER` holds; every genuine browser would then seed its counter there,
+ * send one higher, overflow the column and fail — an interview nobody could
+ * ever sync again without repairing the database by hand. With it, a write
+ * outside the window is discarded like any other and reported with the stored
+ * revision, and the client's next attempt is numbered from that, so a counter
+ * that has drifted comes back inside on its own.
+ */
+const MAX_REVISION_ADVANCE = 10_000;
+
+/**
  * Handle post requests from the client to store the current interview state.
  */
 const routeHandler = async (
@@ -102,7 +118,13 @@ const routeHandler = async (
     // Postgres re-evaluates the WHERE clause after waiting on the row lock, so
     // of two concurrent writes the lower-numbered one matches nothing.
     const { count } = await prisma.interview.updateMany({
-      where: { id: interviewId, syncRevision: { lt: syncRevision } },
+      where: {
+        id: interviewId,
+        syncRevision: {
+          lt: syncRevision,
+          gte: syncRevision - MAX_REVISION_ADVANCE,
+        },
+      },
       data: {
         network,
         currentStep,
@@ -119,11 +141,11 @@ const routeHandler = async (
       return NextResponse.json({ success: true, applied: true, syncRevision });
     }
 
-    // Nothing matched, which means either the row holds a revision at least as
-    // high as this one — a write that lost its race, and the interview already
-    // holds newer state — or there is no such interview at all. Only the second
-    // is a failure, so tell them apart rather than reporting success for a
-    // write that had nowhere to land.
+    // Nothing matched. Either the row holds a revision this write does not beat
+    // — one that lost its race, so the interview already holds newer state — or
+    // the jump was too large to be plausible, or there is no such interview at
+    // all. Only the last is a failure, so tell it apart rather than reporting
+    // success for a write that had nowhere to land.
     const current = await prisma.interview.findUnique({
       where: { id: interviewId },
       select: { syncRevision: true },
@@ -136,9 +158,9 @@ const routeHandler = async (
       );
     }
 
-    // Reporting the stored revision lets the client resume from it. Without
-    // that, a second tab — which seeded its counter when it loaded, and is
-    // therefore behind the tab that has been writing since — would have every
+    // Reporting the stored revision lets the client number its retry from it.
+    // Without that, a second tab — which seeded its counter when it loaded, and
+    // is therefore behind the tab that has been writing since — would have every
     // write it ever makes discarded, rather than the one that overtook another.
     return NextResponse.json({
       success: true,

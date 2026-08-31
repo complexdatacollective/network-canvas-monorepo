@@ -7,6 +7,10 @@ import { createInterviewSyncHandler } from '../createInterviewSyncHandler';
 const ORDINARY: SyncOptions = { immediate: false, unloading: false };
 const UNLOADING: SyncOptions = { immediate: true, unloading: true };
 
+// Mirrors the route's own window. Kept as a literal rather than imported so a
+// change to the route has to be reflected here deliberately.
+const MAX_REVISION_ADVANCE = 10_000;
+
 /**
  * Watch a write's outcome from the moment it is issued. Attaching later would
  * let a rejection surface as an unhandled one and fail the whole run.
@@ -37,9 +41,9 @@ type SyncBody = { network: SessionPayload['network']; syncRevision?: number };
 
 /**
  * The endpoint's own rule, so these tests measure what the participant's
- * answers end up as rather than what the handler happened to send. A body that
- * carries no revision, or revisions in the wrong order, is written straight
- * through here exactly as the real route would write it.
+ * answers end up as rather than what the handler happened to send. A write that
+ * does not beat the stored revision, or jumps implausibly far past it, is
+ * discarded exactly as the real route discards it.
  */
 function makeServer(initialRevision = 0) {
   const state = {
@@ -49,23 +53,36 @@ function makeServer(initialRevision = 0) {
   };
 
   const apply = (body: SyncBody) => {
+    const incoming = body.syncRevision;
     if (
-      body.syncRevision !== undefined &&
-      body.syncRevision <= state.revision
+      incoming === undefined ||
+      incoming <= state.revision ||
+      incoming - MAX_REVISION_ADVANCE > state.revision
     ) {
       return { success: true, applied: false, syncRevision: state.revision };
     }
     state.writes += 1;
     state.network = body.network;
-    if (body.syncRevision !== undefined) state.revision = body.syncRevision;
+    state.revision = incoming;
     return { success: true, applied: true, syncRevision: state.revision };
   };
 
   return { state, apply };
 }
 
-/** A fetch stub whose responses are released by the test, one at a time. */
-function makeFetch(apply: (body: SyncBody) => unknown) {
+/**
+ * A fetch stub whose responses are released by the test, one at a time.
+ *
+ * `honourAbort: false` delivers a response to a request the handler cancelled.
+ * That models what cancelling actually buys: the abort is an optimisation, and
+ * a server that has already started — or finished — the write answers anyway.
+ * Tests of what the handler does with a discarded response need it, because
+ * with the abort honoured that write rejects before it can read one.
+ */
+function makeFetch(
+  apply: (body: SyncBody) => unknown,
+  { honourAbort = true }: { honourAbort?: boolean } = {},
+) {
   const releases: (() => void)[] = [];
   const bodies: SyncBody[] = [];
 
@@ -75,9 +92,11 @@ function makeFetch(apply: (body: SyncBody) => unknown) {
       bodies.push(body);
 
       return new Promise((resolve, reject) => {
-        init.signal?.addEventListener('abort', () => {
-          reject(new DOMException('Aborted', 'AbortError'));
-        });
+        if (honourAbort) {
+          init.signal?.addEventListener('abort', () => {
+            reject(new DOMException('Aborted', 'AbortError'));
+          });
+        }
         releases.push(() => {
           const result = apply(body);
           resolve({
@@ -99,6 +118,22 @@ function makeFetch(apply: (body: SyncBody) => unknown) {
       release();
     },
   };
+}
+
+/** Responses that settle on their own, for tests not staging a race. */
+function makeAutoFetch(apply: (body: SyncBody) => unknown) {
+  const bodies: SyncBody[] = [];
+
+  const fetchMock = vi.fn((_url: string, init: { body: string }) => {
+    const body = JSON.parse(init.body) as SyncBody;
+    bodies.push(body);
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve(apply(body)),
+    });
+  });
+
+  return { fetchMock, bodies };
 }
 
 describe('createInterviewSyncHandler', () => {
@@ -161,11 +196,57 @@ describe('createInterviewSyncHandler', () => {
     await expect(ordinary).resolves.toBe('rejected');
   });
 
+  it('does not rewrite a snapshot a newer write of its own already superseded', async () => {
+    // The retry must never fire for a write this handler itself overtook:
+    // rewriting that snapshot is precisely the rollback the revision exists to
+    // prevent. Cancelling usually hides this case, so this test takes the
+    // cancel away — which is the situation the guard is for, since cancelling
+    // is an optimisation and the server answers a request it already handled.
+    const { state, apply } = makeServer();
+    const { fetchMock, bodies, release } = makeFetch(apply, {
+      honourAbort: false,
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const onSync = createInterviewSyncHandler({
+      interviewId: 'interview-1',
+      initialSyncRevision: 0,
+      getCurrentStep: () => 0,
+    });
+
+    const ordinary = settle(
+      onSync('interview-1', sessionWith('older'), ORDINARY),
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    const unloading = settle(
+      onSync('interview-1', sessionWith('newer'), UNLOADING),
+    );
+    await vi.advanceTimersByTimeAsync(0);
+
+    // The newer one commits; the older one is then told it was discarded.
+    release(1);
+    await vi.advanceTimersByTimeAsync(0);
+    release(0);
+    await vi.advanceTimersByTimeAsync(0);
+
+    // No third request: the discarded write was left alone, because a newer
+    // write of this handler's own already carries that state. Asserted before
+    // awaiting the writes, so a handler that does retry fails here rather than
+    // hanging on a request this test never releases.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(bodies.map((body) => body.syncRevision)).toEqual([1, 2]);
+    expect(state.network).toEqual(sessionWith('newer').network);
+    expect(state.writes).toBe(1);
+
+    await expect(ordinary).resolves.toBe('fulfilled');
+    await expect(unloading).resolves.toBe('fulfilled');
+  });
+
   it('numbers writes upwards from the revision the row already holds', async () => {
     // A reloaded tab starting again at one would have every write it made
     // treated as older than what is stored, and discarded.
     const { state, apply } = makeServer(41);
-    const { fetchMock, bodies, release } = makeFetch(apply);
+    const { fetchMock, bodies } = makeAutoFetch(apply);
     vi.stubGlobal('fetch', fetchMock);
 
     const onSync = createInterviewSyncHandler({
@@ -174,22 +255,20 @@ describe('createInterviewSyncHandler', () => {
       getCurrentStep: () => 0,
     });
 
-    const write = onSync('interview-1', sessionWith('resumed'), ORDINARY);
-    await vi.advanceTimersByTimeAsync(0);
-    release(0);
-    await write;
+    await onSync('interview-1', sessionWith('resumed'), ORDINARY);
 
     expect(bodies[0]?.syncRevision).toBe(42);
     expect(state.network).toEqual(sessionWith('resumed').network);
   });
 
-  it('resumes from the stored revision when another tab is ahead', async () => {
+  it('rewrites the snapshot when another tab moved the row, rather than reporting it saved', async () => {
     // A second tab seeds its counter when it loads, so the tab that has been
-    // writing since is ahead of it. Without resuming from what the row reports,
-    // every write this tab ever makes would be discarded — a guard against one
-    // stale write turned into permanent, silent data loss.
+    // writing since is ahead of it. Resolving the discarded write would mark
+    // the snapshot durable in the engine, which then stops offering it — if the
+    // participant answers nothing else, answers that never reached the server
+    // are recorded as saved.
     const { state, apply } = makeServer();
-    const { fetchMock, bodies, release } = makeFetch(apply);
+    const { fetchMock, bodies } = makeAutoFetch(apply);
     vi.stubGlobal('fetch', fetchMock);
 
     const onSync = createInterviewSyncHandler({
@@ -201,27 +280,24 @@ describe('createInterviewSyncHandler', () => {
     // The other tab has written several times since this one loaded.
     state.revision = 20;
 
-    const first = onSync('interview-1', sessionWith('mine'), ORDINARY);
-    await vi.advanceTimersByTimeAsync(0);
-    release(0);
-    await first;
+    await onSync('interview-1', sessionWith('mine'), ORDINARY);
 
-    expect(bodies[0]?.syncRevision).toBe(1);
-    expect(state.network).not.toEqual(sessionWith('mine').network);
-
-    // The next write must clear the number the row reported back.
-    const second = onSync('interview-1', sessionWith('mine again'), UNLOADING);
-    await vi.advanceTimersByTimeAsync(0);
-    release(1);
-    await second;
-
-    expect(bodies[1]?.syncRevision).toBe(21);
-    expect(state.network).toEqual(sessionWith('mine again').network);
+    // Discarded at 1, retried from what the row reported, and stored.
+    expect(bodies.map((body) => body.syncRevision)).toEqual([1, 21]);
+    expect(state.network).toEqual(sessionWith('mine').network);
   });
 
-  it('batches ordinary changes and writes the newest of them', async () => {
-    const { apply } = makeServer();
-    const { fetchMock, bodies, release } = makeFetch(apply);
+  it('reports a failure when the retry is overtaken too, instead of claiming the write landed', async () => {
+    // Two tabs moving the row faster than either can follow. Retrying further
+    // would be a write storm; the engine is told the state is not durable and
+    // offers it again on the next change.
+    const { state, apply } = makeServer();
+    const { fetchMock } = makeAutoFetch((body) => {
+      const result = apply(body);
+      // Something else advances the row between this write and its retry.
+      state.revision += 50;
+      return result;
+    });
     vi.stubGlobal('fetch', fetchMock);
 
     const onSync = createInterviewSyncHandler({
@@ -230,10 +306,48 @@ describe('createInterviewSyncHandler', () => {
       getCurrentStep: () => 0,
     });
 
-    const leading = onSync('interview-1', sessionWith('first'), ORDINARY);
-    await vi.advanceTimersByTimeAsync(0);
-    release(0);
-    await leading;
+    state.revision = 20;
+
+    await expect(
+      onSync('interview-1', sessionWith('mine'), ORDINARY),
+    ).rejects.toThrow(/superseded/);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('recovers when its counter has drifted past the endpoint’s advance window', async () => {
+    // Writes that never land still burn numbers, so a counter can end up far
+    // enough ahead of the row that the endpoint refuses the jump. The retry is
+    // numbered from the stored revision, which brings it back inside.
+    const { state, apply } = makeServer();
+    const { fetchMock, bodies } = makeAutoFetch(apply);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const drifted = MAX_REVISION_ADVANCE + 500;
+    const onSync = createInterviewSyncHandler({
+      interviewId: 'interview-1',
+      initialSyncRevision: drifted,
+      getCurrentStep: () => 0,
+    });
+
+    await onSync('interview-1', sessionWith('drifted'), ORDINARY);
+
+    expect(bodies.map((body) => body.syncRevision)).toEqual([drifted + 1, 1]);
+    expect(state.network).toEqual(sessionWith('drifted').network);
+    expect(state.revision).toBe(1);
+  });
+
+  it('batches ordinary changes and writes the newest of them', async () => {
+    const { apply } = makeServer();
+    const { fetchMock, bodies } = makeAutoFetch(apply);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const onSync = createInterviewSyncHandler({
+      interviewId: 'interview-1',
+      initialSyncRevision: 0,
+      getCurrentStep: () => 0,
+    });
+
+    await onSync('interview-1', sessionWith('first'), ORDINARY);
 
     // Inside the rate-limit window these are held, not written one for one.
     void onSync('interview-1', sessionWith('second'), ORDINARY);
@@ -249,7 +363,7 @@ describe('createInterviewSyncHandler', () => {
 
   it('refuses a sync for an interview it does not belong to', async () => {
     const { apply } = makeServer();
-    const { fetchMock } = makeFetch(apply);
+    const { fetchMock } = makeAutoFetch(apply);
     vi.stubGlobal('fetch', fetchMock);
 
     const onSync = createInterviewSyncHandler({

@@ -293,6 +293,22 @@ lib/
     required: an upgrade takes the deployment down, so no browser is left
     running a bundle that does not send one, and there is no shape of request
     that reaches the row without an order to be judged in.
+  - **A discarded write is not a saved one.** The route answers `applied: false`
+    with the revision the row holds. The engine treats a resolved sync as
+    durable and stops offering that state, so the handler may only resolve when
+    a write covering it actually landed. It resolves when one of its own newer
+    writes superseded this one — that write carries the same state, and
+    rewriting the older snapshot is the rollback being guarded against — and
+    otherwise rewrites once, numbered from the reported revision. Something that
+    is not this tab moved the row, which in practice means a second tab open on
+    the same interview. Overtaken again, it reports failure rather than claim a
+    durability it did not achieve.
+  - **The route bounds how far one write may advance the revision**
+    (`MAX_REVISION_ADVANCE`). The endpoint is unauthenticated, so without it a
+    single crafted request could park the row at the largest value the column
+    holds and every genuine browser afterwards would overflow it and fail. The
+    rewrite above is also what brings a counter that has drifted past the window
+    — numbers burnt by writes that never landed — back inside it.
 
 ## Conventions
 

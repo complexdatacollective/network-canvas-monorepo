@@ -100,12 +100,15 @@ function installInterviewRow(
       where,
       data,
     }: {
-      where: { id: string; syncRevision: { lt: number } };
+      where: { id: string; syncRevision: { lt: number; gte: number } };
       data: { syncRevision: number; network: unknown; currentStep: number };
     }) => {
       if (!row || where.id !== 'interview-1')
         return Promise.resolve({ count: 0 });
-      if (row.syncRevision >= where.syncRevision.lt) {
+      if (
+        row.syncRevision >= where.syncRevision.lt ||
+        row.syncRevision < where.syncRevision.gte
+      ) {
         return Promise.resolve({ count: 0 });
       }
       row.syncRevision = data.syncRevision;
@@ -134,7 +137,10 @@ describe('interview sync route', () => {
 
     expect(response.status).toBe(200);
     expect(updateManyMock).toHaveBeenCalledWith({
-      where: { id: 'interview-1', syncRevision: { lt: 1 } },
+      where: {
+        id: 'interview-1',
+        syncRevision: { lt: 1, gte: 1 - 10_000 },
+      },
       data: {
         network: {
           nodes: [
@@ -261,6 +267,31 @@ describe('interview sync route', () => {
       await expect(response.json()).resolves.toEqual({
         error: 'Interview not found',
       });
+    });
+
+    it('discards a revision that jumps implausibly far past the stored one', async () => {
+      // The endpoint is unauthenticated. Without a bound, one crafted request
+      // could park the row at the largest value the column holds; every genuine
+      // browser would then seed there, send one higher, overflow the column and
+      // fail — an interview nobody could sync again without repairing the
+      // database by hand.
+      const readRow = installInterviewRow({
+        syncRevision: 0,
+        network: networkNamed('initial'),
+      });
+
+      const response = await post(
+        makeRequest(networkNamed('hostile'), { syncRevision: 2_147_483_647 }),
+      );
+
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual({
+        success: true,
+        applied: false,
+        syncRevision: 0,
+      });
+      expect(readRow()?.network).toEqual(networkNamed('initial'));
+      expect(readRow()?.syncRevision).toBe(0);
     });
 
     it('refuses a write that carries no revision, rather than applying it unordered', async () => {
