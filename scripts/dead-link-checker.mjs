@@ -47,7 +47,10 @@
  * replaces it. Incomplete redirects and document loads remain verification
  * failures, and the entire sequence shares one request deadline so reload
  * loops cannot retain a worker indefinitely. Browser-only HTTP redirects obey
- * the same maximum-hop rule as Node redirects.
+ * the same maximum-hop rule as Node redirects. A browser navigation that
+ * becomes a download is the one exception to requiring a document load:
+ * Playwright rejects goto in that case, so the captured HTTP response verifies
+ * the non-HTML target without saving the file.
  *
  * Browser verification is not status suppression. Its final response is
  * authoritative: a browser-confirmed 403 (or any other >= 400 response) still
@@ -308,10 +311,31 @@ export class BrowserVerifier {
         throw error;
       };
 
-      const initialResponse = await page.goto(url, {
-        timeout: remainingTimeout(),
-        waitUntil: 'domcontentloaded',
-      });
+      let initialResponse;
+      try {
+        initialResponse = await page.goto(url, {
+          timeout: remainingTimeout(),
+          waitUntil: 'domcontentloaded',
+        });
+      } catch (error) {
+        const downloadResponse = mainFrameResponses.at(-1);
+        if (
+          !(error instanceof Error) ||
+          !error.message.includes('Download is starting') ||
+          !downloadResponse
+        ) {
+          throw error;
+        }
+
+        const contentType = downloadResponse.headers()['content-type'] ?? '';
+        return {
+          contentType,
+          finalUrl: downloadResponse.url(),
+          html: null,
+          redirects: browserRedirects(mainFrameResponses),
+          status: downloadResponse.status(),
+        };
+      }
       if (!initialResponse) {
         throw new Error(`Browser navigation returned no response for ${url}`);
       }
@@ -420,8 +444,13 @@ export class BrowserVerifier {
         // DOMContentLoaded. The load-state wait follows the new document, so
         // bind status and headers to the last terminal main-frame response
         // observed by then rather than the interstitial that began the wait.
-        navigation =
-          followupResponses().findLast(isTerminalNavigation) ?? navigation;
+        const loadedNavigation =
+          followupResponses().findLast(isTerminalNavigation);
+        if (loadedNavigation && loadedNavigation !== terminalResponse) {
+          terminalResponse = loadedNavigation;
+          continue;
+        }
+        navigation = loadedNavigation ?? navigation;
 
         const latestResponse = followupResponses().at(-1);
         if (latestResponse && !isTerminalNavigation(latestResponse)) {
@@ -434,6 +463,7 @@ export class BrowserVerifier {
         // DOMContentLoaded handlers and short timers may schedule one more
         // navigation. Require a bounded quiet interval, then repeat the
         // terminal-response and document-load checks for any new navigation.
+        const settleCommitStart = mainFrameCommitCount;
         const settleRequestStart = mainFrameRequests.length;
         const settleStart = mainFrameResponses.length;
         await page.waitForTimeout(
@@ -445,9 +475,29 @@ export class BrowserVerifier {
             `Browser navigation failed: ${unrecoveredNavigationFailure}`,
           );
         }
+        const responsesAreQuiet = mainFrameResponses.length === settleStart;
+        const requestsAreQuiet =
+          mainFrameRequests.length === settleRequestStart;
+        const commitsAreQuiet = mainFrameCommitCount === settleCommitStart;
         if (
-          mainFrameResponses.length === settleStart &&
-          mainFrameRequests.length === settleRequestStart &&
+          responsesAreQuiet &&
+          requestsAreQuiet &&
+          outstandingMainFrameRequests.size === 0 &&
+          !commitsAreQuiet
+        ) {
+          const finalUrl = page.url();
+          if (!/^https?:\/\//i.test(finalUrl)) {
+            throw new Error(
+              `Browser navigation committed without an HTTP response: ${finalUrl}`,
+            );
+          }
+          terminalResponse = navigation;
+          continue;
+        }
+        if (
+          responsesAreQuiet &&
+          requestsAreQuiet &&
+          commitsAreQuiet &&
           outstandingMainFrameRequests.size === 0
         ) {
           break;

@@ -631,6 +631,168 @@ test('browser verification binds document loading to the selected navigation', a
   }
 });
 
+test('browser verification rechecks a terminal response observed during document load', async () => {
+  const frame = {};
+  const navigationRequest = { isNavigationRequest: () => true };
+  const response = (status) => ({
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => status,
+  });
+  const initial = response(403);
+  const interstitial = response(200);
+  const final = response(404);
+  let loadCount = 0;
+  let responseListener;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => 'https://publisher.test/stalled-final-document',
+    waitForLoadState: async () => {
+      if (loadCount++ === 0) {
+        responseListener(final);
+        return;
+      }
+      throw Object.assign(new Error('final document load timed out'), {
+        name: 'TimeoutError',
+      });
+    },
+    waitForResponse: async (predicate) => {
+      responseListener(interstitial);
+      assert.equal(predicate(interstitial), true);
+      return interstitial;
+    },
+    waitForTimeout: async () => {},
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    await assert.rejects(
+      verifier.verify('https://publisher.test/challenge', 50),
+      /final document load timed out/,
+    );
+  } finally {
+    await verifier.close();
+  }
+});
+
+test('browser verification accepts a successful download response', async () => {
+  const frame = {};
+  const navigationRequest = { isNavigationRequest: () => true };
+  const downloadResponse = {
+    frame: () => frame,
+    headers: () => ({
+      'content-disposition': 'attachment; filename="report.pdf"',
+      'content-type': 'application/pdf',
+    }),
+    request: () => navigationRequest,
+    status: () => 200,
+    url: () => 'https://publisher.test/report.pdf',
+  };
+  let responseListener;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(downloadResponse);
+      throw new Error('page.goto: Download is starting');
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => 'about:blank',
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    const outcome = await verifier.verify(
+      'https://publisher.test/report.pdf',
+      50,
+      { captureHTML: true },
+    );
+    assert.deepEqual(outcome, {
+      contentType: 'application/pdf',
+      finalUrl: 'https://publisher.test/report.pdf',
+      html: null,
+      redirects: [],
+      status: 200,
+    });
+  } finally {
+    await verifier.close();
+  }
+});
+
+test('browser verification rejects a response-free non-HTTP commit', async () => {
+  const frame = {};
+  const navigationRequest = { isNavigationRequest: () => true };
+  const initial = {
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => 200,
+  };
+  let finalUrl = 'https://publisher.test/interstitial';
+  let frameNavigatedListener;
+  let responseListener;
+  let settleCount = 0;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'framenavigated') frameNavigatedListener = listener;
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => finalUrl,
+    waitForLoadState: async () => {},
+    waitForTimeout: async () => {
+      if (settleCount++ === 0) {
+        finalUrl = 'about:blank';
+        frameNavigatedListener(frame);
+      }
+    },
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    await assert.rejects(
+      verifier.verify('https://publisher.test/tls-recovery', 50),
+      /without an HTTP response.*about:blank/,
+    );
+  } finally {
+    await verifier.close();
+  }
+});
+
 test('browser verification reports the response for the document that finishes loading', async () => {
   const frame = {};
   const navigationRequest = { isNavigationRequest: () => true };
