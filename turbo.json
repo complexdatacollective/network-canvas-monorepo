@@ -327,13 +327,22 @@
     },
     "//#lint": {
       // This task is the whole lint gate, so its inputs must cover every
-      // extension oxfmt checks as well as every extension oxlint reads, plus
-      // the two ignore files both tools consult. An under-declared glob here
-      // means a cache hit that silently skips the check for that file type.
+      // extension oxfmt checks, every extension oxlint reads, and every file
+      // that changes which paths either tool visits. An under-declared glob
+      // here means a cache hit that silently skips a check.
+      //
+      // Ignore files are the subtle half. On a whole-tree run oxlint honours
+      // nested `.gitignore` AND nested `.eslintignore` (verified by planting a
+      // violation and watching each file suppress it), so both need recursive
+      // globs — an ignore-only edit must invalidate the cache. oxfmt reads
+      // `.gitignore` and `.prettierignore` from the current directory only, so
+      // `.prettierignore` stays root-scoped. Nested `.oxlintrc.json` configs
+      // are already covered by the json glob above.
       "inputs": [
         "**/*.{cjs,cts,js,jsx,mjs,mts,ts,tsx,vue}",
         "**/*.{astro,css,gql,graphql,html,json,jsonc,less,md,mdx,scss,svelte,toml,yaml,yml}",
-        ".gitignore",
+        "**/.gitignore",
+        "**/.eslintignore",
         ".prettierignore",
         "!**/dist/**",
         "!**/out/**",
