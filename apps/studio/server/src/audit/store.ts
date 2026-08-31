@@ -30,6 +30,52 @@ export type AuditEvent = AuditEventInput & {
   occurredAt: Date;
 };
 
+// A stored row read back without registry validation. Reads must tolerate a
+// (event_type, event_version) pair this build does not register — a row
+// appended by a newer server — so interpretation belongs to the renderer,
+// which falls back to a safe generic presentation for unknown pairs.
+export type StoredAuditEvent = {
+  id: string;
+  teamId: string;
+  teamLabel: string;
+  sequence: string;
+  occurredAt: Date;
+  eventType: string;
+  eventVersion: number;
+  category: string;
+  outcome: string;
+  actorKind: string;
+  actorId: string | null;
+  actorLabel: string;
+  subjectType: string | null;
+  subjectId: string | null;
+  subjectLabel: string | null;
+  resourceType: string | null;
+  resourceId: string | null;
+  resourceLabel: string | null;
+  requestId: string;
+  details: Record<string, unknown>;
+};
+
+export type AuditListFilters = {
+  categories?: readonly string[];
+  eventTypes?: readonly string[];
+  actorId?: string;
+  outcomes?: readonly string[];
+  occurredFrom?: Date;
+  occurredTo?: Date;
+};
+
+const STORED_EVENT_COLUMNS = `
+  id, team_id AS "teamId", team_label AS "teamLabel", sequence::text AS sequence,
+  occurred_at AS "occurredAt", event_type AS "eventType",
+  event_version AS "eventVersion", category, outcome,
+  actor_kind AS "actorKind", actor_id AS "actorId",
+  actor_label AS "actorLabel", subject_type AS "subjectType",
+  subject_id AS "subjectId", subject_label AS "subjectLabel",
+  resource_type AS "resourceType", resource_id AS "resourceId",
+  resource_label AS "resourceLabel", request_id AS "requestId", details`;
+
 type AuditEventRow = {
   id: string;
   teamId: string;
@@ -61,6 +107,10 @@ function storedEvent(row: AuditEventRow): AuditEvent {
     sequence,
     occurredAt,
   };
+}
+
+export function clampAuditListLimit(limit?: number): number {
+  return Math.min(Math.max(limit ?? 50, 1), 100);
 }
 
 export class AuditStore {
@@ -128,26 +178,61 @@ export class AuditStore {
   async listForTeam(
     client: pg.PoolClient,
     teamId: string,
-    options: { beforeSequence?: string; limit?: number } = {},
-  ): Promise<AuditEvent[]> {
-    const limit = Math.min(Math.max(options.limit ?? 50, 1), 100);
-    const rows = await client.query<AuditEventRow>(
-      `SELECT
-         id, team_id AS "teamId", team_label AS "teamLabel", sequence::text AS sequence,
-         occurred_at AS "occurredAt", event_type AS "eventType",
-         event_version AS "eventVersion", category, outcome,
-         actor_kind AS "actorKind", actor_id AS "actorId",
-         actor_label AS "actorLabel", subject_type AS "subjectType",
-         subject_id AS "subjectId", subject_label AS "subjectLabel",
-         resource_type AS "resourceType", resource_id AS "resourceId",
-         resource_label AS "resourceLabel", request_id AS "requestId", details
+    options: {
+      beforeSequence?: string;
+      limit?: number;
+    } & AuditListFilters = {},
+  ): Promise<StoredAuditEvent[]> {
+    const limit = clampAuditListLimit(options.limit);
+    const params: unknown[] = [teamId, options.beforeSequence ?? null];
+    const clauses: string[] = [];
+    const where = (value: unknown, clause: (param: string) => string) => {
+      params.push(value);
+      clauses.push(`AND ${clause(`$${params.length}`)}`);
+    };
+    if (options.categories?.length) {
+      where(options.categories, (p) => `category = ANY(${p})`);
+    }
+    if (options.eventTypes?.length) {
+      where(options.eventTypes, (p) => `event_type = ANY(${p})`);
+    }
+    if (options.actorId !== undefined) {
+      where(options.actorId, (p) => `actor_id = ${p}`);
+    }
+    if (options.outcomes?.length) {
+      where(options.outcomes, (p) => `outcome = ANY(${p})`);
+    }
+    if (options.occurredFrom) {
+      where(options.occurredFrom, (p) => `occurred_at >= ${p}`);
+    }
+    if (options.occurredTo) {
+      where(options.occurredTo, (p) => `occurred_at <= ${p}`);
+    }
+    params.push(limit);
+    const rows = await client.query<StoredAuditEvent>(
+      `SELECT ${STORED_EVENT_COLUMNS}
        FROM audit_events
        WHERE team_id = $1
          AND ($2::bigint IS NULL OR sequence < $2::bigint)
+         ${clauses.join('\n         ')}
        ORDER BY sequence DESC
-       LIMIT $3`,
-      [teamId, options.beforeSequence ?? null, limit],
+       LIMIT $${params.length}`,
+      params,
     );
-    return rows.rows.map(storedEvent);
+    return rows.rows;
+  }
+
+  async getForTeam(
+    client: pg.PoolClient,
+    teamId: string,
+    eventId: string,
+  ): Promise<StoredAuditEvent | null> {
+    const rows = await client.query<StoredAuditEvent>(
+      `SELECT ${STORED_EVENT_COLUMNS}
+       FROM audit_events
+       WHERE team_id = $1 AND id = $2::uuid`,
+      [teamId, eventId],
+    );
+    return rows.rows[0] ?? null;
   }
 }

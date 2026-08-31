@@ -18,6 +18,7 @@ void invalidCrossProductKey;
 describe('audit event registry', () => {
   it('has a complete valid definition and fixture for every event type', () => {
     expect(Object.keys(AUDIT_EVENT_REGISTRY).toSorted()).toEqual([
+      'audit.read_denied@1',
       'protocol.created@1',
       'protocol.draft.committed@1',
       'security.denied_attempts.rate_limited@1',
