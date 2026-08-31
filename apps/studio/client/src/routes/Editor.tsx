@@ -680,6 +680,18 @@ function StageForm(props: {
   const { fields } = controller.snapshot.editedSection;
   const readOnly = controller.snapshot.access.mode === 'readOnly';
   const hasTitle = typeof fields.title === 'string';
+  const label = typeof fields.label === 'string' ? fields.label : '';
+  const title = typeof fields.title === 'string' ? fields.title : '';
+  const [baseline, setBaseline] = useState({ label, title });
+
+  useEffect(() => {
+    if (controller.snapshot.pendingCommands.length !== 0) return;
+    setBaseline((current) =>
+      current.label === label && current.title === title
+        ? current
+        : { label, title },
+    );
+  }, [controller.snapshot.pendingCommands.length, label, title]);
 
   return (
     <>
@@ -697,12 +709,14 @@ function StageForm(props: {
       <Form
         className="mt-6"
         onSubmit={async (values) => {
-          const label = typeof values.label === 'string' ? values.label : '';
-          const title = typeof values.title === 'string' ? values.title : '';
+          const submittedLabel =
+            typeof values.label === 'string' ? values.label : '';
+          const submittedTitle =
+            typeof values.title === 'string' ? values.title : '';
           controller.changeFields({
             ...fields,
-            label,
-            ...(hasTitle ? { title } : {}),
+            label: submittedLabel,
+            ...(hasTitle ? { title: submittedTitle } : {}),
           });
           try {
             await props.save();
@@ -718,7 +732,11 @@ function StageForm(props: {
         }}
       >
         <StageFormDirtyObserver onDirtyChange={props.onDirtyChange} />
-        <StageFormFields fields={fields} readOnly={readOnly} />
+        <StageFormFields
+          fields={fields}
+          baseline={baseline}
+          readOnly={readOnly}
+        />
         <SubmitButton disabled={readOnly}>Save screen</SubmitButton>
       </Form>
     </>
@@ -740,6 +758,7 @@ function StageFormDirtyObserver(props: {
 
 function StageFormFields(props: {
   fields: Readonly<Record<string, unknown>>;
+  baseline: Readonly<{ label: string; title: string }>;
   readOnly: boolean;
 }) {
   const label =
@@ -764,7 +783,7 @@ function StageFormFields(props: {
         name="label"
         label="Screen name"
         component={InputField}
-        initialValue={label}
+        initialValue={props.baseline.label}
         required
         disabled={props.readOnly}
       />
@@ -773,7 +792,7 @@ function StageFormFields(props: {
           name="title"
           label="Page heading"
           component={InputField}
-          initialValue={title}
+          initialValue={props.baseline.title}
           required
           disabled={props.readOnly}
         />
