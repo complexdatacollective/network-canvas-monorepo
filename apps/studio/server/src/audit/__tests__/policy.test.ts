@@ -392,6 +392,7 @@ describe('audit mutation policy', () => {
     });
 
     expect(importers.map((file) => relative(REPO_ROOT, file))).toEqual([
+      'apps/studio/server/src/protocol/commands.ts',
       'apps/studio/server/src/team/commands.ts',
     ]);
   });
