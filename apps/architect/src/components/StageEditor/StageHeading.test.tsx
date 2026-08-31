@@ -51,6 +51,10 @@ describe('HeadingInput', () => {
     expect(input).toBeRequired();
     expect(input).toHaveAttribute('aria-invalid', 'true');
     expect(input).toHaveAttribute('maxlength', '50');
+    // The control wraps but holds one line, and Enter never adds another —
+    // a textarea's default multiline semantics would describe a keystroke
+    // this field does not offer.
+    expect(input).toHaveAttribute('aria-multiline', 'false');
 
     fireEvent.change(input, { target: { value: 'A new name' } });
     expect(onChange).toHaveBeenCalledWith('A new name');
@@ -107,11 +111,14 @@ describe('HeadingInput', () => {
 
   it('submits the form on Enter rather than typing a line break into the name', () => {
     const onSubmit = vi.fn((event: FormEvent) => event.preventDefault());
+    const onSubmitButtonClick = vi.fn();
 
     render(
       <form onSubmit={onSubmit}>
         <HeadingInput name="label" value="Close ties" />
-        <button type="submit">Finished Editing</button>
+        <button type="submit" onClick={onSubmitButtonClick}>
+          Finished Editing
+        </button>
       </form>,
     );
 
@@ -123,6 +130,33 @@ describe('HeadingInput', () => {
     // line to a value that is meant to be one line.
     expect(enter.defaultPrevented).toBe(true);
     expect(onSubmit).toHaveBeenCalledTimes(1);
+    // Implicit submission clicks the default button, and the real one carries
+    // an `onClick` that reopens the Issues panel on a repeat failed attempt.
+    // Submitting the form directly would leave that panel shut.
+    expect(onSubmitButtonClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves Enter to the IME while a name is still being composed', () => {
+    const onSubmit = vi.fn((event: FormEvent) => event.preventDefault());
+
+    render(
+      <form onSubmit={onSubmit}>
+        <HeadingInput name="label" value="\u9023\u7d61" />
+        <button type="submit">Finished Editing</button>
+      </form>,
+    );
+
+    const control = screen.getByRole('textbox');
+    const enter = createEvent.keyDown(control, {
+      key: 'Enter',
+      isComposing: true,
+    });
+    fireEvent(control, enter);
+
+    // This Enter commits the candidate the researcher is choosing. Taking it
+    // would submit a half-composed name and navigate away from the editor.
+    expect(enter.defaultPrevented).toBe(false);
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it.each([

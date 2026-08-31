@@ -103,25 +103,28 @@ export const HeadingInput = ({
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key !== 'Enter') {
+    // An IME sends Enter to commit the candidate the researcher is choosing.
+    // Intercepting it would submit a name that is still being composed.
+    if (event.nativeEvent.isComposing || event.key !== 'Enter') {
       return;
     }
 
     // A textarea would insert a line break here. The `<input>` this replaces
     // performed the form's implicit submission instead, so that is what Enter
-    // still does — including doing nothing when the form has no enabled submit
-    // button (the stage editor only renders one once there are unsaved
-    // changes), which is also what the browser does.
+    // still does.
     event.preventDefault();
 
+    // Implicit submission CLICKS the default button rather than submitting the
+    // form behind it, and that distinction is load-bearing here: "Finished
+    // Editing" carries an `onClick` that reopens the Issues panel on a repeat
+    // failed attempt, when neither `submitFailed` nor the error set changes and
+    // the auto-open effect therefore does not re-fire. `requestSubmit()` would
+    // skip it. A click also inherits the browser's own handling of the cases
+    // with nothing to press: no default button (the stage editor renders one
+    // only once there are unsaved changes) and a disabled one both do nothing.
     const form = event.currentTarget.form;
-    if (!form) {
-      return;
-    }
-
-    const defaultButton = findDefaultSubmitButton(form);
-    if (defaultButton && !defaultButton.disabled) {
-      form.requestSubmit(defaultButton);
+    if (form) {
+      findDefaultSubmitButton(form)?.click();
     }
   };
 
@@ -160,6 +163,10 @@ export const HeadingInput = ({
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
         rows={1}
+        // The control wraps, but the value it holds is one line and Enter
+        // never adds another. Without this a screen reader announces a
+        // multiline textbox, describing an Enter that does not exist.
+        aria-multiline={false}
         placeholder={placeholder}
         maxLength={characterLimit}
         // biome-ignore lint/a11y/noAutofocus: stage name is the primary action in this hero
