@@ -148,7 +148,11 @@ their previous version ids are recorded in the event's details), which then
 point at nothing until re-pinned.
 
 Rebinding a live wave to a newer published version is a first-class audited
-command (`study.wave.rebound@1`), never a side effect of publishing.
+command (`study.wave.rebound@1`), never a side effect of publishing — and it
+affects **only sessions started afterwards**: every session captures the
+wave's pinned version at its own creation (§8), so an in-flight interview
+never changes definition mid-stream and completed data always knows exactly
+which version produced it.
 
 ### D3 — Lifecycle representation and enforcement
 
@@ -234,25 +238,36 @@ retention rules in #1270", but #1270 contains no retention rules (it defines
 participant data-rights operations), so the deletion mechanics here are
 decided by this document, not inherited.
 
-The grace window is a `deletion_requested_at` marker: an audited
-`requestStudyDeletion` command sets it (recording who, and the effective
-purge date), an audited `cancelStudyDeletion` clears it — "recoverable during
-grace" falls out for free. While the marker is set, `goLive` and
-`reopenStudy` refuse
+The grace window is a `deletion_requested_at` marker plus a **persisted
+deadline**: an audited `requestStudyDeletion` command sets the marker and
+computes `purge_after` from the grace window in force at request time —
+atomically, so the deadline the event records, the deadline the UI shows,
+and the deadline the purge honours are the same value, and a later change to
+the server's grace configuration never moves an existing request's deadline
+in either direction. An audited `cancelStudyDeletion` clears both —
+"recoverable during grace" falls out for free. A repeat request while the
+marker is set returns `unchanged`: it never resets the deadline or emits a
+second event. While the marker is set, `goLive` and `reopenStudy` refuse
 with a typed conflict ("cancel the deletion first"): a study scheduled for
 destruction can never be collecting data when the purge arrives. After the
-configured window, a background job running as the maintenance role purges
-for real, the same operational pattern as protocol garbage collection and
-invitation delivery — with a belt-and-braces state check (`state IN
-('draft', 'closed')`) in the purge query itself.
+deadline, a background job running as the maintenance role purges for real,
+the same operational pattern as protocol garbage collection and invitation
+delivery — locking the study row and re-validating marker, deadline, and
+`state IN ('draft', 'closed')` inside the purge transaction itself (§5.5),
+so a cancellation that lands after the candidate scan still wins.
 
 The purge is itself audited. It runs per study in one transaction under an
 explicit per-team tenant scope — exactly the state in which the maintenance
 role can insert audit events (audit design §5.3) — and appends
 `study.deletion.purged@1` with a **system actor** (`actor_kind: 'system'`),
 bounded details (study id, the deletion request's evidence, per-table row
-counts), in that same transaction; a purge failure appends a bounded failed
-event referencing the request. This requires the system authorization-context
+counts), in that same transaction. The domain deletes run behind a savepoint
+(the audit design's §7.3 synchronous-failure pattern, already implemented by
+`runAuditedCommandWork`): a failed purge rolls the deletes back to the
+savepoint and appends the `failed`-outcome event in the still-open outer
+transaction, so the failure record survives the rollback; if that append
+itself fails, the whole transaction rolls back and an operational signal is
+emitted. This requires the system authorization-context
 variant the audit design already mandates for its own staged-export worker
 (audit design §8.1) — extending the audit writer beyond user principals is
 part of the deletion slice, not new policy. An operational log alone would
@@ -296,8 +311,10 @@ The preparation is structural: every study command makes its permission
 check in exactly one place — a single predicate helper in
 `study/commands.ts` — so #1257 later swaps the predicate without hunting
 through plumbing. Version 1 predicates: any team member may read and create
-studies and edit Draft configuration; lifecycle transitions and deletion
-require owner/admin.
+studies and edit **Draft** configuration; configuration changes on a live or
+paused study (which alter active delivery behavior), lifecycle transitions,
+and deletion require owner/admin. The predicate is state-dependent so the
+Draft-only boundary cannot be widened by accident in the command table.
 
 Two consequences of v1 are recorded as known debt for the #1257 cutover
 rather than discovered then. Under #1257's visibility model a workspace
@@ -353,8 +370,9 @@ audit revocations; anywhere before the audit sidecar satisfies it.
 | `protocol_id`           | `uuid`        | Nullable while Draft; composite FK `(protocol_id, team_id)` → `protocols`                                             |
 | `settings`              | `jsonb`       | Required, default `{}`; Zod-validated delivery settings (D9)                                                          |
 | `deletion_requested_at` | `timestamptz` | Nullable soft-delete marker (D6)                                                                                      |
+| `purge_after`           | `timestamptz` | Nullable; the persisted deletion deadline, set/cleared atomically with the marker (D6)                                |
 | `went_live_at`          | `timestamptz` | Nullable evidence of the first go-live; never a state substitute                                                      |
-| `paused_at`             | `timestamptz` | Nullable; set by `pauseStudy`, cleared by `resumeStudy`; the grace-window anchor                                      |
+| `paused_at`             | `timestamptz` | Nullable; set by `pauseStudy`, cleared by `resumeStudy` and `closeStudy`; the grace-window anchor                     |
 | `closed_at`             | `timestamptz` | Nullable evidence of the most recent close; cleared by `reopenStudy`                                                  |
 | `created_at`            | `timestamptz` | Required, default now                                                                                                 |
 | `updated_at`            | `timestamptz` | Required, default now                                                                                                 |
@@ -368,8 +386,13 @@ Constraints and indexes:
 
 - `unique(id, team_id)` so children can composite-FK to the study;
 - `index(team_id)` team-first, matching `protocols`;
+- a **partial index** on `purge_after` (`WHERE deletion_requested_at IS NOT
+NULL`) for the maintenance purge scan — the only cross-team query in the
+  domain, which the team-first index cannot serve;
 - `CHECK` constraints on `state`, `participation_mode`, `wave_progression`,
-  `pause_grace_minutes >= 0`, and the nonblank name;
+  `pause_grace_minutes >= 0`, the nonblank name, and marker/deadline
+  consistency (`deletion_requested_at` and `purge_after` are both null or
+  both set);
 - `teamIsolationPolicy()` and membership in the sidecar's
   `tenantTablesSql([...])` call (forced RLS plus role grants).
 
@@ -382,7 +405,7 @@ timestamp); the close history lives in the audit log.
 
 | Column                | Type          | Contract                                                                                    |
 | --------------------- | ------------- | ------------------------------------------------------------------------------------------- |
-| `id`                  | `uuid`        | Server-generated primary key                                                                |
+| `id`                  | `uuid`        | Client-minted, server-validated primary key (idempotent creation, §6)                       |
 | `study_id`            | `uuid`        | Required; composite FK `(study_id, team_id)` → `studies (id, team_id)`                      |
 | `team_id`             | `text`        | Required tenant key                                                                         |
 | `wave_number`         | `integer`     | Required, `>= 1`; `unique(study_id, wave_number)`                                           |
@@ -404,7 +427,10 @@ migration.
 
 Study creation inserts wave 1 in the same transaction (D1). Waves are added
 and removed by Draft-only commands (§5.2): `createWave` appends the next
-`wave_number`, and `deleteWave` removes only the highest-numbered wave and
+`wave_number` (up to a domain maximum of 50 waves per study — far beyond any
+real longitudinal design, and what keeps `StudyDetail` and the retarget
+event's cleared-pin list bounded), and `deleteWave` removes only the
+highest-numbered wave and
 never wave 1, keeping numbering dense without renumbering history. Wave
 identity (`wave_number`, `study_id`, `team_id`) is immutable at the database
 level (§4.3) — sessions will attach to waves, and a renumbered wave would
@@ -417,24 +443,33 @@ silently reattribute data.
 
 - a `BEFORE UPDATE` trigger on `studies` that, when `OLD.state = 'closed'`,
   raises `closed studies are read-only` unless the update is confined to an
-  **allowed column set** — `state`, `deletion_requested_at`, `closed_at`,
-  `updated_at` — the columns the reopen and deletion commands legitimately
-  touch. The comparison is deny-by-default (compare `to_jsonb(OLD)` and
-  `to_jsonb(NEW)` with the allowed keys removed), so a column added to
-  `studies` later fails closed instead of silently becoming writable on
-  closed studies;
+  **allowed column set** — `state`, `deletion_requested_at`, `purge_after`,
+  `closed_at`, `updated_at` — the columns the reopen and deletion commands
+  legitimately touch. The comparison is deny-by-default (compare
+  `to_jsonb(OLD)` and `to_jsonb(NEW)` with the allowed keys removed), so a
+  column added to `studies` later fails closed instead of silently becoming
+  writable on closed studies. The `state` column being in the allowed set is
+  not a free exit: the trigger additionally constrains the shape of leaving
+  `closed` — the only permitted new state is `live` with `closed_at` cleared
+  in the same update, the exact write `reopenStudy` makes. Anything else
+  (closed → draft, closed → paused, or leaving with `closed_at` still set)
+  raises. Preconditions, authorization, and the audit event remain the
+  command layer's job — the trigger is a backstop against buggy writes, not
+  a substitute for `reopenStudy`;
 - a `BEFORE UPDATE` trigger on `study_waves` refusing any change to
   `wave_number`, `study_id`, or `team_id` (wave identity, §4.2); and
 - a `BEFORE INSERT OR UPDATE OR DELETE` trigger on `study_waves` that raises
   `closed studies are read-only` when the parent study's state is `closed` —
-  **except for the maintenance role** (`current_user =
-'studio_maintenance'`), which is how the purge job (§5.5) deletes the
-  waves of a closed study. The exemption mirrors the maintenance clause the
-  RLS policies already carry; triggers otherwise apply to every role. A
-  pleasant consequence worth preserving: because the `studies` trigger
-  guards only `UPDATE`, it is this wave trigger plus the no-cascade FK that
-  makes a closed study undeletable by the application role at the database
-  level.
+  except that a **`DELETE` by the maintenance role** (`current_user =
+'studio_maintenance'`) is admitted, which is how the purge job (§5.5)
+  deletes the waves of a closed study. The exemption is scoped to `DELETE`
+  because the purge only ever deletes: a maintenance `INSERT` or `UPDATE`
+  under a closed study stays blocked like any other role's. The exemption
+  mirrors the maintenance clause the RLS policies already carry; triggers
+  otherwise apply to every role. A pleasant consequence worth preserving:
+  because the `studies` trigger guards only `UPDATE`, it is this wave
+  trigger plus the no-cascade FK that makes a closed study undeletable by
+  the application role at the database level.
 
 Like the `protocol_versions` triggers, these are the database-level backstop
 for promises the command layer already enforces; the command layer remains
@@ -483,21 +518,21 @@ Every command locks the caller's membership row inside the transaction
 predicate for its operation, validates the transition map where applicable,
 performs the write through the store, and returns its typed events.
 
-| Command                | Allowed states      | Predicate   | Notes                                                                                                                                                                 |
-| ---------------------- | ------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `createStudy`          | —                   | member      | Inserts the study (Draft) and wave 1 atomically; client-minted id makes retries idempotent (§6)                                                                       |
-| `updateStudySettings`  | draft, live, paused | member      | Name, settings blob, grace window always; `protocol_id` (retarget, clears pins), `participation_mode`, `wave_progression` only while Draft; no-op returns `unchanged` |
-| `createWave`           | draft               | member      | Appends the next `wave_number`, optional name; refused for anonymous studies (D5)                                                                                     |
-| `updateWave`           | draft, live, paused | member      | Display name only in v1; #1267 extends with windows                                                                                                                   |
-| `deleteWave`           | draft               | member      | Highest-numbered wave only, never wave 1 (§4.2)                                                                                                                       |
-| `rebindWave`           | draft, live, paused | owner/admin | Pins a wave to a published version of the study's protocol line (D2)                                                                                                  |
-| `goLive`               | draft               | owner/admin | Preconditions in §5.3; refused while `deletion_requested_at` is set                                                                                                   |
-| `reopenStudy`          | closed              | owner/admin | Shares §5.3's precondition helper; clears `closed_at`; refused while `deletion_requested_at` is set; emits its own event                                              |
-| `pauseStudy`           | live                | owner/admin | Sets `paused_at`                                                                                                                                                      |
-| `resumeStudy`          | paused              | owner/admin | Clears `paused_at`                                                                                                                                                    |
-| `closeStudy`           | live, paused        | owner/admin | Sets `closed_at`                                                                                                                                                      |
-| `requestStudyDeletion` | draft, closed       | owner/admin | Sets `deletion_requested_at`; event records the effective purge date                                                                                                  |
-| `cancelStudyDeletion`  | any with marker set | owner/admin | Clears the marker                                                                                                                                                     |
+| Command                | Allowed states      | Predicate                                  | Notes                                                                                                                                                            |
+| ---------------------- | ------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createStudy`          | —                   | member                                     | Inserts the study (Draft) and wave 1 atomically; client-minted id makes retries idempotent (§6)                                                                  |
+| `updateStudySettings`  | draft, live, paused | member (draft); owner/admin (live, paused) | Name, settings blob, grace window; `protocol_id` (retarget, clears pins), `participation_mode`, `wave_progression` only while Draft; no-op returns `unchanged`   |
+| `createWave`           | draft               | member                                     | Appends the next `wave_number`, optional name; client-minted wave id (replay returns `unchanged`); refused for anonymous studies (D5) and beyond the 50-wave cap |
+| `updateWave`           | draft, live, paused | member (draft); owner/admin (live, paused) | Display name only in v1; #1267 extends with windows                                                                                                              |
+| `deleteWave`           | draft               | member                                     | Highest-numbered wave only, never wave 1 (§4.2)                                                                                                                  |
+| `rebindWave`           | draft, live, paused | owner/admin                                | Pins a wave to a published version of the study's protocol line (D2)                                                                                             |
+| `goLive`               | draft               | owner/admin                                | Preconditions in §5.3; refused while `deletion_requested_at` is set                                                                                              |
+| `reopenStudy`          | closed              | owner/admin                                | Shares §5.3's precondition helper; clears `closed_at` and `paused_at`; refused while `deletion_requested_at` is set; emits its own event                         |
+| `pauseStudy`           | live                | owner/admin                                | Sets `paused_at`                                                                                                                                                 |
+| `resumeStudy`          | paused              | owner/admin                                | Clears `paused_at`                                                                                                                                               |
+| `closeStudy`           | live, paused        | owner/admin                                | Sets `closed_at`; clears `paused_at`                                                                                                                             |
+| `requestStudyDeletion` | draft, closed       | owner/admin                                | Sets `deletion_requested_at` and `purge_after` atomically; a repeat request while the marker is set returns `unchanged` (D6)                                     |
+| `cancelStudyDeletion`  | any with marker set | owner/admin                                | Clears the marker and `purge_after`                                                                                                                              |
 
 Reads (`getStudy`, `listStudies`) go through the store under the tenant
 scope, are added to the reads exclusion set in the audit policy test, and
@@ -559,8 +594,9 @@ New version-1 event schemas under the existing `'study'` category (the
 - `study.deletion.cancelled@1`
 - `study.deletion.purged@1` — **system actor** (D6): appended by the purge
   job in its per-team transaction, with the study id, request evidence, and
-  per-table row counts; its `failed` outcome records a purge attempt that
-  rolled back
+  per-table row counts; its `failed` outcome records a purge attempt whose
+  domain deletes rolled back to the savepoint — the event itself commits in
+  the still-open outer transaction (D6), so a failed purge is never silent
 - denial variants for the elevated commands (§5.2):
   `study.go_live_denied@1`, `study.reopen_denied@1`, `study.close_denied@1`,
   `study.deletion.request_denied@1`
@@ -578,16 +614,22 @@ set. The registry's exhaustiveness tests enforce all of this.
 ### 5.5 The purge job
 
 A background job on the maintenance pool (the pattern of protocol GC and
-invitation delivery) scans for studies whose `deletion_requested_at` plus the
-configured deletion grace window has passed **and** whose `state` is `draft`
-or `closed` (belt-and-braces under D6's go-live refusal), and deletes
-bottom-up per team: sessions → participants → waves → study, as those tables
-exist. Each study's purge runs in one transaction under an explicit per-team
-tenant scope and appends `study.deletion.purged@1` with a system actor in
-that same transaction (D6) — so this is an audited transaction, not an entry
-in `NO_AUDIT_TRANSACTION_POLICIES`. The wave trigger's maintenance exemption
-(§4.3) is what admits the delete on a closed study. The job never updates or
-deletes `audit_events` rows (the database refuses it regardless).
+invitation delivery) scans for studies whose persisted `purge_after` has
+passed (via the partial index, §4.1) **and** whose `state` is `draft` or
+`closed` (belt-and-braces under D6's go-live refusal). The scan only
+nominates candidates: each study's purge runs in one transaction under an
+explicit per-team tenant scope that **locks the study row `FOR UPDATE` and
+re-validates the marker, the deadline, and the state before deleting
+anything** — a `cancelStudyDeletion` that commits after the scan therefore
+always wins the race, because cancellation clears the marker under the same
+row lock. The deletes then run bottom-up — sessions → participants → waves →
+study, as those tables exist — behind a savepoint, and the transaction
+appends `study.deletion.purged@1` with a system actor (succeeded, or failed
+after rolling the deletes back to the savepoint; D6) — so this is an audited
+transaction, not an entry in `NO_AUDIT_TRANSACTION_POLICIES`. The wave
+trigger's DELETE-scoped maintenance exemption (§4.3) is what admits the
+delete on a closed study. The job never updates or deletes `audit_events`
+rows (the database refuses it regardless).
 
 The deletion grace window is a server configuration value — a new variable
 in the env catalogue (declared with its group, default of 7 days, and docs
@@ -609,7 +651,7 @@ studies.create({ teamId, studyId, name })                  -> StudyDetail
 studies.list({ teamId })                                   -> StudySummary[]
 studies.get({ teamId, studyId })                           -> StudyDetail
 studies.updateSettings({ teamId, studyId, patch })         -> StudyDetail
-studies.createWave({ teamId, studyId, name? })             -> StudyDetail
+studies.createWave({ teamId, studyId, waveId, name? })     -> StudyDetail
 studies.updateWave({ teamId, studyId, waveId, name })      -> StudyDetail
 studies.deleteWave({ teamId, studyId, waveId })            -> StudyDetail
 studies.rebindWave({ teamId, studyId, waveId, versionId }) -> StudyDetail
@@ -633,8 +675,18 @@ commands' within-team missing-resource mapping — the no-oracle property
 holds because RLS makes another team's study indistinguishable from a
 nonexistent one.
 
+`studies.createWave`'s `waveId` is client-minted like `studies.create`'s
+`studyId`: a replayed request returns `unchanged` instead of silently
+appending an extra timepoint.
+
 `StudyDetail` includes the waves (id, number, name, pinned version id and
-version number) so the client renders a study without N+1 calls. Commands
+version number) so the client renders a study without N+1 calls — and, once
+the study has a protocol line, the **published versions of that line** (id,
+version number, label, published-at), because the rebind and go-live flows
+need version ids to offer and no protocol-contract procedure lists them.
+Carrying them on the study response keeps this design off the protocol
+contract the editor track owns (D7); a general published-version read
+procedure may supersede it later. Commands
 assume a user principal today; when API tokens (#1288) arrive, the
 `Principal` `kind` discriminant gates which study operations a token may
 perform — a conscious assumption, recorded here.
@@ -676,12 +728,21 @@ their shape only where it constrains this schema:
   blast radius (#1258) off the study row.
 - An **interview session** belongs to a wave (composite FK to
   `study_waves (id, team_id)`) and, in managed studies, to a participant;
-  anonymous sessions carry a null participant. It records delivery mode and
+  anonymous sessions carry a null participant. It carries its own
+  **immutable `protocol_version_id`**, captured from the wave's pin at
+  session creation — the wave's pin says what new sessions will run, the
+  session's own pin says what this session ran, so rebinding a wave (D2)
+  can never change an in-flight interview or orphan completed data. It
+  records delivery mode and
   the initiating researcher (#1297), the current stage, network data, and
   start/finish timestamps, and becomes immutable on finalization — an
   immutability that must be UPDATE-only or carry the same maintenance-role
   exemption as §4.3, or it would block the purge and erasure paths exactly
-  as an unexempted wave trigger would. Sessions are modelled for
+  as an unexempted wave trigger would. Participant and session tables also
+  need their own parent-state Closed guards (with the DELETE-scoped
+  maintenance and erasure exemptions), because §4.3's triggers cover only
+  `studies` and `study_waves` — without them, a buggy write could still
+  modify an archived study's collected data. Sessions are modelled for
   cross-interview queryability (#1242 principle 6), not just export.
 - Both purge bottom-up under D6 with no cascades; participant erasure
   (#1270) deletes session rows through the same FK path and then recomputes
@@ -712,9 +773,16 @@ state is accepted, per the audit design's rule.
   column added to `studies` after the trigger (deny-by-default probe).
 - The wave-identity trigger rejects `wave_number`, `study_id`, and `team_id`
   changes in every state.
+- The studies Closed trigger refuses every exit shape from `closed` except
+  `state = 'live'` with `closed_at` cleared in the same update — closed →
+  draft, closed → paused, and closed → live with `closed_at` still set all
+  raise.
 - The wave Closed trigger blocks the application role's wave writes on a
-  closed study but admits the maintenance role's deletes — the purge of a
-  closed, marker-expired study runs to completion through it.
+  closed study but admits the maintenance role's **deletes only** — a
+  maintenance `INSERT` or `UPDATE` under a closed study is refused, and the
+  purge of a closed, deadline-expired study runs to completion through it.
+- The marker/deadline consistency `CHECK` rejects a row with only one of
+  `deletion_requested_at` / `purge_after` set.
 - Deleting a study via the marker flow removes waves and the study
   bottom-up and leaves every `audit_events` row intact.
 - The regenerated fingerprint, ERD, README section, and inventories are
@@ -741,17 +809,31 @@ state is accepted, per the audit design's rule.
   draft; a successful rebind records previous and new versions.
 - Draft protocol-line retarget clears wave pins and records the cleared pins
   in its event details.
-- Wave commands: `createWave` is Draft-only and refused for anonymous
-  studies; `deleteWave` refuses any wave but the highest-numbered and
-  refuses wave 1; a multi-wave managed study created through the commands
-  goes live.
+- Wave commands: `createWave` is Draft-only, refused for anonymous studies
+  and at the 50-wave cap, and a replay with the same client-minted wave id
+  returns `unchanged` instead of appending a timepoint; `deleteWave` refuses
+  any wave but the highest-numbered and refuses wave 1; a multi-wave managed
+  study created through the commands goes live.
 - An anonymous study cannot go live with more than one wave; a managed
   multi-wave study can.
-- Deletion request/cancel enforce owner/admin and Draft/Closed, record the
-  effective date; the purge job ignores studies inside the window, purges
-  those beyond it, and appends `study.deletion.purged@1` with a system actor
-  in the purge transaction (absent when the purge is deliberately broken —
-  the oracle-can-fail probe).
+- A member's `updateStudySettings` / `updateWave` succeeds while Draft and
+  is refused once the study is live or paused (owner/admin required) — the
+  D8 Draft-only boundary.
+- Deletion request/cancel enforce owner/admin and Draft/Closed;
+  `requestStudyDeletion` persists `purge_after` from the grace window in
+  force at request time, and a repeat request returns `unchanged` without
+  moving the deadline or emitting a second event.
+- Changing the server's grace-window configuration moves no existing
+  request's `purge_after`.
+- The purge job ignores studies whose deadline has not passed, purges those
+  beyond it, and appends `study.deletion.purged@1` (succeeded) in the purge
+  transaction — the oracle-can-fail probe asserts the succeeded event is
+  absent when the purge is deliberately broken, while the `failed`-outcome
+  event **is** present and the domain rows are intact after the savepoint
+  rollback.
+- Cancellation-versus-purge race: a `cancelStudyDeletion` that commits after
+  the candidate scan but before the per-study purge transaction prevents the
+  deletion — the purge's locked recheck sees the cleared marker and skips.
 - Denied-attempt coverage: a member calling `goLive`, `reopenStudy`,
   `closeStudy`, or `requestStudyDeletion` receives FORBIDDEN **and** the
   corresponding
@@ -759,6 +841,8 @@ state is accepted, per the audit design's rule.
   operations produce no denial event.
 - `studies.create` retried with the same client-minted id does not
   double-create.
+- `StudyDetail` lists the study's waves and, once a protocol line is set,
+  that line's published versions.
 - Names longer than 320 characters are bounded in labels; settings-update
   no-ops return unchanged without inventing an event.
 
@@ -826,7 +910,8 @@ The study model is complete when:
   mode, and refuse a study marked for deletion;
 - a closed study is read-only at the database level (deny-by-default) and
   reopenable through the audited command;
-- deletion honours state and role restrictions, survives its grace window,
+- deletion honours state and role restrictions, its persisted deadline, and
+  a late cancellation; survives its grace window,
   purges bottom-up through the maintenance exemption without touching audit
   history, appends its system-actor purge event, and team deletion remains
   refused;
