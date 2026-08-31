@@ -91,7 +91,13 @@ export function changedPublicPackageVersions({ repoRoot, baseRef }) {
     }
 
     const previous = manifestAtRef(repoRoot, baseRef, manifestPath);
-    if (previous?.version === current.version) continue;
+    if (
+      previous?.private !== true &&
+      previous?.name === current.name &&
+      previous?.version === current.version
+    ) {
+      continue;
+    }
 
     changed.push({
       manifestPath,

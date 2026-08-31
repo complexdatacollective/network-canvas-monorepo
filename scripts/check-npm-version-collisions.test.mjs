@@ -158,6 +158,58 @@ test('skips unchanged public versions and changed private packages', async (t) =
   assert.deepEqual(changedPublicPackageVersions({ repoRoot, baseRef }), []);
 });
 
+test('checks a renamed public package even when its version is unchanged', async (t) => {
+  const { baseRef, repoRoot } = repository(
+    t,
+    { renamed: { name: '@codaco/old-name', version: '1.0.0' } },
+    { renamed: { name: '@codaco/new-name', version: '1.0.0' } },
+  );
+
+  const checked = await checkNpmVersionCollisions({
+    repoRoot,
+    baseRef,
+    fetchImpl: async () => ({ status: 404 }),
+  });
+
+  assert.deepEqual(checked, [
+    {
+      manifestPath: 'packages/renamed/package.json',
+      name: '@codaco/new-name',
+      previousVersion: '1.0.0',
+      version: '1.0.0',
+    },
+  ]);
+});
+
+test('checks a newly public package even when its version is unchanged', async (t) => {
+  const { baseRef, repoRoot } = repository(
+    t,
+    {
+      publicized: {
+        name: '@codaco/publicized',
+        private: true,
+        version: '1.0.0',
+      },
+    },
+    { publicized: { name: '@codaco/publicized', version: '1.0.0' } },
+  );
+
+  const checked = await checkNpmVersionCollisions({
+    repoRoot,
+    baseRef,
+    fetchImpl: async () => ({ status: 404 }),
+  });
+
+  assert.deepEqual(checked, [
+    {
+      manifestPath: 'packages/publicized/package.json',
+      name: '@codaco/publicized',
+      previousVersion: '1.0.0',
+      version: '1.0.0',
+    },
+  ]);
+});
+
 test('fails closed when npm returns a server error', async (t) => {
   const { baseRef, repoRoot } = repository(
     t,
