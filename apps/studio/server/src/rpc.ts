@@ -10,7 +10,10 @@ import {
   AuditCommandTeamNotFoundError,
   type AuditedCommandContext,
 } from './audit/command.ts';
-import { reserveDeniedAuditAttempt } from './audit/denial-rate-limit.ts';
+import {
+  type DeniedAuditReservation,
+  reserveDeniedAuditAttempt,
+} from './audit/denial-rate-limit.ts';
 import { createDeniedAuditSummaryWriter } from './audit/denial-summary.ts';
 import { renderAuditFilterOptions } from './audit/facets.ts';
 import {
@@ -75,35 +78,93 @@ class AuditReadDeniedError extends Error {
   }
 }
 
-/**
- * A member without the permission is denied with a committed, rate-limited
- * audit.read_denied event (design §7.3: audit-log access is security-relevant);
- * a failed denial append still denies.
- */
-async function denyAuditRead(
-  context: TeamRpcContext,
-  procedure: AuditReadProcedure,
-): Promise<never> {
-  const auditedContext: AuditedCommandContext = {
+/** A reservation the denial rate limiter has already let through. */
+type AdmittedDeniedAuditReservation = Extract<
+  DeniedAuditReservation,
+  { admitted: true }
+>;
+
+function auditedContextFor(context: TeamRpcContext): AuditedCommandContext {
+  return {
     tenantDb: context.tenantDb,
     principal: context.principal,
     requestId: context.requestId,
   };
+}
+
+/**
+ * Takes the denial slot for this caller, team, and operation. The reservation
+ * is made before any transaction opens, which is the rate limiter's whole
+ * point (audit/denial-rate-limit.ts): once a window's allowance is spent, a
+ * further denial is refused without touching the database at all.
+ */
+async function admitAuditReadDenial(
+  context: TeamRpcContext,
+): Promise<AdmittedDeniedAuditReservation> {
   const reservation = await reserveDeniedAuditAttempt(
     {
       actorId: context.principal.userId,
       teamId: context.team.id,
       operation: 'audit.read',
     },
-    createDeniedAuditSummaryWriter(auditedContext, 'audit.read'),
+    createDeniedAuditSummaryWriter(auditedContextFor(context), 'audit.read'),
   );
   if (!reservation.admitted) {
     throw new ORPCError(
       reservation.reason === 'overloaded' ? 'TOO_MANY_REQUESTS' : 'FORBIDDEN',
     );
   }
+  return reservation;
+}
+
+/**
+ * The denial event is required, so every way the append can fail has to leave
+ * an operational signal: acquiring a client, beginning the transaction,
+ * locking the team, and reading the team row all sit before the insert, and
+ * only the insert emits a signal of its own (STUDIO_AUDIT_APPEND_FAILED, in
+ * audit/command.ts). Emitting around the whole path means the insert case is
+ * reported twice — a duplicate signal is the intended cost of never losing a
+ * required audit event silently.
+ */
+function warnAuditReadDenialLost(
+  context: TeamRpcContext,
+  procedure: AuditReadProcedure,
+  error: unknown,
+): void {
+  const cause =
+    error instanceof Error
+      ? { causeName: error.name, causeMessage: error.message }
+      : { causeName: typeof error, causeMessage: String(error) };
+  process.emitWarning(
+    'Required audit.read_denied event was not recorded; the read stayed denied.',
+    {
+      type: 'StudioAuditError',
+      code: 'STUDIO_AUDIT_DENIAL_EVENT_LOST',
+      detail: JSON.stringify({
+        eventType: 'audit.read_denied',
+        procedure,
+        teamId: context.team.id,
+        actorId: context.principal.userId,
+        requestId: context.requestId,
+        ...cause,
+      }),
+    },
+  );
+}
+
+/**
+ * A caller whose committed roles do not grant audit.read is denied with a
+ * committed, rate-limited audit.read_denied event (design §7.3: audit-log
+ * access is security-relevant); a failed denial append still denies.
+ */
+async function denyAuditRead(
+  context: TeamRpcContext,
+  procedure: AuditReadProcedure,
+  reserved: AdmittedDeniedAuditReservation | null,
+): Promise<never> {
+  const reservation = reserved ?? (await admitAuditReadDenial(context));
   try {
-    await appendAuditedEvent(auditedContext, (auditContext) => ({
+    await appendAuditedEvent(auditedContextFor(context), (auditContext) => ({
       ...auditActorEventContext(auditContext),
       eventVersion: 1,
       eventType: 'audit.read_denied',
@@ -118,9 +179,10 @@ async function denyAuditRead(
       details: { procedure, reason: 'insufficient_permission' },
     }));
     reservation.complete('denied');
-  } catch {
-    // The append already emitted its operational signal; the request stays
-    // denied either way.
+  } catch (error) {
+    warnAuditReadDenialLost(context, procedure, error);
+    // Not 'denied': no denial event was committed, so this attempt must not
+    // consume the window's allowance. The request stays denied either way.
     reservation.complete('other');
   }
   throw new ORPCError('FORBIDDEN');
@@ -130,24 +192,45 @@ async function denyAuditRead(
  * Wraps an audit read whose transaction re-authorizes the caller against the
  * committed role (see audit/read-authorization.ts). The transaction is opened
  * by the caller so its no-audit operation stays a static literal.
+ *
+ * requireTeam resolves the caller's membership before this runs, so the role
+ * it carries is stale in both directions. A demotion committing in that window
+ * must not be answered with audit data; a promotion committing in it must not
+ * be answered with FORBIDDEN and an audit.read_denied event that the committed
+ * roles do not support — an immutable log is the wrong place to record a
+ * refusal that did not happen. So the middleware's role decides nothing here.
+ * Every decision comes from the locked membership re-read inside the read's
+ * own transaction, which for a caller without the permission throws before a
+ * single row is selected.
+ *
+ * What the stale role still decides is ordering. When it predicts a denial the
+ * rate-limit slot is taken first, before any transaction opens, so a burst of
+ * denied reads cannot open one each: past the window's allowance a predicted
+ * denial is refused without touching the database, which is what the old
+ * pre-check was for. Nothing reaches this function unauthenticated or outside
+ * the team — requireTeam has already refused both — so no caller can force a
+ * transaction that could not already open one on the permitted path.
  */
 async function guardAuditRead<T>(
   context: TeamRpcContext,
   procedure: AuditReadProcedure,
   read: () => Promise<T>,
 ): Promise<T> {
-  // A cheap pre-check on the middleware's role keeps an unauthorized caller
-  // from opening a transaction at all; the in-transaction re-read is the
-  // authorization decision.
-  if (!grantsAuditRead(context.team.role)) {
-    return denyAuditRead(context, procedure);
-  }
+  const reservation = grantsAuditRead(context.team.role)
+    ? null
+    : await admitAuditReadDenial(context);
   try {
-    return await read();
+    const result = await read();
+    // Reached with a reservation held only when the committed role turned out
+    // to grant the read after all; that is not a denial, so it releases the
+    // slot without spending the allowance.
+    reservation?.complete('other');
+    return result;
   } catch (error) {
     if (error instanceof AuditReadDeniedError) {
-      return denyAuditRead(context, procedure);
+      return denyAuditRead(context, procedure, reservation);
     }
+    reservation?.complete('other');
     throw error;
   }
 }
@@ -510,9 +593,8 @@ export function createRpcRouter(
         return renderAuditEventDetail(event);
       }),
       // The same rows as audit.list through the same read surface, so it takes
-      // the same audit.read pre-check, the same committed and rate-limited
-      // denial, and the same locked-membership re-authorization inside the
-      // read's own transaction.
+      // the same locked-membership authorization inside the read's own
+      // transaction, and the same committed, rate-limited denial.
       filterOptions: os.audit.filterOptions
         .use(requireTeam)
         .handler(async ({ context, input }) => {

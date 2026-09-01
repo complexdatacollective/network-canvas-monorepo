@@ -20,8 +20,38 @@ const SITE_ENV = {
 const PREVIEW_ORIGIN =
   'https://deploy-preview-1554--networkcanvas-studio.netlify.app';
 
-async function loadHandler() {
-  for (const [key, value] of Object.entries(SITE_ENV)) vi.stubEnv(key, value);
+/**
+ * Every way a site can define the database and authentication settings badly.
+ * The lane never serves either surface, so none of these should reach it at
+ * all — but each one used to be fatal, and fatal here is not a degraded
+ * response: the throw happens while the module initializes, so the function
+ * exports no handler and answers nothing, /healthz included.
+ */
+const SITE_MISCONFIGURATIONS: ReadonlyArray<
+  readonly [string, Readonly<Record<string, string | undefined>>]
+> = [
+  ['a database with no signing secret', { BETTER_AUTH_SECRET: undefined }],
+  ['a database with no public URL', { PUBLIC_URL: undefined }],
+  // Refused even with no database at all, so that a deployment meaning to
+  // serve auth cannot half-configure a provider — a rule this lane has to
+  // sidestep without weakening it anywhere else.
+  [
+    'half a social provider',
+    { DATABASE_URL: undefined, GOOGLE_CLIENT_ID: 'google-id-with-no-secret' },
+  ],
+  // Rejected by the schema parse, before resolution: a result to blank never
+  // exists.
+  [
+    'a public URL that is not a URL',
+    { PUBLIC_URL: 'networkcanvas-studio.netlify.app' },
+  ],
+  ['a signing secret under the length floor', { BETTER_AUTH_SECRET: 'short' }],
+];
+
+async function loadHandler(
+  env: Readonly<Record<string, string | undefined>> = SITE_ENV,
+) {
+  for (const [key, value] of Object.entries(env)) vi.stubEnv(key, value);
   vi.resetModules();
   const { default: handler } = await import('../netlify.ts');
   return handler;
@@ -74,4 +104,22 @@ describe('the Netlify function entrypoint', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ status: 'ok' });
   });
+
+  for (const [label, overrides] of SITE_MISCONFIGURATIONS) {
+    it(`serves the same degradation when the site defines ${label}`, async () => {
+      const handler = await loadHandler({ ...SITE_ENV, ...overrides });
+
+      const health = await handler(new Request(`${PREVIEW_ORIGIN}/healthz`));
+      expect(health.status).toBe(200);
+
+      const session = await handler(
+        new Request(`${PREVIEW_ORIGIN}/api/auth/get-session`),
+      );
+      expect(session.status).toBe(503);
+      expect(await session.json()).toEqual({
+        title: 'Authentication Not Configured',
+        status: 503,
+      });
+    });
+  }
 });

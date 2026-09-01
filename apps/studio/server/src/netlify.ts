@@ -1,5 +1,5 @@
 import { createApp } from './app.ts';
-import { readEnv, type StudioEnv } from './env.ts';
+import { readEnv } from './env.ts';
 
 // Deliberately NOT ported from src/index.ts:
 //   - serveStatic / SPA fallback — Netlify's CDN serves apps/studio/client/dist
@@ -29,9 +29,16 @@ import { readEnv, type StudioEnv } from './env.ts';
 // probeSession in client/src/router.tsx), and no CSRF gate is mounted against
 // an origin the preview cannot match.
 //
+// The settings are withheld from the read rather than blanked on its result,
+// because reading them is itself what fails: a database without a signing
+// secret or a public URL, a half-configured social provider, or a malformed
+// value of any of them throws while this module is still initializing, and a
+// function whose module init throws serves nothing at all — not even the 503
+// this lane is meant to answer with. See readEnv's ReadEnvOptions.
+//
 // Serving auth from this lane needs the origin derived from the request, which
 // netlify.toml assigns to the real topology work — not a site-level variable.
-const env: StudioEnv = { ...readEnv(), db: undefined, auth: undefined };
+const env = readEnv({ withoutDatabaseOrAuth: true });
 const app = createApp(env, { invitationDeliveryAvailable: false });
 
 export default async function handler(request: Request): Promise<Response> {

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { safe } from '@orpc/client';
 import type pg from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createApp } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
@@ -96,6 +96,46 @@ async function insertEvent(
     ],
   );
   return id;
+}
+
+/**
+ * The application pool with a client budget, so a chosen transaction fails at
+ * the first thing an audited append does: acquire a client. An audit read
+ * spends one budgeted client on the transaction that decides authorization,
+ * which leaves the denial append — the next transaction the request opens —
+ * with nothing.
+ */
+function poolWithClientBudget(
+  pool: pg.Pool,
+  budget: number,
+  message: string,
+): pg.Pool {
+  let remaining = budget;
+  return new Proxy(pool, {
+    get(target, property, receiver) {
+      if (property === 'connect') {
+        return () => {
+          if (remaining <= 0) return Promise.reject(new Error(message));
+          remaining -= 1;
+          return target.connect();
+        };
+      }
+      const value = Reflect.get(target, property, receiver);
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  });
+}
+
+/** The structured `detail` of a `process.emitWarning` call, parsed. */
+function warningDetail(options: string | object | undefined): unknown {
+  if (typeof options !== 'object' || options === null) {
+    throw new Error('expected structured audit warning options');
+  }
+  const detail = Reflect.get(options, 'detail');
+  if (typeof detail !== 'string') {
+    throw new Error('expected structured audit warning detail');
+  }
+  return JSON.parse(detail);
 }
 
 /** The next free per-team sequence, so a direct seed cannot collide. */
@@ -396,9 +436,13 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     });
     expect(fromLater.items.map((item) => item.sequence)).toEqual(['7', '6']);
 
+    // `to` is exclusive, so the bound that selects everything at T0 is the
+    // start of the next period — the convention AuditListInputSchema
+    // documents, because `occurred_at` has microsecond resolution and no
+    // millisecond-precision `Date` can name a period's true last instant.
     const toEarlier = await client.audit.list({
       teamId: TEAM,
-      to: new Date(T0),
+      to: new Date(T1),
     });
     expect(toEarlier.items.map((item) => item.sequence)).toEqual([
       '5',
@@ -715,5 +759,154 @@ describe.skipIf(!db)('audit list/get RPC', () => {
         [TEAM, demoted.userId],
       ),
     ).toHaveProperty('rowCount', 1);
+  });
+
+  it('re-reads a promotion committed after the middleware read the role', async () => {
+    // The mirror of the demotion above: requireTeam's role is stale in both
+    // directions, so a negative one cannot decide either. A promotion
+    // committing in that window must be answered with the audit data the
+    // committed role grants — and must not leave an audit.read_denied event
+    // in an immutable log for a refusal that never happened.
+    const promoted = principal('audit-promoted-user', 'Audit Promoted');
+    const memberId = 'audit-promoted-member';
+    await pool.query(
+      `INSERT INTO "user" (id, name, email, "emailVerified")
+       VALUES ($1, $2, $3, true)`,
+      [promoted.userId, promoted.name, promoted.email],
+    );
+    await pool.query(
+      `INSERT INTO team_members (id, team_id, user_id, role)
+       VALUES ($1, $2, $3, 'member')`,
+      [memberId, TEAM, promoted.userId],
+    );
+
+    let reportMiddlewareAuthorization: () => void = () => undefined;
+    const middlewareAuthorized = new Promise<void>((resolve) => {
+      reportMiddlewareAuthorization = resolve;
+    });
+    const promotedClient = createRpcClient(
+      createApp(readEnv(), {
+        invitationDeliveryAvailable: true,
+        pool: appPool,
+        auth: stubAuthService({
+          getSession: () => Promise.resolve(promoted),
+          // Still member: this is the stale read the request carries forward.
+          getMembership: () => {
+            reportMiddlewareAuthorization();
+            return Promise.resolve({ role: 'member' });
+          },
+        }),
+      }),
+    );
+
+    const holder = await pool.connect();
+    try {
+      // Hold the membership row so the promotion is guaranteed to be in
+      // flight while the request is past requireTeam but before it authorizes.
+      await holder.query('BEGIN');
+      await holder.query(
+        `SELECT 1 FROM team_members WHERE id = $1 FOR UPDATE`,
+        [memberId],
+      );
+
+      const request = safe(promotedClient.audit.list({ teamId: TEAM }));
+      await middlewareAuthorized;
+      await holder.query(
+        `UPDATE team_members SET role = 'owner' WHERE id = $1`,
+        [memberId],
+      );
+      await holder.query('COMMIT');
+
+      const { error, data } = await request;
+      expect(error).toBeNull();
+      expect(data?.items.length).toBeGreaterThan(0);
+    } catch (error) {
+      await holder.query('ROLLBACK').catch(() => undefined);
+      throw error;
+    } finally {
+      holder.release();
+    }
+
+    expect(
+      await pool.query(
+        `SELECT id FROM audit_events
+         WHERE team_id = $1 AND actor_id = $2
+           AND event_type = 'audit.read_denied'`,
+        [TEAM, promoted.userId],
+      ),
+    ).toHaveProperty('rowCount', 0);
+  });
+
+  it('signals when a denial event is lost before it can be appended', async () => {
+    // Access stays denied whether or not the denial event lands, so the only
+    // way an operator learns a required audit event was lost is a warning.
+    // Only the insert itself emits one from audit/command.ts; everything the
+    // append does before it — acquiring a client, beginning the transaction,
+    // locking the team, reading the team row — has to be covered here.
+    const unrecorded = principal('audit-lost-denial-user', 'Audit Lost');
+    const memberId = 'audit-lost-denial-member';
+    await pool.query(
+      `INSERT INTO "user" (id, name, email, "emailVerified")
+       VALUES ($1, $2, $3, true)`,
+      [unrecorded.userId, unrecorded.name, unrecorded.email],
+    );
+    await pool.query(
+      `INSERT INTO team_members (id, team_id, user_id, role)
+       VALUES ($1, $2, $3, 'member')`,
+      [memberId, TEAM, unrecorded.userId],
+    );
+
+    const warning = vi
+      .spyOn(process, 'emitWarning')
+      .mockImplementation(() => undefined);
+    const unrecordedClient = createRpcClient(
+      createApp(readEnv(), {
+        invitationDeliveryAvailable: true,
+        // One client for the transaction that decides the denial; the append
+        // that must record it then cannot acquire one.
+        pool: poolWithClientBudget(appPool, 1, 'test client budget exhausted'),
+        auth: stubAuthService({
+          getSession: () => Promise.resolve(unrecorded),
+          getMembership: () => Promise.resolve({ role: 'member' }),
+        }),
+      }),
+    );
+
+    let calls: (typeof warning)['mock']['calls'];
+    try {
+      const denied = await safe(unrecordedClient.audit.list({ teamId: TEAM }));
+      expect(denied.error).toMatchObject({ code: 'FORBIDDEN' });
+      calls = [...warning.mock.calls];
+    } finally {
+      warning.mockRestore();
+    }
+
+    const lost = calls.filter(
+      ([, options]) =>
+        typeof options === 'object' &&
+        options !== null &&
+        Reflect.get(options, 'code') === 'STUDIO_AUDIT_DENIAL_EVENT_LOST',
+    );
+    expect(lost).toHaveLength(1);
+    expect(lost[0]?.[0]).toBe(
+      'Required audit.read_denied event was not recorded; the read stayed denied.',
+    );
+    expect(warningDetail(lost[0]?.[1])).toEqual({
+      eventType: 'audit.read_denied',
+      procedure: 'audit.list',
+      teamId: TEAM,
+      actorId: unrecorded.userId,
+      requestId: expect.any(String),
+      causeName: 'Error',
+      causeMessage: 'test client budget exhausted',
+    });
+
+    // The signal exists precisely because nothing was recorded.
+    expect(
+      await pool.query(
+        `SELECT id FROM audit_events WHERE team_id = $1 AND actor_id = $2`,
+        [TEAM, unrecorded.userId],
+      ),
+    ).toHaveProperty('rowCount', 0);
   });
 });
