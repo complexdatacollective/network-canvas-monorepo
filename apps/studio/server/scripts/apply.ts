@@ -86,3 +86,15 @@ export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
     lock.release();
   }
 }
+
+/**
+ * Drops the schema and applies the current one, for callers that want a known
+ * empty database rather than a reconciliation. The roles the sidecars create
+ * are cluster-scoped, so they outlive the drop and the apply is idempotent
+ * over them.
+ */
+export async function resetSchema(pool: pg.Pool): Promise<ApplyOutcome> {
+  await pool.query('drop schema if exists public cascade');
+  await pool.query('create schema public');
+  return applySchema(pool);
+}

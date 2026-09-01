@@ -8,7 +8,8 @@ import pg from 'pg';
 import { createOwnerPool } from '../src/db/pool.ts';
 import { seed } from '../src/db/seed.ts';
 import { isLocalDatabase, readEnv } from '../src/env.ts';
-import { applySchema } from './apply.ts';
+import { resetSchema } from './apply.ts';
+import { devSeed } from './dev-seed.ts';
 
 // It drops the schema rather than the database — unlike packages/studio-sync's
 // test helper — so it needs no second connection to the maintenance database
@@ -65,10 +66,9 @@ console.log(`Resetting ${target}`);
 
 const pool = createOwnerPool(env.db);
 
-try {
-  await pool.query('drop schema if exists public cascade');
-  await pool.query('create schema public');
+const local = isLocalDatabase(env.db.url);
 
+try {
   // A crashed test run leaves its uniquely-named schema behind, and nothing
   // else would ever collect it.
   const leftovers = await pool.query<{ nspname: string }>(
@@ -95,9 +95,15 @@ try {
     console.log(`Dropped ${dbLeftovers.rowCount} leftover test database(s).`);
   }
 
-  await applySchema(pool);
+  await resetSchema(pool);
   await seed(pool);
   console.log('Database reset.');
 } finally {
   await pool.end();
+}
+
+// The development fixture, never a `--force`d managed database: a real
+// deployment gets the deploy-time seed above and nothing else.
+if (local) {
+  await devSeed(env.db);
 }

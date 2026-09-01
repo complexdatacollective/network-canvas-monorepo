@@ -5,14 +5,35 @@
 // the package's dev script.
 import { spawn, spawnSync } from 'node:child_process';
 import process from 'node:process';
+import { parseArgs } from 'node:util';
 
 import {
   CreateBucketCommand,
+  DeleteObjectsCommand,
   ListBucketsCommand,
+  ListObjectsV2Command,
   S3Client,
 } from '@aws-sdk/client-s3';
 
 import { DEV } from '../src/env/catalogue.ts';
+
+const { values } = parseArgs({
+  options: {
+    provision: { type: 'boolean', default: false },
+    follow: { type: 'boolean', default: false },
+  },
+});
+
+// The same split dev-pg.ts makes, and for the same reason: `pnpm dev` runs
+// provisioning to completion before the server starts. Passing neither flag
+// keeps the provision-then-tail behaviour a direct run expects.
+const PROVISION = values.follow ? values.provision : true;
+const FOLLOW = values.provision ? values.follow : true;
+
+// Uploaded assets are emptied alongside the database reset, so bytes never
+// outlive the rows that referenced them. Opt out with the same variable
+// dev-pg.ts reads, so one setting covers the whole dev environment.
+const KEEP_DATA = process.env.STUDIO_DEV_KEEP_DATA === '1';
 
 const IMAGE = 'minio/minio:latest';
 const HOST_PORT = DEV.s3Port;
@@ -164,6 +185,48 @@ async function ensureBucket(client: S3Client): Promise<void> {
   }
 }
 
+// One page of keys per round trip; both the listing and the delete cap at a
+// thousand, so the two stay in step.
+async function emptyBucket(client: S3Client): Promise<void> {
+  let removed = 0;
+  let token: string | undefined;
+  do {
+    const listed = await client.send(
+      new ListObjectsV2Command({ Bucket: BUCKET, ContinuationToken: token }),
+    );
+    const objects = (listed.Contents ?? []).flatMap((object) =>
+      object.Key === undefined ? [] : [{ Key: object.Key }],
+    );
+    if (objects.length > 0) {
+      await client.send(
+        new DeleteObjectsCommand({
+          Bucket: BUCKET,
+          Delete: { Objects: objects, Quiet: true },
+        }),
+      );
+      removed += objects.length;
+    }
+    token = listed.IsTruncated ? listed.NextContinuationToken : undefined;
+  } while (token !== undefined);
+  console.log(
+    removed === 0
+      ? `Bucket '${BUCKET}' is already empty`
+      : `Emptied bucket '${BUCKET}' (${removed} object(s))`,
+  );
+}
+
+// The bucket is shared across branches by design (fixed port, fixed name), so
+// this empties another branch's assets too. That is the cost of one dev
+// object store; STUDIO_DEV_KEEP_DATA=1 opts out.
+async function provisionBucket(client: S3Client): Promise<void> {
+  await ensureBucket(client);
+  if (KEEP_DATA) {
+    console.log('Keeping existing objects (STUDIO_DEV_KEEP_DATA=1)');
+    return;
+  }
+  await emptyBucket(client);
+}
+
 function followLogs(): void {
   const child = spawn('docker', ['logs', '-f', containerName], {
     stdio: 'inherit',
@@ -187,6 +250,14 @@ function followLogs(): void {
   });
 }
 
+// Stay alive under `concurrently -k` without a container to tail: an
+// unsettled top-level await with an empty event loop makes Node exit.
+function idle(): void {
+  setInterval(() => {
+    // Keep the event loop non-empty.
+  }, 60_000);
+}
+
 async function main(): Promise<void> {
   const alreadyRunning = containerExists() && containerIsRunning();
 
@@ -200,40 +271,45 @@ async function main(): Promise<void> {
       console.log(
         `MinIO already reachable on port ${HOST_PORT} (externally managed)`,
       );
-      await ensureBucket(probe);
-      console.log(
-        `MinIO ready — bucket '${BUCKET}' at http://localhost:${HOST_PORT}`,
-      );
-      // Stay alive under `concurrently -k` without a container to tail: an
-      // unsettled top-level await with an empty event loop makes Node exit.
-      setInterval(() => {
-        // Keep the event loop non-empty.
-      }, 60_000);
+      if (PROVISION) {
+        await provisionBucket(probe);
+        console.log(
+          `MinIO ready — bucket '${BUCKET}' at http://localhost:${HOST_PORT}`,
+        );
+      }
+      if (FOLLOW) idle();
       return;
     }
   }
 
-  if (containerExists() && !alreadyRunning) {
-    removeContainer();
-  }
+  if (PROVISION) {
+    if (containerExists() && !alreadyRunning) {
+      removeContainer();
+    }
 
-  if (!alreadyRunning) {
-    ensureVolume();
-    startContainer();
-  } else {
+    if (!alreadyRunning) {
+      ensureVolume();
+      startContainer();
+    } else {
+      console.log(
+        `MinIO already running (${containerName}) on port ${HOST_PORT}`,
+      );
+    }
+
+    const s3 = createS3Client();
+    console.log('Waiting for MinIO to become ready...');
+    await waitForReady(s3);
+    await provisionBucket(s3);
     console.log(
-      `MinIO already running (${containerName}) on port ${HOST_PORT}`,
+      `MinIO ready — bucket '${BUCKET}' at http://localhost:${HOST_PORT}`,
     );
   }
 
-  const s3 = createS3Client();
-  console.log('Waiting for MinIO to become ready...');
-  await waitForReady(s3);
-  await ensureBucket(s3);
-  console.log(
-    `MinIO ready — bucket '${BUCKET}' at http://localhost:${HOST_PORT}`,
-  );
-  followLogs();
+  if (!FOLLOW) return;
+  // `docker logs -f` against a container that is not there exits non-zero and
+  // would take the whole dev session down with it.
+  if (containerIsRunning()) followLogs();
+  else idle();
 }
 
 await main();

@@ -63,6 +63,7 @@ apps/documentation/public/sidebar.json
 # Ignore everything under .claude/ except shared, version-controlled skills
 # and workflows.
 .claude/*
+!.claude/launch.json
 !.claude/settings.json
 !.claude/skills/
 !.claude/workflows/

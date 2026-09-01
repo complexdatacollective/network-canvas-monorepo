@@ -11,7 +11,7 @@
   },
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k -n s3,pg,server \"node scripts/dev-s3.ts\" \"node scripts/dev-pg.ts\" \"node --env-file-if-exists=.env.development --env-file-if-exists=.env --watch --watch-path=src --watch-path=../../../packages/studio-rpc/src --watch-path=../../../packages/studio-sync/src --watch-path=../../../packages/shared-consts/src --watch-path=../../../packages/protocol-validation/src --watch-path=package.json src/index.ts\"",
+    "dev": "node scripts/dev-s3.ts --provision && node scripts/dev-pg.ts --provision && concurrently -k -n s3,pg,server \"node scripts/dev-s3.ts --follow\" \"node scripts/dev-pg.ts --follow\" \"node --env-file-if-exists=.env.development --env-file-if-exists=.env --watch --watch-path=src --watch-path=../../../packages/studio-rpc/src --watch-path=../../../packages/studio-sync/src --watch-path=../../../packages/shared-consts/src --watch-path=../../../packages/protocol-validation/src --watch-path=package.json src/index.ts\"",
     "build": "vite build",
     "build:netlify": "vite build --config vite.netlify.config.ts",
     "apply-schema": "pnpm run sync-fingerprint && node --env-file-if-exists=.env scripts/apply-schema.ts",

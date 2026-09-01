@@ -72,9 +72,44 @@ isolated asset origin first.
 ## Development
 
 ```bash
+pnpm dev:studio
+```
+
+That runs both halves through turbo in a single terminal. To watch each one
+separately — the server's console output, where development magic-link
+sign-in URLs are printed, is interleaved with Vite's under the single
+command — run them in two terminals instead:
+
+```bash
 pnpm --filter @codaco/studio-server dev
 pnpm --filter @codaco/studio-client dev
 ```
+
+### A fresh environment on every start
+
+Starting the server drops the database schema, re-applies it, empties the
+development bucket, and writes a fixture: an owner, the team they own, and
+the sample protocol as a draft in it. Development therefore always begins
+from the same known state, and nothing has to be cleaned up by hand between
+branches.
+
+Sign in as **`owner@studio.localhost`** to land in that seeded team. Sign-up
+is open, so any other address gets a fresh user with no team and nothing to
+look at. Magic-link sign-in prints its URL to the server console.
+
+Set `STUDIO_DEV_KEEP_DATA=1` to keep what is already there — the schema is
+then applied only when absent, a stale one is left for you to resolve, and
+the bucket is left alone:
+
+```bash
+STUDIO_DEV_KEEP_DATA=1 pnpm dev:studio
+```
+
+Two caveats. Container names are branch-scoped but the ports and the bucket
+name are not, so a container another branch left running is the one that gets
+reset — its data goes with it. And the server's `db:reset` script writes the
+same fixture, but only against a local database: a `--force`d managed one
+gets the deploy-time seed and nothing else.
 
 Two processes, one origin: the Vite dev server (port 5173) serves the SPA and
 proxies `/api`, `/rpc`, `/storage`, `/healthz`, and `/ws` to the server

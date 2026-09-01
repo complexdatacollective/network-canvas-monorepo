@@ -3,13 +3,37 @@
 // suite.
 import { spawn, spawnSync } from 'node:child_process';
 import process from 'node:process';
+import { parseArgs } from 'node:util';
 
 import pg from 'pg';
 
 import { createOwnerPool } from '../src/db/pool.ts';
 import { checkSchema } from '../src/db/schema.ts';
 import { DEV, DEV_DATABASE_URL } from '../src/env/catalogue.ts';
-import { applySchema } from './apply.ts';
+import { applySchema, resetSchema } from './apply.ts';
+import { devSeed } from './dev-seed.ts';
+
+const { values } = parseArgs({
+  options: {
+    provision: { type: 'boolean', default: false },
+    follow: { type: 'boolean', default: false },
+  },
+});
+
+// Provisioning and log-tailing are separable so `pnpm dev` can finish the
+// first before starting the server: src/index.ts exits on a schema it catches
+// mid-apply — tables present, fingerprint not yet stamped, which reads as
+// stale — and resetting on every start would otherwise hit that race
+// routinely. Passing neither flag keeps the provision-then-tail behaviour a
+// direct run expects.
+const PROVISION = values.follow ? values.provision : true;
+const FOLLOW = values.provision ? values.follow : true;
+
+// Development starts from a known state: the schema is dropped, re-applied
+// and re-seeded on every run. Opt out to keep what is in the database — the
+// schema is then applied only when absent, and a stale one is left alone,
+// because reconciling it unasked is what could destroy work.
+const KEEP_DATA = process.env.STUDIO_DEV_KEEP_DATA === '1';
 
 const IMAGE = 'postgres:18';
 const HOST_PORT = DEV.pgPort;
@@ -148,18 +172,27 @@ async function ensureDatabase(): Promise<void> {
   console.log(`Created database '${DATABASE}'`);
 }
 
-// Absent only: a stale schema is a human decision (the boot message names the
-// remedies), and auto-reconciling it here could destroy dev data.
-async function ensureSchemaProvisioned(): Promise<void> {
-  const pool = createOwnerPool({ url: DEV_DATABASE_URL });
+async function provisionSchema(): Promise<void> {
+  const db = { url: DEV_DATABASE_URL };
+  const pool = createOwnerPool(db);
   try {
-    if ((await checkSchema(pool)).kind === 'absent') {
-      await applySchema(pool);
-      console.log(`Applied the Studio schema to '${DATABASE}'`);
+    if (KEEP_DATA) {
+      // Absent only: a stale schema is a human decision (the boot message
+      // names the remedies), and auto-reconciling it here could destroy the
+      // data this mode exists to keep.
+      if ((await checkSchema(pool)).kind === 'absent') {
+        await applySchema(pool);
+        console.log(`Applied the Studio schema to '${DATABASE}'`);
+      }
+      console.log('Keeping existing data (STUDIO_DEV_KEEP_DATA=1)');
+      return;
     }
+    await resetSchema(pool);
+    console.log(`Reset the Studio schema in '${DATABASE}'`);
   } finally {
     await pool.end();
   }
+  await devSeed(db);
 }
 
 function followLogs(): void {
@@ -185,6 +218,14 @@ function followLogs(): void {
   });
 }
 
+// Stay alive under `concurrently -k` without a container to tail: an
+// unsettled top-level await with an empty event loop makes Node exit 13.
+function idle(): void {
+  setInterval(() => {
+    // Keep the event loop non-empty.
+  }, 60_000);
+}
+
 async function main(): Promise<void> {
   const alreadyRunning = containerExists() && containerIsRunning();
 
@@ -195,36 +236,43 @@ async function main(): Promise<void> {
     console.log(
       `Postgres already reachable on port ${HOST_PORT} (externally managed)`,
     );
-    await ensureDatabase();
-    await ensureSchemaProvisioned();
-    console.log(`Postgres ready — database '${DATABASE}' on port ${HOST_PORT}`);
-    // Stay alive under `concurrently -k` without a container to tail: an
-    // unsettled top-level await with an empty event loop makes Node exit 13.
-    setInterval(() => {
-      // Keep the event loop non-empty.
-    }, 60_000);
+    if (PROVISION) {
+      await ensureDatabase();
+      await provisionSchema();
+      console.log(
+        `Postgres ready — database '${DATABASE}' on port ${HOST_PORT}`,
+      );
+    }
+    if (FOLLOW) idle();
     return;
   }
 
-  if (containerExists() && !alreadyRunning) {
-    removeContainer();
+  if (PROVISION) {
+    if (containerExists() && !alreadyRunning) {
+      removeContainer();
+    }
+
+    if (!alreadyRunning) {
+      ensureVolume();
+      startContainer();
+    } else {
+      console.log(
+        `Postgres already running (${containerName}) on port ${HOST_PORT}`,
+      );
+    }
+
+    console.log('Waiting for Postgres to become ready...');
+    await waitForReady();
+    await ensureDatabase();
+    await provisionSchema();
+    console.log(`Postgres ready — database '${DATABASE}' on port ${HOST_PORT}`);
   }
 
-  if (!alreadyRunning) {
-    ensureVolume();
-    startContainer();
-  } else {
-    console.log(
-      `Postgres already running (${containerName}) on port ${HOST_PORT}`,
-    );
-  }
-
-  console.log('Waiting for Postgres to become ready...');
-  await waitForReady();
-  await ensureDatabase();
-  await ensureSchemaProvisioned();
-  console.log(`Postgres ready — database '${DATABASE}' on port ${HOST_PORT}`);
-  followLogs();
+  if (!FOLLOW) return;
+  // `docker logs -f` against a container that is not there exits non-zero and
+  // would take the whole dev session down with it.
+  if (containerIsRunning()) followLogs();
+  else idle();
 }
 
 await main();
