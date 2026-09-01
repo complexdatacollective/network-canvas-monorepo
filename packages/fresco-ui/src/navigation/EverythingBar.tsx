@@ -1,6 +1,15 @@
 'use client';
 
-import { ArrowUpRight, LoaderCircle, Search } from 'lucide-react';
+import {
+  ArrowRight,
+  ArrowUpRight,
+  BookOpen,
+  Command,
+  Ellipsis,
+  LoaderCircle,
+  Search,
+  TriangleAlert,
+} from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import {
   cloneElement,
@@ -10,6 +19,7 @@ import {
   useId,
   useRef,
   useState,
+  type ComponentType,
   type KeyboardEvent,
   type MouseEvent,
   type ReactElement,
@@ -19,6 +29,7 @@ import {
 import InputField, {
   inputFieldControlVariants,
 } from '../form/fields/InputField';
+import Kbd from '../Kbd';
 import { MotionSurface } from '../layout/Surface';
 import Modal from '../Modal';
 import ModalPopup from '../Modal/ModalPopup';
@@ -87,9 +98,21 @@ export type EverythingBarLabels = {
   noResults: string;
   /** Politely announced once per settled query. */
   resultCount: (count: number) => string;
+  /**
+   * What a result's chord hint means, as one whole translated string —
+   * "Shortcut: G then P". Written as a function of the keys rather than a
+   * fixed string because the keys are data, exactly as `resultCount` is a
+   * function of its count; a translator writes one message with a placeholder,
+   * never a sentence assembled from fragments.
+   */
+  chordHint: (keys: string[]) => string;
   footerNavigate: string;
   footerSelect: string;
   footerClose: string;
+  /** Names the ↑ and ↓ caps in the footer for assistive technology. */
+  footerNavigateKeys: string;
+  /** Names the ↵ cap in the footer for assistive technology. */
+  footerSelectKeys: string;
 };
 
 /**
@@ -154,28 +177,64 @@ export type EverythingBarProps = {
 
 const rowVariants = cva({
   base: cx(
-    'flex w-full min-w-0 cursor-pointer items-center gap-3 rounded px-3 py-2 text-left text-sm',
-    'text-surface-popover-contrast no-underline',
+    'flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-xs px-4 py-2',
+    'text-surface-popover-contrast text-left text-sm font-semibold no-underline',
   ),
   variants: {
     highlighted: {
-      true: 'bg-primary text-primary-contrast',
+      // A soft wash across the whole row, so the row reads as selected without
+      // inverting its text — the match underline and the icon tint have to
+      // stay legible in this state, and an inverted row loses both.
+      true: 'bg-primary/12',
       false: '',
     },
     motion: {
-      true: 'spring-short',
+      /**
+       * A short, flat colour tween — deliberately NOT one of the shared
+       * `spring-*` presets. Those are `transition: all` with a spring easing
+       * whose `linear()` curve overshoots to ~1.53 before settling, which on a
+       * background colour is a visible swing of the wash rather than a move of
+       * the highlight (and, at the preset's 1.7s, a slow one). Springs belong
+       * on transforms.
+       */
+      true: 'transition-colors duration-75 ease-out',
       false: '',
     },
   },
 });
 
+/** The mockup's tinted rounded square, one hue per group. */
+const iconVariants = cva({
+  base: cx(
+    'flex size-7 shrink-0 items-center justify-center rounded-xs',
+    // The face is the glyph's own colour at low alpha, so one token per group
+    // sets both and every theme stays in step.
+    'bg-current/12 [&_svg]:size-4',
+  ),
+  variants: {
+    tone: {
+      'go-to': 'text-primary',
+      'commands': 'text-sea-green',
+      'documentation': 'text-mustard-dark',
+      'neutral': 'text-current/60',
+    },
+  },
+  defaultVariants: { tone: 'neutral' },
+});
+
 const messageRowVariants = cx(
-  'flex items-center gap-2 px-3 py-2 text-sm text-current/70 italic',
+  'flex items-center gap-2 px-4 py-2 text-sm text-current/70 italic',
 );
 
-const keyHintVariants = cx(
-  'inline-flex h-5 min-w-5 items-center justify-center rounded border border-current/20 bg-current/5 px-1.5 text-xs font-medium not-italic',
-);
+/** Nothing is ever iconless: a provider may say what a row is, or accept this. */
+const defaultGroupIcons: Record<
+  EverythingBarGroup,
+  ComponentType<{ className?: string }>
+> = {
+  'go-to': ArrowRight,
+  'commands': Command,
+  'documentation': BookOpen,
+};
 
 function detectPlatform(): 'mac' | 'other' {
   if (typeof navigator === 'undefined') return 'other';
@@ -361,6 +420,7 @@ export default function EverythingBar({
     }
 
     if (row.kind !== 'item') {
+      const RowIcon = row.kind === 'show-more' ? Ellipsis : TriangleAlert;
       return (
         <div
           key={row.key}
@@ -372,11 +432,15 @@ export default function EverythingBar({
           className={rowVariants({
             highlighted,
             motion: !shouldReduceMotion,
-            className: 'font-medium',
           })}
           onClick={() => activateRow(row)}
         >
-          {row.kind === 'show-more' ? labels.showMore : labels.error}
+          <span className={iconVariants()}>
+            <RowIcon aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            {row.kind === 'show-more' ? labels.showMore : labels.error}
+          </span>
         </div>
       );
     }
@@ -384,40 +448,50 @@ export default function EverythingBar({
     const { entry } = row;
     const { activate } = entry.item;
     const isExternal = activate.kind === 'external';
+    const ItemIcon = entry.item.icon ?? defaultGroupIcons[entry.item.group];
 
     const content = (
       <>
-        <span className="min-w-0 flex-1 truncate">
-          {segmentLabel(entry.item.label, entry.ranges).map(
-            (segment, index) => (
-              <Fragment key={index}>
-                {segment.matched ? (
-                  <mark className="bg-transparent font-semibold text-inherit">
-                    {segment.text}
-                  </mark>
-                ) : (
-                  segment.text
-                )}
-              </Fragment>
-            ),
-          )}
+        <span className={iconVariants({ tone: entry.item.group })}>
+          <ItemIcon aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate">
+            {segmentLabel(entry.item.label, entry.ranges).map(
+              (segment, index) => (
+                <Fragment key={index}>
+                  {segment.matched ? (
+                    // Underlined rather than filled: a highlight block fights
+                    // the row's own selected wash, and the accent rule reads
+                    // the same in both states.
+                    <mark className="border-primary border-b-2 bg-transparent text-inherit">
+                      {segment.text}
+                    </mark>
+                  ) : (
+                    segment.text
+                  )}
+                </Fragment>
+              ),
+            )}
+          </span>
           {entry.item.context ? (
-            <span className="ml-2 text-xs text-current/60">
+            <span className="block truncate text-xs font-normal text-current/60">
               {entry.item.context}
             </span>
           ) : null}
         </span>
         {entry.item.chordHint ? (
-          <span className="flex shrink-0 items-center gap-1">
-            {entry.item.chordHint.map((key) => (
-              <kbd key={key} className={keyHintVariants}>
-                {key}
-              </kbd>
-            ))}
-          </span>
+          <Kbd
+            keys={entry.item.chordHint}
+            label={labels.chordHint(entry.item.chordHint)}
+            className="shrink-0 font-normal"
+          />
         ) : null}
         {isExternal ? (
-          <ArrowUpRight aria-hidden className="size-4 shrink-0" />
+          <ArrowUpRight
+            aria-hidden
+            className="size-4 shrink-0 text-current/60"
+          />
         ) : null}
       </>
     );
@@ -465,12 +539,13 @@ export default function EverythingBar({
         <span className="text-input-contrast/50 min-w-0 grow basis-0 text-left italic">
           {labels.triggerPlaceholder}
         </span>
-        <kbd
+        {/* The button's own label already names this binding, so the cap is
+            the visual half of the same statement, not a second one. */}
+        <Kbd
           aria-hidden
-          className={cx(keyHintVariants, 'pointer-events-none shrink-0')}
-        >
-          {resolvedPlatform === 'mac' ? '⌘K' : 'Ctrl+K'}
-        </kbd>
+          keys={resolvedPlatform === 'mac' ? '⌘K' : 'Ctrl+K'}
+          className="pointer-events-none shrink-0"
+        />
       </button>
 
       <Modal open={open} onOpenChange={setOpen}>
@@ -512,7 +587,14 @@ export default function EverythingBar({
               />
             </header>
 
-            <ScrollArea tabIndex={-1} viewportClassName="px-2 pb-2">
+            {/* No edge fade: the highlighted row can sit against either
+                edge, and a mask would dim the one thing the list is drawing
+                attention to. */}
+            <ScrollArea
+              fade={false}
+              tabIndex={-1}
+              viewportClassName="px-2 pb-2"
+            >
               <div
                 id={listId}
                 role="listbox"
@@ -566,16 +648,15 @@ export default function EverythingBar({
 
             <footer className="flex shrink-0 flex-wrap items-center gap-4 border-t border-current/10 px-4 py-2 text-xs text-current/60">
               <span className="flex items-center gap-1.5">
-                <kbd className={keyHintVariants}>↑</kbd>
-                <kbd className={keyHintVariants}>↓</kbd>
+                <Kbd keys={['↑', '↓']} label={labels.footerNavigateKeys} />
                 {labels.footerNavigate}
               </span>
               <span className="flex items-center gap-1.5">
-                <kbd className={keyHintVariants}>↵</kbd>
+                <Kbd keys="↵" label={labels.footerSelectKeys} />
                 {labels.footerSelect}
               </span>
               <span className="flex items-center gap-1.5">
-                <kbd className={keyHintVariants}>Esc</kbd>
+                <Kbd keys="Esc" />
                 {labels.footerClose}
               </span>
             </footer>

@@ -1,3 +1,5 @@
+import type { ComponentType } from 'react';
+
 /**
  * The everything bar's provider seam.
  *
@@ -61,6 +63,15 @@ export type EverythingBarItem = {
   label: string;
   /** Secondary line, e.g. "Team" or "Study · Field Research Lab". */
   context?: string;
+  /**
+   * The glyph for this result, mirroring the navigation manifest's own `icon`
+   * so a destination looks the same in the bar as it does in the sidebar it
+   * came from. Rendered decoratively, tinted by the item's group.
+   *
+   * Optional: a result without one falls back to its group's default glyph, so
+   * a row is never iconless and a provider is never forced to invent one.
+   */
+  icon?: ComponentType<{ className?: string }>;
   rank: EverythingBarRank;
   /** Rendered keys, read from the app's shortcut registry, e.g. ['G', 'A']. */
   chordHint?: string[];

@@ -1,4 +1,16 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import {
+  FileText,
+  LayoutDashboard,
+  LibraryBig,
+  LogOut,
+  Plus,
+  ScrollText,
+  Upload,
+  UserPlus,
+  Users,
+  UsersRound,
+} from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
@@ -33,9 +45,12 @@ const labels: EverythingBarLabels = {
   error: 'These results could not be loaded. Press Enter to try again.',
   noResults: 'Nothing matches that search.',
   resultCount: (count) => (count === 1 ? '1 result' : `${count} results`),
+  chordHint: (keys) => `Shortcut: ${keys.join(' then ')}`,
   footerNavigate: 'Navigate',
   footerSelect: 'Select',
   footerClose: 'Close',
+  footerNavigateKeys: 'Up and down arrow keys',
+  footerSelectKeys: 'Enter key',
 };
 
 const RECENTS_KEY = 'fresco-ui:everything-bar:stories';
@@ -51,75 +66,97 @@ const storedRecents = () =>
 
 // ─── Mock providers ──────────────────────────────────────────────────────────
 
-const destination = (
-  id: string,
-  label: string,
-  context: string,
-  tier: number,
-  position: number,
-  href: string,
-  chordHint?: string[],
-): EverythingBarItem => ({
+const destination = ({
+  id,
+  label,
+  context,
+  tier,
+  position,
+  href,
+  icon,
+  chordHint,
+}: {
+  id: string;
+  label: string;
+  context: string;
+  tier: number;
+  position: number;
+  href: string;
+  icon?: EverythingBarItem['icon'];
+  chordHint?: string[];
+}): EverythingBarItem => ({
   id,
   group: 'go-to',
   label,
   context,
   rank: { tier, position },
+  icon,
   chordHint,
   activate: { kind: 'navigate', href },
 });
 
-const STUDY = 'Study · Community Recovery Panel 2027';
-const TEAM = 'Team · Field Research Lab';
+const STUDY = 'Study \u00b7 Community Recovery Panel 2027';
+const TEAM = 'Team \u00b7 Field Research Lab';
 
 const destinationItems: EverythingBarItem[] = [
-  destination('study:st_42:overview', 'Overview', STUDY, 0, 0, '/study/st_42', [
-    'G',
-    'O',
-  ]),
-  destination(
-    'study:st_42:participants',
-    'Participants',
-    STUDY,
-    0,
-    1,
-    '/study/st_42/participants',
-    ['G', 'P'],
-  ),
-  destination(
-    'study:st_42:protocols',
-    'Protocols',
-    STUDY,
-    0,
-    2,
-    '/study/st_42/protocols',
-  ),
-  destination(
-    'team:tm_7:members',
-    'Team members',
-    TEAM,
-    1,
-    0,
-    '/team/tm_7/members',
-    ['G', 'M'],
-  ),
-  destination(
-    'team:tm_7:activity',
-    'Activity log',
-    TEAM,
-    1,
-    1,
-    '/team/tm_7/activity',
-    ['G', 'A'],
-  ),
-  destination(
-    'platform:gallery',
-    'Protocol gallery',
-    'Platform',
-    3,
-    0,
-    '/gallery',
-  ),
+  destination({
+    id: 'study:st_42:overview',
+    label: 'Overview',
+    context: STUDY,
+    tier: 0,
+    position: 0,
+    href: '/study/st_42',
+    icon: LayoutDashboard,
+    chordHint: ['G', 'O'],
+  }),
+  destination({
+    id: 'study:st_42:participants',
+    label: 'Participants',
+    context: STUDY,
+    tier: 0,
+    position: 1,
+    href: '/study/st_42/participants',
+    icon: Users,
+    chordHint: ['G', 'P'],
+  }),
+  destination({
+    id: 'study:st_42:protocols',
+    label: 'Protocols',
+    context: STUDY,
+    tier: 0,
+    position: 2,
+    href: '/study/st_42/protocols',
+    icon: FileText,
+  }),
+  destination({
+    id: 'team:tm_7:members',
+    label: 'Team members',
+    context: TEAM,
+    tier: 1,
+    position: 0,
+    href: '/team/tm_7/members',
+    icon: UsersRound,
+    chordHint: ['G', 'M'],
+  }),
+  destination({
+    id: 'team:tm_7:activity',
+    label: 'Activity log',
+    context: TEAM,
+    tier: 1,
+    position: 1,
+    href: '/team/tm_7/activity',
+    icon: ScrollText,
+    chordHint: ['G', 'A'],
+  }),
+  destination({
+    id: 'platform:gallery',
+    label: 'Protocol gallery',
+    context: 'Platform',
+    tier: 3,
+    position: 0,
+    href: '/gallery',
+    icon: LibraryBig,
+  }),
 ];
 
 const destinations: EverythingBarProvider = {
@@ -134,6 +171,7 @@ const destinations: EverythingBarProvider = {
 const commandItems: EverythingBarItem[] = [
   {
     id: 'participants.import',
+    icon: Upload,
     group: 'commands',
     label: 'Import a participant list',
     context: 'Study',
@@ -146,6 +184,7 @@ const commandItems: EverythingBarItem[] = [
   },
   {
     id: 'members.invite',
+    icon: UserPlus,
     group: 'commands',
     label: 'Invite a team member',
     context: 'Team',
@@ -158,6 +197,7 @@ const commandItems: EverythingBarItem[] = [
   },
   {
     id: 'studies.create',
+    icon: Plus,
     group: 'commands',
     label: 'Create a study',
     context: 'Platform',
@@ -166,6 +206,7 @@ const commandItems: EverythingBarItem[] = [
   },
   {
     id: 'account.signOut',
+    icon: LogOut,
     group: 'commands',
     label: 'Sign out',
     context: 'Account',
@@ -388,6 +429,11 @@ const groupOptionLabels = (dialog: HTMLElement, name: string) =>
     .getAllByRole('option')
     .map((option) => option.textContent ?? '');
 
+const rowStartingWith = (dialog: HTMLElement, label: string) =>
+  within(dialog)
+    .getAllByRole('option')
+    .find((option) => option.textContent?.startsWith(label));
+
 const marksIn = (option: HTMLElement) =>
   [...option.querySelectorAll('mark')].map((mark) => mark.textContent);
 
@@ -424,6 +470,8 @@ Providers own what exists and whether the person may see it. The component owns 
 | \`renderLink\` | Renders one result row as the app's router link, exactly as \`SiteNavigation\` does. The pointer and \`Enter\` both go through it, so navigation takes one path. |
 | \`onOpenSurface\` | Receives \`{ href, surface }\` for an \`open\` activation. The bar reports it; the destination screen performs it. |
 | \`open\` / \`onOpenChange\` | Controlled, because an app's shortcut registry owns the \`⌘K\` binding and every chord the rows hint at. |
+
+Each result may carry an \`icon\`, mirroring the navigation manifest's own \`icon\` so a destination looks the same in the bar as in the sidebar it came from. A result without one falls back to its group's default glyph, so a row is never iconless and a provider is never forced to invent one. Key hints — the chords, the footer, the trigger — are all \`Kbd\`.
 
 ### Behaviour worth knowing
 
@@ -485,6 +533,66 @@ export const Default: Story = {
     await expect(
       within(dialog).getByRole('group', { name: labels.groups.commands }),
     ).toBeVisible();
+
+    // Every row carries a glyph: the provider's own where it supplied one,
+    // its group's default where it did not, so a row is never iconless.
+    const glyphOf = (label: string) =>
+      rowStartingWith(dialog, label)
+        ?.querySelector('svg')
+        ?.getAttribute('class') ?? '';
+    await expect(glyphOf('Participants')).toContain('lucide-users');
+    await expect(glyphOf('Import a participant list')).toContain(
+      'lucide-upload',
+    );
+    // No icon of their own: the go-to and documentation defaults stand in.
+    await expect(glyphOf('Participant wellbeing pilot')).toContain(
+      'lucide-arrow-right',
+    );
+    await expect(glyphOf('Managing participants')).toContain(
+      'lucide-book-open',
+    );
+    for (const option of within(dialog).getAllByRole('option')) {
+      await expect(option.querySelector('svg')).not.toBeNull();
+    }
+  },
+};
+
+/**
+ * Moving the highlight must not overshoot. The shared `spring-*` presets are
+ * `transition: all` with an easing that runs past its target and back, which
+ * on a background colour is a swing of the wash rather than a move of the
+ * selection — so the row uses a short, flat colour tween instead.
+ */
+export const HighlightMovement: Story = {
+  beforeEach: () => {
+    clearRecents();
+  },
+  render: ({ providers, ...args }) => (
+    <Harness {...args} providers={providers} />
+  ),
+  play: async ({ canvasElement }) => {
+    const { dialog } = await openBar(canvasElement);
+    await userEvent.type(within(dialog).getByRole('combobox'), 'parti');
+    await waitFor(() => expect(highlightedOption(dialog)).not.toBeNull());
+
+    await userEvent.keyboard('{ArrowDown}');
+    const moved = highlightedOption(dialog);
+    if (!moved) throw new Error('nothing is highlighted');
+
+    const { transitionProperty, transitionTimingFunction } =
+      getComputedStyle(moved);
+    // A spring easing compiles to `linear(...)` stops that leave [0, 1]; those
+    // stops ARE the overshoot, whatever property they are driving.
+    const stops = (
+      transitionTimingFunction.match(/linear\(([^)]*)\)/)?.[1] ?? ''
+    )
+      .split(',')
+      .map((stop) => Number.parseFloat(stop))
+      .filter((stop) => Number.isFinite(stop));
+
+    await expect(stops.filter((stop) => stop > 1 || stop < 0)).toHaveLength(0);
+    // Scoped to colour, so nothing else about the row can animate either.
+    await expect(transitionProperty).not.toContain('all');
   },
 };
 
@@ -541,6 +649,12 @@ export const ComboboxSemantics: Story = {
     await waitFor(() =>
       expect(within(dialog).getByRole('status')).toHaveTextContent('6 results'),
     );
+
+    // A chord hint announces what it means. Two bare letters read out one at a
+    // time say nothing, so the phrase is what lands in the row's name.
+    await expect(
+      within(dialog).getByRole('option', { name: /Shortcut: G then P/ }),
+    ).toHaveTextContent('Participants');
 
     await userEvent.keyboard('{Escape}');
     await waitFor(() =>
@@ -1185,9 +1299,18 @@ export const Matching: Story = {
 
     await userEvent.type(input, 'analisi');
     await waitFor(() => expect(optionLabels(dialog)).toHaveLength(1));
-    await expect(
-      marksIn(within(dialog).getByRole('option', { name: /Anàlisi/ })),
-    ).toEqual(['Anàlisi']);
+    const accented = within(dialog).getByRole('option', { name: /Anàlisi/ });
+    await expect(marksIn(accented)).toEqual(['Anàlisi']);
+
+    // Underlined, not filled: a block of highlight would fight the selected
+    // row's own wash.
+    const mark = accented.querySelector('mark');
+    if (!mark) throw new Error('the match was not marked');
+    const markStyle = getComputedStyle(mark);
+    await expect(markStyle.borderBottomWidth).toBe('2px');
+    await expect(markStyle.backgroundColor).toMatch(
+      /rgba\(0, 0, 0, 0\)|transparent/,
+    );
 
     await userEvent.clear(input);
     await userEvent.type(input, 'crp');

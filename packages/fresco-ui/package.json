@@ -40,6 +40,7 @@
     "./SplitButton": "./src/SplitButton.tsx",
     "./CloseButton": "./src/CloseButton.tsx",
     "./Icon": "./src/Icon.tsx",
+    "./Kbd": "./src/Kbd.tsx",
     "./Node": "./src/Node.tsx",
     "./Toast": "./src/Toast.tsx",
     "./Modal": "./src/Modal/index.tsx",
@@ -271,6 +272,10 @@
       "./Icon": {
         "types": "./dist/Icon.d.ts",
         "default": "./dist/Icon.js"
+      },
+      "./Kbd": {
+        "types": "./dist/Kbd.d.ts",
+        "default": "./dist/Kbd.js"
       },
       "./Node": {
         "types": "./dist/Node.d.ts",
