@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
+import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
   AuthoritativeConflictError,
@@ -11,12 +13,18 @@ import {
   SessionReadOnlyError,
   stageDocument,
   StageIdentityCommandError,
+  type CompoundEditRequest,
   type ProtocolBuilderSessionOptions,
 } from '../session.ts';
 
 const revision = (sequence: bigint) => ({
   sequence,
   hash: `revision-${sequence}`,
+});
+
+const conflictingRevision = (sequence: bigint) => ({
+  sequence,
+  hash: `conflicting-revision-${sequence}`,
 });
 
 const initialFields: SectionDoc = {
@@ -52,6 +60,44 @@ function createSession(overrides: Partial<ProtocolBuilderSessionOptions> = {}) {
     ...overrides,
   });
   return { onCommands, session };
+}
+
+const currentStageSection = sectionId({ kind: 'stage', stageId: 'stage-1' });
+const nodeSection = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const currentStageDocument: SectionDoc = {
+  id: 'stage-1',
+  type: 'Information',
+  ...initialFields,
+};
+
+function compoundRequest() {
+  return {
+    id: 'create-person-and-select',
+    description: 'Create person and select it',
+    edits: [
+      {
+        kind: 'create' as const,
+        sectionId: nodeSection,
+        document: {
+          name: 'Person',
+          color: '#123456',
+          shape: { default: 'circle' },
+        },
+      },
+      {
+        kind: 'update' as const,
+        sectionId: currentStageSection,
+        expectedContentHash: contentHash(currentStageDocument),
+        commands: [
+          {
+            op: 'set' as const,
+            key: 'subject',
+            value: { entity: 'node', type: 'person' },
+          },
+        ],
+      },
+    ],
+  };
 }
 
 describe('ProtocolBuilderSessionStore', () => {
@@ -184,5 +230,420 @@ describe('ProtocolBuilderSessionStore', () => {
       label: 'First',
       title: 'Second',
     });
+  });
+
+  it('stamps and atomically reconciles a structural compound edit', async () => {
+    const onCommands = vi.fn();
+    const onCompoundEdit = vi.fn().mockResolvedValue({
+      status: 'applied',
+      update: {
+        protocolSections: {
+          [currentStageSection]: {
+            id: 'stage-1',
+            type: 'Information',
+            ...initialFields,
+            subject: { entity: 'node', type: 'person' },
+          },
+          [nodeSection]: {
+            name: 'Person',
+            color: '#123456',
+            shape: { default: 'circle' },
+          },
+        },
+        manifestRevision: revision(2n),
+      },
+    });
+    const { session } = createSession({ onCommands, onCompoundEdit });
+    session.dispatch([{ op: 'set', key: 'label', value: 'Edited' }]);
+    session.acknowledge({
+      fields: { ...initialFields, label: 'Edited' },
+      throughBatchId: 1,
+      manifestRevision: revision(1n),
+    });
+
+    const result = await session.requestCompoundEdit(compoundRequest());
+
+    expect(onCompoundEdit).toHaveBeenCalledWith({
+      ...compoundRequest(),
+      authority: {
+        sectionId: currentStageSection,
+        leaseOwner: 'tab-1',
+        leaseEpoch: 1n,
+      },
+    });
+    expect(result.status).toBe('applied');
+    expect(onCommands).toHaveBeenCalledTimes(1);
+    expect(session.getSnapshot()).toMatchObject({
+      editedSection: {
+        fields: {
+          label: 'Welcome',
+          subject: { entity: 'node', type: 'person' },
+        },
+      },
+      manifestRevision: revision(2n),
+      history: { canUndo: false, canRedo: false, generation: 1 },
+    });
+    expect(session.getSnapshot().protocolSections[nodeSection]).toMatchObject({
+      name: 'Person',
+    });
+  });
+
+  it('rejects malformed compound requests before invoking the host', async () => {
+    const onCompoundEdit = vi.fn();
+    const { session } = createSession({ onCompoundEdit });
+    const invalidRequests: CompoundEditRequest[] = [
+      { id: '', description: 'Missing id', edits: compoundRequest().edits },
+      { id: 'empty', description: 'Empty', edits: [] },
+      {
+        id: 'duplicate',
+        description: 'Duplicate',
+        edits: [compoundRequest().edits[0]!, compoundRequest().edits[0]!],
+      },
+      {
+        id: 'empty-update',
+        description: 'Empty update',
+        edits: [
+          {
+            kind: 'update' as const,
+            sectionId: nodeSection,
+            expectedContentHash: 'base-node-hash',
+            commands: [],
+          },
+        ],
+      },
+      {
+        id: 'identity',
+        description: 'Stage identity',
+        edits: [
+          {
+            kind: 'update' as const,
+            sectionId: currentStageSection,
+            expectedContentHash: contentHash(currentStageDocument),
+            commands: [{ op: 'set' as const, key: 'id', value: 'replaced' }],
+          },
+        ],
+      },
+    ];
+
+    for (const request of invalidRequests) {
+      await expect(session.requestCompoundEdit(request)).resolves.toMatchObject(
+        {
+          status: 'failed',
+          reason: 'invalid-request',
+        },
+      );
+    }
+    expect(onCompoundEdit).not.toHaveBeenCalled();
+  });
+
+  it('does not mutate any session state when a compound edit is blocked', async () => {
+    const onCompoundEdit = vi.fn().mockResolvedValue({
+      status: 'blocked',
+      blockedSections: [{ sectionId: nodeSection }],
+    });
+    const { session } = createSession({ onCompoundEdit });
+    await session.validate();
+    const before = session.getSnapshot();
+
+    await expect(
+      session.requestCompoundEdit(compoundRequest()),
+    ).resolves.toMatchObject({ status: 'blocked' });
+
+    expect(session.getSnapshot()).toBe(before);
+  });
+
+  it('rejects a codebook-only applied result that omits the current stage from the full snapshot', async () => {
+    const onCompoundEdit = vi.fn().mockResolvedValue({
+      status: 'applied',
+      update: {
+        protocolSections: {
+          [nodeSection]: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+          },
+        },
+        manifestRevision: revision(2n),
+      },
+    });
+    const { session } = createSession({ onCompoundEdit });
+    await session.validate();
+    const before = session.getSnapshot();
+    const request: CompoundEditRequest = {
+      id: 'create-person-only',
+      description: 'Create person type',
+      edits: [compoundRequest().edits[0]!],
+    };
+
+    await expect(session.requestCompoundEdit(request)).resolves.toMatchObject({
+      status: 'failed',
+      reason: 'invalid-response',
+      sectionId: currentStageSection,
+    });
+    expect(session.getSnapshot()).toBe(before);
+  });
+
+  it('fences a compound result that resolves after lease loss', async () => {
+    let resolveHost:
+      | ((result: {
+          status: 'applied';
+          update: {
+            protocolSections: Record<string, SectionDoc>;
+            manifestRevision: ReturnType<typeof revision>;
+          };
+        }) => void)
+      | undefined;
+    const onCompoundEdit = vi.fn(
+      () =>
+        new Promise<{
+          status: 'applied';
+          update: {
+            protocolSections: Record<string, SectionDoc>;
+            manifestRevision: ReturnType<typeof revision>;
+          };
+        }>((resolve) => {
+          resolveHost = resolve;
+        }),
+    );
+    const { session } = createSession({ onCompoundEdit });
+    const pending = session.requestCompoundEdit(compoundRequest());
+
+    session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    resolveHost?.({
+      status: 'applied',
+      update: {
+        protocolSections: {
+          [nodeSection]: { name: 'Must not land' },
+        },
+        manifestRevision: revision(2n),
+      },
+    });
+
+    await expect(pending).resolves.toMatchObject({
+      status: 'failed',
+      reason: 'lease-lost',
+    });
+    expect(session.getSnapshot().protocolSections[nodeSection]).toBeUndefined();
+    expect(session.getSnapshot().manifestRevision).toEqual(revision(1n));
+  });
+
+  it('does not regress to an out-of-order authoritative revision', async () => {
+    const onCompoundEdit = vi.fn().mockResolvedValue({
+      status: 'applied',
+      update: {
+        protocolSections: { [nodeSection]: { name: 'Stale' } },
+        manifestRevision: revision(2n),
+      },
+    });
+    const { session } = createSession({ onCompoundEdit });
+    const pending = session.requestCompoundEdit(compoundRequest());
+    session.receiveAuthoritativeUpdate({
+      protocolSections: { [nodeSection]: { name: 'Newest' } },
+      manifestRevision: revision(3n),
+    });
+
+    await expect(pending).resolves.toMatchObject({
+      status: 'failed',
+      reason: 'stale-result',
+    });
+    expect(session.getSnapshot().protocolSections[nodeSection]).toEqual({
+      name: 'Newest',
+    });
+
+    session.receiveAuthoritativeUpdate({
+      protocolSections: { [nodeSection]: { name: 'Older broadcast' } },
+      manifestRevision: revision(1n),
+    });
+    expect(session.getSnapshot().protocolSections[nodeSection]).toEqual({
+      name: 'Newest',
+    });
+  });
+
+  it('ignores an authoritative broadcast with an equal sequence but different hash', () => {
+    const { session } = createSession();
+    const before = session.getSnapshot();
+
+    session.receiveAuthoritativeUpdate({
+      protocolSections: { [nodeSection]: { name: 'Conflicting fork' } },
+      manifestRevision: conflictingRevision(1n),
+    });
+
+    expect(session.getSnapshot()).toBe(before);
+    expect(session.getSnapshot().protocolSections[nodeSection]).toBeUndefined();
+  });
+
+  it('ignores a conflicting equal-sequence acknowledgement but accepts the exact revision', () => {
+    const { session } = createSession();
+    session.dispatch([{ op: 'set', key: 'label', value: 'Local edit' }]);
+
+    session.acknowledge({
+      fields: { ...initialFields, label: 'Conflicting acknowledgement' },
+      throughBatchId: 1,
+      manifestRevision: conflictingRevision(1n),
+    });
+
+    expect(session.getSnapshot().pendingCommands).toHaveLength(1);
+    expect(session.getSnapshot().editedSection.fields.label).toBe('Local edit');
+    expect(session.getSnapshot().manifestRevision).toEqual(revision(1n));
+
+    session.acknowledge({
+      fields: { ...initialFields, label: 'Local edit' },
+      throughBatchId: 1,
+      manifestRevision: revision(1n),
+    });
+
+    expect(session.getSnapshot().pendingCommands).toHaveLength(0);
+    expect(session.getSnapshot().editedSection.fields.label).toBe('Local edit');
+  });
+
+  it('ignores an equal-sequence authoritative stage replacement with a different hash', () => {
+    const { session } = createSession();
+
+    session.replaceAuthoritativeStage({
+      fields: { ...initialFields, label: 'Conflicting replacement' },
+      manifestRevision: conflictingRevision(1n),
+    });
+
+    expect(session.getSnapshot().editedSection.fields.label).toBe('Welcome');
+    expect(session.getSnapshot().manifestRevision).toEqual(revision(1n));
+  });
+
+  it('rejects a conflicting equal-sequence compound result but allows the exact revision', async () => {
+    const conflictingHost = vi.fn().mockResolvedValue({
+      status: 'applied',
+      update: {
+        protocolSections: { [nodeSection]: { name: 'Conflicting fork' } },
+        manifestRevision: conflictingRevision(1n),
+      },
+    });
+    const { session: conflictingSession } = createSession({
+      onCompoundEdit: conflictingHost,
+    });
+
+    await expect(
+      conflictingSession.requestCompoundEdit(compoundRequest()),
+    ).resolves.toMatchObject({ status: 'failed', reason: 'stale-result' });
+    expect(
+      conflictingSession.getSnapshot().protocolSections[nodeSection],
+    ).toBeUndefined();
+
+    const idempotentHost = vi.fn().mockResolvedValue({
+      status: 'applied',
+      update: {
+        protocolSections: {
+          [nodeSection]: { name: 'Person' },
+          [currentStageSection]: {
+            ...currentStageDocument,
+            subject: { entity: 'node', type: 'person' },
+          },
+        },
+        manifestRevision: revision(1n),
+      },
+    });
+    const { session: idempotentSession } = createSession({
+      onCompoundEdit: idempotentHost,
+    });
+
+    await expect(
+      idempotentSession.requestCompoundEdit(compoundRequest()),
+    ).resolves.toMatchObject({ status: 'applied' });
+    expect(
+      idempotentSession.getSnapshot().protocolSections[nodeSection],
+    ).toEqual({ name: 'Person' });
+  });
+
+  it('reports an attributed remote dependency deletion without losing metadata access', async () => {
+    const formStageSection = sectionId({
+      kind: 'stage',
+      stageId: 'form-stage',
+    });
+    const personSection = sectionId({
+      kind: 'codebookNode',
+      typeId: 'person:alias',
+    });
+    const fields: SectionDoc = {
+      label: 'Person form',
+      subject: { entity: 'node', type: 'person:alias' },
+      introductionPanel: { title: 'Questions', text: 'Answer these.' },
+      form: { fields: [{ variable: 'age', prompt: 'Age?' }] },
+    };
+    const sections: Record<string, SectionDoc> = {
+      [sectionId({ kind: 'settings' })]: {
+        name: 'Remote dependency test',
+        schemaVersion: 8,
+      },
+      [sectionId({ kind: 'stageOrder' })]: { stages: ['form-stage'] },
+      [formStageSection]: {
+        id: 'form-stage',
+        type: 'AlterForm',
+        ...fields,
+      },
+      [personSection]: {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        shape: { default: 'circle' },
+        variables: {
+          age: { name: 'Age', type: 'number', component: 'Number' },
+        },
+      },
+    };
+    const session = new ProtocolBuilderSessionStore({
+      identity: createStageIdentity('AlterForm', () => 'form-stage'),
+      fields,
+      protocolSections: sections,
+      manifestRevision: revision(1n),
+      access: {
+        mode: 'editable',
+        leaseOwner: 'tab-1',
+        leaseEpoch: 1n,
+      },
+      buildCandidate: ({ stageDocument: currentStage, protocolSections }) =>
+        assembleProtocolSections({
+          ...protocolSections,
+          [formStageSection]: currentStage,
+        }),
+    });
+    expect((await session.validate()).status).toBe('valid');
+
+    const deletionAttribution = {
+      sessionId: 'remote-tab',
+      displayName: 'Remote editor',
+      revision: revision(2n),
+    };
+    session.receiveAuthoritativeUpdate({
+      protocolSections: {
+        ...sections,
+        [personSection]: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {},
+        },
+      },
+      manifestRevision: revision(2n),
+      attribution: { [personSection]: deletionAttribution },
+    });
+    const validation = await session.validate();
+
+    expect(validation).toMatchObject({ status: 'invalid' });
+    if (validation.status !== 'invalid') throw new Error('expected invalid');
+    expect(
+      validation.issues.find(({ message }) =>
+        message.includes('does not exist in the codebook'),
+      ),
+    ).toMatchObject({
+      attributedChange: {
+        sectionId: personSection,
+        attribution: deletionAttribution,
+      },
+    });
+    expect(
+      session.getSnapshot().protocolContext.codebook.node?.['person:alias']
+        ?.name,
+    ).toBe('Person');
+    expect(
+      session.getSnapshot().protocolContext.codebook.node?.['person:alias']
+        ?.variables?.age,
+    ).toBeUndefined();
   });
 });

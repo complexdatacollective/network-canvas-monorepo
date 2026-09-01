@@ -14,10 +14,19 @@ import {
 } from '@codaco/studio-sync/apply';
 import {
   type ProtocolSectionId,
+  parseSectionId,
   sectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import {
+  protocolContextFromSections,
+  type ProtocolBuilderProtocolContext,
+} from './protocol-context.ts';
 import { isStageType } from './stage-types.ts';
+import {
+  attributeValidationIssues,
+  type AttributedProtocolValidationIssue,
+} from './validationAttribution.ts';
 
 export type StageIdentity = Readonly<{ id: string; type: StageType }>;
 export type StageFormDraft = Readonly<SectionDoc>;
@@ -70,7 +79,7 @@ export type ProtocolBuilderValidation =
   | Readonly<{ status: 'valid'; issues: readonly [] }>
   | Readonly<{
       status: 'invalid';
-      issues: readonly ProtocolValidationIssue[];
+      issues: readonly AttributedProtocolValidationIssue[];
     }>;
 
 export type ProtocolBuilderSnapshot = Readonly<{
@@ -80,6 +89,7 @@ export type ProtocolBuilderSnapshot = Readonly<{
     fields: StageFormDraft;
   }>;
   protocolSections: Readonly<Record<string, SectionDoc>>;
+  protocolContext: ProtocolBuilderProtocolContext;
   manifestRevision: ManifestRevision;
   access: ProtocolBuilderAccess;
   presence: readonly ProtocolBuilderPresence[];
@@ -90,18 +100,56 @@ export type ProtocolBuilderSnapshot = Readonly<{
   validatedProtocol: CurrentProtocol | null;
 }>;
 
-export type CompoundSectionEdit = Readonly<{
-  sectionId: ProtocolSectionId;
-  commands: readonly Command[];
-}>;
+export type CompoundSectionEdit =
+  | Readonly<{
+      kind: 'update';
+      sectionId: ProtocolSectionId;
+      /** Content hash of the authoritative section the commands were built from. */
+      expectedContentHash: string;
+      commands: readonly Command[];
+    }>
+  | Readonly<{
+      kind: 'create';
+      sectionId: ProtocolSectionId;
+      document: SectionDoc;
+    }>
+  | Readonly<{
+      kind: 'remove';
+      sectionId: ProtocolSectionId;
+      /** Content hash of the authoritative section approved for removal. */
+      expectedContentHash: string;
+    }>;
 
 export type CompoundEditRequest = Readonly<{
+  /** Stable across an uncertain retry so a host can apply the intent once. */
+  id: string;
   description: string;
   edits: readonly CompoundSectionEdit[];
 }>;
 
+export type CompoundEditSubmission = CompoundEditRequest &
+  Readonly<{
+    /** Authority captured before the asynchronous host call begins. */
+    authority: Readonly<{
+      sectionId: ProtocolSectionId;
+      leaseOwner: string;
+      leaseEpoch: bigint;
+    }>;
+  }>;
+
+export type CompoundEditFailureReason =
+  | 'host-error'
+  | 'invalid-request'
+  | 'invalid-response'
+  | 'lease-lost'
+  | 'pending-commands'
+  | 'stale-base'
+  | 'stale-epoch'
+  | 'stale-result'
+  | 'unavailable';
+
 export type CompoundEditResult =
-  | Readonly<{ status: 'applied'; revision: ManifestRevision }>
+  | Readonly<{ status: 'applied'; update: AuthoritativeUpdate }>
   | Readonly<{
       status: 'blocked';
       blockedSections: readonly Readonly<{
@@ -109,7 +157,13 @@ export type CompoundEditResult =
         holder?: ProtocolBuilderPresence;
       }>[];
     }>
-  | Readonly<{ status: 'failed'; message: string }>;
+  | Readonly<{
+      status: 'failed';
+      reason: CompoundEditFailureReason;
+      sectionId?: ProtocolSectionId;
+      holder?: ProtocolBuilderPresence;
+      message: string;
+    }>;
 
 export type ProtocolCandidateContext = Readonly<{
   stageDocument: SectionDoc;
@@ -147,7 +201,7 @@ export type ProtocolBuilderSessionOptions = Readonly<{
   buildCandidate(context: ProtocolCandidateContext): unknown;
   onCommands?(batch: PendingCommandBatch): void;
   onCompoundEdit?(
-    request: CompoundEditRequest,
+    request: CompoundEditSubmission,
   ): Promise<CompoundEditResult> | CompoundEditResult;
   onFinish?(request: FinishRequest): Promise<void> | void;
 }>;
@@ -325,10 +379,126 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     request: CompoundEditRequest,
   ): Promise<CompoundEditResult> {
     this.assertEditable();
-    if (this.options.onCompoundEdit === undefined) {
-      return { status: 'failed', message: 'compound editing is unavailable' };
+    const invalidRequest = validateCompoundEditRequest(request);
+    if (invalidRequest !== null) return invalidRequest;
+    if (this.snapshot.pendingCommands.length !== 0) {
+      return compoundFailure(
+        'pending-commands',
+        'save the current stage changes before editing related sections',
+      );
     }
-    return this.options.onCompoundEdit(request);
+    if (this.options.onCompoundEdit === undefined) {
+      return compoundFailure('unavailable', 'compound editing is unavailable');
+    }
+
+    const access = this.snapshot.access;
+    if (access.mode !== 'editable') {
+      throw new SessionReadOnlyError();
+    }
+    const authority = Object.freeze({
+      sectionId: this.snapshot.editedSection.sectionId,
+      leaseOwner: access.leaseOwner,
+      leaseEpoch: access.leaseEpoch,
+    });
+    const submission: CompoundEditSubmission = Object.freeze({
+      ...request,
+      authority,
+    });
+
+    let result: CompoundEditResult;
+    try {
+      result = await this.options.onCompoundEdit(submission);
+    } catch (error: unknown) {
+      return compoundFailure(
+        'host-error',
+        error instanceof Error ? error.message : 'the compound edit failed',
+      );
+    }
+    if (result.status !== 'applied') return result;
+
+    const currentAccess = this.snapshot.access;
+    if (currentAccess.mode !== 'editable') {
+      return compoundFailure(
+        'lease-lost',
+        'editing access was lost before the compound edit completed',
+      );
+    }
+    if (
+      currentAccess.leaseOwner !== authority.leaseOwner ||
+      currentAccess.leaseEpoch !== authority.leaseEpoch
+    ) {
+      return compoundFailure(
+        'stale-epoch',
+        'editing authority changed before the compound edit completed',
+      );
+    }
+    const resultRevisionOrder = revisionOrder(
+      result.update.manifestRevision,
+      this.snapshot.manifestRevision,
+    );
+    if (
+      resultRevisionOrder === 'older' ||
+      resultRevisionOrder === 'conflicting'
+    ) {
+      return compoundFailure(
+        'stale-result',
+        resultRevisionOrder === 'conflicting'
+          ? 'the compound result conflicts with the loaded authoritative revision'
+          : 'a newer authoritative protocol revision is already loaded',
+      );
+    }
+
+    const stageSectionId = this.snapshot.editedSection.sectionId;
+    const updatedStageDocument = result.update.protocolSections[stageSectionId];
+    let fields = this.snapshot.editedSection.fields;
+    if (updatedStageDocument !== undefined) {
+      try {
+        const updatedStage = stageDraftFromDocument(updatedStageDocument);
+        if (
+          updatedStage.identity.id !==
+            this.snapshot.editedSection.identity.id ||
+          updatedStage.identity.type !==
+            this.snapshot.editedSection.identity.type
+        ) {
+          return compoundFailure(
+            'invalid-response',
+            'the authoritative response changed the edited stage identity',
+            stageSectionId,
+          );
+        }
+        fields = updatedStage.fields;
+      } catch {
+        return compoundFailure(
+          'invalid-response',
+          'the authoritative response contains an invalid edited stage',
+          stageSectionId,
+        );
+      }
+    } else {
+      return compoundFailure(
+        'invalid-response',
+        'the authoritative response omitted the current edited stage from its full protocol snapshot',
+        stageSectionId,
+      );
+    }
+
+    this.baseFields = cloneDoc(fields);
+    this.undoStack.length = 0;
+    this.redoStack.length = 0;
+    this.historyGeneration += 1;
+    this.fencedAtRevision = result.update.manifestRevision;
+    this.replaceSnapshot({
+      fields,
+      protocolSections: result.update.protocolSections,
+      manifestRevision: result.update.manifestRevision,
+      presence: result.update.presence ?? this.snapshot.presence,
+      attribution: result.update.attribution ?? this.snapshot.attribution,
+      pendingCommands: [],
+      validation: pendingValidation(),
+      validatedProtocol: null,
+    });
+    void this.runValidation();
+    return result;
   }
 
   async finish(): Promise<void> {
@@ -349,6 +519,14 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
   }
 
   receiveAuthoritativeUpdate(update: AuthoritativeUpdate): void {
+    if (
+      !acceptsAuthoritativeRevision(
+        update.manifestRevision,
+        this.snapshot.manifestRevision,
+      )
+    ) {
+      return;
+    }
     this.replaceSnapshot({
       protocolSections: update.protocolSections,
       manifestRevision: update.manifestRevision,
@@ -368,6 +546,14 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       attribution?: Readonly<Record<string, ChangeAttribution>>;
     }>,
   ): void {
+    if (
+      !acceptsAuthoritativeRevision(
+        params.manifestRevision,
+        this.snapshot.manifestRevision,
+      )
+    ) {
+      return;
+    }
     assertNoIdentityFields(params.fields);
     this.baseFields = cloneDoc(params.fields);
     const pendingCommands = this.snapshot.pendingCommands.filter(
@@ -394,6 +580,14 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       manifestRevision: ManifestRevision;
     }>,
   ): void {
+    if (
+      !acceptsAuthoritativeRevision(
+        params.manifestRevision,
+        this.snapshot.manifestRevision,
+      )
+    ) {
+      return;
+    }
     if (this.snapshot.pendingCommands.length !== 0) {
       throw new AuthoritativeConflictError();
     }
@@ -480,7 +674,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
 
     const validation: ProtocolBuilderValidation = Object.freeze({
       status: 'invalid',
-      issues: Object.freeze(
+      issues: attributeValidationIssues(
         result.error.issues.map((issue) => ({
           code: issue.code,
           path: issue.path.map((segment) =>
@@ -488,6 +682,9 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
           ),
           message: issue.message,
         })),
+        this.snapshot.protocolSections,
+        this.snapshot.attribution,
+        this.snapshot.manifestRevision,
       ),
     });
     this.replaceSnapshot({ validation, validatedProtocol: null });
@@ -563,6 +760,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         fields: freezeDoc(params.fields),
       }),
       protocolSections: Object.freeze({ ...params.protocolSections }),
+      protocolContext: protocolContextFromSections(params.protocolSections),
       manifestRevision: Object.freeze({ ...params.manifestRevision }),
       access: Object.freeze({ ...params.access }),
       presence: Object.freeze([...params.presence]),
@@ -582,6 +780,31 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
   }
 }
 
+type ManifestRevisionOrder = 'older' | 'same' | 'newer' | 'conflicting';
+
+/**
+ * Sequence order is authoritative only across unequal sequences. Equal
+ * sequences identify the same revision iff their content hashes also match;
+ * accepting an equal-sequence/different-hash fork would silently replace one
+ * authoritative history with another.
+ */
+function revisionOrder(
+  candidate: ManifestRevision,
+  current: ManifestRevision,
+): ManifestRevisionOrder {
+  if (candidate.sequence < current.sequence) return 'older';
+  if (candidate.sequence > current.sequence) return 'newer';
+  return candidate.hash === current.hash ? 'same' : 'conflicting';
+}
+
+function acceptsAuthoritativeRevision(
+  candidate: ManifestRevision,
+  current: ManifestRevision,
+): boolean {
+  const order = revisionOrder(candidate, current);
+  return order === 'same' || order === 'newer';
+}
+
 function assertNoIdentityFields(fields: StageFormDraft): void {
   if (Object.hasOwn(fields, 'id')) throw new StageIdentityCommandError('id');
   if (Object.hasOwn(fields, 'type'))
@@ -599,6 +822,123 @@ function validValidation(): ProtocolBuilderValidation {
   return Object.freeze({
     status: 'valid',
     issues: Object.freeze([]) as readonly [],
+  });
+}
+
+function validateCompoundEditRequest(
+  request: CompoundEditRequest,
+): Extract<CompoundEditResult, { status: 'failed' }> | null {
+  if (request.id.trim() === '') {
+    return compoundFailure(
+      'invalid-request',
+      'a compound edit requires a stable request id',
+    );
+  }
+  if (request.description.trim() === '') {
+    return compoundFailure(
+      'invalid-request',
+      'a compound edit requires a description',
+    );
+  }
+  if (request.edits.length === 0) {
+    return compoundFailure(
+      'invalid-request',
+      'a compound edit must touch at least one section',
+    );
+  }
+
+  const touchedSections = new Set<ProtocolSectionId>();
+  for (const edit of request.edits) {
+    if (touchedSections.has(edit.sectionId)) {
+      return compoundFailure(
+        'invalid-request',
+        'a compound edit may touch each section only once',
+        edit.sectionId,
+      );
+    }
+    touchedSections.add(edit.sectionId);
+
+    let ref: ReturnType<typeof parseSectionId>;
+    try {
+      ref = parseSectionId(edit.sectionId);
+    } catch {
+      return compoundFailure(
+        'invalid-request',
+        'a compound edit contains an unknown section id',
+        edit.sectionId,
+      );
+    }
+
+    if (edit.kind === 'update') {
+      if (
+        typeof edit.expectedContentHash !== 'string' ||
+        edit.expectedContentHash.trim() === ''
+      ) {
+        return compoundFailure(
+          'invalid-request',
+          'a compound section update requires an expected content hash',
+          edit.sectionId,
+        );
+      }
+      if (edit.commands.length === 0) {
+        return compoundFailure(
+          'invalid-request',
+          'a compound section update requires at least one command',
+          edit.sectionId,
+        );
+      }
+      if (
+        ref.kind === 'stage' &&
+        edit.commands.some(
+          (command) => command.key === 'id' || command.key === 'type',
+        )
+      ) {
+        return compoundFailure(
+          'invalid-request',
+          'stage identity fields cannot be changed by a compound edit',
+          edit.sectionId,
+        );
+      }
+      continue;
+    }
+
+    if (
+      edit.kind === 'remove' &&
+      (typeof edit.expectedContentHash !== 'string' ||
+        edit.expectedContentHash.trim() === '')
+    ) {
+      return compoundFailure(
+        'invalid-request',
+        'a compound section removal requires an expected content hash',
+        edit.sectionId,
+      );
+    }
+
+    if (
+      ref.kind !== 'codebookNode' &&
+      ref.kind !== 'codebookEdge' &&
+      ref.kind !== 'codebookEgo'
+    ) {
+      return compoundFailure(
+        'invalid-request',
+        'only codebook sections can be structurally created or removed',
+        edit.sectionId,
+      );
+    }
+  }
+  return null;
+}
+
+function compoundFailure(
+  reason: CompoundEditFailureReason,
+  message: string,
+  sectionIdValue?: ProtocolSectionId,
+): Extract<CompoundEditResult, { status: 'failed' }> {
+  return Object.freeze({
+    status: 'failed',
+    reason,
+    message,
+    ...(sectionIdValue === undefined ? {} : { sectionId: sectionIdValue }),
   });
 }
 
