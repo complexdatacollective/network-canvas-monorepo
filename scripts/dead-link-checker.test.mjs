@@ -355,6 +355,46 @@ test('browser page slots transfer directly to the oldest queued verifier', async
   slots.release();
 });
 
+test('timed-out browser page-slot waiters do not consume a later permit', async () => {
+  const slots = new PageSlotSemaphore(1);
+  await slots.acquire();
+
+  await assert.rejects(slots.acquire(10), { name: 'TimeoutError' });
+  slots.release();
+
+  await slots.acquire();
+  slots.release();
+});
+
+test('browser setup is bounded by the request timeout', async () => {
+  const browser = {
+    close: async () => {},
+    newContext: async () => new Promise(() => {}),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+  let guardTimer;
+
+  try {
+    await assert.rejects(
+      Promise.race([
+        verifier.verify('https://publisher.test/setup-timeout', 20),
+        new Promise((_, reject) => {
+          guardTimer = globalThis.setTimeout(
+            () => reject(new Error('test guard expired before setup timeout')),
+            200,
+          );
+        }),
+      ]),
+      /Browser verification timed out after 20ms/,
+    );
+  } finally {
+    globalThis.clearTimeout(guardTimer);
+    await verifier.close();
+  }
+});
+
 test('browser verification keeps the configured identity and final redirect status', async () => {
   const frame = {};
   const navigationRequest = { isNavigationRequest: () => true };
@@ -1149,6 +1189,65 @@ test('browser verification accepts a follow-up headerless download response', as
   }
 });
 
+test('browser verification does not confuse an independent same-URL download with the document', async () => {
+  const finalUrl = 'https://publisher.test/recovered';
+  const frame = { url: () => finalUrl };
+  const navigationRequest = { isNavigationRequest: () => true };
+  const initial = {
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => 200,
+    url: () => finalUrl,
+  };
+  let downloadListener;
+  let frameNavigatedListener;
+  let responseListener;
+  const page = {
+    close: async () => {},
+    content: async () =>
+      '<html><body><a href="/linked">linked</a></body></html>',
+    goto: async () => {
+      responseListener(initial);
+      frameNavigatedListener(frame);
+      downloadListener({ cancel: async () => {}, url: () => finalUrl });
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'download') downloadListener = listener;
+      if (event === 'framenavigated') frameNavigatedListener = listener;
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => finalUrl,
+    waitForEvent: async () => {},
+    waitForLoadState: async () => {},
+    waitForTimeout: async () => {},
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    const outcome = await verifier.verify(finalUrl, 50, {
+      captureHTML: true,
+    });
+    assert.deepEqual(outcome, {
+      contentType: 'text/html',
+      finalUrl,
+      html: '<html><body><a href="/linked">linked</a></body></html>',
+      redirects: [],
+      status: 200,
+    });
+  } finally {
+    await verifier.close();
+  }
+});
+
 test('browser verification rejects a response-free non-HTTP commit', async () => {
   const frame = {};
   const navigationRequest = { isNavigationRequest: () => true };
@@ -1301,6 +1400,88 @@ test('browser verification preserves a response across same-document history cha
     assert.deepEqual(outcome, {
       contentType: 'text/html',
       finalUrl: 'https://publisher.test/canonical',
+      html: '<html><body><a href="/linked">linked</a></body></html>',
+      redirects: [],
+      status: 200,
+    });
+  } finally {
+    await verifier.close();
+  }
+});
+
+test('browser verification follows a client redirect that interrupts the initial goto', async () => {
+  let finalUrl = 'https://publisher.test/challenge';
+  const frame = { url: () => finalUrl };
+  const request = (url) => ({
+    frame: () => frame,
+    isNavigationRequest: () => true,
+    url: () => url,
+  });
+  const initialRequest = request('https://publisher.test/challenge');
+  const recoveredRequest = request('https://publisher.test/recovered');
+  const response = (status, url, navigationRequest) => ({
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => status,
+    url: () => url,
+  });
+  const initial = response(
+    403,
+    'https://publisher.test/challenge',
+    initialRequest,
+  );
+  const recovered = response(
+    200,
+    'https://publisher.test/recovered',
+    recoveredRequest,
+  );
+  let frameNavigatedListener;
+  let requestListener;
+  let responseListener;
+  const page = {
+    close: async () => {},
+    content: async () =>
+      '<html><body><a href="/linked">linked</a></body></html>',
+    goto: async () => {
+      requestListener(initialRequest);
+      responseListener(initial);
+      requestListener(recoveredRequest);
+      responseListener(recovered);
+      finalUrl = recovered.url();
+      frameNavigatedListener(frame);
+      throw new Error(
+        'Navigation to challenge was interrupted by another navigation',
+      );
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'framenavigated') frameNavigatedListener = listener;
+      if (event === 'request') requestListener = listener;
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => finalUrl,
+    waitForEvent: async () => {},
+    waitForLoadState: async () => {},
+    waitForTimeout: async () => {},
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    const outcome = await verifier.verify(
+      'https://publisher.test/challenge',
+      50,
+      { captureHTML: true },
+    );
+    assert.deepEqual(outcome, {
+      contentType: 'text/html',
+      finalUrl: 'https://publisher.test/recovered',
       html: '<html><body><a href="/linked">linked</a></body></html>',
       redirects: [],
       status: 200,

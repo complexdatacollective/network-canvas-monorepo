@@ -48,9 +48,12 @@
  * outstanding until their response or failure event arrives, so a request
  * that stalls before response headers cannot look quiet. Superseded/aborted
  * requests are retired; another navigation failure remains an error unless a
- * later terminal document replaces it. Incomplete redirects and document
- * loads remain verification failures, and the entire sequence shares one
- * request deadline so reload loops cannot retain a worker indefinitely.
+ * later terminal document replaces it. If that replacement interrupts the
+ * initial goto before DOMContentLoaded, its captured lifecycle continues
+ * through the same response/commit checks. Incomplete redirects and document
+ * loads remain verification failures, and the entire sequence -- including
+ * the page-slot wait, Chrome launch, and context/page creation -- shares one
+ * request deadline so setup stalls and reload loops cannot retain a worker.
  * Browser-only HTTP redirects obey the same maximum-hop rule as Node
  * redirects. A browser 304 is a completed
  * cache revalidation, not a redirect; its prior same-URL representation
@@ -59,7 +62,9 @@
  * downloads or return 204 No Content are the exceptions to requiring a
  * document load: Playwright rejects goto in those cases, so the captured HTTP
  * response verifies the non-HTML target without saving a file or inventing a
- * document.
+ * document. A download event is paired only with an uncommitted main-frame
+ * response, preventing an independent page download from suppressing the HTML
+ * crawl.
  *
  * Browser verification is not status suppression. Its final response is
  * authoritative: a browser-confirmed 403 (or any other >= 400 response) still
@@ -254,12 +259,34 @@ export class PageSlotSemaphore {
     this.#limit = limit;
   }
 
-  async acquire() {
+  async acquire(timeout, timeoutError) {
     if (this.#available > 0) {
       this.#available--;
       return;
     }
-    await new Promise((resolve) => this.#waiters.push(resolve));
+    await new Promise((resolve, reject) => {
+      let timer;
+      const waiter = {
+        grant: () => {
+          globalThis.clearTimeout(timer);
+          resolve();
+        },
+      };
+      this.#waiters.push(waiter);
+      if (timeout !== undefined) {
+        timer = globalThis.setTimeout(() => {
+          const index = this.#waiters.indexOf(waiter);
+          if (index !== -1) this.#waiters.splice(index, 1);
+          reject(
+            timeoutError?.() ??
+              Object.assign(
+                new Error(`Browser page slot timed out after ${timeout}ms`),
+                { name: 'TimeoutError' },
+              ),
+          );
+        }, timeout);
+      }
+    });
   }
 
   release() {
@@ -268,7 +295,7 @@ export class PageSlotSemaphore {
       // Keep the permit unavailable while transferring it directly. A later
       // caller therefore cannot overtake the queued verifier before its
       // promise continuation runs.
-      waiter();
+      waiter.grant();
       return;
     }
     if (this.#available >= this.#limit) {
@@ -294,7 +321,7 @@ export class BrowserVerifier {
     this.#userAgent = userAgent;
   }
 
-  async #getResources() {
+  async #getResources(timeout) {
     this.#resourcesPromise ??= (async () => {
       const chromium = await this.#loadChromium();
       const browser = await chromium.launch({
@@ -302,6 +329,7 @@ export class BrowserVerifier {
         channel: 'chrome',
         headless: false,
         ignoreDefaultArgs: ['--enable-automation'],
+        timeout,
       });
       return { browser };
     })();
@@ -319,23 +347,63 @@ export class BrowserVerifier {
   }
 
   async verify(url, timeout, { captureHTML = false } = {}) {
-    await this.#pageSlots.acquire();
+    const verificationDeadline = Date.now() + timeout;
+    const browserTimeoutError = () => {
+      const error = new Error(
+        `Browser verification timed out after ${timeout}ms`,
+      );
+      error.name = 'TimeoutError';
+      return error;
+    };
+    const remainingTimeout = () => {
+      const remaining = verificationDeadline - Date.now();
+      if (remaining > 0) return remaining;
+      throw browserTimeoutError();
+    };
+    const withDeadline = async (operation) => {
+      let timer;
+      try {
+        return await Promise.race([
+          operation,
+          new Promise((_, reject) => {
+            timer = globalThis.setTimeout(
+              () => reject(browserTimeoutError()),
+              remainingTimeout(),
+            );
+          }),
+        ]);
+      } finally {
+        globalThis.clearTimeout(timer);
+      }
+    };
+
+    await this.#pageSlots.acquire(remainingTimeout(), browserTimeoutError);
     let context;
     let page;
     const spawnedPages = new Set();
     try {
-      const { browser } = await this.#getResources();
-      context = await browser.newContext({
+      const { browser } = await withDeadline(
+        this.#getResources(remainingTimeout()),
+      );
+      const contextPromise = browser.newContext({
         acceptDownloads: false,
         ...(this.#userAgent ? { userAgent: this.#userAgent } : {}),
       });
-      page = await context.newPage();
+      try {
+        context = await withDeadline(contextPromise);
+      } catch (error) {
+        void contextPromise
+          .then((lateContext) => lateContext.close())
+          .catch(() => {});
+        throw error;
+      }
+      page = await withDeadline(context.newPage());
       const mainFrameRequests = [];
       const mainFrameResponses = [];
       const outstandingMainFrameRequests = new Set();
       const responseCommitBaselines = new WeakMap();
       const mainFrameCommits = [];
-      const downloadURLs = new Set();
+      const downloadResponses = new WeakSet();
       const lifecycleWaiters = new Set();
       let lifecycleVersion = 0;
       let mainFrameCommitCount = 0;
@@ -350,7 +418,15 @@ export class BrowserVerifier {
         void popup.close().catch(() => {});
       });
       page.on('download', (download) => {
-        downloadURLs.add(comparableBrowserURL(download.url()));
+        const downloadURL = comparableBrowserURL(download.url());
+        const downloadResponse = mainFrameResponses
+          .slice(committedResponseCount)
+          .findLast(
+            (response) =>
+              response.url &&
+              comparableBrowserURL(response.url()) === downloadURL,
+          );
+        if (downloadResponse) downloadResponses.add(downloadResponse);
         notifyLifecycleChange();
         if (download.cancel) void download.cancel().catch(() => {});
       });
@@ -418,23 +494,6 @@ export class BrowserVerifier {
           notifyLifecycleChange();
         }
       });
-      const verificationDeadline = Date.now() + timeout;
-      const remainingTimeout = () => {
-        const remaining = verificationDeadline - Date.now();
-        if (remaining > 0) return remaining;
-        const error = new Error(
-          `Browser verification timed out after ${timeout}ms`,
-        );
-        error.name = 'TimeoutError';
-        throw error;
-      };
-      const browserTimeoutError = () => {
-        const error = new Error(
-          `Browser verification timed out after ${timeout}ms`,
-        );
-        error.name = 'TimeoutError';
-        return error;
-      };
       const waitForLifecycleChange = async (version) => {
         if (lifecycleVersion !== version) return;
         await new Promise((resolve, reject) => {
@@ -465,13 +524,22 @@ export class BrowserVerifier {
           error instanceof Error &&
           error.message.includes('Download is starting');
         if (
-          !nonDocumentResponse ||
-          (!isDownload && nonDocumentResponse.status() !== 204)
+          nonDocumentResponse &&
+          (isDownload || nonDocumentResponse.status() === 204)
         ) {
-          throw error;
+          return nonDocumentOutcome(nonDocumentResponse, mainFrameResponses);
         }
 
-        return nonDocumentOutcome(nonDocumentResponse, mainFrameResponses);
+        const observedInitialResponse = mainFrameResponses.at(0);
+        const observedInitialRequestIndex = observedInitialResponse
+          ? mainFrameRequests.indexOf(observedInitialResponse.request())
+          : -1;
+        const hasSupersedingNavigation =
+          observedInitialResponse &&
+          (mainFrameResponses.length > 1 ||
+            mainFrameRequests.length > observedInitialRequestIndex + 1);
+        if (!hasSupersedingNavigation) throw error;
+        initialResponse = observedInitialResponse;
       }
       if (!initialResponse) {
         throw new Error(`Browser navigation returned no response for ${url}`);
@@ -541,14 +609,8 @@ export class BrowserVerifier {
         // Playwright Page always exposes waitForEvent; the guard keeps injected
         // unit-test doubles that model only response behavior lightweight.
         if (!page.waitForEvent) {
-          const responseURL = response.url
-            ? comparableBrowserURL(response.url())
-            : null;
           return {
-            kind:
-              responseURL && downloadURLs.has(responseURL)
-                ? 'download'
-                : 'document',
+            kind: downloadResponses.has(response) ? 'download' : 'document',
           };
         }
         const responseURL = comparableBrowserURL(response.url());
@@ -563,7 +625,7 @@ export class BrowserVerifier {
           if (laterTerminalResponse) {
             return { kind: 'superseded', response: laterTerminalResponse };
           }
-          if (downloadURLs.has(responseURL)) return { kind: 'download' };
+          if (downloadResponses.has(response)) return { kind: 'download' };
           if (unrecoveredNavigationFailure) {
             throw new Error(
               `Browser navigation failed: ${unrecoveredNavigationFailure}`,
@@ -609,6 +671,10 @@ export class BrowserVerifier {
         // schedules a client-side navigation after DOMContentLoaded. Give it
         // the same bounded settling treatment as a recovered 403 challenge.
         terminalResponse = navigation;
+      } else {
+        terminalResponse = await waitForTerminalResponse(followupStart, {
+          requestStart: followupRequestStart,
+        });
       }
 
       while (terminalResponse) {
