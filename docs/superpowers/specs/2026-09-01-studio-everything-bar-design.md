@@ -229,24 +229,39 @@ Opening the bar without typing shows:
 - the current area's destinations; and
 - the current area's top commands.
 
+Each item renders once: an activation that appears in recents is removed
+from the inventory-derived sections below it (recents take precedence), so
+one provider-qualified key never renders twice — duplicate React keys and
+`aria-activedescendant` targets are structurally impossible in the empty
+state.
+
 This makes the bar useful as pure navigation — open, arrow down, Enter —
 without requiring a query.
 
 ## 4. Interaction model
 
-- **Open**: the header search affordance (rendered as a search field with the
-  `⌘K` hint, like the documentation site's search button), or `⌘K` /
-  `Ctrl+K` from any app route. The shortcut is registered at the app-shell
-  layout, so it works identically everywhere, including the editor.
+- **Open**: the header search affordance (rendered as a search field with a
+  shortcut hint, like the documentation site's search button), or `⌘K` /
+  `Ctrl+K` from any app route. The hint and every rendered mention of the
+  shortcut show the platform's actual modifier — `⌘K` on macOS, `Ctrl+K`
+  elsewhere — and the accessible label names the same binding. The shortcut
+  is registered at the app-shell layout, so it works identically everywhere,
+  including the editor.
 - **Type**: local inventories (destinations, commands) filter synchronously
   on every keystroke. The entity and documentation providers debounce, abort
   superseded requests, and render into their groups with per-group pending
-  indicators — both are answered by the instance's own server. Late results
-  insert at their ranked position within their group, and the highlighted
-  item is preserved by identity (invariant 4).
+  indicators — both are answered by the instance's own server. A response
+  commits only when its query generation matches the current input; aborting
+  cannot revoke a promise the network already fulfilled, so a stale response
+  that resolves after supersession is discarded, never rendered under the
+  newer query. Late results insert at their ranked position within their
+  group, and the highlighted item is preserved by identity (invariant 4).
 - **Navigate**: arrow keys move through the flat result sequence across
-  groups; `Enter` activates; `Esc` closes and returns focus to wherever it
-  was. A footer row shows navigate / select / close hints, translated.
+  groups — a group's "show more" affordance is a row in that sequence, so
+  arrowing past the last visible result reaches it and `Enter` reveals the
+  next page with the highlight staying on the first revealed item. `Enter`
+  on a result activates; `Esc` closes and returns focus to wherever it was.
+  A footer row shows navigate / select / close hints, translated.
 - **Activate**: destinations and entities are ordinary router navigations, so
   the editor's dirty-state blocker (#1561 §6.5) applies without special
   handling; a blocked navigation leaves the bar closed and the blocker's own
@@ -328,20 +343,25 @@ map current area → 0 and so on), and the component merges every provider's
 items within a group by tier, then position (ascending, when given), then
 recency (descending), then label, then the provider-qualified key as the
 total-order final tie-breaker. `position` is how a provider whose server
-already ranked its page keeps that order through the merge — the
-documentation provider assigns each item its index in the server's
-relevance-and-boost order, so the merge cannot alphabetize away §5.5's
-ranking; the entity provider omits it and orders by recency. Without a
+already ranked its results keeps that order through the merge — the
+documentation provider assigns each item its absolute position in the
+query's accumulated result sequence (a second page continues from the count
+already delivered, never restarting at zero), so the merge cannot
+alphabetize away §5.5's ranking or interleave pages; the entity provider
+omits it and orders by recency. Without a
 normalized rank the component could only concatenate provider outputs, and a
 late current-study entity could never sort above an already-rendered
 lower-tier destination.
 
 Within one provider, item ids must be unique across its complete inventory —
 the qualified key only separates providers from each other. A provider that
-aggregates sources namespaces its ids: the destination provider derives them
-as `area:entryId` (`study:settings`, `team:settings`), so two areas sharing a
-natural manifest id cannot collide. A registry test asserts per-provider
-uniqueness.
+aggregates sources namespaces its ids, and an id must denote the same
+destination regardless of where the researcher currently is: the destination
+provider derives `area:resourceId:entryId`
+(`study:st_42:settings`, `team:tm_7:members`), never a context-relative
+`study:settings` that would silently retarget a persisted recent to
+whichever study is current when it is resolved (§5.6). Platform entries need
+no resource segment. A registry test asserts per-provider uniqueness.
 
 The `open` variant deliberately carries no callback. It is declarative route
 plus surface: `href` is the owning screen's route and `surface` an identifier
@@ -568,10 +588,13 @@ are the single documentation-search path. `limit` defaults to the group bound
 in §3.4 and is server-capped; a common query matching many heading records
 returns one bounded page, and the "show more" affordance requests the next
 with `nextCursor` — the server never streams the whole matching index at a
-keystroke. The ordering is total, as §5.4's is: score, then Studio-tag
-boost, then the record's anchored URL as the immutable unique final key, with
-the cursor encoding the full tuple, so tied scores at a page boundary cannot
-skip or repeat records. The procedure shares §5.4's input bounds: maximum
+keystroke. The Studio-tag boost is applied _into_ the ranking score — a
+fixed additive boost to any record whose `products` includes `studio` —
+never as a subsequent sort key, which would demote it to a tie-breaker that
+only ever reorders exact score ties. The resulting ordering is total, as
+§5.4's is: boosted score, then the record's anchored URL as the immutable
+unique final key, with the cursor encoding the full tuple, so tied scores at
+a page boundary cannot skip or repeat records. The procedure shares §5.4's input bounds: maximum
 query length, capped limit, parseable cursor.
 
 Ranking is the index's lexical ranking with a fixed boost for records whose
@@ -628,11 +651,14 @@ Two changes in the documentation app make the instance-held index exist:
 2. **Index artifact.** The documentation build emits a search index — one
    record per heading-anchored section, carrying title, hierarchy, absolute
    URL, locale, workflow section, `products`, and a bounded content excerpt —
-   published under a schema-versioned path
-   (`…/search-index/v1/<locale>.json`), together with a manifest naming the
-   schema major, the published locales, and the content version. The docs
-   app already renders structured MDX with per-page frontmatter; the index
-   is a build output of that same pipeline, not a crawler product.
+   published under schema-versioned paths
+   (`…/search-index/v1/<locale>.json`), together with one manifest mapping
+   every published schema major to its per-locale artifact paths, alongside
+   the published locales and the content version — a map, not a single
+   major, because the manifest must advertise v1 and v2 simultaneously while
+   a Studio release consuming v1 remains supported. The docs app already
+   renders structured MDX with per-page frontmatter; the index is a build
+   output of that same pipeline, not a crawler product.
 
    The versioned path is the compatibility contract between two products
    that release independently: a schema change is a new major published at a
@@ -806,14 +832,24 @@ foundations work (#1315).
   identity-tracking path), and the inserted results land in §3.4 rank order,
   not appended below lower-priority rows.
 - Rank merging: items from different providers in one group merge by
-  (tier, recency, label, qualified key) — a tier-0 remote item sorts above a
-  tier-1 local item that rendered first.
+  (tier, position, recency, label, qualified key) — a tier-0 remote item
+  sorts above a tier-1 local item that rendered first, and a same-tier
+  server-ranked page with deliberately non-alphabetical positions renders in
+  position order, so a component that ignores `position` and alphabetizes
+  fails the test.
 - Identity: two providers returning the same natural id render, highlight,
   and activate as distinct items — the provider-qualified key backs React
   keys and `aria-activedescendant`, asserted with a deliberate cross-provider
   collision.
-- Keyboard: arrows traverse across groups, Enter activates, Esc closes and
-  restores focus; reduced-motion path renders without transitions.
+- Keyboard: arrows traverse across groups, reach each group's "show more"
+  row past its last visible result, and `Enter` there reveals the next page
+  with the highlight on the first revealed item; `Enter` on a result
+  activates, Esc closes and restores focus; reduced-motion path renders
+  without transitions.
+- Superseded queries: a remote response resolved after a newer keystroke —
+  fulfilled at the network layer before its abort landed — is discarded; the
+  test resolves the old request deliberately late and asserts nothing from
+  it renders under the newer query.
 - Matching: diacritic folding, initials, index-mapped highlight on non-Latin
   labels.
 - Pagination: a remote provider returning `next` renders its group's "show
@@ -878,7 +914,10 @@ foundations work (#1315).
   forget — the policy is provider-level); stored references re-resolve on
   open, and an entry whose provider no longer returns it (revoked
   capability, lost membership, deleted entity) is pruned and not rendered; a
-  cleared store renders the empty state.
+  recent for one study's destination re-resolves to that study after
+  switching to another (the resource-scoped id, §5.1) rather than silently
+  retargeting; a recent duplicated by a current-area inventory entry renders
+  once (§3.5); a cleared store renders the empty state.
 
 ### 12.3 End-to-end
 
