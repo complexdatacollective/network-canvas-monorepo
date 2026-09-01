@@ -330,7 +330,7 @@ export default function Editor() {
         />
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 p-4 xl:grid-cols-[minmax(15rem,1fr)_minmax(24rem,2.5fr)_minmax(16rem,1fr)]">
+      <div className="laptop:grid-cols-[minmax(15rem,1fr)_minmax(24rem,2.5fr)_minmax(16rem,1fr)] grid min-h-0 flex-1 grid-cols-1 gap-4 p-4">
         <aside aria-labelledby="outline-heading" className="min-h-0">
           <Surface className="flex h-full min-h-0 flex-col" spacing="sm">
             <Heading id="outline-heading" level="h2">

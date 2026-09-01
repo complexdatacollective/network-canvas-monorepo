@@ -486,7 +486,7 @@ function ActiveTeamWorkspace(props: {
               </Paragraph>
             )}
             {protocols.data && protocols.data.length > 0 && (
-              <ul className="mt-4 grid list-none gap-3 p-0 sm:grid-cols-2">
+              <ul className="tablet-portrait:grid-cols-2 mt-4 grid list-none gap-3 p-0">
                 {protocols.data.map((protocol) => (
                   <li key={protocol.id}>
                     {protocol.draftId === null ? (
@@ -889,7 +889,7 @@ function TeamManagement(props: {
           <Form
             key={inviteFormKey}
             ref={inviteFormRef}
-            className="mt-4 grid items-end gap-4 md:grid-cols-[minmax(0,2fr)_minmax(10rem,1fr)_auto]"
+            className="tablet-portrait:grid-cols-[minmax(0,2fr)_minmax(10rem,1fr)_auto] mt-4 grid items-end gap-4"
             onSubmit={async (values) => {
               const email =
                 typeof values.email === 'string' ? values.email : '';
