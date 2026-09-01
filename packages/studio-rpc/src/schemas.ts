@@ -119,7 +119,23 @@ export const CreateProtocolResultSchema = z.object({
   draftId: z.uuid(),
 });
 
-const DecimalSequenceSchema = z.string().regex(/^\d+$/);
+// Every value carried by this schema is a PostgreSQL `bigint` on the wire, and
+// the server hands these strings straight to a `::bigint` cast. The digit
+// budget and range bound keep an over-range decimal an input rejection instead
+// of a numeric_value_out_of_range error raised inside the query.
+const PG_BIGINT_MAX = 9223372036854775807n;
+const DECIMAL_SEQUENCE_PATTERN = /^\d{1,19}$/;
+const DecimalSequenceSchema = z
+  .string()
+  .regex(DECIMAL_SEQUENCE_PATTERN)
+  .refine(
+    // Zod runs every check on a string schema, including after an earlier one
+    // failed, so this predicate must also be total for values the pattern
+    // already rejected — BigInt() throws on them rather than returning false.
+    (value) =>
+      !DECIMAL_SEQUENCE_PATTERN.test(value) || BigInt(value) <= PG_BIGINT_MAX,
+    { message: 'must be within the PostgreSQL bigint range' },
+  );
 const SectionDocumentSchema = z.record(z.string(), z.unknown());
 
 export const ProtocolDraftInputSchema = TeamScopedSchema.extend({

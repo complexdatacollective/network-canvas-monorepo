@@ -12,7 +12,10 @@ import {
 } from './audit/command.ts';
 import { reserveDeniedAuditAttempt } from './audit/denial-rate-limit.ts';
 import { createDeniedAuditSummaryWriter } from './audit/denial-summary.ts';
-import { rolesGrantAuditPermission } from './audit/permissions.ts';
+import {
+  authorizeAuditRead,
+  grantsAuditRead,
+} from './audit/read-authorization.ts';
 import {
   renderAuditEventDetail,
   renderAuditEventSummary,
@@ -37,7 +40,6 @@ import {
   TeamCommandError,
   updateTeamMemberRole,
 } from './team/commands.ts';
-import { tryParseRoles } from './team/roles.ts';
 
 // The SPA's internal surface: unpublished and free-moving within the
 // deploy-compatibility rules on #1245 — its only client is the Studio SPA.
@@ -58,19 +60,29 @@ type TeamRpcContext = {
   tenantDb: TenantDb;
 };
 
-/**
- * Explicit audit.read check against the caller's membership for the explicit
- * teamId. A member without the permission is denied with a committed,
- * rate-limited audit.read_denied event (design §7.3: audit-log access is
- * security-relevant); a failed denial append still denies.
- */
-async function requireAuditRead(
-  context: TeamRpcContext,
-  procedure: 'audit.list' | 'audit.get',
-): Promise<void> {
-  const roles = tryParseRoles(context.team.role) ?? [];
-  if (rolesGrantAuditPermission(roles, 'audit.read')) return;
+type AuditReadProcedure = 'audit.list' | 'audit.get';
 
+/**
+ * Thrown from inside the read transaction when the caller's locked membership
+ * no longer grants audit.read, so the transaction rolls back before the denial
+ * event is appended in its own transaction.
+ */
+class AuditReadDeniedError extends Error {
+  constructor() {
+    super('audit read actor no longer holds audit.read');
+    this.name = 'AuditReadDeniedError';
+  }
+}
+
+/**
+ * A member without the permission is denied with a committed, rate-limited
+ * audit.read_denied event (design §7.3: audit-log access is security-relevant);
+ * a failed denial append still denies.
+ */
+async function denyAuditRead(
+  context: TeamRpcContext,
+  procedure: AuditReadProcedure,
+): Promise<never> {
   const auditedContext: AuditedCommandContext = {
     tenantDb: context.tenantDb,
     principal: context.principal,
@@ -111,6 +123,46 @@ async function requireAuditRead(
     reservation.complete('other');
   }
   throw new ORPCError('FORBIDDEN');
+}
+
+/**
+ * Wraps an audit read whose transaction re-authorizes the caller against the
+ * committed role (see audit/read-authorization.ts). The transaction is opened
+ * by the caller so its no-audit operation stays a static literal.
+ */
+async function guardAuditRead<T>(
+  context: TeamRpcContext,
+  procedure: AuditReadProcedure,
+  read: () => Promise<T>,
+): Promise<T> {
+  // A cheap pre-check on the middleware's role keeps an unauthorized caller
+  // from opening a transaction at all; the in-transaction re-read is the
+  // authorization decision.
+  if (!grantsAuditRead(context.team.role)) {
+    return denyAuditRead(context, procedure);
+  }
+  try {
+    return await read();
+  } catch (error) {
+    if (error instanceof AuditReadDeniedError) {
+      return denyAuditRead(context, procedure);
+    }
+    throw error;
+  }
+}
+
+/** Throws so the read transaction rolls back before any row is returned. */
+async function assertAuditReadAuthorized(
+  client: pg.PoolClient,
+  context: TeamRpcContext,
+): Promise<void> {
+  const authorization = await authorizeAuditRead(client, {
+    teamId: context.team.id,
+    actorUserId: context.principal.userId,
+  });
+  if (authorization === 'permitted') return;
+  if (authorization === 'not_a_member') throw new ORPCError('FORBIDDEN');
+  throw new AuditReadDeniedError();
 }
 
 const requireUser = os.middleware(({ context, next }) => {
@@ -414,21 +466,24 @@ export function createRpcRouter(
       list: os.audit.list
         .use(requireTeam)
         .handler(async ({ context, input }) => {
-          await requireAuditRead(context, 'audit.list');
-          const events = await runNoAuditTenantTransaction(
-            context.tenantDb,
-            'audit.list',
-            (client) =>
-              auditStore.listForTeam(client, input.teamId, {
-                beforeSequence: input.cursor,
-                limit: input.limit,
-                categories: input.categories,
-                eventTypes: input.eventTypes,
-                actorId: input.actorId,
-                outcomes: input.outcomes,
-                occurredFrom: input.from,
-                occurredTo: input.to,
-              }),
+          const events = await guardAuditRead(context, 'audit.list', () =>
+            runNoAuditTenantTransaction(
+              context.tenantDb,
+              'audit.list',
+              async (client) => {
+                await assertAuditReadAuthorized(client, context);
+                return auditStore.listForTeam(client, input.teamId, {
+                  beforeSequence: input.cursor,
+                  limit: input.limit,
+                  categories: input.categories,
+                  eventTypes: input.eventTypes,
+                  actorId: input.actorId,
+                  outcomes: input.outcomes,
+                  occurredFrom: input.from,
+                  occurredTo: input.to,
+                });
+              },
+            ),
           );
           const last = events.at(-1);
           return {
@@ -440,12 +495,15 @@ export function createRpcRouter(
           };
         }),
       get: os.audit.get.use(requireTeam).handler(async ({ context, input }) => {
-        await requireAuditRead(context, 'audit.get');
-        const event = await runNoAuditTenantTransaction(
-          context.tenantDb,
-          'audit.get',
-          (client) =>
-            auditStore.getForTeam(client, input.teamId, input.eventId),
+        const event = await guardAuditRead(context, 'audit.get', () =>
+          runNoAuditTenantTransaction(
+            context.tenantDb,
+            'audit.get',
+            async (client) => {
+              await assertAuditReadAuthorized(client, context);
+              return auditStore.getForTeam(client, input.teamId, input.eventId);
+            },
+          ),
         );
         if (!event) throw new ORPCError('NOT_FOUND');
         return renderAuditEventDetail(event);

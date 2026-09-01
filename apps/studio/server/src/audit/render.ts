@@ -26,7 +26,9 @@ function registryEntry(row: StoredAuditEvent): RegistryEntry | null {
 }
 
 // The registry's per-version detailFields, minus sensitiveFields, is the wire
-// allowlist for `details`.
+// allowlist for `details`. Presence is an own-property test: `in` would walk
+// the prototype chain, so an allowlist entry sharing an Object.prototype name
+// would emit an inherited member that the stored event never recorded.
 function filteredDetails(
   entry: {
     detailFields: readonly string[];
@@ -37,7 +39,7 @@ function filteredDetails(
   return Object.fromEntries(
     entry.detailFields
       .filter((field) => !entry.sensitiveFields.includes(field))
-      .filter((field) => field in details)
+      .filter((field) => Object.hasOwn(details, field))
       .map((field) => [field, details[field]]),
   );
 }

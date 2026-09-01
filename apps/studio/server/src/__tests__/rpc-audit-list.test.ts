@@ -95,6 +95,7 @@ async function insertEvent(
 
 describe.skipIf(!db)('audit list/get RPC', () => {
   let pool: pg.Pool;
+  let appPool: pg.Pool;
   let dispose: () => Promise<void>;
   let currentPrincipal: SessionPrincipal;
   let memberships: Record<string, string | undefined>;
@@ -106,6 +107,7 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
     const scratch = await createScratchSchema(db);
     pool = scratch.pool;
+    appPool = scratch.app;
     dispose = scratch.dispose;
     await provisionScratchSchema(pool);
     await seedTeam(pool, TEAM);
@@ -117,6 +119,24 @@ describe.skipIf(!db)('audit list/get RPC', () => {
       [ADMIN.userId]: 'admin',
       [MEMBER.userId]: 'member',
     };
+    // audit.list/get re-read the caller's membership row inside the read's own
+    // transaction, so the stubbed AuthService role needs a matching domain row.
+    for (const [seat, role] of [
+      [OWNER, 'owner'],
+      [ADMIN, 'admin'],
+      [MEMBER, 'member'],
+    ] as const) {
+      await pool.query(
+        `INSERT INTO "user" (id, name, email, "emailVerified")
+         VALUES ($1, $2, $3, true)`,
+        [seat.userId, seat.name, seat.email],
+      );
+      await pool.query(
+        `INSERT INTO team_members (id, team_id, user_id, role)
+         VALUES ($1, $2, $3, $4)`,
+        [`${seat.userId}-member`, TEAM, seat.userId, role],
+      );
+    }
     const auth = stubAuthService({
       getSession: () => Promise.resolve(currentPrincipal),
       getMembership: (userId, teamId) => {
@@ -128,7 +148,7 @@ describe.skipIf(!db)('audit list/get RPC', () => {
       createApp(readEnv(), {
         auth,
         invitationDeliveryAvailable: true,
-        pool: scratch.app,
+        pool: appPool,
       }),
     );
 
@@ -481,5 +501,105 @@ describe.skipIf(!db)('audit list/get RPC', () => {
       client.audit.get({ teamId: TEAM, eventId: 'not-a-uuid' }),
     );
     expect(badId.error).toMatchObject({ code: 'BAD_REQUEST' });
+  });
+
+  it('rejects a cursor outside the PostgreSQL bigint range', async () => {
+    currentPrincipal = OWNER;
+    // All digits, so the shape check alone admits it, but the list query casts
+    // the cursor with `::bigint`. Unbounded, this reaches Postgres and raises
+    // numeric_value_out_of_range (SQLSTATE 22003), surfacing as a 500 rather
+    // than a rejected input.
+    const overRange = await safe(
+      client.audit.list({ teamId: TEAM, cursor: '99999999999999999999' }),
+    );
+    expect(overRange.error).toMatchObject({ code: 'BAD_REQUEST' });
+
+    // One past bigint's maximum, at the same digit count as the maximum.
+    const justOverMax = await safe(
+      client.audit.list({ teamId: TEAM, cursor: '9223372036854775808' }),
+    );
+    expect(justOverMax.error).toMatchObject({ code: 'BAD_REQUEST' });
+
+    // The maximum itself stays a valid cursor: it is a representable sequence.
+    const atMax = await safe(
+      client.audit.list({ teamId: TEAM, cursor: '9223372036854775807' }),
+    );
+    expect(atMax.error).toBeNull();
+  });
+
+  it('re-authorizes the caller role inside the read transaction', async () => {
+    // requireTeam reads the caller's membership before the read transaction
+    // opens. A demotion committing in that window must not be outrun by the
+    // cached role: the read re-reads and locks the actor's membership row, so
+    // it serializes behind the role change and sees the committed role.
+    const demoted = principal('audit-demoted-user', 'Audit Demoted');
+    const memberId = 'audit-demoted-member';
+    await pool.query(
+      `INSERT INTO "user" (id, name, email, "emailVerified")
+       VALUES ($1, $2, $3, true)`,
+      [demoted.userId, demoted.name, demoted.email],
+    );
+    await pool.query(
+      `INSERT INTO team_members (id, team_id, user_id, role)
+       VALUES ($1, $2, $3, 'owner')`,
+      [memberId, TEAM, demoted.userId],
+    );
+
+    let reportMiddlewareAuthorization: () => void = () => undefined;
+    const middlewareAuthorized = new Promise<void>((resolve) => {
+      reportMiddlewareAuthorization = resolve;
+    });
+    const demotedClient = createRpcClient(
+      createApp(readEnv(), {
+        invitationDeliveryAvailable: true,
+        pool: appPool,
+        auth: stubAuthService({
+          getSession: () => Promise.resolve(demoted),
+          // Still owner: this is the stale read the request carries forward.
+          getMembership: () => {
+            reportMiddlewareAuthorization();
+            return Promise.resolve({ role: 'owner' });
+          },
+        }),
+      }),
+    );
+
+    const holder = await pool.connect();
+    try {
+      // Hold the membership row so the demotion is guaranteed to be in flight
+      // while the request is past requireTeam but before it reads any rows.
+      await holder.query('BEGIN');
+      await holder.query(
+        `SELECT 1 FROM team_members WHERE id = $1 FOR UPDATE`,
+        [memberId],
+      );
+
+      const request = safe(demotedClient.audit.list({ teamId: TEAM }));
+      await middlewareAuthorized;
+      await holder.query(
+        `UPDATE team_members SET role = 'member' WHERE id = $1`,
+        [memberId],
+      );
+      await holder.query('COMMIT');
+
+      const { error, data } = await request;
+      expect(error).toMatchObject({ code: 'FORBIDDEN' });
+      expect(data).toBeUndefined();
+    } catch (error) {
+      await holder.query('ROLLBACK').catch(() => undefined);
+      throw error;
+    } finally {
+      holder.release();
+    }
+
+    // The denial is audited like any other audit.read refusal.
+    expect(
+      await pool.query(
+        `SELECT id FROM audit_events
+         WHERE team_id = $1 AND actor_id = $2
+           AND event_type = 'audit.read_denied'`,
+        [TEAM, demoted.userId],
+      ),
+    ).toHaveProperty('rowCount', 1);
   });
 });
