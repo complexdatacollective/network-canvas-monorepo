@@ -322,6 +322,8 @@ export const TextSize: Story = {
     await expect(input).toHaveAttribute('min', '90');
     await expect(input).toHaveAttribute('max', '130');
     await expect(input).toHaveAttribute('step', '10');
+    await expect(decrease).toBeEnabled();
+    await expect(increase).toBeEnabled();
 
     // The native number field receives initial focus. Arrow-key stepping proves
     // the control does not depend on pointer interaction.
@@ -340,29 +342,44 @@ export const TextSize: Story = {
       ).toBe('1.2'),
     );
 
-    // Native min/max bounds keep the steppers from exceeding the supported
-    // scale range.
-    await userEvent.click(increase);
+    // Each stepper becomes unavailable at its corresponding bound while the
+    // opposite direction remains actionable.
     await userEvent.click(increase);
     await expect(input).toHaveValue(130);
     await expect(currentSize).toHaveTextContent('130%');
+    await expect(increase).toBeDisabled();
+    await expect(decrease).toBeEnabled();
 
-    await userEvent.click(decrease);
     await userEvent.click(decrease);
     await userEvent.click(decrease);
     await userEvent.click(decrease);
     await userEvent.click(decrease);
     await expect(input).toHaveValue(90);
     await expect(currentSize).toHaveTextContent('90%');
+    await expect(decrease).toBeDisabled();
+    await expect(increase).toBeEnabled();
 
-    // Direct entry is available as well as stepping.
+    // Direct entry is available as well as stepping. An off-step draft stays
+    // intact while focus moves to a stepper, so native stepping starts from
+    // the displayed value instead of rolling back to the last committed size.
     await userEvent.click(input);
     await userEvent.clear(input);
-    await userEvent.type(input, '110');
+    await userEvent.type(input, '100');
+    await expect(currentSize).toHaveTextContent('100%');
+
+    await userEvent.clear(input);
+    await userEvent.type(input, '115');
+    await expect(input).toHaveValue(115);
+    await expect(currentSize).toHaveTextContent('100%');
+    await expect(decrease).toBeEnabled();
+    await expect(increase).toBeEnabled();
+    await userEvent.click(decrease);
     await expect(input).toHaveValue(110);
     await expect(currentSize).toHaveTextContent('110%');
 
-    // Return to 120% so the visual snapshot captures a non-default value.
+    await userEvent.click(input);
+    await userEvent.clear(input);
+    await userEvent.type(input, '115');
     await userEvent.click(increase);
     await expect(input).toHaveValue(120);
     await expect(currentSize).toHaveTextContent('120%');

@@ -132,6 +132,13 @@ const progressContainerVariants = cva({
  * control always presents one of these values.
  */
 export const TEXT_SCALE_OPTIONS = [0.9, 1, 1.1, 1.2, 1.3];
+const MIN_TEXT_SCALE_PERCENT = Math.round(
+  Math.min(...TEXT_SCALE_OPTIONS) * 100,
+);
+const MAX_TEXT_SCALE_PERCENT = Math.round(
+  Math.max(...TEXT_SCALE_OPTIONS) * 100,
+);
+const TEXT_SCALE_PERCENT_STEP = 10;
 
 type NavigationProps = {
   moveBackward: () => void;
@@ -203,9 +210,13 @@ const Navigation = ({
     (TEXT_SCALE_OPTIONS[textScaleIndex] ?? 1) * 100,
   );
   const textSizeLabelId = useId();
+  const textSizeControlRef = useRef<HTMLDivElement>(null);
   const [textScaleInputValue, setTextScaleInputValue] = useState(
     String(textScalePercent),
   );
+  const textScaleInputPercent = Number(textScaleInputValue);
+  const hasTextScaleInputPercent =
+    textScaleInputValue !== '' && Number.isFinite(textScaleInputPercent);
 
   useEffect(() => {
     setTextScaleInputValue(String(textScalePercent));
@@ -338,14 +349,14 @@ const Navigation = ({
                         Text size
                         <span className="sr-only"> percentage</span>
                       </legend>
-                      <div className="w-full">
+                      <div ref={textSizeControlRef} className="w-full">
                         <InputField
                           aria-labelledby={textSizeLabelId}
                           type="number"
                           inputMode="numeric"
-                          min={90}
-                          max={130}
-                          step={10}
+                          min={MIN_TEXT_SCALE_PERCENT}
+                          max={MAX_TEXT_SCALE_PERCENT}
+                          step={TEXT_SCALE_PERCENT_STEP}
                           value={textScaleInputValue}
                           onChange={(value) => {
                             const nextValue = value ?? '';
@@ -360,12 +371,29 @@ const Navigation = ({
                               onTextScaleChange?.(nextScale);
                             }
                           }}
-                          onBlur={() => {
+                          onBlur={(event) => {
+                            if (
+                              event.relatedTarget instanceof HTMLElement &&
+                              textSizeControlRef.current?.contains(
+                                event.relatedTarget,
+                              )
+                            ) {
+                              return;
+                            }
+
                             setTextScaleInputValue(String(textScalePercent));
                           }}
                           stepperLabels={{
                             decrease: 'Decrease text size',
                             increase: 'Increase text size',
+                          }}
+                          stepperDisabled={{
+                            decrease:
+                              hasTextScaleInputPercent &&
+                              textScaleInputPercent <= MIN_TEXT_SCALE_PERCENT,
+                            increase:
+                              hasTextScaleInputPercent &&
+                              textScaleInputPercent >= MAX_TEXT_SCALE_PERCENT,
                           }}
                           suffixComponent={<span aria-hidden="true">%</span>}
                           className="w-full! [&_input]:text-right"
