@@ -13,6 +13,8 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import AppArea from '@codaco/fresco-ui/layout/AppArea';
 import { TeamInvitationIdSchema } from '@codaco/studio-rpc';
 
+import { fetchDeploymentMode } from './lib/deployment.ts';
+import { landingRedirect, resolveLandingDestination } from './lib/landing.ts';
 import { queryClient as applicationQueryClient } from './lib/queryClient.ts';
 import {
   ServerUnreachableError,
@@ -23,14 +25,16 @@ import AcceptInvitation from './routes/AcceptInvitation.tsx';
 import AppLayout from './routes/AppLayout.tsx';
 import Editor from './routes/Editor.tsx';
 import ErrorScreen from './routes/ErrorScreen.tsx';
-import Home from './routes/Home.tsx';
+import Marketing from './routes/Marketing.tsx';
 import SignIn from './routes/SignIn.tsx';
 import TeamActivity from './routes/TeamActivity.tsx';
+import TeamMembers from './routes/TeamMembers.tsx';
+import TeamStudies from './routes/TeamStudies.tsx';
 import AccountArea from './shell/AccountArea.tsx';
-import EditorArea from './shell/EditorArea.tsx';
 import Placeholder, { type PlaceholderProps } from './shell/Placeholder.tsx';
 import ProtocolOutlineArea from './shell/ProtocolOutlineArea.tsx';
 import ScreenMain from './shell/ScreenMain.tsx';
+import SiteLayout from './shell/SiteLayout.tsx';
 import StudyArea from './shell/StudyArea.tsx';
 import TeamArea from './shell/TeamArea.tsx';
 
@@ -114,10 +118,11 @@ function libraryPlaceholder(props: PlaceholderProps) {
 // moving a route between branches is the only way to change its chrome, and
 // the app shell can never leak into a participant's interview.
 
-/** Marketing: `SiteNavigation` + `SiteFooter`, signed out, managed only. */
+/** The public site: `SiteNavigation` + `SiteFooter`, and no session. */
 const siteLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'site',
+  component: SiteLayout,
 });
 
 /** Single-task screens: a centred panel and no navigation. */
@@ -134,16 +139,36 @@ const participantLayoutRoute = createRoute({
 
 // ---------------------------------------------------------------------------
 // Site (§5.2)
-//
-// `/` is missing from this branch, and it is the one place this tree diverges
-// from §5.2. Marketing's home and the application's team workspace are the
-// same URL, and a path can be claimed once: today `/` is the workspace, on the
-// app branch below. Moving it is §5.4's migration of `TeamWorkspace` into
-// `/team/$teamId`, which needs the landing resolution (§6.4) to answer `/` for
-// a signed-in researcher — neither of which is shell work. Claiming `/` for a
-// marketing placeholder now would take the signed-in researcher's only screen
-// away to make room for one nobody has written.
 // ---------------------------------------------------------------------------
+
+/**
+ * `/`, which is two different routes depending on what this deployment is
+ * (§10.4). It is in the "both topologies" list deliberately: a self-hoster's
+ * origin root is the URL they hand their researchers, so 404ing it would make
+ * the instance dead at the address people actually type.
+ *
+ * - **managed** renders marketing, signed in or out. A signed-in researcher
+ *   gets to their own work from the header rather than by having the page
+ *   taken away from them.
+ * - **self-hosted** renders nothing at all: a session resolves through §6.4's
+ *   landing rule and no session goes to `/sign-in`.
+ *
+ * The mode is a query, not a boot snapshot: one bundle is served by both
+ * topologies, so the answer cannot be compiled in. The HTTP layer is what
+ * makes a gated path a real 404 (§10.4); this guard is the client's own half.
+ */
+const marketingRoute = createRoute({
+  getParentRoute: () => siteLayoutRoute,
+  path: '/',
+  beforeLoad: async ({ context }) => {
+    if ((await fetchDeploymentMode(context.queryClient)) === 'managed') return;
+
+    const session = await context.queryClient.fetchQuery(sessionQueryOptions);
+    if (session === 'signedOut') throw redirect({ to: '/sign-in' });
+    throw landingRedirect(await resolveLandingDestination(context.queryClient));
+  },
+  component: Marketing,
+});
 
 const pricingRoute = createRoute({
   getParentRoute: () => siteLayoutRoute,
@@ -192,12 +217,21 @@ const signInRoute = createRoute({
         throw error;
       });
     if (session !== 'signedIn') return;
-    throw search.invitationId
-      ? redirect({
-          to: '/invitations/$invitationId',
-          params: { invitationId: search.invitationId },
-        })
-      : redirect({ to: '/' });
+    if (search.invitationId) {
+      throw redirect({
+        to: '/invitations/$invitationId',
+        params: { invitationId: search.invitationId },
+      });
+    }
+    // Where an already-signed-in researcher belongs (§6.4), resolved by the
+    // helper `/` uses, so the two cannot answer differently. Not knowing is
+    // no reason to take the sign-in page away from someone standing on it, so
+    // a resolution that fails leaves them here.
+    const destination = await resolveLandingDestination(
+      context.queryClient,
+    ).catch(() => undefined);
+    if (destination === undefined) return;
+    throw landingRedirect(destination);
   },
   component: SignIn,
 });
@@ -380,48 +414,6 @@ const appLayoutRoute = createRoute({
 // Areas are siblings, never nested, so one area's navigation region replaces
 // another's rather than rendering beside it.
 
-/**
- * The team workspace and the audit trail, at the addresses they shipped at.
- * Both move under `teamLayoutRoute` with §5.4's migration; until they do they
- * are team-area routes that simply do not name their team in the path, and
- * `TeamArea` reads the active-team setting for them.
- */
-const teamAreaLayoutRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  id: 'team-area',
-  component: TeamArea,
-});
-
-/**
- * The protocol editor, at the address it shipped at. No sidebar: its outline
- * is still rendered inside `Editor.tsx`, and becomes `ProtocolOutlineArea`'s
- * navigation region when the editor is re-parented onto
- * `/study/$studyId/editor` — the route that already exists beneath the study.
- */
-const editorAreaLayoutRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  id: 'editor-area',
-  component: EditorArea,
-});
-
-const indexRoute = createRoute({
-  getParentRoute: () => teamAreaLayoutRoute,
-  path: '/',
-  component: Home,
-});
-
-const editorRoute = createRoute({
-  getParentRoute: () => editorAreaLayoutRoute,
-  path: '/teams/$teamId/protocols/$protocolId/drafts/$draftId',
-  component: Editor,
-});
-
-const teamActivityRoute = createRoute({
-  getParentRoute: () => teamAreaLayoutRoute,
-  path: '/teams/$teamId/activity',
-  component: TeamActivity,
-});
-
 // ---------------------------------------------------------------------------
 // App, platform level (§5.2)
 // ---------------------------------------------------------------------------
@@ -513,10 +505,12 @@ const templatesRoute = createRoute({
 // ---------------------------------------------------------------------------
 // App, team level (§5.2)
 //
-// The team workspace and the audit trail are the two screens here that are
-// built, and they are still at their shipped addresses on `teamAreaLayoutRoute`
-// above. These routes are where they land in §5.4's migration, and the team
-// sidebar points at whichever of the two addresses is real today.
+// §5.4's migration has happened: the team workspace that shipped at `/` is
+// now `/team/$teamId` (its studies) and `/team/$teamId/members` (its
+// membership and invitations), and the audit trail moved off
+// `/teams/$teamId/activity` onto `/team/$teamId/activity`. No public URLs
+// existed to redirect — Studio has no production deployment — so the old
+// addresses are gone rather than forwarded.
 // ---------------------------------------------------------------------------
 
 /** Team administration. Sidebar: Team. */
@@ -529,23 +523,19 @@ const teamLayoutRoute = createRoute({
 const teamIndexRoute = createRoute({
   getParentRoute: () => teamLayoutRoute,
   path: '/',
-  component: areaPlaceholder({
-    title: 'Studies',
-    description:
-      'Every study this team owns, where a new one is created and where an existing protocol is imported to become one.',
-    issue: '#1262',
-  }),
+  component: () => {
+    const { teamId } = teamLayoutRoute.useParams();
+    return <TeamStudies teamId={teamId} />;
+  },
 });
 
 const teamMembersRoute = createRoute({
   getParentRoute: () => teamLayoutRoute,
   path: '/members',
-  component: areaPlaceholder({
-    title: 'Members',
-    description:
-      'Who belongs to this team, and which invitations are still outstanding.',
-    issue: '#1256',
-  }),
+  component: () => {
+    const { teamId } = teamLayoutRoute.useParams();
+    return <TeamMembers teamId={teamId} />;
+  },
 });
 
 const teamRolesRoute = createRoute({
@@ -562,11 +552,7 @@ const teamRolesRoute = createRoute({
 const teamAuditRoute = createRoute({
   getParentRoute: () => teamLayoutRoute,
   path: '/activity',
-  component: areaPlaceholder({
-    title: 'Activity',
-    description: "The team's audit trail: what happened, who did it, and when.",
-    issue: '#1259',
-  }),
+  component: TeamActivity,
 });
 
 const teamBillingRoute = createRoute({
@@ -782,12 +768,7 @@ const editorLayoutRoute = createRoute({
 const editorIndexRoute = createRoute({
   getParentRoute: () => editorLayoutRoute,
   path: '/',
-  component: areaPlaceholder({
-    title: 'Stages',
-    description:
-      "The current draft's stages in the order a participant meets them, which is where the interview's shape is decided.",
-    issue: '#1272',
-  }),
+  component: Editor,
 });
 
 const editorCodebookRoute = createRoute({
@@ -846,7 +827,7 @@ const editorPreviewRoute = createRoute({
 });
 
 const routeTree = rootRoute.addChildren([
-  siteLayoutRoute.addChildren([pricingRoute, legalRoute]),
+  siteLayoutRoute.addChildren([marketingRoute, pricingRoute, legalRoute]),
   focusedLayoutRoute.addChildren([
     signInRoute,
     signUpRoute,
@@ -865,8 +846,6 @@ const routeTree = rootRoute.addChildren([
     enterCompleteRoute,
   ]),
   appLayoutRoute.addChildren([
-    teamAreaLayoutRoute.addChildren([indexRoute, teamActivityRoute]),
-    editorAreaLayoutRoute.addChildren([editorRoute]),
     accountLayoutRoute.addChildren([
       accountIndexRoute,
       accountLanguageRoute,

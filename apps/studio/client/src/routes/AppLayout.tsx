@@ -3,6 +3,7 @@ import { Outlet } from '@tanstack/react-router';
 import AppFrame from '@codaco/fresco-ui/layout/AppFrame';
 
 import AppHeader from '../shell/AppHeader.tsx';
+import { useActiveTeamReconciler } from '../shell/useActiveTeamReconciler.ts';
 
 /**
  * The application shell (§5.3): the skip link, the header, and the region the
@@ -29,8 +30,15 @@ import AppHeader from '../shell/AppHeader.tsx';
  *   learns the session has ended — and which unmounts this component by
  *   redirecting, so an effect here would be racing the guard's own redirect
  *   for the same fact and would lose it whenever the redirect is not blocked.
+ *
+ * It does own one write, and exactly one: §6.6's active-team reconciliation,
+ * which follows the committed URL. It lives here because this component is
+ * mounted for every app route and unmounted for none of them, so the setting
+ * cannot be left behind by an area transition.
  */
 export default function AppLayout() {
+  useActiveTeamReconciler();
+
   return (
     <AppFrame header={<AppHeader />} skipLinkLabel="Skip to main content">
       <Outlet />

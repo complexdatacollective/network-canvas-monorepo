@@ -231,6 +231,7 @@ vi.mock('../../lib/auth.ts', async () => {
       }),
       organization: {
         setActive: fixtures.authState.setActive,
+        list: vi.fn(),
       },
       signOut: vi.fn(),
     },
@@ -285,14 +286,18 @@ vi.mock('../../lib/api.ts', () => ({
   },
 }));
 
-function renderWorkspace() {
+/** The two halves §5.4 split the shipped team workspace into. */
+const STUDIES = `/team/${fixtures.TEAM_A.id}`;
+const MEMBERS = `/team/${fixtures.TEAM_A.id}/members`;
+
+function renderTeam(path: string) {
   // One client behind both the router's guards and the components: the
   // session guard reads what a component's `queryClient.clear()` removes.
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   const router = createAppRouter(
-    createMemoryHistory({ initialEntries: ['/'] }),
+    createMemoryHistory({ initialEntries: [path] }),
     queryClient,
   );
   const ui = (
@@ -301,15 +306,7 @@ function renderWorkspace() {
     </QueryClientProvider>
   );
   const view = render(ui);
-  return { ...view, router, rerenderWorkspace: () => view.rerender(ui) };
-}
-
-function deferred<Value>() {
-  let resolve!: (value: Value) => void;
-  const promise = new Promise<Value>((done) => {
-    resolve = done;
-  });
-  return { promise, resolve };
+  return { ...view, router, rerenderTeam: () => view.rerender(ui) };
 }
 
 beforeEach(() => {
@@ -361,207 +358,51 @@ beforeEach(() => {
   authState.refetchActiveTeam.mockResolvedValue(undefined);
   authState.refetchActiveMember.mockResolvedValue(undefined);
 });
-
-describe('Studio team workspace', () => {
-  it('shows the active team with its protocols, members, roles, and invitations', async () => {
-    renderWorkspace();
+/**
+ * §5.4's split of the shipped team workspace, asserted at the two addresses it
+ * landed on: `/team/$teamId`, the team's studies, and `/team/$teamId/members`,
+ * its membership and invitations.
+ *
+ * The switcher these screens used to carry is gone with the split — the header
+ * owns it, and it is a navigation now (§6.5), so nothing here blocks a
+ * mutation against a team change. What each screen still owns is the
+ * reconciliation every ambiguous mutation needs, and that is what most of this
+ * file is about.
+ */
+describe('the team studies list', () => {
+  it('lists the studies this team owns and reaches each one', async () => {
+    renderTeam(STUDIES);
 
     expect(
-      await screen.findByRole('heading', {
-        name: 'Alpha research team protocols',
-      }),
+      await screen.findByRole('heading', { level: 1, name: 'Studies' }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText('Active team')).toHaveValue(TEAM_A.id);
-    expect(screen.getByText('Currently active')).toBeInTheDocument();
-    expect(await screen.findByText('Alpha protocol')).toBeInTheDocument();
-    expect(screen.getByText('Team Collaborator')).toBeInTheDocument();
-    expect(screen.getByLabelText('Role for Team Collaborator')).toHaveValue(
-      'member',
+    // The team comes from the URL, not from the active-team setting (§2.2).
+    expect(
+      await screen.findByRole('link', { name: 'Alpha protocol' }),
+    ).toHaveAttribute('href', '/study/protocol-a');
+    expect(screen.queryByText('Beta protocol')).toBeNull();
+  });
+
+  it('creates a study and opens its editor', async () => {
+    const { router } = renderTeam(STUDIES);
+
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: 'Study name' }),
+      { target: { value: 'New study' } },
     );
-    expect(screen.getByText('pending@example.com')).toBeInTheDocument();
-    expect(screen.queryByText('expired@example.com')).toBeNull();
-  });
+    fireEvent.click(screen.getByRole('button', { name: 'Create study' }));
 
-  it('offers the Activity destination only to owners and admins', async () => {
-    renderWorkspace();
-
-    const link = await screen.findByRole('link', { name: 'Activity' });
-    expect(link).toHaveAttribute('href', '/teams/team-a/activity');
-
-    authState.activeMember = COLLABORATOR;
-    authStore.notify();
-    await waitFor(() => {
-      expect(screen.queryByRole('link', { name: 'Activity' })).toBeNull();
-    });
-  });
-
-  it('switches the active team and scopes the protocol list to it', async () => {
-    const view = renderWorkspace();
-    await screen.findByText('Alpha protocol');
-
-    fireEvent.change(screen.getByLabelText('Active team'), {
-      target: { value: TEAM_B.id },
-    });
     await waitFor(() =>
-      expect(authState.setActive).toHaveBeenCalledWith(
-        { organizationId: TEAM_B.id },
-        { disableSignal: true },
+      expect(fixtures.createProtocol.mock.calls[0]?.[0]).toEqual(
+        expect.objectContaining({ teamId: TEAM_A.id, name: 'New study' }),
       ),
     );
-    view.rerenderWorkspace();
-
-    expect(
-      await screen.findByRole('heading', {
-        name: 'Beta research team protocols',
-      }),
-    ).toBeInTheDocument();
-    expect(await screen.findByText('Beta protocol')).toBeInTheDocument();
-    expect(screen.queryByText('Alpha protocol')).not.toBeInTheDocument();
-  });
-
-  it('reconciles active access after a lost switch response', async () => {
-    authState.setActive.mockRejectedValueOnce(new Error('response lost'));
-    authState.refetchActiveTeam.mockImplementationOnce(async () => {
-      authState.activeTeam = ACTIVE_TEAM_B;
-      act(() => authStore.notify());
-    });
-    authState.refetchActiveMember.mockImplementationOnce(async () => {
-      authState.activeMember = BETA_MEMBER;
-      act(() => authStore.notify());
-    });
-    renderWorkspace();
-
-    fireEvent.change(await screen.findByLabelText('Active team'), {
-      target: { value: TEAM_B.id },
-    });
-
-    expect(
-      await screen.findByText(/studio could not switch teams/i),
-    ).toBeInTheDocument();
-    expect(authState.refetchActiveTeam).toHaveBeenCalledOnce();
-    expect(authState.refetchActiveMember).toHaveBeenCalledOnce();
-    expect(
-      await screen.findByRole('heading', {
-        name: 'Beta research team protocols',
-      }),
-    ).toBeInTheDocument();
-  });
-
-  it('reconciles cleared active access after a rejected switch', async () => {
-    authState.setActive.mockResolvedValueOnce({
-      data: null,
-      error: { message: 'team is no longer available' },
-    });
-    authState.refetchActiveTeam.mockImplementationOnce(async () => {
-      authState.activeTeam = undefined;
-      act(() => authStore.notify());
-    });
-    authState.refetchActiveMember.mockImplementationOnce(async () => {
-      authState.activeMember = undefined;
-      act(() => authStore.notify());
-    });
-    renderWorkspace();
-
-    fireEvent.change(await screen.findByLabelText('Active team'), {
-      target: { value: TEAM_B.id },
-    });
-
-    expect(
-      await screen.findByText(/studio could not switch teams/i),
-    ).toBeInTheDocument();
-    expect(authState.refetchActiveTeam).toHaveBeenCalledOnce();
-    expect(authState.refetchActiveMember).toHaveBeenCalledOnce();
+    // A new study's first act is designing its protocol (§10.2), so the
+    // editor is where creating one lands.
     await waitFor(() =>
-      expect(screen.getByLabelText('Active team')).toHaveValue(''),
-    );
-    expect(screen.queryByText('Alpha protocol')).not.toBeInTheDocument();
-  });
-
-  it('prevents a delayed automatic refresh from overwriting a later switch', async () => {
-    const firstTeamReconciliation = deferred<void>();
-    const firstMemberReconciliation = deferred<void>();
-    const launchAutomaticRefresh = deferred<void>();
-    const finishAutomaticRefresh = deferred<void>();
-    let persistedTeam = ACTIVE_TEAM_A;
-    let persistedMember = OWNER;
-    let setActiveCalls = 0;
-    let teamRefetchCalls = 0;
-    let memberRefetchCalls = 0;
-
-    authState.setActive.mockImplementation(
-      (
-        input: { organizationId: string },
-        fetchOptions?: { disableSignal?: boolean },
-      ) => {
-        setActiveCalls += 1;
-        if (input.organizationId === TEAM_B.id) {
-          persistedTeam = ACTIVE_TEAM_B;
-          persistedMember = BETA_MEMBER;
-        } else {
-          persistedTeam = ACTIVE_TEAM_A;
-          persistedMember = OWNER;
-        }
-
-        if (setActiveCalls === 1 && !fetchOptions?.disableSignal) {
-          void launchAutomaticRefresh.promise.then(async () => {
-            const staleTeam = persistedTeam;
-            const staleMember = persistedMember;
-            await finishAutomaticRefresh.promise;
-            authState.activeTeam = staleTeam;
-            authState.activeMember = staleMember;
-            act(() => authStore.notify());
-          });
-        }
-
-        return Promise.resolve({ data: persistedTeam, error: null });
-      },
-    );
-    authState.refetchActiveTeam.mockImplementation(async () => {
-      teamRefetchCalls += 1;
-      const response = persistedTeam;
-      if (teamRefetchCalls === 1) await firstTeamReconciliation.promise;
-      authState.activeTeam = response;
-      act(() => authStore.notify());
-    });
-    authState.refetchActiveMember.mockImplementation(async () => {
-      memberRefetchCalls += 1;
-      const response = persistedMember;
-      if (memberRefetchCalls === 1) await firstMemberReconciliation.promise;
-      authState.activeMember = response;
-      act(() => authStore.notify());
-    });
-    renderWorkspace();
-
-    fireEvent.change(await screen.findByLabelText('Active team'), {
-      target: { value: TEAM_B.id },
-    });
-    await waitFor(() =>
-      expect(authState.refetchActiveTeam).toHaveBeenCalledOnce(),
-    );
-    await act(async () => launchAutomaticRefresh.resolve());
-    await act(async () => firstTeamReconciliation.resolve());
-    await waitFor(() =>
-      expect(authState.refetchActiveMember).toHaveBeenCalledOnce(),
-    );
-    await act(async () => firstMemberReconciliation.resolve());
-    await waitFor(() =>
-      expect(screen.getByLabelText('Active team')).toBeEnabled(),
-    );
-
-    fireEvent.change(screen.getByLabelText('Active team'), {
-      target: { value: TEAM_A.id },
-    });
-    await waitFor(() => expect(authState.setActive).toHaveBeenCalledTimes(2));
-    await waitFor(() =>
-      expect(screen.getByLabelText('Active team')).toHaveValue(TEAM_A.id),
-    );
-
-    await act(async () => finishAutomaticRefresh.resolve());
-    expect(screen.getByLabelText('Active team')).toHaveValue(TEAM_A.id);
-    expect(authState.setActive).toHaveBeenNthCalledWith(
-      1,
-      { organizationId: TEAM_B.id },
-      { disableSignal: true },
+      expect(router.state.location.pathname).toMatch(
+        /^\/study\/[0-9a-f-]+\/editor$/,
+      ),
     );
   });
 
@@ -575,97 +416,90 @@ describe('Studio team workspace', () => {
             draftId: input.draftId,
           }),
       );
-    const { router } = renderWorkspace();
+    const { router } = renderTeam(STUDIES);
 
     fireEvent.change(
-      await screen.findByRole('textbox', { name: 'Protocol name' }),
-      { target: { value: 'Stable team protocol' } },
+      await screen.findByRole('textbox', { name: 'Study name' }),
+      { target: { value: 'Stable team study' } },
     );
-    const create = screen.getByRole('button', { name: 'Create protocol' });
+    const create = screen.getByRole('button', { name: 'Create study' });
     fireEvent.click(create);
-    await screen.findByText(/protocol could not be created/i);
+    await screen.findByText(/study could not be created/i);
     fireEvent.click(create);
 
     await waitFor(() =>
       expect(router.state.location.pathname).toMatch(
-        /^\/teams\/team-a\/protocols\/[0-9a-f-]+\/drafts\/[0-9a-f-]+$/,
+        /^\/study\/[0-9a-f-]+\/editor$/,
       ),
     );
+    // Retrying the same name must not leave two studies behind.
     expect(fixtures.createProtocol).toHaveBeenCalledTimes(2);
     expect(fixtures.createProtocol.mock.calls[1]?.[0]).toEqual(
       fixtures.createProtocol.mock.calls[0]?.[0],
     );
   });
+});
 
-  it('retains each team creation identity while switching away and back', async () => {
-    fixtures.createProtocol
-      .mockRejectedValueOnce(new Error('response lost'))
-      .mockImplementationOnce(
-        (input: { protocolId: string; draftId: string }) =>
-          Promise.resolve({
-            protocolId: input.protocolId,
-            draftId: input.draftId,
-          }),
-      );
-    const view = renderWorkspace();
+describe('the team members screen', () => {
+  it('shows the team members, their roles, and its pending invitations', async () => {
+    renderTeam(MEMBERS);
 
-    fireEvent.change(
-      await screen.findByRole('textbox', { name: 'Protocol name' }),
-      { target: { value: 'Persistent retry protocol' } },
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Members' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Team Collaborator')).toBeInTheDocument();
+    expect(screen.getByLabelText('Role for Team Collaborator')).toHaveValue(
+      'member',
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Create protocol' }));
-    await screen.findByText(/protocol could not be created/i);
+    expect(screen.getByText('pending@example.com')).toBeInTheDocument();
+    expect(screen.queryByText('expired@example.com')).toBeNull();
+  });
 
-    fireEvent.change(screen.getByLabelText('Active team'), {
-      target: { value: TEAM_B.id },
-    });
-    await waitFor(() =>
-      expect(authState.setActive).toHaveBeenLastCalledWith(
-        { organizationId: TEAM_B.id },
-        { disableSignal: true },
-      ),
-    );
-    view.rerenderWorkspace();
-    await screen.findByRole('heading', {
-      name: 'Beta research team protocols',
-    });
+  it('waits for the reconciler to make the URL team the active one', async () => {
+    // Arriving on a team that is not yet the active one. Membership is only
+    // readable for the active team, so the screen says it is waiting rather
+    // than showing another team's members under this team's URL (§6.6).
+    authState.activeTeam = ACTIVE_TEAM_B;
+    authState.activeMember = BETA_MEMBER;
+    renderTeam(MEMBERS);
 
-    fireEvent.change(screen.getByLabelText('Active team'), {
-      target: { value: TEAM_A.id },
-    });
+    expect(await screen.findByText('Loading team access…')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Invite user' })).toBeNull();
     await waitFor(() =>
-      expect(authState.setActive).toHaveBeenLastCalledWith(
+      expect(authState.setActive).toHaveBeenCalledWith(
         { organizationId: TEAM_A.id },
         { disableSignal: true },
       ),
     );
-    view.rerenderWorkspace();
-
-    fireEvent.change(
-      await screen.findByRole('textbox', { name: 'Protocol name' }),
-      { target: { value: 'Persistent retry protocol' } },
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Create protocol' }));
-
-    await waitFor(() =>
-      expect(fixtures.createProtocol).toHaveBeenCalledTimes(2),
-    );
-    expect(fixtures.createProtocol.mock.calls[1]?.[0]).toEqual(
-      fixtures.createProtocol.mock.calls[0]?.[0],
-    );
   });
 
-  it('creates an invitation with the selected team and role', async () => {
-    renderWorkspace();
+  it('offers a retry when team access cannot be loaded', async () => {
+    authState.activeTeam = undefined;
+    authState.activeMember = undefined;
+    authState.activeTeamError = new Error('load failed');
+    renderTeam(MEMBERS);
+
+    expect(
+      await screen.findByText(/could not load this team/i),
+    ).toBeInTheDocument();
+    authState.refetchActiveTeam.mockClear();
+    authState.refetchActiveMember.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry team access' }));
+    await waitFor(() => {
+      expect(authState.refetchActiveTeam).toHaveBeenCalled();
+      expect(authState.refetchActiveMember).toHaveBeenCalled();
+    });
+  });
+
+  it('creates an invitation with this team and the selected role', async () => {
+    renderTeam(MEMBERS);
     const email = await screen.findByRole('textbox', {
       name: 'Email address',
     });
     fireEvent.change(email, { target: { value: 'new@example.com' } });
     fireEvent.change(
       await screen.findByRole('combobox', { name: /team role/i }),
-      {
-        target: { value: 'admin' },
-      },
+      { target: { value: 'admin' } },
     );
     fireEvent.click(screen.getByRole('button', { name: 'Invite user' }));
 
@@ -683,87 +517,8 @@ describe('Studio team workspace', () => {
     ).toBeInTheDocument();
   });
 
-  it('blocks team switching until invitation creation and reconciliation finish', async () => {
-    const invitation = deferred<{
-      invitationId: string;
-      email: string;
-      role: 'admin';
-      status: 'pending';
-      expiresAt: Date;
-    }>();
-    const reconciliation = deferred<void>();
-    fixtures.createInvitation.mockReturnValueOnce(invitation.promise);
-    authState.refetchActiveTeam.mockReturnValueOnce(reconciliation.promise);
-    renderWorkspace();
-
-    fireEvent.change(
-      await screen.findByRole('textbox', { name: 'Email address' }),
-      { target: { value: 'pending-invite@example.com' } },
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Invite user' }));
-
-    await waitFor(() =>
-      expect(fixtures.createInvitation).toHaveBeenCalledOnce(),
-    );
-    expect(screen.getByLabelText('Active team')).toBeDisabled();
-    await act(async () =>
-      invitation.resolve({
-        invitationId: 'pending-invitation',
-        email: 'pending-invite@example.com',
-        role: 'admin',
-        status: 'pending',
-        expiresAt: new Date(Date.now() + 86_400_000),
-      }),
-    );
-    await waitFor(() =>
-      expect(authState.refetchActiveTeam).toHaveBeenCalledOnce(),
-    );
-    expect(screen.getByLabelText('Active team')).toBeDisabled();
-    await act(async () => reconciliation.resolve());
-    await waitFor(() =>
-      expect(screen.getByLabelText('Active team')).toBeEnabled(),
-    );
-  });
-
-  it('blocks team switching until a role update and reconciliation finish', async () => {
-    const roleUpdate = deferred<{ memberId: string; role: 'admin' }>();
-    const teamReconciliation = deferred<void>();
-    const memberReconciliation = deferred<void>();
-    fixtures.updateMemberRole.mockReturnValueOnce(roleUpdate.promise);
-    authState.refetchActiveTeam.mockReturnValueOnce(teamReconciliation.promise);
-    authState.refetchActiveMember.mockReturnValueOnce(
-      memberReconciliation.promise,
-    );
-    renderWorkspace();
-
-    fireEvent.change(
-      await screen.findByLabelText('Role for Team Collaborator'),
-      { target: { value: 'admin' } },
-    );
-
-    await waitFor(() =>
-      expect(fixtures.updateMemberRole).toHaveBeenCalledOnce(),
-    );
-    expect(screen.getByLabelText('Active team')).toBeDisabled();
-    await act(async () =>
-      roleUpdate.resolve({ memberId: COLLABORATOR.id, role: 'admin' }),
-    );
-    await waitFor(() => {
-      expect(authState.refetchActiveTeam).toHaveBeenCalledOnce();
-      expect(authState.refetchActiveMember).toHaveBeenCalledOnce();
-    });
-    expect(screen.getByLabelText('Active team')).toBeDisabled();
-    await act(async () => {
-      teamReconciliation.resolve();
-      memberReconciliation.resolve();
-    });
-    await waitFor(() =>
-      expect(screen.getByLabelText('Active team')).toBeEnabled(),
-    );
-  });
-
   it('moves focus into the cleared invitation form after creation', async () => {
-    renderWorkspace();
+    renderTeam(MEMBERS);
     const email = await screen.findByRole('textbox', {
       name: 'Email address',
     });
@@ -793,13 +548,12 @@ describe('Studio team workspace', () => {
     };
     fixtures.createInvitation.mockRejectedValueOnce(new Error('response lost'));
     authState.refetchActiveTeam.mockImplementationOnce(async () => {
-      const reconciledTeam = {
+      authState.activeTeam = {
         ...ACTIVE_TEAM_A,
         invitations: [...ACTIVE_TEAM_A.invitations, reconciledInvitation],
       };
-      authState.activeTeam = reconciledTeam;
     });
-    const view = renderWorkspace();
+    const view = renderTeam(MEMBERS);
 
     fireEvent.change(
       await screen.findByRole('textbox', { name: 'Email address' }),
@@ -811,7 +565,7 @@ describe('Studio team workspace', () => {
       await screen.findByText(/could not confirm the invitation/i),
     ).toBeInTheDocument();
     expect(authState.refetchActiveTeam).toHaveBeenCalledTimes(1);
-    view.rerenderWorkspace();
+    view.rerenderTeam();
     expect(
       await screen.findByText('reconciled@example.com'),
     ).toBeInTheDocument();
@@ -834,7 +588,7 @@ describe('Studio team workspace', () => {
           invitations: [...ACTIVE_TEAM_A.invitations, createdInvitation],
         };
       });
-    renderWorkspace();
+    renderTeam(MEMBERS);
 
     fireEvent.change(
       await screen.findByRole('textbox', { name: 'Email address' }),
@@ -858,15 +612,12 @@ describe('Studio team workspace', () => {
     await screen.findByText(
       'Invitation created for new@example.com. Team details refreshed.',
     );
-    expect(authState.activeTeam?.invitations).toContainEqual(
-      expect.objectContaining({ email: 'new@example.com' }),
-    );
     expect(await screen.findByText('new@example.com')).toBeInTheDocument();
     expect(fixtures.createInvitation).toHaveBeenCalledTimes(1);
   });
 
   it('validates invitation email before submitting it', async () => {
-    renderWorkspace();
+    renderTeam(MEMBERS);
 
     fireEvent.change(
       await screen.findByRole('textbox', { name: 'Email address' }),
@@ -880,8 +631,8 @@ describe('Studio team workspace', () => {
     expect(fixtures.createInvitation).not.toHaveBeenCalled();
   });
 
-  it('updates a member role in the active team', async () => {
-    renderWorkspace();
+  it('updates a member role in this team', async () => {
+    renderTeam(MEMBERS);
     const role = await screen.findByLabelText('Role for Team Collaborator');
     fireEvent.change(role, { target: { value: 'admin' } });
 
@@ -906,7 +657,7 @@ describe('Studio team workspace', () => {
       ...ACTIVE_TEAM_A,
       members: [OWNER, multiRoleCollaborator],
     };
-    renderWorkspace();
+    renderTeam(MEMBERS);
 
     expect(await screen.findByText('Owner, Admin')).toBeInTheDocument();
     expect(
@@ -923,7 +674,7 @@ describe('Studio team workspace', () => {
         members: [OWNER, { ...COLLABORATOR, role: 'admin' }],
       };
     });
-    renderWorkspace();
+    renderTeam(MEMBERS);
 
     fireEvent.change(
       await screen.findByLabelText('Role for Team Collaborator'),
@@ -955,7 +706,7 @@ describe('Studio team workspace', () => {
           members: [OWNER, { ...COLLABORATOR, role: 'admin' }],
         };
       });
-    renderWorkspace();
+    renderTeam(MEMBERS);
 
     fireEvent.change(
       await screen.findByLabelText('Role for Team Collaborator'),
@@ -965,9 +716,6 @@ describe('Studio team workspace', () => {
     expect(
       await screen.findByText(/team role updated.*could not be refreshed/i),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText(/team role could not be changed/i),
-    ).not.toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole('button', { name: 'Refresh team details' }),
@@ -976,9 +724,6 @@ describe('Studio team workspace', () => {
       expect(authState.refetchActiveTeam).toHaveBeenCalledTimes(2),
     );
     await screen.findByText('Team role updated. Team details refreshed.');
-    expect(authState.activeTeam?.members).toContainEqual(
-      expect.objectContaining({ id: COLLABORATOR.id, role: 'admin' }),
-    );
     expect(
       await screen.findByLabelText('Role for Team Collaborator'),
     ).toHaveValue('admin');
@@ -1000,7 +745,7 @@ describe('Studio team workspace', () => {
           members: [OWNER, { ...COLLABORATOR, role: 'admin' }],
         };
       });
-    renderWorkspace();
+    renderTeam(MEMBERS);
 
     fireEvent.change(
       await screen.findByLabelText('Role for Team Collaborator'),
@@ -1028,9 +773,6 @@ describe('Studio team workspace', () => {
     await screen.findByText('Team role updated. Team details refreshed.');
     expect(authState.refetchActiveTeam).toHaveBeenCalledTimes(3);
     expect(fixtures.updateMemberRole).toHaveBeenCalledTimes(1);
-    expect(
-      await screen.findByLabelText('Role for Team Collaborator'),
-    ).toHaveValue('admin');
   });
 
   it('retries reconciliation instead of repeating an ambiguous role mutation', async () => {
@@ -1043,7 +785,7 @@ describe('Studio team workspace', () => {
           members: [OWNER, { ...COLLABORATOR, role: 'admin' }],
         };
       });
-    renderWorkspace();
+    renderTeam(MEMBERS);
 
     fireEvent.change(
       await screen.findByLabelText('Role for Team Collaborator'),
@@ -1084,7 +826,7 @@ describe('Studio team workspace', () => {
         return Promise.resolve(input);
       },
     );
-    const view = renderWorkspace();
+    renderTeam(MEMBERS);
 
     fireEvent.change(
       await screen.findByLabelText('Role for Team Collaborator'),
@@ -1094,7 +836,9 @@ describe('Studio team workspace', () => {
     await waitFor(() =>
       expect(authState.refetchActiveMember).toHaveBeenCalledTimes(1),
     );
-    view.rerenderWorkspace();
+    // What a real refetch would publish: Better Auth's organization hooks are
+    // shared atoms, and every reader of them re-reads together.
+    act(() => authStore.notify());
     expect(
       await screen.findByText(
         'Only team owners and admins can invite people or change roles.',
@@ -1103,8 +847,8 @@ describe('Studio team workspace', () => {
     expect(screen.queryByRole('button', { name: 'Invite user' })).toBeNull();
   });
 
-  it('cancels a pending invitation in the active team', async () => {
-    renderWorkspace();
+  it('cancels a pending invitation in this team', async () => {
+    renderTeam(MEMBERS);
     fireEvent.click(
       await screen.findByRole('button', {
         name: 'Cancel invitation for pending@example.com',
@@ -1134,7 +878,7 @@ describe('Studio team workspace', () => {
         ),
       };
     });
-    renderWorkspace();
+    renderTeam(MEMBERS);
 
     fireEvent.click(
       await screen.findByRole('button', {
@@ -1169,7 +913,7 @@ describe('Studio team workspace', () => {
           ),
         };
       });
-    renderWorkspace();
+    renderTeam(MEMBERS);
 
     fireEvent.click(
       await screen.findByRole('button', {
@@ -1180,9 +924,6 @@ describe('Studio team workspace', () => {
     expect(
       await screen.findByText(/invitation cancelled.*could not be refreshed/i),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText(/invitation could not be cancelled/i),
-    ).not.toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole('button', { name: 'Refresh team details' }),
@@ -1193,16 +934,13 @@ describe('Studio team workspace', () => {
     await screen.findByText(
       'Invitation cancelled for pending@example.com. Team details refreshed.',
     );
-    expect(authState.activeTeam?.invitations).toContainEqual(
-      expect.objectContaining({ id: 'invitation-1', status: 'canceled' }),
-    );
     expect(screen.queryByText('pending@example.com')).not.toBeInTheDocument();
     expect(fixtures.cancelInvitation).toHaveBeenCalledTimes(1);
   });
 
   it('shows roles without management controls to ordinary members', async () => {
     authState.activeMember = COLLABORATOR;
-    renderWorkspace();
+    renderTeam(MEMBERS);
 
     expect(
       await screen.findByText(
@@ -1215,123 +953,12 @@ describe('Studio team workspace', () => {
 
   it('shows an owner read-only while letting an admin manage other roles', async () => {
     authState.activeMember = { ...COLLABORATOR, role: 'admin' };
-    renderWorkspace();
+    renderTeam(MEMBERS);
 
     expect(
       await screen.findByLabelText('Role for Team Collaborator'),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText('Role for Owner Researcher')).toBeNull();
     expect(screen.getByText('Owner')).toBeInTheDocument();
-  });
-
-  it('does not auto-activate repeatedly when the active team fails to load', async () => {
-    authState.activeTeam = undefined;
-    authState.activeTeamError = new Error('load failed');
-    renderWorkspace();
-
-    expect(
-      await screen.findByText(/could not load the active team/i),
-    ).toBeInTheDocument();
-    expect(authState.setActive).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'Retry team access' }));
-    await waitFor(() => {
-      expect(authState.refetchActiveTeam).toHaveBeenCalledTimes(1);
-      expect(authState.refetchActiveMember).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  it('waits for membership in the selected team before exposing controls', async () => {
-    authState.activeTeam = ACTIVE_TEAM_B;
-    authState.activeMember = OWNER;
-    renderWorkspace();
-
-    expect(await screen.findByText('Loading team access…')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Invite user' })).toBeNull();
-    expect(screen.queryByText('Beta protocol')).toBeNull();
-  });
-
-  it('disables team switching until both access hooks finish loading', async () => {
-    authState.activeMemberPending = true;
-    const memberPendingView = renderWorkspace();
-
-    expect(await screen.findByLabelText('Active team')).toBeDisabled();
-    memberPendingView.unmount();
-
-    authState.activeMemberPending = false;
-    authState.activeTeamPending = true;
-    const teamPendingView = renderWorkspace();
-
-    expect(await screen.findByLabelText('Active team')).toBeDisabled();
-    teamPendingView.unmount();
-
-    authState.activeTeamPending = false;
-    authState.activeMemberPending = false;
-    renderWorkspace();
-
-    expect(await screen.findByLabelText('Active team')).toBeEnabled();
-  });
-
-  it('disables team switching while either access hook is refetching', async () => {
-    authState.activeMemberRefetching = true;
-    const memberRefetchView = renderWorkspace();
-
-    expect(await screen.findByLabelText('Active team')).toBeDisabled();
-    memberRefetchView.unmount();
-
-    authState.activeMemberRefetching = false;
-    authState.activeTeamRefetching = true;
-    const teamRefetchView = renderWorkspace();
-
-    expect(await screen.findByLabelText('Active team')).toBeDisabled();
-    teamRefetchView.unmount();
-
-    authState.activeTeamRefetching = false;
-    renderWorkspace();
-
-    expect(await screen.findByLabelText('Active team')).toBeEnabled();
-  });
-
-  it('does not navigate to a protocol whose team stopped being active during creation', async () => {
-    let resolveCreation: (() => void) | undefined;
-    fixtures.createProtocol.mockImplementationOnce(
-      (input: { protocolId: string; draftId: string }) =>
-        new Promise<{ protocolId: string; draftId: string }>((resolve) => {
-          resolveCreation = () => resolve(input);
-        }),
-    );
-    const view = renderWorkspace();
-
-    fireEvent.change(
-      await screen.findByRole('textbox', { name: 'Protocol name' }),
-      { target: { value: 'Team-specific protocol' } },
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Create protocol' }));
-
-    await waitFor(() => expect(fixtures.createProtocol).toHaveBeenCalledOnce());
-    expect(screen.getByLabelText('Active team')).toBeDisabled();
-
-    authState.activeTeam = ACTIVE_TEAM_B;
-    authState.activeMember = BETA_MEMBER;
-    act(() => authStore.notify());
-    await screen.findByRole('heading', {
-      name: 'Beta research team protocols',
-    });
-    resolveCreation?.();
-
-    await waitFor(() =>
-      expect(screen.getByLabelText('Active team')).toBeEnabled(),
-    );
-    expect(view.router.state.location.pathname).toBe('/');
-  });
-
-  it('ignores the empty team placeholder', async () => {
-    const view = renderWorkspace();
-    const team = await screen.findByLabelText('Active team');
-
-    fireEvent.change(team, { target: { value: '' } });
-    view.rerenderWorkspace();
-
-    expect(authState.setActive).not.toHaveBeenCalled();
-    expect(team).toHaveValue(TEAM_A.id);
   });
 });

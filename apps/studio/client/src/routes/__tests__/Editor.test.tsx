@@ -68,17 +68,25 @@ vi.mock('../../lib/auth.ts', () => ({
       error: null,
       isPending: false,
     }),
+    // The editor resolves its team from the active-team setting, which
+    // §6.6's reconciler keeps pointed at the team whose URL the researcher
+    // arrived through.
     useActiveOrganization: vi.fn().mockReturnValue({
-      data: null,
+      data: { id: 'team-a', name: 'Alpha research team' },
       error: null,
       isPending: false,
+      refetch: vi.fn(),
     }),
     useActiveMember: vi.fn().mockReturnValue({
-      data: null,
+      data: { id: 'member-1', organizationId: 'team-a', role: 'owner' },
       error: null,
       isPending: false,
+      refetch: vi.fn(),
     }),
-    organization: { setActive: vi.fn() },
+    organization: {
+      setActive: vi.fn().mockResolvedValue({ data: null, error: null }),
+      list: vi.fn(),
+    },
     signOut: vi.fn(),
   },
 }));
@@ -96,10 +104,21 @@ vi.mock('../../lib/api.ts', () => ({
       }),
     },
     protocols: {
+      // The editor's draft id comes from here (§6.3's `study.shell` does not
+      // exist): `protocols.list` already reports each protocol's current
+      // draft, and the team's studies list has usually cached it already.
       list: {
         queryOptions: () => ({
           queryKey: ['protocols'],
-          queryFn: async () => [],
+          queryFn: async () => [
+            {
+              id: DRAFT.protocol.id,
+              draftId: DRAFT.protocol.draftId,
+              name: DRAFT.protocol.name,
+              createdAt: DRAFT.protocol.createdAt,
+              updatedAt: DRAFT.protocol.updatedAt,
+            },
+          ],
         }),
         key: () => ['protocols'],
       },
@@ -191,9 +210,7 @@ function renderEditor() {
   });
   const router = createAppRouter(
     createMemoryHistory({
-      initialEntries: [
-        `/teams/team-a/protocols/${DRAFT.protocol.id}/drafts/${DRAFT.protocol.draftId}`,
-      ],
+      initialEntries: [`/study/${DRAFT.protocol.id}/editor`],
     }),
     queryClient,
   );
@@ -210,10 +227,16 @@ describe('Studio editor shell', () => {
     renderEditor();
 
     expect(
-      await screen.findByRole('heading', { name: 'Protocol outline' }),
+      await screen.findByRole('heading', { name: 'Protocol sections' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('navigation', { name: 'Protocol sections' }),
+    ).toBeInTheDocument();
+    // The area's own sidebar, which replaced the study's (§5.3): the editor's
+    // section selector inside `<main>` is a different region with a different
+    // name, and neither is the other's duplicate.
+    expect(
+      screen.getByRole('navigation', { name: 'Protocol outline' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('main')).toHaveAttribute('id', 'main-content');
     expect(
@@ -516,7 +539,10 @@ describe('Studio editor shell', () => {
     const label = await screen.findByRole('textbox', { name: 'Screen name' });
     fireEvent.change(label, { target: { value: 'Unsaved welcome' } });
 
-    fireEvent.click(screen.getByRole('link', { name: 'Back to protocols' }));
+    // The way out belongs to the area's outline now (§5.5), and it is an
+    // ordinary router navigation, so the blocker applies to it without the
+    // sidebar knowing anything about the editor (§6.5).
+    fireEvent.click(screen.getByRole('link', { name: 'Back to study' }));
     expect(
       await screen.findByRole('heading', {
         name: 'Discard unsaved screen changes?',
@@ -525,15 +551,19 @@ describe('Studio editor shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
     await waitFor(() =>
-      expect(router.state.location.pathname).toContain('/drafts/'),
+      expect(router.state.location.pathname).toContain('/editor'),
     );
     expect(label).toHaveValue('Unsaved welcome');
 
-    fireEvent.click(screen.getByRole('link', { name: 'Back to protocols' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Back to study' }));
     fireEvent.click(
       await screen.findByRole('button', { name: 'Discard changes' }),
     );
-    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(
+        `/study/${DRAFT.protocol.id}`,
+      ),
+    );
   });
 
   it('keeps the editor session open when dirty sign-out is cancelled', async () => {
@@ -559,7 +589,7 @@ describe('Studio editor shell', () => {
         }),
       ).not.toBeInTheDocument(),
     );
-    expect(router.state.location.pathname).toContain('/drafts/');
+    expect(router.state.location.pathname).toContain('/editor');
     expect(label).toHaveValue('Unsaved welcome');
     expect(rpcClient.protocols.releaseSection).not.toHaveBeenCalled();
     expect(authClient.signOut).not.toHaveBeenCalled();
@@ -677,7 +707,7 @@ describe('Studio editor shell', () => {
       new Error('response lost'),
     );
     renderEditor();
-    await screen.findByRole('heading', { name: 'Protocol outline' });
+    await screen.findByRole('heading', { name: 'Protocol sections' });
 
     const add = screen.getByRole('button', { name: 'Add' });
     fireEvent.click(add);

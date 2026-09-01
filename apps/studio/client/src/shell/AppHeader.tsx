@@ -1,5 +1,7 @@
 import { Link } from '@tanstack/react-router';
 
+import { authClient } from '../lib/auth.ts';
+import { landingDestination } from '../lib/landing.ts';
 import AccountMenu from './AccountMenu.tsx';
 import StudySwitcher from './StudySwitcher.tsx';
 import TeamSwitcher from './TeamSwitcher.tsx';
@@ -18,17 +20,41 @@ import TeamSwitcher from './TeamSwitcher.tsx';
 const HEADER_LINK_CLASSES = 'focusable font-heading rounded font-semibold';
 
 export default function AppHeader() {
+  // The wordmark goes to the researcher's landing destination (§5.5), not to
+  // `/`: inside the application `/` is marketing, or a redirect on a
+  // self-hosted instance (§10.4). The same resolution `/` and the sign-in
+  // bounce use, over what the header already has in hand — the switcher's own
+  // team list — so a header link and a guard cannot disagree about where
+  // "home" is.
+  const teams = authClient.useListOrganizations();
+  const activeTeam = authClient.useActiveOrganization();
+  const landing = landingDestination({
+    teams: teams.data ?? [],
+    activeTeamId: activeTeam.data?.id,
+  });
+
   return (
     <div className="border-surface-2 flex flex-wrap items-center gap-4 border-b px-4 py-2">
-      <Link
-        className="focusable font-heading rounded font-bold no-underline"
-        to="/"
-        // `/` is a prefix of every path, so without this the wordmark would
-        // carry `aria-current="page"` on every screen in the application.
-        activeOptions={{ exact: true }}
-      >
-        Studio
-      </Link>
+      {landing.to === '/no-team' ? (
+        <Link
+          className="focusable font-heading rounded font-bold no-underline"
+          to="/no-team"
+        >
+          Studio
+        </Link>
+      ) : (
+        <Link
+          className="focusable font-heading rounded font-bold no-underline"
+          to="/team/$teamId"
+          params={landing.params}
+          // The team's own path is a prefix of every route beneath it, so
+          // without this the wordmark would carry `aria-current="page"` on
+          // every team screen.
+          activeOptions={{ exact: true }}
+        >
+          Studio
+        </Link>
+      )}
       <TeamSwitcher />
       <StudySwitcher />
       <div className="ms-auto flex flex-wrap items-center justify-end gap-4">

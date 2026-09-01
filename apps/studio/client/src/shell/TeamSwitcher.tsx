@@ -1,8 +1,7 @@
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { ChevronDown } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useId } from 'react';
 
-import { Alert } from '@codaco/fresco-ui/Alert';
 import { Button } from '@codaco/fresco-ui/Button';
 import {
   DropdownMenu,
@@ -20,140 +19,123 @@ import { authClient } from '../lib/auth.ts';
  * The header's team chip (§5.5): the team the researcher is acting in, and the
  * switcher over the teams they belong to.
  *
- * **It switches without navigating, and that is deliberate.** §6.5 specifies
- * the switch as a blocker-aware navigation to the team's landing destination,
- * followed by `setActive` performed by §6.6's reconciler once that destination
- * commits. The reconciler does not exist, and the team's landing destination
- * is a placeholder: every screen actually built today takes its team from the
- * URL (`/teams/$teamId/activity`, the editor) or from the active-team setting
- * (`/`), so nothing on screen goes stale behind a switch. Navigating anyway
- * would eject a researcher from the editor onto an empty screen as a side
- * effect of naming a different team, and would introduce exactly the
- * parked-`navigate()`-promise sequence §6.5 warns about to reach it.
+ * **Switching is a navigation, and nothing here writes the active team.**
+ * §6.5's sequence: selecting a team goes to that team's landing destination as
+ * an ordinary router navigation, so the editor's dirty-state blocker applies
+ * to it without this component knowing about it, and §6.6's reconciler makes
+ * the setting follow once that destination has actually committed. The write
+ * this used to perform is gone with it: two writers for one setting is how the
+ * URL and the active team come apart.
  *
- * When the team's studies screen is real, this becomes §6.5's
- * navigate-then-verify sequence and the write moves to the reconciler.
+ * Nothing here runs after the navigation, so there is no promise to park and
+ * no continuation to guard with a generation token (§6.5): a blocked switch
+ * simply leaves the researcher where they were, on the team the chip still
+ * names, because the chip reads the setting the reconciler has not changed.
  *
- * The list, the active team and `setActive` are the ones `TeamWorkspace`
- * already uses. Better Auth's organization hooks are shared atoms, so reading
- * them here costs no request that the workspace was not already making. That
- * workspace keeps its own switcher until §5.4's split moves member management
- * out of it; two switchers over one setting is the interim, not the design.
+ * **A team's landing destination is `/team/$teamId`.** §6.4 resolves a
+ * one-study team to that study, which is a question nothing can answer until
+ * #1262 lands the studies model, so every team resolves to its studies list —
+ * the same degradation `lib/landing.ts` records for `/` and the sign-in
+ * bounce.
  */
 export default function TeamSwitcher() {
   const qualifierId = useId();
   const nameId = useId();
+  const navigate = useNavigate();
   const teams = authClient.useListOrganizations();
   const activeTeam = authClient.useActiveOrganization();
-  const [switchFailed, setSwitchFailed] = useState(false);
-
-  const switchToTeam = async (teamId: string) => {
-    setSwitchFailed(false);
-    try {
-      // No `disableSignal`: `TeamWorkspace` suppresses Better Auth's own
-      // refresh because it reconciles both access queries itself. Nothing
-      // here does, so the signal is what updates every reader of the active
-      // team — the workspace included.
-      const result = await authClient.organization.setActive({
-        organizationId: teamId,
-      });
-      if (result.error) setSwitchFailed(true);
-    } catch {
-      setSwitchFailed(true);
-    }
-  };
 
   const list = teams.data ?? [];
   // No teams, or the list has not arrived: there is no team to name, and a
   // chip that names nothing tells the researcher less than no chip at all.
-  // `/` explains the zero-team case; §6.4's `/no-team` route replaces that
-  // explanation once it exists.
+  // §6.4's `/no-team` route is where a researcher with no team belongs.
   if (list.length === 0) return null;
 
   const active = activeTeam.data;
 
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button
-              size="sm"
-              variant="text"
-              className="min-w-0 gap-2"
-              /*
-                A whole string and a datum, joined into "Current team Alpha
-                research team" by the accessible-name algorithm rather than by
-                JavaScript — the same shape `NavItem` uses for its counts. An
-                `aria-label` would replace the visible team name instead of
-                qualifying it, and a template would bake English word order
-                into the name.
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            size="sm"
+            variant="text"
+            className="min-w-0 gap-2"
+            /*
+              A whole string and a datum, joined into "Current team Alpha
+              research team" by the accessible-name algorithm rather than by
+              JavaScript — the same shape `NavItem` uses for its counts. An
+              `aria-label` would replace the visible team name instead of
+              qualifying it, and a template would bake English word order
+              into the name.
 
-                `aria-labelledby` rather than relying on the two spans'
-                contents: text concatenation inserts a space only between
-                BLOCK-level children, and these two are inline, so the name
-                would read "Current teamAlpha research team". Multiple
-                `aria-labelledby` references are always joined with a space.
-              */
-              aria-labelledby={`${qualifierId} ${nameId}`}
-            >
-              <span id={qualifierId} className="sr-only">
-                Current team
-              </span>
-              <span id={nameId} className="max-w-48 truncate">
-                {active?.name ?? 'Choose a team'}
-              </span>
-              <ChevronDown aria-hidden className="size-4 shrink-0" />
-            </Button>
-          }
-        />
-        <DropdownMenuContent align="start">
-          {/*
-            Radio semantics rather than plain items: exactly one team is the
-            one being acted in, and `menuitemradio` is how that reaches a
-            screen reader without a second visual-only cue.
-          */}
-          <DropdownMenuRadioGroup
-            value={active?.id ?? ''}
-            onValueChange={(value: unknown) => {
-              if (typeof value !== 'string' || value === active?.id) return;
-              void switchToTeam(value);
-            }}
+              `aria-labelledby` rather than relying on the two spans'
+              contents: text concatenation inserts a space only between
+              BLOCK-level children, and these two are inline, so the name
+              would read "Current teamAlpha research team". Multiple
+              `aria-labelledby` references are always joined with a space.
+            */
+            aria-labelledby={`${qualifierId} ${nameId}`}
           >
-            {list.map((team) => (
-              <DropdownMenuRadioItem key={team.id} value={team.id}>
-                {team.name}
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
-          {/*
-            Team administration beneath the list, as §5.5 places it: choosing
-            a team and administering one are different acts, and the
-            separator is what says so.
+            <span id={qualifierId} className="sr-only">
+              Current team
+            </span>
+            <span id={nameId} className="max-w-48 truncate">
+              {active?.name ?? 'Choose a team'}
+            </span>
+            <ChevronDown aria-hidden className="size-4 shrink-0" />
+          </Button>
+        }
+      />
+      <DropdownMenuContent align="start">
+        {/*
+          Radio semantics rather than plain items: exactly one team is the one
+          being acted in, and `menuitemradio` is how that reaches a screen
+          reader without a second visual-only cue. The selected value is the
+          setting, not a local choice: it changes when the reconciler writes
+          it, which is after the destination has committed.
+        */}
+        <DropdownMenuRadioGroup
+          value={active?.id ?? ''}
+          onValueChange={(value: unknown) => {
+            if (typeof value !== 'string' || value === active?.id) return;
+            // Not awaited, and deliberately: a blocked navigation's promise
+            // parks rather than rejecting, and it resolves later on some
+            // unrelated commit (§6.5). Nothing after this depends on it.
+            void navigate({ to: '/team/$teamId', params: { teamId: value } });
+          }}
+        >
+          {list.map((team) => (
+            <DropdownMenuRadioItem key={team.id} value={team.id}>
+              {team.name}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+        {/*
+          Team administration beneath the list, as §5.5 places it: choosing a
+          team and administering one are different acts, and the separator is
+          what says so.
 
-            "Create a team" belongs here too. It is a command rather than a
-            destination — #1249 owns the flow and there is none — and an
-            entry that opened nothing would be worse than its absence.
-          */}
-          {active ? (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                render={
-                  <Link to="/team/$teamId" params={{ teamId: active.id }} />
-                }
-              >
-                Team administration
-              </DropdownMenuItem>
-            </>
-          ) : null}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {switchFailed && (
-        <Alert variant="destructive">
-          Studio could not switch teams. Try again.
-        </Alert>
-      )}
-    </>
+          "Create a team" belongs here too. It is a command rather than a
+          destination — #1249 owns the flow and there is none — and an entry
+          that opened nothing would be worse than its absence.
+        */}
+        {active ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              render={
+                <Link
+                  to="/team/$teamId/settings"
+                  params={{ teamId: active.id }}
+                />
+              }
+            >
+              Team administration
+            </DropdownMenuItem>
+          </>
+        ) : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

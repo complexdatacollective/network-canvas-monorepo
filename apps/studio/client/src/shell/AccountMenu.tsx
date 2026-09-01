@@ -37,11 +37,19 @@ export default function AccountMenu() {
     setSignOutFailed(false);
     void (async () => {
       try {
-        await navigate({ to: '/' });
+        // Leave the editor by an ordinary navigation first, so its blocker
+        // runs while the session is still valid (§6.5). The destination is
+        // `/account` — the area this menu belongs to — because it is a plain
+        // app route in both topologies. `/` is not: it is marketing under
+        // `managed` and a redirect under `self-hosted` (§10.4), so a
+        // self-hosted sign-out would compare against a URL the router never
+        // commits and abort silently. `/sign-in` is not either: its guard
+        // sends a still-signed-in researcher to their landing destination.
+        await navigate({ to: '/account' });
         // Editor route blockers settle before navigate resolves. A
         // cancelled discard leaves us on the editor route, so stop
         // before closing its lease or clearing authentication.
-        if (router.state.location.pathname !== '/') return;
+        if (router.state.location.pathname !== '/account') return;
         await closeStudioEditorSessions();
         const result = await authClient.signOut();
         // better-fetch resolves failed requests with an error field

@@ -1,5 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
 import {
   useCallback,
   useEffect,
@@ -18,6 +16,7 @@ import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Form from '@codaco/fresco-ui/form/Form';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import {
   Table,
@@ -31,22 +30,26 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { TEAM_ROLES, type TeamRole } from '@codaco/studio-rpc';
 
-import { orpc, rpcClient } from '../lib/api.ts';
+import { rpcClient } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
-import { createUuid } from '../lib/createUuid.ts';
 import { studioEmailPattern } from '../lib/emailValidation.ts';
 import { canManageTeam, teamRoles } from '../lib/teamRoles.ts';
 
-type Team = NonNullable<
-  ReturnType<typeof authClient.useListOrganizations>['data']
->[number];
-
-type ProtocolCreationAttempt = {
-  teamId: string;
-  name: string;
-  protocolId: string;
-  draftId: string;
-};
+/**
+ * Membership and invitations, at `/team/$teamId/members` (§5.2, #1256).
+ *
+ * The other half of §5.4's split of the shipped team workspace. It is the same
+ * screen, at the address the team sidebar has always pointed at, with the
+ * cross-coordination the workspace needed gone: nothing on this route creates
+ * studies or switches teams, so a mutation here only has to block the other
+ * mutations here.
+ *
+ * **The team comes from the URL; the membership data comes from Better Auth's
+ * active organization.** Members and invitations are only readable for the
+ * active team, so this route renders once the app shell's reconciler (§6.6)
+ * has made the URL's team the active one — and says it is waiting until then,
+ * rather than showing another team's members under this team's URL.
+ */
 
 type TeamRefreshRecovery = {
   recoveredText: string;
@@ -177,212 +180,64 @@ function teamRolesLabel(role: string): string {
     : roles.map((entry) => roleLabel(entry)).join(', ');
 }
 
-export default function TeamWorkspace(props: { teams: readonly Team[] }) {
+export default function TeamMembers({ teamId }: { teamId: string }) {
   const activeTeam = authClient.useActiveOrganization();
   const activeMember = authClient.useActiveMember();
   const refetchActiveTeam = activeTeam.refetch;
   const refetchActiveMember = activeMember.refetch;
-  const [switchingTeamId, setSwitchingTeamId] = useState<string | null>(null);
-  const [retryingActiveTeam, setRetryingActiveTeam] = useState(false);
-  const [switchError, setSwitchError] = useState(false);
-  const [creatingProtocolTeamId, setCreatingProtocolTeamId] = useState<
-    string | null
-  >(null);
-  const [mutatingTeamId, setMutatingTeamId] = useState<string | null>(null);
-  const protocolCreationAttempts = useRef(
-    new Map<string, ProtocolCreationAttempt>(),
-  );
+  const [retrying, setRetrying] = useState(false);
 
-  const switchToTeam = useCallback(
-    async (teamId: string) => {
-      setSwitchingTeamId(teamId);
-      setSwitchError(false);
-      let switchFailed = false;
-      try {
-        const result = await authClient.organization.setActive(
-          { organizationId: teamId },
-          // Better Auth otherwise schedules its own delayed active-team
-          // refresh. Studio reconciles both access queries below, so suppress
-          // that overlapping request and keep one authoritative refresh path.
-          { disableSignal: true },
-        );
-        switchFailed = result.error !== null;
-      } catch {
-        switchFailed = true;
-      } finally {
-        const reconciliation = await Promise.allSettled([
-          refetchActiveTeam(),
-          refetchActiveMember(),
-        ]);
-        if (reconciliation.some((result) => result.status === 'rejected')) {
-          switchFailed = true;
-        }
-        setSwitchError(switchFailed);
-        setSwitchingTeamId(null);
-      }
-    },
-    [refetchActiveMember, refetchActiveTeam],
-  );
-
-  const activeTeamId = activeTeam.data?.id;
-  const activeTeamIdRef = useRef(activeTeamId);
-  useLayoutEffect(() => {
-    activeTeamIdRef.current = activeTeamId;
-  }, [activeTeamId]);
-  const selectedTeam = props.teams.find((team) => team.id === activeTeamId);
+  const team = activeTeam.data?.id === teamId ? activeTeam.data : undefined;
   const membershipMatchesTeam =
-    selectedTeam !== undefined &&
-    activeMember.data?.organizationId === selectedTeam.id;
-  const activeTeamLoadError = activeTeam.error || activeMember.error;
-  const activeTeamAccessPending =
-    activeTeam.isPending ||
-    activeMember.isPending ||
-    activeTeam.isRefetching ||
-    activeMember.isRefetching;
-  const activeTeamAccessUnavailable =
-    Boolean(activeTeamLoadError) &&
-    (!selectedTeam || !activeTeam.data || !membershipMatchesTeam);
-  const protocolCreationPending = creatingProtocolTeamId !== null;
-  const teamMutationPending = mutatingTeamId !== null;
+    activeMember.data?.organizationId === teamId && team !== undefined;
+  const accessUnavailable =
+    Boolean(activeTeam.error || activeMember.error) && !membershipMatchesTeam;
 
-  const setProtocolCreationPending = useCallback(
-    (teamId: string, pending: boolean) => {
-      setCreatingProtocolTeamId((currentTeamId) => {
-        if (pending) return teamId;
-        return currentTeamId === teamId ? null : currentTeamId;
-      });
-    },
-    [],
-  );
-
-  const setTeamMutationPending = useCallback(
-    (teamId: string, pending: boolean) => {
-      setMutatingTeamId((currentTeamId) => {
-        if (pending) return teamId;
-        return currentTeamId === teamId ? null : currentTeamId;
-      });
-    },
-    [],
-  );
-
-  const isTeamStillActive = useCallback(
-    (teamId: string) => activeTeamIdRef.current === teamId,
-    [],
-  );
-
-  const retryActiveTeam = async () => {
-    setRetryingActiveTeam(true);
-    setSwitchError(false);
+  const retryTeamAccess = async () => {
+    setRetrying(true);
     try {
       await refetchActiveTeam();
       await refetchActiveMember();
-    } catch {
-      setSwitchError(true);
     } finally {
-      setRetryingActiveTeam(false);
+      setRetrying(false);
     }
   };
 
-  useEffect(() => {
-    const firstTeam = props.teams[0];
-    if (
-      firstTeam !== undefined &&
-      selectedTeam === undefined &&
-      !activeTeamAccessPending &&
-      switchingTeamId === null &&
-      !activeTeam.error &&
-      !switchError
-    ) {
-      void switchToTeam(firstTeam.id);
-    }
-  }, [
-    activeTeam.error,
-    activeTeamAccessPending,
-    props.teams,
-    selectedTeam,
-    switchError,
-    switchToTeam,
-    switchingTeamId,
-  ]);
-
   return (
-    <div className="flex flex-col gap-6">
-      <Surface spacing="lg">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="min-w-64 flex-1">
-            <label
-              className="font-heading block font-bold"
-              htmlFor="active-team"
-            >
-              Active team
-            </label>
-            <NativeSelectField
-              id="active-team"
-              name="active-team"
-              className="mt-2 max-w-xl"
-              value={selectedTeam?.id ?? ''}
-              placeholder="Choose a team…"
-              options={props.teams.map((team) => ({
-                value: team.id,
-                label: team.name,
-              }))}
-              disabled={
-                activeTeamAccessPending ||
-                switchingTeamId !== null ||
-                retryingActiveTeam ||
-                protocolCreationPending ||
-                teamMutationPending
-              }
-              onChange={(value) => {
-                const teamId = String(value);
-                if (teamId !== '') void switchToTeam(teamId);
-              }}
-            />
-          </div>
-          <div className="flex items-center gap-3">
-            {selectedTeam && <Badge>Currently active</Badge>}
-            {(activeTeamAccessPending ||
-              switchingTeamId !== null ||
-              retryingActiveTeam ||
-              protocolCreationPending ||
-              teamMutationPending) && <Spinner size="sm" />}
-          </div>
-        </div>
-        {switchError && (
-          <Alert className="mt-4" variant="destructive">
-            Studio could not switch teams. Try again.
-          </Alert>
-        )}
-      </Surface>
+    <div className="tablet-portrait:p-8 mx-auto flex w-full max-w-5xl flex-col gap-6 p-4">
+      <div>
+        <Heading level="h1" margin="none" {...routeFocusTargetProps}>
+          Members
+        </Heading>
+        <Paragraph margin="none">
+          Who belongs to this team, and which invitations are still outstanding.
+        </Paragraph>
+      </div>
 
-      {activeTeamAccessUnavailable ? (
+      {accessUnavailable ? (
         <Surface spacing="lg">
           <Alert variant="destructive">
-            Studio could not load the active team and your access to it.
+            Studio could not load this team and your access to it.
           </Alert>
           <Button
             className="mt-4"
             size="sm"
             variant="outline"
-            disabled={retryingActiveTeam}
-            onClick={() => void retryActiveTeam()}
+            disabled={retrying}
+            onClick={() => void retryTeamAccess()}
           >
             Retry team access
           </Button>
         </Surface>
-      ) : selectedTeam && activeTeam.data && membershipMatchesTeam ? (
-        <ActiveTeamWorkspace
-          key={selectedTeam.id}
-          team={activeTeam.data}
-          activeMemberId={activeMember.data?.id}
-          activeMemberRole={activeMember.data?.role}
-          creationAttempts={protocolCreationAttempts.current}
-          protocolCreationPending={protocolCreationPending}
-          setProtocolCreationPending={setProtocolCreationPending}
-          teamMutationPending={teamMutationPending}
-          setTeamMutationPending={setTeamMutationPending}
-          isTeamStillActive={isTeamStillActive}
-        />
+      ) : membershipMatchesTeam ? (
+        <Surface spacing="lg">
+          <TeamManagement
+            key={teamId}
+            team={team}
+            activeMemberId={activeMember.data?.id}
+            activeMemberRole={activeMember.data?.role}
+          />
+        </Surface>
       ) : (
         <Surface spacing="lg">
           <div className="flex items-center gap-3" role="status">
@@ -395,184 +250,19 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
   );
 }
 
-function ActiveTeamWorkspace(props: {
-  team: NonNullable<
-    ReturnType<typeof authClient.useActiveOrganization>['data']
-  >;
-  activeMemberId: string | undefined;
-  activeMemberRole: string | undefined;
-  creationAttempts: Map<string, ProtocolCreationAttempt>;
-  protocolCreationPending: boolean;
-  setProtocolCreationPending: (teamId: string, pending: boolean) => void;
-  teamMutationPending: boolean;
-  setTeamMutationPending: (teamId: string, pending: boolean) => void;
-  isTeamStillActive: (teamId: string) => boolean;
-}) {
-  const teamId = props.team.id;
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const protocols = useQuery(
-    orpc.protocols.list.queryOptions({ input: { teamId } }),
-  );
-  const createProtocol = useMutation(
-    orpc.protocols.create.mutationOptions({
-      onSuccess: async (created, variables) => {
-        await queryClient.invalidateQueries({
-          queryKey: orpc.protocols.list.key({
-            input: { teamId: variables.teamId },
-          }),
-        });
-        if (!props.isTeamStillActive(variables.teamId)) return;
-        await navigate({
-          to: '/teams/$teamId/protocols/$protocolId/drafts/$draftId',
-          params: {
-            teamId: variables.teamId,
-            protocolId: created.protocolId,
-            draftId: created.draftId,
-          },
-        });
-      },
-    }),
-  );
-
-  return (
-    <>
-      <Surface spacing="lg">
-        <div className="flex flex-col gap-6">
-          <section aria-labelledby="protocols-heading">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <Heading id="protocols-heading" level="h2" margin="none">
-                  {props.team.name} protocols
-                </Heading>
-                <Paragraph className="text-sm" margin="none">
-                  Protocols belong to the currently active team.
-                </Paragraph>
-              </div>
-              {protocols.isPending && <Spinner size="sm" />}
-            </div>
-            {protocols.isError && (
-              <Alert className="mt-4" variant="destructive">
-                Protocols could not be loaded. Try again.
-              </Alert>
-            )}
-            {protocols.data?.length === 0 && (
-              <Paragraph>
-                No protocols have been created for this team.
-              </Paragraph>
-            )}
-            {protocols.data && protocols.data.length > 0 && (
-              <ul className="tablet-portrait:grid-cols-2 mt-4 grid list-none gap-3 p-0">
-                {protocols.data.map((protocol) => (
-                  <li key={protocol.id}>
-                    {protocol.draftId === null ? (
-                      <div className="bg-surface-1 text-surface-1-contrast elevation-low block rounded p-4 opacity-70">
-                        <span className="font-heading block font-bold">
-                          {protocol.name}
-                        </span>
-                        <span className="text-sm">No editable draft</span>
-                      </div>
-                    ) : (
-                      <Link
-                        className="focusable bg-surface-1 text-surface-1-contrast elevation-low hover:elevation-medium block rounded p-4 no-underline"
-                        to="/teams/$teamId/protocols/$protocolId/drafts/$draftId"
-                        params={{
-                          teamId,
-                          protocolId: protocol.id,
-                          draftId: protocol.draftId,
-                        }}
-                      >
-                        <span className="font-heading block font-bold">
-                          {protocol.name}
-                        </span>
-                        <span className="text-sm">
-                          Created {protocol.createdAt.toLocaleDateString()}
-                        </span>
-                      </Link>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section aria-labelledby="new-protocol-heading">
-            <Heading id="new-protocol-heading" level="h2">
-              New protocol
-            </Heading>
-            <Form
-              className="mt-4 max-w-xl"
-              onSubmit={async (values) => {
-                const name = typeof values.name === 'string' ? values.name : '';
-                const previousAttempt = props.creationAttempts.get(teamId);
-                const attempt =
-                  previousAttempt?.name === name
-                    ? previousAttempt
-                    : {
-                        teamId,
-                        name,
-                        protocolId: createUuid(),
-                        draftId: createUuid(),
-                      };
-                props.creationAttempts.set(teamId, attempt);
-                props.setProtocolCreationPending(teamId, true);
-                try {
-                  await createProtocol.mutateAsync(attempt);
-                  if (props.creationAttempts.get(teamId) === attempt) {
-                    props.creationAttempts.delete(teamId);
-                  }
-                  return { success: true };
-                } catch {
-                  return {
-                    success: false,
-                    formErrors: [
-                      'The protocol could not be created. Wait a moment and try again.',
-                    ],
-                  };
-                } finally {
-                  props.setProtocolCreationPending(teamId, false);
-                }
-              }}
-            >
-              <Field
-                name="name"
-                label="Protocol name"
-                component={InputField}
-                required
-              />
-              <SubmitButton disabled={props.protocolCreationPending}>
-                Create protocol
-              </SubmitButton>
-            </Form>
-          </section>
-        </div>
-      </Surface>
-
-      <TeamManagement
-        team={props.team}
-        activeMemberId={props.activeMemberId}
-        activeMemberRole={props.activeMemberRole}
-        mutationPending={props.teamMutationPending}
-        setMutationPending={props.setTeamMutationPending}
-      />
-    </>
-  );
-}
-
 function TeamManagement(props: {
   team: NonNullable<
     ReturnType<typeof authClient.useActiveOrganization>['data']
   >;
   activeMemberId: string | undefined;
   activeMemberRole: string | undefined;
-  mutationPending: boolean;
-  setMutationPending: (teamId: string, pending: boolean) => void;
 }) {
   const activeTeam = authClient.useActiveOrganization();
   const activeMember = authClient.useActiveMember();
   const refreshTeamState = useTeamStateRefresh(activeTeam, activeMember);
   const team =
     activeTeam.data?.id === props.team.id ? activeTeam.data : props.team;
+  const [mutationPending, setMutationPending] = useState(false);
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
   const [cancellingInvitationId, setCancellingInvitationId] = useState<
     string | null
@@ -602,13 +292,13 @@ function TeamManagement(props: {
   const beginMutation = () => {
     if (mutationPendingRef.current) return false;
     mutationPendingRef.current = true;
-    props.setMutationPending(props.team.id, true);
+    setMutationPending(true);
     return true;
   };
 
   const finishMutation = () => {
     mutationPendingRef.current = false;
-    props.setMutationPending(props.team.id, false);
+    setMutationPending(false);
   };
 
   useLayoutEffect(() => {
@@ -734,7 +424,7 @@ function TeamManagement(props: {
   };
 
   const teamMutationBlocked =
-    props.mutationPending ||
+    mutationPending ||
     updatingMemberId !== null ||
     cancellingInvitationId !== null ||
     refreshingTeamDetails ||

@@ -24,7 +24,7 @@ vi.mock('../../lib/auth.ts', () => ({
     useListOrganizations: vi.fn(),
     useActiveOrganization: vi.fn(),
     useActiveMember: vi.fn(),
-    organization: { setActive: vi.fn() },
+    organization: { setActive: vi.fn(), list: vi.fn() },
     signIn: { magicLink: vi.fn(), social: vi.fn() },
     signOut: vi.fn(),
   },
@@ -82,6 +82,8 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
+const TEAM = { id: 'team-a', name: 'Alpha research team' };
+
 const SESSION = {
   user: {
     id: 'user-1',
@@ -89,8 +91,11 @@ const SESSION = {
     emailVerified: true,
     name: 'Researcher',
   },
-  session: { id: 'session-1' },
+  session: { id: 'session-1', activeOrganizationId: TEAM.id },
 };
+
+/** The team route the one-team fixture below lands on (§6.4). */
+const LANDING = `/team/${TEAM.id}`;
 
 const INVITATION_ID = '00000000-0000-4000-8000-000000000123';
 
@@ -147,27 +152,39 @@ beforeEach(() => {
   vi.resetAllMocks();
   currentStatus = STATUS;
   mocked.getSession.mockResolvedValue(signedOut);
+  mocked.organization.list.mockResolvedValue({
+    data: [TEAM],
+    error: null,
+  } as unknown as Awaited<ReturnType<typeof authClient.organization.list>>);
+  mocked.organization.setActive.mockResolvedValue({
+    data: null,
+    error: null,
+  } as unknown as Awaited<
+    ReturnType<typeof authClient.organization.setActive>
+  >);
   mocked.useSession.mockReturnValue(sessionNone);
   mocked.useListOrganizations.mockReturnValue({
-    data: [],
+    data: [TEAM],
     isPending: false,
     error: null,
   } as unknown as ReturnType<typeof authClient.useListOrganizations>);
   mocked.useActiveOrganization.mockReturnValue({
-    data: null,
+    data: TEAM,
     isPending: false,
     error: null,
+    refetch: vi.fn(),
   } as unknown as ReturnType<typeof authClient.useActiveOrganization>);
   mocked.useActiveMember.mockReturnValue({
-    data: null,
+    data: { id: 'member-1', organizationId: TEAM.id, role: 'owner' },
     isPending: false,
     error: null,
+    refetch: vi.fn(),
   } as unknown as ReturnType<typeof authClient.useActiveMember>);
 });
 
 describe('route guard', () => {
   it('redirects signed-out visitors to the sign-in page', async () => {
-    const router = renderAt('/');
+    const router = renderAt(LANDING);
     await waitFor(() =>
       expect(
         screen.getByRole('heading', { name: 'Sign in' }),
@@ -178,14 +195,14 @@ describe('route guard', () => {
 
   it('renders the app shell for a signed-in researcher', async () => {
     mocked.getSession.mockResolvedValue(signedIn);
-    renderAt('/');
+    renderAt(LANDING);
     expect(await findAppShell()).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Studio' })).toBeInTheDocument();
   });
 
   it('costs one call to the auth client, from the guard alone', async () => {
     mocked.getSession.mockResolvedValue(signedIn);
-    renderAt('/');
+    renderAt(LANDING);
     await findAppShell();
 
     // The guard's `fetchQuery` is the whole session channel. `useSession()`
@@ -199,13 +216,13 @@ describe('route guard', () => {
 
   it('shows the error screen, not sign-in, when the session check cannot reach the server', async () => {
     mocked.getSession.mockRejectedValue(new Error('network down'));
-    const router = renderAt('/');
+    const router = renderAt(LANDING);
     await waitFor(() =>
       expect(
         screen.getByText(/The server could not be reached/),
       ).toBeInTheDocument(),
     );
-    expect(router.state.location.pathname).toBe('/');
+    expect(router.state.location.pathname).toBe(LANDING);
   });
 
   it('leaves a visitor on the sign-in page when the server cannot be reached', async () => {
@@ -237,7 +254,7 @@ describe('route guard', () => {
       ...STATUS,
       auth: { enabled: false, magicLink: false, socialProviders: [] },
     };
-    const router = renderAt('/');
+    const router = renderAt(LANDING);
     await waitFor(() =>
       expect(
         screen.getByText(/Sign-in is not available on this server/),
@@ -248,7 +265,7 @@ describe('route guard', () => {
 
   it('asks the auth endpoint once, however many times the tree is entered', async () => {
     mocked.getSession.mockResolvedValue(signedIn);
-    const router = renderAt('/');
+    const router = renderAt(LANDING);
     await findAppShell();
     expect(mocked.getSession).toHaveBeenCalledTimes(1);
 
@@ -262,7 +279,9 @@ describe('route guard', () => {
           params: { invitationId: INVITATION_ID },
         }),
       );
-      await act(() => router.navigate({ to: '/' }));
+      await act(() =>
+        router.navigate({ to: '/team/$teamId', params: { teamId: TEAM.id } }),
+      );
     }
 
     await findAppShell();
@@ -271,7 +290,7 @@ describe('route guard', () => {
 
   it('re-asks the auth endpoint when a procedure refuses with 401', async () => {
     mocked.getSession.mockResolvedValue(signedIn);
-    const router = renderAt('/');
+    const router = renderAt(LANDING);
     await findAppShell();
     expect(mocked.getSession).toHaveBeenCalledTimes(1);
 
@@ -292,17 +311,34 @@ describe('route guard', () => {
     expect(mocked.getSession).toHaveBeenCalledTimes(3);
   });
 
-  it('bounces an already-signed-in visitor off the sign-in page', async () => {
+  it('bounces an already-signed-in visitor off their sign-in page', async () => {
     mocked.getSession.mockResolvedValue(signedIn);
     const router = renderAt('/sign-in');
-    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    // §6.4's landing resolution, not `/`, which is marketing under the
+    // managed topology and a redirect under self-hosted (§10.4).
+    await waitFor(() => expect(router.state.location.pathname).toBe(LANDING));
+  });
+
+  it('leaves a signed-in visitor on the sign-in page when their teams cannot be read', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    mocked.organization.list.mockRejectedValue(new Error('network down'));
+    const router = renderAt('/sign-in');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: 'Sign in' }),
+      ).toBeInTheDocument(),
+    );
+    // Not knowing where they belong is no reason to replace the page they
+    // are standing on with the error screen, and no reason to guess
+    // `/no-team` — which would be a lie about their memberships.
+    expect(router.state.location.pathname).toBe('/sign-in');
   });
 });
 
 describe('sign-out', () => {
   it('clears private queries when a live session expires', async () => {
     mocked.getSession.mockResolvedValue(signedIn);
-    const { queryClient, router } = renderWithClientAt('/');
+    const { queryClient, router } = renderWithClientAt(LANDING);
     await findAppShell();
     queryClient.setQueryData(['private-draft'], { name: 'Private draft' });
 
@@ -330,7 +366,7 @@ describe('sign-out', () => {
       data: { success: true },
       error: null,
     } as unknown as Awaited<ReturnType<typeof authClient.signOut>>);
-    const { queryClient } = renderWithClientAt('/');
+    const { queryClient } = renderWithClientAt(LANDING);
     queryClient.setQueryData(['private-draft'], { name: 'Private draft' });
 
     await clickSignOut();
@@ -361,7 +397,7 @@ describe('sign-out', () => {
         error: null,
       }) as ReturnType<typeof authClient.signOut>;
     });
-    const { queryClient, router } = renderWithClientAt('/');
+    const { queryClient, router } = renderWithClientAt(LANDING);
     await findAppShell();
     queryClient.setQueryData(['private-draft'], { name: 'Private draft' });
     const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
@@ -380,7 +416,10 @@ describe('sign-out', () => {
     await waitFor(() =>
       expect(events).toEqual(['closeEditorSessions', 'signOut', 'clearCache']),
     );
-    expect(pathnameWhenEditorClosed).toBe('/');
+    // `/account`, not `/`: `/` is marketing under managed and a redirect
+    // under self-hosted, and a redirect would make "did we actually leave?"
+    // compare against a URL the router never commits (§10.4).
+    expect(pathnameWhenEditorClosed).toBe('/account');
     unsubscribe();
     unregister();
   });
@@ -391,12 +430,12 @@ describe('sign-out', () => {
       data: null,
       error: { status: 500 },
     } as unknown as Awaited<ReturnType<typeof authClient.signOut>>);
-    const router = renderAt('/');
+    const router = renderAt(LANDING);
     await clickSignOut();
     await waitFor(() =>
       expect(screen.getByText(/Sign-out did not complete/)).toBeInTheDocument(),
     );
-    expect(router.state.location.pathname).toBe('/');
+    expect(router.state.location.pathname).toBe('/account');
   });
 });
 

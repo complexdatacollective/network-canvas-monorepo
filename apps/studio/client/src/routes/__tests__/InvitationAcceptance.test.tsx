@@ -183,9 +183,11 @@ describe('invitation acceptance', () => {
       await screen.findByRole('heading', { name: 'Invitation accepted' }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Alpha research team/)).toBeInTheDocument();
+    // The accepted team's own studies list, not `/`, which is marketing
+    // (§10.2, §10.4).
     expect(screen.getByRole('link', { name: 'Open team' })).toHaveAttribute(
       'href',
-      '/',
+      '/team/team-a',
     );
   });
 

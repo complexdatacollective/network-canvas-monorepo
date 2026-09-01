@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getRouteApi, Link, useBlocker } from '@tanstack/react-router';
-import { ArrowDown, ArrowLeft, ArrowUp, Plus } from 'lucide-react';
+import { getRouteApi, useBlocker } from '@tanstack/react-router';
+import { ArrowDown, ArrowUp, Plus } from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -21,6 +21,7 @@ import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -33,14 +34,19 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { useStudioStageSession } from '../editor/useStudioStageSession.ts';
 import { orpc, rpcClient } from '../lib/api.ts';
+import { authClient } from '../lib/auth.ts';
 import { createUuid } from '../lib/createUuid.ts';
 
-// The route id carries the area layout it sits under (§5.3), so it moves
-// whenever the route is re-parented — as it will be onto
-// `/study/$studyId/editor`.
-const route = getRouteApi(
-  '/app/editor-area/teams/$teamId/protocols/$protocolId/drafts/$draftId',
-);
+// The route id carries the area layout it sits under (§5.3), so it moved with
+// the screen onto `/study/$studyId/editor`.
+const route = getRouteApi('/app/study/$studyId/editor/');
+
+/** What `protocols.draft` and every editing procedure are addressed by. */
+type DraftAddress = {
+  teamId: string;
+  protocolId: string;
+  draftId: string;
+};
 
 type Selection =
   | { kind: 'stage'; stageId: string }
@@ -73,8 +79,76 @@ function stageLabel(document: SectionDoc | undefined, index: number): string {
     : `Screen ${index + 1}`;
 }
 
+/**
+ * The protocol editor, at `/study/$studyId/editor` (§5.2, #1272).
+ *
+ * **Resolving the draft from the study id.** The editing procedures are
+ * addressed by `{ teamId, protocolId, draftId }` and the URL carries only
+ * `$studyId`, which addresses the protocol until #1262 lands the studies
+ * model. Both missing halves come from procedures that already exist, so no
+ * new server surface was written for the move:
+ *
+ * - the team is the active team, which §6.6's reconciler makes the team whose
+ *   URL the researcher arrived through. A study's team is derivable only from
+ *   the study (§6.3), and the procedure that would answer that — `study.shell`
+ *   — is the one thing this slice may not add.
+ * - the current draft is `protocols.list`'s own `draftId` for this protocol.
+ *   The team's studies list has already asked that question and cached the
+ *   answer, so arriving from it costs no request at all.
+ *
+ * A study the active team does not have, and a study with no editable draft,
+ * are the two answers that leave nothing to open, and each says which it is.
+ */
 export default function Editor() {
-  const params = route.useParams();
+  const { studyId } = route.useParams();
+  const activeTeam = authClient.useActiveOrganization();
+  const teamId = activeTeam.data?.id;
+  const listOptions = orpc.protocols.list.queryOptions({
+    input: { teamId: teamId ?? '' },
+  });
+  const studies = useQuery({ ...listOptions, enabled: teamId !== undefined });
+  const study = studies.data?.find((candidate) => candidate.id === studyId);
+
+  if (teamId === undefined || studies.isPending) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Spinner />
+        <span className="sr-only">Opening protocol editor…</span>
+      </div>
+    );
+  }
+
+  if (studies.isError) {
+    return (
+      <div className="p-6">
+        <Alert variant="destructive">
+          This study could not be opened. Reload the page and try again.
+        </Alert>
+      </div>
+    );
+  }
+
+  if (study === undefined || study.draftId === null) {
+    return (
+      <div className="p-6">
+        <Alert variant="destructive">
+          {study === undefined
+            ? 'This study belongs to another team. Choose that team, then open it again.'
+            : 'This study has no editable draft.'}
+        </Alert>
+      </div>
+    );
+  }
+
+  return (
+    <ProtocolEditor
+      address={{ teamId, protocolId: studyId, draftId: study.draftId }}
+    />
+  );
+}
+
+function ProtocolEditor({ address }: { address: DraftAddress }) {
+  const params = address;
   const { confirm } = useDialog();
   const queryClient = useQueryClient();
   const [selection, setSelection] = useState<Selection>({ kind: 'settings' });
@@ -311,22 +385,24 @@ export default function Editor() {
   return (
     <div className="flex min-h-full flex-col">
       <div className="border-surface-1 flex flex-wrap items-center justify-between gap-4 border-y px-4 py-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <Link
-            className="focusable rounded"
-            to="/"
-            aria-label="Back to protocols"
+        {/*
+          No way-out control here: the area's outline owns "Back to study" and
+          the header owns the team and study chips (§5.5). A second back
+          affordance inside `<main>` would be a third answer to the same
+          question, and the two would not even agree on where "back" is.
+        */}
+        <div className="min-w-0">
+          <Heading
+            className="truncate"
+            level="h1"
+            margin="none"
+            {...routeFocusTargetProps}
           >
-            <ArrowLeft aria-hidden="true" />
-          </Link>
-          <div className="min-w-0">
-            <Heading className="truncate" level="h1" margin="none">
-              {draft.data.protocol.name}
-            </Heading>
-            <Paragraph className="text-sm" margin="none">
-              Draft editor
-            </Paragraph>
-          </div>
+            {draft.data.protocol.name}
+          </Heading>
+          <Paragraph className="text-sm" margin="none">
+            Draft editor
+          </Paragraph>
         </div>
         <ValidationStatusButton
           sessionState={session}
@@ -337,8 +413,15 @@ export default function Editor() {
       <div className="laptop:grid-cols-[minmax(15rem,1fr)_minmax(24rem,2.5fr)_minmax(16rem,1fr)] grid min-h-0 flex-1 grid-cols-1 gap-4 p-4">
         <aside aria-labelledby="outline-heading" className="min-h-0">
           <Surface className="flex h-full min-h-0 flex-col" spacing="sm">
+            {/*
+              "Protocol sections", not "Protocol outline": the area's sidebar
+              is the outline (§5.5), and two regions on one screen carrying
+              one name is two things a screen reader cannot tell apart. This
+              one is the editor's own section selector, inside `<main>`, and
+              #1272 is what eventually merges the two.
+            */}
             <Heading id="outline-heading" level="h2">
-              Protocol outline
+              Protocol sections
             </Heading>
             <nav
               aria-label="Protocol sections"

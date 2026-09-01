@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, type QueryClient } from '@tanstack/react-query';
 
 import {
   isSurfaceServed,
@@ -6,6 +6,14 @@ import {
 } from '@codaco/studio-rpc/surfaces';
 
 import { orpc } from './api.ts';
+
+/**
+ * The status query, at the freshness §10.4 gives it. One options object for
+ * both readers — the hook below and `/`'s guard — so a component and a guard
+ * cannot end up asking two differently-keyed questions about one immutable
+ * fact.
+ */
+const statusQueryOptions = orpc.status.queryOptions({ staleTime: Infinity });
 
 /**
  * Which of the two topologies this deployment serves (§10.4), or `undefined`
@@ -18,8 +26,20 @@ import { orpc } from './api.ts';
  * compiled in.
  */
 function useDeploymentMode(): DeploymentMode | undefined {
-  const status = useQuery(orpc.status.queryOptions({ staleTime: Infinity }));
+  const status = useQuery(statusQueryOptions);
   return status.data?.deployment.mode;
+}
+
+/**
+ * The same answer, for a `beforeLoad` that has to have it before it can decide
+ * what a route even is — which today is `/` alone (§10.4). `fetchQuery`, not
+ * `ensureQueryData`, for the reason §6.2 records.
+ */
+export async function fetchDeploymentMode(
+  queryClient: QueryClient,
+): Promise<DeploymentMode> {
+  const status = await queryClient.fetchQuery(statusQueryOptions);
+  return status.deployment.mode;
 }
 
 /**

@@ -35,7 +35,13 @@ vi.mock('../../lib/auth.ts', () => ({
       refetch: vi.fn(),
     }),
     useActiveMember: fixtures.useActiveMember,
-    organization: { setActive: fixtures.setActive },
+    organization: {
+      setActive: fixtures.setActive,
+      list: vi.fn().mockResolvedValue({
+        data: [fixtures.TEAM_A, fixtures.TEAM_B],
+        error: null,
+      }),
+    },
     signOut: vi.fn(),
   },
 }));
@@ -120,7 +126,7 @@ beforeEach(() => {
 
 describe('composed app shell', () => {
   it('renders one main landmark and one named navigation region', async () => {
-    renderAt('/');
+    renderAt('/team/team-a');
     await screen.findByRole('button', { name: 'Account' });
 
     // `AppFrame` renders neither landmark and every route below it has
@@ -136,7 +142,7 @@ describe('composed app shell', () => {
   });
 
   it('moves focus to the area main when the skip link is used', async () => {
-    renderAt('/');
+    renderAt('/team/team-a');
     const skipLink = await screen.findByRole('link', {
       name: 'Skip to main content',
     });
@@ -151,7 +157,7 @@ describe('composed app shell', () => {
   });
 
   it('marks only the committed destination as the current page', async () => {
-    const router = renderAt('/');
+    const router = renderAt('/team/team-a');
     const studies = await screen.findByRole('link', { name: 'Studies' });
     expect(studies).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Activity' })).not.toHaveAttribute(
@@ -160,7 +166,7 @@ describe('composed app shell', () => {
 
     await act(() =>
       router.navigate({
-        to: '/teams/$teamId/activity',
+        to: '/team/$teamId/activity',
         params: { teamId: 'team-a' },
       }),
     );
@@ -177,7 +183,7 @@ describe('composed app shell', () => {
   });
 
   it('keeps one main landmark on a team-scoped route', async () => {
-    renderAt('/teams/team-a/activity');
+    renderAt('/team/team-a/activity');
     await screen.findByRole('heading', { name: 'Team activity' });
 
     const mains = screen.getAllByRole('main');
@@ -193,7 +199,7 @@ describe('composed app shell', () => {
       error: null,
       refetch: vi.fn(),
     });
-    renderAt('/');
+    renderAt('/team/team-a');
     await screen.findByRole('link', { name: 'Studies' });
 
     expect(screen.queryByRole('link', { name: 'Activity' })).toBeNull();
@@ -202,7 +208,7 @@ describe('composed app shell', () => {
 
 describe('header team switcher', () => {
   it('names the team the researcher is acting in', async () => {
-    renderAt('/');
+    renderAt('/team/team-a');
     expect(
       await screen.findByRole('button', {
         name: 'Current team Alpha research team',
@@ -210,8 +216,8 @@ describe('header team switcher', () => {
     ).toBeInTheDocument();
   });
 
-  it('switches the active team without navigating away', async () => {
-    const router = renderAt('/');
+  it('navigates to the chosen team, and the reconciler follows the URL', async () => {
+    const router = renderAt('/team/team-a');
     fireEvent.click(
       await screen.findByRole('button', {
         name: 'Current team Alpha research team',
@@ -221,34 +227,36 @@ describe('header team switcher', () => {
       await screen.findByRole('menuitemradio', { name: 'Beta research team' }),
     );
 
+    // §6.5: the switch is a navigation to the team's landing destination, and
+    // §6.6's reconciler is what writes the setting — after that destination
+    // has committed, never before it, so a blocked navigation changes
+    // nothing. The order is what this asserts: the URL first, the write
+    // second.
     await waitFor(() =>
-      expect(fixtures.setActive).toHaveBeenCalledWith({
-        organizationId: 'team-b',
-      }),
+      expect(router.state.location.pathname).toBe('/team/team-b'),
     );
-    // No destination exists for a team yet, so the switch is the whole of it.
-    // Navigating to `/` in the meantime would eject a researcher from the
-    // editor as a side effect of naming a different team.
-    expect(router.state.location.pathname).toBe('/');
+    await waitFor(() =>
+      expect(fixtures.setActive).toHaveBeenCalledWith(
+        { organizationId: 'team-b' },
+        { disableSignal: true },
+      ),
+    );
   });
 
-  it('reports a switch that does not complete', async () => {
-    fixtures.setActive.mockResolvedValue({
-      data: null,
-      error: { status: 500 },
+  it('leaves the setting alone until a navigation commits', async () => {
+    renderAt('/team/team-a');
+    await screen.findByRole('button', {
+      name: 'Current team Alpha research team',
     });
-    renderAt('/');
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'Current team Alpha research team',
-      }),
-    );
-    fireEvent.click(
-      await screen.findByRole('menuitemradio', { name: 'Beta research team' }),
-    );
 
-    expect(
-      await screen.findByText('Studio could not switch teams. Try again.'),
-    ).toBeInTheDocument();
+    // The committed team is already the active one, so the reconciler has
+    // nothing to write. Opening the menu is not a switch either: the write
+    // follows the URL, and nothing has changed it.
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Current team Alpha research team' }),
+    );
+    await screen.findByRole('menuitemradio', { name: 'Beta research team' });
+
+    expect(fixtures.setActive).not.toHaveBeenCalled();
   });
 });

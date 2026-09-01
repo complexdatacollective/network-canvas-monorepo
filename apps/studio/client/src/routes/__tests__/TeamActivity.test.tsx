@@ -77,16 +77,21 @@ vi.mock('../../lib/auth.ts', () => ({
       isPending: false,
     }),
     useActiveOrganization: vi.fn().mockReturnValue({
-      data: null,
+      data: { id: 'team-a', name: 'Alpha research team' },
       error: null,
       isPending: false,
+      refetch: vi.fn(),
     }),
     useActiveMember: vi.fn().mockReturnValue({
-      data: null,
+      data: { id: 'member-1', organizationId: 'team-a', role: 'owner' },
       error: null,
       isPending: false,
+      refetch: vi.fn(),
     }),
-    organization: { setActive: vi.fn() },
+    organization: {
+      setActive: vi.fn().mockResolvedValue({ data: null, error: null }),
+      list: vi.fn(),
+    },
     signOut: vi.fn(),
   },
 }));
@@ -174,7 +179,7 @@ function renderActivity(defaultRetry: RetryOption = false) {
     defaultOptions: { queries: { retry: defaultRetry, retryDelay: 0 } },
   });
   const router = createAppRouter(
-    createMemoryHistory({ initialEntries: ['/teams/team-a/activity'] }),
+    createMemoryHistory({ initialEntries: ['/team/team-a/activity'] }),
     queryClient,
   );
   return render(
@@ -514,7 +519,7 @@ describe('Team activity screen', () => {
       await screen.findByText(/only available to team owners and admins/),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: 'Back to your teams' }),
+      screen.getByRole('link', { name: 'Back to this team\u2019s studies' }),
     ).toBeInTheDocument();
     expect(screen.queryByText('Apply filters')).toBeNull();
   });

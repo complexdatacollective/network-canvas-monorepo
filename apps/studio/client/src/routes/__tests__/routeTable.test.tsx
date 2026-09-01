@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { unclassifiedSurfacePaths } from '@codaco/studio-rpc/surfaces';
 
 import { createAppRouter } from '../../router.tsx';
 
@@ -21,6 +23,16 @@ const fixtures = vi.hoisted(() => ({
   TEAM: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
   deployment: { mode: 'managed', billing: false },
   getSession: vi.fn(),
+  // Read at call time, so a test can put the researcher in no team, or in
+  // several, before it renders.
+  teams: [] as { id: string; name: string }[],
+  STUDY: {
+    id: 'study-1',
+    draftId: 'draft-1',
+    name: 'Shell proof',
+    createdAt: new Date('2026-08-28T00:00:00Z'),
+    updatedAt: new Date('2026-08-28T00:00:00Z'),
+  },
 }));
 
 vi.mock('../../lib/auth.ts', () => ({
@@ -48,7 +60,10 @@ vi.mock('../../lib/auth.ts', () => ({
       error: null,
       refetch: vi.fn(),
     }),
-    organization: { setActive: vi.fn().mockResolvedValue({ error: null }) },
+    organization: {
+      setActive: vi.fn().mockResolvedValue({ error: null }),
+      list: vi.fn(() => Promise.resolve({ data: fixtures.teams, error: null })),
+    },
     signOut: vi.fn(),
   },
 }));
@@ -70,13 +85,53 @@ vi.mock('../../lib/api.ts', () => ({
     },
     protocols: {
       list: {
-        queryOptions: () => ({ queryKey: ['protocols'], queryFn: () => [] }),
+        queryOptions: () => ({
+          queryKey: ['protocols'],
+          queryFn: () => [fixtures.STUDY],
+        }),
         key: () => ['protocols'],
       },
       create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
       draft: {
-        queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
+        queryOptions: () => ({
+          queryKey: ['draft'],
+          queryFn: () => ({
+            protocol: fixtures.STUDY,
+            revision: { sequence: '1', hash: 'revision-1' },
+            // No stages, so the editor selects none and acquires no editing
+            // session: this file renders every route, and the editor's leased
+            // session belongs to `Editor.test.tsx`.
+            sections: {
+              settings: { name: fixtures.STUDY.name, schemaVersion: 8 },
+              stageOrder: { stages: [] },
+            },
+          }),
+        }),
         key: () => ['draft'],
+      },
+    },
+    audit: {
+      list: {
+        infiniteOptions: (options: {
+          initialPageParam: string | undefined;
+          getNextPageParam: (page: {
+            nextCursor: string | null;
+          }) => string | undefined;
+        }) => ({
+          queryKey: ['audit-list'],
+          queryFn: () => ({ events: [], nextCursor: null }),
+          initialPageParam: options.initialPageParam,
+          getNextPageParam: options.getNextPageParam,
+        }),
+      },
+      get: {
+        queryOptions: () => ({ queryKey: ['audit-get'], queryFn: vi.fn() }),
+      },
+      filterOptions: {
+        queryOptions: () => ({
+          queryKey: ['audit-filter-options'],
+          queryFn: () => ({ actors: [] }),
+        }),
       },
     },
   },
@@ -96,16 +151,10 @@ type Destination = {
   signedOut?: true;
 };
 
-/**
- * Every destination in §5.2, in the order the design tables them.
- *
- * `/` is the one entry that diverges: §5.2 makes it marketing, and it is still
- * the team workspace until §5.4's migration frees the path. It is here because
- * the URL exists and has to keep working, not because it renders what the
- * design eventually wants there.
- */
+/** Every destination in §5.2, in the order the design tables them. */
 const DESTINATIONS: Destination[] = [
   // Site
+  { path: '/', url: '/', heading: 'Network Canvas Studio' },
   { path: '/pricing', url: '/pricing', heading: 'Pricing' },
   { path: '/legal/$document', url: '/legal/terms', heading: 'Legal' },
 
@@ -174,7 +223,7 @@ const DESTINATIONS: Destination[] = [
   {
     path: '/team/$teamId/activity',
     url: '/team/team-a/activity',
-    heading: 'Activity',
+    heading: 'Team activity',
   },
   {
     path: '/team/$teamId/billing',
@@ -205,9 +254,11 @@ const DESTINATIONS: Destination[] = [
   // App, study level
   { path: '/study/$studyId', url: '/study/study-1', heading: 'Overview' },
   {
+    // The editor names itself with the protocol it has open, which is the one
+    // thing on this screen a researcher needs to be sure of.
     path: '/study/$studyId/editor',
     url: '/study/study-1/editor',
-    heading: 'Stages',
+    heading: 'Shell proof',
   },
   {
     path: '/study/$studyId/editor/codebook',
@@ -279,19 +330,6 @@ const DESTINATIONS: Destination[] = [
     url: '/study/study-1/export',
     heading: 'Export',
   },
-
-  // The team workspace, still at the address §5.4 will move it from.
-  { path: '/', url: '/', heading: 'Network Canvas Studio' },
-];
-
-/**
- * The two routes that are not in §5.2 because §5.4 migrates them onto
- * addresses that are: the audit trail and the protocol editor. They keep their
- * shipped URLs until that migration, and are covered by their own tests.
- */
-const SHIPPED_LEGACY_PATHS = [
-  '/teams/$teamId/activity',
-  '/teams/$teamId/protocols/$protocolId/drafts/$draftId',
 ];
 
 function renderAt(url: string) {
@@ -338,21 +376,38 @@ function registeredPathFor(
 }
 
 /**
- * Where every link in the rendered chrome goes, as route patterns, in document
+ * Where every link in the rendered CHROME goes, as route patterns, in document
  * order: the header first, then the area's navigation region.
  *
- * The frame's skip link is excluded — it addresses a fragment of the current
- * document rather than a route, which is exactly why `href` starting with `#`
- * is the test for it.
+ * A `<nav>` inside `<main>` is a screen's own, not the shell's — the editor
+ * has one — and it is excluded here for the same reason the sidebar count
+ * below excludes it: this asks where the shell can send a researcher.
+ *
+ * The frame's skip link is excluded too — it addresses a fragment of the
+ * current document rather than a route, which is exactly why `href` starting
+ * with `#` is the test for it.
  */
 function chromeDestinations(
   router: ReturnType<typeof createAppRouter>,
 ): (string | undefined)[] {
   return [...document.querySelectorAll('header, nav')]
+    .filter((region) => region.closest('main') === null)
     .flatMap((region) => [...region.querySelectorAll('a[href]')])
     .map((link) => link.getAttribute('href') ?? '')
     .filter((href) => !href.startsWith('#'))
     .map((href) => registeredPathFor(router, href));
+}
+
+/**
+ * The names of the area sidebars on screen — the `<nav>`s the shell renders
+ * beside `<main>`, never one a screen renders inside it. §11.1's rule is about
+ * the sidebar: at most one, drawn from {Study, Team, Account, Protocol
+ * outline}.
+ */
+function sidebarNames(): (string | null)[] {
+  return [...document.querySelectorAll('nav')]
+    .filter((region) => region.closest('main') === null)
+    .map((region) => region.getAttribute('aria-label'));
 }
 
 /** The same, for the links inside an open dropdown menu. */
@@ -364,11 +419,82 @@ function menuDestinations(
     .map((href) => registeredPathFor(router, href));
 }
 
-const HEADER = ['/', '/gallery', '/templates'];
+// The wordmark goes to the researcher's landing destination (§5.5, §6.4),
+// which for the one-team fixture below is that team's studies.
+const HEADER = ['/team/$teamId', '/gallery', '/templates'];
 
 beforeEach(() => {
   fixtures.deployment = { mode: 'managed', billing: false };
-  fixtures.getSession.mockResolvedValue({ data: { user: {} }, error: null });
+  fixtures.teams = [fixtures.TEAM];
+  fixtures.getSession.mockResolvedValue({
+    data: { user: {}, session: { activeOrganizationId: fixtures.TEAM.id } },
+    error: null,
+  });
+});
+
+/**
+ * `/` is one route that answers as two products (§10.4), and §6.4's landing
+ * resolution is the half of it that decides where a session goes. Both are
+ * asserted here rather than at the screens, because both are guards.
+ */
+describe('the root, by topology', () => {
+  it('renders marketing on the managed service, signed in', async () => {
+    const router = renderAt('/');
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Network Canvas Studio',
+      }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/');
+  });
+
+  it('sends a self-hosted researcher to their team', async () => {
+    fixtures.deployment = { mode: 'self-hosted', billing: false };
+    const router = renderAt('/');
+
+    // A self-hoster's origin root is the URL they hand their researchers, so
+    // it resolves rather than 404ing or showing them marketing.
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/team/team-a'),
+    );
+  });
+
+  it('sends a self-hosted researcher with no team to /no-team', async () => {
+    fixtures.deployment = { mode: 'self-hosted', billing: false };
+    fixtures.teams = [];
+    const router = renderAt('/');
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/no-team'),
+    );
+  });
+
+  it('sends a self-hosted visitor with no session to sign in', async () => {
+    fixtures.deployment = { mode: 'self-hosted', billing: false };
+    fixtures.getSession.mockResolvedValue({ data: null, error: null });
+    const router = renderAt('/');
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/sign-in'),
+    );
+  });
+
+  it('resolves several teams to the most recently active one', async () => {
+    fixtures.deployment = { mode: 'self-hosted', billing: false };
+    fixtures.teams = [
+      { id: 'team-z', name: 'Zeta research team' },
+      fixtures.TEAM,
+    ];
+    const router = renderAt('/');
+
+    // The session names team-a, which is not the first of the list: §6.4's
+    // case 3 is "the most recently active team", not "the first one".
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/team/team-a'),
+    );
+  });
 });
 
 describe('every destination in §5.2', () => {
@@ -376,11 +502,21 @@ describe('every destination in §5.2', () => {
     // Both directions. A destination missing from the tree fails the render
     // tests below; a route in the tree that nobody thought to render would
     // otherwise pass unnoticed, and this is what notices it.
-    const registered = Object.keys(createAppRouter().routesByPath)
-      .filter((path) => !SHIPPED_LEGACY_PATHS.includes(path))
-      .toSorted();
+    // No exceptions in either direction: §5.4's migration is done, so there is
+    // no route the table does not name and no table entry without a route.
+    const registered = Object.keys(createAppRouter().routesByPath).toSorted();
 
     expect(DESTINATIONS.map(({ path }) => path).toSorted()).toEqual(registered);
+  });
+
+  it('is classified for both topologies, with nothing left over', () => {
+    // §10.4's classification is exhaustive over the route table, and it can
+    // be exhaustive now that no route answers at an address the design does
+    // not give it. A route added later without a topology decision fails
+    // here rather than silently becoming "served by both".
+    expect(
+      unclassifiedSurfacePaths(Object.keys(createAppRouter().routesByPath)),
+    ).toEqual([]);
   });
 
   it.each(DESTINATIONS)(
@@ -411,18 +547,15 @@ describe('every destination in §5.2', () => {
 
 describe('navigation', () => {
   it('reaches only registered routes from the team area', async () => {
-    const router = renderAt('/');
+    const router = renderAt('/team/team-a');
     await screen.findByRole('link', { name: 'Studies' });
 
     expect(chromeDestinations(router)).toEqual([
       ...HEADER,
-      // Studies and Activity are the two destinations that are built, so
-      // they point at the addresses they shipped at rather than at their
-      // §5.2 placeholders.
-      '/',
+      '/team/$teamId',
       '/team/$teamId/members',
       '/team/$teamId/roles',
-      '/teams/$teamId/activity',
+      '/team/$teamId/activity',
       '/team/$teamId/billing',
       '/team/$teamId/settings',
     ]);
@@ -481,14 +614,13 @@ describe('navigation', () => {
 
     // The editor's area and the study's are siblings under a component-less
     // study route (§5.3). Nested instead, both would render, and this is the
-    // assertion that says which happened.
-    const regions = screen.getAllByRole('navigation');
-    expect(regions).toHaveLength(1);
-    expect(regions[0]).toHaveAccessibleName('Protocol outline');
+    // assertion that says which happened: one sidebar, and it is the
+    // outline's rather than the study's.
+    expect(sidebarNames()).toEqual(['Protocol outline']);
   });
 
   it('reaches only registered routes from the account menu', async () => {
-    const router = renderAt('/');
+    const router = renderAt('/team/team-a');
     fireEvent.click(await screen.findByRole('button', { name: 'Account' }));
     await screen.findByRole('menuitem', { name: 'Profile' });
 
@@ -496,7 +628,7 @@ describe('navigation', () => {
   });
 
   it('reaches only registered routes from the team switcher', async () => {
-    const router = renderAt('/');
+    const router = renderAt('/team/team-a');
     fireEvent.click(
       await screen.findByRole('button', {
         name: 'Current team Alpha research team',
@@ -504,7 +636,9 @@ describe('navigation', () => {
     );
     await screen.findByRole('menuitem', { name: 'Team administration' });
 
-    expect(menuDestinations(router)).toEqual(['/team/$teamId']);
+    // The teams themselves are `menuitemradio`s that navigate rather than
+    // links (§6.5), so the one link in this menu is the command beneath them.
+    expect(menuDestinations(router)).toEqual(['/team/$teamId/settings']);
   });
 
   it('names the study and reaches its team from the study chip', async () => {
@@ -523,7 +657,7 @@ describe('navigation', () => {
 describe('a destination this deployment does not have', () => {
   it('renders billing as an explained row, and no link, when self-hosted', async () => {
     fixtures.deployment = { mode: 'self-hosted', billing: false };
-    renderAt('/');
+    renderAt('/team/team-a');
 
     // The reason arrives with the status answer, so waiting for it is also
     // waiting for the row to have made up its mind.
@@ -538,7 +672,7 @@ describe('a destination this deployment does not have', () => {
   });
 
   it('links billing on the managed service', async () => {
-    renderAt('/');
+    renderAt('/team/team-a');
 
     expect(
       await screen.findByRole('link', { name: 'Billing' }),

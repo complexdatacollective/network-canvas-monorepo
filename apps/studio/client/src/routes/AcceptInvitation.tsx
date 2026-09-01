@@ -128,7 +128,14 @@ export default function AcceptInvitation(props: { invitationId: string }) {
               </Alert>
             )}
             <Button asChild>
-              <Link to="/">Open team</Link>
+              {/*
+                The accepted team, not `/`: an invitation is team-scoped and
+                carries no study target, so §10.2's landing resolution with
+                that team pinned is its studies list. `/` is marketing.
+              */}
+              <Link to="/team/$teamId" params={{ teamId: accepted.teamId }}>
+                Open team
+              </Link>
             </Button>
           </>
         ) : !session.data ? (

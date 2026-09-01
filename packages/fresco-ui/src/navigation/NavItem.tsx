@@ -89,7 +89,7 @@ export type NavItemProps = NavItemBaseProps & NavItemAvailabilityProps;
  * it.
  */
 const NAV_ITEM_ROW = cx(
-  'relative flex w-full items-center gap-3 rounded-sm py-2 ps-4 pe-3',
+  'flex w-full items-center gap-3 rounded-sm py-2 ps-4 pe-3',
   // A floor rather than a fixed height: the row is at least a comfortable
   // touch target at every width, and grows instead of clipping when a
   // translated label wraps onto a second line.
@@ -106,15 +106,12 @@ const navItemLinkVariants = cva({
     // the accent colour, not a neutral surface step. `accent/10` rather than a
     // token: the theme has no soft-accent slot, and a surface level would be
     // the grey this replaces.
+    // The approved design marks the current destination with the tinted fill
+    // and nothing else. An inset bar alongside it was an addition nobody asked
+    // for, and it is `aria-current` that carries the state where the fill
+    // cannot be seen — that is the cue the design relies on, not a second
+    // decoration.
     'aria-[current=page]:bg-accent/10 aria-[current=page]:text-accent',
-    // The current destination is marked twice over: the row's fill, and this
-    // bar. `aria-current` carries the state for assistive technology, and two
-    // visual cues rather than one keep it legible where a background tint is
-    // flattened away — forced-colours mode, a failing display, dim ambient
-    // light.
-    'before:bg-accent before:absolute before:inset-y-2 before:w-1 before:rounded-full',
-    'before:inset-s-0 before:opacity-0 before:transition-opacity before:content-[""]',
-    'aria-[current=page]:before:opacity-100',
   ),
 });
 

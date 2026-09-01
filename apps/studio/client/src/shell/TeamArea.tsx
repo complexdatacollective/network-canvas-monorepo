@@ -30,12 +30,10 @@ import { canManageTeam } from '../lib/teamRoles.ts';
  * is the only `<nav>` and the only `<main id="main-content">` on a team route.
  *
  * The six destinations §5.5 fixes are all here — Studies, Members, Roles,
- * Activity, Billing, Settings — and each points at a route that exists. Two of
- * them are the screens that are actually built, and they are still at the
- * addresses §5.4 will migrate: Studies is `/`, which is the team workspace
- * until it splits, and Activity is `/teams/$teamId/activity`. Pointing those
- * two at their §5.2 addresses would swap a working screen for a placeholder,
- * which is not what the shell is for.
+ * Activity, Billing, Settings — and each points at its §5.2 address. Three of
+ * them are built: Studies and Members are the two halves §5.4 split the team
+ * workspace into, and Activity is the audit trail, moved off
+ * `/teams/$teamId/activity` with it.
  *
  * Activity is offered to owners and admins only — the courtesy §11.4
  * describes, and the rule the team workspace applied to the Activity button
@@ -56,20 +54,16 @@ export default function TeamArea() {
     // cancel (§6.5, §7.3).
     select: (state) => state.location.pathname,
   });
-  // A team-scoped route names its team in the URL; `/` does not, so it falls
-  // back to the active-team setting, which is what the workspace on `/` is
-  // showing. The URL wins wherever it speaks: §2.2's invariant is that the URL
-  // is authoritative and the active-team setting follows it.
-  const params = useParams({ strict: false });
-  const activeTeam = authClient.useActiveOrganization();
+  // Every route in this area names its team in the URL, and the URL is what
+  // this reads: §2.2's invariant is that the URL is authoritative and the
+  // active-team setting follows it (§6.6's reconciler is what makes it).
+  const { teamId } = useParams({ from: '/app/team/$teamId' });
   const activeMember = authClient.useActiveMember();
-  const teamId = params.teamId ?? activeTeam.data?.id;
   const billingUnavailable = useSurfaceUnavailable('/team/$teamId/billing');
 
-  const activityPath =
-    teamId === undefined || !canManageTeam(activeMember.data?.role)
-      ? undefined
-      : `/teams/${teamId}/activity`;
+  const activityPath = canManageTeam(activeMember.data?.role)
+    ? `/team/${teamId}/activity`
+    : undefined;
 
   return (
     <AppArea
@@ -81,19 +75,20 @@ export default function TeamArea() {
         content: (
           <NavList>
             <NavItem
-              href="/"
+              href={`/team/${teamId}`}
               label="Studies"
               icon={Library}
-              current={pathname === '/'}
+              current={pathname === `/team/${teamId}`}
               renderLink={(props) => (
                 <Link
-                  to="/"
-                  // Without this, `/` matches every path as a prefix and the
-                  // router would mark Studies active on every other route
-                  // too — a second `aria-current="page"`. The router's own
-                  // activeness is what reaches the DOM: it is applied after
-                  // the props passed here, and the row's styling reads the
-                  // attribute.
+                  to="/team/$teamId"
+                  params={{ teamId }}
+                  // Without this, the team's own path matches every route
+                  // beneath it as a prefix and the router would mark Studies
+                  // active on Members too — a second `aria-current="page"`.
+                  // The router's own activeness is what reaches the DOM: it
+                  // is applied after the props passed here, and the row's
+                  // styling reads the attribute.
                   activeOptions={{ exact: true }}
                   className={props.className}
                   aria-current={props['aria-current']}
@@ -102,107 +97,103 @@ export default function TeamArea() {
                 </Link>
               )}
             />
-            {teamId !== undefined && (
-              <>
-                <NavItem
-                  href={`/team/${teamId}/members`}
-                  label="Members"
-                  icon={Users}
-                  current={pathname === `/team/${teamId}/members`}
-                  renderLink={(props) => (
-                    <Link
-                      to="/team/$teamId/members"
-                      params={{ teamId }}
-                      className={props.className}
-                      aria-current={props['aria-current']}
-                    >
-                      {props.children}
-                    </Link>
-                  )}
-                />
-                <NavItem
-                  href={`/team/${teamId}/roles`}
-                  label="Roles"
-                  icon={ShieldCheck}
-                  current={pathname === `/team/${teamId}/roles`}
-                  renderLink={(props) => (
-                    <Link
-                      to="/team/$teamId/roles"
-                      params={{ teamId }}
-                      className={props.className}
-                      aria-current={props['aria-current']}
-                    >
-                      {props.children}
-                    </Link>
-                  )}
-                />
-                {activityPath !== undefined && (
-                  <NavItem
-                    href={activityPath}
-                    label="Activity"
-                    icon={ScrollText}
-                    current={pathname === activityPath}
-                    renderLink={(props) => (
-                      <Link
-                        to="/teams/$teamId/activity"
-                        params={{ teamId }}
-                        className={props.className}
-                        aria-current={props['aria-current']}
-                      >
-                        {props.children}
-                      </Link>
-                    )}
-                  />
+            <NavItem
+              href={`/team/${teamId}/members`}
+              label="Members"
+              icon={Users}
+              current={pathname === `/team/${teamId}/members`}
+              renderLink={(props) => (
+                <Link
+                  to="/team/$teamId/members"
+                  params={{ teamId }}
+                  className={props.className}
+                  aria-current={props['aria-current']}
+                >
+                  {props.children}
+                </Link>
+              )}
+            />
+            <NavItem
+              href={`/team/${teamId}/roles`}
+              label="Roles"
+              icon={ShieldCheck}
+              current={pathname === `/team/${teamId}/roles`}
+              renderLink={(props) => (
+                <Link
+                  to="/team/$teamId/roles"
+                  params={{ teamId }}
+                  className={props.className}
+                  aria-current={props['aria-current']}
+                >
+                  {props.children}
+                </Link>
+              )}
+            />
+            {activityPath !== undefined && (
+              <NavItem
+                href={activityPath}
+                label="Activity"
+                icon={ScrollText}
+                current={pathname === activityPath}
+                renderLink={(props) => (
+                  <Link
+                    to="/team/$teamId/activity"
+                    params={{ teamId }}
+                    className={props.className}
+                    aria-current={props['aria-current']}
+                  >
+                    {props.children}
+                  </Link>
                 )}
-                {billingUnavailable ? (
-                  <NavItem
-                    href={`/team/${teamId}/billing`}
-                    label="Billing"
-                    icon={CreditCard}
-                    disabled
-                    unavailableReason="Managed deployments only"
-                  />
-                ) : (
-                  <NavItem
-                    href={`/team/${teamId}/billing`}
-                    label="Billing"
-                    icon={CreditCard}
-                    current={pathname === `/team/${teamId}/billing`}
-                    renderLink={(props) => (
-                      <Link
-                        to="/team/$teamId/billing"
-                        params={{ teamId }}
-                        className={props.className}
-                        aria-current={props['aria-current']}
-                      >
-                        {props.children}
-                      </Link>
-                    )}
-                  />
-                )}
-                <NavItem
-                  href={`/team/${teamId}/settings`}
-                  label="Settings"
-                  icon={Settings}
-                  // The integration screens — API, webhooks, messaging — are
-                  // settings pages rather than sidebar destinations of their
-                  // own (§5.5), so this row stays current inside them. The
-                  // router agrees: its default prefix matching marks this
-                  // link active on all three.
-                  current={pathname.startsWith(`/team/${teamId}/settings`)}
-                  renderLink={(props) => (
-                    <Link
-                      to="/team/$teamId/settings"
-                      params={{ teamId }}
-                      className={props.className}
-                      aria-current={props['aria-current']}
-                    >
-                      {props.children}
-                    </Link>
-                  )}
-                />
-              </>
+              />
             )}
+            {billingUnavailable ? (
+              <NavItem
+                href={`/team/${teamId}/billing`}
+                label="Billing"
+                icon={CreditCard}
+                disabled
+                unavailableReason="Managed deployments only"
+              />
+            ) : (
+              <NavItem
+                href={`/team/${teamId}/billing`}
+                label="Billing"
+                icon={CreditCard}
+                current={pathname === `/team/${teamId}/billing`}
+                renderLink={(props) => (
+                  <Link
+                    to="/team/$teamId/billing"
+                    params={{ teamId }}
+                    className={props.className}
+                    aria-current={props['aria-current']}
+                  >
+                    {props.children}
+                  </Link>
+                )}
+              />
+            )}
+            <NavItem
+              href={`/team/${teamId}/settings`}
+              label="Settings"
+              icon={Settings}
+              // The integration screens — API, webhooks, messaging — are
+              // settings pages rather than sidebar destinations of their
+              // own (§5.5), so this row stays current inside them. The
+              // router agrees: its default prefix matching marks this
+              // link active on all three.
+              current={pathname.startsWith(`/team/${teamId}/settings`)}
+              renderLink={(props) => (
+                <Link
+                  to="/team/$teamId/settings"
+                  params={{ teamId }}
+                  className={props.className}
+                  aria-current={props['aria-current']}
+                >
+                  {props.children}
+                </Link>
+              )}
+            />
           </NavList>
         ),
       }}

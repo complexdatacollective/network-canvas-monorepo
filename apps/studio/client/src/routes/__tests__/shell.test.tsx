@@ -9,6 +9,7 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAppRouter } from '../../router.tsx';
+import SiteLayout from '../../shell/SiteLayout.tsx';
 import AppLayout from '../AppLayout.tsx';
 
 const mocks = vi.hoisted(() => ({
@@ -145,8 +146,6 @@ function pathsByShell(
  * (`/account`, `/team/$teamId`) has no `id` of its own to read.
  */
 const AREA_LAYOUT_IDS = [
-  '/app/team-area',
-  '/app/editor-area',
   '/app/account',
   '/app/team/$teamId',
   '/app/study/$studyId/study-area',
@@ -184,12 +183,15 @@ beforeEach(() => {
     data: null,
     isPending: false,
     error: null,
+    refetch: vi.fn(),
   });
   mocks.useActiveMember.mockReturnValue({
     data: null,
     isPending: false,
     error: null,
+    refetch: vi.fn(),
   });
+  mocks.setActive.mockResolvedValue({ data: null, error: null });
 });
 
 describe('shell branches', () => {
@@ -204,12 +206,11 @@ describe('shell branches', () => {
 
   it('puts every route on the branch that owns its chrome', () => {
     // The whole of §5.2's route table, by the shell each destination is
-    // rendered in. `/` is the one divergence from that table: marketing's home
-    // and the team workspace are one URL, and it is the workspace's until
-    // §5.4's migration moves the workspace to `/team/$teamId` — see the site
-    // branch's comment in `router.tsx`.
+    // rendered in — no divergences and no legacy addresses: §5.4's migration
+    // has moved the team workspace, the audit trail and the editor onto the
+    // addresses the design gives them, which is what frees `/` for marketing.
     expect(pathsByShell(buildRouter())).toEqual({
-      site: ['/legal/$document', '/pricing'],
+      site: ['/', '/legal/$document', '/pricing'],
       focused: [
         '/invitations/$invitationId',
         '/no-team',
@@ -228,7 +229,6 @@ describe('shell branches', () => {
         '/enter/$token/interview',
       ],
       app: [
-        '/',
         '/account',
         '/account/language',
         '/account/sign-in-methods',
@@ -260,8 +260,6 @@ describe('shell branches', () => {
         '/team/$teamId/settings/api',
         '/team/$teamId/settings/messaging',
         '/team/$teamId/settings/webhooks',
-        '/teams/$teamId/activity',
-        '/teams/$teamId/protocols/$protocolId/drafts/$draftId',
         '/templates',
       ],
     });
@@ -324,12 +322,14 @@ describe('shell branches', () => {
       ]),
     );
 
-    // A route added to the site, focused or participant branch inherits no
-    // component and no guard from its branch — which is what makes the
+    // The site branch owns the Network Canvas header and footer (§10.1) and
+    // nothing else does. A route added to the focused or participant branch
+    // inherits no component and no guard at all — which is what makes the
     // participant branch safe for an interview that must own the viewport,
-    // and the focused branch usable while signed out.
+    // and the focused branch usable while signed out. No branch but the app's
+    // carries the session guard: a visitor to marketing has no session.
     expect(chrome).toEqual({
-      site: { component: undefined, guarded: false },
+      site: { component: SiteLayout, guarded: false },
       focused: { component: undefined, guarded: false },
       participant: { component: undefined, guarded: false },
       app: { component: AppLayout, guarded: true },
@@ -339,13 +339,36 @@ describe('shell branches', () => {
 
 describe('rendered chrome', () => {
   it('renders the app header inside the app branch', async () => {
-    renderAt('/');
+    renderAt('/team/team-a');
     // Sign out lives in the account menu now (§5.5), so the menu's trigger is
     // what the header renders unconditionally.
     expect(
       await screen.findByRole('button', { name: 'Account' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Studio' })).toBeInTheDocument();
+  });
+
+  it('renders the site header, and no app chrome, on marketing', async () => {
+    renderAt('/');
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Network Canvas Studio',
+      }),
+    ).toBeInTheDocument();
+    // The site shell, not the app shell: no account menu, no team chip, and
+    // no session was asked for to render it.
+    expect(
+      screen.queryByRole('button', { name: 'Account' }),
+    ).not.toBeInTheDocument();
+    expect(mocks.getSession).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('link', { name: 'Create an account' }),
+    ).toHaveAttribute('href', '/sign-up');
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
+      'href',
+      '/sign-in',
+    );
   });
 
   it('renders no app chrome on a focused route', async () => {
