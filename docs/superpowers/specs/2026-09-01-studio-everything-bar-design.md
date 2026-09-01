@@ -28,8 +28,8 @@ answers from three sources:
    they can access;
 2. **Commands** — actions the researcher can take, with their keyboard
    shortcuts shown inline; and
-3. **Documentation** — the documentation site's search index, with
-   Studio-relevant pages ranked first.
+3. **Documentation** — the documentation site's search index, held and
+   served by the instance, with Studio-relevant pages ranked first.
 
 The bar is a launcher, not an executor: it takes the researcher to the place
 where something happens, and never performs the action itself. It cannot show
@@ -52,12 +52,14 @@ Taken 2026-09-01 in specification review:
    structural, not maintained by hand.
 4. **Entity search is server-owned** and spans every team the researcher
    belongs to, ranked current-study first, current-team second.
-5. **Documentation comes from the documentation site's existing Algolia
-   index.** Studio-relevant pages are tagged with a `products` facet and
-   boosted, never filtered — every docs page remains findable. Results open
-   the documentation site; Studio does not embed a second docs renderer. The
-   query is sent only on explicit documentation intent (§3.3): typing in the
-   bar never sends text off the instance by itself.
+5. **Documentation is searched inline, from an index the instance holds.**
+   The documentation site's build publishes a search-index artifact; Studio's
+   server caches it and answers documentation queries itself, so results
+   render as the researcher types, exactly like the other groups, and no
+   query ever leaves the instance (invariant 5). Studio-relevant pages are
+   tagged with a `products` field and boosted, never filtered — every docs
+   page remains findable. Results open the documentation site; Studio does
+   not embed a second docs renderer.
 6. **One shortcut registry owns every binding.** `⌘K` opens the bar.
    Manifest entries and commands declare their chords (`g` then `a` for the
    activity log), and a single Studio-local shortcut registry aggregates
@@ -107,13 +109,12 @@ how.
    It calls no mutation procedure.
 4. **Selection stability.** Asynchronous results appending to the list never
    move the highlighted item or reorder groups already on screen.
-5. **Query privacy.** Query text leaves the instance only for the
-   documentation provider, only when that provider is configured, and only
-   when the researcher explicitly asks for documentation results (§3.3) —
-   typing alone never sends the query anywhere, because a query typed to find
-   a participant or a confidentially named study must not reach a third
-   party. A self-hosted instance without documentation-search configuration
-   sends nothing anywhere.
+5. **Query privacy.** Query text never leaves the instance. Every provider —
+   including documentation — is answered by the instance itself; the only
+   outbound documentation traffic is the server's periodic index refresh
+   (§5.5), which carries no researcher input. A query typed to find a
+   participant or a confidentially named study therefore cannot reach a
+   third party, in any group, on any keystroke.
 6. **PII gating.** No identifying participant data appears in results without
    the PII grant, and providers whose persistence policy forbids it can never
    have results written to locally persisted recents.
@@ -166,22 +167,20 @@ default is absence.
 
 ### 3.3 Documentation
 
-Results from the documentation site's Algolia index, in the researcher's
+Results from the documentation index the instance holds (§5.5), rendered
+inline as the researcher types — documentation is a peer of the other groups,
+not a mode behind an extra step. Results come in the researcher's
 documentation locale, with pages tagged `studio` boosted to the top of the
 group (§6). Each result opens the documentation site in a new tab —
 deliberately leaving Studio, because a half-embedded docs reader would fork
 the documentation experience and its locale negotiation.
 
-Documentation is the one group that requires explicit intent. While the
-researcher types, the group renders a single deferred action — "Search the
-documentation for '<query>'" — and no query has left the instance. Activating
-that row (Enter on it, or clicking it) sends the query to the search service
-and expands the results in place, in the same group, under the same
-selection-stability rule. The distinction matters because the bar is where
-researchers type participant names and confidentially named studies; those
-keystrokes must not reach a third party as a side effect of searching locally
-(invariant 5). The documentation site's own search box does not need this
-guard — someone typing there has already chosen documentation search.
+Serving the index from the instance rather than querying a third-party search
+API is what makes inline search safe: the bar is where researchers type
+participant names and confidentially named studies, and those keystrokes
+never leave the instance (invariant 5). The documentation site's own search
+box keeps its Algolia DocSearch — someone typing there has chosen
+documentation search; the bar cannot make that assumption.
 
 ### 3.4 Group order and ranking
 
@@ -189,7 +188,8 @@ Groups render in fixed order — **Go to**, **Commands**, **Documentation** —
 matching how often each is wanted. Within Go to: current-study destinations
 and entities first, then current team, then other teams, then platform; ties
 break by last-modified, then name. Within Commands: contextual before global.
-Within Documentation: Algolia's ranking with the `products:studio` boost.
+Within Documentation: the index's lexical ranking with the Studio-tag boost
+(§6).
 Result counts per group are bounded (five per group by default, with a "show
 more" affordance per group) so the first Enter press is predictable.
 
@@ -216,11 +216,10 @@ without requiring a query.
   `Ctrl+K` from any app route. The shortcut is registered at the app-shell
   layout, so it works identically everywhere, including the editor.
 - **Type**: local providers (destinations, commands) filter synchronously on
-  every keystroke. The entity provider debounces, aborts superseded requests,
-  and renders into its group with a pending indicator. The documentation
-  provider renders its deferred action row and issues no request until the
-  researcher activates it (§3.3). Late results append; they never re-rank
-  what is on screen (invariant 4).
+  every keystroke. The entity and documentation providers debounce, abort
+  superseded requests, and render into their groups with per-group pending
+  indicators — both are answered by the instance's own server. Late results
+  append; they never re-rank what is on screen (invariant 4).
 - **Navigate**: arrow keys move through the flat result sequence across
   groups; `Enter` activates; `Esc` closes and returns focus to wherever it
   was. A footer row shows navigate / select / close hints, translated.
@@ -361,25 +360,42 @@ kind's clauses carry their own classification (§7).
 
 ### 5.5 The documentation provider
 
-Studio queries the same Algolia index the documentation site's DocSearch
-uses, with the same search-only key model. Configuration follows the
-deployment-mode pattern (#1561 §10.4): `STUDIO_DOCS_SEARCH_APP_ID`,
-`STUDIO_DOCS_SEARCH_INDEX`, `STUDIO_DOCS_SEARCH_KEY`, and
-`STUDIO_DOCS_SEARCH_LOCALES` join the server env catalogue, are exposed on
-the existing `status` procedure, and reach the bar through `ShellContext`.
-When unset — the self-host default — the Documentation group does not exist
-and no query leaves the instance (invariant 5). The managed deployment sets
-them.
+Documentation search runs against an index the instance holds, not a
+third-party query API. The documentation site's build emits a search-index
+artifact (§6); Studio's server fetches it from `STUDIO_DOCS_INDEX_URL`,
+caches it, and revalidates it periodically with conditional requests and
+last-good semantics — a failed refresh keeps serving the cached index rather
+than losing the group. One query procedure serves the SPA:
 
-The provider issues its request only when the researcher activates the
-deferred documentation action (§3.3); until then it contributes that single
-local row and nothing has left the instance. The query filters
-`lang:<locale>`, where `<locale>` is the researcher's Studio locale when
-`STUDIO_DOCS_SEARCH_LOCALES` includes it and `en` otherwise — the
-published-locale list is configuration received from the instance, never
-guessed (today it is `['en']`). The boost is
-`optionalFilters: ['products:studio']`, the same boost-not-restrict mechanism
-the documentation site already uses for its section boost.
+```ts
+search.documentation({ query, locale }) -> {
+  items: Array<{
+    title: string;
+    hierarchy: string[];    // section → page → heading
+    url: string;            // absolute, into the documentation site
+    lang: string;
+    products: string[];
+    excerpt: string;
+  }>
+}
+```
+
+Ranking is the index's lexical ranking with a fixed boost for records whose
+`products` includes `studio` — a boost, never a filter, so every
+documentation page stays findable. The locale filter uses the researcher's
+Studio locale when the index manifest publishes it and `en` otherwise; the
+published-locale list ships in the index manifest, never guessed (today it is
+`['en']`).
+
+`STUDIO_DOCS_INDEX_URL` joins the server env catalogue, defaulted at the
+resolve layer to the documentation site's published index, so both the
+managed and self-hosted topologies get documentation search out of the box.
+An operator can point it at a mirror or set it empty; without an index the
+Documentation group does not exist and the rest of the bar is unaffected.
+Whether the query runs server-side over the cached index or the compact index
+is handed to the client on first documentation use is an implementation
+choice inside the provider — either way the query is answered by the
+instance.
 
 ### 5.6 Recents
 
@@ -401,29 +417,26 @@ breaks.
 
 ## 6. Documentation pipeline changes
 
-Three changes outside Studio make the `products` facet exist:
+Two changes in the documentation app make the instance-held index exist:
 
 1. **Frontmatter.** Documentation pages gain an optional `products` list
    (`products: [studio]`; a page may name several products). Untagged pages
    are simply unboosted — no migration of existing content is required.
-2. **Page metadata.** The documentation app emits a
-   `docsearch:products` meta entry from that frontmatter through the same
-   mechanism it already uses for `docsearch:language` and
-   `docsearch:version` — the `metadata.other` map built in
-   `apps/documentation/app/[locale]/layout.tsx` (page frontmatter flowing
-   into the page-level `generateMetadata`), not a hand-authored tag in a
-   layout component.
-3. **Crawler configuration.** The Algolia crawler (configured in the Algolia
-   dashboard, not in this repository) extracts the meta tag into a `products`
-   attribute on each record and declares it for faceting. The required
-   crawler change is recorded here because the repository holds no crawler
-   config to diff: `products` must be extracted as a custom attribute and
-   added to `attributesForFaceting` as `searchable(products)`.
+2. **Index artifact.** The documentation build emits a search index — one
+   record per heading-anchored section, carrying title, hierarchy, absolute
+   URL, locale, workflow section, `products`, and a bounded content excerpt —
+   published at a stable URL alongside the site, together with a manifest
+   naming the published locales and the artifact version. The docs app
+   already renders structured MDX with per-page frontmatter; the index is a
+   build output of that same pipeline, not a crawler product.
 
-The documentation site's own DocSearch is unaffected: the facet is additive,
-and the site may later adopt the same boost on its Studio section if wanted.
-As Studio documentation is written (#1242 has no documentation epic — pages
-land under the existing sections), tagging is part of authoring.
+The documentation site's own Algolia DocSearch is untouched — it keeps its
+crawler and its own search UI, where querying a third party is fine because
+the visitor has chosen documentation search. Studio deliberately does not
+query Algolia: bar queries include participant names and confidentially named
+studies, and typing in Studio must never send text to a third party
+(invariant 5). As Studio documentation is written (#1242 has no documentation
+epic — pages land under the existing sections), tagging is part of authoring.
 
 ## 7. Permissions, PII, and audit
 
@@ -449,11 +462,10 @@ bypassing none.
   treats this as one more provider — nothing in the component changes.
 - **Opening the bar and typing** is ordinary navigation and is excluded from
   the audit log, per the audit specification's §7.2 exclusions.
-- **Documentation queries** reach Algolia, a third party, only on the
-  explicit documentation action (§3.3) and only on instances configured for
-  it (§5.5) — never as a side effect of typing, because bar queries include
-  participant names and confidential study titles. The request contains what
-  the researcher typed and nothing else.
+- **Documentation queries** never reach a third party. They are answered
+  from the instance's cached index (§5.5); the only outbound documentation
+  traffic is the server's periodic index refresh, which carries no
+  researcher input.
 
 ## 8. Accessibility
 
@@ -484,7 +496,7 @@ bypassing none.
   makes no word-order or whitespace assumptions that break agglutinative or
   CJK labels; the match highlight maps back to the original string by index.
 - Documentation locale negotiation is §5.5's rule: the researcher's locale
-  when published, else `en`.
+  when the index manifest publishes it, else `en`.
 - Chord hints render the keys, which are not translated; chord keys are
   declared in manifest and command data and can be localized per locale later
   without touching the component — the declarations and the shortcut
@@ -506,7 +518,8 @@ Router-agnostic: navigation activations go through a link/navigate render
 prop, exactly as `NavItem` and `SiteNavigation` do.
 
 Studio-local: the providers, the manifest and registry contents, chord
-bindings, recents storage, and the docs-search configuration plumbing.
+bindings, recents storage, and the documentation-index cache and its
+configuration plumbing.
 
 Adding the subpath requires `pnpm --filter @codaco/fresco-ui sync-exports`;
 stories with interaction tests land alongside the component per the WCAG
@@ -525,8 +538,20 @@ foundations work (#1315).
   click. The launcher rule keeps the bar out of the audit and permission
   business entirely.
 - **An interleaved relevance-ranked single list.** Rejected: cross-source
-  scores (local fuzzy match vs Postgres name match vs Algolia) are not
-  comparable, and unstable ordering makes the first Enter press a gamble.
+  scores (local fuzzy match vs Postgres name match vs the docs index) are
+  not comparable, and unstable ordering makes the first Enter press a
+  gamble.
+- **Querying the documentation site's Algolia index from the bar.**
+  Rejected: every debounced query — participant names, confidentially named
+  studies — would reach a third party as a side effect of typing. The
+  documentation site's own search box does not have this problem, because
+  someone typing there has chosen documentation search; the bar cannot make
+  that assumption, so it searches an index the instance holds instead (§5.5).
+- **A deferred "Search the documentation" action** (explicit intent before
+  any query left the instance). Considered during review as the privacy fix
+  for the Algolia path and rejected 2026-09-01: it made documentation a
+  second-class citizen of the bar behind an extra keystroke, and the
+  instance-held index achieves stronger privacy with none of the friction.
 - **Embedding documentation in a Studio panel.** Rejected: it forks the
   reading experience, locale negotiation, and analytics of the documentation
   site for the sake of not opening a tab.
@@ -576,11 +601,13 @@ foundations work (#1315).
 - **Entity search**: membership scoping (a study in a team the researcher
   left never appears), context-first ranking, bounds, and the
   no-existence-oracle posture on unknown context ids.
-- **Docs provider**: absent without configuration; with configuration, no
-  network request is issued while typing (asserted, not assumed) and the
-  request fires only on activating the deferred action; locale filter and
-  `en` fallback; the `products:studio` boost appears in the request as an
-  optional filter, not a filter.
+- **Docs provider**: absent without an index; the documentation path issues
+  no outbound request carrying query text — the only outbound documentation
+  traffic observed in the test double is the index refresh (asserted by
+  inspecting outbound traffic, not assumed); locale filter and `en` fallback
+  from the index manifest; a `studio`-tagged record ranks above an
+  otherwise-equal untagged one, and untagged records still appear (boost,
+  not filter); a failed refresh keeps serving the last good index.
 - **Recents**: items from a `persistence: 'never'` provider are not written
   even when the provider "forgets" per-item marking (there is nothing to
   forget — the policy is provider-level); stored references re-resolve on
@@ -593,10 +620,10 @@ foundations work (#1315).
 One journey appended to the shell's Playwright journey: open with `⌘K`, type
 a study name from another team, land on it (focus on its `h1`), reopen, run
 "Invite a team member" and land in the members screen's invitation flow,
-reopen, type a query and confirm no documentation request has been issued,
-activate "Search the documentation" and verify results render for the seeded
-query in the test double's index (the E2E environment stubs Algolia — no
-third-party dependency in CI).
+reopen, type a query and verify the Documentation group renders inline
+results from a fixture index (`STUDIO_DOCS_INDEX_URL` points at a local
+fixture in E2E — no external dependency in CI) while the network log shows no
+outbound request containing the query text.
 
 ## 13. Delivery plan
 
@@ -604,16 +631,15 @@ Sequential PRs on `main`, each shippable. Slice 1 has no Studio dependency
 and can proceed alongside #1561's slices; slices 2–3 need #1561's slices 1–2
 (the header and area layouts) merged.
 
-| #   | Slice                          | Contents                                                                                                                                                                               |
-| --- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Component**                  | fresco-ui `navigation/EverythingBar` with provider seam, matching, recents, stories and interaction tests; `sync-exports`                                                              |
-| 2   | **Destinations and commands**  | Navigation manifests for the shipped areas (converting #1561's sidebars to manifest data if they landed as JSX); command registry; header trigger; `⌘K`; chords                        |
-| 3   | **Entities and documentation** | `search.entities` procedure and provider; docs-search env catalogue entries, `status` exposure, documentation provider; documentation-app frontmatter + meta tag; crawler facet change |
-| 4   | **Owning-feature providers**   | Standing policy, not a PR: participants, sessions, versions, gallery search land as acceptance criteria of #1263/#1264, #1269, #1276, #1285                                            |
+| #   | Slice                          | Contents                                                                                                                                                                                              |
+| --- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Component**                  | fresco-ui `navigation/EverythingBar` with provider seam, matching, recents, stories and interaction tests; `sync-exports`                                                                             |
+| 2   | **Destinations and commands**  | Navigation manifests for the shipped areas (converting #1561's sidebars to manifest data if they landed as JSX); command registry; header trigger; `⌘K`; chords                                       |
+| 3   | **Entities and documentation** | `search.entities` and `search.documentation` procedures and providers; `STUDIO_DOCS_INDEX_URL` env entry, server index cache and refresh; documentation-app `products` frontmatter and index artifact |
+| 4   | **Owning-feature providers**   | Standing policy, not a PR: participants, sessions, versions, gallery search land as acceptance criteria of #1263/#1264, #1269, #1276, #1285                                                           |
 
-The crawler configuration change (§6, crawler configuration) is coordinated
-with slice 3 and is harmless to make early — the facet is inert until Studio
-queries it.
+The documentation app's index artifact (§6) can land ahead of slice 3 — it is
+inert until Studio fetches it.
 
 ## 14. Open questions
 
@@ -632,6 +658,11 @@ queries it.
    absent. Whether specific commands (pause collection) should instead appear
    with their role requirement, as the concept mock suggests, is a UX-copy
    and role-teaching question for the owning features.
+5. **Air-gapped installs.** `STUDIO_DOCS_INDEX_URL` defaults to the
+   documentation site's published index and can be mirrored or disabled.
+   Whether the self-host image should additionally bundle a snapshot of the
+   index at release time, so a fully offline install still has documentation
+   search, is a packaging question for #1250.
 
 ## 15. GitHub tracking
 
