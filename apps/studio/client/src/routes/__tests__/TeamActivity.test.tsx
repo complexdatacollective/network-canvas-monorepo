@@ -71,6 +71,22 @@ vi.mock('../../lib/auth.ts', () => ({
       data: { user: { name: 'Owner Researcher', email: 'owner@example.com' } },
       isPending: false,
     }),
+    useListOrganizations: vi.fn().mockReturnValue({
+      data: [],
+      error: null,
+      isPending: false,
+    }),
+    useActiveOrganization: vi.fn().mockReturnValue({
+      data: null,
+      error: null,
+      isPending: false,
+    }),
+    useActiveMember: vi.fn().mockReturnValue({
+      data: null,
+      error: null,
+      isPending: false,
+    }),
+    organization: { setActive: vi.fn() },
     signOut: vi.fn(),
   },
 }));
@@ -525,7 +541,10 @@ describe('Team activity screen', () => {
     renderActivity();
     await screen.findByRole('cell', { name: 'Invitation created' });
 
-    const className = screen.getByRole('main').className;
+    // The `<main>` is the area layout's; the page container this test is
+    // about is the route's own element inside it.
+    const page = screen.getByRole('main').firstElementChild;
+    const className = page?.className ?? '';
     expect(className).toContain('tablet-portrait:p-8');
     expect(className).not.toMatch(/(?:^|\s)(?:sm|md|lg|xl|2xl):/);
   });

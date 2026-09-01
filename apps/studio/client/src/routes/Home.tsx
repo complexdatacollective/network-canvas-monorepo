@@ -13,10 +13,11 @@ export default function Home() {
   const teams = authClient.useListOrganizations();
 
   return (
-    <main
-      id="main-content"
-      className="tablet-portrait:p-8 mx-auto flex w-full max-w-6xl flex-col gap-6 p-4"
-    >
+    // The `<main id="main-content">` is the area layout's (§5.3, §7.1): the
+    // skip link is rendered by `AppFrame` and the landmark it targets by
+    // `AppArea`, so a route that declared its own would give the link two
+    // candidates and nest one `<main>` inside another.
+    <div className="tablet-portrait:p-8 mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
       <div>
         <Heading level="h1">Network Canvas Studio</Heading>
         <Paragraph>
@@ -51,6 +52,6 @@ export default function Home() {
       {teams.data && teams.data.length > 0 && (
         <TeamWorkspace teams={teams.data} />
       )}
-    </main>
+    </div>
   );
 }

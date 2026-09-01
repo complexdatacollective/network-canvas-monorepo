@@ -1,92 +1,39 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { Link, Outlet, useNavigate, useRouter } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { Outlet } from '@tanstack/react-router';
 
-import { Alert } from '@codaco/fresco-ui/Alert';
-import Button from '@codaco/fresco-ui/Button';
+import AppFrame from '@codaco/fresco-ui/layout/AppFrame';
 
-import { closeStudioEditorSessions } from '../editor/sessionLifecycle.ts';
-import { authClient } from '../lib/auth.ts';
+import AppHeader from '../shell/AppHeader.tsx';
 
+/**
+ * The application shell (§5.3): the skip link, the header, and the region the
+ * area layouts render into. Rendered once, by the app branch, so the header
+ * survives every area transition.
+ *
+ * It renders no `<nav>` and no `<main>`: both belong to the area layout below
+ * it, because a study's sidebar and the editor's outline replace each other
+ * wholesale rather than nesting, and a `<main>` here would nest one inside the
+ * other and give the skip link two candidates.
+ *
+ * **It reads no session state, and that is the point.**
+ * `authClient.useSession()` stood here, and it was a second live channel to
+ * `/api/auth/get-session`: two requests for one answer on every page load, one
+ * from the app branch's guard and one from this component. It was read for two
+ * things, and neither is here any more.
+ *
+ * - The "Signed in as …" line. The query the guard resolves carries only
+ *   `signedIn`/`signedOut` by design (§6.2), so the researcher's name was
+ *   available only at the price of that second request. Identity belongs to
+ *   the account area's profile screen (§5.5), which arrives with `/account`.
+ * - Getting the researcher out when the session goes away, and clearing the
+ *   cache on the way. That now lives in the guard, which is the one thing that
+ *   learns the session has ended — and which unmounts this component by
+ *   redirecting, so an effect here would be racing the guard's own redirect
+ *   for the same fact and would lose it whenever the redirect is not blocked.
+ */
 export default function AppLayout() {
-  const { data: session, isPending } = authClient.useSession();
-  const navigate = useNavigate();
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const [signOutFailed, setSignOutFailed] = useState(false);
-
-  useEffect(() => {
-    if (!isPending && !session) {
-      queryClient.clear();
-      // Authentication has already gone away, so there is no valid editor
-      // state to keep. A dirty-form blocker must not strand the researcher in
-      // a private route after its cached data has been cleared.
-      void navigate({ to: '/sign-in', ignoreBlocker: true });
-    }
-  }, [isPending, session, navigate, queryClient]);
-
   return (
-    <div className="flex h-full flex-col">
-      <a
-        href="#main-content"
-        className="focusable bg-surface text-surface-contrast fixed top-2 left-2 z-50 -translate-y-24 rounded px-4 py-2 focus:translate-y-0"
-      >
-        Skip to main content
-      </a>
-      <header className="flex items-center justify-between gap-4 px-4 py-2">
-        <Link
-          className="focusable font-heading rounded font-bold no-underline"
-          to="/"
-        >
-          Studio
-        </Link>
-        <div className="flex flex-wrap items-center justify-end gap-4">
-          {signOutFailed && (
-            <Alert variant="destructive">
-              Sign-out did not complete. Try again.
-            </Alert>
-          )}
-          {session && (
-            <span className="text-sm">
-              Signed in as {session.user.name || session.user.email}
-            </span>
-          )}
-          <Button
-            size="sm"
-            variant="raised"
-            onClick={() => {
-              setSignOutFailed(false);
-              void (async () => {
-                try {
-                  await navigate({ to: '/' });
-                  // Editor route blockers settle before navigate resolves. A
-                  // cancelled discard leaves us on the editor route, so stop
-                  // before closing its lease or clearing authentication.
-                  if (router.state.location.pathname !== '/') return;
-                  await closeStudioEditorSessions();
-                  const result = await authClient.signOut();
-                  // better-fetch resolves failed requests with an error field
-                  // instead of throwing; a failed sign-out leaves the cookie
-                  // valid, so pretending it worked would be a lie.
-                  if (result.error) {
-                    setSignOutFailed(true);
-                    return;
-                  }
-                  queryClient.clear();
-                  await navigate({ to: '/sign-in' });
-                } catch {
-                  setSignOutFailed(true);
-                }
-              })();
-            }}
-          >
-            Sign out
-          </Button>
-        </div>
-      </header>
-      <div className="min-h-0 flex-1">
-        <Outlet />
-      </div>
-    </div>
+    <AppFrame header={<AppHeader />} skipLinkLabel="Skip to main content">
+      <Outlet />
+    </AppFrame>
   );
 }

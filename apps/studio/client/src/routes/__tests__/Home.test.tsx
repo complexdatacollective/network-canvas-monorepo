@@ -10,6 +10,9 @@ const mocks = vi.hoisted(() => ({
   createProtocol: vi.fn(),
   listProtocols: vi.fn(),
   useListOrganizations: vi.fn(),
+  useActiveOrganization: vi.fn(),
+  useActiveMember: vi.fn(),
+  setActive: vi.fn(),
 }));
 
 vi.mock('../../lib/auth.ts', () => ({
@@ -25,6 +28,9 @@ vi.mock('../../lib/auth.ts', () => ({
       isPending: false,
     }),
     useListOrganizations: mocks.useListOrganizations,
+    useActiveOrganization: mocks.useActiveOrganization,
+    useActiveMember: mocks.useActiveMember,
+    organization: { setActive: mocks.setActive },
     signOut: vi.fn(),
   },
 }));
@@ -88,6 +94,16 @@ beforeEach(() => {
     data: [],
     isPending: false,
     isError: false,
+  });
+  mocks.useActiveOrganization.mockReturnValue({
+    data: null,
+    isPending: false,
+    error: null,
+  });
+  mocks.useActiveMember.mockReturnValue({
+    data: null,
+    isPending: false,
+    error: null,
   });
   mocks.listProtocols.mockResolvedValue([]);
 });

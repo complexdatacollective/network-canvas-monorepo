@@ -117,10 +117,12 @@ export const NavListGroup = ({
         with the browser. Verified against Chromium's platform accessibility
         tree.
 
-        See LIST_CLASSES above for why the redundant role is here. The
-        disable must be the line directly above the element — anything
-        between them and `oxlint --fix` strips the role, which is how the
-        Safari list semantics were lost once already.
+        The role is the one LIST_CLASSES explains, and this list needs it
+        more than the ungrouped one does: it is the list whose name and count
+        carry the group, and Safari drops both along with the list semantics.
+        The disable must be the line directly above the element — anything
+        between them and `oxlint --fix` strips the role, which is how this
+        was lost once already.
       */}
       {/* oxlint-disable-next-line jsx-a11y/no-redundant-roles */}
       <ul role="list" aria-label={heading} className={LIST_CLASSES}>
