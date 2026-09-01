@@ -12,186 +12,149 @@
  * still followed to their final destination and checked, but their pages do
  * not expand the crawl. Each normalized URL is checked once, while every page
  * that referred to it is retained for the report.
+ * Requests use only Node's fetch implementation. CI supplies a browser-shaped
+ * User-Agent, but there is no browser launch or second networking stack.
+ * Redirects are followed manually so redirect loops, missing or invalid
+ * Location headers, excessive hops, and the actual final URL remain visible.
+ * Transient responses and request failures are retried with bounded backoff
+ * (honouring Retry-After), and unused response bodies are cancelled so the
+ * connection pool stays healthy. One worker is used by default. Serializing
+ * requests prevents a cluster of links on one publisher from looking like a
+ * bot burst and keeps the two Netlify previews responsive during a recursive
+ * crawl.
  *
- * Ordinary checks use Node's fetch implementation because it is substantially
- * faster and cheaper than opening a browser page for every URL. Redirects are
- * followed manually so redirect loops, missing or invalid Location headers,
- * excessive hops, and the actual final URL remain visible. Transient HTTP
- * responses and request failures are retried with bounded backoff (honouring
- * Retry-After); unused response bodies are cancelled so concurrent checks do
- * not exhaust fetch's connection pool. The caller may provide an explicit
- * User-Agent, but status semantics never change: any final status >= 400 is an
- * error, including 403.
+ * TLS validation remains enabled for every fetch. Browsers can repair a
+ * server's incomplete certificate chain by retrieving a missing intermediate
+ * issuer, while Node fetch intentionally does not perform that AIA lookup.
+ * One linked publisher currently serves a leaf certificate without its public
+ * GEANT TLS RSA 1 intermediate, so that issuer certificate is bundled here.
+ * Before installing it into Node's default CA set, the checker requires the
+ * pinned fingerprint, a current CA validity period, and a valid signature from
+ * a current root that Node already trusts. This completes the omitted chain;
+ * Node fetch still validates the leaf signature, hostname, dates, and every
+ * other TLS property. TLS errors are never converted into successful checks.
  *
- * A small browser-verification path exists because some otherwise public sites
- * do not give Node the response that a person receives in a browser. Common
- * examples are JavaScript/CDN challenges that initially return 403 and servers
- * that omit an intermediate certificate trusted through the browser's issuer
- * cache. Only those two known mismatches -- a Node 403 or
- * UNABLE_TO_VERIFY_LEAF_SIGNATURE -- are rechecked in Chrome. Chrome is
- * launched lazily and shared by the whole crawl, but every checked link gets a
- * fresh browser context so cookies, storage, cache state, and service workers
- * cannot make later results depend on crawl order. At most four contexts are
- * open at once; popups are closed immediately so they cannot bypass that
- * limit. Chrome runs headed under Xvfb in CI because the affected challenge
- * provider also rejects automated headless Chrome. After either kind of Node
- * mismatch, the verifier waits for the browser document to reach a terminal
- * main-frame response, commit that navigation, finish loading, and remain
- * navigation-quiet for a short bounded interval. Binding the load wait to a
- * commit after the selected response prevents the preceding document's
- * DOMContentLoaded state from satisfying it. The initial response and every
- * follow-up are correlated with the latest main-frame commit, so a
- * response-free navigation cannot borrow an abandoned HTTP status. Chrome's
- * document events distinguish a same-document History API change, which keeps
- * the matched representation, from a BFCache document restore, which must not
- * borrow the newer document's response. Both navigation starts and responses
- * are tracked, and starts remain explicitly
- * outstanding until their response or failure event arrives, so a request
- * that stalls before response headers cannot look quiet. Superseded/aborted
- * requests are retired; another navigation failure remains an error unless a
- * later terminal document replaces it. If that replacement interrupts the
- * initial goto before DOMContentLoaded, its captured lifecycle continues
- * through the same response/commit checks. Incomplete redirects and document
- * loads remain verification failures, and the entire sequence -- including
- * the page-slot wait, Chrome launch, and context/page creation -- shares one
- * request deadline so setup stalls and reload loops cannot retain a worker.
- * Browser-only HTTP redirects obey the same maximum-hop rule as Node
- * redirects. A browser 304 is a completed
- * cache revalidation, not a redirect; its prior same-URL representation
- * supplies the effective status and content type so cached errors remain
- * errors and cached HTML remains crawlable. Browser navigations that become
- * downloads or return 204/205 without a document are the exceptions to
- * requiring a document load: Playwright may reject goto in those cases, so the
- * captured HTTP response verifies the non-HTML target without saving a file or
- * inventing a document. Follow-up non-document responses still pass through
- * the quiet window because the preceding document remains active and may
- * navigate again. A download event is paired only with an uncommitted
- * main-frame response, preventing an independent page download from
- * suppressing the HTML crawl.
+ * Status semantics are strict: any final status >= 400 is an error, including
+ * 403. There is exactly one redirect-specific exception. Cloudflare identifies
+ * an interstitial challenge with the response header
+ * `cf-mitigated: challenge`; `server: cloudflare`, a hostname, a 403 alone,
+ * or challenge-looking HTML is not sufficient. If and only if that header is
+ * encountered after at least one HTTP redirect, the link is accepted using
+ * the chain's initial redirect response. The recorded status and destination
+ * are therefore that first redirect's status and Location, and the later
+ * challenge response is discarded without parsing its body or following it
+ * further. A challenge returned directly, or an ordinary 403 behind a
+ * redirect, still fails.
  *
- * Browser verification is not status suppression. Its final response is
- * authoritative: a browser-confirmed 403 (or any other >= 400 response) still
- * fails the check, and a browser launch/navigation failure preserves the
- * original failure with the browser error attached. This differs deliberately
- * from the old package's external-redirect shortcut: stopping before the final
- * destination would make the run faster, but could report a genuinely dead
- * redirected link as healthy.
+ * This exception reflects what the checker can establish without pretending to
+ * solve Cloudflare's browser-attestation flow: the source URL produced a valid
+ * redirect, while the automated client was explicitly challenged at the
+ * destination. Accepting only that initial redirect avoids treating the
+ * challenge as a dead target without weakening status handling for any other
+ * response.
  *
  * Workers may finish out of order, so results and referrers are sorted before
  * output. Human-readable text, JSON artifacts, GitHub annotations, and the job
  * summary are all rendered from that same deterministic report.
  */
-import { appendFile, writeFile } from 'node:fs/promises';
+import { X509Certificate } from 'node:crypto';
+import { appendFile, readFile, writeFile } from 'node:fs/promises';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { getCACertificates, setDefaultCACertificates } from 'node:tls';
 import { pathToFileURL } from 'node:url';
 
 import { JSDOM } from 'jsdom';
 
 const REPORT_SCHEMA_VERSION = 1;
 const TRANSIENT_STATUSES = new Set([429, 502, 503, 504]);
-const BROWSER_VERIFIABLE_REQUEST_ERRORS = new Set([
-  'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
-]);
 const MAX_RETRY_DELAY_MS = 30_000;
 const BASE_RETRY_DELAY_MS = 500;
-const MAX_BROWSER_PAGES = 4;
-const BROWSER_NAVIGATION_SETTLE_MS = 500;
-const BROWSER_NO_DOCUMENT_STATUSES = new Set([204, 205]);
+// The publisher's leaf certificate names this public HARICA issuer at
+// http://crt.harica.gr/HARICA-GEANT-TLS-R1.cer in its AIA extension.
+const BUNDLED_INTERMEDIATE_CA = {
+  expectedFingerprint:
+    '5B:67:8D:C4:40:95:A5:28:95:B6:3B:31:F2:72:27:F4:B3:6C:3E:34:74:91:BF:2B:FA:69:18:37:A5:FB:8C:79',
+  path: new URL('./certificates/HARICA-GEANT-TLS-RSA-1.crt', import.meta.url),
+};
 
-function isBrowserRedirectStatus(status) {
-  return status >= 300 && status < 400 && status !== 304;
-}
-
-function isTerminalNavigation(response) {
-  return !isBrowserRedirectStatus(response.status());
-}
-
-function browserRedirects(mainFrameResponses) {
-  const redirects = [];
-  for (let index = 0; index < mainFrameResponses.length - 1; index++) {
-    const response = mainFrameResponses[index];
-    if (!isBrowserRedirectStatus(response.status())) continue;
-    redirects.push({
-      from: response.url(),
-      status: response.status(),
-      to: mainFrameResponses[index + 1].url(),
-    });
-  }
-  return redirects;
-}
-
-function isNonDocumentNavigation(response) {
-  const contentDisposition = response.headers()['content-disposition'] ?? '';
+function certificateIsCurrent(certificate, now) {
   return (
-    BROWSER_NO_DOCUMENT_STATUSES.has(response.status()) ||
-    /^\s*attachment(?:\s*;|$)/i.test(contentDisposition)
+    certificate.validFromDate.getTime() <= now &&
+    now <= certificate.validToDate.getTime()
   );
+}
+
+export function validateIntermediateCA(
+  value,
+  {
+    expectedFingerprint,
+    now = Date.now(),
+    trustedCAs = getCACertificates('default'),
+  } = {},
+) {
+  const certificate = new X509Certificate(value);
+  if (!certificate.ca) {
+    throw new Error('The bundled intermediate certificate is not a CA');
+  }
+  if (!certificateIsCurrent(certificate, now)) {
+    throw new Error('The bundled intermediate CA certificate is not current');
+  }
+  if (
+    expectedFingerprint &&
+    certificate.fingerprint256 !== expectedFingerprint
+  ) {
+    throw new Error(
+      `The bundled intermediate CA fingerprint is ${certificate.fingerprint256}, expected ${expectedFingerprint}`,
+    );
+  }
+
+  const trustedIssuer = trustedCAs
+    .map((trustedCA) => new X509Certificate(trustedCA))
+    .find(
+      (trustedCA) =>
+        trustedCA.ca &&
+        certificateIsCurrent(trustedCA, now) &&
+        certificate.checkIssued(trustedCA) &&
+        certificate.verify(trustedCA.publicKey),
+    );
+  if (!trustedIssuer) {
+    throw new Error(
+      'The bundled intermediate CA is not signed by a current trusted root',
+    );
+  }
+  return certificate.toString();
+}
+
+let bundledIntermediateCAInstallation;
+
+function installBundledIntermediateCA() {
+  bundledIntermediateCAInstallation ??= (async () => {
+    const trustedCAs = getCACertificates('default');
+    const value = await readFile(BUNDLED_INTERMEDIATE_CA.path, 'utf8');
+    const certificate = validateIntermediateCA(value, {
+      expectedFingerprint: BUNDLED_INTERMEDIATE_CA.expectedFingerprint,
+      trustedCAs,
+    });
+    setDefaultCACertificates([...trustedCAs, certificate]);
+  })();
+  return bundledIntermediateCAInstallation;
 }
 
 function isHTMLContentType(contentType) {
   return /^\s*text\/html(?:\s*;|$)/i.test(contentType);
 }
 
-function nonDocumentOutcome(response, mainFrameResponses) {
-  return {
-    contentType: response.headers()['content-type'] ?? '',
-    finalUrl: response.url(),
-    html: null,
-    redirects: browserRedirects(mainFrameResponses),
-    status: response.status(),
-  };
-}
-
-function comparableBrowserURL(value) {
-  try {
-    const url = new URL(value);
-    url.hash = '';
-    return url.href;
-  } catch {
-    return value;
-  }
-}
-
-function cachedRepresentationResponse(response, mainFrameResponses) {
-  if (response.status() !== 304) return null;
-  const responseIndex = mainFrameResponses.lastIndexOf(response);
-  const responseURL = comparableBrowserURL(response.url());
-  return mainFrameResponses
-    .slice(0, responseIndex)
-    .findLast(
-      (candidate) =>
-        isTerminalNavigation(candidate) &&
-        candidate.status() !== 304 &&
-        comparableBrowserURL(candidate.url()) === responseURL,
-    );
-}
-
-function effectiveContentType(response, mainFrameResponses) {
-  const directContentType = response.headers()['content-type'] ?? '';
-  if (directContentType || response.status() !== 304) {
-    return directContentType;
-  }
-
+function isCloudflareChallenge(response) {
   return (
-    cachedRepresentationResponse(response, mainFrameResponses)?.headers()[
-      'content-type'
-    ] ?? ''
+    response.headers.get('cf-mitigated')?.trim().toLowerCase() === 'challenge'
   );
 }
-
-function effectiveStatus(response, mainFrameResponses) {
-  return (
-    cachedRepresentationResponse(response, mainFrameResponses)?.status() ??
-    response.status()
-  );
-}
-
 // Keep annotations useful without flooding the Actions log. The JSON artifact
 // and job summary remain complete when a crawl exceeds this limit.
 export const MAX_GITHUB_ERROR_ANNOTATIONS = 50;
 
 const DEFAULT_OPTIONS = {
-  concurrent: 25,
+  concurrent: 1,
   delay: 10,
   format: 'text',
   githubActions: false,
@@ -208,7 +171,7 @@ const USAGE = `Usage: node scripts/dead-link-checker.mjs <URL> [options]
 Options:
   -v                         Include every checked URL in text output
   --yes                      Deprecated compatibility option (no effect)
-  --concurrent=<number>      Concurrent workers (default: 25)
+  --concurrent=<number>      Concurrent workers (default: 1)
   --delay=<milliseconds>     Delay between requests per worker (default: 10)
   --timeout=<milliseconds>   Per-request timeout (default: 15000)
   --retries=<number>         Retries after the first attempt (default: 3)
@@ -247,629 +210,6 @@ class WorkQueue {
     this.#pending--;
     if (this.#pending !== 0 || this.#items.length !== 0) return;
     for (const waiter of this.#waiters.splice(0)) waiter(null);
-  }
-}
-
-export class PageSlotSemaphore {
-  #available;
-  #limit;
-  #waiters = [];
-
-  constructor(limit) {
-    if (!Number.isSafeInteger(limit) || limit < 1) {
-      throw new RangeError('Page slot limit must be a positive integer');
-    }
-    this.#available = limit;
-    this.#limit = limit;
-  }
-
-  async acquire(timeout, timeoutError) {
-    if (this.#available > 0) {
-      this.#available--;
-      return;
-    }
-    await new Promise((resolve, reject) => {
-      let timer;
-      const waiter = {
-        grant: () => {
-          globalThis.clearTimeout(timer);
-          resolve();
-        },
-      };
-      this.#waiters.push(waiter);
-      if (timeout !== undefined) {
-        timer = globalThis.setTimeout(() => {
-          const index = this.#waiters.indexOf(waiter);
-          if (index !== -1) this.#waiters.splice(index, 1);
-          reject(
-            timeoutError?.() ??
-              Object.assign(
-                new Error(`Browser page slot timed out after ${timeout}ms`),
-                { name: 'TimeoutError' },
-              ),
-          );
-        }, timeout);
-      }
-    });
-  }
-
-  release() {
-    const waiter = this.#waiters.shift();
-    if (waiter) {
-      // Keep the permit unavailable while transferring it directly. A later
-      // caller therefore cannot overtake the queued verifier before its
-      // promise continuation runs.
-      waiter.grant();
-      return;
-    }
-    if (this.#available >= this.#limit) {
-      throw new Error('Cannot release an unacquired page slot');
-    }
-    this.#available++;
-  }
-}
-
-async function loadPlaywrightChromium() {
-  const { chromium } = await import('playwright');
-  return chromium;
-}
-
-export class BrowserVerifier {
-  #loadChromium;
-  #pageSlots = new PageSlotSemaphore(MAX_BROWSER_PAGES);
-  #resourcesPromise;
-  #userAgent;
-
-  constructor({ loadChromium = loadPlaywrightChromium, userAgent } = {}) {
-    this.#loadChromium = loadChromium;
-    this.#userAgent = userAgent;
-  }
-
-  async #getResources(timeout) {
-    this.#resourcesPromise ??= (async () => {
-      const chromium = await this.#loadChromium();
-      const browser = await chromium.launch({
-        args: ['--disable-blink-features=AutomationControlled'],
-        channel: 'chrome',
-        headless: false,
-        ignoreDefaultArgs: ['--enable-automation'],
-        timeout,
-      });
-      return { browser };
-    })();
-    return this.#resourcesPromise;
-  }
-
-  async close() {
-    if (!this.#resourcesPromise) return;
-    try {
-      const { browser } = await this.#resourcesPromise;
-      await browser.close();
-    } catch {
-      // A launch failure is already attached to each unresolved result.
-    }
-  }
-
-  async verify(url, timeout, { captureHTML = false } = {}) {
-    const verificationDeadline = Date.now() + timeout;
-    const browserTimeoutError = () => {
-      const error = new Error(
-        `Browser verification timed out after ${timeout}ms`,
-      );
-      error.name = 'TimeoutError';
-      return error;
-    };
-    const remainingTimeout = () => {
-      const remaining = verificationDeadline - Date.now();
-      if (remaining > 0) return remaining;
-      throw browserTimeoutError();
-    };
-    const withDeadline = async (operation) => {
-      let timer;
-      try {
-        return await Promise.race([
-          operation,
-          new Promise((_, reject) => {
-            timer = globalThis.setTimeout(
-              () => reject(browserTimeoutError()),
-              remainingTimeout(),
-            );
-          }),
-        ]);
-      } finally {
-        globalThis.clearTimeout(timer);
-      }
-    };
-
-    await this.#pageSlots.acquire(remainingTimeout(), browserTimeoutError);
-    let context;
-    let page;
-    let cdpSession;
-    const spawnedPages = new Set();
-    try {
-      const { browser } = await withDeadline(
-        this.#getResources(remainingTimeout()),
-      );
-      const contextPromise = browser.newContext({
-        acceptDownloads: false,
-        ...(this.#userAgent ? { userAgent: this.#userAgent } : {}),
-      });
-      try {
-        context = await withDeadline(contextPromise);
-      } catch (error) {
-        void contextPromise
-          .then((lateContext) => lateContext.close())
-          .catch(() => {});
-        throw error;
-      }
-      page = await withDeadline(context.newPage());
-      const mainFrameRequests = [];
-      const mainFrameResponses = [];
-      const outstandingMainFrameRequests = new Set();
-      const responseCommitBaselines = new WeakMap();
-      const mainFrameCommits = [];
-      const downloadResponses = new WeakSet();
-      const lifecycleWaiters = new Set();
-      let lifecycleVersion = 0;
-      let mainFrameCommitCount = 0;
-      let committedResponseCount = 0;
-      let unrecoveredNavigationFailure = '';
-      const notifyLifecycleChange = () => {
-        lifecycleVersion++;
-        for (const wake of lifecycleWaiters) wake();
-      };
-      page.on('popup', (popup) => {
-        spawnedPages.add(popup);
-        void popup.close().catch(() => {});
-      });
-      page.on('download', (download) => {
-        const downloadURL = comparableBrowserURL(download.url());
-        const downloadResponse = mainFrameResponses
-          .slice(committedResponseCount)
-          .findLast(
-            (response) =>
-              response.url &&
-              comparableBrowserURL(response.url()) === downloadURL,
-          );
-        if (downloadResponse) downloadResponses.add(downloadResponse);
-        notifyLifecycleChange();
-        if (download.cancel) void download.cancel().catch(() => {});
-      });
-      page.on('response', (response) => {
-        if (
-          response.request().isNavigationRequest() &&
-          response.frame() === page.mainFrame()
-        ) {
-          responseCommitBaselines.set(response, mainFrameCommitCount);
-          mainFrameResponses.push(response);
-          outstandingMainFrameRequests.delete(response.request());
-          if (isTerminalNavigation(response)) {
-            unrecoveredNavigationFailure = '';
-          }
-          notifyLifecycleChange();
-        }
-      });
-      const recordMainFrameCommit = (value, documentKind) => {
-        const commitURL = comparableBrowserURL(value);
-        let kind = documentKind;
-        if (documentKind === 'document') {
-          const pendingResponses = mainFrameResponses.slice(
-            committedResponseCount,
-          );
-          const matchingResponseIndex = pendingResponses.findLastIndex(
-            (response) =>
-              response.url &&
-              comparableBrowserURL(response.url()) === commitURL,
-          );
-          kind = matchingResponseIndex === -1 ? 'unmatched' : 'document';
-          if (matchingResponseIndex !== -1) {
-            committedResponseCount += matchingResponseIndex + 1;
-          }
-        }
-        mainFrameCommitCount++;
-        mainFrameCommits.push({ kind, url: commitURL });
-        notifyLifecycleChange();
-      };
-
-      if (context.newCDPSession) {
-        cdpSession = await withDeadline(context.newCDPSession(page));
-        await withDeadline(cdpSession.send('Page.enable'));
-        const { frameTree } = await withDeadline(
-          cdpSession.send('Page.getFrameTree'),
-        );
-        let mainFrameId = frameTree.frame.id;
-        cdpSession.on('Page.frameNavigated', ({ frame }) => {
-          if (frame.id !== mainFrameId && frame.parentId) return;
-          if (!frame.parentId) mainFrameId = frame.id;
-          recordMainFrameCommit(frame.url, 'document');
-        });
-        cdpSession.on(
-          'Page.navigatedWithinDocument',
-          ({ frameId, url: navigatedURL }) => {
-            if (frameId !== mainFrameId) return;
-            recordMainFrameCommit(navigatedURL, 'same-document');
-          },
-        );
-      }
-      page.on('framenavigated', (frame) => {
-        if (cdpSession || frame !== page.mainFrame()) return;
-        const pendingResponseCount =
-          mainFrameResponses.length - committedResponseCount;
-        recordMainFrameCommit(
-          frame.url?.() ?? page.url(),
-          pendingResponseCount === 0 ? 'same-document' : 'document',
-        );
-      });
-      page.on('request', (request) => {
-        if (
-          request.isNavigationRequest() &&
-          request.frame() === page.mainFrame()
-        ) {
-          mainFrameRequests.push(request);
-          outstandingMainFrameRequests.add(request);
-          notifyLifecycleChange();
-        }
-      });
-      page.on('requestfailed', (request) => {
-        if (
-          request.isNavigationRequest() &&
-          request.frame() === page.mainFrame()
-        ) {
-          outstandingMainFrameRequests.delete(request);
-          const errorText = String(
-            request.failure()?.errorText ?? 'unknown error',
-          );
-          if (!errorText.includes('ERR_ABORTED')) {
-            unrecoveredNavigationFailure = errorText;
-          }
-          notifyLifecycleChange();
-        }
-      });
-      const waitForLifecycleChange = async (version) => {
-        if (lifecycleVersion !== version) return;
-        await new Promise((resolve, reject) => {
-          let timer;
-          const wake = () => {
-            lifecycleWaiters.delete(wake);
-            globalThis.clearTimeout(timer);
-            resolve();
-          };
-          timer = globalThis.setTimeout(() => {
-            lifecycleWaiters.delete(wake);
-            reject(browserTimeoutError());
-          }, remainingTimeout());
-          lifecycleWaiters.add(wake);
-          if (lifecycleVersion !== version) wake();
-        });
-      };
-
-      let initialResponse;
-      try {
-        initialResponse = await page.goto(url, {
-          timeout: remainingTimeout(),
-          waitUntil: 'domcontentloaded',
-        });
-      } catch (error) {
-        const nonDocumentResponse = mainFrameResponses.at(-1);
-        const isDownload =
-          error instanceof Error &&
-          error.message.includes('Download is starting');
-        if (
-          nonDocumentResponse &&
-          (isDownload ||
-            BROWSER_NO_DOCUMENT_STATUSES.has(nonDocumentResponse.status()))
-        ) {
-          return nonDocumentOutcome(nonDocumentResponse, mainFrameResponses);
-        }
-
-        const observedInitialResponse = mainFrameResponses.at(0);
-        const observedInitialRequestIndex = observedInitialResponse
-          ? mainFrameRequests.indexOf(observedInitialResponse.request())
-          : -1;
-        const hasSupersedingNavigation =
-          observedInitialResponse &&
-          (mainFrameResponses.length > 1 ||
-            mainFrameRequests.length > observedInitialRequestIndex + 1);
-        if (!hasSupersedingNavigation) throw error;
-        initialResponse = observedInitialResponse;
-      }
-      if (!initialResponse) {
-        throw new Error(`Browser navigation returned no response for ${url}`);
-      }
-      let navigation = initialResponse;
-
-      const initialResponseIndex = mainFrameResponses.indexOf(initialResponse);
-      const initialRequestIndex = mainFrameRequests.indexOf(
-        initialResponse.request(),
-      );
-      const followupStart =
-        initialResponseIndex === -1
-          ? mainFrameResponses.length
-          : initialResponseIndex + 1;
-      const followupRequestStart =
-        initialRequestIndex === -1
-          ? mainFrameRequests.length
-          : initialRequestIndex + 1;
-      const followupResponses = () => mainFrameResponses.slice(followupStart);
-      const terminalResponseAfter = (start) =>
-        mainFrameResponses.slice(start).findLast(isTerminalNavigation);
-      const waitForTerminalResponse = async (
-        start,
-        {
-          allowNoFollowup = false,
-          requestStart = mainFrameRequests.length,
-        } = {},
-      ) => {
-        let terminalResponse = terminalResponseAfter(start);
-        if (terminalResponse) return terminalResponse;
-        try {
-          terminalResponse = await page.waitForResponse(
-            (response) =>
-              response.request().isNavigationRequest() &&
-              response.frame() === page.mainFrame() &&
-              isTerminalNavigation(response),
-            { timeout: remainingTimeout() },
-          );
-        } catch (error) {
-          if (error?.name !== 'TimeoutError') throw error;
-
-          // Recheck responses captured by the always-on listener in case a
-          // terminal response arrived at the wait boundary. A timeout with
-          // no follow-up means this was a genuine 403. Once any redirect or
-          // navigation starts, however, failing to reach a terminal response
-          // is a verification failure rather than a successful 3xx result.
-          terminalResponse = terminalResponseAfter(start);
-          if (!terminalResponse && unrecoveredNavigationFailure) {
-            throw new Error(
-              `Browser navigation failed: ${unrecoveredNavigationFailure}`,
-              { cause: error },
-            );
-          }
-          if (
-            !terminalResponse &&
-            (!allowNoFollowup ||
-              mainFrameResponses.length > start ||
-              mainFrameRequests.length > requestStart)
-          ) {
-            throw error;
-          }
-        }
-        return terminalResponseAfter(start) ?? terminalResponse;
-      };
-      const settleNonDocumentResponse = async () => {
-        while (true) {
-          const settleCommitStart = mainFrameCommitCount;
-          const settleRequestStart = mainFrameRequests.length;
-          const settleStart = mainFrameResponses.length;
-          await page.waitForTimeout(
-            Math.min(BROWSER_NAVIGATION_SETTLE_MS, remainingTimeout()),
-          );
-          remainingTimeout();
-          if (unrecoveredNavigationFailure) {
-            throw new Error(
-              `Browser navigation failed: ${unrecoveredNavigationFailure}`,
-            );
-          }
-
-          const laterTerminalResponse = terminalResponseAfter(settleStart);
-          if (laterTerminalResponse) return laterTerminalResponse;
-          const requestsAreQuiet =
-            mainFrameRequests.length === settleRequestStart;
-          const responsesAreQuiet = mainFrameResponses.length === settleStart;
-          const laterCommits = mainFrameCommits.slice(settleCommitStart);
-          const invalidCommit = laterCommits.find(
-            (commit) =>
-              commit.kind !== 'same-document' ||
-              !/^https?:\/\//i.test(commit.url),
-          );
-          if (invalidCommit) {
-            throw new Error(
-              `Browser navigation committed without an HTTP response: ${invalidCommit.url}`,
-            );
-          }
-          if (
-            requestsAreQuiet &&
-            responsesAreQuiet &&
-            laterCommits.length === 0 &&
-            outstandingMainFrameRequests.size === 0
-          ) {
-            return null;
-          }
-          if (
-            !requestsAreQuiet ||
-            !responsesAreQuiet ||
-            outstandingMainFrameRequests.size > 0
-          ) {
-            return waitForTerminalResponse(settleStart);
-          }
-        }
-      };
-      const resolveResponseLifecycle = async (response) => {
-        // page.goto already waited for the initial document's DOMContentLoaded.
-        // Playwright Page always exposes waitForEvent; the guard keeps injected
-        // unit-test doubles that model only response behavior lightweight.
-        if (!page.waitForEvent) {
-          return {
-            kind: downloadResponses.has(response) ? 'download' : 'document',
-          };
-        }
-        const responseURL = comparableBrowserURL(response.url());
-        const commitBaseline =
-          responseCommitBaselines.get(response) ?? mainFrameCommitCount;
-
-        while (true) {
-          const responseIndex = mainFrameResponses.lastIndexOf(response);
-          const laterTerminalResponse = mainFrameResponses
-            .slice(responseIndex + 1)
-            .findLast(isTerminalNavigation);
-          if (laterTerminalResponse) {
-            return { kind: 'superseded', response: laterTerminalResponse };
-          }
-          if (downloadResponses.has(response)) return { kind: 'download' };
-          if (unrecoveredNavigationFailure) {
-            throw new Error(
-              `Browser navigation failed: ${unrecoveredNavigationFailure}`,
-            );
-          }
-
-          const commits = mainFrameCommits.slice(commitBaseline);
-          let responseCommitted = false;
-          for (const commit of commits) {
-            if (commit.kind === 'document' && commit.url === responseURL) {
-              responseCommitted = true;
-              continue;
-            }
-            if (
-              responseCommitted &&
-              commit.kind === 'same-document' &&
-              /^https?:\/\//i.test(commit.url)
-            ) {
-              continue;
-            }
-            throw new Error(
-              `Browser response ${responseURL} was superseded before commit by ${commit.url}`,
-            );
-          }
-          if (responseCommitted) return { kind: 'document' };
-
-          const version = lifecycleVersion;
-          await waitForLifecycleChange(version);
-        }
-      };
-
-      // A browser challenge initially responds with 403, executes JavaScript,
-      // and then navigates the main frame again. A genuine forbidden page has
-      // no follow-up navigation and remains 403 after the same timeout.
-      let terminalResponse;
-      if (navigation.status() === 403) {
-        terminalResponse = await waitForTerminalResponse(followupStart, {
-          allowNoFollowup: true,
-          requestStart: followupRequestStart,
-        });
-      } else if (isTerminalNavigation(navigation)) {
-        // TLS recovery can arrive at an apparently successful document that
-        // schedules a client-side navigation after DOMContentLoaded. Give it
-        // the same bounded settling treatment as a recovered 403 challenge.
-        terminalResponse = navigation;
-      } else {
-        terminalResponse = await waitForTerminalResponse(followupStart, {
-          requestStart: followupRequestStart,
-        });
-      }
-
-      while (terminalResponse) {
-        if (isNonDocumentNavigation(terminalResponse)) {
-          const laterResponse = await settleNonDocumentResponse();
-          if (laterResponse) {
-            terminalResponse = laterResponse;
-            continue;
-          }
-          return nonDocumentOutcome(terminalResponse, mainFrameResponses);
-        }
-        const lifecycle = await resolveResponseLifecycle(terminalResponse);
-        if (lifecycle.kind === 'download') {
-          const laterResponse = await settleNonDocumentResponse();
-          if (laterResponse) {
-            terminalResponse = laterResponse;
-            continue;
-          }
-          return nonDocumentOutcome(terminalResponse, mainFrameResponses);
-        }
-        if (lifecycle.kind === 'superseded') {
-          terminalResponse = lifecycle.response;
-          continue;
-        }
-        navigation = terminalResponse;
-        // A terminal status is not enough for recursive pages: page.content()
-        // must represent the completed document or links after a stalled
-        // parser-blocking resource could silently disappear from the crawl.
-        await page.waitForLoadState('domcontentloaded', {
-          timeout: remainingTimeout(),
-        });
-
-        // A parser-blocking interstitial can navigate again before its own
-        // DOMContentLoaded. The load-state wait follows the new document, so
-        // bind status and headers to the last terminal main-frame response
-        // observed by then rather than the interstitial that began the wait.
-        const loadedNavigation =
-          followupResponses().findLast(isTerminalNavigation);
-        if (loadedNavigation && loadedNavigation !== terminalResponse) {
-          terminalResponse = loadedNavigation;
-          continue;
-        }
-        navigation = loadedNavigation ?? navigation;
-
-        const latestResponse = followupResponses().at(-1);
-        if (latestResponse && !isTerminalNavigation(latestResponse)) {
-          terminalResponse = await waitForTerminalResponse(
-            mainFrameResponses.length,
-          );
-          continue;
-        }
-
-        // DOMContentLoaded handlers and short timers may schedule one more
-        // navigation. Require a bounded quiet interval, then repeat the
-        // terminal-response and document-load checks for any new navigation.
-        const settleCommitStart = mainFrameCommitCount;
-        const settleRequestStart = mainFrameRequests.length;
-        const settleStart = mainFrameResponses.length;
-        await page.waitForTimeout(
-          Math.min(BROWSER_NAVIGATION_SETTLE_MS, remainingTimeout()),
-        );
-        remainingTimeout();
-        if (unrecoveredNavigationFailure) {
-          throw new Error(
-            `Browser navigation failed: ${unrecoveredNavigationFailure}`,
-          );
-        }
-        const responsesAreQuiet = mainFrameResponses.length === settleStart;
-        const requestsAreQuiet =
-          mainFrameRequests.length === settleRequestStart;
-        const commitsAreQuiet = mainFrameCommitCount === settleCommitStart;
-        if (
-          responsesAreQuiet &&
-          requestsAreQuiet &&
-          outstandingMainFrameRequests.size === 0 &&
-          !commitsAreQuiet
-        ) {
-          const finalUrl = page.url();
-          if (!/^https?:\/\//i.test(finalUrl)) {
-            throw new Error(
-              `Browser navigation committed without an HTTP response: ${finalUrl}`,
-            );
-          }
-          terminalResponse = navigation;
-          continue;
-        }
-        if (
-          responsesAreQuiet &&
-          requestsAreQuiet &&
-          commitsAreQuiet &&
-          outstandingMainFrameRequests.size === 0
-        ) {
-          break;
-        }
-        terminalResponse = await waitForTerminalResponse(settleStart);
-      }
-
-      const contentType = effectiveContentType(navigation, mainFrameResponses);
-      return {
-        contentType,
-        finalUrl: page.url(),
-        html:
-          captureHTML && isHTMLContentType(contentType)
-            ? await page.content()
-            : null,
-        redirects: browserRedirects(mainFrameResponses),
-        status: effectiveStatus(navigation, mainFrameResponses),
-      };
-    } finally {
-      await page?.close().catch(() => {});
-      await Promise.allSettled([...spawnedPages].map((popup) => popup.close()));
-      if (cdpSession?.detach) await cdpSession.detach().catch(() => {});
-      if (context?.close) await context.close().catch(() => {});
-      this.#pageSlots.release();
-    }
   }
 }
 
@@ -1054,6 +394,7 @@ async function fetchWithRetry(url, options) {
       });
       if (
         TRANSIENT_STATUSES.has(response.status) &&
+        !isCloudflareChallenge(response) &&
         attempt <= options.retries
       ) {
         const delay = retryDelayMilliseconds({
@@ -1091,6 +432,16 @@ async function fetchFollowingRedirects(url, options) {
   while (true) {
     const response = await fetchWithRetry(currentURL, options);
     if (response.status < 300 || response.status >= 400) {
+      if (redirects.length > 0 && isCloudflareChallenge(response)) {
+        await releaseBody(response);
+        const initialRedirect = redirects[0];
+        return {
+          acceptedCloudflareChallenge: true,
+          finalUrl: initialRedirect.to,
+          redirects: [initialRedirect],
+          status: initialRedirect.status,
+        };
+      }
       return { finalUrl: currentURL, redirects, response };
     }
 
@@ -1166,120 +517,12 @@ function failureResult(record, details, kind) {
   };
 }
 
-export async function crawl(
-  inputURL,
-  options,
-  onProgress = () => {},
-  browserVerifier,
-) {
+export async function crawl(inputURL, options, onProgress = () => {}) {
   const startedAtMilliseconds = Date.now();
-  const verifier =
-    browserVerifier ?? new BrowserVerifier({ userAgent: options.userAgent });
   const rootOrigin = new URL(inputURL).origin;
   const records = new Map();
   const results = [];
   const queue = new WorkQueue();
-
-  const verifyInBrowser = async (record, fallback) => {
-    let browserOutcome;
-    try {
-      browserOutcome = await verifier.verify(record.url, options.timeout, {
-        captureHTML: record.recursive,
-      });
-    } catch (error) {
-      results.push(
-        failureResult(
-          record,
-          {
-            ...fallback,
-            error: `${fallback.error}; browser verification failed: ${errorDetail(error, options.timeout)}`,
-          },
-          fallback.kind,
-        ),
-      );
-      onProgress(results.length, records.size);
-      return;
-    }
-
-    if (browserOutcome.redirects.length > options.maxRedirects) {
-      const redirects = browserOutcome.redirects.slice(
-        0,
-        options.maxRedirects + 1,
-      );
-      const exceededRedirect = redirects.at(-1);
-      results.push(
-        failureResult(
-          record,
-          {
-            error: `Exceeded ${options.maxRedirects} redirect hops`,
-            finalUrl: exceededRedirect.to,
-            redirects,
-            status: exceededRedirect.status,
-          },
-          'redirect-error',
-        ),
-      );
-      onProgress(results.length, records.size);
-      return;
-    }
-
-    if (isBrowserRedirectStatus(browserOutcome.status)) {
-      results.push(
-        failureResult(
-          record,
-          {
-            error: `Browser navigation stopped at HTTP ${browserOutcome.status}`,
-            finalUrl: browserOutcome.finalUrl,
-            redirects: browserOutcome.redirects,
-            status: browserOutcome.status,
-          },
-          'redirect-error',
-        ),
-      );
-      onProgress(results.length, records.size);
-      return;
-    }
-
-    if (browserOutcome.status >= 400) {
-      results.push(
-        failureResult(
-          record,
-          {
-            error: `HTTP ${browserOutcome.status}`,
-            finalUrl: browserOutcome.finalUrl,
-            redirects: browserOutcome.redirects,
-            status: browserOutcome.status,
-          },
-          'http-error',
-        ),
-      );
-      onProgress(results.length, records.size);
-      return;
-    }
-
-    if (
-      record.recursive &&
-      new URL(browserOutcome.finalUrl).origin === rootOrigin &&
-      browserOutcome.html
-    ) {
-      for (const link of extractLinks(
-        browserOutcome.html,
-        browserOutcome.finalUrl,
-      )) {
-        enqueue(link, browserOutcome.finalUrl);
-      }
-    }
-    results.push({
-      error: null,
-      finalUrl: browserOutcome.finalUrl,
-      kind: null,
-      ok: true,
-      redirects: browserOutcome.redirects,
-      status: browserOutcome.status,
-      url: record.url,
-    });
-    onProgress(results.length, records.size);
-  };
 
   const enqueue = (url, foundOn = null) => {
     const existing = records.get(url);
@@ -1305,12 +548,8 @@ export async function crawl(
           redirects: [],
           status: null,
         };
-        if (BROWSER_VERIFIABLE_REQUEST_ERRORS.has(error?.cause?.code)) {
-          await verifyInBrowser(record, failure);
-        } else {
-          results.push(failureResult(record, failure, failure.kind));
-          onProgress(results.length, records.size);
-        }
+        results.push(failureResult(record, failure, failure.kind));
+        onProgress(results.length, records.size);
         return;
       }
 
@@ -1320,19 +559,21 @@ export async function crawl(
         return;
       }
 
-      const { finalUrl, redirects, response } = outcome;
-      if (response.status === 403) {
-        await releaseBody(response);
-        await verifyInBrowser(record, {
-          error: 'HTTP 403',
-          finalUrl,
-          kind: 'http-error',
-          redirects,
-          status: 403,
+      if (outcome.acceptedCloudflareChallenge) {
+        results.push({
+          error: null,
+          finalUrl: outcome.finalUrl,
+          kind: null,
+          ok: true,
+          redirects: outcome.redirects,
+          status: outcome.status,
+          url: record.url,
         });
+        onProgress(results.length, records.size);
         return;
       }
 
+      const { finalUrl, redirects, response } = outcome;
       if (response.status >= 400) {
         await releaseBody(response);
         results.push(
@@ -1408,11 +649,7 @@ export async function crawl(
       if (options.delay > 0) await sleep(options.delay);
     }
   });
-  try {
-    await Promise.all(workers);
-  } finally {
-    await verifier.close();
-  }
+  await Promise.all(workers);
 
   const normalizedResults = results
     .map((result) => ({
@@ -1588,6 +825,7 @@ export async function run(
     return 0;
   }
 
+  await installBundledIntermediateCA();
   const { inputURL, options } = parsed;
   const showProgress = options.format === 'text' && stdout.isTTY;
   if (showProgress) stdout.write(`Checking ${inputURL}\n`);
