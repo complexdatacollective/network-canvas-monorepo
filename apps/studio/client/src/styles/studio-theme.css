@@ -1,0 +1,22 @@
+/*
+ * Architect app theme — layered over @codaco/tailwind-config/fresco.css.
+ * Section 1 re-declares shared semantic variables with Architect's brand
+ * values (the extension mechanism sanctioned by themes/default.css).
+ * Sections 2-3 add Architect-only vocabulary.
+ */
+
+/* 1. Brand overrides (shared variable names, Architect values). */
+@layer theme {
+  :root {
+    --base-hue: 90;
+
+    --background: color-mix(in oklab, var(--brand) 3%, white);
+  }
+}
+
+@layer base {
+  html,
+  body {
+    @apply text-text bg-background publish-colors h-full w-full text-base;
+  }
+}
