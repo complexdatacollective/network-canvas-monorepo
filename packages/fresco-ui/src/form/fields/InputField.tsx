@@ -181,6 +181,10 @@ type InputFieldProps = CreateFormFieldProps<
     // "Decrease value", which are ambiguous once a screen has more than one
     // numeric field.
     stepperLabels?: { increase: string; decrease: string };
+    // Allows a controlled number field to disable only the stepper that has
+    // reached its application-defined bound while leaving the opposite
+    // direction available.
+    stepperDisabled?: { increase?: boolean; decrease?: boolean };
   }
 >;
 
@@ -197,6 +201,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
       inputClassName,
       onStep,
       stepperLabels,
+      stepperDisabled,
       onKeyDown,
       type = 'text',
       inputMode,
@@ -309,7 +314,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
         <IconButton
           size={size}
           color="default"
-          disabled={!canStep}
+          disabled={!canStep || stepperDisabled?.decrease}
           onClick={() => handleStep('down')}
           aria-label={stepperLabels?.decrease ?? 'Decrease value'}
           tabIndex={-1}
@@ -332,7 +337,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
         <IconButton
           size={size}
           color="default"
-          disabled={!canStep}
+          disabled={!canStep || stepperDisabled?.increase}
           onClick={() => handleStep('up')}
           aria-label={stepperLabels?.increase ?? 'Increase value'}
           tabIndex={-1}

@@ -140,7 +140,9 @@ describe('Navigation exit flush', () => {
     const user = userEvent.setup();
     await user.click(screen.getByTestId('settings-button'));
     await user.click(await screen.findByTestId('exit-button'));
-    const dialog = await screen.findByRole('dialog');
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Exit this interview?',
+    });
     await user.click(
       await within(dialog).findByRole('button', { name: 'Exit interview' }),
     );
