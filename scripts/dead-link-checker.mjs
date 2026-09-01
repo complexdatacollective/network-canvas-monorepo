@@ -39,15 +39,18 @@
  * main-frame response, commit that navigation, finish loading, and remain
  * navigation-quiet for a short bounded interval. Binding the load wait to a
  * commit after the selected response prevents the preceding document's
- * DOMContentLoaded state from satisfying it. Both navigation starts and
- * responses are tracked, and starts remain explicitly outstanding until their
- * response or failure event arrives, so a request that stalls before response
- * headers cannot look quiet. Superseded/aborted requests are retired; another
- * navigation failure remains an error unless a later terminal document
- * replaces it. Incomplete redirects and document loads remain verification
- * failures, and the entire sequence shares one request deadline so reload
- * loops cannot retain a worker indefinitely. Browser-only HTTP redirects obey
- * the same maximum-hop rule as Node redirects. A browser 304 is a completed
+ * DOMContentLoaded state from satisfying it. The initial response and every
+ * follow-up are correlated with the latest main-frame commit, so a
+ * response-free navigation cannot borrow an abandoned HTTP status. Both
+ * navigation starts and responses are tracked, and starts remain explicitly
+ * outstanding until their response or failure event arrives, so a request
+ * that stalls before response headers cannot look quiet. Superseded/aborted
+ * requests are retired; another navigation failure remains an error unless a
+ * later terminal document replaces it. Incomplete redirects and document
+ * loads remain verification failures, and the entire sequence shares one
+ * request deadline so reload loops cannot retain a worker indefinitely.
+ * Browser-only HTTP redirects obey the same maximum-hop rule as Node
+ * redirects. A browser 304 is a completed
  * cache revalidation, not a redirect; its prior same-URL representation
  * supplies the effective status and content type so cached errors remain
  * errors and cached HTML remains crawlable. Browser navigations that become
@@ -112,6 +115,10 @@ function isNonDocumentNavigation(response) {
     response.status() === 204 ||
     /^\s*attachment(?:\s*;|$)/i.test(contentDisposition)
   );
+}
+
+function isHTMLContentType(contentType) {
+  return /^\s*text\/html(?:\s*;|$)/i.test(contentType);
 }
 
 function nonDocumentOutcome(response, mainFrameResponses) {
@@ -514,7 +521,6 @@ export class BrowserVerifier {
         // page.goto already waited for the initial document's DOMContentLoaded.
         // Playwright Page always exposes waitForEvent; the guard keeps injected
         // unit-test doubles that model only response behavior lightweight.
-        if (response === initialResponse) return { kind: 'document' };
         if (!page.waitForEvent) {
           const responseURL = response.url
             ? comparableBrowserURL(response.url())
@@ -546,11 +552,11 @@ export class BrowserVerifier {
           }
 
           const commits = mainFrameCommitURLs.slice(commitBaseline);
-          if (commits.includes(responseURL)) return { kind: 'document' };
-          const mismatchedCommit = commits.at(-1);
-          if (mismatchedCommit) {
+          const latestCommit = commits.at(-1);
+          if (latestCommit === responseURL) return { kind: 'document' };
+          if (latestCommit) {
             throw new Error(
-              `Browser response ${responseURL} was superseded before commit by ${mismatchedCommit}`,
+              `Browser response ${responseURL} was superseded before commit by ${latestCommit}`,
             );
           }
 
@@ -665,7 +671,7 @@ export class BrowserVerifier {
         contentType,
         finalUrl: page.url(),
         html:
-          captureHTML && contentType.includes('text/html')
+          captureHTML && isHTMLContentType(contentType)
             ? await page.content()
             : null,
         redirects: browserRedirects(mainFrameResponses),
@@ -1163,7 +1169,7 @@ export async function crawl(
         if (
           record.recursive &&
           new URL(finalUrl).origin === rootOrigin &&
-          contentType.includes('text/html')
+          isHTMLContentType(contentType)
         ) {
           const html = await response.text();
           for (const link of extractLinks(html, finalUrl))

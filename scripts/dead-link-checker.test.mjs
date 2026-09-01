@@ -112,6 +112,33 @@ test('the user-agent option applies to every link request', async () => {
   }
 });
 
+test('mixed-case HTML media types are crawled recursively', async () => {
+  const server = await startServer((request, response) => {
+    if (request.url === '/') {
+      response.setHeader('content-type', 'Text/HTML; charset=utf-8');
+      response.end('<a href="/missing">missing</a>');
+      return;
+    }
+    response.statusCode = 404;
+    response.end('missing');
+  });
+
+  try {
+    const result = await runChecker([
+      server.origin,
+      '--format=json',
+      '--delay=0',
+      '--retries=0',
+    ]);
+    assert.equal(result.code, 1, result.stderr);
+    const report = jsonResult(result);
+    assert.equal(report.summary.checked, 2);
+    assert.equal(report.failures[0].url, `${server.origin}/missing`);
+  } finally {
+    await server.stop();
+  }
+});
+
 test('text output ends with one deterministic failure block and every referrer', async () => {
   const server = await startServer((request, response) => {
     if (request.url === '/') {
@@ -931,7 +958,7 @@ test('browser verification preserves the cached error status behind a 304 revali
   const response = (
     status,
     url,
-    headers = { 'content-type': 'text/html' },
+    headers = { 'content-type': 'Text/HTML; charset=utf-8' },
   ) => ({
     frame: () => frame,
     headers: () => headers,
@@ -986,7 +1013,7 @@ test('browser verification preserves the cached error status behind a 304 revali
       { captureHTML: true },
     );
     assert.deepEqual(outcome, {
-      contentType: 'text/html',
+      contentType: 'Text/HTML; charset=utf-8',
       finalUrl: 'https://publisher.test/revalidated',
       html: '<html><body><a href="/cached-link">cached</a></body></html>',
       redirects: [],
@@ -1167,6 +1194,56 @@ test('browser verification rejects a response-free non-HTTP commit', async () =>
     await assert.rejects(
       verifier.verify('https://publisher.test/tls-recovery', 50),
       /without an HTTP response.*about:blank/,
+    );
+  } finally {
+    await verifier.close();
+  }
+});
+
+test('browser verification correlates the initial response before accepting it', async () => {
+  let finalUrl = 'https://publisher.test/recovered';
+  const frame = { url: () => finalUrl };
+  const navigationRequest = { isNavigationRequest: () => true };
+  const initial = {
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => 200,
+    url: () => 'https://publisher.test/recovered',
+  };
+  let frameNavigatedListener;
+  let responseListener;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      frameNavigatedListener(frame);
+      finalUrl = 'about:blank';
+      frameNavigatedListener(frame);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'framenavigated') frameNavigatedListener = listener;
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => finalUrl,
+    waitForEvent: async () => {},
+    waitForLoadState: async () => {},
+    waitForTimeout: async () => {},
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    await assert.rejects(
+      verifier.verify('https://publisher.test/recovered', 50),
+      /superseded before commit.*about:blank/,
     );
   } finally {
     await verifier.close();
