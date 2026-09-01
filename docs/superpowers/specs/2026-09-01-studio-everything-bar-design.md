@@ -115,10 +115,13 @@ how.
    and group order itself never changes.
 5. **Query privacy.** Query text never leaves the instance. Every provider —
    including documentation — is answered by the instance itself; the only
-   outbound documentation traffic is the server's periodic index refresh
-   (§5.5), which carries no researcher input. A query typed to find a
-   participant or a confidentially named study therefore cannot reach a
-   third party, in any group, on any keystroke.
+   automatic outbound documentation traffic is the server's periodic index
+   refresh (§5.5), which carries no researcher input. A query typed to find
+   a participant or a confidentially named study therefore cannot reach a
+   third party, in any group, on any keystroke. Explicitly activating a
+   documentation result is the researcher choosing to visit the
+   documentation site: that navigation carries the result's URL and never
+   the query text.
 6. **PII gating.** No identifying participant data appears in results without
    the PII grant, and providers whose persistence policy forbids it can never
    have results written to locally persisted recents.
@@ -269,6 +272,11 @@ type EverythingBarItem = {
   group: 'go-to' | 'commands' | 'documentation';
   label: string;              // already translated
   context?: string;           // "Team", "Study · Field Research Lab"
+  rank: {
+    tier: number;             // the §3.4 bucket, provider-normalized:
+                              // 0 current study/area → 3 platform/global
+    recency?: string;         // ISO timestamp for within-tier ordering
+  };
   chordHint?: string[];       // ['G', 'A'], read from the shortcut registry
   activate:
     | { kind: 'navigate'; href: string }
@@ -310,6 +318,16 @@ Item identity is provider-qualified: the component keys every result as
 reconciliation, and `aria-activedescendant`. Two providers returning the same
 natural id — a destination and a command both named "settings" — therefore
 cannot collide, and recents already store the same provider-plus-id pair.
+
+`rank` is how §3.4's ordering crosses the seam: providers normalize their own
+context into the tier (the entity provider maps current study → 0, current
+team → 1, other teams → 2, platform → 3; the manifest and command providers
+map current area → 0 and so on), and the component merges every provider's
+items within a group by tier, then recency (descending), then label, then the
+provider-qualified key as the total-order final tie-breaker. Without a
+normalized rank the component could only concatenate provider outputs, and a
+late current-study entity could never sort above an already-rendered
+lower-tier destination.
 
 The `open` variant deliberately carries no callback. It is declarative route
 plus surface: `href` is the owning screen's route and `surface` an identifier
@@ -399,9 +417,21 @@ The **command registry** is a typed registry, Studio-local, mirroring the
 manifest's shape plus an `activate`. Area layouts contribute contextual
 commands via the same mechanism they use to declare their sidebar; global
 commands register at the app layout. A registry test enumerates every entry
-and asserts a label key, a capability or an explicit `public` marker, and an
-activation that is a route, an external link, or a registered owning-surface
-name (§5.1) — the launcher rule made structural.
+and asserts a label key, a capability or an explicit `public` marker, a
+topology classification, and an activation that is a route, an external
+link, or a route paired with a surface its screen registers (§5.1) — the
+launcher rule made structural.
+
+A command whose availability depends on resource state — pause collection
+exists only while a study is collecting — declares an `availability`
+predicate: a pure function of the shell context (`study.shell`'s study state
+and permissions), evaluated by the same registry filter that applies
+capability and topology. This matters precisely for cross-area commands,
+whose owning layouts are unmounted and cannot conditionally withhold their
+registrations. The predicate reads already-fetched context and performs no
+IO; the owning screen remains the enforcement, exactly as with capability
+gating — the predicate only keeps the bar from offering a launch to a screen
+that cannot perform the action.
 
 The **shortcut registry** is the single authority for key bindings. Manifest
 entries and commands _declare_ chords; they do not bind them. The registry
@@ -470,6 +500,13 @@ bounds results per kind, and applies the context-first ranking in §3.4.
 Matching is name-prefix and substring on display names; anything cleverer is a
 ranking refinement inside the procedure, not a contract change.
 
+Inputs are bounded at the RPC boundary, shared by both search procedures: a
+server-enforced maximum `query` length (an oversized query is rejected — the
+debounced UI never produces one, so only a bypassing client hits it), a
+capped `limit`, and a cursor that must parse. The result `limit` bounds
+output; the query bound is what keeps a hostile client from feeding the
+matcher and ranker unbounded input.
+
 `search.entities` is non-sensitive by contract: every kind it can ever return
 is metadata a team member may see. Under the audit design that makes it an
 excluded ordinary read — "opening non-sensitive metadata lists" is outside
@@ -487,10 +524,15 @@ with the sensitive one.
 
 Documentation search runs against an index the instance holds, not a
 third-party query API. The documentation site's build emits a search-index
-artifact (§6); Studio's server fetches it from `STUDIO_DOCS_INDEX_URL`,
-caches it, and revalidates it periodically with conditional requests and
-last-good semantics — a failed refresh keeps serving the cached index rather
-than losing the group. One query procedure serves the SPA:
+artifact set (§6); `STUDIO_DOCS_INDEX_URL` names the **manifest**, and the
+manifest references each schema major's per-locale artifacts by relative
+path, resolved against the manifest's own URL — which is what makes a mirror
+a straight directory copy and lets Studio discover the locales and majors
+without a second setting. The server fetches the manifest, selects its
+supported schema major and the needed locales, caches the artifacts, and
+revalidates periodically with conditional requests and last-good semantics —
+a failed refresh keeps serving the cached index rather than losing the
+group. One query procedure serves the SPA:
 
 ```ts
 search.documentation({ query, locale, limit?, cursor? }) -> {
@@ -515,7 +557,8 @@ with `nextCursor` — the server never streams the whole matching index at a
 keystroke. The ordering is total, as §5.4's is: score, then Studio-tag
 boost, then the record's anchored URL as the immutable unique final key, with
 the cursor encoding the full tuple, so tied scores at a page boundary cannot
-skip or repeat records.
+skip or repeat records. The procedure shares §5.4's input bounds: maximum
+query length, capped limit, parseable cursor.
 
 Ranking is the index's lexical ranking with a fixed boost for records whose
 `products` includes `studio` — a boost, never a filter, so every
@@ -623,9 +666,11 @@ bypassing none.
 - **Opening the bar and typing** is ordinary navigation and is excluded from
   the audit log, per the audit specification's §7.2 exclusions.
 - **Documentation queries** never reach a third party. They are answered
-  from the instance's cached index (§5.5); the only outbound documentation
-  traffic is the server's periodic index refresh, which carries no
-  researcher input.
+  from the instance's cached index (§5.5); the only automatic outbound
+  documentation traffic is the server's periodic index refresh, which
+  carries no researcher input. Activating a documentation result navigates
+  the browser to the documentation site by the researcher's explicit choice,
+  carrying the result's URL and never the query text.
 
 ## 8. Accessibility
 
@@ -740,6 +785,9 @@ foundations work (#1315).
   and after resolve are equal, proven able to fail by breaking the
   identity-tracking path), and the inserted results land in §3.4 rank order,
   not appended below lower-priority rows.
+- Rank merging: items from different providers in one group merge by
+  (tier, recency, label, qualified key) — a tier-0 remote item sorts above a
+  tier-1 local item that rendered first.
 - Identity: two providers returning the same natural id render, highlight,
   and activate as distinct items — the provider-qualified key backs React
   keys and `aria-activedescendant`, asserted with a deliberate cross-provider
@@ -784,8 +832,13 @@ foundations work (#1315).
   left never appears), context-first ranking, the server-capped limit and
   cursor pagination — including a page boundary falling inside a run of rows
   tied on last-modified and name, which must neither skip nor repeat any row
-  — platform-scoped results carrying no invented team, and the
-  no-existence-oracle posture on unknown context ids.
+  — platform-scoped results carrying no invented team, the
+  no-existence-oracle posture on unknown context ids, and rejection of an
+  over-length query and an unparseable cursor (both search procedures).
+- **Command availability**: a command with an `availability` predicate is
+  absent while the shell context fails it (pause collection on an
+  already-paused study) and present when it passes, evaluated without the
+  owning area mounted.
 - **Docs provider**: absent without an index and when
   `STUDIO_DOCS_INDEX_URL=off` (the sentinel disables despite
   `emptyStringAsUndefined` folding empty values into the default — both
