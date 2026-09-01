@@ -105,21 +105,25 @@ export const NavListGroup = ({
       >
         {heading}
       </div>
-      {/* See LIST_CLASSES above for why the redundant role is here. */}
-      {/* oxlint-disable-next-line jsx-a11y/no-redundant-roles */}
       {/*
         Named by `aria-label` rather than `aria-labelledby`, even though the
-        heading is right there and carries the id. Chromium folds
-        `text-transform` into the accessible name, so pointing at the
-        `all-caps` heading exposes the list as "DESIGN" — which a screen
-        reader may spell out letter by letter. `aria-label` takes the string
-        as written. No test can catch this: jsdom and Testing Library's
-        browser mode both compute names through `dom-accessibility-api`,
-        which does not apply `text-transform`, so both agree with the visual
-        source and disagree with the browser. Verified against Chromium's
-        platform accessibility tree.
+        heading is right there. Chromium folds `text-transform` into the
+        accessible name, so pointing at the `all-caps` heading exposes the
+        list as "DESIGN" — which a screen reader may spell out letter by
+        letter. `aria-label` takes the string as written. No test can catch
+        this: jsdom and Testing Library's browser mode both compute names
+        through `dom-accessibility-api`, which does not apply
+        `text-transform`, so both agree with the visual source and disagree
+        with the browser. Verified against Chromium's platform accessibility
+        tree.
+
+        See LIST_CLASSES above for why the redundant role is here. The
+        disable must be the line directly above the element — anything
+        between them and `oxlint --fix` strips the role, which is how the
+        Safari list semantics were lost once already.
       */}
-      <ul aria-label={heading} className={LIST_CLASSES}>
+      {/* oxlint-disable-next-line jsx-a11y/no-redundant-roles */}
+      <ul role="list" aria-label={heading} className={LIST_CLASSES}>
         {children}
       </ul>
     </div>
