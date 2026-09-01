@@ -122,6 +122,13 @@ function isForbidden(error: unknown): boolean {
   return error instanceof ORPCError && error.code === 'FORBIDDEN';
 }
 
+// A permission refusal never resolves by retrying, and every denied attempt is
+// audited server-side, so a retried read writes further audit.read_denied
+// events. Shared by both audit reads.
+function retryUnlessForbidden(failureCount: number, error: unknown): boolean {
+  return !isForbidden(error) && failureCount < 3;
+}
+
 function actorText(actor: AuditEventSummary['actor']): string {
   const kind = ACTOR_KIND_LABELS[actor.kind];
   return kind === undefined ? actor.label : `${actor.label} (${kind})`;
@@ -138,7 +145,14 @@ function detailValueText(value: unknown): string {
   ) {
     return value.join(', ');
   }
-  return JSON.stringify(value);
+  // `details` is Record<string, unknown> here, so the fallback has to be total:
+  // JSON.stringify is typed as returning a string but returns undefined for
+  // undefined, and throws on values JSON cannot express.
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return String(value);
+  }
 }
 
 export default function TeamActivity() {
@@ -156,9 +170,7 @@ export default function TeamActivity() {
       }),
       initialPageParam: undefined,
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-      // A permission refusal never resolves by retrying, and every denied
-      // attempt is audited server-side.
-      retry: (failureCount, error) => !isForbidden(error) && failureCount < 3,
+      retry: retryUnlessForbidden,
     }),
   );
 
@@ -206,7 +218,7 @@ export default function TeamActivity() {
     return (
       <main
         id="main-content"
-        className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-8"
+        className="tablet-portrait:p-8 mx-auto flex w-full max-w-6xl flex-col gap-6 p-4"
       >
         <Heading level="h1">Team activity</Heading>
         <Alert>
@@ -225,7 +237,7 @@ export default function TeamActivity() {
   return (
     <main
       id="main-content"
-      className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-8"
+      className="tablet-portrait:p-8 mx-auto flex w-full max-w-6xl flex-col gap-6 p-4"
     >
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -501,6 +513,7 @@ function ActivityEventDetail(props: { teamId: string; eventId: string }) {
   const detail = useQuery(
     orpc.audit.get.queryOptions({
       input: { teamId: props.teamId, eventId: props.eventId },
+      retry: retryUnlessForbidden,
     }),
   );
 

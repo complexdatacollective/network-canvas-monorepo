@@ -74,6 +74,11 @@ vi.mock('../../lib/auth.ts', () => ({
   },
 }));
 
+type RetryOption =
+  | boolean
+  | number
+  | ((failureCount: number, error: unknown) => boolean);
+
 vi.mock('../../lib/api.ts', () => ({
   orpc: {
     audit: {
@@ -84,20 +89,28 @@ vi.mock('../../lib/api.ts', () => ({
           getNextPageParam: (page: {
             nextCursor: string | null;
           }) => string | undefined;
+          retry?: RetryOption;
         }) => ({
           queryKey: ['audit-list', JSON.stringify(options.input(undefined))],
           queryFn: ({ pageParam }: { pageParam: string | undefined }) =>
             fixtures.listAudit(options.input(pageParam)),
           initialPageParam: options.initialPageParam,
           getNextPageParam: options.getNextPageParam,
+          // The real @orpc/tanstack-query queryOptions/infiniteOptions spread
+          // their input options onto the returned query options, so a `retry`
+          // passed by the route reaches React Query. Mirror that here, or a
+          // retry regression cannot be observed.
+          retry: options.retry,
         }),
       },
       get: {
         queryOptions: (options: {
           input: { teamId: string; eventId: string };
+          retry?: RetryOption;
         }) => ({
           queryKey: ['audit-get', options.input.eventId],
           queryFn: () => fixtures.getAudit(options.input),
+          retry: options.retry,
         }),
       },
     },
@@ -105,12 +118,15 @@ vi.mock('../../lib/api.ts', () => ({
   rpcClient: {},
 }));
 
-function renderActivity() {
+// `retry` defaults to false so most tests observe a single attempt. The retry
+// tests pass a retrying default instead, so that a route query which forwards
+// no retry option of its own inherits it and visibly retries.
+function renderActivity(defaultRetry: RetryOption = false) {
   const router = createAppRouter(
     createMemoryHistory({ initialEntries: ['/teams/team-a/activity'] }),
   );
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+    defaultOptions: { queries: { retry: defaultRetry, retryDelay: 0 } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
@@ -119,19 +135,20 @@ function renderActivity() {
   );
 }
 
+function listPages(input: { cursor?: string; teamId: string }) {
+  return Promise.resolve(
+    input.cursor === undefined
+      ? {
+          items: [fixtures.invitationCreated, fixtures.roleDenied],
+          nextCursor: '2',
+        }
+      : { items: [fixtures.futureEvent], nextCursor: null },
+  );
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
-  fixtures.listAudit.mockImplementation(
-    (input: { cursor?: string; teamId: string }) =>
-      Promise.resolve(
-        input.cursor === undefined
-          ? {
-              items: [fixtures.invitationCreated, fixtures.roleDenied],
-              nextCursor: '2',
-            }
-          : { items: [fixtures.futureEvent], nextCursor: null },
-      ),
-  );
+  fixtures.listAudit.mockImplementation(listPages);
   fixtures.getAudit.mockResolvedValue({
     ...fixtures.invitationCreated,
     teamLabel: 'Alpha research team',
@@ -230,12 +247,15 @@ describe('Team activity screen', () => {
   });
 
   it('recovers from a load error through Retry', async () => {
-    fixtures.listAudit.mockRejectedValueOnce(new Error('network down'));
+    // Rejects for every attempt: a transient failure is retried away by the
+    // route's own retry option, so the error state needs a persistent failure.
+    fixtures.listAudit.mockRejectedValue(new Error('network down'));
     renderActivity();
 
     expect(
       await screen.findByText('Team activity could not be loaded.'),
     ).toBeInTheDocument();
+    fixtures.listAudit.mockImplementation(listPages);
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(
       await screen.findByRole('cell', { name: 'Invitation created' }),
@@ -281,5 +301,72 @@ describe('Team activity screen', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).toBeNull();
     });
+  });
+
+  // The Fresco theme resets `--breakpoint-*` and defines only named
+  // breakpoints, so a default-namespace variant such as `sm:` compiles to no
+  // CSS at all and its declaration silently never applies.
+  it('sizes page padding with a registered Fresco breakpoint', async () => {
+    renderActivity();
+    await screen.findByRole('cell', { name: 'Invitation created' });
+
+    const className = screen.getByRole('main').className;
+    expect(className).toContain('tablet-portrait:p-8');
+    expect(className).not.toMatch(/(?:^|\s)(?:sm|md|lg|xl|2xl):/);
+  });
+
+  it('renders a detail value that JSON cannot express', async () => {
+    fixtures.getAudit.mockResolvedValue({
+      ...fixtures.invitationCreated,
+      teamLabel: 'Alpha research team',
+      requestId: '00000000-0000-4000-8000-00000000aaaa',
+      details: { role: 'member', attemptCount: 9007199254740993n },
+    });
+    renderActivity();
+    await screen.findByRole('cell', { name: 'Invitation created' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Invitation created' }));
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(await screen.findByText('attemptCount')).toBeInTheDocument();
+    expect(screen.getByText('9007199254740993')).toBeInTheDocument();
+  });
+
+  it('does not retry either audit read after a permission refusal', async () => {
+    fixtures.listAudit.mockRejectedValue(new ORPCError('FORBIDDEN'));
+    renderActivity(2);
+
+    expect(
+      await screen.findByText(/only available to team owners and admins/),
+    ).toBeInTheDocument();
+    expect(fixtures.listAudit).toHaveBeenCalledTimes(1);
+  });
+
+  // A viewer demoted after the feed loaded gets FORBIDDEN from audit.get.
+  // Retrying it appends a further audit.read_denied event per attempt.
+  it('does not retry a detail read that was denied', async () => {
+    fixtures.getAudit.mockRejectedValue(new ORPCError('FORBIDDEN'));
+    renderActivity(2);
+    await screen.findByRole('cell', { name: 'Invitation created' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Invitation created' }));
+
+    expect(
+      await screen.findByText('The event could not be loaded.'),
+    ).toBeInTheDocument();
+    expect(fixtures.getAudit).toHaveBeenCalledTimes(1);
+  });
+
+  // Guards the shape of the fix: suppressing retries outright would also stop
+  // a transient failure from recovering.
+  it('still retries a detail read that failed transiently', async () => {
+    fixtures.getAudit.mockRejectedValueOnce(new Error('network down'));
+    renderActivity(2);
+    await screen.findByRole('cell', { name: 'Invitation created' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Invitation created' }));
+
+    expect(await screen.findByText('Request ID')).toBeInTheDocument();
+    expect(fixtures.getAudit).toHaveBeenCalledTimes(2);
   });
 });
