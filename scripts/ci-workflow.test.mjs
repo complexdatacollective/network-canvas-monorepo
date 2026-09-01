@@ -84,7 +84,7 @@ test('detect never runs on push-to-main (its consumers are PR/dispatch only)', (
   assert.match(detectJob, /inputs\.interview_e2e_benchmark == true/);
 });
 
-test('both public sites crawl their matching Netlify deploy previews', () => {
+test('both public sites are crawled only for their generated release PRs', () => {
   const detectJob = job('detect');
   assert.ok(detectJob, 'detect job exists');
   assert.match(detectJob, /docs: \$\{\{ steps\.flags\.outputs\.docs \}\}/);
@@ -120,6 +120,21 @@ test('both public sites crawl their matching Netlify deploy previews', () => {
       previewJob,
       new RegExp(`needs\\.detect\\.outputs\\.${flag} == 'true'`),
     );
+    assert.match(
+      previewJob,
+      /github\.head_ref == 'changeset-release\/documentation'/,
+      `${jobName} runs for a Documentation release PR`,
+    );
+    assert.match(
+      previewJob,
+      /github\.head_ref == 'changeset-release\/website'/,
+      `${jobName} runs for a Website release PR`,
+    );
+    assert.doesNotMatch(
+      previewJob,
+      /startsWith\(github\.head_ref, 'changeset-release\/'\)/,
+      `${jobName} does not run for unrelated release lanes`,
+    );
     assert.match(previewJob, new RegExp(`const siteName = '${siteName}'`));
     assert.match(
       previewJob,
@@ -138,6 +153,11 @@ test('both public sites crawl their matching Netlify deploy previews', () => {
       'the ignored-deploy fallback only accepts Netlify dashboard URLs',
     );
     assert.match(previewJob, /node scripts\/dead-link-checker\.mjs/);
+    assert.match(
+      previewJob,
+      /xvfb-run --auto-servernum node scripts\/dead-link-checker\.mjs/,
+      'the checker can launch headed Chrome for browser verification',
+    );
     assert.match(previewJob, new RegExp(`"\\$${startPath}"`));
     assert.match(previewJob, /--user-agent="\$DEAD_LINK_CHECK_USER_AGENT"/);
     assert.match(previewJob, /--github-actions/);
