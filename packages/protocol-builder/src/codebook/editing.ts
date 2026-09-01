@@ -680,7 +680,8 @@ export class AuxiliaryCodebookDraftSession {
     });
   }
 
-  receiveAuthoritative(document: Readonly<SectionDoc>): void {
+  /** Returns whether the authoritative content, rather than its identity, changed. */
+  receiveAuthoritative(document: Readonly<SectionDoc>): boolean {
     const authoritativeDocument = frozenDocument(document);
     if (
       hasSameDocumentContent(
@@ -688,7 +689,7 @@ export class AuxiliaryCodebookDraftSession {
         authoritativeDocument,
       )
     ) {
-      return;
+      return false;
     }
     this.authoritativeGeneration += 1;
     if (this.snapshot.status === 'awaiting-authoritative') {
@@ -699,7 +700,7 @@ export class AuxiliaryCodebookDraftSession {
         authoritativeChanged: false,
         lastFailure: null,
       });
-      return;
+      return true;
     }
 
     if (this.snapshot.status === 'submitting') {
@@ -707,7 +708,7 @@ export class AuxiliaryCodebookDraftSession {
         authoritativeDocument,
         authoritativeChanged: true,
       });
-      return;
+      return true;
     }
 
     const dirty = this.isDirty();
@@ -722,13 +723,14 @@ export class AuxiliaryCodebookDraftSession {
         authoritativeChanged: false,
         lastFailure: null,
       });
-      return;
+      return true;
     }
 
     this.replaceSnapshot({
       authoritativeDocument,
       authoritativeChanged: true,
     });
+    return true;
   }
 
   isDirty(): boolean {

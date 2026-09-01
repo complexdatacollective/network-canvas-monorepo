@@ -542,6 +542,124 @@ describe('VariableEditor', () => {
     });
   });
 
+  it('preserves an uncertain retry id across a content-identical authority re-emission', async () => {
+    const user = userEvent.setup();
+    const initialVariable = {
+      name: 'comment',
+      type: 'text',
+      component: 'Text',
+    } as const;
+    const initialDocument = personDocument({ comment: initialVariable });
+    const createRequestId = vi
+      .fn<() => string>()
+      .mockReturnValueOnce('uncertain-variable-intent')
+      .mockReturnValueOnce('duplicate-variable-intent');
+    const onSubmitRequest = vi
+      .fn<(request: CompoundEditRequest) => Promise<CompoundEditResult>>()
+      .mockRejectedValueOnce(new Error('Connection dropped.'))
+      .mockResolvedValueOnce(APPLIED);
+    const commonProps = {
+      openId: 'uncertain-variable-retry',
+      mode: 'update' as const,
+      subject: SUBJECT,
+      variableId: 'comment',
+      initialDraft: initialVariable,
+      description: 'Update comment',
+      createRequestId,
+      onSubmitRequest,
+      onComplete: () => undefined,
+    };
+    const { rerender } = render(
+      <VariableEditor
+        {...commonProps}
+        authoritativeDocument={initialDocument}
+      />,
+    );
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'localComment');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+    await screen.findByText('Connection dropped.', { exact: false });
+
+    rerender(
+      <VariableEditor
+        {...commonProps}
+        authoritativeDocument={structuredClone(initialDocument)}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(2));
+    expect(onSubmitRequest.mock.calls.map(([request]) => request.id)).toEqual([
+      'uncertain-variable-intent',
+      'uncertain-variable-intent',
+    ]);
+    expect(createRequestId).toHaveBeenCalledOnce();
+  });
+
+  it('uses a new retry id when another variable changes the parent content base', async () => {
+    const user = userEvent.setup();
+    const initialVariable = {
+      name: 'comment',
+      type: 'text',
+      component: 'Text',
+    } as const;
+    const initialDocument = personDocument({ comment: initialVariable });
+    const createRequestId = vi
+      .fn<() => string>()
+      .mockReturnValueOnce('initial-parent-intent')
+      .mockReturnValueOnce('changed-parent-intent');
+    const onSubmitRequest = vi
+      .fn<(request: CompoundEditRequest) => Promise<CompoundEditResult>>()
+      .mockRejectedValueOnce(new Error('Connection dropped.'))
+      .mockResolvedValueOnce(APPLIED);
+    const commonProps = {
+      openId: 'changed-parent-retry',
+      mode: 'update' as const,
+      subject: SUBJECT,
+      variableId: 'comment',
+      initialDraft: initialVariable,
+      description: 'Update comment',
+      createRequestId,
+      onSubmitRequest,
+      onComplete: () => undefined,
+    };
+    const { rerender } = render(
+      <VariableEditor
+        {...commonProps}
+        authoritativeDocument={initialDocument}
+      />,
+    );
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'localComment');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+    await screen.findByText('Connection dropped.', { exact: false });
+
+    const changedParentDocument = personDocument({
+      comment: initialVariable,
+      weight: { name: 'Weight', type: 'number', component: 'Number' },
+    });
+    rerender(
+      <VariableEditor
+        {...commonProps}
+        authoritativeDocument={changedParentDocument}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(2));
+    expect(onSubmitRequest.mock.calls.map(([request]) => request.id)).toEqual([
+      'initial-parent-intent',
+      'changed-parent-intent',
+    ]);
+    expect(onSubmitRequest.mock.calls[1]?.[0].edits[0]).toMatchObject({
+      expectedContentHash: contentHash(changedParentDocument),
+    });
+  });
+
   it('blocks a dirty draft when the authoritative variable type changes remotely', async () => {
     const user = userEvent.setup();
     const initialVariable = {

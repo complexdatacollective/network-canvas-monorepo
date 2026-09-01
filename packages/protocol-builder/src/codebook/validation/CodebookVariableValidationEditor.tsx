@@ -158,8 +158,9 @@ export default function CodebookVariableValidationEditor({
   const activeRequestId = useRef<string | null>(null);
 
   useEffect(() => {
-    activeRequestId.current = null;
-    session.receiveAuthoritative(authoritativeEntityDocument);
+    if (session.receiveAuthoritative(authoritativeEntityDocument)) {
+      activeRequestId.current = null;
+    }
   }, [authoritativeEntityDocument, session]);
 
   useEffect(() => {

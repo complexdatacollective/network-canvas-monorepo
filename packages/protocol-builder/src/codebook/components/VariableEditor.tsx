@@ -231,8 +231,13 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     ) {
       return;
     }
+    const previousDocument = previousAuthoritativeDocument.current;
     previousAuthoritativeDocument.current = authoritativeDocument;
-    activeRequestId.current = null;
+    if (
+      canonicalize(previousDocument) !== canonicalize(authoritativeDocument)
+    ) {
+      activeRequestId.current = null;
+    }
     const authoritativeVariable = variableFromDocument(
       authoritativeDocument,
       variableId,

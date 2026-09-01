@@ -323,8 +323,9 @@ export default function CodebookEntityEditor({
 
   useEffect(() => {
     if (authoritativeDocument !== null) {
-      activeRequestId.current = null;
-      session.receiveAuthoritative(authoritativeDocument);
+      if (session.receiveAuthoritative(authoritativeDocument)) {
+        activeRequestId.current = null;
+      }
     }
   }, [authoritativeDocument, session]);
 

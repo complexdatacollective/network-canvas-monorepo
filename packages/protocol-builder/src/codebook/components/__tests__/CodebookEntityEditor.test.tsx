@@ -474,6 +474,59 @@ describe('CodebookEntityEditor', () => {
     ]);
   });
 
+  it('preserves an uncertain retry id across a content-identical authority re-emission', async () => {
+    const user = userEvent.setup();
+    const createRequestId = vi
+      .fn<() => string>()
+      .mockReturnValueOnce('uncertain-entity-intent')
+      .mockReturnValueOnce('duplicate-entity-intent');
+    const onSubmit = vi
+      .fn<(request: CompoundEditRequest) => CompoundEditResult>()
+      .mockReturnValueOnce({
+        status: 'failed',
+        reason: 'host-error',
+        message: 'Host outcome uncertain.',
+      })
+      .mockReturnValueOnce(appliedResult());
+    const commonProps = {
+      mode: 'update' as const,
+      sessionKey: 'uncertain-entity-retry',
+      createRequestId,
+      description: 'Update person',
+      subject: NODE_SUBJECT,
+      initialDraft: NODE_DOCUMENT,
+      existingEntityNames: [] as const,
+      onSubmit,
+    };
+    const { rerender } = render(
+      <CodebookEntityEditor
+        {...commonProps}
+        authoritativeDocument={NODE_DOCUMENT}
+      />,
+    );
+
+    const name = screen.getByRole('textbox', { name: 'Node type name' });
+    await user.clear(name);
+    await user.type(name, 'UncertainName');
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+    await screen.findByText('Host outcome uncertain.');
+
+    rerender(
+      <CodebookEntityEditor
+        {...commonProps}
+        authoritativeDocument={structuredClone(NODE_DOCUMENT)}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(2));
+    expect(onSubmit.mock.calls.map(([request]) => request.id)).toEqual([
+      'uncertain-entity-intent',
+      'uncertain-entity-intent',
+    ]);
+    expect(createRequestId).toHaveBeenCalledOnce();
+  });
+
   it.each(['stale-epoch', 'lease-lost', 'stale-base'] as const)(
     'uses a new intent id after the retry-invalidating %s failure',
     async (reason) => {

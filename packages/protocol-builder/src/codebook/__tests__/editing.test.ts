@@ -559,7 +559,7 @@ describe('AuxiliaryCodebookDraftSession', () => {
       { name: 'Person' },
     );
     session.replaceDraft({ name: 'Local name' });
-    session.receiveAuthoritative({ name: 'Remote name' });
+    expect(session.receiveAuthoritative({ name: 'Remote name' })).toBe(true);
 
     expect(session.getSnapshot()).toMatchObject({
       authoritativeDocument: { name: 'Remote name' },
@@ -579,7 +579,9 @@ describe('AuxiliaryCodebookDraftSession', () => {
     const listener = vi.fn();
     session.subscribe(listener);
 
-    session.receiveAuthoritative(structuredClone(authoritativeDocument));
+    expect(
+      session.receiveAuthoritative(structuredClone(authoritativeDocument)),
+    ).toBe(false);
 
     expect(session.getSnapshot()).toBe(before);
     expect(listener).not.toHaveBeenCalled();

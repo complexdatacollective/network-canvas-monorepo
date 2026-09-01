@@ -324,6 +324,48 @@ describe('CodebookVariableValidationEditor', () => {
     ]);
   });
 
+  it('preserves an uncertain retry id across a content-identical authority re-emission', async () => {
+    const initial = entityDocument();
+    const createId = vi
+      .fn<() => string>()
+      .mockReturnValueOnce('uncertain-validation-intent')
+      .mockReturnValueOnce('duplicate-validation-intent');
+    const onSubmitRequest = vi
+      .fn<(request: CompoundEditRequest) => Promise<CompoundEditResult>>()
+      .mockRejectedValueOnce(new Error('Connection dropped.'))
+      .mockResolvedValueOnce(appliedResult());
+    const { rerender, props } = renderEditor({
+      authoritativeEntityDocument: initial,
+      allSubjectVariables: variablesFrom(initial),
+      requestMetadata: {
+        createId,
+        description: 'Update Age validation',
+      },
+      onSubmitRequest,
+    });
+    const user = await replaceMinimumValue('5');
+
+    await user.click(screen.getByRole('button', { name: 'Save validation' }));
+    await screen.findByText('Connection dropped.');
+
+    const reemitted = structuredClone(initial);
+    rerender(
+      <CodebookVariableValidationEditor
+        {...props}
+        authoritativeEntityDocument={reemitted}
+        allSubjectVariables={variablesFrom(reemitted)}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Save validation' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(2));
+    expect(onSubmitRequest.mock.calls.map(([request]) => request.id)).toEqual([
+      'uncertain-validation-intent',
+      'uncertain-validation-intent',
+    ]);
+    expect(createId).toHaveBeenCalledOnce();
+  });
+
   it.each(['stale-epoch', 'lease-lost', 'stale-base'] as const)(
     'uses a new intent id after the retry-invalidating %s failure',
     async (reason) => {
