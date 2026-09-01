@@ -1,10 +1,13 @@
 import type { Decorator } from '@storybook/react-vite';
-import { useEffect } from 'react';
+import { type ReactNode, useEffect } from 'react';
 
+import { PortalContainerProvider } from '../src/PortalContainer';
 import { ThemedRegion } from '../src/ThemedRegion';
 
 export const THEME_KEY = 'theme';
+export const COLOR_SCHEME_KEY = 'colorScheme';
 const STORAGE_KEY = 'storybook-theme-preference';
+const COLOR_SCHEME_STORAGE_KEY = 'storybook-color-scheme-preference';
 
 const themes = {
   dashboard: {
@@ -13,48 +16,136 @@ const themes = {
   interview: {
     name: 'Interview',
   },
+  studio: {
+    name: 'Studio',
+  },
+} as const;
+
+/**
+ * Light/dark is a separate axis from the palette: `dashboard` and `studio`
+ * are light/dark pairs, and both switch on `data-theme='dark'` (the attribute
+ * apps set via next-themes). `interview` is dark-only and ignores it, so the
+ * control is a no-op while that theme is selected.
+ */
+const colorSchemes = {
+  light: {
+    name: 'Light',
+  },
+  dark: {
+    name: 'Dark',
+  },
 } as const;
 
 export type ThemeKey = keyof typeof themes;
+export type ColorSchemeKey = keyof typeof colorSchemes;
 
-function getStoredTheme(): ThemeKey | null {
+function readStored<T extends string>(
+  key: string,
+  valid: Record<T, unknown>,
+): T | null {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored && stored in themes) {
-      return stored as ThemeKey;
+    const stored = localStorage.getItem(key);
+    if (stored && stored in valid) {
+      return stored as T;
     }
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.warn('Failed to read theme from localStorage:', error);
+    console.warn(`Failed to read ${key} from localStorage:`, error);
   }
   return null;
 }
 
-function setStoredTheme(theme: ThemeKey) {
+function writeStored(key: string, value: string) {
   try {
-    localStorage.setItem(STORAGE_KEY, theme);
+    localStorage.setItem(key, value);
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.warn('Failed to save theme to localStorage:', error);
+    console.warn(`Failed to save ${key} to localStorage:`, error);
+  }
+}
+
+function getStoredTheme(): ThemeKey | null {
+  return readStored<ThemeKey>(STORAGE_KEY, themes);
+}
+
+function getStoredColorScheme(): ColorSchemeKey | null {
+  return readStored<ColorSchemeKey>(COLOR_SCHEME_STORAGE_KEY, colorSchemes);
+}
+
+/**
+ * Mirrors the selected theme onto `<body>`. The themed wrapper only paints
+ * the area covered by story content; the surrounding canvas (story padding
+ * when layout isn't "fullscreen", scrollbars, the storybook root backdrop)
+ * resolves `bg-background` from the body's `theme-base` utility — without the
+ * attribute on body that resolves against `:root`'s default palette, leaving
+ * stories framed by default-theme chrome. It also themes anything portaled to
+ * `document.body`.
+ */
+function applyThemeToBody(theme: ThemeKey) {
+  if (typeof document === 'undefined') return;
+  document.body.toggleAttribute('data-theme-interview', theme === 'interview');
+  document.body.toggleAttribute('data-theme-studio', theme === 'studio');
+}
+
+/**
+ * Light/dark goes on `<html>`, matching how apps drive it (next-themes with
+ * `attribute="data-theme"`, `<html data-theme="dark">` in Background
+ * Creator). The default theme's dark block is written as `[data-theme='dark']`
+ * and the studio theme's as `[data-theme='dark'] [data-theme-studio]`, so the
+ * document element covers the body mirror AND every themed region below it.
+ */
+function applyColorSchemeToDocument(colorScheme: ColorSchemeKey) {
+  if (typeof document === 'undefined') return;
+  if (colorScheme === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
   }
 }
 
 /**
- * Wraps the story in <ThemedRegion> when interview is selected so children
- * pick up `data-theme-interview` and the themed CSS variables resolve, and
- * persists the toolbar selection to localStorage so `getInitialTheme()` can
- * restore it on the next preview load. Storybook's `globalTypes` API doesn't
- * expose an onChange hook directly, so the persistence side effect runs in
- * the same decorator that re-renders when `context.globals[THEME_KEY]` changes.
+ * The themed wrapper for a story (or a docs page). Interview has a first-class
+ * component in the library; studio is applied here with the same shape —
+ * the scoping attribute the theme file keys off, `theme-base` so font-family /
+ * color / the publish-color variables re-resolve at the region rather than
+ * being inherited from the body's cascade context, and the portal container so
+ * dialogs and popovers render inside the themed subtree. Dashboard is the
+ * `:root` default and needs no wrapper.
  *
- * Also mirrors the selected theme onto `<body>`. The `<ThemedRegion>` div
- * only paints the area covered by story content; the surrounding canvas
- * (story padding when layout isn't "fullscreen", scrollbars, the storybook
- * root backdrop) resolves `bg-background` from the body's `theme-base`
- * utility — without the attribute on body that resolves against `:root`'s
- * default palette, leaving stories framed by default-theme chrome.
+ * `color-scheme` is not set here: unlike interview (dark-only, so
+ * `<ThemedRegion>` hard-codes `scheme-dark`), studio declares it per mode in
+ * its own `@layer base` block.
+ */
+export function StoryTheme({
+  theme,
+  children,
+}: {
+  theme: ThemeKey;
+  children: ReactNode;
+}) {
+  if (theme === 'interview') {
+    return <ThemedRegion theme="interview">{children}</ThemedRegion>;
+  }
+
+  if (theme === 'studio') {
+    return (
+      <div data-theme-studio className="theme-base">
+        <PortalContainerProvider>{children}</PortalContainerProvider>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+/**
+ * Wraps the story in its themed region and persists both toolbar selections to
+ * localStorage so `getInitialTheme()` / `getInitialColorScheme()` can restore
+ * them on the next preview load. Storybook's `globalTypes` API doesn't expose
+ * an onChange hook directly, so the persistence side effect runs in the same
+ * decorator that re-renders when the globals change.
  *
- * Must be the outermost decorator so `<ThemedRegion>` (and the
+ * Must be the outermost decorator so the themed region (and the
  * `<PortalContainerProvider>` it bundles) wraps `<Providers>` — that puts
  * `<Toaster />`, the DialogProvider's dialog map, and any Base UI portals
  * inside the themed subtree.
@@ -62,24 +153,25 @@ function setStoredTheme(theme: ThemeKey) {
 export const withTheme: Decorator = (Story, context) => {
   const theme =
     (context.globals[THEME_KEY] as ThemeKey | undefined) ?? 'dashboard';
+  const colorScheme =
+    (context.globals[COLOR_SCHEME_KEY] as ColorSchemeKey | undefined) ??
+    'light';
+
   useEffect(() => {
-    setStoredTheme(theme);
-    if (typeof document === 'undefined') return;
-    if (theme === 'interview') {
-      document.body.setAttribute('data-theme-interview', '');
-    } else {
-      document.body.removeAttribute('data-theme-interview');
-    }
+    writeStored(STORAGE_KEY, theme);
+    applyThemeToBody(theme);
   }, [theme]);
 
-  if (theme === 'interview') {
-    return (
-      <ThemedRegion theme="interview">
-        <Story />
-      </ThemedRegion>
-    );
-  }
-  return <Story />;
+  useEffect(() => {
+    writeStored(COLOR_SCHEME_STORAGE_KEY, colorScheme);
+    applyColorSchemeToDocument(colorScheme);
+  }, [colorScheme]);
+
+  return (
+    <StoryTheme theme={theme}>
+      <Story />
+    </StoryTheme>
+  );
 };
 
 export const globalTypes = {
@@ -97,20 +189,38 @@ export const globalTypes = {
       dynamicTitle: true,
     },
   },
+  [COLOR_SCHEME_KEY]: {
+    name: 'Color scheme',
+    description:
+      'Light or dark mode (ignored by the dark-only interview theme)',
+    defaultValue: getStoredColorScheme() ?? 'light',
+    toolbar: {
+      icon: 'contrast' as const,
+      items: Object.entries(colorSchemes).map(([key, { name }]) => ({
+        value: key,
+        title: name,
+      })),
+      showName: true,
+      dynamicTitle: true,
+    },
+  },
 };
+
+/*
+ * Both mirrors run at module load so the very first paint matches the stored
+ * preference — without this the toolbar's selection only reaches the document
+ * via the withTheme effects post-mount, briefly framing the story in
+ * default-theme, light-mode chrome on every reload.
+ */
 
 export function getInitialTheme(): ThemeKey {
   const theme = getStoredTheme() ?? 'dashboard';
-  // Mirror to <body> at module load so the very first paint matches the
-  // stored preference — without this, the toolbar's interview selection only
-  // reaches body via the withTheme effect post-mount, briefly framing the
-  // story in default-theme chrome on every reload.
-  if (typeof document !== 'undefined') {
-    if (theme === 'interview') {
-      document.body.setAttribute('data-theme-interview', '');
-    } else {
-      document.body.removeAttribute('data-theme-interview');
-    }
-  }
+  applyThemeToBody(theme);
   return theme;
+}
+
+export function getInitialColorScheme(): ColorSchemeKey {
+  const colorScheme = getStoredColorScheme() ?? 'light';
+  applyColorSchemeToDocument(colorScheme);
+  return colorScheme;
 }
