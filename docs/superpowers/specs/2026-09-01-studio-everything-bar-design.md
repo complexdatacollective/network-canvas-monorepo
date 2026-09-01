@@ -159,6 +159,14 @@ owns it:
   member (team area), create an API token (account area), pause collection
   (study settings, once #1262's lifecycle controls exist).
 
+Every command, including these, is expressed as the §5.1 activation union —
+a route, or a route plus a surface its screen owns. "Sign out" is the
+instructive case: signing out is not a screen, so the command opens the
+account area's sign-out confirmation surface, and confirming there runs the
+existing navigate-verify-release sequence the shell preserves (#1561 §6.5).
+The bar launched it; the account area performed it. A command that cannot be
+expressed this way does not belong in the bar.
+
 Like destinations (§3.1), search spans every permission-filtered command the
 researcher can reach, not only the mounted area's — from a study screen,
 typing "invite" finds the team's invitation command. The current area's
@@ -193,7 +201,9 @@ documentation search; the bar cannot make that assumption.
 Groups render in fixed order — **Go to**, **Commands**, **Documentation** —
 matching how often each is wanted. Within Go to: current-study destinations
 and entities first, then current team, then other teams, then platform; ties
-break by last-modified, then name. Within Commands: the current area's
+break by last-modified, then name, then the immutable id — the final key is
+unique, so the ordering is total and a pagination cursor can resume at any
+boundary without skipping or repeating rows. Within Commands: the current area's
 commands first, then other areas', then global. Within Documentation: the
 index's lexical ranking with the Studio-tag boost (§6).
 Result counts per group are bounded (five per group by default, with a "show
@@ -257,7 +267,7 @@ type EverythingBarItem = {
   chordHint?: string[];       // ['G', 'A'], read from the shortcut registry
   activate:
     | { kind: 'navigate'; href: string }
-    | { kind: 'open'; surface: string }      // named owning surface (below)
+    | { kind: 'open'; href: string; surface: string }  // owning route + surface (below)
     | { kind: 'external'; href: string };    // documentation
 };
 
@@ -281,14 +291,18 @@ type EverythingBarProvider = {
 );
 ```
 
-The `open` variant deliberately carries no callback. It names an **owning
-surface** — an identifier a screen registers ("members.invite",
-"participants.import") that the shell resolves to that screen's own dialog or
-flow. An opaque `run: () => void` would let a command hold a mutation the
-registry test could never see; a string the shell resolves keeps the
-launcher rule (invariant 3) statically checkable: the registry test can
-assert every activation is a route, an external link, or a registered
-surface name, and nothing else is expressible.
+The `open` variant deliberately carries no callback. It is declarative route
+plus surface: `href` is the owning screen's route and `surface` an identifier
+that screen registers ("members.invite", "participants.import"). Activation
+navigates to the route, and the destination screen opens its named surface on
+arrival — which is what makes a cross-area command work when its owner is not
+mounted: "Invite a team member" selected from a study screen navigates to the
+members screen and opens its invitation flow there. An opaque
+`run: () => void` would let a command hold a mutation the registry test could
+never see; a route the shell navigates and a name the destination resolves
+keep the launcher rule (invariant 3) statically checkable: the registry test
+can assert every activation is a route, an external link, or a route paired
+with a surface the named screen registers, and nothing else is expressible.
 
 `persistence` is required on the provider, not optional on the item, for the
 same reason: a sensitive provider that forgot to mark one participant row
@@ -389,7 +403,11 @@ templates and the gallery live above teams in the accepted ownership model —
 a template has no tenant to attribute, and a shape that required `teamId` on
 it would force the server to invent one. `limit` defaults to the group bound
 in §3.4 and is server-capped; `nextCursor` is what the group's "show more"
-affordance requests the next bounded page with.
+affordance requests the next bounded page with. The ordering ends in the
+immutable unique key (scope, team, id) per §3.4, and the cursor encodes the
+full ordering tuple — keyset pagination over a total order, so equal
+last-modified values and duplicate display names cannot make a page boundary
+skip or repeat rows.
 
 The server resolves the researcher's memberships once, searches each team
 under its own tenant scope (row-level security intact — no cross-team query),
@@ -668,16 +686,20 @@ foundations work (#1315).
   discriminated union proves a `persistence: 'recents'` provider cannot omit
   `resolve`.
 - **Launcher rule**: the registry test in §5.3 — every activation is a
-  route, an external link, or an owning-surface name registered by a screen;
-  the activation type admits no callback, so a mutation is not expressible.
+  route, an external link, or a route paired with a surface its destination
+  screen registers; the activation type admits no callback, so a mutation is
+  not expressible, and a `surface` naming nothing the `href`'s screen
+  registers fails the test.
 - **Shortcuts**: the shortcut registry rejects two declarations of one chord
   in any reachable area combination, and every hint the bar renders
   round-trips through the registry — a chord declared but not registered, or
   hinted but unbound, fails the test.
 - **Entity search**: membership scoping (a study in a team the researcher
   left never appears), context-first ranking, the server-capped limit and
-  cursor pagination, platform-scoped results carrying no invented team, and
-  the no-existence-oracle posture on unknown context ids.
+  cursor pagination — including a page boundary falling inside a run of rows
+  tied on last-modified and name, which must neither skip nor repeat any row
+  — platform-scoped results carrying no invented team, and the
+  no-existence-oracle posture on unknown context ids.
 - **Docs provider**: absent without an index and when
   `STUDIO_DOCS_INDEX_URL=off` (the sentinel disables despite
   `emptyStringAsUndefined` folding empty values into the default — both
