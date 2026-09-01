@@ -106,6 +106,23 @@ const inputVariants = compose(
   }),
 );
 
+// Native <input type="date"> doesn't expose its empty-state format hint via
+// ::placeholder, and :placeholder-shown doesn't match an empty date input. The
+// input itself handles Firefox's hint styling; Chromium/Safari expose their
+// native date text through ::-webkit-datetime-edit. Safari additionally
+// repaints the empty day/month/year fields with its own contrast-adjusted color
+// unless -webkit-text-fill-color pins them. Keep this on the actual <input>:
+// InputField's public className belongs to the wrapper and cannot match an
+// input-only pseudo-element.
+const emptyDateInputClass = cx(
+  'text-input-contrast/50 italic',
+  '[&::-webkit-datetime-edit]:text-input-contrast/50',
+  '[&::-webkit-datetime-edit]:italic',
+  // The Tailwind theme is inline, so --color-input-contrast is compiled away;
+  // --input-contrast is the theme-scope variable that exists at runtime.
+  '[&::-webkit-datetime-edit]:[-webkit-text-fill-color:color-mix(in_oklab,var(--input-contrast)_50%,transparent)]',
+);
+
 // The width each field size's stepper needs to stay square: the wrapper's
 // heightVariants step minus its 2px border on each edge (sm h-10 → 36px,
 // md h-12 → 44px, lg h-16 → 60px, xl h-20 → 76px). Stated outright rather
@@ -149,6 +166,11 @@ type InputFieldProps = CreateFormFieldProps<
     // (it reads event.nativeEvent.inputType), while InputField's own
     // onChange only passes the string value.
     nativeOnChange?: React.ChangeEventHandler<HTMLInputElement>;
+    /**
+     * Classes for the native input itself. `className` styles the surrounding
+     * control container; use this for input-only pseudo-elements or properties.
+     */
+    inputClassName?: string;
     // Fires after a stepper button or arrow key settles on a new value, in
     // addition to `onChange`. A stepped value is always complete, so callers
     // that defer committing until blur can commit these immediately — clicking
@@ -172,6 +194,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
       value,
       onChange,
       nativeOnChange,
+      inputClassName,
       onStep,
       stepperLabels,
       onKeyDown,
@@ -240,7 +263,12 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
           // The caller's `className` styles the wrapper (the control container),
           // not the inner input — otherwise a background/backdrop passed to the
           // field (e.g. the glass treatment) would double-apply onto the input.
-          className={inputVariants()}
+          className={inputVariants({
+            className: cx(
+              type === 'date' && !value && emptyDateInputClass,
+              inputClassName,
+            ),
+          })}
           type={type}
           inputMode={inputMode ?? (isNumber ? 'decimal' : undefined)}
           {...inputProps}

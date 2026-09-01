@@ -60,9 +60,10 @@ export default function PasswordField({
         {...props}
         type={showPassword || masked ? 'text' : 'password'}
         autoComplete={suppressPasswordManager ? 'off' : props.autoComplete}
-        className={cx(
+        className={props.className}
+        inputClassName={cx(
           masked && !showPassword && '[-webkit-text-security:disc]',
-          props.className,
+          props.inputClassName,
         )}
       />
       {showStrengthMeter && strength && strength.score > 0 && (
