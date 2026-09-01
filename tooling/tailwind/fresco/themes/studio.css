@@ -35,17 +35,38 @@
  * 0.034, dark 0.08 -> 0.105) so the accent-tinted chip still separates from a
  * neutral surface now that surfaces are tinted rather than near-neutral.
  *
- * One rule holds across the whole dark block, and it is a deliberate
- * departure from the default theme rather than anything inherited from it:
- * EVERY `-contrast` that sits on a light fill is the mode's dark neutral ink,
- * never white. Studio lifts its dark fills so they read against the dark
- * ground, and at those lightnesses white does not clear WCAG AA on any of
- * them — `--accent`, `--success`, `--selected`, `--warning`, `--destructive`
- * and `--info` all take dark ink, each with its measured pairing recorded at
- * the declaration. Restoring white to any of them reintroduces a contrast
- * failure; if a fill genuinely needs white, darken the fill rather than
- * flipping the ink, and check what that costs the matching `text-*` utility
- * standing on `--surface`.
+ * Every status and brand fill in this file clears WCAG AA against its own
+ * `-contrast`, and each mode gets there by the opposite move. Both are
+ * deliberate studio choices that depart from the default theme's pairings —
+ * nothing here is inherited, and the measured ratios are recorded at each
+ * declaration.
+ *
+ *   DARK — keep the fill bright, use dark ink. Studio lifts its dark fills so
+ *   they read against the dark ground, and at those lightnesses white clears
+ *   AA on none of them. `--accent`, `--success`, `--selected`, `--warning`,
+ *   `--destructive` and `--info` all take the mode's dark neutral ink.
+ *   Darkening a fill instead would buy the filled pairing at the expense of
+ *   the matching `text-*` utility, which on a dark ground needs the fill to
+ *   stay bright.
+ *
+ *   LIGHT — keep white ink, darken the fill. On a light ground the two
+ *   usages move together: a darker fill raises BOTH white-on-fill and
+ *   `text-*`-on-ground, so `--warning`, `--info` and `--success` are all
+ *   palette hues taken down in lightness.
+ *
+ * `--selected` is the one light-mode exception, and for a stated reason: it
+ * is a highlight whose second usage is being conspicuous against the ground,
+ * not carrying text, so it takes darker ink instead (see its declaration).
+ *
+ * Before flipping any of these back, re-measure both usages — the filled
+ * pairing and the matching `text-*` utility on `--background` and
+ * `--surface`. Several of these values look arbitrary and are not.
+ *
+ * Note for separate work, NOT to be fixed here: `themes/default.css` carries
+ * the same defects studio corrected — white on neat sea green (2.28:1) in its
+ * light block, and white on its lifted dark `--destructive` and `--info`. Any
+ * fix there is a change to every consumer of the default theme and belongs in
+ * its own PR.
  * ---------------------------------------------------------------------------
  *
  * `--base-hue` is the per-mode neutral hue knob. The default theme declares it
@@ -240,8 +261,28 @@
     );
     --warning-contrast: oklch(var(--white));
 
-    /* Sea green, identical to the default theme. */
-    --success: oklch(var(--sea-green));
+    /*
+     * CHANGED: sea green taken down 0.24 in lightness, where the default
+     * theme uses the palette hue neat. At its native L 0.7 the fill is 2.28:1
+     * against white — the worst pairing in either mode — and `text-success`
+     * standing on the ground was no better at 2.16:1, so BOTH usages failed.
+     * Darkening fixes both at once: 5.62:1 for white on the fill (Alert,
+     * Toast, Badge) and 5.33:1 for `text-success` on the ground, which is how
+     * password-strength labels, validation text and the `bg-success/10` box
+     * actually render (4.77:1 on that tint).
+     *
+     * This is the light block's own idiom, not a new invention — `--warning`
+     * and `--info` are both palette hues darkened for exactly this reason.
+     * It is also the opposite move from the dark block, and deliberately so:
+     * on a light ground a darker fill helps the filled AND the text-only
+     * usage together, whereas on a dark ground darkening a fill buys fill
+     * contrast at the text usage's expense (see `--destructive` in dark).
+     *
+     * Chroma is left alone. Sea green already sits at 0.2, and pushing it
+     * higher RAISES luminance — the `c + 0.06` variants measured lighter and
+     * needed even more lightness taken off to reach the same ratio.
+     */
+    --success: oklch(from oklch(var(--sea-green)) calc(l - 0.24) c h);
     --success-contrast: oklch(var(--white));
 
     --info: oklch(
@@ -251,13 +292,26 @@
 
     /*
      * CHANGED: the mustard pair from the mockup, replacing the default
-     * theme's off-palette `oklch(91% 0.21 80)`. The contrast value is the
-     * mockup's `--mustard-ink`. The highlight clears the warmed ground on
-     * lightness and chroma, not only hue (1.73:1 fill against the ground,
-     * 1.80:1 against `--surface`), which is what had to survive the retint.
+     * theme's off-palette `oklch(91% 0.21 80)`. The highlight clears the
+     * warmed ground on lightness and chroma, not only hue (1.73:1 fill
+     * against the ground, 1.80:1 against `--surface`), which is what had to
+     * survive the retint.
+     *
+     * The ink is the mockup's `--mustard-ink` taken from L 0.5 down to 0.4,
+     * chroma untouched: at 0.5 it was 3.29:1 on the fill, under AA for the
+     * normal-size text a pressed Button or a selected nav item puts there.
+     * At 0.4 it is 5.06:1, and it only helps the tinted variant the Button
+     * uses for open triggers (`bg-selected/15`, 8.38:1).
+     *
+     * Fixed on the ink and NOT by darkening the fill, unlike `--success`
+     * above: `--selected` is a highlight, and its second usage is being
+     * conspicuous against the ground rather than carrying text — there is no
+     * `text-selected` anywhere in fresco-ui, only `bg-selected` with
+     * `text-selected-contrast`. Darkening the fill would buy ink contrast by
+     * destroying the one job the token has.
      */
     --selected: oklch(var(--mustard));
-    --selected-contrast: oklch(0.5 0.12 var(--mustard-hue));
+    --selected-contrast: oklch(0.4 0.12 var(--mustard-hue));
 
     --drag-valid: oklch(var(--slate-blue) / 0.3);
     --drag-over: oklch(var(--slate-blue) / 0.8);
