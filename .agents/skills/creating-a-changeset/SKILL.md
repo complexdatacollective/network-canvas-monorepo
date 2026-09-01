@@ -24,6 +24,20 @@ shipped (verify that — see below). Content changes to the released
 Documentation or Website products are consumer-visible and do need a changeset.
 Don't add an empty changeset just to have one.
 
+## Releasing `@codaco/interview` releases the apps that bundle it
+
+Apps compile workspace package source into their own bundles, so a package
+release normally does not force an app release — the next app release picks the
+new source up anyway. **`@codaco/interview` is the exception.** It is the
+participant-facing interview runtime embedded in `@codaco/architect` (preview
+mode), `@codaco/interviewer`, and `fresco`; an interview release that no app
+release carries never reaches anyone. A changeset naming `@codaco/interview`
+must therefore also name all three of those apps (usually with the same bump
+type). CI enforces this: `pnpm check:changesets` rejects a changeset that
+releases the runtime without every bundling app, using the
+`BUNDLED_RUNTIME_DEPENDENTS` map in `scripts/changeset-app-utils.mjs` (a test
+keeps that map in sync with the apps' real dependency lists).
+
 ## Before writing one for a fix: was the bug ever released?
 
 A changeset is a release note, so a note for a defect nobody could encounter

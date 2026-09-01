@@ -3,12 +3,17 @@
 // package in the normal Changesets lane. `changeset version` hard-errors on
 // such "mixed" changesets, which would break the release. Fail fast on the PR
 // instead.
+//
+// It also enforces the bundled-runtime rule: a changeset releasing
+// `@codaco/interview` must release every app that bundles it, because a
+// runtime release no app release carries never reaches participants.
 import { join } from 'node:path';
 
 import {
   classifyChangeset,
   isMixedChangeset,
   isMultiProductLaneChangeset,
+  missingBundlingApps,
   readChangesets,
 } from './changeset-app-utils.mjs';
 
@@ -17,8 +22,15 @@ const mixedOffenders = changesets.filter((cs) => isMixedChangeset(cs));
 const multiLaneOffenders = changesets.filter((cs) =>
   isMultiProductLaneChangeset(cs),
 );
+const bundlingOffenders = changesets
+  .map((cs) => ({ cs, missing: missingBundlingApps(cs) }))
+  .filter(({ missing }) => missing.length > 0);
 
-if (mixedOffenders.length === 0 && multiLaneOffenders.length === 0) {
+if (
+  mixedOffenders.length === 0 &&
+  multiLaneOffenders.length === 0 &&
+  bundlingOffenders.length === 0
+) {
   process.exit(0);
 }
 
@@ -55,8 +67,30 @@ if (multiLaneOffenders.length > 0) {
   console.error('');
 }
 
-console.error(
-  'Split each listed file into one changeset per release lane ' +
-    '(run `pnpm changeset` once for each separately gated product or the normal lane).',
-);
+if (mixedOffenders.length > 0 || multiLaneOffenders.length > 0) {
+  console.error(
+    'Split each listed file into one changeset per release lane ' +
+      '(run `pnpm changeset` once for each separately gated product or the normal lane).',
+  );
+}
+
+if (bundlingOffenders.length > 0) {
+  console.error(
+    'Changesets releasing a bundled runtime without the apps that ship it — the apps compile the\n' +
+      'package into their own bundles, so a runtime release that no app release carries never\n' +
+      'reaches participants:\n',
+  );
+  for (const { cs, missing } of bundlingOffenders) {
+    console.error(`  .changeset/${cs.id}.md`);
+    for (const { package: pkg, missingApps } of missing) {
+      console.error(
+        `    ${pkg} is released without: ${missingApps.join(', ')}`,
+      );
+    }
+  }
+  console.error(
+    '\nAdd an entry for each missing app to the listed changeset (usually the same bump type).',
+  );
+}
+
 process.exit(1);

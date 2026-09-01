@@ -24,7 +24,30 @@ function run(cwd) {
 
 test('passes when normal-lane app and library releases share a changeset', () => {
   const cwd = fixture({
-    'normal.md': `---\n"@codaco/architect": minor\n"@codaco/interview": minor\n---\n\nshared change`,
+    'normal.md': `---\n"@codaco/architect": minor\n"@codaco/fresco-ui": minor\n---\n\nshared change`,
+  });
+  assert.equal(run(cwd).status, 0);
+});
+
+test('fails when a bundled runtime is released without every bundling app', () => {
+  // The exact miss from PR #1558: @codaco/interview released with Interviewer
+  // and Fresco, but not Architect, which bundles it for preview mode.
+  const cwd = fixture({
+    'runtime.md': `---\n"@codaco/interview": patch\n"@codaco/interviewer": patch\n"fresco": patch\n---\n\nruntime change`,
+  });
+  const res = run(cwd);
+  assert.equal(res.status, 1);
+  assert.match(res.stderr, /runtime\.md/);
+  assert.match(
+    res.stderr,
+    /@codaco\/interview is released without: @codaco\/architect/,
+  );
+  assert.match(res.stderr, /Add an entry for each missing app/);
+});
+
+test('passes when a bundled runtime release names every bundling app', () => {
+  const cwd = fixture({
+    'runtime.md': `---\n"@codaco/interview": patch\n"@codaco/architect": patch\n"@codaco/interviewer": patch\n"fresco": patch\n---\n\nruntime change`,
   });
   assert.equal(run(cwd).status, 0);
 });
