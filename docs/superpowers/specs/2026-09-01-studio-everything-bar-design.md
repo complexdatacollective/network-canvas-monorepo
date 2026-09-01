@@ -275,6 +275,8 @@ type EverythingBarItem = {
   rank: {
     tier: number;             // the §3.4 bucket, provider-normalized:
                               // 0 current study/area → 3 platform/global
+    position?: number;        // the provider's own order within the tier
+                              // (a server-ranked page keeps its relevance order)
     recency?: string;         // ISO timestamp for within-tier ordering
   };
   chordHint?: string[];       // ['G', 'A'], read from the shortcut registry
@@ -323,11 +325,23 @@ cannot collide, and recents already store the same provider-plus-id pair.
 context into the tier (the entity provider maps current study → 0, current
 team → 1, other teams → 2, platform → 3; the manifest and command providers
 map current area → 0 and so on), and the component merges every provider's
-items within a group by tier, then recency (descending), then label, then the
-provider-qualified key as the total-order final tie-breaker. Without a
+items within a group by tier, then position (ascending, when given), then
+recency (descending), then label, then the provider-qualified key as the
+total-order final tie-breaker. `position` is how a provider whose server
+already ranked its page keeps that order through the merge — the
+documentation provider assigns each item its index in the server's
+relevance-and-boost order, so the merge cannot alphabetize away §5.5's
+ranking; the entity provider omits it and orders by recency. Without a
 normalized rank the component could only concatenate provider outputs, and a
 late current-study entity could never sort above an already-rendered
 lower-tier destination.
+
+Within one provider, item ids must be unique across its complete inventory —
+the qualified key only separates providers from each other. A provider that
+aggregates sources namespaces its ids: the destination provider derives them
+as `area:entryId` (`study:settings`, `team:settings`), so two areas sharing a
+natural manifest id cannot collide. A registry test asserts per-provider
+uniqueness.
 
 The `open` variant deliberately carries no callback. It is declarative route
 plus surface: `href` is the owning screen's route and `surface` an identifier
@@ -663,8 +677,14 @@ bypassing none.
   response shape, the audit policy, and the persistence policy together. The
   bar's architecture treats this as one more provider — nothing in the
   component changes.
-- **Opening the bar and typing** is ordinary navigation and is excluded from
-  the audit log, per the audit specification's §7.2 exclusions.
+- **Opening the bar and typing** — the interaction itself, and the
+  non-sensitive reads it triggers (`search.entities`,
+  `search.documentation`) — is ordinary navigation, excluded from the audit
+  log per the audit specification's §7.2 exclusions. The exclusion is about
+  what the read returns, not how it was triggered: an RPC that returns
+  participant-identifying rows is a sensitive read and is audited under its
+  own policy (the participants bullet above) even when a debounced keystroke
+  issued it.
 - **Documentation queries** never reach a third party. They are answered
   from the instance's cached index (§5.5); the only automatic outbound
   documentation traffic is the server's periodic index refresh, which
