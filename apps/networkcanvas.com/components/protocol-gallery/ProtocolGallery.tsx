@@ -97,10 +97,10 @@ class ProtocolGalleryGridLayout extends GridLayout<GalleryProtocol> {
 
 function GalleryProtocolCardBody({
   protocol,
-  emphasized,
+  expanded,
 }: {
   protocol: GalleryProtocol;
-  emphasized: boolean;
+  expanded: boolean;
 }) {
   const t = useTranslations('ProtocolGallery.collection');
 
@@ -110,7 +110,7 @@ function GalleryProtocolCardBody({
         level="h3"
         margin="none"
         className={
-          emphasized
+          expanded
             ? 'text-3xl leading-tight font-black'
             : 'text-xl leading-tight font-black'
         }
@@ -123,9 +123,9 @@ function GalleryProtocolCardBody({
       <Paragraph
         margin="none"
         intent="smallText"
-        className={emphasized ? 'max-w-3xl' : undefined}
+        className={expanded ? 'max-w-3xl' : undefined}
       >
-        {emphasized ? protocol.summary : protocol.description}
+        {expanded ? protocol.summary : protocol.description}
       </Paragraph>
       <div className="flex flex-wrap gap-2">
         {protocol.usesSociograms ? (
@@ -152,11 +152,11 @@ function GalleryProtocolCardBody({
 function GalleryProtocolCard({
   protocol,
   itemProps,
-  emphasized,
+  expanded,
 }: {
   protocol: GalleryProtocol;
   itemProps: ItemProps;
-  emphasized: boolean;
+  expanded: boolean;
 }) {
   const t = useTranslations('ProtocolGallery.collection');
   const tFeatured = useTranslations('ProtocolGallery.intro');
@@ -169,7 +169,7 @@ function GalleryProtocolCard({
       aria-label={t('openProtocol', { title: protocol.shortName })}
       className="focusable group block size-full rounded transition-transform hover:-translate-y-1 focus-visible:-translate-y-1 motion-reduce:transform-none"
     >
-      {emphasized ? (
+      {protocol.featured ? (
         <ProtocolCard
           background={
             <ProtocolPattern
@@ -187,7 +187,7 @@ function GalleryProtocolCard({
             </Badge>
           </div>
           <div className="relative z-10 mt-24 flex flex-1 flex-col gap-3 p-7">
-            <GalleryProtocolCardBody protocol={protocol} emphasized />
+            <GalleryProtocolCardBody protocol={protocol} expanded={expanded} />
           </div>
         </ProtocolCard>
       ) : (
@@ -197,7 +197,7 @@ function GalleryProtocolCard({
           shadow="lg"
           className="bg-surface/55 text-text flex size-full flex-col gap-3 backdrop-blur-md"
         >
-          <GalleryProtocolCardBody protocol={protocol} emphasized={false} />
+          <GalleryProtocolCardBody protocol={protocol} expanded={false} />
         </Surface>
       )}
     </a>
@@ -238,8 +238,9 @@ export function ProtocolGallery({
       }),
     [],
   );
-  const emphasizeFeatured = filter === 'all' && query.trim().length === 0;
-  layout.emphasizeFeatured = emphasizeFeatured && fitsTwoColumns;
+  const expandFeatured =
+    filter === 'all' && query.trim().length === 0 && fitsTwoColumns;
+  layout.emphasizeFeatured = expandFeatured;
   const activeSort = sortConfig[sort];
 
   useEffect(() => {
@@ -366,7 +367,7 @@ export function ProtocolGallery({
           <GalleryProtocolCard
             protocol={protocol}
             itemProps={itemProps}
-            emphasized={protocol.featured && emphasizeFeatured}
+            expanded={protocol.featured && expandFeatured}
           />
         )}
       >
