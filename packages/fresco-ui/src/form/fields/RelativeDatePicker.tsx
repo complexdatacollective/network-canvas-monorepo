@@ -21,16 +21,6 @@ type RelativeDatePickerFieldProps = CreateFormFieldProps<
   }
 >;
 
-// See DatePicker for rationale — native <input type="date"> doesn't expose its
-// empty-state format hint via ::placeholder, so we style Firefox (via the
-// input's own color) and Chromium/Safari (via ::-webkit-datetime-edit)
-// directly when the value is empty.
-const emptyDateInputClass = cx(
-  'text-input-contrast/50 italic',
-  '[&::-webkit-datetime-edit]:text-input-contrast/50',
-  '[&::-webkit-datetime-edit]:italic',
-);
-
 export default function RelativeDatePickerField(
   props: RelativeDatePickerFieldProps,
 ) {
@@ -70,11 +60,7 @@ export default function RelativeDatePickerField(
       onChange={(inputValue) => onChange?.(String(inputValue))}
       name={name ?? ''}
       placeholder={placeholder}
-      className={cx(
-        'outline-input-contrast',
-        !value && emptyDateInputClass,
-        className,
-      )}
+      className={cx('outline-input-contrast', className)}
       disabled={disabled}
       readOnly={readOnly}
       aria-invalid={rest['aria-invalid']}
