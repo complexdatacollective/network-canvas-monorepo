@@ -285,15 +285,18 @@ internally consistent stage-editor implementation during package development.
   review evidence reported 58 protocol-builder tests, 48 Studio client tests,
   full workspace typecheck (23/23), lint, `knip`, changeset validation, and 166
   Architect E2E tests passing.
-- #1489 is implemented in PR #1574 with a package-owned
+- #1489 is implemented in PR #1574 and its review-hardening follow-up #1578
+  with a package-owned
   tolerant protocol context, entity and variable request builders and UI,
   validation/role/contradiction semantics, auxiliary draft handling, validation
   attribution, atomic compound-edit fencing, and a deterministic in-memory
-  proof host. Its package suite currently covers 254 tests, including a real
+  proof host. Its package suite currently covers 279 tests, including a real
   stage-session UI flow that creates a codebook entity and changes the stage in
-  one atomic revision, remote variable-type fencing for dirty validation drafts,
-  and settings attribution for experiment validation; Architect's stage-editor
-  host and Studio's production adapter remain deliberately unchanged.
+  one atomic revision, serialized compound submissions, pending-publication
+  reconciliation, stable retry identities across content-identical authority
+  re-emissions, remote variable-type fencing for dirty validation drafts, and
+  settings/asset validation attribution; Architect's stage-editor host and
+  Studio's production adapter remain deliberately unchanged.
 - The load-bearing shell assertions were mutation-checked during review,
   including field-path resolution, read-only submission refusal, draft
   replacement, outline registration, dormant-value precedence, and complete
