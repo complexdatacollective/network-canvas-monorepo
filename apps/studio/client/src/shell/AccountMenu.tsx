@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useRouter } from '@tanstack/react-router';
+import { Link, useNavigate, useRouter } from '@tanstack/react-router';
 import { UserRound } from 'lucide-react';
 import { useState } from 'react';
 
@@ -9,6 +9,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@codaco/fresco-ui/DropdownMenu';
 
@@ -16,17 +17,15 @@ import { closeStudioEditorSessions } from '../editor/sessionLifecycle.ts';
 import { authClient } from '../lib/auth.ts';
 
 /**
- * The header's account menu (§5.5).
+ * The header's account menu (§5.5): profile, language, sign out.
  *
- * The design lists three entries — profile, language, sign out — and only sign
- * out is buildable today: `/account/profile` and `/account/language` are part
- * of the account area, which has no routes yet. They are named here rather
- * than rendered, for the reason recorded in `AppHeader`: a menu entry that
- * lands on a route the router cannot match is a dead end, and the account menu
- * is on every app screen, so the dead end would be too.
+ * Profile and Language are ordinary router navigations into the account area,
+ * which means the editor's dirty-state blocker applies to them without
+ * anything here knowing about it (§6.5). Sign out cannot be one — it ends the
+ * session — so it runs the sequence below instead.
  *
- * The sign-out sequence below is the one `AppLayout` performed, moved verbatim.
- * Its ordering is load-bearing and each step's comment says why.
+ * That sequence is the one `AppLayout` performed, moved verbatim. Its ordering
+ * is load-bearing and each step's comment says why.
  */
 export default function AccountMenu() {
   const navigate = useNavigate();
@@ -79,6 +78,13 @@ export default function AccountMenu() {
           }
         />
         <DropdownMenuContent align="end">
+          <DropdownMenuItem render={<Link to="/account" />}>
+            Profile
+          </DropdownMenuItem>
+          <DropdownMenuItem render={<Link to="/account/language" />}>
+            Language
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem onClick={signOut}>Sign out</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

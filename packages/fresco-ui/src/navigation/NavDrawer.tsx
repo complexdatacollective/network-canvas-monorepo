@@ -19,18 +19,20 @@ import { cx } from '../utils/cva';
 import { focusRouteTarget, hasRouteFocusTarget } from './RouteFocus';
 
 /**
- * The drawer's slide, stated the way `motion/react` takes it.
+ * The drawer's slide.
  *
- * The same `(duration, bounce)` pair the shared `spring-medium` utility is
- * generated from (`spring(0.35, 0.5)` in the `motion-spring` Tailwind plugin).
- * That plugin publishes its presets as CSS `transition` values, which a
- * `motion` animation cannot consume — so the preset is restated here rather
- * than a fourth spring being invented for this component.
+ * Deliberately NOT a spring, and not the shared `spring-medium` preset this
+ * first used. Those presets suit small controls that pop; a full-height 320px
+ * panel carrying an `elevation-high` shadow overshoots visibly at that
+ * preset's bounce, and the settle reads as jank rather than as life — the
+ * shadow repainting through the overshoot makes it worse.
+ *
+ * A drawer is a surface being pushed into place: it decelerates into rest and
+ * stops. Short, transform only, no overshoot.
  */
-const DRAWER_SPRING = {
-  type: 'spring',
-  duration: 0.35,
-  bounce: 0.5,
+const DRAWER_TRANSITION = {
+  duration: 0.22,
+  ease: [0.32, 0.72, 0, 1],
 } as const;
 
 /**
@@ -307,7 +309,7 @@ const NavDrawer = ({
         initial={closedTarget}
         animate={{ x: 0, opacity: 1 }}
         exit={closedTarget}
-        transition={shouldReduceMotion ? { duration: 0 } : DRAWER_SPRING}
+        transition={shouldReduceMotion ? { duration: 0 } : DRAWER_TRANSITION}
       >
         <NavDrawerPanel
           label={label}

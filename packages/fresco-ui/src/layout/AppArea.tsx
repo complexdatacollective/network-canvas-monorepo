@@ -101,11 +101,12 @@ export type AppAreaProps = {
  *
  * Which of the two is a CONTAINER query, against the `app-area` container
  * `AppFrame` establishes on the region it renders areas into — never a viewport
- * breakpoint. The area then answers to the width it is actually given, which is
- * what lets `AppFrame`'s leading rail be adopted later without touching a
- * single area layout. Rendered outside a host that declares that container, no
- * query matches and the area stays in its narrow presentation: the safe
- * direction, because the drawer reaches every destination the sidebar does.
+ * breakpoint. The area then answers to the width it is actually given rather
+ * than the viewport's, so anything that narrows the region narrows the area
+ * with it and no host has to pass a width down. Rendered outside a host that
+ * declares that container, no query matches and the area stays in its narrow
+ * presentation: the safe direction, because the drawer reaches every
+ * destination the sidebar does.
  *
  * Both presentations of the region are in the DOM at every width, and CSS
  * decides which one exists — so exactly one of them is in the accessibility

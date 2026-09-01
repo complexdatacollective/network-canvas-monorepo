@@ -190,8 +190,8 @@ nested in the other. \`AppFrame\` renders neither landmark for the same reason.
 
 **Wide and narrow are container queries**, against the \`app-area\` container
 \`AppFrame\` establishes — never viewport breakpoints. The area answers to the
-width it is actually given, which is what lets the frame's leading rail be
-adopted later without touching any area layout.
+width it is actually given rather than the viewport's, so anything that narrows
+the region narrows the area with it and no host has to pass a width down.
 `;
 
 const meta = {

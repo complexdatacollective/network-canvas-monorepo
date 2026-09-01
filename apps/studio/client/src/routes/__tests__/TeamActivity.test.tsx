@@ -98,6 +98,19 @@ type RetryOption =
 
 vi.mock('../../lib/api.ts', () => ({
   orpc: {
+    // The team area reads the deployment topology from here to decide whether
+    // this instance has billing at all (§10.4), so every test that renders a
+    // team route needs an answer.
+    status: {
+      queryOptions: () => ({
+        queryKey: ['status'],
+        queryFn: () => ({
+          name: 'Network Canvas Studio',
+          version: '0.1.0',
+          deployment: { mode: 'managed', billing: false },
+        }),
+      }),
+    },
     audit: {
       list: {
         infiniteOptions: (options: {

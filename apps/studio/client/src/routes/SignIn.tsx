@@ -86,7 +86,13 @@ export default function SignIn() {
   };
 
   return (
-    <main className="flex h-full items-center justify-center p-4">
+    // Every route in §5.2 renders exactly one `<main id="main-content">`
+    // (§11.2). A focused screen has no area layout to own that landmark, so
+    // it owns its own.
+    <main
+      id="main-content"
+      className="flex h-full items-center justify-center p-4"
+    >
       <Surface maxWidth="xl" spacing="lg">
         <Heading level="h1">Sign in</Heading>
         {error !== undefined && sentTo === null && (

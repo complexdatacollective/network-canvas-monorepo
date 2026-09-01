@@ -43,6 +43,7 @@ vi.mock('../../lib/api.ts', () => ({
         queryFn: vi.fn().mockResolvedValue({
           name: 'Network Canvas Studio',
           version: '0.1.0',
+          deployment: { mode: 'managed', billing: false },
         }),
       }),
     },

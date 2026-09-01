@@ -5,10 +5,12 @@ import {
   createRouter,
   Outlet,
   redirect,
+  useRouterState,
   type RouterHistory,
 } from '@tanstack/react-router';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import AppArea from '@codaco/fresco-ui/layout/AppArea';
 import { TeamInvitationIdSchema } from '@codaco/studio-rpc';
 
 import { queryClient as applicationQueryClient } from './lib/queryClient.ts';
@@ -24,7 +26,12 @@ import ErrorScreen from './routes/ErrorScreen.tsx';
 import Home from './routes/Home.tsx';
 import SignIn from './routes/SignIn.tsx';
 import TeamActivity from './routes/TeamActivity.tsx';
+import AccountArea from './shell/AccountArea.tsx';
 import EditorArea from './shell/EditorArea.tsx';
+import Placeholder, { type PlaceholderProps } from './shell/Placeholder.tsx';
+import ProtocolOutlineArea from './shell/ProtocolOutlineArea.tsx';
+import ScreenMain from './shell/ScreenMain.tsx';
+import StudyArea from './shell/StudyArea.tsx';
 import TeamArea from './shell/TeamArea.tsx';
 
 /**
@@ -48,15 +55,64 @@ const rootRoute = createRootRouteWithContext<ShellContext>()({
   component: RootLayout,
 });
 
+// UNBUILT DESTINATIONS
+// ====================
+//
+// The shell's job is that every destination §5.2 gives the product exists, is
+// addressable and says what it will be (see `shell/Placeholder.tsx`). Which
+// route each placeholder occupies is this design's; what eventually renders
+// there belongs to the issue it names.
+//
+// The three factories differ only in who owns the `<main id="main-content">`
+// the screen renders into, which is decided by the branch the route sits on
+// (§5.3, §7.1).
+
+/** Inside the app shell, where the area layout owns `<main>`. */
+function areaPlaceholder(props: PlaceholderProps) {
+  return function AreaPlaceholder() {
+    return <Placeholder {...props} />;
+  };
+}
+
+/**
+ * Outside the app shell — site, focused and participant — where there is no
+ * area layout and the screen owns its own `<main>`.
+ */
+function screenPlaceholder(props: PlaceholderProps) {
+  return function ScreenPlaceholder() {
+    return (
+      <ScreenMain>
+        <Placeholder {...props} />
+      </ScreenMain>
+    );
+  };
+}
+
+/**
+ * Inside the app shell, in an area that declares no sidebar: the gallery and
+ * the template library, which §5.3 and §11.1 name as the only such routes.
+ * `AppArea` with no navigation is `<main>` alone, so the landmark still comes
+ * from one place — but there is no area layout above these routes to render
+ * it, deliberately, because there is no navigation region for one to own.
+ */
+function libraryPlaceholder(props: PlaceholderProps) {
+  return function LibraryPlaceholder() {
+    const pathname = useRouterState({
+      select: (state) => state.location.pathname,
+    });
+    return (
+      <AppArea location={pathname}>
+        <Placeholder {...props} />
+      </AppArea>
+    );
+  };
+}
+
 // One deployable serves four products, and the first thing the tree encodes is
 // which of the four a route belongs to (§3, §5.3). Chrome is a property of
 // route position: a route inherits its shell from the branch it sits on, so
 // moving a route between branches is the only way to change its chrome, and
 // the app shell can never leak into a participant's interview.
-//
-// Site (marketing) and participant (the interview runtime) have no routes yet;
-// their content is owned by later slices. The branches exist so those routes
-// are added in one place, under chrome that is already decided.
 
 /** Marketing: `SiteNavigation` + `SiteFooter`, signed out, managed only. */
 const siteLayoutRoute = createRoute({
@@ -75,6 +131,45 @@ const participantLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'participant',
 });
+
+// ---------------------------------------------------------------------------
+// Site (§5.2)
+//
+// `/` is missing from this branch, and it is the one place this tree diverges
+// from §5.2. Marketing's home and the application's team workspace are the
+// same URL, and a path can be claimed once: today `/` is the workspace, on the
+// app branch below. Moving it is §5.4's migration of `TeamWorkspace` into
+// `/team/$teamId`, which needs the landing resolution (§6.4) to answer `/` for
+// a signed-in researcher — neither of which is shell work. Claiming `/` for a
+// marketing placeholder now would take the signed-in researcher's only screen
+// away to make room for one nobody has written.
+// ---------------------------------------------------------------------------
+
+const pricingRoute = createRoute({
+  getParentRoute: () => siteLayoutRoute,
+  path: '/pricing',
+  component: screenPlaceholder({
+    title: 'Pricing',
+    description:
+      'What each Studio plan includes and what it costs, so a research group can decide before they sign up.',
+    issue: '#1253',
+  }),
+});
+
+const legalRoute = createRoute({
+  getParentRoute: () => siteLayoutRoute,
+  path: '/legal/$document',
+  component: screenPlaceholder({
+    title: 'Legal',
+    description:
+      "Studio's terms of service, privacy notice and data processing agreement, each addressed by name.",
+    issue: '#1253',
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// Focused (§5.2)
+// ---------------------------------------------------------------------------
 
 const signInRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
@@ -107,6 +202,61 @@ const signInRoute = createRoute({
   component: SignIn,
 });
 
+const signUpRoute = createRoute({
+  getParentRoute: () => focusedLayoutRoute,
+  path: '/sign-up',
+  component: screenPlaceholder({
+    title: 'Create an account',
+    description:
+      'Where a researcher creates their Studio account, and the first step of the funnel that ends with a team and a first study.',
+    issue: '#1255',
+  }),
+});
+
+const signUpTeamRoute = createRoute({
+  getParentRoute: () => focusedLayoutRoute,
+  path: '/sign-up/team',
+  component: screenPlaceholder({
+    title: 'Name your team',
+    description:
+      'Names the team the new account will own — the boundary every study, member and invoice belongs to.',
+    issue: '#1249',
+  }),
+});
+
+const signUpPlanRoute = createRoute({
+  getParentRoute: () => focusedLayoutRoute,
+  path: '/sign-up/plan',
+  component: screenPlaceholder({
+    title: 'Choose a plan',
+    description:
+      'Which plan the new team starts on, and what that settles about seats and limits.',
+    issue: '#1253',
+  }),
+});
+
+const signUpCheckoutRoute = createRoute({
+  getParentRoute: () => focusedLayoutRoute,
+  path: '/sign-up/checkout',
+  component: screenPlaceholder({
+    title: 'Checkout',
+    description:
+      "Hands off to the payment provider's own checkout, so card details never reach Studio.",
+    issue: '#1253',
+  }),
+});
+
+const signUpCompleteRoute = createRoute({
+  getParentRoute: () => focusedLayoutRoute,
+  path: '/sign-up/complete',
+  component: screenPlaceholder({
+    title: 'Account ready',
+    description:
+      'Where checkout returns: the subscription is confirmed, the team exists, and its first study is created.',
+    issue: '#1253',
+  }),
+});
+
 const invitationRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/invitations/$invitationId',
@@ -114,6 +264,76 @@ const invitationRoute = createRoute({
     const { invitationId } = invitationRoute.useParams();
     return <AcceptInvitation invitationId={invitationId} />;
   },
+});
+
+const setupRoute = createRoute({
+  getParentRoute: () => focusedLayoutRoute,
+  path: '/setup',
+  component: screenPlaceholder({
+    title: 'First-run setup',
+    description:
+      'Configures a freshly installed self-hosted instance: its first owner, its name, and how it sends mail and stores files.',
+    issue: '#1250',
+  }),
+});
+
+const noTeamRoute = createRoute({
+  getParentRoute: () => focusedLayoutRoute,
+  path: '/no-team',
+  component: screenPlaceholder({
+    title: 'No team yet',
+    description:
+      'What a signed-in researcher who belongs to no team sees: how to create one, or what to expect while waiting for an invitation.',
+    issue: '#1249',
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// Participant (§5.2) — no chrome, no session, no researcher navigation.
+// ---------------------------------------------------------------------------
+
+const enterRoute = createRoute({
+  getParentRoute: () => participantLayoutRoute,
+  path: '/enter/$token',
+  component: screenPlaceholder({
+    title: 'Welcome',
+    description:
+      "Where a participant's invitation link lands: the study's welcome, the language they will answer in, and anything they should read first.",
+    issue: '#1265',
+  }),
+});
+
+const enterConsentRoute = createRoute({
+  getParentRoute: () => participantLayoutRoute,
+  path: '/enter/$token/consent',
+  component: screenPlaceholder({
+    title: 'Consent',
+    description:
+      "The study's consent text, and the participant's recorded decision about taking part in it.",
+    issue: '#1266',
+  }),
+});
+
+const enterInterviewRoute = createRoute({
+  getParentRoute: () => participantLayoutRoute,
+  path: '/enter/$token/interview',
+  component: screenPlaceholder({
+    title: 'Interview',
+    description:
+      'The interview itself, run by the Network Canvas interview runtime and owning the whole viewport.',
+    issue: '#1293',
+  }),
+});
+
+const enterCompleteRoute = createRoute({
+  getParentRoute: () => participantLayoutRoute,
+  path: '/enter/$token/complete',
+  component: screenPlaceholder({
+    title: 'Interview complete',
+    description:
+      'Confirms the interview is finished and sends the participant wherever the study asked to return them.',
+    issue: '#1292',
+  }),
 });
 
 /** Header and sidebar; authenticated. The session guard lives here. */
@@ -160,7 +380,12 @@ const appLayoutRoute = createRoute({
 // Areas are siblings, never nested, so one area's navigation region replaces
 // another's rather than rendering beside it.
 
-/** Team administration. Sidebar: Team. */
+/**
+ * The team workspace and the audit trail, at the addresses they shipped at.
+ * Both move under `teamLayoutRoute` with §5.4's migration; until they do they
+ * are team-area routes that simply do not name their team in the path, and
+ * `TeamArea` reads the active-team setting for them.
+ */
 const teamAreaLayoutRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   id: 'team-area',
@@ -168,9 +393,10 @@ const teamAreaLayoutRoute = createRoute({
 });
 
 /**
- * The protocol editor. No sidebar yet: its outline is still rendered inside
- * `Editor.tsx` and becomes this area's navigation region when the editor is
- * re-parented onto `/study/$studyId/editor`.
+ * The protocol editor, at the address it shipped at. No sidebar: its outline
+ * is still rendered inside `Editor.tsx`, and becomes `ProtocolOutlineArea`'s
+ * navigation region when the editor is re-parented onto
+ * `/study/$studyId/editor` — the route that already exists beneath the study.
  */
 const editorAreaLayoutRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
@@ -196,13 +422,493 @@ const teamActivityRoute = createRoute({
   component: TeamActivity,
 });
 
+// ---------------------------------------------------------------------------
+// App, platform level (§5.2)
+// ---------------------------------------------------------------------------
+
+/** The researcher's own settings. Sidebar: Account. */
+const accountLayoutRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/account',
+  component: AccountArea,
+});
+
+const accountIndexRoute = createRoute({
+  getParentRoute: () => accountLayoutRoute,
+  path: '/',
+  component: areaPlaceholder({
+    title: 'Profile',
+    description:
+      "The researcher's own name, email address and everything else Studio holds about them as a person rather than as a member of a team.",
+    issue: '#1255',
+  }),
+});
+
+const accountLanguageRoute = createRoute({
+  getParentRoute: () => accountLayoutRoute,
+  path: '/language',
+  component: areaPlaceholder({
+    title: 'Language',
+    description:
+      'The language Studio itself speaks to this researcher, which is a separate choice from the languages a protocol offers its participants.',
+    issue: '#1310',
+  }),
+});
+
+const accountSignInMethodsRoute = createRoute({
+  getParentRoute: () => accountLayoutRoute,
+  path: '/sign-in-methods',
+  component: areaPlaceholder({
+    title: 'Sign-in methods',
+    description:
+      'Which providers can sign this account in, and which sessions are signed in on it right now.',
+    issue: '#1255',
+  }),
+});
+
+const accountTokensRoute = createRoute({
+  getParentRoute: () => accountLayoutRoute,
+  path: '/tokens',
+  component: areaPlaceholder({
+    title: 'API tokens',
+    description:
+      "Personal tokens for reaching Studio's API as this researcher, and revoking one that should no longer work.",
+    issue: '#1288',
+  }),
+});
+
+const galleryRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/gallery',
+  component: libraryPlaceholder({
+    title: 'Gallery',
+    description:
+      'Protocols other researchers have published, to read, cite and copy into a team as the starting point for a study.',
+    issue: '#1285',
+  }),
+});
+
+const galleryTemplateRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/gallery/$templateId',
+  component: libraryPlaceholder({
+    title: 'Gallery protocol',
+    description:
+      'One published protocol in full: what it collects, who made it, and where it came from.',
+    issue: '#1283',
+  }),
+});
+
+const templatesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/templates',
+  component: libraryPlaceholder({
+    title: 'Templates',
+    description:
+      'The protocol templates this instance offers as starting points, and what each one is for.',
+    issue: '#1282',
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// App, team level (§5.2)
+//
+// The team workspace and the audit trail are the two screens here that are
+// built, and they are still at their shipped addresses on `teamAreaLayoutRoute`
+// above. These routes are where they land in §5.4's migration, and the team
+// sidebar points at whichever of the two addresses is real today.
+// ---------------------------------------------------------------------------
+
+/** Team administration. Sidebar: Team. */
+const teamLayoutRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/team/$teamId',
+  component: TeamArea,
+});
+
+const teamIndexRoute = createRoute({
+  getParentRoute: () => teamLayoutRoute,
+  path: '/',
+  component: areaPlaceholder({
+    title: 'Studies',
+    description:
+      'Every study this team owns, where a new one is created and where an existing protocol is imported to become one.',
+    issue: '#1262',
+  }),
+});
+
+const teamMembersRoute = createRoute({
+  getParentRoute: () => teamLayoutRoute,
+  path: '/members',
+  component: areaPlaceholder({
+    title: 'Members',
+    description:
+      'Who belongs to this team, and which invitations are still outstanding.',
+    issue: '#1256',
+  }),
+});
+
+const teamRolesRoute = createRoute({
+  getParentRoute: () => teamLayoutRoute,
+  path: '/roles',
+  component: areaPlaceholder({
+    title: 'Roles',
+    description:
+      'What each member is allowed to do, and who among them may see participant identifiers.',
+    issue: '#1257',
+  }),
+});
+
+const teamAuditRoute = createRoute({
+  getParentRoute: () => teamLayoutRoute,
+  path: '/activity',
+  component: areaPlaceholder({
+    title: 'Activity',
+    description: "The team's audit trail: what happened, who did it, and when.",
+    issue: '#1259',
+  }),
+});
+
+const teamBillingRoute = createRoute({
+  getParentRoute: () => teamLayoutRoute,
+  path: '/billing',
+  component: areaPlaceholder({
+    title: 'Billing',
+    description:
+      "The team's plan, the seats it is paying for, and its invoices.",
+    issue: '#1253',
+  }),
+});
+
+const teamSettingsRoute = createRoute({
+  getParentRoute: () => teamLayoutRoute,
+  path: '/settings',
+  component: areaPlaceholder({
+    title: 'Team settings',
+    description:
+      "The team's name, the defaults every new study inherits from it, and deleting the team.",
+    issue: '#1249',
+  }),
+});
+
+const teamSettingsApiRoute = createRoute({
+  getParentRoute: () => teamLayoutRoute,
+  path: '/settings/api',
+  component: areaPlaceholder({
+    title: 'API access',
+    description:
+      "The team's API credentials, what each one may reach, and when it was last used.",
+    issue: '#1288',
+  }),
+});
+
+const teamSettingsWebhooksRoute = createRoute({
+  getParentRoute: () => teamLayoutRoute,
+  path: '/settings/webhooks',
+  component: areaPlaceholder({
+    title: 'Webhooks',
+    description:
+      'Where Studio should tell another system that something happened in this team, and whether those messages are arriving.',
+    issue: '#1291',
+  }),
+});
+
+const teamSettingsMessagingRoute = createRoute({
+  getParentRoute: () => teamLayoutRoute,
+  path: '/settings/messaging',
+  component: areaPlaceholder({
+    title: 'Messaging',
+    description:
+      'How this team reaches participants by email and SMS, and the sender they will see it come from.',
+    issue: '#1305',
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// App, study level (§5.2)
+// ---------------------------------------------------------------------------
+
+/**
+ * The study. It declares the path and the params and renders NOTHING: a route
+ * with no component renders `Outlet`, so it contributes no DOM of its own.
+ *
+ * Its two children are sibling AREA layouts, exactly one of which is ever
+ * matched, and that is what makes the editor's outline REPLACE the study
+ * sidebar rather than render beside it. An editor layout nested under the
+ * study's area would render two `<nav>`s and two `<main id="main-content">`s,
+ * with the skip link resolving to the outer one (§5.3).
+ *
+ * `$studyId` addresses a PROTOCOL until #1262 lands the studies model. The
+ * shell does not wait for an entity model to exist before giving the product
+ * its shape, and it should not pretend the model is here either: the parameter
+ * is named for what the product has decided to have, and what it currently
+ * identifies is the protocol that study work is being done against.
+ */
+const studyRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/study/$studyId',
+});
+
+/** The study's own area. Sidebar: Study. */
+const studyAreaLayoutRoute = createRoute({
+  getParentRoute: () => studyRoute,
+  id: 'study-area',
+  component: () => {
+    const { studyId } = studyRoute.useParams();
+    return <StudyArea studyId={studyId} />;
+  },
+});
+
+const studyIndexRoute = createRoute({
+  getParentRoute: () => studyAreaLayoutRoute,
+  path: '/',
+  component: areaPlaceholder({
+    title: 'Overview',
+    description:
+      'How collection on this study is going: what has come in, what is outstanding, and what needs attention.',
+    issue: '#1268',
+  }),
+});
+
+const studyVersionsRoute = createRoute({
+  getParentRoute: () => studyAreaLayoutRoute,
+  path: '/versions',
+  component: areaPlaceholder({
+    title: 'Versions',
+    description:
+      'The protocol versions this study has published, and what changed between one and the next.',
+    issue: '#1276',
+  }),
+});
+
+const studyParticipantsRoute = createRoute({
+  getParentRoute: () => studyAreaLayoutRoute,
+  path: '/participants',
+  component: areaPlaceholder({
+    title: 'Participants',
+    description:
+      'The people taking part in this study, and the identifiers and attributes the study holds about them.',
+    issue: '#1263',
+  }),
+});
+
+const studyWavesRoute = createRoute({
+  getParentRoute: () => studyAreaLayoutRoute,
+  path: '/waves',
+  component: areaPlaceholder({
+    title: 'Waves',
+    description:
+      'The timepoints this study collects at, and how far each participant has progressed through them.',
+    issue: '#1267',
+  }),
+});
+
+const studySessionsRoute = createRoute({
+  getParentRoute: () => studyAreaLayoutRoute,
+  path: '/sessions',
+  component: areaPlaceholder({
+    title: 'Sessions',
+    description:
+      'Every interview session this study has collected, finished or otherwise.',
+    issue: '#1269',
+  }),
+});
+
+const studySessionRoute = createRoute({
+  getParentRoute: () => studyAreaLayoutRoute,
+  path: '/sessions/$sessionId',
+  component: areaPlaceholder({
+    title: 'Session',
+    description:
+      'One session in detail: the network it collected, the answers it recorded, and how it was captured.',
+    issue: '#1269',
+  }),
+});
+
+const studyScheduleRoute = createRoute({
+  getParentRoute: () => studyAreaLayoutRoute,
+  path: '/schedule',
+  component: areaPlaceholder({
+    title: 'Schedule',
+    description:
+      'When this study contacts participants and runs its waves, and whether it is keeping to that.',
+    issue: '#1304',
+  }),
+});
+
+const studyRecruitmentRoute = createRoute({
+  getParentRoute: () => studyAreaLayoutRoute,
+  path: '/recruitment',
+  component: areaPlaceholder({
+    title: 'Recruitment',
+    description:
+      'How participants arrive: the links that let them in, the consent they are asked for, and what they meet on the way.',
+    issue: '#1265',
+  }),
+});
+
+const studySettingsRoute = createRoute({
+  getParentRoute: () => studyAreaLayoutRoute,
+  path: '/settings',
+  component: areaPlaceholder({
+    title: 'Study settings',
+    description:
+      "The study's name, where it is in its lifecycle, how it is delivered, and how it is closed.",
+    issue: '#1262',
+  }),
+});
+
+const studyExportRoute = createRoute({
+  getParentRoute: () => studyAreaLayoutRoute,
+  path: '/export',
+  component: areaPlaceholder({
+    title: 'Export',
+    description:
+      'Collected data out of Studio: the interchange formats analysis needs, and the archives a repository will take.',
+    issue: '#1324',
+  }),
+});
+
+/** The protocol editor's area. Sidebar: Protocol outline. */
+const editorLayoutRoute = createRoute({
+  getParentRoute: () => studyRoute,
+  path: '/editor',
+  component: () => {
+    const { studyId } = studyRoute.useParams();
+    return <ProtocolOutlineArea studyId={studyId} />;
+  },
+});
+
+const editorIndexRoute = createRoute({
+  getParentRoute: () => editorLayoutRoute,
+  path: '/',
+  component: areaPlaceholder({
+    title: 'Stages',
+    description:
+      "The current draft's stages in the order a participant meets them, which is where the interview's shape is decided.",
+    issue: '#1272',
+  }),
+});
+
+const editorCodebookRoute = createRoute({
+  getParentRoute: () => editorLayoutRoute,
+  path: '/codebook',
+  component: areaPlaceholder({
+    title: 'Codebook',
+    description:
+      'The entities and variables this protocol collects, and the rules each of them follows.',
+    issue: '#1273',
+  }),
+});
+
+const editorStageRoute = createRoute({
+  getParentRoute: () => editorLayoutRoute,
+  path: '/stages/$stageId',
+  component: areaPlaceholder({
+    title: 'Stage',
+    description:
+      'One stage in detail: the interface it uses, the prompts it asks, and how a participant answers it.',
+    issue: '#1274',
+  }),
+});
+
+const editorAssetsRoute = createRoute({
+  getParentRoute: () => editorLayoutRoute,
+  path: '/assets',
+  component: areaPlaceholder({
+    title: 'Assets',
+    description:
+      'The images, videos, audio and network files this protocol shows participants.',
+    issue: '#1278',
+  }),
+});
+
+const editorTranslationsRoute = createRoute({
+  getParentRoute: () => editorLayoutRoute,
+  path: '/translations',
+  component: areaPlaceholder({
+    title: 'Translations',
+    description:
+      'Every piece of text a participant will read, in each language this study offers them.',
+    issue: '#1311',
+  }),
+});
+
+const editorPreviewRoute = createRoute({
+  getParentRoute: () => editorLayoutRoute,
+  path: '/preview',
+  component: areaPlaceholder({
+    title: 'Preview',
+    description:
+      'The draft run exactly as a participant would meet it, recording nothing.',
+    issue: '#1279',
+  }),
+});
+
 const routeTree = rootRoute.addChildren([
-  siteLayoutRoute,
-  focusedLayoutRoute.addChildren([signInRoute, invitationRoute]),
-  participantLayoutRoute,
+  siteLayoutRoute.addChildren([pricingRoute, legalRoute]),
+  focusedLayoutRoute.addChildren([
+    signInRoute,
+    signUpRoute,
+    signUpTeamRoute,
+    signUpPlanRoute,
+    signUpCheckoutRoute,
+    signUpCompleteRoute,
+    invitationRoute,
+    setupRoute,
+    noTeamRoute,
+  ]),
+  participantLayoutRoute.addChildren([
+    enterRoute,
+    enterConsentRoute,
+    enterInterviewRoute,
+    enterCompleteRoute,
+  ]),
   appLayoutRoute.addChildren([
     teamAreaLayoutRoute.addChildren([indexRoute, teamActivityRoute]),
     editorAreaLayoutRoute.addChildren([editorRoute]),
+    accountLayoutRoute.addChildren([
+      accountIndexRoute,
+      accountLanguageRoute,
+      accountSignInMethodsRoute,
+      accountTokensRoute,
+    ]),
+    galleryRoute,
+    galleryTemplateRoute,
+    templatesRoute,
+    teamLayoutRoute.addChildren([
+      teamIndexRoute,
+      teamMembersRoute,
+      teamRolesRoute,
+      teamAuditRoute,
+      teamBillingRoute,
+      teamSettingsRoute,
+      teamSettingsApiRoute,
+      teamSettingsWebhooksRoute,
+      teamSettingsMessagingRoute,
+    ]),
+    studyRoute.addChildren([
+      studyAreaLayoutRoute.addChildren([
+        studyIndexRoute,
+        studyVersionsRoute,
+        studyParticipantsRoute,
+        studyWavesRoute,
+        studySessionsRoute,
+        studySessionRoute,
+        studyScheduleRoute,
+        studyRecruitmentRoute,
+        studySettingsRoute,
+        studyExportRoute,
+      ]),
+      editorLayoutRoute.addChildren([
+        editorIndexRoute,
+        editorCodebookRoute,
+        editorStageRoute,
+        editorAssetsRoute,
+        editorTranslationsRoute,
+        editorPreviewRoute,
+      ]),
+    ]),
   ]),
 ]);
 

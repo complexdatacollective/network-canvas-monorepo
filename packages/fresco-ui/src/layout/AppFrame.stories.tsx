@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { BookMarked, LayoutGrid, Menu } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import Button, { IconButton } from '../Button';
@@ -82,9 +82,9 @@ const DemoArea = ({
 );
 
 const documentation = `
-The application shell's outer frame: the skip link, the \`<header>\`, an optional
-leading rail, and the area region every area layout renders into. Rendered once,
-above the areas, so the header survives every area transition.
+The application shell's outer frame: the skip link, the \`<header>\` and the
+area region every area layout renders into. Rendered once, above the areas, so
+the header survives every area transition.
 
 \`\`\`tsx
 <AppFrame header={<StudioHeader />} skipLinkLabel={t('skipToMainContent')}>
@@ -102,8 +102,9 @@ above the areas, so the header survives every area transition.
   plain \`href="#main-content"\` would leave the next Tab restarting at the top
   of the document, on the link just used.
 - **The area region is the container-query context**, so an area sizes itself to
-  the width it is actually given rather than to the viewport — including once a
-  leading rail takes some of that width away.
+  the width it is actually given rather than to the viewport — the same area in
+  a narrow frame and a wide one answers differently with nothing passed down to
+  say so.
 `;
 
 const meta = {
@@ -137,33 +138,6 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
 
 /**
- * The leading rail slot, which no host uses yet. It exists so an icon rail can
- * be added later without touching a single area layout — the area region simply
- * gets less width, and each area's own container queries answer accordingly.
- * When the prop is absent nothing is rendered for it, not even an empty cell.
- */
-export const WithLeadingRail: Story = {
-  args: {
-    leadingRail: (
-      <div className="border-surface-2 flex flex-col items-center gap-2 border-e p-2">
-        <IconButton
-          size="sm"
-          variant="text"
-          icon={<LayoutGrid aria-hidden className="size-5" />}
-          aria-label="Gallery"
-        />
-        <IconButton
-          size="sm"
-          variant="text"
-          icon={<BookMarked aria-hidden className="size-5" />}
-          aria-label="Templates"
-        />
-      </div>
-    ),
-  },
-};
-
-/**
  * Translation expands navigation labels by roughly a third, and the skip link
  * is no exception. The frame sizes to its content: nothing here is clipped or
  * truncated.
@@ -189,7 +163,8 @@ export const LongLabels: Story = {
 /**
  * The same frame in a narrow region. The area drops its sidebar for an area bar
  * — and it does so on the width of the region, not the width of the browser
- * window, which is what makes the rail above addable without touching it.
+ * window — which is why this story's 24rem harness decides it and the width of
+ * the Storybook canvas does not.
  */
 export const NarrowContainer: Story = {
   decorators: [

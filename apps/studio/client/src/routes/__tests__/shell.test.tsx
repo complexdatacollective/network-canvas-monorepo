@@ -44,6 +44,7 @@ vi.mock('../../lib/api.ts', () => ({
           name: 'Network Canvas Studio',
           version: '0.1.0',
           auth: { enabled: true, magicLink: true, socialProviders: [] },
+          deployment: { mode: 'managed', billing: false },
         }),
       }),
     },
@@ -103,64 +104,68 @@ function branchId(route: AnyRoute): string {
   return typeof id === 'string' ? id : '(no id)';
 }
 
-/** The path a route declares, or undefined for a pathless layout route. */
-function declaredPath(route: AnyRoute): string | undefined {
-  const { options } = route;
-  if (!('path' in options)) return undefined;
-  const path: unknown = options.path;
-  return typeof path === 'string' ? path : undefined;
+/**
+ * The URL a route answers at. An index route's own `fullPath` carries a
+ * trailing slash that its parent's does not, and the two are the same URL:
+ * `/team/$teamId/` is what `/team/$teamId` renders.
+ */
+function addressOf(route: AnyRoute): string {
+  const path: string = route.fullPath;
+  return path.length > 1 ? path.replace(/\/$/, '') : path;
+}
+
+/** Every route with no children — the ones that actually render a screen. */
+function leavesOf(route: AnyRoute): AnyRoute[] {
+  return descendantsOf(route).filter((child) => childrenOf(child).length === 0);
 }
 
 /**
- * Every path-carrying route in the tree, mapped to the shell branch it sits
- * on. This is the assertion the design's §5.3 tree is really making: a route's
- * chrome is decided by where it sits, so the branch a path resolves under is
- * the thing that must not drift.
+ * The addresses each shell branch answers at. This is the assertion §5.3's
+ * tree is really making: a route's chrome is decided by where it sits, so the
+ * branch a path resolves under is the thing that must not drift. Sorted, so
+ * the expectation pins the set of destinations rather than the order they
+ * happen to be declared in.
  */
-function shellByPath(
+function pathsByShell(
   router: ReturnType<typeof buildRouter>,
-): Record<string, string> {
-  const shells: Record<string, string> = {};
-  for (const branch of branchesOf(router)) {
-    for (const route of descendantsOf(branch)) {
-      const path = declaredPath(route);
-      if (path === undefined) continue;
-      const claimed = shells[path];
-      // Two branches claiming one path is the one drift a plain record cannot
-      // express: the second write would win and the map would read as correct
-      // while one of the two routes is unreachable. Marketing's `/` landing on
-      // the site branch while `/` is still the app branch's home is exactly
-      // that collision, so name it in the value rather than lose it.
-      shells[path] =
-        claimed === undefined
-          ? branchId(branch)
-          : `${claimed} + ${branchId(branch)} (both claim this path)`;
-    }
-  }
-  return shells;
+): Record<string, string[]> {
+  return Object.fromEntries(
+    branchesOf(router).map((branch) => [
+      branchId(branch),
+      leavesOf(branch).map(addressOf).toSorted(),
+    ]),
+  );
 }
 
 /**
  * The layout routes that declare an area — the `<nav>` and the
  * `<main id="main-content">` (§5.3). Every route under the app layout has to
- * sit under exactly one of them.
+ * sit under exactly one of them, or be allowlisted below. Identified by the
+ * router's own derived ids, because an area layout that carries a path
+ * (`/account`, `/team/$teamId`) has no `id` of its own to read.
  */
-const AREA_LAYOUT_IDS = ['team-area', 'editor-area'];
+const AREA_LAYOUT_IDS = [
+  '/app/team-area',
+  '/app/editor-area',
+  '/app/account',
+  '/app/team/$teamId',
+  '/app/study/$studyId/study-area',
+  '/app/study/$studyId/editor',
+];
 
 /**
  * App routes allowed to sit under no area layout at all, because their area
- * declares no sidebar and they render `<main>` themselves. §5.3 names
- * `/gallery`, `/gallery/$templateId` and `/templates` as the only such routes;
- * none of them exists yet, so the list is empty and adding to it is a
- * review-time decision rather than an oversight.
+ * declares no sidebar and they render `<main>` themselves (§5.3, §11.1). The
+ * allowlist is the design decision made visible: adding to it is a review-time
+ * choice, where forgetting an area layout is a test failure.
  */
-const SIDEBAR_LESS_PATHS: string[] = [];
+const SIDEBAR_LESS_PATHS = ['/gallery', '/gallery/$templateId', '/templates'];
 
 function areaLayoutsAbove(route: AnyRoute): string[] {
   const areas: string[] = [];
   let current: AnyRoute | undefined = route.parentRoute as AnyRoute | undefined;
   while (current) {
-    const id = branchId(current);
+    const id: string = current.id;
     if (AREA_LAYOUT_IDS.includes(id)) areas.push(id);
     current = current.parentRoute as AnyRoute | undefined;
   }
@@ -197,41 +202,101 @@ describe('shell branches', () => {
     ]);
   });
 
-  it('puts every shipped route on the branch that owns its chrome', () => {
-    expect(shellByPath(buildRouter())).toEqual({
-      '/sign-in': 'focused',
-      '/invitations/$invitationId': 'focused',
-      '/': 'app',
-      '/teams/$teamId/activity': 'app',
-      '/teams/$teamId/protocols/$protocolId/drafts/$draftId': 'app',
+  it('puts every route on the branch that owns its chrome', () => {
+    // The whole of §5.2's route table, by the shell each destination is
+    // rendered in. `/` is the one divergence from that table: marketing's home
+    // and the team workspace are one URL, and it is the workspace's until
+    // §5.4's migration moves the workspace to `/team/$teamId` — see the site
+    // branch's comment in `router.tsx`.
+    expect(pathsByShell(buildRouter())).toEqual({
+      site: ['/legal/$document', '/pricing'],
+      focused: [
+        '/invitations/$invitationId',
+        '/no-team',
+        '/setup',
+        '/sign-in',
+        '/sign-up',
+        '/sign-up/checkout',
+        '/sign-up/complete',
+        '/sign-up/plan',
+        '/sign-up/team',
+      ],
+      participant: [
+        '/enter/$token',
+        '/enter/$token/complete',
+        '/enter/$token/consent',
+        '/enter/$token/interview',
+      ],
+      app: [
+        '/',
+        '/account',
+        '/account/language',
+        '/account/sign-in-methods',
+        '/account/tokens',
+        '/gallery',
+        '/gallery/$templateId',
+        '/study/$studyId',
+        '/study/$studyId/editor',
+        '/study/$studyId/editor/assets',
+        '/study/$studyId/editor/codebook',
+        '/study/$studyId/editor/preview',
+        '/study/$studyId/editor/stages/$stageId',
+        '/study/$studyId/editor/translations',
+        '/study/$studyId/export',
+        '/study/$studyId/participants',
+        '/study/$studyId/recruitment',
+        '/study/$studyId/schedule',
+        '/study/$studyId/sessions',
+        '/study/$studyId/sessions/$sessionId',
+        '/study/$studyId/settings',
+        '/study/$studyId/versions',
+        '/study/$studyId/waves',
+        '/team/$teamId',
+        '/team/$teamId/activity',
+        '/team/$teamId/billing',
+        '/team/$teamId/members',
+        '/team/$teamId/roles',
+        '/team/$teamId/settings',
+        '/team/$teamId/settings/api',
+        '/team/$teamId/settings/messaging',
+        '/team/$teamId/settings/webhooks',
+        '/teams/$teamId/activity',
+        '/teams/$teamId/protocols/$protocolId/drafts/$draftId',
+        '/templates',
+      ],
     });
   });
 
   it('gives every app route exactly one area layout', () => {
     const router = buildRouter();
     const app = branchesOf(router).find((branch) => branchId(branch) === 'app');
-    const leaves = descendantsOf(app as AnyRoute).filter(
-      (route) => childrenOf(route).length === 0,
-    );
 
     // The area layout is what renders the `<nav>` and the
     // `<main id="main-content">` the frame's skip link targets. A route
     // parented straight onto the app layout would render neither, and nothing
-    // else in the tree would notice — so the chain is asserted here, by path,
-    // rather than left to the one route test that happens to render it.
-    expect(
-      Object.fromEntries(
-        leaves.map((leaf) => [
-          declaredPath(leaf) ?? '(pathless)',
-          areaLayoutsAbove(leaf),
-        ]),
-      ),
-    ).toEqual({
-      '/': ['team-area'],
-      '/teams/$teamId/activity': ['team-area'],
-      '/teams/$teamId/protocols/$protocolId/drafts/$draftId': ['editor-area'],
-    });
-    expect(SIDEBAR_LESS_PATHS).toEqual([]);
+    // else in the tree would notice — so the chain is asserted here, over the
+    // whole branch, rather than left to the route tests that happen to render
+    // one screen each.
+    const misplaced = leavesOf(app as AnyRoute)
+      .map((leaf) => ({ path: addressOf(leaf), areas: areaLayoutsAbove(leaf) }))
+      .filter(({ path, areas }) =>
+        SIDEBAR_LESS_PATHS.includes(path)
+          ? areas.length !== 0
+          : areas.length !== 1,
+      );
+
+    expect(misplaced).toEqual([]);
+  });
+
+  it('allowlists exactly the three sidebar-less app routes', () => {
+    // The allowlist above is only a decision if it is also complete: these
+    // three are the routes §5.3 gives no navigation region, and a fourth
+    // added to that list is a change to the design, not to a test fixture.
+    expect(SIDEBAR_LESS_PATHS).toEqual([
+      '/gallery',
+      '/gallery/$templateId',
+      '/templates',
+    ]);
   });
 
   it('hands preload freshness to the query cache rather than the router', () => {

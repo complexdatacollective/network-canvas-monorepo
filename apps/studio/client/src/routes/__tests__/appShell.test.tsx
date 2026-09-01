@@ -45,7 +45,11 @@ vi.mock('../../lib/api.ts', () => ({
     status: {
       queryOptions: () => ({
         queryKey: ['status'],
-        queryFn: () => ({ name: 'Network Canvas Studio', version: '0.1.0' }),
+        queryFn: () => ({
+          name: 'Network Canvas Studio',
+          version: '0.1.0',
+          deployment: { mode: 'managed', billing: false },
+        }),
       }),
     },
     protocols: {

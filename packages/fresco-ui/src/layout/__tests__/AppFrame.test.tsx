@@ -70,46 +70,16 @@ describe('AppFrame landmarks', () => {
   });
 });
 
-describe('AppFrame leading rail', () => {
-  const getFrameRoot = (container: HTMLElement) => {
-    const root = container.firstElementChild;
-    if (!(root instanceof HTMLElement)) throw new Error('frame not rendered');
-    return root;
-  };
-
-  it('renders nothing at all for the rail when none is supplied', () => {
+describe('AppFrame structure', () => {
+  it('renders the skip link, the header and the area region, and nothing else', () => {
     const { container } = renderFrame();
 
-    // Skip link, header, area region — and no empty element standing in for
-    // the rail, which would be a stray grid cell in every app route today for
-    // the sake of a slot no host uses yet.
-    expect(getFrameRoot(container).children).toHaveLength(3);
-  });
+    const root = container.firstElementChild;
+    if (!(root instanceof HTMLElement)) throw new Error('frame not rendered');
 
-  it('renders the rail ahead of the area region', () => {
-    const { container } = renderFrame({
-      leadingRail: <button type="button">Gallery</button>,
-    });
-    const root = getFrameRoot(container);
-
-    expect(root.children).toHaveLength(4);
-
-    const rail = screen.getByRole('button', { name: 'Gallery' });
-    const main = screen.getByRole('main');
-    expect(
-      rail.compareDocumentPosition(main) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-  });
-
-  it('keeps the rail behind the skip link in the tab order', () => {
-    const { container } = renderFrame({
-      leadingRail: <button type="button">Gallery</button>,
-    });
-
-    const focusable = container.querySelectorAll<HTMLElement>(
-      'a[href], button, input, select, textarea, [tabindex]',
-    );
-    expect(focusable[0]).toBe(getSkipLink());
+    // No fourth element and no empty one: an element the frame renders for
+    // nobody is a stray grid cell in every app route that mounts it.
+    expect(root.children).toHaveLength(3);
   });
 });
 

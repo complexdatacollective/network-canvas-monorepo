@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import { ChevronDown } from 'lucide-react';
 import { useId, useState } from 'react';
 
@@ -6,8 +7,10 @@ import { Button } from '@codaco/fresco-ui/Button';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@codaco/fresco-ui/DropdownMenu';
 
@@ -20,17 +23,16 @@ import { authClient } from '../lib/auth.ts';
  * **It switches without navigating, and that is deliberate.** §6.5 specifies
  * the switch as a blocker-aware navigation to the team's landing destination,
  * followed by `setActive` performed by §6.6's reconciler once that destination
- * commits. Neither piece exists yet: there is no `/team/$teamId`, and the only
- * team-scoped screens shipped today take their team from the URL
- * (`/teams/$teamId/activity`, the editor) or from the active-team setting
- * (`/`). So nothing on screen can go stale behind a switch, and there is
- * nowhere to navigate to. Adding a navigation to `/` in the meantime would
- * eject a researcher from the editor as a side effect of naming a different
- * team, and would introduce exactly the parked-`navigate()`-promise sequence
- * §6.5 warns about with no destination to justify it.
+ * commits. The reconciler does not exist, and the team's landing destination
+ * is a placeholder: every screen actually built today takes its team from the
+ * URL (`/teams/$teamId/activity`, the editor) or from the active-team setting
+ * (`/`), so nothing on screen goes stale behind a switch. Navigating anyway
+ * would eject a researcher from the editor onto an empty screen as a side
+ * effect of naming a different team, and would introduce exactly the
+ * parked-`navigate()`-promise sequence §6.5 warns about to reach it.
  *
- * When `/team/$teamId` lands, this becomes §6.5's navigate-then-verify
- * sequence and the write moves to the reconciler.
+ * When the team's studies screen is real, this becomes §6.5's
+ * navigate-then-verify sequence and the write moves to the reconciler.
  *
  * The list, the active team and `setActive` are the ones `TeamWorkspace`
  * already uses. Better Auth's organization hooks are shared atoms, so reading
@@ -110,10 +112,6 @@ export default function TeamSwitcher() {
             Radio semantics rather than plain items: exactly one team is the
             one being acted in, and `menuitemradio` is how that reaches a
             screen reader without a second visual-only cue.
-
-            Team administration and "create a team" belong beneath this list
-            (§5.5). Both are routes that do not exist yet; see `AppHeader` for
-            why they are named in a comment rather than rendered.
           */}
           <DropdownMenuRadioGroup
             value={active?.id ?? ''}
@@ -128,6 +126,27 @@ export default function TeamSwitcher() {
               </DropdownMenuRadioItem>
             ))}
           </DropdownMenuRadioGroup>
+          {/*
+            Team administration beneath the list, as §5.5 places it: choosing
+            a team and administering one are different acts, and the
+            separator is what says so.
+
+            "Create a team" belongs here too. It is a command rather than a
+            destination — #1249 owns the flow and there is none — and an
+            entry that opened nothing would be worse than its absence.
+          */}
+          {active ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                render={
+                  <Link to="/team/$teamId" params={{ teamId: active.id }} />
+                }
+              >
+                Team administration
+              </DropdownMenuItem>
+            </>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
       {switchFailed && (

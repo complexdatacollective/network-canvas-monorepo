@@ -87,7 +87,13 @@ export default function AcceptInvitation(props: { invitationId: string }) {
   };
 
   return (
-    <main className="flex h-full items-center justify-center p-4">
+    // Every route in §5.2 renders exactly one `<main id="main-content">`
+    // (§11.2). A focused screen has no area layout to own that landmark, so
+    // it owns its own.
+    <main
+      id="main-content"
+      className="flex h-full items-center justify-center p-4"
+    >
       <Surface className="max-w-xl" spacing="lg">
         {!invitationId.success ? (
           <>

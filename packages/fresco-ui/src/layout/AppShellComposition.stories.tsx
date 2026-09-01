@@ -59,13 +59,7 @@ const studySidebar = (
  * Stands in for the host: it owns the committed location, which is all the
  * shell is ever told about routing.
  */
-const Shell = ({
-  width,
-  withRail = false,
-}: {
-  width: string;
-  withRail?: boolean;
-}) => {
+const Shell = ({ width }: { width: string }) => {
   const [location, setLocation] = useState('/study/1');
 
   const commitNavigation = (event: MouseEvent<HTMLDivElement>) => {
@@ -98,15 +92,6 @@ const Shell = ({
           </div>
         }
         skipLinkLabel="Skip to main content"
-        leadingRail={
-          withRail ? (
-            <div className="border-surface-2 flex h-full w-14 flex-col items-center gap-2 border-e py-3">
-              <a href="/gallery" aria-label="Gallery" className="focusable p-2">
-                <Download aria-hidden className="size-5" />
-              </a>
-            </div>
-          ) : undefined
-        }
       >
         <AppArea
           location={location}
@@ -137,9 +122,9 @@ const RouteContent = ({ heading }: { heading: ReactNode }) => (
 );
 
 /**
- * The frame's own children, read positionally — which is the claim about the
- * rail slot as much as it is a way to find things: skip link, header, then the
- * rail only when there is one, then the area region.
+ * The frame's own children, read positionally: skip link, header, area region.
+ * Reading them by position is itself part of the claim — the frame renders
+ * those three, in that order, and nothing else.
  */
 const frameParts = (canvasElement: HTMLElement) => {
   const header = canvasElement.querySelector('header');
@@ -280,59 +265,28 @@ export const DrawerHandsOffToTheRoute: Story = {
 };
 
 /**
- * With no rail supplied, nothing at all stands in for it: no element, and no
- * grid column holding the space one would have taken. The area region starts at
- * the frame's own inline-start edge.
+ * The frame's grid, measured rather than described: one column, the header
+ * across the top of it, and the area region below filling the frame edge to
+ * edge. Nothing else is rendered and no column is held open — what the frame
+ * lays out is what a host asked it for.
  */
-export const WithoutLeadingRail: Story = {
+export const AreaRegionFillsTheFrame: Story = {
   play: async ({ canvasElement }) => {
-    const { root, children } = frameParts(canvasElement);
+    const { root, header, children } = frameParts(canvasElement);
 
     // Skip link, header, area region.
     await expect(children).toHaveLength(3);
     await expect(columnCount(root)).toBe(1);
 
-    const area = children[2]!;
-    await expect(area.getBoundingClientRect().left).toBeCloseTo(
-      root.getBoundingClientRect().left,
-      0,
-    );
-  },
-};
-
-/**
- * The rail slot filled. It takes a column of its own beside the area region,
- * both below the header, which still spans the full width — the seam §5.6
- * leaves open, exercised so that adopting it later is a change to one host and
- * not to the frame.
- */
-export const WithLeadingRail: Story = {
-  args: { withRail: true },
-  play: async ({ canvasElement }) => {
-    const { root, header, children } = frameParts(canvasElement);
-
-    // Skip link, header, rail, area region — in that order.
-    await expect(children).toHaveLength(4);
-    await expect(columnCount(root)).toBe(2);
-
-    const rail = children[2]!.getBoundingClientRect();
-    const area = children[3]!.getBoundingClientRect();
+    const area = children[2]!.getBoundingClientRect();
     const banner = header.getBoundingClientRect();
     const frame = root.getBoundingClientRect();
 
-    // The rail is beside the area, not above or over it.
-    await expect(rail.right).toBeLessThanOrEqual(area.left + 1);
-    await expect(rail.top).toBeGreaterThanOrEqual(banner.bottom - 1);
-    await expect(area.top).toBeGreaterThanOrEqual(banner.bottom - 1);
-    // The header still spans both columns.
-    await expect(banner.width).toBeCloseTo(frame.width, 0);
-    // And the area still reaches the frame's far edge.
+    // Both inline edges: no column, and no element, taking width off either
+    // side of the region the areas size themselves against.
+    await expect(area.left).toBeCloseTo(frame.left, 0);
     await expect(area.right).toBeCloseTo(frame.right, 0);
-
-    // The sidebar is still there: the area's wide/narrow decision is measured
-    // against the region the rail narrowed, not against the viewport.
-    await expect(
-      within(canvasElement).getByRole('navigation', { name: 'Study' }),
-    ).toBeVisible();
+    // And the region is below the header, not under or over it.
+    await expect(area.top).toBeGreaterThanOrEqual(banner.bottom - 1);
   },
 };

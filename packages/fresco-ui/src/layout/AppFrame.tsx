@@ -34,13 +34,6 @@ export type AppFrameProps = {
    * layouts render to match.
    */
   skipToId?: string;
-  /**
-   * An icon rail rendered before the area region, in the inline-start column.
-   * No host uses it today: it exists so a rail can be added without touching
-   * any area layout. Nothing is rendered for it when absent — not an empty
-   * column, not an empty element.
-   */
-  leadingRail?: ReactNode;
   className?: string;
 };
 
@@ -81,8 +74,8 @@ const focusSkipTarget = (anchor: HTMLAnchorElement, skipToId: string) => {
 };
 
 /**
- * The application shell's outer frame: the skip link, the `<header>`, an
- * optional leading rail, and the area region every area layout renders into.
+ * The application shell's outer frame: the skip link, the `<header>`, and the
+ * area region every area layout renders into.
  *
  * Rendered once, above the areas, so the header survives every area
  * transition.
@@ -105,7 +98,6 @@ const AppFrame = ({
   children,
   skipLinkLabel,
   skipToId = DEFAULT_SKIP_TARGET_ID,
-  leadingRail,
   className,
 }: AppFrameProps) => {
   const handleSkipLinkClick = (event: MouseEvent<HTMLAnchorElement>) => {
@@ -120,9 +112,7 @@ const AppFrame = ({
     <div
       className={cx(
         'grid h-full min-h-0 w-full grid-rows-[auto_minmax(0,1fr)]',
-        leadingRail
-          ? 'grid-cols-[auto_minmax(0,1fr)]'
-          : 'grid-cols-[minmax(0,1fr)]',
+        'grid-cols-[minmax(0,1fr)]',
         className,
       )}
     >
@@ -140,16 +130,12 @@ const AppFrame = ({
         {skipLinkLabel}
       </a>
       <header className="col-span-full min-w-0">{header}</header>
-      {leadingRail ? (
-        <div className="row-start-2 flex min-h-0 flex-col">{leadingRail}</div>
-      ) : null}
       {/*
         The area region. `@container` here rather than on the area itself so an
         area's wide/narrow behaviour is decided by the width it is actually
-        given — which the rail, once one exists, changes without any area
-        layout knowing. Named so an area can query it explicitly past any
-        container it introduces of its own; an unnamed `@min-[…]` still matches
-        it as the nearest container.
+        given, not by the viewport. Named so an area can query it explicitly
+        past any container it introduces of its own; an unnamed `@min-[…]`
+        still matches it as the nearest container.
       */}
       <div className="@container/app-area row-start-2 grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)]">
         {children}

@@ -88,7 +88,11 @@ vi.mock('../../lib/api.ts', () => ({
     status: {
       queryOptions: () => ({
         queryKey: ['status'],
-        queryFn: async () => ({ name: 'Studio', version: 'test' }),
+        queryFn: async () => ({
+          name: 'Studio',
+          version: 'test',
+          deployment: { mode: 'managed', billing: false },
+        }),
       }),
     },
     protocols: {

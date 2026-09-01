@@ -1,9 +1,18 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { Download, Settings, Users } from 'lucide-react';
+import {
+  CreditCard,
+  Download,
+  FolderOpen,
+  History,
+  Settings,
+  ShieldCheck,
+  Users,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 
 import NavItem from './NavItem';
+import NavList from './NavList';
 
 /**
  * `<li>` belongs inside a list and nowhere else, so every story renders one —
@@ -58,11 +67,27 @@ import NavItem from '@codaco/fresco-ui/navigation/NavItem';
   state, never the only carrier of it.
 - \`renderLink\` — renders the link element. Supplied by the host, so this
   component knows nothing about routing; defaults to a plain \`<a>\`.
+- \`disabled\` + \`unavailableReason\` — the destination is not available on this
+  deployment. The pair is required together: \`disabled\` without a reason does
+  not typecheck.
 - \`className\` — applied to the \`<li>\` the component renders.
 
 **Operated by Tab and Enter.** A sidebar is a list of links, not a composite
 widget: nothing here implements roving focus, which would take every
 destination out of the tab order.
+
+**An unavailable destination is text, not a disabled link.** \`disabled\` renders
+the row with no \`href\`, no \`tabIndex\`, no \`role\` and no \`aria-disabled\` — the
+usual focusable-\`aria-disabled\` shape cannot be spelled here without giving the
+row a \`link\` or \`button\` role, which is the announcement this state exists to
+prevent. The row is still an \`<li>\` in the sidebar's list, which is how a screen
+reader enumerates the sidebar, so it is found and read — "Billing, Managed
+deployments only" — without occupying a stop in the tab order that would do
+nothing when activated.
+
+Use it for a place this deployment genuinely does not have (billing on a
+self-hosted instance), not for one that is merely unbuilt. An unbuilt
+destination gets a route and a placeholder.
 `;
 
 const meta = {
@@ -215,5 +240,121 @@ export const HostSuppliedLink: Story = {
     // Reached by Tab, activated by Enter — no roving focus, no arrow keys.
     await userEvent.tab();
     await expect(link).toHaveFocus();
+  },
+};
+
+/**
+ * A destination this deployment does not have — billing on a self-hosted
+ * instance. It is shown rather than hidden, because a researcher who has read
+ * about billing should find out where it went, and it says why rather than
+ * being mysteriously dim.
+ *
+ * The row is text: no `href`, nothing focusable, and nothing that announces as
+ * a link or a button. What separates it from an enabled row is structural, not
+ * chromatic — the reason line, the lock, and no response to hover. The one
+ * colour difference is a single step, `text-text/70` against the enabled row's
+ * `text-text/75`: 5.20:1 in the worst case (light theme, over `--background`)
+ * against the enabled row's 6.00:1, where 4.5:1 is required and the next step
+ * down measures 4.44:1.
+ */
+export const Unavailable: Story = {
+  args: {
+    href: '/team/1/billing',
+    label: 'Billing',
+    icon: CreditCard,
+    count: undefined,
+    disabled: true,
+    unavailableReason: 'Managed deployments only',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.queryByRole('link')).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('button')).not.toBeInTheDocument();
+    await expect(
+      canvas.getByText('Managed deployments only'),
+    ).toBeInTheDocument();
+
+    // Nothing in the row takes focus, so Tab leaves the story entirely.
+    await userEvent.tab();
+    await expect(canvasElement.contains(document.activeElement)).toBe(false);
+
+    // Two graphics, both hidden: the destination's own icon and the lock. The
+    // lock is the cue that survives a glance down the sidebar, and it is
+    // redundant with the sentence rather than a substitute for it.
+    const graphics = canvasElement.querySelectorAll('svg');
+    await expect(graphics).toHaveLength(2);
+    for (const graphic of graphics) {
+      await expect(graphic).toHaveAttribute('aria-hidden', 'true');
+    }
+  },
+};
+
+/**
+ * The state as it is actually met: one unavailable destination among reachable
+ * ones, in the team sidebar of a self-hosted deployment. It keeps its place in
+ * the order rather than being dropped to the bottom or removed — the sidebar
+ * shows the whole product, and a researcher comparing notes with a colleague on
+ * a managed instance finds the same list.
+ */
+export const UnavailableInAList: Story = {
+  // The team sidebar, on `--background` because that is the surface it sits on
+  // in the app and the one the disabled row's contrast was measured against.
+  render: () => (
+    <div className="bg-background w-72 rounded-sm p-2">
+      <NavList>
+        <NavItem
+          href="/team/1"
+          label="Studies"
+          icon={FolderOpen}
+          count={3}
+          current
+        />
+        <NavItem
+          href="/team/1/members"
+          label="Members"
+          icon={Users}
+          count={4}
+        />
+        <NavItem href="/team/1/roles" label="Roles" icon={ShieldCheck} />
+        <NavItem href="/team/1/activity" label="Activity" icon={History} />
+        <NavItem
+          href="/team/1/billing"
+          label="Billing"
+          icon={CreditCard}
+          disabled
+          unavailableReason="Managed deployments only"
+        />
+        <NavItem
+          href="/team/1/settings"
+          label="Team settings"
+          icon={Settings}
+        />
+      </NavList>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Six destinations in the list, five of them reachable. The unavailable
+    // one is counted — which is how a screen reader finds it, since it walks
+    // the list rather than the tab order.
+    await expect(canvas.getAllByRole('listitem')).toHaveLength(6);
+    await expect(canvas.getAllByRole('link')).toHaveLength(5);
+
+    const billing = canvas.getByText('Billing').closest('li');
+    await expect(billing).toHaveTextContent('Managed deployments only');
+
+    // Tab walks the five links and steps straight over the sixth row.
+    for (const name of [
+      'Studies 3',
+      'Members 4',
+      'Roles',
+      'Activity',
+      'Team settings',
+    ]) {
+      await userEvent.tab();
+      await expect(canvas.getByRole('link', { name })).toHaveFocus();
+    }
   },
 };
