@@ -3,25 +3,30 @@ import { describe, expect, it } from 'vitest';
 import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
 
-import RouteFocus, { routeFocusTargetProps } from './RouteFocus';
+import {
+  focusRouteTarget as sharedFocusRouteTarget,
+  routeFocusTargetProps as sharedRouteFocusTargetProps,
+} from '@codaco/fresco-ui/navigation/RouteFocus';
 
-const ROUTE_TITLE = 'Codebook';
+import RouteFocus, {
+  focusRouteTarget,
+  routeFocusTargetProps,
+} from './RouteFocus';
 
 /**
- * The one element in the fixture that is focusable but is NOT an `HTMLElement`.
+ * What this file covers is the wrapper, not route-change focus itself: which
+ * element a navigation lands on, when it declines to move focus, what it
+ * announces, and the inert and no-landing-point refusals are fresco-ui's
+ * behaviour, pinned by
+ * `packages/fresco-ui/src/navigation/__tests__/RouteFocus.test.tsx` against the
+ * component this file renders.
  *
- * Queried by tag rather than by role and name on purpose: what this fixture
- * contributes is the element's DOM interface. A link inside an inline SVG
- * focuses as an `SVGElement` — as does anything else in an SVG carrying
- * `tabindex` — and no accessible name can express that.
+ * The wrapper can only break in two ways, one per test below: it can fail to
+ * feed wouter's location to a component that treats a changed location as the
+ * whole definition of "a route change happened", and it can stop re-exporting
+ * the shared helpers the rest of Architect imports through this module.
  */
-const focusableSvgLink = () => {
-  const link = document.querySelector('svg a');
-  if (!(link instanceof SVGElement)) {
-    throw new Error('the fixture must render a focusable link inside an <svg>');
-  }
-  return link;
-};
+const ROUTE_TITLE = 'Codebook';
 
 const renderRoute = () => {
   const { hook, navigate } = memoryLocation({ path: '/protocol/timeline' });
@@ -30,18 +35,11 @@ const renderRoute = () => {
     <Router hook={hook}>
       <RouteFocus />
       <h1 {...routeFocusTargetProps}>{ROUTE_TITLE}</h1>
-      <button type="button">Add stage</button>
-      <svg>
-        <a href="/protocol/timeline">
-          <text>Protocol map</text>
-        </a>
-      </svg>
     </Router>,
   );
 
   return {
-    heading: screen.getByRole('heading', { level: 1, name: ROUTE_TITLE }),
-    addStage: screen.getByRole('button', { name: 'Add stage' }),
+    heading: () => screen.getByRole('heading', { level: 1, name: ROUTE_TITLE }),
     /** What a route change announces — proof the route-change effect ran. */
     announcement: () => screen.getByRole('status'),
     navigate: (path: string) => act(() => navigate(path)),
@@ -49,54 +47,31 @@ const renderRoute = () => {
 };
 
 describe('RouteFocus', () => {
-  it('moves focus to the route landing point when the navigation left nothing focused', () => {
+  it("carries Architect's own router to the shared component, so a navigation lands focus on the route heading and announces it", () => {
     const { announcement, heading, navigate } = renderRoute();
-    // Activating a link the new route unmounts drops focus to `<body>`; jsdom
-    // starts there, which is the same state.
+    // Nothing has been announced yet, and the heading does not hold focus:
+    // arriving is not navigating.
+    expect(announcement()).toBeEmptyDOMElement();
     expect(document.activeElement).toBe(document.body);
 
+    // A wouter navigation, not a re-render with a new prop. Subscribing to
+    // anything but the router — or reading the location once and never
+    // re-reading it — leaves the shared component at its first location, and
+    // no route change ever reaches it.
     navigate('/protocol/codebook');
 
-    expect(heading).toHaveFocus();
+    expect(heading()).toHaveFocus();
     expect(announcement()).toHaveTextContent(ROUTE_TITLE);
   });
 
-  it('leaves a control that still owns focus alone', () => {
-    const { addStage, announcement, heading, navigate } = renderRoute();
-    addStage.focus();
-
-    navigate('/protocol/codebook');
-
-    expect(addStage).toHaveFocus();
-    expect(heading).not.toHaveFocus();
-    // The route change happened; it declined to move focus, rather than never
-    // running.
-    expect(announcement()).toHaveTextContent(ROUTE_TITLE);
-  });
-
-  /**
-   * The case that separates this component's "focus was lost" question from
-   * fresco-ui's `asFinalFocusTarget`, which is otherwise the same test in the
-   * opposite polarity. That helper additionally requires an `HTMLElement`,
-   * because a Base UI `finalFocus` DESTINATION must be one — so it answers
-   * `null` for a focused SVG element, and rewriting the check as
-   * `asFinalFocusTarget(document.activeElement) === null` would classify a real
-   * focus owner as lost and drag the researcher to the heading.
-   *
-   * Delete this test only together with that difference.
-   */
-  it('treats a focused SVG element as an owner of focus, not as lost focus', () => {
-    const { announcement, heading, navigate } = renderRoute();
-    const svgLink = focusableSvgLink();
-    svgLink.focus();
-    expect(document.activeElement).toBe(svgLink);
-    // The property the two predicates disagree about.
-    expect(svgLink).not.toBeInstanceOf(HTMLElement);
-
-    navigate('/protocol/codebook');
-
-    expect(document.activeElement).toBe(svgLink);
-    expect(heading).not.toHaveFocus();
-    expect(announcement()).toHaveTextContent(ROUTE_TITLE);
+  it("re-exports fresco-ui's helpers rather than a local copy of them", () => {
+    // Identity, not behaviour: nine call sites across Architect import these
+    // through this module — `routeFocusTargetProps` on every route's landing
+    // heading, `focusRouteTarget` in `ProtocolRouteGuard` — and they have to
+    // be the values the shared component itself queries and spreads. A local
+    // re-declaration would pass every behavioural test in this file on the day
+    // it was written and drift the first time fresco-ui changes either one.
+    expect(focusRouteTarget).toBe(sharedFocusRouteTarget);
+    expect(routeFocusTargetProps).toBe(sharedRouteFocusTargetProps);
   });
 });

@@ -58,6 +58,7 @@
     "./navigation/SiteNavigation": "./src/navigation/SiteNavigation.tsx",
     "./navigation/ThemeSwitcher": "./src/navigation/ThemeSwitcher.tsx",
     "./navigation/SiteFooter": "./src/navigation/SiteFooter.tsx",
+    "./navigation/RouteFocus": "./src/navigation/RouteFocus.tsx",
     "./typography/Heading": "./src/typography/Heading.tsx",
     "./typography/Paragraph": "./src/typography/Paragraph.tsx",
     "./typography/PageHeader": "./src/typography/PageHeader.tsx",
@@ -341,6 +342,10 @@
       "./navigation/SiteFooter": {
         "types": "./dist/navigation/SiteFooter.d.ts",
         "default": "./dist/navigation/SiteFooter.js"
+      },
+      "./navigation/RouteFocus": {
+        "types": "./dist/navigation/RouteFocus.d.ts",
+        "default": "./dist/navigation/RouteFocus.js"
       },
       "./typography/Heading": {
         "types": "./dist/typography/Heading.d.ts",
