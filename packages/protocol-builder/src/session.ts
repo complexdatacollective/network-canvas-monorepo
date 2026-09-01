@@ -450,7 +450,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
 
     const stageSectionId = this.snapshot.editedSection.sectionId;
     const updatedStageDocument = result.update.protocolSections[stageSectionId];
-    let fields = this.snapshot.editedSection.fields;
+    let fields: typeof this.snapshot.editedSection.fields;
     if (updatedStageDocument !== undefined) {
       try {
         const updatedStage = stageDraftFromDocument(updatedStageDocument);
