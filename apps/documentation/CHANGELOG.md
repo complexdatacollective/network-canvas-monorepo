@@ -1,5 +1,11 @@
 # @codaco/documentation
 
+## 0.4.1
+
+### Patch Changes
+
+- Point Fresco setup instructions at GitHub's working account entry point.
+
 ## 0.4.0
 
 ### Minor Changes
