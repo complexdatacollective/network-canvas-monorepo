@@ -60,6 +60,7 @@ const fixtures = vi.hoisted(() => {
     futureEvent,
     listAudit: vi.fn(),
     getAudit: vi.fn(),
+    auditFilterOptions: vi.fn(),
   };
 });
 
@@ -113,6 +114,22 @@ vi.mock('../../lib/api.ts', () => ({
           retry: options.retry,
         }),
       },
+      filterOptions: {
+        queryOptions: (options: {
+          input: { teamId: string };
+          enabled?: boolean;
+          staleTime?: number;
+          retry?: RetryOption;
+        }) => ({
+          queryKey: ['audit-filter-options', options.input.teamId],
+          queryFn: () => fixtures.auditFilterOptions(options.input),
+          // `enabled` gates the second audit read; a mock that ignored it
+          // could not observe the denied-path behaviour below.
+          enabled: options.enabled,
+          staleTime: options.staleTime,
+          retry: options.retry,
+        }),
+      },
     },
   },
   rpcClient: {},
@@ -155,7 +172,31 @@ beforeEach(() => {
     requestId: '00000000-0000-4000-8000-00000000aaaa',
     details: { role: 'member' },
   });
+  // Deliberately a superset of the loaded pages: these are the team's whole
+  // history, not the rows on screen.
+  fixtures.auditFilterOptions.mockResolvedValue({
+    actions: [
+      { eventType: 'team.invitation.created', title: 'Invitation created' },
+      {
+        eventType: 'team.member.role_change_denied',
+        title: 'Member role change denied',
+      },
+      { eventType: 'protocol.created', title: 'Protocol created' },
+    ],
+    actors: [
+      { kind: 'user', id: 'user-owner', label: 'Owner Researcher' },
+      { kind: 'user', id: 'user-departed', label: 'Departed Researcher' },
+      { kind: 'system', id: null, label: 'Studio' },
+    ],
+    truncated: false,
+  });
 });
+
+function optionLabels(select: HTMLElement): string[] {
+  return [...select.querySelectorAll('option')].map(
+    (option) => option.textContent ?? '',
+  );
+}
 
 describe('Team activity screen', () => {
   it('lists events newest-first with titles and outcomes, then pages to the history boundary', async () => {
@@ -185,7 +226,11 @@ describe('Team activity screen', () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByText('Unrecognized event')).toBeInTheDocument();
-    expect(screen.getByText('Studio (System)')).toBeInTheDocument();
+    // Scoped to the row: the same text is now also an actor filter option,
+    // because the options come from the team's history rather than the feed.
+    expect(
+      screen.getByRole('cell', { name: 'Studio (System)' }),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/beginning of the recorded activity/),
     ).toBeInTheDocument();
@@ -234,6 +279,119 @@ describe('Team activity screen', () => {
     expect(
       await screen.findByText('No activity matches these filters.'),
     ).toBeInTheDocument();
+  });
+
+  it('offers filter values that are absent from the loaded pages', async () => {
+    renderActivity();
+    await screen.findByRole('cell', { name: 'Invitation created' });
+    await waitFor(() => {
+      expect(fixtures.auditFilterOptions).toHaveBeenCalledWith({
+        teamId: 'team-a',
+      });
+    });
+
+    // 'Protocol created' is in no loaded page and 'Departed Researcher' has no
+    // row on screen at all: an option list built from the feed cannot offer
+    // either without paging through the whole history first.
+    await waitFor(() => {
+      expect(optionLabels(screen.getByLabelText('Action'))).toContain(
+        'Protocol created',
+      );
+    });
+    expect(optionLabels(screen.getByLabelText('Actor'))).toContain(
+      'Departed Researcher',
+    );
+  });
+
+  it('keeps every action selectable once a filter has narrowed the feed', async () => {
+    renderActivity();
+    await screen.findByRole('cell', { name: 'Invitation created' });
+    await waitFor(() => {
+      expect(optionLabels(screen.getByLabelText('Action'))).toContain(
+        'Protocol created',
+      );
+    });
+
+    fixtures.listAudit.mockResolvedValue({
+      items: [fixtures.roleDenied],
+      nextCursor: null,
+    });
+    fireEvent.change(screen.getByLabelText('Action'), {
+      target: { value: 'team.member.role_change_denied' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
+    await waitFor(() => {
+      expect(fixtures.listAudit).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          eventTypes: ['team.member.role_change_denied'],
+        }),
+      );
+    });
+
+    // Options drawn from the feed would now be exactly the applied value, so
+    // switching to a different action would first need Clear filters.
+    expect(optionLabels(screen.getByLabelText('Action'))).toContain(
+      'Invitation created',
+    );
+    // The option set is invariant across filter changes, so applying a filter
+    // must not re-fetch it.
+    expect(fixtures.auditFilterOptions).toHaveBeenCalledTimes(1);
+  });
+
+  it('filters for a system actor that carries no id', async () => {
+    renderActivity();
+    await screen.findByRole('cell', { name: 'Invitation created' });
+    await waitFor(() => {
+      expect(optionLabels(screen.getByLabelText('Actor'))).toContain(
+        'Studio (System)',
+      );
+    });
+
+    fixtures.listAudit.mockResolvedValue({
+      items: [fixtures.futureEvent],
+      nextCursor: null,
+    });
+    fireEvent.change(screen.getByLabelText('Actor'), {
+      target: { value: 'system:' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
+
+    await waitFor(() => {
+      expect(fixtures.listAudit).toHaveBeenLastCalledWith(
+        expect.objectContaining({ actor: { kind: 'system', id: null } }),
+      );
+    });
+  });
+
+  // The cap is the server's, and nothing on this screen raises it, so the
+  // notice must be shown only when the server reports it and must not offer a
+  // remedy the viewer does not have.
+  it('says so when the option list is capped, and stays quiet when it is not', async () => {
+    renderActivity();
+    await screen.findByRole('cell', { name: 'Invitation created' });
+    await waitFor(() => {
+      expect(fixtures.auditFilterOptions).toHaveBeenCalled();
+    });
+    expect(screen.queryByText(/missing from them/)).toBeNull();
+
+    fixtures.auditFilterOptions.mockResolvedValue({
+      actions: [],
+      actors: [],
+      truncated: true,
+    });
+    renderActivity();
+    expect(
+      await screen.findByText(/than these menus can list/),
+    ).toBeInTheDocument();
+  });
+
+  it('asks for no filter options while the log itself is denied', async () => {
+    fixtures.listAudit.mockRejectedValue(new ORPCError('FORBIDDEN'));
+    renderActivity();
+    await screen.findByText(/only available to team owners and admins/);
+    // Every denied audit read commits a rate-limited audit.read_denied event;
+    // one refusal per visit, not two.
+    expect(fixtures.auditFilterOptions).not.toHaveBeenCalled();
   });
 
   it('shows the unfiltered empty state', async () => {

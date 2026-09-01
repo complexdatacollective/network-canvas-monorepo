@@ -24,6 +24,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   AUDIT_CATEGORIES,
   AUDIT_OUTCOMES,
+  type AuditActorFilter,
   type AuditCategory,
   type AuditEventSummary,
   type AuditOutcome,
@@ -69,7 +70,7 @@ type ActivityFilters = {
   category: '' | AuditCategory;
   outcome: '' | AuditOutcome;
   eventType: string;
-  actorId: string;
+  actor: AuditActorFilter | null;
   from: string;
   to: string;
 };
@@ -78,10 +79,18 @@ const EMPTY_FILTERS: ActivityFilters = {
   category: '',
   outcome: '',
   eventType: '',
-  actorId: '',
+  actor: null,
   from: '',
   to: '',
 };
+
+// A <select> value is a string, but an actor is the (kind, id) pair the feed
+// renders — and a system actor may have no id at all. The token is a DOM-layer
+// encoding: every value is decoded back to the typed filter through the option
+// list before it reaches the RPC input, so no sentinel string crosses the wire.
+function actorToken(actor: AuditActorFilter): string {
+  return `${actor.kind}:${actor.id ?? ''}`;
+}
 
 function isCategory(value: string): value is AuditCategory {
   return (AUDIT_CATEGORIES as readonly string[]).includes(value);
@@ -92,7 +101,7 @@ function isOutcome(value: string): value is AuditOutcome {
 }
 
 function hasActiveFilter(filters: ActivityFilters): boolean {
-  return Object.values(filters).some((value) => value !== '');
+  return Object.values(filters).some((value) => value !== '' && value !== null);
 }
 
 // Filter values become the audit.list input; from/to use the viewer's local
@@ -103,7 +112,7 @@ function listInput(teamId: string, filters: ActivityFilters) {
     ...(filters.category === '' ? {} : { categories: [filters.category] }),
     ...(filters.outcome === '' ? {} : { outcomes: [filters.outcome] }),
     ...(filters.eventType === '' ? {} : { eventTypes: [filters.eventType] }),
-    ...(filters.actorId === '' ? {} : { actorId: filters.actorId }),
+    ...(filters.actor === null ? {} : { actor: filters.actor }),
     ...(filters.from === ''
       ? {}
       : { from: new Date(`${filters.from}T00:00:00`) }),
@@ -112,6 +121,11 @@ function listInput(teamId: string, filters: ActivityFilters) {
       : { to: new Date(`${filters.to}T23:59:59.999`) }),
   };
 }
+
+// The filter values change only when the team records a new kind of action or
+// a new actor acts for the first time, so a visit's worth of staleness costs
+// nothing and saves a second read on every remount.
+const FILTER_OPTIONS_STALE_MS = 5 * 60 * 1000;
 
 const timestampFormat = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',
@@ -129,9 +143,12 @@ function retryUnlessForbidden(failureCount: number, error: unknown): boolean {
   return !isForbidden(error) && failureCount < 3;
 }
 
-function actorText(actor: AuditEventSummary['actor']): string {
+function actorText(actor: AuditActorFilter & { label: string }): string {
   const kind = ACTOR_KIND_LABELS[actor.kind];
-  return kind === undefined ? actor.label : `${actor.label} (${kind})`;
+  if (kind === undefined) return actor.label;
+  // An actor with no name of its own is named by its kind alone, rather than
+  // by a parenthetical hanging off an empty string.
+  return actor.label === '' ? kind : `${actor.label} (${kind})`;
 }
 
 function detailValueText(value: unknown): string {
@@ -179,31 +196,58 @@ export default function TeamActivity() {
     [activity.data],
   );
 
-  // Options for the action and actor filters come from the loaded feed; the
-  // registry of event types is server-owned.
+  // The filter values are a property of the team's whole history, not of the
+  // pages that happen to be loaded: drawing them from `items` would hide any
+  // action or actor that appears only in older history, and would collapse to
+  // the single applied value once a filter narrowed the feed. They are also
+  // invariant across pages and across filter changes, so this query is keyed
+  // on the team alone and neither refetches on Load more nor on Apply.
+  const filterOptions = useQuery(
+    orpc.audit.filterOptions.queryOptions({
+      input: { teamId },
+      staleTime: FILTER_OPTIONS_STALE_MS,
+      // A second audit read only after the first has succeeded: each denied
+      // attempt commits a rate-limited audit.read_denied event, and a member
+      // who cannot read the log must not spend two of that budget per visit.
+      enabled: activity.isSuccess,
+      retry: retryUnlessForbidden,
+    }),
+  );
+
   const actionOptions = useMemo(() => {
-    const byType = new Map<string, string>();
-    for (const item of items) {
-      if (!byType.has(item.eventType)) byType.set(item.eventType, item.title);
-    }
+    const byType = new Map<string, string>(
+      filterOptions.data?.actions.map(({ eventType, title }) => [
+        eventType,
+        title,
+      ]),
+    );
+    // An applied value the options no longer carry keeps its own entry, so the
+    // select cannot silently fall back to its placeholder while the filter is
+    // still applied.
     if (applied.eventType !== '' && !byType.has(applied.eventType)) {
       byType.set(applied.eventType, applied.eventType);
     }
     return [...byType.entries()].map(([value, label]) => ({ value, label }));
-  }, [items, applied.eventType]);
+  }, [filterOptions.data, applied.eventType]);
 
   const actorOptions = useMemo(() => {
-    const byId = new Map<string, string>();
-    for (const item of items) {
-      if (item.actor.id !== null && !byId.has(item.actor.id)) {
-        byId.set(item.actor.id, item.actor.label);
-      }
+    const byToken = new Map<string, AuditActorFilter & { label: string }>(
+      filterOptions.data?.actors.map((actor) => [actorToken(actor), actor]),
+    );
+    if (applied.actor !== null && !byToken.has(actorToken(applied.actor))) {
+      // Nothing but the applied pair is known here, so the id stands in for
+      // the name; actorText names an actor with no id by its kind alone.
+      byToken.set(actorToken(applied.actor), {
+        ...applied.actor,
+        label: applied.actor.id ?? '',
+      });
     }
-    if (applied.actorId !== '' && !byId.has(applied.actorId)) {
-      byId.set(applied.actorId, applied.actorId);
-    }
-    return [...byId.entries()].map(([value, label]) => ({ value, label }));
-  }, [items, applied.actorId]);
+    return [...byToken.entries()].map(([value, actor]) => ({
+      value,
+      label: actorText(actor),
+      actor,
+    }));
+  }, [filterOptions.data, applied.actor]);
 
   const openDetail = (event: AuditEventSummary) => {
     void dialog.openDialog({
@@ -315,13 +359,22 @@ export default function TeamActivity() {
               name="activity-actor"
               className="mt-1"
               size="sm"
-              value={staged.actorId}
+              value={staged.actor === null ? '' : actorToken(staged.actor)}
               placeholder="All actors"
-              options={actorOptions}
+              options={actorOptions.map(({ value, label }) => ({
+                value,
+                label,
+              }))}
               onChange={(value) => {
+                const selected = actorOptions.find(
+                  (option) => option.value === String(value),
+                );
                 setStaged((current) => ({
                   ...current,
-                  actorId: String(value),
+                  actor:
+                    selected === undefined
+                      ? null
+                      : { kind: selected.actor.kind, id: selected.actor.id },
                 }));
               }}
             />
@@ -399,6 +452,22 @@ export default function TeamActivity() {
               Clear filters
             </Button>
           </div>
+          {/*
+            The option list is capped, and nothing the viewer can do here
+            raises the cap: the values come from the team's whole history and
+            the other filters do not narrow them. So this says only that the
+            menus are incomplete, and does not offer a remedy that would not
+            work.
+          */}
+          {filterOptions.data?.truncated === true && (
+            <Paragraph
+              className="phone-landscape:col-span-2 tablet-portrait:col-span-3 laptop:col-span-6 text-sm"
+              margin="none"
+            >
+              This team has taken more kinds of action, or has had more actors,
+              than these menus can list. Some values are missing from them.
+            </Paragraph>
+          )}
         </form>
       </Surface>
 

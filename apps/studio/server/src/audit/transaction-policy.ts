@@ -16,6 +16,11 @@ export const NO_AUDIT_TRANSACTION_POLICIES = {
     reason:
       'Viewing one activity event is a permission-checked bounded read; the audit taxonomy records exports and denied access, not views.',
   },
+  'audit.filterOptions': {
+    kind: 'none',
+    reason:
+      'Reading the values the activity filters can take is a permission-checked bounded read over the same rows as audit.list; the audit taxonomy records exports and denied access, not views.',
+  },
   'protocol.create': {
     kind: 'none',
     reason:

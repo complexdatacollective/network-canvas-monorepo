@@ -80,6 +80,7 @@ describe.skipIf(!db)('immutable audit store', () => {
       'audit-predicate-low',
       'audit-predicate-high',
       'audit-timestamp',
+      'audit-facets',
     ]) {
       await seedTeam(pool, teamId);
     }
@@ -284,6 +285,69 @@ describe.skipIf(!db)('immutable audit store', () => {
     expect((await appendAsOwner(pool, 'audit-predicate-low')).sequence).toBe(
       '2',
     );
+  });
+
+  it('reports every distinct action and actor, and flags a hit cap', async () => {
+    const tenant = createTenantDb(app, 'audit-facets');
+    await append(tenant, 'audit-facets');
+    // The one actor shape no producer in this build can append: the CHECK
+    // constraint permits a system actor with no id, and the facet scan has to
+    // reach it even though the ascending walk over actor_id never can.
+    await pool.query(
+      `INSERT INTO audit_events (
+         id, team_id, team_label, sequence, event_type, event_version,
+         category, outcome, actor_kind, actor_id, actor_label, request_id,
+         details)
+       VALUES (gen_random_uuid(), $1, $1, 2, 'audit.system_retention', 1,
+               'audit', 'succeeded', 'system', NULL, 'Studio',
+               gen_random_uuid(), '{}'::jsonb)`,
+      ['audit-facets'],
+    );
+
+    const facets = await tenant.transaction((client) =>
+      store.facetsForTeam(client, 'audit-facets', 10),
+    );
+    expect(facets.eventTypes.toSorted()).toEqual([
+      'audit.system_retention',
+      'team.invitation.created',
+    ]);
+    expect(facets.actors).toContainEqual({
+      kind: 'system',
+      id: null,
+      label: 'Studio',
+    });
+    expect(facets.actors).toContainEqual({
+      kind: 'user',
+      id: 'actor',
+      label: 'Audit actor',
+    });
+    expect(facets.truncated).toBe(false);
+
+    // Below the real cardinality the list is cut and says so, rather than
+    // silently pretending the team has only one action.
+    const capped = await tenant.transaction((client) =>
+      store.facetsForTeam(client, 'audit-facets', 1),
+    );
+    expect(capped.eventTypes).toHaveLength(1);
+    expect(capped.actors).toHaveLength(1);
+    expect(capped.truncated).toBe(true);
+  });
+
+  it('filters the list by the actor pair, including an actor with no id', async () => {
+    const tenant = createTenantDb(app, 'audit-facets');
+    const systemOnly = await tenant.transaction((client) =>
+      store.listForTeam(client, 'audit-facets', {
+        actor: { kind: 'system', id: null },
+      }),
+    );
+    expect(systemOnly.map((row) => row.sequence)).toEqual(['2']);
+
+    const userOnly = await tenant.transaction((client) =>
+      store.listForTeam(client, 'audit-facets', {
+        actor: { kind: 'user', id: 'actor' },
+      }),
+    );
+    expect(userOnly.map((row) => row.sequence)).toEqual(['1']);
   });
 
   it('has no foreign key that could cascade mutable rows into history', async () => {

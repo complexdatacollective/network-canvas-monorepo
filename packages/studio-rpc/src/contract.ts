@@ -8,6 +8,7 @@ import {
   AcquireSectionResultSchema,
   AddInformationStageInputSchema,
   AuditEventDetailSchema,
+  AuditFilterOptionsSchema,
   AuditGetInputSchema,
   AuditListInputSchema,
   AuditListOutputSchema,
@@ -35,6 +36,7 @@ import {
 
 export {
   AUDIT_CATEGORIES,
+  AUDIT_FACET_LIMIT,
   AUDIT_OUTCOMES,
   AuditActorKindSchema,
   AuditCategorySchema,
@@ -44,9 +46,11 @@ export {
   ProtocolNameSchema,
   TeamRoleSchema,
   TeamInvitationIdSchema,
+  type AuditActorFilter,
   type AuditCategory,
   type AuditEventDetail,
   type AuditEventSummary,
+  type AuditFilterOptions,
   type AuditOutcome,
   type SocialProvider,
   type TeamRole,
@@ -119,5 +123,14 @@ export const contract = {
   audit: {
     list: oc.input(AuditListInputSchema).output(AuditListOutputSchema),
     get: oc.input(AuditGetInputSchema).output(AuditEventDetailSchema),
+    /**
+     * The values the list filters can take, over the team's whole history.
+     * A separate procedure, not a field on the list response: the option set
+     * is invariant across pages and across filter changes, so folding it into
+     * audit.list would re-run two aggregate queries on every "Load more" and
+     * on every filter apply, and would make the options narrow to whatever
+     * the current filter already matched.
+     */
+    filterOptions: oc.input(TeamScopedSchema).output(AuditFilterOptionsSchema),
   },
 };

@@ -1,7 +1,7 @@
 import { implement, ORPCError } from '@orpc/server';
 import type pg from 'pg';
 
-import { contract } from '@codaco/studio-rpc';
+import { AUDIT_FACET_LIMIT, contract } from '@codaco/studio-rpc';
 import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import {
@@ -12,6 +12,7 @@ import {
 } from './audit/command.ts';
 import { reserveDeniedAuditAttempt } from './audit/denial-rate-limit.ts';
 import { createDeniedAuditSummaryWriter } from './audit/denial-summary.ts';
+import { renderAuditFilterOptions } from './audit/facets.ts';
 import {
   authorizeAuditRead,
   grantsAuditRead,
@@ -60,7 +61,7 @@ type TeamRpcContext = {
   tenantDb: TenantDb;
 };
 
-type AuditReadProcedure = 'audit.list' | 'audit.get';
+type AuditReadProcedure = 'audit.list' | 'audit.get' | 'audit.filterOptions';
 
 /**
  * Thrown from inside the read transaction when the caller's locked membership
@@ -477,7 +478,7 @@ export function createRpcRouter(
                   limit: input.limit,
                   categories: input.categories,
                   eventTypes: input.eventTypes,
-                  actorId: input.actorId,
+                  actor: input.actor,
                   outcomes: input.outcomes,
                   occurredFrom: input.from,
                   occurredTo: input.to,
@@ -508,6 +509,32 @@ export function createRpcRouter(
         if (!event) throw new ORPCError('NOT_FOUND');
         return renderAuditEventDetail(event);
       }),
+      // The same rows as audit.list through the same read surface, so it takes
+      // the same audit.read pre-check, the same committed and rate-limited
+      // denial, and the same locked-membership re-authorization inside the
+      // read's own transaction.
+      filterOptions: os.audit.filterOptions
+        .use(requireTeam)
+        .handler(async ({ context, input }) => {
+          const facets = await guardAuditRead(
+            context,
+            'audit.filterOptions',
+            () =>
+              runNoAuditTenantTransaction(
+                context.tenantDb,
+                'audit.filterOptions',
+                async (client) => {
+                  await assertAuditReadAuthorized(client, context);
+                  return auditStore.facetsForTeam(
+                    client,
+                    input.teamId,
+                    AUDIT_FACET_LIMIT,
+                  );
+                },
+              ),
+          );
+          return renderAuditFilterOptions(facets);
+        }),
     },
   };
 }

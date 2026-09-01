@@ -205,7 +205,7 @@ const AuditReadDeniedV1EventSchema = CommonUserEventSchema.extend({
   resourceId: z.null(),
   resourceLabel: z.null(),
   details: z.strictObject({
-    procedure: z.enum(['audit.list', 'audit.get']),
+    procedure: z.enum(['audit.list', 'audit.get', 'audit.filterOptions']),
     reason: z.literal('insufficient_permission'),
   }),
 }).strict();

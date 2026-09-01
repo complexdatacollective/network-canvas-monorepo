@@ -46,7 +46,11 @@ type SeededEvent = {
   eventVersion: number;
   category: string;
   outcome: string;
-  actorId: string;
+  // A system actor is the one kind the audit_events actor_id CHECK lets carry
+  // no id, and no producer in this build can append one — so the read paths
+  // are only exercised against one by seeding the row directly.
+  actorKind?: 'user' | 'api_token' | 'system';
+  actorId: string | null;
   actorLabel: string;
   subject?: { type: string; id: string; label: string };
   resource?: { type: string; id: string; label: string };
@@ -66,7 +70,7 @@ async function insertEvent(
        subject_type, subject_id, subject_label,
        resource_type, resource_id, resource_label, request_id, details
      ) VALUES (
-       $1, $2, $2, $3, $4::timestamptz, $5, $6, $7, $8, 'user', $9, $10,
+       $1, $2, $2, $3, $4::timestamptz, $5, $6, $7, $8, $19, $9, $10,
        $11, $12, $13, $14, $15, $16, $17::uuid, $18::jsonb
      )`,
     [
@@ -88,9 +92,20 @@ async function insertEvent(
       event.resource?.label ?? null,
       randomUUID(),
       JSON.stringify(event.details),
+      event.actorKind ?? 'user',
     ],
   );
   return id;
+}
+
+/** The next free per-team sequence, so a direct seed cannot collide. */
+async function nextSequence(pool: pg.Pool, teamId: string): Promise<number> {
+  const rows = await pool.query<{ next: string }>(
+    `SELECT COALESCE(MAX(sequence), 0) + 1 AS next
+     FROM audit_events WHERE team_id = $1`,
+    [teamId],
+  );
+  return Number(rows.rows[0]?.next ?? 1);
 }
 
 describe.skipIf(!db)('audit list/get RPC', () => {
@@ -371,7 +386,7 @@ describe.skipIf(!db)('audit list/get RPC', () => {
 
     const byActor = await client.audit.list({
       teamId: TEAM,
-      actorId: ADMIN.userId,
+      actor: { kind: 'user', id: ADMIN.userId },
     });
     expect(byActor.items.map((item) => item.sequence)).toEqual(['4', '3']);
 
@@ -478,6 +493,52 @@ describe.skipIf(!db)('audit list/get RPC', () => {
     currentPrincipal = OWNER;
   });
 
+  // A system actor is the only actor the schema lets carry no id, so before
+  // this filter existed there was no way to ask for its rows at all: the
+  // actor filter was typed `actorId: string`, and `actor_id = NULL` would
+  // match nothing under three-valued logic even if a null reached the query.
+  it('filters for a system actor that carries no id', async () => {
+    // Not a literal: the denial tests above append through the real store, so
+    // the seeded 1–7 are already followed by audit.read_denied rows and a
+    // hard-coded sequence collides with the per-team unique index.
+    const systemSequence = await nextSequence(pool, TEAM);
+    await insertEvent(pool, TEAM, {
+      sequence: systemSequence,
+      occurredAt: T2,
+      eventType: 'audit.system_retention',
+      eventVersion: 1,
+      category: 'audit',
+      outcome: 'succeeded',
+      actorKind: 'system',
+      actorId: null,
+      actorLabel: 'Studio',
+      details: {},
+    });
+
+    const systemOnly = await client.audit.list({
+      teamId: TEAM,
+      actor: { kind: 'system', id: null },
+    });
+    expect(systemOnly.items.map((item) => item.sequence)).toEqual([
+      String(systemSequence),
+    ]);
+    expect(systemOnly.items[0]?.actor).toEqual({
+      kind: 'system',
+      id: null,
+      label: 'Studio',
+    });
+
+    // The pair is the identity: the same kind with an id it does not have
+    // matches nothing, and a user filter never picks the system row up.
+    const wrongPair = await client.audit.list({
+      teamId: TEAM,
+      actor: { kind: 'user', id: OWNER.userId },
+    });
+    expect(wrongPair.items.map((item) => item.sequence)).not.toContain(
+      String(systemSequence),
+    );
+  });
+
   it('does not leak another team through get or list', async () => {
     const crossTeam = await safe(
       client.audit.get({ teamId: TEAM, eventId: otherTeamEventId }),
@@ -486,6 +547,59 @@ describe.skipIf(!db)('audit list/get RPC', () => {
 
     const otherList = await safe(client.audit.list({ teamId: OTHER_TEAM }));
     expect(otherList.error).toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  // The activity screen's filters must offer values from the team's whole
+  // history. With the option list built from loaded pages, an action or actor
+  // that only appears past the first page was unreachable without paging
+  // through everything in between.
+  //
+  // Reads the system-actor row seeded above, like the paging test reads the
+  // row the cursor test inserts: this suite seeds forward through one shared
+  // team, in declaration order.
+  it('offers filter values from beyond the first loaded page', async () => {
+    const firstPage = await client.audit.list({ teamId: TEAM, limit: 2 });
+    expect(firstPage.items.map((item) => item.eventType)).not.toContain(
+      'team.member.role_changed',
+    );
+
+    const options = await client.audit.filterOptions({ teamId: TEAM });
+    expect(options.actions).toContainEqual({
+      eventType: 'team.member.role_changed',
+      title: 'Member role changed',
+    });
+    // An event type this build does not register keeps its machine name, the
+    // same fallback the feed row itself uses.
+    expect(options.actions).toContainEqual({
+      eventType: 'audit.future_event',
+      title: 'audit.future_event',
+    });
+    expect(options.actors).toContainEqual({
+      kind: 'user',
+      id: 'future-actor',
+      label: 'Future Actor',
+    });
+    expect(options.actors).toContainEqual({
+      kind: 'system',
+      id: null,
+      label: 'Studio',
+    });
+    expect(options.truncated).toBe(false);
+  });
+
+  it('denies filter options to members, naming the procedure in the event', async () => {
+    currentPrincipal = MEMBER;
+    const denied = await safe(client.audit.filterOptions({ teamId: TEAM }));
+    expect(denied.error).toMatchObject({ code: 'FORBIDDEN' });
+
+    const denials = await pool.query<{ details: { procedure: string } }>(
+      `SELECT details FROM audit_events
+       WHERE team_id = $1 AND event_type = 'audit.read_denied'
+         AND actor_id = $2 AND details->>'procedure' = 'audit.filterOptions'`,
+      [TEAM, MEMBER.userId],
+    );
+    expect(denials.rowCount).toBe(1);
+    currentPrincipal = OWNER;
   });
 
   it('rejects invalid limits, cursors, filters, and event ids', async () => {

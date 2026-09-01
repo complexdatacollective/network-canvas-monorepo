@@ -245,6 +245,18 @@ export type AuditOutcome = z.infer<typeof AuditOutcomeSchema>;
 const AUDIT_ACTOR_KINDS = ['user', 'api_token', 'system'] as const;
 export const AuditActorKindSchema = z.enum(AUDIT_ACTOR_KINDS);
 
+// One actor exactly as the feed renders it. `id` is null only for a system
+// actor that carries no stable identifier (design §5: `actor_id` is required
+// unless `actor_kind = 'system'`), so filtering for system activity needs no
+// sentinel smuggled through a field typed as an id — the absent id *is* the
+// value. Filtering on the pair also keeps every case served by the existing
+// (team_id, actor_id, sequence DESC) index.
+const AuditActorFilterSchema = z.object({
+  kind: AuditActorKindSchema,
+  id: z.string().min(1).max(255).nullable(),
+});
+export type AuditActorFilter = z.infer<typeof AuditActorFilterSchema>;
+
 // Sequences are per-team bigints represented as base-10 strings on the wire;
 // clients display and round-trip them but never do arithmetic on them. The
 // cursor is the last returned sequence and pages request `sequence < cursor`.
@@ -257,7 +269,7 @@ export const AuditListInputSchema = TeamScopedSchema.extend({
     .max(AUDIT_CATEGORIES.length)
     .optional(),
   eventTypes: z.array(z.string().min(1).max(120)).min(1).max(20).optional(),
-  actorId: z.string().min(1).max(255).optional(),
+  actor: AuditActorFilterSchema.optional(),
   outcomes: z
     .array(AuditOutcomeSchema)
     .min(1)
@@ -302,6 +314,25 @@ export const AuditListOutputSchema = z.object({
   items: z.array(AuditEventSummarySchema),
   nextCursor: DecimalSequenceSchema.nullable(),
 });
+
+// Filter values are drawn from the team's whole history, not from the pages
+// the client happens to have loaded, so an action or actor that appears only
+// in old history is still selectable. In practice the set is small — the
+// actions a build registers, and the people and tokens that have ever acted in
+// one team — but neither is bounded by anything the server controls (rows
+// appended by a newer server carry event types this build never registered),
+// so the scan stops at this cap and `truncated` says the list is incomplete
+// rather than silently shortening it.
+export const AUDIT_FACET_LIMIT = 200;
+
+// The input is TeamScopedSchema itself, as protocols.list is: the option set
+// is a property of the team and takes no other argument.
+export const AuditFilterOptionsSchema = z.object({
+  actions: z.array(z.object({ eventType: z.string(), title: z.string() })),
+  actors: z.array(AuditActorFilterSchema.extend({ label: z.string() })),
+  truncated: z.boolean(),
+});
+export type AuditFilterOptions = z.infer<typeof AuditFilterOptionsSchema>;
 
 export const AuditGetInputSchema = TeamScopedSchema.extend({
   eventId: z.uuid(),
