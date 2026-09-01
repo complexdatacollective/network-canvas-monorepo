@@ -354,6 +354,16 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
             />
           </div>
           <div className="flex items-center gap-3">
+            {selectedTeam && canManageTeam(activeMember.data?.role) && (
+              <Button asChild size="sm" variant="outline">
+                <Link
+                  to="/teams/$teamId/activity"
+                  params={{ teamId: selectedTeam.id }}
+                >
+                  Activity
+                </Link>
+              </Button>
+            )}
             {selectedTeam && <Badge>Currently active</Badge>}
             {(activeTeamAccessPending ||
               switchingTeamId !== null ||
@@ -476,7 +486,7 @@ function ActiveTeamWorkspace(props: {
               </Paragraph>
             )}
             {protocols.data && protocols.data.length > 0 && (
-              <ul className="mt-4 grid list-none gap-3 p-0 sm:grid-cols-2">
+              <ul className="tablet-portrait:grid-cols-2 mt-4 grid list-none gap-3 p-0">
                 {protocols.data.map((protocol) => (
                   <li key={protocol.id}>
                     {protocol.draftId === null ? (
@@ -793,75 +803,77 @@ function TeamManagement(props: {
           </Alert>
         )}
 
-        <Table className="mt-4">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {team.members.map((member) => {
-              const name = member.user.name || member.user.email;
-              const roles = teamRoles(member.role);
-              const editableRole =
-                roles.length === 1 && isTeamRole(roles[0])
-                  ? roles[0]
-                  : undefined;
-              const memberIsOwner = roles.includes('owner');
-              const canEditRole =
-                editableRole !== undefined &&
-                canManage &&
-                (canAssignOwner || !memberIsOwner);
-              return (
-                <TableRow key={member.id}>
-                  <TableCell>
-                    {name}
-                    {member.id === props.activeMemberId && (
-                      <span className="ml-2 text-sm opacity-70">(you)</span>
-                    )}
-                  </TableCell>
-                  <TableCell>{member.user.email}</TableCell>
-                  <TableCell>
-                    {canEditRole ? (
-                      <>
-                        <label
-                          className="sr-only"
-                          htmlFor={`member-role-${member.id}`}
-                        >
-                          Role for {name}
-                        </label>
-                        <NativeSelectField
-                          id={`member-role-${member.id}`}
-                          name={`member-role-${member.id}`}
-                          size="sm"
-                          value={editableRole}
-                          options={assignableRoles}
-                          disabled={teamMutationBlocked}
-                          onChange={(value) => {
-                            if (!isTeamRole(value)) {
-                              setMessage({
-                                kind: 'error',
-                                text: 'Studio received an unsupported team role.',
-                              });
-                              return;
-                            }
-                            void updateRole(member.id, value);
-                          }}
-                        />
-                      </>
-                    ) : (
-                      <Badge variant="outline">
-                        {teamRolesLabel(member.role)}
-                      </Badge>
-                    )}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+        <div className="mt-4 overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {team.members.map((member) => {
+                const name = member.user.name || member.user.email;
+                const roles = teamRoles(member.role);
+                const editableRole =
+                  roles.length === 1 && isTeamRole(roles[0])
+                    ? roles[0]
+                    : undefined;
+                const memberIsOwner = roles.includes('owner');
+                const canEditRole =
+                  editableRole !== undefined &&
+                  canManage &&
+                  (canAssignOwner || !memberIsOwner);
+                return (
+                  <TableRow key={member.id}>
+                    <TableCell>
+                      {name}
+                      {member.id === props.activeMemberId && (
+                        <span className="ml-2 text-sm opacity-70">(you)</span>
+                      )}
+                    </TableCell>
+                    <TableCell>{member.user.email}</TableCell>
+                    <TableCell>
+                      {canEditRole ? (
+                        <>
+                          <label
+                            className="sr-only"
+                            htmlFor={`member-role-${member.id}`}
+                          >
+                            Role for {name}
+                          </label>
+                          <NativeSelectField
+                            id={`member-role-${member.id}`}
+                            name={`member-role-${member.id}`}
+                            size="sm"
+                            value={editableRole}
+                            options={assignableRoles}
+                            disabled={teamMutationBlocked}
+                            onChange={(value) => {
+                              if (!isTeamRole(value)) {
+                                setMessage({
+                                  kind: 'error',
+                                  text: 'Studio received an unsupported team role.',
+                                });
+                                return;
+                              }
+                              void updateRole(member.id, value);
+                            }}
+                          />
+                        </>
+                      ) : (
+                        <Badge variant="outline">
+                          {teamRolesLabel(member.role)}
+                        </Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       </section>
 
       <section aria-labelledby="invitations-heading">
@@ -877,7 +889,7 @@ function TeamManagement(props: {
           <Form
             key={inviteFormKey}
             ref={inviteFormRef}
-            className="mt-4 grid items-end gap-4 md:grid-cols-[minmax(0,2fr)_minmax(10rem,1fr)_auto]"
+            className="tablet-portrait:grid-cols-[minmax(0,2fr)_minmax(10rem,1fr)_auto] mt-4 grid items-end gap-4"
             onSubmit={async (values) => {
               const email =
                 typeof values.email === 'string' ? values.email : '';

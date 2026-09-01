@@ -378,6 +378,19 @@ describe('Studio team workspace', () => {
     expect(screen.queryByText('expired@example.com')).toBeNull();
   });
 
+  it('offers the Activity destination only to owners and admins', async () => {
+    renderWorkspace();
+
+    const link = await screen.findByRole('link', { name: 'Activity' });
+    expect(link).toHaveAttribute('href', '/teams/team-a/activity');
+
+    authState.activeMember = COLLABORATOR;
+    authStore.notify();
+    await waitFor(() => {
+      expect(screen.queryByRole('link', { name: 'Activity' })).toBeNull();
+    });
+  });
+
   it('switches the active team and scopes the protocol list to it', async () => {
     const view = renderWorkspace();
     await screen.findByText('Alpha protocol');

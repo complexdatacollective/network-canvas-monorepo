@@ -6,6 +6,21 @@ import type { AuditPolicy } from './policy.ts';
 // any other path. Protocol audit producers are delivered by #1521; lease
 // lifecycle writes are permanently excluded from the audit-log design.
 export const NO_AUDIT_TRANSACTION_POLICIES = {
+  'audit.list': {
+    kind: 'none',
+    reason:
+      'Viewing the activity log is a permission-checked bounded read; the audit taxonomy records exports and denied access, not views.',
+  },
+  'audit.get': {
+    kind: 'none',
+    reason:
+      'Viewing one activity event is a permission-checked bounded read; the audit taxonomy records exports and denied access, not views.',
+  },
+  'audit.filterOptions': {
+    kind: 'none',
+    reason:
+      'Reading the values the activity filters can take is a permission-checked bounded read over the same rows as audit.list; the audit taxonomy records exports and denied access, not views.',
+  },
   'protocol.create': {
     kind: 'none',
     reason:

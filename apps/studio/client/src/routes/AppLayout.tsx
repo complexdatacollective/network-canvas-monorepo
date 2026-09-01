@@ -53,6 +53,7 @@ export default function AppLayout() {
           )}
           <Button
             size="sm"
+            variant="raised"
             onClick={() => {
               setSignOutFailed(false);
               void (async () => {

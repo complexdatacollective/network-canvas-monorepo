@@ -15,7 +15,7 @@ export default function Home() {
   return (
     <main
       id="main-content"
-      className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-8"
+      className="tablet-portrait:p-8 mx-auto flex w-full max-w-6xl flex-col gap-6 p-4"
     >
       <div>
         <Heading level="h1">Network Canvas Studio</Heading>

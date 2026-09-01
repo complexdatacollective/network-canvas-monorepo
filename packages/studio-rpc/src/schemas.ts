@@ -119,7 +119,23 @@ export const CreateProtocolResultSchema = z.object({
   draftId: z.uuid(),
 });
 
-const DecimalSequenceSchema = z.string().regex(/^\d+$/);
+// Every value carried by this schema is a PostgreSQL `bigint` on the wire, and
+// the server hands these strings straight to a `::bigint` cast. The digit
+// budget and range bound keep an over-range decimal an input rejection instead
+// of a numeric_value_out_of_range error raised inside the query.
+const PG_BIGINT_MAX = 9223372036854775807n;
+const DECIMAL_SEQUENCE_PATTERN = /^\d{1,19}$/;
+const DecimalSequenceSchema = z
+  .string()
+  .regex(DECIMAL_SEQUENCE_PATTERN)
+  .refine(
+    // Zod runs every check on a string schema, including after an earlier one
+    // failed, so this predicate must also be total for values the pattern
+    // already rejected — BigInt() throws on them rather than returning false.
+    (value) =>
+      !DECIMAL_SEQUENCE_PATTERN.test(value) || BigInt(value) <= PG_BIGINT_MAX,
+    { message: 'must be within the PostgreSQL bigint range' },
+  );
 const SectionDocumentSchema = z.record(z.string(), z.unknown());
 
 export const ProtocolDraftInputSchema = TeamScopedSchema.extend({
@@ -204,3 +220,140 @@ export const MoveStageInputSchema = ProtocolDraftInputSchema.extend({
   toIndex: z.number().int().nonnegative(),
   expectedRevision: DecimalSequenceSchema,
 });
+
+// Mirrors the audit_events category/outcome/actor-kind CHECK constraints; a
+// new value requires a schema migration, which the fingerprint pipeline keeps
+// in lockstep with deployed code.
+export const AUDIT_CATEGORIES = [
+  'team_access',
+  'protocol',
+  'study',
+  'participant_data',
+  'data_egress',
+  'credential',
+  'integration',
+  'security',
+  'audit',
+] as const;
+export const AuditCategorySchema = z.enum(AUDIT_CATEGORIES);
+export type AuditCategory = z.infer<typeof AuditCategorySchema>;
+
+export const AUDIT_OUTCOMES = ['succeeded', 'denied', 'failed'] as const;
+export const AuditOutcomeSchema = z.enum(AUDIT_OUTCOMES);
+export type AuditOutcome = z.infer<typeof AuditOutcomeSchema>;
+
+const AUDIT_ACTOR_KINDS = ['user', 'api_token', 'system'] as const;
+export const AuditActorKindSchema = z.enum(AUDIT_ACTOR_KINDS);
+
+// One actor exactly as the feed renders it. `id` is null only for a system
+// actor that carries no stable identifier (design §5: `actor_id` is required
+// unless `actor_kind = 'system'`), so filtering for system activity needs no
+// sentinel smuggled through a field typed as an id — the absent id *is* the
+// value. Filtering on the pair also keeps every case served by the existing
+// (team_id, actor_id, sequence DESC) index.
+const AuditActorFilterSchema = z.object({
+  kind: AuditActorKindSchema,
+  id: z.string().min(1).max(255).nullable(),
+});
+export type AuditActorFilter = z.infer<typeof AuditActorFilterSchema>;
+
+// Sequences are per-team bigints represented as base-10 strings on the wire;
+// clients display and round-trip them but never do arithmetic on them. The
+// cursor is the last returned sequence and pages request `sequence < cursor`.
+export const AuditListInputSchema = TeamScopedSchema.extend({
+  cursor: DecimalSequenceSchema.optional(),
+  limit: z.number().int().min(1).max(100).optional(),
+  categories: z
+    .array(AuditCategorySchema)
+    .min(1)
+    .max(AUDIT_CATEGORIES.length)
+    .optional(),
+  // Not the event types this build registers: the filter list is drawn from
+  // the team's whole history, which includes rows a newer server appended, so
+  // the only bound that holds is the one the table itself enforces
+  // (`audit_events_identifier_lengths_check`: `event_type` is 1–128
+  // characters). A narrower bound here would show an event in the feed, offer
+  // it in the action menu, and then reject the selection as a bad request.
+  eventTypes: z.array(z.string().min(1).max(128)).min(1).max(20).optional(),
+  actor: AuditActorFilterSchema.optional(),
+  outcomes: z
+    .array(AuditOutcomeSchema)
+    .min(1)
+    .max(AUDIT_OUTCOMES.length)
+    .optional(),
+  // A half-open instant window, `from <= occurred_at < to`. `occurred_at` is
+  // `statement_timestamp()`, which Postgres keeps to microseconds, so an
+  // inclusive end could never name the true last instant of a day — any bound
+  // a millisecond-precision `Date` can express leaves the final fractional
+  // millisecond outside it. Callers selecting a calendar day send the start of
+  // the following day, and both bounds are absolute instants, so the day
+  // boundaries are the caller's local ones whatever timezone the server keeps.
+  from: z.date().optional(),
+  to: z.date().optional(),
+});
+
+const AuditActorSchema = z.object({
+  kind: AuditActorKindSchema,
+  id: z.string().nullable(),
+  label: z.string(),
+});
+
+const AuditEventReferenceSchema = z.object({
+  type: z.string(),
+  id: z.string().nullable(),
+  label: z.string().nullable(),
+});
+
+// `title` and `rendered` come from the server's versioned event registry; an
+// event pair this build does not register renders generically (machine type,
+// no details) rather than borrowing another version's renderer.
+export const AuditEventSummarySchema = z.object({
+  id: z.uuid(),
+  sequence: DecimalSequenceSchema,
+  occurredAt: z.date(),
+  eventType: z.string(),
+  eventVersion: z.number().int(),
+  category: AuditCategorySchema,
+  outcome: AuditOutcomeSchema,
+  actor: AuditActorSchema,
+  subject: AuditEventReferenceSchema.nullable(),
+  resource: AuditEventReferenceSchema.nullable(),
+  title: z.string(),
+  rendered: z.boolean(),
+});
+export type AuditEventSummary = z.infer<typeof AuditEventSummarySchema>;
+
+export const AuditListOutputSchema = z.object({
+  items: z.array(AuditEventSummarySchema),
+  nextCursor: DecimalSequenceSchema.nullable(),
+});
+
+// Filter values are drawn from the team's whole history, not from the pages
+// the client happens to have loaded, so an action or actor that appears only
+// in old history is still selectable. In practice the set is small — the
+// actions a build registers, and the people and tokens that have ever acted in
+// one team — but neither is bounded by anything the server controls (rows
+// appended by a newer server carry event types this build never registered),
+// so the scan stops at this cap and `truncated` says the list is incomplete
+// rather than silently shortening it.
+export const AUDIT_FACET_LIMIT = 200;
+
+// The input is TeamScopedSchema itself, as protocols.list is: the option set
+// is a property of the team and takes no other argument.
+export const AuditFilterOptionsSchema = z.object({
+  actions: z.array(z.object({ eventType: z.string(), title: z.string() })),
+  actors: z.array(AuditActorFilterSchema.extend({ label: z.string() })),
+  truncated: z.boolean(),
+});
+export type AuditFilterOptions = z.infer<typeof AuditFilterOptionsSchema>;
+
+export const AuditGetInputSchema = TeamScopedSchema.extend({
+  eventId: z.uuid(),
+});
+
+export const AuditEventDetailSchema = AuditEventSummarySchema.extend({
+  teamLabel: z.string(),
+  requestId: z.uuid(),
+  details: z.record(z.string(), z.unknown()),
+});
+export type AuditEventDetail = z.infer<typeof AuditEventDetailSchema>;

@@ -185,12 +185,30 @@ const TeamMemberRoleChangeFailedV1EventSchema =
   }).strict();
 
 export const DENIED_AUDIT_OPERATIONS = [
+  'audit.read',
   'team.acceptInvitation',
   'team.cancelInvitation',
   'team.createInvitation',
   'team.updateMemberRole',
 ] as const;
 export type DeniedAuditOperation = (typeof DENIED_AUDIT_OPERATIONS)[number];
+
+const AuditReadDeniedV1EventSchema = CommonUserEventSchema.extend({
+  eventVersion: z.literal(1),
+  eventType: z.literal('audit.read_denied'),
+  category: z.literal('audit'),
+  outcome: z.literal('denied'),
+  subjectType: z.null(),
+  subjectId: z.null(),
+  subjectLabel: z.null(),
+  resourceType: z.null(),
+  resourceId: z.null(),
+  resourceLabel: z.null(),
+  details: z.strictObject({
+    procedure: z.enum(['audit.list', 'audit.get', 'audit.filterOptions']),
+    reason: z.literal('insufficient_permission'),
+  }),
+}).strict();
 
 const DeniedAttemptsRateLimitedV1EventSchema = CommonUserEventSchema.extend({
   eventVersion: z.literal(1),
@@ -254,6 +272,7 @@ const ProtocolDraftCommittedV1EventSchema =
 // A plain union is intentional: eventType alone cannot remain the
 // discriminator once two retained versions of the same immutable event exist.
 export const AuditEventInputSchema = z.union([
+  AuditReadDeniedV1EventSchema,
   TeamMemberRoleChangedV1EventSchema,
   TeamMemberRoleChangeDeniedV1EventSchema,
   TeamMemberRoleChangeFailedV1EventSchema,
@@ -330,6 +349,27 @@ const FIXTURE_PROTOCOL_V1_COMMON = {
 } as const;
 
 export const AUDIT_EVENT_REGISTRY = {
+  'audit.read_denied@1': {
+    inputSchema: AuditReadDeniedV1EventSchema,
+    title: 'Activity log access denied',
+    detailFields: ['procedure', 'reason'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_USER_COMMON,
+      eventVersion: 1,
+      eventType: 'audit.read_denied',
+      category: 'audit',
+      outcome: 'denied',
+      subjectType: null,
+      subjectId: null,
+      subjectLabel: null,
+      resourceType: null,
+      resourceId: null,
+      resourceLabel: null,
+      details: { procedure: 'audit.list', reason: 'insufficient_permission' },
+    },
+  },
   'team.member.role_changed@1': {
     inputSchema: TeamMemberRoleChangedV1EventSchema,
     title: 'Member role changed',

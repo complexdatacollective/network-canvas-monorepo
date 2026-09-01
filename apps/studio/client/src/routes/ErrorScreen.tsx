@@ -19,7 +19,7 @@ export default function ErrorScreen({ error }: ErrorComponentProps) {
   const unreachable = error instanceof ServerUnreachableError;
   return (
     <main className="flex h-full items-center justify-center p-4">
-      <Surface className="max-w-xl" spacing="lg">
+      <Surface maxWidth="xl" spacing="lg">
         <Heading level="h1">Something went wrong</Heading>
         <Paragraph role="alert">
           {unreachable
