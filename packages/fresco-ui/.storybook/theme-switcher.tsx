@@ -1,11 +1,10 @@
 import type { Decorator } from '@storybook/react-vite';
 import { type ReactNode, useEffect } from 'react';
 
-import { PortalContainerProvider } from '../src/PortalContainer';
 import { ThemedRegion } from '../src/ThemedRegion';
 
 export const THEME_KEY = 'theme';
-export const COLOR_SCHEME_KEY = 'colorScheme';
+const COLOR_SCHEME_KEY = 'colorScheme';
 const STORAGE_KEY = 'storybook-theme-preference';
 const COLOR_SCHEME_STORAGE_KEY = 'storybook-color-scheme-preference';
 
@@ -104,17 +103,13 @@ function applyColorSchemeToDocument(colorScheme: ColorSchemeKey) {
 }
 
 /**
- * The themed wrapper for a story (or a docs page). Interview has a first-class
- * component in the library; studio is applied here with the same shape —
- * the scoping attribute the theme file keys off, `theme-base` so font-family /
- * color / the publish-color variables re-resolve at the region rather than
- * being inherited from the body's cascade context, and the portal container so
- * dialogs and popovers render inside the themed subtree. Dashboard is the
- * `:root` default and needs no wrapper.
- *
- * `color-scheme` is not set here: unlike interview (dark-only, so
- * `<ThemedRegion>` hard-codes `scheme-dark`), studio declares it per mode in
- * its own `@layer base` block.
+ * The themed wrapper for a story (or a docs page). `ThemedRegion` is the
+ * library's own scoping component: it sets the attribute the theme file keys
+ * off, adds `theme-base` so font-family / color / the publish-color variables
+ * re-resolve at the region rather than being inherited from the body's cascade
+ * context, and brings the portal container so dialogs and popovers render
+ * inside the themed subtree. Dashboard is the `:root` default and needs no
+ * wrapper.
  */
 export function StoryTheme({
   theme,
@@ -123,19 +118,9 @@ export function StoryTheme({
   theme: ThemeKey;
   children: ReactNode;
 }) {
-  if (theme === 'interview') {
-    return <ThemedRegion theme="interview">{children}</ThemedRegion>;
-  }
+  if (theme === 'dashboard') return <>{children}</>;
 
-  if (theme === 'studio') {
-    return (
-      <div data-theme-studio className="theme-base">
-        <PortalContainerProvider>{children}</PortalContainerProvider>
-      </div>
-    );
-  }
-
-  return <>{children}</>;
+  return <ThemedRegion theme={theme}>{children}</ThemedRegion>;
 }
 
 /**

@@ -12,7 +12,7 @@ import { PortalContainerProvider } from './PortalContainer';
 import { cx } from './utils/cva';
 
 type ThemedRegionProps = {
-  theme: 'interview';
+  theme: 'interview' | 'studio';
   children: ReactNode;
   className?: string;
   render?: ReactElement;
@@ -25,12 +25,17 @@ export function ThemedRegion({
   className,
   ...rest
 }: ThemedRegionProps) {
-  const themeAttr = theme === 'interview' ? { 'data-theme-interview': '' } : {};
+  // The attribute each theme file keys its block off.
+  const themeAttr =
+    theme === 'interview'
+      ? { 'data-theme-interview': '' }
+      : { 'data-theme-studio': '' };
   // `theme-base` re-declares font-family / color / --scoped-bg /
   // --published-bg / --published-text at the themed region so descendants
   // pick up themed values via inheritance instead of the body-resolved
   // defaults. Interview is dark-only, so add Tailwind's `scheme-dark`
-  // (color-scheme: dark) for native UI like form controls and scrollbars.
+  // (color-scheme: dark) for native UI like form controls and scrollbars;
+  // studio is a light/dark pair and declares `color-scheme` per mode itself.
   const themeClasses = cx('theme-base', theme === 'interview' && 'scheme-dark');
   const body = <PortalContainerProvider>{children}</PortalContainerProvider>;
 
