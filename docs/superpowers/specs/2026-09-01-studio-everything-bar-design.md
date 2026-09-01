@@ -55,11 +55,16 @@ Taken 2026-09-01 in specification review:
 5. **Documentation comes from the documentation site's existing Algolia
    index.** Studio-relevant pages are tagged with a `products` facet and
    boosted, never filtered — every docs page remains findable. Results open
-   the documentation site; Studio does not embed a second docs renderer.
-6. **The command registry owns keyboard shortcuts.** `⌘K` opens the bar, and
-   the same registry that lists commands binds their global chords
-   (`g` then `a` for the activity log). A shortcut cannot drift from the
-   palette entry that advertises it.
+   the documentation site; Studio does not embed a second docs renderer. The
+   query is sent only on explicit documentation intent (§3.3): typing in the
+   bar never sends text off the instance by itself.
+6. **One shortcut registry owns every binding.** `⌘K` opens the bar.
+   Manifest entries and commands declare their chords (`g` then `a` for the
+   activity log), and a single Studio-local shortcut registry aggregates
+   them, detects collisions at test time, binds the global handlers, and is
+   the only source the bar's hints render from. A shortcut cannot drift from
+   the entry that advertises it, and two entries cannot silently claim one
+   chord.
 7. **The component is shared.** The dialog, input, listbox, grouping, and
    keyboard model land in `@codaco/fresco-ui` as `navigation/EverythingBar`,
    built on Base UI's autocomplete and dialog primitives already in the
@@ -103,12 +108,15 @@ how.
 4. **Selection stability.** Asynchronous results appending to the list never
    move the highlighted item or reorder groups already on screen.
 5. **Query privacy.** Query text leaves the instance only for the
-   documentation provider, only when that provider is configured. A
-   self-hosted instance without documentation-search configuration sends
-   nothing anywhere.
+   documentation provider, only when that provider is configured, and only
+   when the researcher explicitly asks for documentation results (§3.3) —
+   typing alone never sends the query anywhere, because a query typed to find
+   a participant or a confidentially named study must not reach a third
+   party. A self-hosted instance without documentation-search configuration
+   sends nothing anywhere.
 6. **PII gating.** No identifying participant data appears in results without
-   the PII grant, and sensitive providers are excluded from locally persisted
-   recents.
+   the PII grant, and providers whose persistence policy forbids it can never
+   have results written to locally persisted recents.
 7. **App shell only.** The bar is app-shell chrome. Site, focused, and
    participant shells never mount it — a participant can never open a
    researcher search surface.
@@ -123,14 +131,21 @@ how.
 Two kinds of result share the group, because researchers do not distinguish
 "screen" from "thing" when typing a name:
 
-- **Destinations** — the current area's manifest entries plus the platform
-  destinations (gallery, templates, account), labelled with their area
-  ("Activity log · Team"). Chord hints render on destinations that have them.
+- **Destinations** — every permission-filtered manifest entry the researcher
+  can reach: the current study's areas, its team's administration, account,
+  and the platform destinations (gallery, templates), labelled with their
+  area ("Activity log · Team"). Search spans all of them — from a study
+  screen, typing "activity" finds the team's activity log, which is the
+  fundamental requirement at work; only the empty state (§3.5) narrows to the
+  current area. Chord hints render on destinations that have them.
 - **Entities** — studies across every team the researcher belongs to (labelled
   with their team when the researcher has more than one), templates, and —
   when their owning features land — participants, sessions, and published
   protocol versions. Activating an entity navigates to its canonical route
-  (`/study/$studyId`, `/gallery/$templateId`, …).
+  (`/study/$studyId`, `/gallery/$templateId`, …); for a study in another
+  team, that works because the URL owns the study and `study.shell` derives
+  and reconciles the team (#1561 invariant 1, §6.3) — no team-scoped URL is
+  needed.
 
 ### 3.2 Commands
 
@@ -156,6 +171,17 @@ documentation locale, with pages tagged `studio` boosted to the top of the
 group (§6). Each result opens the documentation site in a new tab —
 deliberately leaving Studio, because a half-embedded docs reader would fork
 the documentation experience and its locale negotiation.
+
+Documentation is the one group that requires explicit intent. While the
+researcher types, the group renders a single deferred action — "Search the
+documentation for '<query>'" — and no query has left the instance. Activating
+that row (Enter on it, or clicking it) sends the query to the search service
+and expands the results in place, in the same group, under the same
+selection-stability rule. The distinction matters because the bar is where
+researchers type participant names and confidentially named studies; those
+keystrokes must not reach a third party as a side effect of searching locally
+(invariant 5). The documentation site's own search box does not need this
+guard — someone typing there has already chosen documentation search.
 
 ### 3.4 Group order and ranking
 
@@ -190,10 +216,11 @@ without requiring a query.
   `Ctrl+K` from any app route. The shortcut is registered at the app-shell
   layout, so it works identically everywhere, including the editor.
 - **Type**: local providers (destinations, commands) filter synchronously on
-  every keystroke. Remote providers (entities, documentation) debounce,
-  abort superseded requests, and render into their group with a per-group
-  pending indicator. Late results append; they never re-rank what is on
-  screen (invariant 4).
+  every keystroke. The entity provider debounces, aborts superseded requests,
+  and renders into its group with a pending indicator. The documentation
+  provider renders its deferred action row and issues no request until the
+  researcher activates it (§3.3). Late results append; they never re-rank
+  what is on screen (invariant 4).
 - **Navigate**: arrow keys move through the flat result sequence across
   groups; `Enter` activates; `Esc` closes and returns focus to wherever it
   was. A footer row shows navigate / select / close hints, translated.
@@ -204,7 +231,8 @@ without requiring a query.
   Documentation opens in a new tab.
 - **Chords**: outside the bar, `g` followed by a destination key navigates
   directly (`g` then `a` — activity log). Chords are declared on manifest
-  entries, displayed as hints in the bar's results, suppressed while focus is
+  entries and commands, aggregated and bound by the single shortcut registry
+  (§5.3), displayed as hints in the bar's results, suppressed while focus is
   in an editable field, and disabled entirely when a dialog is open. The
   default chord set ships with the study and team areas' manifests; the exact
   keys are recorded there, not here.
@@ -221,21 +249,36 @@ type EverythingBarItem = {
   group: 'go-to' | 'commands' | 'documentation';
   label: string;              // already translated
   context?: string;           // "Team", "Study · Field Research Lab"
-  chordHint?: string[];       // ['G', 'A']
-  sensitive?: boolean;        // excluded from recents
+  chordHint?: string[];       // ['G', 'A'], read from the shortcut registry
   activate:
     | { kind: 'navigate'; href: string }
-    | { kind: 'open'; run: () => void }      // owning dialog/screen surface
+    | { kind: 'open'; surface: string }      // named owning surface (below)
     | { kind: 'external'; href: string };    // documentation
 };
 
 type EverythingBarProvider = {
   id: string;
   local: boolean;             // synchronous filter vs debounced fetch
+  persistence: 'recents' | 'never';   // required; 'never' cannot be overridden per item
   search(query: string, signal: AbortSignal): Promise<EverythingBarItem[]>;
   empty?(signal: AbortSignal): Promise<EverythingBarItem[]>;
+  resolve?(id: string): Promise<EverythingBarItem | null>;  // recents revalidation (§5.6)
 };
 ```
+
+The `open` variant deliberately carries no callback. It names an **owning
+surface** — an identifier a screen registers ("members.invite",
+"participants.import") that the shell resolves to that screen's own dialog or
+flow. An opaque `run: () => void` would let a command hold a mutation the
+registry test could never see; a string the shell resolves keeps the
+launcher rule (invariant 3) statically checkable: the registry test can
+assert every activation is a route, an external link, or a registered
+surface name, and nothing else is expressible.
+
+`persistence` is required on the provider, not optional on the item, for the
+same reason: a sensitive provider that forgot to mark one participant row
+would otherwise leak an identifying label into `localStorage`. A provider
+declared `'never'` has no per-item escape hatch.
 
 The component owns matching for local providers (case- and diacritic-folded
 substring and initials matching), the keyboard model, grouping, bounds, and
@@ -248,31 +291,47 @@ Each area layout (#1561 §5.3) declares its navigation as data:
 ```ts
 type NavManifestEntry = {
   id: string;
-  labelKey: string;           // whole-string translation key
+  labelKey: string;             // whole-string translation key
   href: string;
   icon?: ComponentType;
-  permission?: string;        // capability from study.shell / team context
-  chord?: string;             // the key after 'g'
+  access: string | 'public';    // required: a capability, or explicitly public
+  chord?: string;               // the key after 'g', contributed to the shortcut registry
 };
 ```
 
+`access` is required, exactly as the command registry requires it: an entry
+must name the capability that gates it or declare itself `public` on purpose.
+An optional field would make a forgotten gate indistinguishable from an
+intentionally public route, and the parity test would pass while both the
+sidebar and the bar exposed a destination the researcher cannot use. The
+server denial remains the boundary either way; this keeps the chrome honest.
+
 `NavList` renders the manifest; the bar's destination provider searches the
-union of the active manifests plus the platform destinations. This is the
-structural parity guarantee: adding a route to an area means adding a manifest
-entry, and that one addition surfaces it in the sidebar, the bar, and the
-chord table at once. If #1561's slice 2 ships its sidebars as JSX before this
-design lands, converting them to manifest data is the first task of this
-design's slice 2.
+union of every manifest the researcher can reach (§3.1), not only the mounted
+area's. This is the structural parity guarantee: adding a route to an area
+means adding a manifest entry, and that one addition surfaces it in the
+sidebar, the bar, and the shortcut registry at once. If #1561's slice 2 ships
+its sidebars as JSX before this design lands, converting them to manifest
+data is the first task of this design's slice 2.
 
-### 5.3 The command registry
+### 5.3 The command and shortcut registries
 
-A typed registry, Studio-local, mirroring the manifest's shape plus an
-`activate` and an optional global shortcut. Area layouts contribute contextual
+The **command registry** is a typed registry, Studio-local, mirroring the
+manifest's shape plus an `activate`. Area layouts contribute contextual
 commands via the same mechanism they use to declare their sidebar; global
 commands register at the app layout. A registry test enumerates every entry
-and asserts a label key, a permission or an explicit `public` marker, and an
-activation that is a navigation or a named owning surface — the launcher rule
-made structural.
+and asserts a label key, a capability or an explicit `public` marker, and an
+activation that is a route, an external link, or a registered owning-surface
+name (§5.1) — the launcher rule made structural.
+
+The **shortcut registry** is the single authority for key bindings. Manifest
+entries and commands _declare_ chords; they do not bind them. The registry
+aggregates every declaration, binds the global handlers (`⌘K` and the
+`g`-chords), and is the only source the bar reads hints from — `chordHint` on
+an item is derived, never authored. Two declarations claiming one chord in
+any reachable combination of areas is a test failure, not a runtime
+last-writer-wins. This is what decision 6 means by one owner: declaration is
+distributed with the features, binding and display are centralized.
 
 ### 5.4 Entity search
 
@@ -312,21 +371,33 @@ When unset — the self-host default — the Documentation group does not exist
 and no query leaves the instance (invariant 5). The managed deployment sets
 them.
 
-The query filters `lang:<locale>`, where `<locale>` is the researcher's
-Studio locale when `STUDIO_DOCS_SEARCH_LOCALES` includes it and `en`
-otherwise — the published-locale list is configuration received from the
-instance, never guessed (today it is `['en']`). The boost is
+The provider issues its request only when the researcher activates the
+deferred documentation action (§3.3); until then it contributes that single
+local row and nothing has left the instance. The query filters
+`lang:<locale>`, where `<locale>` is the researcher's Studio locale when
+`STUDIO_DOCS_SEARCH_LOCALES` includes it and `en` otherwise — the
+published-locale list is configuration received from the instance, never
+guessed (today it is `['en']`). The boost is
 `optionalFilters: ['products:studio']`, the same boost-not-restrict mechanism
 the documentation site already uses for its section boost.
 
 ### 5.6 Recents
 
-Activations are recorded to `localStorage`, most-recent-first, bounded, keyed
-per researcher — the same local-persistence posture as the shell's sidebar
-collapse memory. An entry stores the item's provider, id, href, and label —
-except items marked `sensitive`, which are never written (invariant 6).
-Recents are a convenience, so a missing or cleared store renders the empty
-state's other content and nothing breaks.
+Activations from providers declaring `persistence: 'recents'` are recorded to
+`localStorage`, most-recent-first, bounded, keyed per researcher — the same
+local-persistence posture as the shell's sidebar collapse memory. Items from
+a `'never'` provider are never written (invariant 6).
+
+A stored entry is a reference — provider id and item id — not a snapshot to
+render. On open, the empty state resolves each reference through the
+provider's `resolve` against the researcher's _current_ permissions; an entry
+that no longer resolves (membership lost, capability revoked, entity deleted
+or renamed away) is discarded and pruned from the store, never shown from the
+stale label. Rendering the stored label directly would resurrect
+destinations the researcher can no longer use and labels that no longer
+exist. Recents are a convenience, so a missing, cleared, or wholly
+unresolvable store renders the empty state's other content and nothing
+breaks.
 
 ## 6. Documentation pipeline changes
 
@@ -335,9 +406,13 @@ Three changes outside Studio make the `products` facet exist:
 1. **Frontmatter.** Documentation pages gain an optional `products` list
    (`products: [studio]`; a page may name several products). Untagged pages
    are simply unboosted — no migration of existing content is required.
-2. **Page metadata.** The documentation app's article layout emits
-   `<meta name="docsearch:products" content="studio">` from that frontmatter,
-   next to the metadata the crawler already reads.
+2. **Page metadata.** The documentation app emits a
+   `docsearch:products` meta entry from that frontmatter through the same
+   mechanism it already uses for `docsearch:language` and
+   `docsearch:version` — the `metadata.other` map built in
+   `apps/documentation/app/[locale]/layout.tsx` (page frontmatter flowing
+   into the page-level `generateMetadata`), not a hand-authored tag in a
+   layout component.
 3. **Crawler configuration.** The Algolia crawler (configured in the Algolia
    dashboard, not in this repository) extracts the meta tag into a `products`
    attribute on each record and declares it for faceting. The required
@@ -368,16 +443,17 @@ bypassing none.
   returned only to holders of the PII grant (absent otherwise — masked rows
   would still leak existence); the search read registers its audit
   classification under the audit specification's "viewing
-  participant-identifying information" policy at that time; and
-  `sensitive: true` keeps every such result out of local recents (§5.6).
-  The bar's architecture treats this as one more provider — nothing in the
-  component changes.
+  participant-identifying information" policy at that time; and the provider
+  declares `persistence: 'never'`, which keeps every result out of local
+  recents with no per-item opt-out (§5.1, §5.6). The bar's architecture
+  treats this as one more provider — nothing in the component changes.
 - **Opening the bar and typing** is ordinary navigation and is excluded from
   the audit log, per the audit specification's §7.2 exclusions.
-- **Documentation queries** reach Algolia, a third party. This is inherent to
-  the documentation site's own search already; the bar keeps it opt-in per
-  instance (§5.5) and never includes entity names or identifiers in the
-  request beyond what the researcher typed.
+- **Documentation queries** reach Algolia, a third party, only on the
+  explicit documentation action (§3.3) and only on instances configured for
+  it (§5.5) — never as a side effect of typing, because bar queries include
+  participant names and confidential study titles. The request contains what
+  the researcher typed and nothing else.
 
 ## 8. Accessibility
 
@@ -410,8 +486,9 @@ bypassing none.
 - Documentation locale negotiation is §5.5's rule: the researcher's locale
   when published, else `en`.
 - Chord hints render the keys, which are not translated; chord keys are
-  manifest data and can be localized per locale later without touching the
-  component — the manifest, not the component, owns them.
+  declared in manifest and command data and can be localized per locale later
+  without touching the component — the declarations and the shortcut
+  registry, not the component, own them.
 
 ## 10. Shared components
 
@@ -483,31 +560,43 @@ foundations work (#1315).
 
 ### 12.2 Studio integration tests
 
-- **Parity**: for each area, every manifest entry surfaces in the bar's
-  destination provider, and a manifest entry with a `permission` the test
-  session lacks is absent from both sidebar and bar — one test over the
-  shared data, which is the point of §5.2.
-- **Launcher rule**: the registry test in §5.3 — every command's activation
-  is a navigation or a named owning surface; no command holds a mutation
-  procedure reference.
+- **Parity**: every manifest entry across every area surfaces in the bar's
+  destination provider — including areas other than the mounted one (§3.1) —
+  and an entry whose `access` capability the test session lacks is absent
+  from both sidebar and bar; one test over the shared data, which is the
+  point of §5.2. A type-level assertion (or registry test) proves `access`
+  cannot be omitted.
+- **Launcher rule**: the registry test in §5.3 — every activation is a
+  route, an external link, or an owning-surface name registered by a screen;
+  the activation type admits no callback, so a mutation is not expressible.
+- **Shortcuts**: the shortcut registry rejects two declarations of one chord
+  in any reachable area combination, and every hint the bar renders
+  round-trips through the registry — a chord declared but not registered, or
+  hinted but unbound, fails the test.
 - **Entity search**: membership scoping (a study in a team the researcher
   left never appears), context-first ranking, bounds, and the
   no-existence-oracle posture on unknown context ids.
-- **Docs provider**: absent without configuration (and no network request is
-  issued — asserted, not assumed); locale filter and `en` fallback; the
-  `products:studio` boost appears in the request as an optional filter, not a
-  filter.
-- **Recents**: sensitive items never written; a cleared store renders the
-  empty state.
+- **Docs provider**: absent without configuration; with configuration, no
+  network request is issued while typing (asserted, not assumed) and the
+  request fires only on activating the deferred action; locale filter and
+  `en` fallback; the `products:studio` boost appears in the request as an
+  optional filter, not a filter.
+- **Recents**: items from a `persistence: 'never'` provider are not written
+  even when the provider "forgets" per-item marking (there is nothing to
+  forget — the policy is provider-level); stored references re-resolve on
+  open, and an entry whose provider no longer returns it (revoked
+  capability, lost membership, deleted entity) is pruned and not rendered; a
+  cleared store renders the empty state.
 
 ### 12.3 End-to-end
 
 One journey appended to the shell's Playwright journey: open with `⌘K`, type
 a study name from another team, land on it (focus on its `h1`), reopen, run
 "Invite a team member" and land in the members screen's invitation flow,
-reopen, verify the Documentation group renders results for a seeded query in
-the test double's index (the E2E environment stubs Algolia — no third-party
-dependency in CI).
+reopen, type a query and confirm no documentation request has been issued,
+activate "Search the documentation" and verify results render for the seeded
+query in the test double's index (the E2E environment stubs Algolia — no
+third-party dependency in CI).
 
 ## 13. Delivery plan
 
@@ -528,9 +617,10 @@ queries it.
 
 ## 14. Open questions
 
-1. **Default chord set.** The mechanism is decided (manifest-owned); the
-   exact keys per area should be settled when slice 2 writes the manifests,
-   with pilot-partner feedback able to change them cheaply.
+1. **Default chord set.** The mechanism is decided (declared in manifests
+   and commands, bound by the shortcut registry); the exact keys per area
+   should be settled when slice 2 writes the manifests, with pilot-partner
+   feedback able to change them cheaply.
 2. **Recents scope.** Local storage per researcher per browser, matching the
    shell's sidebar-memory default. Whether recents ever sync across devices
    is a question for observed demand, not structure.
