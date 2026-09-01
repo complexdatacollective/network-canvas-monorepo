@@ -150,20 +150,26 @@ Two kinds of result share the group, because researchers do not distinguish
 
 ### 3.2 Commands
 
-Actions the researcher can take from where they are, each resolving to the
-screen or dialog that owns it:
+Actions the researcher can take, each resolving to the screen or dialog that
+owns it:
 
 - global commands — create a study, import a protocol, switch team, open
   language settings, sign out;
-- contextual commands contributed by the current area — invite a team member
-  (team area), create an API token (account area), pause collection (study
-  settings, once #1262's lifecycle controls exist).
+- area commands contributed by each area's registrations — invite a team
+  member (team area), create an API token (account area), pause collection
+  (study settings, once #1262's lifecycle controls exist).
 
-A command a researcher lacks the capability for is absent, not disabled —
-matching the shell's permission-aware navigation rule. Where a role
-requirement is worth teaching (the screenshot mock's "Requires Manager role"),
-the owning feature can register the command as visible-with-explanation; the
-default is absence.
+Like destinations (§3.1), search spans every permission-filtered command the
+researcher can reach, not only the mounted area's — from a study screen,
+typing "invite" finds the team's invitation command. The current area's
+commands rank first (§3.4); only the empty state narrows to them.
+
+A command a researcher lacks the capability for is absent, not disabled and
+not annotated — matching the shell's permission-aware navigation rule and
+invariant 2. The concept mock's "Requires Manager role" teaching row is
+deliberately not adopted: a result the researcher cannot activate is either a
+new-surface leak (if activatable) or a new non-launching result type (if
+not), and role teaching belongs in documentation and the owning screens.
 
 ### 3.3 Documentation
 
@@ -187,9 +193,9 @@ documentation search; the bar cannot make that assumption.
 Groups render in fixed order — **Go to**, **Commands**, **Documentation** —
 matching how often each is wanted. Within Go to: current-study destinations
 and entities first, then current team, then other teams, then platform; ties
-break by last-modified, then name. Within Commands: contextual before global.
-Within Documentation: the index's lexical ranking with the Studio-tag boost
-(§6).
+break by last-modified, then name. Within Commands: the current area's
+commands first, then other areas', then global. Within Documentation: the
+index's lexical ranking with the Studio-tag boost (§6).
 Result counts per group are bounded (five per group by default, with a "show
 more" affordance per group) so the first Enter press is predictable.
 
@@ -204,7 +210,7 @@ Opening the bar without typing shows:
 - recent activations (locally persisted, §5.6), excluding sensitive
   providers;
 - the current area's destinations; and
-- the top contextual commands.
+- the current area's top commands.
 
 This makes the bar useful as pure navigation — open, arrow down, Enter —
 without requiring a query.
@@ -258,11 +264,17 @@ type EverythingBarItem = {
 type EverythingBarProvider = {
   id: string;
   local: boolean;             // synchronous filter vs debounced fetch
-  persistence: 'recents' | 'never';   // required; 'never' cannot be overridden per item
   search(query: string, signal: AbortSignal): Promise<EverythingBarItem[]>;
   empty?(signal: AbortSignal): Promise<EverythingBarItem[]>;
-  resolve?(id: string): Promise<EverythingBarItem | null>;  // recents revalidation (§5.6)
-};
+} & (
+  | {
+      persistence: 'recents';
+      // Required on this branch: recents are stored as references and must
+      // be revalidated against current permissions before rendering (§5.6).
+      resolve(id: string): Promise<EverythingBarItem | null>;
+    }
+  | { persistence: 'never' }  // no resolve, no per-item opt-in
+);
 ```
 
 The `open` variant deliberately carries no callback. It names an **owning
@@ -337,17 +349,35 @@ distributed with the features, binding and display are centralized.
 One new query procedure in `@codaco/studio-rpc`:
 
 ```ts
-search.entities({ query, context: { studyId?, teamId? } }) -> {
-  items: Array<{
-    kind: 'study' | 'template' | ...;   // extended by owning features
-    id: string;
-    label: string;
-    teamId: string;
-    teamLabel: string | null;           // null when the researcher has one team
-    updatedAt: string;
-  }>
+search.entities({ query, context: { studyId?, teamId? }, limit?, cursor? }) -> {
+  items: Array<
+    | {
+        scope: 'team';                    // team-owned entities
+        kind: 'study' | ...;              // extended by owning features
+        id: string;
+        label: string;
+        teamId: string;
+        teamLabel: string | null;         // null when the researcher has one team
+        updatedAt: string;
+      }
+    | {
+        scope: 'platform';                // platform-level entities (#1561 §4)
+        kind: 'template' | ...;
+        id: string;
+        label: string;
+        updatedAt: string;
+      }
+  >;
+  nextCursor: string | null;
 }
 ```
+
+Team-scoped and platform-scoped results are separate union branches because
+templates and the gallery live above teams in the accepted ownership model —
+a template has no tenant to attribute, and a shape that required `teamId` on
+it would force the server to invent one. `limit` defaults to the group bound
+in §3.4 and is server-capped; `nextCursor` is what the group's "show more"
+affordance requests the next bounded page with.
 
 The server resolves the researcher's memberships once, searches each team
 under its own tenant scope (row-level security intact — no cross-team query),
@@ -368,7 +398,7 @@ last-good semantics — a failed refresh keeps serving the cached index rather
 than losing the group. One query procedure serves the SPA:
 
 ```ts
-search.documentation({ query, locale }) -> {
+search.documentation({ query, locale, limit?, cursor? }) -> {
   items: Array<{
     title: string;
     hierarchy: string[];    // section → page → heading
@@ -376,9 +406,18 @@ search.documentation({ query, locale }) -> {
     lang: string;
     products: string[];
     excerpt: string;
-  }>
+  }>;
+  nextCursor: string | null;
 }
 ```
+
+The query runs server-side over the cached index — that is the contract, not
+one of two permitted layouts, so the procedure, its ranking, and its bounds
+are the single documentation-search path. `limit` defaults to the group bound
+in §3.4 and is server-capped; a common query matching many heading records
+returns one bounded page, and the "show more" affordance requests the next
+with `nextCursor` — the server never streams the whole matching index at a
+keystroke.
 
 Ranking is the index's lexical ranking with a fixed boost for records whose
 `products` includes `studio` — a boost, never a filter, so every
@@ -387,15 +426,24 @@ Studio locale when the index manifest publishes it and `en` otherwise; the
 published-locale list ships in the index manifest, never guessed (today it is
 `['en']`).
 
+The artifact contract is versioned (§6): the manifest names its schema major,
+Studio fetches the versioned path for the major it supports, and every
+fetched artifact is validated against Studio's schema before it replaces the
+cached index — an unparseable or wrong-major artifact is rejected, the
+last-good index keeps serving, and an operational signal is raised. The
+documentation site and Studio release independently (separate release lanes),
+so a docs deploy publishing a newer schema must not be able to silently take
+documentation search away from a running Studio.
+
 `STUDIO_DOCS_INDEX_URL` joins the server env catalogue, defaulted at the
 resolve layer to the documentation site's published index, so both the
 managed and self-hosted topologies get documentation search out of the box.
-An operator can point it at a mirror or set it empty; without an index the
-Documentation group does not exist and the rest of the bar is unaffected.
-Whether the query runs server-side over the cached index or the compact index
-is handed to the client on first documentation use is an implementation
-choice inside the provider — either way the query is answered by the
-instance.
+An operator can point it at a mirror, or set the literal value `off` to
+disable it — a sentinel rather than an empty string, because the env
+boundary's `emptyStringAsUndefined` folds an empty value back into the
+default and would make "set it empty" silently re-enable the feature.
+Without an index the Documentation group does not exist and the rest of the
+bar is unaffected.
 
 ### 5.6 Recents
 
@@ -425,10 +473,19 @@ Two changes in the documentation app make the instance-held index exist:
 2. **Index artifact.** The documentation build emits a search index — one
    record per heading-anchored section, carrying title, hierarchy, absolute
    URL, locale, workflow section, `products`, and a bounded content excerpt —
-   published at a stable URL alongside the site, together with a manifest
-   naming the published locales and the artifact version. The docs app
-   already renders structured MDX with per-page frontmatter; the index is a
-   build output of that same pipeline, not a crawler product.
+   published under a schema-versioned path
+   (`…/search-index/v1/<locale>.json`), together with a manifest naming the
+   schema major, the published locales, and the content version. The docs
+   app already renders structured MDX with per-page frontmatter; the index
+   is a build output of that same pipeline, not a crawler product.
+
+   The versioned path is the compatibility contract between two products
+   that release independently: a schema change is a new major published at a
+   new path, and the build keeps emitting every major a supported Studio
+   release consumes until that support is explicitly dropped — majors are
+   cheap static artifacts of the same build. Studio's side of the contract
+   (fetch its supported major, validate before replacing the cache, keep
+   last-good on failure) is §5.5.
 
 The documentation site's own Algolia DocSearch is untouched — it keeps its
 crawler and its own search UI, where querying a third party is fine because
@@ -589,8 +646,11 @@ foundations work (#1315).
   destination provider — including areas other than the mounted one (§3.1) —
   and an entry whose `access` capability the test session lacks is absent
   from both sidebar and bar; one test over the shared data, which is the
-  point of §5.2. A type-level assertion (or registry test) proves `access`
-  cannot be omitted.
+  point of §5.2. The same cross-area assertion covers commands: a team-area
+  command is found from a study screen (§3.2). A type-level assertion (or
+  registry test) proves `access` cannot be omitted, and the provider type's
+  discriminated union proves a `persistence: 'recents'` provider cannot omit
+  `resolve`.
 - **Launcher rule**: the registry test in §5.3 — every activation is a
   route, an external link, or an owning-surface name registered by a screen;
   the activation type admits no callback, so a mutation is not expressible.
@@ -599,15 +659,21 @@ foundations work (#1315).
   round-trips through the registry — a chord declared but not registered, or
   hinted but unbound, fails the test.
 - **Entity search**: membership scoping (a study in a team the researcher
-  left never appears), context-first ranking, bounds, and the
-  no-existence-oracle posture on unknown context ids.
-- **Docs provider**: absent without an index; the documentation path issues
-  no outbound request carrying query text — the only outbound documentation
-  traffic observed in the test double is the index refresh (asserted by
-  inspecting outbound traffic, not assumed); locale filter and `en` fallback
-  from the index manifest; a `studio`-tagged record ranks above an
-  otherwise-equal untagged one, and untagged records still appear (boost,
-  not filter); a failed refresh keeps serving the last good index.
+  left never appears), context-first ranking, the server-capped limit and
+  cursor pagination, platform-scoped results carrying no invented team, and
+  the no-existence-oracle posture on unknown context ids.
+- **Docs provider**: absent without an index and when
+  `STUDIO_DOCS_INDEX_URL=off` (the sentinel disables despite
+  `emptyStringAsUndefined` folding empty values into the default — both
+  asserted); the documentation path issues no outbound request carrying
+  query text — the only outbound documentation traffic observed in the test
+  double is the index refresh (asserted by inspecting outbound traffic, not
+  assumed); locale filter and `en` fallback from the index manifest; a
+  `studio`-tagged record ranks above an otherwise-equal untagged one, and
+  untagged records still appear (boost, not filter); a broad query returns
+  one server-capped page with a working `nextCursor`; a failed refresh, a
+  wrong-schema-major artifact, and an unparseable artifact each keep serving
+  the last good index and raise the operational signal.
 - **Recents**: items from a `persistence: 'never'` provider are not written
   even when the provider "forgets" per-item marking (there is nothing to
   forget — the policy is provider-level); stored references re-resolve on
@@ -654,15 +720,12 @@ inert until Studio fetches it.
    destinations and commands of its own. Adoption is the shared-first
    aspiration, on Architect's timetable, and nothing in this design depends
    on it.
-4. **Visible-with-explanation commands.** §3.2 defaults gated commands to
-   absent. Whether specific commands (pause collection) should instead appear
-   with their role requirement, as the concept mock suggests, is a UX-copy
-   and role-teaching question for the owning features.
-5. **Air-gapped installs.** `STUDIO_DOCS_INDEX_URL` defaults to the
-   documentation site's published index and can be mirrored or disabled.
-   Whether the self-host image should additionally bundle a snapshot of the
-   index at release time, so a fully offline install still has documentation
-   search, is a packaging question for #1250.
+4. **Air-gapped installs.** `STUDIO_DOCS_INDEX_URL` defaults to the
+   documentation site's published index, can be mirrored, and is disabled
+   with the `off` sentinel. Whether the self-host image should additionally
+   bundle a snapshot of the index at release time, so a fully offline
+   install still has documentation search, is a packaging question for
+   #1250.
 
 ## 15. GitHub tracking
 
