@@ -181,7 +181,7 @@ export const HorizontalStageNavigation: Story = {
   },
 };
 
-const openSettingsMenu = async (canvasElement: HTMLElement) => {
+const openSettingsPopover = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
 
   const settingsButton = await canvas.findByRole('button', {
@@ -189,15 +189,15 @@ const openSettingsMenu = async (canvasElement: HTMLElement) => {
   });
   await userEvent.click(settingsButton);
 
-  return canvas.findByRole('menu');
+  return canvas.findByRole('dialog', { name: /interview settings/i });
 };
 
 const exitAndAssertConfirmation = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
 
-  const menu = await openSettingsMenu(canvasElement);
+  const popover = await openSettingsPopover(canvasElement);
   await userEvent.click(
-    within(menu).getByRole('menuitem', { name: /exit interview/i }),
+    within(popover).getByRole('button', { name: /exit interview/i }),
   );
 
   const dialog = await canvas.findByRole('dialog', {
@@ -273,9 +273,9 @@ export const ReviewMode: Story = {
       await canvas.findByRole('button', { name: /next step/i }),
     ).toBeDisabled();
 
-    const menu = await openSettingsMenu(canvasElement);
+    const popover = await openSettingsPopover(canvasElement);
     await userEvent.click(
-      within(menu).getByRole('menuitem', { name: /exit review/i }),
+      within(popover).getByRole('button', { name: /exit review/i }),
     );
 
     const dialog = await canvas.findByRole('dialog', {
@@ -290,7 +290,7 @@ export const ReviewMode: Story = {
 };
 
 export const TextSize: Story = {
-  name: 'Text size (settings menu)',
+  name: 'Text size (settings popover)',
   render: ({ stageCount }) => (
     <div className="flex h-dvh w-full">
       <StoryInterviewShell
@@ -304,20 +304,31 @@ export const TextSize: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
-    const menu = await openSettingsMenu(canvasElement);
-    const group = within(menu).getByRole('group', { name: /text size/i });
+    const popover = await openSettingsPopover(canvasElement);
+    const group = within(popover).getByRole('group', { name: /text size/i });
+    const decrease = within(group).getByRole('button', {
+      name: /decrease text size/i,
+    });
+    const increase = within(group).getByRole('button', {
+      name: /increase text size/i,
+    });
+    const input = within(group).getByRole('spinbutton', {
+      name: /text size percentage/i,
+    });
+    const currentSize = within(group).getByRole('status');
 
-    const options = within(group).getAllByRole('menuitemradio');
-    await expect(options).toHaveLength(5);
-    await expect(
-      within(group).getByRole('menuitemradio', { name: '100%' }),
-    ).toHaveAttribute('aria-checked', 'true');
+    await expect(currentSize).toHaveTextContent('100%');
+    await expect(input).toHaveValue(100);
+    await expect(input).toHaveAttribute('min', '90');
+    await expect(input).toHaveAttribute('max', '130');
+    await expect(input).toHaveAttribute('step', '10');
 
-    // Selecting a size keeps the menu open (live preview) and rescales the
-    // whole interview via the Shell's --interview-text-scale multiplier.
-    await userEvent.click(
-      within(group).getByRole('menuitemradio', { name: '120%' }),
-    );
+    // The native number field receives initial focus. Arrow-key stepping proves
+    // the control does not depend on pointer interaction.
+    await expect(input).toHaveFocus();
+    await userEvent.keyboard('{ArrowUp}{ArrowUp}');
+    await expect(input).toHaveValue(120);
+    await expect(currentSize).toHaveTextContent('120%');
 
     const main = canvasElement.querySelector('main[data-theme-interview]');
     await expect(main).not.toBeNull();
@@ -328,22 +339,48 @@ export const TextSize: Story = {
           .trim(),
       ).toBe('1.2'),
     );
-    await expect(
-      within(group).getByRole('menuitemradio', { name: '120%' }),
-    ).toHaveAttribute('aria-checked', 'true');
 
-    // Escape dismisses the menu and returns focus to the trigger.
+    // Native min/max bounds keep the steppers from exceeding the supported
+    // scale range.
+    await userEvent.click(increase);
+    await userEvent.click(increase);
+    await expect(input).toHaveValue(130);
+    await expect(currentSize).toHaveTextContent('130%');
+
+    await userEvent.click(decrease);
+    await userEvent.click(decrease);
+    await userEvent.click(decrease);
+    await userEvent.click(decrease);
+    await userEvent.click(decrease);
+    await expect(input).toHaveValue(90);
+    await expect(currentSize).toHaveTextContent('90%');
+
+    // Direct entry is available as well as stepping.
+    await userEvent.click(input);
+    await userEvent.clear(input);
+    await userEvent.type(input, '110');
+    await expect(input).toHaveValue(110);
+    await expect(currentSize).toHaveTextContent('110%');
+
+    // Return to 120% so the visual snapshot captures a non-default value.
+    await userEvent.click(increase);
+    await expect(input).toHaveValue(120);
+    await expect(currentSize).toHaveTextContent('120%');
+
+    // Escape dismisses the popover and returns focus to the trigger.
     await userEvent.keyboard('{Escape}');
     const canvas = within(canvasElement);
     await waitFor(() =>
-      expect(canvas.queryByRole('menu')).not.toBeInTheDocument(),
+      expect(
+        canvas.queryByRole('dialog', { name: /interview settings/i }),
+      ).not.toBeInTheDocument(),
     );
     const settingsButton = canvas.getByRole('button', { name: /settings/i });
     await waitFor(() => expect(settingsButton).toHaveFocus());
 
     // Reopen so the visual snapshot captures the control with the enlarged
-    // scale applied and 120% checked.
-    await openSettingsMenu(canvasElement);
+    // scale applied and 120% displayed.
+    await openSettingsPopover(canvasElement);
   },
 };
 
@@ -359,14 +396,14 @@ export const SettingsMenuScalingOnly: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
-    const menu = await openSettingsMenu(canvasElement);
+    const popover = await openSettingsPopover(canvasElement);
 
-    // Without an exit handler the menu holds only the text-size control.
+    // Without an exit handler the popover holds only the text-size control.
     await expect(
-      within(menu).queryByRole('menuitem', { name: /exit/i }),
+      within(popover).queryByRole('button', { name: /exit/i }),
     ).not.toBeInTheDocument();
     await expect(
-      within(menu).getByRole('group', { name: /text size/i }),
+      within(popover).getByRole('group', { name: /text size/i }),
     ).toBeInTheDocument();
   },
 };
