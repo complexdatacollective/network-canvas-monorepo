@@ -392,11 +392,14 @@ declared `'never'` has no per-item escape hatch.
 Continuation is a property of the group, not of any one source. Each group
 renders one "show more" row whenever anything remains: local matches beyond
 the bound, remote items fetched but unrevealed, or a provider holding a
-`next` cursor. Activating it reveals the next bounded slice of the group's
-merged total order — drawing first from results the component already holds
-and calling a provider's `search` with its cursor only when that provider's
-contribution is exhausted — so a mixed group cannot strand one source's
-results behind another's pagination, and never reveals more than the slice.
+`next` cursor. Activating it first requests the next page from every
+provider in the group with an outstanding cursor, then merges everything
+held and reveals the next bounded slice of the merged total order — held
+rows are not revealed ahead of the fetch, because an unfetched page can
+contain higher-tier items that rank before them, and a slice revealed early
+would be contradicted by insertions above it. A mixed group therefore
+cannot strand one source's results behind another's pagination, never
+reveals more than the slice, and never reveals a slice out of merged order.
 Studio's remote providers pass cursors straight through to their procedures'
 `cursor`/`nextCursor` (§5.4, §5.5); a sixth matching local destination is
 reachable, not silently cut (invariant 1). Late and revealed results honour
@@ -887,10 +890,11 @@ foundations work (#1315).
   filtered matches exceed the group bound renders the affordance from
   component state and reveals the next bounded slice, so a sixth matching
   destination is reachable; a mixed group — local remainder plus a provider
-  cursor — reveals exactly one bounded slice of the merged order per
-  activation, draining held results before requesting a provider's next page
-  (§5.1), with neither source stranded; only a group with nothing further
-  renders no affordance.
+  cursor — fetches the outstanding cursor before revealing, then reveals
+  exactly one bounded slice of the merged order per activation (§5.1): the
+  test seeds a remote continuation whose items outrank the held local rows
+  and asserts the revealed slice contains them in merged order, with neither
+  source stranded; only a group with nothing further renders no affordance.
 
 ### 12.2 Studio integration tests
 
