@@ -14,6 +14,7 @@ const PRINCIPAL: SessionPrincipal = {
   emailVerified: true,
   name: 'Protocol Command Owner',
   sessionId: 'protocol-command-owner-session',
+  activeTeamId: null,
 };
 
 describe('audited protocol commands', () => {

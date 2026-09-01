@@ -21,6 +21,11 @@ export const NO_AUDIT_TRANSACTION_POLICIES = {
     reason:
       'Reading the values the activity filters can take is a permission-checked bounded read over the same rows as audit.list; the audit taxonomy records exports and denied access, not views.',
   },
+  'study.shell': {
+    kind: 'none',
+    reason:
+      'Loading the study chrome is a bounded read of a study the caller can already reach; the audit taxonomy records exports and denied access, not views. The probe that resolves the tenant reads nothing until a team holds the study.',
+  },
   'protocol.create': {
     kind: 'none',
     reason:

@@ -511,6 +511,7 @@ describe.skipIf(!db)('invitation delivery outbox', () => {
             emailVerified: true,
             name: 'Inviting Researcher',
             sessionId: 'invitation-delivery-session',
+            activeTeamId: null,
           },
           requestId: randomUUID(),
         },

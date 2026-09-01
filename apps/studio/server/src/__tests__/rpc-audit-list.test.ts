@@ -32,6 +32,7 @@ function principal(userId: string, name: string): SessionPrincipal {
     emailVerified: true,
     name,
     sessionId: `${userId}-session`,
+    activeTeamId: null,
   };
 }
 

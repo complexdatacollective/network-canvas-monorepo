@@ -26,6 +26,7 @@ const PRINCIPAL: SessionPrincipal = {
   emailVerified: true,
   name: 'RPC Audit Protocol Owner',
   sessionId: 'rpc-audit-protocol-owner-session',
+  activeTeamId: null,
 };
 
 describe.skipIf(!db)('audited protocol RPC', () => {
@@ -307,6 +308,7 @@ describe.skipIf(!db)('audited protocol RPC', () => {
       emailVerified: true,
       name: 'Revoked protocol member',
       sessionId: 'rpc-audit-revoked-session',
+      activeTeamId: null,
     };
     await pool.query(
       `INSERT INTO "user" (id, name, email, "emailVerified")

@@ -29,6 +29,8 @@ import {
   RenewSectionInputSchema,
   RenewSectionResultSchema,
   StatusSchema,
+  StudyShellInputSchema,
+  StudyShellSchema,
   TeamScopedSchema,
   UpdateTeamMemberRoleInputSchema,
   UpdateTeamMemberRoleResultSchema,
@@ -38,6 +40,7 @@ export {
   AUDIT_CATEGORIES,
   AUDIT_FACET_LIMIT,
   AUDIT_OUTCOMES,
+  STUDY_LIST_CAP,
   AuditActorKindSchema,
   AuditCategorySchema,
   AuditOutcomeSchema,
@@ -53,6 +56,7 @@ export {
   type AuditFilterOptions,
   type AuditOutcome,
   type SocialProvider,
+  type StudyShell,
   type TeamRole,
 } from './schemas.ts';
 
@@ -114,6 +118,18 @@ export const contract = {
       .input(AddInformationStageInputSchema)
       .output(ManifestRevisionSchema),
     moveStage: oc.input(MoveStageInputSchema).output(ManifestRevisionSchema),
+  },
+  /**
+   * The study chrome's one read (§6.3). Unlike every other tenant-scoped
+   * procedure the input names no team: a cold deep link to /study/$studyId has
+   * none to send, so the server resolves the owning team from the caller's own
+   * memberships. A study the caller cannot reach is FORBIDDEN whether it is in
+   * another team or does not exist — the search space is exactly the caller's
+   * teams, so the two are indistinguishable by construction rather than by a
+   * special case.
+   */
+  study: {
+    shell: oc.input(StudyShellInputSchema).output(StudyShellSchema),
   },
   /**
    * The team's immutable activity record. Reads require the audit.read

@@ -41,6 +41,7 @@ import {
 } from './protocol/commands.ts';
 import { ProtocolStore } from './protocol/store.ts';
 import { createProtocolSyncServer } from './protocol/sync.ts';
+import { readStudyShell } from './study/shell.ts';
 import {
   acceptTeamInvitation,
   cancelTeamInvitation,
@@ -550,6 +551,27 @@ export function createRpcRouter(
             ),
           ),
         ),
+    },
+    // The one tenant-scoped procedure that takes no teamId: study/shell.ts
+    // resolves the owning team from the caller's own memberships, because a
+    // cold deep link to /study/$studyId has none to send. FORBIDDEN, never
+    // NOT_FOUND: the search space is exactly the caller's teams, so a study in
+    // another team and a study that does not exist are the same answer by
+    // construction. NOT_FOUND keeps its narrower meaning — an authorized
+    // tenant whose subject row is absent.
+    study: {
+      shell: os.study.shell
+        .use(requireUser)
+        .handler(async ({ context, input }) => {
+          if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
+          const shell = await readStudyShell(
+            { auth, pool },
+            context.principal,
+            input,
+          );
+          if (shell === null) throw new ORPCError('FORBIDDEN');
+          return shell;
+        }),
     },
     audit: {
       list: os.audit.list

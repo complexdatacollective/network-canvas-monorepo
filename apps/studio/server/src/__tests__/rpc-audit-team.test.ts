@@ -23,6 +23,7 @@ const PRINCIPAL: SessionPrincipal = {
   emailVerified: true,
   name: 'RPC Audit Owner',
   sessionId: 'rpc-audit-owner-session',
+  activeTeamId: null,
 };
 
 describe.skipIf(!db)('audited team RPC', () => {
@@ -205,6 +206,7 @@ describe.skipIf(!db)('audited team RPC', () => {
       emailVerified: true,
       name: 'RPC Audit Invitee',
       sessionId: 'rpc-audit-invitee-session',
+      activeTeamId: null,
     };
     await pool.query(
       `INSERT INTO "user" (id, name, email, "emailVerified")

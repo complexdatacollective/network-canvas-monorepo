@@ -275,6 +275,7 @@ describe('audit mutation policy', () => {
       'me',
       'protocols.draft',
       'protocols.list',
+      'study.shell',
       'audit.list',
       'audit.get',
       'audit.filterOptions',

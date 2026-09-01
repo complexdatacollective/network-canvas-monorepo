@@ -21,6 +21,7 @@ const PRINCIPAL: SessionPrincipal = {
   emailVerified: true,
   name: 'Researcher',
   sessionId: 'session-1',
+  activeTeamId: null,
 };
 
 describe('principal resolution', () => {
@@ -270,6 +271,49 @@ describe.skipIf(!db)('teams (organization plugin)', () => {
           ['second-membership', team.id, me.userId],
         ),
       ).rejects.toThrow(/duplicate key/);
+    } finally {
+      await scratch.dispose();
+    }
+  });
+
+  it('lists the teams a user belongs to, and the session active team', async () => {
+    if (!db) throw new Error('unreachable');
+    const scratch = await createScratchSchema(db);
+    try {
+      await provisionScratchSchema(scratch.pool);
+      const { auth, cookie } = await signInWithMagicLink(scratch.app, 'lister');
+      const headers = new Headers({ cookie });
+      const before = await auth.getSession(headers);
+      if (!before) throw new Error('sign-in produced no session');
+
+      // The study shell resolves its tenant from exactly this list, so a
+      // signed-in researcher with no team must probe nothing at all.
+      expect(await auth.listMemberTeamIds(before.userId)).toEqual([]);
+      expect(before.activeTeamId).toBeNull();
+
+      const ids: string[] = [];
+      for (const slug of ['second-team', 'first-team']) {
+        const created = await callBetterAuthOrganizationRoute(
+          auth,
+          '/api/auth/organization/create',
+          cookie,
+          { name: `Team ${slug}`, slug },
+        );
+        expect(created.status).toBe(200);
+        ids.push(((await created.json()) as { id: string }).id);
+      }
+
+      // Ascending by id, not by creation order: the probe order the shell
+      // applies on top of this has to start from something deterministic.
+      expect(await auth.listMemberTeamIds(before.userId)).toEqual(
+        ids.toSorted(),
+      );
+      expect(await auth.listMemberTeamIds('nobody')).toEqual([]);
+
+      const after = await auth.getSession(headers);
+      // Creating a team makes it the session active team, which is what puts
+      // the researcher's current team first in the shell's probe.
+      expect(after?.activeTeamId).toBe(ids[1]);
     } finally {
       await scratch.dispose();
     }

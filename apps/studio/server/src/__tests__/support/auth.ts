@@ -10,6 +10,7 @@ export function stubAuthService(overrides?: Partial<AuthService>): AuthService {
     handler: () => Promise.resolve(Response.json({})),
     getSession: () => Promise.resolve(null),
     getMembership: () => Promise.resolve(null),
+    listMemberTeamIds: () => Promise.resolve([]),
     ...overrides,
   };
 }

@@ -124,6 +124,7 @@ function principal(person: Identity): SessionPrincipal {
     emailVerified: true,
     name: person.name,
     sessionId: `${person.userId}-session`,
+    activeTeamId: null,
   };
 }
 

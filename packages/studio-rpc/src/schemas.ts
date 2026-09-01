@@ -373,3 +373,64 @@ export const AuditEventDetailSchema = AuditEventSummarySchema.extend({
   details: z.record(z.string(), z.unknown()),
 });
 export type AuditEventDetail = z.infer<typeof AuditEventDetailSchema>;
+
+// The study shell (app-shell design §6.3): one procedure answering everything
+// the study chrome needs — the study, its owning team, the researcher's
+// standing in it, the team's study list for the header chip, and the sidebar
+// counts. It exists as one procedure because the shell's questions are
+// answered by one tenancy resolution; splitting them would resolve the tenant
+// once per question.
+//
+// The input carries no teamId. A cold deep link to /study/$studyId has none to
+// send, so the server resolves the tenant from the caller's own memberships —
+// the same rule AcceptTeamInvitationInputSchema records above.
+export const StudyShellInputSchema = z.object({
+  studyId: z.uuid(),
+});
+
+/**
+ * How many studies the header chip's menu lists. A fixed cap the menu can show
+ * without becoming a scroll list; past it the menu's last entry links to the
+ * team's full paginated list rather than presenting a truncation as complete.
+ */
+export const STUDY_LIST_CAP = 10;
+
+// A key is absent when the area is empty, never present as zero: the sidebar
+// omits an empty area's count rather than announcing "Participants, 0".
+//
+// Only `versions` has a store today. Participants, waves, sessions and
+// protocol assets have no tables yet (#1262 and the collection issues own
+// them), so those keys are absent for the reason the contract already gives —
+// the areas hold nothing. The key set is declared whole so those areas start
+// reporting without a shape change.
+const StudyShellCountsSchema = z.object({
+  participants: z.number().int().nonnegative().optional(),
+  waves: z.number().int().nonnegative().optional(),
+  sessions: z.number().int().nonnegative().optional(),
+  versions: z.number().int().nonnegative().optional(),
+  assets: z.number().int().nonnegative().optional(),
+});
+
+export const StudyShellSchema = z.object({
+  study: z.object({ id: z.uuid(), name: z.string() }),
+  team: z.object({
+    id: z.string().min(1).max(255),
+    name: z.string().min(1).max(320),
+    role: TeamRoleSchema,
+  }),
+  /**
+   * The researcher's effective capabilities in this team. An open string list
+   * rather than an enum: the vocabulary is the two audit permissions until
+   * #1257's RBAC taxonomy replaces the built-in role mapping, and a closed
+   * enum here would have to change on every addition.
+   */
+  permissions: z.array(z.string()),
+  teamStudies: z.object({
+    /** Capped at STUDY_LIST_CAP, most recent first, always including this study. */
+    items: z.array(z.object({ id: z.uuid(), name: z.string() })),
+    /** The team holds more studies than the cap. */
+    hasMore: z.boolean(),
+  }),
+  counts: StudyShellCountsSchema,
+});
+export type StudyShell = z.infer<typeof StudyShellSchema>;

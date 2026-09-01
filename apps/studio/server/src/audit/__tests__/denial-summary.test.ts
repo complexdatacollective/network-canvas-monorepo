@@ -42,6 +42,7 @@ describe.skipIf(!db)('denied audit summary', () => {
       emailVerified: true,
       name: 'Denied Summary Actor',
       sessionId: 'denied-summary-session',
+      activeTeamId: null,
     };
     let now = Date.parse('2026-08-31T10:00:00.000Z');
     let scheduled: (() => void) | undefined;

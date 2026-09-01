@@ -29,6 +29,7 @@ const PRINCIPAL: SessionPrincipal = {
   emailVerified: true,
   name: 'Researcher',
   sessionId: 'session-1',
+  activeTeamId: null,
 };
 
 describe.skipIf(!db)('team-scoped procedures', () => {

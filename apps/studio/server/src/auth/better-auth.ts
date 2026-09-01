@@ -1,7 +1,7 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { magicLink, organization } from 'better-auth/plugins';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
 
@@ -143,6 +143,7 @@ export function createBetterAuthService(
         emailVerified: result.user.emailVerified,
         name: result.user.name,
         sessionId: result.session.id,
+        activeTeamId: result.session.activeOrganizationId ?? null,
       };
     },
     getMembership: async (userId, teamId) => {
@@ -158,6 +159,20 @@ export function createBetterAuthService(
         .where(and(eq(members.user_id, userId), eq(members.team_id, teamId)))
         .limit(1);
       return rows[0] ?? null;
+    },
+    listMemberTeamIds: async (userId) => {
+      // Served by team_members_user_id_team_id_idx, which is index-only for
+      // exactly this projection. Selecting the id alone is not a micro-
+      // optimisation: the study shell resolves its tenant from this list
+      // before any TenantDb is pinned, and returning a role here would put a
+      // permission-bearing field on the unpinned side of that boundary.
+      const members = AUTH_TABLES.team_members;
+      const rows = await db
+        .select({ teamId: members.team_id })
+        .from(members)
+        .where(eq(members.user_id, userId))
+        .orderBy(asc(members.team_id));
+      return rows.map((row) => row.teamId);
     },
   };
 }
