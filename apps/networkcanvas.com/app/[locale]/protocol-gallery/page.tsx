@@ -14,17 +14,15 @@ import { HomepagePageBackground } from '~/components/ui/HomepagePageBackground';
 import { contactEmail } from '~/lib/content';
 import { routing } from '~/lib/i18n/routing';
 import { loadProtocolGallery } from '~/lib/protocolGallery';
+import { protocolGalleryUrl } from '~/lib/siteUrls';
 
 type ProtocolGalleryPageProps = {
   params: Promise<{ locale: string }>;
 };
 
-function localeAlternates(pathname: string) {
+function localeAlternates(slug?: string) {
   return Object.fromEntries(
-    routing.locales.map((locale) => [
-      locale,
-      `https://networkcanvas.com/${locale}${pathname}`,
-    ]),
+    routing.locales.map((locale) => [locale, protocolGalleryUrl(locale, slug)]),
   );
 }
 
@@ -35,14 +33,13 @@ export async function generateMetadata({
   if (!hasLocale(routing.locales, locale)) notFound();
 
   const t = await getTranslations({ locale, namespace: 'ProtocolGallery' });
-  const pathname = '/protocol-gallery';
 
   return {
     title: t('metadata.title'),
     description: t('metadata.description'),
     alternates: {
-      canonical: `https://networkcanvas.com/${locale}${pathname}`,
-      languages: localeAlternates(pathname),
+      canonical: protocolGalleryUrl(locale),
+      languages: localeAlternates(),
     },
   };
 }
@@ -68,7 +65,7 @@ export default async function ProtocolGalleryPage({
   return (
     <main className="relative isolate">
       <HomepagePageBackground target="[data-protocol-gallery-weave-target]" />
-      <Header activeItemId="protocolGallery" />
+      <Header activeItemId="protocolGallery" host="protocolGallery" />
 
       <div
         data-protocol-gallery-weave-target

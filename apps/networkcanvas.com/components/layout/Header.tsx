@@ -8,34 +8,37 @@ import type { SiteNavigationLinkRenderProps } from '@codaco/fresco-ui/navigation
 import ThemeSwitcher from '~/components/layout/ThemeSwitcher';
 import { isLocale } from '~/lib/i18n/locales';
 import { Link } from '~/lib/i18n/navigation';
-import { resolveWebsiteNavigationUrl } from '~/lib/siteUrls';
-
-function renderNavigationLink({
-  children,
-  ...props
-}: SiteNavigationLinkRenderProps) {
-  return (
-    <Link {...props} href={resolveWebsiteNavigationUrl(props.href)}>
-      {children}
-    </Link>
-  );
-}
+import { resolveWebsiteNavigationUrl, type SiteHost } from '~/lib/siteUrls';
 
 export function Header({
   activeItemId,
   className,
   containerClassName,
   entranceVariants,
+  host = 'website',
 }: {
   activeItemId?: 'home' | 'getStarted' | 'protocolGallery';
   className?: string;
   containerClassName?: string;
   entranceVariants?: Variants;
+  host?: SiteHost;
 }) {
   const locale = useLocale();
   if (!isLocale(locale)) {
     throw new Error(`Unsupported site navigation locale: ${String(locale)}`);
   }
+
+  const renderNavigationLink = ({
+    children,
+    ...props
+  }: SiteNavigationLinkRenderProps) => (
+    <Link
+      {...props}
+      href={resolveWebsiteNavigationUrl(props.href, locale, host)}
+    >
+      {children}
+    </Link>
+  );
 
   return (
     <SharedSiteNavigation

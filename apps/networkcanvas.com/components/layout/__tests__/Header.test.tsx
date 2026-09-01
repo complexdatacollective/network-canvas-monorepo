@@ -75,6 +75,30 @@ describe('localized layout navigation', () => {
     ).toHaveAttribute('aria-expanded', 'true');
   });
 
+  it('carries the locale across hosts once the gallery has its own origin', () => {
+    vi.stubEnv(
+      'NEXT_PUBLIC_PROTOCOL_GALLERY_URL',
+      'https://protocolgallery.networkcanvas.com',
+    );
+
+    renderWithIntl(<Header />, 'es');
+    expect(
+      screen.getByRole('link', { name: 'Galería de protocolos' }),
+    ).toHaveAttribute('href', 'https://protocolgallery.networkcanvas.com/es/');
+    cleanup();
+
+    renderWithIntl(<Header host="protocolGallery" />, 'es');
+    expect(
+      screen.getByRole('link', { name: 'Inicio de Network Canvas' }),
+    ).toHaveAttribute('href', 'https://networkcanvas.com/es/');
+    for (const link of screen.getAllByRole('link', { name: 'Comenzar' })) {
+      expect(link).toHaveAttribute(
+        'href',
+        'https://networkcanvas.com/es/get-started/',
+      );
+    }
+  });
+
   it('marks animated navigation for its pre-hydration entrance state', () => {
     const { container } = renderWithIntl(
       <Header entranceVariants={{ hidden: {}, visible: {} }} />,

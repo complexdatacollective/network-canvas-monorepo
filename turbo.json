@@ -10,6 +10,7 @@
     "NEXT_PUBLIC_GA_ID",
     "NEXT_PUBLIC_DOCUMENTATION_URL",
     "NEXT_PUBLIC_NETWORK_CANVAS_URL",
+    "NEXT_PUBLIC_PROTOCOL_GALLERY_URL",
     "VITE_FRESCO_PREVIEW_URL",
     "VITE_FRESCO_PREVIEW_API_TOKEN",
     "VITE_DISABLE_ANALYTICS",
@@ -215,6 +216,7 @@
       "env": [
         "NODE_ENV",
         "NEXT_PUBLIC_DOCUMENTATION_URL",
+        "NEXT_PUBLIC_PROTOCOL_GALLERY_URL",
         "CONTEXT",
         "REVIEW_ID",
         // See the note on the generic build task's `env`.

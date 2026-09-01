@@ -15,6 +15,42 @@ deploys authenticate with `NETLIFY_AUTH_TOKEN`, target the site in
 `NETLIFY_SITE_ID_WEBSITE`, and run only when the Website release PR changes the
 site's stable version on `main`.
 
+## The protocol gallery subdomain
+
+`protocolgallery.networkcanvas.com` is a Netlify **domain alias** of this site,
+not a separate site or release lane: one build serves both hosts from the same
+publish directory. The gallery's exported routes stay at
+`/{locale}/protocol-gallery/…`, and `netlify/edge-functions/locale.ts` inserts
+that prefix after the locale segment for requests arriving on the gallery host,
+so a visitor sees `/{locale}/{slug}/`. The prefix insertion also covers the
+per-directory RSC payloads the client router fetches, which is why it runs ahead
+of the extension check in `shouldBypass`. A request for the exported route on
+the gallery host is sent to the short form with a 301, so each page has one URL
+per host.
+
+The locale cookie is host-scoped, so navigation links that cross between the
+two hosts carry the current locale in their path rather than relying on the
+other host to negotiate it again.
+
+The short URL shape is production-only. `NEXT_PUBLIC_PROTOCOL_GALLERY_URL` is
+set by `next.config.ts` when `CONTEXT` is `production`; without it — locally and
+in every deploy preview, which serve a single host — the gallery stays a route
+of this site, keeps its `/protocol-gallery` links, and canonicalises to
+`networkcanvas.com`. Nothing in CI exercises the gallery host, so verify client
+navigation, the language selector, and the downloads on the live subdomain after
+a cutover.
+
+Standing up or moving the alias is manual:
+
+1. Add the domain alias to the site in `NETLIFY_SITE_ID_WEBSITE` so Netlify can
+   issue its certificate and match the domain-scoped redirects in
+   `netlify.toml`.
+2. Repoint the Cloudflare record at Netlify, matching the proxy setting of the
+   other subdomains. Lower its TTL first — this is the cutover.
+3. The forced 301s from `networkcanvas.com/{locale}/protocol-gallery/*` and the
+   legacy `/protocol/<author-list-slug>` redirects in the edge function are what
+   keep a single canonical host; neither is optional cleanup.
+
 ## Analytics gating
 
 `instrumentation-client.ts` initialises PostHog only when the page is served

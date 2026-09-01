@@ -5,11 +5,19 @@ import { describe, expect, it } from 'vitest';
 
 import { getStaticLocaleParams, locales } from '~/lib/i18n/locales';
 import { routing } from '~/lib/i18n/routing';
+import { loadProtocolGallery } from '~/lib/protocolGallery';
 import {
   config,
   detectLocale,
+  getGalleryCanonicalRedirect,
+  getGalleryLegacyRedirect,
+  getGalleryRewrite,
   getLocaleRedirect,
+  isProtocolGalleryHost,
+  legacyGallerySlugs,
 } from '~/netlify/edge-functions/locale';
+
+const galleryOrigin = 'https://protocolgallery.networkcanvas.com';
 
 type NegotiationCase = {
   name: string;
@@ -180,6 +188,139 @@ describe('locale routing', () => {
         new Request('http://localhost/es/protocol-gallery/test-to-prep/'),
       ),
     ).toBeUndefined();
+  });
+
+  describe('protocol gallery host', () => {
+    it('recognizes only the gallery subdomain', () => {
+      expect(isProtocolGalleryHost('protocolgallery.networkcanvas.com')).toBe(
+        true,
+      );
+      expect(isProtocolGalleryHost('networkcanvas.com')).toBe(false);
+    });
+
+    it('negotiates a locale before anything is rewritten', () => {
+      expect(
+        getLocaleRedirect(
+          new Request(`${galleryOrigin}/`, {
+            headers: { 'accept-language': 'es-ES,es;q=0.9' },
+          }),
+        )?.toString(),
+      ).toBe(`${galleryOrigin}/es/`);
+      expect(
+        getLocaleRedirect(
+          new Request(`${galleryOrigin}/gate/`),
+          'en-GB',
+        )?.toString(),
+      ).toBe(`${galleryOrigin}/en-GB/gate/`);
+    });
+
+    it('inserts the exported route prefix after the locale segment', () => {
+      expect(
+        getGalleryRewrite(new URL(`${galleryOrigin}/en-US/`))?.toString(),
+      ).toBe(`${galleryOrigin}/en-US/protocol-gallery/`);
+      expect(
+        getGalleryRewrite(new URL(`${galleryOrigin}/en-US`))?.toString(),
+      ).toBe(`${galleryOrigin}/en-US/protocol-gallery/`);
+      expect(
+        getGalleryRewrite(new URL(`${galleryOrigin}/es/gate/`))?.toString(),
+      ).toBe(`${galleryOrigin}/es/protocol-gallery/gate/`);
+    });
+
+    it('maps the RSC payloads the client router fetches', () => {
+      for (const payload of [
+        'index.txt',
+        '__next._full.txt',
+        '__next._tree.txt',
+        '__next.$d$locale.txt',
+      ]) {
+        expect(
+          getGalleryRewrite(
+            new URL(`${galleryOrigin}/en-US/gate/${payload}`),
+          )?.toString(),
+        ).toBe(`${galleryOrigin}/en-US/protocol-gallery/gate/${payload}`);
+      }
+    });
+
+    it('leaves shared site-root assets alone', () => {
+      for (const pathname of [
+        '/_next/static/app.js',
+        '/images/logo.svg',
+        '/protocols/protocol-gallery/gate/gate.netcanvas',
+        '/videos/intro.mp4',
+        '/downloads/classic/architect/6.6.0/apple-silicon',
+      ]) {
+        expect(
+          getGalleryRewrite(new URL(`${galleryOrigin}${pathname}`)),
+        ).toBeUndefined();
+      }
+    });
+
+    it('sends the exported route to its short form', () => {
+      expect(
+        getGalleryCanonicalRedirect(
+          new URL(`${galleryOrigin}/en-US/protocol-gallery`),
+        )?.toString(),
+      ).toBe(`${galleryOrigin}/en-US/`);
+      expect(
+        getGalleryCanonicalRedirect(
+          new URL(`${galleryOrigin}/en-US/protocol-gallery/`),
+        )?.toString(),
+      ).toBe(`${galleryOrigin}/en-US/`);
+      expect(
+        getGalleryCanonicalRedirect(
+          new URL(`${galleryOrigin}/es/protocol-gallery/gate/?q=1#downloads`),
+        )?.toString(),
+      ).toBe(`${galleryOrigin}/es/gate/?q=1#downloads`);
+      expect(
+        getGalleryCanonicalRedirect(new URL(`${galleryOrigin}/es/gate/`)),
+      ).toBeUndefined();
+      expect(
+        getGalleryCanonicalRedirect(
+          new URL(`${galleryOrigin}/es/protocol-gallery-archive/`),
+        ),
+      ).toBeUndefined();
+    });
+
+    it('redirects the legacy author-list URLs to their gallery slugs', () => {
+      expect(
+        getGalleryLegacyRedirect(
+          new URL(
+            `${galleryOrigin}/protocol/oser-c-batty-e-booty-m-eddens-k-knudsen-h-perry-b-rockett-m-staton-m`,
+          ),
+          'en-US',
+        )?.toString(),
+      ).toBe(`${galleryOrigin}/en-US/gate/`);
+      expect(
+        getGalleryLegacyRedirect(
+          new URL(
+            `${galleryOrigin}/protocol/manderson-l-brear-m-rusere-f-farrell-m-g%C3%B3mez-oliv%C3%A9-f-berkman-l-kahn-k-harling-g/`,
+          ),
+          'es',
+        )?.toString(),
+      ).toBe(`${galleryOrigin}/es/kaya/`);
+    });
+
+    it('maps every legacy URL onto a study in the gallery', async () => {
+      const slugs = new Set(
+        (await loadProtocolGallery()).map((protocol) => protocol.slug),
+      );
+
+      expect(
+        Object.values(legacyGallerySlugs).filter((slug) => !slugs.has(slug)),
+      ).toEqual([]);
+    });
+
+    it('leaves unknown legacy URLs to the ordinary 404', () => {
+      expect(
+        getGalleryLegacyRedirect(
+          new URL(`${galleryOrigin}/protocol/nobody-a`),
+          'en-US',
+        ),
+      ).toBeUndefined();
+      expect(
+        getGalleryLegacyRedirect(new URL(`${galleryOrigin}/gate/`), 'en-US'),
+      ).toBeUndefined();
+    });
   });
 
   it('recognizes locale paths after Netlify normalizes their casing', () => {
