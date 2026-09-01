@@ -11,6 +11,13 @@ const workflow = readFileSync(
   new URL('../.github/workflows/ci-and-release.yml', import.meta.url),
   'utf8',
 );
+const deadLinkChecker = readFileSync(
+  new URL('./dead-link-checker.mjs', import.meta.url),
+  'utf8',
+);
+const rootPackage = JSON.parse(
+  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+);
 const parsedWorkflow = parse(workflow);
 const snapshotWorkflow = readFileSync(
   new URL(
@@ -153,11 +160,8 @@ test('both public sites are crawled only for their generated release PRs', () =>
       'the ignored-deploy fallback only accepts Netlify dashboard URLs',
     );
     assert.match(previewJob, /node scripts\/dead-link-checker\.mjs/);
-    assert.match(
-      previewJob,
-      /xvfb-run --auto-servernum node scripts\/dead-link-checker\.mjs/,
-      'the checker can launch headed Chrome for browser verification',
-    );
+    assert.doesNotMatch(previewJob, /xvfb-run/);
+    assert.match(previewJob, /--concurrent=1/);
     assert.match(previewJob, new RegExp(`"\\$${startPath}"`));
     assert.match(previewJob, /--user-agent="\$DEAD_LINK_CHECK_USER_AGENT"/);
     assert.match(previewJob, /--github-actions/);
@@ -204,6 +208,17 @@ test('both public sites are crawled only for their generated release PRs', () =>
   assert.match(carryForward, /- website-preview-checks/);
   assert.match(carryForward, /FLAG_DOCS: \["docs-preview-checks"\]/);
   assert.match(carryForward, /FLAG_WEBSITE: \["website-preview-checks"\]/);
+});
+
+test('the dead-link checker uses Node fetch without a browser fallback', () => {
+  assert.match(deadLinkChecker, /await fetch\(/);
+  assert.doesNotMatch(deadLinkChecker, /import\(['"]playwright['"]\)/);
+  assert.doesNotMatch(deadLinkChecker, /BrowserVerifier|PageSlotSemaphore/);
+  assert.doesNotMatch(
+    deadLinkChecker,
+    /rejectUnauthorized|NODE_TLS_REJECT_UNAUTHORIZED/,
+  );
+  assert.equal(rootPackage.devDependencies.playwright, undefined);
 });
 
 test('an ignored Netlify deploy reuses only its verified PR preview alias', async () => {

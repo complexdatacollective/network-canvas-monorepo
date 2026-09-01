@@ -951,7 +951,7 @@ jobs:
             Chrome/120.0.0.0 Safari/537.36 NetworkCanvasLinkChecker/1.0
           DOCS_URL: ${{ steps.netlify-preview.outputs.url }}
         run: >-
-          xvfb-run --auto-servernum node scripts/dead-link-checker.mjs "$DOCS_URL" --github-actions
+          node scripts/dead-link-checker.mjs "$DOCS_URL" --github-actions --concurrent=1
           --report="$RUNNER_TEMP/docs-dead-link-report.json"
           --user-agent="$DEAD_LINK_CHECK_USER_AGENT"
       - name: Upload dead-link report
@@ -1169,7 +1169,7 @@ jobs:
             Chrome/120.0.0.0 Safari/537.36 NetworkCanvasLinkChecker/1.0
           WEBSITE_URL: ${{ steps.netlify-preview.outputs.url }}
         run: >-
-          xvfb-run --auto-servernum node scripts/dead-link-checker.mjs "$WEBSITE_URL/en-US/" --github-actions
+          node scripts/dead-link-checker.mjs "$WEBSITE_URL/en-US/" --github-actions --concurrent=1
           --report="$RUNNER_TEMP/website-dead-link-report.json"
           --user-agent="$DEAD_LINK_CHECK_USER_AGENT"
       - name: Upload dead-link report
