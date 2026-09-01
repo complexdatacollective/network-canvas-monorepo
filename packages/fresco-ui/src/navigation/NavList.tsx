@@ -105,8 +105,6 @@ export const NavListGroup = ({
       >
         {heading}
       </div>
-      {/* See LIST_CLASSES above for why the redundant role is here. */}
-      {/* oxlint-disable-next-line jsx-a11y/no-redundant-roles */}
       {/*
         Named by `aria-label` rather than `aria-labelledby`, even though the
         heading is right there and carries the id. Chromium folds
@@ -118,8 +116,13 @@ export const NavListGroup = ({
         which does not apply `text-transform`, so both agree with the visual
         source and disagree with the browser. Verified against Chromium's
         platform accessibility tree.
+
+        The role is the one LIST_CLASSES explains, and this list needs it more
+        than the ungrouped one does: it is the list whose name and count carry
+        the group, and Safari drops both along with the list semantics.
       */}
-      <ul aria-label={heading} className={LIST_CLASSES}>
+      {/* oxlint-disable-next-line jsx-a11y/no-redundant-roles */}
+      <ul aria-label={heading} role="list" className={LIST_CLASSES}>
         {children}
       </ul>
     </div>

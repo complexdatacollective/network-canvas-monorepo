@@ -35,6 +35,7 @@ import { orpc, rpcClient } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
 import { createUuid } from '../lib/createUuid.ts';
 import { studioEmailPattern } from '../lib/emailValidation.ts';
+import { canManageTeam, teamRoles } from '../lib/teamRoles.ts';
 
 type Team = NonNullable<
   ReturnType<typeof authClient.useListOrganizations>['data']
@@ -169,26 +170,11 @@ function roleLabel(role: string): string {
   }
 }
 
-function teamRoles(role: string | undefined): string[] {
-  return (
-    role
-      ?.split(',')
-      .map((entry) => entry.trim())
-      .filter((entry) => entry !== '') ?? []
-  );
-}
-
 function teamRolesLabel(role: string): string {
   const roles = teamRoles(role);
   return roles.length === 0
     ? 'Unassigned'
     : roles.map((entry) => roleLabel(entry)).join(', ');
-}
-
-function canManageTeam(role: string | undefined): boolean {
-  return teamRoles(role).some(
-    (entry) => entry === 'owner' || entry === 'admin',
-  );
 }
 
 export default function TeamWorkspace(props: { teams: readonly Team[] }) {
@@ -354,16 +340,6 @@ export default function TeamWorkspace(props: { teams: readonly Team[] }) {
             />
           </div>
           <div className="flex items-center gap-3">
-            {selectedTeam && canManageTeam(activeMember.data?.role) && (
-              <Button asChild size="sm" variant="outline">
-                <Link
-                  to="/teams/$teamId/activity"
-                  params={{ teamId: selectedTeam.id }}
-                >
-                  Activity
-                </Link>
-              </Button>
-            )}
             {selectedTeam && <Badge>Currently active</Badge>}
             {(activeTeamAccessPending ||
               switchingTeamId !== null ||

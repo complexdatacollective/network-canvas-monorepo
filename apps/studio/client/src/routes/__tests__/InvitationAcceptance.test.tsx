@@ -24,6 +24,16 @@ vi.mock('../../lib/auth.ts', () => ({
       isPending: false,
       error: null,
     }),
+    useActiveOrganization: vi.fn().mockReturnValue({
+      data: null,
+      isPending: false,
+      error: null,
+    }),
+    useActiveMember: vi.fn().mockReturnValue({
+      data: null,
+      isPending: false,
+      error: null,
+    }),
     signIn: { magicLink: mocks.magicLink, social: vi.fn() },
     signOut: mocks.signOut,
     organization: { setActive: mocks.setActive },

@@ -8,11 +8,11 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { useSyncExternalStore } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { rpcClient } from '../../lib/api.ts';
 import { authClient } from '../../lib/auth.ts';
+import { reportUnauthorizedResponse } from '../../lib/session.ts';
 import { createAppRouter } from '../../router.tsx';
 
 const STAGE_A = '11111111-1111-4111-8111-111111111111';
@@ -68,6 +68,17 @@ vi.mock('../../lib/auth.ts', () => ({
       error: null,
       isPending: false,
     }),
+    useActiveOrganization: vi.fn().mockReturnValue({
+      data: null,
+      error: null,
+      isPending: false,
+    }),
+    useActiveMember: vi.fn().mockReturnValue({
+      data: null,
+      error: null,
+      isPending: false,
+    }),
+    organization: { setActive: vi.fn() },
     signOut: vi.fn(),
   },
 }));
@@ -527,7 +538,9 @@ describe('Studio editor shell', () => {
     fireEvent.change(label, { target: { value: 'Unsaved welcome' } });
     vi.mocked(rpcClient.protocols.releaseSection).mockClear();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    // Sign out lives in the account menu now (§5.5).
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Sign out' }));
     expect(
       await screen.findByRole('heading', {
         name: 'Discard unsaved screen changes?',
@@ -548,41 +561,22 @@ describe('Studio editor shell', () => {
     expect(authClient.signOut).not.toHaveBeenCalled();
   });
 
-  it('bypasses the dirty blocker when the live session expires', async () => {
-    const sessionLive = {
-      data: { user: { name: 'Researcher', email: 'r@example.com' } },
-      isPending: false,
-    } as ReturnType<typeof authClient.useSession>;
-    const sessionNone = {
-      data: null,
-      isPending: false,
-    } as ReturnType<typeof authClient.useSession>;
-    let currentSession = sessionLive;
-    const listeners = new Set<() => void>();
-    function useReactiveSession() {
-      return useSyncExternalStore(
-        (listener) => {
-          listeners.add(listener);
-          return () => listeners.delete(listener);
-        },
-        () => currentSession,
-        () => currentSession,
-      );
-    }
-    vi.mocked(authClient.useSession).mockImplementation(useReactiveSession);
+  it('bypasses the dirty blocker when the session expires', async () => {
     const { queryClient, router } = renderEditor();
     const label = await screen.findByRole('textbox', { name: 'Screen name' });
     fireEvent.change(label, { target: { value: 'Unsaved welcome' } });
     queryClient.setQueryData(['private-draft'], { name: 'Private draft' });
+
+    // A procedure answers 401, which is the one thing that can report the
+    // session ending now that the shell holds no second live channel to
+    // `/api/auth/get-session`. The guard re-asks, is told the session is
+    // gone, and leaves — past the dirty blocker, because there is no editor
+    // state left worth keeping.
     vi.mocked(authClient.getSession).mockResolvedValue({
       data: null,
       error: null,
     });
-
-    act(() => {
-      currentSession = sessionNone;
-      for (const listener of listeners) listener();
-    });
+    await act(() => reportUnauthorizedResponse());
 
     await waitFor(() =>
       expect(queryClient.getQueryData(['private-draft'])).toBeUndefined(),

@@ -14,6 +14,9 @@ import AppLayout from '../AppLayout.tsx';
 const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   useListOrganizations: vi.fn(),
+  useActiveOrganization: vi.fn(),
+  useActiveMember: vi.fn(),
+  setActive: vi.fn(),
 }));
 
 vi.mock('../../lib/auth.ts', () => ({
@@ -25,6 +28,9 @@ vi.mock('../../lib/auth.ts', () => ({
       error: null,
     }),
     useListOrganizations: mocks.useListOrganizations,
+    useActiveOrganization: mocks.useActiveOrganization,
+    useActiveMember: mocks.useActiveMember,
+    organization: { setActive: mocks.setActive },
     signOut: vi.fn(),
   },
 }));
@@ -134,11 +140,48 @@ function shellByPath(
   return shells;
 }
 
+/**
+ * The layout routes that declare an area — the `<nav>` and the
+ * `<main id="main-content">` (§5.3). Every route under the app layout has to
+ * sit under exactly one of them.
+ */
+const AREA_LAYOUT_IDS = ['team-area', 'editor-area'];
+
+/**
+ * App routes allowed to sit under no area layout at all, because their area
+ * declares no sidebar and they render `<main>` themselves. §5.3 names
+ * `/gallery`, `/gallery/$templateId` and `/templates` as the only such routes;
+ * none of them exists yet, so the list is empty and adding to it is a
+ * review-time decision rather than an oversight.
+ */
+const SIDEBAR_LESS_PATHS: string[] = [];
+
+function areaLayoutsAbove(route: AnyRoute): string[] {
+  const areas: string[] = [];
+  let current: AnyRoute | undefined = route.parentRoute as AnyRoute | undefined;
+  while (current) {
+    const id = branchId(current);
+    if (AREA_LAYOUT_IDS.includes(id)) areas.push(id);
+    current = current.parentRoute as AnyRoute | undefined;
+  }
+  return areas;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.getSession.mockResolvedValue({ data: { user: {} }, error: null });
   mocks.useListOrganizations.mockReturnValue({
     data: [],
+    isPending: false,
+    error: null,
+  });
+  mocks.useActiveOrganization.mockReturnValue({
+    data: null,
+    isPending: false,
+    error: null,
+  });
+  mocks.useActiveMember.mockReturnValue({
+    data: null,
     isPending: false,
     error: null,
   });
@@ -162,6 +205,33 @@ describe('shell branches', () => {
       '/teams/$teamId/activity': 'app',
       '/teams/$teamId/protocols/$protocolId/drafts/$draftId': 'app',
     });
+  });
+
+  it('gives every app route exactly one area layout', () => {
+    const router = buildRouter();
+    const app = branchesOf(router).find((branch) => branchId(branch) === 'app');
+    const leaves = descendantsOf(app as AnyRoute).filter(
+      (route) => childrenOf(route).length === 0,
+    );
+
+    // The area layout is what renders the `<nav>` and the
+    // `<main id="main-content">` the frame's skip link targets. A route
+    // parented straight onto the app layout would render neither, and nothing
+    // else in the tree would notice — so the chain is asserted here, by path,
+    // rather than left to the one route test that happens to render it.
+    expect(
+      Object.fromEntries(
+        leaves.map((leaf) => [
+          declaredPath(leaf) ?? '(pathless)',
+          areaLayoutsAbove(leaf),
+        ]),
+      ),
+    ).toEqual({
+      '/': ['team-area'],
+      '/teams/$teamId/activity': ['team-area'],
+      '/teams/$teamId/protocols/$protocolId/drafts/$draftId': ['editor-area'],
+    });
+    expect(SIDEBAR_LESS_PATHS).toEqual([]);
   });
 
   it('hands preload freshness to the query cache rather than the router', () => {
@@ -205,8 +275,10 @@ describe('shell branches', () => {
 describe('rendered chrome', () => {
   it('renders the app header inside the app branch', async () => {
     renderAt('/');
+    // Sign out lives in the account menu now (§5.5), so the menu's trigger is
+    // what the header renders unconditionally.
     expect(
-      await screen.findByRole('button', { name: 'Sign out' }),
+      await screen.findByRole('button', { name: 'Account' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Studio' })).toBeInTheDocument();
   });
@@ -219,7 +291,7 @@ describe('rendered chrome', () => {
       await screen.findByRole('heading', { name: 'Sign in' }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'Sign out' }),
+      screen.queryByRole('button', { name: 'Account' }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'Studio' }),
@@ -232,7 +304,7 @@ describe('rendered chrome', () => {
       await screen.findByRole('heading', { name: 'Accept team invitation' }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'Sign out' }),
+      screen.queryByRole('button', { name: 'Account' }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'Studio' }),

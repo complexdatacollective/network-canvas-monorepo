@@ -35,8 +35,11 @@ import { useStudioStageSession } from '../editor/useStudioStageSession.ts';
 import { orpc, rpcClient } from '../lib/api.ts';
 import { createUuid } from '../lib/createUuid.ts';
 
+// The route id carries the area layout it sits under (§5.3), so it moves
+// whenever the route is re-parented — as it will be onto
+// `/study/$studyId/editor`.
 const route = getRouteApi(
-  '/app/teams/$teamId/protocols/$protocolId/drafts/$draftId',
+  '/app/editor-area/teams/$teamId/protocols/$protocolId/drafts/$draftId',
 );
 
 type Selection =
@@ -278,23 +281,24 @@ export default function Editor() {
 
   if (draft.isPending) {
     return (
-      <main
-        id="main-content"
-        className="flex h-full items-center justify-center"
-      >
+      // The `<main id="main-content">` is the area layout's (§5.3, §7.1):
+      // `AppFrame` renders the skip link and `AppArea` the landmark it
+      // targets. These three branches are mutually exclusive, but each one
+      // used to declare a second `<main>` with the same id inside the area's.
+      <div className="flex h-full items-center justify-center">
         <Spinner />
         <span className="sr-only">Opening protocol editor…</span>
-      </main>
+      </div>
     );
   }
   if (!draft.data) {
     return (
-      <main id="main-content" className="p-6">
+      <div className="p-6">
         <Alert variant="destructive">
           This protocol draft could not be opened. Return to protocols and try
           again.
         </Alert>
-      </main>
+      </div>
     );
   }
 
@@ -517,7 +521,7 @@ export default function Editor() {
           </Surface>
         </aside>
 
-        <main id="main-content" tabIndex={-1} className="min-h-[24rem]">
+        <div className="min-h-[24rem]">
           <Surface className="h-full" spacing="lg">
             {selection.kind === 'stage' ? (
               <StageCanvas
@@ -534,7 +538,7 @@ export default function Editor() {
               <SectionPlaceholder kind={selection.kind} />
             )}
           </Surface>
-        </main>
+        </div>
 
         <aside
           id="protocol-problems"

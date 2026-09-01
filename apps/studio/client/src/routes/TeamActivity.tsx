@@ -32,7 +32,8 @@ import {
 
 import { orpc } from '../lib/api.ts';
 
-const route = getRouteApi('/app/teams/$teamId/activity');
+// The route id carries the area layout it sits under (§5.3).
+const route = getRouteApi('/app/team-area/teams/$teamId/activity');
 
 const CATEGORY_LABELS: Record<AuditCategory, string> = {
   team_access: 'Team access',
@@ -271,10 +272,8 @@ export default function TeamActivity() {
 
   if (isForbidden(activity.error)) {
     return (
-      <main
-        id="main-content"
-        className="tablet-portrait:p-8 mx-auto flex w-full max-w-6xl flex-col gap-6 p-4"
-      >
+      // The `<main id="main-content">` is the area layout's (§5.3, §7.1).
+      <div className="tablet-portrait:p-8 mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
         <Heading level="h1">Team activity</Heading>
         <Alert>
           Team activity is only available to team owners and admins. Ask a team
@@ -285,15 +284,12 @@ export default function TeamActivity() {
             <Link to="/">Back to your teams</Link>
           </Button>
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main
-      id="main-content"
-      className="tablet-portrait:p-8 mx-auto flex w-full max-w-6xl flex-col gap-6 p-4"
-    >
+    <div className="tablet-portrait:p-8 mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <Heading level="h1" margin="none">
@@ -585,7 +581,7 @@ export default function TeamActivity() {
           )}
         </>
       )}
-    </main>
+    </div>
   );
 }
 

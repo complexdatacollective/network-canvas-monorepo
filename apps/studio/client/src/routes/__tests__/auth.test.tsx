@@ -8,7 +8,6 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { useSyncExternalStore } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { contract } from '@codaco/studio-rpc';
@@ -23,6 +22,9 @@ vi.mock('../../lib/auth.ts', () => ({
     getSession: vi.fn(),
     useSession: vi.fn(),
     useListOrganizations: vi.fn(),
+    useActiveOrganization: vi.fn(),
+    useActiveMember: vi.fn(),
+    organization: { setActive: vi.fn() },
     signIn: { magicLink: vi.fn(), social: vi.fn() },
     signOut: vi.fn(),
   },
@@ -93,11 +95,12 @@ const INVITATION_ID = '00000000-0000-4000-8000-000000000123';
 
 const signedIn = { data: SESSION, error: null } as unknown as GetSessionResult;
 const signedOut = { data: null, error: null } as unknown as GetSessionResult;
-const sessionLive = {
-  data: SESSION,
-  isPending: false,
-  error: null,
-} as unknown as UseSessionResult;
+/**
+ * `authClient.useSession()` is no longer part of the app shell — `AppLayout`
+ * reads the guard's own query instead (§6.2). It is still mocked because
+ * `AcceptInvitation`, on the focused branch, calls it, and one test navigates
+ * through that route.
+ */
 const sessionNone = {
   data: null,
   isPending: false,
@@ -124,6 +127,21 @@ function renderAt(path: string) {
   return renderWithClientAt(path).router;
 }
 
+/**
+ * The app shell, rendered. The header no longer names the researcher — the
+ * session query the guard resolves carries only signedIn/signedOut (§6.2) —
+ * so the account menu's trigger is the shell's unconditional control.
+ */
+function findAppShell() {
+  return screen.findByRole('button', { name: 'Account' });
+}
+
+/** Sign out moved into the account menu (§5.5). */
+async function clickSignOut() {
+  fireEvent.click(await findAppShell());
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'Sign out' }));
+}
+
 beforeEach(() => {
   vi.resetAllMocks();
   currentStatus = STATUS;
@@ -134,6 +152,16 @@ beforeEach(() => {
     isPending: false,
     error: null,
   } as unknown as ReturnType<typeof authClient.useListOrganizations>);
+  mocked.useActiveOrganization.mockReturnValue({
+    data: null,
+    isPending: false,
+    error: null,
+  } as unknown as ReturnType<typeof authClient.useActiveOrganization>);
+  mocked.useActiveMember.mockReturnValue({
+    data: null,
+    isPending: false,
+    error: null,
+  } as unknown as ReturnType<typeof authClient.useActiveMember>);
 });
 
 describe('route guard', () => {
@@ -149,14 +177,23 @@ describe('route guard', () => {
 
   it('renders the app shell for a signed-in researcher', async () => {
     mocked.getSession.mockResolvedValue(signedIn);
-    mocked.useSession.mockReturnValue(sessionLive);
     renderAt('/');
-    await waitFor(() =>
-      expect(screen.getByText(/Signed in as Researcher/)).toBeInTheDocument(),
-    );
-    expect(
-      screen.getByRole('button', { name: 'Sign out' }),
-    ).toBeInTheDocument();
+    expect(await findAppShell()).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Studio' })).toBeInTheDocument();
+  });
+
+  it('costs one call to the auth client, from the guard alone', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    renderAt('/');
+    await findAppShell();
+
+    // The guard's `fetchQuery` is the whole session channel. `useSession()`
+    // was the second one: it subscribes to better-auth's own
+    // `/api/auth/get-session` fetch, which is a request the guard has already
+    // made and cached, on every single page load. Any call at all reopens it,
+    // so the assertion is zero rather than a count.
+    expect(mocked.getSession).toHaveBeenCalledTimes(1);
+    expect(mocked.useSession).not.toHaveBeenCalled();
   });
 
   it('shows the error screen, not sign-in, when the session check cannot reach the server', async () => {
@@ -210,9 +247,8 @@ describe('route guard', () => {
 
   it('asks the auth endpoint once, however many times the tree is entered', async () => {
     mocked.getSession.mockResolvedValue(signedIn);
-    mocked.useSession.mockReturnValue(sessionLive);
     const router = renderAt('/');
-    await screen.findByText(/Signed in as Researcher/);
+    await findAppShell();
     expect(mocked.getSession).toHaveBeenCalledTimes(1);
 
     // Out of the authenticated tree and back into it, twice. Every entry runs
@@ -228,31 +264,35 @@ describe('route guard', () => {
       await act(() => router.navigate({ to: '/' }));
     }
 
-    await screen.findByText(/Signed in as Researcher/);
+    await findAppShell();
     expect(mocked.getSession).toHaveBeenCalledTimes(1);
   });
 
   it('re-asks the auth endpoint when a procedure refuses with 401', async () => {
     mocked.getSession.mockResolvedValue(signedIn);
-    mocked.useSession.mockReturnValue(sessionLive);
     const router = renderAt('/');
-    await screen.findByText(/Signed in as Researcher/);
+    await findAppShell();
     expect(mocked.getSession).toHaveBeenCalledTimes(1);
 
-    // The cookie has gone; better-auth's own hook has not noticed yet, so the
-    // redirect below can only come from the 401 path re-running the guard.
+    // The cookie has gone, and the 401 path re-running the guard is now the
+    // only thing that can notice.
     mocked.getSession.mockResolvedValue(signedOut);
     await act(() => reportUnauthorizedResponse());
 
     await waitFor(() =>
       expect(router.state.location.pathname).toBe('/sign-in'),
     );
-    expect(mocked.getSession).toHaveBeenCalledTimes(2);
+    // Three asks, and each one is a different question. The guard's, on
+    // arrival. The 401 path's re-ask, which is what this test is about. And
+    // the sign-in route's own guard, because establishing that the session
+    // had ended cleared the cache — including the answer — so "are you
+    // already signed in?" has to be asked again rather than answered from a
+    // cache the previous researcher filled.
+    expect(mocked.getSession).toHaveBeenCalledTimes(3);
   });
 
   it('bounces an already-signed-in visitor off the sign-in page', async () => {
     mocked.getSession.mockResolvedValue(signedIn);
-    mocked.useSession.mockReturnValue(sessionLive);
     const router = renderAt('/sign-in');
     await waitFor(() => expect(router.state.location.pathname).toBe('/'));
   });
@@ -261,28 +301,16 @@ describe('route guard', () => {
 describe('sign-out', () => {
   it('clears private queries when a live session expires', async () => {
     mocked.getSession.mockResolvedValue(signedIn);
-    let currentSession = sessionLive;
-    const listeners = new Set<() => void>();
-    function useReactiveSession() {
-      return useSyncExternalStore(
-        (listener) => {
-          listeners.add(listener);
-          return () => listeners.delete(listener);
-        },
-        () => currentSession,
-        () => currentSession,
-      );
-    }
-    mocked.useSession.mockImplementation(useReactiveSession);
     const { queryClient, router } = renderWithClientAt('/');
-    await screen.findByText(/Signed in as Researcher/);
+    await findAppShell();
     queryClient.setQueryData(['private-draft'], { name: 'Private draft' });
 
+    // The session ends mid-session. With no second live channel to notice it,
+    // the one query the guard resolves is where it surfaces: a procedure
+    // answers 401, the handler invalidates that query, and the shell reads
+    // the refetched answer from the same cache entry the guard wrote.
     mocked.getSession.mockResolvedValue(signedOut);
-    act(() => {
-      currentSession = sessionNone;
-      for (const listener of listeners) listener();
-    });
+    await act(() => reportUnauthorizedResponse());
 
     await waitFor(() =>
       expect(queryClient.getQueryData(['private-draft'])).toBeUndefined(),
@@ -294,7 +322,6 @@ describe('sign-out', () => {
 
   it('closes editor sessions before clearing authentication', async () => {
     mocked.getSession.mockResolvedValue(signedIn);
-    mocked.useSession.mockReturnValue(sessionLive);
     const closed = deferred<void>();
     const close = vi.fn(() => closed.promise);
     const unregister = registerStudioEditorSession(close);
@@ -305,7 +332,7 @@ describe('sign-out', () => {
     const { queryClient } = renderWithClientAt('/');
     queryClient.setQueryData(['private-draft'], { name: 'Private draft' });
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
+    await clickSignOut();
     await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
     expect(mocked.signOut).not.toHaveBeenCalled();
 
@@ -317,16 +344,54 @@ describe('sign-out', () => {
     unregister();
   });
 
+  it('signs out in the order the sequence requires', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    const events: string[] = [];
+    let pathnameWhenEditorClosed: string | undefined;
+    const unregister = registerStudioEditorSession(() => {
+      events.push('closeEditorSessions');
+      pathnameWhenEditorClosed = router.state.location.pathname;
+      return Promise.resolve();
+    });
+    mocked.signOut.mockImplementation(() => {
+      events.push('signOut');
+      return Promise.resolve({
+        data: { success: true },
+        error: null,
+      }) as ReturnType<typeof authClient.signOut>;
+    });
+    const { queryClient, router } = renderWithClientAt('/');
+    await findAppShell();
+    queryClient.setQueryData(['private-draft'], { name: 'Private draft' });
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event.type !== 'removed') return;
+      if (!events.includes('clearCache')) events.push('clearCache');
+    });
+
+    await clickSignOut();
+
+    // Navigate, verify the location actually changed, close editor sessions,
+    // sign out, clear. Every step depends on the one before it: leaving the
+    // editor route is what settles its blocker, the lease must be released
+    // while the cookie is still valid, and the cache must not be emptied
+    // until the server has confirmed the session is gone — a failed sign-out
+    // leaves the researcher signed in and working.
+    await waitFor(() =>
+      expect(events).toEqual(['closeEditorSessions', 'signOut', 'clearCache']),
+    );
+    expect(pathnameWhenEditorClosed).toBe('/');
+    unsubscribe();
+    unregister();
+  });
+
   it('stays put and reports failure when sign-out does not complete', async () => {
     mocked.getSession.mockResolvedValue(signedIn);
-    mocked.useSession.mockReturnValue(sessionLive);
     mocked.signOut.mockResolvedValue({
       data: null,
       error: { status: 500 },
     } as unknown as Awaited<ReturnType<typeof authClient.signOut>>);
     const router = renderAt('/');
-    const button = await screen.findByRole('button', { name: 'Sign out' });
-    fireEvent.click(button);
+    await clickSignOut();
     await waitFor(() =>
       expect(screen.getByText(/Sign-out did not complete/)).toBeInTheDocument(),
     );
