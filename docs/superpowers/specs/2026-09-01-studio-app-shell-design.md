@@ -6,7 +6,12 @@ foundation), #1315 (WCAG component foundations), #1317 (researcher-UI
 accessibility), #1310 (Studio UI localization), #1253 (billing placeholder),
 #1250 / #1251 (self-host and managed topologies)
 
-Design mockups and the recorded alternatives:
+Approved for implementation 2026-09-01.
+
+Screen-by-screen mockups of the approved shell:
+<https://claude.ai/code/artifact/0ac11d8f-3308-4c91-8ed5-9f5f3fcc24b1>
+
+The three layouts it was chosen from, with the route map and the trade-offs:
 <https://claude.ai/code/artifact/5dc7ed77-eb9c-4fe3-9751-ca83b81db940>
 
 ## 1. Summary
@@ -323,6 +328,13 @@ The grouping encodes the study lifecycle rather than decorating the list; it is
 the reason a sidebar beats a tab strip here, and the labels must be
 translatable whole strings.
 
+Destinations whose contents are countable carry their count — participants,
+waves, sessions, versions, protocol assets. The counts come from `study.shell`
+(§6.3) rather than from a request per destination, they are omitted rather than
+shown as zero when the area is empty, and they are decoration for assistive
+technology: the count is part of the link's accessible name ("Participants, 84")
+so it is not announced as a stray number.
+
 **Editor sidebar** is the protocol outline specified by #1272 — codebook,
 ordered stages, assets, translations — with a "Back to study" affordance at the
 top that returns to `/study/$studyId`.
@@ -390,6 +402,10 @@ study.shell({ studyId }) -> {
   team:  { id, name, role },
   permissions: string[],   // effective capabilities for this researcher
   studyCount: number,      // whether the study switcher renders at all
+  counts: {                // sidebar counts; a key is absent when it is zero
+    participants?: number, waves?: number, sessions?: number,
+    versions?: number, assets?: number,
+  },
 }
 ```
 
