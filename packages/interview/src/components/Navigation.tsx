@@ -346,7 +346,6 @@ const Navigation = ({
                           min={90}
                           max={130}
                           step={10}
-                          size="lg"
                           value={textScaleInputValue}
                           onChange={(value) => {
                             const nextValue = value ?? '';
