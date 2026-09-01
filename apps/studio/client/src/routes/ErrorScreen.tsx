@@ -5,12 +5,7 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
-export class ServerUnreachableError extends Error {
-  constructor() {
-    super('The server could not be reached.');
-    this.name = 'ServerUnreachableError';
-  }
-}
+import { ServerUnreachableError } from '../lib/session.ts';
 
 // The error message itself is deliberately not shown — an unhandled render
 // error's text is for a developer, and this screen is for whoever is holding

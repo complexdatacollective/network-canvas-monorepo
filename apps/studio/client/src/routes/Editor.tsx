@@ -36,7 +36,7 @@ import { orpc, rpcClient } from '../lib/api.ts';
 import { createUuid } from '../lib/createUuid.ts';
 
 const route = getRouteApi(
-  '/authenticated/teams/$teamId/protocols/$protocolId/drafts/$draftId',
+  '/app/teams/$teamId/protocols/$protocolId/drafts/$draftId',
 );
 
 type Selection =

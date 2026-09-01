@@ -67,11 +67,15 @@ vi.mock('../../lib/api.ts', () => ({
 }));
 
 function renderHome() {
+  // One client behind both the router's guards and the components: the
+  // session guard reads what a component's `queryClient.clear()` removes.
+  const queryClient = new QueryClient();
   const router = createAppRouter(
     createMemoryHistory({ initialEntries: ['/'] }),
+    queryClient,
   );
   const view = render(
-    <QueryClientProvider client={new QueryClient()}>
+    <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
