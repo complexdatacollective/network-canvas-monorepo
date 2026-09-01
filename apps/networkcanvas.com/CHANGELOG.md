@@ -1,5 +1,69 @@
 # networkcanvas.com
 
+## 0.4.3
+
+### Patch Changes
+
+- Add a new publication that used Network Canvas to map inter-organisational school networks.
+
+## 0.4.2
+
+### Patch Changes
+
+- Add newly identified publications that used Network Canvas in research data collection.
+
+## 0.4.1
+
+### Patch Changes
+
+- Populate PostHog's built-in app name and version metadata for Website events.
+
+## 0.4.0
+
+### Minor Changes
+
+- Add a publications page listing every publication that uses Network Canvas,
+  newest first, and link to it from the homepage. The page restores the full list
+  that the previous site offered, including the publications that were not
+  carried over when the site was rebuilt, and each entry now shows its year.
+
+### Patch Changes
+
+- Add a newly published Network Canvas study to the website publications list.
+
+## 0.3.0
+
+### Minor Changes
+
+- Add privacy-conscious usage analytics, so we can see which pages people find
+  useful and be told when a page fails to load. Analytics run only on the live
+  site — never on previews or local development — and are sent through the
+  project's own relay rather than to a third party directly.
+
+## 0.2.4
+
+### Patch Changes
+
+- Add newly identified Network Canvas publications.
+
+## 0.2.3
+
+### Patch Changes
+
+- Keep Architect Classic and Interviewer Classic installer links working when GitHub release assets change.
+
+## 0.2.2
+
+### Patch Changes
+
+- Make documentation links follow the active local or deploy-preview documentation site, automate paired local site development, repair outdated documentation and publication links, and derive Classic downloads from the latest GitHub releases.
+
+## 0.2.1
+
+### Patch Changes
+
+- Explain the original Classic apps and link to their downloads from the Summer 2026 update.
+
 ## 0.2.0
 
 ### Minor Changes

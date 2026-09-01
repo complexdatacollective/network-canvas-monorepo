@@ -6,6 +6,7 @@ import { InterviewNav } from './interview-nav.js';
 import { ProtocolFixture } from './protocol-fixture.js';
 import { SeedFixture } from './seed-fixture.js';
 import { VaultFixture } from './vault-fixture.js';
+import { WebAuthnFixture } from './webauthn-fixture.js';
 
 type BaseFixtures = {
   capture: CaptureFn;
@@ -14,6 +15,7 @@ type BaseFixtures = {
   download: DownloadFixture;
   interviewNav: InterviewNav;
   vault: VaultFixture;
+  webauthn: WebAuthnFixture;
 };
 
 export const test = base.extend<BaseFixtures>({
@@ -36,6 +38,9 @@ export const test = base.extend<BaseFixtures>({
   },
   vault: async ({ page }, use) => {
     await use(new VaultFixture(page));
+  },
+  webauthn: async ({ page }, use) => {
+    await use(new WebAuthnFixture(page));
   },
 });
 

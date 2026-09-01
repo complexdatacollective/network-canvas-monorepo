@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Codebook } from '@codaco/protocol-validation';
@@ -75,11 +75,11 @@ const { ConnectedVariablePill, VariablePill } = await import('../VariablePill');
 const startEditing = async (uuid: string) => {
   render(<ConnectedVariablePill animated editable uuid={uuid} />);
   const pill = screen.getByRole('button', {
-    name: 'Edit variable name: subject_var',
+    name: 'Edit attribute name: subject_var',
   });
   fireEvent.click(pill);
 
-  return screen.findByRole('textbox', { name: 'Variable name' });
+  return screen.findByRole('textbox', { name: 'Attribute name' });
 };
 
 describe('ConnectedVariablePill', () => {
@@ -90,7 +90,7 @@ describe('ConnectedVariablePill', () => {
   it('uses an accessible button to open the variable name editor directly', async () => {
     render(<ConnectedVariablePill animated editable uuid="node-subject" />);
     const pill = screen.getByRole('button', {
-      name: 'Edit variable name: subject_var',
+      name: 'Edit attribute name: subject_var',
     });
 
     expect(pill).toHaveAttribute('aria-haspopup', 'dialog');
@@ -105,29 +105,44 @@ describe('ConnectedVariablePill', () => {
 
     fireEvent.click(pill);
     expect(
-      await screen.findByRole('dialog', { name: 'Edit variable name' }),
+      await screen.findByRole('dialog', { name: 'Edit attribute name' }),
     ).toBeInTheDocument();
+  });
+
+  it('forwards Tailwind layout constraints', () => {
+    const { container } = render(
+      <ConnectedVariablePill className="max-w-64" uuid="node-subject" />,
+    );
+
+    expect(container.querySelector('data')).toHaveClass('max-w-64');
   });
 
   it('describes the edit action in a tooltip on keyboard focus', async () => {
     render(<ConnectedVariablePill animated editable uuid="node-subject" />);
     const pill = screen.getByRole('button', {
-      name: 'Edit variable name: subject_var',
+      name: 'Edit attribute name: subject_var',
     });
 
     fireEvent.focus(pill);
 
     expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      'Edit variable name: subject_var',
+      'Edit attribute name: subject_var',
     );
   });
 
   it('opens an autofocus modal editor with actions outside the pill', async () => {
     const input = await startEditing('node-subject');
 
-    expect(
-      screen.getByRole('dialog', { name: 'Edit variable name' }),
-    ).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: 'Edit attribute name' });
+
+    expect(dialog).toBeInTheDocument();
+    // The trigger's default percentage max-width constrains its normal layout,
+    // but the viewport overlay must regain the internal editing width.
+    await waitFor(() =>
+      expect(dialog.querySelector('.variable-pill')).toHaveStyle({
+        width: '320px',
+      }),
+    );
     expect(input).toHaveFocus();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
     const saveButton = screen.getByRole('button', { name: 'Save Changes' });
@@ -147,7 +162,7 @@ describe('ConnectedVariablePill', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
 
     const pill = screen.getByRole('button', {
-      name: 'Edit variable name: subject_var',
+      name: 'Edit attribute name: subject_var',
     });
     expect(pill).toHaveFocus();
   });
@@ -157,7 +172,7 @@ describe('ConnectedVariablePill', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     const pill = screen.getByRole('button', {
-      name: 'Edit variable name: subject_var',
+      name: 'Edit attribute name: subject_var',
     });
     expect(pill).toHaveFocus();
   });
@@ -190,6 +205,52 @@ describe('ConnectedVariablePill', () => {
 });
 
 describe('VariablePill', () => {
+  it('keeps a wide name editor inside the viewport', async () => {
+    render(
+      <VariablePill
+        className="max-w-full"
+        editable
+        label="subject_var"
+        type="text"
+      />,
+    );
+    const pill = screen.getByRole('button', {
+      name: 'Edit attribute name: subject_var',
+    });
+    vi.spyOn(pill, 'getBoundingClientRect').mockReturnValue({
+      bottom: 148,
+      height: 48,
+      left: 100,
+      right: 900,
+      top: 100,
+      width: 800,
+      x: 100,
+      y: 100,
+      toJSON: () => ({}),
+    });
+
+    fireEvent.click(pill);
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Edit attribute name',
+    });
+    const editor = dialog.querySelector<HTMLElement>('.variable-pill');
+    if (!editor) throw new Error('variable pill editor did not render');
+
+    // The frame keeps a 16px viewport gutter, and the 1.5x pill plus its 24px
+    // padding on each side fits inside that frame instead of overflowing it.
+    await waitFor(() => {
+      const frameLeft = Number.parseFloat(dialog.style.left);
+      const frameWidth = Number.parseFloat(dialog.style.width);
+      const editorWidth = Number.parseFloat(editor.style.width);
+
+      expect(frameLeft).toBeGreaterThanOrEqual(16);
+      expect(frameLeft + frameWidth).toBeLessThanOrEqual(
+        window.innerWidth - 16,
+      );
+      expect(editorWidth * 1.5 + 48).toBeLessThanOrEqual(frameWidth);
+    });
+  });
+
   it('uses a data element and a static border for a non-interactive reference', () => {
     const { container } = render(
       <VariablePill label="subject_var" type="text" />,
@@ -200,9 +261,28 @@ describe('VariablePill', () => {
     expect(pill).toHaveClass('bg-(--variable-pill-accent)');
     expect(pill).toHaveClass('cursor-default');
     expect(pill).toHaveClass('effect-shadow-sm');
+    expect(pill).toHaveClass('w-max', 'max-w-full', 'min-w-0');
+    expect(pill?.firstElementChild).toHaveClass(
+      'grid-cols-[3rem_minmax(0,auto)]',
+    );
+    expect(pill?.firstElementChild).not.toHaveClass('w-full');
     expect(pill).not.toHaveClass('hover:effect-shadow');
     expect(pill).not.toHaveClass('variable-pill-effect-border');
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('accepts Tailwind layout constraints through className', () => {
+    const { container } = render(
+      <VariablePill
+        className="max-w-[7cm]"
+        label="participant_neighbourhood_connection_frequency"
+        type="text"
+      />,
+    );
+    const pill = container.querySelector('data');
+
+    expect(pill).toHaveClass('w-max', 'max-w-[7cm]');
+    expect(pill).not.toHaveClass('max-w-full');
   });
 
   it('allows animation to be enabled independently of editability', () => {

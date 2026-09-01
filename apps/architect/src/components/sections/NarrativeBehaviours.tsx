@@ -1,48 +1,47 @@
-import { Field, FormSection } from 'redux-form';
-
-import Heading from '@codaco/fresco-ui/typography/Heading';
-import { Row, Section } from '~/components/EditorLayout';
-import Toggle from '~/components/Form/Fields/Toggle';
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import Section from '@codaco/fresco-ui/Section';
+import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
 
-import IssueAnchor from '../IssueAnchor';
-const NarrativeBehaviours = (_props: StageEditorSectionProps) => (
-  <Section title="Narrative Behaviours">
-    <FormSection name="behaviours">
-      <Row>
-        <IssueAnchor
-          fieldName="automaticLayout"
-          description="Automatic layout"
-        />
-        <Heading level="h4">Automatic layout</Heading>
-        <Field
-          name="automaticLayout"
-          label="Position nodes automatically using a force-directed layout"
-          component={Toggle}
-        />
-      </Row>
-      <Row>
-        <IssueAnchor fieldName="freeDraw" description="Free draw" />
-        <Heading level="h4">Free-draw</Heading>
-        <Field
-          name="freeDraw"
-          label="Allow drawing on the canvas"
-          component={Toggle}
-        />
-      </Row>
-      <Row>
-        <IssueAnchor
-          fieldName="allowRepositioning"
-          description="Allow repositioning"
-        />
-        <Heading level="h4">Allow repositioning</Heading>
-        <Field
-          name="allowRepositioning"
-          label="Allow nodes to be repositioned"
-          component={Toggle}
-        />
-      </Row>
-    </FormSection>
-  </Section>
-);
+const NarrativeBehaviours = (_props: StageEditorSectionProps) => {
+  const initialAutomaticLayout = useStageInitialValue<boolean>(
+    'behaviours.automaticLayout',
+  );
+  const initialFreeDraw = useStageInitialValue<boolean>('behaviours.freeDraw');
+  const initialAllowRepositioning = useStageInitialValue<boolean>(
+    'behaviours.allowRepositioning',
+  );
+  return (
+    <Section
+      title="Narrative behaviors"
+      description="Control automatic layout, drawing, and node repositioning on the narrative canvas."
+    >
+      <ArchitectField
+        name="behaviours.automaticLayout"
+        label="Automatic layout"
+        hint="Position nodes automatically using a force-directed layout"
+        component={ToggleField}
+        inline
+        initialValue={initialAutomaticLayout ?? false}
+      />
+      <ArchitectField
+        name="behaviours.freeDraw"
+        label="Free-draw"
+        hint="Allow drawing on the canvas"
+        component={ToggleField}
+        inline
+        initialValue={initialFreeDraw ?? false}
+      />
+      <ArchitectField
+        name="behaviours.allowRepositioning"
+        label="Allow repositioning"
+        hint="Allow nodes to be repositioned"
+        component={ToggleField}
+        inline
+        initialValue={initialAllowRepositioning ?? false}
+      />
+    </Section>
+  );
+};
 export default NarrativeBehaviours;

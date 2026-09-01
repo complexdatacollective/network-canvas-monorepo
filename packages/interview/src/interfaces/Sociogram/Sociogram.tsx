@@ -32,6 +32,7 @@ import {
   getNetworkNodesForType,
   getPromptSortOrder,
 } from '../../selectors/session';
+import type { AttributePatch } from '../../store/entityAttributePatch';
 import {
   toggleEdge,
   toggleNodeAttributes,
@@ -48,6 +49,12 @@ type SociogramProps = StageProps<'Sociogram'>;
 // DnD item type registered while dragging an already-placed node, so the
 // unplaced-node drawer can accept it back.
 const PLACED_NODE_ITEM_TYPE = 'PLACED_NODE';
+
+export function unplaceNodeAttributePatch(
+  layoutVariable: string,
+): AttributePatch {
+  return { set: {}, unset: [layoutVariable] };
+}
 
 const Sociogram = (stageProps: SociogramProps) => {
   const { stage } = stageProps;
@@ -106,35 +113,6 @@ const Sociogram = (stageProps: SociogramProps) => {
     }
   }, [canvasNodes, layoutVariable, store, layoutMode]);
 
-  // Sociogram force tuning (SIM space: px / canvas height, coordinates ~0..aspect,
-  // so charge/bias are screen-independent). No group cohesion acts (no convex
-  // hulls, so no groupVariable is supplied and the engine's cohesion force is
-  // inert); spread relies on charge. A weak symmetric forceX/forceY keeps the
-  // layout centred and slightly up to clear the bottom prompt panel.
-  //
-  // Unlike Narrative (which gently REFINES already-meaningful authored positions),
-  // Sociogram lays out FROM SCRATCH, so it needs a full anneal to escape local
-  // minima: a hot start (startAlpha 1) gives nodes enough energy to break free of
-  // inefficient positions, and a slow alphaDecay lets it cool over ~500 ticks
-  // rather than freezing early into a tangled local optimum.
-  //
-  // charge/bias are reasoned STARTING values for the new ~0..1.x coordinate scale
-  // and need a visual tuning pass — the old px charge (-3000) does not translate
-  // linearly to sim space. Tune visually.
-  const layoutOptions = useMemo(
-    () => ({
-      charge: -0.006,
-      startAlpha: 1,
-      alphaMin: 0.025,
-      alphaDecay: 1 - 0.001 ** (1 / 500),
-      biasXStrength: 0.13,
-      biasXFraction: 0.5,
-      biasYStrength: 0.13,
-      biasYFraction: 0.5,
-    }),
-    [],
-  );
-
   // Force simulation (only active in AUTOMATIC mode). Continuous, user-toggleable,
   // and persists settled positions back to Redux.
   const simulation = useAutoLayout({
@@ -150,7 +128,6 @@ const Sociogram = (stageProps: SociogramProps) => {
     currentStep,
     runMode: 'continuous',
     mockLayout: 'grid',
-    layoutOptions,
   });
 
   // Re-emit the legacy useForceSimulation analytics by observing isRunning
@@ -217,7 +194,10 @@ const Sociogram = (stageProps: SociogramProps) => {
           dispatch(
             toggleNodeAttributes({
               nodeId,
-              attributes: { [highlightAttribute]: !currentValue },
+              attributePatch: {
+                set: { [highlightAttribute]: !currentValue },
+                unset: [],
+              },
             }),
           );
         }
@@ -244,8 +224,11 @@ const Sociogram = (stageProps: SociogramProps) => {
       void dispatch(
         updateNode({
           nodeId,
-          newAttributeData: {
-            [layoutVariable]: { x: position.x, y: position.y },
+          attributePatch: {
+            set: {
+              [layoutVariable]: { x: position.x, y: position.y },
+            },
+            unset: [],
           },
           currentStep,
         }),
@@ -264,8 +247,11 @@ const Sociogram = (stageProps: SociogramProps) => {
       void dispatch(
         updateNode({
           nodeId,
-          newAttributeData: {
-            [layoutVariable]: { x: position.x, y: position.y },
+          attributePatch: {
+            set: {
+              [layoutVariable]: { x: position.x, y: position.y },
+            },
+            unset: [],
           },
           currentStep,
         }),
@@ -303,7 +289,7 @@ const Sociogram = (stageProps: SociogramProps) => {
       void dispatch(
         updateNode({
           nodeId,
-          newAttributeData: { [layoutVariable]: null },
+          attributePatch: unplaceNodeAttributePatch(layoutVariable),
           currentStep,
         }),
       );
@@ -374,6 +360,15 @@ const Sociogram = (stageProps: SociogramProps) => {
         selectedNodeId={selectedNodeId}
         highlightAttribute={highlightAttribute}
         onNodeSelect={handleNodeSelect}
+        // Mirrors handleNodeSelect's own branching, so what is announced as a
+        // toggle is exactly what activation operates on.
+        nodeToggle={
+          createEdge
+            ? 'edge'
+            : allowHighlighting && highlightAttribute
+              ? 'highlight'
+              : null
+        }
         onNodeDragEnd={handleNodeDragEnd}
         onDrop={handleDrop}
         simulation={simulationHandlers}

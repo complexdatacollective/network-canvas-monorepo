@@ -192,7 +192,7 @@ graph, statusesByDisease)`.
   (`iconName="camera"`, the '+' badge per the researcher's choice). Icon-only ⇒
   `aria-label="Save snapshot"`. Keep the existing `exportSnapshot` handler.
 
-## Cross-cutting (developing-in-network-canvas)
+## Cross-cutting (developing-network-canvas-ui)
 
 - Reuse fresco-ui (`RichSelectGroup`, `Button`/`Badge`/Base-UI toggle,
   `ActionButton`, `Node`); no raw-div widgets.

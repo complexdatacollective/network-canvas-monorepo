@@ -1,12 +1,15 @@
 import JSZip from 'jszip';
 
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
   type CurrentProtocol,
+  describeProtocolFileError,
   detectSchemaVersion,
   type ExtractedAsset,
   extractProtocolFromZip,
   getMigrationInfo,
   hashProtocol,
+  loadNetcanvasArchive,
   migrateProtocol,
   validateProtocol,
   VersionedProtocolSchema,
@@ -14,7 +17,10 @@ import {
 
 import { saveProtocol } from '../db/api';
 
-const APP_SCHEMA_VERSION = 8;
+// What this app can run is what the interview engine it embeds can run, so the
+// import pipeline's target version is read from `@codaco/interview` rather than
+// written down here. A release that upgrades the engine moves this with it.
+const APP_SCHEMA_VERSION = COMPATIBLE_PROTOCOL_SCHEMA_VERSION;
 
 export type ImportPhase = 'extracting' | 'saving';
 
@@ -86,8 +92,22 @@ export async function peekProtocolName(
 async function extractZip(
   buffer: Uint8Array,
 ): Promise<{ protocol: unknown; assets: ExtractedAsset[] }> {
-  const zip = await JSZip.loadAsync(buffer);
+  const zip = await loadNetcanvasArchive(buffer);
   return extractProtocolFromZip(zip);
+}
+
+/**
+ * What the "Import failed" toast says.
+ *
+ * `@codaco/protocol-validation` describes the failures it recognises — an
+ * unreadable archive, a missing protocol, a failed migration — in words written
+ * for the person holding the device. Anything else gets a plain sentence rather
+ * than the thrower's own message: a JSZip rejection naming a zip's central
+ * directory and linking to its own documentation is not something to put in
+ * front of a researcher mid-fieldwork.
+ */
+function describeImportFailure(cause: unknown, fallback: string): string {
+  return describeProtocolFileError(cause) ?? fallback;
 }
 
 async function importParsedProtocol(
@@ -119,7 +139,10 @@ async function importParsedProtocol(
       return {
         success: false,
         error: 'validation-failed',
-        message: cause instanceof Error ? cause.message : String(cause),
+        message: describeImportFailure(
+          cause,
+          'This protocol could not be upgraded to the current version.',
+        ),
       };
     }
   }
@@ -144,9 +167,10 @@ async function importParsedProtocol(
     };
   }
 
-  // `VersionedProtocol` is a schemaVersion-discriminated union (v7 | v8);
-  // migration always targets `APP_SCHEMA_VERSION` (8), so a successful
-  // validation here is always the current (v8) shape.
+  // `VersionedProtocol` is a schemaVersion-discriminated union spanning every
+  // version the validator still accepts; migration above always targets
+  // `APP_SCHEMA_VERSION`, so this comparison is what narrows a validated
+  // document to the one shape the embedded interview engine can execute.
   if (validation.data.schemaVersion !== APP_SCHEMA_VERSION) {
     return {
       success: false,
@@ -163,10 +187,14 @@ async function importParsedProtocol(
   try {
     await saveProtocol(validated, hash, assets);
   } catch (cause) {
+    // An IndexedDB or quota rejection reads as machine output. What the
+    // researcher needs is that the protocol is fine and the device is not.
+    console.error('Protocol import failed while saving', cause);
     return {
       success: false,
       error: 'save-failed',
-      message: cause instanceof Error ? cause.message : String(cause),
+      message:
+        'This protocol could not be saved. This device may be out of space.',
     };
   }
 
@@ -185,10 +213,14 @@ async function importFromBuffer(
   try {
     extracted = await extractZip(buffer);
   } catch (cause) {
+    console.error('Protocol import failed while extracting', cause);
     return {
       success: false,
       error: 'extract-failed',
-      message: cause instanceof Error ? cause.message : String(cause),
+      message: describeImportFailure(
+        cause,
+        'This protocol could not be opened.',
+      ),
     };
   }
 

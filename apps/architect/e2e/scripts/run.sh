@@ -29,16 +29,12 @@ if ! docker info >/dev/null 2>&1; then
   exit 1
 fi
 
-# VITE_DISABLE_ANALYTICS=true skips analytics.ts's posthog.init entirely.
-# Without it, PostHog's client attempts a `<script src="…surveys.js">` load
-# against connect-src's ph-relay.networkcanvas.com host, which the app's own
-# CSP meta tag (vite.config.ts) allows for connect-src but blocks under
-# script-src — an expected, permanent CSP violation, not a bug, but its timing
-# is non-deterministic, so it can occasionally interleave with a spec's own
-# page.evaluate/addStyleTag calls and surface as a spurious action failure.
-# Reuse the app's build-time analytics gate (already used by vitest and the
-# Netlify PR-preview build — see vite.config.ts / netlify.toml) so the
-# build under test never initializes PostHog at all.
+# VITE_DISABLE_ANALYTICS=true skips analytics.ts's posthog.init entirely. The
+# production CSP allows PostHog's controlled relay under both connect-src and
+# script-src, but E2E must not depend on live analytics requests or their
+# non-deterministic timing. Reuse the app's build-time analytics gate (already
+# used by vitest and the Netlify PR-preview build — see vite.config.ts /
+# netlify.toml) so the build under test never initializes PostHog at all.
 # Visual baselines are amd64-truth: glyph advance widths differ subtly
 # between the image's amd64 and arm64 builds, which moves text wrap points in
 # the print documents — an arm64-generated baseline is a whole line-height off
@@ -73,6 +69,7 @@ docker run --rm \
   ${PLATFORM_FLAG} \
   -e CI=true \
   -e VITE_DISABLE_ANALYTICS=true \
+  -e VITE_DISABLE_ANIMATIONS=true \
   -v "$(pwd)":/workspace \
   -v "${VOLUME}":/workspace/node_modules \
   -v "${TURBO_VOLUME}":/workspace/.turbo/cache \

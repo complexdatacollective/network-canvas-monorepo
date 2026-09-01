@@ -24,7 +24,7 @@ The worker implements a single fetch handler that:
 
 ## Code Style
 
-- **Biome configuration**: Inherits from root (tabs for indentation, 120 char line width, double quotes)
+- **Lint and format configuration**: `.oxlintrc.json` extends the root config; formatting comes from the root `.oxfmtrc.json` (2-space indentation, 80-character line width, single quotes)
 - **TypeScript**: Strict mode with isolated modules
 - **Type definitions** for external APIs (GitHubRelease, GitHubAsset)
 - **Async/await pattern** for HTTP requests with proper error handling

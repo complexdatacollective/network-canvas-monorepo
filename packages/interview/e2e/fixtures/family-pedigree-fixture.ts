@@ -1,5 +1,11 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
+import {
+  pedigreeField,
+  setPedigreeField,
+  setPedigreePartnership,
+} from './pedigree-field-driver.js';
+
 /**
  * Fixture for FamilyPedigree stages.
  *
@@ -58,6 +64,13 @@ export class FamilyPedigreeFixture {
     await this.dialog.getByTestId('dialog-submit').click();
   }
 
+  /** Dismiss a form-type dialog without submitting (the AddPerson/Edit
+   * "Cancel"). Source: fresco-ui/src/dialogs/DialogProvider.tsx:610
+   * (`data-testid="dialog-cancel"`). */
+  async clickDialogCancel(): Promise<void> {
+    await this.dialog.getByTestId('dialog-cancel').click();
+  }
+
   /** Confirm an acknowledge dialog (e.g. "Return to editing" / "OK" on
    * "Pedigree is incomplete"). Source: fresco-ui/src/dialogs/DialogProvider.tsx:485,544
    * (`data-testid="dialog-primary"`). */
@@ -66,65 +79,19 @@ export class FamilyPedigreeFixture {
   }
 
   private field(fieldName: string): Locator {
-    // `data-field-name` is set at fresco-ui/src/form/hooks/useField.ts:321,
-    // namespaced e.g. `egg-parent.name`.
-    return this.dialog.locator(`[data-field-name="${fieldName}"]`);
+    return pedigreeField(this.dialog, fieldName);
   }
 
   /**
    * Fill one field inside the open dialog, located by its `data-field-name`
-   * (namespaced e.g. `egg-parent.name`). Ported from
-   * familyPedigreeWizardHelpers.ts:63-122 `setFieldInput`: booleans map to a
-   * switch (`role="switch"`) or a true/false radio pair (`data-value`); numbers
-   * drive a stepper via its Increase/Decrease value button; option fields
-   * (radio/rich-select) match by `data-value` first, falling back to accessible
-   * name; everything else types into the text input.
+   * (namespaced e.g. `egg-parent.name`). The driver itself lives in
+   * `pedigree-field-driver.ts` so Architect's preview spec runs the same code.
    */
   async setField(
     fieldName: string,
     value: boolean | string | number,
   ): Promise<void> {
-    const container = this.field(fieldName);
-
-    if (typeof value === 'boolean') {
-      const toggle = container.getByRole('switch');
-      if (await toggle.count()) {
-        const isChecked =
-          (await toggle.getAttribute('aria-checked')) === 'true';
-        if (isChecked !== value) await toggle.click();
-        return;
-      }
-      await container
-        .locator(`[role="radio"][data-value="${value ? 'true' : 'false'}"]`)
-        .click();
-      return;
-    }
-
-    if (typeof value === 'number') {
-      const input = container.getByRole('spinbutton');
-      const current = Number((await input.inputValue()) || '0');
-      const diff = value - current;
-      if (diff === 0) return;
-      const label = diff > 0 ? 'Increase value' : 'Decrease value';
-      const stepBtn = container.getByRole('button', { name: label });
-      for (let i = 0; i < Math.abs(diff); i++) await stepBtn.click();
-      return;
-    }
-
-    const options = container.locator('[role="radio"], [role="option"]');
-    if (await options.count()) {
-      const byValue = container.locator(
-        `[role="radio"][data-value="${value}"], [role="option"][data-value="${value}"]`,
-      );
-      if (await byValue.count()) {
-        await byValue.first().click();
-        return;
-      }
-      await container.getByRole('radio', { name: value }).click();
-      return;
-    }
-
-    await container.getByRole('textbox').fill(value);
+    await setPedigreeField(this.dialog, fieldName, value);
   }
 
   /**
@@ -139,9 +106,7 @@ export class FamilyPedigreeFixture {
     partnerLabel: string,
     value: 'current' | 'ex' | 'none',
   ): Promise<void> {
-    const matrix = this.field(`partnerships.${focalId}`);
-    const group = matrix.getByRole('radiogroup', { name: partnerLabel });
-    await group.locator(`[role="radio"][data-value="${value}"]`).click();
+    await setPedigreePartnership(this.dialog, focalId, partnerLabel, value);
   }
 
   /** Answer "About you" (EgoSexStep biological-sex question) and continue.

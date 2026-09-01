@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getAdditionalAttributesOptionsForSubject } from '~/components/AssignAttributes/AssignAttributes';
+import { getAdditionalAttributesOptionsForSubject } from '~/components/sections/NameGeneratorPrompts/PromptFields';
 import {
   getComposerQuickAddOptionsForSubject,
   getConvexHullOptionsForSubject,
@@ -16,18 +16,19 @@ import {
 const stateWith = (protocol: unknown): RootState =>
   ({
     activeProtocol: { present: protocol },
+    stageEditorDraft: { ui: { liveValues: null } },
   }) as unknown as RootState;
 
 // Same shape as the Task 7 role-map fixture: `cat` is written both by a form
 // field (validated) and a CategoricalBin prompt (unvalidated), on the same
 // node-type subject. `qa` extends this for the two VALIDATED quickAdd sites
 // below: a text variable written both by a form field (validated, s1) and by
-// FamilyPedigree's nodeLabelVariable (unvalidated, s3), on the same subject.
+// FamilyPedigree's relationshipVariable (unvalidated, s3), on the same subject.
 //
 // Composer scope-change consequentials: NetworkComposer's OWN quickAdd used
 // to stand in for `qa`'s unvalidated hit here, but it is now a VALIDATED
 // writer (network-composer.ts), so it can no longer produce one — s3 is
-// FamilyPedigree's nodeLabelVariable instead, the same text-typed unvalidated
+// FamilyPedigree's relationshipVariable instead, the same text-typed unvalidated
 // writer NodeConfiguration.crossClassGate.test.tsx uses for the same reason.
 const protocol = {
   schemaVersion: 8,
@@ -78,7 +79,7 @@ const protocol = {
       id: 's3',
       type: 'FamilyPedigree',
       label: 'P',
-      nodeConfig: { type: 'person', nodeLabelVariable: 'qa' },
+      nodeConfig: { type: 'person', relationshipVariable: 'qa' },
     },
   ],
 };
@@ -217,7 +218,7 @@ describe('a conflict-free variable is never dropped in either direction', () => 
 // `excludeValidatedUses`/`excludeUnvalidatedUses` call fails.
 const validatedOnly = { ...protocol, stages: [protocol.stages[0]] }; // s1 only: cat + qa validated, neither unvalidated
 const catUnvalidatedOnly = { ...protocol, stages: [protocol.stages[1]] }; // s2 only: cat unvalidated, not validated; qa has no hits at all
-const qaUnvalidatedOnly = { ...protocol, stages: [protocol.stages[2]] }; // s3 only: qa unvalidated (FamilyPedigree nodeLabelVariable), not validated; cat has no hits at all
+const qaUnvalidatedOnly = { ...protocol, stages: [protocol.stages[2]] }; // s3 only: qa unvalidated (FamilyPedigree relationshipVariable), not validated; cat has no hits at all
 
 describe('getConvexHullOptionsForSubject (NodeConfiguration convexHull picker, UNVALIDATED writer)', () => {
   it('drops a categorical variable a form elsewhere already validates', () => {
@@ -289,7 +290,7 @@ describe('getComposerQuickAddOptionsForSubject (NetworkComposer quickAdd picker,
 // writers, so their shared row pool excludes in the OPPOSITE direction to the
 // quickAdd blocks below — and its escape is the multi-row committed set, not
 // a single currentValue.
-describe('getAdditionalAttributesOptionsForSubject (AssignAttributes pool, UNVALIDATED writer)', () => {
+describe('getAdditionalAttributesOptionsForSubject (additionalAttributes pool, UNVALIDATED writer)', () => {
   it('drops a variable a form elsewhere already validates', () => {
     const result = getAdditionalAttributesOptionsForSubject(
       stateWith(validatedOnly),
@@ -301,9 +302,35 @@ describe('getAdditionalAttributesOptionsForSubject (AssignAttributes pool, UNVAL
   });
 
   it('keeps a variable only an unvalidated writer elsewhere already claims', () => {
+    // `catUnvalidatedOnly`, not `qaUnvalidatedOnly`: two unvalidated writers
+    // may share a variable, which a bin's prompt shows. The pedigree fixture
+    // would prove the wrong thing here, because a structural pedigree slot is
+    // owned by that interface outright (see the next case).
+    const result = getAdditionalAttributesOptionsForSubject(
+      stateWith(catUnvalidatedOnly),
+      subject,
+    );
+
+    expect(result.map((o) => o.value)).toContain('cat');
+  });
+
+  // A Family Pedigree derives `relationshipVariable` from the tree the
+  // participant draws; an additionalAttributes rule writing it would overwrite
+  // that derived value with a fixed one on every node the prompt names.
+  it('drops a variable a Family Pedigree slot owns outright', () => {
     const result = getAdditionalAttributesOptionsForSubject(
       stateWith(qaUnvalidatedOnly),
       subject,
+    );
+
+    expect(result.map((o) => o.value)).not.toContain('qa');
+  });
+
+  it('keeps an interface-owned variable a committed row already names', () => {
+    const result = getAdditionalAttributesOptionsForSubject(
+      stateWith(qaUnvalidatedOnly),
+      subject,
+      ['qa'],
     );
 
     expect(result.map((o) => o.value)).toContain('qa');

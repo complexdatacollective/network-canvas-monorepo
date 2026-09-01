@@ -1,18 +1,26 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ToolbarButton } from '@codaco/fresco-ui/SegmentedToolbar';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
+import { ActionToolbarProvider } from '../ProjectNav/ActionToolbar';
 import ProjectActions from '../ProjectNav/ProjectActions';
 
 const mockNavigate = vi.fn();
 const mockLocation = vi.fn(() => '/protocol');
 
 vi.mock('wouter', async () => {
-  const actual = await vi.importActual<typeof import('wouter')>('wouter');
+  const actual = await vi.importActual<Record<string, unknown>>('wouter');
   return {
     ...actual,
     useLocation: () => [mockLocation(), mockNavigate],
@@ -21,18 +29,19 @@ vi.mock('wouter', async () => {
 
 const openDialogMock = globalThis.__architectDialogMocks.openDialog;
 
-const undoMock = vi.fn(() => ({ type: 'activeProtocol/undo' }));
-const redoMock = vi.fn(() => ({ type: 'activeProtocol/redo' }));
+// The real thunks return what the activation did, which useProtocolUndoRedo
+// turns into its polite announcement — so the mocks are thunks returning an
+// outcome, not plain actions.
+const undoMock = vi.fn(() => ({ applied: true, navigatedTo: null }));
+const redoMock = vi.fn(() => ({ applied: true, navigatedTo: null }));
 const clearActiveProtocolMock = vi.fn(() => ({
   type: 'activeProtocol/clearActiveProtocol',
 }));
 
 vi.mock('~/ducks/modules/activeProtocol', () => ({
-  // useScopedUndoRedo dispatches the navigation-aware variants on the main timeline.
-  undoWithNavigation: () => undoMock(),
-  redoWithNavigation: () => redoMock(),
-  undo: () => undoMock(),
-  redo: () => redoMock(),
+  // useProtocolUndoRedo dispatches the navigation-aware variants on the main timeline.
+  undoWithNavigation: () => () => undoMock(),
+  redoWithNavigation: () => () => redoMock(),
   clearActiveProtocol: () => clearActiveProtocolMock(),
   updateProtocolName: vi.fn((args: unknown) => ({
     type: 'activeProtocol/updateProtocolName',
@@ -107,7 +116,7 @@ const createTestStore = ({
           future: canRedo ? [{}] : [],
         },
       ) => state,
-      // ProjectActions now reads draft undo/redo state via useScopedUndoRedo.
+      // ProjectActions now reads draft undo/redo state via useProtocolUndoRedo.
       // On the '/protocol' route the draft scope is inactive, but the hook
       // still reads these selectors unconditionally, so the slice must exist.
       stageEditorDraft: (
@@ -123,7 +132,9 @@ type TestStore = ReturnType<typeof createTestStore>;
 
 const wrap = (store: TestStore) => {
   return ({ children }: { children: ReactNode }) => (
-    <Provider store={store}>{children}</Provider>
+    <Provider store={store}>
+      <ActionToolbarProvider>{children}</ActionToolbarProvider>
+    </Provider>
   );
 };
 
@@ -159,45 +170,132 @@ describe('<ProjectActions />', () => {
     expect(redoMock).toHaveBeenCalledTimes(1);
   });
 
-  it('disables undo/redo when nothing is available', () => {
+  it('hides history actions when neither undo nor redo is available', () => {
     const store = createTestStore({ canUndo: false, canRedo: false });
     render(<ProjectActions />, { wrapper: wrap(store) });
 
-    expect(screen.getByRole('button', { name: /undo/i })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
-    expect(screen.getByRole('button', { name: /redo/i })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
+    expect(
+      screen.queryByRole('toolbar', { name: 'History actions' }),
+    ).not.toBeInTheDocument();
   });
 
-  it('hides undo/redo when readOnly is set', () => {
+  it('keeps both history controls visible and disables only the unavailable action', () => {
+    const store = createTestStore({ canUndo: true, canRedo: false });
+    render(<ProjectActions />, { wrapper: wrap(store) });
+
+    const historyActions = screen.getByRole('toolbar', {
+      name: 'History actions',
+    });
+    expect(
+      within(historyActions).getByRole('button', { name: /undo/i }),
+    ).not.toHaveAttribute('aria-disabled', 'true');
+    expect(
+      within(historyActions).getByRole('button', { name: /redo/i }),
+    ).toHaveAttribute('aria-disabled', 'true');
+    expect(within(historyActions).getAllByRole('separator')).toHaveLength(1);
+  });
+
+  it('renders Return-to-start in its own page-action segment', () => {
     const store = createTestStore();
-    render(<ProjectActions readOnly />, { wrapper: wrap(store) });
+    render(<ProjectActions />, { wrapper: wrap(store) });
+
+    const pageActions = screen.getByRole('toolbar', { name: 'Page actions' });
+    const historyActions = screen.getByRole('toolbar', {
+      name: 'History actions',
+    });
+    expect(within(pageActions).getAllByRole('separator')).toHaveLength(1);
+    expect(within(historyActions).getAllByRole('separator')).toHaveLength(1);
+  });
+
+  // The `report` mode gates authoring only. History recovery is not authoring,
+  // and #1389 requires undo/redo to work identically on every page carrying the
+  // toolbar — Summary included.
+  it('keeps undo/redo available on a report page', () => {
+    const store = createTestStore();
+    render(<ProjectActions mode="report" />, { wrapper: wrap(store) });
+
+    fireEvent.click(screen.getByRole('button', { name: /undo/i }));
+    expect(undoMock).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: /redo/i }));
+    expect(redoMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides save-to-source on a report page', async () => {
+    sourceAuthoringMock.enabled = true;
+    protocolLibraryMock.getStoredProtocol.mockResolvedValueOnce({
+      id: 'protocol-1',
+      name: 'Test',
+      protocol,
+      schemaVersion: 8,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      sourceRef: { kind: 'sample', id: 'sample' },
+    });
+    const store = createTestStore();
+
+    render(<ProjectActions mode="report" />, { wrapper: wrap(store) });
+
+    // The source ref resolves asynchronously; wait for the point at which a
+    // writable page would have shown the action.
+    await waitFor(() => {
+      expect(protocolLibraryMock.getStoredProtocol).toHaveBeenCalled();
+    });
+    expect(
+      screen.queryByRole('button', { name: /save to source/i }),
+    ).toBeNull();
+  });
+
+  // The other kind of read-only: another tab owns the saved copy, so a history
+  // operation would rewind the screen and be dropped on the way to disk.
+  it('offers no undo or redo when the protocol cannot be saved from here', () => {
+    const store = createTestStore();
+    render(<ProjectActions mode="locked" />, { wrapper: wrap(store) });
 
     expect(screen.queryByRole('button', { name: /undo/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /redo/i })).toBeNull();
+    expect(
+      screen.getByRole('button', { name: /^download$/i }),
+    ).toBeInTheDocument();
   });
 
-  it('renders additional items between Return-to-start and Undo/Redo', () => {
+  it('announces an applied undo in a live region', () => {
+    const store = createTestStore();
+    render(<ProjectActions />, { wrapper: wrap(store) });
+
+    fireEvent.click(screen.getByRole('button', { name: /undo/i }));
+
+    expect(screen.getByRole('status')).toHaveTextContent('Change undone.');
+  });
+
+  it('says nothing when the timeline refused the operation', () => {
+    undoMock.mockReturnValueOnce({ applied: false, navigatedTo: null });
+    const store = createTestStore();
+    render(<ProjectActions />, { wrapper: wrap(store) });
+
+    fireEvent.click(screen.getByRole('button', { name: /undo/i }));
+
+    expect(screen.getByRole('status')).toHaveTextContent('');
+  });
+
+  it('renders additional page actions separately from Undo/Redo', () => {
     const store = createTestStore();
     render(
       <ProjectActions
-        additionalItems={[
-          {
-            type: 'button',
-            id: 'print',
-            label: 'Print',
-            onClick: vi.fn(),
-          },
-        ]}
+        additionalActions={
+          <ToolbarButton onClick={vi.fn()}>Print</ToolbarButton>
+        }
       />,
       { wrapper: wrap(store) },
     );
 
     expect(screen.getByRole('button', { name: /print/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('toolbar', { name: 'Page actions' }),
+    ).toContainElement(screen.getByRole('button', { name: /print/i }));
+    expect(
+      screen.getByRole('toolbar', { name: 'History actions' }),
+    ).toContainElement(screen.getByRole('button', { name: /undo/i }));
   });
 
   it('keeps the Download action filled on hover', () => {
@@ -240,6 +338,23 @@ describe('<ProjectActions />', () => {
     );
     expect(mockNavigate).toHaveBeenCalledWith('/');
   });
+
+  it.each(['/protocol/assets', '/protocol/codebook', '/protocol/summary'])(
+    'returns from %s to the timeline',
+    (route) => {
+      mockLocation.mockReturnValue(route);
+      const store = createTestStore();
+      render(<ProjectActions />, { wrapper: wrap(store) });
+
+      fireEvent.click(
+        screen.getByRole('button', { name: /Return to Stages/i }),
+      );
+      expect(mockNavigate).toHaveBeenCalledWith('/protocol');
+      expect(
+        screen.queryByRole('button', { name: /return to start screen/i }),
+      ).toBeNull();
+    },
+  );
 
   it('hides save-to-source outside source authoring mode', () => {
     const store = createTestStore();

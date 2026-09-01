@@ -1,8 +1,9 @@
+import type { NodeColorReference } from '@codaco/protocol-validation';
 import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
 
 type DiseasePreviewProps = {
   label?: string;
-  color?: string;
+  color?: NodeColorReference;
 };
 
 const DiseasePreview = ({ label, color }: DiseasePreviewProps) => (

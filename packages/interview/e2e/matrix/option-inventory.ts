@@ -29,7 +29,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'other-dialog-submit-writes-other-clears-variable',
     'other-dialog-cancel-noop',
     'regular-bin-drop-clears-other-variable',
-    'other-dialog-submit-empty-rejected-when-rule-less',
+    'other-dialog-submit-empty-accepted-when-rule-less',
     'codebook.variables.otherVariable.validation=required',
     'multi-value-membership',
     'empty-array-treated-as-unset',
@@ -192,7 +192,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'egoVariable.name-fallback-label', // dead: prompt is required, fallback unreachable
     'RadioGroup-auto-columns->6-options',
     'Boolean-custom-options',
-    'Boolean-options[].negative', // dead: Boolean.tsx never reads it
+    'Boolean-options[].negative',
     'validation.required',
     'validation.requiredAcceptsNull', // dead: declared, consumed nowhere
     'validation.minLength/maxLength',
@@ -206,6 +206,11 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'backwards-nav-discard-and-autosubmit',
     'ready-for-next-pulse',
     'scroll-nudge-15s-inactivity',
+    'scroll-nudge-never-obscures-content',
+    'scroll-nudge-suppressed-by-errors',
+    'invalid-submit-focuses-first-invalid-control',
+    'required-boolean-renders-as-unselected-choice',
+    'comparison-copy-uses-authored-prompt',
     'label', // dead: author-facing only, never rendered
     'interviewScript', // dead: author-facing only, never rendered
     'skipLogic',
@@ -387,6 +392,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'remove-node-round-trip',
     'encrypted-variable-passphrase-gate',
     'label-fallback-heuristic',
+    'exhausted-roster-empty-state',
   ],
   NameGeneratorQuickAdd: [
     'label',
@@ -485,7 +491,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'mapOptions.initialZoom',
     'mapOptions.dataSourceAssetId',
     'mapOptions.color',
-    'mapOptions.color=default',
     'mapOptions.targetFeatureProperty',
     'mapOptions.showTransit',
     'mapOptions.showTransit=false',

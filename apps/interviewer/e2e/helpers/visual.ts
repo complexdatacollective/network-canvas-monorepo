@@ -21,6 +21,22 @@ export type CaptureFn = (
 
 export const APP_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 
+// CI runs this suite as two jobs: the pinned Playwright container compares the
+// committed PNGs, and a plain runner runs everything else. The pixel gate below
+// keys on `CI`, NOT on Docker — a native runner sets `CI=true` too, so a test
+// that escapes the `--grep @visual` partition would sail past it and compare
+// container-rasterised baselines against the runner's own font stack. That
+// fails as a confusing pixel diff. Turn it into an actionable one instead.
+function assertNotNativeLane(name: string): void {
+  if (process.env.E2E_PIXEL_LANE === 'native') {
+    throw new Error(
+      `[visual] "${name}" tried to capture in the native e2e lane. Pixel ` +
+        'baselines are only valid from the pinned Playwright image, so this ' +
+        'test must carry the @visual tag to be routed to the Docker job.',
+    );
+  }
+}
+
 // Returns a capture function that is a no-op unless running in CI. This keeps
 // local headed runs functional-only (no baselines needed) while CI asserts
 // against the committed Docker-generated baselines.
@@ -29,6 +45,7 @@ export function makeCapture(page: Page): CaptureFn {
 
   return async (name, options = {}) => {
     if (!isCI) return;
+    assertNotNativeLane(name);
     // Re-inject on every capture, not just once per page instance: a
     // page.reload()/second goto() drops the injected <style>, which would
     // silently un-hide blobs/focus-rings for a later capture() in the same test.
@@ -105,12 +122,13 @@ export function makeCapture(page: Page): CaptureFn {
   };
 }
 
-// Settings → About's app version varies between generated release branches;
-// the storage estimate (the "Storage usage" progress bar and its "X of Y (Z%)"
-// desc text) and per-device installation id vary by environment/browser
-// profile. Mask those values so one canonical baseline works for every release
-// gate while the row labels and layout remain asserted. The settings spec
-// verifies the version value semantically before capture.
+// Settings → About's storage estimate (the "Storage usage" progress bar and
+// its "X of Y (Z%)" desc text) and per-device installation id vary by
+// environment/browser profile. Mask those values so one canonical baseline
+// works for every release gate while the row labels and layout remain asserted.
+// The settings spec verifies the app version semantically, then hides its text
+// while preserving its layout before capture; masking the text itself would
+// make the mask width depend on the release version.
 export function settingsAboutMasks(page: Page): Locator[] {
   const storageHeading = page.getByRole('heading', {
     level: 4,
@@ -123,10 +141,6 @@ export function settingsAboutMasks(page: Page): Locator[] {
     exact: true,
   });
   return [
-    // Match the text-bearing span itself. Walking up from the heading to the
-    // control column can select a responsive layout container whose painted
-    // area includes unrelated settings content.
-    page.getByText(APP_VERSION_PATTERN, { exact: true }),
     page.getByRole('progressbar', { name: 'Storage usage' }),
     // SettingsRow renders the desc text as the heading's next sibling, inside
     // their shared title/desc column.

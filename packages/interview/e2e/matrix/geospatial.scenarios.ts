@@ -1,6 +1,7 @@
 import path from 'node:path';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
+import type { OrdinalColorReference } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
@@ -21,8 +22,8 @@ const TOKEN_ASSET_ID = 'mapbox-token';
 const CHICAGO_ASSET_ID = 'geojson-chicago';
 const TWO_TRACTS_ASSET_ID = 'two-tracts';
 
-// The raw constant Geospatial paints when a colour cannot be resolved
-// (useMapbox.ts DEFAULT_FALLBACK). Scenarios assert the resolved colour is
+// The raw constant Geospatial paints if the referenced CSS variable cannot be
+// read (useMapbox.ts DEFAULT_FALLBACK). Scenarios assert the resolved colour is
 // NOT this, proving the theme variable was actually applied.
 const DEFAULT_FALLBACK_COLOR = 'rgb(226, 33, 91)';
 
@@ -58,7 +59,7 @@ type GeoMapOptions = {
   center: [number, number];
   initialZoom: number;
   dataSourceAssetId: string;
-  color: string;
+  color: OrdinalColorReference;
   targetFeatureProperty: string;
   showTransit?: boolean;
   allowSearch?: boolean;
@@ -109,7 +110,7 @@ function clearNodeLocations(
 ): void {
   for (const index of nodeIndices) {
     for (const varId of locationVarIds) {
-      synth.setNodeAttribute(index, varId, undefined);
+      synth.unsetNodeAttribute(index, varId);
     }
   }
 }
@@ -338,7 +339,7 @@ function buildOutsideSelectableAreasScenario(): ScenarioDefinition {
           const state = await protocol.getNetworkState(interview.interviewId);
           return state!.nodes[0]![entityAttributesProperty][variableId];
         })
-        .toBeNull();
+        .toBeUndefined();
     },
   };
 }
@@ -844,68 +845,6 @@ function buildMapStyleColorTransitScenario(): ScenarioDefinition {
   };
 }
 
-function buildColorFallbackScenario(): ScenarioDefinition {
-  return {
-    id: 'color-unknown-name-falls-back',
-    covers: ['mapOptions.color=default'],
-    chromiumOnly: true,
-    slow: true,
-    build: () => {
-      const { synth, person } = newPersonInterview();
-      const locationVar = person.addVariable({
-        type: 'location',
-        name: 'Location',
-      });
-
-      const geo = synth.addStage('Geospatial', {
-        subject: { entity: 'node', type: person.id },
-        initialNodes: { count: 1 },
-        mapOptions: chicagoMapOptions({ color: 'not-a-real-palette-color' }),
-      });
-      geo.addPrompt({
-        variable: locationVar.id,
-        text: 'Where does this person currently live?',
-      });
-
-      clearNodeLocations(synth, [0], [locationVar.id]);
-      return synth;
-    },
-    assets: [TOKEN_ASSET, CHICAGO_ASSET],
-    currentStep: 0,
-    seedNetwork: true,
-    run: async ({ page, stage }) => {
-      await stage.geospatial.waitForMapIdle();
-
-      // Independently compute the colour the unknown name must fall back to
-      // (DEFAULT_COLOR_VAR = --node-1), using the same canvas conversion the
-      // app applies in useMapbox.ts.
-      const expectedColor = await page.evaluate(() => {
-        const raw = getComputedStyle(document.documentElement)
-          .getPropertyValue('--node-1')
-          .trim();
-        if (!raw) return 'rgb(226, 33, 91)';
-        const canvas = document.createElement('canvas');
-        canvas.width = 1;
-        canvas.height = 1;
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        if (!ctx) return 'rgb(226, 33, 91)';
-        ctx.clearRect(0, 0, 1, 1);
-        ctx.fillStyle = raw;
-        ctx.fillRect(0, 0, 1, 1);
-        const data = ctx.getImageData(0, 0, 1, 1).data;
-        if (data[3] === 0) return 'rgb(226, 33, 91)';
-        const hex = (v: number) => v.toString(16).padStart(2, '0');
-        return `#${hex(data[0]!)}${hex(data[1]!)}${hex(data[2]!)}`;
-      });
-
-      const fillColor = await page.evaluate(() =>
-        window.__e2eMap?.getPaintProperty('selection', 'fill-color'),
-      );
-      expect(fillColor).toBe(expectedColor);
-    },
-  };
-}
-
 function buildSearchFlowScenario(): ScenarioDefinition {
   let variableId = '';
 
@@ -948,12 +887,47 @@ function buildSearchFlowScenario(): ScenarioDefinition {
       await stage.geospatial.search('Sidetrack');
       await expect(stage.geospatial.getSuggestions()).toHaveCount(1);
 
+      // Tabbing PAST the panel closes it and leaves focus where the browser
+      // sent it. #1394: restoring focus from that close — the document
+      // `focusout` path — wins over the browser's pending move in chromium,
+      // which would bounce Tab backwards onto the toggle and wipe the query.
+      await stage.geospatial.searchInput.focus();
+      await page.keyboard.press('Tab');
+      await expect(stage.geospatial.getSuggestions().first()).toBeFocused();
+      await page.keyboard.press('Tab');
+      await expect(stage.geospatial.zoomInButton).toBeFocused();
+      expect(await stage.geospatial.isSearchOpen()).toBe(false);
+
+      // The filed keyboard route: ArrowDown onto the suggestion, Enter to
+      // choose it. Focus returns to "Search location", so the next Tab resumes
+      // from the toggle and reaches Zoom In in sequence — rather than resuming
+      // where the removed option used to sit and skipping the toggle entirely.
+      await stage.geospatial.search('Sidetrack');
+      await stage.geospatial.searchInput.press('ArrowDown');
+      await expect(stage.geospatial.getSuggestions().first()).toBeFocused();
+      await page.keyboard.press('Enter');
+      await expect(stage.geospatial.searchToggle).toBeFocused();
+      await page.keyboard.press('Tab');
+      await expect(stage.geospatial.zoomInButton).toBeFocused();
+
       // Selecting a suggestion flies the camera to FLY_TO_ZOOM (14) but never
       // writes the location variable — only a map click does. The mocked
       // retrieve resolves instantly and reduced-motion makes the fly-to jump,
       // so assert the zoom outcome directly rather than observing the transient
       // move (which selectSuggestion's fixed idle wait would miss).
+      await expect.poll(() => stage.geospatial.getZoomLevel()).toBe(14);
+      await expect(stage.geospatial.searchStatus).toHaveText(
+        'Map moved to Sidetrack.',
+      );
+      await stage.geospatial.recenter();
+      await expect.poll(() => stage.geospatial.getZoomLevel()).toBe(11);
+
+      // The mouse route ends in the same place: the option never holds focus
+      // (mousedown is prevented), so this is the second, independent way the
+      // panel can close on selection.
+      await stage.geospatial.search('Sidetrack');
       await stage.geospatial.getSuggestions().first().click();
+      await expect(stage.geospatial.searchToggle).toBeFocused();
       await expect.poll(() => stage.geospatial.getZoomLevel()).toBe(14);
       await stage.geospatial.recenter();
       await expect.poll(() => stage.geospatial.getZoomLevel()).toBe(11);
@@ -963,7 +937,7 @@ function buildSearchFlowScenario(): ScenarioDefinition {
       );
       expect(
         stateAfterSearch!.nodes[0]![entityAttributesProperty][variableId],
-      ).toBeNull();
+      ).toBeUndefined();
 
       // Clear button empties the query.
       await stage.geospatial.search('Sidetrack');
@@ -1134,7 +1108,6 @@ export const geospatialScenarios: InterfaceScenarios = {
     buildEmptySubjectScenario(),
     buildZoomControlsScenario(),
     buildMapStyleColorTransitScenario(),
-    buildColorFallbackScenario(),
     buildSearchFlowScenario(),
     buildMapErrorOverlayScenario(),
     buildOfflineIndicatorScenario(),

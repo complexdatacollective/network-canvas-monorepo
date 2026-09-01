@@ -35,7 +35,9 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+        with:
+          install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
           node-version-file: '.nvmrc'
@@ -67,6 +69,23 @@ jobs:
           pnpm exec electron-builder --${{ matrix.target.platform }}
           --config ${{ matrix.app == 'architect-classic' && 'electron-builder.config.js' || 'electron-builder.config.cjs' }}
           --publish never
+      # Verify the packaged app before uploading its artifacts: an exhaustive
+      # module-resolution sweep over the asar (run inside the packaged binary
+      # itself) plus a boot smoke test that requires a renderer process to
+      # appear (macOS/Linux; Windows runs the sweep only). Either check would
+      # have blocked the broken 6.6.0 releases, where `files` exclusions
+      # stripped runtime modules from the asar and the apps crashed at
+      # launch. See scripts/verify-packaged-app.mjs.
+      - name: Verify packaged app
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq xvfb
+            xvfb-run --auto-servernum node scripts/verify-packaged-app.mjs --app apps/${{ matrix.app }}
+          else
+            node scripts/verify-packaged-app.mjs --app apps/${{ matrix.app }}
+          fi
       # Upload only the distributable installers + autoupdate metadata, NOT
       # electron-builder's unpacked app directories (mac/, mac-arm64/,
       # win-unpacked/, linux-unpacked/ …) — those are build intermediates that

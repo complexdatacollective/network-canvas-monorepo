@@ -1,10 +1,126 @@
 import { validateProtocol } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
+import { emptyProtocol } from '../fixtures/seed.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import { readProtocolJson } from '../helpers/read-store.js';
+import { StageEditor } from '../pageobjects/stage-editor.js';
 import { Timeline } from '../pageobjects/timeline.js';
 import { Toolbar } from '../pageobjects/toolbar.js';
+
+test('separates history controls and returns project subpages to the timeline', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'Project Toolbar', assets });
+  await gotoProtocol(architectPage);
+
+  const pageActions = architectPage.getByRole('toolbar', {
+    name: 'Page actions',
+  });
+  const historyActions = architectPage.getByRole('toolbar', {
+    name: 'History actions',
+  });
+
+  await expect(historyActions).toHaveCount(0);
+  const protocolName = architectPage.getByRole('textbox', {
+    name: 'Protocol name',
+  });
+  await protocolName.fill('Project Toolbar Edited');
+  await protocolName.blur();
+
+  await expect(
+    pageActions.getByRole('button', { name: 'Return to Start Screen' }),
+  ).toBeVisible();
+  await expect(pageActions.getByRole('separator')).toHaveCount(1);
+  await expect(
+    historyActions.getByRole('button', { name: 'Undo' }),
+  ).toBeVisible();
+  await expect(
+    historyActions.getByRole('button', { name: 'Redo' }),
+  ).toHaveAttribute('aria-disabled', 'true');
+  await expect(historyActions.getByRole('separator')).toHaveCount(1);
+
+  const historyBox = await historyActions.boundingBox();
+  const pageBox = await pageActions.boundingBox();
+  if (!historyBox || !pageBox) {
+    throw new Error('both project action toolbars must be visible');
+  }
+  expect(historyBox.x).toBeLessThan(pageBox.x);
+  const viewport = architectPage.viewportSize();
+  if (!viewport) throw new Error('project toolbar test requires a viewport');
+  expect(viewport.width - (pageBox.x + pageBox.width)).toBeLessThan(64);
+  expect(viewport.height - (pageBox.y + pageBox.height)).toBeLessThan(64);
+
+  for (const route of [
+    '/protocol/assets',
+    '/protocol/codebook',
+    '/protocol/summary',
+  ]) {
+    await architectPage.goto(route);
+    await pageActions.getByRole('button', { name: 'Return to Stages' }).click();
+    await expect(architectPage).toHaveURL(/\/protocol$/);
+  }
+});
+
+test('shares the separated history toolbar with the stage editor', async ({
+  architectPage,
+  seed,
+}) => {
+  await seed(emptyProtocol());
+  await gotoProtocol(architectPage);
+
+  const editor = new StageEditor(architectPage);
+  await editor.createNew('Information');
+
+  const stageActions = architectPage.getByRole('toolbar', {
+    name: 'Stage editor actions',
+  });
+  const historyActions = architectPage.getByRole('toolbar', {
+    name: 'History actions',
+  });
+  await expect(historyActions).toHaveCount(0);
+
+  await editor.setStageName('Shared History Toolbar');
+
+  await expect(historyActions).toBeVisible();
+  await expect(
+    historyActions.getByRole('button', { name: 'Undo' }),
+  ).not.toHaveAttribute('aria-disabled', 'true');
+  const redo = historyActions.getByRole('button', { name: 'Redo' });
+  await expect(redo).toHaveAttribute('aria-disabled', 'true');
+  await expect(historyActions.getByRole('separator')).toHaveCount(1);
+  await expect(stageActions.getByRole('button', { name: 'Undo' })).toHaveCount(
+    0,
+  );
+  await expect(stageActions.getByRole('button', { name: 'Redo' })).toHaveCount(
+    0,
+  );
+
+  const restingDisabledStyle = await redo.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      backgroundColor: style.backgroundColor,
+      color: style.color,
+      opacity: style.opacity,
+    };
+  });
+  await redo.hover();
+  // Button's colour transition is 150ms. Read after it would have completed so
+  // this cannot pass on the first frame while a forbidden hover is beginning.
+  await architectPage.waitForTimeout(200);
+  expect(
+    await redo.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        backgroundColor: style.backgroundColor,
+        color: style.color,
+        opacity: style.opacity,
+      };
+    }),
+  ).toEqual(restingDisabledStyle);
+});
 
 test('downloads the active protocol as a .netcanvas', async ({
   architectPage,
@@ -84,7 +200,7 @@ test('discards an invalid stage draft before returning to the start screen', asy
     .getByRole('button', { name: 'Return to start screen', exact: true })
     .click();
   const dialog = architectPage.getByRole('dialog', {
-    name: 'Discard unsaved stage changes?',
+    name: 'Discard unsaved changes?',
   });
   await expect(dialog).toBeVisible();
   await expect(
@@ -200,6 +316,8 @@ test('does not leave a cleared protocol in browser history', async ({
   await expect(architectPage).toHaveURL(/\/protocol\/codebook$/);
 
   const toolbar = new Toolbar(architectPage);
+  await toolbar.returnToTimeline();
+  await expect(architectPage).toHaveURL(/\/protocol$/);
   await toolbar.returnToStart();
   await architectPage.getByTestId('dialog-primary').click();
   await expect(architectPage).toHaveURL(/\/$/);
@@ -255,4 +373,202 @@ test('undoes and redoes a protocol-name edit', async ({
     architectPage,
     (current) => current.name === 'Undo Redo Final',
   );
+});
+
+// #1396: the protocol name commits on blur, so clicking into the field and
+// away again — reading it, or tabbing past it — dispatched a rename to the
+// name it already had. `updateProtocolName` rebuilds the protocol rather than
+// mutating it, so that rebuilt-but-identical protocol counted as a change: it
+// invented an undo step and, worse, discarded a redo the researcher still had.
+test('clicking into the protocol name and out again is not a change', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'No Op Seed' });
+  await gotoProtocol(architectPage);
+
+  const toolbar = new Toolbar(architectPage);
+  const nameField = architectPage.getByRole('textbox', {
+    name: 'Protocol name',
+  });
+  await expect(nameField).toHaveValue('No Op Seed');
+
+  // One real rename, then undo it: that leaves an empty undo stack and a
+  // pending redo — both of which the no-op below used to destroy.
+  await nameField.fill('No Op Renamed');
+  await nameField.blur();
+  await readProtocolJson(
+    architectPage,
+    (current) => current.name === 'No Op Renamed',
+  );
+
+  await toolbar.undo();
+  await expect(nameField).toHaveValue('No Op Seed');
+  await expect(toolbar.button('undo')).toHaveAttribute('aria-disabled', 'true');
+  await expect(toolbar.button('redo')).not.toHaveAttribute('aria-disabled');
+
+  // The whole interaction under test: focus the field, type nothing, leave.
+  await nameField.focus();
+  await nameField.blur();
+
+  await expect(toolbar.button('undo')).toHaveAttribute('aria-disabled', 'true');
+  await expect(toolbar.button('redo')).not.toHaveAttribute('aria-disabled');
+
+  // And the redo still leads where it did.
+  await toolbar.redo();
+  await expect(nameField).toHaveValue('No Op Renamed');
+  await readProtocolJson(
+    architectPage,
+    (current) => current.name === 'No Op Renamed',
+  );
+});
+
+// #1389: activating Undo from a page other than the one the change was made on
+// used to navigate and stop, leaving the change in place until the researcher
+// pressed the same control a second time. Every assertion below reads the
+// canonical IndexedDB row, so a route change alone can never satisfy it.
+//
+// In-app links, never page.goto: the undo timeline is session-local (see
+// ducks/store.ts), so a reload would throw away the history under test.
+test('applies one history operation per activation from Resources', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'Cross Page Seed' });
+  await gotoProtocol(architectPage);
+
+  const toolbar = new Toolbar(architectPage);
+  const nameField = architectPage.getByRole('textbox', {
+    name: 'Protocol name',
+  });
+  await expect(nameField).toHaveValue('Cross Page Seed');
+
+  await nameField.fill('Cross Page Renamed');
+  await nameField.blur();
+  await readProtocolJson(
+    architectPage,
+    (current) => current.name === 'Cross Page Renamed',
+  );
+
+  await architectPage.getByRole('link', { name: 'Resources' }).click();
+  await expect(architectPage).toHaveURL(/\/protocol\/assets$/);
+
+  // ONE activation: the change is reverted in the canonical row AND the
+  // researcher is brought to the page that shows it.
+  await toolbar.undo();
+  await expect(architectPage).toHaveURL(/\/protocol$/);
+  await readProtocolJson(
+    architectPage,
+    (current) => current.name === 'Cross Page Seed',
+  );
+
+  // Redo becomes available from that same activation, and reapplies in one
+  // press without a further route change (we are already on its page).
+  await toolbar.redo();
+  await expect(architectPage).toHaveURL(/\/protocol$/);
+  await readProtocolJson(
+    architectPage,
+    (current) => current.name === 'Cross Page Renamed',
+  );
+});
+
+test('applies one history operation per activation for a codebook change', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'Codebook History Seed' });
+  await gotoProtocol(architectPage);
+
+  const toolbar = new Toolbar(architectPage);
+  await architectPage.getByRole('link', { name: 'Codebook' }).click();
+  await expect(architectPage).toHaveURL(/\/protocol\/codebook$/);
+
+  // Rename a variable through the codebook's own editor, so the timeline
+  // records the locus at /protocol/codebook (VariablePill.tsx).
+  await architectPage
+    .getByRole('button', {
+      name: 'Edit attribute name: biologicalSex',
+      exact: true,
+    })
+    .click();
+  // VariablePill.tsx labels the editor dialog "Edit variable name" and its
+  // input "Variable name".
+  const variableEditor = architectPage.getByRole('dialog', {
+    name: 'Edit attribute name',
+  });
+  await variableEditor
+    .getByRole('textbox', { name: 'Attribute name' })
+    .fill('biologicalSexRenamed');
+  await variableEditor.getByRole('button', { name: 'Save Changes' }).click();
+  await readProtocolJson(architectPage, (current) =>
+    JSON.stringify(current.codebook).includes('biologicalSexRenamed'),
+  );
+
+  await architectPage.getByRole('link', { name: 'Resources' }).click();
+  await expect(architectPage).toHaveURL(/\/protocol\/assets$/);
+
+  await toolbar.undo();
+  await expect(architectPage).toHaveURL(/\/protocol\/codebook$/);
+  await readProtocolJson(
+    architectPage,
+    (current) =>
+      !JSON.stringify(current.codebook).includes('biologicalSexRenamed'),
+  );
+
+  // Same-page redo: reapplies without moving the researcher.
+  await toolbar.redo();
+  await expect(architectPage).toHaveURL(/\/protocol\/codebook$/);
+  await readProtocolJson(architectPage, (current) =>
+    JSON.stringify(current.codebook).includes('biologicalSexRenamed'),
+  );
+});
+
+// Acceptance criterion 1: the history controls behave identically on Summary,
+// which is a read-only report — the authoring affordance (save-to-source) stays
+// hidden there, but recovery does not.
+test('applies one history operation per activation from Summary', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'Summary History Seed' });
+  await gotoProtocol(architectPage);
+
+  const toolbar = new Toolbar(architectPage);
+  const nameField = architectPage.getByRole('textbox', {
+    name: 'Protocol name',
+  });
+  await nameField.fill('Summary History Renamed');
+  await nameField.blur();
+  await readProtocolJson(
+    architectPage,
+    (current) => current.name === 'Summary History Renamed',
+  );
+
+  await architectPage.getByRole('link', { name: 'Summary' }).click();
+  await expect(architectPage).toHaveURL(/\/protocol\/summary$/);
+  await expect(toolbar.button('undo')).toBeVisible();
+  // The authoring affordance stays hidden on the report.
+  await expect(
+    architectPage.getByRole('button', { name: 'Save to source' }),
+  ).toHaveCount(0);
+
+  // The report renders the whole protocol, so the revert is visible in place
+  // and the researcher keeps their position in it.
+  await toolbar.undo();
+  await readProtocolJson(
+    architectPage,
+    (current) => current.name === 'Summary History Seed',
+  );
+  await expect(architectPage).toHaveURL(/\/protocol\/summary$/);
+
+  await toolbar.redo();
+  await readProtocolJson(
+    architectPage,
+    (current) => current.name === 'Summary History Renamed',
+  );
+  await expect(architectPage).toHaveURL(/\/protocol\/summary$/);
 });

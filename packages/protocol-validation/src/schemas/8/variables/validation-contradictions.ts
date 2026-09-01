@@ -118,7 +118,7 @@ function localContradictions(
       if (min !== undefined && max !== undefined && min > max) {
         found.push({
           class: 'invertedBounds',
-          message: `Variable "${name}": ${minRule} (${min}) is greater than ${maxRule} (${max})`,
+          message: `Attribute "${name}": ${minRule} (${min}) is greater than ${maxRule} (${max})`,
           variableIds: [id],
           strips: [
             { variableId: id, rule: minRule },
@@ -146,7 +146,7 @@ function localContradictions(
       if (explicitMin === undefined || explicitMin <= 0) {
         found.push({
           class: 'invertedBounds',
-          message: `Variable "${name}": required answers cannot satisfy ${zeroMaximum.max} (0)`,
+          message: `Attribute "${name}": required answers cannot satisfy ${zeroMaximum.max} (0)`,
           variableIds: [id],
           strips: [{ variableId: id, rule: zeroMaximum.max }],
         });
@@ -161,7 +161,7 @@ function localContradictions(
     ) {
       found.push({
         class: 'minSelectedExceedsOptions',
-        message: `Variable "${name}": minSelected (${minSelected}) is greater than the number of options (${options})`,
+        message: `Attribute "${name}": minSelected (${minSelected}) is greater than the number of options (${options})`,
         variableIds: [id],
         strips: [{ variableId: id, rule: 'minSelected' }],
       });
@@ -737,7 +737,7 @@ function referenceStructureContradictions(
     ];
     found.push({
       class: 'conflictingReferencePair',
-      message: `Variable "${nameOf(id, variable)}": sameAs and differentFrom both reference "${targetName}"`,
+      message: `Attribute "${nameOf(id, variable)}": sameAs and differentFrom both reference "${targetName}"`,
       variableIds: id === sameAs ? [id] : [id, sameAs],
       strips,
     });
@@ -760,8 +760,8 @@ function referenceStructureContradictions(
     const otherId = first.variableId === edge.upper ? edge.lower : edge.upper;
     const message =
       edge.lower === edge.upper
-        ? `Variable "${ownerName}": ${first.rule} references the variable itself`
-        : `Variable "${ownerName}": ${first.rule} references "${nameOf(otherId, variables[otherId])}", but ${equalityRequirementClause(variables, first.variableId, otherId)}`;
+        ? `Attribute "${ownerName}": ${first.rule} references the attribute itself`
+        : `Attribute "${ownerName}": ${first.rule} references "${nameOf(otherId, variables[otherId])}", but ${equalityRequirementClause(variables, first.variableId, otherId)}`;
     found.push({
       class: 'sameAsGroupConflict',
       message,
@@ -802,8 +802,8 @@ function referenceStructureContradictions(
     const group = groupOf.get(id);
     const message =
       id === target
-        ? `Variable "${nameOf(id, variable)}": differentFrom references the variable itself`
-        : `Variable "${nameOf(id, variable)}": differentFrom references "${nameOf(target, variables[target])}", but ${equalityRequirementClause(variables, id, target)}`;
+        ? `Attribute "${nameOf(id, variable)}": differentFrom references the attribute itself`
+        : `Attribute "${nameOf(id, variable)}": differentFrom references "${nameOf(target, variables[target])}", but ${equalityRequirementClause(variables, id, target)}`;
     found.push({
       class: 'sameAsGroupConflict',
       message,
@@ -824,7 +824,7 @@ function referenceStructureContradictions(
     if (!first) continue;
     found.push({
       class: 'strictComparatorCycle',
-      message: `Variables ${memberNames.join(', ')} form an impossible comparison cycle`,
+      message: `Attributes ${memberNames.join(', ')} form an impossible comparison cycle`,
       variableIds: memberIds,
       strips: [first, ...rest],
     });
@@ -2446,7 +2446,7 @@ function pinnedEqualDifferentFromContradictions(
     if (!lower || !upper || !first) continue;
     contradictions.push({
       class: 'pinnedEqualDifferentFrom',
-      message: `Variables "${nameOf(lower, variables[lower])}", "${nameOf(upper, variables[upper])}" must differ but their rules pin both to the same value`,
+      message: `Attributes "${nameOf(lower, variables[lower])}", "${nameOf(upper, variables[upper])}" must differ but their rules pin both to the same value`,
       variableIds: [lower, upper],
       strips: [first, ...rest],
     });
@@ -3232,12 +3232,12 @@ const pruneToPinnedDisequalityHull = (
   );
   const subject =
     members.length === 1
-      ? `Variable ${memberNames[0]}`
-      : `Variables ${memberNames.join(', ')}`;
+      ? `Attribute ${memberNames[0]}`
+      : `Attributes ${memberNames.join(', ')}`;
   return {
     contradiction: {
       class: 'disjointBounds',
-      message: `${subject}: differentFrom rules against pinned variables ${counterpartNames.join(', ')} leave no selectable date`,
+      message: `${subject}: differentFrom rules against pinned attributes ${counterpartNames.join(', ')} leave no selectable date`,
       variableIds: [
         ...members,
         ...counterparts.filter((counterpart) => !members.includes(counterpart)),
@@ -3900,7 +3900,7 @@ function chainedBoundContradictions(
       );
       found.push({
         class: 'disjointBounds',
-        message: `Variables ${names.join(', ')} form a comparison chain their value ranges can never satisfy`,
+        message: `Attributes ${names.join(', ')} form a comparison chain their value ranges can never satisfy`,
         variableIds: memberIds,
         strips: [first, ...rest],
       });
@@ -4028,7 +4028,7 @@ function disjointBoundsContradictions(
       );
       found.push({
         class: 'disjointBounds',
-        message: `Variables ${names.join(', ')} ${groupEqualityDescription(variables, members)} ${clause}`,
+        message: `Attributes ${names.join(', ')} ${groupEqualityDescription(variables, members)} ${clause}`,
         variableIds: members,
         strips: [first, ...rest],
       });
@@ -4267,7 +4267,7 @@ function disjointBoundsContradictions(
     const otherId = first.variableId === edge.upper ? edge.lower : edge.upper;
     found.push({
       class: 'disjointBounds',
-      message: `Variable "${ownerName}": ${first.rule} "${nameOf(otherId, variables[otherId])}" can never be satisfied because their value ranges do not overlap`,
+      message: `Attribute "${ownerName}": ${first.rule} "${nameOf(otherId, variables[otherId])}" can never be satisfied because their value ranges do not overlap`,
       variableIds: [edge.upper, edge.lower],
       strips: [first, ...rest],
     });
@@ -4355,12 +4355,10 @@ function mixedResolutionSameAsContradictions(
           dateResolutionOf(variables[edge.source]) !==
             dateResolutionOf(variables[edge.target]),
       )
-      .map(
-        (edge): VariableRuleRef => ({
-          variableId: edge.source,
-          rule: 'sameAs',
-        }),
-      );
+      .map((edge): VariableRuleRef => ({
+        variableId: edge.source,
+        rule: 'sameAs',
+      }));
     const [first, ...rest] = strips;
     if (!first) continue;
     const names = members.map(
@@ -4368,7 +4366,7 @@ function mixedResolutionSameAsContradictions(
     );
     found.push({
       class: 'disjointBounds',
-      message: `Variables ${names.join(', ')} ${groupEqualityDescription(variables, members)} but store dates at different resolutions`,
+      message: `Attributes ${names.join(', ')} ${groupEqualityDescription(variables, members)} but store dates at different resolutions`,
       variableIds: members,
       strips: [first, ...rest],
     });
@@ -5261,7 +5259,7 @@ function oddDifferentFromCycleContradictions(
       );
       found.push({
         class: 'oddDifferentFromCycle',
-        message: `Variables ${names.join(', ')}: their differentFrom rules cannot all be satisfied with only two possible values`,
+        message: `Attributes ${names.join(', ')}: their differentFrom rules cannot all be satisfied with only two possible values`,
         variableIds: memberIds,
         strips: [first, ...rest],
       });
@@ -5342,7 +5340,7 @@ function oddDifferentFromCycleContradictions(
     );
     found.push({
       class: 'pinnedDifferentFromParity',
-      message: `Variables ${conflictNames.join(', ')}: their pinned values and differentFrom rules cannot all be satisfied together`,
+      message: `Attributes ${conflictNames.join(', ')}: their pinned values and differentFrom rules cannot all be satisfied together`,
       variableIds: conflictMemberIds,
       strips: [conflictFirst, ...conflictRest],
     });

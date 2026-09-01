@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { globSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export const SUITE_KEYS = ['interview', 'interviewer', 'architect'];
@@ -14,80 +14,144 @@ export const E2E_SUITE_SUBJECTS = {
   architect: '@codaco/architect',
 };
 
-const E2E_JOB_NAMES = {
-  interview: 'interview-e2e',
-  interviewer: 'interviewer-e2e',
-  architect: 'architect-e2e',
+// Each suite runs as two CI jobs: the Dockerized half that compares the
+// committed pixel baselines, and the native half that runs everything else.
+// A suite's verdict is the AND of both — reusing a green pixel verdict while
+// the functional half was red would skip exactly the coverage that failed.
+// Exported so scripts/ci-workflow.test.mjs can assert every name here is a
+// real job that the quality gate requires: an exact-string mismatch here does
+// not fail loudly, it silently disables verdict reuse.
+export const E2E_JOB_NAMES = {
+  interview: ['interview-e2e', 'interview-e2e-native'],
+  interviewer: ['interviewer-e2e', 'interviewer-e2e-native'],
+  architect: ['architect-e2e', 'architect-e2e-native'],
 };
 
-const WORKSPACE_GROUPS = ['packages', 'apps', 'tooling', 'workers'];
+const FALLBACK_WORKSPACE_PATTERNS = [
+  'packages/*',
+  'apps/*',
+  'tooling/*',
+  'workers/*',
+];
 
 // Mirrors the `test` job's inert set: docs, changesets, and markdown cannot
 // change what an E2E suite executes or asserts.
 function isInertPath(path) {
+  const segments = path.split('/');
+  const filename = segments.at(-1) ?? '';
+  const isPlaywrightSpec = path.includes('/e2e/specs/');
+
   return (
     path.startsWith('docs/') ||
     path.startsWith('.changeset/') ||
-    path.endsWith('.md')
+    path.endsWith('.md') ||
+    (!isPlaywrightSpec && filename.includes('.test.')) ||
+    filename.startsWith('vitest.') ||
+    segments.includes('__tests__') ||
+    path.startsWith('tooling/vitest/') ||
+    path.startsWith('config/vitest/') ||
+    path.includes('/config/vitest/')
   );
+}
+
+function workspacePatterns(cwd) {
+  let raw;
+  try {
+    raw = readFileSync(join(cwd, 'pnpm-workspace.yaml'), 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') return FALLBACK_WORKSPACE_PATTERNS;
+    throw error;
+  }
+
+  const lines = raw.split(/\r?\n/);
+  const packagesLine = lines.findIndex((line) =>
+    /^packages:\s*(?:#.*)?$/.test(line),
+  );
+  if (packagesLine === -1) {
+    throw new Error('pnpm-workspace.yaml must define a packages string array');
+  }
+
+  const patterns = [];
+  for (const line of lines.slice(packagesLine + 1)) {
+    if (/^\S/.test(line)) break;
+    if (/^\s*(?:#.*)?$/.test(line)) continue;
+
+    const item = line.match(/^\s+-\s+(.+?)\s*$/)?.[1];
+    if (item === undefined) {
+      throw new Error(
+        'pnpm-workspace.yaml packages must be a simple string list',
+      );
+    }
+
+    const doubleQuoted = item.match(/^("(?:[^"\\]|\\.)*")(?:\s+#.*)?$/);
+    const singleQuoted = item.match(/^('(?:[^']|'')*')(?:\s+#.*)?$/);
+    let pattern;
+    if (doubleQuoted) {
+      try {
+        pattern = JSON.parse(doubleQuoted[1]);
+      } catch (error) {
+        throw new Error('Invalid quoted pnpm workspace pattern', {
+          cause: error,
+        });
+      }
+    } else if (singleQuoted) {
+      pattern = singleQuoted[1].slice(1, -1).replaceAll("''", "'");
+    } else {
+      pattern = item.replace(/\s+#.*$/, '').trim();
+    }
+
+    if (pattern === '') {
+      throw new Error('pnpm workspace patterns cannot be empty');
+    }
+    patterns.push(pattern);
+  }
+
+  if (patterns.length === 0) {
+    throw new Error('pnpm-workspace.yaml must define a packages string array');
+  }
+  return patterns;
 }
 
 export function collectWorkspacePackages(cwd) {
   const packages = new Map();
-  for (const group of WORKSPACE_GROUPS) {
-    let entries;
+  const patterns = workspacePatterns(cwd);
+  const excluded = new Set(
+    patterns
+      .filter((pattern) => pattern.startsWith('!'))
+      .flatMap((pattern) =>
+        globSync(`${pattern.slice(1)}/package.json`, { cwd }),
+      ),
+  );
+  const manifestPaths = patterns
+    .filter((pattern) => !pattern.startsWith('!'))
+    .flatMap((pattern) => globSync(`${pattern}/package.json`, { cwd }))
+    .filter((manifestPath) => !excluded.has(manifestPath));
+
+  for (const manifestPath of new Set(manifestPaths)) {
+    let manifest;
     try {
-      entries = readdirSync(join(cwd, group), { withFileTypes: true });
-    } catch {
-      continue;
-    }
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      // ENOENT (no package.json) means this directory is simply not a pnpm
-      // workspace member — continue silently, matching pnpm's own glob
-      // semantics. Any other read failure, or a parse failure on a manifest
-      // that IS present, means the workspace graph is broken and must not be
-      // silently treated as empty: that would misclassify every path inside
-      // it as "outside every workspace package", which fails OPEN for
-      // equivalence reuse. Propagate so the caller fails closed instead.
-      const manifestPath = join(cwd, group, entry.name, 'package.json');
-      let raw;
-      try {
-        raw = readFileSync(manifestPath, 'utf8');
-      } catch (error) {
-        if (error.code === 'ENOENT') continue;
-        throw error;
-      }
-      let manifest;
-      try {
-        manifest = JSON.parse(raw);
-      } catch (error) {
-        throw new Error(
-          `Unable to read workspace manifest ${group}/${entry.name}/package.json`,
-          { cause: error },
-        );
-      }
-      // pnpm tolerates nameless private workspace members. Such a package can
-      // never be depended on, and the fail-closed diff path already treats
-      // its directory as unrecognised (and therefore relevant), so skipping
-      // it here does not weaken equivalence reuse.
-      if (typeof manifest.name !== 'string') continue;
-      packages.set(manifest.name, {
-        dir: `${group}/${entry.name}`,
-        // devDependencies participate: they carry Playwright configs, e2e
-        // helpers, and build tooling that shape suite outcomes. peer and
-        // optional edges participate too: this repo declares some workspace
-        // edges (e.g. the styling/theme packages an e2e host renders with)
-        // as peerDependencies rather than dependencies or devDependencies.
-        // Non-workspace names harmlessly miss the package map below.
-        workspaceDeps: [
-          ...Object.keys(manifest.dependencies ?? {}),
-          ...Object.keys(manifest.devDependencies ?? {}),
-          ...Object.keys(manifest.peerDependencies ?? {}),
-          ...Object.keys(manifest.optionalDependencies ?? {}),
-        ],
+      manifest = JSON.parse(readFileSync(join(cwd, manifestPath), 'utf8'));
+    } catch (error) {
+      throw new Error(`Unable to read workspace manifest ${manifestPath}`, {
+        cause: error,
       });
     }
+    // pnpm tolerates nameless private workspace members. Such a package can
+    // never be depended on, and the fail-closed diff path treats its directory
+    // as unrecognised, so skipping it here does not weaken the policy.
+    if (typeof manifest.name !== 'string') continue;
+    packages.set(manifest.name, {
+      dir: dirname(manifestPath).replaceAll('\\', '/'),
+      // devDependencies participate: they carry Playwright configs, e2e
+      // helpers, and build tooling that shape suite outcomes. Peer and
+      // optional edges participate too.
+      workspaceDeps: [
+        ...Object.keys(manifest.dependencies ?? {}),
+        ...Object.keys(manifest.devDependencies ?? {}),
+        ...Object.keys(manifest.peerDependencies ?? {}),
+        ...Object.keys(manifest.optionalDependencies ?? {}),
+      ],
+    });
   }
   return packages;
 }
@@ -108,17 +172,59 @@ export function relevanceDirsForSubject(subjectName, packages) {
   return dirs;
 }
 
-// True only when EVERY changed path provably cannot affect the suite: it is
-// inert, or it lives inside a workspace package outside the suite's relevance
-// closure. Any other path — root configs, .github/, scripts/, the lockfile,
-// anything unrecognised — is relevant, so the suite runs (fail closed).
-export function diffIrrelevantToSuite(changedPaths, relevanceDirs, packages) {
+// The first changed path that can affect the suite, or undefined when every
+// changed path provably cannot: it is inert, or it lives inside a workspace
+// package outside the suite's relevance closure. Any other path — root
+// configs, .github/, scripts/, the lockfile, anything unrecognised — is
+// relevant, so the suite runs (fail closed).
+function firstRelevantPath(changedPaths, relevanceDirs, packages) {
   const packageDirs = [...packages.values()].map((pkg) => pkg.dir);
-  return changedPaths.every((changedPath) => {
-    if (isInertPath(changedPath)) return true;
+  return changedPaths.find((changedPath) => {
+    if (isInertPath(changedPath)) return false;
     const owner = packageDirs.find((dir) => changedPath.startsWith(`${dir}/`));
-    return owner !== undefined && !relevanceDirs.has(owner);
+    return owner === undefined || relevanceDirs.has(owner);
   });
+}
+
+// True only when EVERY changed path provably cannot affect the suite.
+export function diffIrrelevantToSuite(changedPaths, relevanceDirs, packages) {
+  return firstRelevantPath(changedPaths, relevanceDirs, packages) === undefined;
+}
+
+// Select each suite whose subject or workspace dependency closure contains a
+// changed path, and explain each decision with the witness path — the CI
+// status comment surfaces these reasons verbatim. Unknown paths fail closed
+// for every suite via firstRelevantPath; a missing subject fails closed for
+// that suite because its relevance closure cannot be trusted.
+export function suiteSelectionForPaths(changedPaths, cwd) {
+  const packages = collectWorkspacePackages(cwd);
+  const packageDirs = [...packages.values()].map((pkg) => pkg.dir);
+  const required = suites();
+  const reasons = {};
+  for (const key of SUITE_KEYS) {
+    const subject = E2E_SUITE_SUBJECTS[key];
+    if (!packages.has(subject)) {
+      required[key] = true;
+      reasons[key] =
+        `fails closed: ${subject} is missing from the workspace graph`;
+      continue;
+    }
+    const relevanceDirs = relevanceDirsForSubject(subject, packages);
+    const witness = firstRelevantPath(changedPaths, relevanceDirs, packages);
+    if (witness === undefined) {
+      reasons[key] = 'no changed file affects this suite';
+      continue;
+    }
+    required[key] = true;
+    reasons[key] = packageDirs.some((dir) => witness.startsWith(`${dir}/`))
+      ? `\`${witness}\` is in the ${subject} workspace dependency closure`
+      : `fails closed: \`${witness}\` is outside every workspace package`;
+  }
+  return { required, reasons };
+}
+
+export function affectedSuitesForPaths(changedPaths, cwd) {
+  return suiteSelectionForPaths(changedPaths, cwd).required;
 }
 
 const CONCLUSIVE = new Set(['success', 'failure', 'timed_out']);
@@ -257,14 +363,30 @@ export async function equivalentValidatedSuites({
             jobsListingDoubt = true;
             break;
           }
-          const job = jobs.find(
-            (candidate) => candidate.name === E2E_JOB_NAMES[key],
+          const halves = E2E_JOB_NAMES[key].map((name) =>
+            jobs.find((candidate) => candidate.name === name),
           );
-          if (!job || !CONCLUSIVE.has(job.conclusion)) continue;
-          if (completedAt(job) === null) {
+          // Only judge a run where EVERY half reported conclusively. A missing
+          // half — a run predating the lane split, say — is not a verdict, so
+          // the suite re-runs rather than inheriting a partial one.
+          if (halves.some((half) => !half || !CONCLUSIVE.has(half.conclusion)))
+            continue;
+          if (halves.some((half) => completedAt(half) === null)) {
             jobsListingDoubt = true;
             break;
           }
+          // Represent the suite by its newest-completed half so the existing
+          // recency ranking is unchanged, but carry the AND of the halves'
+          // conclusions: one red half fails the whole suite.
+          const newestHalf = halves.toSorted(
+            (a, b) => completedAt(b) - completedAt(a),
+          )[0];
+          const job = {
+            ...newestHalf,
+            conclusion: halves.every((half) => half.conclusion === 'success')
+              ? 'success'
+              : 'failure',
+          };
           conclusiveVerdicts.push({ job, releaseBranch, run });
         }
         if (jobsListingDoubt) break;
@@ -321,61 +443,16 @@ function suites(...keys) {
   return Object.fromEntries(SUITE_KEYS.map((key) => [key, keys.includes(key)]));
 }
 
-export const APP_RELEASE_REF = 'changeset-release/apps';
-
-// Maximum suite set for each release lane. The combined app lane is narrowed
-// below from the app version manifests that actually differ from main:
-// Architect -> architect+interview, Interviewer -> interviewer+interview, both
-// -> all three. Workflow dispatches and any detection doubt retain this
-// fail-closed maximum. The library lane publishes packages consumed by every
-// app and always keeps all three; Documentation and Website ship none of the
-// suite subjects and need no E2E.
+// Maximum suite set for each release lane. The normal Changesets lane versions
+// libraries, Architect, and Interviewer, so it always keeps all three suites.
+// Documentation, Website, and Studio ship none of the suite subjects and need
+// no E2E.
 export const SUITES_BY_RELEASE_REF = {
-  [APP_RELEASE_REF]: suites('interview', 'interviewer', 'architect'),
   'changeset-release/documentation': suites(),
   'changeset-release/main': suites('interview', 'interviewer', 'architect'),
+  'changeset-release/studio': suites(),
   'changeset-release/website': suites(),
 };
-
-// Manifests whose version field moving means the resulting main push will ship
-// the mapped product. Keeping suites on the manifest (rather than only on the
-// combined lane) preserves app-specific E2E selection.
-const VERSIONED_MANIFEST_SUITE_RULES = [
-  {
-    pathspec: 'packages/*/package.json',
-    pattern: /^packages\/[^/]+\/package\.json$/,
-    suites: suites('interview', 'interviewer', 'architect'),
-  },
-  {
-    pathspec: 'apps/architect/package.json',
-    pattern: /^apps\/architect\/package\.json$/,
-    suites: suites('architect', 'interview'),
-  },
-  {
-    pathspec: 'apps/interviewer/package.json',
-    pattern: /^apps\/interviewer\/package\.json$/,
-    suites: suites('interviewer', 'interview'),
-  },
-  {
-    pathspec: 'apps/documentation/package.json',
-    pattern: /^apps\/documentation\/package\.json$/,
-    suites: suites(),
-  },
-  {
-    pathspec: 'apps/networkcanvas.com/package.json',
-    pattern: /^apps\/networkcanvas\.com\/package\.json$/,
-    suites: suites(),
-  },
-];
-
-const ALL_VERSIONED_MANIFESTS = VERSIONED_MANIFEST_SUITE_RULES.map(
-  ({ pathspec }) => pathspec,
-);
-
-const APP_VERSIONED_MANIFESTS = [
-  'apps/architect/package.json',
-  'apps/interviewer/package.json',
-];
 
 export function releaseRefForEvent({ eventName, headRef, refName }) {
   const candidate =
@@ -403,121 +480,82 @@ function tryGit(args, cwd) {
   }
 }
 
-function readVersionAt(revision, manifest, cwd) {
-  const contents = tryGit(['show', `${revision}:${manifest}`], cwd);
-  if (contents === null) return null;
-  try {
-    const parsed = JSON.parse(contents);
-    return typeof parsed.version === 'string' ? parsed.version : null;
-  } catch {
-    return null;
-  }
-}
-
-function versionChangeRequiredSuites(baseSha, headSha, cwd, manifests) {
+// Feature PRs use their cumulative merge-base-to-head diff so every current
+// head is gated by the suites the PR can affect. This deliberately does not
+// use push-to-push carry-forward: an E2E verdict must describe the exact PR
+// head that the required quality check is evaluating.
+export function pullRequestSuiteSelection(baseSha, headSha, cwd) {
   if (!baseSha || !headSha) {
-    throw new Error('release E2E detection requires base and head SHAs');
+    throw new Error('feature PR E2E detection requires base and head SHAs');
   }
-
-  const changedManifests = execFileSync(
-    'git',
-    ['diff', '--name-only', baseSha, headSha, '--', ...manifests],
-    { cwd, encoding: 'utf8' },
-  )
-    .split('\n')
-    .filter(Boolean);
-
-  const required = suites();
-  for (const manifest of changedManifests) {
-    const baseVersion = readVersionAt(baseSha, manifest, cwd);
-    const headVersion = readVersionAt(headSha, manifest, cwd);
-    if (baseVersion === null || headVersion === null) {
-      throw new Error(`Unable to read release version from ${manifest}`);
-    }
-    if (baseVersion === headVersion) continue;
-    const rule = VERSIONED_MANIFEST_SUITE_RULES.find(({ pattern }) =>
-      pattern.test(manifest),
-    );
-    if (!rule) throw new Error(`No release E2E rule for ${manifest}`);
-    for (const key of SUITE_KEYS) {
-      required[key] ||= rule.suites[key];
-    }
-  }
-  return required;
+  const mergeBase = tryGit(['merge-base', baseSha, headSha], cwd);
+  if (!mergeBase) throw new Error('Unable to resolve feature PR merge base');
+  const diff = tryGit(
+    ['diff', '--no-renames', '--name-only', mergeBase, headSha, '--'],
+    cwd,
+  );
+  if (diff === null) throw new Error('Unable to read feature PR diff');
+  return suiteSelectionForPaths(diff.split('\n').filter(Boolean), cwd);
 }
 
-// Combined app PRs only run the suites for app versions actually bumped.
-export function appReleaseRequiredSuites(baseSha, headSha, cwd) {
-  return versionChangeRequiredSuites(
-    baseSha,
-    headSha,
-    cwd,
-    APP_VERSIONED_MANIFESTS,
-  );
+export function pullRequestRequiredSuites(baseSha, headSha, cwd) {
+  return pullRequestSuiteSelection(baseSha, headSha, cwd).required;
 }
 
-// Union of suites required by every version manifest moving in a merge group.
-export function mergeGroupRequiredSuites(baseSha, headSha, cwd) {
-  return versionChangeRequiredSuites(
-    baseSha,
-    headSha,
-    cwd,
-    ALL_VERSIONED_MANIFESTS,
-  );
+function reasonForEverySuite(reason) {
+  return Object.fromEntries(SUITE_KEYS.map((key) => [key, reason]));
 }
 
 export function releaseE2EPolicy(
   { eventName, headRef = '', refName = '', baseSha = '', headSha = '' },
-  mergeGroupDetector = mergeGroupRequiredSuites,
-  appReleaseDetector = appReleaseRequiredSuites,
+  pullRequestDetector = pullRequestSuiteSelection,
 ) {
   const releaseRef = releaseRefForEvent({ eventName, headRef, refName });
   if (releaseRef) {
-    let required = SUITES_BY_RELEASE_REF[releaseRef];
-    if (eventName === 'pull_request' && releaseRef === APP_RELEASE_REF) {
-      try {
-        required = appReleaseDetector(baseSha, headSha, process.cwd());
-      } catch {
-        // Missing history, a malformed manifest, or any git doubt must run the
-        // lane's full suite set rather than silently under-test the release.
-        required = SUITES_BY_RELEASE_REF[releaseRef];
-      }
-    }
+    const laneSuites = SUITES_BY_RELEASE_REF[releaseRef];
     return {
-      ...required,
+      ...laneSuites,
       releaseRef,
       snapshotBranch: 'e2e-snapshots/main',
+      reasons: Object.fromEntries(
+        SUITE_KEYS.map((key) => [
+          key,
+          laneSuites[key]
+            ? `gates the ${releaseRef} release lane`
+            : `does not gate the ${releaseRef} release lane`,
+        ]),
+      ),
     };
   }
 
-  if (eventName === 'merge_group') {
-    let required;
+  if (eventName === 'pull_request') {
+    let selection;
     try {
-      required = mergeGroupDetector(baseSha, headSha, process.cwd());
+      selection = pullRequestDetector(baseSha, headSha, process.cwd());
     } catch {
-      required = suites('interview', 'interviewer', 'architect');
+      selection = {
+        required: suites('interview', 'interviewer', 'architect'),
+        reasons: reasonForEverySuite(
+          'fails closed: the PR diff could not be classified',
+        ),
+      };
     }
     return {
-      ...required,
+      ...selection.required,
       releaseRef: '',
       snapshotBranch: '',
+      reasons: selection.reasons,
     };
   }
 
-  return { ...suites(), releaseRef: '', snapshotBranch: '' };
-}
-
-// Trust guard for merge-queue reuse: the queued merge's second parent must be
-// the current tip of a generated release branch — never an arbitrary PR that
-// happens to bump a version.
-export function releaseBranchForMergeQueue(cwd) {
-  const prTip = tryGit(['rev-parse', 'HEAD^2'], cwd);
-  if (!prTip) return '';
-  return (
-    Object.keys(SUITES_BY_RELEASE_REF).find(
-      (ref) => tryGit(['rev-parse', `origin/${ref}`], cwd) === prTip,
-    ) ?? ''
-  );
+  return {
+    ...suites(),
+    releaseRef: '',
+    snapshotBranch: '',
+    reasons: reasonForEverySuite(
+      `E2E does not run for ${eventName || 'this'} events`,
+    ),
+  };
 }
 
 async function main() {
@@ -543,10 +581,6 @@ async function main() {
       ) {
         reuse = { branch: policy.releaseRef, headSha: process.env.HEAD_SHA };
       }
-    } else if (eventName === 'merge_group') {
-      const branch = releaseBranchForMergeQueue(cwd);
-      const headSha = tryGit(['rev-parse', 'HEAD'], cwd);
-      if (branch && headSha) reuse = { branch, headSha };
     }
     if (reuse) {
       const validated = await equivalentValidatedSuites({
@@ -559,6 +593,8 @@ async function main() {
       for (const key of SUITE_KEYS) {
         if (policy[key] && validated[key]) {
           policy[key] = false;
+          policy.reasons[key] =
+            'verdict reused: the newest equivalent release-branch run passed this suite and nothing relevant changed since';
           console.error(
             `${E2E_JOB_NAMES[key]}: skipping — the newest equivalent verdict across generated release branches is successful and nothing relevant to this suite has changed since.`,
           );

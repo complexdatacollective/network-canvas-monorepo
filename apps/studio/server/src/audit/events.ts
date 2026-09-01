@@ -1,0 +1,663 @@
+import { z } from 'zod';
+
+import { TeamRoleSchema } from '@codaco/studio-rpc';
+
+const LabelSchema = z.string().min(1).max(320);
+const IdentifierSchema = z.string().min(1).max(255);
+const DecimalSequenceSchema = z
+  .string()
+  .regex(/^(0|[1-9]\d*)$/)
+  .max(20);
+
+const CommonUserEventSchema = z.strictObject({
+  teamId: IdentifierSchema,
+  teamLabel: LabelSchema,
+  actorKind: z.literal('user'),
+  actorId: IdentifierSchema,
+  actorLabel: LabelSchema,
+  requestId: z.uuid(),
+});
+
+const CommonTeamAccessV1EventSchema = CommonUserEventSchema.extend({
+  eventVersion: z.literal(1),
+  category: z.literal('team_access'),
+  resourceType: z.null(),
+  resourceId: z.null(),
+  resourceLabel: z.null(),
+}).strict();
+
+const CommonTeamAccessSucceededV1EventSchema =
+  CommonTeamAccessV1EventSchema.extend({
+    outcome: z.literal('succeeded'),
+  }).strict();
+
+const CommonTeamAccessSucceededV2EventSchema = CommonUserEventSchema.extend({
+  eventVersion: z.literal(2),
+  category: z.literal('team_access'),
+  outcome: z.literal('succeeded'),
+  resourceType: z.null(),
+  resourceId: z.null(),
+  resourceLabel: z.null(),
+}).strict();
+
+const CommonTeamAccessDeniedV1EventSchema =
+  CommonTeamAccessV1EventSchema.extend({
+    outcome: z.literal('denied'),
+  }).strict();
+
+const CommonTeamAccessFailedV1EventSchema =
+  CommonTeamAccessV1EventSchema.extend({
+    outcome: z.literal('failed'),
+  }).strict();
+
+const TeamMemberRoleChangedV1EventSchema =
+  CommonTeamAccessSucceededV1EventSchema.extend({
+    eventType: z.literal('team.member.role_changed'),
+    subjectType: z.literal('team_member'),
+    subjectId: IdentifierSchema,
+    subjectLabel: LabelSchema,
+    details: z.strictObject({
+      previousRoles: z.array(TeamRoleSchema).min(1).max(3),
+      newRoles: z.array(TeamRoleSchema).min(1).max(3),
+    }),
+  }).strict();
+
+const TeamInvitationCreatedV1EventSchema =
+  CommonTeamAccessSucceededV1EventSchema.extend({
+    eventType: z.literal('team.invitation.created'),
+    subjectType: z.literal('team_invitation'),
+    subjectId: IdentifierSchema,
+    subjectLabel: z.email().max(320),
+    details: z.strictObject({ role: TeamRoleSchema }),
+  }).strict();
+
+const TeamInvitationCreationDeniedV1EventSchema =
+  CommonTeamAccessDeniedV1EventSchema.extend({
+    eventType: z.literal('team.invitation.creation_denied'),
+    subjectType: z.null(),
+    subjectId: z.null(),
+    subjectLabel: z.null(),
+    details: z.strictObject({
+      requestedRole: TeamRoleSchema,
+      reason: z.enum(['insufficient_permission', 'owner_role_requires_owner']),
+    }),
+  }).strict();
+
+const TeamInvitationCancelledV1EventSchema =
+  CommonTeamAccessSucceededV1EventSchema.extend({
+    eventType: z.literal('team.invitation.cancelled'),
+    subjectType: z.literal('team_invitation'),
+    subjectId: IdentifierSchema,
+    subjectLabel: z.email().max(320),
+    details: z.strictObject({ role: TeamRoleSchema }),
+  }).strict();
+
+const TeamInvitationCancelledV2EventSchema =
+  CommonTeamAccessSucceededV2EventSchema.extend({
+    eventType: z.literal('team.invitation.cancelled'),
+    subjectType: z.literal('team_invitation'),
+    subjectId: IdentifierSchema,
+    subjectLabel: z.email().max(320),
+    details: z.strictObject({
+      roles: z.array(TeamRoleSchema).min(1).max(3),
+    }),
+  }).strict();
+
+const TeamInvitationCancellationDeniedV1EventSchema =
+  CommonTeamAccessDeniedV1EventSchema.extend({
+    eventType: z.literal('team.invitation.cancellation_denied'),
+    subjectType: z.null(),
+    subjectId: z.null(),
+    subjectLabel: z.null(),
+    details: z.strictObject({
+      reason: z.literal('insufficient_permission'),
+    }),
+  }).strict();
+
+const TeamInvitationCancellationFailedV1EventSchema =
+  CommonTeamAccessFailedV1EventSchema.extend({
+    eventType: z.literal('team.invitation.cancellation_failed'),
+    subjectType: z.literal('team_invitation'),
+    subjectId: IdentifierSchema,
+    subjectLabel: z.email().max(320),
+    details: z.strictObject({
+      failureCode: z.literal('delivery_in_progress'),
+    }),
+  }).strict();
+
+const TeamInvitationAcceptedV1EventSchema =
+  CommonTeamAccessSucceededV1EventSchema.extend({
+    eventType: z.literal('team.invitation.accepted'),
+    subjectType: z.literal('team_invitation'),
+    subjectId: IdentifierSchema,
+    subjectLabel: z.email().max(320),
+    details: z.strictObject({
+      role: TeamRoleSchema,
+      memberId: IdentifierSchema,
+    }),
+  }).strict();
+
+const TeamInvitationAcceptanceDeniedV1EventSchema =
+  CommonTeamAccessDeniedV1EventSchema.extend({
+    eventType: z.literal('team.invitation.acceptance_denied'),
+    subjectType: z.literal('team_invitation'),
+    subjectId: IdentifierSchema,
+    subjectLabel: z.email().max(320),
+    details: z.strictObject({
+      reason: z.enum([
+        'email_mismatch',
+        'email_unverified',
+        'invitation_unavailable',
+      ]),
+    }),
+  }).strict();
+
+const TeamInvitationAcceptanceFailedV1EventSchema =
+  CommonTeamAccessFailedV1EventSchema.extend({
+    eventType: z.literal('team.invitation.acceptance_failed'),
+    subjectType: z.null(),
+    subjectId: z.null(),
+    subjectLabel: z.null(),
+    details: z.strictObject({
+      failureCode: z.enum(['invalid_role', 'conflict']),
+    }),
+  }).strict();
+
+const TeamMemberRoleChangeDeniedV1EventSchema =
+  CommonTeamAccessDeniedV1EventSchema.extend({
+    eventType: z.literal('team.member.role_change_denied'),
+    subjectType: z.literal('team_member'),
+    subjectId: IdentifierSchema,
+    subjectLabel: LabelSchema,
+    details: z.strictObject({
+      requestedRoles: z.array(TeamRoleSchema).min(1).max(3),
+      reason: z.enum(['insufficient_permission', 'owner_role_requires_owner']),
+    }),
+  }).strict();
+
+const TeamMemberRoleChangeFailedV1EventSchema =
+  CommonTeamAccessFailedV1EventSchema.extend({
+    eventType: z.literal('team.member.role_change_failed'),
+    subjectType: z.null(),
+    subjectId: z.null(),
+    subjectLabel: z.null(),
+    details: z.strictObject({ failureCode: z.literal('last_owner') }),
+  }).strict();
+
+export const DENIED_AUDIT_OPERATIONS = [
+  'audit.read',
+  'team.acceptInvitation',
+  'team.cancelInvitation',
+  'team.createInvitation',
+  'team.updateMemberRole',
+] as const;
+export type DeniedAuditOperation = (typeof DENIED_AUDIT_OPERATIONS)[number];
+
+const AuditReadDeniedV1EventSchema = CommonUserEventSchema.extend({
+  eventVersion: z.literal(1),
+  eventType: z.literal('audit.read_denied'),
+  category: z.literal('audit'),
+  outcome: z.literal('denied'),
+  subjectType: z.null(),
+  subjectId: z.null(),
+  subjectLabel: z.null(),
+  resourceType: z.null(),
+  resourceId: z.null(),
+  resourceLabel: z.null(),
+  details: z.strictObject({
+    procedure: z.enum(['audit.list', 'audit.get', 'audit.filterOptions']),
+    reason: z.literal('insufficient_permission'),
+  }),
+}).strict();
+
+const DeniedAttemptsRateLimitedV1EventSchema = CommonUserEventSchema.extend({
+  eventVersion: z.literal(1),
+  eventType: z.literal('security.denied_attempts.rate_limited'),
+  category: z.literal('security'),
+  outcome: z.literal('denied'),
+  subjectType: z.null(),
+  subjectId: z.null(),
+  subjectLabel: z.null(),
+  resourceType: z.null(),
+  resourceId: z.null(),
+  resourceLabel: z.null(),
+  details: z.strictObject({
+    operation: z.enum(DENIED_AUDIT_OPERATIONS),
+    suppressedCount: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+    firstSuppressedAt: z.iso.datetime({ offset: true }),
+    lastSuppressedAt: z.iso.datetime({ offset: true }),
+  }),
+}).strict();
+
+const ProtocolOperationTypeSchema = z.enum([
+  'set',
+  'unset',
+  'insertItem',
+  'removeItem',
+  'moveItem',
+  'addStage',
+  'moveStage',
+]);
+
+const CommonProtocolSucceededV1EventSchema = CommonUserEventSchema.extend({
+  eventVersion: z.literal(1),
+  category: z.literal('protocol'),
+  outcome: z.literal('succeeded'),
+  subjectType: z.null(),
+  subjectId: z.null(),
+  subjectLabel: z.null(),
+  resourceType: z.literal('protocol'),
+  resourceId: IdentifierSchema,
+  resourceLabel: LabelSchema,
+}).strict();
+
+const ProtocolCreatedV1EventSchema =
+  CommonProtocolSucceededV1EventSchema.extend({
+    eventType: z.literal('protocol.created'),
+    details: z.strictObject({ draftId: IdentifierSchema }),
+  }).strict();
+
+const ProtocolDraftCommittedV1EventSchema =
+  CommonProtocolSucceededV1EventSchema.extend({
+    eventType: z.literal('protocol.draft.committed'),
+    details: z.strictObject({
+      draftId: IdentifierSchema,
+      revision: DecimalSequenceSchema,
+      affectedSectionIds: z.array(IdentifierSchema).min(1).max(128),
+      operationTypes: z.array(ProtocolOperationTypeSchema).min(1).max(7),
+      operationCount: z.number().int().positive().max(1_000),
+    }),
+  }).strict();
+
+// A plain union is intentional: eventType alone cannot remain the
+// discriminator once two retained versions of the same immutable event exist.
+export const AuditEventInputSchema = z.union([
+  AuditReadDeniedV1EventSchema,
+  TeamMemberRoleChangedV1EventSchema,
+  TeamMemberRoleChangeDeniedV1EventSchema,
+  TeamMemberRoleChangeFailedV1EventSchema,
+  DeniedAttemptsRateLimitedV1EventSchema,
+  TeamInvitationCreatedV1EventSchema,
+  TeamInvitationCreationDeniedV1EventSchema,
+  TeamInvitationCancelledV1EventSchema,
+  TeamInvitationCancelledV2EventSchema,
+  TeamInvitationCancellationDeniedV1EventSchema,
+  TeamInvitationCancellationFailedV1EventSchema,
+  TeamInvitationAcceptedV1EventSchema,
+  TeamInvitationAcceptanceDeniedV1EventSchema,
+  TeamInvitationAcceptanceFailedV1EventSchema,
+  ProtocolCreatedV1EventSchema,
+  ProtocolDraftCommittedV1EventSchema,
+]);
+
+export type AuditEventInput = z.infer<typeof AuditEventInputSchema>;
+type AuditEventKeyFor<Event extends AuditEventInput> =
+  Event extends AuditEventInput
+    ? `${Event['eventType']}@${Event['eventVersion']}`
+    : never;
+export type AuditEventKey = AuditEventKeyFor<AuditEventInput>;
+
+type AuditEventDefinition = {
+  inputSchema: z.ZodType<AuditEventInput>;
+  title: string;
+  detailFields: readonly string[];
+  sensitiveFields: readonly string[];
+  createsAlert: boolean;
+  fixture: AuditEventInput;
+};
+
+const FIXTURE_USER_COMMON = {
+  teamId: 'fixture-team',
+  teamLabel: 'Fixture team',
+  actorKind: 'user',
+  actorId: 'fixture-actor',
+  actorLabel: 'Fixture actor',
+  requestId: '00000000-0000-4000-8000-000000000001',
+} as const;
+
+const FIXTURE_TEAM_ACCESS_V1_COMMON = {
+  ...FIXTURE_USER_COMMON,
+  eventVersion: 1,
+  category: 'team_access',
+  outcome: 'succeeded',
+  resourceType: null,
+  resourceId: null,
+  resourceLabel: null,
+} as const;
+
+const FIXTURE_TEAM_ACCESS_V2_COMMON = {
+  ...FIXTURE_USER_COMMON,
+  eventVersion: 2,
+  category: 'team_access',
+  outcome: 'succeeded',
+  resourceType: null,
+  resourceId: null,
+  resourceLabel: null,
+} as const;
+
+const FIXTURE_PROTOCOL_V1_COMMON = {
+  ...FIXTURE_USER_COMMON,
+  eventVersion: 1,
+  category: 'protocol',
+  outcome: 'succeeded',
+  subjectType: null,
+  subjectId: null,
+  subjectLabel: null,
+  resourceType: 'protocol',
+  resourceId: 'fixture-protocol',
+  resourceLabel: 'Fixture protocol',
+} as const;
+
+export const AUDIT_EVENT_REGISTRY = {
+  'audit.read_denied@1': {
+    inputSchema: AuditReadDeniedV1EventSchema,
+    title: 'Activity log access denied',
+    detailFields: ['procedure', 'reason'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_USER_COMMON,
+      eventVersion: 1,
+      eventType: 'audit.read_denied',
+      category: 'audit',
+      outcome: 'denied',
+      subjectType: null,
+      subjectId: null,
+      subjectLabel: null,
+      resourceType: null,
+      resourceId: null,
+      resourceLabel: null,
+      details: { procedure: 'audit.list', reason: 'insufficient_permission' },
+    },
+  },
+  'team.member.role_changed@1': {
+    inputSchema: TeamMemberRoleChangedV1EventSchema,
+    title: 'Member role changed',
+    detailFields: ['previousRoles', 'newRoles'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V1_COMMON,
+      eventType: 'team.member.role_changed',
+      subjectType: 'team_member',
+      subjectId: 'fixture-member',
+      subjectLabel: 'Fixture member',
+      details: { previousRoles: ['member'], newRoles: ['admin'] },
+    },
+  },
+  'team.member.role_change_denied@1': {
+    inputSchema: TeamMemberRoleChangeDeniedV1EventSchema,
+    title: 'Member role change denied',
+    detailFields: ['requestedRoles', 'reason'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V1_COMMON,
+      outcome: 'denied',
+      eventType: 'team.member.role_change_denied',
+      subjectType: 'team_member',
+      subjectId: 'fixture-member',
+      subjectLabel: 'Fixture member',
+      details: {
+        requestedRoles: ['owner'],
+        reason: 'owner_role_requires_owner',
+      },
+    },
+  },
+  'team.member.role_change_failed@1': {
+    inputSchema: TeamMemberRoleChangeFailedV1EventSchema,
+    title: 'Member role change failed',
+    detailFields: ['failureCode'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V1_COMMON,
+      outcome: 'failed',
+      eventType: 'team.member.role_change_failed',
+      subjectType: null,
+      subjectId: null,
+      subjectLabel: null,
+      details: { failureCode: 'last_owner' },
+    },
+  },
+  'security.denied_attempts.rate_limited@1': {
+    inputSchema: DeniedAttemptsRateLimitedV1EventSchema,
+    title: 'Denied attempts rate limited',
+    detailFields: [
+      'operation',
+      'suppressedCount',
+      'firstSuppressedAt',
+      'lastSuppressedAt',
+    ],
+    sensitiveFields: [],
+    createsAlert: true,
+    fixture: {
+      ...FIXTURE_USER_COMMON,
+      eventVersion: 1,
+      eventType: 'security.denied_attempts.rate_limited',
+      category: 'security',
+      outcome: 'denied',
+      subjectType: null,
+      subjectId: null,
+      subjectLabel: null,
+      resourceType: null,
+      resourceId: null,
+      resourceLabel: null,
+      details: {
+        operation: 'team.updateMemberRole',
+        suppressedCount: 3,
+        firstSuppressedAt: '2026-08-31T10:00:00.000Z',
+        lastSuppressedAt: '2026-08-31T10:00:42.000Z',
+      },
+    },
+  },
+  'team.invitation.created@1': {
+    inputSchema: TeamInvitationCreatedV1EventSchema,
+    title: 'Invitation created',
+    detailFields: ['role'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V1_COMMON,
+      eventType: 'team.invitation.created',
+      subjectType: 'team_invitation',
+      subjectId: 'fixture-invitation',
+      subjectLabel: 'invitee@example.com',
+      details: { role: 'member' },
+    },
+  },
+  'team.invitation.creation_denied@1': {
+    inputSchema: TeamInvitationCreationDeniedV1EventSchema,
+    title: 'Invitation creation denied',
+    detailFields: ['requestedRole', 'reason'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V1_COMMON,
+      outcome: 'denied',
+      eventType: 'team.invitation.creation_denied',
+      subjectType: null,
+      subjectId: null,
+      subjectLabel: null,
+      details: {
+        requestedRole: 'owner',
+        reason: 'owner_role_requires_owner',
+      },
+    },
+  },
+  'team.invitation.cancelled@1': {
+    inputSchema: TeamInvitationCancelledV1EventSchema,
+    title: 'Invitation cancelled',
+    detailFields: ['role'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V1_COMMON,
+      eventType: 'team.invitation.cancelled',
+      subjectType: 'team_invitation',
+      subjectId: 'fixture-invitation',
+      subjectLabel: 'invitee@example.com',
+      details: { role: 'member' },
+    },
+  },
+  'team.invitation.cancelled@2': {
+    inputSchema: TeamInvitationCancelledV2EventSchema,
+    title: 'Invitation cancelled',
+    detailFields: ['roles'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V2_COMMON,
+      eventType: 'team.invitation.cancelled',
+      subjectType: 'team_invitation',
+      subjectId: 'fixture-invitation',
+      subjectLabel: 'invitee@example.com',
+      details: { roles: ['admin', 'member'] },
+    },
+  },
+  'team.invitation.cancellation_denied@1': {
+    inputSchema: TeamInvitationCancellationDeniedV1EventSchema,
+    title: 'Invitation cancellation denied',
+    detailFields: ['reason'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V1_COMMON,
+      outcome: 'denied',
+      eventType: 'team.invitation.cancellation_denied',
+      subjectType: null,
+      subjectId: null,
+      subjectLabel: null,
+      details: { reason: 'insufficient_permission' },
+    },
+  },
+  'team.invitation.cancellation_failed@1': {
+    inputSchema: TeamInvitationCancellationFailedV1EventSchema,
+    title: 'Invitation cancellation failed',
+    detailFields: ['failureCode'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V1_COMMON,
+      outcome: 'failed',
+      eventType: 'team.invitation.cancellation_failed',
+      subjectType: 'team_invitation',
+      subjectId: 'fixture-invitation',
+      subjectLabel: 'invitee@example.com',
+      details: { failureCode: 'delivery_in_progress' },
+    },
+  },
+  'team.invitation.accepted@1': {
+    inputSchema: TeamInvitationAcceptedV1EventSchema,
+    title: 'Invitation accepted',
+    detailFields: ['role', 'memberId'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V1_COMMON,
+      eventType: 'team.invitation.accepted',
+      subjectType: 'team_invitation',
+      subjectId: 'fixture-invitation',
+      subjectLabel: 'invitee@example.com',
+      details: { role: 'member', memberId: 'fixture-member' },
+    },
+  },
+  'team.invitation.acceptance_denied@1': {
+    inputSchema: TeamInvitationAcceptanceDeniedV1EventSchema,
+    title: 'Invitation acceptance denied',
+    detailFields: ['reason'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V1_COMMON,
+      outcome: 'denied',
+      eventType: 'team.invitation.acceptance_denied',
+      subjectType: 'team_invitation',
+      subjectId: 'fixture-invitation',
+      subjectLabel: 'invitee@example.com',
+      details: { reason: 'email_mismatch' },
+    },
+  },
+  'team.invitation.acceptance_failed@1': {
+    inputSchema: TeamInvitationAcceptanceFailedV1EventSchema,
+    title: 'Invitation acceptance failed',
+    detailFields: ['failureCode'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V1_COMMON,
+      outcome: 'failed',
+      eventType: 'team.invitation.acceptance_failed',
+      subjectType: null,
+      subjectId: null,
+      subjectLabel: null,
+      details: { failureCode: 'conflict' },
+    },
+  },
+  'protocol.created@1': {
+    inputSchema: ProtocolCreatedV1EventSchema,
+    title: 'Protocol created',
+    detailFields: ['draftId'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_PROTOCOL_V1_COMMON,
+      eventType: 'protocol.created',
+      details: { draftId: 'fixture-draft' },
+    },
+  },
+  'protocol.draft.committed@1': {
+    inputSchema: ProtocolDraftCommittedV1EventSchema,
+    title: 'Protocol draft committed',
+    detailFields: [
+      'draftId',
+      'revision',
+      'affectedSectionIds',
+      'operationTypes',
+      'operationCount',
+    ],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_PROTOCOL_V1_COMMON,
+      eventType: 'protocol.draft.committed',
+      details: {
+        draftId: 'fixture-draft',
+        revision: '2',
+        affectedSectionIds: ['stage:fixture-stage'],
+        operationTypes: ['set'],
+        operationCount: 1,
+      },
+    },
+  },
+} as const satisfies Record<AuditEventKey, AuditEventDefinition>;
+
+export function auditEventKey(event: AuditEventInput): AuditEventKey {
+  if (event.eventVersion === 2) {
+    return 'team.invitation.cancelled@2';
+  }
+  return `${event.eventType}@1`;
+}
+
+export function auditEventDefinition(
+  event: AuditEventInput,
+): (typeof AUDIT_EVENT_REGISTRY)[AuditEventKey] {
+  return AUDIT_EVENT_REGISTRY[auditEventKey(event)];
+}
+
+export function parseAuditEventInput(input: unknown): AuditEventInput {
+  const identity = z
+    .object({
+      eventType: z.string(),
+      eventVersion: z.number().int().positive(),
+    })
+    .parse(input);
+  const key = `${identity.eventType}@${identity.eventVersion}`;
+  const definition = (
+    AUDIT_EVENT_REGISTRY as Record<string, AuditEventDefinition>
+  )[key];
+  if (!definition) {
+    throw new Error(`unregistered audit event definition: ${key}`);
+  }
+  return definition.inputSchema.parse(input);
+}

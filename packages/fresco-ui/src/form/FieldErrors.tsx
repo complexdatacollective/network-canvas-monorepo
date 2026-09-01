@@ -25,28 +25,39 @@ export default function FieldErrors({
   show: boolean;
   variant?: 'text' | 'box';
 }) {
-  if (!show) return <div id={id} className="sr-only" aria-live="polite" />;
+  const messages = show ? (errors ?? []) : [];
 
+  // The live region is ALWAYS mounted, message or not. A screen reader only
+  // announces changes to a region it was already observing, so a region that
+  // arrives together with its first message — which is what swapping the two
+  // differently-keyed elements below used to produce — is announced late or
+  // not at all. Only the message inside it comes and goes.
   return (
     <div
       id={id}
-      data-testid={name ? `${name}-field-error` : undefined}
-      className={cx(
-        'interview:text-destructive-contrast interview:bg-destructive animate-shake interview:mt-2 interview:px-4 interview:py-2 rounded-sm text-sm leading-snug',
-        'text-destructive',
-        variant === 'box' &&
-          'text-destructive-contrast bg-destructive mt-2 px-4 py-2',
-      )}
-      key={errors?.join('|')} // Re-render when errors change, to trigger animation
       aria-live="polite"
+      className={messages.length > 0 ? undefined : 'sr-only'}
     >
-      {errors?.length === 1 && <Paragraph>{errors[0]}</Paragraph>}
-      {errors && errors.length > 1 && (
-        <ul className="list-disc space-y-1 pl-5">
-          {errors.map((error, index) => (
-            <li key={`${error}-${index}`}>{error}</li>
-          ))}
-        </ul>
+      {messages.length > 0 && (
+        <div
+          data-testid={name ? `${name}-field-error` : undefined}
+          className={cx(
+            'interview:text-destructive-contrast interview:bg-destructive animate-shake interview:mt-2 interview:px-4 interview:py-2 rounded-sm text-sm leading-snug',
+            'text-destructive',
+            variant === 'box' &&
+              'text-destructive-contrast bg-destructive mt-2 px-4 py-2',
+          )}
+          key={messages.join('|')} // Remount when errors change, to trigger animation
+        >
+          {messages.length === 1 && <Paragraph>{messages[0]}</Paragraph>}
+          {messages.length > 1 && (
+            <ul className="list-disc space-y-1 pl-5">
+              {messages.map((error, index) => (
+                <li key={`${error}-${index}`}>{error}</li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
     </div>
   );

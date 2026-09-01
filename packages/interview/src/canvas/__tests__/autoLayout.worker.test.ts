@@ -1,4 +1,11 @@
-import type { Simulation } from 'd3-force';
+import type {
+  ForceLink,
+  ForceManyBody,
+  ForceX,
+  ForceY,
+  Simulation,
+  SimulationLinkDatum,
+} from 'd3-force';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { VariableOptionValue } from '@codaco/protocol-validation';
@@ -28,6 +35,7 @@ type SimNode = {
   fy?: number | null;
   groupKeys?: VariableOptionValue[];
 };
+type SimLink = SimulationLinkDatum<SimNode>;
 
 let capturedSim: CapturedSim | null = null;
 
@@ -140,6 +148,41 @@ describe('autoLayout worker', () => {
     expect(posted.some((m) => m.type === 'tick')).toBe(false);
   });
 
+  it('uses one canonical force profile for every initializer', () => {
+    const links: SimLink[] = [{ source: 0, target: 1 }];
+    const simWidth = 1600 / HEIGHT;
+    handleMessage({
+      type: 'initialize',
+      nodes: cloneNodes(TWO_GROUPS),
+      links,
+      options: { simWidth, simHeight: 1 },
+    });
+
+    const sim = capturedSim!;
+    const nodes = sim.nodes();
+    const charge = sim.force('charge') as ForceManyBody<SimNode>;
+    const biasX = sim.force('biasX') as ForceX<SimNode>;
+    const biasY = sim.force('biasY') as ForceY<SimNode>;
+    const link = sim.force('link') as ForceLink<SimNode, SimLink>;
+    const liveLinks = link.links();
+
+    expect(sim.alphaDecay()).toBeCloseTo(1 - 0.001 ** (1 / 500));
+    expect(sim.velocityDecay()).toBeCloseTo(0.3);
+    expect(sim.alphaMin()).toBe(0.025);
+    expect(charge).toBeTruthy();
+    expect(charge.strength()(nodes[0]!, 0, nodes)).toBeCloseTo(
+      (-0.006 * 10) / nodes.length,
+    );
+    expect(biasX.strength()(nodes[0]!, 0, nodes)).toBe(0.13);
+    expect(biasX.x()(nodes[0]!, 0, nodes)).toBeCloseTo(simWidth * 0.5);
+    expect(biasY.strength()(nodes[0]!, 0, nodes)).toBe(0.13);
+    expect(biasY.y()(nodes[0]!, 0, nodes)).toBe(0.5);
+    expect(link.distance()(liveLinks[0]!, 0, liveLinks)).toBeCloseTo(
+      1.9 * (collideRadiusForNode(48) / 800),
+    );
+    expect(link.strength()(liveLinks[0]!, 0, liveLinks)).toBe(0.5);
+  });
+
   it('pulls same-group nodes closer together after start', () => {
     const nodes = cloneNodes(TWO_GROUPS);
     handleMessage({
@@ -170,14 +213,12 @@ describe('autoLayout worker', () => {
     expect(groupBAfter).toBeLessThan(groupBBefore);
   });
 
-  it('starts gently (alpha <= 0.4), refining rather than fully reheating', () => {
+  it('starts with the canonical hot alpha', () => {
     handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
 
     handleMessage({ type: 'start' });
 
-    // Gentle start: alpha set to startAlpha (0.4), NOT alpha(1).
-    expect(capturedSim!.alpha()).toBeLessThanOrEqual(0.4);
-    expect(capturedSim!.alpha()).toBeGreaterThan(0);
+    expect(capturedSim!.alpha()).toBe(1);
   });
 
   it('pins a node on update_node {fx,fy} and releases it on {fx:null,fy:null}', () => {
@@ -284,6 +325,11 @@ describe('autoLayout worker', () => {
       links: [{ source: 0, target: 1 }],
       options: { collideRadius: SIM_COLLIDE_RADIUS },
     });
+    const link = capturedSim!.force('link') as ForceLink<SimNode, SimLink>;
+    const liveLinks = link.links();
+    expect(link.distance()(liveLinks[0]!, 0, liveLinks)).toBeCloseTo(
+      1.9 * SIM_COLLIDE_RADIUS,
+    );
     handleMessage({ type: 'start' });
     tickManually(300);
 
@@ -300,10 +346,8 @@ describe('autoLayout worker', () => {
 
   it('biases the composition upward (forceY) so it clears the bottom panel', () => {
     // Nodes seeded centered and low in a unit-tall sim space. The weak upward
-    // forceY (target 0.4 * simHeight = 0.4) must lift their mean y above (smaller
-    // than) the seed mean, while staying within sim bounds. biasYStrength is 0 by
-    // default (Sociogram needs no upward bias), so the Narrative tuning that
-    // enables it is supplied explicitly here.
+    // forceY (target 0.5 * simHeight) must lift their mean y above (smaller than)
+    // the seed mean while staying within sim bounds.
     const nodes: SimNode[] = [
       { nodeId: 'n0', x: 0.85, y: 0.66 },
       { nodeId: 'n1', x: 0.9, y: 0.71 },
@@ -319,8 +363,6 @@ describe('autoLayout worker', () => {
       options: {
         collideRadius: SIM_COLLIDE_RADIUS,
         simHeight: 1,
-        biasYStrength: 0.04,
-        biasYFraction: 0.4,
       },
     });
     handleMessage({ type: 'start' });
@@ -340,51 +382,11 @@ describe('autoLayout worker', () => {
     }
   });
 
-  it('registers forceManyBody and spreads disconnected nodes farther with a negative charge', () => {
-    // Sociogram supplies a negative charge for repulsion (no group cohesion to
-    // drive spread). With charge:0 only collision acts; a negative charge must
-    // register forceManyBody and push disconnected nodes demonstrably farther
-    // apart. Seed five unlinked, ungrouped nodes clustered near the origin.
-    const seed = (): SimNode[] =>
-      Array.from({ length: 5 }, (_, i) => ({
-        nodeId: `n${i}`,
-        x: (i % 3) * 0.005,
-        y: Math.floor(i / 3) * 0.005,
-      }));
-
-    const settle = (charge: number) => {
-      capturedSim = null;
-      posted = [];
-      handleMessage({
-        type: 'initialize',
-        nodes: seed(),
-        options: { charge, collideRadius: SIM_COLLIDE_RADIUS },
-      });
-      handleMessage({ type: 'start' });
-      tickManually(300);
-      return capturedSim!;
-    };
-
-    // charge:0 — forceManyBody is not registered.
-    const noCharge = settle(0);
-    expect(noCharge.force('charge')).toBeFalsy();
-    const spreadNoCharge = meanPairwiseDistance(noCharge.nodes());
-
-    // charge:negative — forceManyBody is registered and spreads nodes farther.
-    const repelled = settle(-0.1);
-    expect(repelled.force('charge')).toBeTruthy();
-    const spreadRepelled = meanPairwiseDistance(repelled.nodes());
-
-    expect(spreadRepelled).toBeGreaterThan(spreadNoCharge);
-  });
-
   it('biases the composition horizontally (forceX) toward the target', () => {
     // Mirror of the biasY test: nodes seeded off-center to the left on a wide
     // canvas (aspect 16:9 -> simWidth ~1.78). The weak horizontal forceX (target
     // 0.5 * simWidth) must pull their mean x toward center (larger than the seed
-    // mean), staying within sim bounds. biasXStrength is 0 by default (Narrative
-    // preserves authored x), so the Sociogram tuning that enables it is supplied
-    // explicitly here.
+    // mean), staying within sim bounds.
     const SIM_WIDTH = 1600 / 900;
     const nodes: SimNode[] = [
       { nodeId: 'n0', x: 0.22, y: 0.44 },
@@ -401,8 +403,6 @@ describe('autoLayout worker', () => {
       options: {
         collideRadius: SIM_COLLIDE_RADIUS,
         simWidth: SIM_WIDTH,
-        biasXStrength: 0.05,
-        biasXFraction: 0.5,
       },
     });
     handleMessage({ type: 'start' });
@@ -431,7 +431,7 @@ describe('autoLayout worker', () => {
     handleMessage({
       type: 'initialize',
       nodes: cloneNodes(TWO_GROUPS),
-      options: { collideRadius: SIM_COLLIDE_RADIUS, charge: 0 },
+      options: { collideRadius: SIM_COLLIDE_RADIUS },
     });
     handleMessage({ type: 'start' });
 
@@ -502,15 +502,13 @@ describe('autoLayout worker — sim-space spacing guarantee', () => {
     y: yNorm,
   });
 
-  // With no bounds force the layout is unconfined; assert it stays finite and
-  // near the seeded region rather than flying off — collision spreads nodes by at
-  // most a few node-widths from the cluster centre.
-  const assertBounded = (nodes: SimNode[]) => {
+  // These collision-focused cases deliberately omit canvas extents, so the
+  // canonical repulsion is unconfined. Assert numerical stability here; the
+  // dedicated bounds case below owns the canvas-confinement guarantee.
+  const assertFinite = (nodes: SimNode[]) => {
     for (const node of nodes) {
       expect(Number.isFinite(node.x)).toBe(true);
       expect(Number.isFinite(node.y)).toBe(true);
-      expect(Math.abs(node.x ?? 0)).toBeLessThan(ASPECT * 2 + 1);
-      expect(Math.abs(node.y ?? 0)).toBeLessThan(ASPECT * 2 + 1);
     }
   };
 
@@ -536,7 +534,7 @@ describe('autoLayout worker — sim-space spacing guarantee', () => {
     expect(minPairwiseDistance(settled)).toBeGreaterThanOrEqual(
       MIN_CENTER_TO_CENTER * (1 - TOLERANCE),
     );
-    assertBounded(settled);
+    assertFinite(settled);
   });
 
   it('enforces the minimum gap within a tightly clustered grouped seed', () => {
@@ -562,7 +560,7 @@ describe('autoLayout worker — sim-space spacing guarantee', () => {
     expect(minPairwiseDistance(settled)).toBeGreaterThanOrEqual(
       MIN_CENTER_TO_CENTER * (1 - TOLERANCE),
     );
-    assertBounded(settled);
+    assertFinite(settled);
   });
 
   it('holds the gap on both axes on a non-square canvas (isotropic in sim space)', () => {
@@ -588,7 +586,7 @@ describe('autoLayout worker — sim-space spacing guarantee', () => {
     expect(minPairwiseDistance(settled)).toBeGreaterThanOrEqual(
       MIN_CENTER_TO_CENTER * (1 - TOLERANCE),
     );
-    assertBounded(settled);
+    assertFinite(settled);
   });
 
   it('confines nodes within the bounds inset while still preventing overlap', () => {

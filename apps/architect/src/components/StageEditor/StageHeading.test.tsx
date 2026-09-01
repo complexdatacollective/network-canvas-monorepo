@@ -1,15 +1,16 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-const { mockUseFormContext } = vi.hoisted(() => ({
-  mockUseFormContext: vi.fn(),
+const { mockUseStageInitialValue } = vi.hoisted(() => ({
+  mockUseStageInitialValue: vi.fn(),
 }));
 
-vi.mock('../Editor', () => ({
-  useFormContext: mockUseFormContext,
+vi.mock('./stageFormHooks', () => ({
+  useStageInitialValue: (path: string) =>
+    mockUseStageInitialValue(path) as unknown,
 }));
 
-vi.mock('../Form/ValidatedField', () => ({
+vi.mock('../Form/ArchitectField', () => ({
   default: () => null,
 }));
 
@@ -28,37 +29,13 @@ vi.mock('./Interfaces', () => ({
   }),
 }));
 
-import StageHeading, { HeadingInput } from './StageHeading';
-
-describe('HeadingInput', () => {
-  it('preserves hero styling while using required and shared error semantics', () => {
-    render(
-      <HeadingInput
-        required
-        input={{
-          name: 'label',
-          value: '',
-          onChange: vi.fn(),
-          onBlur: vi.fn(),
-          onFocus: vi.fn(),
-        }}
-        meta={{ touched: true, invalid: true, error: 'Required' }}
-      />,
-    );
-
-    const input = screen.getByRole('textbox', { name: 'Stage name' });
-    expect(input).toBeRequired();
-    expect(input).toHaveAttribute('aria-required', 'true');
-    expect(input).toHaveAttribute('aria-invalid', 'true');
-    expect(input).toHaveAccessibleDescription('Required');
-  });
-});
+import StageHeading from './StageHeading';
 
 describe('StageHeading', () => {
-  it('reads the stage type from context initialValues', () => {
-    mockUseFormContext.mockReturnValue({
-      initialValues: { type: 'NameGenerator' },
-    });
+  it('reads the stage type from the committed stage', () => {
+    mockUseStageInitialValue.mockImplementation((path: string) =>
+      path === 'type' ? 'NameGenerator' : undefined,
+    );
 
     render(<StageHeading stageNumber={1} totalStages={3} isNewStage={false} />);
 
@@ -66,7 +43,7 @@ describe('StageHeading', () => {
   });
 
   it('renders nothing when the stage type is absent', () => {
-    mockUseFormContext.mockReturnValue({ initialValues: {} });
+    mockUseStageInitialValue.mockReturnValue(undefined);
 
     const { container } = render(
       <StageHeading stageNumber={1} totalStages={3} isNewStage={false} />,

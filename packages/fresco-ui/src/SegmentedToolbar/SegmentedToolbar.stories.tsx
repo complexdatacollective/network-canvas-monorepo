@@ -1,37 +1,105 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import {
   Bold,
-  Eye,
+  Download,
+  Ellipsis,
   Grid3x3,
   Italic,
   List,
-  Map as MapIcon,
-  Minus,
-  MousePointer2,
   Pencil,
-  Plus,
   Redo2,
-  Settings,
+  Settings2,
   Snowflake,
-  Sparkles,
-  Spline,
   Star,
   Trash2,
   Underline,
   Undo2,
 } from 'lucide-react';
-import { useState } from 'react';
+import type { ComponentProps } from 'react';
+import { expect, userEvent, within } from 'storybook/test';
 
-import SplitButton from '../SplitButton';
+import { DropdownMenuItem } from '../DropdownMenu';
 import { withTooltipProvider } from '../storybook-support/withTooltipProvider';
-import { SegmentedToolbar, type ToolbarSegment } from './SegmentedToolbar';
+import {
+  SegmentedToolbar,
+  ToolbarButton as ToolbarButtonComponent,
+  ToolbarGroup as ToolbarGroupComponent,
+  ToolbarIconButton as ToolbarIconButtonComponent,
+  ToolbarMenu as ToolbarMenuComponent,
+  ToolbarPopover as ToolbarPopoverComponent,
+  ToolbarSeparator as ToolbarSeparatorComponent,
+  ToolbarToggleGroup as ToolbarToggleGroupComponent,
+} from './SegmentedToolbar';
 
 const meta = {
   title: 'Components/SegmentedToolbar',
   component: SegmentedToolbar,
+  subcomponents: {
+    ToolbarButton: ToolbarButtonComponent,
+    ToolbarIconButton: ToolbarIconButtonComponent,
+    ToolbarGroup: ToolbarGroupComponent,
+    ToolbarToggleGroup: ToolbarToggleGroupComponent,
+    ToolbarSeparator: ToolbarSeparatorComponent,
+    ToolbarMenu: ToolbarMenuComponent,
+    ToolbarPopover: ToolbarPopoverComponent,
+  },
   decorators: [withTooltipProvider],
-  parameters: { layout: 'centered' },
+  parameters: {
+    layout: 'centered',
+    docs: {
+      description: {
+        component: `A composable Base UI toolbar rendered as a floating Fresco surface.
+
+### Composition
+
+Pass controls and groups as children. Each group needs an accessible name. Separators are explicit, so the composition visible in JSX is the composition exposed to assistive technology.
+
+\`\`\`tsx
+<SegmentedToolbar aria-label="Editing tools">
+  <ToolbarGroup aria-label="History">
+    <ToolbarIconButton aria-label="Undo" icon={<Undo2 />} />
+    <ToolbarIconButton aria-label="Redo" icon={<Redo2 />} />
+  </ToolbarGroup>
+  <ToolbarSeparator />
+  <ToolbarToggleGroup aria-label="View" defaultValue={['list']}>
+    <ToolbarIconButton value="list" aria-label="List" icon={<List />} />
+    <ToolbarIconButton value="grid" aria-label="Grid" icon={<Grid3x3 />} />
+  </ToolbarToggleGroup>
+</SegmentedToolbar>
+\`\`\`
+
+### Components
+
+| Component | Purpose |
+| --- | --- |
+| \`SegmentedToolbar\` | Accessible toolbar root, animated surface, size/orientation context, and optional drag behavior. |
+| \`ToolbarButton\` | Base UI toolbar item rendered with Fresco \`Button\`. It can also act as a toggle. |
+| \`ToolbarIconButton\` | Base UI toolbar item rendered with Fresco \`IconButton\`; its \`aria-label\` is also its default tooltip. |
+| \`ToolbarGroup\` | Base UI \`Toolbar.Group\`. Requires \`aria-label\`; \`disabled\` disables every child. |
+| \`ToolbarToggleGroup\` | Base UI \`ToggleGroup\`. Child buttons require a unique \`value\`. |
+| \`ToolbarSeparator\` | Base UI separator whose orientation follows the toolbar. |
+| \`ToolbarMenu\` | Fresco \`DropdownMenu\` composed with an animated toolbar button trigger. |
+| \`ToolbarPopover\` | Fresco \`Popover\` composed with an animated toolbar button trigger. |
+
+Custom direct children must be registered with defineToolbarChild. The helper requires the component to declare a React 19 ref prop and that ref must be forwarded to one toolbar primitive.
+
+A toolbar is one tab stop, so disabled controls stay in its roving focus by default: they expose \`aria-disabled\` instead of the native \`disabled\` attribute, keeping keyboard focus inside the toolbar when a command such as Undo disables itself. Pass \`focusableWhenDisabled={false}\` for the rare control that must be genuinely unfocusable.
+
+### Motion
+
+Only the documented Toolbar components may be direct children. A custom wrapper would otherwise hide Motion's popLayout ref and make its exit happen in two stages. TypeScript rejects registered components that do not declare the required ref prop, and the toolbar rejects unregistered wrappers at runtime.
+
+The toolbar, every group, every separator, and every button participates in one isolated Motion \`LayoutGroup\`. Nested \`AnimatePresence\` boundaries use \`popLayout\`, allowing exits, entrances, sibling movement, and surface resizing to run simultaneously. Initial page render is not animated, and reduced-motion preferences make every transition immediate. Conditional children must have stable React keys when rendered from a collection.`,
+      },
+    },
+  },
   tags: ['autodocs'],
+  args: {
+    'aria-label': 'Editing tools',
+    'orientation': 'horizontal',
+    'size': 'md',
+    'draggable': false,
+  },
   argTypes: {
     orientation: {
       control: 'inline-radio',
@@ -39,353 +107,511 @@ const meta = {
     },
     size: { control: 'inline-radio', options: ['sm', 'md', 'lg'] },
     draggable: { control: 'boolean' },
+    disabled: { control: 'boolean' },
   },
 } satisfies Meta<typeof SegmentedToolbar>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+type ConditionalItemsArgs = ComponentProps<typeof SegmentedToolbar> & {
+  showFavorite: boolean;
+  showFormatting: boolean;
+  showMenu: boolean;
+  showPopover: boolean;
+  showDisabledGroup: boolean;
+};
+type ConditionalItemsStory = StoryObj<ConditionalItemsArgs>;
 
 const noop = () => {};
 
-const sampleItems: ToolbarSegment[] = [
-  {
-    type: 'button',
-    id: 'edit',
-    label: 'Edit',
-    icon: <Pencil />,
-    onClick: noop,
-  },
-  {
-    type: 'toggle',
-    id: 'freeze',
-    label: 'Freeze layout',
-    icon: <Snowflake />,
-    defaultPressed: false,
-  },
-  { type: 'separator', id: 'sep-1' },
-  {
-    type: 'group',
-    id: 'view',
-    mode: 'single',
-    defaultValue: ['list'],
-    options: [
-      { value: 'list', label: 'List', icon: <List /> },
-      { value: 'grid', label: 'Grid', icon: <Grid3x3 /> },
-      { value: 'map', label: 'Map', icon: <MapIcon /> },
-    ],
-  },
-  { type: 'separator', id: 'sep-2' },
-  { type: 'button', id: 'undo', label: 'Undo', icon: <Undo2 />, onClick: noop },
-  { type: 'button', id: 'redo', label: 'Redo', icon: <Redo2 />, onClick: noop },
-  {
-    type: 'button',
-    id: 'delete',
-    label: 'Delete',
-    icon: <Trash2 />,
-    variant: 'default',
-    className: 'bg-tomato text-white',
-    onClick: noop,
-  },
-];
+export const Default: Story = {
+  render: (args) => (
+    <SegmentedToolbar {...args}>
+      <ToolbarGroupComponent aria-label="History">
+        <ToolbarIconButtonComponent
+          aria-label="Undo"
+          icon={<Undo2 />}
+          onClick={noop}
+        />
+        <ToolbarIconButtonComponent
+          aria-label="Redo"
+          icon={<Redo2 />}
+          onClick={noop}
+        />
+      </ToolbarGroupComponent>
+      <ToolbarSeparatorComponent />
+      <ToolbarButtonComponent icon={<Pencil />} onClick={noop}>
+        Edit
+      </ToolbarButtonComponent>
+      <ToolbarSeparatorComponent />
+      <ToolbarToggleGroupComponent aria-label="View" defaultValue={['list']}>
+        <ToolbarIconButtonComponent
+          value="list"
+          aria-label="List"
+          icon={<List />}
+        />
+        <ToolbarIconButtonComponent
+          value="grid"
+          aria-label="Grid"
+          icon={<Grid3x3 />}
+        />
+      </ToolbarToggleGroupComponent>
+    </SegmentedToolbar>
+  ),
+};
 
-export const Interactive: Story = {
-  args: {
-    label: 'Drawing tools',
-    orientation: 'horizontal',
-    size: 'md',
-    draggable: false,
-    items: sampleItems,
+/** A visible-label toolbar control rendered with Fresco Button. */
+export const ToolbarButton: Story = {
+  render: (args) => (
+    <SegmentedToolbar {...args}>
+      <ToolbarButtonComponent
+        icon={<Download />}
+        color="success"
+        variant="default"
+        onClick={noop}
+      >
+        Download
+      </ToolbarButtonComponent>
+    </SegmentedToolbar>
+  ),
+};
+
+/** An icon-only Fresco IconButton with an accessible name and tooltip. */
+export const ToolbarIconButton: Story = {
+  render: (args) => (
+    <SegmentedToolbar {...args}>
+      <ToolbarIconButtonComponent
+        aria-label="Delete"
+        icon={<Trash2 />}
+        color="destructive"
+        onClick={noop}
+      />
+    </SegmentedToolbar>
+  ),
+  play: async ({ canvasElement }) => {
+    const button = within(canvasElement).getByRole('button', {
+      name: 'Delete',
+    });
+    await userEvent.hover(button);
+    expect(await within(document.body).findByRole('tooltip')).toHaveTextContent(
+      'Delete',
+    );
   },
 };
 
-export const Capture: Story = {
-  args: {
-    label: 'Drawing tools',
-    draggable: true,
-    items: [
-      {
-        type: 'button',
-        id: 'edit',
-        label: 'Edit',
-        icon: <Pencil />,
-        onClick: noop,
-      },
-      {
-        type: 'toggle',
-        id: 'freeze',
-        label: 'Freeze',
-        icon: <Snowflake />,
-        defaultPressed: true,
-      },
-      {
-        type: 'button',
-        id: 'undo',
-        label: 'Undo',
-        icon: <Undo2 />,
-        onClick: noop,
-      },
-    ],
+/** A named Base UI Toolbar.Group containing related commands. */
+export const ToolbarGroup: Story = {
+  render: (args) => (
+    <SegmentedToolbar {...args}>
+      <ToolbarGroupComponent aria-label="History">
+        <ToolbarIconButtonComponent
+          aria-label="Undo"
+          icon={<Undo2 />}
+          onClick={noop}
+        />
+        <ToolbarIconButtonComponent
+          aria-label="Redo"
+          icon={<Redo2 />}
+          onClick={noop}
+        />
+      </ToolbarGroupComponent>
+    </SegmentedToolbar>
+  ),
+  play: async ({ canvasElement }) => {
+    expect(
+      within(canvasElement).getByRole('group', { name: 'History' }),
+    ).toBeInTheDocument();
   },
 };
 
-/** Segments can show an icon only (with a tooltip), an icon with text, or text alone. */
-export const Labels: Story = {
-  args: {
-    label: 'Formatting',
-    items: [
-      // Icon only — the label is exposed via aria-label + a tooltip.
-      {
-        type: 'button',
-        id: 'bold',
-        label: 'Bold',
-        icon: <Bold />,
-        onClick: noop,
-      },
-      // Icon and text.
-      {
-        type: 'button',
-        id: 'italic',
-        label: 'Italic',
-        icon: <Italic />,
-        showLabel: true,
-        onClick: noop,
-      },
-      {
-        type: 'button',
-        id: 'underline',
-        label: 'Underline',
-        icon: <Underline />,
-        showLabel: true,
-        onClick: noop,
-      },
-      { type: 'separator', id: 'sep' },
-      // Text only — no icon.
-      { type: 'button', id: 'clear', label: 'Clear formatting', onClick: noop },
-    ],
+/** Buttons become Base UI toggles when composed inside ToolbarToggleGroup. */
+export const ToolbarToggleGroup: Story = {
+  render: (args) => (
+    <SegmentedToolbar {...args}>
+      <ToolbarToggleGroupComponent
+        aria-label="Formatting"
+        multiple
+        defaultValue={['bold']}
+      >
+        <ToolbarIconButtonComponent
+          value="bold"
+          aria-label="Bold"
+          icon={<Bold />}
+        />
+        <ToolbarIconButtonComponent
+          value="italic"
+          aria-label="Italic"
+          icon={<Italic />}
+        />
+        <ToolbarIconButtonComponent
+          value="underline"
+          aria-label="Underline"
+          icon={<Underline />}
+        />
+      </ToolbarToggleGroupComponent>
+    </SegmentedToolbar>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const bold = canvas.getByRole('button', { name: 'Bold' });
+    const italic = canvas.getByRole('button', { name: 'Italic' });
+    expect(bold).toHaveAttribute('aria-pressed', 'true');
+    expect(italic).toHaveAttribute('aria-pressed', 'false');
+    await userEvent.click(italic);
+    expect(italic).toHaveAttribute('aria-pressed', 'true');
+    expect(bold).toHaveAttribute('aria-pressed', 'true');
   },
 };
 
-/**
- * A `menu` segment is a button that opens a single-select menu. This mirrors the
- * Network Composer palette: an exclusive tool group, an edge tool that opens a
- * menu of edge types, and a toggle button for automatic layout.
- */
-export const MenuSelection: Story = {
-  args: {
-    label: 'Network tools',
-    orientation: 'vertical',
-    items: [
-      {
-        type: 'group',
-        id: 'tools',
-        mode: 'single',
-        defaultValue: ['select'],
-        options: [
-          { value: 'select', label: 'Select', icon: <MousePointer2 /> },
-          { value: 'add', label: 'Add node', icon: <Plus /> },
-        ],
-      },
-      {
-        type: 'menu',
-        id: 'edge',
-        label: 'Draw edge',
-        icon: <Spline />,
-        value: 'friendship',
-        options: [
-          { value: 'friendship', label: 'Friendship' },
-          { value: 'advice', label: 'Advice' },
-        ],
-        onSelect: noop,
-      },
-      { type: 'separator', id: 'sep' },
-      {
-        type: 'toggle',
-        id: 'auto',
-        label: 'Automatic layout',
-        icon: <Sparkles />,
-        defaultPressed: false,
-      },
-    ],
+/** Separator orientation is derived from the containing toolbar. */
+export const ToolbarSeparator: Story = {
+  render: (args) => (
+    <SegmentedToolbar {...args}>
+      <ToolbarGroupComponent aria-label="History">
+        <ToolbarIconButtonComponent
+          aria-label="Undo"
+          icon={<Undo2 />}
+          onClick={noop}
+        />
+      </ToolbarGroupComponent>
+      <ToolbarSeparatorComponent />
+      <ToolbarGroupComponent aria-label="Editing">
+        <ToolbarIconButtonComponent
+          aria-label="Edit"
+          icon={<Pencil />}
+          onClick={noop}
+        />
+      </ToolbarGroupComponent>
+    </SegmentedToolbar>
+  ),
+  play: async ({ canvasElement }) => {
+    expect(within(canvasElement).getByRole('separator')).toHaveAttribute(
+      'aria-orientation',
+      'vertical',
+    );
   },
 };
 
-/**
- * A `popover` segment is a pressed-able button that anchors arbitrary content
- * beside it — here a text input. The Network Composer uses this for its
- * Add-node name field: the button stays pressed while the popover is open.
- */
-export const PopoverInput: Story = {
-  args: { label: 'Network tools', orientation: 'vertical', items: [] },
-  render: function PopoverRender(args) {
-    const [open, setOpen] = useState(false);
-    const items: ToolbarSegment[] = [
-      {
-        type: 'toggle',
-        id: 'select',
-        label: 'Select',
-        icon: <MousePointer2 />,
-        pressed: !open,
-        onPressedChange: () => setOpen(false),
-      },
-      {
-        type: 'popover',
-        id: 'add',
-        label: 'Add node',
-        icon: <Plus />,
-        pressed: open,
-        open,
-        onOpenChange: setOpen,
-        children: (
-          <input
-            aria-label="Name"
-            placeholder="Type a name, then press Enter"
-            className="w-64 rounded-full border-2 border-current/20 bg-transparent px-4 py-2"
+/** A Fresco dropdown menu composed with an animated toolbar control. */
+export const ToolbarMenu: Story = {
+  render: (args) => (
+    <SegmentedToolbar {...args}>
+      <ToolbarMenuComponent
+        trigger={
+          <ToolbarIconButtonComponent
+            aria-label="More actions"
+            icon={<Ellipsis />}
           />
-        ),
-      },
-    ];
-    return <SegmentedToolbar {...args} items={items} />;
+        }
+      >
+        <DropdownMenuItem onClick={noop}>Duplicate</DropdownMenuItem>
+        <DropdownMenuItem onClick={noop}>Archive</DropdownMenuItem>
+      </ToolbarMenuComponent>
+    </SegmentedToolbar>
+  ),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      within(canvasElement).getByRole('button', { name: 'More actions' }),
+    );
+    expect(
+      await within(document.body).findByRole('menuitem', { name: 'Duplicate' }),
+    ).toBeInTheDocument();
+  },
+};
+
+/** A Fresco popover composed with an animated toolbar control. */
+export const ToolbarPopover: Story = {
+  render: (args) => (
+    <SegmentedToolbar {...args}>
+      <ToolbarPopoverComponent
+        trigger={
+          <ToolbarIconButtonComponent
+            aria-label="Canvas settings"
+            icon={<Settings2 />}
+          />
+        }
+        contentProps={{ className: 'w-64' }}
+      >
+        <p>Adjust how the canvas is displayed.</p>
+      </ToolbarPopoverComponent>
+    </SegmentedToolbar>
+  ),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      within(canvasElement).getByRole('button', { name: 'Canvas settings' }),
+    );
+    expect(
+      await within(document.body).findByText(
+        'Adjust how the canvas is displayed.',
+      ),
+    ).toBeInTheDocument();
   },
 };
 
 /**
- * A `component` segment renders a caller-supplied component inside the toolbar
- * surface. Use it for composite controls such as `SplitButton`, where one
- * logical toolbar slot contains more than one button.
+ * Conditional controls, separators, and complete groups animate concurrently.
+ * The surrounding surface resizes on the same spring while siblings slide to
+ * their new positions rather than waiting for the exiting item. Toggle the
+ * disabled group to inspect its visual treatment during the same transitions.
  */
-export const ComponentSegment: Story = {
-  args: { label: 'Stage actions', items: [] },
-  render: function ComponentSegmentRender(args) {
-    const [open, setOpen] = useState(false);
-    const items: ToolbarSegment[] = [
-      {
-        type: 'button',
-        id: 'undo',
-        label: 'Undo',
-        icon: <Undo2 />,
-        onClick: noop,
-      },
-      { type: 'separator', id: 'sep' },
-      {
-        type: 'component',
-        id: 'preview',
-        component: ({ size }) => (
-          <SplitButton
-            className="bg-slate-blue text-white"
-            icon={<Eye />}
+export const ConditionalItems: ConditionalItemsStory = {
+  args: {
+    'aria-label': 'Conditional tools',
+    'orientation': 'horizontal',
+    'size': 'md',
+    'draggable': false,
+    'showFavorite': true,
+    'showFormatting': true,
+    'showMenu': true,
+    'showPopover': true,
+    'showDisabledGroup': true,
+  },
+  argTypes: {
+    showFavorite: {
+      control: 'boolean',
+      description: 'Render the Favorite button.',
+    },
+    showFormatting: {
+      control: 'boolean',
+      description: 'Render the Formatting toggle group.',
+    },
+    showMenu: {
+      control: 'boolean',
+      description: 'Render the More actions menu.',
+    },
+    showPopover: {
+      control: 'boolean',
+      description: 'Render the Canvas settings popover.',
+    },
+    showDisabledGroup: {
+      control: 'boolean',
+      description: 'Render a disabled group of actions.',
+    },
+  },
+  render: ({
+    showFavorite,
+    showFormatting,
+    showMenu,
+    showPopover,
+    showDisabledGroup,
+    ...args
+  }) => (
+    <SegmentedToolbar {...args}>
+      <ToolbarGroupComponent aria-label="History">
+        <ToolbarIconButtonComponent
+          aria-label="Undo"
+          icon={<Undo2 />}
+          onClick={noop}
+        />
+        <ToolbarIconButtonComponent
+          aria-label="Redo"
+          icon={<Redo2 />}
+          onClick={noop}
+        />
+        {showFavorite ? (
+          <ToolbarIconButtonComponent
+            key="favorite"
+            aria-label="Favorite"
+            icon={<Star />}
+            color="warning"
             onClick={noop}
-            onOpenChange={setOpen}
-            open={open}
-            popover={{
-              content: <div className="w-48">Preview settings</div>,
-              side: 'top',
-            }}
-            segment={{
-              'aria-label': 'Preview settings',
-              'className': 'bg-slate-blue text-white',
-              'icon': <Settings />,
-            }}
-            size={size}
-            variant="text"
-          >
-            Preview
-          </SplitButton>
-        ),
-      },
-    ];
-    return <SegmentedToolbar {...args} items={items} />;
+          />
+        ) : null}
+      </ToolbarGroupComponent>
+
+      {showFormatting ? (
+        <ToolbarSeparatorComponent key="formatting-separator" />
+      ) : null}
+      {showFormatting ? (
+        <ToolbarToggleGroupComponent
+          key="formatting"
+          aria-label="Formatting"
+          multiple
+          defaultValue={['bold']}
+        >
+          <ToolbarIconButtonComponent
+            value="bold"
+            aria-label="Bold"
+            icon={<Bold />}
+          />
+          <ToolbarIconButtonComponent
+            value="italic"
+            aria-label="Italic"
+            icon={<Italic />}
+          />
+        </ToolbarToggleGroupComponent>
+      ) : null}
+
+      {showMenu ? <ToolbarSeparatorComponent key="menu-separator" /> : null}
+      {showMenu ? (
+        <ToolbarMenuComponent
+          key="menu"
+          trigger={
+            <ToolbarIconButtonComponent
+              aria-label="More actions"
+              icon={<Ellipsis />}
+            />
+          }
+        >
+          <DropdownMenuItem onClick={noop}>Duplicate</DropdownMenuItem>
+          <DropdownMenuItem onClick={noop}>Archive</DropdownMenuItem>
+        </ToolbarMenuComponent>
+      ) : null}
+
+      {showPopover ? (
+        <ToolbarSeparatorComponent key="popover-separator" />
+      ) : null}
+      {showPopover ? (
+        <ToolbarPopoverComponent
+          key="popover"
+          trigger={
+            <ToolbarIconButtonComponent
+              aria-label="Canvas settings"
+              icon={<Settings2 />}
+            />
+          }
+          contentProps={{ className: 'w-64' }}
+        >
+          <p>Adjust how the canvas is displayed.</p>
+        </ToolbarPopoverComponent>
+      ) : null}
+
+      {showDisabledGroup ? (
+        <ToolbarSeparatorComponent key="disabled-separator" />
+      ) : null}
+      {showDisabledGroup ? (
+        <ToolbarGroupComponent
+          key="disabled"
+          aria-label="Unavailable actions"
+          disabled
+        >
+          <ToolbarButtonComponent onClick={noop}>
+            Publish
+          </ToolbarButtonComponent>
+          <ToolbarIconButtonComponent
+            aria-label="Freeze layout"
+            icon={<Snowflake />}
+            onClick={noop}
+          />
+        </ToolbarGroupComponent>
+      ) : null}
+    </SegmentedToolbar>
+  ),
+};
+
+/** Group-level disabled state reaches every contained control. */
+export const DisabledGroups: Story = {
+  render: (args) => (
+    <SegmentedToolbar {...args}>
+      <ToolbarGroupComponent aria-label="Editing" disabled>
+        <ToolbarButtonComponent onClick={noop}>Edit</ToolbarButtonComponent>
+        <ToolbarIconButtonComponent
+          aria-label="Freeze layout"
+          icon={<Snowflake />}
+          onClick={noop}
+        />
+      </ToolbarGroupComponent>
+      <ToolbarSeparatorComponent />
+      <ToolbarToggleGroupComponent
+        aria-label="View"
+        disabled
+        defaultValue={['list']}
+      >
+        <ToolbarIconButtonComponent
+          value="list"
+          aria-label="List"
+          icon={<List />}
+        />
+        <ToolbarIconButtonComponent
+          value="grid"
+          aria-label="Grid"
+          icon={<Grid3x3 />}
+        />
+      </ToolbarToggleGroupComponent>
+    </SegmentedToolbar>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    for (const name of ['Edit', 'Freeze layout', 'List', 'Grid']) {
+      const control = canvas.getByRole('button', { name });
+      expect(control).toHaveAttribute('aria-disabled', 'true');
+      expect(getComputedStyle(control).opacity).toBe('0.5');
+    }
   },
 };
 
-/** Per-button colours use named theme palette colours for background and foreground. */
-export const Colours: Story = {
-  args: {
-    label: 'Tags',
-    items: [
-      {
-        type: 'button',
-        id: 'urgent',
-        label: 'Urgent',
-        showLabel: true,
-        variant: 'default',
-        className: 'bg-tomato text-white',
-        onClick: noop,
-      },
-      {
-        type: 'button',
-        id: 'review',
-        label: 'Review',
-        showLabel: true,
-        variant: 'default',
-        className: 'bg-mustard text-charcoal',
-        onClick: noop,
-      },
-      {
-        type: 'button',
-        id: 'done',
-        label: 'Done',
-        showLabel: true,
-        variant: 'default',
-        className: 'bg-sea-green text-white',
-        onClick: noop,
-      },
-      {
-        type: 'button',
-        id: 'idea',
-        label: 'Idea',
-        showLabel: true,
-        variant: 'default',
-        className: 'bg-cerulean-blue text-white',
-        onClick: noop,
-      },
-    ],
+/**
+ * Disabled controls stay in the toolbar's roving focus by default, so a
+ * command that disables itself never drops keyboard focus to `<body>`.
+ */
+export const FocusableWhenDisabled: Story = {
+  render: (args) => (
+    <SegmentedToolbar {...args}>
+      <ToolbarIconButtonComponent
+        aria-label="Undo"
+        icon={<Undo2 />}
+        disabled
+        onClick={noop}
+      />
+      <ToolbarIconButtonComponent
+        aria-label="Redo"
+        icon={<Redo2 />}
+        onClick={noop}
+      />
+    </SegmentedToolbar>
+  ),
+  play: async ({ canvasElement }) => {
+    const undo = within(canvasElement).getByRole('button', { name: 'Undo' });
+    expect(undo).not.toBeDisabled();
+    expect(undo).toHaveAttribute('aria-disabled', 'true');
+    undo.focus();
+    expect(undo).toHaveFocus();
   },
 };
 
-/** Adding and removing segments animates in and out; the container resizes via motion's layout. */
-export const DynamicItems: Story = {
-  args: {
-    label: 'Stars',
-    orientation: 'horizontal',
-    size: 'md',
-    items: [],
+/**
+ * `focusableWhenDisabled={false}` opts a control back into native `disabled`
+ * semantics, removing it from the toolbar's roving focus entirely.
+ */
+export const UnfocusableWhenDisabled: Story = {
+  render: (args) => (
+    <SegmentedToolbar {...args}>
+      <ToolbarIconButtonComponent
+        aria-label="Undo"
+        icon={<Undo2 />}
+        disabled
+        focusableWhenDisabled={false}
+        onClick={noop}
+      />
+      <ToolbarIconButtonComponent
+        aria-label="Redo"
+        icon={<Redo2 />}
+        onClick={noop}
+      />
+    </SegmentedToolbar>
+  ),
+  play: async ({ canvasElement }) => {
+    const undo = within(canvasElement).getByRole('button', { name: 'Undo' });
+    expect(undo).toBeDisabled();
+    expect(undo).not.toHaveAttribute('aria-disabled');
   },
-  render: function DynamicRender(args) {
-    const [count, setCount] = useState(3);
-    const items: ToolbarSegment[] = Array.from(
-      { length: count },
-      (_, index) => ({
-        type: 'button',
-        id: `star-${index}`,
-        label: `Star ${index + 1}`,
-        icon: <Star />,
-        onClick: noop,
-      }),
-    );
+};
 
-    const controlClass =
-      'inline-flex items-center gap-1 rounded-full border-2 border-current px-3 py-1 text-sm font-bold';
-
-    return (
-      <div className="flex flex-col items-center gap-6">
-        <SegmentedToolbar {...args} items={items} />
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className={controlClass}
-            onClick={() => setCount((current) => current + 1)}
-          >
-            <Plus className="size-4" /> Add
-          </button>
-          <button
-            type="button"
-            className={controlClass}
-            onClick={() => setCount((current) => Math.max(0, current - 1))}
-          >
-            <Minus className="size-4" /> Remove
-          </button>
-        </div>
-      </div>
-    );
-  },
+/** The drag handle is separate from toolbar focus and supports arrow-key nudging. */
+export const Draggable: Story = {
+  args: { draggable: true },
+  render: (args) => (
+    <SegmentedToolbar {...args}>
+      <ToolbarIconButtonComponent
+        aria-label="Undo"
+        icon={<Undo2 />}
+        onClick={noop}
+      />
+      <ToolbarIconButtonComponent
+        aria-label="Redo"
+        icon={<Redo2 />}
+        onClick={noop}
+      />
+    </SegmentedToolbar>
+  ),
 };

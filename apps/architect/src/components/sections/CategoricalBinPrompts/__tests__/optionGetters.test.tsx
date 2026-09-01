@@ -34,8 +34,8 @@ describe('CategoricalBin optionGetters', () => {
       ]);
     });
 
-    // redux-form leaves the field value unset until it holds rows, and a
-    // half-filled row has no `property` yet.
+    // The field value is unset until the array holds rows, and a half-filled
+    // row has no `property` yet.
     it.each([
       ['undefined', undefined],
       ['null', null],

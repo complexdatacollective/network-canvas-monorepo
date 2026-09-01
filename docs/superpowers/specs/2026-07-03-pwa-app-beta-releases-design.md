@@ -214,10 +214,10 @@ changeset`, choose the app; bump type only **categorises** the notes (base is
      front-line way authors avoid that error before CI catches it.
 3. **Write the summary as reader-facing release notes** — it becomes the
    changelog / GitHub release text; app-facing entries follow the repo's
-   participant-appropriate tone (see `developing-in-network-canvas`).
+   participant-appropriate tone (see `developing-network-canvas-ui`).
 4. **Commit the `.changeset/*.md`** with the PR.
 
-Cross-references `developing-in-network-canvas` and complements the Part B
+Cross-references `developing-network-canvas-ui` and complements the Part B
 isolation guard.
 
 ## Contributor & release flow (end to end)

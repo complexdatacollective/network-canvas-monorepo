@@ -1,23 +1,21 @@
-import { union } from 'es-toolkit/compat';
-import { useEffect, useMemo, type ComponentType } from 'react';
+import { isEqual, union } from 'es-toolkit/compat';
+import { useEffect, useMemo } from 'react';
 import { useSelector } from 'react-redux';
-import type { FormAction } from 'redux-form';
-import { change, Field, formValueSelector } from 'redux-form';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
-import { useAppDispatch } from '~/ducks/hooks';
-import type { RootState } from '~/ducks/modules/root';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
+import Section from '@codaco/fresco-ui/Section';
+import ArchitectField from '~/components/Form/ArchitectField';
+import { useStageFormValue } from '~/components/StageEditor/stageFormHooks';
 
-import { getEdgeFilters, getEdgesForSubject } from './selectors';
+import {
+  type CurrentFilters,
+  getEdgeFilters,
+  getEdgesForSubject,
+} from './selectors';
 import getEdgeFilteringWarning from './utils';
-
-const FrescoCheckboxGroupField = CheckboxGroupField as ComponentType<
-  Record<string, unknown>
->;
 
 type Option = {
   value: string;
@@ -25,24 +23,28 @@ type Option = {
   type?: string;
   color?: string;
 };
+
 type DisplayEdgesProps = {
-  form: string;
-  entity: string;
-  type: string;
+  /** The row's own pre-edit values, supplied by DialogArrayField's `item` spread. */
+  edges?: { create?: string | null; display?: string[] | null };
 };
-const DisplayEdges = ({ form }: DisplayEdgesProps) => {
-  const dispatch = useAppDispatch();
-  // Fix 1: Use the already memoized selector directly
+
+/** Stable empty list: `initialValue` is a register-effect dependency. */
+const EMPTY_DISPLAY_EDGES: string[] = [];
+
+const DisplayEdges = ({ edges: initialEdges }: DisplayEdgesProps) => {
   const edgesForSubject = useSelector(getEdgesForSubject);
-  // Fix 2: Memoize form selectors
-  const formSelector = useMemo(() => formValueSelector(form), [form]);
-  const createEdge = useSelector((state: RootState) =>
-    formSelector(state, 'edges.create'),
-  ) as string | undefined;
-  const displayEdges = useSelector((state: RootState) =>
-    formSelector(state, 'edges.display'),
-  ) as string[] | null | undefined;
-  // Fix 3: Memoize the mapped array
+  const setLocalFieldValue = useFormStore((store) => store.setFieldValue);
+
+  const liveValues = useFormValue(['edges.create', 'edges.display'] as const);
+  const createEdge =
+    typeof liveValues['edges.create'] === 'string'
+      ? liveValues['edges.create']
+      : undefined;
+  const displayEdges = Array.isArray(liveValues['edges.display'])
+    ? (liveValues['edges.display'] as string[])
+    : undefined;
+
   const displayEdgesOptions = useMemo(
     () =>
       edgesForSubject.map((edge) => {
@@ -64,79 +66,68 @@ const DisplayEdges = ({ form }: DisplayEdgesProps) => {
         }
       ).disabled,
   );
-  // biome-ignore lint/correctness/useExhaustiveDependencies: fix inifinite loop
+
+  // Observer effect: the edge type being created must always be displayed —
+  // keep it included in `edges.display` whenever it changes.
   useEffect(() => {
+    if (!createEdge) return;
     const displayEdgesWithCreatedEdge = union(displayEdges ?? [], [createEdge]);
-    dispatch(
-      change(
-        form,
-        'edges.display',
-        displayEdgesWithCreatedEdge,
-      ) as unknown as FormAction,
-    );
-  }, [createEdge, dispatch, form]);
-  const edgeFilters = useSelector((state: RootState) => getEdgeFilters(state));
+    if (!isEqual(displayEdgesWithCreatedEdge, displayEdges ?? [])) {
+      setLocalFieldValue('edges.display', displayEdgesWithCreatedEdge);
+    }
+  }, [createEdge, displayEdges, setLocalFieldValue]);
+
+  const stageFilter = useStageFormValue<CurrentFilters | undefined>('filter');
+  const edgeFilters = getEdgeFilters(stageFilter);
   const shouldShowNetworkFilterWarning = getEdgeFilteringWarning(
     edgeFilters,
-    displayEdges || [],
+    displayEdges ?? [],
   );
+
   return (
     <Section
-      title="Display Edges"
-      summary={
-        <Paragraph>
-          You can display one or more edge types on this prompt. Where two nodes
-          are connected by multiple edge types, only one of those edge types
-          will be displayed.
-        </Paragraph>
-      }
+      // The shared Section is intentionally uncontrolled. Remount only when
+      // edge creation crosses absent/present so its default can auto-open the
+      // required display choice without resetting on every edge-type change.
+      key={createEdge ? 'with-created-edge' : 'without-created-edge'}
+      title="Displayed edges"
+      description="Choose the edge types shown on this prompt."
       toggleable
-      startExpanded={!!displayEdges}
+      defaultOpen={
+        !!createEdge ||
+        !!initialEdges?.display?.length ||
+        !!displayEdges?.length
+      }
       disabled={edgesForSubject.length === 0}
-      handleToggleChange={(value: boolean) => {
-        // Disallow closing when there is a disabled edge option
-        if (!value && hasDisabledEdgeOption) {
-          return false;
-        }
-        if (value) {
-          return true;
-        }
-        // Reset edge creation
-        dispatch(change(form, 'edges.display', null) as unknown as FormAction);
-        return true;
-      }}
-      layout="vertical"
+      onOpenChange={(nextOpen) => nextOpen || !hasDisabledEdgeOption}
     >
-      <Row>
-        {shouldShowNetworkFilterWarning && (
-          <Alert variant="warning" className="my-7">
-            <AlertTitle>Network filter hides configured edge types</AlertTitle>
-            <AlertDescription>
-              Stage level network filtering is enabled, but one or more of the
-              edge types you have configured to display on this prompt are not
-              currently included in the filter. This means that these edges may
-              not be displayed. Either remove the stage-level network filtering,
-              or add these edge types to the filter to resolve this issue.
-            </AlertDescription>
-          </Alert>
-        )}
-        {hasDisabledEdgeOption && (
-          <Alert variant="info" className="my-7">
-            <AlertDescription>
-              The edge type being created must always be displayed. This edge
-              type is shown in italics below, and cannot be deselected.
-            </AlertDescription>
-          </Alert>
-        )}
-        <Field
-          name="edges.display"
-          component={FrescoReduxField}
-          fieldComponent={FrescoCheckboxGroupField}
-          options={displayEdgesOptions}
-          label="Display edges of the following type(s)"
-          labelHidden
-        />
-      </Row>
+      {shouldShowNetworkFilterWarning && (
+        <Alert variant="warning" className="my-7">
+          <AlertTitle>Network filter hides configured edge types</AlertTitle>
+          <AlertDescription>
+            Stage level network filtering is enabled, but one or more of the
+            edge types you have configured to display on this prompt are not
+            currently included in the filter. This means that these edges may
+            not be displayed. Either remove the stage-level network filtering,
+            or add these edge types to the filter to resolve this issue.
+          </AlertDescription>
+        </Alert>
+      )}
+      {hasDisabledEdgeOption && (
+        <Alert variant="info" className="my-7">
+          <AlertDescription>
+            The edge type being created must always be displayed. This edge type
+            is shown in italics below, and cannot be deselected.
+          </AlertDescription>
+        </Alert>
+      )}
+      <ArchitectField
+        name="edges.display"
+        component={CheckboxGroupField}
+        options={displayEdgesOptions}
+        label="Edge types"
+        initialValue={initialEdges?.display ?? EMPTY_DISPLAY_EDGES}
+      />
     </Section>
   );
 };

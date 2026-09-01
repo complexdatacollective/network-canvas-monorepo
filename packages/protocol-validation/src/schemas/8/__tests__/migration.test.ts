@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import type { Protocol } from '../../index.ts';
 import migrationV7toV8 from '../migration.ts';
 import ProtocolSchemaV8 from '../schema.ts';
@@ -1418,6 +1419,123 @@ describe('Migration V7 to V8', () => {
       expect(parsed.codebook.node?.organization?.shape).toEqual({
         default: 'circle',
       });
+    });
+  });
+
+  describe('node palette position wrap', () => {
+    // Architect Classic offered ten node palette positions; v8 defines eight.
+    // A protocol authored with the ninth or tenth is legitimate v7 data, and
+    // before the wrap it could not be imported at all — a node definition's
+    // `color` is required, so there is nothing to drop.
+    const v7WithNodeColors = (colors: Record<string, string>) =>
+      ({
+        schemaVersion: 7 as const,
+        codebook: {
+          node: Object.fromEntries(
+            Object.entries(colors).map(([type, color]) => [
+              type,
+              { name: type, color, variables: {} },
+            ]),
+          ),
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      }) as Protocol<7>;
+
+    const migrateColors = (colors: Record<string, string>) => {
+      const migratedRaw = migrationV7toV8.migrate(v7WithNodeColors(colors), {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      return Object.fromEntries(
+        Object.entries(parsed.data?.codebook.node ?? {}).map(
+          ([type, definition]) => [type, definition.color],
+        ),
+      );
+    };
+
+    it('wraps the ninth and tenth positions onto the first and second', () => {
+      expect(
+        migrateColors({
+          ninth: 'node-color-seq-9',
+          tenth: 'node-color-seq-10',
+        }),
+      ).toEqual({
+        ninth: 'node-color-seq-1',
+        tenth: 'node-color-seq-2',
+      });
+    });
+
+    it('leaves every in-range position exactly as authored', () => {
+      const inRange = Object.fromEntries(
+        Array.from({ length: 8 }, (_, index) => [
+          `type${index + 1}`,
+          `node-color-seq-${index + 1}`,
+        ]),
+      );
+      expect(migrateColors(inRange)).toEqual(inRange);
+    });
+
+    it('does not touch edge or ordinal palette references', () => {
+      // Classic's edge and ordinal palettes both offer eight positions, which
+      // is inside v8's ranges, so there is nothing to wrap there — and a wrap
+      // applied to a ten-value palette (ordinal) would silently recolour a
+      // valid protocol.
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {},
+          edge: { knows: { name: 'Knows', color: 'edge-color-seq-8' } },
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'ordinal-bin',
+            label: 'Sort',
+            type: 'OrdinalBin',
+            subject: { entity: 'node', type: 'person' },
+            prompts: [{ id: 'p1', text: 'Sort them', variable: 'closeness' }],
+          },
+        ],
+      } as Protocol<7>;
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      }) as {
+        codebook: { edge: Record<string, { color: string }> };
+        stages: { prompts: { color: string }[] }[];
+      };
+      expect(migratedRaw.codebook.edge.knows?.color).toBe('edge-color-seq-8');
+      // The OrdinalBin prompt's own colour backfill is unaffected: it still
+      // defaults to the first ordinal colour rather than a node one.
+      expect(migratedRaw.stages[0]?.prompts[0]?.color).toBe('ord-color-seq-1');
+    });
+
+    it('leaves positions beyond the tenth for the schema to reject', () => {
+      // Classic's palette stopped at ten, so an eleventh position can only be
+      // hand-authored or corrupt — it has no legacy interpretation to wrap to.
+      const migratedRaw = migrationV7toV8.migrate(
+        v7WithNodeColors({ person: 'node-color-seq-11' }),
+        { name: 'Test Protocol' },
+      ) as { codebook: { node: Record<string, { color: string }> } };
+      expect(migratedRaw.codebook.node.person?.color).toBe('node-color-seq-11');
+      expect(ProtocolSchemaV8.safeParse(migratedRaw).success).toBe(false);
+    });
+
+    it('leaves a colour that is not a palette position for the schema to reject', () => {
+      // Not a repair path: only a `node-color-seq-<position>` reference is
+      // rewritten, and only its position. Anything else is a value the
+      // migration cannot interpret, and guessing one would hide the problem.
+      const migratedRaw = migrationV7toV8.migrate(
+        v7WithNodeColors({ person: '#ff0000' }),
+        { name: 'Test Protocol' },
+      ) as { codebook: { node: Record<string, { color: string }> } };
+      expect(migratedRaw.codebook.node.person?.color).toBe('#ff0000');
+      expect(ProtocolSchemaV8.safeParse(migratedRaw).success).toBe(false);
     });
   });
 
@@ -4418,6 +4536,12 @@ describe('Migration V7 to V8', () => {
       expect(typeof migrationV7toV8.notes).toBe('string');
       if (migrationV7toV8.notes) {
         expect(migrationV7toV8.notes.length).toBeGreaterThan(0);
+        expect(migrationV7toV8.notes).toContain(
+          'migration adds `required: true` to every attribute they reference',
+        );
+        expect(migrationV7toV8.notes).toContain(
+          'while preserving its other validation rules',
+        );
       }
     });
   });
@@ -5738,7 +5862,46 @@ describe('Migration V7 to V8', () => {
       stages,
     });
 
-    it('does not make variables shared with ordinary forms globally required', () => {
+    const specialWriterStages = [
+      {
+        id: 's1',
+        type: 'CategoricalBin',
+        label: 'Bin',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [
+          {
+            id: 'p1',
+            text: 'T',
+            variable: 'category',
+            otherVariable: 'other',
+            otherVariablePrompt: 'W',
+            otherOptionLabel: 'O',
+          },
+        ],
+      },
+      {
+        id: 's2',
+        type: 'NameGeneratorQuickAdd',
+        label: 'QA',
+        subject: { entity: 'node', type: 'person' },
+        quickAdd: 'quick',
+        prompts: [{ id: 'p2', text: 'T' }],
+      },
+      {
+        id: 's3',
+        type: 'AlterForm',
+        label: 'Form',
+        subject: { entity: 'node', type: 'person' },
+        form: {
+          fields: [
+            { variable: 'other', prompt: 'Other' },
+            { variable: 'quick', prompt: 'Quick' },
+          ],
+        },
+      },
+    ];
+
+    it('marks both special-writer variables required while preserving their other validation', () => {
       const migrated = migrate(
         protocolWith(
           {
@@ -5761,57 +5924,44 @@ describe('Migration V7 to V8', () => {
               validation: { required: false, maxLength: 12 },
             },
           },
-          [
-            {
-              id: 's1',
-              type: 'CategoricalBin',
-              label: 'Bin',
-              subject: { entity: 'node', type: 'person' },
-              prompts: [
-                {
-                  id: 'p1',
-                  text: 'T',
-                  variable: 'category',
-                  otherVariable: 'other',
-                  otherVariablePrompt: 'W',
-                  otherOptionLabel: 'O',
-                },
-              ],
-            },
-            {
-              id: 's2',
-              type: 'NameGeneratorQuickAdd',
-              label: 'QA',
-              subject: { entity: 'node', type: 'person' },
-              quickAdd: 'quick',
-              prompts: [{ id: 'p2', text: 'T' }],
-            },
-            {
-              id: 's3',
-              type: 'AlterForm',
-              label: 'Form',
-              subject: { entity: 'node', type: 'person' },
-              form: {
-                fields: [
-                  { variable: 'other', prompt: 'Other' },
-                  { variable: 'quick', prompt: 'Quick' },
-                ],
-              },
-            },
-          ],
+          specialWriterStages,
         ),
       );
       const variables = migrated.codebook.node.person.variables;
       expect(variables.other).toEqual({
         name: 'other',
         type: 'text',
-        validation: { maxLength: 10 },
+        validation: { maxLength: 10, required: true },
       });
       expect(variables.quick).toEqual({
         name: 'quick',
         type: 'text',
-        validation: { required: false, maxLength: 12 },
+        validation: { required: true, maxLength: 12 },
       });
+    });
+
+    it('creates required validation when a special-writer variable had none', () => {
+      const migrated = migrate(
+        protocolWith(
+          {
+            category: {
+              name: 'category',
+              type: 'categorical',
+              options: [
+                { label: 'One', value: 1 },
+                { label: 'Two', value: 2 },
+              ],
+            },
+            other: { name: 'other', type: 'text' },
+            quick: { name: 'quick', type: 'text' },
+          },
+          specialWriterStages,
+        ),
+      );
+
+      const variables = migrated.codebook.node.person.variables;
+      expect(variables.other).toHaveProperty('validation.required', true);
+      expect(variables.quick).toHaveProperty('validation.required', true);
     });
   });
 
@@ -6129,6 +6279,172 @@ describe('Migration V7 to V8', () => {
 
     it('removes a null parameters record', () => {
       expect(migrateDatetime(null)).not.toHaveProperty('parameters');
+    });
+  });
+
+  describe('duplicate form field repair', () => {
+    // Taken from `alter-form-test.netcanvas` in the private test-protocol
+    // corpus — the one protocol there whose AlterForm collects a single
+    // variable ("name") twice. V8's `uniqueFormFieldVariables` rejects that, so
+    // without this repair the whole migration throws and the protocol becomes
+    // unopenable. The stage, its ids and its field prompts are reproduced
+    // verbatim; only the unrelated codebook variable names are tidied.
+    const NAME = '2e152396-75ea-40e9-887f-ee79ee0202e6';
+    const SCALE = '5aa7d752-1c2a-4f89-8d72-84400003769b';
+    const CATEGORICAL = '5f728f8f-658e-4d4b-8c67-2f6523f1a8cb';
+    const PERSON = 'f59522c2-3888-49d7-8ee0-35664276d80c';
+
+    const alterFormTestProtocol = () => ({
+      stages: [
+        {
+          label: 'yo',
+          type: 'NameGeneratorQuickAdd',
+          subject: { entity: 'node', type: PERSON },
+          quickAdd: NAME,
+          prompts: [
+            { id: '4a4fb216-2f13-42d7-8789-d23720374e1c', text: 'hello\n' },
+          ],
+          id: '01f9b6d0-6a6f-11ed-9509-db564de30fb8',
+        },
+        {
+          label: 'sdf',
+          type: 'AlterForm',
+          introductionPanel: { title: 'sdf', text: 'sdf\n' },
+          subject: { type: PERSON, entity: 'node' },
+          form: {
+            fields: [
+              { variable: NAME, prompt: 'sdfsdf\n' },
+              { variable: NAME, prompt: 'sdfs\n' },
+              { variable: SCALE, prompt: 'sadasd\n' },
+              { variable: CATEGORICAL, prompt: 'asd\n' },
+            ],
+          },
+          id: 'b46363c0-6a6f-11ed-ad78-2704db7eea26',
+        },
+      ],
+      codebook: {
+        node: {
+          [PERSON]: {
+            color: 'node-color-seq-1',
+            iconVariant: 'add-a-person',
+            name: 'person',
+            variables: {
+              [NAME]: {
+                component: 'Text',
+                type: 'text',
+                name: 'name',
+                validation: { required: true },
+              },
+              [SCALE]: {
+                type: 'scalar',
+                component: 'VisualAnalogScale',
+                parameters: { minLabel: '10', maxLabel: '100' },
+                name: 'closeness',
+              },
+              [CATEGORICAL]: {
+                type: 'categorical',
+                component: 'ToggleButtonGroup',
+                options: [
+                  { label: 'asfa\n', value: 'asf' },
+                  { label: 'asfadd\n', value: 'asfd' },
+                  { label: 'sdghwrhwrhe\n', value: 'sdwhwrh' },
+                ],
+                name: 'categorical',
+              },
+            },
+          },
+        },
+      },
+      assetManifest: {},
+      schemaVersion: 7,
+      lastModified: '2022-11-22T17:12:31.320Z',
+    });
+
+    const migrateAndParse = (protocol: unknown) => {
+      const migratedRaw = migrationV7toV8.migrate(protocol as Protocol<7>, {
+        name: 'alter-form-test',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      const stage = parsed.data?.stages[1];
+      return stage && 'form' in stage ? stage.form?.fields : undefined;
+    };
+
+    it('migrates the real protocol to a valid V8 document', () => {
+      expect(migrateAndParse(alterFormTestProtocol())).toBeDefined();
+    });
+
+    it('keeps the first field for the repeated variable and drops the later one', () => {
+      // The first row survives, so the prompt the researcher wrote first is the
+      // one the participant sees; "sdfs\n" — the row that was already sharing
+      // its answer with the first — is gone.
+      expect(
+        migrateAndParse(alterFormTestProtocol())?.filter(
+          (field) => field.variable === NAME,
+        ),
+      ).toEqual([{ variable: NAME, prompt: 'sdfsdf\n' }]);
+    });
+
+    it('leaves every other field untouched and in order', () => {
+      expect(migrateAndParse(alterFormTestProtocol())).toEqual([
+        { variable: NAME, prompt: 'sdfsdf\n' },
+        { variable: SCALE, prompt: 'sadasd\n' },
+        { variable: CATEGORICAL, prompt: 'asd\n' },
+      ]);
+    });
+
+    it('keeps only the first of three fields naming one variable', () => {
+      const protocol = alterFormTestProtocol();
+      protocol.stages[1]!.form!.fields = [
+        { variable: NAME, prompt: 'first\n' },
+        { variable: NAME, prompt: 'second\n' },
+        { variable: SCALE, prompt: 'sadasd\n' },
+        { variable: NAME, prompt: 'third\n' },
+      ];
+      expect(migrateAndParse(protocol)).toEqual([
+        { variable: NAME, prompt: 'first\n' },
+        { variable: SCALE, prompt: 'sadasd\n' },
+      ]);
+    });
+
+    it('repairs a titled NameGenerator form the same way', () => {
+      const protocol = alterFormTestProtocol();
+      protocol.stages[1] = {
+        label: 'Add someone',
+        type: 'NameGenerator',
+        subject: { type: PERSON, entity: 'node' },
+        prompts: [
+          {
+            id: '5b5fc327-3f24-42d7-8789-d23720374e1c',
+            text: 'Who do you know?',
+          },
+        ],
+        form: {
+          title: 'Add a person',
+          fields: [
+            { variable: NAME, prompt: 'Their name?' },
+            { variable: SCALE, prompt: 'How close?' },
+            { variable: NAME, prompt: 'Their name again?' },
+          ],
+        },
+        id: 'b46363c0-6a6f-11ed-ad78-2704db7eea26',
+      } as unknown as (typeof protocol.stages)[1];
+      expect(migrateAndParse(protocol)).toEqual([
+        { variable: NAME, prompt: 'Their name?' },
+        { variable: SCALE, prompt: 'How close?' },
+      ]);
+    });
+
+    it('migrates the real protocol through migrateProtocol without throwing', () => {
+      // The exact call the corpus test makes, and the one that threw
+      // "Migration resulted in invalid protocol" before this repair.
+      const migrated = migrateProtocol(alterFormTestProtocol(), undefined, {
+        name: 'alter-form-test',
+      });
+      expect(migrated.schemaVersion).toBe(8);
     });
   });
 });

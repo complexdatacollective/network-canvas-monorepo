@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
+import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import {
+  CategoricalColorSequence,
+  EdgeColorSequence,
+  NodeColorSequence,
+  OrdinalColorSequence,
+} from '../color-reference.ts';
 import {
   BIOLOGICAL_SEX_OPTIONS,
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
-} from '@codaco/shared-consts';
-
-import { createBaseProtocol } from '../../../utils/test-utils.ts';
+} from '../family-pedigree-values.ts';
 import ProtocolSchemaV8 from '../schema.ts';
 
 /**
@@ -208,7 +213,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         expect(result.error.issues).toHaveLength(1);
         expect(result.error.issues[0]?.message).toBe(
-          'The variable "nonexistentVariable" does not exist in the codebook',
+          'The attribute "nonexistentVariable" does not exist in the codebook',
         );
         expect(result.error.issues[0]?.path).toEqual([
           'stages',
@@ -472,7 +477,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const variableError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "nonexistentVariable" does not exist in the codebook',
+            'The attribute "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(variableError).toBeDefined();
@@ -546,7 +551,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const issue = result.error.issues.find((candidate) =>
           candidate.message.includes(
-            'The variable "category" must be of type text',
+            'The attribute "category" must be of type text',
           ),
         );
         expect(issue?.path).toEqual([
@@ -588,7 +593,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const otherVariableError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "nonexistentVariable" does not exist in the codebook',
+            'The attribute "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(otherVariableError).toBeDefined();
@@ -748,7 +753,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const edgeVariableError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "nonexistentVariable" does not exist in the codebook',
+            'The attribute "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(edgeVariableError).toBeDefined();
@@ -796,7 +801,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const typeError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "duration" must be of type ordinal',
+            'The attribute "duration" must be of type ordinal',
           ),
         );
         expect(typeError).toBeDefined();
@@ -877,7 +882,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const layoutError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "nonexistentVariable" does not exist in the codebook',
+            'The attribute "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(layoutError).toBeDefined();
@@ -975,7 +980,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const attributeError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "nonexistentVariable" does not exist in the codebook',
+            'The attribute "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(attributeError).toBeDefined();
@@ -1114,7 +1119,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const attributeError = result.error.issues.find((issue) =>
           issue.message.includes(
-            '"nonexistentAttribute" is not a valid variable ID',
+            '"nonexistentAttribute" is not a valid attribute ID',
           ),
         );
         expect(attributeError).toBeDefined();
@@ -1344,7 +1349,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const operatorError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'Operator "CONTAINS" is not valid for variable type "number"',
+            'Operator "CONTAINS" is not valid for attribute type "number"',
           ),
         );
         expect(operatorError).toBeDefined();
@@ -1389,7 +1394,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const operatorError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'Operator "GREATER_THAN" is not valid for variable type "text"',
+            'Operator "GREATER_THAN" is not valid for attribute type "text"',
           ),
         );
         expect(operatorError).toBeDefined();
@@ -1709,7 +1714,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const crossRefError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "nonexistentVariable" does not exist in the codebook',
+            'The attribute "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(crossRefError).toBeDefined();
@@ -1780,7 +1785,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const crossRefError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "nonexistentVariable" does not exist in the codebook',
+            'The attribute "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(crossRefError).toBeDefined();
@@ -1905,7 +1910,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const crossRefError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "nonexistentVariable" does not exist in the codebook',
+            'The attribute "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(crossRefError).toBeDefined();
@@ -1976,7 +1981,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const crossRefError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "nonexistentVariable" does not exist in the codebook',
+            'The attribute "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(crossRefError).toBeDefined();
@@ -2068,7 +2073,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const crossRefError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "nonexistentEgoVar" does not exist in the codebook',
+            'The attribute "nonexistentEgoVar" does not exist in the codebook',
           ),
         );
         expect(crossRefError).toBeDefined();
@@ -2315,7 +2320,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             center: [-73.935242, 40.73061],
             initialZoom: 10,
             dataSourceAssetId: 'asset-geojson-456',
-            color: 'node-color-seq-1',
+            color: 'ord-color-seq-1',
             targetFeatureProperty: 'name',
             ...mapOptionsOverrides,
           },
@@ -2367,6 +2372,55 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       });
       const result = ProtocolSchemaV8.safeParse(protocol);
       expect(result.success).toBe(true);
+    });
+
+    it.each([
+      'node-color-seq-1',
+      'edge-color-seq-1',
+      'ord-color-seq-10',
+      'cat-color-seq-10',
+    ])('accepts Geospatial stage color reference %s', (color) => {
+      const protocol = createGeospatialProtocol({ color });
+      const result = ProtocolSchemaV8.safeParse(protocol);
+      expect(result.success).toBe(true);
+    });
+
+    it.each(['', '#3399ff', 'primary-color-seq-1', 'ord-color-seq-11'])(
+      'rejects Geospatial stage color %j',
+      (color) => {
+        const protocol = createGeospatialProtocol({ color });
+        const result = ProtocolSchemaV8.safeParse(protocol);
+        expect(result.success).toBe(false);
+      },
+    );
+
+    it('rejects an empty Geospatial color by naming every palette it could name', () => {
+      // The empty string is the interesting one: it is what an Architect field
+      // holds before anything is picked, so it reaches the schema looking like
+      // a value rather than an omission. `ColorReferenceSchema` is a union of
+      // the four palettes, and a union's own message is only "Invalid input" —
+      // what makes the failure actionable is the branch messages underneath,
+      // which spell out every colour the field will accept.
+      const result = ProtocolSchemaV8.safeParse(
+        createGeospatialProtocol({ color: '' }),
+      );
+      expect(result.success).toBe(false);
+      const issue = (result.success ? [] : result.error.issues).find(
+        (candidate) => candidate.path.join('.') === 'stages.0.mapOptions.color',
+      );
+      const quoted = (palette: readonly string[]) =>
+        `Invalid option: expected one of ${palette
+          .map((value) => `"${value}"`)
+          .join('|')}`;
+      expect(
+        issue?.code === 'invalid_union' &&
+          issue.errors.flat().map((nested) => nested.message),
+      ).toEqual([
+        quoted(NodeColorSequence),
+        quoted(EdgeColorSequence),
+        quoted(OrdinalColorSequence),
+        quoted(CategoricalColorSequence),
+      ]);
     });
 
     it('rejects Geospatial stage with invalid showTransit type', () => {
@@ -2443,7 +2497,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const refError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "age" does not exist in the codebook',
+            'The attribute "age" does not exist in the codebook',
           ),
         );
         expect(refError).toBeDefined();
@@ -2675,7 +2729,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const issue = result.error.issues.find((i) =>
           i.message.includes(
-            'FamilyPedigree biological sex variable "bioSex" must use its fixed set of options',
+            'FamilyPedigree biological sex attribute "bioSex" must use its fixed set of options',
           ),
         );
         expect(issue).toBeDefined();
@@ -2702,7 +2756,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         const issue = result.error.issues.find(
           (i) =>
             i.message.includes(
-              'FamilyPedigree relationship type variable "relType"',
+              'FamilyPedigree relationship type attribute "relType"',
             ) && i.message.includes('must use its fixed set of options'),
         );
         expect(issue).toBeDefined();
@@ -2730,7 +2784,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         const issue = result.error.issues.find(
           (i) =>
             i.message.includes(
-              'FamilyPedigree gamete role variable "gameteRole"',
+              'FamilyPedigree gamete role attribute "gameteRole"',
             ) && i.message.includes('must use its fixed set of options'),
         );
         expect(issue).toBeDefined();
@@ -2761,7 +2815,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         const issue = result.error.issues.find(
           (i) =>
             i.message.includes(
-              'FamilyPedigree biological sex variable "bioSex"',
+              'FamilyPedigree biological sex attribute "bioSex"',
             ) && i.message.includes('must use its fixed set of options'),
         );
         expect(issue).toBeDefined();

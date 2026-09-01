@@ -62,4 +62,35 @@ describe('edgeListRows', () => {
     );
     expect(rows).toHaveLength(1);
   });
+
+  it('includes declared columns that are unanswered by every edge', () => {
+    const network = {
+      nodes: [],
+      edges: [
+        {
+          [edgeExportIDProperty]: 1,
+          [egoProperty]: 'ego-1',
+          [entityPrimaryKeyProperty]: 'edge-1',
+          [ncSourceUUID]: 'n1',
+          [ncTargetUUID]: 'n2',
+          from: '1',
+          to: '2',
+          type: 'mock-edge-type',
+          [entityAttributesProperty]: {},
+        },
+      ],
+    };
+
+    const rows = Array.from(
+      edgeListRows(
+        network as unknown as SessionWithResequencedIDs,
+        mockCodebook,
+        mockExportOptions,
+      ),
+    );
+
+    expect(rows[0]).toContain('RelationshipType_parent');
+    expect(rows[0]).toContain('RelationshipType_partner');
+    expect(rows[0]).toContain('RelationshipType_friend');
+  });
 });

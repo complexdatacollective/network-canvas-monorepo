@@ -31,7 +31,7 @@ test('creates a valid EgoForm stage from scratch', async ({
   // `label ?? input.name` fallback, so the rendered control's accessible name
   // (wired via fresco-ui's UnconnectedField `aria-labelledby` -> a real
   // `<label>`) is the literal string "Introduction text" — NOT the field's
-  // redux-form name `introductionPanel.text`. Confirmed against
+  // field name `introductionPanel.text`. Confirmed against
   // IntroductionPanel.tsx / RichText/Field.tsx / UnconnectedField.tsx source,
   // not guessed.
   await editor.fillRichText(
@@ -41,11 +41,11 @@ test('creates a valid EgoForm stage from scratch', async ({
 
   // EgoForm's subject always defaults to `{ entity: 'ego', type: null }`
   // (enhancers/withSubject.tsx's `defaultSubject`), and
-  // `withDisabledSubjectRequired` only disables the Form section when
+  // `withDisabledSubjectRequired` only disables Form configuration when
   // `interfaceType !== 'EgoForm' && !type` (enhancers/withDisabledSubjectRequired.tsx)
   // — so, unlike AlterForm/AlterEdgeForm, no subject-selection step is needed
   // before this section is interactive.
-  await addFormField(editor.section('Form'), {
+  await addFormField(editor.section('Form configuration'), {
     variableName: 'age',
     promptText: 'What is your name?',
     inputControl: 'Text Input',

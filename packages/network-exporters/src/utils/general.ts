@@ -2,8 +2,8 @@ import sanitizeFilename from 'sanitize-filename';
 
 import {
   caseProperty,
-  entityAttributesProperty,
   type NcEntity,
+  entityAttributesProperty,
   sessionProperty,
 } from '@codaco/shared-consts';
 
@@ -76,4 +76,4 @@ export const isCategoricalOptionSelected = (
   Array.isArray(attributeData) && attributeData.includes(optionValue);
 
 export const getEntityAttributes = (entity: NcEntity) =>
-  entity?.[entityAttributesProperty] || {};
+  entity[entityAttributesProperty];

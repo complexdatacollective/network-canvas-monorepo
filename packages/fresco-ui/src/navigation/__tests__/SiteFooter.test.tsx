@@ -76,15 +76,15 @@ describe('SiteFooter', () => {
         rel: 'noreferrer',
       });
       expect(link).toHaveClass(
-        'group',
+        'group/link',
         'text-link',
         'focusable',
         'font-semibold',
         'text-base',
       );
       expect(link.querySelector('span')).toHaveClass(
-        'group-hover:bg-[length:100%_2px]',
-        'group-focus-visible:bg-[length:100%_2px]',
+        'group-hover/link:bg-[length:100%_2px]',
+        'group-focus-visible/link:bg-[length:100%_2px]',
       );
     }
 
@@ -103,7 +103,7 @@ describe('SiteFooter', () => {
       expect(link).toHaveAttribute('href', href);
       expect(link).toHaveAttribute('target', '_blank');
       expect(link).toHaveAttribute('rel', 'noreferrer');
-      expect(link).not.toHaveClass('group');
+      expect(link).not.toHaveClass('group/link');
       expect(link.querySelector('span')).not.toBeInTheDocument();
       expect(icon).toHaveAttribute('aria-hidden', 'true');
       expect(icon).toHaveClass('size-5');

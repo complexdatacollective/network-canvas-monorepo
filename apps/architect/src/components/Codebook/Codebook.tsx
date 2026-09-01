@@ -9,9 +9,9 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Form from '@codaco/fresco-ui/form/Form';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import Section from '@codaco/fresco-ui/Section';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
 import { getCodebook } from '~/selectors/protocol';
 
 import EgoType from './EgoType';
@@ -69,7 +69,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
               component={InputField}
               initialValue=""
               type="search"
-              placeholder="Search types and variables by name..."
+              placeholder="Search types and attributes by name..."
               prefixComponent={<Search aria-hidden className="size-4" />}
             />
           </Form>
@@ -91,19 +91,22 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 
       {!hasAnyContent && (
         <div className="bg-surface-2 border-outline mb-7 rounded border p-7">
-          <Paragraph className="text-muted text-center">
-            There are currently no types or variables defined in this protocol.
+          <Paragraph className="text-center text-current/70">
+            There are currently no types or attributes defined in this protocol.
             Use the buttons below to create your first node or edge type, or add
-            ego variables.
+            ego attributes.
           </Paragraph>
         </div>
       )}
 
       <div className="mb-14">
-        <Heading level="h2" margin="none" className="mb-5">
+        <Heading level="h2" margin="none" className="mb-5!">
           Ego
         </Heading>
-        <Section layout="vertical" required={false}>
+        <Section
+          title="Ego attributes"
+          description="Review the attributes collected about the participant."
+        >
           <EgoType search={search} unusedOnly={unusedOnly} />
         </Section>
       </div>
@@ -123,9 +126,9 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
           </Button>
         </div>
         {nodes.length === 0 ? (
-          <Paragraph className="text-muted">No node types yet.</Paragraph>
+          <Paragraph className="text-current/70">No node types yet.</Paragraph>
         ) : (
-          <div className="space-y-8">
+          <div>
             {nodes.map((node) => (
               <EntityType
                 key={node.type}
@@ -157,9 +160,9 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
           </Button>
         </div>
         {edges.length === 0 ? (
-          <Paragraph className="text-muted">No edge types yet.</Paragraph>
+          <Paragraph className="text-current/70">No edge types yet.</Paragraph>
         ) : (
-          <div className="space-y-8">
+          <div>
             {edges.map((edge) => (
               <EntityType
                 key={edge.type}

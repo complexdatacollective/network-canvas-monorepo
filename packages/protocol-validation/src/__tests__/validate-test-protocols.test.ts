@@ -52,7 +52,6 @@ describe.skipIf(!hasGitHubToken)('Test protocols', () => {
         protocolVersion < 1 ||
         protocolVersion > 8
       ) {
-        // biome-ignore lint/suspicious/noConsole: logging
         console.log(
           `Skipping unsupported schema version for ${filename}: ${protocol.schemaVersion}`,
         );
@@ -73,7 +72,6 @@ describe.skipIf(!hasGitHubToken)('Test protocols', () => {
         const duration = Date.now() - startTime;
 
         if (!result.success) {
-          // biome-ignore lint/suspicious/noConsole: logging
           console.error(
             `Validation failed for ${filename} (${duration}ms):`,
             result.error,
@@ -89,7 +87,6 @@ describe.skipIf(!hasGitHubToken)('Test protocols', () => {
         const migrationResult = await validateProtocol(migratedProtocol);
 
         if (!migrationResult.success) {
-          // biome-ignore lint/suspicious/noConsole: logging
           console.error(
             `Migration validation failed for ${filename} (v${protocolVersion} → v8):`,
             migrationResult.error,

@@ -1,6 +1,6 @@
 {
   "name": "@codaco/interview",
-  "version": "6.0.0",
+  "version": "9.0.0",
   "description": "Network Canvas interview engine — Shell component, session contract.",
   "license": "MIT",
   "repository": {
@@ -20,6 +20,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./contract": "./src/contract/index.ts",
+    "./protocol-schema-version": "./src/protocolSchemaVersion.ts",
     "./styles.css": "./src/styles.css"
   },
   "publishConfig": {
@@ -32,6 +33,10 @@
         "types": "./dist/contract.d.ts",
         "default": "./dist/contract.js"
       },
+      "./protocol-schema-version": {
+        "types": "./dist/protocol-schema-version.d.ts",
+        "default": "./dist/protocol-schema-version.js"
+      },
       "./styles.css": "./dist/styles.css"
     },
     "access": "public"
@@ -43,6 +48,7 @@
     "test:storybook": "vitest run --project=storybook",
     "test:e2e": "./e2e/scripts/run.sh",
     "test:e2e:update-snapshots": "./e2e/scripts/run.sh --project=chromium-visual --project=firefox-visual --project=webkit-visual --update-snapshots",
+    "test:e2e:native": "playwright test --config e2e/playwright.config.ts --project=chromium-matrix --project=firefox-matrix --project=webkit-matrix",
     "test:e2e:headed": "pnpm turbo build --filter @codaco/interview && pnpm exec vite build --config e2e/host/vite.config.ts && playwright test --config e2e/playwright.config.ts --headed",
     "dev:host": "tsx e2e/scripts/dev-host.ts",
     "storybook": "storybook dev -p 6006",
@@ -55,7 +61,7 @@
     "@base-ui/react": "catalog:",
     "@codaco/network-query": "workspace:^",
     "@faker-js/faker": "catalog:",
-    "@mapbox/search-js-react": "^1.5.1",
+    "@mapbox/search-js-react": "^1.6.0",
     "@reduxjs/toolkit": "catalog:",
     "concaveman": "^2.0.0",
     "csvtojson": "catalog:",
@@ -81,6 +87,7 @@
     "@codaco/protocol-utilities": "workspace:^",
     "@codaco/protocols": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
+    "@codaco/vitest-config": "workspace:^",
     "@microsoft/api-extractor": "catalog:",
     "@playwright/test": "catalog:",
     "@storybook/addon-a11y": "catalog:",

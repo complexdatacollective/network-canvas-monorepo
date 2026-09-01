@@ -1,183 +1,172 @@
 import { capitalize, toPairs } from 'es-toolkit/compat';
-import type { ComponentType } from 'react';
-import { useEffect, useMemo } from 'react';
-import { connect } from 'react-redux';
-import { change, formValueSelector } from 'redux-form';
+import { useMemo } from 'react';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Layout, Section } from '~/components/EditorLayout';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
-import ValidatedField from '~/components/Form/ValidatedField';
-import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import type { NodeShape } from '@codaco/fresco-ui/Node';
+import Section from '@codaco/fresco-ui/Section';
+import ArchitectField from '~/components/Form/ArchitectField';
+import { useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
 import { getCodebook } from '~/selectors/protocol';
-import { getFieldId } from '~/utils/issues';
 
 import ColorPicker from '../Form/Fields/ColorPicker';
 import getPalette from './getPalette';
 import IconPicker from './IconPicker';
-import ShapePicker from './ShapePicker';
-import ShapeVariableMapping from './ShapeVariableMapping';
+import type { ShapeMappingDraft } from './shapeMappingTypes';
+import { ShapePickerControl } from './ShapePicker';
+import ShapeVariableMapping, {
+  type ShapeMappingVariable,
+} from './ShapeVariableMapping';
 
-const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+const DEFAULT_NODE_ICON = 'add-a-person';
+const DEFAULT_NODE_SHAPE: NodeShape = 'circle';
+
+/** The entity-type definition as the dialog holds it before it is committed. */
+export type EntityTypeValues = {
+  name?: string;
+  color?: string;
+  icon?: string;
+  shape?: { default?: NodeShape; dynamic?: ShapeMappingDraft };
+  variables?: Record<string, ShapeMappingVariable>;
+};
+
+const getTypeNames = (
+  codebookTypeDefinitions: Record<string, { name: string }> | undefined,
+  excludeType?: string | false | null,
+): string[] => {
+  if (!codebookTypeDefinitions) return [];
+  const names: string[] = [];
+  toPairs(codebookTypeDefinitions).forEach(([id, definition]) => {
+    if (excludeType && id === excludeType) return;
+    names.push(definition.name);
+  });
+  return names;
+};
 
 type TypeEditorProps = {
-  form: string;
   entity: string;
   type?: string | null;
-  existingTypes: string[];
+  isNew?: boolean;
+  /** The committed definition, supplying each field's `initialValue`. */
+  initialValues: EntityTypeValues;
 };
-const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
-  const dispatch = useAppDispatch();
-  const formSelector = useMemo(() => formValueSelector(form), [form]);
-  const formIcon = useAppSelector((state: RootState) =>
-    formSelector(state, 'icon'),
+
+const TypeEditor = ({
+  entity,
+  type,
+  isNew = false,
+  initialValues,
+}: TypeEditorProps) => {
+  const codebook = useAppSelector((state: RootState) => getCodebook(state));
+  const existingTypes = useMemo(() => {
+    if (!codebook) return [];
+    const excludeType = !isNew && type;
+    return [
+      ...getTypeNames(codebook.node, excludeType),
+      ...getTypeNames(codebook.edge, excludeType),
+    ];
+  }, [codebook, isNew, type]);
+
+  // The shape mapping preview follows the colour as it is picked, so this reads
+  // the live field rather than the committed value.
+  const nodeColor = useFormStore(
+    (state) => state.getFieldState('color')?.value,
   );
-  const formShapeDefault = useAppSelector((state: RootState) =>
-    formSelector(state, 'shape.default'),
+  const defaultShape = useFormStore(
+    (state) => state.getFieldState('shape.default')?.value,
   );
-  const formColor = useAppSelector((state: RootState) =>
-    formSelector(state, 'color'),
-  ) as string | undefined;
-  // Provide a default icon
-  useEffect(() => {
-    if (entity === 'node' && !formIcon) {
-      dispatch(change(form, 'icon', 'add-a-person'));
-    }
-  }, [entity, form, formIcon, dispatch]);
-  // Provide a default shape
-  useEffect(() => {
-    if (entity === 'node' && !formShapeDefault) {
-      dispatch(change(form, 'shape.default', 'circle'));
-    }
-  }, [entity, form, formShapeDefault, dispatch]);
+
   const { name: paletteName, size: paletteSize } = getPalette(entity);
+
   return (
-    <Layout>
+    <>
       <Section
-        title={`${capitalize(entity)} Type`}
-        layout="vertical"
-        summary={
-          <Paragraph>
-            Name this {entity} type. This name will be used to identify this
-            type in the codebook, and in your data exports.
-            {entity === 'node' &&
-              ' Some examples might be "Person", "Place", or "Organization".'}
-            {entity === 'edge' &&
-              ' Some examples might be "Friends" or "Works With".'}
-          </Paragraph>
-        }
+        title="Type identity"
+        description="Name this type for the codebook and exported data."
       >
-        <ValidatedField
+        <ArchitectField
           label={`${capitalize(entity)} type name`}
-          labelHidden
-          component={FrescoReduxField}
+          hint={
+            <>
+              This name identifies the {entity} type in the codebook and in your
+              data exports.
+              {entity === 'node' &&
+                ' Some examples might be "Person", "Place", or "Organization".'}
+              {entity === 'edge' &&
+                ' Some examples might be "Friends" or "Works With".'}
+            </>
+          }
+          component={InputField}
           name="name"
+          initialValue={initialValues.name}
           validation={{
             required: true,
-            allowedNMToken: true,
+            // Names the subject, so the message reads "Not a valid node type
+            // name" rather than the mapper's default "variable name" — this
+            // field is not a variable. Whole strings, one per branch, rather
+            // than an interpolated `${entity} type name`.
+            allowedNMToken:
+              entity === 'node' ? 'node type name' : 'edge type name',
             uniqueByList: existingTypes,
           }}
-          componentProps={{
-            fieldComponent: FrescoInputField,
-            placeholder: `Enter a name for this ${entity} type...`,
-          }}
+          placeholder={`Enter a name for this ${entity} type...`}
         />
       </Section>
-      <Section
-        title="Color"
-        id={getFieldId('color')}
-        summary={<Paragraph>Choose a color for this {entity} type.</Paragraph>}
-        layout="vertical"
-      >
-        <ValidatedField
+
+      <Section title="Type color">
+        <ArchitectField
           component={ColorPicker}
           name="color"
           label="Color"
-          labelHidden
+          hint={`Choose a color for this ${entity} type.`}
+          initialValue={initialValues.color}
           validation={{ required: true }}
-          componentProps={{ palette: paletteName, paletteRange: paletteSize }}
+          palette={paletteName}
+          paletteRange={paletteSize}
         />
       </Section>
+
       {entity === 'node' && (
-        <Section
-          title="Shape"
-          id={getFieldId('shape')}
-          summary={
-            <Paragraph>Choose a default shape for this node type.</Paragraph>
-          }
-          layout="vertical"
-        >
-          <ValidatedField
-            component={ShapePicker}
-            labelHidden
-            name="shape.default"
-            validation={{ required: true }}
-            componentProps={{ nodeColor: formColor }}
-          />
-          <ShapeVariableMapping form={form} nodeColor={formColor} />
-        </Section>
+        <>
+          <Section
+            title="Node appearance"
+            description="Choose a default shape and optionally map shapes from an attribute."
+          >
+            <ArchitectField
+              component={ShapePickerControl}
+              label="Shape"
+              hint="Choose a default shape for this node type."
+              name="shape.default"
+              initialValue={initialValues.shape?.default ?? DEFAULT_NODE_SHAPE}
+              validation={{ required: true }}
+              nodeColor={typeof nodeColor === 'string' ? nodeColor : undefined}
+            />
+            <ShapeVariableMapping
+              variables={initialValues.variables}
+              initialMapping={initialValues.shape?.dynamic}
+              nodeColor={typeof nodeColor === 'string' ? nodeColor : undefined}
+              defaultShape={
+                typeof defaultShape === 'string'
+                  ? (defaultShape as NodeShape)
+                  : undefined
+              }
+            />
+          </Section>
+          <Section title="Interface icon">
+            <ArchitectField
+              component={IconPicker}
+              label="Icon"
+              hint={`Choose an icon to display on interfaces that create this ${entity}.`}
+              name="icon"
+              initialValue={initialValues.icon ?? DEFAULT_NODE_ICON}
+              validation={{ required: true }}
+            />
+          </Section>
+        </>
       )}
-      {entity === 'node' && (
-        <Section
-          title="Icon"
-          id={getFieldId('icon')}
-          summary={
-            <Paragraph>
-              Choose an icon to display on interfaces that create this {entity}.
-            </Paragraph>
-          }
-          layout="vertical"
-        >
-          <ValidatedField
-            component={IconPicker}
-            labelHidden
-            name="icon"
-            validation={{ required: true }}
-          />
-        </Section>
-      )}
-    </Layout>
+    </>
   );
 };
-const mapStateToProps = (
-  state: RootState,
-  {
-    type,
-    isNew,
-  }: {
-    type?: string | null;
-    isNew?: boolean;
-  },
-) => {
-  const codebook = getCodebook(state);
-  const getNames = (
-    codebookTypeDefinitions:
-      | Record<
-          string,
-          {
-            name: string;
-          }
-        >
-      | undefined,
-    excludeType?: string | false | null,
-  ): string[] => {
-    if (!codebookTypeDefinitions) return [];
-    const names: string[] = [];
-    toPairs(codebookTypeDefinitions).forEach(([id, definition]) => {
-      if (excludeType && id === excludeType) {
-        return;
-      }
-      names.push(definition.name);
-    });
-    return names;
-  };
-  const nodes = codebook ? getNames(codebook.node, !isNew && type) : [];
-  const edges = codebook ? getNames(codebook.edge, !isNew && type) : [];
-  const existingTypes = nodes.concat(edges);
-  return {
-    existingTypes,
-  };
-};
-export default connect(mapStateToProps)(TypeEditor);
+
+export default TypeEditor;

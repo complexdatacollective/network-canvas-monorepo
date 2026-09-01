@@ -1,8 +1,10 @@
 import { useTranslations } from 'next-intl';
 
+import { documentationUrl } from '~/lib/siteUrls';
+
 import type { AccentColor } from './summerUpdateColors';
 
-const documentationRoot = 'https://documentation.networkcanvas.com/en';
+const documentationRoot = documentationUrl('/en');
 
 export type FeatureGroup =
   | 'interfaces'

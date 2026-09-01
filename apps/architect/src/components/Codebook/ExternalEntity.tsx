@@ -1,8 +1,8 @@
 import Button from '@codaco/fresco-ui/Button';
+import Section from '@codaco/fresco-ui/Section';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import useExternalDataDownload from '~/components/AssetBrowser/useExternalDataDownload';
 import useExternalDataPreview from '~/components/AssetBrowser/useExternalDataPreview';
-import { Section } from '~/components/EditorLayout';
 import useVariablesFromExternalData from '~/hooks/useVariablesFromExternalData';
 
 import EntityIcon from './EntityIcon';
@@ -20,14 +20,12 @@ const ExternalEntity = ({ id, name }: ExternalEntityProps) => {
 
   return (
     <>
-      <Section layout="vertical" required={false}>
+      <Section title={`Network resource: ${name}`}>
         <div className="flex items-center gap-5">
           <div className="flex shrink-0 basis-19 items-center justify-center">
             <EntityIcon entity="asset" size="small" />
           </div>
-          <Heading level="h2" margin="none" className="me-auto">
-            {name}
-          </Heading>
+          <div className="me-auto" />
           <Button onClick={() => handleShowPreview(id)} color="primary">
             Preview
           </Button>
@@ -37,7 +35,7 @@ const ExternalEntity = ({ id, name }: ExternalEntityProps) => {
         </div>
         {variables.length > 0 && (
           <div className="mt-5">
-            <Heading level="h3">Variables:</Heading>
+            <Heading level="h3">Attributes:</Heading>
             <VariableList variables={variables} />
           </div>
         )}

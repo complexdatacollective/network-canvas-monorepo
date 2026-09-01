@@ -55,10 +55,11 @@ export async function saveProtocol(
   const id = existing?.id ?? hash;
   // Refresh on every save, including a same-hash re-import. The protocol hash
   // excludes `assetManifest`, so re-importing with updated asset bytes keeps the
-  // same hash; a fresh timestamp is what changes the asset resolver's cache key
-  // (see assetResolver.ts) so stale blob URLs get evicted. Advance it
-  // monotonically so two same-hash saves in the same millisecond still produce
-  // a strictly newer key.
+  // same hash; a fresh timestamp is what tells the asset resolver its cached
+  // blob URL has been superseded (see assetResolver.ts), so the stale one is
+  // revoked. Advance it monotonically so two same-hash saves in the same
+  // millisecond still produce a strictly newer timestamp — the resolver
+  // compares these to decide which of two URLs for one asset is the live one.
   const nowIso = new Date().toISOString();
   const importedAt =
     existing && nowIso <= existing.importedAt

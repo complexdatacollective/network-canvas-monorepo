@@ -373,24 +373,24 @@ test('treats non-catalog workspace configuration changes as global', () => {
   );
 });
 
-test('adds release seeds for the combined apps lane', () => {
+test('adds app release seeds in the normal Changesets lane', () => {
   expectAffected(
     classify({
-      releaseRef: 'changeset-release/apps',
+      releaseRef: 'changeset-release/main',
       versions: { 'head:apps/architect/package.json': '1.1.0' },
     }),
     ARCHITECT_RELEASE,
   );
   expectAffected(
     classify({
-      releaseRef: 'changeset-release/apps',
+      releaseRef: 'changeset-release/main',
       versions: { 'head:apps/interviewer/package.json': '1.1.0' },
     }),
     FRESCO,
   );
 });
 
-test('adds dependency-aware release seeds for the library lane', () => {
+test('adds dependency-aware library seeds in the normal Changesets lane', () => {
   expectAffected(
     classify({
       releaseRef: 'changeset-release/main',
@@ -409,9 +409,10 @@ test('adds dependency-aware release seeds for the library lane', () => {
   );
 });
 
-test('does not seed documentation and website release lanes', () => {
+test('does not seed documentation, website, and studio release lanes', () => {
   for (const releaseRef of [
     'changeset-release/documentation',
+    'changeset-release/studio',
     'changeset-release/website',
   ]) {
     expectAffected(classify({ releaseRef }), NONE);
@@ -420,7 +421,6 @@ test('does not seed documentation and website release lanes', () => {
 
 test('fails closed for an unknown release lane or a lane without a version bump', () => {
   expectAffected(classify({ releaseRef: 'changeset-release/unknown' }), FRESCO);
-  expectAffected(classify({ releaseRef: 'changeset-release/apps' }), FRESCO);
   expectAffected(classify({ releaseRef: 'changeset-release/main' }), FRESCO);
 });
 

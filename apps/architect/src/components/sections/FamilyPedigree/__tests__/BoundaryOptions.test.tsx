@@ -1,108 +1,71 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { render, screen } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import { describe, expect, it, vi } from 'vitest';
+import { screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
-vi.mock('redux-form', () => ({
-  FormSection: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
-}));
-
-vi.mock('~/components/EditorLayout', () => ({
-  Row: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  Section: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
-}));
-
-vi.mock('~/components/IssueAnchor', () => ({
-  default: () => null,
-}));
-
-vi.mock('~/components/Form/ValidatedField', () => ({
-  default: ({
-    name,
-    label,
-    componentProps,
-    validation,
-  }: {
-    name: string;
-    label?: string;
-    componentProps?: { label?: string };
-    validation?: Record<string, unknown>;
-  }) => (
-    <div
-      data-testid={`field-${name}`}
-      data-required={validation?.required ? 'true' : 'false'}
-    >
-      {label ?? componentProps?.label}
-    </div>
-  ),
-}));
-
-vi.mock('~/components/Form/Fields/NativeSelect', () => ({
-  default: () => <div data-testid="native-select" />,
-}));
+import {
+  asStage,
+  renderStageForm,
+} from '~/components/StageEditor/__tests__/stageFormTestHarness';
 
 import BoundaryOptions from '../BoundaryOptions';
 
-const renderSection = () => {
-  const store = configureStore({ reducer: { noop: () => ({}) } });
-  return render(
-    <Provider store={store}>
+const renderSection = (committedStage?: Record<string, unknown>) =>
+  renderStageForm({
+    committedStage: committedStage ? asStage(committedStage) : null,
+    children: (
       <BoundaryOptions
-        form="edit-stage"
         stagePath={null}
         stagePosition={0}
         interfaceType="FamilyPedigree"
       />
-    </Provider>,
-  );
-};
+    ),
+  });
+
+// The visible label text also carries a required-indicator asterisk in the
+// DOM (`aria-hidden`, but still part of the label's textContent), so lookups
+// match on the leading label text rather than an exact string.
+const grandparentsLabel = /^Grandparent requirement/;
+const coParentsLabel = /^Co-parent family requirement/;
 
 describe('BoundaryOptions', () => {
   it('renders a field for requireGrandparents', () => {
     renderSection();
-    expect(screen.getByTestId('field-requireGrandparents')).toBeDefined();
+    expect(screen.getByLabelText(grandparentsLabel)).toBeInTheDocument();
   });
 
   it('renders a field for requireChildrenContributors', () => {
     renderSection();
-    expect(
-      screen.getByTestId('field-requireChildrenContributors'),
-    ).toBeDefined();
-  });
-
-  it('labels the grandparents field correctly', () => {
-    renderSection();
-    expect(
-      screen.getByTestId('field-requireGrandparents').textContent,
-    ).toContain('Require Grandparents');
-  });
-
-  it('labels the children contributors field correctly', () => {
-    renderSection();
-    expect(
-      screen.getByTestId('field-requireChildrenContributors').textContent,
-    ).toContain("Require Co-Parents' Families");
+    expect(screen.getByLabelText(coParentsLabel)).toBeInTheDocument();
   });
 
   it('marks both boundary fields as required', () => {
     renderSection();
-    expect(
-      screen.getByTestId('field-requireGrandparents').dataset.required,
-    ).toBe('true');
-    expect(
-      screen.getByTestId('field-requireChildrenContributors').dataset.required,
-    ).toBe('true');
+    expect(screen.getByLabelText(grandparentsLabel)).toBeRequired();
+    expect(screen.getByLabelText(coParentsLabel)).toBeRequired();
+  });
+
+  it('seeds each select from the committed stage value', () => {
+    renderSection({
+      boundaries: {
+        requireGrandparents: 'required',
+        requireChildrenContributors: 'off',
+      },
+    });
+    expect(screen.getByLabelText(grandparentsLabel)).toHaveValue('required');
+    expect(screen.getByLabelText(coParentsLabel)).toHaveValue('off');
   });
 
   it('explains the enforcement levels', () => {
     renderSection();
-    expect(screen.getByText('Off')).toBeDefined();
-    expect(screen.getByText('Recommended')).toBeDefined();
-    expect(screen.getByText('Required')).toBeDefined();
+    // "Off"/"Recommended"/"Required" each also appear as select option text
+    // and (for "Required") the fields' sr-only required indicator, so this
+    // only asserts the documentation bullet's own strong-tagged term exists.
+    expect(screen.getByText('Off', { selector: 'strong' })).toBeInTheDocument();
+    expect(
+      screen.getByText('Recommended', { selector: 'strong' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Required', { selector: 'strong' }),
+    ).toBeInTheDocument();
   });
 
   it('does not use the phrase "family tree"', () => {

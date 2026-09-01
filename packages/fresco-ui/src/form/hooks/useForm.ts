@@ -17,6 +17,16 @@ export function useForm(config: FormConfig) {
     formErrors: [],
     fieldErrors: {},
   });
+  /**
+   * The errors that caused the pending focus request, when the caller already
+   * holds them. A submission RESULT is keyed the way the submit handler
+   * returned it, which is what `onSubmitInvalid` is documented to receive; the
+   * store's copy of the same errors has been renamed onto internal field
+   * paths. Client-side validation leaves this null, because at request time
+   * the new errors have not been committed yet — the layout effect reads them
+   * off the commit instead.
+   */
+  const requestedErrorsRef = useRef<FlattenedErrors | null>(null);
 
   const registerForm = useFormStore((state) => state.registerForm);
   const validateForm = useFormStore((state) => state.validateForm);
@@ -25,12 +35,47 @@ export function useForm(config: FormConfig) {
   const reset = useFormStore((state) => state.reset);
   const setErrors = useFormStore((state) => state.setErrors);
   const setSubmitting = useFormStore((state) => state.setSubmitting);
+  const requestErrorFocus = useFormStore((state) => state.requestErrorFocus);
   const errors = useFormStore((state) => state.errors);
+  const errorFocusRequest = useFormStore((state) => state.errorFocusRequest);
+  const submitInvalidHandler = useFormStore(
+    (state) => state.submitInvalidHandler,
+  );
 
   // Keep errors ref in sync with store using useEffect
   useLayoutEffect(() => {
     errorsRef.current = errors;
   }, [errors]);
+
+  /**
+   * Run the invalid-submit handler once React has COMMITTED the errors.
+   *
+   * A layout effect is what makes the handler's focus deterministic: it runs
+   * after the mutation phase of the commit that rendered the error state, so
+   * the error elements exist AND React's own focus restoration for that commit
+   * has already happened. Deferring by a timer instead — what every call site
+   * used to do — parked focus on `document.body` for the length of the wait
+   * and raced whatever that commit did with focus, which is how an invalid
+   * submission could lose the correction target altogether.
+   *
+   * Declared after the ref sync above so `errorsRef` already holds this
+   * commit's errors: effects within a component run in declaration order.
+   *
+   * The handler comes from the STORE rather than from this hook's own config,
+   * so a host that registers one directly reaches it too — and so the store's
+   * registered handler stays the single place the behaviour lives.
+   */
+  const handledFocusRequestRef = useRef(errorFocusRequest);
+  useLayoutEffect(() => {
+    // Compared against the count seen at MOUNT rather than against zero: a
+    // form remounting inside a store that already counted a request must not
+    // read that history as a fresh one and move focus nobody asked it to move.
+    if (errorFocusRequest === handledFocusRequestRef.current) return;
+    handledFocusRequestRef.current = errorFocusRequest;
+    const requestedErrors = requestedErrorsRef.current ?? errorsRef.current;
+    requestedErrorsRef.current = null;
+    submitInvalidHandler?.(requestedErrors);
+  }, [errorFocusRequest, submitInvalidHandler]);
 
   // Register form once on mount. layout effect used to ensure it runs before fields register.
   useLayoutEffect(() => {
@@ -59,13 +104,9 @@ export function useForm(config: FormConfig) {
       try {
         const isValid = await validateForm(); // Run field level validation
         if (!isValid) {
-          // Wait a tick for the store to update with errors
-          setTimeout(() => {
-            if (configRef.current.onSubmitInvalid) {
-              configRef.current.onSubmitInvalid(errorsRef.current);
-            }
-          }, 0);
-
+          // Hand off to the layout effect above, which fires once the errors
+          // this validation produced have been committed to the DOM.
+          requestErrorFocus();
           return;
         }
 
@@ -87,9 +128,8 @@ export function useForm(config: FormConfig) {
           fieldErrors: result.fieldErrors ?? {},
         };
         setErrors(submissionErrors);
-        setTimeout(() => {
-          configRef.current.onSubmitInvalid?.(submissionErrors);
-        }, 0);
+        requestedErrorsRef.current = submissionErrors;
+        requestErrorFocus();
       } catch {
         setErrors({
           formErrors: ['An error occurred while submitting the form.'],
@@ -99,7 +139,7 @@ export function useForm(config: FormConfig) {
         setSubmitting(false);
       }
     },
-    [setSubmitting, validateForm, getFormValues, setErrors],
+    [setSubmitting, validateForm, getFormValues, setErrors, requestErrorFocus],
   );
 
   const handleReset = useCallback(() => {

@@ -8,6 +8,7 @@ import {
   stageSchema,
 } from '@codaco/protocol-validation';
 import {
+  NcNetworkSchema,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
@@ -244,6 +245,80 @@ function makeSkipRoutingCodebook(): Codebook {
 }
 
 describe('generateNetwork', () => {
+  it('emits canonical sparse attributes for unanswered roster values', () => {
+    const codebook = makeCodebook({
+      node: {
+        'node-type-1': {
+          color: 'node-color-seq-1',
+          variables: {
+            'var-name': { name: 'Name', type: 'text' },
+            'var-nickname': { name: 'Nickname', type: 'text' },
+          },
+        },
+      },
+    });
+    const row = makeRosterPool(1)[0]!;
+    Reflect.set(row[entityAttributesProperty], 'var-nickname', null);
+
+    const { network } = generateNetwork({
+      codebook,
+      stages: [makeRosterStage({ behaviours: { minNodes: 1, maxNodes: 1 } })],
+      externalData: { 'stage-ngr': [row] },
+      seed: 42,
+    });
+
+    expect(network.nodes[0]![entityAttributesProperty]).not.toHaveProperty(
+      'var-nickname',
+    );
+    expect(NcNetworkSchema.parse(network)).toStrictEqual(network);
+  });
+
+  it('writes Sociogram highlights only when the prompt collects them', () => {
+    const codebook = makeCodebook({
+      node: {
+        'node-type-1': {
+          color: 'node-color-seq-1',
+          variables: {
+            'var-name': { name: 'Name', type: 'text' },
+            'highlighted': { name: 'Highlighted', type: 'boolean' },
+          },
+        },
+      },
+    });
+    const generator = makeNameGeneratorStage({
+      form: {
+        fields: [{ variable: 'var-name', prompt: 'What is their name?' }],
+      },
+      behaviours: { minNodes: 3, maxNodes: 3 },
+    });
+    const sociogram = {
+      id: 'stage-sociogram',
+      type: 'Sociogram',
+      label: 'Support network',
+      subject: { entity: 'node', type: 'node-type-1' },
+      prompts: [
+        {
+          id: 'prompt-highlight',
+          text: 'Who supports you?',
+          highlight: { allowHighlighting: true, variable: 'highlighted' },
+        },
+      ],
+    } as unknown as Stage;
+
+    const { network } = generateNetwork({
+      codebook,
+      stages: [generator, sociogram],
+      seed: 42,
+      config: { sociogramHighlightProbability: 1 },
+    });
+
+    expect(network.nodes).toHaveLength(3);
+    for (const node of network.nodes) {
+      expect(node[entityAttributesProperty]['var-name']).toBeDefined();
+      expect(node[entityAttributesProperty].highlighted).toBe(true);
+    }
+  });
+
   describe('targeted skip destinations', () => {
     it('still analyses a hidden stage when skip logic is disabled', () => {
       const stages = [
@@ -420,7 +495,7 @@ describe('generateNetwork', () => {
       }
     });
 
-    it('should generate attributes from the codebook node type definition', () => {
+    it('should generate the configured label for family members but not ego', () => {
       const codebook = makeCodebook();
       const stages = [makeFamilyPedigreeStage()];
 
@@ -428,7 +503,11 @@ describe('generateNetwork', () => {
 
       for (const node of network.nodes) {
         const attrs = node[entityAttributesProperty];
-        expect(attrs).toHaveProperty('var-name');
+        if (attrs['var-ego'] === true) {
+          expect(attrs).not.toHaveProperty('var-name');
+        } else {
+          expect(attrs).toHaveProperty('var-name');
+        }
       }
     });
 
@@ -552,7 +631,12 @@ describe('generateNetwork', () => {
 
       const { stageMetadata } = generateNetwork({ codebook, stages, seed: 42 });
 
-      expect(stageMetadata).toEqual({ 0: { isNetworkCommitted: true } });
+      expect(stageMetadata?.[0]).toEqual(
+        expect.objectContaining({
+          isNetworkCommitted: true,
+          edgeIdVersion: 1,
+        }),
+      );
       expect(StageMetadataSchema.safeParse(stageMetadata).success).toBe(true);
     });
 
@@ -634,7 +718,9 @@ describe('generateNetwork', () => {
 
       const result = StageMetadataSchema.safeParse(stageMetadata);
       expect(result.success).toBe(true);
-      expect(stageMetadata?.[2]).toEqual({ isNetworkCommitted: true });
+      expect(stageMetadata?.[2]).toEqual(
+        expect.objectContaining({ isNetworkCommitted: true }),
+      );
     });
   });
 
@@ -707,7 +793,7 @@ describe('generateNetwork', () => {
 
       expect(network.nodes.length).toBeGreaterThan(0);
       for (const node of network.nodes) {
-        expect(node[entityAttributesProperty]['var-ordinal']).not.toBeNull();
+        expect(node[entityAttributesProperty]).toHaveProperty('var-ordinal');
       }
     });
 
@@ -724,10 +810,10 @@ describe('generateNetwork', () => {
 
       const nodeCount = network.nodes.length;
       const unplaced = network.nodes.filter(
-        (n) => n[entityAttributesProperty]['var-ordinal'] === null,
+        (n) => !('var-ordinal' in n[entityAttributesProperty]),
       );
       const placed = network.nodes.filter(
-        (n) => n[entityAttributesProperty]['var-ordinal'] !== null,
+        (n) => 'var-ordinal' in n[entityAttributesProperty],
       );
 
       expect(unplaced.length).toBe(Math.max(1, Math.floor(nodeCount / 2)));
@@ -755,12 +841,12 @@ describe('generateNetwork', () => {
       });
 
       const uncategorised = network.nodes.filter(
-        (n) => n[entityAttributesProperty]['var-cat'] === null,
+        (n) => !('var-cat' in n[entityAttributesProperty]),
       );
       expect(uncategorised.length).toBeGreaterThan(0);
 
       for (const node of uncategorised) {
-        expect(node[entityAttributesProperty]['var-other']).toBeNull();
+        expect(node[entityAttributesProperty]).not.toHaveProperty('var-other');
       }
     });
 
@@ -801,7 +887,7 @@ describe('generateNetwork', () => {
       });
 
       const unplaced = network.nodes.filter(
-        (n) => n[entityAttributesProperty]['var-layout'] === null,
+        (n) => !('var-layout' in n[entityAttributesProperty]),
       );
       expect(unplaced.length).toBe(
         Math.max(1, Math.floor(network.nodes.length / 2)),
@@ -820,7 +906,7 @@ describe('generateNetwork', () => {
       });
 
       for (const node of network.nodes) {
-        expect(node[entityAttributesProperty]['var-ordinal']).not.toBeNull();
+        expect(node[entityAttributesProperty]).toHaveProperty('var-ordinal');
       }
     });
 
@@ -1487,15 +1573,15 @@ describe('generateNetwork', () => {
       expect(currentStep).toBe(0);
     });
 
-    it('familyPedigreeNodeCount with a fixed range produces exactly that many nodes', () => {
+    it('the family-specific node budget caps optional branches', () => {
       const { network } = generateNetwork({
         codebook: makeCodebook(),
         stages: [makeFamilyPedigreeStage()],
         seed: 42,
-        config: { familyPedigreeNodeCount: { min: 6, max: 6 } },
+        familyPedigree: { scenario: 'none', maxNodes: 7 },
       });
 
-      expect(network.nodes).toHaveLength(6);
+      expect(network.nodes).toHaveLength(7);
     });
   });
 });

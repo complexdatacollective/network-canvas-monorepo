@@ -126,15 +126,44 @@ describe('buildDeck', () => {
     expect(deck[0]?.kind).toBe('pending');
   });
 
-  it('lets the sample card shadow a protocol named Sample Protocol', () => {
+  it('drops the sample teaser once that protocol is installed, even with the preference on', () => {
     const deck = buildDeck({
       protocols: [makeProtocol('Sample Protocol')],
       showSampleCard: true,
       showDevelopmentCard: false,
       pendingImports: [],
     });
+    // The installed card keeps the slot — it is the one offering "Start new
+    // interview" and delete. A teaser here would hide both behind an install
+    // button for a protocol the researcher already has.
+    expect(deck.map((e) => entryKey(e))).toEqual([
+      'hash:hash-Sample Protocol',
+      'import',
+    ]);
+  });
+
+  it('drops the development teaser once that protocol is installed', () => {
+    const deck = buildDeck({
+      protocols: [makeProtocol('Development Protocol')],
+      showSampleCard: false,
+      showDevelopmentCard: true,
+      pendingImports: [],
+    });
+    expect(deck.map((e) => entryKey(e))).toEqual([
+      'hash:hash-Development Protocol',
+      'import',
+    ]);
+  });
+
+  it('still morphs the slot into the installing card when an installed sample is re-imported', () => {
+    const deck = buildDeck({
+      protocols: [makeProtocol('Sample Protocol')],
+      showSampleCard: true,
+      showDevelopmentCard: false,
+      pendingImports: [makePending('Sample Protocol')],
+    });
     expect(deck).toHaveLength(2);
-    expect(deck[0]?.kind).toBe('sample');
+    expect(deck[0]?.kind).toBe('pending');
   });
 
   it('includes the development teaser in its own name slot when requested', () => {

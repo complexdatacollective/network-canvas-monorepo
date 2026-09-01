@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 
 import type { Variable } from '@codaco/protocol-validation';
 
+import type { FieldNameMode } from '../FieldNamespace';
 import type { CustomFieldValidation, ValidationContext } from '../store/types';
 import type { ValidationPropKey } from '../validation/functions';
 
@@ -17,12 +18,17 @@ type VariableComparisonParam = {
 
 /**
  * Type representing all possible values for a form field.
+ *
+ * A connected control declares a narrower value type than this union, but is
+ * handed the stored value verbatim and must render any shape of it without
+ * throwing — see the contract on `useField`'s `fieldProps.value`.
  */
 export type FieldValue =
   | string
   | (string | number | boolean | Record<string, unknown>)[]
   | number
   | boolean
+  | Record<string, unknown>
   | JSONContent //
   | undefined;
 
@@ -50,7 +56,7 @@ export type ExtractValue<C extends ValidFieldComponent> =
  * over `C extends ValidFieldComponent`, so `React.ComponentProps<C>`
  * recovers the consumer's concrete prop shape at every call site.
  */
-// biome-ignore lint/suspicious/noExplicitAny: see comment above
+// oxlint-disable-next-line typescript/no-explicit-any -- see comment above
 export type ValidFieldComponent = React.ComponentType<any>;
 
 // ═══════════════════════════════════════════════════════════════
@@ -256,6 +262,13 @@ export type FieldSlotController = {
 type FieldOwnProps<C extends ValidFieldComponent> = {
   /** Unique field name, used as the key in form state. */
   name: string;
+  /**
+   * Interpret `name` as a structural path or as one opaque output key.
+   * Protocol-authored variable IDs must use `opaque`.
+   * `legacy` preserves the historical dot and terminal numeric-bracket rules.
+   * @default legacy
+   */
+  nameMode?: FieldNameMode;
   /** Label text rendered above (or beside when inline) the control. */
   label: string;
   /** Supplementary text rendered below the label. */

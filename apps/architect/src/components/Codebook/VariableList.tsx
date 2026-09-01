@@ -51,7 +51,7 @@ const Variables = ({ variables = [] }: VariableListProps) => {
       <DataTable
         table={table}
         showPagination={false}
-        emptyText="No variables."
+        emptyText="No attributes."
       />
     </div>
   );

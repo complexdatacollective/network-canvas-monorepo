@@ -60,9 +60,9 @@ const meta = {
     docs: {
       description: {
         component: `
-\`VariableSpotlight\` is Architect's focused modal for applying a variable to a
-configuration slot. It lets protocol authors search existing variables and,
-when the context permits, create a new variable without leaving their current
+\`VariableSpotlight\` is Architect's focused modal for applying an attribute to a
+configuration slot. It lets protocol authors search existing attributes and,
+when the context permits, create a new attribute without leaving their current
 task.
 
 \`\`\`tsx
@@ -86,11 +86,11 @@ task.
 \`\`\`
 
 - \`open\` and \`onOpenChange\` make the modal controlled by its caller.
-- \`options\` supplies the variables that can be selected. Results are sorted
+- \`options\` supplies the attributes that can be selected. Results are sorted
   and filtered by their labels.
 - \`entity\` and \`type\` identify the codebook subject used to validate a new
-  name against existing variables.
-- \`disallowCreation\` limits the spotlight to existing variables while keeping
+  name against existing attributes.
+- \`disallowCreation\` limits the spotlight to existing attributes while keeping
   search and selection available.
 - \`onSelect\`, \`onCreateOption\`, and \`onCancel\` let the caller own the
   resulting workflow and state changes.
@@ -106,7 +106,6 @@ task.
     disallowCreation: false,
     onOpenChange: fn().mockName('open-changed'),
     onSelect: fn().mockName('variable-selected'),
-    onCancel: fn().mockName('selection-cancelled'),
     onCreateOption: fn().mockName('variable-created'),
   },
   argTypes: {
@@ -118,7 +117,7 @@ task.
       control: 'select',
       options: ['node', 'edge', 'ego'],
       description:
-        'Codebook entity used to scope new-variable name validation.',
+        'Codebook entity used to scope new-attribute name validation.',
     },
     type: {
       control: 'text',
@@ -127,12 +126,12 @@ task.
     },
     options: {
       control: 'object',
-      description: 'Existing variables available for search and selection.',
+      description: 'Existing attributes available for search and selection.',
     },
     disallowCreation: {
       control: 'boolean',
       description:
-        'Prevents creating a new variable while retaining search and selection.',
+        'Prevents creating a new attribute while retaining search and selection.',
     },
     onOpenChange: {
       control: false,
@@ -141,17 +140,12 @@ task.
     },
     onSelect: {
       control: false,
-      description: 'Called with the selected variable UUID.',
-      table: { category: 'Events' },
-    },
-    onCancel: {
-      control: false,
-      description: 'Called when the author cancels the selection workflow.',
+      description: 'Called with the selected attribute UUID.',
       table: { category: 'Events' },
     },
     onCreateOption: {
       control: false,
-      description: 'Called with the validated name of a new variable.',
+      description: 'Called with the validated name of a new attribute.',
       table: { category: 'Events' },
     },
   },
@@ -165,7 +159,7 @@ export const SelectOrCreate: Story = {};
 export const CreateNewVariable: Story = {
   play: async () => {
     const input = await screen.findByRole('searchbox', {
-      name: 'Find or create a variable',
+      name: 'Find or create an attribute',
     });
     await userEvent.type(input, 'follow_up_notes');
   },
@@ -173,7 +167,7 @@ export const CreateNewVariable: Story = {
     docs: {
       description: {
         story:
-          'A new, valid name appears as a creation option above any matching existing variables.',
+          'A new, valid name appears as a creation option above any matching existing attributes.',
       },
     },
   },
@@ -182,7 +176,7 @@ export const CreateNewVariable: Story = {
 export const InvalidVariableName: Story = {
   play: async () => {
     const input = await screen.findByRole('searchbox', {
-      name: 'Find or create a variable',
+      name: 'Find or create an attribute',
     });
     await userEvent.type(input, 'follow up notes');
   },
@@ -204,7 +198,7 @@ export const SelectExistingOnly: Story = {
     docs: {
       description: {
         story:
-          'Use selection-only mode when the surrounding workflow cannot create variables.',
+          'Use selection-only mode when the surrounding workflow cannot create attributes.',
       },
     },
   },
@@ -218,7 +212,7 @@ export const NoVariablesYet: Story = {
     docs: {
       description: {
         story:
-          'When creation is available, the empty state explains how to create the first variable.',
+          'When creation is available, the empty state explains how to create the first attribute.',
       },
     },
   },
@@ -233,7 +227,7 @@ export const NoSelectableVariables: Story = {
     docs: {
       description: {
         story:
-          'Selection-only mode explains that variables must be created elsewhere when none exist.',
+          'Selection-only mode explains that attributes must be created elsewhere when none exist.',
       },
     },
   },

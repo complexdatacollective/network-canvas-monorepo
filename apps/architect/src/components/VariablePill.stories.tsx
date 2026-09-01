@@ -19,7 +19,7 @@ const VARIABLE_TYPES = [
 
 type StoryArgs = Pick<
   VariablePillProps,
-  'animated' | 'editable' | 'label' | 'maxWidth' | 'minWidth' | 'type' | 'width'
+  'animated' | 'className' | 'editable' | 'label' | 'type'
 >;
 
 const StoryVariablePill = ({ label, ...props }: StoryArgs) => {
@@ -43,7 +43,7 @@ const meta = {
     docs: {
       description: {
         component: `
-\`VariablePill\` is the single presentation component for every variable
+\`VariablePill\` is the single presentation component for every attribute
 reference in Architect. Its semantics and visual treatment are controlled
 independently:
 
@@ -51,43 +51,40 @@ independently:
 | --- | --- | --- |
 | \`editable={false}\`, \`animated={false}\` | Non-interactive \`<data>\` with a static type-colored border. | Picker options, query previews, stage configuration, and printable output. This is the default. |
 | \`editable={false}\`, \`animated\` | Non-interactive \`<data>\` with an animated border. | A static on-screen reference needs extra visual emphasis. Never use this for printable output. |
-| \`editable\` | A button that opens the anchored name editor directly. Hover, focus, and tooltip affordances communicate the action. | The variable can be renamed. Provide \`onLabelChange\` to persist edits. |
-| \`ConnectedVariablePill\` | Resolves \`label\` and \`type\` from a variable UUID, validates uniqueness, then renders \`VariablePill\`. | Architect state owns the variable and edits must update the protocol codebook. |
+| \`editable\` | A button that opens the anchored name editor directly. Hover, focus, and tooltip affordances communicate the action. | The attribute can be renamed. Provide \`onLabelChange\` to persist edits. |
+| \`ConnectedVariablePill\` | Resolves \`label\` and \`type\` from an attribute UUID, validates uniqueness, then renders \`VariablePill\`. | Architect state owns the attribute and edits must update the protocol codebook. |
 
 \`\`\`tsx
-// Content-sized between the default 12rem minimum and 20rem maximum.
+// Content-sized and constrained by its container.
 <VariablePill label="participant_age" type="number" />
 
-// Custom bounds; the label truncates after reaching maxWidth.
+// A Tailwind max-width truncates a longer label.
 <VariablePill
   label="participant_neighbourhood_connection_frequency"
   type="number"
-  minWidth="10rem"
-  maxWidth="16rem"
+  className="max-w-64"
 />
 
 <ConnectedVariablePill
   animated
   editable
   uuid={variableId}
-  width="100%"
+  className="max-w-80"
 />
 \`\`\`
 
 - \`label\` is both the visible name and the machine-readable \`data\` value
   when the pill is not editable.
-- \`type\` selects the variable icon and accent color.
-- Without \`width\`, the pill grows with its content between \`minWidth\`
-  (default \`12rem\`) and \`maxWidth\` (default \`20rem\`).
-- Labels truncate with an ellipsis only after reaching \`maxWidth\`.
-- \`width\` forces a preferred CSS width for contexts such as
-  \`VariableSpotlight\`; unless \`maxWidth\` is also supplied, that width is
-  used as the maximum.
+- \`type\` selects the attribute icon and accent color.
+- The pill is exactly as wide as its label and type icon require by default.
+- Its containing block provides the default width constraint; long labels
+  truncate rather than expanding beyond it.
+- \`className\` composes Tailwind layout constraints such as \`max-w-64\`.
 - \`animated\` changes only the border treatment.
 - \`editable\` changes the semantic element to a button, adds the raised
   interaction affordance and edit tooltip, and enables the editing workflow.
 - On entering edit mode, the pill expands from its current width to
-  \`maxWidth\` while remaining anchored around the same center point.
+  its available maximum while remaining anchored around the same center point.
 `,
       },
     },
@@ -101,26 +98,17 @@ independently:
   argTypes: {
     label: {
       control: 'text',
-      description: 'Displayed variable name.',
+      description: 'Displayed attribute name.',
     },
     type: {
       control: 'select',
       options: VARIABLE_TYPES,
-      description: 'Variable type, which selects the icon and accent color.',
+      description: 'Attribute type, which selects the icon and accent color.',
     },
-    width: {
+    className: {
       control: 'text',
       description:
-        'Optional preferred CSS width. By default, width follows the content.',
-    },
-    minWidth: {
-      control: 'text',
-      description: 'Minimum CSS width. Defaults to 12rem.',
-    },
-    maxWidth: {
-      control: 'text',
-      description:
-        'Maximum CSS width, after which the label truncates. Defaults to 20rem.',
+        'Optional Tailwind classes, such as max-w-64, for context-specific layout constraints.',
     },
     animated: {
       control: 'boolean',
@@ -166,13 +154,7 @@ export const LongLabel: Story = {
     animated: true,
     editable: true,
     label: 'participant_neighbourhood_connection_frequency',
-    maxWidth: '16rem',
-  },
-};
-
-export const MinimumWidth: Story = {
-  args: {
-    label: 'age',
+    className: 'max-w-64',
   },
 };
 
@@ -186,15 +168,6 @@ export const MaximumWidth: Story = {
   args: {
     label:
       'participant_neighbourhood_connection_frequency_during_the_last_year',
-    maxWidth: '16rem',
-  },
-};
-
-export const FullWidth: Story = {
-  args: {
-    width: '100%',
-  },
-  parameters: {
-    layout: 'padded',
+    className: 'max-w-64',
   },
 };

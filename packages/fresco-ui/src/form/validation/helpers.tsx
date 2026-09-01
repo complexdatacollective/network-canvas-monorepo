@@ -211,7 +211,7 @@ export function makeValidationHints(props: Record<string, unknown>) {
   }
 
   return (
-    <UnorderedList className="mb-4!">
+    <UnorderedList className="mb-0!">
       {hints.map((hint, index) => (
         <li key={index}>{hint}</li>
       ))}

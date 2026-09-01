@@ -1,5 +1,6 @@
 import type { Variable } from '@codaco/protocol-validation';
 import {
+  VariableValueSchema,
   entityAttributesProperty,
   type NcNode,
   type VariableValue,
@@ -39,6 +40,23 @@ export function toVariableEntry(id: string, variable: Variable): VariableEntry {
   };
 }
 
+export function definedAttributesOf(
+  attributes: Readonly<Record<string, unknown>>,
+  omissionSentinel?: symbol,
+): Record<string, VariableValue> {
+  const defined: Record<string, VariableValue> = {};
+
+  for (const [id, value] of Object.entries(attributes)) {
+    if (value === null || value === undefined || value === omissionSentinel) {
+      continue;
+    }
+
+    defined[id] = VariableValueSchema.parse(value);
+  }
+
+  return defined;
+}
+
 /** The rules one entity scope draws against, whichever scope it is. */
 export function constraintsFor(
   ctx: GenerationContext,
@@ -65,6 +83,7 @@ export function generateAttributesForEntity(
   options?: {
     existing?: Record<string, VariableValue>;
     only?: Set<string>;
+    preferRealisticNameVariables?: ReadonlySet<string>;
   },
 ): Record<string, VariableValue> {
   return generateEntityAttributes(
@@ -89,7 +108,7 @@ function applyRosterReservations(
     for (const row of rows) {
       for (const id of memberIds) {
         const value = row[entityAttributesProperty][id];
-        if (value === undefined) continue;
+        if (value === undefined || value === null) continue;
         if (hold) ctx.uniqueRegistry.reserve(registry, slot, value);
         else ctx.uniqueRegistry.unreserve(registry, slot, value);
       }
@@ -158,7 +177,7 @@ export function rosterRowIsDrawable(
   for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
     for (const id of memberIds) {
       const value = fixed[id];
-      if (value === undefined) continue;
+      if (value === undefined || value === null) continue;
       if (ctx.uniqueRegistry.isTaken(registry, slot, value)) return false;
     }
   }
@@ -229,7 +248,40 @@ export function claimFixedValues(
   for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
     for (const id of memberIds) {
       const value = fixed[id];
-      if (value !== undefined) ctx.uniqueRegistry.claim(registry, slot, value);
+      if (value !== undefined && value !== null) {
+        ctx.uniqueRegistry.claim(registry, slot, value);
+      }
+    }
+  }
+}
+
+/**
+ * Replaces fixed values on an entity that already contributed to the unique
+ * registry. Unlike {@link claimFixedValues}, this releases the affected slot's
+ * previous value before claiming the replacement, so normalising an inherited
+ * entity does not leave a value it no longer holds unavailable to later draws.
+ */
+export function replaceFixedValues(
+  ctx: GenerationContext,
+  ref: EntityScopeRef,
+  previous: Record<string, VariableValue>,
+  fixed: Record<string, VariableValue>,
+): void {
+  const registry = scopeKey(ref);
+
+  for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
+    if (!memberIds.some((id) => id in fixed)) continue;
+
+    for (const id of memberIds) {
+      const value = previous[id];
+      if (value !== undefined && value !== null)
+        ctx.uniqueRegistry.release(registry, slot, value);
+    }
+    for (const id of memberIds) {
+      const value = fixed[id];
+      if (value !== undefined && value !== null) {
+        ctx.uniqueRegistry.claim(registry, slot, value);
+      }
     }
   }
 }

@@ -1,68 +1,57 @@
-import { configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import {
-  Field,
-  reducer as formReducer,
-  reduxForm,
-  type InjectedFormProps,
-} from 'redux-form';
+import { useContext, type ContextType, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import Form from '@codaco/fresco-ui/form/Form';
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { COLOR_PALETTES } from '~/config';
+
+import ArchitectField from '../ArchitectField';
 import ColorPicker from './ColorPicker';
 
-type FormValues = { color?: string };
+type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
 
-const Harness = (_props: InjectedFormProps<FormValues>) => (
-  <Field
-    name="color"
-    component={ColorPicker}
-    label="Node color"
-    required
-    options={[
-      { label: 'Red', value: 'node-color-seq-1' },
-      { label: 'Blue', value: 'node-color-seq-2' },
-    ]}
-  />
-);
+let storeApi: StoreApi | null = null;
+const CaptureStore = () => {
+  storeApi = useContext(FormStoreContext) ?? null;
+  return null;
+};
 
-const ReduxHarness = reduxForm<FormValues>({
-  form: 'color-picker-test',
-})(Harness);
+const renderInForm = (children: ReactNode) => {
+  storeApi = null;
 
-const setup = (initialColor = 'node-color-seq-1') => {
-  const store = configureStore({
-    reducer: { form: formReducer },
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
-
-  render(
-    <Provider store={store}>
-      <ReduxHarness initialValues={{ color: initialColor }} />
-    </Provider>,
+  return render(
+    <Form onSubmit={() => ({ success: true })}>
+      <CaptureStore />
+      {children}
+    </Form>,
   );
+};
 
-  return {
-    getColor: () =>
-      store.getState().form['color-picker-test']?.values?.color as string,
-    isTouched: () =>
-      Boolean(
-        store.getState().form['color-picker-test']?.fields?.color?.touched,
-      ),
-  };
+const getColor = () => {
+  if (!storeApi) throw new Error('form store was not captured');
+  return storeApi.getState().getFormValues().color as string | undefined;
 };
 
 describe('ColorPicker', () => {
-  it('uses radio-group semantics and updates Redux Form', () => {
-    const { getColor, isTouched } = setup();
+  it('uses radio-group semantics and writes the selection to the form store', () => {
+    renderInForm(
+      <ArchitectField
+        name="color"
+        label="Node color"
+        component={ColorPicker}
+        initialValue="node-color-seq-1"
+        validation={{ required: true }}
+        options={[
+          { label: 'Red', value: 'node-color-seq-1' },
+          { label: 'Blue', value: 'node-color-seq-2' },
+        ]}
+      />,
+    );
 
-    expect(
-      screen.getByRole('radiogroup', { name: 'Node color' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('radiogroup', { name: 'Node color' }),
-    ).toHaveAttribute('aria-required', 'true');
+    const group = screen.getByRole('radiogroup', { name: 'Node color' });
+    expect(group).toBeInTheDocument();
+    expect(group).toHaveAttribute('aria-required', 'true');
     expect(screen.getByRole('radio', { name: 'Red' })).toHaveAttribute(
       'aria-checked',
       'true',
@@ -75,34 +64,113 @@ describe('ColorPicker', () => {
       'aria-checked',
       'true',
     );
-
-    fireEvent.blur(screen.getByRole('radiogroup', { name: 'Node color' }));
-    expect(isTouched()).toBe(true);
   });
 
   it('renders every generated palette color, including the final index', () => {
-    const store = configureStore({ reducer: { form: formReducer } });
-    const PaletteHarness = reduxForm<FormValues>({ form: 'palette-test' })(
-      () => (
-        <Field
-          name="color"
-          component={ColorPicker}
-          label="Palette"
-          palette="node-color-seq"
-          paletteRange={3}
-        />
-      ),
-    );
-
-    render(
-      <Provider store={store}>
-        <PaletteHarness />
-      </Provider>,
+    renderInForm(
+      <ArchitectField
+        name="color"
+        label="Palette"
+        component={ColorPicker}
+        palette="node-color-seq"
+        paletteRange={3}
+      />,
     );
 
     expect(screen.getAllByRole('radio')).toHaveLength(3);
+    // Named for the hue the theme resolves that position to, never the
+    // internal token: `--node-3` is `oklch(var(--purple-pizazz))`.
     expect(
-      screen.getByRole('radio', { name: 'node-color-seq-3' }),
+      screen.getByRole('radio', { name: 'Purple Pizazz' }),
     ).toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: /color-seq/ })).toBeNull();
+  });
+
+  it('names every swatch of every palette by its hue', () => {
+    renderInForm(
+      <ArchitectField
+        name="color"
+        label="Palette"
+        component={ColorPicker}
+        palette="ord-color-seq"
+        paletteRange={COLOR_PALETTES['ord-color-seq']}
+      />,
+    );
+
+    expect(
+      screen
+        .getAllByRole('radio')
+        .map((radio) => radio.getAttribute('aria-label')),
+    ).toEqual([
+      'Sea Green',
+      'Sea Serpent',
+      'Tomato',
+      'Neon Carrot',
+      'Kiwi',
+      'Cerulean Blue',
+      'Paradise Pink',
+      'Mustard',
+    ]);
+  });
+
+  it('offers only the palette when the stored colour is one of its own', () => {
+    renderInForm(
+      <ArchitectField
+        name="color"
+        label="Disease color"
+        component={ColorPicker}
+        initialValue="node-color-seq-2"
+        palette="node-color-seq"
+        paletteRange={COLOR_PALETTES['node-color-seq']}
+      />,
+    );
+
+    expect(screen.getAllByRole('radio')).toHaveLength(
+      COLOR_PALETTES['node-color-seq'],
+    );
+    expect(screen.getByRole('radio', { name: 'Sea Serpent' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+  });
+
+  it('keeps a schema-valid current reference outside the offered subset visible', () => {
+    renderInForm(
+      <ArchitectField
+        name="color"
+        label="Map color"
+        component={ColorPicker}
+        initialValue="ord-color-seq-10"
+        palette="ord-color-seq"
+        paletteRange={COLOR_PALETTES['ord-color-seq']}
+      />,
+    );
+
+    expect(screen.getAllByRole('radio')).toHaveLength(
+      COLOR_PALETTES['ord-color-seq'] + 1,
+    );
+    expect(screen.getByRole('radio', { name: 'Slate Blue' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    expect(getColor()).toBe('ord-color-seq-10');
+  });
+
+  it('does not add an invalid current value to the offered palette', () => {
+    renderInForm(
+      <ArchitectField
+        name="color"
+        label="Disease color"
+        component={ColorPicker}
+        initialValue="node-color-seq-10"
+        palette="node-color-seq"
+        paletteRange={COLOR_PALETTES['node-color-seq']}
+      />,
+    );
+
+    expect(screen.getAllByRole('radio')).toHaveLength(
+      COLOR_PALETTES['node-color-seq'],
+    );
+    expect(screen.queryByRole('radio', { name: 'Color 10' })).toBeNull();
   });
 });

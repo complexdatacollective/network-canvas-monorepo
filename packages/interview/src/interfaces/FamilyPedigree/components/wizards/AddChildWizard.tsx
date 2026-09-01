@@ -1,17 +1,12 @@
-import type useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import type { FramingId } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
-  type FramingId,
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { FamilyPedigreeStoreBridge } from '../../FamilyPedigreeContext';
-import type {
-  CommitBatch,
-  FamilyPedigreeStoreApi,
-  VariableConfig,
-} from '../../store';
+import type { OpenPedigreeDialog } from '../../familyPedigreeDialog';
+import type { CommitBatch, VariableConfig } from '../../store';
 import { getEdgeRelationshipType } from '../../utils/edgeUtils';
 import { inferGameteProviders } from '../../utils/inferGameteProviders';
 import PersonFields from '../quickStartWizard/PersonFields';
@@ -30,7 +25,10 @@ import NewParentPartnershipsStep, {
   shouldSkipNewParentPartnerships,
 } from './steps/NewParentPartnershipsStep';
 import { childCellTransform } from './transforms/childCellTransform';
-import { readBiologicalSex } from './transforms/personAttributes';
+import {
+  readBiologicalSex,
+  runFamilyPedigreeTransform,
+} from './transforms/personAttributes';
 
 function getPreselection(
   anchorNodeId: string,
@@ -82,8 +80,7 @@ function getPreselection(
 }
 
 export async function openAddChildWizard(
-  openDialog: ReturnType<typeof useDialog>['openDialog'],
-  store: FamilyPedigreeStoreApi,
+  openDialog: OpenPedigreeDialog,
   anchorNodeId: string,
   nodes: Map<string, NcNode>,
   edges: Map<string, NcEdge>,
@@ -122,58 +119,44 @@ export async function openAddChildWizard(
     steps: [
       {
         title: 'Child details',
-        content: () => (
-          <FamilyPedigreeStoreBridge store={store}>
-            <PersonFields namespace="child" />
-          </FamilyPedigreeStoreBridge>
-        ),
+        content: () => <PersonFields namespace="child" />,
       },
       {
         title: 'Biological parents',
         content: () => (
-          <FamilyPedigreeStoreBridge store={store}>
-            <BioTriadConfigProvider value={bioTriadConfig}>
-              <BioTriadStep />
-            </BioTriadConfigProvider>
-          </FamilyPedigreeStoreBridge>
+          <BioTriadConfigProvider value={bioTriadConfig}>
+            <BioTriadStep />
+          </BioTriadConfigProvider>
         ),
       },
       {
         title: 'Other parents',
-        content: () => (
-          <FamilyPedigreeStoreBridge store={store}>
-            <GenericOtherParentsStep />
-          </FamilyPedigreeStoreBridge>
-        ),
+        content: GenericOtherParentsStep,
       },
       {
         title: 'Additional parents',
-        content: () => (
-          <FamilyPedigreeStoreBridge store={store}>
-            <GenericAdditionalParentsStep />
-          </FamilyPedigreeStoreBridge>
-        ),
+        content: GenericAdditionalParentsStep,
         skip: ({ getFieldValue }) => getFieldValue('hasOtherParents') !== true,
       },
       {
         title: 'Parent partnerships',
         content: () => (
-          <FamilyPedigreeStoreBridge store={store}>
-            <BioTriadConfigProvider value={bioTriadConfig}>
-              <NewParentPartnershipsStep />
-            </BioTriadConfigProvider>
-          </FamilyPedigreeStoreBridge>
+          <BioTriadConfigProvider value={bioTriadConfig}>
+            <NewParentPartnershipsStep />
+          </BioTriadConfigProvider>
         ),
         skip: shouldSkipNewParentPartnerships,
       },
     ],
     onFinish: (formValues: Record<string, unknown>) => {
-      return childCellTransform(
-        formValues,
-        anchorNodeId,
-        nodes,
-        edges,
-        variableConfig,
+      return runFamilyPedigreeTransform(() =>
+        childCellTransform(
+          formValues,
+          anchorNodeId,
+          nodes,
+          edges,
+          variableConfig,
+        ),
       );
     },
   });

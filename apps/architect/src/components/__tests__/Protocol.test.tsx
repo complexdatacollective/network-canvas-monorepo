@@ -15,15 +15,6 @@ vi.mock('~/components/Timeline', () => ({
   default: () => <div data-testid="timeline">Timeline Component</div>,
 }));
 
-// Mock the protocol loader hook - use vi.hoisted to avoid hoisting issues
-const { mockUseProtocolLoader } = vi.hoisted(() => ({
-  mockUseProtocolLoader: vi.fn(),
-}));
-
-vi.mock('~/hooks/useProtocolLoader', () => ({
-  default: mockUseProtocolLoader,
-}));
-
 // Mock motion/react to avoid animation issues in tests
 type MockMotionProps = Record<string, unknown> & { children?: ReactNode };
 
@@ -86,7 +77,6 @@ describe('Protocol Component', () => {
 
   beforeEach(() => {
     store = createTestStore();
-    mockUseProtocolLoader.mockClear();
   });
 
   it('should render protocol components when protocol is loaded', () => {
@@ -110,11 +100,6 @@ describe('Protocol Component', () => {
       payload: protocolWithName,
     });
 
-    mockUseProtocolLoader.mockReturnValue({
-      isLoading: false,
-      error: undefined,
-    });
-
     render(<Protocol />, {
       wrapper: createWrapper(store),
     });
@@ -122,53 +107,7 @@ describe('Protocol Component', () => {
     expect(screen.getByTestId('timeline')).toBeInTheDocument();
   });
 
-  it('should call useProtocolLoader hook on mount', () => {
-    mockUseProtocolLoader.mockReturnValue({
-      isLoading: false,
-      error: undefined,
-    });
-
-    render(<Protocol />, {
-      wrapper: createWrapper(store),
-    });
-
-    expect(mockUseProtocolLoader).toHaveBeenCalled();
-  });
-
-  it('should handle loading state', () => {
-    mockUseProtocolLoader.mockReturnValue({
-      isLoading: true,
-      error: undefined,
-    });
-
-    const { container } = render(<Protocol />, {
-      wrapper: createWrapper(store),
-    });
-
-    // Component should still render but may show loading state
-    expect(container.firstChild).toBeInTheDocument();
-  });
-
-  it('should handle error state', () => {
-    mockUseProtocolLoader.mockReturnValue({
-      isLoading: false,
-      error: 'Protocol not found',
-    });
-
-    const { container } = render(<Protocol />, {
-      wrapper: createWrapper(store),
-    });
-
-    // Component should still render but may show error state
-    expect(container.firstChild).toBeInTheDocument();
-  });
-
   it('should handle missing protocol ID', () => {
-    mockUseProtocolLoader.mockReturnValue({
-      isLoading: false,
-      error: undefined,
-    });
-
     render(<Protocol />, {
       wrapper: createWrapper(store),
     });
@@ -201,11 +140,6 @@ describe('Protocol Component', () => {
     );
 
     // Start with first protocol
-    mockUseProtocolLoader.mockReturnValue({
-      isLoading: false,
-      error: undefined,
-    });
-
     const { rerender } = render(<Protocol />, {
       wrapper: createWrapper(store),
     });
@@ -213,11 +147,6 @@ describe('Protocol Component', () => {
     expect(screen.getByTestId('timeline')).toBeInTheDocument();
 
     // Switch to second protocol
-    mockUseProtocolLoader.mockReturnValue({
-      isLoading: false,
-      error: undefined,
-    });
-
     rerender(<Protocol />);
 
     expect(screen.getByTestId('timeline')).toBeInTheDocument();

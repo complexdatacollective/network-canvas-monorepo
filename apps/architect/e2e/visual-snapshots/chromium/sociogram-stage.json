@@ -1,22 +1,25 @@
 {
   "label": "Draw Your Network",
+  "id": "id-1",
   "type": "Sociogram",
-  "background": {
-    "skewedTowardCenter": false,
-    "concentricCircles": 4
-  },
   "subject": {
-    "type": "id-1",
-    "entity": "node"
+    "entity": "node",
+    "type": "id-2"
+  },
+  "background": {
+    "concentricCircles": 4,
+    "skewedTowardCenter": false
+  },
+  "behaviours": {
+    "automaticLayout": false
   },
   "prompts": [
     {
-      "id": "id-2",
+      "id": "id-3",
       "text": "Place them",
       "layout": {
-        "layoutVariable": "id-3"
+        "layoutVariable": "id-4"
       }
     }
-  ],
-  "id": "id-4"
+  ]
 }

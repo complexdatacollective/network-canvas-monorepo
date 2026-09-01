@@ -181,13 +181,24 @@ export const HorizontalStageNavigation: Story = {
   },
 };
 
+const openSettingsPopover = async (canvasElement: HTMLElement) => {
+  const canvas = within(canvasElement);
+
+  const settingsButton = await canvas.findByRole('button', {
+    name: /settings/i,
+  });
+  await userEvent.click(settingsButton);
+
+  return canvas.findByRole('dialog', { name: /interview settings/i });
+};
+
 const exitAndAssertConfirmation = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
 
-  const exitButton = await canvas.findByRole('button', {
-    name: /exit interview/i,
-  });
-  await userEvent.click(exitButton);
+  const popover = await openSettingsPopover(canvasElement);
+  await userEvent.click(
+    within(popover).getByRole('button', { name: /exit interview/i }),
+  );
 
   const dialog = await canvas.findByRole('dialog', {
     name: /exit this interview/i,
@@ -262,7 +273,10 @@ export const ReviewMode: Story = {
       await canvas.findByRole('button', { name: /next step/i }),
     ).toBeDisabled();
 
-    await userEvent.click(canvas.getByRole('button', { name: /exit review/i }));
+    const popover = await openSettingsPopover(canvasElement);
+    await userEvent.click(
+      within(popover).getByRole('button', { name: /exit review/i }),
+    );
 
     const dialog = await canvas.findByRole('dialog', {
       name: /exit this review/i,
@@ -272,5 +286,141 @@ export const ReviewMode: Story = {
       scoped.getByText(/changes made during this review will not be saved/i),
     ).toBeInTheDocument();
     await userEvent.click(scoped.getByRole('button', { name: /cancel/i }));
+  },
+};
+
+export const TextSize: Story = {
+  name: 'Text size (settings popover)',
+  render: ({ stageCount }) => (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell
+        rawPayload={getRawPayload(stageCount)}
+        navigationOrientation="vertical"
+        allowUserScaling
+        onExit={() => {
+          console.log('Exited the interview.');
+        }}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const popover = await openSettingsPopover(canvasElement);
+    const group = within(popover).getByRole('group', { name: /text size/i });
+    const decrease = within(group).getByRole('button', {
+      name: /decrease text size/i,
+    });
+    const increase = within(group).getByRole('button', {
+      name: /increase text size/i,
+    });
+    const input = within(group).getByRole('spinbutton', {
+      name: /text size percentage/i,
+    });
+    const currentSize = within(group).getByRole('status');
+
+    await expect(currentSize).toHaveTextContent('100%');
+    await expect(input).toHaveValue(100);
+    await expect(input).toHaveAttribute('min', '90');
+    await expect(input).toHaveAttribute('max', '130');
+    await expect(input).toHaveAttribute('step', '10');
+    await expect(decrease).toBeEnabled();
+    await expect(increase).toBeEnabled();
+
+    // The native number field receives initial focus. Arrow-key stepping proves
+    // the control does not depend on pointer interaction.
+    await expect(input).toHaveFocus();
+    await userEvent.keyboard('{ArrowUp}{ArrowUp}');
+    await expect(input).toHaveValue(120);
+    await expect(currentSize).toHaveTextContent('120%');
+
+    const main = canvasElement.querySelector('main[data-theme-interview]');
+    await expect(main).not.toBeNull();
+    await waitFor(() =>
+      expect(
+        getComputedStyle(main as Element)
+          .getPropertyValue('--interview-text-scale')
+          .trim(),
+      ).toBe('1.2'),
+    );
+
+    // Each stepper becomes unavailable at its corresponding bound while the
+    // opposite direction remains actionable.
+    await userEvent.click(increase);
+    await expect(input).toHaveValue(130);
+    await expect(currentSize).toHaveTextContent('130%');
+    await expect(increase).toBeDisabled();
+    await expect(decrease).toBeEnabled();
+
+    await userEvent.click(decrease);
+    await userEvent.click(decrease);
+    await userEvent.click(decrease);
+    await userEvent.click(decrease);
+    await expect(input).toHaveValue(90);
+    await expect(currentSize).toHaveTextContent('90%');
+    await expect(decrease).toBeDisabled();
+    await expect(increase).toBeEnabled();
+
+    // Direct entry is available as well as stepping. An off-step draft stays
+    // intact while focus moves to a stepper, so native stepping starts from
+    // the displayed value instead of rolling back to the last committed size.
+    await userEvent.click(input);
+    await userEvent.clear(input);
+    await userEvent.type(input, '100');
+    await expect(currentSize).toHaveTextContent('100%');
+
+    await userEvent.clear(input);
+    await userEvent.type(input, '115');
+    await expect(input).toHaveValue(115);
+    await expect(currentSize).toHaveTextContent('100%');
+    await expect(decrease).toBeEnabled();
+    await expect(increase).toBeEnabled();
+    await userEvent.click(decrease);
+    await expect(input).toHaveValue(110);
+    await expect(currentSize).toHaveTextContent('110%');
+
+    await userEvent.click(input);
+    await userEvent.clear(input);
+    await userEvent.type(input, '115');
+    await userEvent.click(increase);
+    await expect(input).toHaveValue(120);
+    await expect(currentSize).toHaveTextContent('120%');
+
+    // Escape dismisses the popover and returns focus to the trigger.
+    await userEvent.keyboard('{Escape}');
+    const canvas = within(canvasElement);
+    await waitFor(() =>
+      expect(
+        canvas.queryByRole('dialog', { name: /interview settings/i }),
+      ).not.toBeInTheDocument(),
+    );
+    const settingsButton = canvas.getByRole('button', { name: /settings/i });
+    await waitFor(() => expect(settingsButton).toHaveFocus());
+
+    // Reopen so the visual snapshot captures the control with the enlarged
+    // scale applied and 120% displayed.
+    await openSettingsPopover(canvasElement);
+  },
+};
+
+export const SettingsMenuScalingOnly: Story = {
+  name: 'Text size without exit handler',
+  render: ({ stageCount }) => (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell
+        rawPayload={getRawPayload(stageCount)}
+        navigationOrientation="vertical"
+        allowUserScaling
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const popover = await openSettingsPopover(canvasElement);
+
+    // Without an exit handler the popover holds only the text-size control.
+    await expect(
+      within(popover).queryByRole('button', { name: /exit/i }),
+    ).not.toBeInTheDocument();
+    await expect(
+      within(popover).getByRole('group', { name: /text size/i }),
+    ).toBeInTheDocument();
   },
 };

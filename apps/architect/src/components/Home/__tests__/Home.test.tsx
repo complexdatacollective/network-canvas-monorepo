@@ -69,7 +69,7 @@ vi.mock('../TransitMap', () => ({ default: () => null }));
 import Home from '../Home';
 
 describe('<Home />', () => {
-  it('uses medium brand-colored call-to-action buttons', () => {
+  it('uses medium call-to-action buttons colored by role', () => {
     render(<Home />);
 
     const createButton = screen.getByRole('button', {
@@ -87,13 +87,52 @@ describe('<Home />', () => {
     );
     expect(openButton).toHaveClass('h-12', 'text-base');
     expect(openButton).toHaveClass(
-      '[--component-bg:var(--accent-contrast)]',
-      '[--component-text:var(--accent)]',
-      'focus:outline-accent',
+      'control-glass',
+      '[--component-bg:var(--neutral-contrast)]',
+      '[--component-text:var(--neutral-contrast)]',
     );
   });
 
+  it('reopens a protocol after migration is approved', async () => {
+    const { openLocalNetcanvas } =
+      await import('~/ducks/modules/userActions/userActions');
+    vi.mocked(openLocalNetcanvas).mockClear();
+    const statuses = [{ status: 'migration-required' }, { status: 'opened' }];
+    dispatchMock.mockImplementation(() => ({
+      unwrap: () => Promise.resolve(statuses.shift()),
+    }));
+    // Approve exactly what the current result asks for, as a researcher would.
+    showProtocolOpenResultDialogMock.mockImplementation(
+      async ({
+        result,
+        onApproveMigration,
+      }: {
+        result: { status: string };
+        onApproveMigration?: () => Promise<void>;
+      }) => {
+        if (result.status === 'migration-required')
+          await onApproveMigration?.();
+      },
+    );
+
+    render(<Home />);
+
+    await act(async () => {
+      dropzoneRef.onDrop?.([new File(['{}'], 'protocol.netcanvas')]);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(
+      vi.mocked(openLocalNetcanvas).mock.calls.map(([arg]) => arg),
+    ).toEqual([
+      { file: expect.any(File), migrationApproved: false },
+      { file: expect.any(File), migrationApproved: true },
+    ]);
+  });
+
   it('keeps the loading overlay off while a protocol-open dialog is awaited', async () => {
+    dispatchMock.mockReset();
+    showProtocolOpenResultDialogMock.mockReset();
     dispatchMock.mockReturnValue({
       unwrap: () => Promise.resolve({ status: 'migration-required' }),
     });

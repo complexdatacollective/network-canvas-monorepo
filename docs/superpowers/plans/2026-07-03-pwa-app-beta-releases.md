@@ -834,7 +834,9 @@ apps-release-pr:
     - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
       with:
         fetch-depth: 0
-    - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+    - uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c # v2.0.0
+      with:
+        install: false
     - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
       with:
         node-version-file: '.nvmrc'
@@ -981,7 +983,9 @@ apps-release:
     VITE_FRESCO_PREVIEW_API_TOKEN: ${{ secrets.VITE_FRESCO_PREVIEW_API_TOKEN }}
   steps:
     - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
-    - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+    - uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c # v2.0.0
+      with:
+        install: false
     - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
       with:
         node-version-file: '.nvmrc'
@@ -1115,7 +1119,7 @@ run `pnpm changeset` twice and write two files.
    it only groups the entry under Major/Minor/Patch changes.
 4. Write the summary as **reader-facing release notes** — it becomes the
    changelog / GitHub release text. For app-facing entries use the
-   participant-appropriate tone described in `developing-in-network-canvas`.
+   participant-appropriate tone described in `developing-network-canvas-ui`.
 5. Commit the generated `.changeset/*.md` with your PR.
 
 ## Notes

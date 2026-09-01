@@ -1,55 +1,75 @@
-import type { ComponentType } from 'react';
-import { compose } from 'react-recompose';
-import { useSelector } from 'react-redux';
-import { formValueSelector } from 'redux-form';
+import { useMemo } from 'react';
+import { shallowEqual, useSelector } from 'react-redux';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
-import RichText from '~/components/Form/Fields/RichText/Field';
-import ValidatedField from '~/components/Form/ValidatedField';
-import IssueAnchor from '~/components/IssueAnchor';
+import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
+import Section from '@codaco/fresco-ui/Section';
+import RichText from '@codaco/protocol-builder/fields/RichTextField';
+import ArchitectField from '~/components/Form/ArchitectField';
 import type { RootState } from '~/ducks/modules/root';
+import { getVariableOptionsForSubject } from '~/selectors/codebook';
 
 import BinSortOrderSection from '../BinSortOrderSection';
 import BucketSortOrderSection from '../BucketSortOrderSection';
 import { getSortOrderOptionGetter } from '../CategoricalBinPrompts/optionGetters';
-import withVariableOptions from '../CategoricalBinPrompts/withVariableOptions';
-import EntitySelectField from '../fields/EntitySelectField/EntitySelectField';
+import { EntitySelectControl as EntitySelectField } from '../fields/EntitySelectField/EntitySelectField';
+
 type SelectOption = {
   label: string;
   value: string;
-  [key: string]: unknown;
+  type?: string;
 };
+
+type SortOrderRow = Record<string, unknown>;
+
+const EMPTY_OPTIONS: SelectOption[] = [];
+
 type PromptFieldsProps = {
-  form: string;
-  sortVariableOptions?: SelectOption[];
+  entity?: 'node' | 'edge' | 'ego' | null;
+  type?: string | null;
+  text?: string;
+  createEdge?: string;
+  bucketSortOrder?: SortOrderRow[];
+  binSortOrder?: SortOrderRow[];
 };
+
 const PromptFields = ({
-  form,
-  sortVariableOptions = [],
+  entity = null,
+  type = null,
+  text,
+  createEdge,
+  bucketSortOrder,
+  binSortOrder,
 }: PromptFieldsProps) => {
-  // This stage writes no attribute at all — it consumes the shared HOC purely
-  // for sort options, and sort keys are read-only references outside the
-  // writer-exclusivity rule, so they draw from the RAW pool (never the
+  // This stage writes no attribute at all, so it needs the codebook pool
+  // purely for sort options — and sort keys are read-only references outside
+  // the writer-exclusivity rule, so they draw from the RAW pool (never a
   // role-filtered writer pool).
+  const subject = useMemo(
+    () => (entity ? { entity, type: type ?? undefined } : null),
+    [entity, type],
+  );
+  const sortVariableOptions = useSelector(
+    (state: RootState) =>
+      subject
+        ? (getVariableOptionsForSubject(state, subject) as SelectOption[])
+        : EMPTY_OPTIONS,
+    shallowEqual,
+  );
+
+  const { createEdge: liveCreateEdge } = useFormValue(['createEdge'] as const);
+  const currentCreateEdge =
+    typeof liveCreateEdge === 'string' ? liveCreateEdge : createEdge;
+
   const getOptions = getSortOrderOptionGetter(sortVariableOptions);
   const sortMaxItems = getOptions('property', undefined, []).length;
-  const getFormValue = formValueSelector(form);
-  const edgeVariable = useSelector(
-    (state: RootState) => getFormValue(state, 'createEdge') as string,
-  );
+
   return (
     <>
-      <Section title="One to Many Dyad Census Prompts" layout="vertical">
-        <IssueAnchor fieldName="text" description="Dyad Census Prompts" />
-        <Paragraph>
-          One to Many Dyad Census prompts guide your participant in evaluating
-          relationships between a single focal node and several target nodes.
-          (for example, &apos;friendship&apos;, &apos;material support&apos; or
-          &apos;conflict&apos;). Enter prompt text below, and select an edge
-          type that will be created when the participant selects a target node.
-        </Paragraph>
+      <Section
+        title="Prompt configuration"
+        description="Write the participant prompt and select the edge type created for chosen nodes."
+      >
         <Alert variant="info" className="my-7">
           <AlertDescription>
             Remember to write your prompt text so that it clearly indicates the
@@ -62,63 +82,41 @@ const PromptFields = ({
             from the group.
           </AlertDescription>
         </Alert>
-        <Row>
-          <ValidatedField
-            name="text"
-            component={RichText as ComponentType<Record<string, unknown>>}
-            validation={{ required: true }}
-            componentProps={{
-              inline: true,
-              label: 'Prompt Text',
-              placeholder: 'Enter text for the prompt here...',
-            }}
-          />
-        </Row>
-        <Row>
-          <ValidatedField
-            name="createEdge"
-            component={
-              EntitySelectField as ComponentType<Record<string, unknown>>
-            }
-            validation={{ required: true }}
-            componentProps={{
-              entityType: 'edge',
-              label: 'Create edges of the following type',
-            }}
-          />
-        </Row>
+        <ArchitectField
+          name="text"
+          label="Prompt text"
+          component={RichText}
+          validation={{ required: true }}
+          initialValue={text}
+          singleLine
+          placeholder="Enter text for the prompt here..."
+        />
+        <ArchitectField
+          name="createEdge"
+          label="Created edge type"
+          component={EntitySelectField}
+          validation={{ required: true }}
+          initialValue={createEdge}
+          entityType="edge"
+        />
       </Section>
 
       <BucketSortOrderSection
-        form={form}
-        disabled={!edgeVariable}
+        disabled={!currentCreateEdge}
         maxItems={sortMaxItems}
         optionGetter={getOptions}
-        summary={
-          <Paragraph>
-            The focal nodes are presented one at a time. You may optionally
-            configure a list of rules to determine how nodes are sorted in the
-            bucket when the task starts, which will determine the order that
-            your participant evaluates their relationships. Interviewer will
-            default to using the order in which nodes were named.
-          </Paragraph>
-        }
+        initialValue={bucketSortOrder}
+        description="Order focal nodes before they are presented for evaluation."
       />
       <BinSortOrderSection
-        form={form}
-        disabled={!edgeVariable}
+        disabled={!currentCreateEdge}
         maxItems={sortMaxItems}
         optionGetter={getOptions}
-        summary={
-          <Paragraph>
-            You may also configure one or more sort rules that determine the
-            order that the target nodes are sorted in the bin.
-          </Paragraph>
-        }
+        initialValue={binSortOrder}
+        description="Order target nodes after they are placed in the bin."
       />
     </>
   );
 };
-export default compose<PromptFieldsProps, Record<string, never>>(
-  withVariableOptions,
-)(PromptFields);
+
+export default PromptFields;

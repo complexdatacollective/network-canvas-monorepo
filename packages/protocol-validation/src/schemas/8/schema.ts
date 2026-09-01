@@ -1,12 +1,10 @@
 import { z } from 'zod';
 
-import {
-  BIOLOGICAL_SEX_OPTIONS,
-  GAMETE_ROLE_OPTIONS,
-  RELATIONSHIP_TYPE_OPTIONS,
-} from '@codaco/shared-consts';
-
 import { collectEntityAttributeReferencesFromSchema } from '../../utils/collectEntityAttributeReferences.ts';
+import {
+  findExclusiveVariableConflicts,
+  findInterfaceOwnedOptionBindings,
+} from '../../utils/findExclusiveVariableConflicts.ts';
 import { validateReferences } from '../../utils/validateEntityAttributeReferences.ts';
 import {
   entityExists,
@@ -21,9 +19,12 @@ import { OperatorsByVariableType } from './filters/index.ts';
 
 // Re-export all the split schemas
 export * from './assets/index.ts';
+export * from './color-reference.ts';
 export * from './codebook/index.ts';
 export * from './common/index.ts';
+export * from './entity-attribute-reference.ts';
 export * from './filters/index.ts';
+export * from './interface-owned-options.ts';
 export * from './stages/index.ts';
 export * from './variables/index.ts';
 
@@ -40,6 +41,10 @@ import {
   type StageSubject,
 } from './common/index.ts';
 import type { FilterRule } from './filters/index.ts';
+import {
+  INTERFACE_OWNED_OPTION_SETS,
+  optionsMatchInterfaceOwnedSet,
+} from './interface-owned-options.ts';
 import { type Prompt, type Stage, stageSchema } from './stages/index.ts';
 import type { ComposerFormField } from './stages/network-composer.ts';
 import {
@@ -133,7 +138,7 @@ const validateFilterRules = (
       !hasAttribute || filterRuleAttributeExists(rule, codebook);
     if (!attributeExists && hasAttribute && 'attribute' in rule.options) {
       addIssue({
-        message: `"${rule.options.attribute}" is not a valid variable ID`,
+        message: `"${rule.options.attribute}" is not a valid attribute ID`,
         path: [...rulePath, 'options', 'attribute'],
       });
     }
@@ -147,7 +152,7 @@ const validateFilterRules = (
           validOperators && !validOperators.includes(rule.options.operator);
         if (shouldAddIssue) {
           addIssue({
-            message: `Operator "${rule.options.operator}" is not valid for variable type "${variableType}". Valid operators: ${validOperators.join(', ')}`,
+            message: `Operator "${rule.options.operator}" is not valid for attribute type "${variableType}". Valid operators: ${validOperators.join(', ')}`,
             path: [...rulePath, 'options', 'operator'],
           });
         }
@@ -208,12 +213,12 @@ const validateFormFieldVariable = (
   if (!variable) return;
   if (NON_RENDERABLE_VARIABLE_TYPES.has(variable.type)) {
     addIssue({
-      message: `Form field variable "${fieldVariable}" of type "${variable.type}" cannot be rendered as a form field.`,
+      message: `Form field attribute "${fieldVariable}" of type "${variable.type}" cannot be rendered as a form field.`,
       path,
     });
   } else if (!('component' in variable) || variable.component === undefined) {
     addIssue({
-      message: `Form field variable "${fieldVariable}" must define a component (input control) to be rendered as a form field.`,
+      message: `Form field attribute "${fieldVariable}" must define a component (input control) to be rendered as a form field.`,
       path,
     });
   }
@@ -280,13 +285,13 @@ const validateComposerFieldComponents = (
     }
     if (allowedComponents.length === 0) {
       addIssue({
-        message: `NetworkComposer field variable "${variable.name}" of type "${variable.type}" cannot be rendered as a form field.`,
+        message: `NetworkComposer field attribute "${variable.name}" of type "${variable.type}" cannot be rendered as a form field.`,
         path,
       });
       return;
     }
     addIssue({
-      message: `NetworkComposer field for "${variable.name}" uses the "${field.component}" input control, which cannot render a ${variable.type} variable. Valid controls: ${allowedComponents.join(', ')}.`,
+      message: `NetworkComposer field for "${variable.name}" uses the "${field.component}" input control, which cannot render a ${variable.type} attribute. Valid controls: ${allowedComponents.join(', ')}.`,
       path,
     });
   });
@@ -550,7 +555,7 @@ const validateComposerFieldContradictions = (
     const causeName =
       codebookVariables[causeField.variable]?.name ?? causeField.variable;
     addIssue({
-      message: `NetworkComposer field overrides for "${causeName}" propagate through its validation rules and make its linked variables contradictory: ${contradiction.message}`,
+      message: `NetworkComposer field overrides for "${causeName}" propagate through its validation rules and make its linked attributes contradictory: ${contradiction.message}`,
       path: [...fieldsPath, causeIndex, 'parameters'],
     });
   }
@@ -645,26 +650,6 @@ const unknownRenderingFor = (
   return new Set([...bucket].filter((id) => !written.has(id)));
 };
 
-type CanonicalOption = { value: string; label: string };
-
-// True when a variable's options are exactly the canonical set (same members
-// and labels, order-independent). Used to enforce the FamilyPedigree
-// locked-value-set variables against their interface-owned option sets.
-const optionsMatchCanonical = (
-  variableOptions: { value: unknown; label?: unknown }[] | undefined,
-  canonical: readonly CanonicalOption[],
-): boolean => {
-  if (!variableOptions || variableOptions.length !== canonical.length) {
-    return false;
-  }
-  return canonical.every((expected) =>
-    variableOptions.some(
-      (option) =>
-        option.value === expected.value && option.label === expected.label,
-    ),
-  );
-};
-
 const ProtocolSchema = z
   .strictObject({
     name: z.string().min(1),
@@ -697,6 +682,56 @@ const ProtocolSchema = z
     );
     for (const issue of validateReferences(protocol.codebook, hits)) {
       ctx.addIssue(issue);
+    }
+
+    // Interface-owned structural slots: an interface that DERIVES an
+    // attribute's values from the structure a participant builds cannot share
+    // that attribute with anything else, or the two writers overwrite each
+    // other. Declared on the schema reference (`exclusive`) and derived here,
+    // so a newly-tagged slot is enforced without a new hand-written check.
+    for (const conflict of findExclusiveVariableConflicts(protocol, hits)) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `Attribute "${conflict.variableName}" is set by ${conflict.owner.owner}, so it cannot be used anywhere else in this protocol.`,
+        path: conflict.path,
+      });
+    }
+
+    // Interface-owned value sets: the interview and the genetics engine branch
+    // on these exact values, so a variable bound to such a slot must still
+    // carry its canonical options. Only fires for a categorical or ordinal
+    // variable that exists and whose options have drifted, so a
+    // legitimately-authored protocol always passes.
+    for (const binding of findInterfaceOwnedOptionBindings(protocol, hits)) {
+      const { entity, type } = binding.subject;
+      // A node/edge reference with no resolvable type names no codebook at
+      // all; the reference validator above already reports that.
+      if (entity !== 'ego' && type === undefined) continue;
+      const subject: StageSubject =
+        entity === 'ego' ? { entity } : { entity, type: type ?? '' };
+      const variable = getVariablesForSubject(protocol.codebook, subject)[
+        binding.variableId
+      ];
+      if (
+        !variable ||
+        (variable.type !== 'categorical' && variable.type !== 'ordinal')
+      ) {
+        continue;
+      }
+      const optionSet = INTERFACE_OWNED_OPTION_SETS[binding.optionSet];
+      if (optionsMatchInterfaceOwnedSet(variable.options, optionSet.options)) {
+        continue;
+      }
+      const owningStageIndex = binding.path[1];
+      const owningStage =
+        typeof owningStageIndex === 'number'
+          ? protocol.stages[owningStageIndex]
+          : undefined;
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `${owningStage?.type ?? 'Stage'} ${optionSet.label} attribute "${binding.variableId}" must use its fixed set of options and cannot be modified.`,
+        path: binding.path,
+      });
     }
 
     const composerFieldOverrides = collectComposerFieldOverrides(
@@ -909,7 +944,7 @@ const ProtocolSchema = z
             if (variable && variable.type !== 'layout') {
               ctx.addIssue({
                 code: 'custom' as const,
-                message: `Layout variable "${layoutVariable}" must be of type "layout", but is "${variable.type}".`,
+                message: `Layout attribute "${layoutVariable}" must be of type "layout", but is "${variable.type}".`,
                 path: [
                   'stages',
                   stageIndex,
@@ -940,7 +975,7 @@ const ProtocolSchema = z
             if (variable && variable.type !== 'boolean') {
               ctx.addIssue({
                 code: 'custom' as const,
-                message: `Highlight variable "${highlightVariable}" must be of type "boolean", but is "${variable.type}".`,
+                message: `Highlight attribute "${highlightVariable}" must be of type "boolean", but is "${variable.type}".`,
                 path: [
                   'stages',
                   stageIndex,
@@ -971,7 +1006,7 @@ const ProtocolSchema = z
         if (variable && variable.type !== 'text') {
           ctx.addIssue({
             code: 'custom' as const,
-            message: `quickAdd variable "${stage.quickAdd}" must be of type "text", but is "${variable.type}".`,
+            message: `quickAdd attribute "${stage.quickAdd}" must be of type "text", but is "${variable.type}".`,
             path: ['stages', stageIndex, 'quickAdd'],
           });
         }
@@ -1045,7 +1080,7 @@ const ProtocolSchema = z
               if (variable && variable.type !== 'location') {
                 ctx.addIssue({
                   code: 'custom' as const,
-                  message: `Geospatial prompt variable "${prompt.variable}" must be of type "location", but is "${variable.type}".`,
+                  message: `Geospatial prompt attribute "${prompt.variable}" must be of type "location", but is "${variable.type}".`,
                   path: [
                     'stages',
                     stageIndex,
@@ -1155,7 +1190,7 @@ const ProtocolSchema = z
           if (!nodeVariable) {
             ctx.addIssue({
               code: 'custom' as const,
-              message: `FamilyPedigree nomination prompt variable "${prompt.variable}" does not exist on node type "${stage.nodeConfig.type}".`,
+              message: `FamilyPedigree nomination prompt attribute "${prompt.variable}" does not exist on node type "${stage.nodeConfig.type}".`,
               path: [
                 'stages',
                 stageIndex,
@@ -1167,7 +1202,7 @@ const ProtocolSchema = z
           } else if (nodeVariable.type !== 'boolean') {
             ctx.addIssue({
               code: 'custom' as const,
-              message: `FamilyPedigree nomination prompt variable "${prompt.variable}" must be a boolean variable, but is "${nodeVariable.type}".`,
+              message: `FamilyPedigree nomination prompt attribute "${prompt.variable}" must be a boolean attribute, but is "${nodeVariable.type}".`,
               path: [
                 'stages',
                 stageIndex,
@@ -1178,67 +1213,6 @@ const ProtocolSchema = z
             });
           }
         });
-      }
-
-      // 3e.iii.b-3. FamilyPedigree: the biological-sex, relationship-type, and
-      // gamete-role variables carry interface-owned value sets the interview and
-      // genetics engine depend on. Architect locks these options at creation, but
-      // nothing re-checks them afterwards; guard against a variable whose options
-      // were edited away from its canonical set. Only fires when the referenced
-      // variable exists and is a categorical or ordinal (both carry a locked
-      // options set) with a mismatched option set — so a legitimately-authored
-      // protocol (whose options already match) always passes.
-      if (stage.type === 'FamilyPedigree') {
-        const nodeVariables = getVariablesForSubject(protocol.codebook, {
-          entity: 'node',
-          type: stage.nodeConfig.type,
-        });
-        const edgeVariables = getVariablesForSubject(protocol.codebook, {
-          entity: 'edge',
-          type: stage.edgeConfig.type,
-        });
-
-        const checkLockedOptions = (
-          variableId: string,
-          variable: (typeof nodeVariables)[string] | undefined,
-          canonical: readonly CanonicalOption[],
-          label: string,
-          path: (string | number)[],
-        ) => {
-          if (
-            variable &&
-            (variable.type === 'categorical' || variable.type === 'ordinal') &&
-            !optionsMatchCanonical(variable.options, canonical)
-          ) {
-            ctx.addIssue({
-              code: 'custom' as const,
-              message: `FamilyPedigree ${label} variable "${variableId}" must use its fixed set of options and cannot be modified.`,
-              path,
-            });
-          }
-        };
-
-        checkLockedOptions(
-          stage.nodeConfig.biologicalSexVariable,
-          nodeVariables[stage.nodeConfig.biologicalSexVariable],
-          BIOLOGICAL_SEX_OPTIONS,
-          'biological sex',
-          ['stages', stageIndex, 'nodeConfig', 'biologicalSexVariable'],
-        );
-        checkLockedOptions(
-          stage.edgeConfig.relationshipTypeVariable,
-          edgeVariables[stage.edgeConfig.relationshipTypeVariable],
-          RELATIONSHIP_TYPE_OPTIONS,
-          'relationship type',
-          ['stages', stageIndex, 'edgeConfig', 'relationshipTypeVariable'],
-        );
-        checkLockedOptions(
-          stage.edgeConfig.gameteRoleVariable,
-          edgeVariables[stage.edgeConfig.gameteRoleVariable],
-          GAMETE_ROLE_OPTIONS,
-          'gamete role',
-          ['stages', stageIndex, 'edgeConfig', 'gameteRoleVariable'],
-        );
       }
 
       // 3e.iii.c. NarrativePedigree: sourceStageId must reference a FamilyPedigree
@@ -1277,7 +1251,7 @@ const ProtocolSchema = z
             if (!sourceVariable) {
               ctx.addIssue({
                 code: 'custom' as const,
-                message: `NarrativePedigree disease variable "${disease.variable}" does not exist on source node type "${sourceNodeType}".`,
+                message: `NarrativePedigree disease attribute "${disease.variable}" does not exist on source node type "${sourceNodeType}".`,
                 path: [
                   'stages',
                   stageIndex,
@@ -1292,7 +1266,7 @@ const ProtocolSchema = z
               // affected set (a clinically blank pedigree).
               ctx.addIssue({
                 code: 'custom' as const,
-                message: `NarrativePedigree disease variable "${disease.variable}" must be a boolean variable (affected/not affected), but is "${sourceVariable.type}".`,
+                message: `NarrativePedigree disease attribute "${disease.variable}" must be a boolean attribute (affected/not affected), but is "${sourceVariable.type}".`,
                 path: [
                   'stages',
                   stageIndex,
@@ -1327,7 +1301,7 @@ const ProtocolSchema = z
             if (variable && variable.type !== expectedType) {
               ctx.addIssue({
                 code: 'custom' as const,
-                message: `${stage.type} prompt variable "${prompt.variable}" must be of type "${expectedType}", but is "${variable.type}".`,
+                message: `${stage.type} prompt attribute "${prompt.variable}" must be of type "${expectedType}", but is "${variable.type}".`,
                 path: [
                   'stages',
                   stageIndex,
@@ -1475,7 +1449,7 @@ const ProtocolSchema = z
             ) {
               ctx.addIssue({
                 code: 'custom' as const,
-                message: `Discrete shape mapping requires a categorical, ordinal, or boolean variable, but "${dynamic.variable}" is of type "${variable.type}"`,
+                message: `Discrete shape mapping requires a categorical, ordinal, or boolean attribute, but "${dynamic.variable}" is of type "${variable.type}"`,
                 path: [...basePath, 'type'],
               });
             }
@@ -1485,7 +1459,7 @@ const ProtocolSchema = z
             ) {
               ctx.addIssue({
                 code: 'custom' as const,
-                message: `Breakpoint shape mapping requires a number or scalar variable, but "${dynamic.variable}" is of type "${variable.type}"`,
+                message: `Breakpoint shape mapping requires a number or scalar attribute, but "${dynamic.variable}" is of type "${variable.type}"`,
                 path: [...basePath, 'type'],
               });
             }

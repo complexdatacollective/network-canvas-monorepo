@@ -200,6 +200,46 @@ describe('StepUpAuthProvider dialog dismissal across lock transitions', () => {
   });
 });
 
+describe('StepUpAuthProvider callback stability', () => {
+  // A location-coupled requireFreshUnlock identity re-runs every consumer
+  // effect that lists it as a dependency on every navigation — including the
+  // interview route's enter-gate effect while AnimatePresence holds that route
+  // mounted for its exit fade, which is how the phantom post-exit
+  // "Confirm your identity" prompt over Home arose.
+  it('keeps requireFreshUnlock identity stable across location changes', async () => {
+    mockAuth = { kind: 'unlocked', mode: 'pin' };
+    const seen: Array<unknown> = [];
+    function IdentityProbe() {
+      seen.push(useStepUpAuth().requireFreshUnlock);
+      return null;
+    }
+    const { rerender } = render(
+      <Harness>
+        <IdentityProbe />
+      </Harness>,
+    );
+
+    await act(async () => {
+      window.history.pushState({}, '', '/interview/s1');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await act(async () => {
+      window.history.pushState({}, '', '/');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    rerender(
+      <Harness>
+        <IdentityProbe />
+      </Harness>,
+    );
+
+    expect(seen.length).toBeGreaterThan(1);
+    for (const fn of seen) {
+      expect(fn).toBe(seen[0]);
+    }
+  });
+});
+
 describe('StepUpAuthProvider interview authorization', () => {
   it('preserves the authorized interview across a hard-refresh remount', async () => {
     window.history.replaceState({}, '', '/interview/s1');

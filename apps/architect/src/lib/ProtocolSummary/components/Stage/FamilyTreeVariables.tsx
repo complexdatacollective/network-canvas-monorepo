@@ -36,11 +36,11 @@ const FamilyTreeVariables = ({
       <Variable key="rel-ego" id={relationshipToEgoVariable} />,
     ],
     egoSexVariable && [
-      'Ego Sex Variable',
+      'Ego Sex Attribute',
       <Variable key="ego-sex" id={egoSexVariable} />,
     ],
     nodeSexVariable && [
-      'Node Sex Variable',
+      'Node Sex Attribute',
       <Variable key="node-sex" id={nodeSexVariable} />,
     ],
     nodeIsEgoVariable && [

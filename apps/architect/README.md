@@ -37,9 +37,26 @@ The app will be available at `http://localhost:5173`.
 
 Copy `.env.example` to `.env` and configure:
 
-- `VITE_PUBLIC_POSTHOG_KEY` - PostHog analytics key (optional for development)
+- `VITE_DISABLE_ANALYTICS` - Set to `true` to disable analytics explicitly in a
+  non-development build. Vite development mode always disables analytics.
 
 Protocols are previewed in a local browser tab using the bundled `@codaco/interview` runtime; no remote service is required.
+
+### App updates
+
+Architect is an offline-first PWA. On a fresh navigation it checks for and
+activates a waiting service worker before React renders, leaving the static
+loading spinner visible while that completes; activation does not navigate or
+reload the page. Each built artifact uses its own precache. Activation advances
+the controller of other already-controlled tabs without replacing their loaded
+documents, and the new worker serves their old content-hashed lazy assets from
+the retained build cache, including between same-version developer deployments
+and while offline. If an update becomes available after the app has rendered,
+the version indicator offers its release notes and an
+**Install and reload** action.
+The app never reloads for an update until the user chooses that action. After
+the new version starts, the indicator shows the recently updated state and
+links to what changed.
 
 ### Building
 

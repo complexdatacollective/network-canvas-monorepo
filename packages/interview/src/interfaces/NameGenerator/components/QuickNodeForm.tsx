@@ -8,6 +8,7 @@ import type {
 } from '@codaco/fresco-ui/form/store/types';
 import type { EntityAttributesProperty, NcNode } from '@codaco/shared-consts';
 
+import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import {
   getValidationContext,
@@ -71,6 +72,18 @@ const QuickNodeForm = ({
   // all (Information/Anonymisation/FamilyPedigree/NarrativePedigree);
   // NameGenerator always has a node subject, so the undefined fallback here
   // is defensive only, matching the "Missing codebook entry" guard above.
+  //
+  // No `variableLabels`, deliberately, and this is the one screen where that is
+  // the right answer rather than an omission. `QuickNodeForm` is only ever
+  // reached on a NameGeneratorQuickAdd stage, whose schema carries no form: the
+  // single control here is the quick-add variable, its placeholder is developer
+  // copy, and the prompt-fixed `additionalAttributes` render nothing and carry
+  // no text. The stage `prompt` names the whole nomination question, not any
+  // one variable, so putting it in the map would produce "your answer to 'Who
+  // do you turn to for advice?'" for a variable answered stages ago — and the
+  // codebook variable's own `name` is a researcher identifier and may never
+  // reach a participant. With nothing authored to offer, the comparison
+  // validators' complete label-free sentences are the correct output.
   const baseValidationContext = useStageSelector(getValidationContext);
   const validationContext: ValidationContext | undefined =
     baseValidationContext.stageSubject
@@ -84,19 +97,24 @@ const QuickNodeForm = ({
 
   const handleSubmit: FormSubmitHandler = useCallback(
     async (values) => {
-      const value = values as Record<string, unknown>;
       if (disabled) {
         return {
           success: false,
-          errors: {
-            form: ['Form is disabled'],
-          },
+          formErrors: ['Form is disabled'],
+        };
+      }
+
+      const patchResult = formValuesToAttributePatch(values, [targetVariable]);
+      if (!patchResult.success) {
+        return {
+          success: false,
+          formErrors: ['An error occurred while submitting the form.'],
         };
       }
 
       await addNode({
         ...newNodeAttributes,
-        [targetVariable]: value[targetVariable] as string,
+        ...patchResult.patch.set,
       });
       setSuccessfulSubmissionCount((count) => count + 1);
 
@@ -126,7 +144,6 @@ const QuickNodeForm = ({
             onShowInput={onShowForm ?? undefined}
             successfulSubmissionCount={successfulSubmissionCount}
             {...validationProps}
-            required
             validationContext={validationContext}
           />
         </Form>

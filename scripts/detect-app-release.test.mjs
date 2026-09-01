@@ -44,10 +44,9 @@ function detect({
       `${JSON.stringify({ name: pkgName, version: v, private: true }, null, 2)}\n`,
     );
 
-  // Two commits give the repo real history. The script is tag-driven and never
-  // reads the previous commit, so `previousVersion` is deliberately ignored by
-  // it — the point is to prove detection does NOT depend on a HEAD^ diff (which
-  // is what used to lose releases). Setting previousVersion === version below
+  // Two commits give the repo real history. The default stable-tagged mode is
+  // tag-driven and never reads the previous commit, so `previousVersion` is
+  // deliberately ignored by it. Setting previousVersion === version below
   // reproduces a later push where the bump commit has already scrolled past.
   writePkg(previousVersion ?? version);
   git(cwd, 'add', '.');
@@ -83,20 +82,20 @@ function detect({
   );
 }
 
-test('releases a beta whose tag does not exist yet', () => {
+test('releases a stable app version whose tag does not exist yet', () => {
   const out = detect({
-    previousVersion: '8.0.0-beta.1',
-    version: '8.0.0-beta.2',
+    previousVersion: '8.0.0-beta.13',
+    version: '8.0.0',
   });
-  assert.equal(out.version, '8.0.0-beta.2');
+  assert.equal(out.version, '8.0.0');
   assert.equal(out.released, 'true');
 });
 
 test('is idempotent: does not re-release when the tag already exists', () => {
   const out = detect({
-    previousVersion: '8.0.0-beta.1',
-    version: '8.0.0-beta.2',
-    tags: [`${DEFAULT_PKG_NAME}@8.0.0-beta.2`],
+    previousVersion: '8.0.0-beta.13',
+    version: '8.0.0',
+    tags: [`${DEFAULT_PKG_NAME}@8.0.0`],
   });
   assert.equal(out.released, 'false');
 });
@@ -106,22 +105,22 @@ test('is idempotent: does not re-release when the tag already exists', () => {
 // no HEAD^ delta. The release must still be picked up, not lost forever.
 test('self-heals: releases when the bump has no HEAD^ delta but the tag is missing', () => {
   const out = detect({
-    previousVersion: '8.0.0-beta.2',
-    version: '8.0.0-beta.2',
+    previousVersion: '8.0.0',
+    version: '8.0.0',
   });
   assert.equal(out.released, 'true');
 });
 
-test('does not release the initial beta.0 seed', () => {
+test('does not release a beta version in the stable app lane', () => {
   const out = detect({
-    previousVersion: '8.0.0-beta.0',
-    version: '8.0.0-beta.0',
+    previousVersion: '8.0.0-beta.13',
+    version: '8.0.0-beta.13',
   });
   assert.equal(out.released, 'false');
 });
 
-test('does not release a non-beta version', () => {
-  const out = detect({ previousVersion: '6.6.0', version: '6.6.0' });
+test('does not release an invalid semver version', () => {
+  const out = detect({ previousVersion: 'next', version: 'next' });
   assert.equal(out.released, 'false');
 });
 
@@ -154,6 +153,17 @@ test('does not deploy an unchanged stable website version', () => {
   const out = detect({
     previousVersion: '0.1.1',
     version: '0.1.1',
+    pkgName: 'networkcanvas.com',
+    pkgJson: 'apps/networkcanvas.com/package.json',
+    releaseChannel: 'stable',
+  });
+  assert.equal(out.released, 'false');
+});
+
+test('does not deploy a changed prerelease from the stable website lane', () => {
+  const out = detect({
+    previousVersion: '0.1.1',
+    version: '0.1.2-beta.1',
     pkgName: 'networkcanvas.com',
     pkgJson: 'apps/networkcanvas.com/package.json',
     releaseChannel: 'stable',

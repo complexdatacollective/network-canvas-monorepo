@@ -1,6 +1,6 @@
 {
   "name": "@codaco/development-protocol",
-  "version": "2.0.4",
+  "version": "2.0.6",
   "description": "Development protocol for testing Network Canvas applications",
   "keywords": [
     "development",
@@ -25,7 +25,6 @@
     "./assets/*": "./assets/*"
   },
   "scripts": {
-    "prepare": "node ../protocols/scripts/sync-compat-package.mjs development .",
     "prepack": "node ../protocols/scripts/sync-compat-package.mjs development ."
   },
   "engines": {

@@ -316,7 +316,7 @@ describe('analyseFeasibility', () => {
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]?.rules.toSorted()).toEqual(['differentFrom', 'sameAs']);
     expect(conflicts[0]?.reason).toBe(
-      'these variables are required to be both equal and different',
+      'these attributes are required to be both equal and different',
     );
   });
 
@@ -469,7 +469,7 @@ describe('analyseFeasibility', () => {
     expect(conflicts[1]?.variableNames).toEqual(['A', 'B']);
     expect(conflicts[1]?.reason).toContain('bounds do not overlap');
     expect(conflicts[1]?.reason).toContain(
-      'minLength 10 exceeds maxLength 2, which one of these variables already ' +
+      'minLength 10 exceeds maxLength 2, which one of these attributes already ' +
         'declares on its own',
     );
   });
@@ -1204,6 +1204,41 @@ describe('values a prompt fixes', () => {
     ).toEqual([]);
   });
 
+  it('accepts a unique value fixed only by a later prompt with one slot left', () => {
+    const codebook = codebookWith({
+      firstFlag: { name: 'First flag', type: 'boolean' },
+      secondFlag: { name: 'Second flag', type: 'boolean' },
+      flagged: {
+        name: 'Flagged',
+        type: 'boolean',
+        validation: { unique: true },
+      },
+    });
+    const stage = {
+      ...fixingGenerator(5),
+      prompts: [
+        {
+          id: 'p1',
+          text: 'First prompt',
+          additionalAttributes: [{ variable: 'firstFlag', value: true }],
+        },
+        {
+          id: 'p2',
+          text: 'Second prompt',
+          additionalAttributes: [{ variable: 'secondFlag', value: true }],
+        },
+        {
+          id: 'p3',
+          text: 'Third prompt',
+          additionalAttributes: [{ variable: 'flagged', value: true }],
+        },
+      ],
+      behaviours: { minNodes: 2, maxNodes: 5 },
+    } as unknown as Stage;
+
+    expect(analyseFeasibility(codebook, [stage], config)).toEqual([]);
+  });
+
   it('accepts a fixed value no rule holds unique', () => {
     const codebook = codebookWith({
       flagged: { name: 'Flagged', type: 'boolean' },
@@ -1708,12 +1743,7 @@ describe('a value a prompt fixes and a roster row carries', () => {
   });
 });
 
-/**
- * The ego flag a FamilyPedigree stage writes is the same kind of value as a
- * prompt's: the interface pins `true` on its proband and `false` on every other
- * node it builds, so no draw stands between those values and the finished
- * network.
- */
+/** The complete pedigree pins one ego flag and several non-ego flags. */
 describe('the ego flag a pedigree stage pins', () => {
   function pedigree(id = 'stage-fp', variable = 'isEgo'): Stage {
     return {
@@ -1726,62 +1756,95 @@ describe('the ego flag a pedigree stage pins', () => {
     } as unknown as Stage;
   }
 
-  function sizedConfig(nodes: number): typeof config {
-    return resolveGenerationConfig({
-      today: '2026-07-27',
-      familyPedigreeNodeCount: { min: nodes, max: nodes },
-    });
-  }
+  const compactConfig = resolveGenerationConfig({
+    today: '2026-07-27',
+    familyPedigreeNodeCount: { min: 7, max: 7 },
+  });
 
   const uniqueFlag = codebookWith({
     isEgo: { name: 'Is ego', type: 'boolean', validation: { unique: true } },
   });
 
-  it('reports two stages that each pin true on one unique flag', () => {
-    // Both stages mark their own proband, and one-node pedigrees put nothing
-    // else on the variable — so the count check passes and two nodes still end
-    // up holding `true`.
+  it('reports both the finite value space and the repeated fixed flag', () => {
     const conflicts = analyseFeasibility(
       uniqueFlag,
-      [pedigree('fp-a'), pedigree('fp-b')],
-      sizedConfig(1),
+      [pedigree()],
+      compactConfig,
     );
 
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0]?.rules).toEqual(['unique', 'egoVariable']);
-    expect(conflicts[0]?.variableNames).toEqual(['Is ego']);
-    expect(conflicts[0]?.reason).toBe(
-      'a family pedigree fixes this to true on up to 2 nodes, but unique allows one node to hold a value',
+    expect(conflicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ rules: ['unique'] }),
+        expect.objectContaining({ rules: ['unique', 'egoVariable'] }),
+      ]),
     );
   });
 
-  it('reports the false one stage of three nodes writes twice', () => {
-    // A domain wide enough to pass the count check: nine values for three
-    // nodes. The pedigree writes `[true, false, false]` all the same.
+  it('reports repeated false even when the declared domain is wide enough', () => {
     const conflicts = analyseFeasibility(
       codebookWith({
         isEgo: {
           name: 'Is ego',
           type: 'number',
-          validation: { unique: true, minValue: 1, maxValue: 9 },
+          validation: { unique: true, minValue: 0, maxValue: 20 },
         },
       }),
       [pedigree()],
-      sizedConfig(3),
+      compactConfig,
     );
 
     expect(conflicts).toHaveLength(1);
-    expect(conflicts[0]?.reason).toBe(
-      'a family pedigree fixes this to false on up to 2 nodes, but unique allows one node to hold a value',
-    );
+    expect(conflicts[0]?.rules).toEqual(['unique', 'egoVariable']);
+    expect(conflicts[0]?.reason).toMatch(/false on up to 9 nodes/);
   });
 
-  it('accepts a two-node pedigree, whose two pins differ', () => {
-    // One `true` and one `false` spend one value each, which is what unique
-    // allows. This is the shape `reserveFamilyPedigreeFixedValues` settles.
-    expect(
-      analyseFeasibility(uniqueFlag, [pedigree()], sizedConfig(2)),
-    ).toEqual([]);
+  it('counts fixed values for every externally introduced contributor branch', () => {
+    const shared = {
+      nodeConfig: { type: 'person', egoVariable: 'isEgo' },
+      edgeConfig: {
+        type: 'kin',
+        relationshipTypeVariable: 'relationshipType',
+      },
+    };
+    const first = {
+      ...pedigree('first-pedigree'),
+      ...shared,
+      boundaries: { requireChildrenContributors: 'off' },
+    } as unknown as Stage;
+    const pairing = {
+      id: 'pair-relatives',
+      type: 'Sociogram',
+      label: 'Pair relatives',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 'pair-prompt',
+          text: 'Connect relatives',
+          edges: { create: 'kin' },
+        },
+      ],
+    } as unknown as Stage;
+    const second = {
+      ...pedigree('second-pedigree'),
+      ...shared,
+      boundaries: { requireChildrenContributors: 'required' },
+    } as unknown as Stage;
+
+    const conflicts = analyseFeasibility(
+      codebookWith({
+        isEgo: {
+          name: 'Is ego',
+          type: 'number',
+          validation: { unique: true, minValue: 0, maxValue: 1000 },
+        },
+      }),
+      [first, pairing, second],
+      compactConfig,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['unique', 'egoVariable']);
+    expect(conflicts[0]?.reason).toMatch(/false on up to 98 nodes/);
   });
 
   it('accepts an ego flag no rule holds unique', () => {
@@ -1789,21 +1852,22 @@ describe('the ego flag a pedigree stage pins', () => {
       isEgo: { name: 'Is ego', type: 'boolean' },
     });
 
-    expect(analyseFeasibility(codebook, [pedigree()], sizedConfig(8))).toEqual(
+    expect(analyseFeasibility(codebook, [pedigree()], compactConfig)).toEqual(
       [],
     );
   });
 
-  it('accepts a pedigree stage naming no ego variable', () => {
+  it('ignores a unique codebook variable no stage writes', () => {
     const stage = {
       ...pedigree(),
       nodeConfig: { type: 'person' },
     } as unknown as Stage;
 
-    expect(analyseFeasibility(uniqueFlag, [stage], sizedConfig(2))).toEqual([]);
+    const conflicts = analyseFeasibility(uniqueFlag, [stage], compactConfig);
+    expect(conflicts).toEqual([]);
   });
 
-  it('names the protocol when a prompt and a pedigree pin the same value', () => {
+  it('names both protocol writers when a prompt and pedigree pin true', () => {
     const fixingGenerator = {
       id: 'stage-fix',
       type: 'NameGenerator',
@@ -1820,9 +1884,15 @@ describe('the ego flag a pedigree stage pins', () => {
     } as unknown as Stage;
 
     const conflicts = analyseFeasibility(
-      uniqueFlag,
+      codebookWith({
+        isEgo: {
+          name: 'Is ego',
+          type: 'number',
+          validation: { unique: true, minValue: 0, maxValue: 30 },
+        },
+      }),
       [fixingGenerator, pedigree()],
-      sizedConfig(1),
+      compactConfig,
     );
 
     expect(conflicts).toHaveLength(1);
@@ -1831,73 +1901,9 @@ describe('the ego flag a pedigree stage pins', () => {
       'egoVariable',
       'unique',
     ]);
-    expect(conflicts[0]?.reason).toBe(
-      'the protocol fixes this to true on up to 2 nodes, but unique allows one node to hold a value',
+    expect(conflicts[0]?.reason).toMatch(
+      /true on up to 2 nodes and to false on up to 9 nodes/,
     );
-  });
-
-  it('folds a pedigree pin onto the unique group its variable belongs to', () => {
-    const conflicts = analyseFeasibility(
-      codebookWith({
-        token: { name: 'Token', type: 'boolean', validation: { unique: true } },
-        isEgo: {
-          name: 'Is ego',
-          type: 'boolean',
-          validation: { sameAs: 'token' },
-        },
-      }),
-      [pedigree('fp-a'), pedigree('fp-b')],
-      sizedConfig(1),
-    );
-
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0]?.variableNames.toSorted()).toEqual(['Is ego', 'Token']);
-  });
-
-  it('reports a roster row carrying the flag a later pedigree pins', () => {
-    // The pedigree marks its proband whatever the network already holds, so a
-    // row carrying `true` drawn before it leaves two people marked ego. The
-    // other order is what `pedigreeEgoFlag` covers: the pin claims the value
-    // first, and the row is passed over.
-    const roster = {
-      id: 'stage-roster',
-      type: 'NameGeneratorRoster',
-      label: 'Roster',
-      subject: { entity: 'node', type: 'person' },
-      prompts: [{ id: 'p1', text: 'Pick people' }],
-      behaviours: { minNodes: 1, maxNodes: 1 },
-    } as unknown as Stage;
-    const rows = {
-      'stage-roster': [
-        {
-          [entityPrimaryKeyProperty]: 'r1',
-          type: 'person',
-          [entityAttributesProperty]: { isEgo: true },
-        } as unknown as NcNode,
-      ],
-    };
-
-    const conflicts = analyseFeasibility(
-      uniqueFlag,
-      [roster, pedigree()],
-      sizedConfig(1),
-      rows,
-    );
-
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0]?.rules).toEqual(['unique', 'egoVariable']);
-    expect(conflicts[0]?.reason).toBe(
-      'a family pedigree and a roster row fix this to true on up to 2 nodes, but unique allows one node to hold a value',
-    );
-
-    expect(
-      analyseFeasibility(
-        uniqueFlag,
-        [pedigree(), roster],
-        sizedConfig(1),
-        rows,
-      ),
-    ).toEqual([]);
   });
 });
 
@@ -1949,7 +1955,7 @@ describe('a rule between two values one prompt fixes', () => {
     expect(conflicts[0]?.rules).toEqual(['sameAs', 'additionalAttributes']);
     expect(conflicts[0]?.variableNames).toEqual(['A', 'B']);
     expect(conflicts[0]?.reason).toBe(
-      'a prompt fixes these variables to false and true, which sameAs cannot hold',
+      'a prompt fixes these attributes to false and true, which sameAs cannot hold',
     );
   });
 
@@ -1966,7 +1972,7 @@ describe('a rule between two values one prompt fixes', () => {
       'additionalAttributes',
     ]);
     expect(conflicts[0]?.reason).toBe(
-      'a prompt fixes these variables to true and true, which differentFrom cannot hold',
+      'a prompt fixes these attributes to true and true, which differentFrom cannot hold',
     );
   });
 
@@ -2076,7 +2082,7 @@ describe('a value one prompt fixes against its own rules', () => {
     expect(conflicts[0]?.rules).toEqual(['options', 'additionalAttributes']);
     expect(conflicts[0]?.variableNames).toEqual(['Rank']);
     expect(conflicts[0]?.reason).toBe(
-      'a prompt fixes this variable to true, which options does not allow',
+      'a prompt fixes this attribute to true, which options does not allow',
     );
   });
 
@@ -2098,7 +2104,7 @@ describe('a value one prompt fixes against its own rules', () => {
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]?.rules).toEqual(['minValue', 'additionalAttributes']);
     expect(conflicts[0]?.reason).toBe(
-      'a prompt fixes this variable to true, which minValue does not allow',
+      'a prompt fixes this attribute to true, which minValue does not allow',
     );
   });
 
@@ -2774,9 +2780,8 @@ describe('a pedigree edge variable no stage writes', () => {
   const codeOnly = codebookWithEdgeVariables({ code: contradiction });
 
   it('accepts a contradiction nothing writes', () => {
-    // `handleFamilyPedigree` creates every edge with `attributes: {}` and
-    // writes nothing onto one, so no value of `code` is ever drawn or
-    // submitted and the rules on it are never applied.
+    // This partial fixture names no semantic edge variable, so no value of
+    // `code` is ever drawn or submitted and its rules are never applied.
     expect(analyseFeasibility(codeOnly, [pedigree], config)).toEqual([]);
   });
 
@@ -3006,7 +3011,7 @@ describe('a pedigree edge variable no stage writes', () => {
       expect(conflicts).toHaveLength(1);
       expect(conflicts[0]?.variableNames).toEqual(['Source', 'Confirm']);
       expect(conflicts[0]?.reason).toBe(
-        'these variables are held to a single value, but their bounds do not ' +
+        'these attributes are held to a single value, but their bounds do not ' +
           'overlap: minLength 10 exceeds maxLength 5',
       );
     });

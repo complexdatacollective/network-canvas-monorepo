@@ -18,14 +18,13 @@ import { useFormMeta } from '@codaco/fresco-ui/form/hooks/useFormState';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider, {
   FormStoreContext,
+  selectIsFormDirty,
 } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
-import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type { TitlelessForm } from '@codaco/protocol-validation';
 import {
-  type EntityAttributesProperty,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcEdge,
@@ -33,11 +32,18 @@ import {
 } from '@codaco/shared-consts';
 
 import { useTrack } from '../../analytics/useTrack';
+import {
+  buildProtocolFieldErrors,
+  type ProtocolFieldErrorEntry,
+} from '../../forms/buildProtocolFieldErrors';
+import { formValuesToAttributePatch } from '../../forms/formValuesToAttributePatch';
+import { submitRegisteredForm } from '../../forms/submitRegisteredForm';
 import useProtocolForm from '../../forms/useProtocolForm';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useScrolledToBottom } from '../../hooks/useScrolledToBottom';
 import type { Subject } from '../../selectors/forms';
+import type { AttributePatch } from '../../store/entityAttributePatch';
 import type { BeforeNextFunction, Direction } from '../../types';
 
 type FormKind = 'alter' | 'alter_edge' | 'ego' | 'slides';
@@ -46,56 +52,11 @@ type SlidesFormAnalyticsProps = {
   form_kind?: FormKind;
 };
 
-type FieldErrorEntry = {
-  field_index: number;
-  component: string;
-  message: string;
-};
-
-/**
- * Build a structured field-error array from the form store's flattened
- * Zod errors. Looks up each failed field's component by matching the
- * field name against the form's `fields` array. Multiple messages per
- * field produce multiple entries.
- *
- * The error message is included verbatim — engine messages may include
- * codebook variable references in some validation kinds; we accept that
- * leak for the diagnostic value.
- */
-// Audit sweep: `componentByVariable` comes from `useProtocolForm`, which
-// resolves each field's control the way the rendered Field does. The shared
-// `FormFieldSchema` has no `component` key of its own, so reading one off the
-// stage field recorded 'unknown' for every field, always.
-function buildFieldErrors(
-  formErrors:
-    | { fieldErrors?: Record<string, string[] | undefined> }
-    | undefined,
-  fields: ReadonlyArray<{ variable: string }>,
-  componentByVariable: Record<string, string>,
-): FieldErrorEntry[] {
-  const result: FieldErrorEntry[] = [];
-  const fieldErrors = formErrors?.fieldErrors;
-  if (!fieldErrors) return result;
-  for (const [name, messages] of Object.entries(fieldErrors)) {
-    if (!Array.isArray(messages) || messages.length === 0) continue;
-    const idx = fields.findIndex((f) => f.variable === name);
-    if (idx === -1) continue;
-    const component = componentByVariable[name] ?? 'unknown';
-    for (const message of messages) {
-      result.push({ field_index: idx, component, message });
-    }
-  }
-  return result;
-}
-
 type SlidesFormProps<T extends NcNode | NcEdge = NcNode | NcEdge> = {
   form: TitlelessForm;
   items: T[];
   subject: Subject;
-  updateItem: (
-    id: string,
-    newAttributeData: NcNode[EntityAttributesProperty],
-  ) => void;
+  updateItem: (id: string, attributePatch: AttributePatch) => void;
   onNavigateBack?: () => void;
   moveForward: () => void | Promise<void>;
   renderHeader: (item: T) => ReactNode;
@@ -118,14 +79,17 @@ const discardChangesDialog = {
 
 type SlideHandle = {
   validate: () => Promise<boolean>;
-  submit: () => Promise<void>;
+  submit: () => Promise<boolean>;
   isDirty: () => boolean;
-  focusFirstError: () => void;
-  getFieldErrors: () => Array<{
-    field_index: number;
-    component: string;
-    message: string;
-  }>;
+  /**
+   * Ask the slide's form to move to its first invalid question. The form does
+   * that from a layout effect on the commit that renders the errors, so this
+   * returns before focus moves — deliberately: calling it synchronously after
+   * `validate()` would otherwise focus before the error render is committed
+   * and lose the focus to that commit's own restoration.
+   */
+  requestErrorFocus: () => void;
+  getFieldErrors: () => ProtocolFieldErrorEntry[];
 };
 
 type SlideContentProps = {
@@ -134,10 +98,7 @@ type SlideContentProps = {
   subject: Subject;
   header: ReactNode;
   submitButton: ReactNode;
-  onUpdate: (
-    id: string,
-    newAttributeData: NcNode[EntityAttributesProperty],
-  ) => void;
+  onUpdate: (id: string, attributePatch: AttributePatch) => void;
   onReadyChange: (ready: boolean) => void;
   form_kind?: FormKind;
 };
@@ -161,34 +122,49 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(
     const rawAttributes = item[entityAttributesProperty];
 
     const initialValues: Record<string, FieldValue> | undefined = rawAttributes
-      ? (Object.fromEntries(
-          Object.entries(rawAttributes).map(([key, value]) => [
-            key,
-            value ?? undefined,
-          ]),
-        ) as Record<string, FieldValue>)
+      ? Object.entries(rawAttributes).reduce<Record<string, FieldValue>>(
+          (values, [name, value]) => {
+            values[name] = value;
+            return values;
+          },
+          {},
+        )
       : undefined;
 
-    const { fieldComponents, coerceValues, componentByVariable } =
-      useProtocolForm({
-        fields: form.fields,
-        autoFocus: false,
-        initialValues,
-        subject,
-        currentEntityId: id,
-      });
+    const {
+      fieldComponents,
+      coerceValues,
+      componentByVariable,
+      variableByFieldPath,
+    } = useProtocolForm({
+      fields: form.fields,
+      autoFocus: false,
+      initialValues,
+      subject,
+      currentEntityId: id,
+    });
 
     const handleSubmit: FormSubmitHandler = (values) => {
-      // Coerce values to their declared codebook type (e.g. number fields,
-      // which emit raw strings) before persisting.
-      onUpdate(id, coerceValues(values) as NcNode[EntityAttributesProperty]);
+      const patchResult = formValuesToAttributePatch(
+        coerceValues(values),
+        form.fields.map((field) => field.variable),
+      );
+
+      if (!patchResult.success) {
+        return {
+          success: false,
+          formErrors: ['An error occurred while submitting the form.'],
+        };
+      }
+
+      onUpdate(id, patchResult.patch);
       track('form_submitted', {
         form_kind,
         ...(form_kind === 'alter' || form_kind === 'alter_edge'
           ? { entity_id: id }
           : {}),
       });
-      return { success: true as const };
+      return { success: true };
     };
 
     const storeApi = useContext(FormStoreContext);
@@ -227,15 +203,23 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(
     }, []);
 
     useImperativeHandle(ref, () => ({
-      validate: () => storeApi!.getState().validateForm(),
-      submit: () => storeApi!.getState().submitForm(),
-      isDirty: () => storeApi!.getState().isDirty,
-      focusFirstError: () => focusFirstError(formErrorsRef.current),
+      validate: async () =>
+        storeApi ? storeApi.getState().validateForm() : false,
+      submit: async () => (storeApi ? submitRegisteredForm(storeApi) : false),
+      // A live comparison against the values the fields registered with, not
+      // the store's sticky `isDirty`. The sticky flag never returns to false
+      // once anything has been typed, so a participant who changed an answer
+      // and then put it back was still asked whether to discard changes they
+      // no longer had.
+      isDirty: () =>
+        storeApi ? selectIsFormDirty(storeApi.getState()) : false,
+      requestErrorFocus: () => storeApi?.getState().requestErrorFocus(),
       getFieldErrors: () =>
-        buildFieldErrors(
+        buildProtocolFieldErrors(
           formErrorsRef.current,
           form.fields,
           componentByVariable,
+          variableByFieldPath,
         ),
     }));
 
@@ -350,8 +334,7 @@ export default function SlidesForm({
       const formIsValid = await slideRef.current?.validate();
 
       if (formIsValid) {
-        await slideRef.current?.submit();
-        return true;
+        return (await slideRef.current?.submit()) ?? false;
       }
 
       if (!slideRef.current?.isDirty()) {
@@ -391,7 +374,10 @@ export default function SlidesForm({
       }
 
       if (formIsValid) {
-        await slideRef.current?.submit();
+        const submitted = await slideRef.current?.submit();
+        if (!submitted) {
+          return false;
+        }
       }
 
       setActiveIndex((prev) => prev - 1);
@@ -404,11 +390,14 @@ export default function SlidesForm({
     if (!formIsValid) {
       const errs = slideRef.current?.getFieldErrors?.() ?? [];
       track('form_validation_failed', { form_kind, field_errors: errs });
-      slideRef.current?.focusFirstError();
+      slideRef.current?.requestErrorFocus();
       return false;
     }
 
-    await slideRef.current?.submit();
+    const submitted = await slideRef.current?.submit();
+    if (!submitted) {
+      return false;
+    }
 
     if (activeIndex >= items.length - 1) {
       return true;

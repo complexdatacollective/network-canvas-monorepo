@@ -1,0 +1,15 @@
+- main:
+  - heading "About you" [level=1]
+  - paragraph: Please answer the questions below.
+  - text: Do you live alone? Required
+  - radiogroup "Do you live alone?":
+    - radio "Yes"
+    - radio "No"
+  - text: How happy are you right now? Required
+  - group "How happy are you right now?":
+    - slider "How happy are you right now?": "0.5"
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

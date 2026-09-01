@@ -7,19 +7,24 @@ import { markStoredProtocolValidated } from '../protocolLibrary';
 
 const db = vi.hoisted(() => ({
   get: vi.fn(),
+  put: vi.fn(),
   update: vi.fn(),
-  transaction: vi.fn(
-    async (_mode: string, _table: unknown, operation: () => Promise<void>) =>
-      await operation(),
-  ),
+  // Dexie takes a variable number of tables before the operation, so read the
+  // operation off the end rather than by position.
+  transaction: vi.fn(async (...args: unknown[]) => {
+    const operation = args.at(-1) as () => Promise<unknown>;
+    return await operation();
+  }),
 }));
 
 vi.mock('../assetDB', () => ({
   assetDb: {
     protocols: {
       get: db.get,
+      put: db.put,
       update: db.update,
     },
+    assets: {},
     transaction: db.transaction,
   },
 }));

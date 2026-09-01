@@ -10,14 +10,14 @@
     - button "Un"
   - button "Drag to reposition"
   - toolbar "Presets":
-    - button "Previous preset" [disabled]
-    - button "bleakly custody" [expanded]
-    - button "Next preset" [disabled]
+    - group "Preset navigation":
+      - button "Previous preset" [disabled]
+      - button "bleakly custody" [expanded]
+      - dialog:
+        - heading "Groups" [level=3]:
+          - button "Groups"
+      - button "Next preset" [disabled]
   - status
-  - dialog:
-    - region:
-      - heading "Groups" [level=3]:
-        - button "Groups"
   - navigation:
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x

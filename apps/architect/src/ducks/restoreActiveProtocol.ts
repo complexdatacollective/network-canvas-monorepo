@@ -2,8 +2,11 @@ import { disarmInMemoryUnloadGuard } from '~/utils/beforeUnloadGuard';
 import { getStoredProtocol as readStoredProtocol } from '~/utils/protocolLibrary';
 import { reportError } from '~/utils/reportError';
 import { clearRememberedAppSession } from '~/utils/sessionStorageDriver';
-import { reportStartupProtocolValidationFailure } from '~/utils/startupProtocolFailureQueue';
-import { admitStoredProtocol as admitCanonicalProtocol } from '~/utils/storedProtocolAdmission';
+import { reportStartupProtocolFailure } from '~/utils/startupProtocolFailureQueue';
+import {
+  admitStoredProtocol as admitCanonicalProtocol,
+  type StoredProtocolRefusal,
+} from '~/utils/storedProtocolAdmission';
 
 import { timelineActions } from './middleware/timeline';
 import {
@@ -13,6 +16,7 @@ import {
 import {
   getActiveProtocolId,
   setActiveProtocolId,
+  setProtocolLockState,
   setStorageUnavailable,
 } from './modules/app';
 import type { AppDispatch, RootState } from './store';
@@ -27,9 +31,21 @@ type RestoreDependencies = {
   getStoredProtocol?: typeof readStoredProtocol;
   replaceProtocolRoute?: () => void;
   onError?: (error: unknown) => void;
-  onInvalid?: (message: string) => void;
+  onInvalid?: (refusal: StoredProtocolRefusal) => void;
   admitStoredProtocol?: typeof admitCanonicalProtocol;
   clearRememberedSession?: () => void;
+  /**
+   * Set by the cross-tab reclaim, which re-reads the canonical row while the
+   * researcher stays on the same protocol on the same route. Startup leaves it
+   * unset: there the session really is beginning.
+   *
+   * It only ever reaches the timeline middleware, and only lets it skip
+   * discarding undo history when the row it just read is identical to what is
+   * already in the buffer. A row that DIFFERS still resets, because then a peer
+   * tab edited and this tab's history describes a lineage that no longer exists
+   * — undoing into it would overwrite work this tab never saw (#1382).
+   */
+  continuingSession?: boolean;
 };
 
 export type RestoreActiveProtocolResult =
@@ -54,19 +70,34 @@ const clearRestoredSession = (store: RestoreStore): void => {
 
 // Restore only the active protocol identifier from sessionStorage. Protocol
 // content always comes from the canonical IndexedDB row; no session-stored body
-// can overwrite it. Provenance-marked rows open directly, while legacy rows
-// receive a one-time validation before they can seed an editor session.
+// can overwrite it. `admitStoredProtocol` decides what that row is allowed to
+// become: a row below this build's schema is upgraded in place, one above it is
+// refused, provenance-marked rows open directly, and legacy rows receive a
+// one-time validation before they can seed an editor session.
 export const restoreActiveProtocolFromLibrary = async (
   store: RestoreStore,
   dependencies: RestoreDependencies = {},
 ): Promise<RestoreActiveProtocolResult> => {
-  const protocolId = getActiveProtocolId(store.getState());
-  if (!protocolId) return 'none';
-
   const getStoredProtocol =
     dependencies.getStoredProtocol ?? readStoredProtocol;
   const blockProtocolRoute =
     dependencies.replaceProtocolRoute ?? replaceProtocolRoute;
+
+  const protocolId = getActiveProtocolId(store.getState());
+  if (!protocolId) {
+    // There is no session to restore, so a /protocol URL (bookmark, typed
+    // address, restored tab) has no protocol behind it. Settle on Home, as
+    // every other unrestorable branch below does.
+    //
+    // This used to say "before React mounts", which was true when startup was
+    // the only caller. `useProtocolTabLock.finishReclaim` now calls this
+    // mid-session with React mounted, so the raw `history.replaceState` runs
+    // there too and the router does not hear it. Not a defect —
+    // `ProtocolRouteGuard` converges on a real navigation — but the route
+    // change is no longer guaranteed to happen before anything is rendering.
+    blockProtocolRoute();
+    return 'none';
+  }
 
   let row: Awaited<ReturnType<typeof getStoredProtocol>>;
   try {
@@ -117,15 +148,24 @@ export const restoreActiveProtocolFromLibrary = async (
   if (!admission.success) {
     clearRestoredSession(store);
     blockProtocolRoute();
-    (dependencies.onInvalid ?? reportStartupProtocolValidationFailure)(
-      admission.error.message,
-    );
+    (dependencies.onInvalid ?? reportStartupProtocolFailure)(admission.refusal);
     return 'invalid';
   }
 
   store.dispatch(setStorageUnavailable(false));
   disarmInMemoryUnloadGuard();
-  store.dispatch(setActiveProtocol(row.protocol));
+  // Seed from what admission returned, not from the row that was read: a row
+  // written under an older schema has been upgraded and re-saved by now, and
+  // the editor must hold the upgraded document rather than the stale one.
+  const { protocol } = admission;
+  store.dispatch(
+    dependencies.continuingSession
+      ? {
+          ...setActiveProtocol(protocol),
+          meta: { continuingSession: true },
+        }
+      : setActiveProtocol(protocol),
+  );
   return 'restored';
 };
 
@@ -139,6 +179,16 @@ export const restoreActiveProtocolAfterStoreRehydration = async (
 ): Promise<
   RestoreActiveProtocolResult | Exclude<StoreRehydrationResult, 'rehydrated'>
 > => {
+  // The whole `app` slice is persisted to sessionStorage, so a reload restores
+  // whatever cross-tab lock state this tab happened to be in — including
+  // `reclaim-blocked`, whose blocker did NOT survive: neither a stage draft nor
+  // a nested editor's values are persisted, so the state would outlive the
+  // thing that justified it and refuse every write with nothing left to
+  // resolve. It is derived from the BroadcastChannel and belongs to a session,
+  // so a new one starts from "this tab owns it" and lets the first claim settle
+  // the truth.
+  store.dispatch(setProtocolLockState('owned'));
+
   if (rehydrationResult === 'rehydrated') {
     return await restoreActiveProtocolFromLibrary(store, dependencies);
   }

@@ -17,6 +17,40 @@ const variableConfig: VariableConfig = {
 };
 
 describe('buildChildParentage', () => {
+  it('writes dangerous configured node and edge variables as own attributes', () => {
+    const prototypeDescriptor = Object.getOwnPropertyDescriptor(
+      Object.prototype,
+      '__proto__',
+    );
+    const dangerousConfig: VariableConfig = {
+      ...variableConfig,
+      biologicalSexVariable: '__proto__',
+      gameteRoleVariable: 'constructor',
+      isGestationalCarrierVariable: 'prototype',
+    };
+    const { edges, nodes } = buildChildParentage(
+      'child',
+      {
+        'egg-parent-carried': true,
+        'egg-source': 'new',
+        'new-egg-source': { biologicalSex: 'female', name: 'Parent' },
+      },
+      dangerousConfig,
+    );
+    const nodeAttributes = nodes[0]?.data.attributes;
+    const edgeAttributes = edges[0]?.data.attributes;
+
+    expect(Object.hasOwn(nodeAttributes ?? {}, '__proto__')).toBe(true);
+    expect(nodeAttributes?.['__proto__']).toEqual(['female']);
+    expect(Object.hasOwn(edgeAttributes ?? {}, 'prototype')).toBe(true);
+    expect(edgeAttributes?.prototype).toBe(true);
+    expect(Object.hasOwn(edgeAttributes ?? {}, 'constructor')).toBe(true);
+    expect(edgeAttributes?.constructor).toEqual(['egg']);
+    expect(
+      Object.getOwnPropertyDescriptor(Object.prototype, '__proto__'),
+    ).toEqual(prototypeDescriptor);
+  });
+
   it('emits one edge per existing parent, flagging the egg parent as carrier when they carried', () => {
     const { nodes, edges, parents } = buildChildParentage(
       'child',
@@ -52,7 +86,10 @@ describe('buildChildParentage', () => {
       {
         'egg-source': 'ego-1',
         'sperm-source': 'new',
-        'new-sperm-source': { name: 'Donor Dan' },
+        'new-sperm-source': {
+          name: 'Donor Dan',
+          biologicalSex: 'female',
+        },
         'sperm-source-is-donor': true,
         'egg-parent-carried': true,
       },
@@ -62,7 +99,13 @@ describe('buildChildParentage', () => {
     expect(nodes).toHaveLength(1);
     expect(nodes[0]).toMatchObject({
       tempId: 'new-sperm-source',
-      data: { attributes: { name: 'Donor Dan', isEgo: false } },
+      data: {
+        attributes: {
+          name: 'Donor Dan',
+          isEgo: false,
+          biologicalSex: ['female'],
+        },
+      },
     });
     const donorEdge = edges.find((e) => e.source === 'new-sperm-source');
     expect(donorEdge?.data.attributes.relationship).toEqual(['donor']);

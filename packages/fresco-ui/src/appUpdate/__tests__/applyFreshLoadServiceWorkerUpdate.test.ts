@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   applyFreshLoadServiceWorkerUpdate,
@@ -28,6 +28,7 @@ type FakeRegistration = ServiceWorkerRegistration & {
   waiting: ServiceWorker | null;
   installing: ServiceWorker | null;
   update: ReturnType<typeof vi.fn<() => Promise<ServiceWorkerRegistration>>>;
+  dispatchUpdateFound: () => void;
 };
 
 function createRegistration({
@@ -43,6 +44,7 @@ function createRegistration({
     waiting,
     installing,
     update,
+    dispatchUpdateFound: () => target.dispatchEvent(new Event('updatefound')),
   }) as unknown as FakeRegistration;
   update.mockResolvedValue(registration);
   return registration;
@@ -67,6 +69,8 @@ function createServiceWorkerContainer({
       target.dispatchEvent(new Event('controllerchange')),
   };
 }
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe('applyFreshLoadServiceWorkerUpdate', () => {
   it('skips when the page is not controlled by an existing service worker', async () => {
@@ -99,7 +103,171 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
     expect(serviceWorker.getRegistration).not.toHaveBeenCalled();
   });
 
-  it('activates an already waiting worker and reloads before app startup continues', async () => {
+  it('preserves the legacy default reload and true return contract', async () => {
+    const browserWindow = window;
+    const reload = vi.fn();
+    vi.stubGlobal('window', {
+      clearTimeout: browserWindow.clearTimeout.bind(browserWindow),
+      location: { reload },
+      queueMicrotask: browserWindow.queueMicrotask.bind(browserWindow),
+      setTimeout: browserWindow.setTimeout.bind(browserWindow),
+    });
+    const waiting = createWorker('installed');
+    const registration = createRegistration({ waiting: waiting.worker });
+    const serviceWorker = createServiceWorkerContainer({ registration });
+
+    const result = applyFreshLoadServiceWorkerUpdate({
+      serviceWorker,
+      shouldSkip: () => false,
+      updateCheckTimeoutMs: 50,
+      activationTimeoutMs: 50,
+    });
+
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, 0);
+    });
+    expect(waiting.postMessage).toHaveBeenCalledWith({
+      type: 'SKIP_WAITING',
+    });
+
+    waiting.setState('activated');
+
+    await expect(result).resolves.toBe(true);
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it('activates in explicit no-reload mode and returns false so startup continues', async () => {
+    const waiting = createWorker('installed');
+    const registration = createRegistration({ waiting: waiting.worker });
+    const serviceWorker = createServiceWorkerContainer({ registration });
+    const reload = vi.fn();
+
+    const result = applyFreshLoadServiceWorkerUpdate({
+      serviceWorker,
+      reload: false,
+      shouldSkip: () => false,
+      updateCheckTimeoutMs: 50,
+      activationTimeoutMs: 50,
+    });
+
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    waiting.setState('activated');
+
+    await expect(result).resolves.toBe(false);
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('checks past a pre-existing waiting worker and activates the newest worker', async () => {
+    const staleWaiting = createWorker('installed');
+    const newestInstalling = createWorker('installing');
+    const registration = createRegistration({
+      waiting: staleWaiting.worker,
+    });
+    let resolveUpdate: (
+      registration: ServiceWorkerRegistration,
+    ) => void = () => {};
+    registration.update.mockImplementation(
+      () =>
+        new Promise<ServiceWorkerRegistration>((resolve) => {
+          resolveUpdate = resolve;
+        }),
+    );
+    const serviceWorker = createServiceWorkerContainer({ registration });
+
+    const result = applyFreshLoadServiceWorkerUpdate({
+      serviceWorker,
+      reload: false,
+      shouldSkip: () => false,
+      updateCheckTimeoutMs: 50,
+      activationTimeoutMs: 50,
+    });
+
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    expect(registration.update).toHaveBeenCalledOnce();
+    expect(staleWaiting.postMessage).not.toHaveBeenCalled();
+
+    registration.installing = newestInstalling.worker;
+    registration.dispatchUpdateFound();
+    newestInstalling.setState('installed');
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+    expect(staleWaiting.postMessage).not.toHaveBeenCalled();
+    expect(newestInstalling.postMessage).toHaveBeenCalledWith({
+      type: 'SKIP_WAITING',
+    });
+
+    newestInstalling.setState('activated');
+    await expect(result).resolves.toBe(false);
+    resolveUpdate(registration);
+  });
+
+  it('activates a pre-existing waiting worker after the newest check finds no replacement', async () => {
+    const waiting = createWorker('installed');
+    const registration = createRegistration({ waiting: waiting.worker });
+    const serviceWorker = createServiceWorkerContainer({ registration });
+
+    const result = applyFreshLoadServiceWorkerUpdate({
+      serviceWorker,
+      reload: false,
+      shouldSkip: () => false,
+      updateCheckTimeoutMs: 50,
+      activationTimeoutMs: 50,
+    });
+
+    expect(waiting.postMessage).not.toHaveBeenCalled();
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    expect(registration.update).toHaveBeenCalledOnce();
+    expect(waiting.postMessage).toHaveBeenCalledWith({
+      type: 'SKIP_WAITING',
+    });
+
+    waiting.setState('activated');
+    await expect(result).resolves.toBe(false);
+  });
+
+  it('falls back to the older waiting worker when the newest installation becomes redundant', async () => {
+    const staleWaiting = createWorker('installed');
+    const newestInstalling = createWorker('installing');
+    const registration = createRegistration({
+      waiting: staleWaiting.worker,
+    });
+    let resolveUpdate: (
+      registration: ServiceWorkerRegistration,
+    ) => void = () => {};
+    registration.update.mockImplementation(
+      () =>
+        new Promise<ServiceWorkerRegistration>((resolve) => {
+          resolveUpdate = resolve;
+        }),
+    );
+    const serviceWorker = createServiceWorkerContainer({ registration });
+
+    const result = applyFreshLoadServiceWorkerUpdate({
+      serviceWorker,
+      reload: false,
+      shouldSkip: () => false,
+      updateCheckTimeoutMs: 50,
+      activationTimeoutMs: 50,
+    });
+
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    registration.installing = newestInstalling.worker;
+    registration.dispatchUpdateFound();
+    newestInstalling.setState('redundant');
+    registration.installing = null;
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+    expect(newestInstalling.postMessage).not.toHaveBeenCalled();
+    expect(staleWaiting.postMessage).toHaveBeenCalledWith({
+      type: 'SKIP_WAITING',
+    });
+
+    staleWaiting.setState('activated');
+    await expect(result).resolves.toBe(false);
+    resolveUpdate(registration);
+  });
+
+  it('preserves a supplied legacy reload callback', async () => {
     const waiting = createWorker('installed');
     const registration = createRegistration({ waiting: waiting.worker });
     const serviceWorker = createServiceWorkerContainer({ registration });
@@ -113,28 +281,48 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
       activationTimeoutMs: 50,
     });
 
-    await new Promise((resolve) => {
-      window.setTimeout(resolve, 0);
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    waiting.setState('activated');
+
+    await expect(result).resolves.toBe(true);
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it('does not reload a legacy caller that becomes protected during activation', async () => {
+    const waiting = createWorker('installed');
+    const registration = createRegistration({ waiting: waiting.worker });
+    const serviceWorker = createServiceWorkerContainer({ registration });
+    const reload = vi.fn();
+    let shouldSkip = false;
+
+    const result = applyFreshLoadServiceWorkerUpdate({
+      serviceWorker,
+      reload,
+      shouldSkip: () => shouldSkip,
+      updateCheckTimeoutMs: 50,
+      activationTimeoutMs: 50,
     });
+
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
     expect(waiting.postMessage).toHaveBeenCalledWith({
       type: 'SKIP_WAITING',
     });
 
-    serviceWorker.dispatchControllerChange();
+    shouldSkip = true;
+    waiting.setState('activated');
 
-    await expect(result).resolves.toBe(true);
-    expect(reload).toHaveBeenCalledOnce();
+    await expect(result).resolves.toBe(false);
+    expect(reload).not.toHaveBeenCalled();
   });
 
   it('waits for an installing update to become waiting before activating it', async () => {
     const installing = createWorker('installing');
     const registration = createRegistration({ installing: installing.worker });
     const serviceWorker = createServiceWorkerContainer({ registration });
-    const reload = vi.fn();
 
     const result = applyFreshLoadServiceWorkerUpdate({
       serviceWorker,
-      reload,
+      reload: false,
       shouldSkip: () => false,
       updateCheckTimeoutMs: 50,
       activationTimeoutMs: 50,
@@ -153,27 +341,87 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
 
     serviceWorker.dispatchControllerChange();
 
-    await expect(result).resolves.toBe(true);
-    expect(reload).toHaveBeenCalledOnce();
+    await expect(result).resolves.toBe(false);
+  });
+
+  it('observes updatefound before update resolves and waits for its installing worker', async () => {
+    const installing = createWorker('installing');
+    const registration = createRegistration();
+    let resolveUpdate: (
+      registration: ServiceWorkerRegistration,
+    ) => void = () => {};
+    registration.update.mockImplementation(
+      () =>
+        new Promise<ServiceWorkerRegistration>((resolve) => {
+          resolveUpdate = resolve;
+        }),
+    );
+    const serviceWorker = createServiceWorkerContainer({ registration });
+
+    const result = applyFreshLoadServiceWorkerUpdate({
+      serviceWorker,
+      reload: false,
+      shouldSkip: () => false,
+      updateCheckTimeoutMs: 50,
+      activationTimeoutMs: 50,
+    });
+
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    expect(registration.update).toHaveBeenCalledOnce();
+    registration.installing = installing.worker;
+    registration.dispatchUpdateFound();
+    installing.setState('installed');
+
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    expect(installing.postMessage).toHaveBeenCalledWith({
+      type: 'SKIP_WAITING',
+    });
+
+    installing.setState('activated');
+    await expect(result).resolves.toBe(false);
+    resolveUpdate(registration);
+  });
+
+  it('finds an installing worker populated as the update check resolves', async () => {
+    const installing = createWorker('installing');
+    const registration = createRegistration();
+    registration.update.mockImplementation(() => {
+      registration.installing = installing.worker;
+      return Promise.resolve(registration);
+    });
+    const serviceWorker = createServiceWorkerContainer({ registration });
+
+    const result = applyFreshLoadServiceWorkerUpdate({
+      serviceWorker,
+      reload: false,
+      shouldSkip: () => false,
+      updateCheckTimeoutMs: 50,
+      activationTimeoutMs: 50,
+    });
+
+    installing.setState('installed');
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    expect(installing.postMessage).toHaveBeenCalledWith({
+      type: 'SKIP_WAITING',
+    });
+
+    installing.setState('activated');
+    await expect(result).resolves.toBe(false);
   });
 
   it('continues startup when the update check fails', async () => {
     const registration = createRegistration();
     registration.update.mockRejectedValue(new Error('offline'));
     const serviceWorker = createServiceWorkerContainer({ registration });
-    const reload = vi.fn();
 
     await expect(
       applyFreshLoadServiceWorkerUpdate({
         serviceWorker,
-        reload,
         shouldSkip: () => false,
         updateCheckTimeoutMs: 50,
         activationTimeoutMs: 50,
       }),
     ).resolves.toBe(false);
-
-    expect(reload).not.toHaveBeenCalled();
   });
 
   it('continues startup quickly when the update check times out offline', async () => {
@@ -187,19 +435,44 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
       }),
     );
     const serviceWorker = createServiceWorkerContainer({ registration });
-    const reload = vi.fn();
 
     await expect(
       applyFreshLoadServiceWorkerUpdate({
         serviceWorker,
-        reload,
         shouldSkip: () => false,
         updateCheckTimeoutMs: 1,
         activationTimeoutMs: 50,
       }),
     ).resolves.toBe(false);
 
-    expect(reload).not.toHaveBeenCalled();
+    resolveUpdate(registration);
+  });
+
+  it('does not activate a pre-existing waiting worker when the newest check times out', async () => {
+    const waiting = createWorker('installed');
+    let resolveUpdate: (
+      registration: ServiceWorkerRegistration,
+    ) => void = () => {};
+    const registration = createRegistration({ waiting: waiting.worker });
+    registration.update.mockReturnValue(
+      new Promise<ServiceWorkerRegistration>((resolve) => {
+        resolveUpdate = resolve;
+      }),
+    );
+    const serviceWorker = createServiceWorkerContainer({ registration });
+
+    await expect(
+      applyFreshLoadServiceWorkerUpdate({
+        serviceWorker,
+        reload: false,
+        shouldSkip: () => false,
+        updateCheckTimeoutMs: 1,
+        activationTimeoutMs: 50,
+      }),
+    ).resolves.toBe(false);
+
+    expect(registration.update).toHaveBeenCalledOnce();
+    expect(waiting.postMessage).not.toHaveBeenCalled();
     resolveUpdate(registration);
   });
 
@@ -207,12 +480,10 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
     const waiting = createWorker('installed');
     const registration = createRegistration({ waiting: waiting.worker });
     const serviceWorker = createServiceWorkerContainer({ registration });
-    const reload = vi.fn();
 
     await expect(
       applyFreshLoadServiceWorkerUpdate({
         serviceWorker,
-        reload,
         shouldSkip: () => false,
         updateCheckTimeoutMs: 50,
         activationTimeoutMs: 1,
@@ -222,14 +493,12 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
     expect(waiting.postMessage).toHaveBeenCalledWith({
       type: 'SKIP_WAITING',
     });
-    expect(reload).not.toHaveBeenCalled();
   });
 
   it('checks the skip predicate again before activating a found update', async () => {
     const waiting = createWorker('installed');
     const registration = createRegistration({ waiting: waiting.worker });
     const serviceWorker = createServiceWorkerContainer({ registration });
-    const reload = vi.fn();
     const shouldSkip = vi
       .fn<() => boolean>()
       .mockReturnValueOnce(false)
@@ -238,7 +507,6 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
     await expect(
       applyFreshLoadServiceWorkerUpdate({
         serviceWorker,
-        reload,
         shouldSkip,
         updateCheckTimeoutMs: 50,
         activationTimeoutMs: 50,
@@ -246,39 +514,6 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
     ).resolves.toBe(false);
 
     expect(waiting.postMessage).not.toHaveBeenCalled();
-    expect(reload).not.toHaveBeenCalled();
-  });
-
-  it('checks the skip predicate again after activation before reloading', async () => {
-    const waiting = createWorker('installed');
-    const registration = createRegistration({ waiting: waiting.worker });
-    const serviceWorker = createServiceWorkerContainer({ registration });
-    const reload = vi.fn();
-    const shouldSkip = vi
-      .fn<() => boolean>()
-      .mockReturnValueOnce(false)
-      .mockReturnValueOnce(false)
-      .mockReturnValueOnce(true);
-
-    const result = applyFreshLoadServiceWorkerUpdate({
-      serviceWorker,
-      reload,
-      shouldSkip,
-      updateCheckTimeoutMs: 50,
-      activationTimeoutMs: 50,
-    });
-
-    await new Promise((resolve) => {
-      window.setTimeout(resolve, 0);
-    });
-    expect(waiting.postMessage).toHaveBeenCalledWith({
-      type: 'SKIP_WAITING',
-    });
-
-    serviceWorker.dispatchControllerChange();
-
-    await expect(result).resolves.toBe(false);
-    expect(reload).not.toHaveBeenCalled();
   });
 });
 

@@ -1,11 +1,13 @@
 import { createSelector } from '@reduxjs/toolkit';
-import { formValueSelector } from 'redux-form';
 
 import type { FilterRule } from '@codaco/protocol-validation';
 import type { RootState } from '~/ducks/store';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
 import { getCodebook } from '~/selectors/protocol';
-import { excludeValidatedUses } from '~/selectors/roleFilters';
+import {
+  excludeInterfaceOwned,
+  excludeValidatedUses,
+} from '~/selectors/roleFilters';
 import { asOptions } from '~/selectors/utils';
 
 export const getLayoutVariablesForSubject = (
@@ -38,8 +40,15 @@ export const getHighlightVariablesForSubject = (
   );
 
   // The highlight-toggle picker is an UNVALIDATED writer: drop options a form
-  // elsewhere already validates.
-  return excludeValidatedUses(state, subject, highlightVariables, currentValue);
+  // elsewhere already validates, and drop any variable an interface derives
+  // from the structure a participant builds — highlighting writes the flag the
+  // Family Pedigree uses to mark the participant.
+  return excludeInterfaceOwned(
+    state,
+    subject,
+    excludeValidatedUses(state, subject, highlightVariables, currentValue),
+    currentValue,
+  );
 };
 
 export const getEdgesForSubject = createSelector([getCodebook], (codebook) => {
@@ -47,23 +56,25 @@ export const getEdgesForSubject = createSelector([getCodebook], (codebook) => {
   return asOptions(codebook.edge ?? {});
 });
 
-type CurrentFilters = {
+export type CurrentFilters = {
   rules?: FilterRule[];
   [key: string]: unknown;
 };
 
-export const getEdgeFilters = (state: RootState) => {
-  const getStageValue = formValueSelector('edit-stage');
-  const currentFilters = getStageValue(state, 'filter') as
-    | CurrentFilters
-    | undefined;
-
+/**
+ * The stage-level network filter's edge rules. Takes the stage's `filter`
+ * value directly (read via `useStageFormValue('filter')` at the call site —
+ * the "deliberately unshadowed stageFormContext" reaching across from inside
+ * the prompt-editor dialog to the stage form, per plan §2.4) rather than
+ * selecting it from Redux state itself.
+ */
+export const getEdgeFilters = (
+  currentFilters: CurrentFilters | undefined,
+): FilterRule[] => {
   if (!currentFilters?.rules) {
     return [];
   }
-  const edgeFilters = currentFilters.rules.filter(
+  return currentFilters.rules.filter(
     (rule: FilterRule) => rule.type === 'edge',
   );
-
-  return edgeFilters;
 };

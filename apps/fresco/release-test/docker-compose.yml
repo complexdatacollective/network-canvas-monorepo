@@ -1,0 +1,138 @@
+# Local release-testing stack: Fresco (any image: the released GHCR image or
+# the locally built pending image) + PostgreSQL + MinIO, on plain localhost
+# ports — no Traefik/TLS, unlike the production compose files this mirrors
+# (docker-compose.prod.yml). Storage is deliberately NOT env-pinned: real
+# deployments enter the S3 endpoint/public URL in the setup wizard, and the
+# release test verifies that path.
+#
+# Driven by up.sh / down.sh with a compose project name per lane, so the
+# upgrade lane and the fresh-deployment lane run side by side. Interpolated
+# variables: FRESCO_IMAGE, FRESCO_PORT, POSTGRES_PORT, MINIO_PORT.
+#
+# Named volumes let the upgrade lane swap the fresco image against live data
+# (the swap runs the new image's migrate-and-start.sh); `down -v` removes them
+# so every run starts from the unconfigured setup wizard.
+#
+# relay-sink is aliased onto the PostHog relay's hostname for every container
+# on this network, so server-side analytics egress from the app container is
+# observed rather than leaving the box. See release-test/scripts/relay-sink.mjs
+# and the release gate in .claude/workflows/fresco-release-test.js.
+
+services:
+  fresco:
+    image: ${FRESCO_IMAGE:?Set FRESCO_IMAGE (released or pending image ref)}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      # Started AND listening before the app is, so a server-side analytics
+      # request can never be refused rather than recorded.
+      relay-sink:
+        condition: service_healthy
+    ports:
+      - '${FRESCO_PORT:-3210}:3000'
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres
+      DATABASE_URL_UNPOOLED: postgresql://postgres:postgres@postgres:5432/postgres
+      PUBLIC_URL: http://localhost:${FRESCO_PORT:-3210}
+      # Stops server-side capture, and stops the browser reaching off-box at
+      # all: posthog-js is loaded only once the server has confirmed analytics
+      # are on, so a stack that sets this contacts nothing but localhost. Both
+      # lanes report the hosts their tab reached and the workflow fails the run
+      # on any that is not this deployment.
+      DISABLE_ANALYTICS: 'true'
+      COOKIE_SECURE: 'false'
+      # Next standalone binds to $HOSTNAME (default: container id -> NIC IP),
+      # which would make the 127.0.0.1 healthcheck below unreachable.
+      HOSTNAME: 0.0.0.0
+    healthcheck:
+      test:
+        ['CMD', 'wget', '-qO', '/dev/null', 'http://127.0.0.1:3000/api/health']
+      interval: 5s
+      timeout: 10s
+      retries: 10
+      # First boot runs prisma generate + migrations before the server starts.
+      start_period: 120s
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '${POSTGRES_PORT:-5533}:5432'
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'postgres']
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    # Browsers on the host PUT directly to MinIO via the published port; the
+    # app origin (localhost:FRESCO_PORT) differs, so CORS must allow it.
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_API_CORS_ALLOW_ORIGIN: '*'
+    command: server /data
+    ports:
+      - '${MINIO_PORT:-9310}:9000'
+    volumes:
+      - minio:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+  # One-shot bucket creation, as in docker-compose.prod.yml.
+  minio-init:
+    image: minio/minio:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        mc alias set minio http://minio:9000 minioadmin minioadmin
+        mc mb --ignore-existing minio/fresco-test
+
+  # Stands in for https://ph-relay.networkcanvas.com (`@codaco/shared-consts`
+  # POSTHOG_HOST) inside this network, via the alias below: Docker's embedded
+  # DNS answers that name with this container for everything on the network, so
+  # posthog-node in the app container would connect here instead of off-box.
+  # It records connection attempts and never terminates TLS — see
+  # scripts/relay-sink.mjs for why, and scripts/relay-sink-check.mjs for the
+  # probe that proves it was watching.
+  #
+  # No restart policy on purpose: a sink that died mid-run must stay dead, so
+  # the closing probe fails and the run reports that it observed nothing —
+  # rather than coming back up and reporting a silence it did not witness.
+  relay-sink:
+    image: node:lts-alpine
+    command: ['node', '/opt/release-test/relay-sink.mjs']
+    volumes:
+      - ./scripts:/opt/release-test:ro
+    healthcheck:
+      # The sink's own readiness file, not a connection to its ports: a
+      # healthcheck that dialled 443 would be recorded as egress on every
+      # interval and fail the gate it exists to support.
+      test: ['CMD', 'test', '-f', '/tmp/relay-sink-listening']
+      interval: 2s
+      timeout: 5s
+      retries: 15
+    networks:
+      default:
+        aliases:
+          - ph-relay.networkcanvas.com
+
+volumes:
+  postgres:
+  minio:

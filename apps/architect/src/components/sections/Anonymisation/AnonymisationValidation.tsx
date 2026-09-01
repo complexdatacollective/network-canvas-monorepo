@@ -1,67 +1,54 @@
-import { createSelector } from '@reduxjs/toolkit';
-import { useMemo } from 'react';
-import { useSelector } from 'react-redux';
-import { change, formValueSelector, getFormSyncErrors } from 'redux-form';
-
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import Section from '@codaco/fresco-ui/Section';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-import Validations from '~/components/Validations';
-import { useAppDispatch } from '~/ducks/hooks';
-import type { RootState } from '~/ducks/modules/root';
+import {
+  useStageFormValue,
+  useStageInitialValue,
+} from '~/components/StageEditor/stageFormHooks';
+import Validations from '~/components/Validations/Validations';
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
+type ValidationValue = boolean | number | string | null;
+type ValidationMap = Record<string, ValidationValue>;
 
-const AnonymisationValidation = ({ form }: StageEditorSectionProps) => {
-  const dispatch = useAppDispatch();
-  // Create memoized selector for hasValidation
-  const hasValidationSelector = useMemo(() => {
-    const formSelector = formValueSelector(form);
-    return createSelector(
-      [(state) => formSelector(state, 'validation')],
-      (validation) => validation && Object.keys(validation).length > 0,
-    );
-  }, [form]);
-  const hasValidation = useSelector(hasValidationSelector);
-  // Audit sweep: the shape ValidationSection was already fixed for. A
-  // collapsed toggleable Section unmounts its children, and redux-form only
-  // fails a submit over errors on REGISTERED fields — so a sync error keyed
-  // at `validation` while this section is shut would neither block the save
-  // nor be visible. This form ships no such validate today, which makes the
-  // section accidentally safe rather than correct; forcing it open while the
-  // error stands closes the class.
-  const hasValidationSyncError = useSelector((state: RootState) => {
-    const syncErrors: unknown = getFormSyncErrors(form)(state);
-    return isRecord(syncErrors) && typeof syncErrors.validation === 'string';
-  });
-  const handleToggleValidation = (nextState: boolean) => {
-    if (!nextState) {
-      dispatch(change(form, 'validation', null));
-    }
-    return true;
-  };
+const hasEntries = (value: ValidationMap | undefined): boolean =>
+  !!value && Object.keys(value).length > 0;
+
+const AnonymisationValidation = ({
+  stagePath,
+  interfaceType,
+}: StageEditorSectionProps) => {
+  // The Field's own `initialValue` is registration-time only and must not
+  // track live edits, or every keystroke would re-register the field. Before
+  // the field has ever registered, the committed value chooses the toggle's
+  // initial state. Once it is known to the form, its live value wins even
+  // when that value is the `undefined` tombstone written by close/redo.
+  const initialValidation = useStageInitialValue<ValidationMap>('validation');
+  const liveValidation = useStageFormValue<ValidationMap>('validation');
+  const hasValidationField = useFormStore(
+    (store) => store.getFieldState('validation') !== undefined,
+  );
+  const hasValidation = hasValidationField
+    ? hasEntries(liveValidation)
+    : hasEntries(initialValidation);
   return (
     <Section
       toggleable
-      title="Passphrase Validation"
-      summary={
-        <Paragraph>
-          Add one or more validation rules for the passphrase.
-        </Paragraph>
-      }
-      startExpanded={!!hasValidation}
-      forceExpanded={hasValidationSyncError}
-      handleToggleChange={handleToggleValidation}
+      title="Passphrase validation"
+      description="Choose which validation rules apply to the passphrase."
+      defaultOpen={hasValidation}
     >
-      <Row>
-        <Validations
-          form={form}
-          name="validation"
-          variableType="passphrase"
-          entity="ego"
-        />
-      </Row>
+      <Validations
+        name="validation"
+        initialValue={initialValidation}
+        variableType="passphrase"
+        entity="ego"
+        // The stage editor reinitializes in place when the edited stage
+        // changes, and keeps same-interface sections mounted — so without
+        // stage identity the rule list would carry one passphrase's
+        // uncommitted rows onto the next stage's saved rules. `stagePath` is
+        // the edited stage's own slot, and is null only before it exists.
+        scopeId={stagePath ?? `new-${interfaceType}`}
+      />
     </Section>
   );
 };

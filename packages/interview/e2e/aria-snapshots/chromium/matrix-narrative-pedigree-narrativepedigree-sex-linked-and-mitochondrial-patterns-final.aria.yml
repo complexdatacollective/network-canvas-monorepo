@@ -26,10 +26,12 @@
   - button "Focus on You": "Mitochondrial Myopathy: At risk (affected)"
   - button "Focus on Helen": "Mitochondrial Myopathy: At risk (affected)"
   - toolbar "Zoom controls":
-    - button "Zoom out"
-    - button "Zoom in"
+    - group "Zoom controls":
+      - button "Zoom out"
+      - button "Zoom in"
     - separator
-    - button "Reset zoom"
+    - group "Viewport controls":
+      - button "Reset zoom"
   - button "Clear focus"
   - navigation:
     - button "Previous Step"

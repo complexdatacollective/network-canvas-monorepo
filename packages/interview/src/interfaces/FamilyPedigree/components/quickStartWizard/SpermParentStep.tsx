@@ -3,14 +3,13 @@
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { FRAMING_TERMS, type FramingId } from '@codaco/shared-consts';
+import type { FramingId } from '@codaco/protocol-validation';
 
-import useProtocolForm from '../../../../forms/useProtocolForm';
-import { useStageSelector } from '../../../../hooks/useStageSelector';
 import { useFamilyPedigreeStore } from '../../FamilyPedigreeContext';
-import { getNodeForm, getNodeType } from '../../utils/nodeUtils';
+import { FRAMING_TERMS } from '../../framingTerms';
+import usePedigreeNodeForm from '../../hooks/usePedigreeNodeForm';
+import PersonNameField from '../PersonNameField';
 
 const INTRO_COPY: Record<FramingId, string> = {
   gamete:
@@ -20,29 +19,19 @@ const INTRO_COPY: Record<FramingId, string> = {
 };
 
 export default function SpermParentStep() {
-  const nodeType = useStageSelector(getNodeType);
-  const nodeForm = useStageSelector(getNodeForm);
   const framing = useFamilyPedigreeStore((s) => s.framing);
   const framingKey = framing ?? 'gamete';
   const terms = FRAMING_TERMS[framingKey];
 
-  const { fieldComponents } = useProtocolForm({
-    subject: {
-      entity: 'node',
-      type: nodeType,
-    },
-    fields: nodeForm ?? [],
-  });
+  const { fieldComponents } = usePedigreeNodeForm();
 
   return (
     <>
       <Paragraph>{INTRO_COPY[framingKey]}</Paragraph>
       <hr />
       <FieldNamespace prefix="sperm-parent">
-        <Field
-          name="name"
+        <PersonNameField
           label="What is their name?"
-          component={InputField}
           hint="Leave blank if the name is not known"
           autoFocus
         />

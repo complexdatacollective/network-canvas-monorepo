@@ -1,11 +1,58 @@
 import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
 import { emptyProtocol } from '../../fixtures/seed.js';
+import { loadAllInterfacesFixture } from '../../helpers/load-fixture.js';
 import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readStageJson } from '../../helpers/read-store.js';
 import { selectOrCreateNodeType } from '../../pageobjects/editor-sections/entity-types.js';
 import { addPrompt } from '../../pageobjects/editor-sections/prompts.js';
 import { createVariableViaSpotlight } from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
+
+test('opens a new Sociogram without reporting unsaved changes', async ({
+  architectPage,
+  seed,
+}) => {
+  await seed(emptyProtocol());
+  await gotoProtocol(architectPage);
+
+  const editor = new StageEditor(architectPage);
+  await editor.createNew('Sociogram');
+
+  await expect(
+    architectPage.getByRole('button', { name: 'Finished Editing' }),
+  ).toHaveCount(0);
+});
+
+test('opens an existing Sociogram without reporting unsaved changes', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  const sociogram = protocol.stages.find((stage) => stage.type === 'Sociogram');
+  if (!sociogram || sociogram.type !== 'Sociogram') {
+    throw new Error('all-interfaces fixture has no Sociogram stage');
+  }
+  if (!sociogram.background || !('concentricCircles' in sociogram.background)) {
+    throw new Error('fixture Sociogram does not use concentric circles');
+  }
+
+  // Older valid protocols may omit this optional false-valued property. The
+  // editor toggle supplies `false` on mount, which must be part of the form's
+  // baseline rather than a user edit.
+  delete sociogram.background.skewedTowardCenter;
+
+  await seed(protocol, { assets });
+  await gotoProtocol(architectPage);
+  await architectPage.goto(`/protocol/stage/${sociogram.id}`);
+
+  const editor = new StageEditor(architectPage);
+  await expect(
+    editor.field('background.concentricCircles').getByRole('spinbutton'),
+  ).toBeVisible();
+  await expect(
+    architectPage.getByRole('button', { name: 'Finished Editing' }),
+  ).toHaveCount(0);
+});
 
 test('creates a valid Sociogram stage from scratch', async ({
   architectPage,
@@ -39,11 +86,11 @@ test('creates a valid Sociogram stage from scratch', async ({
     .getByRole('spinbutton')
     .fill('4');
 
-  // SociogramPrompts.tsx, `Section title="Prompts"` (same DialogArrayField
+  // SociogramPrompts.tsx exposes the `prompts` field (same DialogArrayField
   // shape as every other prompts array in this suite). Inside the dialog,
   // PromptFields.tsx renders the shared `PromptText` component first (label
   // "Prompt text", same as name-generator.spec.ts) followed by
-  // PromptFieldsLayout.tsx's "Layout" subsection, whose `layout.layoutVariable`
+  // PromptFieldsLayout.tsx's nested "Node layout" section, whose `layout.layoutVariable`
   // `VariablePicker` is the ONLY variable picker open at this point (no
   // scoping needed — matches the single-picker call sites already proven by
   // categorical-bin.spec.ts / name-generator-quick-add.spec.ts). Its
@@ -56,7 +103,7 @@ test('creates a valid Sociogram stage from scratch', async ({
   // variable anywhere in this suite (confirmed again in NodeConfiguration.tsx
   // and NarrativePresets/withPresetProps.tsx for the other two specs in this
   // task).
-  await addPrompt(editor.section('Prompts'), async () => {
+  await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Place them');
     await createVariableViaSpotlight(architectPage, { variableName: 'layout' });
   });

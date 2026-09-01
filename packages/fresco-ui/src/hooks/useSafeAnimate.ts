@@ -3,20 +3,38 @@
 import {
   type AnimationScope,
   MotionConfigContext,
+  MotionGlobalConfig,
   useAnimate,
-  useReducedMotionConfig,
+  useReducedMotion,
 } from 'motion/react';
 import { useContext, useMemo } from 'react';
 
 type AnimateFn<T extends Element> = ReturnType<typeof useAnimate<T>>[1];
 
 /**
+ * Returns true when Motion has been configured not to create animations.
+ */
+export function useShouldSkipAnimations(): boolean {
+  const { reducedMotion, skipAnimations } = useContext(MotionConfigContext);
+  const userPrefersReducedMotion = useReducedMotion();
+  const shouldReduceMotion =
+    reducedMotion === 'always' ||
+    (reducedMotion !== 'never' && userPrefersReducedMotion);
+
+  return (
+    !!MotionGlobalConfig.skipAnimations ||
+    !!skipAnimations ||
+    !!shouldReduceMotion
+  );
+}
+
+/**
  * Drop-in replacement for Motion's `useAnimate` that respects
- * `MotionConfig.skipAnimations`. The imperative `useAnimate` API only
- * checks `reducedMotion`, not `skipAnimations`, so WAAPI animations
- * still fire (with instant timing) even when `skipAnimations` is true.
- * WebKit reports these zero-duration WAAPI animations via
- * `getAnimations()`, which breaks Playwright's element stability check.
+ * Motion's global, provider, and reduced-motion controls. Motion 12.43 applies
+ * `skipAnimations` to animation timing, but the imperative API can still
+ * create animation bookkeeping before committing the final state. WebKit
+ * reports that work via `getAnimations()`, which breaks Playwright's element
+ * stability check.
  *
  * When skipping, the final keyframe values are applied directly to the
  * element's inline style so visual state (e.g. selected borders) still
@@ -24,10 +42,7 @@ type AnimateFn<T extends Element> = ReturnType<typeof useAnimate<T>>[1];
  */
 export function useSafeAnimate<T extends Element = HTMLDivElement>() {
   const [scope, animate] = useAnimate<T>();
-  const { skipAnimations } = useContext(MotionConfigContext);
-  const shouldReduceMotion = useReducedMotionConfig();
-
-  const shouldSkip = !!skipAnimations || !!shouldReduceMotion;
+  const shouldSkip = useShouldSkipAnimations();
 
   const safeAnimate = useMemo(() => {
     if (!shouldSkip) return animate;
@@ -40,7 +55,7 @@ export function useSafeAnimate<T extends Element = HTMLDivElement>() {
       complete: voidFn,
       pause: voidFn,
       play: voidFn,
-      // biome-ignore lint/suspicious/noThenProperty: Motion's animation handle is thenable; the noop must match that contract so `await animate(...)` resolves.
+      // oxlint-disable-next-line unicorn/no-thenable -- Motion's animation handle is thenable; the noop must match that contract so `await animate(...)` resolves.
       then: (resolve?: () => void) => {
         resolve?.();
         return noop;

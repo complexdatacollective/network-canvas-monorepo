@@ -1,5 +1,243 @@
 # @codaco/interviewer
 
+## 8.2.2
+
+### Patch Changes
+
+- a6f0723: Keep screen preview images available when the installed Architect or Interviewer app is used offline.
+
+## 8.2.1
+
+### Patch Changes
+
+- 2f8fcdc: Make app updates reliable without reloading open work automatically. Fresh launches now activate an available update before the interface appears, updates found after rendering wait for an explicit install action, and the post-reload state reliably links to the release notes.
+- Updated dependencies ([2f8fcdc](https://github.com/complexdatacollective/network-canvas-monorepo/commit/2f8fcdc0c202678060501d2942645462c9cca77b), [301e8fe](https://github.com/complexdatacollective/network-canvas-monorepo/commit/301e8fefdf74b563545ef9c1ac3a0dd098a14bbc))
+  - @codaco/fresco-ui@6.2.0
+
+## 8.2.0
+
+### Minor Changes
+
+- c37a801: Applications now derive their protocol schema compatibility from the interview runtime they embed, instead of hard-coding a version number, and each application can upgrade stored protocols when a future schema version ships.
+
+  - `@codaco/interview` exports its supported protocol schema version as `COMPATIBLE_PROTOCOL_SCHEMA_VERSION` (from `@codaco/interview/protocol-schema-version`). Fresco and Interviewer read it for import limits, stored-data migration, and interview payloads; Architect derives its own compatibility from `@codaco/protocol-validation` directly.
+  - Interviewer checks stored protocols at launch. A protocol saved under an older schema version is migrated, re-identified under its new content hash, and its interview sessions and media follow it in a single transaction, with a notification when this happens. A protocol that cannot be migrated is left untouched, with a message directing you to repair it in Architect.
+  - Architect upgrades a library protocol automatically when you open it, with a notification, leaving the protocol untouched if the upgrade cannot complete. Protocols made with a newer version of Architect are refused with an explanation instead of opening incorrectly.
+  - Fresco's deployment migration targets the runtime's supported version rather than a fixed number, and an interview can no longer start from a protocol stored under a version the runtime does not support — it reports the mismatch instead.
+
+  Nothing changes for existing data today — every stored protocol is already at the current schema version. This machinery exists so a future schema version change cannot orphan interview sessions or mislabel stored protocols.
+
+### Patch Changes
+
+- 17aeca4: Architect and Interviewer now load analytics and automatic error-reporting modules through the Network Canvas relay without Content Security Policy errors.
+- b51ef59: Prevent malicious form field paths from modifying object prototypes while preserving dotted protocol variable identifiers and nested field namespaces.
+- f4fd23c: Turning "Show sample protocol on home screen" back on no longer hides the Sample Protocol you already have. The one-click install card is only offered while the sample protocol is not installed; previously it took over the installed protocol's card, leaving it without its "Start new interview" and delete controls — and, after a reload, without any button at all.
+- e9a6522: Network Composer's Undo and Redo controls now retain keyboard focus at the end of the history during interviews hosted by Interviewer.
+- bd06a52: Interviews no longer lose their most recent answers when the app locks. If the device was put away while the last few answers were still waiting to be saved, and the security timeout had passed by the time the app was reopened, it locked before those answers reached storage and up to a few seconds of responses were discarded. Answers now reach storage within a fraction of a second of being given rather than waiting out a shared timer, and anything still outstanding is written the moment the app is put into the background — before the device can suspend it.
+
+  **Breaking for hosts of `@codaco/interview`.** The engine no longer batches writes on the host's behalf, and no longer holds a change back while an earlier write is unresolved. `onSync` is called for every change as it happens, because only the host knows what one write costs. Hosts wrap their handler in the new `createDebouncedSyncHandler`, which rate-limits ordinary changes to one write per interval carrying the newest state, and never runs two writes at once. A host writing its own handler must not run its writes concurrently: a slow earlier write landing after a newer one would persist stale answers.
+
+  `SyncHandler` gains a third argument. `immediate` marks the writes that must not be deferred — the participant exiting or finishing — and a batching host must stop batching when it sees it. `unloading` additionally marks the ones the document may not survive: it is being hidden or unloaded and may never run script again, so the host should use a transport that outlives it and must not queue the write behind a request that will die with it. Handlers that ignore the argument keep type-checking, so hosts that write eagerly need no change.
+
+  The Shell also now flushes on `visibilitychange` and `pagehide`. A hidden document is not promised any more script, so anything still outstanding goes out while there is still a page to write from — which is what makes an installed PWA safe to put to sleep seconds after an answer.
+
+- 06bc1e9: The quick add usage hint on name generator stages no longer promises that the box stays open when only one more item can be added during interviews hosted by Interviewer.
+- e9a6522: Interviewer now handles protocol files, interview resources, validation failures, and hosted dialogs more reliably.
+
+  - Damaged or unsupported protocol imports and storage failures provide actionable messages instead of archive, database, or stack-trace details.
+  - Images, videos, and rosters are shared while in use and released after a protocol is replaced or deleted, preventing stale or decrypted resources from remaining in memory.
+  - Required questions and invalid forms focus the first control needing attention, while interview confirmations restore focus to the control that opened them.
+  - Family Pedigree references are validated before fieldwork, and application telemetry consistently reports the product version without participant-facing error detail.
+
+- e9a6522: Interviewer normalizes older stored sessions at its read boundaries, so interviews containing nullish entity attributes continue to hydrate, synchronize, and export under the new sparse-attribute contract.
+- 465c168: The storage and encryption status chips at the bottom of the Home screen now open their explanations on tap. They previously appeared only on hover or keyboard focus, so on a touch device the details — storage durability, the amount stored, and how to enable encryption — could never be read.
+- 1105b8d: Fixed a stray "Confirm your identity" dialog that appeared over the Home screen after exiting an interview when a PIN, passphrase, or biometric is enrolled and "Require unlock when entering an interview" is enabled. The dialog could not be satisfied, blocked part of the screen, and wrongly offered the destructive "Recover by resetting" option.
+- 4ea26a7: Fixed a race that could permanently lose answers added just before exiting an
+  interview. Autosaves are debounced, so an answer given moments before exiting
+  could still be waiting to save when the interview closed; resuming promptly
+  then loaded the session without it, and the next screen change saved that
+  stale copy back over the stored interview. The interview runtime now writes
+  any pending autosave as the interview closes, and Interviewer waits for
+  in-flight session writes before loading a session, so a fast exit-and-resume
+  always shows — and keeps — every answer.
+- 3b2f3be: The Home status row now shows the "Not encrypted" indicator before app security has been set up. Previously a fresh browser tab — which stores interview data unencrypted until a PIN, passphrase, or biometric is enrolled — showed no encryption statement at all; the indicator and its explanation now appear there just as they do when "No security" is chosen in the setup wizard.
+- Updated dependencies ([c599dac](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c599dacf78b18efb7d0c5c5fad4d38644a57e775), [9a34469](https://github.com/complexdatacollective/network-canvas-monorepo/commit/9a3446969d5fcc7a3640d8eb5597f807a4fee810), [e3e7b2c](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e3e7b2c9cfbc1758754afc0c3959c50ae6518363), [eec63f8](https://github.com/complexdatacollective/network-canvas-monorepo/commit/eec63f8c62bd6cfb030c88e396933c4aab384be9), [3e10128](https://github.com/complexdatacollective/network-canvas-monorepo/commit/3e10128db1d1a1abc56f8293d66bf9f7dd75c722), [b51ef59](https://github.com/complexdatacollective/network-canvas-monorepo/commit/b51ef598343c67c95edd4e165c0bac91a7a82571), [43c7746](https://github.com/complexdatacollective/network-canvas-monorepo/commit/43c774665b781cb5cc71acf8ed8c8ca48838ca64), [eb73319](https://github.com/complexdatacollective/network-canvas-monorepo/commit/eb7331942683e879328530e997e554fb12fef52a), [e08ebbf](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e08ebbf8547c2507f5f2a37f7cbab1169dd392cd), [88d7db0](https://github.com/complexdatacollective/network-canvas-monorepo/commit/88d7db04ea3ba323be2fb18f55f6b11d6274740f), [ae3c616](https://github.com/complexdatacollective/network-canvas-monorepo/commit/ae3c616ed4edc55c294be9097e4ae724b249601e), [e9a6522](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e9a652266ef9ddfa7fc42de1c8123bd7011c52a1), [23d0fab](https://github.com/complexdatacollective/network-canvas-monorepo/commit/23d0fab63d4de8da1ba3574cb151ac1c76580d9a), [59f131c](https://github.com/complexdatacollective/network-canvas-monorepo/commit/59f131c2af206c8b1f668b90edf21fbcb3b0b7b7), [06bc1e9](https://github.com/complexdatacollective/network-canvas-monorepo/commit/06bc1e991df40ab3e115da361cfe0ebfe391bbd8), [bd06a52](https://github.com/complexdatacollective/network-canvas-monorepo/commit/bd06a5256b64b82b2718c15b6d3bc825b4ba95c5), [7ca985f](https://github.com/complexdatacollective/network-canvas-monorepo/commit/7ca985fe57ca03dda02a96a6013c5dac55dc0123), [c78135c](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c78135cd461d1e482ce248b1eb6337359bafc189), [dcbc7aa](https://github.com/complexdatacollective/network-canvas-monorepo/commit/dcbc7aad21ec995bf3a598eb5b208a681789eb4f), [4ea26a7](https://github.com/complexdatacollective/network-canvas-monorepo/commit/4ea26a74dfab5bc02495bc8fa03c31aa5f987dad), [c37a801](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c37a801a3a0a8e6cc82fce3cfe64d031003af207), [0f20ff5](https://github.com/complexdatacollective/network-canvas-monorepo/commit/0f20ff594e3fd9b38f393d3d71e9f7bdcc078955), [4a4a9f4](https://github.com/complexdatacollective/network-canvas-monorepo/commit/4a4a9f49d4c449e09e07558a0032d6a3b8015743), [fdb3b56](https://github.com/complexdatacollective/network-canvas-monorepo/commit/fdb3b56440f6cad89a44718d24ff725be3bb5e15), [71baa6c](https://github.com/complexdatacollective/network-canvas-monorepo/commit/71baa6c3c376bc287958e5f06659daa1df617e08), [54650ab](https://github.com/complexdatacollective/network-canvas-monorepo/commit/54650ab4bb357d39db88a46f5c3ab8b82375f647), [469d404](https://github.com/complexdatacollective/network-canvas-monorepo/commit/469d4041bd1c86fbfc92eaf2a368f1689858bbd2), [a9825f4](https://github.com/complexdatacollective/network-canvas-monorepo/commit/a9825f4067cc6cddd08b64a76e8d88a4b96ae998), [1391fa8](https://github.com/complexdatacollective/network-canvas-monorepo/commit/1391fa879011e988a1e8c250a4c80a96797d5d47), [f03b1e4](https://github.com/complexdatacollective/network-canvas-monorepo/commit/f03b1e45f425cf3c97ba2137765073a462ee9c9f))
+  - @codaco/interview@9.0.0
+  - @codaco/protocol-utilities@4.0.0
+  - @codaco/protocol-validation@13.0.0
+  - @codaco/fresco-ui@6.1.0
+  - @codaco/tailwind-config@1.3.0
+  - @codaco/network-exporters@2.0.0
+  - @codaco/shared-consts@6.0.0
+
+## 8.1.3
+
+### Patch Changes
+
+- 3c08169: Exporting from Safari on a Mac now downloads the archive straight to your Downloads folder. Safari on the desktop offers the same file-sharing feature as an iPhone or iPad, so Interviewer had been handing the archive to the macOS share sheet and asking which app should receive it — a detour for a file that only needed saving to disk. The share sheet is now used only on iOS, iPadOS, and Android, where there is no downloads folder to save to.
+
+## 8.1.2
+
+### Patch Changes
+
+- e349137: Update runtime dependencies to resolve security vulnerabilities in analytics sanitization, uploads, and form state handling.
+- Updated dependencies [52a3fbb]
+- Updated dependencies [fec9536]
+- Updated dependencies [90e0178]
+- Updated dependencies [90e0178]
+- Updated dependencies [e349137]
+- Updated dependencies [13e5e99]
+- Updated dependencies [673d5f3]
+- Updated dependencies [ea06b66]
+  - @codaco/fresco-ui@6.0.0
+  - @codaco/interview@8.0.0
+  - @codaco/protocol-utilities@3.2.1
+  - @codaco/protocol-validation@12.1.1
+
+## 8.1.1
+
+### Patch Changes
+
+- 3c8fe35: Generate realistic, source-backed family pedigrees with reproductive scenarios and multi-generational disease lineages, while respecting each stage's collected variables, keeping pedigree membership isolated from other interview stages, correctly rendering shared and multiple unions, widening partnership response columns, and warning participants before discarding onboarding progress.
+
+  Improve pedigree editing and parentage capture by confirming destructive deletions, preserving biological-sex values, allowing current/ex-partner status changes, and recording reproductive roles independently from sex recorded at birth.
+
+- Updated dependencies [3c8fe35]
+- Updated dependencies [fa88ae4]
+- Updated dependencies [2325d34]
+  - @codaco/protocol-utilities@3.2.0
+  - @codaco/fresco-ui@5.1.0
+  - @codaco/interview@7.1.1
+  - @codaco/shared-consts@5.6.1
+
+## 8.1.0
+
+### Minor Changes
+
+- 7d5c062: Exporting interview data now runs in a single guided dialog. Tapping Export
+  shows build progress (with the option to cancel), then presents a Save, Share,
+  or Download action matched to your platform — replacing the separate "Save
+  export" toolbar button and its notification. Interviews are still marked as
+  exported only once the archive is genuinely saved, and your selection is kept
+  if you dismiss the dialog without saving.
+- 8ff0e2d: Participants can now adjust the interview's text size.
+
+  The Shell accepts a new `allowUserScaling` prop. When a host enables it (as
+  Interviewer now does), the interview Navigation shows a settings menu with a
+  "Text size" control offering 90%–130% of the default size. The chosen size
+  scales the whole interview — text, spacing, and touch targets together, with
+  every step of the fluid type scale changing by exactly the chosen percentage —
+  takes effect immediately with the menu open for live preview, and lasts for
+  the current session. The control is fully keyboard operable and announces its
+  state to screen readers. Hosts can persist the choice across remounts with the
+  optional `initialTextScale`/`onTextScaleChange` props; Interviewer uses them so
+  an idle-lock/unlock cycle no longer resets a participant's chosen size.
+
+  The standalone exit button has moved into the same settings menu as an
+  "Exit interview" action. Hosts that provide neither an exit handler nor
+  `allowUserScaling` render no settings menu.
+
+### Patch Changes
+
+- 8f06a93: Export archives are now built in a background worker, so the export dialog's
+  progress animations stay smooth during large exports. Interview data is still
+  read and decrypted only in the app itself; cancelling an export now also
+  releases all partially built archive data immediately.
+- c5f30fd: Restore the full-size interview type scale on tablets.
+
+  The interview's viewport ramp for `--theme-root-size` rendered below the full
+  `1rem` base for every viewport narrower than 1280px — sitting at its `0.9rem`
+  floor (14.4px) up to tablet-portrait width and only climbing to 15.7px by iPad
+  Pro landscape width — so tablets rendered the participant interview at the
+  smallest text sizes in the product, with spacing and touch targets
+  (checkboxes, radios) shrinking in lockstep below recommended minimum sizes.
+  The ramp is now piecewise: phones keep the dense `0.9rem`-floored curve in
+  both orientations, tablets (768–1280px) get the full `1rem` base — matching
+  the interview's pre-July size and returning default form controls to the 24px
+  WCAG 2.5.8 minimum — and displays at 1280px and above are unchanged.
+
+  The interview theme also gains a 16px font-size floor for text-entry elements
+  (text inputs, textareas, selects, and rich-text editors), expressed as
+  `max(16px, 1em)` so explicitly larger sizes pass through. iOS Safari zooms the
+  page when a focused editable element renders below 16px; with the phone-width
+  type scale this made every form field a zoom trigger in browser hosts. Editable
+  text in the interview now never renders below 16px at any viewport size. To
+  support this, `SegmentedCodeField` now carries its text-size class on the
+  segment group wrapper (segment inputs inherit), so the floor preserves its
+  `lg`/`xl` sizes; computed sizes are unchanged.
+
+- 66da138: Keep content clear of the device status bar in the installed app. On iPads and
+  other devices with a status bar, the home screen's brand mark, view switcher,
+  and settings button — and interview stage content — now start below the system
+  status bar instead of sliding underneath the clock and battery indicators,
+  while the background still fills the entire screen. The interview navigation
+  bar also sits evenly against the bottom edge of the screen in both
+  orientations, rather than reserving extra space below its buttons.
+- Updated dependencies [ea589ec]
+- Updated dependencies [48572ed]
+- Updated dependencies [8ff0e2d]
+- Updated dependencies [0bf9a05]
+- Updated dependencies [c5f30fd]
+- Updated dependencies [8ff0e2d]
+- Updated dependencies [b95af22]
+- Updated dependencies [66da138]
+- Updated dependencies [d985cd3]
+- Updated dependencies [cd974f7]
+  - @codaco/fresco-ui@5.0.3
+  - @codaco/interview@7.1.0
+  - @codaco/network-exporters@1.1.7
+  - @codaco/tailwind-config@1.2.2
+  - @codaco/protocol-utilities@3.1.1
+
+## 8.0.0
+
+### Patch Changes
+
+- cd88c3e: Architect 8 and Interviewer 8 are now stable releases. Future app versions follow standard semantic versioning and deploy to production when the Version Packages release PR is merged.
+- Updated dependencies [fde9bb4]
+  - @codaco/fresco-ui@5.0.2
+  - @codaco/interview@7.0.2
+
+## 8.0.0-beta.12
+
+### Patch Changes
+
+- Boolean questions now show an option in red once it is selected, where the protocol marks that option as a negative response.
+
+## 8.0.0-beta.11
+
+### Patch Changes
+
+- When generating synthetic sessions fails, the reason is now readable. A
+  protocol whose validation rules cannot all be satisfied lists each clash on its
+  own line, naming the variables involved and what conflicts, instead of running
+  the whole explanation together into a single unbroken line.
+
+  Any generation failure now stays on screen until you dismiss it, rather than
+  timing out while you are still reading it. A protocol with many clashing rules
+  no longer grows the message taller than the screen, which used to carry its own
+  heading and close button out of view: the list of clashes now scrolls within the
+  message, and can be scrolled from the keyboard as well as the mouse.
+  Conflicts on locally scoped variables with the same ID now remain distinct as
+  the message updates.
+
+  A failed generation also no longer leaves part of a batch behind. Most protocols
+  whose rules cannot be satisfied are refused before anything is saved, but a
+  protocol can pass that check and still run out of usable values part-way through
+  a batch, or fail to save one. Every session written during a failed batch is now
+  removed — including the one being written when the failure struck — so the number
+  of synthetic sessions shown always matches what is actually stored, and
+  generating again cannot quietly leave you with a half-finished duplicate set.
+
+- Generating or deleting synthetic sessions could sometimes leave the Synthetic
+  data screen showing a stale protocol list and session count if the screen
+  couldn't refresh right after the action finished. Generating gave no
+  indication anything was wrong; deleting was worse — it could show a
+  "Deleted" success message while also reopening the delete confirmation with an
+  unrelated error, even though the sessions had already been removed. Both cases
+  now tell you clearly when the refresh itself is what failed, so you know to
+  reopen Settings rather than trust an out-of-date count.
+
 ## 8.0.0-beta.10
 
 ### Minor Changes
@@ -133,6 +371,7 @@
 ### Patch Changes
 
 - Close data-loss and setup gaps surfaced by the pre-release audit follow-up:
+
   - **Export marking:** on browsers that can't report whether a file download completed (the object-URL fallback), the app now confirms the archive was saved before marking sessions as exported — a cancelled or blocked Save-As can no longer falsely mark a session "exported" (which fed the filter-to-exported → bulk-delete data-loss path).
   - **Setup wizard:** a failed same-method re-enrolment (e.g. cancelling the biometric prompt after the old vault was revoked) can no longer finish the wizard claiming a lock mode the vault doesn't actually hold.
   - **Lock screen:** a destructive "reset app data" confirmation opened while locked is now dismissed when the app unlocks, so it can't survive the lock boundary and fire over Home.

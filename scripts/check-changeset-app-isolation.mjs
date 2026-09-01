@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// CI guard: a single changeset must not mix an app (ignored) with a library.
-// `changeset version` hard-errors on such "mixed" changesets, which would break
-// the entire library release. Fail fast on the PR instead.
+// CI guard: a single changeset must not mix a separately gated product with a
+// package in the normal Changesets lane. `changeset version` hard-errors on
+// such "mixed" changesets, which would break the release. Fail fast on the PR
+// instead.
 import { join } from 'node:path';
 
 import {
@@ -23,17 +24,17 @@ if (mixedOffenders.length === 0 && multiLaneOffenders.length === 0) {
 
 if (mixedOffenders.length > 0) {
   console.error(
-    'Mixed changesets found — these combine a gated product with a library and would break\n' +
-      'the library release (`changeset version` rejects them):\n',
+    'Mixed changesets found — these combine a separately gated product with the normal release lane and would break\n' +
+      'the Changesets release (`changeset version` rejects them):\n',
   );
   for (const cs of mixedOffenders) {
-    const { productReleases, libReleases } = classifyChangeset(cs);
+    const { gatedProductReleases, normalReleases } = classifyChangeset(cs);
     console.error(`  .changeset/${cs.id}.md`);
     console.error(
-      `    products:  ${productReleases.map((r) => r.name).join(', ')}`,
+      `    gated products: ${gatedProductReleases.map((r) => r.name).join(', ')}`,
     );
     console.error(
-      `    libraries: ${libReleases.map((r) => r.name).join(', ')}`,
+      `    normal lane:    ${normalReleases.map((r) => r.name).join(', ')}`,
     );
   }
   console.error('');
@@ -45,10 +46,10 @@ if (multiLaneOffenders.length > 0) {
       'so products from different lanes must have separate changesets:\n',
   );
   for (const cs of multiLaneOffenders) {
-    const { productReleases } = classifyChangeset(cs);
+    const { gatedProductReleases } = classifyChangeset(cs);
     console.error(`  .changeset/${cs.id}.md`);
     console.error(
-      `    products: ${productReleases.map((r) => r.name).join(', ')}`,
+      `    products: ${gatedProductReleases.map((r) => r.name).join(', ')}`,
     );
   }
   console.error('');
@@ -56,6 +57,6 @@ if (multiLaneOffenders.length > 0) {
 
 console.error(
   'Split each listed file into one changeset per release lane ' +
-    '(run `pnpm changeset` once for each product or library lane).',
+    '(run `pnpm changeset` once for each separately gated product or the normal lane).',
 );
 process.exit(1);

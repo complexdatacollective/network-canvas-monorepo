@@ -1,2 +1,6 @@
-protocol.json
-assets/
+# protocol.json and assets/ are copied from packages/protocols/sample, but they
+# are also tracked here: this package is published from its committed copy, and
+# `prepack` only refreshes it at publish time. Do not ignore them.
+
+# Staging area used by the prepack sync while it swaps the copies into place.
+.sync-tmp/

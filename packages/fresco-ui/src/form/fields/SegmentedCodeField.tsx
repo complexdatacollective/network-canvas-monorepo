@@ -11,30 +11,39 @@ import { compose, cva, cx, type VariantProps } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 
-const segmentGroupVariants = cva({
-  base: cx('flex max-w-full items-center'),
-  variants: {
-    size: {
-      sm: 'gap-1.5',
-      md: 'gap-2',
-      lg: 'gap-2.5',
-      xl: 'gap-3',
+// Carries the text-size class for the whole field (the segment inputs
+// inherit) so editable elements never declare font-size on themselves —
+// the interview theme's text-entry floor (`max(16px, 1em)`) reads the
+// inherited size, and a size class directly on the input would be
+// displaced by that rule instead of respected. See InputField for the
+// same wrapper-owns-size convention.
+const segmentGroupVariants = compose(
+  textSizeVariants,
+  cva({
+    base: cx('flex max-w-full items-center'),
+    variants: {
+      size: {
+        sm: 'gap-1.5',
+        md: 'gap-2',
+        lg: 'gap-2.5',
+        xl: 'gap-3',
+      },
     },
-  },
-  defaultVariants: {
-    size: 'md',
-  },
-});
+    defaultVariants: {
+      size: 'md',
+    },
+  }),
+);
 
 const segmentVariants = compose(
   controlVariants,
   inputControlVariants,
-  textSizeVariants,
   stateVariants,
   interactiveStateVariants,
   cva({
     base: cx(
       'font-monospace aspect-square min-w-0 rounded-sm text-center caret-transparent ring-0',
+      '[font-size:inherit]', // Size comes from segmentGroupVariants on the wrapper
       'focusable',
       'placeholder:text-input-contrast/30',
     ),
@@ -123,7 +132,11 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const { pattern, inputMode } = CHARACTER_SETS[characterSet];
 
-  const chars = value.split('').slice(0, segments);
+  // Rendering only: for one render the store can still hold the previous
+  // field's value (see the render-tolerance contract on `useField`), and
+  // anything but a string renders as an empty code.
+  const code = typeof value === 'string' ? value : '';
+  const chars = code.split('').slice(0, segments);
 
   const focusSegment = useCallback(
     (index: number) => {
@@ -142,10 +155,10 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
   );
 
   useEffect(() => {
-    if (value.length === segments && onComplete) {
-      onComplete(value);
+    if (code.length === segments && onComplete) {
+      onComplete(code);
     }
-  }, [value, segments, onComplete]);
+  }, [code, segments, onComplete]);
 
   const handleInput = useCallback(
     (index: number, inputValue: string) => {

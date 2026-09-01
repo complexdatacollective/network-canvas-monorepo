@@ -1,50 +1,37 @@
-import type { ComponentType } from 'react';
-
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
-import RichText from '~/components/Form/Fields/RichText/Field';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
-import ValidatedField from '~/components/Form/ValidatedField';
+import Section from '@codaco/fresco-ui/Section';
+import RichText from '@codaco/protocol-builder/fields/RichTextField';
+import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-
-import IssueAnchor from '../IssueAnchor';
-
-const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
 
 const IntroductionPanel = (_props: StageEditorSectionProps) => {
-  const summaryText =
-    'This panel is shown prior to completion of the forms, and should serve as an introduction to the task.';
+  const titleInitialValue = useStageInitialValue<string>(
+    'introductionPanel.title',
+  );
+  const textInitialValue = useStageInitialValue<string>(
+    'introductionPanel.text',
+  );
+
   return (
     <Section
-      title="Introduction Panel"
-      summary={<Paragraph>{summaryText}</Paragraph>}
+      title="Task introduction"
+      description="Introduce the task before participants complete its forms."
     >
-      <Row>
-        <IssueAnchor
-          fieldName="introductionPanel.title"
-          description="Title (Introduction panel)"
-        />
-        <ValidatedField
-          name="introductionPanel.title"
-          label="Title"
-          component={FrescoReduxField}
-          componentProps={{ fieldComponent: FrescoInputField, maxLength: 50 }}
-          validation={{ required: true }}
-        />
-      </Row>
-      <Row>
-        <IssueAnchor
-          fieldName="introductionPanel.text"
-          description="Text (Introduction panel)"
-        />
-        <ValidatedField
-          name="introductionPanel.text"
-          component={RichText}
-          componentProps={{ label: 'Introduction text' }}
-          validation={{ required: true }}
-        />
-      </Row>
+      <ArchitectField
+        name="introductionPanel.title"
+        label="Title"
+        component={InputField}
+        validation={{ required: true, maxLength: 50 }}
+        initialValue={titleInitialValue}
+      />
+      <ArchitectField
+        name="introductionPanel.text"
+        component={RichText}
+        label="Introduction text"
+        validation={{ required: true }}
+        initialValue={textInitialValue}
+      />
     </Section>
   );
 };

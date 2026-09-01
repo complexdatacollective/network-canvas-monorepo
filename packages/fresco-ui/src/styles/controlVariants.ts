@@ -59,6 +59,9 @@ export const sliderTrackVariants = cva({
   },
 });
 
+// Keeps its own fill and state colours so a thumb styled with this alone still
+// looks like a thumb — `./styles/controlVariants` is a published entry point and
+// consumers may use it without the surface variant below.
 export const sliderThumbVariants = compose(
   smallSizeVariants,
   cva({
@@ -88,6 +91,39 @@ export const sliderThumbVariants = compose(
     },
   }),
 );
+
+// The thumb's animated surface, rendered as a child of the thumb rather than on
+// the thumb itself. base-ui registers the thumb element in the slider's
+// internal thumb list, and handing it a `motion` component breaks that
+// registration — which silently disables every track press, since base-ui can
+// no longer resolve which thumb a press belongs to. Keeping the animated
+// element nested leaves the thumb a plain element that base-ui can register.
+//
+// It repeats the thumb's fill (it covers the thumb exactly, so the two never
+// disagree) because the press animation scales *this* element: without a fill
+// of its own there would be nothing visible to scale. Opacity deliberately
+// stays on the thumb, where it applies to this subtree once rather than
+// compounding with itself.
+export const sliderThumbSurfaceVariants = cva({
+  base: cx(
+    'block h-full w-full rounded-full',
+    'transition-colors duration-200',
+  ),
+  variants: {
+    state: {
+      normal: 'bg-primary',
+      pristine: 'bg-primary',
+      disabled:
+        'bg-[color-mix(in_oklch,var(--input-contrast)_30%,currentColor)]',
+      readOnly:
+        'bg-[color-mix(in_oklch,var(--input-contrast)_50%,currentColor)]',
+      invalid: 'bg-destructive',
+    },
+  },
+  defaultVariants: {
+    state: 'normal',
+  },
+});
 
 export const sliderTickContainerStyles = cx('absolute inset-0 w-full');
 
@@ -137,6 +173,25 @@ export const heightVariants = cva({
       md: 'h-12',
       lg: 'h-16',
       xl: 'h-20',
+    },
+  },
+  defaultVariants: {
+    size: 'md',
+  },
+});
+
+// Explicit square widths for icon-only controls, one per heightVariants step.
+// Shipped Safari does not derive a flex item's width from `aspect-ratio` and
+// a definite height inside nested flex rows — it computes 0 and the control
+// vanishes — so the width the ratio implies is stated outright. Keep this
+// scale in lockstep with heightVariants above.
+export const squareSizeVariants = cva({
+  variants: {
+    size: {
+      sm: 'w-10',
+      md: 'w-12',
+      lg: 'w-16',
+      xl: 'w-20',
     },
   },
   defaultVariants: {
@@ -226,6 +281,26 @@ export const stateVariants = cva({
   },
 });
 
+// `stateVariants.readOnly` deliberately stays pointer-interactive: native text
+// controls (Input, TextArea, RichTextEditor, Combobox/Select triggers) must
+// keep focus, caret placement, and text selection while readOnly. Controls
+// whose root element *is* the thing being pressed (Checkbox, ToggleButtonGroup
+// options) need the opposite — compose this alongside `stateVariants` so they
+// stop advertising hover/press affordances for an activation they swallow.
+// Declares the same `state` keys as `stateVariants` (rather than `readOnly`
+// alone) so `compose()` keeps the full `state` union on the composed variant
+// function instead of narrowing it to whichever key this contributes to.
+export const inertReadOnlyVariants = cva({
+  variants: {
+    state: {
+      disabled: '',
+      readOnly: 'pointer-events-none',
+      invalid: '',
+      normal: '',
+    },
+  },
+});
+
 // As above, but adding focus and hover styles for interactive elements.
 // The ring is applied in two ways so every control variant gets the same look:
 //   1. `has-[…]:focus-styles` — wrapper <div> lights up when a nested
@@ -302,10 +377,20 @@ export const groupOptionVariants = cva({
       true: 'cursor-not-allowed',
       false: 'cursor-pointer',
     },
+    // `<label>`-wrapped options (CheckboxGroup) associate the label with the
+    // control's hidden native input, not the visible pointer-events-none
+    // control — so a read-only option needs pointer-events-none on the label
+    // itself, or clicking anywhere on it still forwards a native label-click
+    // activation to that hidden input, bypassing the control's own inertness.
+    readOnly: {
+      true: 'pointer-events-none cursor-default',
+      false: '',
+    },
   },
   defaultVariants: {
     size: 'md',
     disabled: false,
+    readOnly: false,
   },
 });
 

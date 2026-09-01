@@ -3,7 +3,8 @@ import {
   type ProtocolDocument,
 } from '../../migration/index.ts';
 import { traverseAndTransform } from '../../utils/traverse-and-transform.ts';
-import { ordinalColorSequence } from './common/prompts.ts';
+import { NodeColorSequence, OrdinalColorSequence } from './color-reference.ts';
+import { duplicateFormFieldIndices } from './common/forms.ts';
 import { NON_RENDERABLE_VARIABLE_TYPES } from './variables/types.ts';
 import {
   type ContradictionClass,
@@ -32,7 +33,20 @@ const CATEGORICAL_VALUE_OPERATORS = new Set([
 
 // V8 restricts an OrdinalBin prompt's color to the ten-value ord-color-seq
 // palette; any other legacy value is dropped during migration.
-const VALID_ORDINAL_PROMPT_COLORS = new Set<unknown>(ordinalColorSequence);
+const VALID_ORDINAL_PROMPT_COLORS = new Set<unknown>(OrdinalColorSequence);
+
+// A `node-color-seq-<position>` reference, captured so an out-of-range
+// position can be wrapped back onto v8's eight-colour node palette. Only node
+// definitions need this: Architect Classic's node palette offers ten positions
+// ('node-color-seq': 10 in its config) while `NodeColorReferenceSchema`
+// defines eight. Its edge and ordinal palettes both offer eight, which is
+// inside v8's ranges, and the disease palette is v8-only, so no v7 document
+// can carry an out-of-range value for any of those.
+// Exactly the two positions Classic could author and nothing more: a larger
+// position (`node-color-seq-11`, …) has no legacy interpretation — it can only
+// be hand-authored or corrupt — and must fail validation rather than be
+// silently recoloured.
+const LEGACY_NODE_COLOR_POSITION = /^node-color-seq-(9|10)$/;
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   typeof value === 'object' && value !== null
@@ -373,44 +387,46 @@ const migrationV7toV8 = createMigration({
 - New interface: "geospatial interface". Allows the participant to select a location on a map based on a geojson shapefile.
 - New experimental interface: "anonymisation interface". Allows the participant to encrypt sensitive/identifiable information, so that it cannot be read by the researcher. Not enabled by default. Contact the team for details.
 - New interface: "one-to-many dyad-census". Allows the participant to link multiple alters at a time.
-- New interface: "family pedigree". A pedigree building interface designed for genetic disease monitoring scenarios, with configurable node and edge types, relationship variables, and optional disease/condition nomination prompts.
+- New interface: "family pedigree". A pedigree building interface designed for genetic disease monitoring scenarios, with configurable node and edge types, relationship attributes, and optional disease/condition nomination prompts.
 - Add new validation options for form fields: \`greaterThanVariable\` and \`lessThanVariable\`.
 - Add new comparator options for skip logic and filter: \`contains\` and \`does not contain\`.
 - Add optional targeted skip-logic destinations. When a stage is hidden, routing can continue at the next available stage, jump to a later stage, or continue to the interview finish screen.
-- Amplify comparator options \`includes\` and \`excludes\` for ordinal and categorical variables to allow multiple selections.
+- Amplify comparator options \`includes\` and \`excludes\` for ordinal and categorical attributes to allow multiple selections.
 - Removed 'displayVariable' property, if set. This property was not used, and has been marked as deprecated for a long time.
-- Removed 'options' property for boolean Toggle variables. This property was not used.
-- A boolean variable's \`options\` must now offer at least one choice. An empty list rendered a control with no buttons at all, which a participant could never answer; the empty list is removed so the variable falls back to the standard Yes/No choices.
+- Removed 'options' property for boolean Toggle attributes. This property was not used.
+- A boolean attribute's \`options\` must now offer at least one choice. An empty list rendered a control with no buttons at all, which a participant could never answer; the empty list is removed so the attribute falls back to the standard Yes/No choices.
 - Changed FilterRule type to use the same entity names as elsewhere
 - Added 'name' property to protocol (required dependency for migration)
 - Renamed 'iconVariant' to 'icon' on node definitions.
 - Added 'shape' property with default 'circle' to all node definitions.
+- A node type's \`color\` is now restricted to the eight \`node-color-seq-1\`–\`node-color-seq-8\` palette values the interfaces can render. Older versions of Architect offered ten, so a node type using the ninth or tenth is moved back onto the palette (the ninth becomes the first, the tenth the second).
 - Added optional 'hint' property to form fields, allowing a markdown string to be displayed as additional guidance for participants.
 - Added optional 'showValidationHints' property to form fields, enabling automatic display of hints derived from validation rules.
 - Removed 'loop' property from Information stage items and video/audio assets. This property was never honoured by Interviewer.
-- Removed the \`minValue\` and \`maxValue\` validators from scalar (visual analog scale) variables. A scalar response is recorded on a normalised 0-1 scale, so a value bound on it was never meaningful. Any such validator is removed.
-- A \`minValue\`, \`minLength\`, or \`minSelected\` validator no longer implies a field is required. To preserve the effective behaviour of existing protocols that relied on this coupling, any codebook variable (node, edge, or ego) with one of these validators and no explicit \`required: true\` now has \`required: true\` set.
+- Removed the \`minValue\` and \`maxValue\` validators from scalar (visual analog scale) attributes. A scalar response is recorded on a normalised 0-1 scale, so a value bound on it was never meaningful. Any such validator is removed.
+- A \`minValue\`, \`minLength\`, or \`minSelected\` validator no longer implies a field is required. To preserve the effective behaviour of existing protocols that relied on this coupling, any codebook attribute (node, edge, or ego) with one of these validators and no explicit \`required: true\` now has \`required: true\` set.
 - Categorical attribute values are now stored as arrays of selected option values. Existing single-value categorical filter and skip-logic rule operands (\`is exactly\`, \`is not\`, \`includes\`, \`excludes\`) are wrapped in a single-element array to match.
 - Stage labels are now required to be non-empty. Any stage with a missing or empty label is given a default name based on its position (e.g. "Stage 3").
 - The Information stage \`title\` (page heading) is now required. Any Information stage without one is given its stage label as the title, or "Information" when no label was authored.
 - The NameGenerator \`form.title\` (heading of the add-a-person dialog) is now required. Any NameGenerator form without one is given "Add {node type name}" (e.g. "Add Person").
-- A codebook variable referenced by a form field must define a \`component\` (input control). Previously this was only checked by the Architect editor; a protocol violating it crashed the interview when the form rendered.
-- Several free-text fields that the Architect editor already requires are now required (non-empty) in the schema: a prompt's \`text\`, a form field's \`prompt\`, an introduction panel's \`title\` and \`text\`, an Information item's \`content\`, a Narrative preset's \`label\`, a side panel's \`title\`, a NameGeneratorRoster \`dataSource\`, and its \`searchOptions.matchProperties\` (at least one). Any that were empty are backfilled — the form-field prompt from the variable's name, the panel title from the stage label, a preset/side-panel label by position — else a plain default. An empty \`searchOptions\`, and an Information asset item with no asset id (a broken reference), are dropped. (The FamilyPedigree \`censusPrompt\`, NarrativePedigree disease \`label\`/\`color\`, and Anonymisation \`explanationText\` are likewise required but are v8-only, so no migration is needed.)
+- A codebook attribute referenced by a form field must define a \`component\` (input control). Previously this was only checked by the Architect editor; a protocol violating it crashed the interview when the form rendered.
+- Several free-text fields that the Architect editor already requires are now required (non-empty) in the schema: a prompt's \`text\`, a form field's \`prompt\`, an introduction panel's \`title\` and \`text\`, an Information item's \`content\`, a Narrative preset's \`label\`, a side panel's \`title\`, a NameGeneratorRoster \`dataSource\`, and its \`searchOptions.matchProperties\` (at least one). Any that were empty are backfilled — the form-field prompt from the attribute's name, the panel title from the stage label, a preset/side-panel label by position — else a plain default. An empty \`searchOptions\`, and an Information asset item with no asset id (a broken reference), are dropped. (The FamilyPedigree \`censusPrompt\`, NarrativePedigree disease \`label\`/\`color\`, and Anonymisation \`explanationText\` are likewise required but are v8-only, so no migration is needed.)
 - The Sociogram and Narrative \`background\` is now required and must be exactly one of its two variants: an image (\`image\` set, no \`concentricCircles\`) or concentric circles (\`concentricCircles\` set to a whole number, no \`image\`; 0 renders no rings). Stages with no background, or with an incomplete or contradictory one, are normalised: an image wins when present; otherwise \`concentricCircles\` defaults to 4, matching what the interview already rendered.
 - An OrdinalBin prompt \`color\` is now required, restricted to the ten \`ord-color-seq-1\`–\`ord-color-seq-10\` palette values the interface can render. Any other value was silently ignored and is removed; prompts without a valid color default to the first palette color (\`ord-color-seq-1\`), the runtime's previous fallback.
 - A CategoricalBin prompt \`otherOptionLabel\` or \`otherVariablePrompt\` without an accompanying \`otherVariable\` was silently ignored, as was an empty-string \`otherVariable\`. Such orphaned properties are removed.
 - A CategoricalBin prompt with \`otherVariable\` set now requires both \`otherVariablePrompt\` and \`otherOptionLabel\` (previously a missing label silently dropped the whole "other" bin). A missing value is backfilled from the other authored one, else "Please specify" / "Other".
-- A CategoricalBin prompt's \`otherVariable\` must reference a text variable because its follow-up control records text. A non-text reference and its associated "other" configuration are removed.
-- A Sociogram prompt with \`highlight.allowHighlighting\` enabled must name the boolean variable to toggle, and an \`edges\` object must set \`create\` and/or \`display\`. Prompts violating either were runtime no-ops; the highlight toggle is turned off and the empty edges object removed.
+- A CategoricalBin prompt's \`otherVariable\` must reference a text attribute because its follow-up control records text. A non-text reference and its associated "other" configuration are removed.
+- A Sociogram prompt with \`highlight.allowHighlighting\` enabled must name the boolean attribute to toggle, and an \`edges\` object must set \`create\` and/or \`display\`. Prompts violating either were runtime no-ops; the highlight toggle is turned off and the empty edges object removed.
 - The Sociogram and Narrative \`automaticLayout\` behaviour is now a plain boolean (previously \`{ enabled }\`); existing values are flattened. The Narrative interface gains this behaviour for the first time; it is only active when explicitly enabled, so existing Narrative stages keep their hand-authored static positions.
-- Validation rules that contradict each other are removed so existing protocols stay valid under the new schema checks: inverted \`min\`/\`max\` pairs (both removed), \`required\` text or categorical variables whose maximum is zero (the zero maximum is removed), \`minSelected\` above the option count, \`sameAs\` and \`differentFrom\` naming one target (both removed), comparator structures no value can satisfy — impossible cycles, comparisons inside a \`sameAs\` group, comparisons whose value ranges cannot overlap (the comparator is removed; value bounds are kept), \`sameAs\` groups whose bounds share no value (the \`sameAs\` rules are removed) — and validation references to a variable of a different type. Count-valued rules must be non-negative; negative values are removed.
+- Validation rules that contradict each other are removed so existing protocols stay valid under the new schema checks: inverted \`min\`/\`max\` pairs (both removed), \`required\` text or categorical attributes whose maximum is zero (the zero maximum is removed), \`minSelected\` above the option count, \`sameAs\` and \`differentFrom\` naming one target (both removed), comparator structures no value can satisfy — impossible cycles, comparisons inside a \`sameAs\` group, comparisons whose value ranges cannot overlap (the comparator is removed; value bounds are kept), \`sameAs\` groups whose bounds share no value (the \`sameAs\` rules are removed) — and validation references to an attribute of a different type. Count-valued rules must be non-negative; negative values are removed.
 - DatePicker \`min\`/\`max\` parameters must be real dates written exactly at the picker's resolution, with \`min\` not after \`max\`. Values with more precision than the resolution are truncated; other invalid values are removed. At year or month resolution, a bound must use a four-digit year of 1000 or later — the interview builds that resolution's year options unpadded, so an earlier, zero-padded year could never match a stored value; such a bound is removed. Any parameter key other than \`type\`, \`min\`, or \`max\` — e.g. a RelativeDatePicker \`anchor\` left over from a component switch — is also removed.
-- A datetime codebook variable's RelativeDatePicker \`anchor\` must be a real date inside the native input's year range of 0001–9999, and its \`before\`/\`after\` offsets must be non-negative whole numbers of days. Invalid values, and any unrecognised parameter, are removed; a removed anchor reverts the picker to its interview-date default.
-- A datetime variable's \`parameters\` must be a plain object; a wrong-typed value (a string, number, list, or null) is removed, reverting the picker to its defaults.
-- Validation rules the new schema cannot express are removed: rule names it has never defined, rules whose value has the wrong type (e.g. a quoted number), and rules that do not apply to the variable's type (e.g. \`minValue\` on a text variable, or \`requiredAcceptsNull\` anywhere). A removed \`minValue\`/\`minLength\`/\`minSelected\` still marks the variable required, preserving the old implied-required behaviour. Layout variables take no validation at all; theirs is removed.
-- A variable's \`component\` (input control) must be one its type can render. An unrecognised or mismatched control is replaced with the type's standard control (for datetime, chosen by the shape of its \`parameters\`); layout variables, which have no control, have it removed.
-- Ordinal and categorical option values must be strings or whole numbers; a fractional value is converted to its string form (as legacy boolean values already are), and a numeric option label becomes the same text it already displayed. A boolean variable's option entry that is not a labelled true/false choice is removed; if no entries remain the variable falls back to the standard Yes/No choices.
-- The CategoricalBin "other" input and the NameGenerator quick-add field now honour the referenced variable's configured validation while remaining locally required, so shared codebook validation is left unchanged.
+- A datetime codebook attribute's RelativeDatePicker \`anchor\` must be a real date inside the native input's year range of 0001–9999, and its \`before\`/\`after\` offsets must be non-negative whole numbers of days. Invalid values, and any unrecognised parameter, are removed; a removed anchor reverts the picker to its interview-date default.
+- A datetime attribute's \`parameters\` must be a plain object; a wrong-typed value (a string, number, list, or null) is removed, reverting the picker to its defaults.
+- Validation rules the new schema cannot express are removed: rule names it has never defined, rules whose value has the wrong type (e.g. a quoted number), and rules that do not apply to the attribute's type (e.g. \`minValue\` on a text attribute, or \`requiredAcceptsNull\` anywhere). A removed \`minValue\`/\`minLength\`/\`minSelected\` still marks the attribute required, preserving the old implied-required behaviour. Layout attributes take no validation at all; theirs is removed.
+- An attribute's \`component\` (input control) must be one its type can render. An unrecognised or mismatched control is replaced with the type's standard control (for datetime, chosen by the shape of its \`parameters\`); layout attributes, which have no control, have it removed.
+- Ordinal and categorical option values must be strings or whole numbers; a fractional value is converted to its string form (as legacy boolean values already are), and a numeric option label becomes the same text it already displayed. A boolean attribute's option entry that is not a labelled true/false choice is removed; if no entries remain the attribute falls back to the standard Yes/No choices.
+- The CategoricalBin "other" input and the NameGenerator quick-add field now honour the referenced attribute's configured validation. Both previously required a response locally, so migration adds \`required: true\` to every attribute they reference while preserving its other validation rules.
+- A form may no longer collect the same attribute twice. Two fields naming one attribute always shared a single answer — whichever the participant filled in last overwrote the other — so the repeat was never collecting anything of its own. Only the first field for each attribute is kept.
 `,
   migrate: (doc, deps) => {
     const codebook = (doc as Record<string, unknown>).codebook;
@@ -553,6 +569,54 @@ const migrationV7toV8 = createMigration({
             }
           }
           return variables;
+        },
+      },
+      {
+        // CategoricalBin's "other" dialog and NameGenerator quick-add both
+        // required a response locally in v7. Their v8 writers now honour the
+        // referenced variable's codebook validation, so carry that effective
+        // requiredness into the variable itself. This intentionally overrides
+        // an explicit legacy `required: false`: the writer never honoured it.
+        // Run before validation-contradiction repair so the normal v8 policy
+        // can resolve any newly explicit required/max-zero conflict.
+        paths: [''],
+        fn: <V>(document: V) => {
+          const typedDocument = asRecord(document);
+          if (!typedDocument || !Array.isArray(typedDocument.stages)) {
+            return document;
+          }
+
+          const markRequired = (subject: unknown, variableId: unknown) => {
+            const variable = codebookVariable(
+              typedDocument.codebook,
+              subject,
+              variableId,
+            );
+            if (!variable || variable.type !== 'text') return;
+            const validation = asRecord(variable.validation);
+            if (validation) {
+              validation.required = true;
+            } else {
+              variable.validation = { required: true };
+            }
+          };
+
+          for (const rawStage of typedDocument.stages) {
+            const stage = asRecord(rawStage);
+            if (!stage) continue;
+            if (
+              stage.type === 'CategoricalBin' &&
+              Array.isArray(stage.prompts)
+            ) {
+              for (const rawPrompt of stage.prompts) {
+                markRequired(stage.subject, asRecord(rawPrompt)?.otherVariable);
+              }
+            } else if (stage.type === 'NameGeneratorQuickAdd') {
+              markRequired(stage.subject, stage.quickAdd);
+            }
+          }
+
+          return document;
         },
       },
       {
@@ -862,7 +926,7 @@ const migrationV7toV8 = createMigration({
               delete typedPrompt.color;
             }
             if (!('color' in typedPrompt)) {
-              typedPrompt.color = ordinalColorSequence[0];
+              typedPrompt.color = OrdinalColorSequence[0];
             }
           }
           return stage;
@@ -936,8 +1000,24 @@ const migrationV7toV8 = createMigration({
               !NON_RENDERABLE_VARIABLE_TYPES.has(type)
             );
           });
-          form.fields = renderable;
-          for (const field of renderable) {
+          // V8 rejects a form that names one variable twice
+          // (`uniqueFormFieldVariables`), so repair the legacy protocols that
+          // carry that shape rather than failing their migration. Real
+          // archived protocols do carry it (the private regression corpus
+          // holds at least one), and import validates before anything is
+          // stored, so failing here would strand those files with no way to
+          // open them for repair. The duplicate was never functional: every
+          // field registers under `field.variable`, so both rows already
+          // shared one form value and the later registration silently
+          // replaced the earlier — the second field collected nothing of its
+          // own. `duplicateFormFieldIndices` is the schema's own finder, so
+          // the migration keeps exactly the fields the schema accepts.
+          const repeats = new Set(duplicateFormFieldIndices(renderable));
+          const deduplicated = renderable.filter(
+            (_field, index) => !repeats.has(index),
+          );
+          form.fields = deduplicated;
+          for (const field of deduplicated) {
             const typedField = asRecord(field);
             if (!typedField) continue;
             if (
@@ -1359,6 +1439,31 @@ const migrationV7toV8 = createMigration({
             delete typedStage.filter;
           }
           return stage;
+        },
+      },
+      {
+        // Wrap the two node palette positions Classic could author back onto
+        // v8's eight node colours. Architect Classic offered ten node palette
+        // positions, so a legitimately authored v7 node type can name
+        // `node-color-seq-9` or `node-color-seq-10`, which
+        // `NodeColorReferenceSchema` rejects — the protocol could not be
+        // imported at all. Wrapping (position 9 -> 1, position 10 -> 2) keeps
+        // the two authored positions distinct from one another and lands on a
+        // colour the interfaces can render; the alternative, dropping the
+        // value, is not available because a node definition's `color` is
+        // required. Nothing else is rewritten: positions beyond 10 have no
+        // legacy interpretation, and any other value is left for the schema
+        // to reject on its own terms.
+        paths: ['codebook.node.*'],
+        fn: <V>(entityDefinition: V) => {
+          const typedEntity = asRecord(entityDefinition);
+          if (typeof typedEntity?.color !== 'string') return entityDefinition;
+          const match = LEGACY_NODE_COLOR_POSITION.exec(typedEntity.color);
+          if (!match) return entityDefinition;
+          const position = Number(match[1]);
+          typedEntity.color =
+            NodeColorSequence[(position - 1) % NodeColorSequence.length];
+          return entityDefinition;
         },
       },
       {

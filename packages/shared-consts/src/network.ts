@@ -1,26 +1,22 @@
 import { z } from 'zod';
 
-import { VariableNameSchema } from './variables.ts';
-
 // When values are encrypted, this is the resulting type.
 const encryptedValueSchema = z.array(z.number());
 export type EncryptedValue = z.infer<typeof encryptedValueSchema>;
 
-const variableValueSchema = z
-  .union([
-    z.string(), // text, ordinal option value, location
-    z.boolean(),
-    z.number(), // number, ordinal option value, visual analog scale
-    encryptedValueSchema,
-    z.array(z.union([z.string(), z.number(), z.boolean()])), // categorical (selected option values)
-    z.object({
-      x: z.number(),
-      y: z.number(),
-    }), // layout
-  ])
-  .nullable();
+export const VariableValueSchema = z.union([
+  z.string(), // text, ordinal option value, location
+  z.boolean(),
+  z.number(), // number, ordinal option value, visual analog scale
+  encryptedValueSchema,
+  z.array(z.union([z.string(), z.number(), z.boolean()])), // categorical (selected option values)
+  z.object({
+    x: z.number(),
+    y: z.number(),
+  }), // layout
+]);
 
-export type VariableValue = z.infer<typeof variableValueSchema>;
+export type VariableValue = z.output<typeof VariableValueSchema>;
 
 export const entityPrimaryKeyProperty = '_uid';
 export type EntityPrimaryKey = typeof entityPrimaryKeyProperty;
@@ -31,9 +27,33 @@ export type EntityAttributesProperty = typeof entityAttributesProperty;
 export const edgeSourceProperty = 'from';
 export const edgeTargetProperty = 'to';
 
+const LegacyEntityAttributesSchema = z.record(
+  z.string(),
+  VariableValueSchema.nullish(),
+);
+
+const removeNullishAttributeValues = (attributes: unknown): unknown => {
+  const result = LegacyEntityAttributesSchema.safeParse(attributes);
+
+  if (!result.success) {
+    return attributes;
+  }
+
+  return Object.fromEntries(
+    Object.entries(result.data).filter(
+      ([, value]) => value !== null && value !== undefined,
+    ),
+  );
+};
+
+export const EntityAttributesSchema = z.preprocess(
+  removeNullishAttributeValues,
+  z.record(z.string(), VariableValueSchema),
+);
+
 const BaseNcEntitySchema = z.object({
   [entityPrimaryKeyProperty]: z.string().readonly(),
-  [entityAttributesProperty]: z.record(VariableNameSchema, variableValueSchema),
+  [entityAttributesProperty]: EntityAttributesSchema,
   [entitySecureAttributesMeta]: z
     .record(
       z.string(),
@@ -76,4 +96,4 @@ export const NcNetworkSchema = z.object({
   ego: BaseNcEntitySchema,
 });
 
-export type NcNetwork = z.infer<typeof NcNetworkSchema>;
+export type NcNetwork = z.output<typeof NcNetworkSchema>;

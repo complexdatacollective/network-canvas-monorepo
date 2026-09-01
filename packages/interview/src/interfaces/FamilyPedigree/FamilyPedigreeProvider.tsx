@@ -1,7 +1,11 @@
 import { useRef } from 'react';
 
-import { entityAttributesProperty } from '@codaco/shared-consts';
-import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
+import type { FramingId } from '@codaco/protocol-validation';
+import {
+  entityAttributesProperty,
+  type NcEdge,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { useStageSelector } from '../../hooks/useStageSelector';
@@ -28,7 +32,11 @@ import {
   getNodeTypeKey,
   getRelationshipVariable,
 } from './utils/nodeUtils';
-import { pedigreeMemberIds } from './utils/pedigreeMembership';
+import {
+  edgesWithinPedigreeMembership,
+  pedigreeEdgeMembership,
+  pedigreeMemberIds,
+} from './utils/pedigreeMembership';
 import { getFramingConfig } from './utils/stageConfig';
 
 export const FamilyPedigreeProvider = ({
@@ -80,13 +88,20 @@ export const FamilyPedigreeProvider = ({
   // and remember which were already in Redux so finalize doesn't duplicate
   // them. Once the pedigree has committed its private membership, also drop
   // same-typed alters nominated in later stages, which are not part of it.
-  const memberIds = pedigreeMemberIds(useStageSelector(getStageMetadata));
+  const stageMetadata = useStageSelector(getStageMetadata);
+  const memberIds = pedigreeMemberIds(stageMetadata);
   const seededNodes = nodes.filter(
     (node) =>
       node.type === nodeType &&
       (memberIds === null || memberIds.has(node._uid)),
   );
-  const seededEdges = edges.filter((edge) => edge.type === edgeType);
+  const seededNodeIds = new Set(seededNodes.map((node) => node._uid));
+  const seededEdges = edgesWithinPedigreeMembership(
+    edges,
+    edgeType,
+    seededNodeIds,
+    pedigreeEdgeMembership(stageMetadata),
+  );
 
   const initialNodes = new Map<string, NcNode>(
     seededNodes.map((node) => [node._uid, node]),

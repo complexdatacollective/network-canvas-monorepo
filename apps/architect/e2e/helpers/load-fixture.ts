@@ -13,6 +13,30 @@ const FIXTURE_DIR = path.resolve(
   '../../../../packages/protocols/e2e/all-interfaces',
 );
 
+const TEMPLATES_DIR = path.resolve(
+  import.meta.dirname,
+  '../../../../packages/protocols/templates',
+);
+
+/**
+ * One of the shipped Architect templates (`@codaco/protocols/templates/*`),
+ * parsed through the schema for the same reason the all-interfaces fixture is:
+ * a drifted template fails at load time instead of seeding a wrongly-typed
+ * object. Templates are what researchers actually start from, so a spec that
+ * needs a fully-configured, previewable stage should prefer one over
+ * hand-building an equivalent.
+ */
+export function loadTemplateProtocol(templateId: string): CurrentProtocol {
+  return CurrentProtocolSchema.parse(
+    JSON.parse(
+      readFileSync(
+        path.join(TEMPLATES_DIR, templateId, 'protocol.json'),
+        'utf8',
+      ),
+    ),
+  );
+}
+
 export function loadAllInterfacesFixture(): {
   protocol: CurrentProtocol;
   assets: SeedAsset[];

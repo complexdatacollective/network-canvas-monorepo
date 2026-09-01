@@ -128,7 +128,7 @@ function requireCalendarBound(
     boundResolution(truncateToResolution(value, resolution)) === undefined
   ) {
     throw new Error(
-      `Date variable "${entry.name}" (${entry.id}) declares ${parameter} "${value}", which is not a calendar date. ` +
+      `Date attribute "${entry.name}" (${entry.id}) declares ${parameter} "${value}", which is not a calendar date. ` +
         'Synthetic data generation needs a date written as YYYY, YYYY-MM or YYYY-MM-DD.',
     );
   }
@@ -136,7 +136,7 @@ function requireCalendarBound(
   const earliest = earliestOfferedYear(resolution);
   if (Number(value.slice(0, 4)) < earliest) {
     throw new Error(
-      `Date variable "${entry.name}" (${entry.id}) declares ${parameter} "${value}", whose year is earlier than its picker can offer. ` +
+      `Date attribute "${entry.name}" (${entry.id}) declares ${parameter} "${value}", whose year is earlier than its picker can offer. ` +
         `Synthetic data generation needs a year of ${String(earliest).padStart(4, '0')} or later.`,
     );
   }
@@ -246,7 +246,7 @@ function coarseBound(
 function requireAnchorDate(entry: VariableEntry, value: string): string {
   if (requireCalendarBound(entry, 'anchor', value, 'full') !== 'full') {
     throw new Error(
-      `Date variable "${entry.name}" (${entry.id}) declares anchor "${value}", which is coarser than the date its picker collects. ` +
+      `Date attribute "${entry.name}" (${entry.id}) declares anchor "${value}", which is coarser than the date its picker collects. ` +
         `Synthetic data generation needs a bound written as ${RESOLUTION_SHAPE.full}.`,
     );
   }

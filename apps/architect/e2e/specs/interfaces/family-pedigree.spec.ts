@@ -23,6 +23,21 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
   await editor.createNew('FamilyPedigree');
   await editor.setStageName('Your Family');
 
+  const expectHalfWidthAttributePicker = async (fieldName: string) => {
+    const field = editor.field(fieldName);
+    const picker = field.locator(`[data-name="${fieldName}"]`);
+    const [fieldBox, pickerBox] = await Promise.all([
+      field.boundingBox(),
+      picker.boundingBox(),
+    ]);
+
+    if (!fieldBox || !pickerBox) {
+      throw new Error(`Could not measure the ${fieldName} attribute picker`);
+    }
+
+    expect(pickerBox.width / fieldBox.width).toBeCloseTo(0.5, 2);
+  };
+
   // StageEditor/Interfaces.tsx: `FamilyPedigree.sections = [FramingConfig,
   // BoundaryOptions, IntroScreen, FamilyPedigreeNodeConfiguration,
   // FamilyPedigreeEdgeConfiguration, CensusPrompt, NominationPrompts,
@@ -40,11 +55,8 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
   // inside one always-visible surface once `nodeConfig.type` is set — the
   // same multi-picker shape NetworkComposer's NodeConfiguration.tsx already
   // forced `createVariableViaSpotlight`'s `scope` option to handle (Task 19's
-  // network-composer.spec.ts). Each picker IS wrapped through
-  // `VariablePicker`'s own internal `FrescoReduxField`, so
-  // `editor.field(name)` resolves it correctly for scoping even though the
-  // row itself is hand-rolled JSX (`VariableRow`), not a bare
-  // `FrescoReduxField` call site.
+  // network-composer.spec.ts). Each picker uses ArchitectField's standard
+  // inline layout, so `editor.field(name)` resolves it correctly for scoping.
   //
   // Every one of the 4 node + 4 edge variables below routes through
   // NodeConfiguration.tsx's/EdgeConfiguration.tsx's own `handleNewXxxVariable`
@@ -57,14 +69,14 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
   //     variables set `initialValues.type` (text/boolean) with no
   //     `lockedOptions` — NewVariableWindow.tsx disables "Variable type"
   //     whenever `initialValues?.type` is set, and neither type is
-  //     ordinal/categorical, so the Options subsection never renders at all.
+  //     ordinal/categorical, so the nested Options section never renders at all.
   //   - categorical variables (`biologicalSexVariable`, matching
   //     `BIOLOGICAL_SEX_OPTIONS`; `relationshipTypeVariable`, matching
   //     `RELATIONSHIP_TYPE_OPTIONS`; `gameteRoleVariable`, matching
   //     `GAMETE_ROLE_OPTIONS`) additionally pass `lockedOptions` —
   //     NewVariableWindow.tsx disables "Variable type" for the same reason AND
   //     merges `lockedOptions` into the form's initial `options`, rendering
-  //     `<LockedOptions>` (a read-only display, no "Add new" button) instead
+  //     `<LockedOptions>` (a read-only display, no add button) instead
   //     of the editable `<Options>` editor.
   // In both cases the "Variable type" combobox ends up disabled and no
   // interactive Options editor renders, so `createVariableWithOptions`'s
@@ -107,6 +119,14 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
     options: [],
   });
 
+  await expectHalfWidthAttributePicker('nodeConfig.egoVariable');
+
+  // `nodeConfig.form` is optional. A new pedigree therefore leaves its
+  // configuration collapsed and unregistered until the researcher enables it.
+  await expect(
+    architectPage.getByRole('switch', { name: 'Form configuration' }),
+  ).not.toBeChecked();
+
   await selectOrCreateEdgeType(architectPage, 'family_edge');
 
   await createVariableViaSpotlight(architectPage, {
@@ -145,12 +165,11 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
     options: [],
   });
 
-  // CensusPrompt.tsx: `Section title="Census Prompt"`, a single RichText
-  // field labelled "Prompt for building the family pedigree" (labelHidden).
-  await editor.fillRichText(
-    'Prompt for building the family pedigree',
-    'Who is in your family?',
-  );
+  await expectHalfWidthAttributePicker('edgeConfig.relationshipTypeVariable');
+
+  // CensusPrompt.tsx now lets its single RichText field own the visible label
+  // instead of proxying it through a Section title.
+  await editor.fillRichText('Census prompt', 'Who is in your family?');
 
   // NominationPrompts.tsx's `nominationPrompts` array is optional
   // (`familyPedigreeStage`'s zod schema) and deliberately left untouched.

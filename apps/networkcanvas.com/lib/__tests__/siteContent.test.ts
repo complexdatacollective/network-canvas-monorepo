@@ -11,16 +11,16 @@ const validFiles = {
 second,Second news,Segunda noticia,https://example.com/second
 first,First news,Primera noticia,https://example.com/first
 `,
-  'publications.csv': `id,title_en,title_es,source_en,source_es,authors,href
-p1,Publication 1,Publicación 1,Journal 1,Revista 1,Author 1,https://example.com/p1
-p2,Publication 2,Publicación 2,Journal 2,Revista 2,Author 2,https://example.com/p2
-p3,Publication 3,Publicación 3,Journal 3,Revista 3,Author 3,https://example.com/p3
-p4,Publication 4,Publicación 4,Journal 4,Revista 4,Author 4,https://example.com/p4
-p5,Publication 5,Publicación 5,Journal 5,Revista 5,Author 5,https://example.com/p5
-p6,Publication 6,Publicación 6,Journal 6,Revista 6,Author 6,https://example.com/p6
-p7,Publication 7,Publicación 7,Journal 7,Revista 7,Author 7,https://example.com/p7
-p8,Publication 8,Publicación 8,Journal 8,Revista 8,Author 8,https://example.com/p8
-p9,Publication 9,Publicación 9,Journal 9,Revista 9,Author 9,https://example.com/p9
+  'publications.csv': `id,title_en,title_es,source_en,source_es,authors,href,year
+p1,Publication 1,Publicación 1,Journal 1,Revista 1,Author 1,https://example.com/p1,2021
+p2,Publication 2,Publicación 2,Journal 2,Revista 2,Author 2,https://example.com/p2,2022
+p3,Publication 3,Publicación 3,Journal 3,Revista 3,Author 3,https://example.com/p3,2023
+p4,Publication 4,Publicación 4,Journal 4,Revista 4,Author 4,https://example.com/p4,2024
+p5,Publication 5,Publicación 5,Journal 5,Revista 5,Author 5,https://example.com/p5,2025
+p6,Publication 6,Publicación 6,Journal 6,Revista 6,Author 6,https://example.com/p6,2026
+p7,Publication 7,Publicación 7,Journal 7,Revista 7,Author 7,https://example.com/p7,2027
+p8,Publication 8,Publicación 8,Journal 8,Revista 8,Author 8,https://example.com/p8,2028
+p9,Publication 9,Publicación 9,Journal 9,Revista 9,Author 9,https://example.com/p9,2029
 `,
   'grants.csv': `id,title_en,title_es,pis_en,pis_es,description_en,description_es,logo,logo_alt_en,logo_alt_es,href
 grant,Grant,Subvención,PI: Person,IP: Persona,"Line one, with comma
@@ -60,7 +60,7 @@ describe('loadSiteContent', () => {
     ]);
   });
 
-  it('limits publications to the first eight rows', async () => {
+  it('returns every publication row in file order', async () => {
     const content = await loadSiteContent('en-US', directory);
 
     expect(content.publications.map(({ id }) => id)).toEqual([
@@ -72,6 +72,7 @@ describe('loadSiteContent', () => {
       'p6',
       'p7',
       'p8',
+      'p9',
     ]);
   });
 
@@ -127,8 +128,17 @@ grant,Grant,Subvención,PI: Person,IP: Persona,Description,,/images/logo.png,Ins
       filename: 'publications.csv',
       row: 'row 2',
       field: 'href',
-      source: `id,title_en,title_es,source_en,source_es,authors,href
-p1,Publication,Publicación,Journal,Revista,Author,http://example.com/p1
+      source: `id,title_en,title_es,source_en,source_es,authors,href,year
+p1,Publication,Publicación,Journal,Revista,Author,http://example.com/p1,2024
+`,
+    },
+    {
+      name: 'invalid year',
+      filename: 'publications.csv',
+      row: 'row 2',
+      field: 'year',
+      source: `id,title_en,title_es,source_en,source_es,authors,href,year
+p1,Publication,Publicación,Journal,Revista,Author,https://example.com/p1,26
 `,
     },
     {

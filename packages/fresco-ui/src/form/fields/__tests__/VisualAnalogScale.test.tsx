@@ -15,9 +15,72 @@ describe('VisualAnalogScaleField — normalised 0-1 scale', () => {
     const onChange = vi.fn();
     render(<VisualAnalogScaleField value={undefined} onChange={onChange} />);
     const slider = screen.getByRole('slider');
-    fireEvent.pointerDown(slider.closest('[role="slider"]') ?? slider);
-    // commitPristineValue is wired to onPointerDown of the root.
     fireEvent.keyDown(slider, { key: 'Enter' });
     expect(onChange).toHaveBeenCalledWith(0.5);
+  });
+
+  it('still confirms from the keyboard after the field is cleared', () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <VisualAnalogScaleField value={undefined} onChange={onChange} />,
+    );
+    const slider = screen.getByRole('slider');
+
+    // Choose a value with the keyboard, so the component has seen a change...
+    fireEvent.keyDown(slider, { key: 'ArrowRight' });
+    // (guard against the scenario going vacuous if key handling changes)
+    expect(onChange).toHaveBeenCalled();
+    // ...then the surrounding form clears the field back to pristine.
+    rerender(<VisualAnalogScaleField value={undefined} onChange={onChange} />);
+
+    onChange.mockClear();
+    fireEvent.keyDown(screen.getByRole('slider'), { key: 'Enter' });
+    expect(onChange).toHaveBeenCalledWith(0.5);
+  });
+
+  it('does not record a response for a secondary-button press', () => {
+    const onChange = vi.fn();
+    render(<VisualAnalogScaleField value={undefined} onChange={onChange} />);
+    const slider = screen.getByRole('slider');
+
+    // Base UI only starts a slider interaction for a primary press, so the
+    // release of a right-click must not commit the resting midpoint.
+    fireEvent.pointerDown(slider, { button: 2 });
+    fireEvent.pointerUp(slider, { button: 2 });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Issue #1385: an unanswered required scale rendered — and announced — its
+ * resting midpoint as though the participant had chosen it, while `required`
+ * still blocked them. The thumb has to rest somewhere and a native range
+ * input always carries an `aria-valuenow`, so `aria-valuetext` is what has to
+ * tell the truth.
+ */
+describe('VisualAnalogScaleField — unanswered state', () => {
+  it('announces that no value has been chosen yet', () => {
+    render(<VisualAnalogScaleField value={undefined} onChange={vi.fn()} />);
+
+    expect(screen.getByRole('slider')).toHaveAttribute(
+      'aria-valuetext',
+      'No value chosen yet',
+    );
+  });
+
+  it('announces the chosen value once one is recorded', () => {
+    render(<VisualAnalogScaleField value={0.5} onChange={vi.fn()} />);
+
+    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuetext', '50%');
+  });
+
+  it('marks the unanswered scale for tests and styling', () => {
+    const { container, rerender } = render(
+      <VisualAnalogScaleField value={undefined} onChange={vi.fn()} />,
+    );
+    expect(container.querySelector('[data-unanswered]')).not.toBeNull();
+
+    rerender(<VisualAnalogScaleField value={0.5} onChange={vi.fn()} />);
+    expect(container.querySelector('[data-unanswered]')).toBeNull();
   });
 });

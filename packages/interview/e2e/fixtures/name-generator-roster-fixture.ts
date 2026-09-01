@@ -183,8 +183,25 @@ export class NameGeneratorRosterFixture {
     return this.page.getByText(/^\d+ results?$/);
   }
 
+  /**
+   * The source panel's empty state when a search matched nothing. The panel has
+   * three different empty states and they are not interchangeable — see
+   * `exhaustedState` and `NameGeneratorRoster.tsx`'s `emptyState` (#1400).
+   */
   get emptyState(): Locator {
     return this.page.getByText('Nothing matched your search term.');
+  }
+
+  /** The source panel's empty state when every roster entry is already added. */
+  get exhaustedState(): Locator {
+    return this.page.getByText(
+      'Everything from this list has already been added.',
+    );
+  }
+
+  /** The source panel's empty state when the roster file itself has no entries. */
+  get emptyListState(): Locator {
+    return this.page.getByText('There is nothing to add from this list.');
   }
 
   sortButton(label: string): Locator {

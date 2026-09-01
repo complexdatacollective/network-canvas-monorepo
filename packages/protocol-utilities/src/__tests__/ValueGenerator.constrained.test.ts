@@ -78,9 +78,32 @@ describe('neutralForVariable', () => {
       }),
     ).toBe(false);
   });
+
+  it('leaves a missing number attribute absent', () => {
+    const generator = new ValueGenerator(1);
+
+    expect(
+      generator.neutralForVariable({
+        id: 'score',
+        name: 'Score',
+        type: 'number',
+      }),
+    ).toBeUndefined();
+  });
 });
 
 describe('generateConstrained', () => {
+  it('returns no value when an option-backed variable has no domain', () => {
+    const generator = new ValueGenerator(1);
+
+    expect(
+      generator.generateConstrained(
+        make({ id: 'v', name: 'V', type: 'ordinal', options: [] }),
+        0,
+      ),
+    ).toBeUndefined();
+  });
+
   it('respects an exact text length', () => {
     const gen = new ValueGenerator(1);
     const variable = make({
@@ -148,43 +171,46 @@ describe('generateConstrained', () => {
     }
   });
 
-  it('uses the shortest realistic composition that satisfies a name variable minimum', () => {
+  it('prefers the fullest realistic composition constraints allow', () => {
     const seed = 17;
-    const firstName = String(
+    const fullName = String(
       new ValueGenerator(seed).generateConstrained(
         make({ id: 'name', name: 'Name', type: 'text' }),
         0,
       ),
     );
+    // Unconstrained, a name variable draws a full "First Last" name.
+    expect(fullName).toMatch(/^\S+ \S+$/);
+    const [firstName, lastName] = fullName.split(' ') as [string, string];
 
-    const firstAndLast = String(
+    // A cap with no room for the full name falls back to the first name.
+    expect(
       new ValueGenerator(seed).generateConstrained(
         make({
           id: 'name',
           name: 'Name',
           type: 'text',
-          validation: { minLength: firstName.length + 1 },
+          validation: { maxLength: fullName.length - 1 },
         }),
         0,
       ),
-    );
-    expect(firstAndLast.startsWith(`${firstName} `)).toBe(true);
+    ).toBe(firstName);
 
-    const lastName = firstAndLast.slice(firstName.length + 1);
-    const fullName = String(
+    // A floor above the full name lengthens it with a middle name.
+    const withMiddle = String(
       new ValueGenerator(seed).generateConstrained(
         make({
           id: 'name',
           name: 'Name',
           type: 'text',
-          validation: { minLength: firstAndLast.length + 1 },
+          validation: { minLength: fullName.length + 1 },
         }),
         0,
       ),
     );
-    expect(fullName.startsWith(`${firstName} `)).toBe(true);
-    expect(fullName.endsWith(` ${lastName}`)).toBe(true);
-    expect(fullName.length).toBeGreaterThan(firstAndLast.length);
+    expect(withMiddle.startsWith(`${firstName} `)).toBe(true);
+    expect(withMiddle.endsWith(` ${lastName}`)).toBe(true);
+    expect(withMiddle.length).toBeGreaterThan(fullName.length);
   });
 
   it('prefers a realistic name before the distinct sequence for a unique draw', () => {
@@ -209,35 +235,24 @@ describe('generateConstrained', () => {
 
   it('uses the text sequence when no realistic name composition meets the minimum', () => {
     const seed = 17;
-    const firstName = String(
+    const fullName = String(
       new ValueGenerator(seed).generateConstrained(
         make({ id: 'name', name: 'name', type: 'text' }),
         0,
       ),
     );
-    const firstAndLast = String(
+    const withMiddle = String(
       new ValueGenerator(seed).generateConstrained(
         make({
           id: 'name',
           name: 'name',
           type: 'text',
-          validation: { minLength: firstName.length + 1 },
+          validation: { minLength: fullName.length + 1 },
         }),
         0,
       ),
     );
-    const fullName = String(
-      new ValueGenerator(seed).generateConstrained(
-        make({
-          id: 'name',
-          name: 'name',
-          type: 'text',
-          validation: { minLength: firstAndLast.length + 1 },
-        }),
-        0,
-      ),
-    );
-    const minLength = fullName.length + 1;
+    const minLength = withMiddle.length + 1;
 
     expect(
       new ValueGenerator(seed).generateConstrained(
@@ -252,14 +267,15 @@ describe('generateConstrained', () => {
     ).toBe('a'.repeat(minLength));
   });
 
-  it('uses the text sequence when a realistic first name exceeds the maximum', () => {
+  it('uses the text sequence when even a first name exceeds the maximum', () => {
     const seed = 17;
-    const firstName = String(
+    const fullName = String(
       new ValueGenerator(seed).generateConstrained(
         make({ id: 'name', name: 'name', type: 'text' }),
         0,
       ),
     );
+    const [firstName] = fullName.split(' ') as [string];
     const maxLength = Math.max(0, firstName.length - 1);
 
     expect(
@@ -293,6 +309,32 @@ describe('generateConstrained', () => {
 
     expect(subject.randomInt(0, 1_000_000)).toBe(
       control.randomInt(0, 1_000_000),
+    );
+  });
+
+  it('does not let general random draws perturb preferred realistic names', () => {
+    const seed = 17;
+    const control = new ValueGenerator(seed);
+    const subject = new ValueGenerator(seed);
+    const nameVariable = make({
+      id: 'name',
+      name: 'name',
+      type: 'text',
+      validation: { unique: true },
+    });
+
+    subject.randomInt(0, 1_000_000);
+
+    expect(
+      subject.generateConstrained(nameVariable, 0, {
+        distinctSeq: 0,
+        preferRealisticName: true,
+      }),
+    ).toBe(
+      control.generateConstrained(nameVariable, 0, {
+        distinctSeq: 0,
+        preferRealisticName: true,
+      }),
     );
   });
 
@@ -452,11 +494,11 @@ describe('generateConstrained', () => {
 
       expect(drawn.size).toBe(size);
       // One past the count wraps, so the space holds nothing further.
-      expect(
-        drawn.has(
-          valueKey(gen.generateConstrained(variable, 0, { distinctSeq: size })),
-        ),
-      ).toBe(true);
+      const repeated = gen.generateConstrained(variable, 0, {
+        distinctSeq: size,
+      });
+      if (repeated === undefined) throw new Error('Expected a number value');
+      expect(drawn.has(valueKey(repeated))).toBe(true);
     }
   });
 
@@ -661,9 +703,11 @@ describe('generateConstrained', () => {
 
     const drawn = new Set<string>();
     for (let seq = 0; seq < 2; seq++) {
-      drawn.add(
-        valueKey(gen.generateConstrained(variable, 0, { distinctSeq: seq })),
-      );
+      const value = gen.generateConstrained(variable, 0, {
+        distinctSeq: seq,
+      });
+      if (value === undefined) throw new Error('Expected an ordinal value');
+      drawn.add(valueKey(value));
     }
     expect(drawn.size).toBe(2);
 
@@ -672,7 +716,9 @@ describe('generateConstrained', () => {
     // sample of the option list's labels rather than of the data it records.
     const free = new Set<string>();
     for (let index = 0; index < 4; index++) {
-      free.add(valueKey(gen.generateConstrained(variable, index)));
+      const value = gen.generateConstrained(variable, index);
+      if (value === undefined) throw new Error('Expected an ordinal value');
+      free.add(valueKey(value));
     }
     expect(free.size).toBe(2);
   });

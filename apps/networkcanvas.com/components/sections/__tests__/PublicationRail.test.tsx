@@ -50,6 +50,7 @@ const publications: Publication[] = [
     source: 'Journal One',
     authors: 'Researcher One',
     href: 'https://example.com/first',
+    year: '2024',
   },
   {
     id: 'second',
@@ -57,6 +58,7 @@ const publications: Publication[] = [
     source: 'Journal Two',
     authors: 'Researcher Two',
     href: 'https://example.com/second',
+    year: '2023',
   },
   {
     id: 'third',
@@ -64,6 +66,7 @@ const publications: Publication[] = [
     source: 'Journal Three',
     authors: 'Researcher Three',
     href: 'https://example.com/third',
+    year: '2022',
   },
 ];
 
@@ -252,6 +255,16 @@ describe('PublicationRail', () => {
     act(() => motionState.scrollHandler?.(0.75));
 
     expect(viewport.scrollLeft).toBe(600);
+  });
+
+  it('shows each publication year as a machine-readable date', async () => {
+    renderRail();
+
+    const year = await screen.findByText('2024');
+
+    expect(year.tagName).toBe('TIME');
+    expect(year).toHaveAttribute('datetime', '2024');
+    expect(year.closest('a')).toHaveTextContent('Journal One · 2024');
   });
 
   it('keeps a native horizontal row without pinning for reduced motion', async () => {

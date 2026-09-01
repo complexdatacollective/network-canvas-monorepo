@@ -8,24 +8,14 @@ import type { SiteNavigationLinkRenderProps } from '@codaco/fresco-ui/navigation
 import ThemeSwitcher from '~/components/layout/ThemeSwitcher';
 import { isLocale } from '~/lib/i18n/locales';
 import { Link } from '~/lib/i18n/navigation';
+import { resolveWebsiteNavigationUrl } from '~/lib/siteUrls';
 
 function renderNavigationLink({
   children,
-  href,
-  target,
-  rel,
   ...props
 }: SiteNavigationLinkRenderProps) {
-  const isProtocolGallery =
-    href === 'https://protocolgallery.networkcanvas.com/';
-
   return (
-    <Link
-      {...props}
-      href={isProtocolGallery ? '/protocol-gallery' : href}
-      target={isProtocolGallery ? undefined : target}
-      rel={isProtocolGallery ? undefined : rel}
-    >
+    <Link {...props} href={resolveWebsiteNavigationUrl(props.href)}>
       {children}
     </Link>
   );

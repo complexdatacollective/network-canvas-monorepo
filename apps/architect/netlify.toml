@@ -1,6 +1,12 @@
 [build]
-command = "pnpm exec turbo run build --filter=@codaco/architect"
+# write-build-info.mjs stamps dist/build-info.json with the deployed commit
+# AFTER the turbo-cached build: baked into the build it would survive cache
+# restoration and describe whichever commit originally built the artifact.
+command = "pnpm exec turbo run build --filter=@codaco/architect && node apps/architect/scripts/write-build-info.mjs"
 publish = "apps/architect/dist"
 
 [build.environment]
 NODE_OPTIONS = "--max-old-space-size=4096"
+
+[context.deploy-preview]
+ignore = "cd \"$(git rev-parse --show-toplevel)\" && if test -n \"$CACHED_COMMIT_REF\" && test \"$CACHED_COMMIT_REF\" != \"$COMMIT_REF\" && git diff --quiet \"$CACHED_COMMIT_REF\" \"$COMMIT_REF\" -- apps/architect/netlify.toml package.json pnpm-lock.yaml pnpm-workspace.yaml && npx --yes turbo@2.10.4 query affected --tasks build --packages @codaco/architect --base \"$CACHED_COMMIT_REF\" --head \"$COMMIT_REF\" --exit-code; then true; else false; fi"

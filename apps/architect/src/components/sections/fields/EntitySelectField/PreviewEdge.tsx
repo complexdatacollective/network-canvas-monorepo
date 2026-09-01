@@ -1,6 +1,7 @@
 import type { ButtonHTMLAttributes, CSSProperties } from 'react';
 
 import Icon from '@codaco/fresco-ui/Icon';
+import type { ColorReference } from '@codaco/protocol-validation';
 import { cx } from '~/utils/cva';
 import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
 
@@ -9,7 +10,7 @@ type PreviewEdgeProps = Omit<
   'color'
 > & {
   label: string;
-  color: string;
+  color: ColorReference;
   selected?: boolean;
   surface?: 1 | 2;
 };
@@ -68,8 +69,11 @@ const PreviewEdge = ({
     );
   }
 
+  // A `<span>`, not a `<div>`: with no `onClick` this is a picture of an edge
+  // type, and a rule card renders one inside its edit button — where only
+  // phrasing content is valid. `display: flex` keeps the box identical.
   return (
-    <div
+    <span
       className={cx(
         baseClasses,
         surfaceClasses,
@@ -79,7 +83,7 @@ const PreviewEdge = ({
       style={wrapperStyle}
     >
       {content}
-    </div>
+    </span>
   );
 };
 

@@ -4,6 +4,9 @@ import {
   type ValidationContradiction,
 } from '@codaco/protocol-validation';
 import { getTypeForComponent } from '~/config/variables';
+import type { WriterClass } from '~/selectors/roleFilters';
+
+import { ruleMapPrecheck } from './ruleValue';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -42,7 +45,7 @@ const draftVariableBase = (
         name:
           typeof draftVariableName === 'string' && draftVariableName.trim()
             ? draftVariableName
-            : 'this variable',
+            : 'this attribute',
         type: variableType,
       };
 
@@ -302,8 +305,6 @@ export type ReferenceTargetLegalityInput = {
   validation: UnknownRecord;
   /** The reference-type rule being edited (e.g. `sameAs`). */
   ruleKey: string;
-  /** The row's PRE-draft key, when its type is mid-change. */
-  replacingKey?: string;
   /** Candidate target ids to evaluate — typically every id in `existingVariables`. */
   candidateIds: string[];
   component?: unknown;
@@ -397,7 +398,6 @@ export const findLegalReferenceTargets = ({
   variableType,
   validation,
   ruleKey,
-  replacingKey,
   candidateIds,
   component,
   options,
@@ -408,9 +408,6 @@ export const findLegalReferenceTargets = ({
   const id = currentVariableId || draftVariableId(allVariables);
 
   const baseline: UnknownRecord = { ...validation };
-  if (replacingKey && replacingKey !== ruleKey) {
-    delete baseline[replacingKey];
-  }
   delete baseline[ruleKey];
 
   const draftEntry = (draftValidation: UnknownRecord): UnknownRecord => {
@@ -601,44 +598,6 @@ export const findLegalReferenceTargets = ({
   return legal;
 };
 
-// R1 (schema shape) rejects fractional values and values below these floors
-// with a generic Zod message. Gating them here — ahead of the schema — lets
-// the row editor disable the save and explain why, instead of surfacing that
-// generic message only after a failed protocol save.
-const RULE_FLOORS: Record<string, number> = {
-  minLength: 0,
-  maxLength: 0,
-  minSelected: 0,
-  maxSelected: 0,
-};
-
-const INTEGER_RULES = new Set([
-  'minLength',
-  'maxLength',
-  'minValue',
-  'maxValue',
-  'minSelected',
-  'maxSelected',
-]);
-
-export const floorIssue = (
-  ruleKey: string,
-  value: unknown,
-): string | undefined => {
-  if (
-    INTEGER_RULES.has(ruleKey) &&
-    typeof value === 'number' &&
-    !Number.isInteger(value)
-  ) {
-    return `${ruleKey} must be a whole number`;
-  }
-  const floor = RULE_FLOORS[ruleKey];
-  if (floor === undefined || typeof value !== 'number' || Number.isNaN(value)) {
-    return undefined;
-  }
-  return value < floor ? `${ruleKey} must be at least ${floor}` : undefined;
-};
-
 /**
  * A stage-scoped override of a variable's rendering, keyed by variable id.
  * NetworkComposer stage fields carry their OWN `component`/`parameters`
@@ -773,6 +732,20 @@ export const validatedElsewhereMessage = (variableName: string): string =>
 export const unvalidatedElsewhereMessage = (variableName: string): string =>
   `"${variableName}" is written without validation by another stage, so it cannot be used as a form field`;
 
+/**
+ * The refusal a picker earns when the OPPOSITE writer class already claims
+ * its pick, keyed by the picker's OWN class. Pairing the two messages with
+ * `hasConflictingUse`'s direction here means a gate cannot show the mirror
+ * message by picking the wrong one by hand.
+ */
+export const crossClassConflictMessage: Record<
+  WriterClass,
+  (variableName: string) => string
+> = {
+  unvalidated: validatedElsewhereMessage,
+  validated: unvalidatedElsewhereMessage,
+};
+
 export const draftValidatedElsewhereMessage = (variableName: string): string =>
   `"${variableName}" is collected by this stage's form, so it cannot be assigned by this prompt (values assigned here would bypass its validation)`;
 
@@ -812,7 +785,7 @@ export const crossClassPickIssue = ({
 };
 
 /**
- * redux-form sync validate for the field-editor dialog. Errors are keyed at
+ * Form-level validate for the field-editor dialog. Errors are keyed at
  * `validation` so they surface through the Validations field's FieldErrors on
  * a failed save and anchor to getFieldId('validation') for scroll-to-error.
  *
@@ -953,10 +926,16 @@ export const makeFieldEditorValidate = (
         ? existingType
         : (getTypeForComponent(component) ?? '');
     if (!variableType) return {};
-    const floor = Object.entries(validation)
-      .map(([ruleKey, ruleValue]) => floorIssue(ruleKey, ruleValue))
-      .find((message): message is string => message !== undefined);
-    if (floor) return { validation: floor };
+    // A rule switched on but never answered carries `null` (see
+    // `Validations.tsx`'s `handleToggle`). It has to be reported — dropping it
+    // silently is the bug this gate exists to prevent — and it has to be kept
+    // away from the analyser, which would read the `null` as a bound. The
+    // `validation` field's own validator (`ruleMapIssue`) runs the same steps,
+    // by calling this same function — it is one implementation, not two that
+    // agree.
+    const { issue: precheckIssue, complete: completeValidation } =
+      ruleMapPrecheck(validation);
+    if (precheckIssue) return { validation: precheckIssue };
     // The edited variable's rendering IS determined by this form (the draft's
     // own component/parameters, layered on by `buildProspectiveVariables`),
     // so it always stays visible; every other cross-form-rendered variable is
@@ -976,7 +955,7 @@ export const makeFieldEditorValidate = (
       allVariables: visibleVariables,
       currentVariableId,
       variableType,
-      validation,
+      validation: completeValidation,
       component: values.component,
       options: values.options,
       parameters: values.parameters,
@@ -1005,7 +984,7 @@ export const makeFieldEditorValidate = (
         allVariables,
         currentVariableId,
         variableType,
-        validation,
+        validation: completeValidation,
         component: values.component,
         options: values.options,
         parameters: values.parameters,

@@ -46,9 +46,12 @@ export function arrayBufferAssetPlugin(): Plugin {
 // (rather than imported as JSON) so the renderer bundle gets a single
 // inlined string and TypeScript doesn't need package.json on its include
 // path. Consumed via the ambient `__APP_VERSION__` declared in global.d.ts.
-const appVersion = JSON.parse(
-  readFileSync(resolve(here, 'package.json'), 'utf8'),
-).version as string;
+// Typed at the parse site: `@total-typescript/ts-reset` types `JSON.parse` as
+// `unknown` rather than `any`, so the shape has to be stated before use.
+const pkg = JSON.parse(readFileSync(resolve(here, 'package.json'), 'utf8')) as {
+  version: string;
+};
+export const appVersion = pkg.version;
 
 // Production CSP injected into index.html as a meta tag. Vite HMR needs
 // 'unsafe-eval' / inline scripts in dev, so this is build-only.
@@ -61,7 +64,9 @@ const appVersion = JSON.parse(
 // else stays 'self'.
 export const CSP_DIRECTIVES = [
   "default-src 'self'",
-  "script-src 'self'",
+  // posthog-js loads its remote project config and enabled SDK extensions
+  // (including exception autocapture) as scripts from our controlled relay.
+  `script-src 'self' ${POSTHOG_RELAY_ORIGIN}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   // Protocol audio/video assets are decrypted to Blobs and played via object

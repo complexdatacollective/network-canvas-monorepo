@@ -1,5 +1,3 @@
-import { connect } from 'react-redux';
-
 import type { RootState } from '~/ducks/store';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
 import { excludeUnvalidatedUses } from '~/selectors/roleFilters';
@@ -28,22 +26,3 @@ export const getQuickAddOptionsForSubject = (
     currentValue,
   );
 };
-
-const mapStateToProps = (
-  state: RootState,
-  {
-    entity,
-    type,
-    quickAdd,
-  }: {
-    entity: 'node' | 'edge' | 'ego';
-    type?: string;
-    quickAdd?: string;
-  },
-) => ({
-  options: getQuickAddOptionsForSubject(state, { entity, type }, quickAdd),
-});
-
-const withOptions = connect(mapStateToProps, {});
-
-export default withOptions;

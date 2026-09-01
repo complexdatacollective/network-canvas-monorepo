@@ -1,4 +1,12 @@
 export type { GenerationConfig } from './generateNetwork/config';
+export { US_FAMILY_PEDIGREE_POPULATION } from './generateNetwork/familyPedigree/referencePopulation';
+export type {
+  FamilyPedigreeDiseaseMode,
+  FamilyPedigreeGenerationOptions,
+  FamilyPedigreePopulationProfile,
+  FamilyPedigreeScenario,
+  FamilyPedigreeWeightedCount,
+} from './generateNetwork/familyPedigree/types';
 export type {
   GenerateNetworkParams,
   GenerateNetworkResult,
@@ -11,4 +19,7 @@ export { generateNetwork } from './generateNetwork';
 export { todayYmd } from './generateNetwork/constraints/dateWindow';
 export type { ConstraintConflict } from './generateNetwork/constraints/error';
 export { SyntheticDataConstraintError } from './generateNetwork/constraints/error';
-export { SyntheticInterview } from './SyntheticInterview';
+export {
+  DEFAULT_SYNTHETIC_SEED,
+  SyntheticInterview,
+} from './SyntheticInterview';

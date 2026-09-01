@@ -26,9 +26,9 @@ const LOCKFILE_GRAPH_KEYS = new Set([
   'snapshots',
 ]);
 const RELEASE_REFS = new Set([
-  'changeset-release/apps',
   'changeset-release/documentation',
   'changeset-release/main',
+  'changeset-release/studio',
   'changeset-release/website',
 ]);
 const SPECIAL_PATHS = new Set(['pnpm-lock.yaml', 'pnpm-workspace.yaml']);
@@ -408,6 +408,7 @@ export function applyReleaseSeeds({
   }
   if (
     releaseRef === 'changeset-release/documentation' ||
+    releaseRef === 'changeset-release/studio' ||
     releaseRef === 'changeset-release/website'
   ) {
     return;
@@ -418,42 +419,18 @@ export function applyReleaseSeeds({
   const projectContains = (key, importer) =>
     mainClosures[key].has(importer) || headClosures[key].has(importer);
 
-  if (releaseRef === 'changeset-release/apps') {
-    const changedApps = ['apps/architect', 'apps/interviewer'].filter(
-      (importer) =>
-        versionChanged(
-          readFileAt,
-          mainRevision,
-          headRevision,
-          `${importer}/package.json`,
-        ),
-    );
-    if (changedApps.length === 0) {
-      markAll(result, 'release: apps lane has no readable app version change');
-      return;
-    }
-    for (const app of changedApps) {
-      const mainAppClosure = workspaceImporterClosure(mainLock, app);
-      const headAppClosure = workspaceImporterClosure(headLock, app);
-      for (const [key, rootImporter] of Object.entries(CHROMATIC_PROJECTS)) {
-        if (
-          mainAppClosure.has(rootImporter) ||
-          headAppClosure.has(rootImporter)
-        ) {
-          mark(result, key, `release: ${app} ships ${rootImporter}`);
-        }
-      }
-    }
-    return;
-  }
-
-  const packageImporters = new Set(
+  const normalReleaseImporters = new Set(
     [
       ...Object.keys(mainLock.importers),
       ...Object.keys(headLock.importers),
-    ].filter((importer) => /^packages\/[^/]+$/.test(importer)),
+    ].filter(
+      (importer) =>
+        /^packages\/[^/]+$/.test(importer) ||
+        importer === 'apps/architect' ||
+        importer === 'apps/interviewer',
+    ),
   );
-  const changedPackages = [...packageImporters].filter((importer) =>
+  const changedImporters = [...normalReleaseImporters].filter((importer) =>
     versionChanged(
       readFileAt,
       mainRevision,
@@ -461,17 +438,28 @@ export function applyReleaseSeeds({
       `${importer}/package.json`,
     ),
   );
-  if (changedPackages.length === 0) {
+  if (changedImporters.length === 0) {
     markAll(
       result,
-      'release: library lane has no readable package version change',
+      'release: normal lane has no readable package version change',
     );
     return;
   }
-  for (const importer of changedPackages) {
+  for (const importer of changedImporters) {
     for (const key of PROJECT_KEYS) {
       if (projectContains(key, importer)) {
         mark(result, key, `release: ${importer} version changed`);
+      }
+    }
+    if (!importer.startsWith('apps/')) continue;
+    const mainAppClosure = workspaceImporterClosure(mainLock, importer);
+    const headAppClosure = workspaceImporterClosure(headLock, importer);
+    for (const [key, rootImporter] of Object.entries(CHROMATIC_PROJECTS)) {
+      if (
+        mainAppClosure.has(rootImporter) ||
+        headAppClosure.has(rootImporter)
+      ) {
+        mark(result, key, `release: ${importer} ships ${rootImporter}`);
       }
     }
   }

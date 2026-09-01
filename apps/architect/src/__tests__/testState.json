@@ -8,24 +8,6 @@
       "busy": []
     }
   },
-  "form": {
-    "draft-by-id": {
-      "values": {
-        "id": "pip",
-        "foo": "bar"
-      }
-    },
-    "draft-insert-at-index": {
-      "values": {
-        "bazz": "buzz"
-      }
-    },
-    "draft-insert-at-end": {
-      "values": {
-        "fizz": "pop"
-      }
-    }
-  },
   "activeProtocol": {
     "present": {
       "schemaVersion": 4,
@@ -52,17 +34,41 @@
       },
       "codebook": {
         "node": {
-          "foo": { "name": "foo", "color": "black", "variables": {} },
-          "pop": { "name": "pop", "color": "black", "variables": {} },
+          "foo": {
+            "name": "foo",
+            "color": "black",
+            "variables": {}
+          },
+          "pop": {
+            "name": "pop",
+            "color": "black",
+            "variables": {}
+          },
           "bar": {
             "name": "bar",
             "color": "blue",
             "variables": {
-              "alpha": { "name": "ALPHA", "component": "Text", "type": "text" },
-              "bravo": { "name": "BRAVO", "type": "text" },
-              "charlie": { "name": "CHARLIE", "type": "location" },
-              "1234-1234-4": { "name": "1234-1234-4", "type": "text" },
-              "1234-1234-5": { "name": "1234-1234-5", "type": "text" }
+              "alpha": {
+                "name": "ALPHA",
+                "component": "Text",
+                "type": "text"
+              },
+              "bravo": {
+                "name": "BRAVO",
+                "type": "text"
+              },
+              "charlie": {
+                "name": "CHARLIE",
+                "type": "location"
+              },
+              "1234-1234-4": {
+                "name": "1234-1234-4",
+                "type": "text"
+              },
+              "1234-1234-5": {
+                "name": "1234-1234-5",
+                "type": "text"
+              }
             }
           },
           "1234-1234-1234": {
@@ -94,8 +100,14 @@
         },
         "ego": {
           "variables": {
-            "sierra": { "name": "SIERRA", "type": "text" },
-            "tango": { "name": "TANGO", "type": "text" }
+            "sierra": {
+              "name": "SIERRA",
+              "type": "text"
+            },
+            "tango": {
+              "name": "TANGO",
+              "type": "text"
+            }
           }
         },
         "edge": {
@@ -109,7 +121,10 @@
         {
           "id": "bazz",
           "label": "bazz",
-          "subject": { "entity": "node", "type": "bar" },
+          "subject": {
+            "entity": "node",
+            "type": "bar"
+          },
           "type": "NameGenerator",
           "prompts": [
             {
@@ -119,8 +134,14 @@
           ],
           "form": {
             "fields": [
-              { "variable": "alpha", "prompt": "message" },
-              { "variable": "1234-1234-4", "prompt": "message" }
+              {
+                "variable": "alpha",
+                "prompt": "message"
+              },
+              {
+                "variable": "1234-1234-4",
+                "prompt": "message"
+              }
             ]
           }
         },
@@ -128,7 +149,10 @@
           "id": "pip",
           "label": "pip",
           "type": "NameGenerator",
-          "subject": { "entity": "node", "type": "bar" },
+          "subject": {
+            "entity": "node",
+            "type": "bar"
+          },
           "prompts": [
             {
               "id": "promptId",
@@ -137,8 +161,14 @@
           ],
           "form": {
             "fields": [
-              { "variable": "bravo", "prompt": "message" },
-              { "variable": "1234-1234-5", "prompt": "message" }
+              {
+                "variable": "bravo",
+                "prompt": "message"
+              },
+              {
+                "variable": "1234-1234-5",
+                "prompt": "message"
+              }
             ]
           }
         },
@@ -152,7 +182,10 @@
               "text": "not a prompt"
             }
           ],
-          "subject": { "entity": "node", "type": "foo" }
+          "subject": {
+            "entity": "node",
+            "type": "foo"
+          }
         },
         {
           "id": "foxtrot",
@@ -168,13 +201,19 @@
               "text": "not a prompt"
             }
           ],
-          "subject": { "entity": "node", "type": "pop" }
+          "subject": {
+            "entity": "node",
+            "type": "pop"
+          }
         },
         {
           "id": "alpha",
           "label": "alpha",
           "type": "Sociogram",
-          "subject": { "entity": "node", "type": "bar" },
+          "subject": {
+            "entity": "node",
+            "type": "bar"
+          },
           "prompts": [
             {
               "id": "bravo",
@@ -202,7 +241,11 @@
           "type": "Information",
           "label": "assets",
           "panels": [
-            { "id": "panelId", "title": "", "dataSource": "1234-asset-2" }
+            {
+              "id": "panelId",
+              "title": "",
+              "dataSource": "1234-asset-2"
+            }
           ],
           "prompts": [
             {
@@ -211,7 +254,11 @@
             }
           ],
           "items": [
-            { "id": "itemId", "type": "asset", "content": "1234-asset-4" }
+            {
+              "id": "itemId",
+              "type": "asset",
+              "content": "1234-asset-4"
+            }
           ],
           "background": {
             "image": "1234-asset-5"
@@ -219,6 +266,21 @@
           "dataSource": "1234-asset-3"
         }
       ]
+    }
+  },
+  "stageEditorDraft": {
+    "history": {
+      "past": [],
+      "present": null,
+      "future": [],
+      "timeline": [],
+      "futureTimeline": []
+    },
+    "ui": {
+      "restoring": false,
+      "initialValues": null,
+      "liveValues": null,
+      "externalEditCount": 0
     }
   }
 }

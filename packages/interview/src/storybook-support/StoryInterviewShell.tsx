@@ -125,9 +125,11 @@ const StoryInterviewShell = (props: {
   /** Set for capture stories so dev-only UI (e.g. FamilyPedigree's
    * Dump/Load buttons) never appears in screenshots. */
   isDevelopment?: boolean;
-  /** Renders the Navigation exit button when provided, so stories can
-   * demonstrate the exit-confirmation flow. */
+  /** Adds an exit action to the Navigation settings menu when provided, so
+   * stories can demonstrate the exit-confirmation flow. */
   onExit?: () => void;
+  /** Adds the text-size control to the Navigation settings menu. */
+  allowUserScaling?: boolean;
   reviewMode?: boolean;
   initialStep?: number;
 }) => {
@@ -176,6 +178,7 @@ const StoryInterviewShell = (props: {
       hideNavigation={props.hideNavigation}
       navigationOrientation={props.navigationOrientation}
       allowStageNavigation={props.allowStageNavigation}
+      allowUserScaling={props.allowUserScaling}
       onExit={props.onExit}
       reviewMode={props.reviewMode}
     />

@@ -4,7 +4,7 @@
   - button "Recenter Map"
   - status:
     - heading "Select the test tract for this person." [level=4]
-  - button "Mohammad"
+  - button "Mohammad Crist"
   - button "Outside Selectable Areas"
   - region "Map"
   - button "Toggle attribution"

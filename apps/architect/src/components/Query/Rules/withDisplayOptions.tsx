@@ -1,146 +1,202 @@
-import { get } from 'es-toolkit/compat';
-import { withProps } from 'react-recompose';
-
 import type { NodeShape } from '@codaco/fresco-ui/Node';
+import {
+  type ColorReference,
+  ColorReferenceSchema,
+  type VariableType,
+  VariableTypesKeys,
+} from '@codaco/protocol-validation';
+
+import type { PreviewTextOptions } from './PreviewText';
 
 type OptionItem = {
   value: string | number;
   label: string;
 };
 
-type InputProps = {
+/** A stored rule plus the codebook its ids are resolved against. */
+export type RuleDisplayInput = {
   type: string;
-  options: {
-    type?: string;
-    attribute?: string;
-    value?: string | number | (string | number)[];
-    [key: string]: unknown;
-  };
-  codebook: {
-    node?: Record<
-      string,
-      {
-        name: string;
-        color: string;
-        shape?: { default: NodeShape };
-        variables?: Record<string, unknown>;
-      }
-    >;
-    edge?: Record<
-      string,
-      { name: string; color: string; variables?: Record<string, unknown> }
-    >;
-    ego?: { variables?: Record<string, unknown> };
-    [key: string]: unknown;
-  };
+  options: Record<string, unknown>;
+  codebook?: unknown;
 };
 
-// convert options to labels
-const withDisplayOptions = withProps<{ options: unknown }, InputProps>(
-  ({ type, options, codebook }: InputProps) => {
-    const entityType = type === 'node' ? 'node' : 'edge';
-    const fallbackColor =
-      entityType === 'node' ? 'node-color-seq-1' : 'edge-color-seq-1';
-    const typeLabel = options.type
-      ? get(codebook, [entityType, options.type, 'name'], options.type)
-      : options.type; // noop for ego
-    const typeColor = options.type
-      ? get(codebook, [entityType, options.type, 'color'], fallbackColor)
-      : fallbackColor; // noop for ego
-    const typeShape =
-      type === 'node' && options.type
-        ? (get(
-            codebook,
-            [entityType, options.type, 'shape', 'default'],
-            undefined,
-          ) as NodeShape | undefined)
-        : undefined; // only nodes have shapes
-    const variablePath =
-      options.attribute && type === 'ego'
-        ? (['ego', 'variables', options.attribute, 'name'] as const)
-        : options.attribute && options.type
-          ? ([
-              entityType,
-              options.type,
-              'variables',
-              options.attribute,
-              'name',
-            ] as const)
-          : null;
-    const variableLabel = variablePath
-      ? get(codebook, variablePath, options.attribute)
-      : options.attribute;
+const asRecord = (value: unknown): Record<string, unknown> | undefined => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return undefined;
+  }
+  // A plain object IS a string-keyed record; TypeScript has no narrowing for
+  // that, and the guard above is the whole check.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return value as Record<string, unknown>;
+};
 
-    const variableTypePath =
-      options.attribute && type === 'ego'
-        ? (['ego', 'variables', options.attribute, 'type'] as const)
-        : options.attribute && options.type
-          ? ([
-              entityType,
-              options.type,
-              'variables',
-              options.attribute,
-              'type',
-            ] as const)
-          : null;
-    const variableType = (
-      variableTypePath ? get(codebook, variableTypePath, 'string') : 'string'
-    ) as string;
+const asString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
 
-    const variableOptionsPath =
-      options.attribute && type === 'ego'
-        ? (['ego', 'variables', options.attribute, 'options'] as const)
-        : options.attribute && options.type
-          ? ([
-              entityType,
-              options.type,
-              'variables',
-              options.attribute,
-              'options',
-            ] as const)
-          : null;
-    const variableOptions = (
-      variableOptionsPath ? get(codebook, variableOptionsPath) : undefined
-    ) as OptionItem[] | undefined;
+const asColorReference = (value: unknown): ColorReference | undefined => {
+  const result = ColorReferenceSchema.safeParse(value);
+  return result.success ? result.data : undefined;
+};
 
-    const valueOption = variableOptions?.find(
-      ({ value }: OptionItem) => value === options.value,
-    );
+/**
+ * Walks a codebook path. Any missing segment — including a rule that names no
+ * entity type or attribute yet — answers `undefined` rather than throwing or
+ * inventing a default.
+ */
+const readPath = (
+  root: unknown,
+  path: readonly (string | undefined)[],
+): unknown => {
+  let current = root;
+  for (const key of path) {
+    if (key === undefined) return undefined;
+    const record = asRecord(current);
+    if (!record) return undefined;
+    current = record[key];
+  }
+  return current;
+};
 
-    const valueWithFormatting = () => {
-      const getOptionLabel = (item: string | number) => {
-        const option = variableOptions?.find(
-          ({ value: optionValue }: OptionItem) => optionValue === item,
-        );
-        return option ? option.label : item;
-      };
+const VARIABLE_TYPES = new Set<string>(VariableTypesKeys);
 
-      // Fetch option label based on value if available
-      switch (variableType) {
-        case 'categorical':
-        case 'ordinal':
-          if (Array.isArray(options.value)) {
-            return options.value.map(getOptionLabel);
-          }
+/**
+ * The schema's own variable types are the only ones a pill can be rendered
+ * for. An attribute the codebook does not describe — one deleted out from
+ * under a rule — reports none, and the preview falls back for itself instead
+ * of being handed `'string'`, a type the schema has never had.
+ */
+const asVariableType = (value: unknown): VariableType | undefined => {
+  if (typeof value !== 'string' || !VARIABLE_TYPES.has(value)) return undefined;
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return value as VariableType;
+};
 
-          return getOptionLabel(options.value as string | number);
-        default:
-          return valueOption ? valueOption.label : options.value;
-      }
-    };
+const isNodeShape = (value: unknown): value is NodeShape =>
+  value === 'circle' || value === 'square' || value === 'diamond';
 
-    return {
-      options: {
-        ...options,
-        ...(typeLabel ? { typeLabel } : {}),
-        ...(typeColor ? { typeColor } : {}),
-        ...(typeShape ? { typeShape } : {}),
-        attribute: variableLabel,
-        variableType,
-        value: valueWithFormatting(),
+const asOptionItems = (value: unknown): OptionItem[] | undefined => {
+  if (!Array.isArray(value)) return undefined;
+
+  const items = value.flatMap<OptionItem>((candidate) => {
+    const option = asRecord(candidate);
+    const optionValue = option?.value;
+    if (typeof optionValue !== 'string' && typeof optionValue !== 'number') {
+      return [];
+    }
+    const label = option?.label;
+    return [
+      {
+        value: optionValue,
+        label: typeof label === 'string' ? label : String(optionValue),
       },
-    };
-  },
-);
+    ];
+  });
 
-export default withDisplayOptions;
+  return items.length > 0 ? items : undefined;
+};
+
+const asPreviewValue = (
+  value: unknown,
+): PreviewTextOptions['value'] | undefined => {
+  if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.filter(
+      (item): item is string | number =>
+        typeof item === 'string' || typeof item === 'number',
+    );
+  }
+  return undefined;
+};
+
+/**
+ * Resolves a stored rule against the codebook into the labels, colours and
+ * types its preview reads from. Shared by the rule list in the editor and by
+ * the printable protocol summary.
+ */
+export const getRuleDisplayOptions = ({
+  type,
+  options,
+  codebook,
+}: RuleDisplayInput): PreviewTextOptions => {
+  const entityType = type === 'node' ? 'node' : 'edge';
+  const fallbackColor =
+    entityType === 'node' ? 'node-color-seq-1' : 'edge-color-seq-1';
+  const entityTypeId = asString(options.type);
+  const attributeId = asString(options.attribute);
+  const rawValue = options.value;
+
+  const typeLabel = entityTypeId
+    ? (asString(readPath(codebook, [entityType, entityTypeId, 'name'])) ??
+      entityTypeId)
+    : undefined; // noop for ego
+  const typeColor = entityTypeId
+    ? (asColorReference(
+        readPath(codebook, [entityType, entityTypeId, 'color']),
+      ) ?? fallbackColor)
+    : fallbackColor; // noop for ego
+  const shape = readPath(codebook, ['node', entityTypeId, 'shape', 'default']);
+  // Only nodes have shapes.
+  const typeShape = type === 'node' && isNodeShape(shape) ? shape : undefined;
+
+  // An ego rule's attributes live under `ego`; an alter rule's under the
+  // entity type it names, which it may not name yet.
+  const variablePath = attributeId
+    ? type === 'ego'
+      ? ['ego', 'variables', attributeId]
+      : entityTypeId
+        ? [entityType, entityTypeId, 'variables', attributeId]
+        : null
+    : null;
+
+  const variableLabel = variablePath
+    ? (asString(readPath(codebook, [...variablePath, 'name'])) ?? attributeId)
+    : attributeId;
+  const variableType = variablePath
+    ? asVariableType(readPath(codebook, [...variablePath, 'type']))
+    : undefined;
+  const variableOptions = variablePath
+    ? asOptionItems(readPath(codebook, [...variablePath, 'options']))
+    : undefined;
+
+  const getOptionLabel = (item: string | number) =>
+    variableOptions?.find(({ value }) => value === item)?.label ?? item;
+
+  // A multi-select operand is a list of option VALUES; every other operand is
+  // a single one. Both read back as the labels the researcher authored.
+  const displayValue = () => {
+    const isMultiSelect =
+      variableType === 'categorical' || variableType === 'ordinal';
+
+    if (isMultiSelect && Array.isArray(rawValue)) {
+      return rawValue
+        .filter(
+          (item): item is string | number =>
+            typeof item === 'string' || typeof item === 'number',
+        )
+        .map(getOptionLabel);
+    }
+
+    if (typeof rawValue === 'string' || typeof rawValue === 'number') {
+      return getOptionLabel(rawValue);
+    }
+
+    return asPreviewValue(rawValue);
+  };
+
+  return {
+    ...(typeLabel === undefined ? {} : { typeLabel }),
+    ...(typeColor === undefined ? {} : { typeColor }),
+    ...(typeShape === undefined ? {} : { typeShape }),
+    type: entityTypeId,
+    operator: asString(options.operator),
+    attribute: variableLabel,
+    variableType,
+    value: displayValue(),
+  };
+};

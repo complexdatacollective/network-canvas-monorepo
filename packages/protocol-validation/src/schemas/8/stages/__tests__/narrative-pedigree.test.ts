@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { NodeColorSequence } from '../../color-reference.ts';
 import ProtocolSchemaV8 from '../../schema.ts';
 import { narrativePedigreeStage } from '../narrative-pedigree.ts';
 
@@ -42,7 +43,7 @@ const validNarrativePedigreeStageShape = {
     {
       id: 'disease1',
       label: 'Breast Cancer',
-      color: '#ff0000',
+      color: 'node-color-seq-1',
       variable: 'hasBreastCancer',
       inheritancePattern: 'autosomalDominant' as const,
     },
@@ -147,20 +148,175 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
         {
           id: 'dup',
           label: 'A',
-          color: '#f00',
+          color: 'node-color-seq-1',
           variable: 'v1',
           inheritancePattern: 'autosomalDominant' as const,
         },
         {
           id: 'dup',
           label: 'B',
-          color: '#0f0',
+          color: 'node-color-seq-5',
           variable: 'v2',
           inheritancePattern: 'yLinked' as const,
         },
       ],
     });
     expect(result.success).toBe(false);
+  });
+
+  it('rejects two diseases mapped to the same variable', () => {
+    const result = narrativePedigreeStage.safeParse({
+      ...validNarrativePedigreeStageShape,
+      diseases: [
+        {
+          id: 'd1',
+          label: 'Condition X',
+          color: 'node-color-seq-1',
+          variable: 'shared',
+          inheritancePattern: 'autosomalDominant' as const,
+        },
+        {
+          id: 'd2',
+          label: 'Condition Y',
+          color: 'node-color-seq-5',
+          variable: 'shared',
+          inheritancePattern: 'yLinked' as const,
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.path)).toContainEqual([
+      'diseases',
+      1,
+      'variable',
+    ]);
+  });
+
+  it('rejects two diseases sharing a label, ignoring case and surrounding space', () => {
+    const result = narrativePedigreeStage.safeParse({
+      ...validNarrativePedigreeStageShape,
+      diseases: [
+        {
+          id: 'd1',
+          label: 'Condition X',
+          color: 'node-color-seq-1',
+          variable: 'v1',
+          inheritancePattern: 'autosomalDominant' as const,
+        },
+        {
+          id: 'd2',
+          label: '  condition x ',
+          color: 'node-color-seq-5',
+          variable: 'v2',
+          inheritancePattern: 'yLinked' as const,
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.path)).toContainEqual([
+      'diseases',
+      1,
+      'label',
+    ]);
+  });
+
+  // Canonical equivalence: `Café` written with U+00E9 and `Cafe` + U+0301 are
+  // the same text, render identically in every font, and are produced
+  // interchangeably by different keyboards and paste sources — so they are one
+  // key in the participant-facing disease legend.
+  it('rejects two diseases whose labels are canonically equivalent spellings', () => {
+    const result = narrativePedigreeStage.safeParse({
+      ...validNarrativePedigreeStageShape,
+      diseases: [
+        {
+          id: 'd1',
+          label: 'Café Coronary',
+          color: 'node-color-seq-1',
+          variable: 'v1',
+          inheritancePattern: 'autosomalDominant' as const,
+        },
+        {
+          id: 'd2',
+          label: 'Café Coronary',
+          color: 'node-color-seq-5',
+          variable: 'v2',
+          inheritancePattern: 'yLinked' as const,
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.path)).toContainEqual([
+      'diseases',
+      1,
+      'label',
+    ]);
+  });
+
+  // Node offers no way to change the process's default locale from inside a
+  // test, and `toLocaleLowerCase()` with no argument folds by exactly that. So
+  // stand in for a Turkish host: under it `I` lowercases to `ı` rather than
+  // `i`, which is what would let this one protocol be valid on one researcher's
+  // laptop and invalid on another's.
+  const withTurkishHostLocale = (run: () => void) => {
+    const original = String.prototype.toLocaleLowerCase;
+    String.prototype.toLocaleLowerCase = function (this: string) {
+      return original.call(this, 'tr');
+    };
+    try {
+      run();
+    } finally {
+      String.prototype.toLocaleLowerCase = original;
+    }
+  };
+
+  it('gives the same duplicate-label verdict whatever the host locale', () => {
+    const stage = {
+      ...validNarrativePedigreeStageShape,
+      diseases: [
+        {
+          id: 'd1',
+          label: 'Ilk',
+          color: 'node-color-seq-1',
+          variable: 'v1',
+          inheritancePattern: 'autosomalDominant' as const,
+        },
+        {
+          id: 'd2',
+          label: 'ilk',
+          color: 'node-color-seq-5',
+          variable: 'v2',
+          inheritancePattern: 'yLinked' as const,
+        },
+      ],
+    };
+
+    expect(narrativePedigreeStage.safeParse(stage).success).toBe(false);
+    withTurkishHostLocale(() => {
+      expect(narrativePedigreeStage.safeParse(stage).success).toBe(false);
+    });
+  });
+
+  it('accepts two diseases with distinct labels and variables', () => {
+    const result = narrativePedigreeStage.safeParse({
+      ...validNarrativePedigreeStageShape,
+      diseases: [
+        {
+          id: 'd1',
+          label: 'Condition X',
+          color: 'node-color-seq-1',
+          variable: 'v1',
+          inheritancePattern: 'autosomalDominant' as const,
+        },
+        {
+          id: 'd2',
+          label: 'Condition Y',
+          color: 'node-color-seq-5',
+          variable: 'v2',
+          inheritancePattern: 'yLinked' as const,
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
   });
 
   it('rejects an empty disease label', () => {
@@ -173,15 +329,38 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
     expect(result.success).toBe(false);
   });
 
-  it('rejects an empty disease color', () => {
-    const result = narrativePedigreeStage.safeParse({
-      ...validNarrativePedigreeStageShape,
-      diseases: [
-        { ...validNarrativePedigreeStageShape.diseases[0], color: '' },
-      ],
-    });
-    expect(result.success).toBe(false);
-  });
+  // A disease colours nodes in the pedigree, so it must name one of the eight
+  // node palette values the interface can render. `node-color-seq-9` and
+  // `node-color-seq-10` are the interesting rejections: Architect Classic
+  // offered those two positions, so they look plausible and are not — the
+  // v7→v8 migration wraps them, and anything still carrying one here was
+  // authored against this schema and has to be told.
+  it.each([
+    '',
+    '#ff0000',
+    'edge-color-seq-1',
+    'node-color-seq-9',
+    'node-color-seq-10',
+  ])(
+    'rejects disease color %j because it is not a node color reference',
+    (color) => {
+      const result = narrativePedigreeStage.safeParse({
+        ...validNarrativePedigreeStageShape,
+        diseases: [{ ...validNarrativePedigreeStageShape.diseases[0], color }],
+      });
+      expect(result.success).toBe(false);
+      // The message has to list the colours that ARE allowed: the researcher
+      // is picking one, and "invalid" alone does not tell them from what.
+      expect(!result.success && result.error.issues).toContainEqual(
+        expect.objectContaining({
+          message: `Invalid option: expected one of ${NodeColorSequence.map(
+            (value) => `"${value}"`,
+          ).join('|')}`,
+          path: ['diseases', 0, 'color'],
+        }),
+      );
+    },
+  );
 
   it('rejects unknown keys (presets and behaviours are no longer part of the schema)', () => {
     const result = narrativePedigreeStage.safeParse({
@@ -259,7 +438,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
               {
                 id: 'disease1',
                 label: 'Breast Cancer',
-                color: '#ff0000',
+                color: 'node-color-seq-1',
                 variable: 'nonexistentVariable',
                 inheritancePattern: 'autosomalDominant',
               },
@@ -289,7 +468,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
               {
                 id: 'disease1',
                 label: 'Breast Cancer',
-                color: '#ff0000',
+                color: 'node-color-seq-1',
                 variable: 'personBioSex',
                 inheritancePattern: 'autosomalDominant',
               },

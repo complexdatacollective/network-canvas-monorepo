@@ -48,20 +48,20 @@ test('creates a valid NameGeneratorRoster stage from scratch', async ({
   await editor.setStageName('Select From Roster');
 
   // Same plain NodeType.tsx section as NameGenerator (`Section title="Node
-  // Type"`). ExternalDataSource.tsx's OWN section is ALSO gated by
-  // `withDisabledSubjectRequired` (unlike Form.tsx's Form section, this is
+  // setup"`). ExternalDataSource.tsx's OWN section is ALSO gated by
+  // `withDisabledSubjectRequired` (unlike Form configuration, this is
   // the section itself, not just its field array), so this must run first.
   await selectOrCreateNodeType(architectPage, 'person');
 
-  // ExternalDataSource.tsx, `Section title="Data source for Roster"`. The
-  // Prompts section below (NameGeneratorRosterPrompts.tsx) is gated by
-  // `withDisabledAssetRequired` on `dataSource`, so this must run before it.
-  await selectNetworkAsset(editor.section('Data source for Roster'), 'Roster');
+  // ExternalDataSource.tsx exposes the owning `dataSource` field. The prompts
+  // field below (NameGeneratorRosterPrompts.tsx) is gated by that value, so
+  // this must run before it.
+  await selectNetworkAsset(editor.field('dataSource'), 'Roster');
 
-  // NameGeneratorRosterPrompts.tsx also renders `Section title="Prompts"`
+  // NameGeneratorRosterPrompts.tsx exposes the `prompts` ArchitectArrayField
   // (same PromptText.tsx RichText field, accessible name "Prompt text" — see
   // name-generator.spec.ts for why, not the brief's guessed `'text'`).
-  await addPrompt(editor.section('Prompts'), async () => {
+  await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Choose someone from the roster');
   });
 

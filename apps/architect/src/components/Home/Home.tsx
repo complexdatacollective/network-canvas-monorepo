@@ -21,6 +21,7 @@ import AppUpdatePill from '~/components/AppUpdate/AppUpdatePill';
 import NewProtocolDialog from '~/components/NewProtocolDialog';
 import NavShell from '~/components/ProjectNav/NavShell';
 import { showProtocolOpenResultDialog } from '~/components/protocolOpenDialogs';
+import { routeFocusTargetProps } from '~/components/RouteFocus';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   createNetcanvas,
@@ -36,6 +37,10 @@ import {
 } from '~/templates';
 import { loadSampleAssets, sampleProtocol } from '~/templates/sample-protocol';
 import { documentationLinks } from '~/utils/documentationLinks';
+import {
+  describeImportFailure,
+  TEMPLATE_OPEN_FAILURE_MESSAGE,
+} from '~/utils/protocolImportErrors';
 import { reportError } from '~/utils/reportError';
 
 import LibraryPanel from './LibraryPanel';
@@ -100,24 +105,17 @@ const Home = () => {
   );
   const handleOpenLocalFile = useCallback(
     async (file: File) => {
-      const result = await runAction(() =>
-        dispatch(openLocalNetcanvas({ file })).unwrap(),
-      );
-      await showProtocolOpenResultDialog({
-        result,
-        openDialog,
-        onApproveMigration: async () => {
-          const approvedResult = await runAction(() =>
-            dispatch(
-              openLocalNetcanvas({ file, migrationApproved: true }),
-            ).unwrap(),
-          );
-          await showProtocolOpenResultDialog({
-            result: approvedResult,
-            openDialog,
-          });
-        },
-      });
+      const open = async (migrationApproved = false): Promise<void> => {
+        const result = await runAction(() =>
+          dispatch(openLocalNetcanvas({ file, migrationApproved })).unwrap(),
+        );
+        await showProtocolOpenResultDialog({
+          result,
+          openDialog,
+          onApproveMigration: migrationApproved ? undefined : () => open(true),
+        });
+      };
+      await open();
     },
     [dispatch, openDialog, runAction],
   );
@@ -197,13 +195,18 @@ const Home = () => {
             ).unwrap();
           });
         } catch (error) {
-          const { message } = reportError(error);
-          void openDialog({
-            type: 'acknowledge',
-            intent: 'destructive',
-            title: 'Protocol Import Error',
-            description: message,
-            actions: { primary: { label: 'OK', value: true } },
+          reportError(error);
+          // This branch is the template's own asset loading and the thunk's
+          // rejection — never an archive — so the default talks about the
+          // template. `describeImportFailure` still runs first because a
+          // storage failure is reachable here and describes itself better.
+          await showProtocolOpenResultDialog({
+            result: {
+              status: 'error',
+              title: 'Protocol Import Error',
+              ...describeImportFailure(error, TEMPLATE_OPEN_FAILURE_MESSAGE),
+            },
+            openDialog,
           });
           return;
         }
@@ -216,9 +219,12 @@ const Home = () => {
     (id: string) => {
       void (async () => {
         const result = await runAction(() =>
-          dispatch(openLibraryProtocol(id)).unwrap(),
+          dispatch(openLibraryProtocol({ id })).unwrap(),
         );
-        await showProtocolOpenResultDialog({ result, openDialog });
+        await showProtocolOpenResultDialog({
+          result,
+          openDialog,
+        });
       })();
     },
     [dispatch, openDialog, runAction],
@@ -279,29 +285,31 @@ const Home = () => {
 
         {/* Hero section */}
 
-        <main className="laptop:px-0 mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col overflow-x-hidden overflow-y-auto px-8 pb-8">
-          <div className="tablet-portrait:flex-row laptop:gap-4 flex min-h-0 w-full min-w-0 flex-1 flex-col items-stretch gap-6">
+        <main className="laptop:px-0 mx-auto mt-8 flex min-h-0 w-full max-w-7xl flex-1 flex-col overflow-x-hidden overflow-y-auto px-8 pb-8">
+          <div className="tablet-landscape:flex-row laptop:gap-4 flex min-h-0 w-full min-w-0 flex-1 flex-col items-stretch gap-6">
             <div
               aria-hidden
-              className="tablet-portrait:block tablet-portrait:w-1/2 laptop:w-[48%] pointer-events-none hidden h-full shrink-0"
+              className="tablet-landscape:block desktop:w-1/2 pointer-events-none hidden h-full w-2/5 shrink-0"
             >
               <TransitMap stops={TIMELINE_SCRIPT} count={visibleCount} />
             </div>
 
-            <div className="short:justify-start short:gap-3 laptop:gap-8 flex min-w-0 flex-1 flex-col items-start justify-center gap-6 text-left">
-              <div className="short:gap-2 @container flex w-full flex-col items-start gap-4">
-                <div>
+            <div className="short:gap-3 laptop:gap-8 @container-size flex h-full min-w-0 flex-1 flex-col items-start justify-start gap-6 text-left">
+              <div className="flex w-full flex-col items-start gap-8">
+                <div className="flex w-full flex-col items-start gap-4">
                   <Heading
                     level="h1"
+                    variant="display-heading"
                     margin="none"
-                    className="laptop:text-[clamp(3rem,9vh,6rem)] mb-3 text-[clamp(2.75rem,8vh,4.5rem)] leading-[0.95] tracking-tight"
+                    className="leading-[0.92] font-black tracking-tight"
+                    {...routeFocusTargetProps}
                   >
                     Welcome to <span className="text-action">Architect</span>
                   </Heading>
                   <Paragraph
                     intent="lead"
                     margin="none"
-                    className="text-muted short:hidden max-w-xl"
+                    className="hidden max-w-xl text-current/70 [@container_(height>760px)]:block"
                   >
                     Architect is the protocol designer for Network Canvas.
                     Compose name generators, capture ordinal and categorical
@@ -309,26 +317,27 @@ const Home = () => {
                   </Paragraph>
                 </div>
 
-                <div className="flex w-full flex-col items-start gap-3 @min-[40rem]:flex-row @min-[40rem]:flex-nowrap">
+                <div className="flex w-full flex-col items-start gap-3 @min-md:flex-row @min-md:flex-nowrap">
                   <Button
-                    size="md"
                     color="primary"
                     onClick={() => setShowNewDialog(true)}
+                    className="@min-xl:h-16 @min-xl:px-8 @min-xl:text-lg"
                   >
                     <FilePlus />
                     Create a new protocol
                   </Button>
                   <Button
-                    size="md"
-                    className="focus:outline-accent [--component-bg:var(--accent-contrast)] [--component-text:var(--accent)]"
+                    color="default"
+                    variant="glass"
                     onClick={openFileDialog}
+                    className="@min-xl:h-16 @min-xl:px-8 @min-xl:text-lg"
                   >
                     <FolderOpen />
                     Open existing protocol
                   </Button>
                 </div>
 
-                <Paragraph className="hint my-0 flex items-center gap-1.5">
+                <Paragraph className="hint my-0 hidden items-center gap-1.5 [@container_(height>760px)]:flex">
                   <Upload className="h-3.5 w-3.5" />
                   Or drop a <code className="code">.netcanvas</code> file
                   anywhere on this page

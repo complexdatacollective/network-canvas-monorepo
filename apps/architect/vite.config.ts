@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -6,6 +7,12 @@ import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+import { createPostHogSourceMapsPlugin } from '../../scripts/posthog-source-maps-plugin.ts';
+import {
+  createPwaCacheReclamationPlugin,
+  getPwaCacheReclamationScriptFileName,
+  matchRetainedPwaAsset,
+} from '../../scripts/pwa-cache-reclamation-plugin.ts';
 import { version } from './package.json';
 import { createProtocolSourceAuthoringPlugin } from './scripts/protocol-source-authoring';
 
@@ -22,7 +29,9 @@ const repoRoot = resolve(rootDir, '../..');
 // the HTML, bumps its precache revision, and propagates on the next update.
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
-  "script-src 'self'",
+  // posthog-js loads its remote project config and enabled SDK extensions
+  // (including exception autocapture) as scripts from our controlled relay.
+  "script-src 'self' https://ph-relay.networkcanvas.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",
   "img-src 'self' data: blob:",
@@ -60,10 +69,35 @@ const injectCspMeta = (): Plugin => ({
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, rootDir, '');
+  // This ID belongs to the generated bundle, not just its package release. Dev
+  // deploys can publish several different bundles at the same package version;
+  // sharing a precache between them would let the newer worker prune files that
+  // a still-open tab needs. Turbo's task fingerprint makes its built/restored
+  // artifacts deterministic; direct Vite builds get a one-off namespace.
+  const pwaBuildId = env.TURBO_HASH
+    ? `turbo-${env.TURBO_HASH}`
+    : `direct-${randomUUID()}`;
+  const pwaCacheId = `architect-${version}-${pwaBuildId}`;
+  const pwaCacheReclamationScript =
+    getPwaCacheReclamationScriptFileName(pwaCacheId);
+
+  // PostHog needs source maps to symbolicate the exceptions posthog-js reports
+  // (see src/analytics.ts). The credentials are set only on the production
+  // release job (.github/workflows/ci-and-release.yml), so every other build —
+  // local, PR, Netlify preview — emits no maps at all. When they are emitted
+  // they are `hidden` (no sourceMappingURL comment, so a browser never requests
+  // them), and the plugin deletes them from dist once uploaded, so the deployed
+  // site never serves a map. Both variables are declared in turbo.json's build
+  // `env` so an uploading build can never reuse a non-uploading cache entry.
+  const posthogPersonalApiKey = env.POSTHOG_PERSONAL_API_KEY;
+  const posthogProjectId = env.POSTHOG_PROJECT_ID;
+  const posthogCliBinaryPath = env.POSTHOG_CLI_BINARY_PATH;
+  const uploadSourceMaps = !!posthogPersonalApiKey && !!posthogProjectId;
 
   return {
     define: {
       __APP_VERSION__: JSON.stringify(version),
+      __PWA_BUILD_ID__: JSON.stringify(pwaCacheId),
     },
     resolve: {
       tsconfigPaths: true,
@@ -76,6 +110,10 @@ export default defineConfig(({ mode }) => {
       }),
       react(),
       tailwindcss(),
+      createPwaCacheReclamationPlugin({
+        appCachePrefix: 'architect-',
+        buildId: pwaCacheId,
+      }),
       VitePWA({
         registerType: 'prompt',
         injectRegister: false,
@@ -121,7 +159,21 @@ export default defineConfig(({ mode }) => {
           ],
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html}'],
+          // App and worker maps are uploaded before Workbox runs. The service
+          // worker itself is not part of PostHog's browser error reporting.
+          sourcemap: false,
+          importScripts: [pwaCacheReclamationScript],
+          // Every built bundle keeps its own precache. Activation moves every
+          // client already using this registration onto the new worker, so the
+          // exact-hash asset route below must still be able to read an older
+          // bundle's retained precache (including between same-version dev
+          // deploys and while offline).
+          cacheId: pwaCacheId,
+          // Screen thumbnails are not guaranteed to be requested before the
+          // installed app loses its connection. Precache every responsive
+          // 4:3 candidate so the chooser and timeline work on first offline
+          // use, regardless of which width Safari selects from srcset.
+          globPatterns: ['**/*.{js,css,html}', '**/*.4x3.*.webp'],
           // vite-plugin-pwa defaults this to index.html; disable it so it
           // cannot shadow the runtime navigation route below.
           navigateFallback: undefined,
@@ -129,8 +181,12 @@ export default defineConfig(({ mode }) => {
           // cached index.html before the runtime navigation route can fetch
           // the newest shell.
           directoryIndex: null,
-          cleanupOutdatedCaches: true,
-          clientsClaim: true,
+          // Keep older build caches while an open editor can still request its
+          // lazy chunks. `clientsClaim: false` avoids claiming pages that were
+          // not already controlled; skipWaiting activation still advances all
+          // clients that already use this registration.
+          cleanupOutdatedCaches: false,
+          clientsClaim: false,
           maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
           runtimeCaching: [
             {
@@ -141,54 +197,39 @@ export default defineConfig(({ mode }) => {
                 sameOrigin &&
                 request.mode === 'navigate' &&
                 url.pathname.startsWith('/preview/'),
-              handler: async ({ request }) => {
-                let timeoutId: ReturnType<typeof setTimeout> | undefined;
-
-                try {
-                  const networkTimeout = new Promise<Response>((_, reject) => {
-                    timeoutId = setTimeout(
-                      () => reject(new Error('Preview request timed out')),
-                      3_000,
-                    );
-                  });
-
-                  return await Promise.race([fetch(request), networkTimeout]);
-                } catch (error) {
-                  const cacheStorage: unknown = Reflect.get(
-                    globalThis,
-                    'caches',
-                  );
-                  const serviceWorkerLocation: unknown = Reflect.get(
-                    globalThis,
-                    'location',
-                  );
-                  const cacheMatch: unknown =
-                    typeof cacheStorage === 'object' && cacheStorage !== null
-                      ? Reflect.get(cacheStorage, 'match')
-                      : undefined;
-                  const locationHref: unknown =
-                    typeof serviceWorkerLocation === 'object' &&
-                    serviceWorkerLocation !== null
-                      ? Reflect.get(serviceWorkerLocation, 'href')
-                      : undefined;
-
-                  if (
-                    typeof cacheMatch !== 'function' ||
-                    typeof locationHref !== 'string'
-                  ) {
-                    throw error;
-                  }
-
-                  const fallback: unknown = await cacheMatch.call(
-                    cacheStorage,
-                    new URL('preview/index.html', locationHref).href,
-                    { ignoreSearch: true },
-                  );
-                  if (fallback instanceof Response) return fallback;
-                  throw error;
-                } finally {
-                  if (timeoutId !== undefined) clearTimeout(timeoutId);
-                }
+              handler: 'NetworkOnly',
+              options: {
+                plugins: [
+                  {
+                    requestWillFetch: async ({ request, state }) => {
+                      const controller = new AbortController();
+                      if (state) {
+                        state.navigationTimeoutId = setTimeout(
+                          () => controller.abort(),
+                          3_000,
+                        );
+                      }
+                      return new Request(request, {
+                        signal: controller.signal,
+                      });
+                    },
+                    fetchDidSucceed: async ({ response, state }) => {
+                      const timeoutId: unknown = state?.navigationTimeoutId;
+                      if (typeof timeoutId === 'number')
+                        clearTimeout(timeoutId);
+                      return response;
+                    },
+                    fetchDidFail: async ({ state }) => {
+                      const timeoutId: unknown = state?.navigationTimeoutId;
+                      if (typeof timeoutId === 'number')
+                        clearTimeout(timeoutId);
+                    },
+                  },
+                ],
+                // Workbox resolves this through the active worker's
+                // PrecacheController. Do not use global caches.match(): old
+                // bundle precaches are deliberately retained for older tabs.
+                precacheFallback: { fallbackURL: 'preview/index.html' },
               },
             },
             {
@@ -202,58 +243,70 @@ export default defineConfig(({ mode }) => {
                 sameOrigin &&
                 request.mode === 'navigate' &&
                 !url.pathname.startsWith('/preview/'),
-              handler: async ({ request }) => {
-                let timeoutId: ReturnType<typeof setTimeout> | undefined;
-
-                try {
-                  const networkTimeout = new Promise<Response>((_, reject) => {
-                    timeoutId = setTimeout(
-                      () => reject(new Error('Navigation request timed out')),
-                      3_000,
-                    );
-                  });
-
-                  return await Promise.race([fetch(request), networkTimeout]);
-                } catch (error) {
-                  const cacheStorage: unknown = Reflect.get(
-                    globalThis,
-                    'caches',
-                  );
-                  const serviceWorkerLocation: unknown = Reflect.get(
-                    globalThis,
-                    'location',
-                  );
-                  const cacheMatch: unknown =
-                    typeof cacheStorage === 'object' && cacheStorage !== null
-                      ? Reflect.get(cacheStorage, 'match')
-                      : undefined;
-                  const locationHref: unknown =
-                    typeof serviceWorkerLocation === 'object' &&
-                    serviceWorkerLocation !== null
-                      ? Reflect.get(serviceWorkerLocation, 'href')
-                      : undefined;
-
-                  if (
-                    typeof cacheMatch !== 'function' ||
-                    typeof locationHref !== 'string'
-                  ) {
-                    throw error;
-                  }
-
-                  const fallback: unknown = await cacheMatch.call(
-                    cacheStorage,
-                    new URL('index.html', locationHref).href,
-                    { ignoreSearch: true },
-                  );
-                  if (fallback instanceof Response) return fallback;
-                  throw error;
-                } finally {
-                  if (timeoutId !== undefined) clearTimeout(timeoutId);
-                }
+              handler: 'NetworkOnly',
+              options: {
+                plugins: [
+                  {
+                    requestWillFetch: async ({ request, state }) => {
+                      const controller = new AbortController();
+                      if (state) {
+                        state.navigationTimeoutId = setTimeout(
+                          () => controller.abort(),
+                          3_000,
+                        );
+                      }
+                      return new Request(request, {
+                        signal: controller.signal,
+                      });
+                    },
+                    fetchDidSucceed: async ({ response, state }) => {
+                      const timeoutId: unknown = state?.navigationTimeoutId;
+                      if (typeof timeoutId === 'number')
+                        clearTimeout(timeoutId);
+                      return response;
+                    },
+                    fetchDidFail: async ({ state }) => {
+                      const timeoutId: unknown = state?.navigationTimeoutId;
+                      if (typeof timeoutId === 'number')
+                        clearTimeout(timeoutId);
+                    },
+                  },
+                ],
+                // PrecacheFallbackPlugin reads only this active worker's
+                // precache, even though older bundle caches remain available
+                // to their existing clients.
+                precacheFallback: { fallbackURL: 'index.html' },
               },
             },
             {
-              urlPattern: /\.(?:png|jpg|jpeg|svg|webp|gif)$/i,
+              // skipWaiting activation advances every already-controlled tab,
+              // not just the fresh tab that requested it. An older app bundle
+              // can therefore ask the new worker for an old lazy chunk or
+              // responsive screen preview. These filenames are content-hashed,
+              // so an exact global cache lookup is unambiguous and lets that
+              // tab keep working offline. Never broaden this to stable HTML or
+              // image URLs such as index.html or PWA icons.
+              urlPattern: ({ sameOrigin, url }) =>
+                sameOrigin &&
+                url.pathname.startsWith('/assets/') &&
+                (/\.(?:js|css)$/i.test(url.pathname) ||
+                  /\.4x3\.\d+-[^/]+\.webp$/i.test(url.pathname)),
+              handler: matchRetainedPwaAsset,
+            },
+            {
+              // Stable PWA icons are replaced in place and must reach the
+              // network so their no-store response headers can take effect.
+              // Other images keep the existing bounded offline cache.
+              urlPattern: ({ url }) =>
+                /\.(?:png|jpg|jpeg|svg|webp|gif)$/i.test(url.pathname) &&
+                ![
+                  '/apple-touch-icon-180x180.png',
+                  '/pwa-64x64.png',
+                  '/pwa-192x192.png',
+                  '/pwa-512x512.png',
+                  '/maskable-icon-512x512.png',
+                  '/architect-icon.png',
+                ].includes(url.pathname),
               handler: 'CacheFirst',
               options: {
                 cacheName: 'architect-images',
@@ -299,6 +352,23 @@ export default defineConfig(({ mode }) => {
           ],
         },
       }),
+      // Last: its writeBundle hook processes the completed output directory,
+      // including worker bundles that Vite emits as assets.
+      ...(uploadSourceMaps
+        ? [
+            createPostHogSourceMapsPlugin({
+              personalApiKey: posthogPersonalApiKey,
+              projectId: posthogProjectId,
+              cliBinaryPath: posthogCliBinaryPath || undefined,
+              sourcemaps: {
+                enabled: true,
+                releaseName: 'Architect',
+                releaseVersion: version,
+                deleteAfterUpload: true,
+              },
+            }),
+          ]
+        : []),
     ],
     build: {
       rollupOptions: {

@@ -104,16 +104,11 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
   const track = useTrack();
   const rosterLoadedRef = useRef(false);
   useEffect(() => {
-    if (
-      !itemsStatus.isLoading &&
-      !itemsStatus.error &&
-      !rosterLoadedRef.current &&
-      items
-    ) {
+    if (itemsStatus.state === 'ready' && !rosterLoadedRef.current) {
       track('roster_loaded', { entry_count: items.length });
       rosterLoadedRef.current = true;
     }
-  }, [itemsStatus.isLoading, itemsStatus.error, items, track]);
+  }, [itemsStatus.state, items, track]);
 
   const lastFilterStateRef = useRef<boolean>(false);
   const handleFilterChange = useCallback(
@@ -265,7 +260,9 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     if (!passphrase && useEncryption) {
       return true;
     }
-    if (itemsStatus.isLoading) {
+    // Nothing may be dragged out of a roster that has not finished arriving —
+    // including before the read starts (`idle`).
+    if (itemsStatus.state === 'idle' || itemsStatus.state === 'loading') {
       return true;
     }
 
@@ -288,6 +285,26 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     () => (disabled ? filteredItems.map((item) => item.id) : undefined),
     [disabled, filteredItems],
   );
+
+  // `Collection` renders one `emptyState` whenever it holds nothing, and it
+  // cannot know WHY: it is handed `filteredItems`, which is already the roster
+  // minus everything in the network. So the three reasons are told apart here,
+  // where they are still distinguishable, rather than reporting a search miss
+  // for all of them (#1400) — including on stages that have no search at all,
+  // where `searchOptions` is absent, `CollectionFilterInput` never renders and
+  // a search miss is unreachable.
+  const emptyState = useMemo(() => {
+    // Reachable only once the roster has actually arrived: the panel below
+    // renders the collection at all only in the `ready` state, so an empty
+    // `items` here means the list really is empty rather than not yet read.
+    if (items.length === 0) {
+      return <>There is nothing to add from this list.</>;
+    }
+    if (filteredItems.length === 0) {
+      return <>Everything from this list has already been added.</>;
+    }
+    return <>Nothing matched your search term.</>;
+  }, [items.length, filteredItems.length]);
 
   // --- DnD setup for source panel ---
   const sourceCollectionId = `source-nodes-${useId()}`;
@@ -360,11 +377,17 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
         aria-label="Resize panel and node list areas"
       >
         <Panel title="Available to add" panelNumber={0} noCollapse>
-          {itemsStatus.isLoading ? (
+          {/*
+            `idle` is the state of the first frame, before the effect that
+            reads the roster has run. Treating it as loading is what keeps the
+            empty state below from telling the participant there is nothing to
+            add before anything has been looked for.
+          */}
+          {itemsStatus.state === 'idle' || itemsStatus.state === 'loading' ? (
             <div className="flex flex-1 items-center justify-center">
               <Loading message="Loading..." />
             </div>
-          ) : itemsStatus.error ? (
+          ) : itemsStatus.state === 'error' ? (
             <ErrorMessage error={itemsStatus.error} />
           ) : (
             <div className="relative flex min-h-0 flex-1 flex-col [&_.card]:cursor-grab">
@@ -382,7 +405,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                 dragAndDropHooks={dragAndDropHooks}
                 disabledKeys={disabledKeys}
                 virtualized
-                emptyState={<>Nothing matched your search term.</>}
+                emptyState={emptyState}
                 aria-label="List of available items to add"
                 id={sourceCollectionId}
               >

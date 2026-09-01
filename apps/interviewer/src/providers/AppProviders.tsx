@@ -1,8 +1,8 @@
 import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { Toast } from '@base-ui/react/toast';
-import { MotionConfig } from 'motion/react';
 import type { ReactNode } from 'react';
 
+import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
 import { Toaster } from '@codaco/fresco-ui/Toast';
@@ -15,7 +15,7 @@ import { OnlineStatusProvider } from '~/lib/net/OnlineStatusProvider';
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
-    <MotionConfig reducedMotion="user">
+    <AnimationProvider>
       <DirectionProvider direction="ltr">
         <Toast.Provider limit={7}>
           <TooltipProvider>
@@ -36,6 +36,6 @@ export function AppProviders({ children }: { children: ReactNode }) {
           <Toaster />
         </Toast.Provider>
       </DirectionProvider>
-    </MotionConfig>
+    </AnimationProvider>
   );
 }

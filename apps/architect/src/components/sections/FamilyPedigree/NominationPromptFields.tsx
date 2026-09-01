@@ -1,52 +1,64 @@
-import { useSelector } from 'react-redux';
-import { change, formValueSelector } from 'redux-form';
-
-import { Row, Section } from '~/components/EditorLayout';
-import VariablePicker from '~/components/Form/Fields/VariablePicker/VariablePicker';
-import ValidatedField from '~/components/Form/ValidatedField';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
+import Section from '@codaco/fresco-ui/Section';
+import RichText from '@codaco/protocol-builder/fields/RichTextField';
+import ArchitectField from '~/components/Form/ArchitectField';
+import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import type { Entity } from '~/components/NewVariableWindow';
 import NewVariableWindow, {
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
-import PromptText from '~/components/sections/PromptText';
-import { useAppDispatch } from '~/ducks/hooks';
-import type { RootState } from '~/ducks/store';
+import { useAppSelector } from '~/ducks/hooks';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
-import { excludeValidatedUses } from '~/selectors/roleFilters';
 import { getFieldId } from '~/utils/issues';
+
+import { selectSlotPickerOptions } from './slotWiring';
 
 type NominationPromptFieldsProps = {
   nodeType?: string;
+  /**
+   * The row being edited, supplied by DialogArrayField's `item` spread. This
+   * dialog mounts its own `FormStoreProvider` (a different store per row), so
+   * it cannot resolve its own initial values from stage context — every
+   * control seeds its `initialValue` from here instead.
+   */
+  item?: Record<string, unknown>;
 };
 
 const nodeEntity: Entity = 'node';
 
-const EDITABLE_LIST_FORM = 'editable-list-form';
+const asString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
 
-const NominationPromptFields = ({ nodeType }: NominationPromptFieldsProps) => {
-  const dispatch = useAppDispatch();
-  const variable = useSelector(
-    (state: RootState) =>
-      formValueSelector(EDITABLE_LIST_FORM)(state, 'variable') as
-        | string
-        | undefined,
-  );
-  const variableOptions = useSelector((state: RootState) =>
+const NominationPromptFields = ({
+  nodeType,
+  item,
+}: NominationPromptFieldsProps) => {
+  const setFieldValue = useFormStore((state) => state.setFieldValue);
+  const { variable } = useFormValue(['variable'] as const);
+  const variableOptions = useAppSelector((state) =>
     getVariableOptionsForSubject(state, { entity: 'node', type: nodeType }),
   );
 
   const booleanVariables = variableOptions.filter((v) => v.type === 'boolean');
 
   // The nomination-toggle picker is an UNVALIDATED writer: drop options a
-  // form elsewhere already validates.
-  const subject = { entity: 'node', type: nodeType };
-  const availableVariables = useSelector((state: RootState) =>
-    excludeValidatedUses(state, subject, booleanVariables, variable),
+  // form elsewhere already validates. It also writes through a per-node toggle
+  // the participant operates, so it may never name a variable the pedigree
+  // itself derives — the ego marker above all, which every completeness check
+  // keys off. It fills no interface slot of its own, so no slot is exempt.
+  const availableVariables = useAppSelector((state) =>
+    selectSlotPickerOptions(state, {
+      subject: nodeType ? { entity: 'node', type: nodeType } : null,
+      options: booleanVariables,
+      currentValue: typeof variable === 'string' ? variable : undefined,
+      writerClass: 'unvalidated',
+    }),
   );
 
   const handleCreatedNewVariable = (...args: unknown[]) => {
     const [id, params] = args as [string, { field: string }];
-    dispatch(change(EDITABLE_LIST_FORM, params.field, id));
+    setFieldValue(params.field, id);
   };
 
   const [newVariableWindowProps, openNewVariableWindow] =
@@ -68,22 +80,32 @@ const NominationPromptFields = ({ nodeType }: NominationPromptFieldsProps) => {
 
   return (
     <>
-      <PromptText />
-      <Section title="Variable" layout="vertical">
-        <Row>
-          <div id={getFieldId('variable')} />
-          <ValidatedField
-            name="variable"
-            component={VariablePicker}
-            validation={{ required: true }}
-            componentProps={{
-              entity: 'node',
-              type: nodeType,
-              options: availableVariables,
-              onCreateOption: handleNewVariable,
-            }}
-          />
-        </Row>
+      <Section
+        title="Nomination details"
+        description="Write the question participants will answer and choose the boolean attribute that records who they nominate."
+      >
+        <ArchitectField
+          name="text"
+          component={RichText}
+          singleLine
+          label="Prompt text"
+          placeholder="Enter your prompt..."
+          validation={{ required: true }}
+          initialValue={asString(item?.text)}
+        />
+        <div id={getFieldId('variable')} />
+        <ArchitectField
+          name="variable"
+          component={VariablePickerControl}
+          validation={{ required: true }}
+          label="Attribute"
+          hint="Select the boolean attribute this prompt will update."
+          initialValue={asString(item?.variable)}
+          entity="node"
+          type={nodeType}
+          options={availableVariables}
+          onCreateOption={handleNewVariable}
+        />
       </Section>
       <NewVariableWindow {...newVariableWindowProps} />
     </>

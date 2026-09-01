@@ -65,42 +65,41 @@ describe('Variable input-control config', () => {
       ]);
     });
 
-    it('precedes each group with a disabled heading row', () => {
-      expect(formattedInputOptions.filter((option) => option.disabled)).toEqual(
-        [
-          { label: '-- Number Types -- ', value: null, disabled: true },
-          { label: '-- Scalar Types --', value: null, disabled: true },
-          { label: '-- Date Types --', value: null, disabled: true },
-          { label: '-- Text Types --', value: null, disabled: true },
-          { label: '-- Boolean Types --', value: null, disabled: true },
-          { label: '-- Ordinal Types --', value: null, disabled: true },
-          { label: '-- Categorical Types --', value: null, disabled: true },
-        ],
-      );
+    // Real groups, not a flat list punctuated by disabled value-less rows
+    // standing in as headings. Those rows were seven duplicate React keys (all
+    // the empty string) and seven more things a screen reader offered to pick.
+    it('names each group without heading decoration', () => {
+      expect(formattedInputOptions.map((group) => group.label)).toEqual([
+        'Number Types',
+        'Scalar Types',
+        'Date Types',
+        'Text Types',
+        'Boolean Types',
+        'Ordinal Types',
+        'Categorical Types',
+      ]);
     });
 
-    it('lists every control after its own heading', () => {
-      expect(formattedInputOptions.map((option) => option.value)).toEqual([
-        null,
-        'Number',
-        null,
-        'VisualAnalogScale',
-        null,
-        'DatePicker',
-        'RelativeDatePicker',
-        null,
-        'Text',
-        'TextArea',
-        null,
-        'Boolean',
-        'Toggle',
-        null,
-        'RadioGroup',
-        'LikertScale',
-        null,
-        'CheckboxGroup',
-        'ToggleButtonGroup',
+    it('holds every control inside its own group, and nothing value-less', () => {
+      expect(
+        formattedInputOptions.map((group) =>
+          group.options.map((option) => option.value),
+        ),
+      ).toEqual([
+        ['Number'],
+        ['VisualAnalogScale'],
+        ['DatePicker', 'RelativeDatePicker'],
+        ['Text', 'TextArea'],
+        ['Boolean', 'Toggle'],
+        ['RadioGroup', 'LikertScale'],
+        ['CheckboxGroup', 'ToggleButtonGroup'],
       ]);
+
+      const values = formattedInputOptions.flatMap((group) =>
+        group.options.map((option) => option.value),
+      );
+      expect(values.filter((value) => !value)).toEqual([]);
+      expect(new Set(values).size).toBe(values.length);
     });
   });
 

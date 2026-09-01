@@ -38,16 +38,28 @@ const buildVariableEntry =
       [],
     );
 
-    const stages = usage
-      .map((path: string) => {
-        // Keys are in dotted-array format: e.g. "stages.0.form.fields.0.variable"
-        const segments = path.split('.');
-        if (segments[0] !== 'stages' || segments[1] === undefined) {
-          return undefined;
-        }
-        return get(protocol, `stages.${segments[1]}.id`) as string | undefined;
-      })
-      .filter((id): id is string => id !== undefined);
+    // De-duplicated: one stage commonly reads one variable through several
+    // tagged sites (a prompt's `variable` and its own sort key; a roster
+    // naming the same column in `cardOptions` and `searchOptions`), and the
+    // Summary renders one link per entry, keyed by stage id. Repeating the
+    // link tells the researcher nothing extra and makes the keys collide.
+    // `usage` below keeps every distinct path — that index is read by path.
+    const stages = [
+      ...new Set(
+        usage
+          .map((path: string) => {
+            // Keys are in dotted-array format: e.g. "stages.0.form.fields.0.variable"
+            const segments = path.split('.');
+            if (segments[0] !== 'stages' || segments[1] === undefined) {
+              return undefined;
+            }
+            return get(protocol, `stages.${segments[1]}.id`) as
+              | string
+              | undefined;
+          })
+          .filter((id): id is string => id !== undefined),
+      ),
+    ];
 
     const field = fields.find((f) => f.variable === variableId);
 

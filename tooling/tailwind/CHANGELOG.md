@@ -1,5 +1,82 @@
 # @codaco/tailwind-config
 
+## 1.3.0
+
+### Minor Changes
+
+- e9a6522: The new `ui-disabled` and `ui-enabled` variants match both native and ARIA-disabled controls. `Button` uses these variants for availability-dependent styles, so overrides should use forms such as `ui-enabled:hover:…` instead of `hover:enabled:…`.
+
+### Patch Changes
+
+- 3e10128: Keep a category's name visible when the people in it have long names. In the
+  Categorise People screen, each category circle summarises who it holds by naming
+  the first person in it. A long enough name grew that summary past the circle and
+  pushed the category's own name off the top edge, leaving a circle of text with
+  nothing saying which category it was.
+
+  The summary now shortens with an ellipsis instead of growing, the count of
+  everyone else in the category stays on its own line so it survives the
+  shortening, and both the category name and the summary sit inside the circle
+  rather than running under its edge. Tapping the category still opens it to show
+  everyone in full.
+
+- 469d404: Scope the `focus-styles` transition to the outline properties it animates. `transition-all` captured every property on a `:focus-visible` element, re-tweening each frame of script-driven animations (a node's press scale, a dragged node's position) through a 200ms ease and smearing them visibly behind the input.
+
+## 1.2.2
+
+### Patch Changes
+
+- c5f30fd: Restore the full-size interview type scale on tablets.
+
+  The interview's viewport ramp for `--theme-root-size` rendered below the full
+  `1rem` base for every viewport narrower than 1280px — sitting at its `0.9rem`
+  floor (14.4px) up to tablet-portrait width and only climbing to 15.7px by iPad
+  Pro landscape width — so tablets rendered the participant interview at the
+  smallest text sizes in the product, with spacing and touch targets
+  (checkboxes, radios) shrinking in lockstep below recommended minimum sizes.
+  The ramp is now piecewise: phones keep the dense `0.9rem`-floored curve in
+  both orientations, tablets (768–1280px) get the full `1rem` base — matching
+  the interview's pre-July size and returning default form controls to the 24px
+  WCAG 2.5.8 minimum — and displays at 1280px and above are unchanged.
+
+  The interview theme also gains a 16px font-size floor for text-entry elements
+  (text inputs, textareas, selects, and rich-text editors), expressed as
+  `max(16px, 1em)` so explicitly larger sizes pass through. iOS Safari zooms the
+  page when a focused editable element renders below 16px; with the phone-width
+  type scale this made every form field a zoom trigger in browser hosts. Editable
+  text in the interview now never renders below 16px at any viewport size. To
+  support this, `SegmentedCodeField` now carries its text-size class on the
+  segment group wrapper (segment inputs inherit), so the floor preserves its
+  `lg`/`xl` sizes; computed sizes are unchanged.
+
+- 8ff0e2d: Participants can now adjust the interview's text size.
+
+  The Shell accepts a new `allowUserScaling` prop. When a host enables it (as
+  Interviewer now does), the interview Navigation shows a settings menu with a
+  "Text size" control offering 90%–130% of the default size. The chosen size
+  scales the whole interview — text, spacing, and touch targets together, with
+  every step of the fluid type scale changing by exactly the chosen percentage —
+  takes effect immediately with the menu open for live preview, and lasts for
+  the current session. The control is fully keyboard operable and announces its
+  state to screen readers. Hosts can persist the choice across remounts with the
+  optional `initialTextScale`/`onTextScaleChange` props; Interviewer uses them so
+  an idle-lock/unlock cycle no longer resets a participant's chosen size.
+
+  The standalone exit button has moved into the same settings menu as an
+  "Exit interview" action. Hosts that provide neither an exit handler nor
+  `allowUserScaling` render no settings menu.
+
+## 1.2.1
+
+### Patch Changes
+
+- 1a3fe60: Improve node entry and display across interview interfaces. Synthetic `name`
+  variables now use realistic personal names whenever their validation rules
+  allow it, long labels wrap and truncate without distorting node shapes, and
+  Network Composer quick add retains focus after submitting a node. Shared modal,
+  form-field, and theme refinements support the updated Architect editing
+  experience.
+
 ## 1.2.0
 
 ### Minor Changes

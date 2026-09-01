@@ -9,6 +9,13 @@
 // `contexts`). Types are erased at compile time and are safe to re-export.
 
 export { isValidAssetType } from './assets';
+export {
+  type AssetUrlOwner,
+  type AssetUrlRequest,
+  type AssetUrlSource,
+  createAssetUrlOwner,
+} from './assetUrlOwner';
+export { createDebouncedSyncHandler } from './debouncedSync';
 export { createInitialNetwork } from './network';
 export {
   collectRosterExternalData,
@@ -28,5 +35,6 @@ export type {
   StepChangeHandler,
   StepChangeMeta,
   SyncHandler,
+  SyncOptions,
 } from './types';
 export type { ResolvedRosterAsset, ResolveRosterAsset } from './rosterData';

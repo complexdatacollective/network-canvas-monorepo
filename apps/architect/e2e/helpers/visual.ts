@@ -1,23 +1,121 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { existsSync } from 'node:fs';
+import { relative } from 'node:path';
 
-// Hide non-deterministic chrome so snapshots don't depend on the ambient
-// background's fade-in timing or which element last held focus. Mirrors the
-// interview suite's VISUAL_STYLES.
+import {
+  expect,
+  type Locator,
+  type Page,
+  type TestInfo,
+} from '@playwright/test';
+
+// Hide ambient chrome and focus indicators that are outside the snapshot's
+// subject. Mirrors the interview suite's VISUAL_STYLES.
 const VISUAL_STYLES = `
-  /* BackgroundLights (~/components/BackgroundLights.tsx) fades its opacity in
-     via a framer-motion tween that animations:'disabled'/reducedMotion:'reduce'
-     don't stop, so a capture taken mid-fade would be non-deterministic. Hide
-     it so app-chrome snapshots are stable regardless of when the fade lands. */
+  /* BackgroundLights are decorative app chrome, not part of these assertions. */
   [data-testid="background-lights"] { visibility: hidden !important; }
   *:focus-visible, *:has(:focus-visible) { outline: none !important; }
   *:focus-visible { box-shadow: none !important; }
 `;
 
-type CaptureOptions = { mask?: Locator[]; fullPage?: boolean };
+type CaptureOptions = {
+  mask?: Locator[];
+  fullPage?: boolean;
+  /**
+   * Capture this element instead of the page. Use it to keep a long printed
+   * document reviewable: one 1280x20190 baseline cannot be diffed by a human
+   * (the commit that last adopted this suite's `summary-print.png` recorded
+   * that its author could not find what had changed in it), whereas a
+   * per-section baseline names the section that moved in the filename.
+   */
+  locator?: Locator;
+};
 export type CaptureFn = (
   name: string,
   options?: CaptureOptions,
 ) => Promise<void>;
+
+// CI runs this suite as two jobs: the pinned Playwright container compares the
+// committed PNGs, and a plain runner runs everything else. The gates below key
+// on `CI` and arch, NOT on Docker — a native amd64 runner satisfies both, so a
+// test that escaped the `--grep @visual` partition would compare
+// container-rasterised baselines against the runner's own font stack. That
+// fails as a confusing pixel diff. Turn it into an actionable one instead.
+function assertNotNativeLane(name: string): void {
+  if (process.env.E2E_PIXEL_LANE === 'native') {
+    throw new Error(
+      `[visual] "${name}" tried to capture in the native e2e lane. Pixel ` +
+        'baselines are only valid from the pinned Playwright image, so this ' +
+        'test must carry the @visual tag to be routed to the Docker job.',
+    );
+  }
+}
+
+/**
+ * Fail ONCE, before a single capture runs, if the committed baselines for
+ * `names` are not in the tree.
+ *
+ * Playwright's default `updateSnapshots: 'missing'` already handles an absent
+ * baseline correctly — it writes the actual, attaches a `softError`, and sets
+ * `shouldNotRetryTest`, so the test fails and `retries` cannot rescue it. What
+ * it cannot do is say what to run: a spec that derives one baseline per
+ * section of a printed document turns a single missing set into dozens of
+ * identical "a snapshot doesn't exist at …" failures with no next action.
+ *
+ * This does NOT weaken that gate. It is not a skip and not conditional on
+ * `CI`: a `test.skip` when baselines are absent would be an invisible green —
+ * an assertion that cannot fail — and the whole point of the pixel gate is to
+ * keep an unreviewed rendering change out of the tree. The run stays red until
+ * the images land, and this check goes inert the moment they do.
+ *
+ * The caller passes the exact set it is about to capture, so deleting a SUBSET
+ * fails here too; this is not a "some baselines exist" smoke check. Paths come
+ * from `testInfo.snapshotPath(…, { kind: 'screenshot' })` — the same
+ * resolution `toHaveScreenshot` performs — so it cannot drift from the
+ * config's `snapshotDir` / `snapshotPathTemplate`.
+ */
+export function assertBaselinesCommitted(
+  testInfo: TestInfo,
+  names: readonly string[],
+): void {
+  // Stand aside during an explicit regeneration run, or this guard deadlocks
+  // the very workflow it points at: it throws before the first capture, so
+  // `--update-snapshots` never reaches the code that would WRITE the baselines
+  // it is complaining are absent. (Observed exactly that on run 32273797683.)
+  //
+  // Gated on the EXPLICIT modes only. Playwright's default is `'missing'`,
+  // which is the normal-run case this guard exists for — under it a missing
+  // baseline is written and the test still fails, non-retriably, which is the
+  // pile of opaque per-image errors we are replacing with one message. Passing
+  // `--update-snapshots` sets `'changed'` (or `'all'` with an argument), and
+  // only those mean "I am here to produce baselines".
+  const regenerating =
+    testInfo.config.updateSnapshots === 'all' ||
+    testInfo.config.updateSnapshots === 'changed';
+  if (regenerating) return;
+
+  const missing = names
+    .map((name) => testInfo.snapshotPath(`${name}.png`, { kind: 'screenshot' }))
+    .filter((path) => !existsSync(path));
+  if (missing.length === 0) return;
+
+  throw new Error(
+    [
+      `[visual] ${missing.length} of ${names.length} committed pixel baseline(s) are missing:`,
+      ...missing.map((path) => `  ${relative(process.cwd(), path)}`),
+      '',
+      'Generate them with the "Regenerate E2E Visual Snapshots" GitHub Actions',
+      'workflow, with input suite: architect. It runs',
+      '  ./apps/architect/e2e/scripts/run.sh --grep @visual --update-snapshots',
+      'in the pinned Playwright image on --platform linux/amd64. The baselines',
+      'are amd64-truth, so an arm64 host can neither produce nor compare them.',
+      'Download the artifact and inspect every image before committing it.',
+      '',
+      'Do NOT skip this test to get a green run: a skipped visual assertion is',
+      'an invisible pass, and this gate is what keeps an unreviewed rendering',
+      'change out of the tree.',
+    ].join('\n'),
+  );
+}
 
 // Returns a capture function that is a no-op unless running in CI. This keeps
 // local headed runs functional-only (no baselines needed) while CI asserts
@@ -32,6 +130,7 @@ export function makeCapture(page: Page): CaptureFn {
 
   return async (name, options = {}) => {
     if (!isCI) return;
+    assertNotNativeLane(name);
     if (!isBaselineArch) {
       console.warn(
         `[visual] skipping pixel comparison for "${name}" — baselines are amd64-truth and this run is ${process.arch}`,
@@ -43,52 +142,21 @@ export function makeCapture(page: Page): CaptureFn {
     // silently un-hide the background lights/focus-rings for a later
     // capture() in the same test.
     await page.addStyleTag({ content: VISUAL_STYLES });
-    // Wait for motion to reach REST before sampling. Two problems otherwise:
-    // (1) entrance fades sit at their opacity:0 initial variant until a
-    // useEffect commits, so toHaveScreenshot can stabilise on two identical
-    // PRE-entrance frames; (2) spring-physics surfaces (e.g. the timeline's
-    // drag-and-drop stage cards) drift for several frames after mount and,
-    // mid-transient, land at frame-timing-dependent sub-pixel positions. A
-    // spring's EQUILIBRIUM is deterministic, so we poll element geometry
-    // (rounded to whole px) until it stops changing across consecutive
-    // animation frames — that is rest. reducedMotion/animations:'disabled' do
-    // NOT stop these JS-rAF-driven transitions.
-    await page.evaluate(async () => {
-      const raf = () =>
-        new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-      // Sample from #root (the app mount, apps/architect/index.html) — Base
-      // UI dialogs portal OUTSIDE #root, so keep the explicit [role="dialog"]
-      // clause. Cap generously (#root spans the whole app) so a deep,
-      // still-animating element isn't sampled off the end.
-      const sample = () =>
-        Array.from(document.querySelectorAll('#root *, [role="dialog"] *'))
-          .slice(0, 1500)
-          .map((el) => {
-            const r = el.getBoundingClientRect();
-            return `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}`;
-          })
-          .join('|');
-      // Wait until geometry is identical (whole-pixel) across several
-      // CONSECUTIVE frames — that is spring rest. Requiring more than one
-      // stable pair guards against a janky/dropped frame under CPU load
-      // briefly matching mid-animation. Cap at ~150 frames (~2.5s) so a
-      // perpetually-moving element can't hang the capture; toHaveScreenshot's
-      // own frame-matching guards the fallback.
-      const REQUIRED_STABLE = 4;
-      let prev = '';
-      let stable = 0;
-      for (let i = 0; i < 150; i++) {
-        await raf();
-        const cur = sample();
-        if (cur === prev) {
-          stable += 1;
-          if (stable >= REQUIRED_STABLE) return;
-        } else {
-          stable = 0;
-        }
-        prev = cur;
-      }
-    });
+    // skipAnimations commits Motion's final variants from an effect after the
+    // initial paint. Two animation frames let that effect and its paint land
+    // before Playwright begins looking for identical screenshots.
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
+    if (options.locator) {
+      await expect(options.locator).toHaveScreenshot(`${name}.png`, {
+        mask: options.mask,
+      });
+      return;
+    }
     await expect(page).toHaveScreenshot(`${name}.png`, {
       fullPage: options.fullPage ?? false,
       mask: options.mask,

@@ -82,8 +82,14 @@ export type SelectableItemResult = {
   /** Props to spread on the item element */
   itemProps: {
     'tabIndex': number;
-    'onFocus': () => void;
-    'onClick': (e: React.MouseEvent) => void;
+    'onFocus': (e: React.FocusEvent) => void;
+    /**
+     * Absent when the collection has no selection: a handler that exists but
+     * does nothing still reads as "clickable" to whatever renders the item,
+     * which then offers click affordances (a pointer cursor, press feedback,
+     * a toggle role) for something that cannot be clicked.
+     */
+    'onClick'?: (e: React.MouseEvent) => void;
     'onKeyDown': (e: React.KeyboardEvent) => void;
     'aria-selected': boolean | undefined;
     'aria-disabled': boolean | undefined;

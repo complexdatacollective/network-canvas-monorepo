@@ -1,203 +1,90 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
-const mockDispatch = vi.fn();
-const mockChange = vi.fn(
-  (form: string, field: string, value: unknown) =>
-    ({ type: 'redux-form/CHANGE', form, field, value }) as const,
-);
-
-let mockFramingValue: { mode: string; value?: string } | undefined = {
-  mode: 'fixed',
-  value: 'gamete',
-};
-
-vi.mock('redux-form', () => ({
-  change: (form: string, field: string, value: unknown) =>
-    mockChange(form, field, value),
-  formValueSelector: () => () => mockFramingValue,
-}));
-
-vi.mock('react-redux', async () => {
-  const actual =
-    await vi.importActual<typeof import('react-redux')>('react-redux');
-  return {
-    ...actual,
-    useSelector: (selector: (state: unknown) => unknown) => selector({}),
-    useDispatch: () => mockDispatch,
-  };
-});
-
-vi.mock('~/ducks/hooks', () => ({
-  useAppDispatch: () => mockDispatch,
-}));
-
-vi.mock('~/components/EditorLayout', () => ({
-  Row: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  Section: ({
-    children,
-    title,
-  }: {
-    children: React.ReactNode;
-    title: string;
-  }) => (
-    <div>
-      <h2>{title}</h2>
-      {children}
-    </div>
-  ),
-}));
-
-vi.mock('~/components/IssueAnchor', () => ({
-  default: () => null,
-}));
-
-vi.mock('~/components/Form/ValidatedField', () => ({
-  default: ({
-    name,
-    component: Component,
-  }: {
-    name: string;
-    component: React.ComponentType<Record<string, unknown>>;
-  }) => (
-    <Component
-      name={name}
-      input={{ value: '', onChange: vi.fn(), name }}
-      meta={{}}
-    />
-  ),
-}));
-
-vi.mock('@codaco/fresco-ui/form/fields/RadioGroup', () => ({
-  default: ({
-    options,
-    value,
-    onChange,
-  }: {
-    options: { value: string; label: string }[];
-    value: string;
-    onChange: (v: string) => void;
-  }) => (
-    <div data-testid="radio-group">
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          data-testid={`radio-${opt.value}`}
-          aria-pressed={value === opt.value}
-          onClick={() => onChange(opt.value)}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  ),
-}));
-
-vi.mock('@codaco/fresco-ui/form/fields/Select/Native', () => ({
-  default: ({
-    options,
-    value,
-    onChange,
-  }: {
-    options: { value: string; label: string }[];
-    value: string;
-    onChange: (v: string) => void;
-  }) => (
-    <select
-      data-testid="native-select"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    >
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
-  ),
-}));
+import {
+  asStage,
+  renderStageForm,
+} from '~/components/StageEditor/__tests__/stageFormTestHarness';
 
 import FramingConfig from '../FramingConfig';
 
-const renderSection = (form = 'edit-stage') => {
-  const store = configureStore({ reducer: { noop: () => ({}) } });
-  return render(
-    <Provider store={store}>
+const renderSection = (committedStage: Record<string, unknown>) =>
+  renderStageForm({
+    committedStage: asStage(committedStage),
+    children: (
       <FramingConfig
-        form={form}
         stagePath={null}
         stagePosition={0}
         interfaceType="FamilyPedigree"
       />
-    </Provider>,
-  );
-};
+    ),
+  });
 
 describe('FramingConfig', () => {
-  it('renders the radio group when framing mode is fixed', () => {
-    mockFramingValue = { mode: 'fixed', value: 'gamete' };
-    renderSection();
-    expect(screen.getByTestId('radio-group')).toBeDefined();
+  it('selects the committed mode in the radio group', () => {
+    renderSection({ framing: { mode: 'fixed', value: 'gamete' } });
+    expect(screen.getByRole('radio', { name: 'Fixed framing' })).toBeChecked();
   });
 
-  it('renders the fixed value select when mode is fixed', () => {
-    mockFramingValue = { mode: 'fixed', value: 'gamete' };
-    renderSection();
-    expect(screen.getByRole('combobox', { hidden: true })).toBeDefined();
+  it('shows the terminology select when mode is fixed', () => {
+    renderSection({ framing: { mode: 'fixed', value: 'gamete' } });
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
   });
 
-  it('does not render the fixed value select when mode is participantChoice', () => {
-    mockFramingValue = { mode: 'participantChoice' };
-    renderSection();
-    expect(screen.queryByRole('combobox', { hidden: true })).toBeNull();
+  it('offers an author-facing label for every framing the schema defines', () => {
+    renderSection({ framing: { mode: 'fixed', value: 'gamete' } });
+    expect(
+      [...screen.getByRole('combobox').querySelectorAll('option')].map(
+        (option) => [option.value, option.textContent],
+      ),
+    ).toEqual([
+      ['gamete', 'Gamete-based'],
+      ['gendered', 'Gendered'],
+    ]);
   });
 
-  it('dispatches change to participantChoice when that radio is clicked', () => {
-    mockFramingValue = { mode: 'fixed', value: 'gamete' };
-    mockDispatch.mockClear();
-    mockChange.mockClear();
-    renderSection();
+  it('does not show the terminology select when mode is participantChoice', () => {
+    renderSection({ framing: { mode: 'participantChoice' } });
+    expect(screen.queryByRole('combobox')).toBeNull();
+  });
 
-    fireEvent.click(screen.getByTestId('radio-participantChoice'));
+  it('clears the framing value from the saved output when switched to participantChoice', () => {
+    const view = renderSection({
+      framing: { mode: 'fixed', value: 'gendered' },
+    });
 
-    expect(mockDispatch).toHaveBeenCalled();
-    expect(mockChange).toHaveBeenCalledWith('edit-stage', 'framing', {
+    fireEvent.click(
+      screen.getByRole('radio', { name: 'Let the participant choose' }),
+    );
+
+    expect(view.getFormValues().framing).toEqual({
       mode: 'participantChoice',
     });
   });
 
-  it('dispatches change to fixed with gamete default when that radio is clicked', () => {
-    mockFramingValue = { mode: 'participantChoice' };
-    mockDispatch.mockClear();
-    mockChange.mockClear();
-    renderSection();
+  it('defaults the terminology to gamete-based when switched back to fixed', () => {
+    const view = renderSection({ framing: { mode: 'participantChoice' } });
 
-    fireEvent.click(screen.getByTestId('radio-fixed'));
+    fireEvent.click(screen.getByRole('radio', { name: 'Fixed framing' }));
 
-    expect(mockDispatch).toHaveBeenCalled();
-    expect(mockChange).toHaveBeenCalledWith('edit-stage', 'framing', {
+    expect(view.getFormValues().framing).toEqual({
       mode: 'fixed',
       value: 'gamete',
     });
   });
 
-  it('dispatches change to framing.value when a fixed value is selected', () => {
-    mockFramingValue = { mode: 'fixed', value: 'gamete' };
-    mockDispatch.mockClear();
-    mockChange.mockClear();
-    renderSection();
+  it('updates the saved output when a different terminology is selected', () => {
+    const view = renderSection({
+      framing: { mode: 'fixed', value: 'gamete' },
+    });
 
-    fireEvent.change(screen.getByTestId('native-select'), {
+    fireEvent.change(screen.getByRole('combobox'), {
       target: { value: 'gendered' },
     });
 
-    expect(mockDispatch).toHaveBeenCalled();
-    expect(mockChange).toHaveBeenCalledWith(
-      'edit-stage',
-      'framing.value',
-      'gendered',
-    );
+    expect(view.getFormValues().framing).toEqual({
+      mode: 'fixed',
+      value: 'gendered',
+    });
   });
 });

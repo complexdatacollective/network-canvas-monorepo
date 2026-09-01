@@ -1,59 +1,67 @@
-import { useSelector } from 'react-redux';
-import { change, formValueSelector } from 'redux-form';
+import type { ReactNode } from 'react';
 
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
-import MultiSelect, { type OptionGetter } from '~/components/Form/MultiSelect';
-import { useAppDispatch } from '~/ducks/hooks';
+import Section from '@codaco/fresco-ui/Section';
+import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import MultiSelect, {
+  completeRows,
+  type ItemValue,
+  type OptionGetter,
+  type PropertyField,
+} from '~/components/Form/arrayFields/MultiSelect';
+
 type BinSortOrderSectionProps = {
-  form: string;
+  /**
+   * The row's committed `binSortOrder` value, used only to decide whether the
+   * section starts expanded. Rendered inside a per-item dialog editor (its own
+   * `FormStoreProvider`, remounted per editing session), which has no
+   * whole-form `initialValues` to read a not-yet-mounted field from — the
+   * caller (the item's `editorFieldsComponent`) supplies it from the row.
+   */
+  initialValue?: ItemValue[];
   disabled?: boolean;
   maxItems?: number;
   optionGetter: OptionGetter;
-  summary?: React.ReactNode;
+  description?: ReactNode;
 };
-const getDefaultSummary = () => (
-  <Paragraph>
-    You may also configure one or more sort rules that determine the order that
-    nodes are listed after they have been placed into a bin.
-  </Paragraph>
-);
+const SORT_RULE_PROPERTIES: PropertyField[] = [
+  { fieldName: 'property' },
+  { fieldName: 'direction' },
+];
+
+// A row's own cells cannot block the save (see RowField), and a rule missing
+// its direction fails `SortRuleSchema` after `prune`.
+const SORT_RULE_VALIDATION = {
+  completeRows: completeRows(SORT_RULE_PROPERTIES),
+};
+
 const BinSortOrderSection = ({
-  form,
+  initialValue,
   disabled = false,
   maxItems = 5,
   optionGetter,
-  summary = getDefaultSummary(),
+  description = 'Set the order of nodes after they have been placed into a bin.',
 }: BinSortOrderSectionProps) => {
-  const dispatch = useAppDispatch();
-  const getFormValue = formValueSelector(form);
-  const hasBinSortOrder = useSelector((state: Record<string, unknown>) =>
-    getFormValue(state, 'binSortOrder'),
-  );
-  const handleToggleChange = (nextState: boolean) => {
-    if (!nextState) {
-      dispatch(change(form, 'binSortOrder', null));
-    }
-    return true;
-  };
   return (
     <Section
-      title="Bin Sort Order"
-      summary={summary}
+      title="Bin order"
+      description={description}
       toggleable
       disabled={disabled}
-      startExpanded={!!hasBinSortOrder}
-      handleToggleChange={handleToggleChange}
-      layout="vertical"
+      defaultOpen={!!initialValue}
     >
-      <Row>
-        <MultiSelect
-          name="binSortOrder"
-          properties={[{ fieldName: 'property' }, { fieldName: 'direction' }]}
-          maxItems={maxItems}
-          options={optionGetter}
-        />
-      </Row>
+      <ArchitectArrayField
+        name="binSortOrder"
+        label="Bin sort rules"
+        hint="Add one or more rules to determine the order in which nodes are displayed in the bin after they have been placed. Use the asterisk property to sort by the order that nodes were placed."
+        component={MultiSelect}
+        emptyStateMessage="No sort rules have been created yet."
+        addButtonLabel="Add new bin sort rule"
+        initialValue={initialValue}
+        properties={SORT_RULE_PROPERTIES}
+        validation={SORT_RULE_VALIDATION}
+        maxItems={maxItems}
+        options={optionGetter}
+      />
     </Section>
   );
 };

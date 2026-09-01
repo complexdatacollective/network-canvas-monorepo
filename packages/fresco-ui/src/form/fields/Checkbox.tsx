@@ -5,6 +5,7 @@ import { type ComponentPropsWithoutRef, forwardRef, useState } from 'react';
 
 import {
   controlVariants,
+  inertReadOnlyVariants,
   inputControlVariants,
   smallSizeVariants,
   stateVariants,
@@ -17,6 +18,7 @@ const checkboxRootVariants = compose(
   controlVariants,
   inputControlVariants,
   stateVariants,
+  inertReadOnlyVariants,
   cva({
     base: 'focusable flex aspect-square shrink-0 items-center justify-center rounded-[0.15em]',
   }),

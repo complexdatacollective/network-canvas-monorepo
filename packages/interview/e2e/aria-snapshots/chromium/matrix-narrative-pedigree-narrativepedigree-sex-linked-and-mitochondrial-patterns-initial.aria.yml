@@ -50,10 +50,12 @@
     - text: "Haemophilia: At risk (carrier). Hypophosphataemia: Obligate affected. Hearing Loss: Status unknown. Mitochondrial Myopathy: At risk (affected)"
     - button "Helen" [disabled]
   - toolbar "Zoom controls":
-    - button "Zoom out"
-    - button "Zoom in"
+    - group "Zoom controls":
+      - button "Zoom out"
+      - button "Zoom in"
     - separator
-    - button "Reset zoom"
+    - group "Viewport controls":
+      - button "Reset zoom"
   - navigation:
     - button "Previous Step"
     - progressbar "Progress indicator": x

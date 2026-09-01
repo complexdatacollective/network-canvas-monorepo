@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
+import { clickWhenDeckSettles } from '../helpers/deck.js';
+
 // Drives an interview inside the real app. Unlike packages/interview/e2e's
 // InterviewFixture (which reads step from the ?step= URL), the app route has no
 // step param — so next() reads the [data-stage-step] DOM attribute and waits for
@@ -18,9 +20,9 @@ export class InterviewNav {
 
   async startNewSession(caseId: string): Promise<void> {
     // From an active deck card, "Start new interview" opens NewSessionForm.
-    await this.page
-      .getByRole('button', { name: 'Start new interview' })
-      .click();
+    await clickWhenDeckSettles(
+      this.page.getByRole('button', { name: 'Start new interview' }),
+    );
     await this.page.getByTestId('new-session-case-id').fill(caseId);
     await this.page.getByTestId('new-session-submit').click();
     await expect(this.page).toHaveURL(/\/interview\//, { timeout: 15_000 });
@@ -42,6 +44,29 @@ export class InterviewNav {
         timeout: 20_000,
       })
       .not.toBe(before);
+  }
+
+  async back(): Promise<void> {
+    const before = await this.stage.getAttribute('data-stage-step');
+    await this.page.getByTestId('previous-button').click();
+    await expect
+      .poll(async () => this.stage.getAttribute('data-stage-step'), {
+        timeout: 20_000,
+      })
+      .not.toBe(before);
+  }
+
+  // Exits an in-progress interview through the Shell's settings popover and its
+  // confirm dialog, landing back on Home.
+  async exitInterview(): Promise<void> {
+    await this.page.getByTestId('settings-button').click();
+    await this.page.getByTestId('exit-button').click();
+    const exitDialog = this.page.getByRole('dialog', {
+      name: 'Exit this interview?',
+    });
+    await expect(exitDialog).toBeVisible();
+    await exitDialog.getByRole('button', { name: 'Exit interview' }).click();
+    await expect(this.page).toHaveURL(/\/$/);
   }
 
   async fillEgoName(value: string): Promise<void> {

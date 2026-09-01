@@ -15,8 +15,10 @@ import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type { ComposerForm } from '@codaco/protocol-validation';
 import type { entityAttributesProperty, NcNode } from '@codaco/shared-consts';
 
+import { formValuesToAttributePatch } from '../../forms/formValuesToAttributePatch';
 import useProtocolForm from '../../forms/useProtocolForm';
 import type { Subject } from '../../selectors/forms';
+import type { AttributePatch } from '../../store/entityAttributePatch';
 
 type Attributes = NcNode[typeof entityAttributesProperty];
 
@@ -25,7 +27,7 @@ export type InspectorProps = {
   form: ComposerForm | undefined;
   subject: Subject;
   attributes: Attributes;
-  onSave: (id: string, data: Attributes) => void;
+  onSave: (id: string, attributePatch: AttributePatch) => void;
   onDelete: (id: string) => void;
 };
 
@@ -48,11 +50,25 @@ function AutoPersist({
     useShallow((state) => {
       const snapshot: Record<string, FieldValue> = {};
       state.fields.forEach((field, name) => {
-        snapshot[name] = field.value;
+        Object.defineProperty(snapshot, name, {
+          configurable: true,
+          enumerable: true,
+          value: field.value,
+          writable: true,
+        });
       });
       return snapshot;
     }),
   );
+  // Deliberately the store's STICKY `isDirty`, not `selectIsFormDirty`.
+  //
+  // This is not a "you have unsaved changes" warning — it is the trigger for
+  // an autosave, and it has to fire for the edit that puts a value BACK. With
+  // a live comparison, editing an attribute (persisted), then restoring it,
+  // would settle as "not changed" and skip the write — leaving the edited
+  // value persisted while the participant is looking at the restored one.
+  // Sticky is the safe semantics for a persistence trigger: once anything has
+  // been touched, every settled state is written.
   const isDirty = useFormStore((state) => state.isDirty);
   const isInitial = useRef(true);
 
@@ -87,12 +103,15 @@ function AttributeFormInner({
 }: Omit<InspectorProps, 'form' | 'onDelete'> & { form: ComposerForm }) {
   const initialValues = useMemo(
     () =>
-      Object.fromEntries(
-        Object.entries(attributes).map(([key, value]) => [
-          key,
-          value ?? undefined,
-        ]),
-      ) as Record<string, FieldValue>,
+      Object.entries(attributes).reduce<Record<string, FieldValue>>(
+        (values, [name, value]) => {
+          if (value !== null) {
+            values[name] = value;
+          }
+          return values;
+        },
+        {},
+      ),
     [attributes],
   );
 
@@ -102,14 +121,26 @@ function AttributeFormInner({
     subject,
     currentEntityId: entityId,
   });
+  const storeApi = useContext(FormStoreContext);
 
   const handleValidValues = useCallback(
     (values: Record<string, FieldValue>) => {
-      // Coerce to declared codebook types (e.g. number fields emit strings)
-      // before persisting — the same boundary cast SlidesForm uses.
-      onSave(entityId, coerceValues(values) as Attributes);
+      const patchResult = formValuesToAttributePatch(
+        coerceValues(values),
+        (form.fields ?? []).map((field) => field.variable),
+      );
+
+      if (!patchResult.success) {
+        storeApi?.getState().setErrors({
+          formErrors: ['An error occurred while submitting the form.'],
+          fieldErrors: {},
+        });
+        return;
+      }
+
+      onSave(entityId, patchResult.patch);
     },
-    [onSave, entityId, coerceValues],
+    [onSave, entityId, coerceValues, form.fields, storeApi],
   );
 
   return (

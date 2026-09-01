@@ -22,17 +22,16 @@ function run(cwd) {
   return spawnSync(process.execPath, [GUARD], { cwd, encoding: 'utf8' });
 }
 
-test('passes when app-only and library-only changesets coexist', () => {
+test('passes when normal-lane app and library releases share a changeset', () => {
   const cwd = fixture({
-    'a.md': `---\n"@codaco/architect": minor\n---\n\napp change`,
-    'b.md': `---\n"@codaco/interview": minor\n---\n\nlib change`,
+    'normal.md': `---\n"@codaco/architect": minor\n"@codaco/interview": minor\n---\n\nshared change`,
   });
   assert.equal(run(cwd).status, 0);
 });
 
-test('fails and names the file when a changeset mixes an app and a library', () => {
+test('fails when a changeset mixes a separately gated product and normal package', () => {
   const cwd = fixture({
-    'bad.md': `---\n"@codaco/architect": minor\n"@codaco/interview": patch\n---\n\nmixed`,
+    'bad.md': `---\n"@codaco/documentation": minor\n"@codaco/interview": patch\n---\n\nmixed`,
   });
   const res = run(cwd);
   assert.equal(res.status, 1);
@@ -40,16 +39,32 @@ test('fails and names the file when a changeset mixes an app and a library', () 
   assert.match(res.stderr, /pnpm changeset/);
 });
 
-test('allows Architect and Interviewer in their shared app release lane', () => {
+test('allows normal-lane apps to share a changeset', () => {
   const cwd = fixture({
-    'apps.md': `---\n"@codaco/architect": minor\n"@codaco/interviewer": patch\n---\n\nshared apps`,
+    'apps.md': `---\n"@codaco/architect": minor\n"@codaco/background-creator": patch\n"fresco": patch\n"@codaco/interviewer": patch\n---\n\nshared apps`,
   });
   assert.equal(run(cwd).status, 0);
 });
 
+test('allows the studio packages to share a changeset within their lane', () => {
+  const cwd = fixture({
+    'studio.md': `---\n"@codaco/studio-server": minor\n"@codaco/studio-rpc": patch\n"@codaco/studio-sync": patch\n---\n\nstudio change`,
+  });
+  assert.equal(run(cwd).status, 0);
+});
+
+test('fails when a changeset mixes a studio package with the normal lane', () => {
+  const cwd = fixture({
+    'mixed-studio.md': `---\n"@codaco/studio-server": minor\n"@codaco/protocol-validation": patch\n---\n\nmixed`,
+  });
+  const res = run(cwd);
+  assert.equal(res.status, 1);
+  assert.match(res.stderr, /mixed-studio\.md/);
+});
+
 test('fails and names the file when a changeset mixes product lanes', () => {
   const cwd = fixture({
-    'coupled.md': `---\n"@codaco/architect": minor\n"networkcanvas.com": patch\n---\n\ncoupled`,
+    'coupled.md': `---\n"@codaco/documentation": minor\n"networkcanvas.com": patch\n---\n\ncoupled`,
   });
   const res = run(cwd);
   assert.equal(res.status, 1);

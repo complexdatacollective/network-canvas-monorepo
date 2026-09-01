@@ -139,6 +139,7 @@ export const SemanticColors: Story = {
           <ColorSwatch name="Surface 1" cssVar="--surface-1" />
           <ColorSwatch name="Surface 2" cssVar="--surface-2" />
           <ColorSwatch name="Surface 3" cssVar="--surface-3" />
+          <ColorSwatch name="Surface 4" cssVar="--surface-4" />
           <ColorSwatch
             name="Popover"
             cssVar="--surface-popover"
@@ -166,6 +167,22 @@ export const SemanticColors: Story = {
             contrastVar="--selected-contrast"
           />
           <ColorSwatch name="Link" cssVar="--link" />
+        </div>
+      </div>
+
+      <div>
+        <Heading level="h2" margin="none" className="mb-4">
+          Accent Surface Levels
+        </Heading>
+        <Paragraph margin="none" className="text-text/70 mb-6 text-sm">
+          Alternate layered surfaces for emphasized collections
+        </Paragraph>
+        <div className="tablet-landscape:grid-cols-4 grid grid-cols-2 gap-6">
+          <ColorSwatch name="Accent Surface" cssVar="--surface-accent" />
+          <ColorSwatch name="Accent Surface 1" cssVar="--surface-accent-1" />
+          <ColorSwatch name="Accent Surface 2" cssVar="--surface-accent-2" />
+          <ColorSwatch name="Accent Surface 3" cssVar="--surface-accent-3" />
+          <ColorSwatch name="Accent Surface 4" cssVar="--surface-accent-4" />
         </div>
       </div>
     </div>

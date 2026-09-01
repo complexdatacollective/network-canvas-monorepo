@@ -202,5 +202,12 @@ describe('locale routing', () => {
     expect(
       getLocaleRedirect(new Request('http://localhost/images/logo.svg')),
     ).toBeUndefined();
+    expect(
+      getLocaleRedirect(
+        new Request(
+          'http://localhost/downloads/classic/architect/6.6.0/apple-silicon',
+        ),
+      ),
+    ).toBeUndefined();
   });
 });

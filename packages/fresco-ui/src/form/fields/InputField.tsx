@@ -106,6 +106,37 @@ const inputVariants = compose(
   }),
 );
 
+// Native <input type="date"> doesn't expose its empty-state format hint via
+// ::placeholder, and :placeholder-shown doesn't match an empty date input. The
+// input itself handles Firefox's hint styling; Chromium/Safari expose their
+// native date text through ::-webkit-datetime-edit. Safari additionally
+// repaints the empty day/month/year fields with its own contrast-adjusted color
+// unless -webkit-text-fill-color pins them. Keep this on the actual <input>:
+// InputField's public className belongs to the wrapper and cannot match an
+// input-only pseudo-element.
+const emptyDateInputClass = cx(
+  'text-input-contrast/50 italic',
+  '[&::-webkit-datetime-edit]:text-input-contrast/50',
+  '[&::-webkit-datetime-edit]:italic',
+  // The Tailwind theme is inline, so --color-input-contrast is compiled away;
+  // --input-contrast is the theme-scope variable that exists at runtime.
+  '[&::-webkit-datetime-edit]:[-webkit-text-fill-color:color-mix(in_oklab,var(--input-contrast)_50%,transparent)]',
+);
+
+// The width each field size's stepper needs to stay square: the wrapper's
+// heightVariants step minus its 2px border on each edge (sm h-10 → 36px,
+// md h-12 → 44px, lg h-16 → 60px, xl h-20 → 76px). Stated outright rather
+// than left to `aspect-square` × `h-full`, both because shipped Safari
+// computes a ratio-derived flex-item width as zero and because IconButton
+// now carries its own explicit size width, which would otherwise win here.
+// Change these together with heightVariants.
+const stepperWidthBySize = {
+  sm: 'w-9!',
+  md: 'w-11!',
+  lg: 'w-15!',
+  xl: 'w-19!',
+} as const;
+
 const stepperButtonVariants = cx(
   // Steppers keep their square footprint; they must never compress when the
   // field is constrained narrow (the middle input shrinks instead).
@@ -135,6 +166,25 @@ type InputFieldProps = CreateFormFieldProps<
     // (it reads event.nativeEvent.inputType), while InputField's own
     // onChange only passes the string value.
     nativeOnChange?: React.ChangeEventHandler<HTMLInputElement>;
+    /**
+     * Classes for the native input itself. `className` styles the surrounding
+     * control container; use this for input-only pseudo-elements or properties.
+     */
+    inputClassName?: string;
+    // Fires after a stepper button or arrow key settles on a new value, in
+    // addition to `onChange`. A stepped value is always complete, so callers
+    // that defer committing until blur can commit these immediately — clicking
+    // a stepper moves focus out of the input, so the blur that follows carries
+    // the pre-step value.
+    onStep?: (value: string) => void;
+    // Accessible names for the number steppers. Default to "Increase value" /
+    // "Decrease value", which are ambiguous once a screen has more than one
+    // numeric field.
+    stepperLabels?: { increase: string; decrease: string };
+    // Allows a controlled number field to disable only the stepper that has
+    // reached its application-defined bound while leaving the opposite
+    // direction available.
+    stepperDisabled?: { increase?: boolean; decrease?: boolean };
   }
 >;
 
@@ -148,6 +198,10 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
       value,
       onChange,
       nativeOnChange,
+      inputClassName,
+      onStep,
+      stepperLabels,
+      stepperDisabled,
       onKeyDown,
       type = 'text',
       inputMode,
@@ -186,8 +240,9 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
 
         // stepUp/stepDown don't fire change events, so notify React directly
         onChange?.(input.value);
+        onStep?.(input.value);
       },
-      [onChange],
+      [onChange, onStep],
     );
 
     const wrapperClassName = cx(
@@ -213,7 +268,12 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
           // The caller's `className` styles the wrapper (the control container),
           // not the inner input — otherwise a background/backdrop passed to the
           // field (e.g. the glass treatment) would double-apply onto the input.
-          className={inputVariants()}
+          className={inputVariants({
+            className: cx(
+              type === 'date' && !value && emptyDateInputClass,
+              inputClassName,
+            ),
+          })}
           type={type}
           inputMode={inputMode ?? (isNumber ? 'decimal' : undefined)}
           {...inputProps}
@@ -254,12 +314,12 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
         <IconButton
           size={size}
           color="default"
-          disabled={!canStep}
+          disabled={!canStep || stepperDisabled?.decrease}
           onClick={() => handleStep('down')}
-          aria-label="Decrease value"
+          aria-label={stepperLabels?.decrease ?? 'Decrease value'}
           tabIndex={-1}
           icon={<Minus />}
-          className={stepperButtonVariants}
+          className={cx(stepperButtonVariants, stepperWidthBySize[size])}
         />
         <div
           className={cx(
@@ -277,12 +337,12 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
         <IconButton
           size={size}
           color="default"
-          disabled={!canStep}
+          disabled={!canStep || stepperDisabled?.increase}
           onClick={() => handleStep('up')}
-          aria-label="Increase value"
+          aria-label={stepperLabels?.increase ?? 'Increase value'}
           tabIndex={-1}
           icon={<Plus />}
-          className={stepperButtonVariants}
+          className={cx(stepperButtonVariants, stepperWidthBySize[size])}
         />
       </>
     ) : (

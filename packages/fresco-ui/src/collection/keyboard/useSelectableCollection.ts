@@ -2,6 +2,7 @@
 
 import { type RefObject, useCallback, useEffect, useRef } from 'react';
 
+import { isEventFromOwnSubtree } from '../isEventFromOwnSubtree';
 import type { SelectionManager } from '../selection/SelectionManager';
 import type { KeyboardDelegate } from './types';
 
@@ -83,6 +84,12 @@ export function useSelectableCollection(
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      // A keystroke typed into a popup this collection's items rendered through
+      // a portal reaches here through the React tree. It belongs to the popup:
+      // driving list navigation, type-ahead or `clearSelection()` from inside
+      // an open overlay is never what the researcher asked for.
+      if (!isEventFromOwnSubtree(e)) return;
+
       // If an item-level handler (e.g. DnD keyboard drag) already handled
       // this event, don't interfere.
       if (e.defaultPrevented) return;
@@ -257,6 +264,16 @@ export function useSelectableCollection(
 
   const handleFocus = useCallback(
     (e: React.FocusEvent) => {
+      // Focus moving between two items of a popup this collection's items
+      // rendered through a portal is not focus entering this collection. Left
+      // unguarded it reads as an entry from outside (the previous menu item is
+      // not contained either), flipping `isFocused` false→true and re-running
+      // the item's focus effect, which drags focus out of the open popup and
+      // onto the row behind it.
+      if (!isEventFromOwnSubtree(e)) {
+        return;
+      }
+
       // Only handle focus if it's entering the collection from outside
       // (not when focus moves between items within the collection)
       if (ref?.current?.contains(e.relatedTarget as Node)) {
@@ -279,6 +296,17 @@ export function useSelectableCollection(
 
   const handleBlur = useCallback(
     (e: React.FocusEvent) => {
+      // Deliberately NOT filtered by `isEventFromOwnSubtree`, unlike focus and
+      // keydown above. Blur may only ever CLEAR the flag, so acting on a
+      // portalled popup's blur is harmless (the next real focus event inside
+      // this collection sets it again, and `isFocused` gates nothing but the
+      // item focus effect). Ignoring those blurs would not be harmless: a popup
+      // dismissed by a click elsewhere on the page raises its blur from a node
+      // outside this subtree, and skipping it would latch `isFocused` true with
+      // focus somewhere else entirely — after which repairing `focusedKey`
+      // (a filter, or the focused item being removed) would yank focus back
+      // into the list unprompted.
+      //
       // Only handle blur if focus is leaving the collection entirely
       if (ref?.current?.contains(e.relatedTarget as Node)) {
         return;

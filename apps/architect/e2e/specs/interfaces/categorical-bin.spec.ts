@@ -90,7 +90,7 @@ test('creates a valid CategoricalBin stage from scratch', async ({
   // 'categorical' } }, { field: 'variable' })` — the same pre-locked-type
   // NewVariableWindow pattern as OrdinalBin/TieStrengthCensus, so
   // `createVariableWithOptions` again takes the disabled-combobox branch.
-  await addPrompt(editor.section('Prompts'), async () => {
+  await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Group these');
     await createVariableViaSpotlight(architectPage, { variableName: 'group' });
     await createVariableWithOptions(architectPage, {
@@ -98,8 +98,8 @@ test('creates a valid CategoricalBin stage from scratch', async ({
       options: ['Family', 'Friends'],
       type: 'categorical',
     });
-    // Deliberately NOT expanding the "Follow-up 'Other' Option" section
-    // (`toggleable`, `startExpanded={!!otherVariable}` — collapsed by
+    // Deliberately NOT expanding the "Follow-up other option" section
+    // (`toggleable`, `defaultOpen={!!currentOtherVariable}` — collapsed by
     // default here since `otherVariable` is unset): expanding it would add
     // three more required fields (`otherVariable`, `otherOptionLabel`,
     // `otherVariablePrompt`) this spec doesn't need to exercise. There is no

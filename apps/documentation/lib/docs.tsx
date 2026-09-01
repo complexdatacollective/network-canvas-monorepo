@@ -114,7 +114,6 @@ const processPath = (docPath: string) => {
     // Process the last item to remove the locale and file extension
     .map((segment, index, array) => {
       if (index === array.length - 1) {
-        // biome-ignore lint/style/noNonNullAssertion: we know that the last element is a string
         return segment.split('.')[0]!;
       }
       return segment;
@@ -147,7 +146,7 @@ export const getDocsForRouteSegment = ({
   const sidebarData = get(sidebar, [locale, section], null) as SidebarSection;
 
   if (!sidebarData) {
-    // biome-ignore lint/suspicious/noConsole: Logging missing sidebar data
+    // oxlint-disable-next-line no-console -- Logging missing sidebar data
     console.log(`No sidebar data found for ${locale} and ${section}`);
     return [];
   }
@@ -322,7 +321,6 @@ const createMarkdownComponents = (docSlug?: string) => ({
       rel="noreferrer"
       className="my-10 w-full px-8"
     >
-      {/* biome-ignore lint/performance/noImgElement: markdown content with unknown dimensions */}
       <img {...props} alt={props.alt} className="w-full" />
     </a>
   ),

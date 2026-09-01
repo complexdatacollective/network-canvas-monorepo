@@ -59,10 +59,15 @@ export const surfaceVariants = compose(
       // class-level consumers (which only ever use `floating`) don't pick up
       // a surface background by accident.
       depth: {
-        0: 'text-surface-contrast bg-surface [--surface-depth:0]',
-        1: 'text-surface-1-contrast bg-surface-1 [--surface-depth:1]',
-        2: 'text-surface-2-contrast bg-surface-2 [--surface-depth:2]',
-        3: 'text-surface-3-contrast bg-surface-3 [--surface-depth:3]',
+        0: '[--surface-depth:0]',
+        1: '[--surface-depth:1]',
+        2: '[--surface-depth:2]',
+        3: '[--surface-depth:3]',
+        4: '[--surface-depth:4]',
+      },
+      series: {
+        default: '',
+        accent: '',
       },
       floating: {
         true: 'text-surface-popover-contrast bg-surface-popover border-2 [--surface-depth:0]',
@@ -76,27 +81,104 @@ export const surfaceVariants = compose(
         xl: 'shadow-2xl',
       },
     },
+    compoundVariants: [
+      {
+        depth: 0,
+        series: 'default',
+        class: 'text-surface-contrast bg-surface',
+      },
+      {
+        depth: 1,
+        series: 'default',
+        class: 'text-surface-1-contrast bg-surface-1',
+      },
+      {
+        depth: 2,
+        series: 'default',
+        class: 'text-surface-2-contrast bg-surface-2',
+      },
+      {
+        depth: 3,
+        series: 'default',
+        class: 'text-surface-3-contrast bg-surface-3',
+      },
+      {
+        depth: 4,
+        series: 'default',
+        class: 'text-surface-4-contrast bg-surface-4',
+      },
+      {
+        depth: 0,
+        series: 'accent',
+        class: 'text-surface-accent-contrast bg-surface-accent',
+      },
+      {
+        depth: 1,
+        series: 'accent',
+        class: 'text-surface-accent-1-contrast bg-surface-accent-1',
+      },
+      {
+        depth: 2,
+        series: 'accent',
+        class: 'text-surface-accent-2-contrast bg-surface-accent-2',
+      },
+      {
+        depth: 3,
+        series: 'accent',
+        class: 'text-surface-accent-3-contrast bg-surface-accent-3',
+      },
+      {
+        depth: 4,
+        series: 'accent',
+        class: 'text-surface-accent-4-contrast bg-surface-accent-4',
+      },
+    ],
     defaultVariants: {
+      series: 'default',
       shadow: 'md',
     },
   }),
 );
 
-// `process.env.NODE_ENV` is replaced statically by consuming bundlers (the
-// library-safe convention React itself uses); declared here because the web
-// tsconfig deliberately excludes Node globals.
-declare const process: { env: { NODE_ENV?: string } };
+const MAX_SURFACE_DEPTH = 4;
 
-const MAX_SURFACE_DEPTH = 3;
-
-const clampDepth = (depth: number): 0 | 1 | 2 | 3 => {
+const clampDepth = (depth: number): 0 | 1 | 2 | 3 | 4 => {
   if (depth <= 0) return 0;
   if (depth === 1) return 1;
   if (depth === 2) return 2;
-  return 3;
+  if (depth === 3) return 3;
+  return 4;
 };
 
-const SurfaceDepthContext = createContext(0);
+export type SurfaceSeries = NonNullable<
+  VariantProps<typeof surfaceVariants>['series']
+>;
+
+type SurfaceContextValue = {
+  depth: number;
+  series: SurfaceSeries;
+};
+
+const DEFAULT_SURFACE_CONTEXT: SurfaceContextValue = {
+  depth: 0,
+  series: 'default',
+};
+
+const RESET_SURFACE_CONTEXT: SurfaceContextValue = {
+  depth: 1,
+  series: 'default',
+};
+
+const SurfaceContext = createContext<SurfaceContextValue>(
+  DEFAULT_SURFACE_CONTEXT,
+);
+
+/**
+ * Returns the depth a Surface rendered at this point in the component tree will
+ * use. The value may exceed the rendered token scale; Surface clamps its own
+ * visual treatment while retaining the true nesting depth for descendants.
+ */
+export const useSurfaceDepth = () => useContext(SurfaceContext).depth;
 
 /**
  * Restarts the Surface depth ladder for a subtree, as if the subtree were
@@ -111,9 +193,9 @@ export const SurfaceDepthReset = ({
 }: {
   children: React.ReactNode;
 }) => (
-  <SurfaceDepthContext.Provider value={1}>
+  <SurfaceContext.Provider value={RESET_SURFACE_CONTEXT}>
     {children}
-  </SurfaceDepthContext.Provider>
+  </SurfaceContext.Provider>
 );
 
 export type SurfaceVariants = Omit<
@@ -142,9 +224,11 @@ type SurfaceProps<T extends ElementType = 'div'> = {
  *
  * The visual level is derived from nesting: each Surface renders one step
  * above the Surface it is mounted inside (via context, so portals keep their
- * component-tree position). Depths beyond the token scale clamp to the
- * deepest token and warn in development. `floating` applies the popover
- * treatment regardless of depth and restarts the ladder for its children.
+ * component-tree position). A named `series` starts a new color ladder at
+ * depth 0; descendants inherit that series. Depths beyond the token scale
+ * clamp to the deepest token and warn in development. `floating` applies the
+ * popover treatment regardless of depth and restarts the default ladder for
+ * its children.
  *
  * The derived depth is exposed to descendants as `--surface-depth`.
  *
@@ -160,6 +244,7 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
       shadow,
       section,
       floating,
+      series,
       className,
       maxWidth,
       baseSize,
@@ -168,20 +253,26 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
     },
     ref,
   ) => {
-    const depth = useContext(SurfaceDepthContext);
+    const parentSurface = useContext(SurfaceContext);
+    const resolvedSeries = floating
+      ? 'default'
+      : (series ?? parentSurface.series);
+    // Naming a series starts that color ladder rather than carrying a depth
+    // from a different visual family into it. This also lets a nested
+    // `series="default"` explicitly return to the default ladder.
+    const depth = floating || series !== undefined ? 0 : parentSurface.depth;
     const renderedDepth = floating ? 0 : clampDepth(depth);
     // Children receive the true (unclamped) depth so over-nesting warnings
     // report accurate numbers; clamping applies only at render.
-    const childDepth = floating ? 1 : depth + 1;
+    const childSurface: SurfaceContextValue = floating
+      ? RESET_SURFACE_CONTEXT
+      : { depth: depth + 1, series: resolvedSeries };
 
     useEffect(() => {
-      // Consumer bundlers replace NODE_ENV, so the warning (and this whole
-      // effect body) is dead-code-eliminated from production builds.
-      if (
-        process.env.NODE_ENV !== 'production' &&
-        !floating &&
-        depth > MAX_SURFACE_DEPTH
-      ) {
+      // Consumer bundlers replace this Vite environment flag, so the warning
+      // (and this whole effect body) is dead-code-eliminated from production
+      // builds without requiring Node globals in browser consumers.
+      if (import.meta.env.DEV && !floating && depth > MAX_SURFACE_DEPTH) {
         console.warn(
           `Surface: nested ${depth} levels deep, which exceeds the surface token scale (0–${MAX_SURFACE_DEPTH}). Rendering with the level-${MAX_SURFACE_DEPTH} tokens. Consider flattening the layout.`,
         );
@@ -197,6 +288,7 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
           surfaceVariants({
             depth: floating ? undefined : renderedDepth,
             floating,
+            series: resolvedSeries,
             spacing,
             shadow,
             section,
@@ -204,9 +296,9 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
           className,
         )}
       >
-        <SurfaceDepthContext.Provider value={childDepth}>
+        <SurfaceContext.Provider value={childSurface}>
           {children}
-        </SurfaceDepthContext.Provider>
+        </SurfaceContext.Provider>
       </Component>
     );
 

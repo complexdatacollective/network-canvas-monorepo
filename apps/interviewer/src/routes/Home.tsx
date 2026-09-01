@@ -12,9 +12,9 @@ import { ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';
 import { StatusRow } from '~/components/StatusRow';
 import { TopActionBar } from '~/components/TopActionBar';
+import { revokeProtocolAssetUrls } from '~/lib/assets/assetResolver';
 import { deleteProtocol, updateSettings } from '~/lib/db/api';
 import type { StoredSession } from '~/lib/db/types';
-import { DEVELOPMENT_PROTOCOL } from '~/lib/protocol/developmentProtocol';
 import { useProtocolImport } from '~/lib/protocol/useProtocolImport';
 import { useLaunchedProtocolImport } from '~/lib/pwa/useLaunchedProtocolImport';
 import { useLaunchFailureToast } from '~/lib/pwa/useLaunchFailureToast';
@@ -146,6 +146,10 @@ export function HomeRoute() {
 
       try {
         await deleteProtocol(hash);
+        // The rows are gone, so nothing can ever ask the resolver for this
+        // protocol's assets again — release the object URLs (and the decrypted
+        // bytes behind them) it minted while the protocol existed.
+        revokeProtocolAssetUrls(hash);
         toast.add({
           title: 'Protocol deleted',
           description: protocol.name,
@@ -174,8 +178,13 @@ export function HomeRoute() {
           z-index so it is visually overlaid, and `inert` keeps its
           controls out of the tab order while the new-session form is up. */}
       <InstallBanner />
+      {/* Top padding measures from the bottom of the device's top safe area
+          (env() is 0 outside an installed PWA on a notched/status-bar device),
+          so the brand mark and action bar clear the clock/battery while the
+          gradient backdrop still shows through behind them (#1186). At laptop:
+          the design's 2.25rem floor wins unless the inset pushes past it. */}
       <header
-        className="laptop:px-11 laptop:pt-9 relative flex items-center justify-between px-6 pt-4"
+        className="laptop:px-11 laptop:pt-[max(2.25rem,calc(1rem+env(safe-area-inset-top)))] relative flex items-center justify-between px-6 pt-[calc(1rem+env(safe-area-inset-top))]"
         inert={newSessionActive}
       >
         <BrandHeader />
@@ -197,7 +206,7 @@ export function HomeRoute() {
             actual ORIENTATION, not a min-width breakpoint: the 13" iPad's
             portrait width (~1024px) would otherwise trip a min-width
             breakpoint and pull the pill up into the header. */}
-        <div className="laptop:px-11 laptop:pt-9 pointer-events-none absolute inset-0 z-20 flex translate-y-full items-center justify-center px-6 pt-4 landscape:translate-y-0">
+        <div className="laptop:px-11 laptop:pt-[max(2.25rem,calc(1rem+env(safe-area-inset-top)))] pointer-events-none absolute inset-0 z-20 flex translate-y-full items-center justify-center px-6 pt-[calc(1rem+env(safe-area-inset-top))] landscape:translate-y-0">
           <AnimatePresence>
             {showResumePill ? (
               <ResumePill key="resume-pill" sessions={sessions} />
@@ -226,20 +235,14 @@ export function HomeRoute() {
               protocols={protocols}
               sessions={sessions}
               initialProtocolHash={initialProtocolHash}
+              // Both flags say only whether the teaser is wanted at all — the
+              // researcher's preference, and the dev-only build gate. The deck
+              // drops a teaser whose protocol is already installed, and hands
+              // its slot to the pending card while an install is in flight.
               showSampleCard={
-                settings
-                  ? !settings.sampleProtocolDismissed &&
-                    !pendingImports.some((p) => p.source === 'sample')
-                  : false
+                settings ? !settings.sampleProtocolDismissed : false
               }
-              showDevelopmentCard={
-                // Dev-only teaser; disappears once the Development protocol
-                // is installed (or while its import is in flight — the
-                // pending card shadows the slot during the install itself).
-                import.meta.env.DEV &&
-                !protocols.some((p) => p.name === DEVELOPMENT_PROTOCOL.name) &&
-                !pendingImports.some((p) => p.source === 'development')
-              }
+              showDevelopmentCard={import.meta.env.DEV}
               pendingImports={pendingImports}
               onImportFile={handleImportFile}
               onStartInterview={setPendingProtocolHash}

@@ -64,7 +64,7 @@ const Variables = ({ variables }: VariablesProps) => {
         <tbody>
           {isEmpty(variables) && (
             <tr>
-              <td colSpan={3}>No variables to display.</td>
+              <td colSpan={3}>No attributes to display.</td>
             </tr>
           )}
           {sortedVariables.map(([variableId, variableConfiguration]) => {
@@ -90,7 +90,11 @@ const Variables = ({ variables }: VariablesProps) => {
             return (
               <tr key={variableId} id={`variable-${variableId}`}>
                 <td>
-                  <VariablePill label={name} type={type} />
+                  <VariablePill
+                    className="max-w-[7cm]"
+                    label={name}
+                    type={type}
+                  />
                 </td>
                 <td>
                   {type}

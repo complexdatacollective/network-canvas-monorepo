@@ -1,6 +1,12 @@
 /* oxlint-disable jsx-a11y/prefer-tag-over-role */
 import { TriangleAlert } from 'lucide-react';
-import { useCallback, useId, useState } from 'react';
+import {
+  useCallback,
+  useId,
+  useImperativeHandle,
+  useState,
+  type RefObject,
+} from 'react';
 import { useDropzone } from 'react-dropzone';
 
 import Spinner from '@codaco/fresco-ui/Spinner';
@@ -34,6 +40,14 @@ type DropzoneProps = {
   className?: string;
   accepts?: string[];
   disabled?: boolean;
+  /**
+   * Receives the control itself — the `role="button"` root, not the wrapper.
+   *
+   * A dialog raised from `onDrop` names it as its focus-return target: a file
+   * DROPPED on the page moves no focus, so there is no opener for the dialog to
+   * go back to, and focus would be left on `<body>`.
+   */
+  rootRef?: RefObject<HTMLElement | null>;
 };
 
 type DropzoneStateName =
@@ -100,6 +114,7 @@ const Dropzone = ({
   className,
   accepts = [],
   disabled = false,
+  rootRef,
 }: DropzoneProps) => {
   const [state, setState] = useState(initialState);
   const errorId = useId();
@@ -201,7 +216,12 @@ const Dropzone = ({
     {} as Record<string, string[]>,
   );
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const {
+    getRootProps,
+    getInputProps,
+    isDragActive,
+    rootRef: dropzoneRootRef,
+  } = useDropzone({
     onDrop: handleDrop,
     accept: Object.keys(acceptObject).length > 0 ? acceptObject : undefined,
     disabled: isDisabled,
@@ -209,6 +229,13 @@ const Dropzone = ({
     noClick: false,
     noKeyboard: false,
   });
+
+  // react-dropzone owns the root element's ref, so mirror it rather than
+  // passing our own through `getRootProps` (which would replace theirs).
+  // Deliberately without a dependency list: the mirror is re-read on every
+  // commit, so a root element React replaces mid-import can never leave a
+  // caller holding a detached node as its focus-return target.
+  useImperativeHandle(rootRef, () => dropzoneRootRef.current);
 
   const dropzoneState: DropzoneStateName = state.isError
     ? 'error'
@@ -225,7 +252,17 @@ const Dropzone = ({
   return (
     <div>
       <div
-        {...getRootProps()}
+        // react-dropzone omits `tabIndex` from `getRootProps()` while it is
+        // disabled, and this control disables itself for the duration of an
+        // import. Taking a FOCUSED control out of the tab order makes the
+        // browser drop focus to `<body>` mid-import — which is how dismissing
+        // the resulting error dialog left nothing focused. Keep the control in
+        // the tab order and let `aria-busy`/`aria-disabled` (below) say what
+        // state it is in; `getRootProps`'s trailing spread of caller props is
+        // what makes this an override rather than a fight. Activation stays
+        // blocked: `disabled` still strips react-dropzone's click, keyboard and
+        // drag handlers, and `handleDrop` returns early anyway.
+        {...getRootProps({ tabIndex: 0 })}
         role="button"
         aria-label="Upload file"
         aria-busy={state.isLoading || undefined}

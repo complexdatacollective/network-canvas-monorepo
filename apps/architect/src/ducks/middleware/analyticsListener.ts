@@ -4,9 +4,10 @@ import {
 } from '@reduxjs/toolkit';
 
 import { posthog } from '~/analytics';
+import { APP_SCHEMA_VERSION } from '~/config';
 
 import { setActiveProtocol } from '../modules/activeProtocol';
-import { createStage } from '../modules/protocol/stages';
+import { commitStageEditorDraft } from '../modules/protocol/commitStageEditorDraft';
 import { validateProtocolAsync } from '../modules/protocolValidation';
 import type { RootState } from '../modules/root';
 import { exportNetcanvas } from '../modules/userActions/userActions';
@@ -23,15 +24,22 @@ startAppListening({
   effect: (action) => {
     const protocol = action.payload;
     posthog.capture('protocol_opened', {
-      schema_version: protocol?.schemaVersion ?? 8,
+      // A protocol reaching the editor always carries a version; the fallback
+      // is this build's own, never a literal that would freeze at 8 after a
+      // schema bump and misreport every open.
+      schema_version: protocol?.schemaVersion ?? APP_SCHEMA_VERSION,
       stage_count: protocol?.stages?.length ?? 0,
     });
   },
 });
 
 startAppListening({
-  actionCreator: createStage,
+  actionCreator: commitStageEditorDraft,
   effect: (action) => {
+    // The stage editor commits creates and edits through one action; only a
+    // create (no pre-existing stage id) is a `stage_added`.
+    if (action.payload.stageId !== null) return;
+
     posthog.capture('stage_added', {
       stage_type: action.payload.stage.type ?? 'unknown',
       stage_index: action.payload.index,

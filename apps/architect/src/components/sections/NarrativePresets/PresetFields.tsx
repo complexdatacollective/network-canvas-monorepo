@@ -1,237 +1,163 @@
-import type { UnknownAction } from '@reduxjs/toolkit';
-import type { ComponentType } from 'react';
-import { compose } from 'react-recompose';
+import { useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
-import { change, Field, formValueSelector } from 'redux-form';
 
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
-import ValidatedField from '~/components/Form/ValidatedField';
-import { useAppDispatch } from '~/ducks/hooks';
+import ArchitectField from '~/components/Form/ArchitectField';
+import { useCreateVariable } from '~/components/StageEditor/stageFormHooks';
 import type { RootState } from '~/ducks/modules/root';
 
-import Row from '../../EditorLayout/Row';
-import Section from '../../EditorLayout/Section';
-import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
-import withPresetProps from './withPresetProps';
-type SelectOption = {
-  label: string;
-  value: string;
-};
-
-const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
-const FrescoCheckboxGroupField = CheckboxGroupField as ComponentType<
-  Record<string, unknown>
->;
+import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
+import { getEdgesForSubject, getNarrativeVariables } from './selectors';
 
 type PresetFieldsProps = {
-  form: string;
-  edgesForSubject?: SelectOption[];
-  entity: string;
-  groupVariable?: string;
-  groupVariablesForSubject?: SelectOption[];
-  handleCreateLayoutVariable: () => void;
-  highlightVariablesForSubject?: SelectOption[];
-  layoutVariable?: string;
-  layoutVariablesForSubject?: SelectOption[];
+  entity: 'node' | 'edge' | 'ego';
   type: string;
+  /** The row's own pre-edit values, supplied by DialogArrayField's `item` spread. */
+  label?: string;
+  layoutVariable?: string;
+  groupVariable?: string | null;
+  edges?: { display?: string[] } | null;
+  highlight?: string[] | null;
 };
+
 const PresetFields = ({
-  form,
-  edgesForSubject = [],
   entity,
-  groupVariable,
-  groupVariablesForSubject = [],
-  handleCreateLayoutVariable,
-  highlightVariablesForSubject = [],
-  layoutVariable,
-  layoutVariablesForSubject = [],
   type,
+  label,
+  layoutVariable,
+  groupVariable,
+  edges,
+  highlight,
 }: PresetFieldsProps) => {
-  const getFormValue = formValueSelector(form);
-  const dispatch = useAppDispatch();
+  const subject = useMemo(() => ({ entity, type }), [entity, type]);
+  const {
+    layoutVariablesForSubject,
+    highlightVariablesForSubject,
+    groupVariablesForSubject,
+  } = useSelector((state: RootState) => getNarrativeVariables(state, subject));
+  const edgesForSubject = useSelector(getEdgesForSubject);
+
+  // Writes into THIS dialog's own (local) form store — the row-editor form,
+  // not the stage. `useCreateVariable`'s own field write-back targets the
+  // stage form, so its `field` argument is unusable here.
+  const setLocalFieldValue = useFormStore((store) => store.setFieldValue);
+  const { createVariable } = useCreateVariable();
+
+  // These three toggle sections gate their own fields' mounting. Use the row's
+  // pre-edit values to choose their initial open state; the uncontrolled
+  // section owns every later toggle.
   const hasGroupVariable = !!groupVariable;
-  const displayEdges = useSelector(
-    (state: RootState) =>
-      getFormValue(state, 'edges.display') as Record<string, unknown>[],
+  const hasDisplayEdges = !!edges?.display && edges.display.length > 0;
+  const hasHighlightVariables = !!highlight && highlight.length > 0;
+
+  const handleCreateLayoutVariable = useCallback(
+    async (name: string) => {
+      const variable = await createVariable(name, 'layout');
+      if (variable) setLocalFieldValue('layoutVariable', variable);
+    },
+    [createVariable, setLocalFieldValue],
   );
-  const hasDisplayEdges = displayEdges && displayEdges.length > 0;
-  const highlightVariables = useSelector(
-    (state: RootState) =>
-      getFormValue(state, 'highlight') as Record<string, unknown>[],
-  );
-  const hasHighlightVariables =
-    highlightVariables && highlightVariables.length > 0;
-  const handleToggleHighlightVariables = (open: boolean) => {
-    if (open) {
-      return true;
-    }
-    dispatch(change(form, 'highlight', undefined) as UnknownAction);
-    return true;
-  };
-  const handleToggleDisplayEdges = (open: boolean) => {
-    if (open) {
-      return true;
-    }
-    dispatch(change(form, 'edges', undefined) as UnknownAction);
-    return true;
-  };
-  const handleToggleGroupVariable = (open: boolean) => {
-    if (open) {
-      return true;
-    }
-    dispatch(change(form, 'groupVariable', null) as UnknownAction);
-    return true;
-  };
+
   return (
     <>
-      <Section
-        title="Preset Label"
-        summary={
-          <Paragraph>
-            The preset label will used to quickly identify the preset from
-            within the narrative interface. It will be visible to the
-            participant.
-          </Paragraph>
-        }
-        layout="vertical"
-      >
-        <Row>
-          <ValidatedField
-            name="label"
-            label="Preset label"
-            labelHidden
-            component={FrescoReduxField}
-            validation={{ required: true }}
-            componentProps={{
-              fieldComponent: FrescoInputField,
-              placeholder: 'Enter a label for the preset...',
-            }}
-          />
-        </Row>
+      <Section title="Preset identity">
+        <ArchitectField
+          name="label"
+          label="Preset label"
+          hint={
+            <Paragraph>
+              The preset label will used to quickly identify the preset from
+              within the narrative interface. It will be visible to the
+              participant.
+            </Paragraph>
+          }
+          component={InputField}
+          validation={{ required: true }}
+          initialValue={label ?? ''}
+          placeholder="Enter a label for the preset..."
+        />
+      </Section>
+      <Section title="Node layout">
+        <ArchitectField
+          name="layoutVariable"
+          label="Layout attribute"
+          hint={
+            <Paragraph>
+              Select an attribute to use to position the nodes for this preset.
+            </Paragraph>
+          }
+          component={VariablePicker}
+          validation={{ required: true }}
+          initialValue={layoutVariable}
+          entity={entity}
+          type={type}
+          options={layoutVariablesForSubject}
+          onCreateOption={handleCreateLayoutVariable}
+        />
       </Section>
       <Section
-        layout="vertical"
-        title="Layout Variable"
-        summary={
-          <Paragraph>
-            Select a variable to use to position the nodes for this preset.
-          </Paragraph>
-        }
-      >
-        <Row>
-          <ValidatedField
-            name="layoutVariable"
-            component={VariablePicker}
-            validation={{ required: true }}
-            componentProps={{
-              entity,
-              type,
-              options: layoutVariablesForSubject,
-              onCreateOption: handleCreateLayoutVariable,
-              variable: layoutVariable,
-            }}
-          />
-        </Row>
-      </Section>
-      <Section
-        title="Group Variable"
-        summary={
-          <Paragraph>
-            Select a categorical variable which will be used to draw convex
-            hulls around nodes.
-          </Paragraph>
-        }
+        title="Node grouping"
+        description="Draw convex hulls around nodes that share a categorical attribute."
         toggleable
         disabled={groupVariablesForSubject.length === 0}
-        startExpanded={hasGroupVariable && groupVariablesForSubject.length > 0}
-        handleToggleChange={handleToggleGroupVariable}
-        layout="vertical"
+        defaultOpen={hasGroupVariable && groupVariablesForSubject.length > 0}
       >
-        <Row>
-          <Paragraph>
-            This feature will draw a semi-transparent convex hull for each
-            categorical value of the variable you select. If a node&apos;s
-            attributes include this categorical value, the hull will be expanded
-            to include the node. If a node has multiple values for this
-            categorical variable, it will appear in multiple overlapping hulls.
-          </Paragraph>
-          <Field
-            name="groupVariable"
-            label="Select a categorical variable for grouping"
-            component={VariablePicker}
-            entity={entity}
-            type={type}
-            variable={groupVariable}
-            options={groupVariablesForSubject}
-            disallowCreation
-          />
-        </Row>
+        <ArchitectField
+          name="groupVariable"
+          label="Grouping attribute"
+          hint={
+            <Paragraph>
+              The selected values draw semi-transparent convex hulls around
+              matching nodes; nodes with multiple values appear in overlapping
+              hulls.
+            </Paragraph>
+          }
+          component={VariablePicker}
+          initialValue={groupVariable ?? undefined}
+          entity={entity}
+          type={type}
+          options={groupVariablesForSubject}
+          disallowCreation
+        />
       </Section>
       <Section
-        title="Display Edges"
+        title="Displayed edges"
+        description="Select the edge types shown in this visualization preset."
         toggleable
-        startExpanded={hasDisplayEdges && edgesForSubject.length > 0}
-        handleToggleChange={handleToggleDisplayEdges}
+        defaultOpen={hasDisplayEdges && edgesForSubject.length > 0}
         disabled={edgesForSubject.length === 0}
-        summary={
-          <Paragraph>
-            Select one or more edge types to display on this narrative preset.
-          </Paragraph>
-        }
-        layout="vertical"
       >
-        <Row>
-          <Field
-            name="edges.display"
-            component={FrescoReduxField}
-            fieldComponent={FrescoCheckboxGroupField}
-            label="Edge types"
-            options={edgesForSubject}
-          />
-        </Row>
+        <ArchitectField
+          name="edges.display"
+          component={CheckboxGroupField}
+          label="Edge types"
+          initialValue={edges?.display ?? []}
+          options={edgesForSubject}
+        />
       </Section>
       <Section
-        title="Highlight Node Attributes"
-        summary={
-          <Paragraph>
-            Select one or more boolean variables below. Nodes whose value is
-            &quot;true&quot; for this variable will be highlighted when this
-            preset is active.
-          </Paragraph>
-        }
+        title="Node highlighting"
+        description="Highlight nodes whose selected boolean attributes are true."
         toggleable
-        startExpanded={
+        defaultOpen={
           hasHighlightVariables && highlightVariablesForSubject.length > 0
         }
         disabled={highlightVariablesForSubject.length === 0}
-        handleToggleChange={handleToggleHighlightVariables}
-        layout="vertical"
       >
-        <Row>
-          <Field
-            name="highlight"
-            component={FrescoReduxField}
-            fieldComponent={FrescoCheckboxGroupField}
-            label="Select one or more boolean variables"
-            options={highlightVariablesForSubject}
-          />
-        </Row>
+        <ArchitectField
+          name="highlight"
+          component={CheckboxGroupField}
+          label="Highlight attributes"
+          initialValue={highlight ?? []}
+          options={highlightVariablesForSubject}
+        />
       </Section>
     </>
   );
 };
-export default compose<
-  PresetFieldsProps,
-  {
-    entity: string;
-    type: string;
-    form: string;
-  }
->(withPresetProps)(PresetFields) as unknown as React.ComponentType<{
-  entity: string;
-  type: string;
-  form: string;
-}>;
+
+export default PresetFields;

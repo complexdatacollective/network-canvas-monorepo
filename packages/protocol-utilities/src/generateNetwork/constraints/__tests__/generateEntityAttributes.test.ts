@@ -27,6 +27,17 @@ import { UniqueRegistry } from '../uniqueRegistry';
 
 const TODAY = '2026-07-27';
 
+function requiredAttribute(
+  attributes: Readonly<Record<string, VariableValue>>,
+  name: string,
+): VariableValue {
+  const value = attributes[name];
+  if (value === undefined) {
+    throw new Error(`Expected generated attribute ${name}`);
+  }
+  return value;
+}
+
 function makeContext(seed = 1): GenerationContext {
   return {
     codebook: {},
@@ -369,7 +380,7 @@ describe('generateEntityAttributes', () => {
         variableNames: ['Second Choice'],
         rules: ['minSelected', 'maxSelected', 'differentFrom'],
         reason:
-          'no value satisfies these rules alongside the values chosen for the variables they refer to',
+          'no value satisfies these rules alongside the values chosen for the attributes they refer to',
       },
     ]);
   });
@@ -1373,7 +1384,7 @@ describe('generateEntityAttributes', () => {
         index,
       );
       expect(Number(attrs.b)).toBeGreaterThan(Number(attrs.a));
-      issued.push(attrs.b ?? null);
+      issued.push(requiredAttribute(attrs, 'b'));
     }
 
     expect(new Set(issued).size).toBe(issued.length);
@@ -1411,12 +1422,15 @@ describe('generateEntityAttributes', () => {
     for (let index = 0; index < 20 && !refused; index++) {
       try {
         issued.push(
-          generateEntityAttributes(
-            entity,
-            ctx,
-            { entity: 'node', type: 'person' },
-            index,
-          ).b ?? null,
+          requiredAttribute(
+            generateEntityAttributes(
+              entity,
+              ctx,
+              { entity: 'node', type: 'person' },
+              index,
+            ),
+            'b',
+          ),
         );
       } catch (error) {
         expect(error).toBeInstanceOf(SyntheticDataConstraintError);
@@ -1660,7 +1674,7 @@ describe('generateEntityAttributes', () => {
       { entity: 'node', type: 'place' },
       0,
       {
-        existing: { band: place.band ?? null },
+        existing: { band: requiredAttribute(place, 'band') },
         only: new Set(['band']),
       },
     );

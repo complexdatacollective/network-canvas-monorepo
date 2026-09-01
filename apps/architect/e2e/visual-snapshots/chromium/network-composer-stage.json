@@ -1,18 +1,18 @@
 {
   "label": "Build Your Network",
+  "id": "id-1",
+  "type": "NetworkComposer",
+  "subject": {
+    "entity": "node",
+    "type": "id-2"
+  },
+  "quickAdd": "id-3",
+  "layoutVariable": "id-4",
   "behaviours": {
     "automaticLayout": true
   },
-  "type": "NetworkComposer",
   "background": {
-    "skewedTowardCenter": false,
-    "concentricCircles": 4
-  },
-  "subject": {
-    "type": "id-1",
-    "entity": "node"
-  },
-  "quickAdd": "id-2",
-  "layoutVariable": "id-3",
-  "id": "id-4"
+    "concentricCircles": 4,
+    "skewedTowardCenter": false
+  }
 }

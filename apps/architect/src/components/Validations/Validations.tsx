@@ -1,143 +1,401 @@
-import { keys as getKeys, isNull, toPairs } from 'es-toolkit/compat';
-import { Plus } from 'lucide-react';
+import { isEqual, map, omit } from 'es-toolkit/compat';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import {
-  useId,
-  useMemo,
-  useState,
-  type ReactNode,
-  type ComponentProps,
-} from 'react';
-import { Field } from 'redux-form';
-
-import Button from '@codaco/fresco-ui/Button';
-import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
+  controlVariants,
+  groupSpacingVariants,
+  inputControlVariants,
+} from '@codaco/fresco-ui/styles/controlVariants';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import { compose } from '@codaco/fresco-ui/utils/cva';
 import type { Variable } from '@codaco/protocol-validation';
+import { cx } from '~/utils/cva';
 
+import ArchitectField from '../Form/ArchitectField';
 import {
   findDraftContradictions,
   findLegalReferenceTargets,
-  floorIssue,
 } from './contradictions';
-import { isValidationWithListValue } from './options';
-import Validation from './Validation';
+import {
+  getGroupedValidationsForVariableType,
+  isValidationWithListValue,
+  isValidationWithNumberValue,
+  isValidationWithoutValue,
+  type ValidationGroup,
+} from './options';
+import {
+  completeRuleValues,
+  floorIssue,
+  formatCommitted,
+  incompleteRuleIssue,
+  isRuleValueComplete,
+  parseForRule,
+  type ValidationMap,
+} from './ruleValue';
+import { ruleMapIssue, type RuleMapContext } from './validateRuleMap';
+import ValidationRule, { type TargetOption } from './ValidationRule';
 
-// redux-form calls a field validator with the field's raw value, which is null
-// or undefined until the field holds one.
-type ValidationsValue = Record<string, unknown> | null | undefined;
+// `initialValue` is a register-effect dependency (`useField`'s registration
+// effect): an absent committed value must fall back to a REFERENTIALLY STABLE
+// empty object, not a fresh `{}` literal recreated every render — the latter
+// re-registers the field on every render of a parent that also happens to
+// re-render for an unrelated reason (e.g. a sibling `errors` update), which
+// silently drops any error the store had just attached to this field name.
+const EMPTY_VALIDATION: ValidationMap = {};
 
-const validate = (validations: ValidationsValue): string | undefined => {
-  const values = toPairs(validations ?? {});
+const EMPTY_KEYS: ReadonlySet<string> = new Set();
 
-  const check = values.reduce((acc: string[], [key, value]) => {
-    if (!isNull(value)) {
-      return acc;
+const NUMERIC_RULE_DEFAULTS: Readonly<Record<string, number>> = {
+  minLength: 1,
+  maxLength: 1,
+  minValue: 0,
+  maxValue: 0,
+  minSelected: 1,
+  maxSelected: 1,
+};
+
+const OPPOSITE_BOUND: Readonly<Record<string, string>> = {
+  minLength: 'maxLength',
+  maxLength: 'minLength',
+  minValue: 'maxValue',
+  maxValue: 'minValue',
+  minSelected: 'maxSelected',
+  maxSelected: 'minSelected',
+};
+
+/**
+ * A numeric rule starts valid and useful instead of briefly entering the form
+ * as `null`. If its opposite bound already exists, matching that value keeps
+ * the pair satisfiable; otherwise counts start at one and scalar bounds at
+ * zero.
+ */
+const initialNumericRuleValue = (
+  ruleKey: string,
+  rules: ValidationMap,
+): number => {
+  const oppositeValue = rules[OPPOSITE_BOUND[ruleKey] ?? ''];
+  return typeof oppositeValue === 'number'
+    ? oppositeValue
+    : (NUMERIC_RULE_DEFAULTS[ruleKey] ?? 0);
+};
+
+/**
+ * The passphrase substitute codebook. Stable at module scope because
+ * `findDraftContradictions` caches its draft-free baseline run in a WeakMap
+ * keyed by this very object — a fresh `{}` per call would miss that cache on
+ * every keystroke.
+ */
+const NO_VARIABLES: Record<string, unknown> = {};
+
+const isRecord = (value: unknown): value is ValidationMap =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * Whether `rules` holds `ruleKey` as an ON rule. A value-less rule's entry IS
+ * its switch state: the schema types `required`/`unique` as
+ * `z.boolean().optional()`, so an explicit `false` — which an imported or
+ * hand-edited protocol may carry, and which the contradiction analyser reads
+ * as off (it gates on `required === true`) — is an OFF rule, not an on one
+ * whose value happens to be absent. Key presence alone would render it on and
+ * then parse the displayed rule as `true`, inventing a contradiction the
+ * saved protocol does not have.
+ *
+ * A VALUE-taking rule is on as soon as its key is present, `null` included:
+ * that is how a switched-on-but-unanswered row is carried (see `handleToggle`).
+ */
+const holdsRule = (rules: ValidationMap, ruleKey: string) =>
+  Object.hasOwn(rules, ruleKey) &&
+  (!isValidationWithoutValue(ruleKey) || rules[ruleKey] === true);
+
+type CheckDraft = (ruleKey: string, ruleValue: unknown) => string[];
+
+type RuleListProps = {
+  groups: ValidationGroup[];
+  committed: ValidationMap;
+  update: (value: ValidationMap) => void;
+  checkDraft: CheckDraft;
+  legalTargetsByRule: ReadonlyMap<string, Set<string>>;
+  existingVariableOptions: TargetOption[];
+  candidateCount: number;
+  uniqueValueCount?: number;
+  /**
+   * The `validation` field's current form error, or `undefined` while it has
+   * none. Each new reason marks the rows that are unanswered AT THAT MOMENT
+   * as ones the researcher has been told about — see `revealedIncomplete`.
+   */
+  fieldErrorToken?: string;
+  /**
+   * Whether leaving an unanswered value control should reveal its error. True
+   * only on a surface that has no save to object WITH —
+   * `CodebookVariableValidationSection` writes complete rules to the codebook
+   * on every change, but a newly focused picker still gets a chance to be
+   * answered before it is marked invalid.
+   */
+  revealIncompleteOnBlur?: boolean;
+};
+
+const RuleList = ({
+  groups,
+  committed,
+  update,
+  checkDraft,
+  legalTargetsByRule,
+  existingVariableOptions,
+  candidateCount,
+  uniqueValueCount,
+  fieldErrorToken,
+  revealIncompleteOnBlur = false,
+}: RuleListProps) => {
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+
+  /**
+   * Rules the researcher has already been TOLD are unanswered.
+   *
+   * Naming a rule as unanswered the instant it is switched on would scold
+   * them before they have interacted with its value control. A row only says
+   * so once that control has been left empty, or a save has objected while the
+   * row was unanswered. Membership is per rule, not a single form-wide flag:
+   * a rule switched on AFTER a refusal has not been objected to yet, and must
+   * not inherit the standing complaint about a different one.
+   */
+  const [revealedIncomplete, setRevealedIncomplete] =
+    useState<ReadonlySet<string>>(EMPTY_KEYS);
+  const committedRef = useRef(committed);
+  committedRef.current = committed;
+
+  useEffect(() => {
+    if (fieldErrorToken === undefined) {
+      setRevealedIncomplete((current) =>
+        current.size === 0 ? current : EMPTY_KEYS,
+      );
+      return;
     }
-    acc.push(key);
-    return acc;
-  }, []);
+    setRevealedIncomplete((current) => {
+      const next = new Set(current);
+      for (const [ruleKey, value] of Object.entries(committedRef.current)) {
+        if (!isRuleValueComplete(ruleKey, value)) next.add(ruleKey);
+      }
+      return next.size === current.size ? current : next;
+    });
+  }, [fieldErrorToken]);
 
-  if (check.length === 0) {
+  const isOn = (ruleKey: string) => holdsRule(committed, ruleKey);
+
+  const textFor = (ruleKey: string) =>
+    Object.hasOwn(drafts, ruleKey)
+      ? drafts[ruleKey]!
+      : formatCommitted(committed[ruleKey]);
+
+  /**
+   * Every row's typed-but-uncommitted text, applied to the map.
+   *
+   * A number row commits on blur, and the row a researcher is typing in has
+   * not necessarily blurred when another row commits: a stepper settles its
+   * own row on click, and Safari does not move focus to a button at all. Any
+   * commit therefore carries the whole rule list with it, so an edit cannot be
+   * left behind uncommitted while the map moves on without it. Rows that are
+   * no longer present (switched off, or rolled back by an undo) are skipped —
+   * their draft must not resurrect them.
+   */
+  const applyDrafts = (base: ValidationMap): ValidationMap => {
+    const next = { ...base };
+    for (const [ruleKey, text] of Object.entries(drafts)) {
+      if (!Object.hasOwn(next, ruleKey)) continue;
+      next[ruleKey] = parseForRule(ruleKey, text);
+    }
+    return next;
+  };
+
+  /**
+   * Commits exactly what the researcher configured, contradictory or not. The
+   * rule editor used to delete the rule instead whenever its value failed a
+   * check, which destroyed the rule's previous value AND left a map that was
+   * trivially consistent — so every later gate waved the save through. Holding
+   * the value keeps it on screen for correction and gives the `validation`
+   * field something to be invalid about.
+   */
+  const commit = (change: (base: ValidationMap) => ValidationMap) => {
+    const next = change(applyDrafts(committed));
+    setDrafts((current) => (Object.keys(current).length > 0 ? {} : current));
+    if (!isEqual(next, committed)) {
+      update(next);
+    }
+  };
+
+  /**
+   * Switching a rule on writes it into the committed map immediately: `true`
+   * for a value-less rule, a valid initial number for a numeric rule, and
+   * `null` for a comparison rule still waiting on an explicit target. Carrying
+   * the ON state in the value rather than in local component state is what lets
+   * the field validate itself instead of quietly dropping half-configured
+   * rules.
+   */
+  const handleToggle = (ruleKey: string, nextState: boolean) => {
+    if (!nextState) {
+      // Switching a rule off answers the complaint about it, so switching it
+      // back on later starts from silence again.
+      setRevealedIncomplete((current) => {
+        if (!current.has(ruleKey)) return current;
+        const next = new Set(current);
+        next.delete(ruleKey);
+        return next;
+      });
+      commit((base) => omit(base, ruleKey));
+      return;
+    }
+
+    if (isValidationWithoutValue(ruleKey)) {
+      commit((base) => ({ ...base, [ruleKey]: parseForRule(ruleKey, '') }));
+      return;
+    }
+
+    if (isValidationWithNumberValue(ruleKey)) {
+      commit((base) => ({
+        ...base,
+        [ruleKey]: initialNumericRuleValue(ruleKey, base),
+      }));
+      return;
+    }
+
+    commit((base) => ({ ...base, [ruleKey]: null }));
+  };
+
+  const handleTextChange = (ruleKey: string, text: string) => {
+    setDrafts((current) => ({ ...current, [ruleKey]: text }));
+  };
+
+  const handleCommit = (ruleKey: string, text: string) => {
+    commit((base) => ({ ...base, [ruleKey]: parseForRule(ruleKey, text) }));
+  };
+
+  const handleValueExit = (ruleKey: string, text: string) => {
+    handleCommit(ruleKey, text);
+    if (
+      !revealIncompleteOnBlur ||
+      isRuleValueComplete(ruleKey, parseForRule(ruleKey, text))
+    ) {
+      return;
+    }
+    setRevealedIncomplete((current) => {
+      if (current.has(ruleKey)) return current;
+      return new Set(current).add(ruleKey);
+    });
+  };
+
+  const issuesFor = (ruleKey: string): string[] => {
+    if (!isOn(ruleKey)) {
+      return [];
+    }
+    const parsed = parseForRule(ruleKey, textFor(ruleKey));
+    if (!isRuleValueComplete(ruleKey, parsed)) {
+      if (!revealedIncomplete.has(ruleKey)) {
+        return [];
+      }
+      const incomplete = incompleteRuleIssue({ [ruleKey]: parsed });
+      return incomplete ? [incomplete] : [];
+    }
+    const floor = floorIssue(ruleKey, parsed);
+    if (floor) return [floor];
+    return checkDraft(ruleKey, parsed);
+  };
+
+  const hintFor = (ruleKey: string, isUnavailable: boolean) => {
+    if (isUnavailable) {
+      return candidateCount === 0
+        ? 'No other attribute of this type exists to compare against.'
+        : 'Every comparable attribute would make this rule impossible to satisfy.';
+    }
+    if (ruleKey === 'unique' && uniqueValueCount !== undefined) {
+      return `This attribute has only ${uniqueValueCount} possible values. Interview preview will refuse to generate synthetic data if more than ${uniqueValueCount} entities can hold a value while ‘Must be unique’ is enabled.`;
+    }
     return undefined;
-  }
+  };
 
-  return `Validations (${check.join(', ')}) must have values`;
-};
-
-const format = (value: Record<string, unknown> = {}) => toPairs(value);
-
-const getOptionsWithUsedDisabled = (
-  options: ValidationOption[],
-  used: string[],
-) =>
-  options.map((option) => {
-    if (!used.includes(option.value)) {
-      return option;
+  const targetOptionsFor = (ruleKey: string) => {
+    const legal = legalTargetsByRule.get(ruleKey);
+    if (!legal) {
+      return existingVariableOptions;
     }
-    return { ...option, disabled: true };
-  });
-
-const AddItem = (props: ComponentProps<typeof Button>) => (
-  <Button
-    color="primary"
-    icon={<Plus />}
-    className="self-start"
-    // eslint-disable-next-line react/jsx-props-no-spreading
-    {...props}
-  >
-    Add new
-  </Button>
-);
-
-type ValidationOption = {
-  label: string;
-  value: string;
-  disabled?: boolean;
-};
-
-type ValidationsFieldProps = {
-  input: {
-    value: Array<[string, string | number | boolean | null]>;
+    const selected = textFor(ruleKey);
+    return existingVariableOptions.filter(
+      (option) => option.value === selected || legal.has(option.value),
+    );
   };
-  options?: ValidationOption[];
-  existingVariables: Record<string, Pick<Variable, 'name' | 'type'>>;
-  meta: {
-    submitFailed: boolean;
-    error?: string;
-  };
-  children?: ReactNode;
-  editingKey: string | null;
-  onEditKey: (key: string | null) => void;
-  onUpdate?: (key: string, value: unknown, itemKey: string) => void;
-  onDelete?: (itemKey: string) => void;
-};
 
-const ValidationsField = ({
-  input,
-  options = [],
-  existingVariables,
-  meta: { submitFailed, error },
-  children = null,
-  editingKey,
-  onEditKey,
-  ...rest
-}: ValidationsFieldProps) => {
-  const hasError = !!(submitFailed && error);
-  const errorId = useId();
+  const variants = compose(
+    controlVariants,
+    inputControlVariants,
+    groupSpacingVariants,
+  );
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-col gap-5">
-        {input.value.map(([key, value]) => (
-          <Validation
-            key={key}
-            itemKey={key}
-            itemValue={value}
-            options={options}
-            existingVariables={existingVariables}
-            isBeingEdited={key === editingKey}
-            onEdit={() => onEditKey(key)}
-            onCancel={() => onEditKey(null)}
-            // eslint-disable-next-line react/jsx-props-no-spreading
-            {...rest}
-          />
-        ))}
-        {children}
-      </div>
-      <FieldErrors id={errorId} errors={error ? [error] : []} show={hasError} />
+    <div className="flex w-full flex-col">
+      {groups.map((group) => (
+        <fieldset
+          key={group.id}
+          className={cx(
+            variants(),
+            'relative my-4 flex w-full min-w-0 flex-col overflow-visible whitespace-normal',
+            // When last item, remove bottom margin to avoid double spacing with the next section
+            'last:mb-0',
+          )}
+        >
+          <legend className="bg-input absolute -top-4 left-6 z-10 rounded px-4 py-1 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-1/2 before:rounded-t before:border-x-2 before:border-t-2 before:content-['']">
+            <Heading level="label">{group.heading}</Heading>
+          </legend>
+          <div className="flex w-full flex-col gap-4 pt-4">
+            {group.rules.map((rule) => {
+              const on = isOn(rule.value);
+              const isUnavailable =
+                !on &&
+                isValidationWithListValue(rule.value) &&
+                (legalTargetsByRule.get(rule.value)?.size ?? 0) === 0;
+
+              return (
+                <ValidationRule
+                  key={rule.value}
+                  ruleKey={rule.value}
+                  label={rule.label}
+                  isOn={on}
+                  isUnavailable={isUnavailable}
+                  hint={hintFor(rule.value, isUnavailable)}
+                  text={textFor(rule.value)}
+                  issues={issuesFor(rule.value)}
+                  targetOptions={targetOptionsFor(rule.value)}
+                  onToggle={handleToggle}
+                  onTextChange={handleTextChange}
+                  onCommit={handleCommit}
+                  onValueExit={handleValueExit}
+                />
+              );
+            })}
+          </div>
+        </fieldset>
+      ))}
     </div>
   );
 };
 
-type ValidationsProps = {
-  name: string;
-  validationOptions?: ValidationOption[];
-  value?: Record<string, unknown>;
-  addNew: boolean;
-  setAddNew: (value: boolean) => void;
-  handleChange: (key: string, value: unknown, itemKey: string) => void;
-  handleDelete: (itemKey: string) => void;
-  handleAddNew: (key: string, value: unknown, itemKey: string) => void;
-  existingVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
+type ValidationsFieldProps = {
+  /** The field's resolved name, supplied by `Field` — see `getFieldErrors`. */
+  name?: string;
+  value?: ValidationMap;
+  onChange?: (value: ValidationMap) => void;
+  entity?: string;
+  scopeId?: string;
+  existingVariables: Record<string, Pick<Variable, 'name' | 'type'>>;
+  variableType?: string;
+  allVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
+  currentVariableId?: string;
+  draftOptions?: unknown;
+  draftComponent?: unknown;
+  draftParameters?: unknown;
+  draftVariableName?: unknown;
+  revealIncompleteOnBlur?: boolean;
+};
+
+type RuleMapContextInput = {
   variableType?: string;
   allVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
   currentVariableId?: string;
@@ -147,16 +405,14 @@ type ValidationsProps = {
   draftVariableName?: unknown;
 };
 
-const Validations = ({
-  name,
-  validationOptions = [],
-  existingVariables = {},
-  value = {},
-  addNew,
-  setAddNew,
-  handleChange,
-  handleDelete,
-  handleAddNew,
+/**
+ * The one place the analyser's inputs are assembled, shared by the row-level
+ * check, the reference-target picker and the field-level validator so the
+ * three can never judge different drafts. The Anonymisation passphrase is not
+ * a codebook variable, so it is analysed as a lone text surrogate — which is
+ * what keeps the local length-pair check working there.
+ */
+const ruleMapContextFor = ({
   variableType,
   allVariables,
   currentVariableId,
@@ -164,18 +420,101 @@ const Validations = ({
   draftComponent,
   draftParameters,
   draftVariableName,
-}: ValidationsProps) => {
-  // Only one row (existing or the "add new" draft) is ever open for editing
-  // at a time.
-  const [editingKey, setEditingKey] = useState<string | null>(null);
-  const usedOptions = getKeys(value);
+}: RuleMapContextInput): RuleMapContext => {
+  const isPassphrase = variableType === 'passphrase';
+  return {
+    allVariables: isPassphrase ? NO_VARIABLES : (allVariables ?? NO_VARIABLES),
+    currentVariableId: currentVariableId ?? '',
+    variableType: isPassphrase ? 'text' : (variableType ?? ''),
+    options: draftOptions,
+    component: draftComponent,
+    parameters: draftParameters,
+    draftVariableName,
+  };
+};
+
+/**
+ * The `withStoreState`/`withAddNew`/`withUpdateHandlers` HOC stack collapsed
+ * into the field component itself: `value`/`onChange` (from `ArchitectField`)
+ * replace the old `formValueSelector`/`change` reads and writes, and the rule
+ * list's uncommitted row state — previously spread across `withState`
+ * injections — is local state inside `RuleList`.
+ */
+const ValidationsField = ({
+  name = 'validation',
+  value,
+  onChange,
+  entity,
+  scopeId,
+  existingVariables,
+  variableType,
+  allVariables,
+  currentVariableId,
+  draftOptions,
+  draftComponent,
+  draftParameters,
+  draftVariableName,
+  revealIncompleteOnBlur,
+}: ValidationsFieldProps) => {
+  const committed = isRecord(value) ? value : EMPTY_VALIDATION;
+
+  const validationGroups = useMemo(
+    () =>
+      getGroupedValidationsForVariableType(variableType ?? '', entity ?? ''),
+    [variableType, entity],
+  );
+
+  const context = useMemo(
+    () =>
+      ruleMapContextFor({
+        variableType,
+        allVariables,
+        currentVariableId,
+        draftOptions,
+        draftComponent,
+        draftParameters,
+        draftVariableName,
+      }),
+    [
+      variableType,
+      allVariables,
+      currentVariableId,
+      draftOptions,
+      draftComponent,
+      draftParameters,
+      draftVariableName,
+    ],
+  );
+
+  // The reason the save was refused, as the form store holds it. Read here
+  // rather than passed in: this field is nested in whichever form surrounds
+  // it (a row-editor dialog, the stage form, or the codebook section's own
+  // isolated form) and the error always lands on this field's own name.
+  const fieldErrors = useFormStore((store) => store.getFieldErrors(name));
+  const fieldErrorToken =
+    fieldErrors && fieldErrors.length > 0 ? fieldErrors.join('|') : undefined;
+
+  // A standing objection has to keep up with the map it is about. Editing a
+  // rule row does not blur OUT of this field — every rule row is inside it —
+  // so nothing else revalidates, and the message would go on naming a value
+  // that is no longer on screen. Only ever while an error already stands: the
+  // first one is the save's to raise, not this field's to volunteer.
+  const validateField = useFormStore((store) => store.validateField);
+  const revalidatedFor = useRef<ValidationMap | undefined>(undefined);
+  useEffect(() => {
+    if (fieldErrorToken === undefined) {
+      revalidatedFor.current = undefined;
+      return;
+    }
+    if (revalidatedFor.current === committed) return;
+    revalidatedFor.current = committed;
+    void validateField(name);
+  }, [committed, fieldErrorToken, name, validateField]);
 
   const uniqueValueCount = useMemo(() => {
     if (variableType !== 'boolean' && variableType !== 'ordinal') {
       return undefined;
     }
-    const isRecord = (v: unknown): v is Record<string, unknown> =>
-      typeof v === 'object' && v !== null && !Array.isArray(v);
     const current = allVariables?.[currentVariableId ?? ''];
     const storedOptions =
       isRecord(current) && 'options' in current ? current.options : undefined;
@@ -203,182 +542,189 @@ const Validations = ({
   }, [variableType, draftOptions, allVariables, currentVariableId]);
 
   const checkDraft = useMemo(
-    () =>
-      (
-        ruleKey: string,
-        ruleValue: unknown,
-        replacingKey?: string,
-      ): string[] => {
-        // R1 floor check runs ahead of the contradiction analyser: a
-        // below-floor value is input the schema would reject outright, so
-        // there is no point feeding it into findDraftContradictions.
-        const floor = floorIssue(ruleKey, ruleValue);
-        if (floor) return [floor];
-        const prospective: Record<string, unknown> = { ...value };
-        if (replacingKey && replacingKey !== ruleKey) {
-          delete prospective[replacingKey];
-        }
-        prospective[ruleKey] = ruleValue;
-        // The Anonymisation passphrase is not a codebook variable; a text
-        // surrogate lets the local length-pair check still apply.
-        const isPassphrase = variableType === 'passphrase';
+    (): CheckDraft =>
+      (ruleKey: string, ruleValue: unknown): string[] => {
+        // Unanswered rules are stripped before the analyser sees the map: a
+        // `null` is "switched on, not typed into yet", and the analyser would
+        // read it as a bound.
+        const prospective = completeRuleValues({
+          ...committed,
+          [ruleKey]: ruleValue,
+        });
         return findDraftContradictions({
-          allVariables: isPassphrase ? {} : (allVariables ?? {}),
-          currentVariableId: currentVariableId ?? '',
-          variableType: isPassphrase ? 'text' : (variableType ?? ''),
+          ...context,
           validation: prospective,
-          options: draftOptions,
-          // Nineteenth-wave Finding 4: without these the row check analysed
-          // the COMMITTED variable, so a parameters edit and a new reference
-          // rule made in the same dialog session disagreed with the
-          // form-level validator — the row rejected an edit that saves
-          // perfectly well once the dialog is closed and reopened.
-          component: draftComponent,
-          parameters: draftParameters,
-          draftVariableName,
         }).map((contradiction) => contradiction.message);
       },
-    [
-      value,
-      allVariables,
-      currentVariableId,
-      variableType,
-      draftOptions,
-      draftComponent,
-      draftParameters,
-      draftVariableName,
-    ],
+    [committed, context],
   );
 
-  // Twenty-third-wave Finding 3: the reference-target dropdown needs the
-  // legal candidates for one rule, not just one candidate at a time — see
-  // findLegalReferenceTargets for why that can be answered in one shared
-  // analysis pass instead of one `checkDraft` call per candidate.
-  const findLegalTargets = useMemo(
+  const candidateIds = useMemo(
+    () => Object.keys(existingVariables),
+    [existingVariables],
+  );
+
+  const existingVariableOptions = useMemo(
     () =>
-      (
-        ruleKey: string,
-        candidateIds: string[],
-        replacingKey?: string,
-      ): Set<string> => {
-        const isPassphrase = variableType === 'passphrase';
-        return findLegalReferenceTargets({
-          allVariables: isPassphrase ? {} : (allVariables ?? {}),
-          currentVariableId: currentVariableId ?? '',
-          variableType: isPassphrase ? 'text' : (variableType ?? ''),
-          validation: value,
+      map(existingVariables, (variableValue, variableKey) => ({
+        label: variableValue.name,
+        value: variableKey,
+      })),
+    [existingVariables],
+  );
+
+  const referenceRuleKeys = useMemo(
+    () =>
+      validationGroups
+        .flatMap((group) => group.rules.map((rule) => rule.value))
+        .filter(isValidationWithListValue),
+    [validationGroups],
+  );
+
+  // Twenty-seventh-wave Finding 1: one shared, UnionFind-batched analysis pass
+  // per reference RULE — never one per candidate, which made rendering this
+  // section quadratic in codebook size. The same Set answers both questions
+  // the list asks: "may this rule be switched on at all" (is it non-empty)
+  // and "which targets may it offer" (the set itself).
+  const legalTargetsByRule = useMemo(() => {
+    // As in `checkDraft`: the picker's baseline is the map as it would be
+    // saved, so an unanswered row contributes nothing to it.
+    const validation = completeRuleValues(committed);
+    const byRule = new Map<string, Set<string>>();
+    for (const ruleKey of referenceRuleKeys) {
+      byRule.set(
+        ruleKey,
+        findLegalReferenceTargets({
+          ...context,
+          validation,
           ruleKey,
-          replacingKey,
           candidateIds,
-          options: draftOptions,
-          component: draftComponent,
-          parameters: draftParameters,
-          draftVariableName,
-        });
-      },
-    [
-      value,
-      allVariables,
-      currentVariableId,
-      variableType,
-      draftOptions,
-      draftComponent,
-      draftParameters,
-      draftVariableName,
-    ],
-  );
-
-  // A reference rule (e.g. "Same as") is disabled in the dropdown once no
-  // existing variable could legally serve as its target.
-  //
-  // Twenty-seventh-wave Finding 1: this used to call `checkDraft` once per
-  // candidate variable per unused reference rule, and each call re-ran
-  // `findDraftContradictions` over the WHOLE record — O(rule types ×
-  // variable count) analyser passes, each itself O(variable count), so
-  // rendering this section was quadratic in codebook size and could freeze
-  // Architect on large protocols. `findLegalTargets` answers "does this rule
-  // have any legal target at all" for every candidate in one shared,
-  // UnionFind-batched analysis pass (see findLegalReferenceTargets) — the
-  // same path the target dropdown itself already uses — so a rule is enabled
-  // exactly when that set is non-empty.
-  const candidateIds = Object.keys(existingVariables);
-  const availableOptions = getOptionsWithUsedDisabled(
-    validationOptions,
-    usedOptions,
-  ).map((option) => {
-    if (option.disabled || !isValidationWithListValue(option.value)) {
-      return option;
+        }),
+      );
     }
-    const hasLegalTarget =
-      findLegalTargets(option.value, candidateIds, editingKey ?? undefined)
-        .size > 0;
-    return hasLegalTarget ? option : { ...option, disabled: true };
-  });
-  // Twenty-first-wave Finding 5: when all unused validation rules are
-  // reference rules with no legal target, the options map disables every
-  // remaining option, but isFull below still compared only the number of used
-  // rules with the total option count. Treat disabled unused options as
-  // unavailable when deciding whether another rule can be added.
-  const enabledUnusedOptions = availableOptions.filter(
-    (option) => !option.disabled && !usedOptions.includes(option.value),
-  );
-  const isFull = enabledUnusedOptions.length === 0;
-  const isEditingSomething = addNew || editingKey !== null;
-
-  const handleSaveExisting = (
-    key: string,
-    itemValue: unknown,
-    itemKey: string,
-  ) => {
-    handleChange(key, itemValue, itemKey);
-    setEditingKey(null);
-  };
-
-  const handleDeleteExisting = (itemKey: string) => {
-    handleDelete(itemKey);
-    setEditingKey((current) => (current === itemKey ? null : current));
-  };
-
-  const handleStartAddNew = () => {
-    setEditingKey(null);
-    setAddNew(true);
-  };
+    return byRule;
+  }, [referenceRuleKeys, candidateIds, committed, context]);
 
   return (
     <div className="flex w-full flex-col gap-5 [--rule-bg:oklch(var(--slate-blue))] [&_button]:m-0">
-      <Field
-        name={name}
-        component={ValidationsField}
-        format={format}
-        options={availableOptions}
-        existingVariables={existingVariables}
-        onUpdate={handleSaveExisting}
-        onDelete={handleDeleteExisting}
-        editingKey={editingKey}
-        onEditKey={setEditingKey}
-        validate={validate}
+      <RuleList
+        key={`${scopeId ?? ''}|${currentVariableId ?? ''}|${variableType ?? ''}|${entity ?? ''}`}
+        groups={validationGroups}
+        committed={committed}
+        update={(next) => onChange?.(next)}
         checkDraft={checkDraft}
-        findLegalTargets={findLegalTargets}
+        legalTargetsByRule={legalTargetsByRule}
+        existingVariableOptions={existingVariableOptions}
+        candidateCount={candidateIds.length}
         uniqueValueCount={uniqueValueCount}
-      >
-        {addNew && (
-          <Validation
-            isBeingEdited
-            onUpdate={handleAddNew}
-            onCancel={() => setAddNew(false)}
-            options={availableOptions}
-            existingVariables={existingVariables}
-            checkDraft={checkDraft}
-            findLegalTargets={findLegalTargets}
-            uniqueValueCount={uniqueValueCount}
-          />
-        )}
-      </Field>
-
-      {!isFull && (
-        <AddItem onClick={handleStartAddNew} disabled={isEditingSomething} />
-      )}
+        fieldErrorToken={fieldErrorToken}
+        revealIncompleteOnBlur={revealIncompleteOnBlur}
+      />
     </div>
+  );
+};
+
+type ValidationsProps = {
+  name: string;
+  /** The committed validation record, for the field's `initialValue`. */
+  initialValue?: ValidationMap;
+  existingVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
+  variableType?: string;
+  entity?: string;
+  /**
+   * Identity of whatever owns these rules when it is not a codebook variable —
+   * the Anonymisation passphrase belongs to a stage. Scopes the rule list's
+   * uncommitted row state, which `currentVariableId` cannot scope there.
+   */
+  scopeId?: string;
+  allVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
+  currentVariableId?: string;
+  /**
+   * Sibling draft values from whatever form surrounds this field — read (and
+   * kept reactive) by the caller, since this component may be nested inside
+   * the field-editor dialog (where they are live sibling fields) or inside
+   * `CodebookVariableValidationSection`'s isolated form (where they are not
+   * fields at all, just the committed variable's own values).
+   */
+  draftOptions?: unknown;
+  draftComponent?: unknown;
+  draftParameters?: unknown;
+  draftVariableName?: unknown;
+  /**
+   * Set by a host that writes every change straight through rather than
+   * collecting them for a save — `CodebookVariableValidationSection`. There
+   * being no save to refuse, an unanswered rule is reported when the user
+   * leaves its value control empty; complete rules are written immediately.
+   */
+  commitsImmediately?: boolean;
+};
+
+/**
+ * A validation-rule editor bound to one stage or codebook-variable form
+ * field. Renders the whole `Record<ruleName, value>` as ONE opaque field
+ * value (the same governing rule every array/record field follows in this
+ * migration) — individual rows are rendered from that value locally, never
+ * registered as their own form fields.
+ *
+ * Save-backed hosts validate the field's OWN value (`ruleMapIssue`) and refuse
+ * an unanswered or contradictory map through the ordinary `validateForm`
+ * path. The codebook section has no save boundary, so it omits field-level
+ * validation and uses the same predicate before each direct write instead;
+ * this prevents one blurred rule from making later untouched rules inherit
+ * its form-field error. Row errors keep `aria-invalid` and
+ * `aria-describedby` attached to the exact control that needs correction.
+ */
+const Validations = ({
+  name,
+  initialValue,
+  existingVariables = {},
+  variableType,
+  entity,
+  scopeId,
+  allVariables,
+  currentVariableId,
+  draftOptions,
+  draftComponent,
+  draftParameters,
+  draftVariableName,
+  commitsImmediately = false,
+}: ValidationsProps): ReactNode => {
+  const context = ruleMapContextFor({
+    variableType,
+    allVariables,
+    currentVariableId,
+    draftOptions,
+    draftComponent,
+    draftParameters,
+    draftVariableName,
+  });
+  // Rebuilt every render, which is free: `useValidationProps` keeps ONE
+  // `custom` entry for the field's lifetime and reads the current config
+  // through a ref, so a fresh closure never re-registers the field.
+  const validation = {
+    ruleMap: (ruleMap: unknown) => ruleMapIssue(ruleMap, context),
+  };
+
+  return (
+    <ArchitectField
+      name={name}
+      component={ValidationsField}
+      label="Validation rules"
+      hint="Enable one or more validation rules to apply to this attribute."
+      initialValue={initialValue ?? EMPTY_VALIDATION}
+      validation={commitsImmediately ? undefined : validation}
+      revealIncompleteOnBlur={commitsImmediately}
+      existingVariables={existingVariables}
+      variableType={variableType}
+      entity={entity}
+      scopeId={scopeId}
+      allVariables={allVariables}
+      currentVariableId={currentVariableId}
+      draftOptions={draftOptions}
+      draftComponent={draftComponent}
+      draftParameters={draftParameters}
+      draftVariableName={draftVariableName}
+    />
   );
 };
 

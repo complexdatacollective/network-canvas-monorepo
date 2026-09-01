@@ -1,0 +1,780 @@
+// @vitest-environment jsdom
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { useSyncExternalStore } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { rpcClient } from '../../lib/api.ts';
+import { authClient } from '../../lib/auth.ts';
+import { createAppRouter } from '../../router.tsx';
+
+const STAGE_A = '11111111-1111-4111-8111-111111111111';
+const STAGE_B = '22222222-2222-4222-8222-222222222222';
+const queryDraft = vi.hoisted(() => vi.fn());
+const DRAFT = {
+  protocol: {
+    id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    draftId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    name: 'Shell proof',
+    createdAt: new Date('2026-08-28T00:00:00Z'),
+    updatedAt: new Date('2026-08-28T00:00:00Z'),
+  },
+  revision: { sequence: '2', hash: 'revision-2' },
+  sections: {
+    settings: { name: 'Shell proof', schemaVersion: 8 },
+    stageOrder: { stages: [STAGE_A, STAGE_B] },
+    [`stage:${STAGE_A}`]: {
+      id: STAGE_A,
+      type: 'Information',
+      label: 'Welcome',
+      title: 'Welcome',
+      items: [],
+    },
+    [`stage:${STAGE_B}`]: {
+      id: STAGE_B,
+      type: 'Information',
+      label: 'Follow-up',
+      title: 'Follow-up',
+      items: [],
+    },
+    assets: {},
+  },
+};
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((complete) => {
+    resolve = complete;
+  });
+  return { promise, resolve };
+}
+
+vi.mock('../../lib/auth.ts', () => ({
+  authClient: {
+    getSession: vi.fn().mockResolvedValue({ data: { user: {} }, error: null }),
+    useSession: vi.fn().mockReturnValue({
+      data: { user: { name: 'Researcher', email: 'r@example.com' } },
+      isPending: false,
+    }),
+    useListOrganizations: vi.fn().mockReturnValue({
+      data: [],
+      error: null,
+      isPending: false,
+    }),
+    signOut: vi.fn(),
+  },
+}));
+
+vi.mock('../../lib/api.ts', () => ({
+  orpc: {
+    status: {
+      queryOptions: () => ({
+        queryKey: ['status'],
+        queryFn: async () => ({ name: 'Studio', version: 'test' }),
+      }),
+    },
+    protocols: {
+      list: {
+        queryOptions: () => ({
+          queryKey: ['protocols'],
+          queryFn: async () => [],
+        }),
+        key: () => ['protocols'],
+      },
+      create: { mutationOptions: vi.fn() },
+      draft: {
+        queryOptions: () => ({
+          queryKey: ['draft'],
+          queryFn: queryDraft,
+        }),
+        key: () => ['draft'],
+      },
+    },
+  },
+  rpcClient: {
+    protocols: {
+      acquireSection: vi.fn().mockResolvedValue({
+        mode: 'editable',
+        leaseEpoch: '1',
+        nextClientSequence: '1',
+      }),
+      renewSection: vi.fn().mockResolvedValue({ renewed: true }),
+      releaseSection: vi.fn().mockResolvedValue(undefined),
+      draft: vi.fn(),
+      commitSection: vi
+        .fn()
+        .mockResolvedValue({ sequence: '3', hash: 'revision-3' }),
+      addInformationStage: vi
+        .fn()
+        .mockResolvedValue({ sequence: '3', hash: 'r3' }),
+      moveStage: vi.fn().mockResolvedValue({ sequence: '3', hash: 'r3' }),
+    },
+  },
+}));
+
+beforeEach(() => {
+  vi.mocked(authClient.getSession).mockReset();
+  vi.mocked(authClient.getSession).mockResolvedValue({
+    data: { user: {} },
+    error: null,
+  });
+  vi.mocked(authClient.useSession).mockReset();
+  vi.mocked(authClient.useSession).mockReturnValue({
+    data: { user: { name: 'Researcher', email: 'r@example.com' } },
+    isPending: false,
+  } as ReturnType<typeof authClient.useSession>);
+  vi.mocked(authClient.signOut).mockReset();
+  queryDraft.mockReset();
+  queryDraft.mockResolvedValue(DRAFT);
+  vi.mocked(rpcClient.protocols.acquireSection).mockReset();
+  vi.mocked(rpcClient.protocols.acquireSection).mockResolvedValue({
+    mode: 'editable',
+    leaseEpoch: '1',
+    nextClientSequence: '1',
+  });
+  vi.mocked(rpcClient.protocols.renewSection).mockReset();
+  vi.mocked(rpcClient.protocols.renewSection).mockResolvedValue({
+    renewed: true,
+  });
+  vi.mocked(rpcClient.protocols.releaseSection).mockReset();
+  vi.mocked(rpcClient.protocols.releaseSection).mockResolvedValue(undefined);
+  vi.mocked(rpcClient.protocols.commitSection).mockReset();
+  vi.mocked(rpcClient.protocols.commitSection).mockResolvedValue({
+    sequence: '3',
+    hash: 'revision-3',
+  });
+  vi.mocked(rpcClient.protocols.addInformationStage).mockReset();
+  vi.mocked(rpcClient.protocols.addInformationStage).mockResolvedValue({
+    sequence: '3',
+    hash: 'r3',
+  });
+  vi.mocked(rpcClient.protocols.moveStage).mockReset();
+  vi.mocked(rpcClient.protocols.moveStage).mockResolvedValue({
+    sequence: '3',
+    hash: 'r3',
+  });
+  vi.mocked(rpcClient.protocols.draft).mockReset();
+  vi.mocked(rpcClient.protocols.draft).mockResolvedValue(DRAFT);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+function renderEditor() {
+  const router = createAppRouter(
+    createMemoryHistory({
+      initialEntries: [
+        `/teams/team-a/protocols/${DRAFT.protocol.id}/drafts/${DRAFT.protocol.draftId}`,
+      ],
+    }),
+  );
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const result = render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+  return { ...result, queryClient, router };
+}
+
+describe('Studio editor shell', () => {
+  it('provides the outline, editing canvas, inspector, and keyboard reorder actions', async () => {
+    renderEditor();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Protocol outline' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('navigation', { name: 'Protocol sections' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('main')).toHaveAttribute('id', 'main-content');
+    expect(
+      screen.getByRole('heading', { name: 'Inspector' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Viewers')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Move Follow-up up' }));
+    await waitFor(() =>
+      expect(rpcClient.protocols.moveStage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          stageId: STAGE_B,
+          toIndex: 0,
+          expectedRevision: DRAFT.revision.sequence,
+        }),
+      ),
+    );
+  });
+
+  it('sends a coalesced screen-name command through the leased session', async () => {
+    renderEditor();
+    const input = await screen.findByRole('textbox', { name: 'Screen name' });
+    fireEvent.change(input, { target: { value: 'Welcome screen' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save screen' }));
+
+    await waitFor(() =>
+      expect(rpcClient.protocols.commitSection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sectionId: `stage:${STAGE_A}`,
+          commands: [{ op: 'set', key: 'label', value: 'Welcome screen' }],
+        }),
+      ),
+    );
+  });
+
+  it('updates the screen fields when undoing and redoing a saved change', async () => {
+    const firstCommit = deferred<{ sequence: string; hash: string }>();
+    const undoCommit = deferred<{ sequence: string; hash: string }>();
+    const redoCommit = deferred<{ sequence: string; hash: string }>();
+    vi.mocked(rpcClient.protocols.commitSection)
+      .mockReturnValueOnce(firstCommit.promise)
+      .mockReturnValueOnce(undoCommit.promise)
+      .mockReturnValueOnce(redoCommit.promise);
+    renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    const title = screen.getByRole('textbox', { name: 'Page heading' });
+
+    fireEvent.change(label, { target: { value: 'Changed screen' } });
+    fireEvent.change(title, { target: { value: 'Changed heading' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save screen' }));
+
+    await waitFor(() =>
+      expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(1),
+    );
+    await act(async () => {
+      firstCommit.resolve({ sequence: '3', hash: 'revision-3' });
+      await firstCommit.promise;
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Undo' })).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', { name: 'Screen name' })).toHaveValue(
+        'Welcome',
+      );
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'Welcome',
+      );
+    });
+    await waitFor(() =>
+      expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(2),
+    );
+    await act(async () => {
+      undoCommit.resolve({ sequence: '4', hash: 'revision-4' });
+      await undoCommit.promise;
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Redo' }));
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', { name: 'Screen name' })).toHaveValue(
+        'Changed screen',
+      );
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'Changed heading',
+      );
+    });
+    await waitFor(() =>
+      expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(3),
+    );
+    await act(async () => {
+      redoCommit.resolve({ sequence: '5', hash: 'revision-5' });
+      await redoCommit.promise;
+    });
+  });
+
+  it('keeps non-screen outline sections selectable', async () => {
+    renderEditor();
+    await screen.findByRole('heading', { name: 'Welcome' });
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Protocol settings' }),
+    ).toBeInTheDocument();
+
+    const validationButton = await screen.findByRole('button', {
+      name: /protocol valid|validation problems?/i,
+    });
+    fireEvent.click(validationButton);
+    expect(document.getElementById('protocol-problems')).toHaveFocus();
+  });
+
+  it('asks before discarding unsaved screen values during outline navigation', async () => {
+    renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    fireEvent.change(label, { target: { value: 'Unsaved welcome' } });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Follow-upInformation' }),
+    );
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Discard unsaved screen changes?',
+      }),
+    ).toBeInTheDocument();
+    expect(label).toHaveValue('Unsaved welcome');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('heading', {
+          name: 'Discard unsaved screen changes?',
+        }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(label).toHaveValue('Unsaved welcome');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Follow-upInformation' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Screen name' })).toHaveValue(
+        'Follow-up',
+      ),
+    );
+  });
+
+  it('rebases the dirty baseline after a successful save', async () => {
+    const commit = deferred<{ sequence: string; hash: string }>();
+    vi.mocked(rpcClient.protocols.commitSection).mockReturnValueOnce(
+      commit.promise,
+    );
+    renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    fireEvent.change(label, { target: { value: 'Saved welcome' } });
+    const save = screen.getByRole('button', { name: 'Save screen' });
+    fireEvent.click(save);
+
+    await waitFor(() =>
+      expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(1),
+    );
+    await act(async () => {
+      commit.resolve({ sequence: '3', hash: 'revision-3' });
+      await commit.promise;
+    });
+    await waitFor(() => expect(save).toBeEnabled());
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Follow-upInformation' }),
+    );
+
+    expect(
+      screen.queryByRole('heading', {
+        name: 'Discard unsaved screen changes?',
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole('textbox', { name: 'Screen name' }),
+    ).toHaveValue('Follow-up');
+  });
+
+  it('preserves focus on the save control when a successful save rebases the form', async () => {
+    const commit = deferred<{ sequence: string; hash: string }>();
+    vi.mocked(rpcClient.protocols.commitSection).mockReturnValueOnce(
+      commit.promise,
+    );
+    renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    fireEvent.change(label, { target: { value: 'Saved welcome' } });
+    const save = screen.getByRole('button', { name: 'Save screen' });
+    save.focus();
+    expect(save).toHaveFocus();
+    fireEvent.click(save);
+
+    await waitFor(() =>
+      expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(1),
+    );
+    await act(async () => {
+      commit.resolve({ sequence: '3', hash: 'revision-3' });
+      await commit.promise;
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Save screen' })).toHaveFocus(),
+    );
+  });
+
+  it.each(['Screen name', 'Page heading'] as const)(
+    'preserves focus on %s when an Enter-submitted save rebases the form',
+    async (fieldName) => {
+      const commit = deferred<{ sequence: string; hash: string }>();
+      vi.mocked(rpcClient.protocols.commitSection).mockReturnValueOnce(
+        commit.promise,
+      );
+      renderEditor();
+      const field = await screen.findByRole('textbox', { name: fieldName });
+      fireEvent.change(field, { target: { value: 'Saved value' } });
+      field.focus();
+      expect(field).toHaveFocus();
+      const form = field.closest('form');
+      expect(form).not.toBeNull();
+      if (form === null) throw new Error('Screen form was not rendered.');
+      fireEvent.submit(form);
+
+      await waitFor(() =>
+        expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(1),
+      );
+      await act(async () => {
+        commit.resolve({ sequence: '3', hash: 'revision-3' });
+        await commit.promise;
+      });
+
+      await waitFor(() =>
+        expect(screen.getByRole('textbox', { name: fieldName })).toHaveFocus(),
+      );
+    },
+  );
+
+  it.each([
+    { action: 'Undo', expectedCommitCount: 1 },
+    { action: 'Redo', expectedCommitCount: 2 },
+  ] as const)(
+    'disables $action while the screen form has unsaved values',
+    async ({ action, expectedCommitCount }) => {
+      const saveCommit = deferred<{ sequence: string; hash: string }>();
+      const undoCommit = deferred<{ sequence: string; hash: string }>();
+      vi.mocked(rpcClient.protocols.commitSection)
+        .mockReturnValueOnce(saveCommit.promise)
+        .mockReturnValueOnce(undoCommit.promise);
+      renderEditor();
+      const initialLabel = await screen.findByRole('textbox', {
+        name: 'Screen name',
+      });
+      fireEvent.change(initialLabel, {
+        target: { value: 'First saved change' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Save screen' }));
+      await waitFor(() =>
+        expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(1),
+      );
+      await act(async () => {
+        saveCommit.resolve({ sequence: '3', hash: 'revision-3' });
+        await saveCommit.promise;
+      });
+
+      if (action === 'Redo') {
+        const undo = await screen.findByRole('button', { name: 'Undo' });
+        await waitFor(() => expect(undo).toBeEnabled());
+        fireEvent.click(undo);
+        await waitFor(() =>
+          expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(2),
+        );
+        await act(async () => {
+          undoCommit.resolve({ sequence: '4', hash: 'revision-4' });
+          await undoCommit.promise;
+        });
+      }
+
+      const historyAction = await screen.findByRole('button', { name: action });
+      await waitFor(() => expect(historyAction).toBeEnabled());
+      const label = screen.getByRole('textbox', { name: 'Screen name' });
+      fireEvent.change(label, { target: { value: 'Unsaved typing' } });
+
+      await waitFor(() => expect(historyAction).toBeDisabled());
+      expect(historyAction).toHaveAccessibleDescription(
+        'Save or discard your screen changes to use Undo and Redo.',
+      );
+      fireEvent.click(historyAction);
+      expect(label).toHaveValue('Unsaved typing');
+      expect(rpcClient.protocols.commitSection).toHaveBeenCalledTimes(
+        expectedCommitCount,
+      );
+    },
+  );
+
+  it('asks before leaving the editor with unsaved screen values', async () => {
+    const { router } = renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    fireEvent.change(label, { target: { value: 'Unsaved welcome' } });
+
+    fireEvent.click(screen.getByRole('link', { name: 'Back to protocols' }));
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Discard unsaved screen changes?',
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    await waitFor(() =>
+      expect(router.state.location.pathname).toContain('/drafts/'),
+    );
+    expect(label).toHaveValue('Unsaved welcome');
+
+    fireEvent.click(screen.getByRole('link', { name: 'Back to protocols' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+  });
+
+  it('keeps the editor session open when dirty sign-out is cancelled', async () => {
+    const { router } = renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    fireEvent.change(label, { target: { value: 'Unsaved welcome' } });
+    vi.mocked(rpcClient.protocols.releaseSection).mockClear();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Discard unsaved screen changes?',
+      }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('heading', {
+          name: 'Discard unsaved screen changes?',
+        }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(router.state.location.pathname).toContain('/drafts/');
+    expect(label).toHaveValue('Unsaved welcome');
+    expect(rpcClient.protocols.releaseSection).not.toHaveBeenCalled();
+    expect(authClient.signOut).not.toHaveBeenCalled();
+  });
+
+  it('bypasses the dirty blocker when the live session expires', async () => {
+    const sessionLive = {
+      data: { user: { name: 'Researcher', email: 'r@example.com' } },
+      isPending: false,
+    } as ReturnType<typeof authClient.useSession>;
+    const sessionNone = {
+      data: null,
+      isPending: false,
+    } as ReturnType<typeof authClient.useSession>;
+    let currentSession = sessionLive;
+    const listeners = new Set<() => void>();
+    function useReactiveSession() {
+      return useSyncExternalStore(
+        (listener) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+        () => currentSession,
+        () => currentSession,
+      );
+    }
+    vi.mocked(authClient.useSession).mockImplementation(useReactiveSession);
+    const { queryClient, router } = renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    fireEvent.change(label, { target: { value: 'Unsaved welcome' } });
+    queryClient.setQueryData(['private-draft'], { name: 'Private draft' });
+    vi.mocked(authClient.getSession).mockResolvedValue({
+      data: null,
+      error: null,
+    });
+
+    act(() => {
+      currentSession = sessionNone;
+      for (const listener of listeners) listener();
+    });
+
+    await waitFor(() =>
+      expect(queryClient.getQueryData(['private-draft'])).toBeUndefined(),
+    );
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/sign-in'),
+    );
+    expect(
+      screen.queryByRole('heading', {
+        name: 'Discard unsaved screen changes?',
+      }),
+    ).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(rpcClient.protocols.releaseSection).toHaveBeenCalledTimes(1),
+    );
+  });
+
+  it('does not add a screen when dirty-edit confirmation is cancelled', async () => {
+    renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    fireEvent.change(label, { target: { value: 'Unsaved welcome' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Discard unsaved screen changes?',
+      }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('heading', {
+          name: 'Discard unsaved screen changes?',
+        }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(rpcClient.protocols.addInformationStage).not.toHaveBeenCalled();
+    expect(label).toHaveValue('Unsaved welcome');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
+    await waitFor(() =>
+      expect(rpcClient.protocols.addInformationStage).toHaveBeenCalledTimes(1),
+    );
+  });
+
+  it('disables the old screen form while a confirmed add is in flight', async () => {
+    const add = deferred<{ sequence: string; hash: string }>();
+    const refresh = deferred<typeof DRAFT>();
+    vi.mocked(rpcClient.protocols.addInformationStage).mockReturnValueOnce(
+      add.promise,
+    );
+    renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    fireEvent.change(label, { target: { value: 'Discard this value' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
+    await waitFor(() =>
+      expect(rpcClient.protocols.addInformationStage).toHaveBeenCalledTimes(1),
+    );
+
+    expect(label).toBeDisabled();
+    expect(
+      screen.getByRole('textbox', { name: 'Page heading' }),
+    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save screen' })).toBeDisabled();
+    expect(label.closest('form')).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByText('Adding a new screen…')).toBeInTheDocument();
+
+    const queryCountBeforeRefresh = queryDraft.mock.calls.length;
+    queryDraft.mockReturnValueOnce(refresh.promise);
+    await act(async () => {
+      add.resolve({ sequence: '3', hash: 'revision-3' });
+      await add.promise;
+    });
+    await waitFor(() =>
+      expect(queryDraft.mock.calls.length).toBeGreaterThan(
+        queryCountBeforeRefresh,
+      ),
+    );
+
+    expect(label).toBeDisabled();
+    expect(label.closest('form')).toHaveAttribute('aria-busy', 'true');
+  });
+
+  it('blocks another add attempt until an ambiguous failure is reconciled', async () => {
+    vi.mocked(rpcClient.protocols.addInformationStage).mockRejectedValueOnce(
+      new Error('response lost'),
+    );
+    renderEditor();
+    await screen.findByRole('heading', { name: 'Protocol outline' });
+
+    const add = screen.getByRole('button', { name: 'Add' });
+    fireEvent.click(add);
+
+    expect(
+      await screen.findByText(
+        /could not confirm whether the screen was added/i,
+      ),
+    ).toBeInTheDocument();
+    expect(add).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh outline' }));
+    await waitFor(() => expect(add).toBeEnabled());
+  });
+
+  it('blocks another reorder until an ambiguous refresh failure is reconciled', async () => {
+    renderEditor();
+    const moveUp = await screen.findByRole('button', {
+      name: 'Move Follow-up up',
+    });
+    await waitFor(() =>
+      expect(queryDraft.mock.calls.length).toBeGreaterThan(1),
+    );
+    queryDraft.mockRejectedValueOnce(new Error('refresh failed'));
+
+    fireEvent.click(moveUp);
+
+    expect(
+      await screen.findByText(/could not confirm the new screen order/i),
+    ).toBeInTheDocument();
+    for (const button of screen.getAllByRole('button', { name: /^Move / })) {
+      expect(button).toBeDisabled();
+    }
+
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh order' }));
+    await waitFor(() => expect(moveUp).toBeEnabled());
+  });
+
+  it('disables editing when another session holds the screen lease', async () => {
+    vi.mocked(rpcClient.protocols.acquireSection).mockResolvedValueOnce({
+      mode: 'readOnly',
+    });
+    renderEditor();
+
+    expect(
+      await screen.findByText(/read-only while another editor holds its lock/i),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Screen name' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save screen' })).toBeDisabled();
+  });
+
+  it('publishes recurring spectator refreshes to the outline and canvas', async () => {
+    vi.useFakeTimers();
+    const refreshed = {
+      ...DRAFT,
+      revision: { sequence: '3', hash: 'revision-3' },
+      sections: {
+        ...DRAFT.sections,
+        [`stage:${STAGE_A}`]: {
+          ...DRAFT.sections[`stage:${STAGE_A}`],
+          label: 'Changed by collaborator',
+          title: 'Changed page heading',
+        },
+      },
+    };
+    vi.mocked(rpcClient.protocols.acquireSection).mockResolvedValue({
+      mode: 'readOnly',
+    });
+    vi.mocked(rpcClient.protocols.draft)
+      .mockResolvedValueOnce(DRAFT)
+      .mockResolvedValueOnce(refreshed);
+
+    const { queryClient } = renderEditor();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(screen.getByRole('textbox', { name: 'Screen name' })).toHaveValue(
+      'Welcome',
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+
+    expect(screen.getByRole('textbox', { name: 'Screen name' })).toHaveValue(
+      'Changed by collaborator',
+    );
+    expect(queryClient.getQueryData(['draft'])).toEqual(refreshed);
+    expect(
+      screen.getByRole('button', {
+        name: 'Changed by collaboratorInformation',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Changed by collaborator' }),
+    ).toBeInTheDocument();
+  });
+});

@@ -1,7 +1,11 @@
 # Combined current-app release lane and cross-branch E2E reuse
 
 **Date:** 2026-07-31
-**Status:** Implemented
+**Status:** Superseded on 2026-08-03
+
+> Architect and Interviewer now use stable semver in the normal
+> `changeset-release/main` lane. See
+> `2026-08-03-stable-app-release-design.md` for the current design.
 
 ## Goal
 

@@ -7,16 +7,78 @@ on:
         description: Visual snapshot suite to regenerate
         required: true
         type: string
+      mode:
+        description: Regenerate snapshots or stress Motion drag visual captures
+        required: false
+        type: string
+        default: regenerate
+      browser:
+        description: Browser to use for a Motion drag stress run
+        required: false
+        type: string
+        default: all
+      iterations:
+        description: Retry-free Motion drag iterations per browser
+        required: false
+        type: number
+        default: 10
+      update_mode:
+        description: >-
+          Playwright --update-snapshots mode. "changed" (the default) rewrites
+          only baselines whose render differs BEYOND the comparison threshold,
+          which is what an automated gate wants. "all" rewrites every baseline
+          from the current render — use it when the interface genuinely changed
+          but the difference is small enough to pass the per-pixel threshold, so
+          the committed PNGs would otherwise keep depicting a UI that no longer
+          exists.
+        required: false
+        type: string
+        default: changed
   workflow_dispatch:
     inputs:
       suite:
-        description: Visual snapshot suite to regenerate
+        description: Visual snapshot suite
         required: true
         type: choice
         options:
           - architect
           - interview
           - interviewer
+      mode:
+        description: Operation to run
+        required: true
+        type: choice
+        default: regenerate
+        options:
+          - regenerate
+          - motion-drag-stress
+      browser:
+        description: Browser for Motion drag stress runs
+        required: true
+        type: choice
+        default: all
+        options:
+          - all
+          - chromium
+          - firefox
+          - webkit
+      iterations:
+        description: Retry-free Motion drag iterations per browser
+        required: true
+        type: choice
+        default: '10'
+        options:
+          - '5'
+          - '10'
+          - '20'
+      update_mode:
+        description: Which baselines to rewrite
+        required: true
+        type: choice
+        default: changed
+        options:
+          - changed
+          - all
 
 permissions:
   contents: read
@@ -30,12 +92,25 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Validate Motion drag stress inputs
+        if: inputs.mode == 'motion-drag-stress'
+        env:
+          SUITE: ${{ inputs.suite }}
+        run: |
+          if [[ "$SUITE" != "interview" ]]; then
+            echo "::error::Motion drag stress mode requires the interview suite."
+            exit 1
+          fi
+
       - name: Regenerate Architect visual snapshots
-        if: inputs.suite == 'architect'
-        run: ./apps/architect/e2e/scripts/run.sh --grep @visual --update-snapshots
+        if: inputs.mode == 'regenerate' && inputs.suite == 'architect'
+        run: >-
+          ./apps/architect/e2e/scripts/run.sh
+          --grep @visual
+          --update-snapshots=${{ inputs.update_mode }}
 
       - name: Regenerate Interview visual snapshots
-        if: inputs.suite == 'interview'
+        if: inputs.mode == 'regenerate' && inputs.suite == 'interview'
         env:
           PW_WORKERS: 4
         run: >-
@@ -43,11 +118,87 @@ jobs:
           --project=chromium-visual
           --project=firefox-visual
           --project=webkit-visual
-          --update-snapshots
+          --update-snapshots=${{ inputs.update_mode }}
 
       - name: Regenerate Interviewer visual snapshots
-        if: inputs.suite == 'interviewer'
-        run: ./apps/interviewer/e2e/scripts/run.sh --grep @visual --update-snapshots
+        if: inputs.mode == 'regenerate' && inputs.suite == 'interviewer'
+        run: >-
+          ./apps/interviewer/e2e/scripts/run.sh
+          --grep @visual
+          --update-snapshots=${{ inputs.update_mode }}
+
+      - name: Establish current-render Motion drag baselines
+        if: inputs.mode == 'motion-drag-stress'
+        env:
+          BROWSER: ${{ inputs.browser }}
+          PW_WORKERS: 1
+        run: |
+          projects=()
+          if [[ "$BROWSER" == "all" ]]; then
+            projects=(
+              --project=chromium-visual
+              --project=firefox-visual
+              --project=webkit-visual
+            )
+          else
+            projects=("--project=$BROWSER-visual")
+          fi
+          ./packages/interview/e2e/scripts/run.sh \
+            "${projects[@]}" \
+            --grep 'visual (Geospatial: core-click-select-and-prompt-panel|Sociogram: manual-baseline-placed-and-unplaced|Narrative: layout-variable-node-inclusion-and-defaults|FamilyPedigree: checklist-resting-state)$' \
+            --workers=1 \
+            --retries=0 \
+            --update-snapshots
+
+      - name: Calibrate one-pixel Motion drag tolerance
+        if: inputs.mode == 'motion-drag-stress'
+        env:
+          BROWSER: ${{ inputs.browser }}
+          PW_WORKERS: 1
+        run: |
+          projects=()
+          if [[ "$BROWSER" == "all" ]]; then
+            projects=(
+              --project=chromium-visual
+              --project=firefox-visual
+              --project=webkit-visual
+            )
+          else
+            projects=("--project=$BROWSER-visual")
+          fi
+          for offset in x y xy; do
+            E2E_VISUAL_DRAG_OFFSET="$offset" \
+              ./packages/interview/e2e/scripts/run.sh \
+              "${projects[@]}" \
+              --grep 'visual (Geospatial: core-click-select-and-prompt-panel|Sociogram: manual-baseline-placed-and-unplaced|Narrative: layout-variable-node-inclusion-and-defaults|FamilyPedigree: checklist-resting-state)$' \
+              --workers=1 \
+              --retries=0
+          done
+
+      - name: Stress Motion drag visual capture
+        if: inputs.mode == 'motion-drag-stress'
+        env:
+          BROWSER: ${{ inputs.browser }}
+          E2E_VISUAL_DEBUG: geospatial
+          ITERATIONS: ${{ inputs.iterations }}
+          PW_WORKERS: 1
+        run: |
+          projects=()
+          if [[ "$BROWSER" == "all" ]]; then
+            projects=(
+              --project=chromium-visual
+              --project=firefox-visual
+              --project=webkit-visual
+            )
+          else
+            projects=("--project=$BROWSER-visual")
+          fi
+          ./packages/interview/e2e/scripts/run.sh \
+            "${projects[@]}" \
+            --grep 'visual (Geospatial: core-click-select-and-prompt-panel|Sociogram: manual-baseline-placed-and-unplaced|Narrative: layout-variable-node-inclusion-and-defaults|FamilyPedigree: checklist-resting-state)$' \
+            --workers=1 \
+            --retries=0 \
+            --repeat-each="$ITERATIONS"
 
       - name: Reclaim snapshot ownership
         if: always()
@@ -58,6 +209,7 @@ jobs:
             apps/interviewer/e2e/visual-snapshots 2>/dev/null || true
 
       - name: Stage canonical snapshot paths
+        if: inputs.mode == 'regenerate'
         env:
           ARTIFACT_ROOT: ${{ runner.temp }}/snapshot-candidate
           SUITE: ${{ inputs.suite }}
@@ -88,10 +240,24 @@ jobs:
           esac
 
       - name: Upload visual snapshots
+        if: inputs.mode == 'regenerate'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: e2e-visual-snapshots-${{ inputs.suite }}
           path: ${{ runner.temp }}/snapshot-candidate/
           if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload Motion drag stress diagnostics
+        if: always() && inputs.mode == 'motion-drag-stress'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: motion-drag-visual-stress-${{ inputs.browser }}
+          path: |
+            packages/interview/e2e/playwright-report/
+            packages/interview/e2e/test-results/
+            packages/interview/e2e/visual-snapshots/
+          if-no-files-found: warn
           retention-days: 14
           compression-level: 0

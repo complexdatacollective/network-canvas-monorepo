@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures/test.js';
+import { clickWhenDeckSettles } from '../helpers/deck.js';
 
 const PIN = '12345678';
 const PASSPHRASE = 'correct-horse-battery-1';
@@ -55,12 +56,16 @@ test.describe('vault lifecycle', () => {
   }) => {
     await vault.enrolPin(PIN);
     await page.getByRole('button', { name: 'Previous protocol' }).click();
-    await page.getByRole('button', { name: 'Install sample protocol' }).click();
+    await clickWhenDeckSettles(
+      page.getByRole('button', { name: 'Install sample protocol' }),
+    );
     await expect(
       page.getByRole('button', { name: 'Start new interview' }),
     ).toBeVisible({ timeout: 15_000 });
 
-    await page.getByRole('button', { name: 'Start new interview' }).click();
+    await clickWhenDeckSettles(
+      page.getByRole('button', { name: 'Start new interview' }),
+    );
     await page.getByTestId('new-session-case-id').fill('refresh-regression');
     await page.getByTestId('new-session-submit').click();
     await vault.confirmPin(PIN);
@@ -92,6 +97,57 @@ test.describe('vault lifecycle', () => {
     await interviewNav.waitForStage();
     await expect(
       page.getByRole('heading', { name: 'Confirm your identity' }),
+    ).toHaveCount(0);
+  });
+
+  test('exiting a gated interview leaves no phantom identity prompt on Home', async ({
+    vault,
+    interviewNav,
+    page,
+  }) => {
+    await vault.enrolPin(PIN);
+    await page.getByRole('button', { name: 'Previous protocol' }).click();
+    await clickWhenDeckSettles(
+      page.getByRole('button', { name: 'Install sample protocol' }),
+    );
+    await expect(
+      page.getByRole('button', { name: 'Start new interview' }),
+    ).toBeVisible({ timeout: 15_000 });
+
+    await clickWhenDeckSettles(
+      page.getByRole('button', { name: 'Start new interview' }),
+    );
+    await page.getByTestId('new-session-case-id').fill('phantom-step-up');
+    await page.getByTestId('new-session-submit').click();
+    await vault.confirmPin(PIN);
+    await expect(page).toHaveURL(/\/interview\//, { timeout: 15_000 });
+    await interviewNav.waitForStage();
+
+    // Exit through the in-interview settings menu.
+    await page.getByTestId('settings-button').click();
+    await page.getByTestId('exit-button').click();
+    const exitDialog = page.getByRole('dialog', {
+      name: 'Exit this interview?',
+    });
+    await expect(exitDialog).toBeVisible();
+    await exitDialog.getByRole('button', { name: 'Exit interview' }).click();
+
+    // Home again. The regression opened a step-up prompt during the page exit
+    // fade — before Home became interactive — so by the time the deck is
+    // visible a phantom dialog (with its destructive reset escape hatch) would
+    // already be floating here.
+    await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
+    await expect(page.getByTestId('background-lights')).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(
+      page.getByRole('button', { name: 'Start new interview' }),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(
+      page.getByRole('heading', { name: 'Confirm your identity' }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: 'Recover by resetting' }),
     ).toHaveCount(0);
   });
 

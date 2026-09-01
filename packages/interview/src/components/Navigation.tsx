@@ -5,25 +5,35 @@ import {
   ChevronRight,
   ChevronUp,
   LogOut,
+  Settings,
 } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   type ComponentProps,
   type Ref,
   useCallback,
+  useEffect,
+  useId,
   useRef,
   useState,
 } from 'react';
 
-import { IconButton } from '@codaco/fresco-ui/Button';
+import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@codaco/fresco-ui/Popover';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
 import type { UnavailableStage } from '../selectors/skip-logic';
 import type { NavigationOrientation } from '../Shell';
+import { useSyncFlush } from '../store/SyncFlushContext';
 import PassphrasePrompter from './PassphrasePrompter';
 import StagesMenu, { STAGES_MENU_LIST_ID } from './StagesMenu';
 
@@ -115,6 +125,21 @@ const progressContainerVariants = cva({
   },
 });
 
+/**
+ * Participant-selectable text-size multipliers. 1 is the Shell's responsive
+ * default; the bounds mirror classic Interviewer's Interface Scale setting.
+ * The Shell snaps a host's `initialTextScale` to this list so the stepped
+ * control always presents one of these values.
+ */
+export const TEXT_SCALE_OPTIONS = [0.9, 1, 1.1, 1.2, 1.3];
+const MIN_TEXT_SCALE_PERCENT = Math.round(
+  Math.min(...TEXT_SCALE_OPTIONS) * 100,
+);
+const MAX_TEXT_SCALE_PERCENT = Math.round(
+  Math.max(...TEXT_SCALE_OPTIONS) * 100,
+);
+const TEXT_SCALE_PERCENT_STEP = 10;
+
 type NavigationProps = {
   moveBackward: () => void;
   moveForward: () => void;
@@ -128,6 +153,9 @@ type NavigationProps = {
   onExit?: () => void;
   reviewMode?: boolean;
   allowStageNavigation?: boolean;
+  allowUserScaling?: boolean;
+  textScale?: number;
+  onTextScaleChange?: (scale: number) => void;
   className?: string;
   goToStage?: (
     targetIndex: number,
@@ -148,6 +176,9 @@ const Navigation = ({
   onExit,
   reviewMode,
   allowStageNavigation,
+  allowUserScaling,
+  textScale = 1,
+  onTextScaleChange,
   className,
   goToStage,
 }: NavigationProps) => {
@@ -158,14 +189,49 @@ const Navigation = ({
 
   const stageNavigationEnabled = !!allowStageNavigation && !!goToStage;
 
+  // The text-size control needs both the opt-in flag and a change handler —
+  // one without the other would render a dead control.
+  const userScalingEnabled = !!allowUserScaling && !!onTextScaleChange;
+
+  // The settings popover hosts the exit action and the text-size control; with
+  // neither available there is nothing to show, so the trigger is omitted.
+  const showSettingsPopover = !!onExit || userScalingEnabled;
+
+  const matchedTextScaleIndex = TEXT_SCALE_OPTIONS.findIndex(
+    (scale) => scale === textScale,
+  );
+  // Shell-provided values are snapped to TEXT_SCALE_OPTIONS. Keep Navigation
+  // robust when rendered directly by falling back to the default multiplier.
+  const textScaleIndex =
+    matchedTextScaleIndex === -1
+      ? TEXT_SCALE_OPTIONS.findIndex((scale) => scale === 1)
+      : matchedTextScaleIndex;
+  const textScalePercent = Math.round(
+    (TEXT_SCALE_OPTIONS[textScaleIndex] ?? 1) * 100,
+  );
+  const textSizeLabelId = useId();
+  const textSizeControlRef = useRef<HTMLDivElement>(null);
+  const [textScaleInputValue, setTextScaleInputValue] = useState(
+    String(textScalePercent),
+  );
+  const textScaleInputPercent = Number(textScaleInputValue);
+  const hasTextScaleInputPercent =
+    textScaleInputValue !== '' && Number.isFinite(textScaleInputPercent);
+
+  useEffect(() => {
+    setTextScaleInputValue(String(textScalePercent));
+  }, [textScalePercent]);
+
   const { confirm } = useDialog();
   const portalContainer = usePortalContainer();
+  const flushPendingSync = useSyncFlush();
 
   // `menuOpen` drives the drawer panel; `menuSettled` drives the staggered
   // enter/exit of the cards inside it. On open we flip `menuSettled` only once
   // the panel has finished sliding in; on close we flip it first and let the
   // StagesMenu report back (`handleCardsClosed`) once the cards have animated
   // out, so the panel slides away only after — never over — the stagger.
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuSettled, setMenuSettled] = useState(false);
   const pendingStageRef = useRef<number | null>(null);
@@ -199,9 +265,18 @@ const Navigation = ({
       onConfirm: () => {},
     });
     if (confirmed === true) {
+      // Hand control back to the host only after pending session state is
+      // written. The Shell's unmount-cleanup flush alone cannot enqueue the
+      // final snapshot synchronously when a write is already on the wire (it
+      // must await that write first), so a host that navigates on exit —
+      // unmounting the Shell — could re-read the session between the
+      // in-flight write and the final one. Exit is the one teardown the
+      // Shell controls, so wait out the full flush here; it never rejects
+      // and typically resolves in milliseconds.
+      await flushPendingSync();
       onExit();
     }
-  }, [confirm, onExit, reviewMode]);
+  }, [confirm, onExit, reviewMode, flushPendingSync]);
 
   const closeMenu = useCallback(
     (immediate: boolean) => {
@@ -239,17 +314,123 @@ const Navigation = ({
         animate="animate"
         exit="exit"
       >
-        {onExit && (
-          <NavigationButton
-            onClick={() => void handleExit()}
-            icon={<LogOut />}
-            className="[&>.lucide]:h-[1.5em]!"
-            wrapperClassName={
-              orientation === 'horizontal' ? 'order-1' : undefined
-            }
-            aria-label={reviewMode ? 'Exit review' : 'Exit interview'}
-            data-testid="exit-button"
-          />
+        {showSettingsPopover && (
+          <motion.div
+            variants={variants}
+            className={orientation === 'horizontal' ? 'order-1' : undefined}
+          >
+            <Popover open={settingsOpen} onOpenChange={setSettingsOpen}>
+              <PopoverTrigger
+                render={
+                  <IconButton
+                    color="dynamic"
+                    variant="text"
+                    size="xl"
+                    icon={<Settings />}
+                    className="[&>.lucide]:h-[1.5em]!"
+                    aria-label="Settings"
+                    data-testid="settings-button"
+                  />
+                }
+              />
+              <PopoverContent
+                side={orientation === 'vertical' ? 'right' : 'top'}
+                align="start"
+                className="w-72 max-w-full"
+                aria-label="Interview settings"
+              >
+                <div className="flex flex-col gap-2">
+                  {userScalingEnabled && (
+                    <fieldset className="m-0 flex min-w-0 flex-col gap-1.5 border-0 p-0">
+                      <legend
+                        id={textSizeLabelId}
+                        className="px-2 py-1.5 text-sm font-semibold"
+                      >
+                        Text size
+                        <span className="sr-only"> percentage</span>
+                      </legend>
+                      <div ref={textSizeControlRef} className="w-full">
+                        <InputField
+                          aria-labelledby={textSizeLabelId}
+                          type="number"
+                          inputMode="numeric"
+                          min={MIN_TEXT_SCALE_PERCENT}
+                          max={MAX_TEXT_SCALE_PERCENT}
+                          step={TEXT_SCALE_PERCENT_STEP}
+                          value={textScaleInputValue}
+                          onChange={(value) => {
+                            const nextValue = value ?? '';
+                            setTextScaleInputValue(nextValue);
+
+                            const nextPercent = Number(nextValue);
+                            const nextScale = nextPercent / 100;
+                            if (
+                              nextValue !== '' &&
+                              TEXT_SCALE_OPTIONS.includes(nextScale)
+                            ) {
+                              onTextScaleChange?.(nextScale);
+                            }
+                          }}
+                          onBlur={(event) => {
+                            if (
+                              event.relatedTarget instanceof HTMLElement &&
+                              textSizeControlRef.current?.contains(
+                                event.relatedTarget,
+                              )
+                            ) {
+                              return;
+                            }
+
+                            setTextScaleInputValue(String(textScalePercent));
+                          }}
+                          stepperLabels={{
+                            decrease: 'Decrease text size',
+                            increase: 'Increase text size',
+                          }}
+                          stepperDisabled={{
+                            decrease:
+                              hasTextScaleInputPercent &&
+                              textScaleInputPercent <= MIN_TEXT_SCALE_PERCENT,
+                            increase:
+                              hasTextScaleInputPercent &&
+                              textScaleInputPercent >= MAX_TEXT_SCALE_PERCENT,
+                          }}
+                          suffixComponent={<span aria-hidden="true">%</span>}
+                          className="w-full! [&_input]:text-right"
+                        />
+                        <output
+                          aria-live="polite"
+                          aria-atomic="true"
+                          className="sr-only"
+                        >
+                          Current text size: {textScalePercent}%
+                        </output>
+                      </div>
+                    </fieldset>
+                  )}
+                  {userScalingEnabled && onExit && (
+                    <hr className="mx-auto my-1 h-px w-full rounded border-0 bg-current/20" />
+                  )}
+                  {onExit && (
+                    <Button
+                      color="dynamic"
+                      variant="text"
+                      size="md"
+                      icon={<LogOut aria-hidden />}
+                      onClick={() => {
+                        setSettingsOpen(false);
+                        void handleExit();
+                      }}
+                      className="w-full justify-start rounded-sm px-4"
+                      data-testid="exit-button"
+                    >
+                      {reviewMode ? 'Exit review' : 'Exit interview'}
+                    </Button>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </motion.div>
         )}
         <NavigationButton
           wrapperClassName={
@@ -294,7 +475,8 @@ const Navigation = ({
         )}
         <NavigationButton
           className={cx(
-            pulseNext && 'bg-success hover:enabled:bg-success outline-success',
+            pulseNext &&
+              'bg-success ui-enabled:hover:bg-success outline-success',
             pulseNext && !shouldReduceMotion && 'animate-pulse-glow',
           )}
           wrapperClassName={

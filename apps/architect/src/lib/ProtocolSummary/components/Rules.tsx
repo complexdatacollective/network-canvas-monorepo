@@ -39,9 +39,7 @@ const Rules = ({ filter = null }: RulesProps) => {
                 codebook={protocol.codebook}
               />
             </div>
-            {index !== rules.length - 1 && join && (
-              <Join value={join} variant="summary" />
-            )}
+            {index !== rules.length - 1 && join && <Join value={join} />}
           </React.Fragment>
         );
       })}

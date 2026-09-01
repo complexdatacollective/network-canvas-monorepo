@@ -2,14 +2,24 @@ import { nativeSelectVariants } from '../../../styles/controlVariants';
 import { cx, type VariantProps } from '../../../utils/cva';
 import type { CreateFormFieldProps } from '../../Field/types';
 import { getInputState } from '../../utils/getInputState';
-import { type SelectOption, selectWrapperVariants } from './shared';
+import {
+  flattenSelectOptions,
+  isSelectOptionGroup,
+  type SelectOptionOrGroup,
+  selectWrapperVariants,
+} from './shared';
 
 type SelectProps = CreateFormFieldProps<
   string | number,
   'select',
   {
     placeholder?: string;
-    options: SelectOption[];
+    /**
+     * A flat list, or a list of `<optgroup>`s. Group and option may be mixed
+     * in one list; only one level of nesting is supported, which is all a
+     * native `<select>` has.
+     */
+    options: SelectOptionOrGroup[];
     size?: VariantProps<typeof selectWrapperVariants>['size'];
   }
 >;
@@ -31,15 +41,19 @@ export default function SelectField(props: SelectProps) {
   // Normalize undefined to "" so the placeholder option is selected
   const normalizedValue = value ?? '';
 
+  // Selection is a property of the options themselves, not of how they are
+  // grouped, so every lookup below runs against the flattened list.
+  const selectableOptions = flattenSelectOptions(options);
+
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedValue = event.target.value;
-    const selectedOption = options.find(
+    const selectedOption = selectableOptions.find(
       (option) => String(option.value) === selectedValue,
     );
     onChange?.(selectedOption?.value ?? selectedValue);
   };
 
-  const valueMatchesOption = options.some(
+  const valueMatchesOption = selectableOptions.some(
     (option) => String(option.value) === String(normalizedValue),
   );
 
@@ -74,15 +88,31 @@ export default function SelectField(props: SelectProps) {
         )}
       >
         {showPlaceholderOption && <option value="">{placeholderLabel}</option>}
-        {options.map((option) => (
-          <option
-            key={option.value}
-            value={option.value}
-            disabled={option.disabled}
-          >
-            {option.label}
-          </option>
-        ))}
+        {options.map((option) =>
+          isSelectOptionGroup(option) ? (
+            // Keyed by label: a group carries no value, and its label is what
+            // distinguishes it from its siblings.
+            <optgroup key={`group:${option.label}`} label={option.label}>
+              {option.options.map((groupedOption) => (
+                <option
+                  key={groupedOption.value}
+                  value={groupedOption.value}
+                  disabled={groupedOption.disabled}
+                >
+                  {groupedOption.label}
+                </option>
+              ))}
+            </optgroup>
+          ) : (
+            <option
+              key={option.value}
+              value={option.value}
+              disabled={option.disabled}
+            >
+              {option.label}
+            </option>
+          ),
+        )}
       </select>
     </div>
   );

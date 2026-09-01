@@ -6,10 +6,11 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '../../../dialogs/DialogProvider';
+import Surface from '../../../layout/Surface';
 import ArrayField, {
   ArrayFieldDragHandle,
   type ArrayFieldEditorProps,
@@ -49,7 +50,7 @@ function TestItem({
       <span>{item.label}</span>
       <button
         type="button"
-        onClick={() => onChange({ id: item.id, label: item.label ?? 'new' })}
+        onClick={() => onChange?.({ id: item.id, label: item.label ?? 'new' })}
       >
         Save
       </button>
@@ -63,6 +64,14 @@ function TestItem({
         Delete
       </button>
     </div>
+  );
+}
+
+function NestedSurfaceItem() {
+  return (
+    <Surface noContainer data-testid="nested-surface">
+      Nested surface
+    </Surface>
   );
 }
 
@@ -80,7 +89,59 @@ function TestEditor({
       <span>{isNewItem ? 'New editor' : 'Existing editor'}</span>
       <button
         type="button"
-        onClick={() => onSave({ id: item.id, label: item.label })}
+        onClick={() => onSave?.({ id: item.id, label: item.label })}
+      >
+        Save editor
+      </button>
+      <button type="button" onClick={onCancel}>
+        Cancel editor
+      </button>
+    </dialog>
+  );
+}
+
+/** An item whose edit control is registered as the row's focus-return target. */
+function TriggerItem({
+  item,
+  onEdit,
+  editTriggerRef,
+}: ArrayFieldItemProps<Item>) {
+  return (
+    <div data-testid={`item-${item.label}`}>
+      <button type="button" ref={editTriggerRef} onClick={onEdit}>
+        Edit {item.label}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * An external editor that returns focus the way a modal one does: it resolves
+ * `getEditorTrigger` in an effect once the close has committed, not when the
+ * editor opened. The timing is the point — the add button and the saved row
+ * swap places in that same commit.
+ */
+function ReturnFocusEditor({
+  item,
+  onSave,
+  onCancel,
+  getEditorTrigger,
+}: ArrayFieldEditorProps<Item>) {
+  const wasOpen = useRef(false);
+  const isOpen = item !== undefined;
+
+  useEffect(() => {
+    if (wasOpen.current && !isOpen) getEditorTrigger()?.focus();
+    wasOpen.current = isOpen;
+  }, [isOpen, getEditorTrigger]);
+
+  if (!item) return null;
+
+  return (
+    <dialog open>
+      <button
+        type="button"
+        onClick={() => onSave?.({ id: item.id, label: item.label })}
       >
         Save editor
       </button>
@@ -106,6 +167,21 @@ const renderField = (props: Partial<ArrayFieldProps<Item>> = {}) =>
   );
 
 describe('ArrayField', () => {
+  it('renders each item as an accent Surface boundary', () => {
+    renderField({
+      value: [{ id: 'one', label: 'one' }],
+      itemComponent: NestedSurfaceItem,
+    });
+
+    const nestedSurface = screen.getByTestId('nested-surface');
+    const item = nestedSurface.closest('li');
+    expect(item).not.toBeNull();
+    expect(item?.classList).toContain('bg-surface-accent');
+    expect(item?.classList).toContain('[--surface-depth:0]');
+    expect(nestedSurface.classList).toContain('bg-surface-accent-1');
+    expect(nestedSurface.classList).toContain('[--surface-depth:1]');
+  });
+
   it('keeps draft additions out of onChange until they are saved', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
@@ -378,6 +454,27 @@ describe('ArrayField', () => {
     ).not.toBeInTheDocument();
   });
 
+  // Regression: `getEditorTrigger` answered the add button for every new-item
+  // session, so saving the item that reaches `maxItems` returned null — the
+  // button it named had just unmounted — and focus escaped the list entirely.
+  it('returns focus to the new row when saving the item that fills the list', async () => {
+    const user = userEvent.setup();
+    renderField({
+      maxItems: 1,
+      itemComponent: TriggerItem,
+      editorComponent: ReturnFocusEditor,
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Add Item' }));
+    await user.click(screen.getByRole('button', { name: 'Save editor' }));
+
+    // The add button is gone, so it cannot be the focus target.
+    expect(
+      screen.queryByRole('button', { name: 'Add Item' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit new' })).toHaveFocus();
+  });
+
   it('blocks add, edit, delete, and reorder while disabled', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
@@ -397,6 +494,110 @@ describe('ArrayField', () => {
       screen.queryByRole('button', { name: 'Reorder item 1 of 1' }),
     ).not.toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  // Regression: ArrayField used to swap the real onDeleteItem/onEditItem/
+  // onChange/onUpdateItem handlers for `() => undefined` stubs while
+  // disabled/readOnly, rather than omitting them. Every one of those stubs
+  // is truthy, so an itemComponent that renders its edit/delete affordance
+  // from handler presence (a normal, encouraged pattern — see below) drew a
+  // live-looking control wired to a no-op instead of hiding it.
+  it.each([
+    ['disabled', { disabled: true }],
+    ['readOnly', { readOnly: true }],
+  ])(
+    'omits (rather than stubs) onDelete/onEdit/onChange/onUpdate passed to itemComponent when %s',
+    async (_label, fieldProps) => {
+      let latestProps: ArrayFieldItemProps<Item> | undefined;
+      function CapturingItem(props: ArrayFieldItemProps<Item>) {
+        latestProps = props;
+        return <div data-testid={`item-${props.item.label}`} />;
+      }
+
+      renderField({
+        ...fieldProps,
+        value: [{ id: 'one', label: 'one' }],
+        getId: (item) => item.id,
+        itemComponent: CapturingItem,
+      });
+
+      expect(latestProps?.onDelete).toBeUndefined();
+      expect(latestProps?.onEdit).toBeUndefined();
+      expect(latestProps?.onChange).toBeUndefined();
+      expect(latestProps?.onUpdate).toBeUndefined();
+    },
+  );
+
+  it('passes real onDelete/onEdit/onChange/onUpdate handlers to itemComponent when interaction is enabled', () => {
+    let latestProps: ArrayFieldItemProps<Item> | undefined;
+    function CapturingItem(props: ArrayFieldItemProps<Item>) {
+      latestProps = props;
+      return <div data-testid={`item-${props.item.label}`} />;
+    }
+
+    renderField({
+      value: [{ id: 'one', label: 'one' }],
+      getId: (item) => item.id,
+      itemComponent: CapturingItem,
+    });
+
+    expect(latestProps?.onDelete).toBeInstanceOf(Function);
+    expect(latestProps?.onEdit).toBeInstanceOf(Function);
+    expect(latestProps?.onUpdate).toBeInstanceOf(Function);
+  });
+
+  it('lets an itemComponent hide its edit/delete affordance from handler presence while disabled', () => {
+    function ConditionalItem({
+      item,
+      onEdit,
+      onDelete,
+    }: ArrayFieldItemProps<Item>) {
+      return (
+        <div data-testid={`item-${item.label}`}>
+          {onEdit && (
+            <button type="button" onClick={onEdit}>
+              Edit
+            </button>
+          )}
+          {onDelete && (
+            <button type="button" onClick={onDelete}>
+              Delete
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    renderField({
+      disabled: true,
+      value: [{ id: 'one', label: 'one' }],
+      getId: (item) => item.id,
+      itemComponent: ConditionalItem,
+    });
+
+    expect(
+      screen.queryByRole('button', { name: 'Edit' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Delete' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('omits onSave passed to editorComponent when disabled', () => {
+    let latestOnSave: ((value: Item) => void) | undefined;
+    function CapturingEditor(props: ArrayFieldEditorProps<Item>) {
+      latestOnSave = props.onSave;
+      return null;
+    }
+
+    renderField({
+      disabled: true,
+      value: [{ id: 'one', label: 'one' }],
+      getId: (item) => item.id,
+      editorComponent: CapturingEditor,
+    });
+
+    expect(latestOnSave).toBeUndefined();
   });
 
   it('adds immediately without draft state when immediateAdd is enabled', async () => {

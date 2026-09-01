@@ -379,6 +379,101 @@ describe('SlidesForm navigation ownership', () => {
     expect(onStepChange).toHaveBeenCalledWith(1, expect.anything());
   });
 
+  // The participant typed something, thought better of it, and put the field
+  // back exactly as they found it. There is nothing to discard, so there is
+  // nothing to ask about — and being asked implies work is about to be lost
+  // that is not. The form store's own `isDirty` cannot tell: it latches true on
+  // the first keystroke and never returns.
+  it('does not ask about discarding changes the participant already undid', async () => {
+    const store = configureStore({
+      reducer: { session, protocol, ui },
+      preloadedState: {
+        session: {
+          id: 'session',
+          network: {
+            ego: { [entityAttributesProperty]: {} },
+            nodes: [namelessPerson],
+            edges: [],
+          },
+        } as never,
+        protocol: {
+          id: 'protocol',
+          hash: 'hash',
+          schemaVersion: 8,
+          codebook: requiredNameCodebook,
+          stages: [
+            {
+              id: 'alter-form',
+              type: 'AlterForm',
+              label: 'Alter form',
+              subject: { entity: 'node', type: 'person' },
+              introductionPanel: { title: 'About this person', text: '' },
+              form,
+            },
+            {
+              id: 'next-screen',
+              type: 'Information',
+              label: 'Next screen',
+              title: 'Next screen',
+              items: [],
+            },
+          ],
+        } as never,
+      },
+      middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware({ serializableCheck: false }),
+    });
+    const onStepChange = vi.fn();
+    let goToStage: ((targetIndex: number) => Promise<void>) | undefined;
+
+    function JumpHarness() {
+      const navigation = useInterviewNavigation(0);
+      goToStage = navigation.goToStage;
+
+      return (
+        <StageMetadataProvider value={navigation.registerBeforeNext}>
+          <SlidesForm
+            form={form}
+            items={[namelessPerson]}
+            subject={{ entity: 'node', type: 'person' }}
+            updateItem={vi.fn()}
+            moveForward={navigation.moveForward}
+            renderHeader={() => <span>Person header</span>}
+            form_kind="alter"
+          />
+        </StageMetadataProvider>
+      );
+    }
+
+    render(
+      <Provider store={store}>
+        <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
+          <DialogProvider>
+            <JumpHarness />
+          </DialogProvider>
+        </CurrentStepProvider>
+      </Provider>,
+    );
+
+    // This person starts without a name, and the name is required — so the
+    // form is invalid before and after, and only the dirty test decides
+    // whether the participant is stopped.
+    const field = await screen.findByRole('textbox', { name: 'Person name' });
+    fireEvent.change(field, { target: { value: 'Ada' } });
+    await screen.findByDisplayValue('Ada');
+    fireEvent.change(field, { target: { value: '' } });
+    await screen.findByDisplayValue('');
+
+    await act(async () => {
+      await goToStage?.(1);
+    });
+
+    expect(
+      screen.queryByRole('button', { name: 'Discard changes' }),
+    ).toBeNull();
+    expect(onStepChange).toHaveBeenCalledWith(1, expect.anything());
+  });
+
   it('asks before discarding unsaved changes that cannot be saved on a jump', async () => {
     const store = configureStore({
       reducer: { session, protocol, ui },

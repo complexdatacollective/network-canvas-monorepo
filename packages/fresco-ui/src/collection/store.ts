@@ -184,6 +184,39 @@ function buildNodes<T>(
 }
 
 /**
+ * Find the item that should receive focus when an item is removed from the
+ * collection. Prefer the next surviving item in the previous ordering, then
+ * the previous surviving item. This keeps focus near the removed item instead
+ * of sending virtualized collections back to their first row.
+ */
+function getFocusAfterRemoval<T>(
+  removedKey: Key,
+  previousOrderedKeys: Key[],
+  nextItems: Map<Key, Node<T>>,
+  nextOrderedKeys: Key[],
+): Key | null {
+  const removedIndex = previousOrderedKeys.indexOf(removedKey);
+
+  if (removedIndex !== -1) {
+    for (
+      let index = removedIndex + 1;
+      index < previousOrderedKeys.length;
+      index++
+    ) {
+      const key = previousOrderedKeys[index];
+      if (key !== undefined && nextItems.has(key)) return key;
+    }
+
+    for (let index = removedIndex - 1; index >= 0; index--) {
+      const key = previousOrderedKeys[index];
+      if (key !== undefined && nextItems.has(key)) return key;
+    }
+  }
+
+  return nextOrderedKeys[0] ?? null;
+}
+
+/**
  * Filter items by matching keys, then sort with optional relevance prefix.
  * Relevance comparator (from filter scores) is chained before user sort rules,
  * so it acts as the primary sort key with user rules as tiebreakers.
@@ -297,7 +330,12 @@ export const createCollectionStore = <T>(
         }
 
         if (newFocusedKey !== null && !itemsMap.has(newFocusedKey)) {
-          newFocusedKey = orderedKeys[0] ?? null;
+          newFocusedKey = getFocusAfterRemoval(
+            newFocusedKey,
+            state.orderedKeys,
+            itemsMap,
+            orderedKeys,
+          );
         }
 
         set({

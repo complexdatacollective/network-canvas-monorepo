@@ -96,7 +96,7 @@ describe('resolveStageQualifier', () => {
       resolveStageQualifier(
         {
           type: 'NameGenerator',
-          panels: [{ id: 'p1', title: 'A', dataSource: 'existing' }],
+          panels: [{ dataSource: 'existing' }],
         },
         resolvers,
       )?.full,
@@ -105,7 +105,7 @@ describe('resolveStageQualifier', () => {
       resolveStageQualifier(
         {
           type: 'NameGenerator',
-          panels: [{ id: 'p1', title: 'A', dataSource: 'roster-1' }],
+          panels: [{ dataSource: 'roster-1' }],
         },
         resolvers,
       )?.full,
@@ -114,10 +114,7 @@ describe('resolveStageQualifier', () => {
       resolveStageQualifier(
         {
           type: 'NameGeneratorQuickAdd',
-          panels: [
-            { id: 'p1', title: 'A', dataSource: 'existing' },
-            { id: 'p2', title: 'B', dataSource: 'roster-1' },
-          ],
+          panels: [{ dataSource: 'existing' }, { dataSource: 'roster-1' }],
         },
         resolvers,
       )?.full,

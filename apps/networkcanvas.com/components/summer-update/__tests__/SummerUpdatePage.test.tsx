@@ -532,7 +532,7 @@ describe('SummerUpdatePage', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'Explore the new website' }),
-    ).toHaveAttribute('href', 'https://networkcanvas.com/');
+    ).toHaveAttribute('href', '/');
     expect(
       screen.getByRole('link', { name: 'Explore the documentation' }),
     ).toHaveAttribute('href', 'https://documentation.networkcanvas.com/en');

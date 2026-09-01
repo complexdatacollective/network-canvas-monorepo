@@ -213,12 +213,15 @@ function tapNode(nodeEl: HTMLElement) {
     clientY: 10,
     pointerId: 1,
   });
-  fireEvent.pointerUp(document, {
+  fireEvent.pointerUp(nodeEl, {
     button: 0,
     clientX: 10,
     clientY: 10,
     pointerId: 1,
   });
+  // A still release is a tap: the browser follows it with a click on the
+  // node, which Node's gesture recognizer lets through.
+  fireEvent.click(nodeEl, { detail: 1 });
 }
 
 /**
@@ -232,13 +235,15 @@ function shiftTapNode(nodeEl: HTMLElement) {
     pointerId: 1,
     shiftKey: true,
   });
-  fireEvent.pointerUp(document, {
+  fireEvent.pointerUp(nodeEl, {
     button: 0,
     clientX: 10,
     clientY: 10,
     pointerId: 1,
     shiftKey: true,
   });
+  // The click the browser synthesises still carries the held modifier.
+  fireEvent.click(nodeEl, { detail: 1, shiftKey: true });
 }
 
 // The Groups tool lives behind a popover; open it and pick "Team Red" so the

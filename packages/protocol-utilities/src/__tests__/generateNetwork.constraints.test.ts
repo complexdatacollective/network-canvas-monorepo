@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Stage } from '@codaco/protocol-validation';
+import {
+  BIOLOGICAL_SEX_OPTIONS,
+  type Stage,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -1605,7 +1608,7 @@ describe('a rule between two fixed attributes', () => {
 
     expect(build).toThrow(SyntheticDataConstraintError);
     expect(build).toThrow(
-      'a prompt fixes these variables to false and true, which sameAs cannot hold',
+      'a prompt fixes these attributes to false and true, which sameAs cannot hold',
     );
   });
 
@@ -1619,7 +1622,7 @@ describe('a rule between two fixed attributes', () => {
 
     expect(build).toThrow(SyntheticDataConstraintError);
     expect(build).toThrow(
-      'a prompt fixes these variables to true and true, which differentFrom cannot hold',
+      'a prompt fixes these attributes to true and true, which differentFrom cannot hold',
     );
   });
 
@@ -2477,7 +2480,7 @@ describe('a fixed value its own rules reject', () => {
 
       expect(build).toThrow(SyntheticDataConstraintError);
       expect(build).toThrow(
-        'a prompt fixes this variable to 2005-05-01, which parameters does not allow',
+        'a prompt fixes this attribute to 2005-05-01, which parameters does not allow',
       );
     }
   });
@@ -2678,7 +2681,7 @@ describe('a fixed value its own rules reject', () => {
 
       expect(build).toThrow(SyntheticDataConstraintError);
       expect(build).toThrow(
-        'a prompt fixes this variable to true, which options does not allow',
+        'a prompt fixes this attribute to true, which options does not allow',
       );
     }
   });
@@ -2806,7 +2809,7 @@ describe('a unique value a prompt fixes', () => {
 
     expect(build).toThrow(SyntheticDataConstraintError);
     expect(build).toThrow('(unique, additionalAttributes)');
-    expect(build).toThrow('these variables, which are held equal, to true');
+    expect(build).toThrow('these attributes, which are held equal, to true');
   });
 
   it('refuses identically regardless of seed', () => {
@@ -3367,6 +3370,7 @@ describe('rules spanning a pedigree ego flag and a drawn attribute', () => {
       type: 'person',
       nodeLabelVariable: 'name',
       egoVariable: 'isEgo',
+      biologicalSexVariable: 'biologicalSex',
     },
     edgeConfig: { type: 'family' },
   } as unknown as Stage;
@@ -3503,58 +3507,78 @@ describe('rules spanning a pedigree ego flag and a drawn attribute', () => {
     expect(failures).toEqual([]);
   });
 
-  it('draws a pedigree no rule reads the flag of exactly as it always did', () => {
-    // Settling the flag before the draw takes the variable out of the draw,
-    // which moves every random number after it. A pedigree nothing resolves the
-    // flag against gains nothing from that and must keep the values it had, so
-    // it is still drawn whole and the flag written on afterwards. Held against
-    // the same protocol naming no ego variable at all — the run that never pins
-    // anything — where only the flag itself may differ.
+  it('keeps pedigree semantics off people created by a later name generator', () => {
     const codebook = pedigreeCodebook({
       isEgo: { name: 'Is ego', type: 'boolean' },
-      age: {
-        name: 'Age',
-        type: 'number',
-        validation: { minValue: 0, maxValue: 100 },
+      biologicalSex: {
+        name: 'Biological sex',
+        type: 'categorical',
+        options: BIOLOGICAL_SEX_OPTIONS,
       },
-      alive: { name: 'Alive', type: 'boolean' },
     });
-    const unpinned = {
-      ...pedigreeStage,
-      nodeConfig: { type: 'person', nodeLabelVariable: 'name' },
-    } as unknown as Stage;
-    // A later stage as well, so a shifted random stream shows up in what the
-    // rest of the protocol draws and not only inside the pedigree.
     const laterStage = {
       id: 'stage-ng',
       type: 'NameGenerator',
       label: 'More people',
       subject: { entity: 'node', type: 'person' },
+      form: { fields: [{ variable: 'name', prompt: 'What is their name?' }] },
       prompts: [{ id: 'p1', text: 'Name people' }],
-      behaviours: { minNodes: 3, maxNodes: 3 },
+      behaviours: { minNodes: 6, maxNodes: 6 },
     } as unknown as Stage;
 
-    const withoutFlag = (attrs: Record<string, unknown>) => {
-      const { isEgo: _isEgo, ...rest } = attrs;
-      return rest;
-    };
-
     for (let seed = 1; seed <= 25; seed++) {
-      const pinned = pedigreeNodes(seed, codebook, [pedigreeStage, laterStage]);
+      const nodes = pedigreeNodes(seed, codebook, [pedigreeStage, laterStage]);
+      const fromGenerator = nodes.filter(
+        (node) => node.stageId === laterStage.id,
+      );
+      expect(fromGenerator).toHaveLength(6);
+      for (const attributes of attributesOf(fromGenerator)) {
+        expect(attributes.name).toBeDefined();
+        expect(attributes).not.toHaveProperty('isEgo');
+        expect(attributes).not.toHaveProperty('biologicalSex');
+      }
 
-      expect(attributesOf(pinned).map(withoutFlag)).toEqual(
-        attributesOf(pedigreeNodes(seed, codebook, [unpinned, laterStage])).map(
-          withoutFlag,
-        ),
-      );
+      expect(
+        attributesOf(nodes).filter((attributes) => attributes.isEgo === true),
+      ).toHaveLength(1);
+      expect(
+        attributesOf(nodes).filter(
+          (attributes) => attributes.biologicalSex !== undefined,
+        ).length,
+      ).toBe(nodes.length - fromGenerator.length);
+    }
+  });
 
-      const fromPedigree = pinned.filter(
-        (node) => node.stageId === pedigreeStage.id,
-      );
-      expect(fromPedigree.length).toBeGreaterThan(1);
-      expect(attributesOf(fromPedigree).map((attrs) => attrs.isEgo)).toEqual(
-        fromPedigree.map((_node, index) => index === 0),
-      );
+  // The schema now rejects a nomination prompt bound to the pedigree's own ego
+  // variable, but an imported protocol authored before that rule still reaches
+  // this preview. The disease loop used to run after the structural assignment
+  // and overwrite the ego flag with a pseudo-random affected flag, so several
+  // relatives came back marked as the participant.
+  it('keeps the ego flag when a nomination prompt names the ego variable', () => {
+    const codebook = pedigreeCodebook({
+      isEgo: { name: 'Is ego', type: 'boolean' },
+      biologicalSex: {
+        name: 'Biological sex',
+        type: 'categorical',
+        options: BIOLOGICAL_SEX_OPTIONS,
+      },
+    });
+    const collidingStage = {
+      ...(pedigreeStage as unknown as Record<string, unknown>),
+      boundaries: {
+        requireGrandparents: 'required',
+        requireChildrenContributors: 'off',
+      },
+      nominationPrompts: [
+        { id: 'nom-ego', text: 'Who has this?', variable: 'isEgo' },
+      ],
+    } as unknown as Stage;
+
+    for (let seed = 1; seed <= 100; seed++) {
+      const nodes = pedigreeNodes(seed, codebook, [collidingStage]);
+      expect(
+        attributesOf(nodes).filter((attributes) => attributes.isEgo === true),
+      ).toHaveLength(1);
     }
   });
 });
@@ -3675,7 +3699,7 @@ describe('a prompt the stage node ceiling leaves nothing for', () => {
 
     expect(build).toThrow(SyntheticDataConstraintError);
     expect(build).toThrow(
-      'a prompt fixes these variables to true and true, which differentFrom cannot hold',
+      'a prompt fixes these attributes to true and true, which differentFrom cannot hold',
     );
   });
 

@@ -5,7 +5,9 @@ const ANSI_ESCAPE_PATTERN =
   // oxlint-disable-next-line no-control-regex -- Chromatic logs contain ANSI styling.
   /[\u001B\u009B][[\]()#;?]*(?:(?:(?:[\dA-PR-TZcf-nq-uy=><~]|(?:[\dA-PR-TZcf-nq-uy=><~](?:;[-a-zA-Z\d/#&.:=?%@~_]+)*))\u0007)|(?:(?:\d{1,4}(?:[;:]\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]))/g;
 const SNAPSHOT_COUNTS_PATTERN =
-  /\b(?:Captured|Capturing)\s+([\d,]+)\s+snapshots?\s+and\s+(?:skipped|skipping)\s+([\d,]+)\s+snapshots?\.?/i;
+  /\b(?:Captured|Capturing)\s+([\d,]+)\s+snapshots?(?:\s+and\s+(?:skipped|skipping)\s+([\d,]+)\s+snapshots?|,\s+(?:copied|copying)\s+([\d,]+)\s+TurboSnaps?)\.?/i;
+const BYPASSED_SNAPSHOTS_PATTERN =
+  /\bBypassed\s+([\d,]+)\s+snapshots?\s+because no frontend files were changed\.?/i;
 const TURBOSNAP_DISABLED_PATTERN =
   /\bTurboSnap disabled(?: due to ([^\r\n]+))?/i;
 const FULL_BUILD_REASON_PATTERN =
@@ -22,8 +24,22 @@ function cleanLog(log) {
 }
 
 function parseCount(value) {
+  if (typeof value !== 'string') return null;
   const count = Number(value.replaceAll(',', ''));
   return Number.isSafeInteger(count) ? count : null;
+}
+
+function findSnapshotCounts(log) {
+  const counts = log.match(SNAPSHOT_COUNTS_PATTERN);
+  if (counts) {
+    return {
+      captured: parseCount(counts[1]),
+      inherited: parseCount(counts[2] ?? counts[3]),
+    };
+  }
+
+  const bypassed = log.match(BYPASSED_SNAPSHOTS_PATTERN);
+  return bypassed ? { captured: 0, inherited: parseCount(bypassed[1]) } : null;
 }
 
 function findBailout(lines) {
@@ -87,14 +103,14 @@ export function parseChromaticLog(log, { mode = 'affected' } = {}) {
 
   const lines = cleanLog(log);
   const clean = lines.join('\n');
-  const counts = clean.match(SNAPSHOT_COUNTS_PATTERN);
+  const counts = findSnapshotCounts(clean);
   const bailoutReason = findBailout(lines);
   const turboSnapEnabled = /\bTurboSnap enabled\b/i.test(clean);
 
   return {
     state: findState(clean, mode),
-    snapshotsCaptured: counts ? parseCount(counts[1]) : null,
-    snapshotsInherited: counts ? parseCount(counts[2]) : null,
+    snapshotsCaptured: counts?.captured ?? null,
+    snapshotsInherited: counts?.inherited ?? null,
     buildScope:
       mode === 'skipped'
         ? 'skipped'
@@ -162,8 +178,25 @@ function main() {
     usageError('GITHUB_STEP_SUMMARY is not set');
   }
 
-  const log = readFileSync(logPath, 'utf8');
-  const result = parseChromaticLog(log, { mode });
+  let result;
+  try {
+    const log = readFileSync(logPath, 'utf8');
+    result = parseChromaticLog(log, { mode });
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
+
+    result = {
+      state: 'diagnostics-unavailable',
+      snapshotsCaptured: null,
+      snapshotsInherited: null,
+      buildScope: 'unavailable',
+      bailoutReason: null,
+    };
+    process.stdout.write(
+      `::warning title=Chromatic diagnostics unavailable::${project} did not create its optional diagnostic log; the Chromatic step remains authoritative.\n`,
+    );
+  }
+
   appendFileSync(
     process.env.GITHUB_STEP_SUMMARY,
     formatChromaticSummary(project, mode, result),

@@ -10,14 +10,62 @@
   // xcrun is the macOS simulator tool used by the Capacitor dev helper.
   // taskkill is the Windows process-termination tool used by
   // apps/architect-classic/scripts/dev.mjs to tear down dev-server processes.
-  "ignoreBinaries": ["electron-builder", "xcrun", "taskkill"],
+  // diff is the POSIX tool apps/fresco/release-test/scripts/diff-exports.mjs
+  // spawns to compare normalized export trees.
+  "ignoreBinaries": ["electron-builder", "xcrun", "taskkill", "diff"],
+  // unplugin-dts loads @typescript/typescript6 by name at build time (TypeScript
+  // 7 dropped the JavaScript Compiler API it needs for declaration emit), so it
+  // is never imported from source.
+  "ignoreDependencies": ["@typescript/typescript6"],
   "tags": ["-public"],
   "workspaces": {
+    // The release-test walkers are invoked with node by the
+    // interviewer-release-test workflow's journey agents (prompt text knip
+    // cannot parse), so they must be declared as entries. They deliberately
+    // resolve @playwright/test out of apps/interviewer's dependency tree via
+    // createRequire rather than adding a root dependency.
+    ".": {
+      "entry": [
+        "scripts/interviewer-*-walker.mjs",
+        // Invoked by the CI workflow through POSTHOG_CLI_BINARY_PATH.
+        "scripts/posthog-cli-upload-stub.mjs"
+      ],
+      "ignoreDependencies": [
+        "@playwright/test",
+        "jszip",
+        // Resolved by @posthog/plugin-utils and spawned by path at build time.
+        "@posthog/cli"
+      ]
+    },
     "apps/networkcanvas.com": {
       "entry": ["lib/i18n/request.ts", "netlify/edge-functions/locale.ts"]
     },
     "apps/documentation": {
       "ignore": ["lib/i18n/request.ts", "next-sitemap.config.js"]
+    },
+    // Ported from apps/fresco/knip.config.ts, which knip does not read in
+    // monorepo mode. That file (and fresco's .github tooling) still ships to the
+    // standalone Fresco repo on mirror, so it is ignored rather than deleted.
+    "apps/fresco": {
+      // release-test/scripts are invoked from shell scripts knip cannot parse;
+      // list them as entries so they and their imports (e.g.
+      // scripts/resolve-manifest.mjs in the root workspace) count as used. The
+      // project glob deliberately keeps other .mjs invisible, as before.
+      "entry": ["release-test/scripts/*.mjs"],
+      "project": ["**/*.{js,jsx,ts,tsx}", "release-test/scripts/*.mjs"],
+      "ignore": ["knip.config.ts"],
+      "ignoreDependencies": [
+        "sharp", // Used by next/image but not directly imported
+        "@tailwindcss/forms", // Used in globals.css but not detected as used
+        "tailwindcss-animate", // Used in globals.css but not detected as used
+        "@prisma/client" // Used at runtime by the Prisma generated client
+      ],
+      "ignoreIssues": {
+        // Server actions for passkey password management — UI not yet wired
+        "actions/webauthn.ts": ["exports"],
+        // Pre-existing unused type exports
+        "lib/protocol/validateAndMigrateProtocol.ts": ["types"]
+      }
     },
     "packages/interview": {
       "entry": [
@@ -28,7 +76,9 @@
         "e2e/scripts/*.ts",
         "e2e/helpers/assetServer.ts",
         "e2e/fixtures/window-test.d.ts",
-        "e2e/host/src/global-augmentations.d.ts"
+        // Resolved by vite.config.ts's inlineWorkerPlugin for the library
+        // build, never by an import — see createAutoLayoutWorker.ts.
+        "src/canvas/createAutoLayoutWorker.inline.ts"
       ],
       "project": [
         "src/**/*.{ts,tsx,js}",
@@ -38,6 +88,11 @@
       "paths": {
         "~/*": ["./*"]
       }
+    },
+    "packages/fresco-ui": {
+      // Resolved by vite.config.ts's inlineWorkerPlugin for the library build,
+      // never by an import — see createSearchWorker.ts.
+      "entry": ["src/collection/filtering/createSearchWorker.inline.ts"]
     },
     "packages/protocol-validation": {},
     "packages/network-exporters": {},
@@ -65,6 +120,16 @@
         "@fontsource-variable/inclusive-sans",
         "@fontsource-variable/nunito"
       ]
+    },
+    "tooling/vitest": {
+      // The legacy setup deliberately resolves the active Classic workspace's
+      // Framer Motion installation rather than declaring a second copy here.
+      // Consumer coverage is enforced by vitest-animation-setup.test.mjs.
+      "ignoreDependencies": ["framer-motion"],
+      // Sibling declarations for the untyped setup-path.js entries; TypeScript
+      // resolves them implicitly (required for the mirrored app trees, where
+      // the vendored copy sits under node_modules), so nothing imports them.
+      "ignore": ["legacy/setup-path.d.ts", "modern/setup-path.d.ts"]
     },
     "apps/interviewer-classic": {
       "project": ["src/**/*.{js,jsx}"],
@@ -104,6 +169,23 @@
         "@utils/*": ["./src/utils/*"]
       }
     },
+    "apps/studio/client": {
+      "entry": ["index.html!"],
+      "vite": true,
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "apps/studio/server": {
+      "entry": [
+        "scripts/auth-cli-config.ts!",
+        // Resolved by vite.netlify.config.ts as a build input string, never
+        // by an import — it is the Netlify Function entry.
+        "src/netlify.ts!"
+      ],
+      "project": ["src/**/*.ts", "scripts/**/*.ts"],
+      // Resolved with import.meta.resolve, so the specifier is a runtime string
+      // knip cannot follow.
+      "ignoreDependencies": ["@codaco/protocols"]
+    },
     "apps/interviewer": {
       "entry": [
         "index.html!",
@@ -131,6 +213,15 @@
       },
       "ignoreDependencies": ["@types/recompose"],
       "ignore": ["src/**/*.d.ts"]
+    },
+    "apps/background-creator": {
+      "entry": ["index.html!"],
+      "vite": true,
+      "project": ["src/**/*.{ts,tsx}"],
+      "paths": {
+        "~/*": ["./src/*"]
+      },
+      "ignoreBinaries": ["Rscript"]
     },
     "workers/development-protocol": {},
     "workers/posthog-proxy": {}

@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
-import type { FramingId } from '@codaco/shared-consts';
+import type { FramingId } from '@codaco/protocol-validation';
 
 import { FamilyPedigreeContext } from '../../../FamilyPedigreeContext';
 import { createFamilyPedigreeStore, type VariableConfig } from '../../../store';
@@ -13,6 +13,10 @@ vi.mock('../../../../../hooks/useStageSelector', () => ({
 
 vi.mock('../../../../../forms/useProtocolForm', () => ({
   default: () => ({ fieldComponents: null }),
+}));
+
+vi.mock('../../PersonNameField', () => ({
+  default: ({ label }: { label: string }) => <input aria-label={label} />,
 }));
 
 const testConfig: VariableConfig = {

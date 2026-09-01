@@ -66,7 +66,7 @@ Lint and format with the monorepo root `pnpm lint` / `pnpm lint:fix` (oxlint + o
   protocolName, timestamps, status) stay plaintext for querying.
 ```
 
-There's no server and no native shell: everything above runs in the tab, and all data lives in IndexedDB in the browser profile. A service worker (`vite-plugin-pwa`, `generateSW`) precaches the app shell so it boots offline once installed; a pending update applies automatically on a fresh load when no interview is in progress, and is otherwise surfaced as an "update available" control on the version indicator with the release changelog (never mid-interview).
+There's no server and no native shell: everything above runs in the tab, and all data lives in IndexedDB in the browser profile. A service worker (`vite-plugin-pwa`, `generateSW`) precaches the app shell so it boots offline once installed. On a fresh navigation, a waiting update is activated before React renders while the loading screen remains visible, without reloading the page. Each built artifact uses its own precache. Activation advances the controller of other already-controlled tabs without replacing their loaded documents, and the new worker serves an older interview's content-hashed lazy assets from its retained build cache, including between same-version developer deployments and while offline. Open pages lease those build caches; once no page reports an older build, its cache is reclaimed. A legacy or nonresponding page blocks cleanup rather than putting an interview at risk. After the UI has rendered, an update is only installed when the researcher chooses **Install and reload** from the version indicator; active interviews remain protected and are never reloaded automatically. After the new version starts, the indicator shows the recently updated state and links to the release changelog.
 
 ## Vault & auth model
 
@@ -79,7 +79,7 @@ The app is gated by one of four mutually exclusive modes, chosen during first-ru
 | `biometric`  | WebAuthn platform authenticator (Touch ID, Windows Hello, etc.) via the PRF extension, **plus** a mandatory recovery passphrase enrolled in the same step — losing the authenticator doesn't mean losing the data. Not offered in macOS Chromium installed-PWA windows, where the browser can't reach the iCloud Keychain authenticator (crbug.com/364926914); unlock there falls back to the recovery passphrase. |
 | `none`       | No app-layer protection; data is stored unencrypted.                                                                                                                                                                                                                                                                                                                                                               |
 
-Unlocking derives a data-encryption key (DEK) that lives only in memory for the life of the tab — reloading the page, locking, an idle timeout, or losing focus for ~30 seconds all drop it and re-lock the app. See [CLAUDE.md](./CLAUDE.md#vault--auth) for the cryptographic detail.
+Unlocking derives a data-encryption key (DEK) that lives only in memory for the life of the tab — reloading the page, locking, or the idle timeout all drop it and re-lock the app. Time spent with the tab hidden counts toward that idle window, reconciled against wall-clock time when the tab comes back. Locking waits up to two seconds for outstanding interview writes to settle first, so it can't clear the key out from under an answer still being encrypted. See [CLAUDE.md](./CLAUDE.md#vault--auth) for the cryptographic detail.
 
 ## Offline behaviour
 
@@ -88,7 +88,7 @@ The app is designed to be used with no network connection at all. Protocol impor
 ## Deploying
 
 Netlify's Git integration builds a preview for every pull request. Production
-deploys are versioned and occur when the generated Release apps PR contains an
+deploys are versioned and occur when the generated Version Packages PR contains an
 Interviewer version bump and is merged. See [`RELEASING.md`](./RELEASING.md) for
 the full pipeline, the one-time Netlify setup, and how service-worker updates
 propagate to already-open tabs.

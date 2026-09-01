@@ -93,6 +93,7 @@ export default defineConfig({
 
 ```tsx
 import {
+  createDebouncedSyncHandler,
   Shell,
   InterviewToastViewport,
   interviewToastManager,
@@ -107,6 +108,7 @@ shape is identical for any other React framework):
 'use client';
 
 import {
+  createDebouncedSyncHandler,
   Shell,
   InterviewToastViewport,
   interviewToastManager,
@@ -116,7 +118,7 @@ import {
   type SyncHandler,
 } from '@codaco/interview';
 import { Toast } from '@base-ui/react/toast';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function InterviewClient({
@@ -148,12 +150,24 @@ export default function InterviewClient({
 
   // Persist state on every reducer commit. Receives the full session
   // payload — POST it to your server, write to IndexedDB, anything.
-  const onSync: SyncHandler = useCallback(async (interviewId, session) => {
-    await fetch(`/interview/${interviewId}/sync`, {
-      method: 'POST',
-      body: JSON.stringify(session),
-    });
-  }, []);
+  //
+  // The engine offers every change as it happens and never batches on your
+  // behalf: only you know what one write costs. A local write can take them
+  // all; a network request usually should not, so wrap it in
+  // `createDebouncedSyncHandler` (below) rather than posting per answer.
+  const onSync: SyncHandler = useMemo(
+    () =>
+      createDebouncedSyncHandler(
+        async (interviewId, session) => {
+          await fetch(`/interview/${interviewId}/sync`, {
+            method: 'POST',
+            body: JSON.stringify(session),
+          });
+        },
+        { waitMs: 3000 },
+      ),
+    [],
+  );
 
   // Called when the participant clicks Finish on the FinishSession
   // stage. Receives an AbortSignal so you can cancel any in-flight work
@@ -206,19 +220,19 @@ different stages without re-creating the Redux store: only the
 
 ### Shell props
 
-| Prop                            | Type                           | Required | Notes                                                                                                                                                                                                                   |
-| ------------------------------- | ------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `payload`                       | `InterviewPayload`             | yes      | `{ session, protocol }` — see the type for shape. The store is created once per `payload.session.id`; pass a stable reference.                                                                                          |
-| `currentStep`                   | `number`                       | yes      | The stage index the participant is on. Owned by the host.                                                                                                                                                               |
-| `onStepChange`                  | `(step: number) => void`       | yes      | Fired whenever the participant navigates. The host should mirror `step` into its own state.                                                                                                                             |
-| `onSync`                        | `(id, session) => Promise`     | yes      | Called after every Redux commit. Persist the session however you like.                                                                                                                                                  |
-| `onFinish`                      | `(id, AbortSignal) => Promise` | yes      | Called from the FinishSession stage. The signal aborts if the user navigates away mid-flight.                                                                                                                           |
-| `onRequestAsset`                | `(assetId) => Promise<url>`    | yes      | Resolve a protocol asset to a URL. Called lazily as stages mount.                                                                                                                                                       |
-| `analytics`                     | `InterviewAnalyticsMetadata`   | yes      | Host metadata attached as super-properties on every event: `installationId` (anonymous host UUID), `hostApp` (e.g. `"Fresco"`), `hostVersion?`.                                                                         |
-| `posthogClient`                 | `PostHog` (from posthog-js)    | no       | Pre-initialised PostHog client. When provided, the package emits events through it without modifying its config. When absent, the package lazy-initialises its own named instance against `ph-relay.networkcanvas.com`. |
-| `disableAnalytics`              | `boolean`                      | no       | When `true`, all event emission is suppressed (no `posthog-js` import). Default `false`. Use for E2E and synthetic-interview runs.                                                                                      |
-| `finishConfirmationDescription` | `string`                       | no       | Host-specific explanation shown in the finish confirmation dialog. Defaults to neutral guidance that does not promise responses are immutable.                                                                          |
-| `flags`                         | `{ isE2E?, isDevelopment? }`   | no       | `isE2E: true` exposes `window.__interviewStore` for Playwright fixtures. `isDevelopment: true` enables redux-logger.                                                                                                    |
+| Prop                            | Type                             | Required | Notes                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `payload`                       | `InterviewPayload`               | yes      | `{ session, protocol }` — see the type for shape. The store is created once per `payload.session.id`; pass a stable reference.                                                                                                                                                                                             |
+| `currentStep`                   | `number`                         | yes      | The stage index the participant is on. Owned by the host.                                                                                                                                                                                                                                                                  |
+| `onStepChange`                  | `(step: number) => void`         | yes      | Fired whenever the participant navigates. The host should mirror `step` into its own state.                                                                                                                                                                                                                                |
+| `onSync`                        | `(id, session, opts) => Promise` | yes      | Called after every Redux commit — the engine does not batch. Persist however you like; wrap in `createDebouncedSyncHandler` if writes are expensive. `opts.immediate` marks writes that must not be deferred (exit, finish); `opts.unloading` additionally marks the ones the document may not survive (hidden, pagehide). |
+| `onFinish`                      | `(id, AbortSignal) => Promise`   | yes      | Called from the FinishSession stage. The signal aborts if the user navigates away mid-flight.                                                                                                                                                                                                                              |
+| `onRequestAsset`                | `(assetId) => Promise<url>`      | yes      | Resolve a protocol asset to a URL. Called lazily as stages mount.                                                                                                                                                                                                                                                          |
+| `analytics`                     | `InterviewAnalyticsMetadata`     | yes      | Host metadata attached as super-properties on every event: `installationId` (anonymous host UUID), `hostApp` (e.g. `"Fresco"`), `hostVersion?`.                                                                                                                                                                            |
+| `posthogClient`                 | `PostHog` (from posthog-js)      | no       | Pre-initialised PostHog client. When provided, the package emits events through it without modifying its config. When absent, the package lazy-initialises its own named instance against `ph-relay.networkcanvas.com`.                                                                                                    |
+| `disableAnalytics`              | `boolean`                        | no       | When `true`, all event emission is suppressed (no `posthog-js` import). Default `false`. Use for E2E and synthetic-interview runs.                                                                                                                                                                                         |
+| `finishConfirmationDescription` | `string`                         | no       | Host-specific explanation shown in the finish confirmation dialog. Defaults to neutral guidance that does not promise responses are immutable.                                                                                                                                                                             |
+| `flags`                         | `{ isE2E?, isDevelopment? }`     | no       | `isE2E: true` exposes `window.__interviewStore` for Playwright fixtures. `isDevelopment: true` enables redux-logger.                                                                                                                                                                                                       |
 
 The package replaces a previous `onError` callback with internal `posthog.captureException` calls; render errors and asset-load failures are reported via the resolved analytics client (or suppressed when `disableAnalytics` is `true`). The host does not need to wire its own error sink.
 
@@ -318,6 +332,81 @@ record so subsequent loads pass schema validation.
 
 ---
 
+## Sparse entity attribute flow
+
+Interview stores entity attributes as sparse records. An own attribute key
+always has a defined `VariableValue`; a missing key means the variable is
+unset. `false`, `0`, `''`, and `[]` are defined responses and remain present.
+
+```mermaid
+flowchart LR
+  Form[Mounted form fields] --> Adapter[Coerce values and build patch]
+  Direct[Direct participant edit] --> Patch[AttributePatch: set and unset]
+  Adapter --> Patch
+  Patch --> Validate[Validate keys and overlap]
+  Validate --> Apply[Apply attributes and secure metadata]
+  Protocol[Protocol-derived prompt attributes] --> Apply
+  Apply --> Network[Sparse session.network]
+  Network --> Sync[onSync session]
+  Sync --> Persistence[Host persistence]
+  Persistence --> HostParse[Host read via NcNetworkSchema]
+  HostParse --> Payload[Shell payload]
+  Payload --> Network
+  Persistence --> ExportParse[Exporter parse via NcNetworkSchema]
+  ExportParse --> Output[CSV and GraphML]
+```
+
+The internal `AttributePatch` contract separates setting defined values from
+removing properties:
+
+```ts
+type AttributePatch = Readonly<{
+  set: Readonly<Record<string, VariableValue>>;
+  unset: readonly string[];
+}>;
+```
+
+Form submission first coerces values to their protocol variable types. The
+adapter then considers exactly the mounted field names: each defined value goes
+to `set`, each `undefined` value goes to `unset`, and unmounted fields are
+ignored. If any mounted defined value is not a `VariableValue`, conversion
+fails as a whole and no partial patch is dispatched.
+
+Creation and editing deliberately use different parts of that result:
+
+- Creating an entity writes only `set`, so unanswered fields are omitted.
+- Editing applies both `set` and `unset`, so clearing a mounted field deletes
+  that key while attributes outside the form remain unchanged.
+- Direct participant edits, such as bins and layout controls, produce the same
+  patch shape instead of writing nullish sentinels.
+
+The node, edge, and ego update thunks validate that participant-edit patch keys
+belong to the applicable codebook definition and reject a key that appears in
+both `set` and `unset`. Node and edge creation apply the same key check to their
+initial attributes; controlled roster and pedigree imports can explicitly
+allow external node attributes. Validation completes before the fulfilled
+reducer can mutate session state. Prompt-membership patches are derived directly
+from the protocol's `additionalAttributes`, so reducers apply those trusted
+keys without repeating patch validation.
+
+The shared applicator produces new attribute and secure-metadata maps for both
+validated and protocol-derived patches. An `unset` removes the attribute and
+its matching `_secureAttributes` entry in the same reducer transition; an empty
+secure-metadata map collapses to `undefined`.
+
+Network Composer undo history is presence-sensitive. For every touched key, an
+inverse patch restores a prior own value with `set`, but restores prior absence
+with `unset`. This distinction is required when a defined empty value such as
+`[]` is edited and then undone.
+
+`onSync` hands the host the sparse session after reducer commits. Hosts parse
+stored or received networks with `NcNetworkSchema` before constructing the next
+`Shell` payload; this accepts nullish input entries but emits sparse output.
+`@codaco/network-exporters` repeats that parse per session before formatting,
+so persistence and export do not reintroduce nullish attribute values.
+
+---
+
 ## Public API reference
 
 Everything below is exported from `'@codaco/interview'`. There are no
@@ -372,10 +461,27 @@ type ResolvedAsset = {
   value?: string; // apikey only
 };
 
+type SyncOptions = {
+  // Do not defer this write.
+  immediate: boolean;
+  // The document is being hidden or unloaded and may never run script again:
+  // use a transport that outlives it, and do not queue behind a request that
+  // will die with it. Always accompanied by `immediate`.
+  unloading: boolean;
+};
 type SyncHandler = (
   interviewId: string,
   session: SessionPayload,
+  options: SyncOptions,
 ) => Promise<void>;
+
+// Batching is the host's decision. This wraps a handler so ordinary changes
+// are rate-limited to one write per `waitMs` carrying the newest state, while
+// `immediate` writes go out at once.
+function createDebouncedSyncHandler(
+  write: SyncHandler,
+  options: { waitMs: number },
+): SyncHandler;
 type FinishHandler = (
   interviewId: string,
   signal: AbortSignal,

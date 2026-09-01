@@ -7,6 +7,8 @@ import type {
   NcNode,
 } from '@codaco/shared-consts';
 
+import type { ObjectPath } from '../utils/objectPath';
+
 // Re-export FieldValue for convenience
 export type { FieldValue } from '../Field/types';
 
@@ -64,6 +66,26 @@ export type ValidationContext = {
   network: NcNetwork;
   currentEntityId?: string;
   currentEntityAttributes?: NcNode[EntityAttributesProperty];
+  /** Resolve form-to-form comparison rules within this FieldNamespace. */
+  formValueNamespace?: string;
+  /** Typed namespace used by the built-in comparison validators. */
+  formValueNamespacePath?: ObjectPath;
+  /**
+   * Map a codebook variable ID to the form key that currently represents it.
+   * The original ID remains authoritative for codebook and entity lookups.
+   */
+  formValueAliases?: Readonly<Record<string, string>>;
+  /**
+   * Map a codebook variable ID to the participant-facing text that introduces
+   * it on this screen — the prompt or label the researcher authored. The
+   * variable-comparison validators name their target with it.
+   *
+   * Only AUTHORED text belongs here: a codebook variable's `name` is a
+   * researcher-facing identifier and must never reach a participant, so a
+   * variable with nothing authored is simply absent from this map and the
+   * validators use a complete label-free sentence instead.
+   */
+  variableLabels?: Readonly<Record<string, string>>;
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -71,6 +93,9 @@ export type ValidationContext = {
 // ═══════════════════════════════════════════════════════════════
 
 export type FieldState = {
+  /** Internal structural path retained by the built-in form store. */
+  path?: ObjectPath;
+  submissionErrorKey?: string;
   value: FieldValue;
   initialValue?: FieldValue;
   meta: {
@@ -85,6 +110,7 @@ export type FieldState = {
 
 export type FieldConfig = {
   name: string;
+  submissionErrorKey?: string;
   initialValue?: FieldValue;
   validation?: FieldValidationFunction;
 };

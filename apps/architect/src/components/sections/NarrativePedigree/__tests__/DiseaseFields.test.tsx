@@ -1,145 +1,149 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { startCase } from 'es-toolkit/compat';
 import { Provider } from 'react-redux';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { INHERITANCE_PATTERNS } from '@codaco/shared-consts';
-
-let mockBooleanVariables: { value: string; label: string; type: string }[] = [];
-let mockColorValue: string | undefined = undefined;
-
-vi.mock('react-redux', async () => {
-  const actual =
-    await vi.importActual<typeof import('react-redux')>('react-redux');
-  return {
-    ...actual,
-    useSelector: (selector: (state: unknown) => unknown) => {
-      const result = selector({});
-      if (Array.isArray(result)) return mockBooleanVariables;
-      return mockColorValue;
-    },
-  };
-});
-
-vi.mock('redux-form', () => ({
-  formValueSelector: () => () => mockColorValue,
-  Field: ({ name }: { name: string; component: unknown }) => (
-    <div data-testid={`field-${name}`} />
-  ),
-}));
-
-vi.mock('~/selectors/codebook', () => ({
-  getVariableOptionsForSubject: () => [
-    { value: 'var-1', label: 'Affected', type: 'boolean' },
-    { value: 'var-2', label: 'Carrier', type: 'boolean' },
-    { value: 'var-3', label: 'Age', type: 'number' },
-  ],
-}));
-
-vi.mock('~/components/EditorLayout', () => ({
-  Row: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  Section: ({
-    children,
-    title,
-  }: {
-    children: React.ReactNode;
-    title: string;
-  }) => (
-    <div>
-      <h2>{title}</h2>
-      {children}
-    </div>
-  ),
-}));
-
-vi.mock('~/components/Form/ValidatedField', () => ({
-  default: ({
-    name,
-    componentProps,
-  }: {
-    name: string;
-    componentProps?: {
-      label?: string;
-      options?: { value: string; label: string }[];
-    };
-  }) => (
-    <div data-testid={`field-${name}`}>
-      {componentProps?.label && <span>{componentProps.label}</span>}
-      {componentProps?.options?.map((o) => (
-        <span key={o.value} data-testid={`option-${o.value}`}>
-          {o.label}
-        </span>
-      ))}
-    </div>
-  ),
-}));
-
-vi.mock('~/components/IssueAnchor', () => ({
-  default: () => null,
-}));
-
-vi.mock('~/components/Form/Fields/ColorPicker', () => ({
-  default: () => <div data-testid="color-picker" />,
-}));
-
-vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
-  default: () => <div data-testid="variable-picker" />,
-}));
+import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { INHERITANCE_PATTERNS } from '@codaco/protocol-validation';
 
 import DiseaseFields from '../DiseaseFields';
 
+const CODEBOOK = {
+  node: {
+    'node-type-1': {
+      name: 'Person',
+      color: 'c',
+      variables: {
+        'var-1': { name: 'Affected', type: 'boolean' },
+        'var-2': { name: 'Carrier', type: 'boolean' },
+        'var-3': { name: 'Age', type: 'number' },
+      },
+    },
+  },
+};
+
 const renderFields = (nodeType = 'node-type-1') => {
-  const store = configureStore({ reducer: { noop: () => ({}) } });
+  const store = configureStore({
+    reducer: {
+      activeProtocol: (
+        state = {
+          present: { schemaVersion: 8, codebook: CODEBOOK, stages: [] },
+        },
+      ) => state,
+      stageEditorDraft: (state = { ui: { liveValues: null } }) => state,
+    },
+  });
   return render(
     <Provider store={store}>
-      <DiseaseFields nodeType={nodeType} />
+      <FormStoreProvider>
+        <DiseaseFields nodeType={nodeType} />
+      </FormStoreProvider>
     </Provider>,
   );
 };
 
 describe('DiseaseFields', () => {
-  it('renders the Disease Label section', () => {
+  it('groups every field in one Disease details section', () => {
     renderFields();
-    expect(screen.getByText('Disease Label')).toBeDefined();
+
+    const section = screen.getByRole('region', { name: 'Disease details' });
+    expect(
+      within(section).getByText(
+        "Define how this disease appears, map it to the source pedigree's affected-status attribute, and choose how its inheritance is interpreted.",
+      ),
+    ).toBeVisible();
+    expect(
+      within(section).getByRole('textbox', { name: 'Disease label' }),
+    ).toBeInTheDocument();
+    expect(
+      within(section).getByRole('radiogroup', { name: 'Color' }),
+    ).toBeInTheDocument();
+    expect(within(section).getByText('Node attribute')).toBeVisible();
+    expect(
+      within(section).getByRole('combobox', { name: 'Inheritance pattern' }),
+    ).toBeInTheDocument();
+  });
+
+  it('renders a visible label for the disease name field', () => {
+    renderFields();
+    const label = screen.getByText('Disease label');
+    expect(label).toBeVisible();
+    // Visibility is the behaviour under test; jsdom does not load Tailwind's
+    // screen-reader-only declaration, so assert the design-system visibility
+    // token directly as well as the accessible name.
+    expect(label).not.toHaveClass('sr-only');
+    expect(
+      screen.getByRole('textbox', { name: 'Disease label' }),
+    ).toBeInTheDocument();
   });
 
   it('renders the label field', () => {
     renderFields();
-    expect(screen.getByTestId('field-label')).toBeDefined();
+    expect(
+      screen.getByPlaceholderText('Enter a name for this disease...'),
+    ).toBeInTheDocument();
   });
 
-  it('renders the Color section', () => {
+  it('renders a visible label for the color field', () => {
     renderFields();
-    expect(screen.getByText('Color')).toBeDefined();
+    const label = screen.getByText('Color');
+    expect(label).toBeVisible();
+    expect(label).not.toHaveClass('sr-only');
   });
 
   it('renders the color field', () => {
     renderFields();
-    expect(screen.getByTestId('field-color')).toBeDefined();
+    expect(
+      screen.getByRole('radiogroup', {
+        name: 'Color',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Select a color for this disease.')).toBeVisible();
   });
 
-  it('renders the Node Variable section', () => {
+  it('renders a visible label and hint for the node attribute field', () => {
     renderFields();
-    expect(screen.getByText('Node Variable')).toBeDefined();
+    const label = screen.getByText('Node attribute');
+    expect(label).toBeVisible();
+    expect(label).not.toHaveClass('sr-only');
+    expect(screen.getByText('Select a boolean node attribute.')).toBeVisible();
   });
 
-  it('renders the variable field', () => {
+  it('renders the variable field, offering only boolean variables', () => {
     renderFields();
-    expect(screen.getByTestId('field-variable')).toBeDefined();
+    expect(screen.getByText('No attribute selected')).toBeInTheDocument();
+    expect(screen.getByText('Select attribute')).toBeInTheDocument();
   });
 
-  it('renders the Inheritance Pattern section', () => {
+  it('renders a visible label for the inheritance pattern field', () => {
     renderFields();
-    expect(screen.getByText('Inheritance Pattern')).toBeDefined();
+    const label = screen.getByText('Inheritance pattern');
+    expect(label).toBeVisible();
+    expect(label).not.toHaveClass('sr-only');
+    expect(
+      screen.getByRole('combobox', { name: 'Inheritance pattern' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Choose how this disease is inherited. Mendelian patterns are used with biological relationships and recorded sex to infer carrier and possible at-risk statuses. Multifactorial and Unknown show affected status only and do not infer carrier or at-risk statuses.',
+      ),
+    ).toBeVisible();
   });
 
   it('renders all INHERITANCE_PATTERNS as options', () => {
     renderFields();
-    const field = screen.getByTestId('field-inheritancePattern');
+    const select = screen.getByRole('combobox', {
+      name: 'Inheritance pattern',
+    });
+    expect(select).toHaveTextContent('Select an inheritance pattern...');
+
+    fireEvent.click(select);
+
     for (const pattern of INHERITANCE_PATTERNS) {
       expect(
-        field.querySelector(`[data-testid="option-${pattern}"]`),
-      ).toBeDefined();
+        screen.getByRole('option', { name: startCase(pattern) }),
+      ).toBeInTheDocument();
     }
   });
 });

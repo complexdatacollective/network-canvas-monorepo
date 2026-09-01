@@ -1,0 +1,6 @@
+@import '@codaco/tailwind-config/fresco.css';
+/* Class-scanner glue: fresco-ui's own styles.css carries a self-relative
+   @source that resolves against its src/ tree, so importing it here is
+   enough to pull that scan in. */
+@import '@codaco/fresco-ui/styles.css';
+@import './background-creator-theme.css';

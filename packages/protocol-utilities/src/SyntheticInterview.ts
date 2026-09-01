@@ -1,12 +1,13 @@
 import { invariant } from 'es-toolkit';
 
-import type {
-  ComponentType,
-  Item,
-  Stage,
-  StageType,
-  StructuralCodebook,
-  VariableType,
+import {
+  type ComponentType,
+  CURRENT_SCHEMA_VERSION,
+  type Item,
+  type Stage,
+  type StageType,
+  type StructuralCodebook,
+  type VariableType,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -26,6 +27,7 @@ import {
 import {
   claimFixedValues,
   constraintsFor,
+  definedAttributesOf,
   generateAttributesForEntity,
 } from './generateNetwork/attributes';
 import { resolveGenerationConfig } from './generateNetwork/config';
@@ -99,6 +101,8 @@ import type {
   TieStrengthCensusPromptEntry,
   VariableEntry,
 } from './types';
+
+const omittedAttributeValue = Symbol('omittedAttributeValue');
 import { ValueGenerator } from './ValueGenerator';
 
 type VariableRef = {
@@ -297,6 +301,9 @@ const SUBJECTLESS_STAGES = new Set<StageType>([
 // Stage types where the subject is an edge, not a node
 const EDGE_SUBJECT_STAGES = new Set<StageType>(['AlterEdgeForm']);
 
+/** Shared default for deterministic synthetic interview fixtures. */
+export const DEFAULT_SYNTHETIC_SEED = 42;
+
 export class SyntheticInterview {
   private seed: number;
   private idCounter = 0;
@@ -313,7 +320,7 @@ export class SyntheticInterview {
   private ordinalPromptCounter = 0;
   private experiments: { encryptedVariables?: boolean } | null = null;
 
-  constructor(seed = 42) {
+  constructor(seed = DEFAULT_SYNTHETIC_SEED) {
     this.seed = seed;
     this.valueGen = new ValueGenerator(seed);
   }
@@ -340,7 +347,7 @@ export class SyntheticInterview {
     };
 
     // Seed a "name" text variable so generated initial nodes receive a
-    // faker firstName via ValueGenerator. Without this, nodes render with
+    // realistic full name via ValueGenerator. Without this, nodes render with
     // the type's display name (e.g. "Person") as their fallback label.
     const nameVarId = this.nextId('var');
     entry.variables.set(nameVarId, {
@@ -740,7 +747,7 @@ export class SyntheticInterview {
           center: [-87.6298, 41.8781], // Chicago
           initialZoom: 11,
           dataSourceAssetId: 'geojson-data',
-          color: 'node-color-seq-1',
+          color: 'ord-color-seq-1',
           targetFeatureProperty: 'name',
         };
       }
@@ -1643,7 +1650,7 @@ export class SyntheticInterview {
 
     return {
       id: `protocol-${this.seed}`,
-      schemaVersion: 8,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
       codebook,
       // Stage configs are built dynamically and satisfy the Stage schema
       // at runtime, but TypeScript can't verify this statically.
@@ -1736,7 +1743,7 @@ export class SyntheticInterview {
                 existing: explicit,
                 only: new Set(
                   [...nodeType.variables.keys()].filter(
-                    (varId) => !(varId in explicit),
+                    (varId) => !(varId in nodeEntry.explicitAttributes),
                   ),
                 ),
               },
@@ -1752,11 +1759,13 @@ export class SyntheticInterview {
         }
 
         for (const [varId, variable] of nodeType.variables) {
-          const value = varId in explicit ? explicit[varId] : drawn?.[varId];
-          attributes[varId] =
-            value === undefined
+          const wasWritten = varId in nodeEntry.explicitAttributes;
+          const value = wasWritten ? explicit[varId] : drawn?.[varId];
+          const stored =
+            value === undefined && nodeEntry.manual && !wasWritten
               ? ctx.valueGen.neutralForVariable(variable)
               : value;
+          if (stored !== undefined) attributes[varId] = stored;
         }
       }
 
@@ -1802,7 +1811,7 @@ export class SyntheticInterview {
                 existing: explicit,
                 only: new Set(
                   [...edgeType.variables.keys()].filter(
-                    (varId) => !(varId in explicit),
+                    (varId) => !(varId in edgeEntry.attributes),
                   ),
                 ),
               },
@@ -1818,11 +1827,13 @@ export class SyntheticInterview {
         }
 
         for (const [varId, variable] of edgeType.variables) {
-          const value = varId in explicit ? explicit[varId] : drawn?.[varId];
-          attributes[varId] =
-            value === undefined
+          const wasWritten = varId in edgeEntry.attributes;
+          const value = wasWritten ? explicit[varId] : drawn?.[varId];
+          const stored =
+            value === undefined && edgeEntry.manual && !wasWritten
               ? ctx.valueGen.neutralForVariable(variable)
               : value;
+          if (stored !== undefined) attributes[varId] = stored;
         }
       }
 
@@ -1857,13 +1868,12 @@ export class SyntheticInterview {
     this.refuseUndrawableValues(ctx, { entity: 'ego' }, drawnEgo, egoExplicit);
 
     const egoAttributes: Record<string, VariableValue> = {};
-    for (const [varId, variable] of this.egoVariables) {
+    for (const varId of this.egoVariables.keys()) {
       const value = drawnEgo[varId];
-      egoAttributes[varId] =
-        value === undefined ? ctx.valueGen.neutralForVariable(variable) : value;
+      if (value !== undefined) egoAttributes[varId] = value;
     }
 
-    return {
+    const network: NcNetwork = {
       ego: {
         [entityPrimaryKeyProperty]: `ego-${this.seed}`,
         [entityAttributesProperty]: egoAttributes,
@@ -1871,6 +1881,7 @@ export class SyntheticInterview {
       nodes: ncNodes,
       edges: ncEdges,
     };
+    return network;
   }
 
   getInterviewPayload(opts?: GetSessionInput) {
@@ -2094,12 +2105,14 @@ export class SyntheticInterview {
     variables: Map<string, VariableEntry> | undefined,
     written: Record<string, unknown>,
   ): Record<string, VariableValue> {
-    const explicit: Record<string, VariableValue> = {};
+    const declaredWritten: Record<string, unknown> = {};
     for (const varId of variables?.keys() ?? []) {
-      if (!(varId in written)) continue;
-      explicit[varId] = written[varId] as VariableValue;
+      if (Object.hasOwn(written, varId)) {
+        declaredWritten[varId] = written[varId];
+      }
     }
-    return explicit;
+
+    return definedAttributesOf(declaredWritten, omittedAttributeValue);
   }
 
   /**
@@ -2185,7 +2198,9 @@ export class SyntheticInterview {
     );
     if (broken === undefined) return;
 
-    const setTo = broken.values.map((value) => valueKey(value)).join(' and ');
+    const setTo = broken.values
+      .map((value) => (value === null ? 'null' : valueKey(value)))
+      .join(' and ');
     throw new SyntheticDataConstraintError(
       [
         this.conflict(ref, broken.variableIds, [broken.rule], {
@@ -2262,9 +2277,16 @@ export class SyntheticInterview {
     const broken = ownRuleBrokenByFixedValues(constraints, judged);
     if (broken === undefined) return;
 
+    const closestValue = broken.values[0];
+    if (closestValue === undefined) {
+      throw new Error('A broken fixed-value rule must include a value');
+    }
+    const displayedValue =
+      closestValue === null ? 'null' : valueKey(closestValue);
+
     throw new SyntheticDataConstraintError([
       this.conflict(ref, broken.variableIds, [broken.rule], {
-        reason: `the closest value these rules leave drawable is ${valueKey(broken.values[0] ?? null)}, which ${broken.rule} rejects`,
+        reason: `the closest value these rules leave drawable is ${displayedValue}, which ${broken.rule} rejects`,
       }),
     ]);
   }
@@ -2523,7 +2545,7 @@ export class SyntheticInterview {
   setNodeAttribute(
     nodeIndex: number,
     variableId: string,
-    value: unknown,
+    value: VariableValue,
   ): void {
     const node = this.nodes[nodeIndex];
     if (!node) {
@@ -2534,13 +2556,24 @@ export class SyntheticInterview {
     node.explicitAttributes[variableId] = value;
   }
 
+  /** Keep a node variable absent while suppressing its generated value. */
+  unsetNodeAttribute(nodeIndex: number, variableId: string): void {
+    const node = this.nodes[nodeIndex];
+    if (!node) {
+      throw new Error(
+        `Node index ${nodeIndex} out of range (${this.nodes.length} nodes)`,
+      );
+    }
+    node.explicitAttributes[variableId] = omittedAttributeValue;
+  }
+
   /**
    * Set explicit attribute values on an edge by its index in the edges array.
    */
   setEdgeAttribute(
     edgeIndex: number,
     variableId: string,
-    value: unknown,
+    value: VariableValue,
   ): void {
     const edge = this.edges[edgeIndex];
     if (!edge) {
@@ -2549,6 +2582,17 @@ export class SyntheticInterview {
       );
     }
     edge.attributes[variableId] = value;
+  }
+
+  /** Keep an edge variable absent while suppressing its generated value. */
+  unsetEdgeAttribute(edgeIndex: number, variableId: string): void {
+    const edge = this.edges[edgeIndex];
+    if (!edge) {
+      throw new Error(
+        `Edge index ${edgeIndex} out of range (${this.edges.length} edges)`,
+      );
+    }
+    edge.attributes[variableId] = omittedAttributeValue;
   }
 
   /**

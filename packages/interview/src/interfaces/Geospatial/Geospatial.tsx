@@ -17,7 +17,6 @@ import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
-  type VariableValue,
 } from '@codaco/shared-consts';
 
 import { useTrack } from '../../analytics/useTrack';
@@ -30,6 +29,7 @@ import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { getNetworkNodesForType } from '../../selectors/session';
+import type { AttributePatch } from '../../store/entityAttributePatch';
 import { updateNode as updateNodeAction } from '../../store/modules/session';
 import type { RootState } from '../../store/store';
 import type { Direction, NavigationIntent, StageProps } from '../../types';
@@ -103,6 +103,15 @@ function readFirstFeatureProperty(json: unknown, property: string): unknown {
 
 type GeospatialInterfaceProps = StageProps<'Geospatial'>;
 
+export function locationValueToAttributePatch(
+  variable: string,
+  value: string | null,
+): AttributePatch {
+  return value === null
+    ? { set: {}, unset: [variable] }
+    : { set: { [variable]: value }, unset: [] };
+}
+
 export default function GeospatialInterface({
   stage,
 }: GeospatialInterfaceProps) {
@@ -134,17 +143,17 @@ export default function GeospatialInterface({
     ({
       nodeId,
       newModelData,
-      newAttributeData,
+      attributePatch,
     }: {
       nodeId: string;
       newModelData?: Record<string, unknown>;
-      newAttributeData: Record<string, VariableValue>;
+      attributePatch: AttributePatch;
     }) =>
       dispatch(
         updateNodeAction({
           nodeId,
           newModelData,
-          newAttributeData,
+          attributePatch,
           currentStep,
         }),
       ),
@@ -154,8 +163,11 @@ export default function GeospatialInterface({
   const track = useTrack();
   const setLocationValue = useCallback(
     (value: string | null, selectionKind: 'search' | 'pin' = 'pin') => {
-      const nodeId =
-        stageNodes[navState.activeIndex]![entityPrimaryKeyProperty];
+      const variable = currentPrompt.variable;
+      if (!variable) return;
+      const activeNode = stageNodes[navState.activeIndex];
+      if (!activeNode) return;
+      const nodeId = activeNode[entityPrimaryKeyProperty];
       if (value !== null) {
         track('geospatial_location_selected', {
           node_id: nodeId,
@@ -164,9 +176,7 @@ export default function GeospatialInterface({
       }
       void updateNode({
         nodeId,
-        newAttributeData: {
-          [currentPrompt.variable!]: value,
-        },
+        attributePatch: locationValueToAttributePatch(variable, value),
       });
     },
     [
@@ -178,13 +188,15 @@ export default function GeospatialInterface({
     ],
   );
 
-  const initialSelectionValue: string | undefined =
+  const initialSelection =
     currentPrompt?.variable &&
     stageNodes[navState.activeIndex]?.[entityAttributesProperty]
-      ? (stageNodes[navState.activeIndex]?.[entityAttributesProperty]?.[
+      ? stageNodes[navState.activeIndex]?.[entityAttributesProperty]?.[
           currentPrompt.variable
-        ] as string | undefined)
+        ]
       : undefined;
+  const initialSelectionValue =
+    typeof initialSelection === 'string' ? initialSelection : undefined;
 
   // In stub mode, mapContainerRef is never attached so the hook's main
   // useEffect early-returns (see useMapbox.ts) and the hook contributes

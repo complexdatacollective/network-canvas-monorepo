@@ -2,7 +2,8 @@ import { cleanup, screen } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { classicApps, webApps } from '~/lib/getStarted';
+import { webApps } from '~/lib/getStarted';
+import { classicApps } from '~/test/classicApps';
 import { renderWithIntl } from '~/test/renderWithIntl';
 
 import { AppChoiceCard } from '../AppChoiceCard';

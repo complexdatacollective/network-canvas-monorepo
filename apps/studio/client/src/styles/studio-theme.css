@@ -1,0 +1,21 @@
+/*
+ * Studio app theme — layered over @codaco/tailwind-config/fresco.css.
+ * Section 1 re-declares shared semantic variables with Studio's brand
+ * values (the extension mechanism sanctioned by themes/default.css).
+ */
+
+/* 1. Brand overrides (shared variable names, Studio values). */
+@layer theme {
+  :root {
+    --base-hue: 90;
+
+    --background: color-mix(in oklab, var(--brand) 3%, white);
+  }
+}
+
+@layer base {
+  html,
+  body {
+    @apply text-text bg-background publish-colors h-full w-full text-base;
+  }
+}

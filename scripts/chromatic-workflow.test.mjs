@@ -41,17 +41,20 @@ function untraced(script) {
   return [...script.matchAll(/--untraced '([^']+)'/g)].map((match) => match[1]);
 }
 
-test('all required UI Test contexts are emitted for PR and merge queue SHAs', () => {
-  assert.match(workflow, /^  pull_request:$/m);
-  assert.match(workflow, /^  merge_group:$/m);
+test('all UI Test contexts are emitted for PR SHAs without merge-queue work', () => {
+  assert.match(workflow, /^  pull_request:\n    branches: \[main\]$/m);
+  assert.doesNotMatch(workflow, /^  merge_group:/m);
   assert.match(workflow, /^  workflow_run:$/m);
   assert.doesNotMatch(workflow, /pull_request_target/);
   assert.match(workflow, /- CI and Release/);
-  assert.match(workflow, /branches:\n\s+- 'changeset-release\/\*\*'/);
+  assert.match(
+    workflow,
+    /branches:\n\s+- main\n\s+- 'changeset-release\/\*\*'/,
+  );
 
   const statuses = job('required-statuses');
   assert.ok(statuses, 'required-statuses job exists');
-  assert.match(statuses, /github\.event_name == 'merge_group'/);
+  assert.doesNotMatch(statuses, /merge_group/);
   assert.match(statuses, /github\.actor != 'dependabot\[bot\]'/);
   assert.match(statuses, /github\.event_name == 'workflow_run'/);
   assert.match(statuses, /workflow_run\.actor\.login == 'dependabot\[bot\]'/);
@@ -65,7 +68,7 @@ test('all required UI Test contexts are emitted for PR and merge queue SHAs', ()
   );
   assert.match(
     statuses,
-    /CHROMATIC_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.event\.merge_group\.head_sha \|\| github\.event\.workflow_run\.head_sha \|\| github\.sha \}\}/,
+    /CHROMATIC_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.event\.workflow_run\.head_sha \|\| github\.sha \}\}/,
   );
   assert.match(statuses, /refs\/pull\/\$PR_NUMBER\/head/);
   for (const packageName of [
@@ -78,13 +81,17 @@ test('all required UI Test contexts are emitted for PR and merge queue SHAs', ()
   assert.match(statuses, /--skip --skip-update-check --no-interactive/);
 });
 
-test('release runs serialize by ref and cancel superseded work', () => {
+test('release runs serialize by ref while main builds are commit-scoped', () => {
   const concurrency = workflow.match(
     /^concurrency:\n(?<body>[\s\S]*?)\n\njobs:/m,
   )?.groups?.body;
   assert.ok(concurrency, 'top-level concurrency exists');
   assert.match(concurrency, /github\.event_name/);
   assert.match(concurrency, /github\.ref_name/);
+  assert.match(
+    concurrency,
+    /github\.ref_name == github\.event\.repository\.default_branch && github\.sha/,
+  );
   assert.match(concurrency, /cancel-in-progress: true/);
 });
 
@@ -106,6 +113,46 @@ test('release selection uses the fail-closed lockfile-aware detector', () => {
   assert.match(detect, /--main "origin\/\$DEFAULT_BRANCH"/);
   assert.doesNotMatch(detect, /git merge-base/);
   assert.match(detect, /GITHUB_STEP_SUMMARY/);
+});
+
+test('default-branch pushes replace release-branch skip builds with real builds', () => {
+  const detect = job('detect');
+  assert.ok(detect, 'detect job exists');
+  assert.match(
+    detect,
+    /github\.ref_name == github\.event\.repository\.default_branch\n\s+\|\| github\.actor != 'dependabot\[bot\]'/,
+  );
+  assert.match(
+    detect,
+    /"\$GITHUB_EVENT_NAME" == "push" && "\$GITHUB_REF_NAME" == "\$DEFAULT_BRANCH"/,
+  );
+  assert.match(detect, /default branch needs a complete target build/);
+
+  const skipped = job('skip-unaffected');
+  assert.ok(skipped, 'skip-unaffected job exists');
+  assert.match(
+    skipped,
+    /!\(github\.event_name == 'push'\n\s+&& github\.ref_name == github\.event\.repository\.default_branch\)/,
+  );
+
+  for (const jobName of ['fresco-ui', 'interview', 'interviewer']) {
+    const body = job(jobName);
+    assert.ok(body, `${jobName} job exists`);
+    assert.match(
+      body,
+      /\(github\.event_name == 'push'\n\s+&& github\.ref_name == github\.event\.repository\.default_branch\)/,
+    );
+    assert.match(body, /Build Storybook/);
+    assert.match(
+      body,
+      /DEFAULT_BRANCH: \$\{\{ github\.event\.repository\.default_branch \}\}/,
+    );
+    assert.match(
+      body,
+      /if \[\[ "\$GITHUB_EVENT_NAME" == "push" && "\$GITHUB_REF_NAME" == "\$DEFAULT_BRANCH" \]\]; then\n\s+chromatic_args\+=\(--force-rebuild\)/,
+    );
+    assert.doesNotMatch(body, /--skip /);
+  }
 });
 
 test('unaffected release projects call Chromatic skip from one setup job', () => {
@@ -131,6 +178,24 @@ test('unaffected release projects call Chromatic skip from one setup job', () =>
     assert.match(body, /Verify TurboSnap metadata/);
     assert.match(body, /chromatic-observability\.mjs/);
     assert.doesNotMatch(body, /--skip /);
+  }
+});
+
+test('affected release projects pass runtime options through pnpm', () => {
+  for (const [jobName, packageName] of [
+    ['fresco-ui', '@codaco/fresco-ui'],
+    ['interview', '@codaco/interview'],
+    ['interviewer', '@codaco/interviewer'],
+  ]) {
+    const body = job(jobName);
+    assert.ok(body, `${jobName} job exists`);
+    assert.match(
+      body,
+      new RegExp(
+        `pnpm --filter ${packageName.replace('/', '\\/')} chromatic \\\\\\n\\s+"\\$\\{chromatic_args\\[@\\]\\}" \\\\\\n\\s+--log-file="\\$RUNNER_TEMP/chromatic-${jobName}\\.log"`,
+      ),
+    );
+    assert.doesNotMatch(body, /pnpm --filter [^\n]+ chromatic -- \\/);
   }
 });
 

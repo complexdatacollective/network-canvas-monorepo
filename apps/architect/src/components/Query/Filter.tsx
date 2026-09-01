@@ -1,13 +1,14 @@
-import Rules from './Rules';
+import Rules, { type RuleSetGroupProps } from './Rules/Rules';
 import type { Rule } from './Rules/validateRule';
 
-type FilterProps = {
+type FilterProps = RuleSetGroupProps & {
   onChange: (value: unknown) => void;
   rules?: Rule[];
   codebook: Record<string, unknown>;
   join?: string;
-  error?: string;
   allowEdgeRules?: boolean;
+  /** Whole string, required — see `Rules.tsx`. */
+  addRuleLabel: string;
 };
 
 const Filter = ({
@@ -15,16 +16,18 @@ const Filter = ({
   join,
   codebook,
   onChange,
-  error,
   allowEdgeRules,
+  addRuleLabel,
+  ...groupProps
 }: FilterProps) => (
   <Rules
+    {...groupProps}
     rules={rules}
     join={join}
     onChange={onChange}
     codebook={codebook}
-    error={error}
     allowEdgeRules={allowEdgeRules}
+    addRuleLabel={addRuleLabel}
   />
 );
 

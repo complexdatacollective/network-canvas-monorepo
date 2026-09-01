@@ -20,16 +20,30 @@ const CATEGORY_LABELS = [
   'Other',
 ];
 
+// A researcher can author a category label of any length, and a participant
+// can name a person anything at all. Both end up inside a bin circle, which
+// clips to its own shape — so both are edge cases the layout has to survive.
+const LONG_CATEGORY_LABEL =
+  'People I know through my extended family and their close friends';
+const LONG_NODE_NAME =
+  'Aleksandra Konstantina Kowalczyk-Nowakowska de la Fuente y Villanueva';
+
 type StoryArgs = {
   categoryCount: number;
   hasMissingValue: boolean;
   hasOtherOption: boolean;
+  otherReasonRequired: boolean;
   initialNodeCount: number;
   unassignedCount: number;
   promptCount: number;
+  longLabels: boolean;
 };
 
-function buildOptions(categoryCount: number, hasMissingValue: boolean) {
+function buildOptions(
+  categoryCount: number,
+  hasMissingValue: boolean,
+  longLabels: boolean,
+) {
   const options: VariableOption[] = [];
 
   if (hasMissingValue) {
@@ -37,7 +51,10 @@ function buildOptions(categoryCount: number, hasMissingValue: boolean) {
   }
 
   for (let i = 0; i < categoryCount; i++) {
-    const label = CATEGORY_LABELS[i] ?? `Category ${i + 1}`;
+    const label =
+      longLabels && i === 0
+        ? LONG_CATEGORY_LABEL
+        : (CATEGORY_LABELS[i] ?? `Category ${i + 1}`);
     options.push({ label, value: i + 1 });
   }
 
@@ -46,19 +63,27 @@ function buildOptions(categoryCount: number, hasMissingValue: boolean) {
 
 function buildInterview(args: StoryArgs) {
   const interview = new SyntheticInterview();
-  const options = buildOptions(args.categoryCount, args.hasMissingValue);
+  const options = buildOptions(
+    args.categoryCount,
+    args.hasMissingValue,
+    args.longLabels,
+  );
 
   const nodeType = interview.addNodeType({ name: 'Person' });
 
   // `component` here is incidental, not required: the "Other" dialog derives
   // validation directly from the codebook variable without resolving a
   // component, so an otherVariable created without one (e.g. via Architect's
-  // "Create New Variable" dialog) works identically.
+  // "Create New Variable" dialog) works identically. `validation` is
+  // deliberately omitted unless `otherReasonRequired` is set, so the story can
+  // demonstrate that the dialog follows the codebook rule rather than imposing
+  // its own required state.
   const otherVariableId = args.hasOtherOption
     ? nodeType.addVariable({
         name: 'Other Reason',
         type: 'text',
         component: 'Text',
+        ...(args.otherReasonRequired ? { validation: { required: true } } : {}),
       }).id
     : undefined;
 
@@ -103,10 +128,22 @@ function buildInterview(args: StoryArgs) {
   );
   for (let i = 0; i < clampedUnassigned; i++) {
     for (const varId of variables) {
-      interview.setNodeAttribute(i, varId, null);
+      interview.unsetNodeAttribute(i, varId);
     }
     if (otherVariableId) {
-      interview.setNodeAttribute(i, otherVariableId, null);
+      interview.unsetNodeAttribute(i, otherVariableId);
+    }
+  }
+
+  if (args.longLabels) {
+    // `addNodeType` seeds the "name" text variable first, so it leads the
+    // type's variable list. Every node gets the long name, so whichever one
+    // sorts first into a bin is the one the bin summarises.
+    const nameVariableId = interview.getVariableIds(nodeType.id)[0];
+    if (nameVariableId) {
+      for (let i = 0; i < args.initialNodeCount; i++) {
+        interview.setNodeAttribute(i, nameVariableId, LONG_NODE_NAME);
+      }
     }
   }
 
@@ -154,6 +191,11 @@ const meta: Meta<StoryArgs> = {
       control: 'boolean',
       description: 'Add an "Other" bin with a text input prompt',
     },
+    otherReasonRequired: {
+      control: 'boolean',
+      description:
+        'Apply a codebook `required` rule to the "Other" reason variable.',
+    },
     initialNodeCount: {
       control: { type: 'range', min: 0, max: 15 },
       description: 'Total number of nodes in the network',
@@ -166,14 +208,21 @@ const meta: Meta<StoryArgs> = {
       control: { type: 'range', min: 1, max: 4 },
       description: 'Number of prompts (pips appear for 2+)',
     },
+    longLabels: {
+      control: 'boolean',
+      description:
+        'Give the first category and every person a label far longer than a bin can show',
+    },
   },
   args: {
     categoryCount: 4,
     hasMissingValue: false,
     hasOtherOption: false,
+    otherReasonRequired: false,
     initialNodeCount: 8,
     unassignedCount: 3,
     promptCount: 1,
+    longLabels: false,
   },
 };
 
@@ -184,9 +233,26 @@ export const Default: Story = {
   render: (args) => <CategoricalBinStoryWrapper {...args} />,
 };
 
+export const LabelsLongerThanTheBin: Story = {
+  args: {
+    longLabels: true,
+    unassignedCount: 2,
+  },
+  render: (args) => <CategoricalBinStoryWrapper {...args} />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Every person carries a name far longer than a bin circle can show, and the first category label overruns too. Both clamp to an ellipsis inside the circle rather than growing the stack — the category name stays visible, and the count of everyone else in the bin survives the truncation. The full membership is one tap away in the expanded panel.',
+      },
+    },
+  },
+};
+
 export const OtherBinRequiresAReason: Story = {
   args: {
     hasOtherOption: true,
+    otherReasonRequired: true,
     unassignedCount: 3,
   },
   render: (args) => <CategoricalBinStoryWrapper {...args} />,
@@ -194,7 +260,7 @@ export const OtherBinRequiresAReason: Story = {
     docs: {
       description: {
         story:
-          'The "Other" bin always requires a reason. Drop a node onto "Other" and submit the dialog empty to see the validation error.',
+          'The "Other" reason variable has a codebook `required` rule, so an empty submission is rejected. Turn `otherReasonRequired` off to allow an empty response.',
       },
     },
   },

@@ -21,10 +21,25 @@
     --info: oklch(var(--cerulean-blue));
     --surface-1: oklch(var(--platinum));
     --surface-1-contrast: oklch(var(--navy-taupe));
-    --surface-2: oklch(0 0 0 / 0.05);
+    --surface-2: oklch(0.93 0.01 280);
     --surface-2-contrast: oklch(var(--navy-taupe));
-    --surface-3: oklch(var(--slate-blue));
-    --surface-3-contrast: oklch(var(--white));
+    --surface-3: oklch(0.9 0.01 280);
+    --surface-3-contrast: oklch(var(--navy-taupe));
+    --surface-4: oklch(0.85 0.01 280);
+    --surface-4-contrast: oklch(var(--navy-taupe));
+    /* Array items start a separate accent ladder. The first nested Surface
+       uses the darker slate blue; further nesting clamps to that authored
+       endpoint rather than inventing additional brand colors. */
+    --surface-accent: oklch(var(--slate-blue));
+    --surface-accent-contrast: oklch(var(--white));
+    --surface-accent-1: oklch(var(--slate-blue--dark));
+    --surface-accent-1-contrast: oklch(var(--white));
+    --surface-accent-2: oklch(var(--slate-blue--dark));
+    --surface-accent-2-contrast: oklch(var(--white));
+    --surface-accent-3: oklch(var(--slate-blue--dark));
+    --surface-accent-3-contrast: oklch(var(--white));
+    --surface-accent-4: oklch(var(--slate-blue--dark));
+    --surface-accent-4-contrast: oklch(var(--white));
     /* Focus rings stay mustard through the shared focus-styles machinery. */
     --focus-color: oklch(var(--mustard));
   }
@@ -46,12 +61,8 @@
     --timeline: oklch(var(--neon-coral));
     --timeline-contrast: oklch(var(--white));
     --sortable-contrast: oklch(var(--white));
-    --table-row-tint: oklch(var(--sea-serpent) / 5%);
     --action: oklch(var(--sea-green));
-    --muted: oklch(var(--cyber-grape) / 60%);
     --active: oklch(var(--sea-green));
-    --surface-accent: oklch(var(--navy-taupe));
-    --surface-accent-contrast: oklch(var(--white));
     --fresco-purple: oklch(10% 0.4 290);
     --fresco-purple-contrast: oklch(var(--white));
   }
@@ -62,12 +73,8 @@
   --color-timeline: var(--timeline);
   --color-timeline-contrast: var(--timeline-contrast);
   --color-sortable-contrast: var(--sortable-contrast);
-  --color-table-row-tint: var(--table-row-tint);
   --color-action: var(--action);
-  --color-muted: var(--muted);
   --color-active: var(--active);
-  --color-surface-accent: var(--surface-accent);
-  --color-surface-accent-contrast: var(--surface-accent-contrast);
   --color-fresco-purple: var(--fresco-purple);
   --color-fresco-purple-contrast: var(--fresco-purple-contrast);
 }
@@ -89,7 +96,7 @@
 }
 
 @utility hint {
-  @apply text-muted text-xs leading-normal;
+  @apply text-xs leading-normal text-current/70;
 }
 @utility code {
   @apply bg-text/5 font-monospace rounded-sm px-1 py-0.5 text-[0.9em];

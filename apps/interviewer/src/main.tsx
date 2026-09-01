@@ -5,6 +5,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { applyFreshLoadServiceWorkerUpdate } from '@codaco/fresco-ui/appUpdate/applyFreshLoadServiceWorkerUpdate';
+import { registerPwaBuildLease } from '@codaco/fresco-ui/appUpdate/registerPwaBuildLease';
 
 import App from './App';
 import {
@@ -19,6 +20,10 @@ import {
   requestPersistentStorage,
   requestPersistentStorageOnFirstInteraction,
 } from './lib/storage';
+
+// Register before the startup update check so every active interview leases
+// the precache matching the bundle it is actually running.
+registerPwaBuildLease(__PWA_BUILD_ID__);
 
 // The beforeinstallprompt event fires early and is one-shot; capture it before
 // React mounts so PwaInstallNudge can offer a real one-tap install.
@@ -39,15 +44,12 @@ if (import.meta.hot) {
 initFileLaunchCapture();
 
 async function startApp(): Promise<void> {
-  if (
-    await applyFreshLoadServiceWorkerUpdate({
-      shouldSkip: () =>
-        window.location.pathname.startsWith('/interview/') ||
-        hasPendingLaunchFiles(),
-    })
-  ) {
-    return;
-  }
+  await applyFreshLoadServiceWorkerUpdate({
+    reload: false,
+    shouldSkip: () =>
+      window.location.pathname.startsWith('/interview/') ||
+      hasPendingLaunchFiles(),
+  });
 
   // Do not request at startup: Firefox may show a permission prompt, while
   // WebKit and Chromium judge silent grants using interaction/engagement

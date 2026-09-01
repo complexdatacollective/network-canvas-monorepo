@@ -10,7 +10,6 @@ import {
 import {
   type ComponentType,
   forwardRef,
-  type KeyboardEvent,
   type Ref,
   useCallback,
   useEffect,
@@ -19,15 +18,19 @@ import {
   useRef,
 } from 'react';
 
-import { IconButton, MotionButton } from '../../../Button';
+import { MotionButton } from '../../../Button';
 import useDialog from '../../../dialogs/useDialog';
 import { useAccessibilityAnnouncements } from '../../../dnd/useAccessibilityAnnouncements';
+import { useKeyboardReorder } from '../../../dnd/useKeyboardReorder';
 import Surface from '../../../layout/Surface';
 import {
   controlVariants,
   groupSpacingVariants,
+  heightVariants,
   inputControlVariants,
+  proportionalLucideIconVariants,
   stateVariants,
+  textSizeVariants,
 } from '../../../styles/controlVariants';
 import { compose, cva, cx } from '../../../utils/cva';
 import type { CreateFormFieldProps } from '../../Field/types';
@@ -38,10 +41,33 @@ import {
   type WithItemProperties,
 } from './useArrayFieldItems';
 
-export type { ArrayFieldOperation } from './useArrayFieldItems';
+export type {
+  ArrayFieldOperation,
+  WithItemProperties,
+} from './useArrayFieldItems';
+// Re-exported here because this module is the package's public entry for
+// ArrayField: an item reaching a consumer carries the managed properties, so
+// the consumer needs the same strip the hook uses rather than its own copy.
+export { stripManagedProperties } from './useArrayFieldItems';
 
 // Stable empty array to prevent infinite re-renders when value is undefined
 const EMPTY_ARRAY: never[] = [];
+
+/**
+ * A list this field can render: an array whose entries are objects.
+ *
+ * `useArrayFieldItems` keys its internal-id WeakMap on the item objects, so a
+ * primitive entry is not merely the wrong shape — it is not a legal WeakMap
+ * key at all. See the render-tolerance contract on `useField`.
+ */
+function isItemList<T extends Record<string, unknown>>(
+  value: unknown,
+): value is T[] {
+  return (
+    Array.isArray(value) &&
+    value.every((item) => typeof item === 'object' && item !== null)
+  );
+}
 
 const arrayFieldVariants = compose(
   controlVariants,
@@ -49,12 +75,18 @@ const arrayFieldVariants = compose(
   groupSpacingVariants,
   stateVariants,
   cva({
-    base: 'relative w-full flex-col overflow-hidden text-wrap',
+    // `min-w-0` overrides the `min-w-fit` `controlVariants` sets for buttons,
+    // whose labels should never be clipped. On this list that floor is
+    // `fit-content` of every row at once — a row of selects and buttons — so
+    // the group refused to shrink below ~428px and pushed the roster editor
+    // past a 390px viewport (#1388). The list wraps and clips its own rows
+    // (`overflow-hidden text-wrap`), so it has no need of a content floor.
+    base: 'relative w-full min-w-0 flex-col overflow-hidden text-wrap',
   }),
 );
 
 const itemVariants = cva({
-  base: 'w-full select-none',
+  base: 'w-full rounded select-none',
 });
 
 /**
@@ -87,19 +119,77 @@ export type ArrayFieldItemProps<T extends Record<string, unknown>> = {
   committedIndex?: number;
   itemCount: number;
   isNewItem: boolean;
-  /** Save and exit editing mode. Use for inline editing pattern. */
-  onChange: (value: T) => void;
-  /** Update item data without affecting editing state. Use for always-editing pattern. */
-  onUpdate: (value: Partial<T>) => void;
+  /**
+   * Save and exit editing mode. Use for inline editing pattern. Undefined
+   * when the field is disabled or read-only — an ItemComponent that renders
+   * its save affordance from handler presence should omit it then.
+   */
+  onChange?: (value: T) => void;
+  /**
+   * Update item data without affecting editing state. Use for always-editing
+   * pattern. Undefined when the field is disabled or read-only — an
+   * ItemComponent that renders its edit affordance from handler presence
+   * should omit it then.
+   */
+  onUpdate?: (value: Partial<T>) => void;
   onCancel: () => void;
-  onDelete: () => void;
-  onEdit: () => void;
-  onMove: (targetIndex: number) => void;
+  /**
+   * Undefined when the field is disabled or read-only — an ItemComponent
+   * that renders its delete affordance from handler presence should omit it
+   * then, rather than wiring a live-looking control to a no-op.
+   */
+  onDelete?: () => void;
+  /**
+   * Undefined when the field is disabled or read-only — an ItemComponent
+   * that renders its edit affordance from handler presence should omit it
+   * then, rather than wiring a live-looking control to a no-op.
+   */
+  onEdit?: () => void;
+  /**
+   * Move this item to `targetIndex` — see `ArrayFieldDragHandleProps.onMove`,
+   * which every item component forwards this straight into, for the refusal
+   * channel it carries.
+   *
+   * Declared BY REFERENCE rather than restated, deliberately. TypeScript
+   * assigns a function of any return type to a `void`-returning one, so a
+   * restatement that fell behind would typecheck across the whole repo while
+   * quietly making a refusal unsayable for every list — and the handle would
+   * then go on waiting to reclaim focus after a move that never happened,
+   * firing at the next unrelated reorder. This makes the two impossible to
+   * diverge.
+   */
+  onMove: ArrayFieldDragHandleProps['onMove'];
   isSortable: boolean;
   isBeingEdited: boolean;
   disabled: boolean;
   readOnly: boolean;
   dragControls: DragControls;
+  /**
+   * Attach to the control that invokes `onEdit`.
+   *
+   * When an external `editorComponent` closes, ArrayField returns focus here.
+   * It has to be a ref rather than an element captured when editing began,
+   * because a row that renders nothing while `isBeingEdited` unmounts this
+   * control and mounts a FRESH one on the way back — an element captured at
+   * open time is a detached node by the time focus is returned.
+   */
+  editTriggerRef?: (element: HTMLElement | null) => void;
+  /**
+   * Resolves the list's own add control — the one control that survives this
+   * row being destroyed.
+   *
+   * For an item component that runs its OWN delete confirmation (rather than
+   * leaning on `confirmDelete`) and so has to name its own `finalFocus`. On
+   * confirm, both the row and the Remove control that opened the dialog are
+   * gone; when the row was the last one there is no neighbouring row to move
+   * to either, and answering `null` there sends focus to `<body>`, which Base
+   * UI resolves to the first tabbable element in the whole document.
+   *
+   * Call it when focus is being RETURNED, not when the dialog opens — see
+   * `editTriggerRef` for why an element captured earlier is a dead node by
+   * then.
+   */
+  getAddTrigger: () => HTMLElement | null;
 };
 
 export type ArrayFieldEditorProps<T extends Record<string, unknown>> = {
@@ -108,8 +198,19 @@ export type ArrayFieldEditorProps<T extends Record<string, unknown>> = {
   isNewItem: boolean;
   // Editors get onSave to reflect the fact that this should be called once
   // the user is done editing, rather than onChange which implies continuous updates.
-  onSave: (value: T) => void;
+  // Undefined when the field is disabled or read-only — an EditorComponent
+  // that renders its save affordance from handler presence should omit it
+  // then, rather than wiring a live-looking control to a no-op.
+  onSave?: (value: T) => void;
   onCancel: () => void;
+  /**
+   * Resolves the control that opened the current editing session: the edited
+   * row's own `editTriggerRef`, or the add button for a new item.
+   *
+   * Call it when focus is being RETURNED (i.e. pass it as a dialog's
+   * `finalFocus`), not when the editor opens — see `editTriggerRef`.
+   */
+  getEditorTrigger: () => HTMLElement | null;
 };
 
 /**
@@ -189,7 +290,16 @@ export type ArrayFieldDragHandleProps = {
   dragControls: DragControls;
   index: number;
   itemCount: number;
-  onMove: (targetIndex: number) => void;
+  /**
+   * Move the item to `targetIndex`.
+   *
+   * Return `false` when the move is REFUSED — a list with ordering rules of its
+   * own (Architect's timeline refuses a reorder that would strand a skip
+   * destination) leaves the item where it was, and the handle must then not go
+   * on waiting to reclaim focus. Returning nothing means the move happened,
+   * which is what every caller without ordering rules does.
+   */
+  onMove: (targetIndex: number) => void | boolean;
   disabled?: boolean;
   label?: string;
   className?: string;
@@ -197,7 +307,35 @@ export type ArrayFieldDragHandleProps = {
 };
 
 /**
- * Pointer drag handle with an arrow-key equivalent for sortable ArrayFields.
+ * TARGET SIZE DEPENDENCY — do not tighten the gap around the handle.
+ *
+ * The handle renders roughly 16 x 48 px, which is under WCAG 2.5.8's 24 x 24
+ * minimum. It is compliant only through that success criterion's SPACING
+ * EXCEPTION: the surrounding gap keeps a >= 24 px exclusion zone around its
+ * centre, because the nearest adjacent target sits ~12 px away.
+ *
+ * That is a deliberate, reviewed choice (the handle blends into the item panel
+ * by design — see the accent Surface item treatment), NOT an oversight. But it
+ * means the compliance lives in the LAYOUT, not here: any
+ * change that brings a neighbouring control closer, or that packs items more
+ * tightly, breaks 2.5.8 with nothing in this file to warn you.
+ *
+ * If you tighten the spacing, widen the handle to >= 24 px in the same change —
+ * which is a pixel change, so it needs an E2E visual baseline regeneration
+ * (see the `regenerating-e2e-visual-snapshots` skill).
+ */
+const dragHandleVariants = compose(
+  heightVariants,
+  textSizeVariants,
+  proportionalLucideIconVariants,
+);
+
+/**
+ * Pointer drag handle with an arrow-key equivalent, for any reorderable list.
+ *
+ * Exported for lists that are not `ArrayField`s. `onMove` carries a refusal
+ * channel so a list with ordering rules of its own can answer whether a move
+ * was accepted.
  */
 export function ArrayFieldDragHandle({
   dragControls,
@@ -209,54 +347,48 @@ export function ArrayFieldDragHandle({
   className,
   size = 'md',
 }: ArrayFieldDragHandleProps) {
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const refocusAfterMoveRef = useRef(false);
-
-  // Committing a keyboard reorder repositions this handle in the DOM, which
-  // blurs it in browsers and drops focus to <body>. Restore focus on the next
-  // frame (after the reposition settles) so repeated arrow presses keep working
-  // without tabbing back to the handle each step.
-  useEffect(() => {
-    if (!refocusAfterMoveRef.current) return undefined;
-    refocusAfterMoveRef.current = false;
-    const frame = requestAnimationFrame(() => buttonRef.current?.focus());
-    return () => cancelAnimationFrame(frame);
-  }, [index]);
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    const targetIndex = index + (event.key === 'ArrowUp' ? -1 : 1);
-    // Ignore presses that would run off either end: no move happens, so focus
-    // is never lost and no refocus should be scheduled.
-    if (targetIndex < 0 || targetIndex > itemCount - 1) return;
-
-    refocusAfterMoveRef.current = true;
-    onMove(targetIndex);
-  };
+  const { ref, ...keyboardReorder } = useKeyboardReorder({
+    index,
+    itemCount,
+    onMove,
+  });
 
   return (
-    <IconButton
-      ref={buttonRef}
-      icon={<GripVerticalIcon />}
+    <button
+      ref={ref}
+      type="button"
       aria-label={label}
-      aria-keyshortcuts="ArrowUp ArrowDown"
       title="Drag to reorder. Use the up and down arrow keys with the handle focused."
-      size={size}
-      variant="text"
-      color="dynamic"
+      // A disabled or read-only list is not reorderable. Four call sites have
+      // always passed this; the handle used to drop it on the floor, leaving
+      // both the pointer drag and the arrow keys live in a form nobody was
+      // allowed to edit.
       disabled={disabled}
-      className={cx('cursor-grab touch-none active:cursor-grabbing', className)}
+      className={cx(
+        dragHandleVariants({ size }),
+        // `focusable` is the design system's focus ring. Reordering with the
+        // keyboard is only usable if you can see which handle holds focus, and
+        // this is a control that MOVES while focused.
+        'focusable',
+        'ui-disabled:cursor-not-allowed ui-disabled:opacity-50',
+        'cursor-grab touch-none active:cursor-grabbing',
+        className,
+      )}
       onClick={(event) => event.stopPropagation()}
-      onKeyDown={handleKeyDown}
+      // Guarded explicitly rather than left to the `disabled` attribute. A
+      // disabled button is unfocusable and swallows clicks, but whether it
+      // receives `pointerdown` is not something to bet a locked form on — and
+      // announcing `aria-keyshortcuts` for keys that do nothing is its own
+      // small lie.
+      {...(disabled ? {} : keyboardReorder)}
       onPointerDown={(event) => {
         event.stopPropagation();
+        if (disabled) return;
         dragControls.start(event);
       }}
-    />
+    >
+      <GripVerticalIcon />
+    </button>
   );
 }
 
@@ -270,14 +402,22 @@ type ArrayFieldItemWrapperProps<T extends Record<string, unknown>> = {
   isNewItem: boolean;
   hasMounted: boolean;
   onCancel: () => void;
-  onChange: (value: T) => void;
-  onUpdateItem: (internalId: string, value: Partial<T>) => void;
-  onDeleteItem: (internalId: string) => void;
-  onEditItem: (internalId: string) => void;
-  onMoveItem: (internalId: string, targetIndex: number) => void;
+  onChange?: (value: T) => void;
+  onUpdateItem?: (internalId: string, value: Partial<T>) => void;
+  onDeleteItem?: (internalId: string) => void;
+  onEditItem?: (internalId: string) => void;
+  // Carries the refusal channel through the wrapper too, for the reason given
+  // on `ArrayFieldItemProps.onMove`: a `=> void` hop anywhere along the way
+  // type-erases the `false` before it reaches the handle, and still typechecks.
+  onMoveItem: (
+    internalId: string,
+    targetIndex: number,
+  ) => ReturnType<ArrayFieldDragHandleProps['onMove']>;
   onDragStartItem: (internalId: string) => void;
   onDragEndItem: () => void;
   ItemComponent: ComponentType<ArrayFieldItemProps<T>>;
+  editTriggerRef: (element: HTMLElement | null) => void;
+  getAddTrigger: () => HTMLElement | null;
   disabled: boolean;
   readOnly: boolean;
   itemClasses?:
@@ -308,6 +448,8 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
     onChange,
     onUpdateItem,
     ItemComponent,
+    editTriggerRef,
+    getAddTrigger,
     itemClasses,
     disabled,
     readOnly,
@@ -315,24 +457,32 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
   ref: Ref<HTMLLIElement>,
 ) {
   const dragControls = useDragControls();
+
   const resolvedItemClasses =
     typeof itemClasses === 'function'
       ? itemClasses(item, isBeingEdited)
       : itemClasses;
 
-  // Memoize item-specific callbacks to prevent re-renders
-  const onUpdate = useCallback(
-    (data: Partial<T>) => onUpdateItem(item._internalId, data),
+  // Memoize item-specific callbacks to prevent re-renders. Each stays
+  // `undefined` when the corresponding array-level handler is undefined
+  // (the field is disabled or read-only), rather than falling back to a
+  // no-op stub — an ItemComponent that renders its affordance from handler
+  // presence must see it absent, not a live-looking control wired to nothing.
+  const onUpdate = useMemo(
+    () =>
+      onUpdateItem
+        ? (data: Partial<T>) => onUpdateItem(item._internalId, data)
+        : undefined,
     [onUpdateItem, item._internalId],
   );
 
-  const onDelete = useCallback(
-    () => onDeleteItem(item._internalId),
+  const onDelete = useMemo(
+    () => (onDeleteItem ? () => onDeleteItem(item._internalId) : undefined),
     [onDeleteItem, item._internalId],
   );
 
-  const onEdit = useCallback(
-    () => onEditItem(item._internalId),
+  const onEdit = useMemo(
+    () => (onEditItem ? () => onEditItem(item._internalId) : undefined),
     [onEditItem, item._internalId],
   );
 
@@ -345,7 +495,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
     <Surface
       as={Reorder.Item}
       noContainer
-      spacing="sm"
+      series="accent"
       ref={ref}
       value={item}
       dragListener={false}
@@ -360,7 +510,6 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
       initial="initial"
       animate="animate"
       exit="exit"
-      style={{ borderRadius: 14 }}
     >
       <ItemComponent
         item={item}
@@ -379,6 +528,8 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
         disabled={disabled}
         readOnly={readOnly}
         dragControls={dragControls}
+        editTriggerRef={editTriggerRef}
+        getAddTrigger={getAddTrigger}
       />
     </Surface>
   );
@@ -408,10 +559,16 @@ export default function ArrayField<T extends Record<string, unknown>>({
   itemClasses,
   disabled,
   readOnly,
+  className,
   ...ariaProps
 }: ArrayFieldProps<T>) {
   // Props for getInputState - combines disabled/readOnly with aria props
   const inputStateProps = { disabled, readOnly, ...ariaProps };
+
+  // Rendering only: a stored value of another shape shows an empty list until
+  // the form's reset lands. Both branches are referentially stable across
+  // renders, which `useArrayFieldItems`' external-value sync depends on.
+  const itemValue = isItemList<T>(value) ? value : (EMPTY_ARRAY as T[]);
 
   // Track mount state to prevent initial animations when rendered inside
   // animated containers (e.g., dialogs with layoutId animations).
@@ -450,12 +607,88 @@ export default function ArrayField<T extends Record<string, unknown>>({
     removeItem,
     updateItem,
     isDraft,
-  } = useArrayFieldItems(value, handleCommittedChange, { getId });
+  } = useArrayFieldItems(itemValue, handleCommittedChange, { getId });
 
   const editingIndex = editingItem
     ? items.findIndex((item) => item._internalId === editingItem._internalId)
     : null;
   const confirmedItemCount = items.filter((item) => !item._draft).length;
+
+  /**
+   * Focus return for an external editor.
+   *
+   * `editTriggerElements` is keyed by `_internalId` and written by React when
+   * a row's trigger MOUNTS or UNMOUNTS — not on every render, which is the
+   * whole point of the memoised ref callbacks below. It therefore always holds
+   * the CURRENT element for a row, including the fresh one mounted after a row
+   * that hid its controls while being edited comes back. `lastEditingRef`
+   * remembers which session was open, because by the time focus is returned
+   * `editingItem` is already null.
+   */
+  const editTriggerElements = useRef(new Map<string, HTMLElement>());
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+  const lastEditingRef = useRef<{ internalId: string; isNew: boolean } | null>(
+    null,
+  );
+
+  if (editingItem) {
+    lastEditingRef.current = {
+      internalId: editingItem._internalId,
+      isNew: isAddingNew,
+    };
+  }
+
+  // Cached per row so the ref identity is stable across renders — a fresh
+  // callback each render would make React detach and reattach every row's
+  // trigger on every keystroke.
+  const editTriggerCallbacks = useRef(
+    new Map<string, (element: HTMLElement | null) => void>(),
+  );
+
+  const registerEditTrigger = useCallback((internalId: string) => {
+    const cached = editTriggerCallbacks.current.get(internalId);
+    if (cached) return cached;
+
+    const callback = (element: HTMLElement | null) => {
+      if (element) {
+        editTriggerElements.current.set(internalId, element);
+      } else {
+        editTriggerElements.current.delete(internalId);
+      }
+    };
+    editTriggerCallbacks.current.set(internalId, callback);
+    return callback;
+  }, []);
+
+  // The list's add button, resolved lazily. Handed to every row so an item
+  // component running its own delete confirmation can name a surviving focus
+  // target — the same answer this component's own `confirmDelete` path gives.
+  const getAddTrigger = useCallback(() => addButtonRef.current, []);
+
+  const getEditorTrigger = useCallback(() => {
+    const session = lastEditingRef.current;
+    const rowTrigger = session
+      ? editTriggerElements.current.get(session.internalId)
+      : undefined;
+    // A row deleted while its editor was open has no trigger to go back to.
+    const connectedRowTrigger = rowTrigger?.isConnected ? rowTrigger : null;
+
+    if (session && !session.isNew && connectedRowTrigger) {
+      return connectedRowTrigger;
+    }
+
+    // A new item was never a row, so its opener is the add button — which is
+    // also the best remaining answer for an edited row that has since gone.
+    //
+    // Except at `maxItems`, where there IS no add button: saving the item that
+    // fills the list unmounts it in the same commit that mounts the saved
+    // row. Answering null there loses focus altogether — the caller's fallback
+    // is that same detached button, which every `finalFocus` resolver rejects
+    // for being disconnected — so hand back the row this session just
+    // committed. `saveEditing` keeps the draft's `_internalId`, so the map
+    // lookup above resolves to that freshly mounted control.
+    return addButtonRef.current ?? connectedRowTrigger;
+  }, []);
 
   const latestItemsRef = useRef(items);
   latestItemsRef.current = items;
@@ -503,19 +736,23 @@ export default function ArrayField<T extends Record<string, unknown>>({
     );
   }, [announce, isInteractionDisabled, setItems]);
 
+  // Answers `false` on every path that leaves the item where it was, so the
+  // drag handle disarms rather than waiting to reclaim focus after a move that
+  // did not happen. `undefined` means it moved — the same contract every other
+  // `onMove` is written to.
   const moveItem = useCallback(
-    (internalId: string, targetIndex: number) => {
-      if (isInteractionDisabled) return;
+    (internalId: string, targetIndex: number): void | boolean => {
+      if (isInteractionDisabled) return false;
 
       const currentIndex = items.findIndex(
         (item) => item._internalId === internalId,
       );
       const boundedIndex = Math.max(0, Math.min(targetIndex, items.length - 1));
-      if (currentIndex === -1 || currentIndex === boundedIndex) return;
+      if (currentIndex === -1 || currentIndex === boundedIndex) return false;
 
       const reorderedItems = [...items];
       const [movedItem] = reorderedItems.splice(currentIndex, 1);
-      if (!movedItem) return;
+      if (!movedItem) return false;
       reorderedItems.splice(boundedIndex, 0, movedItem);
 
       const confirmedBefore = items.filter((item) => !item._draft);
@@ -588,6 +825,11 @@ export default function ArrayField<T extends Record<string, unknown>>({
         await confirm({
           confirmLabel: 'Delete',
           onConfirm: removeAndAnnounce,
+          // On confirm the row — and the Delete control that opened this — is
+          // gone, so focus has nowhere to return to. The add button is the
+          // surviving control for this list. (Cancel still returns to the row's
+          // own Delete control, which is untouched.)
+          finalFocus: () => addButtonRef.current,
         });
       } else {
         removeAndAnnounce();
@@ -618,7 +860,6 @@ export default function ArrayField<T extends Record<string, unknown>>({
   const effectiveSortable = sortable && !isInteractionDisabled;
 
   // Extract conflicting event handlers and ref before spreading to motion component
-  /* eslint-disable @typescript-eslint/no-unused-vars */
   const {
     onAnimationStart,
     onAnimationEnd,
@@ -634,13 +875,19 @@ export default function ArrayField<T extends Record<string, unknown>>({
     ref,
     ...safeAriaProps
   } = ariaProps;
-  /* eslint-enable @typescript-eslint/no-unused-vars */
 
   return (
-    <LayoutGroup id={id}>
+    <LayoutGroup id={id} inherit={false}>
+      {/* `min-w-0`, never a fixed floor. The 24rem `min-w-sm` this carried
+          overflowed every container narrower than itself — measurably the sole
+          source of the horizontal scroll on Architect's stage editor at phone
+          widths — and a field cannot know how much room its host has. */}
       <motion.div
         layoutRoot
-        className="flex w-full min-w-sm flex-col items-start gap-4"
+        className={cx(
+          'flex w-full min-w-0 flex-col items-start gap-4',
+          className,
+        )}
       >
         <Reorder.Group
           axis="y"
@@ -689,24 +936,20 @@ export default function ArrayField<T extends Record<string, unknown>>({
                   isSortable={effectiveSortable}
                   hasMounted={hasMountedRef.current}
                   onDeleteItem={
-                    isInteractionDisabled ? () => undefined : requestDelete
+                    isInteractionDisabled ? undefined : requestDelete
                   }
-                  onEditItem={
-                    isInteractionDisabled ? () => undefined : startEditing
-                  }
+                  onEditItem={isInteractionDisabled ? undefined : startEditing}
                   onMoveItem={moveItem}
                   onDragStartItem={startPointerDrag}
                   onDragEndItem={finishPointerDrag}
-                  onChange={
-                    isInteractionDisabled ? () => undefined : commitEditing
-                  }
-                  onUpdateItem={
-                    isInteractionDisabled ? () => undefined : updateItem
-                  }
+                  onChange={isInteractionDisabled ? undefined : commitEditing}
+                  onUpdateItem={isInteractionDisabled ? undefined : updateItem}
                   isNewItem={!!item._draft}
                   isBeingEdited={editingItem?._internalId === item._internalId}
                   onCancel={cancelEditing}
                   ItemComponent={ItemComponent}
+                  editTriggerRef={registerEditTrigger(item._internalId)}
+                  getAddTrigger={getAddTrigger}
                   itemClasses={itemClasses}
                   disabled={disabled ?? false}
                   readOnly={readOnly ?? false}
@@ -717,6 +960,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
         </Reorder.Group>
         {!isAtCapacity && (
           <MotionButton
+            ref={addButtonRef}
             layout
             key="add-button"
             color="primary"
@@ -741,8 +985,9 @@ export default function ArrayField<T extends Record<string, unknown>>({
             item={editingItem}
             index={editingIndex}
             isNewItem={isAddingNew}
-            onSave={isInteractionDisabled ? () => undefined : commitEditing}
+            onSave={isInteractionDisabled ? undefined : commitEditing}
             onCancel={cancelEditing}
+            getEditorTrigger={getEditorTrigger}
           />
         )}
       </motion.div>

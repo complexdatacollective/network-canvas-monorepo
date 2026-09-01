@@ -1,6 +1,8 @@
-import type { RelationshipType, VariableValue } from '@codaco/shared-consts';
+import type { RelationshipType } from '@codaco/protocol-validation';
+import type { VariableValue } from '@codaco/shared-consts';
 
 import type { CommitBatch, GameteRole, VariableConfig } from '../../../store';
+import { writeOwnAttribute } from '../../../utils/writeOwnAttributes';
 import { extractCustomAttributes, readBiologicalSex } from './personAttributes';
 
 type RoleKey = 'egg-source' | 'sperm-source' | 'carrier-source';
@@ -87,18 +89,16 @@ export function buildChildParentage(
       if (!personValues) continue;
       const name = (personValues.name as string | undefined) ?? '';
       const extraAttrs = extractCustomAttributes(personValues);
-      const isGameteParen =
-        roleKey === 'egg-source' || roleKey === 'sperm-source';
       const nodeAttrs: Record<string, VariableValue> = {
         [variableConfig.nodeLabelVariable]: name,
         [variableConfig.egoVariable]: false,
         ...extraAttrs,
       };
-      if (!isGameteParen) {
-        const sex = readBiologicalSex(personValues.biologicalSex);
-        if (sex !== undefined) {
-          nodeAttrs[variableConfig.biologicalSexVariable] = [sex];
-        }
+      const sex = readBiologicalSex(personValues.biologicalSex);
+      if (sex !== undefined) {
+        writeOwnAttribute(nodeAttrs, variableConfig.biologicalSexVariable, [
+          sex,
+        ]);
       }
       parentEntries.push({
         tempId: namespace,
@@ -146,11 +146,17 @@ export function buildChildParentage(
       [variableConfig.isActiveVariable]: true,
     };
     if (entry.isGestationalCarrier) {
-      edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
+      writeOwnAttribute(
+        edgeAttributes,
+        variableConfig.isGestationalCarrierVariable,
+        true,
+      );
     }
     const gameteRole = gameteRoleForRole(entry.roleKey);
     if (gameteRole) {
-      edgeAttributes[variableConfig.gameteRoleVariable] = [gameteRole];
+      writeOwnAttribute(edgeAttributes, variableConfig.gameteRoleVariable, [
+        gameteRole,
+      ]);
     }
     edges.push({
       source: entry.tempId,
@@ -165,11 +171,17 @@ export function buildChildParentage(
       [variableConfig.isActiveVariable]: true,
     };
     if (entry.isGestationalCarrier) {
-      edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
+      writeOwnAttribute(
+        edgeAttributes,
+        variableConfig.isGestationalCarrierVariable,
+        true,
+      );
     }
     const gameteRole = gameteRoleForRole(entry.roleKey);
     if (gameteRole) {
-      edgeAttributes[variableConfig.gameteRoleVariable] = [gameteRole];
+      writeOwnAttribute(edgeAttributes, variableConfig.gameteRoleVariable, [
+        gameteRole,
+      ]);
     }
     edges.push({
       source: entry.sourceId,

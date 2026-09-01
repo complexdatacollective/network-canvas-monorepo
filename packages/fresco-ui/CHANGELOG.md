@@ -1,5 +1,390 @@
 # @codaco/fresco-ui
 
+## 6.2.0
+
+### Minor Changes
+
+- 301e8fe: `Section` now accepts an optional `id`, so a form outline elsewhere on the page
+  can link to a section and move focus to it — arriving announces the section's
+  own title. Field path utilities are also available on their own subpath
+  (`@codaco/fresco-ui/form/utils/objectPath`), for reading and removing a value
+  at the structural path a field is stored under.
+
+### Patch Changes
+
+- 2f8fcdc: Make app updates reliable without reloading open work automatically. Fresh launches now activate an available update before the interface appears, updates found after rendering wait for an explicit install action, and the post-reload state reliably links to the release notes.
+
+## 6.1.0
+
+### Minor Changes
+
+- 43c7746: Fresco UI now owns two answers its consumers were each working out for themselves.
+
+  **`stripManagedProperties`.** `ArrayField` adds its own bookkeeping properties to every item it hands out, and a consumer that saves an item has to take them off first. Three consumers were doing that with their own inline copy of the list, each frozen on the properties that existed when it was written — so a property added to `ArrayField` would have started arriving in saved data. The strip is now exported from `@codaco/fresco-ui/form/fields/ArrayField/ArrayField` and derived from the property definitions themselves, and adding a managed property without listing it is a compile error.
+
+  **`selectIsFormDirty`.** Exported from `@codaco/fresco-ui/form/store/formStoreProvider`, this answers whether a form currently holds values that differ from the ones its fields registered with. It is a live comparison, unlike the `isDirty` flag beside it in the same store, which is set by the first keystroke and cleared only by a reset — so anything guarding unsaved work on that flag keeps asking about a form the person has already put back by hand, and treats a form that normalised its own values at mount as edited before it was touched.
+
+  No visible change for anyone using Architect: it consumed both from its own copies and now consumes them from here.
+
+- e9a6522: Shared form and interaction components now provide more reliable validation, focus, accessibility, and responsive layout behavior.
+
+  - Required fields, errors, hints, and custom controls expose only the ARIA relationships they actually render, and a blocked submission focuses the first usable invalid control.
+  - Optional blank values no longer trigger format, range, or length errors. External value changes clear stale errors and remain synchronized with rich text fields.
+  - Dialogs keep the rest of the page inert, restore focus when closed, and expose scrollable content only when it can actually scroll.
+  - Toolbars retain keyboard focus when an action becomes unavailable, and buttons, repeated fields, selected-resource cards, and segmented controls can shrink within narrow containers.
+  - `Node` can render as presentational content inside another control, and `IconButton` accepts `aria-labelledby` as an accessible name.
+
+  `ArrayField` no longer imposes a minimum width. It fills and shrinks with its container, so hosts that relied on it to hold a column open must set that width themselves.
+
+- 71baa6c: Add reusable Section and Toggle components with accessible collapsible controls, nested-surface heading hierarchy, guarded open-state changes, and automatic form-field clearing and unregistration when a section is collapsed. Add named Surface color series and render ArrayField items as accent surfaces so nested components inherit the correct themed surface level.
+- 1391fa8: Form stores can now read and clear a value the form holds as a container of
+  nested fields, not just as one field. A form that registers `parameters.type`
+  and `parameters.min` never registers `parameters` itself, so reading that name
+  used to come back empty and clearing it did nothing.
+
+  Three new store actions cover it, each available on the store, on
+  `pathOperations`, and through `useFormValue`:
+
+  - `getValue(name)` returns the value at a name, assembling it out of the
+    registered fields beneath it when the form holds it as a container. The
+    assembled object keeps a stable identity while its contents are unchanged, so
+    a component reading a container re-renders no more often than one reading a
+    single field. `useFormValue` uses it, so container names now read the same way
+    field names always have.
+  - `hasValue(name)` reports whether the form holds anything at a name — useful
+    for telling a field that has not registered yet apart from one that has been
+    emptied. `useFormHasValue` is the matching hook.
+  - `clearValue(name)` clears a name together with every field beneath it,
+    including fields whose sections are currently unmounted, so a cleared value
+    cannot reappear when its section comes back.
+
+- f03b1e4: Names that are too long for a node now shrink to fit instead of being cut off, so most are readable in full at a glance. A name that is still too long at the smallest readable size can be read in full by pressing and holding it, or by moving to it with the keyboard. Holding never moves or selects the person, and letting go leaves everything exactly as it was.
+
+  For developers, the Node component is now the single gesture recognizer for its own pointer sequence: hosts declare `onClick`, `onLongPress`, and `onDragStart`/`onDragMove`/`onDragEnd`, and the node classifies each gesture as exactly one of them and renders every visual and accessibility consequence itself — press animation, hold indicator, grab/grabbing cursor, pointer capture, `aria-grabbed`, `aria-pressed` from `selected`, and a tab stop whenever focusing does something. Canvas hosts implement drag effects through `useCanvasDrag`'s callback API instead of attaching their own pointer listeners.
+
+  Compatibility: the names `onDrag`, `onDragStart`, and `onDragEnd` were already omitted from Node's props before this release (and at runtime were claimed by Motion's own gesture system, so they never received native HTML5 drag events); they now form Node's pointer-gesture drag API. `onClick` handlers written for a plain button remain assignable — the new `details` argument is optional in the type and always supplied at runtime.
+
+### Patch Changes
+
+- 9a34469: Hovering a `Button` that is already selected no longer repaints it. A toggle that is on, a disclosure that is open, and a control using the `selected` prop all keep their selected colours under the pointer — previously the hover treatment painted over them, so a menu trigger stopped looking open while the pointer rested on it, which is exactly when a researcher is most likely to be looking at it.
+
+  A call site's own selected treatment now stands unopposed on hover too, including a quieter one such as `aria-expanded:bg-selected/15`. A call site's explicit `ui-enabled:hover:…` is still honoured, and unselected buttons are unchanged.
+
+- e3e7b2c: Respect Motion's global skip-animation setting in `useSafeAnimate`.
+- b51ef59: Prevent malicious form field paths from modifying object prototypes while preserving dotted protocol variable identifiers and nested field namespaces.
+- eb73319: Every form field control now survives being handed a value of the wrong shape. Because the form store owns the value and the resets that follow a change of question type run only after a render commits, any control can hold the previous field's value for one render — and a control that threw during that render blocked the very reset that would have cleared it. The array field, combobox, radio matrix, segmented code field and styled select each did so; they now render their empty state for that one pass instead. What a control emits when someone actually uses it is unchanged.
+- e08ebbf: Checkbox and toggle button groups no longer crash when given a value that is not an array. A host that swaps the control under a still-registered field — a form whose question type changes, say — could hand the group a boolean or number for one render and take the page down with it. Such a value now renders nothing selected until the host settles, and a value of the wrong shape can no longer select entries by accident.
+
+  The scroll fade at the top of a `ScrollArea` is now confined to its own stacking context, so it can no longer paint over content that follows the scrolling region.
+
+- 88d7db0: Boolean and rich-select option cards now set their own text colour alongside their background, so their labels stay readable on any surface. Previously the label inherited the surrounding surface's text colour, which could leave it unreadable — white on a white card — wherever the card sat on a dark surface.
+
+  Modal popups now finish their exit animation instead of restarting it whenever a surrounding component re-renders, which could leave a closed modal mounted on screen and covering whatever opened next.
+
+  Form values now resolve a nested field over the field that holds its container path, instead of whichever registered last winning. A form with both `mapOptions` and `mapOptions.style` registered could previously lose one of them on submit.
+
+  Submit buttons keep the same label while a form is submitting, showing progress through their spinner and disabled state instead of renaming themselves. A button that renamed itself mid-submit could make an automated check believe a dialog had already closed. Pass `submittingText` to opt back in to a changed label.
+
+  Surfaces gained a fourth nesting level, so deeply nested content has one more step of contrast before it repeats its parent's colour.
+
+  Fields no longer establish a CSS size container unless they lay out inline, which is the only layout that queries it. Making every field a size container could, in Chromium, leave a field's control with its styles but without any layout at all — rendering it invisible and unusable — when a large neighbouring section appeared at the same moment.
+
+  Adding a row to a list field now keeps the row's own identity instead of assigning it an unrelated one. The mismatch surfaced a moment later and remounted the row, and any form fields it contained were torn down with it, losing what had just been entered.
+
+  A field that is checked while part of the form appears or disappears now finishes that check instead of abandoning it. Previously the field kept whatever error it was already showing, so an answered field could go on reporting itself as required — most visibly where answering one field is what reveals the next section.
+
+  Apps may now supply `checkUnsavedWork` to `useAppUpdate`, re-checked at the moment an update would be applied automatically. An app whose "unsaved work" reading is coalesced can otherwise still report itself idle for work the person has just done, and that path reloads without asking.
+
+- ae3c616: Read-only checkboxes and toggle button groups no longer show hover and press affordances for a click they silently ignore. A read-only `Checkbox` (and the checkboxes rendered by `CheckboxGroup`) and a read-only `ToggleButtonGroup` option now stop responding to the pointer entirely — no hover state, no press animation — while remaining focusable and still announced as read-only to assistive technology.
+- 59f131c: Fixes interactions that were advertised to assistive technology but did nothing when activated.
+
+  `ArrayField` now omits `onDelete`/`onEdit`/`onChange`/`onUpdate` (and the editor's `onSave`) entirely while disabled or read-only, instead of substituting no-op stand-ins. An `itemComponent`/`editorComponent` that renders its edit/delete/save affordance from handler presence — the normal pattern — now correctly hides that affordance rather than drawing a live-looking control wired to nothing.
+
+  `SegmentedToolbar`'s toggle and group segments now forward `onPressedChange`/`onValueChange` straight through to Base UI, the same way button segments already forward `onClick`. This also fixes those callbacks silently losing Base UI's `eventDetails` argument, which a consumer needs to veto a change via `eventDetails.cancel()`. A controlled toggle or group segment supplied without its change callback — which can never change state once controlled — is now disabled outright instead of staying tappable for nothing.
+
+  Architect's library panel gallery promo card no longer announces itself as a selectable option — clicking or activating it never did anything, since the collection it sits in doesn't support selection. It's now rendered as its own labelled group alongside the templates list rather than as one of the list's items, so its Dismiss button and gallery link stay independently operable without the collection's listbox/option structure being misapplied to a card that isn't a selectable option.
+
+- 7ca985f: Keep fitted node labels accurate as fluid type changes, make long labels scroll within the available viewport when revealed, and release keyboard press feedback when activation moves focus into an opened form.
+- c78135c: Stop offering click affordances for nodes that cannot be clicked. A collection with no selection, a node list with no tap handler, and a name generator stage with no form each handed their items a click handler that did nothing, so nodes showed a pointer cursor and press feedback for a tap that could never have an effect.
+- dcbc7aa: Popover now honours a consumer's `event.cancel()` in `onOpenChange` for uncontrolled popovers: cancelling a close (as SegmentedToolbar's sticky popovers do for outside presses) previously left the internal mounted state closed anyway, so only controlled popovers stayed open.
+- 0f20ff5: SegmentedToolbar keyboard nudges now stay within a `RefObject` drag constraint, not only an object-form one. Arrow-key moves measure the constraint container against the toolbar, and an oversized toolbar receives a pannable range instead of jumping to one edge.
+- 4a4a9f4: Tooltips now hide instantly on close instead of waiting for an exit animation, so rapid movement across controls never leaves stale tooltip popups visible.
+- 54650ab: Prevent null form field values from crashing Architect when changing the node type of configured ordinal or categorical bin stages.
+- a9825f4: `SegmentedToolbar` items can now opt into remaining focused when they become unavailable. The default remains native disabled-button behavior.
+
+  The opt-in is available as `focusableWhenDisabled` on button, toggle, group-option, menu, and popover items. These items report `aria-disabled="true"`; other unavailable items continue to use the native `disabled` attribute. All unavailable items now dim and suppress hover and active styling.
+
+- Updated dependencies ([e9a6522](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e9a652266ef9ddfa7fc42de1c8123bd7011c52a1), [fdb3b56](https://github.com/complexdatacollective/network-canvas-monorepo/commit/fdb3b56440f6cad89a44718d24ff725be3bb5e15))
+  - @codaco/shared-consts@6.0.0
+
+## 6.0.0
+
+### Major Changes
+
+- 90e0178: Form values now include only registered fields. `getFormValues()` — and therefore submitted values, validation context, and wizard finish payloads — no longer merges values from unmounted (dormant) fields. A field hidden by conditional rendering (`FieldGroup`) contributes nothing to the form's output while hidden. Dormant storage still restores a field's value when it remounts, and `getFieldState`/`useFormValue` still fall back to it for cross-step reads.
+
+  Wizard dialogs now accumulate each step's values as you navigate (forward, back, or jumping), so multi-step wizards continue to resolve with every step's answers under the new semantics. A revisited step's answers wholly replace what was previously recorded for its fields, which also fixes stale repeated-entry arrays surviving a reduced count.
+
+  `setFieldValue` on an unregistered field name now stages a pending value that takes effect when the field next mounts, instead of warning and discarding the write.
+
+### Minor Changes
+
+- 52a3fbb: Honor reduced-motion preferences in Architect and expose a shared provider for disabling Motion and Base UI animations together in automated hosts.
+- 13e5e99: Add a shared automation-aware animation provider that disables Motion and Base UI animations together for visual-test hosts.
+- ea06b66: Validation rules now save what the editor shows.
+
+  Nudging a rule's value with the plus or minus button changed the number on
+  screen without saving it, and if the value was being edited at the time, the
+  older number was saved instead. Switching on a rule that needs no value — such
+  as Required — saved it even where it could never be satisfied, for instance
+  alongside a maximum length of zero. A rule held back because it clashed with
+  another one stayed unsaved even after the clash was resolved, so a rule could
+  sit switched on with a sensible value that was never written. And undoing a
+  change left the rule switched on with the old value still showing, ready to be
+  written out again.
+
+  A rule whose value was still being typed is no longer dropped when a different
+  rule in the same list is saved: changing a minimum and then nudging the maximum
+  now saves both, rather than putting the minimum back to its old number. And
+  switching the whole Validation section off and then undoing reopens the section
+  with the restored rules in view, instead of leaving rules that will be saved
+  hidden behind a switched-off section.
+
+  Each rule's plus and minus buttons are also now named after that rule, so a
+  screen reader announces "Increase Minimum value" rather than "Increase value"
+  on every numeric rule on the screen.
+
+  `InputField` gains two optional props to support this: `onStep`, which reports
+  a value settled by a stepper button or arrow key, and `stepperLabels`, which
+  names the stepper buttons. Both default to the previous behaviour.
+
+### Patch Changes
+
+- fec9536: Add a Colored Eco-Genetic Relationship Map (CEGRM) template for families living with an inherited condition. It combines a family pedigree with the participant's wider social network, records relationship closeness and contact frequency alongside exchanges of information, practical help, emotional and spiritual support, and closes on a visual map and an inheritance view.
+
+  Treat the Family Pedigree node label as a validated codebook field, apply its rules to every family-member name entry point, and expose those rules beside the label-variable selector in Architect. Keep the iconically rendered ego node outside label and additional family-member form collection, including in synthetic previews. Reduce the default synthetic Sociogram edge density so preview networks remain legible as their node count grows.
+
+  Keep optional unique fields empty without false duplicate errors, scope comparison rules to the active field namespace, and prevent dormant or duplicate pedigree name controls from affecting validation.
+
+- 673d5f3: Toggles no longer replay their animation when something near them moves. Motion
+  groups every animating element inside a dialog together and re-measures the
+  whole group whenever any one of them changes, so switching one toggle on made
+  every other toggle on screen slide its handle as the content around it reflowed.
+  Each toggle's handle is now measured on its own, and only the toggle that was
+  actually operated animates.
+
+## 5.1.0
+
+### Minor Changes
+
+- fa88ae4: Likert and visual analog scales respond to being tapped again. Pressing anywhere
+  along the scale had stopped moving the marker at all, so a participant could
+  only answer by dragging it — and on a scale they had not answered yet, pressing
+  the marker without moving it recorded nothing. Both now register the position
+  that was pressed, and pressing an unanswered scale without moving it records the
+  value the marker is resting on.
+
+  The marker's press animation moved to a nested element to make this work, so
+  `sliderThumbVariants` no longer carries the marker's fill. The new
+  `sliderThumbSurfaceVariants` supplies it, and both scales pair the two.
+
+  The same restructure clears the render loop that had held Base UI at 1.6, so the
+  workspace now tracks 1.7.
+
+### Patch Changes
+
+- 3c8fe35: Generate realistic, source-backed family pedigrees with reproductive scenarios and multi-generational disease lineages, while respecting each stage's collected variables, keeping pedigree membership isolated from other interview stages, correctly rendering shared and multiple unions, widening partnership response columns, and warning participants before discarding onboarding progress.
+
+  Improve pedigree editing and parentage capture by confirming destructive deletions, preserving biological-sex values, allowing current/ex-partner status changes, and recording reproductive roles independently from sex recorded at birth.
+
+## 5.0.3
+
+### Patch Changes
+
+- ea589ec: Keep a scrolled roster near the dragged item after it is added instead of resetting the source list to the top.
+- 8ff0e2d: Hide the check indicator on unchecked `DropdownMenuRadioItem`s. The indicator
+  is kept mounted to preserve label alignment, but previously remained visible,
+  so every radio item in a dropdown menu appeared checked.
+- c5f30fd: Restore the full-size interview type scale on tablets.
+
+  The interview's viewport ramp for `--theme-root-size` rendered below the full
+  `1rem` base for every viewport narrower than 1280px — sitting at its `0.9rem`
+  floor (14.4px) up to tablet-portrait width and only climbing to 15.7px by iPad
+  Pro landscape width — so tablets rendered the participant interview at the
+  smallest text sizes in the product, with spacing and touch targets
+  (checkboxes, radios) shrinking in lockstep below recommended minimum sizes.
+  The ramp is now piecewise: phones keep the dense `0.9rem`-floored curve in
+  both orientations, tablets (768–1280px) get the full `1rem` base — matching
+  the interview's pre-July size and returning default form controls to the 24px
+  WCAG 2.5.8 minimum — and displays at 1280px and above are unchanged.
+
+  The interview theme also gains a 16px font-size floor for text-entry elements
+  (text inputs, textareas, selects, and rich-text editors), expressed as
+  `max(16px, 1em)` so explicitly larger sizes pass through. iOS Safari zooms the
+  page when a focused editable element renders below 16px; with the phone-width
+  type scale this made every form field a zoom trigger in browser hosts. Editable
+  text in the interview now never renders below 16px at any viewport size. To
+  support this, `SegmentedCodeField` now carries its text-size class on the
+  segment group wrapper (segment inputs inherit), so the floor preserves its
+  `lg`/`xl` sizes; computed sizes are unchanged.
+
+- b95af22: Virtualized collection measurements now invalidate when a themed region's
+  type scale changes while mounted — for example the interview's participant
+  text-size control. The re-measure sentinel is sized in the theme's
+  `--theme-root-size` unit instead of `rem`, which only tracked the document
+  root and missed locally scoped scale changes, leaving stale row geometry.
+- cd974f7: TimeAgo now renders its relative timestamp in the very first frame. It
+  previously mounted empty and filled in a moment later (both its own state and
+  the SSR wrapper resolved in effects), so any re-render that recreated the
+  element — selecting a data-table row, for example — made the value's width
+  visibly collapse and re-expand.
+
+## 5.0.2
+
+### Patch Changes
+
+- fde9bb4: Make animation-aware components consistently respect disabled and reduced motion, and advance Dyad Census and Tie Strength Census immediately after committed answers when motion is disabled.
+
+## 5.0.1
+
+### Patch Changes
+
+- 8effa31: `BooleanField` now honours the `negative` flag on a boolean option. Selecting an option marked negative styles its border and indicator in the destructive colour instead of the primary one; unselected options are unchanged. Previously the flag was accepted by the protocol schema and written by Architect, but ignored at render time.
+
+## 5.0.0
+
+### Major Changes
+
+- a33e3cf: `@codaco/fresco-ui` no longer exports `addDays` from `./form/utils/ymd`. `RelativeDatePickerField` derived its window through it directly; that stopped when it moved to `dateWithinPickerRange` (`@codaco/shared-consts`), which was `addDays`' last caller inside this repo. `todayYmd` is unaffected and still exported from the same subpath.
+
+  If you imported `addDays` directly, replace it with your own `YYYY-MM-DD` arithmetic, or with `dateWithinPickerRange`, `DATE_PICKER_EARLIEST_DATE`, and `DATE_PICKER_LATEST_DATE` from `@codaco/shared-consts` if what you needed was a date held inside the range a date field can represent.
+
+### Patch Changes
+
+- 59625a8: The defaults a date field falls back on, when a protocol declares no bounds of its own, now live in one place.
+
+  `@codaco/shared-consts` exports `DATE_PICKER_DEFAULT_MIN`,
+  `DATE_PICKER_EARLIEST_DATE`, `DATE_PICKER_LATEST_DATE`,
+  `RELATIVE_DATE_PICKER_DEFAULT_BEFORE`, and
+  `RELATIVE_DATE_PICKER_DEFAULT_AFTER`. `@codaco/fresco-ui` renders its date
+  fields from them, `@codaco/interview` derives the bounds a submitted date is
+  validated against from them, `@codaco/protocol-validation` models those bounds
+  when detecting contradictions, and `@codaco/protocol-utilities` generates
+  synthetic dates to fit them. Each package previously kept some local copies and
+  tested only those copies, so widening or narrowing a bound in one place could
+  leave another package predicting a window that no longer existed. No default
+  or limit has changed value, and generated data is unchanged.
+
+  `@codaco/protocol-utilities` additionally exports `todayYmd`, the clock read behind `GenerationConfig.today`'s default.
+
+- a124bc0: The date picker's year and month dropdowns now decide what "today" is the same way the rest of Network Canvas does.
+
+  When a date question sets no latest date, the picker stops offering dates after today. It worked out today from the device's own clock and timezone, while every other part of the software — including the relative date picker beside it, and the dates generated when you preview a protocol — works it out in UTC. For part of each day the two disagreed, so a participant west of UTC could be offered a month that had not started elsewhere, and one east of UTC could be shown a month the rest of the software still considered next month. Both now agree.
+
+- 1b4dc6b: `FieldErrors` accepts a new opt-in `variant` prop (`'text'` | `'box'`,
+  defaulting to `'text'`). `variant="box"` applies the same boxed destructive
+  treatment the `interview` theme already renders automatically — a rounded
+  destructive background with contrast text — regardless of theme, for hosts
+  that render field errors on a colored background where plain destructive text
+  would have poor contrast.
+- 86603b4: Fix `DatePicker` becoming unanswerable, or silently collapsing to a single
+  forced value, when only one of `min`/`max` is authored outside the default
+  1920-to-today window (for example a `year` picker with only `max: '1800'`,
+  or only `min: '3000'`). The year dropdown, the month dropdown's
+  boundary-year filtering, and the full-resolution date input's `min`/`max`
+  attributes now all resolve from a range that extends the missing bound past
+  the authored one by the default window's own span (today's year minus
+  1920), so the control always offers a genuine multi-value range rather than
+  clipping to nothing or pinning to one option. Pickers with no authored
+  bounds, or with both bounds authored, are unaffected.
+
+  Also clamp that extended bound, for the year/month dropdowns only, to the
+  four-digit year range (1000-9999) those controls can actually store (they
+  emit an unpadded `y.toString()`): an authored bound near either edge — for
+  example `max: '1000'` or `min: '9999'` — no longer synthesizes a three- or
+  five-digit far bound the dropdown would offer but the protocol schema could
+  never validate. An authored bound itself is left exactly as authored. The
+  full-resolution date input's `min`/`max` attributes are unaffected by this
+  particular clamp, since `formatYmd` always zero-pads to four digits and so
+  stays schema-valid at any magnitude.
+
+  Separately, also clamp the full-resolution date input's own synthesized
+  `min`/`max` to the four-digit year range (0001-9999): an authored bound near
+  either edge — for example `min: '9999-12-31'` alone — previously synthesized
+  a five-digit far bound (around year 10105) that the native input accepted
+  but that `useProtocolForm`'s min/max validation could never pass, since it
+  compares against the authored bound using four-digit lexical string
+  comparison and a five-digit year always sorts before it. That left the
+  in-window value as the only ever-submittable answer despite a much wider
+  range appearing pickable. The synthesized bound is now clamped to
+  0001-9999, so an authored `min: '9999-12-31'` alone now resolves to the
+  single genuinely-submittable day rather than a wider, trap-filled one. This
+  is a distinct concern from the year/month dropdowns' clamp above (native
+  input/validator legality, not dropdown storage grammar), so the two clamp
+  to different four-digit ranges.
+
+  Validation hints also preserve authored years from 0001 through 0099 instead
+  of displaying them as years 1901 through 1999.
+
+- fd78d55: Fix form controls disappearing when content is added below them. A field's query
+  container and its sibling-dependent spacing shared one element, so inserting a
+  sibling after a field could leave its control with no layout box at all —
+  present but invisible and unusable.
+- b777dc1: The Categorical Bin "other" input and the Name Generator quick-add field now apply the referenced variable's configured validation rules, exactly as form fields do — including context-dependent rules such as `differentFrom` and `unique`. The Network Composer's add-node input applies the quick-add variable's codebook rules in the same way, a behaviour change for existing protocols whose quick-add variable carries validation. Previously these inputs ignored the codebook and enforced only their local requirements. In native v8 protocols, both Categorical Bin "other" and Name Generator quick-add are optional when their referenced variable has no required validation. The v7→v8 migration adds `required: true` to variables referenced by either writer, preserving existing protocols' required responses while retaining their other validation rules. Variables without an explicit input `component` work correctly. After a valid Network Composer node is added, its quick-add field now resets its value and validation state so the fresh blank entry does not announce a required-field error.
+
+  Network Composer also waits for a quick-add node to finish being stored before
+  clearing and reopening the input, preventing two rapid submissions from
+  bypassing uniqueness validation against the first node.
+
+  The Categorical Bin dialog registers its response under the referenced
+  codebook variable ID, so a sibling variable literally named `otherVariable`
+  cannot be mistaken for the live response by cross-variable validation.
+
+  Deferred invalid-field focus now remains safe when its form unmounts before
+  smooth scrolling finishes.
+
+- 1a3fe60: Improve node entry and display across interview interfaces. Synthetic `name`
+  variables now use realistic personal names whenever their validation rules
+  allow it, long labels wrap and truncate without distorting node shapes, and
+  Network Composer quick add retains focus after submitting a node. Shared modal,
+  form-field, and theme refinements support the updated Architect editing
+  experience.
+- efc3a92: A relative date question anchored near either end of the calendar no longer refuses every date it offers.
+
+  A relative date question works out the dates it accepts by counting days forward and back from an anchor. With an anchor late in the calendar that count could pass the year 9999 — an anchor of 9999-12-31 accepting one day after it worked out a latest date of 10000-01-01 — and with an early anchor it could pass year zero, working out 0000-07-05 or, further back, something that was not a date at all. Neither is a date the software recognises, so the check on what a participant entered stopped comparing dates and compared plain text instead, where a five-digit year sorts before every four-digit one. Every date the question could offer was then rejected as too late, including the one the participant had just chosen. Both ends of the window now stop at the first and last dates a date field can hold.
+
+  `@codaco/shared-consts` exports `dateWithinPickerRange`, `DATE_PICKER_EARLIEST_DATE` and `DATE_PICKER_LATEST_DATE`. The field in `@codaco/fresco-ui`, the submission checks in `@codaco/interview` and the synthetic dates drawn by `@codaco/protocol-utilities` all work the window out from that one function, so the three cannot disagree about it. Questions anchored anywhere else are unaffected, and generated data for them is unchanged.
+
+- 7cffcc9: Synthetic interview data now respects the validation rules configured on your variables.
+
+  Previously, generated networks ignored the rules a protocol author sets in Architect, so previewing a protocol or bulk-generating interviews could produce data a participant could never have entered — names shorter than a required minimum length, numbers outside their permitted range, dates outside a date picker's window, duplicate values on a variable marked unique, or a "start date" later than the "end date" it is required to precede. Generated values now satisfy required, minimum/maximum length, minimum/maximum value, minimum/maximum selected, unique, same as, different from, and the greater/less than (or equal to) cross-variable comparisons, as well as the bounds a date picker or relative date picker imposes.
+
+  Where rules refer to one another, generation follows that order, so a variable compared against another is filled in after the variable it depends on.
+
+  If a protocol's rules cannot all be satisfied at once — for example a minimum length greater than its maximum length, a permitted range with no values in it, or a variable required to be both unique and drawn from fewer options than there are entities to fill — generation is now refused with a `SyntheticDataConstraintError` that names the variable and describes the conflict, instead of silently producing data that could never be collected. `SyntheticDataConstraintError` and the `ConstraintConflict` type it carries are exported from `@codaco/protocol-utilities`.
+
+  When skip logic and filtering are respected, controls on stages proven unreachable no longer create synthetic-data rendering conflicts with reachable Network Composer stages.
+
+  Read-only stage references no longer make validation rules apply to values written only by binning stages. Writers on stages proven unreachable by skip logic are likewise ignored consistently by both the feasibility check and the synthetic draw.
+
+  Manually seeded nodes and edges keep omitted Boolean attributes at the neutral
+  `false` value regardless of how the control's options are ordered.
+
+  When multiple reachable Network Composer stages render one date variable at the
+  same resolution, generation now uses the intersection of their accepted
+  windows. It refuses only controls at incompatible resolutions or controls whose
+  windows do not overlap. When an ordinary form also renders that variable,
+  generation includes its codebook control in the same intersection.
+
+  Categorical Bin "other" inputs must now target a text variable, matching the
+  text field the interview renders. Importing a version 7 protocol removes an
+  incompatible non-text "other" configuration instead of preserving a control
+  that cannot record the target variable's value.
+
+  `@codaco/fresco-ui` adds a `./form/validation/helpers` export subpath so consumers can build the same validator stack the interview uses. `@codaco/interview` now fails loudly, naming the variable, when a protocol carries a validation rule of the wrong type, rather than passing it to a validator that would report a generic error.
+
+- 457052e: `Toast`'s description no longer grows without limit. A toast is anchored to the bottom of the screen and grows upward, so a consumer rendering a lot of content (a long message, a list of errors) could push the toast's own title and Close control off the top — clipped by the browser window with no way to read or dismiss it. The description is now capped and scrolls internally instead, keeping every toast's title and Close control on screen and reachable regardless of how much content it renders.
+
 ## 4.2.0
 
 ### Minor Changes

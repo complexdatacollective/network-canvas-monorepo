@@ -25,6 +25,7 @@ vi.mock('../../../../selectors/session', () => ({
 }));
 
 vi.mock('../../../../selectors/name-generator', () => ({
+  getCanAddMultipleNodes: 'getCanAddMultipleNodes',
   getNodeIconName: 'getNodeIconName',
 }));
 
@@ -39,6 +40,8 @@ vi.mock('../../../../hooks/useStageSelector', () => ({
         return {};
       case 'getNodeIconName':
         return 'add-a-person';
+      case 'getCanAddMultipleNodes':
+        return true;
       default:
         return undefined;
     }
@@ -112,6 +115,31 @@ describe('QuickAddField', () => {
     expect(screen.getByTestId('quick-add-toggle')).toHaveAccessibleName(
       'Quick add input',
     );
+  });
+
+  it('treats a dotted protocol variable containing a dangerous segment as opaque', async () => {
+    const onSubmit = vi.fn(async () => ({ success: true as const }));
+
+    render(
+      <Form onSubmit={onSubmit}>
+        <QuickAddField
+          name="safe.__proto__.polluted"
+          placeholder="Type a name"
+          disabled={false}
+        />
+      </Form>,
+    );
+
+    const input = await openField();
+    await userEvent.type(input, 'Alice');
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({
+        'safe.__proto__.polluted': 'Alice',
+      });
+    });
+    expect(Object.hasOwn(Object.prototype, 'polluted')).toBe(false);
   });
 
   it('resets from the owning form success signal when submitting renders are batched', async () => {

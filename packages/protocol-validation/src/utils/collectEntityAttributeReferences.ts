@@ -1,21 +1,41 @@
 import { z } from 'zod';
 
+import { getAssetReferenceDescriptor } from '../schemas/8/asset-reference.ts';
 import type { StageSubject } from '../schemas/8/common/index.ts';
 import {
   getEntityAttributeReferenceDescriptor,
+  type AttributeExistence,
   type AttributeWriterUsage,
+  type ExclusiveSlotDescriptor,
+  type InterfaceOwnedOptionSetKey,
   type SubjectResolution,
 } from '../schemas/8/entity-attribute-reference.ts';
 import { getEntityTypeReferenceDescriptor } from '../schemas/8/entity-type-reference.ts';
+// The CURRENT protocol schema, imported from its own module rather than
+// through `../schemas/index.ts`. This module and the schema module are
+// mutually recursive, and `../schemas/index.ts` sits in the middle: it
+// evaluates `const CurrentProtocolSchema = ProtocolSchemaV8` at module scope,
+// which under that cycle runs before the schema module has finished
+// initialising. Importing the schema module directly gives a live binding
+// resolved at call time instead, so the walk works whichever module the
+// consumer entered through.
+import CurrentProtocolSchema from '../schemas/8/schema.ts';
+import {
+  getStageSubjectResolution,
+  resolveDeclaredStageSubject,
+} from '../schemas/8/stage-subject-resolution.ts';
 import type { VariableType } from '../schemas/8/variables/types.ts';
-import { CurrentProtocolSchema } from '../schemas/index.ts';
 
 export type EntityAttributeReferenceHit = {
   path: (string | number)[];
   variableId: string;
   subject?: StageSubject;
   requireType?: readonly VariableType[];
+  /** See `AttributeExistence`; absent means the attribute must exist. */
+  existence?: AttributeExistence;
   usage?: AttributeWriterUsage;
+  exclusive?: ExclusiveSlotDescriptor;
+  ownedOptions?: InterfaceOwnedOptionSetKey;
 };
 
 export type EntityTypeReferenceHit = {
@@ -24,10 +44,16 @@ export type EntityTypeReferenceHit = {
   entity: 'node' | 'edge';
 };
 
-// One walk collects both reference kinds; the public collectors filter.
+export type AssetReferenceHit = {
+  path: (string | number)[];
+  assetId: string;
+};
+
+// One walk collects every reference kind; the public collectors filter.
 type ReferenceHit =
   | ({ kind: 'attribute' } & EntityAttributeReferenceHit)
-  | ({ kind: 'type' } & EntityTypeReferenceHit);
+  | ({ kind: 'type' } & EntityTypeReferenceHit)
+  | ({ kind: 'asset' } & AssetReferenceHit);
 
 type WalkContext = {
   stageSubject?: StageSubject;
@@ -35,6 +61,10 @@ type WalkContext = {
   // The `type` of the nearest enclosing filter rule, for resolving the rule's
   // options.type entity ('ego' rules reference no codebook type).
   filterRuleEntity?: 'node' | 'edge';
+  // The protocol's stages, for a stage whose subject is declared on ANOTHER
+  // stage (NarrativePedigree). Empty when the walk was entered on a schema
+  // fragment rather than a whole protocol.
+  stages: readonly unknown[];
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -81,7 +111,8 @@ const hasReference = (schema: z.ZodType): boolean => {
   subtreeHasReference.set(node, false);
   let result =
     getEntityAttributeReferenceDescriptor(node) !== undefined ||
-    getEntityTypeReferenceDescriptor(node) !== undefined;
+    getEntityTypeReferenceDescriptor(node) !== undefined ||
+    getAssetReferenceDescriptor(node) !== undefined;
   if (!result) {
     if (node instanceof z.ZodObject) {
       result = Object.values(node.shape).some(
@@ -159,10 +190,23 @@ const getVirtualDiscriminator = (
   return result;
 };
 
+/**
+ * The subject a stage establishes for the `stageSubject`-resolved references
+ * inside it. A stage that carries a literal `subject` needs no declaration;
+ * one that identifies its subject some other way declares it on its own schema
+ * (see `stage-subject-resolution.ts`), which is the ONLY other source. Nothing
+ * downstream re-derives a subject from stage shape, so a hit either leaves the
+ * walk with the right subject or with none.
+ */
 const stageSubjectOf = (
+  node: z.ZodType,
   value: Record<string, unknown>,
+  ctx: WalkContext,
 ): StageSubject | undefined => {
-  if (value.type === 'EgoForm') return { entity: 'ego' };
+  const declared = getStageSubjectResolution(node);
+  if (declared) {
+    return resolveDeclaredStageSubject(declared, value, ctx.stages);
+  }
   const subject = value.subject;
   if (isRecord(subject) && typeof subject.entity === 'string') {
     return subject as StageSubject;
@@ -221,6 +265,16 @@ const walk = (
     if (typeof value !== 'string') return [];
     const attributeDescriptor = getEntityAttributeReferenceDescriptor(node);
     if (attributeDescriptor) {
+      // A magic key (the `'*'` nomination-order sort property) occupies a
+      // reference site without being one. Emitting a hit would put it in every
+      // usage index as a variable id that no codebook can ever contain.
+      if (attributeDescriptor.ignoreValues?.includes(value)) return [];
+      // A conditional writer (see `usageRequiresSibling`) is a write only in
+      // the configuration that turns the write on; in every other it is a
+      // read, and the hit must not carry a `usage` that would make the
+      // exclusive-slot and variable-role rules treat it as a second writer.
+      const gate = attributeDescriptor.usageRequiresSibling;
+      const writes = gate === undefined || ctx.parent?.[gate] === true;
       return [
         {
           kind: 'attribute',
@@ -228,7 +282,10 @@ const walk = (
           variableId: value,
           subject: resolveSubject(attributeDescriptor.subject, path, ctx),
           requireType: attributeDescriptor.requireType,
-          usage: attributeDescriptor.usage,
+          existence: attributeDescriptor.existence,
+          usage: writes ? attributeDescriptor.usage : undefined,
+          exclusive: attributeDescriptor.exclusive,
+          ownedOptions: attributeDescriptor.ownedOptions,
         },
       ];
     }
@@ -242,6 +299,14 @@ const walk = (
       if (entity === undefined) return [];
       return [{ kind: 'type', path, typeId: value, entity }];
     }
+    const assetDescriptor = getAssetReferenceDescriptor(node);
+    if (assetDescriptor) {
+      // A sentinel occupying an asset site without being one (a panel's
+      // `'existing'`). Emitting a hit would put it in every usage index as an
+      // asset id no manifest can ever contain.
+      if (assetDescriptor.ignoreValues?.includes(value)) return [];
+      return [{ kind: 'asset', path, assetId: value }];
+    }
     return [];
   }
 
@@ -249,9 +314,10 @@ const walk = (
     if (!isRecord(value)) return [];
     const shape = node.shape;
     const childCtx: WalkContext = {
-      stageSubject: stageSubjectOf(value) ?? ctx.stageSubject,
+      stageSubject: stageSubjectOf(node, value, ctx) ?? ctx.stageSubject,
       parent: value,
       filterRuleEntity: filterRuleEntityOf(value) ?? ctx.filterRuleEntity,
+      stages: ctx.stages,
     };
     return Object.keys(shape).flatMap((key) => {
       const child: unknown = shape[key];
@@ -345,11 +411,24 @@ const isTypeHit = (
   hit: ReferenceHit,
 ): hit is { kind: 'type' } & EntityTypeReferenceHit => hit.kind === 'type';
 
+const isAssetHit = (
+  hit: ReferenceHit,
+): hit is { kind: 'asset' } & AssetReferenceHit => hit.kind === 'asset';
+
+/**
+ * The walk's root context. `stages` is seeded from the value being walked so a
+ * stage whose subject lives on another stage (NarrativePedigree) can resolve
+ * it; walking a schema fragment simply leaves it empty.
+ */
+const rootContext = (value: unknown): WalkContext => ({
+  stages: isRecord(value) && Array.isArray(value.stages) ? value.stages : [],
+});
+
 export const collectEntityAttributeReferencesFromSchema = (
   schema: z.ZodType,
   value: unknown,
 ): EntityAttributeReferenceHit[] =>
-  walk(schema, value, [], {})
+  walk(schema, value, [], rootContext(value))
     .filter(isAttributeHit)
     .map(({ kind: _kind, ...hit }) => hit);
 
@@ -368,6 +447,26 @@ export const collectEntityAttributeReferences = (
 export const collectEntityTypeReferences = (
   protocol: unknown,
 ): EntityTypeReferenceHit[] =>
-  walk(CurrentProtocolSchema, protocol, [], {})
+  walk(CurrentProtocolSchema, protocol, [], rootContext(protocol))
     .filter(isTypeHit)
+    .map(({ kind: _kind, ...hit }) => hit);
+
+/**
+ * Every `assetManifest` entry referenced by a protocol, discovered from the
+ * schema's `assetReference` tags — the asset counterpart of
+ * `collectEntityAttributeReferences`. Covers name generator and panel data
+ * sources, sociogram/narrative background images, the Geospatial map's token
+ * and data-source assets, and Information / FamilyPedigree intro-screen asset
+ * items.
+ *
+ * Consumers that need to know whether an asset is in use must derive it from
+ * here rather than keeping their own list of paths: a stage type that gains an
+ * asset field is then covered the moment its schema is tagged, instead of
+ * silently reporting a used asset as unused (and offering to delete it).
+ */
+export const collectAssetReferences = (
+  protocol: unknown,
+): AssetReferenceHit[] =>
+  walk(CurrentProtocolSchema, protocol, [], rootContext(protocol))
+    .filter(isAssetHit)
     .map(({ kind: _kind, ...hit }) => hit);

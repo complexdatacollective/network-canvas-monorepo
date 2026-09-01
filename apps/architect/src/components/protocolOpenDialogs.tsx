@@ -1,3 +1,10 @@
+import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  AccordionTrigger,
+} from '@codaco/fresco-ui/Accordion';
 import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -147,8 +154,40 @@ export const showProtocolOpenResultDialog = async ({
             community website.
           </ExternalLink>
         </Paragraph>
+        <ProtocolFailureDetails detail={result.detail} />
       </>
     ),
     actions: { primary: { label: 'OK', value: true } },
   });
+};
+
+/**
+ * The underlying error's own text, collapsed.
+ *
+ * Architect runs offline and a researcher may have exception reporting turned
+ * off, so without this the only record of what actually failed is a console
+ * they will never open. It stays shut by default because it is written for
+ * whoever reads the bug report, not for the person who just wanted to open
+ * their protocol — the dialog above it says everything they need in order to
+ * decide what to do next.
+ */
+const ProtocolFailureDetails = ({ detail }: { detail?: string }) => {
+  if (!detail) {
+    return null;
+  }
+
+  return (
+    <Accordion className="mt-4">
+      <AccordionItem value="technical-details">
+        <AccordionHeader>
+          <AccordionTrigger>Technical details</AccordionTrigger>
+        </AccordionHeader>
+        <AccordionPanel>
+          <pre className="bg-surface-1 max-h-40 overflow-auto rounded-sm p-4 text-sm whitespace-pre-wrap">
+            {detail}
+          </pre>
+        </AccordionPanel>
+      </AccordionItem>
+    </Accordion>
+  );
 };

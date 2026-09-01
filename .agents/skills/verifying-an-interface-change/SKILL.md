@@ -122,7 +122,7 @@ effect" — rebuild + kill :4101 before concluding anything.
 
 - Adding a stage type that does not exist yet → `creating-a-network-canvas-interface`
   (the matrix needs a whole new suite + inventory entry, not an update).
-- Any interface work at all → follow `developing-in-network-canvas` first for
+- Any interface work at all → follow `developing-network-canvas-ui` first for
   reuse, accessibility, i18n, and participant tone; this skill is only the
   verification loop.
 

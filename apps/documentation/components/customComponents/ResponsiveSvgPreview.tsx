@@ -15,7 +15,6 @@ const ResponsiveSvgPreview = ({ src, alt }: ResponsiveSvgPreviewProps) => (
         <div
           className={`bg-rich-black w-full overflow-hidden rounded ${className}`}
         >
-          {/* biome-ignore lint/performance/noImgElement: the ratio-less SVG must inherit the live preview box dimensions */}
           <img
             src={src}
             alt={`${alt} in ${label.toLowerCase()} orientation`}

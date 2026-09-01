@@ -1,12 +1,12 @@
-export { default as filter } from './filter.js';
+export { default as filter } from './filter.ts';
 export {
   countOperators,
   default as predicate,
   operators,
-} from './predicate.js';
-export { default as getQuery } from './query.js';
-export { getRuleFunction, getSingleRuleFunction } from './rules.js';
+} from './predicate.ts';
+export { default as getQuery } from './query.ts';
+export { getRuleFunction, getSingleRuleFunction } from './rules.ts';
 export {
   isStageSkipped,
   resolveSkipLogicDestinationIndex,
-} from './skipLogic.js';
+} from './skipLogic.ts';

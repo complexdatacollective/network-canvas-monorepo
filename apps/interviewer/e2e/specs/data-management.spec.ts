@@ -121,7 +121,11 @@ test.describe('interview data management', () => {
 
     const { fileName, files } = await download.captureExport(async () => {
       await page.getByTestId('data-export').click();
-      await expect(page.getByText('Archive ready')).toBeVisible();
+      // The export dialog's ready state; role-scoped because its sr-only live
+      // region announces the same text.
+      await expect(
+        page.getByRole('heading', { name: 'Archive ready' }),
+      ).toBeVisible();
       await page.getByTestId('data-save-export').click();
     });
 

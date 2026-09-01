@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import Section from '@codaco/fresco-ui/Section';
 import useExternalDataDownload from '~/components/AssetBrowser/useExternalDataDownload';
 import useExternalDataPreview from '~/components/AssetBrowser/useExternalDataPreview';
-import { Section } from '~/components/EditorLayout';
 import { useAppDispatch } from '~/ducks/hooks';
 import { deleteAsset } from '~/ducks/modules/protocol/assetManifest';
 
@@ -16,7 +16,6 @@ type AssetBrowserOwnProps = {
   selected?: string | null;
   onSelect?: (assetId: string) => void;
   disableDelete?: boolean;
-  sectionLayout: 'horizontal' | 'vertical';
 };
 
 const AssetBrowser = ({
@@ -24,7 +23,6 @@ const AssetBrowser = ({
   selected = null,
   onSelect,
   disableDelete = false,
-  sectionLayout,
 }: AssetBrowserOwnProps) => {
   const dispatch = useAppDispatch();
   const { confirm, openDialog } = useDialog();
@@ -76,13 +74,15 @@ const AssetBrowser = ({
   return (
     <>
       <Section
-        title="Import a New Resource"
-        layout={sectionLayout}
-        required={false}
+        title="Import resource"
+        description="Add a new resource to this protocol."
       >
         <NewAsset onCreate={handleCreate} type={type} />
       </Section>
-      <Section title="Resource Library" layout={sectionLayout} required={false}>
+      <Section
+        title="Resource library"
+        description="Browse and manage resources stored in this protocol."
+      >
         <Assets
           onSelect={onSelect}
           onPreview={handleShowPreview}

@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   type CurrentProtocol,
+  findVariableRoleConflicts,
   validateProtocol,
 } from '@codaco/protocol-validation';
+import { COLOR_PALETTES } from '~/config';
 import { BUNDLED_TEMPLATES } from '~/templates';
 import { developmentProtocol } from '~/templates/development-protocol';
 import { sampleProtocol } from '~/templates/sample-protocol';
@@ -56,6 +58,13 @@ const consentFlows = [
     consentVariableId: 'participant_consent',
     postConsentStageId: 'ego-form-background',
   },
+  {
+    name: 'Colored Eco-Genetic Relationship Map (CEGRM)',
+    protocol: getBundledTemplateProtocol('eco-genetic-relationship-maps'),
+    consentStageId: 'information-intro',
+    consentVariableId: 'participant_consent',
+    postConsentStageId: 'ego-form-background',
+  },
 ] satisfies {
   name: string;
   protocol: CurrentProtocol;
@@ -74,6 +83,55 @@ describe('bundled protocols validate against the current schema', () => {
       expect(issues).toStrictEqual([]);
     });
   }
+});
+
+// A protocol can satisfy the schema and still open with the timeline warning
+// from `VariableRoleConflictsAlert` — a variable written both by a form and
+// outside one. That is a poor first impression for something a user reaches by
+// clicking "Use this template", so bundled protocols must open warning-free.
+describe('bundled protocols open without variable role conflicts', () => {
+  for (const { name, protocol } of bundledProtocols) {
+    it(`${name} writes no variable both with and without validation`, () => {
+      const conflicts = findVariableRoleConflicts(protocol).map(
+        (conflict) => conflict.variableName,
+      );
+      expect(conflicts).toStrictEqual([]);
+    });
+  }
+});
+
+describe('bundled template Narrative Pedigree colors', () => {
+  const offeredDiseaseColors = new Set(
+    Array.from(
+      { length: COLOR_PALETTES['node-color-seq'] },
+      (_, index) => `node-color-seq-${index + 1}`,
+    ),
+  );
+
+  it('uses only colors offered by the Architect disease picker', () => {
+    const diseaseColors = BUNDLED_TEMPLATES.flatMap(({ name, protocol }) =>
+      protocol.stages.flatMap((stage) =>
+        stage.type === 'NarrativePedigree'
+          ? stage.diseases.map((disease) => ({
+              protocol: name,
+              disease: disease.label,
+              color: disease.color,
+            }))
+          : [],
+      ),
+    );
+
+    // Guard the generated assertion: the bundled CEGRM template is expected
+    // to exercise Narrative Pedigree, so an empty template list is a broken
+    // fixture, not a passing color contract. The Development Protocol is not
+    // included: it deliberately exercises arbitrary CSS colors accepted by
+    // the runtime schema, whereas starter templates must use what this editor
+    // actually offers a researcher.
+    expect(diseaseColors.length).toBeGreaterThan(0);
+    expect(
+      diseaseColors.filter(({ color }) => !offeredDiseaseColors.has(color)),
+    ).toStrictEqual([]);
+  });
 });
 
 describe('bundled consent flows', () => {

@@ -2,6 +2,7 @@ import { v4 as uuid } from 'uuid';
 
 import { getInterviewProgress } from '@codaco/interview';
 import { generateNetwork } from '@codaco/protocol-utilities';
+import { StageMetadataSchema } from '@codaco/shared-consts';
 import {
   createSession,
   deleteSessions,
@@ -76,7 +77,10 @@ export async function generateSyntheticSessions(
         currentStep,
         progress: getInterviewProgress(protocol.protocol.stages, currentStep)
           .progress,
-        stageMetadata: stageMetadata ?? undefined,
+        stageMetadata:
+          stageMetadata === null || stageMetadata === undefined
+            ? undefined
+            : StageMetadataSchema.parse(stageMetadata),
         finishedAt: droppedOut ? null : new Date().toISOString(),
       });
 
@@ -104,7 +108,10 @@ export async function generateSyntheticSessions(
               protocol.protocol.stages,
               currentStep,
             ).progress,
-            stageMetadata: stageMetadata ?? undefined,
+            stageMetadata:
+              stageMetadata === null || stageMetadata === undefined
+                ? undefined
+                : StageMetadataSchema.parse(stageMetadata),
             finishedAt: new Date().toISOString(),
           });
         }

@@ -6,7 +6,7 @@ import { invariant } from 'es-toolkit';
 import { sessionProperty } from '@codaco/shared-consts';
 
 import type { ExportEvent } from '../events';
-import type { ProtocolExportInput, SessionWithResequencedIDs } from '../input';
+import type { SessionWithResequencedIDs, ProtocolExportInput } from '../input';
 import type { ExportFormat, ExportOptions } from '../options';
 import type { ExportFailure, ExportSuccess, OutputEntry } from '../output';
 import { getFilePrefix } from '../utils/general';
@@ -105,6 +105,7 @@ export const generateOutputFilesEffect = (
       stage: 'generating',
       message: 'Generating files...',
     });
+    yield* Effect.sleep(0);
 
     const results: GenerationResult[] = yield* Effect.forEach(
       items,
@@ -119,6 +120,12 @@ export const generateOutputFilesEffect = (
                   current,
                   total,
                 }),
+              ),
+              // Periodic macrotask boundary: file generation is synchronous
+              // CPU work on the one JS thread, so without it browser hosts
+              // never paint the progress they are being sent.
+              Effect.tap((current) =>
+                current % 10 === 0 ? Effect.sleep(0) : Effect.void,
               ),
             ),
           ),

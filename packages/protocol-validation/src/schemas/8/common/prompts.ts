@@ -1,8 +1,11 @@
 import { z } from 'zod';
 
+import { OrdinalColorReferenceSchema } from '../color-reference.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
 import { SortOrderSchema } from '../filters/index.ts';
+
+export { OrdinalColorSequence as ordinalColorSequence } from '../color-reference.ts';
 
 export const promptSchema = z.strictObject({
   id: z.string(),
@@ -52,16 +55,25 @@ export const nameGeneratorPromptSchema = promptSchema.extend({
   additionalAttributes: AdditionalAttributesSchema.optional(),
 });
 
+// ONE declaration of the highlight variable, shared by the loose shape the
+// reference collector reads and by both narrowed union branches, so the two
+// cannot disagree about what the site is. Tapping a node writes the attribute,
+// but only when `allowHighlighting` is on: a prompt that sets `variable` alone
+// merely colours nodes by a value something else recorded, which is a read (see
+// `usageRequiresSibling`, and the Canvas's display-only highlight).
+const highlightVariableReference = entityAttributeReference({
+  subject: 'stageSubject',
+  usage: 'unvalidatedAttribute',
+  usageRequiresSibling: 'allowHighlighting',
+});
+
 // Loose shape + superRefine for the author-facing message, piped into a union
 // so the static type proves `variable` exists whenever highlighting is on.
 // The union must accept exactly what the refine accepts.
 const sociogramHighlightSchema = z
   .strictObject({
     allowHighlighting: z.boolean().optional(),
-    variable: entityAttributeReference({
-      subject: 'stageSubject',
-      usage: 'unvalidatedAttribute',
-    }).optional(),
+    variable: highlightVariableReference.optional(),
   })
   .superRefine((highlight, ctx) => {
     if (highlight.allowHighlighting && !highlight.variable) {
@@ -78,17 +90,11 @@ const sociogramHighlightSchema = z
       z.union([
         z.strictObject({
           allowHighlighting: z.literal(true),
-          variable: entityAttributeReference({
-            subject: 'stageSubject',
-            usage: 'unvalidatedAttribute',
-          }),
+          variable: highlightVariableReference,
         }),
         z.strictObject({
           allowHighlighting: z.literal(false).optional(),
-          variable: entityAttributeReference({
-            subject: 'stageSubject',
-            usage: 'unvalidatedAttribute',
-          }).optional(),
+          variable: highlightVariableReference.optional(),
         }),
       ]),
     ),
@@ -140,22 +146,6 @@ export const tieStrengthCensusPromptSchema = promptSchema.extend({
   negativeLabel: z.string().min(1),
 });
 
-// The ten palette values the OrdinalBin interface maps to CSS colour
-// variables (see the interview's OrdinalBinItem). Any other string is
-// silently ignored by the runtime, so the schema only admits these.
-export const ordinalColorSequence = [
-  'ord-color-seq-1',
-  'ord-color-seq-2',
-  'ord-color-seq-3',
-  'ord-color-seq-4',
-  'ord-color-seq-5',
-  'ord-color-seq-6',
-  'ord-color-seq-7',
-  'ord-color-seq-8',
-  'ord-color-seq-9',
-  'ord-color-seq-10',
-] as const;
-
 export const ordinalBinPromptSchema = promptSchema.extend({
   variable: entityAttributeReference({
     subject: 'stageSubject',
@@ -163,7 +153,7 @@ export const ordinalBinPromptSchema = promptSchema.extend({
   }),
   bucketSortOrder: SortOrderSchema.optional(),
   binSortOrder: SortOrderSchema.optional(),
-  color: z.enum(ordinalColorSequence),
+  color: OrdinalColorReferenceSchema,
 });
 
 const categoricalBinPromptFields = {
@@ -196,7 +186,7 @@ export const categoricalBinPromptSchema = promptSchema
     if (prompt.otherVariable === '') {
       ctx.addIssue({
         code: 'custom' as const,
-        message: 'otherVariable must name a variable.',
+        message: 'otherVariable must name an attribute.',
         path: ['otherVariable'],
       });
       return;

@@ -11,6 +11,7 @@ import {
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 
+import { PostHogClientProvider } from '~/components/Providers/posthog-provider';
 import { ThemeProvider } from '~/components/Providers/theme-provider';
 import { getStaticLocaleParams } from '~/lib/i18n/locales';
 import { routing } from '~/lib/i18n/routing';
@@ -82,16 +83,18 @@ export default async function LocaleLayout({
         <script id="entrance-motion">{entranceMotionScript}</script>
       </head>
       <body className="root overflow-x-hidden">
-        <ThemeProvider
-          enableSystem
-          enableColorScheme
-          attribute="data-theme"
-          storageKey="networkcanvas-site"
-        >
-          <NextIntlClientProvider messages={messages}>
-            {children}
-          </NextIntlClientProvider>
-        </ThemeProvider>
+        <PostHogClientProvider>
+          <ThemeProvider
+            enableSystem
+            enableColorScheme
+            attribute="data-theme"
+            storageKey="networkcanvas-site"
+          >
+            <NextIntlClientProvider messages={messages}>
+              {children}
+            </NextIntlClientProvider>
+          </ThemeProvider>
+        </PostHogClientProvider>
       </body>
     </html>
   );

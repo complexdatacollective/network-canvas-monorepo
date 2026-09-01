@@ -5,7 +5,6 @@ import { motion } from 'motion/react';
 import { useShallow } from 'zustand/shallow';
 
 import { Button, type ButtonProps } from '../../Button';
-import { cx } from '../../utils/cva';
 import { useCollectionStore, useOptionalSortManager } from '../contexts';
 import type {
   SortDirection,
@@ -99,7 +98,11 @@ export function CollectionSortButton({
       variant={variant}
       size={size}
       onClick={handleClick}
-      className={cx(isActive && 'bg-accent text-accent-contrast', className)}
+      // `aria-pressed` is correct here — this IS a toggle — and it brings the
+      // selected colours with it. The `bg-accent`/`text-accent-contrast` pair
+      // that used to sit in `className` never rendered: the `aria-pressed:`
+      // variant outranks a bare utility, and was `!important` besides.
+      className={className}
       aria-pressed={isActive}
       aria-label={`Sort by ${label}${isActive ? ` (${direction === 'asc' ? 'ascending' : 'descending'})` : ''}`}
       icon={

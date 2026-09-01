@@ -1,4 +1,4 @@
-import { configureStore } from '@reduxjs/toolkit';
+import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { navigate } from 'wouter/use-browser-location';
 
@@ -11,52 +11,50 @@ import activeProtocolReducer, {
   redoWithNavigation,
   undoWithNavigation,
 } from '../activeProtocol';
+import appReducer, { setProtocolLockState } from '../app';
+import { timelineOptions } from '../root';
+import stageEditorDraftReducer, {
+  draftTimelineActions,
+} from '../stageEditorDraft';
 
 vi.mock('wouter/use-browser-location', () => ({ navigate: vi.fn() }));
 
-type Entry = { id: string; path: string };
+const setPath = (path: string) => window.history.replaceState({}, '', path);
 
-const buildState = (opts: {
-  past?: unknown[];
-  future?: unknown[];
-  timeline?: Entry[];
-  futureTimeline?: Entry[];
-}) =>
-  ({
-    activeProtocol: {
-      past: opts.past ?? [{}],
-      present: { name: 'P', stages: [] },
-      future: opts.future ?? [],
-      timeline: opts.timeline ?? [],
-      futureTimeline: opts.futureTimeline ?? [],
-    },
-  }) as unknown as RootState;
-
-// Fake dispatch that runs nested thunks and records plain actions so we can
-// assert whether the raw undo/redo was applied.
-const makeHarness = (state: RootState) => {
-  const plainActions: { type: string }[] = [];
-  const getState = () => state;
-  const dispatch = ((action: unknown) => {
-    if (typeof action === 'function') {
-      return (action as (d: unknown, g: () => RootState) => unknown)(
-        dispatch,
-        getState,
-      );
-    }
-    plainActions.push(action as { type: string });
-    return action;
-  }) as unknown as AppDispatch;
-  return { dispatch, getState, plainActions };
+const baseProtocol: CurrentProtocol = {
+  name: 'Orig',
+  description: 'd',
+  schemaVersion: 8,
+  stages: [],
+  codebook: { node: {}, edge: {}, ego: {} },
+  assetManifest: {},
 };
 
-const setPath = (path: string) => window.history.replaceState({}, '', path);
-const undoApplied = (actions: { type: string }[]) =>
-  actions.some((a) => a.type === 'timeline/undo');
-const redoApplied = (actions: { type: string }[]) =>
-  actions.some((a) => a.type === 'timeline/redo');
+// The thunks are exercised against a real timeline-wrapped store throughout:
+// they read the locus the middleware recorded and confirm the operation landed
+// by observing `present`, so a fake state object cannot reach either contract.
+const makeStore = (getPath?: () => string) =>
+  configureStore({
+    reducer: {
+      activeProtocol: createTimelineReducer(
+        activeProtocolReducer,
+        getPath ? { getPath } : {},
+      ),
+    },
+    middleware: (getDefault) => getDefault({ serializableCheck: false }),
+  });
 
-describe('undoWithNavigation / redoWithNavigation', () => {
+const seeded = (getPath?: () => string) => {
+  const store = makeStore(getPath);
+  store.dispatch(actionCreators.setActiveProtocol(baseProtocol));
+  return store;
+};
+
+// One activation performs one history operation from any page, and only changes
+// route when a page exists that would reveal the result (#1389). Before the
+// fix, a cross-page activation navigated and returned without applying, so the
+// researcher had to press the same control twice.
+describe('undoWithNavigation', () => {
   beforeEach(() => {
     vi.mocked(navigate).mockClear();
     setPath('/protocol');
@@ -64,176 +62,389 @@ describe('undoWithNavigation / redoWithNavigation', () => {
 
   it('reverts in place when the change lives on the current page', () => {
     setPath('/protocol/codebook');
-    const state = buildState({
-      timeline: [{ id: 'a', path: '/protocol/codebook' }],
-    });
-    const { dispatch, getState, plainActions } = makeHarness(state);
-
-    undoWithNavigation()(dispatch, getState);
-
-    expect(navigate).not.toHaveBeenCalled();
-    expect(undoApplied(plainActions)).toBe(true);
-  });
-
-  it('navigates first (without reverting) when the change lives on another page', () => {
-    const state = buildState({
-      timeline: [{ id: 'a', path: '/protocol/codebook' }],
-    });
-    const { dispatch, getState, plainActions } = makeHarness(state);
-
-    undoWithNavigation()(dispatch, getState);
-
-    expect(navigate).toHaveBeenCalledWith('/protocol/codebook');
-    expect(undoApplied(plainActions)).toBe(false);
-  });
-
-  it('reverts on the second press once on the target page', () => {
-    setPath('/protocol/codebook');
-    const state = buildState({
-      timeline: [{ id: 'a', path: '/protocol/codebook' }],
-    });
-    const { dispatch, getState, plainActions } = makeHarness(state);
-
-    // Simulates the press that follows the navigation step.
-    undoWithNavigation()(dispatch, getState);
-
-    expect(navigate).not.toHaveBeenCalled();
-    expect(undoApplied(plainActions)).toBe(true);
-  });
-
-  it('routes a committed stage edit to the stage list, not the editor', () => {
-    setPath('/protocol/codebook');
-    const state = buildState({
-      timeline: [{ id: 'a', path: '/protocol/stage/stage-1' }],
-    });
-    const { dispatch, getState, plainActions } = makeHarness(state);
-
-    undoWithNavigation()(dispatch, getState);
-
-    expect(navigate).toHaveBeenCalledWith('/protocol');
-    expect(undoApplied(plainActions)).toBe(false);
-  });
-
-  it('reverts path-less (legacy) entries in place', () => {
-    const state = buildState({ timeline: [{ id: 'a', path: '' }] });
-    const { dispatch, getState, plainActions } = makeHarness(state);
-
-    undoWithNavigation()(dispatch, getState);
-
-    expect(navigate).not.toHaveBeenCalled();
-    expect(undoApplied(plainActions)).toBe(true);
-  });
-
-  it('does nothing when there is nothing to undo', () => {
-    const state = buildState({
-      past: [],
-      timeline: [{ id: 'a', path: '/protocol/codebook' }],
-    });
-    const { dispatch, getState, plainActions } = makeHarness(state);
-
-    undoWithNavigation()(dispatch, getState);
-
-    expect(navigate).not.toHaveBeenCalled();
-    expect(undoApplied(plainActions)).toBe(false);
-  });
-
-  it('redo mirrors undo using the future timeline head', () => {
-    const state = buildState({
-      future: [{}],
-      futureTimeline: [{ id: 'b', path: '/protocol/assets' }],
-    });
-    const { dispatch, getState, plainActions } = makeHarness(state);
-
-    // First press: orient to the page the redone change lives on.
-    redoWithNavigation()(dispatch, getState);
-    expect(navigate).toHaveBeenCalledWith('/protocol/assets');
-    expect(redoApplied(plainActions)).toBe(false);
-
-    // Second press, now on that page: reapply.
-    setPath('/protocol/assets');
-    redoWithNavigation()(dispatch, getState);
-    expect(redoApplied(plainActions)).toBe(true);
-  });
-
-  it('does nothing when there is nothing to redo', () => {
-    const state = buildState({
-      future: [],
-      futureTimeline: [{ id: 'b', path: '/protocol/assets' }],
-    });
-    const { dispatch, getState, plainActions } = makeHarness(state);
-
-    redoWithNavigation()(dispatch, getState);
-
-    expect(navigate).not.toHaveBeenCalled();
-    expect(redoApplied(plainActions)).toBe(false);
-  });
-});
-
-// Exercises the thunks against a real timeline-wrapped store so the
-// getUndoTargetPath ↔ middleware-locus assumption is verified end to end (the
-// fake-state unit tests above can't reach the middleware's locus bookkeeping).
-describe('undoWithNavigation (real store integration)', () => {
-  const baseProtocol: CurrentProtocol = {
-    name: 'Orig',
-    description: 'd',
-    schemaVersion: 8,
-    stages: [],
-    codebook: { node: {}, edge: {}, ego: {} },
-    assetManifest: {},
-  };
-
-  const makeStore = () =>
-    configureStore({
-      reducer: { activeProtocol: createTimelineReducer(activeProtocolReducer) },
-      middleware: (getDefault) => getDefault({ serializableCheck: false }),
-    });
-
-  beforeEach(() => {
-    vi.mocked(navigate).mockClear();
-    setPath('/protocol');
-  });
-
-  it('navigates to the editing page first, then reverts on the next press', () => {
-    setPath('/protocol/codebook');
-    const store = makeStore();
-    store.dispatch(actionCreators.setActiveProtocol(baseProtocol));
+    const store = seeded();
     store.dispatch(actionCreators.updateProtocolName({ name: 'Renamed' }));
-    expect(store.getState().activeProtocol.present?.name).toBe('Renamed');
 
-    // The user has since navigated away from where the change was made.
-    setPath('/protocol');
-    store.dispatch(undoWithNavigation());
-    expect(navigate).toHaveBeenCalledWith('/protocol/codebook');
-    // Not reverted off-screen.
-    expect(store.getState().activeProtocol.present?.name).toBe('Renamed');
+    const outcome = store.dispatch(undoWithNavigation());
 
-    // Second press, now on the change's page: revert in view.
-    setPath('/protocol/codebook');
-    store.dispatch(undoWithNavigation());
+    expect(navigate).not.toHaveBeenCalled();
     expect(store.getState().activeProtocol.present?.name).toBe('Orig');
+    expect(outcome).toEqual({ applied: true, navigatedTo: null });
   });
 
-  it('navigates once for consecutive changes on the same page, then reverts in place', () => {
+  it('reverts AND navigates in a single activation when the change lives on another page', () => {
     setPath('/protocol/codebook');
-    const store = makeStore();
-    store.dispatch(actionCreators.setActiveProtocol(baseProtocol));
+    const store = seeded();
+    store.dispatch(actionCreators.updateProtocolName({ name: 'Renamed' }));
+
+    // The researcher has since moved away from where the change was made.
+    setPath('/protocol/assets');
+    const outcome = store.dispatch(undoWithNavigation());
+
+    expect(navigate).toHaveBeenCalledWith('/protocol/codebook');
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(store.getState().activeProtocol.present?.name).toBe('Orig');
+    expect(outcome).toEqual({
+      applied: true,
+      navigatedTo: '/protocol/codebook',
+    });
+  });
+
+  it('reverts consecutive same-page changes one per activation', () => {
+    setPath('/protocol/codebook');
+    const store = seeded();
     store.dispatch(actionCreators.updateProtocolName({ name: 'A' }));
     store.dispatch(
       actionCreators.updateProtocolDescription({ description: 'B' }),
     );
 
-    // First press from another page only navigates.
     setPath('/protocol');
     store.dispatch(undoWithNavigation());
-    expect(navigate).toHaveBeenCalledTimes(1);
-    expect(navigate).toHaveBeenCalledWith('/protocol/codebook');
+    expect(store.getState().activeProtocol.present?.description).toBe('d');
+    expect(store.getState().activeProtocol.present?.name).toBe('A');
 
-    // Subsequent presses on that page revert both changes without re-navigating.
     setPath('/protocol/codebook');
     store.dispatch(undoWithNavigation());
-    store.dispatch(undoWithNavigation());
-    expect(navigate).toHaveBeenCalledTimes(1);
     expect(store.getState().activeProtocol.present?.name).toBe('Orig');
+
+    // Only the first activation needed to move the researcher.
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(navigate).toHaveBeenCalledWith('/protocol/codebook');
+  });
+
+  // The destination must come from the entry being reverted, which undo pops —
+  // so it has to be read before the dispatch. Reading it afterwards would
+  // resolve the PREVIOUS change's page, which is only distinguishable when the
+  // two changes were made on different pages.
+  it('targets the page of the change being reverted, not the one before it', () => {
+    setPath('/protocol/assets');
+    const store = seeded();
+    store.dispatch(actionCreators.updateProtocolName({ name: 'A' }));
+
+    setPath('/protocol/codebook');
+    store.dispatch(
+      actionCreators.updateProtocolDescription({ description: 'B' }),
+    );
+
+    setPath('/protocol');
+    const outcome = store.dispatch(undoWithNavigation());
+
+    expect(navigate).toHaveBeenCalledWith('/protocol/codebook');
+    expect(navigate).not.toHaveBeenCalledWith('/protocol/assets');
     expect(store.getState().activeProtocol.present?.description).toBe('d');
+    expect(outcome).toEqual({
+      applied: true,
+      navigatedTo: '/protocol/codebook',
+    });
+  });
+
+  // Summary renders the whole protocol, so the revert is visible without a
+  // route change and the researcher keeps their place in the report.
+  it('applies without moving the researcher off the Summary report', () => {
+    setPath('/protocol/codebook');
+    const store = seeded();
+    store.dispatch(actionCreators.updateProtocolName({ name: 'Renamed' }));
+
+    setPath('/protocol/summary');
+    const outcome = store.dispatch(undoWithNavigation());
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(store.getState().activeProtocol.present?.name).toBe('Orig');
+    expect(outcome).toEqual({ applied: true, navigatedTo: null });
+  });
+
+  it('routes a committed stage edit to the stage list, not the editor, while applying it', () => {
+    setPath('/protocol/stage/stage-1');
+    const store = seeded();
+    store.dispatch(actionCreators.updateProtocolName({ name: 'Renamed' }));
+
+    setPath('/protocol/codebook');
+    const outcome = store.dispatch(undoWithNavigation());
+
+    expect(navigate).toHaveBeenCalledWith('/protocol');
+    expect(store.getState().activeProtocol.present?.name).toBe('Orig');
+    expect(outcome).toEqual({ applied: true, navigatedTo: '/protocol' });
+  });
+
+  it('applies an experiments-page change without moving the researcher', () => {
+    setPath('/protocol/experiments');
+    const store = seeded();
+    store.dispatch(
+      actionCreators.updateProtocol({
+        experiments: { encryptedVariables: true },
+      }),
+    );
+
+    setPath('/protocol');
+    const outcome = store.dispatch(undoWithNavigation());
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(
+      store.getState().activeProtocol.present?.experiments,
+    ).toBeUndefined();
+    expect(outcome).toEqual({ applied: true, navigatedTo: null });
+  });
+
+  it('reverts path-less (legacy) entries in place', () => {
+    const store = seeded(() => '');
+    store.dispatch(actionCreators.updateProtocolName({ name: 'Renamed' }));
+
+    setPath('/protocol/assets');
+    const outcome = store.dispatch(undoWithNavigation());
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(store.getState().activeProtocol.present?.name).toBe('Orig');
+    expect(outcome).toEqual({ applied: true, navigatedTo: null });
+  });
+
+  it('does nothing when there is nothing to undo', () => {
+    setPath('/protocol/assets');
+    const store = seeded();
+
+    const outcome = store.dispatch(undoWithNavigation());
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(outcome).toEqual({ applied: false, navigatedTo: null });
+  });
+
+  // The pre-flight `getCanUndo` check and the timeline reducer's own guards are
+  // kept in step, but the outcome is confirmed against observed state so a
+  // refusal can never be reported — and therefore never announced — as applied.
+  it('reports nothing applied when the timeline refuses the operation', () => {
+    const state = {
+      activeProtocol: {
+        past: [{ name: 'Orig' }],
+        present: { name: 'Renamed' },
+        future: [],
+        timeline: [{ id: 'a', path: '/protocol/codebook' }],
+        futureTimeline: [],
+      },
+    } as unknown as RootState;
+    // Records the action without ever changing state, standing in for a
+    // reducer that declines to apply it.
+    const dispatch = ((action: unknown) => action) as unknown as AppDispatch;
+
+    const outcome = undoWithNavigation()(dispatch, () => state);
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(outcome).toEqual({ applied: false, navigatedTo: null });
+  });
+});
+
+describe('redoWithNavigation', () => {
+  beforeEach(() => {
+    vi.mocked(navigate).mockClear();
+    setPath('/protocol');
+  });
+
+  it('reapplies AND navigates in a single activation when the change lives on another page', () => {
+    setPath('/protocol/assets');
+    const store = seeded();
+    store.dispatch(actionCreators.updateProtocolName({ name: 'Renamed' }));
+    store.dispatch(undoWithNavigation());
+    expect(store.getState().activeProtocol.present?.name).toBe('Orig');
+
+    setPath('/protocol');
+    vi.mocked(navigate).mockClear();
+    const outcome = store.dispatch(redoWithNavigation());
+
+    expect(navigate).toHaveBeenCalledWith('/protocol/assets');
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(store.getState().activeProtocol.present?.name).toBe('Renamed');
+    expect(outcome).toEqual({ applied: true, navigatedTo: '/protocol/assets' });
+  });
+
+  it('reapplies in place when the change lives on the current page', () => {
+    setPath('/protocol/codebook');
+    const store = seeded();
+    store.dispatch(actionCreators.updateProtocolName({ name: 'Renamed' }));
+    store.dispatch(undoWithNavigation());
+
+    const outcome = store.dispatch(redoWithNavigation());
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(store.getState().activeProtocol.present?.name).toBe('Renamed');
+    expect(outcome).toEqual({ applied: true, navigatedTo: null });
+  });
+
+  it('does nothing when there is nothing to redo', () => {
+    setPath('/protocol/assets');
+    const store = seeded();
+    store.dispatch(actionCreators.updateProtocolName({ name: 'Renamed' }));
+
+    const outcome = store.dispatch(redoWithNavigation());
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(store.getState().activeProtocol.present?.name).toBe('Renamed');
+    expect(outcome).toEqual({ applied: false, navigatedTo: null });
+  });
+
+  // Finding 2 of the issue: Redo stayed disabled after a cross-page Undo,
+  // because that Undo never moved the timeline.
+  it('becomes available immediately after a cross-page undo', () => {
+    setPath('/protocol/codebook');
+    const store = seeded();
+    store.dispatch(actionCreators.updateProtocolName({ name: 'Renamed' }));
+
+    setPath('/protocol/assets');
+    store.dispatch(undoWithNavigation());
+
+    expect(store.getState().activeProtocol.future).toHaveLength(1);
+  });
+});
+
+// A tab that does not own the saved copy has its library writes dropped
+// (`protocolValidationListener`), so a history operation there would rewind the
+// protocol on screen and reach nothing. The controls are not offered on such a
+// page (`ProjectActions`); this is the enforcement point behind them.
+describe('history operations in a tab that does not own the saved copy', () => {
+  const makeLockAwareStore = () => {
+    const store = configureStore({
+      reducer: combineReducers({
+        app: appReducer,
+        activeProtocol: createTimelineReducer(activeProtocolReducer, {}),
+      }),
+      middleware: (getDefault) => getDefault({ serializableCheck: false }),
+    });
+    store.dispatch(actionCreators.setActiveProtocol(baseProtocol));
+    store.dispatch(actionCreators.updateProtocolName({ name: 'Renamed' }));
+    return store;
+  };
+
+  beforeEach(() => {
+    vi.mocked(navigate).mockClear();
+    setPath('/protocol/codebook');
+  });
+
+  it.each(['open-elsewhere', 'reclaim-blocked'] as const)(
+    'refuses undo while the lock state is %s',
+    (lockState) => {
+      const store = makeLockAwareStore();
+      const before = store.getState().activeProtocol.present;
+      store.dispatch(setProtocolLockState(lockState));
+
+      const outcome = (store.dispatch as AppDispatch)(undoWithNavigation());
+
+      // Nothing applied, nothing announced, nowhere moved.
+      expect(outcome).toEqual({ applied: false, navigatedTo: null });
+      expect(store.getState().activeProtocol.present).toBe(before);
+      expect(navigate).not.toHaveBeenCalled();
+    },
+  );
+
+  it('refuses redo while another tab holds the saved copy', () => {
+    const store = makeLockAwareStore();
+    (store.dispatch as AppDispatch)(undoWithNavigation());
+    const before = store.getState().activeProtocol.present;
+    store.dispatch(setProtocolLockState('open-elsewhere'));
+    vi.mocked(navigate).mockClear();
+
+    const outcome = (store.dispatch as AppDispatch)(redoWithNavigation());
+
+    expect(outcome).toEqual({ applied: false, navigatedTo: null });
+    expect(store.getState().activeProtocol.present).toBe(before);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('applies normally once this tab owns the saved copy again', () => {
+    const store = makeLockAwareStore();
+    store.dispatch(setProtocolLockState('open-elsewhere'));
+    expect((store.dispatch as AppDispatch)(undoWithNavigation()).applied).toBe(
+      false,
+    );
+
+    store.dispatch(setProtocolLockState('owned'));
+
+    expect((store.dispatch as AppDispatch)(undoWithNavigation()).applied).toBe(
+      true,
+    );
+  });
+});
+
+// The outcome is confirmed by comparing the protocol before and after — and
+// while a stage editor holds a codebook transaction open (#1382) the editor's
+// view of the protocol is a SYNTHESISED object, whose identity is only as
+// trustworthy as the selector's cache. The probe asks about the saved protocol,
+// so it reads the raw present and depends on no cache at all.
+describe('history operations while a stage editor codebook transaction is open', () => {
+  const draftCodebook = { node: {}, edge: {}, ego: {} };
+
+  const makeTransactionStore = () => {
+    const store = configureStore({
+      reducer: combineReducers({
+        stageEditorDraft: stageEditorDraftReducer,
+        // The app's own exclusions, because this store dispatches actions from
+        // another slice: without them opening the stage editor would itself
+        // record a protocol history entry, which the app never does.
+        activeProtocol: createTimelineReducer(
+          activeProtocolReducer,
+          timelineOptions,
+        ),
+      }),
+      middleware: (getDefault) => getDefault({ serializableCheck: false }),
+    });
+    store.dispatch(actionCreators.setActiveProtocol(baseProtocol));
+    // The editor opens: a draft stage and a private copy of the codebook, which
+    // `getProtocol` overlays onto the protocol from here on.
+    store.dispatch(
+      draftTimelineActions.reset({
+        stage: { id: 's1', type: 'Information', label: 'A' },
+        codebook: draftCodebook,
+      }),
+    );
+    return store;
+  };
+
+  beforeEach(() => {
+    vi.mocked(navigate).mockClear();
+    setPath('/protocol/codebook');
+  });
+
+  it('reports nothing applied for an undo the timeline refuses', () => {
+    const store = makeTransactionStore();
+    // Nothing has been done to the protocol since it was loaded, so there is
+    // nothing to undo and the reducer will refuse.
+    const before = store.getState().activeProtocol.present;
+
+    const outcome = (store.dispatch as AppDispatch)(undoWithNavigation());
+
+    expect(outcome).toEqual({ applied: false, navigatedTo: null });
+    expect(store.getState().activeProtocol.present).toBe(before);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('reports an undo that really did change the saved protocol', () => {
+    const store = makeTransactionStore();
+    store.dispatch(actionCreators.updateProtocolName({ name: 'Renamed' }));
+
+    const outcome = (store.dispatch as AppDispatch)(undoWithNavigation());
+
+    expect(outcome.applied).toBe(true);
+    expect(store.getState().activeProtocol.present?.name).toBe('Orig');
+    // The transaction is untouched by the protocol's own history.
+    expect(store.getState().stageEditorDraft.history.present?.codebook).toBe(
+      draftCodebook,
+    );
+  });
+
+  it('reports nothing applied for a redo the timeline refuses', () => {
+    const store = makeTransactionStore();
+    const before = store.getState().activeProtocol.present;
+
+    const outcome = (store.dispatch as AppDispatch)(redoWithNavigation());
+
+    expect(outcome).toEqual({ applied: false, navigatedTo: null });
+    expect(store.getState().activeProtocol.present).toBe(before);
+  });
+
+  it('reports a redo that really did change the saved protocol', () => {
+    const store = makeTransactionStore();
+    store.dispatch(actionCreators.updateProtocolName({ name: 'Renamed' }));
+    (store.dispatch as AppDispatch)(undoWithNavigation());
+
+    const outcome = (store.dispatch as AppDispatch)(redoWithNavigation());
+
+    expect(outcome.applied).toBe(true);
+    expect(store.getState().activeProtocol.present?.name).toBe('Renamed');
   });
 });

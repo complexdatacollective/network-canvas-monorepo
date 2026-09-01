@@ -8,7 +8,7 @@ import {
   X,
 } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
@@ -23,13 +23,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@codaco/fresco-ui/DropdownMenu';
+import Surface from '@codaco/fresco-ui/layout/Surface';
+import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import { Tabs, TabsPanel } from '@codaco/fresco-ui/Tabs';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@codaco/fresco-ui/Tooltip';
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import type { CurrentProtocol } from '@codaco/protocol-validation';
 import Table from '~/components/Assets/Table';
 import ExternalLink from '~/components/ExternalLink';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -74,6 +78,30 @@ const formatProtocolMeta = (protocol: StoredProtocolRow): string => {
     `Edited ${formatTimestamp(protocol.updatedAt)}`,
   ].join(' · ');
 };
+// Bundled templates aren't library rows: they carry no created/updated
+// timestamps, only the counts already baked into their protocol JSON.
+const formatTemplateMeta = (protocol: CurrentProtocol): string => {
+  const stageCount = protocol.stages.length;
+  const nodeTypeCount = Object.keys(protocol.codebook.node ?? {}).length;
+  const edgeTypeCount = Object.keys(protocol.codebook.edge ?? {}).length;
+  return [
+    `${stageCount} ${stageCount === 1 ? 'stage' : 'stages'}`,
+    `${nodeTypeCount} node ${nodeTypeCount === 1 ? 'type' : 'types'}`,
+    `${edgeTypeCount} edge ${edgeTypeCount === 1 ? 'type' : 'types'}`,
+  ].join(' · ');
+};
+/**
+ * Where focus belongs once a row action's dialog closes.
+ *
+ * Resolved lazily, at focus-return, rather than captured as a single element:
+ * which control still exists depends on what the action did. Cancelling a
+ * delete, or closing the info dialog, leaves the row's Actions button exactly
+ * where it was; confirming the delete removes the row and that button with it.
+ * The enclosing listbox is the fallback because it outlives every one of its
+ * items and is itself focusable, so the researcher lands back in the list they
+ * were working in rather than at the top of the page.
+ */
+type ResolveMenuFocus = () => HTMLElement | null;
 type LibraryRowItem = Record<string, unknown> & {
   kind: 'row';
   id: string;
@@ -83,17 +111,11 @@ type LibraryRowItem = Record<string, unknown> & {
   meta?: string;
   downloading?: boolean;
   onOpen: () => void;
-  onDownload?: () => void;
-  onDelete?: () => void;
-  onShowInfo?: () => void;
+  onDownload?: (resolveFocus: ResolveMenuFocus) => void;
+  onDelete?: (resolveFocus: ResolveMenuFocus) => void;
+  onShowInfo?: (resolveFocus: ResolveMenuFocus) => void;
 };
-type GalleryCardItem = Record<string, unknown> & {
-  kind: 'gallery-card';
-  id: string;
-  textValue: string;
-  onDismiss: () => void;
-};
-type LibraryPanelItem = LibraryRowItem | GalleryCardItem;
+type LibraryPanelItem = LibraryRowItem;
 type PanelRowProps = {
   itemProps: ItemProps;
   name: string;
@@ -101,9 +123,9 @@ type PanelRowProps = {
   meta?: string;
   downloading?: boolean;
   onOpen: () => void;
-  onDownload?: () => void;
-  onDelete?: () => void;
-  onShowInfo?: () => void;
+  onDownload?: (resolveFocus: ResolveMenuFocus) => void;
+  onDelete?: (resolveFocus: ResolveMenuFocus) => void;
+  onShowInfo?: (resolveFocus: ResolveMenuFocus) => void;
 };
 const PanelRow = ({
   itemProps,
@@ -117,9 +139,16 @@ const PanelRow = ({
   onShowInfo,
 }: PanelRowProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const handleClick = (event: React.MouseEvent) => {
     itemProps.onClick?.(event);
     if (event.defaultPrevented) return;
+    // The row's menu renders through a portal, so React delivers its clicks
+    // here even though they land outside the row in the DOM. Opening the
+    // protocol because a menu item was activated would undo whatever the
+    // researcher actually chose. The menu items stop propagation too; this is
+    // the guard that does not depend on every future one remembering to.
+    if (!event.currentTarget.contains(event.target as Node)) return;
     onOpen();
   };
   const handleKeyDown = (event: React.KeyboardEvent) => {
@@ -132,56 +161,86 @@ const PanelRow = ({
       onOpen();
     }
   };
+  // Read while the row is still mounted — after a confirmed delete neither the
+  // trigger nor the row is in the document, and `closest` would have nothing to
+  // walk up from.
+  const captureMenuFocus = (): ResolveMenuFocus => {
+    const trigger = triggerRef.current;
+    const listbox = trigger?.closest<HTMLElement>('[role="listbox"]') ?? null;
+    return () => {
+      if (trigger?.isConnected) return trigger;
+      if (listbox?.isConnected) return listbox;
+      return null;
+    };
+  };
   const runMenuAction =
-    (action: () => void | Promise<void>) => (event: React.MouseEvent) => {
+    (action: (resolveFocus: ResolveMenuFocus) => void | Promise<void>) =>
+    (event: React.MouseEvent) => {
       event.stopPropagation();
       setMenuOpen(false);
+      const resolveFocus = captureMenuFocus();
       void Promise.resolve()
-        .then(() => action())
+        .then(() => action(resolveFocus))
         .catch((error: unknown) => {
           console.error('LibraryPanel action failed', error);
           reportError(error);
         });
     };
+
   const hasMenu = Boolean(onDownload || onDelete || onShowInfo);
+
   return (
     <div
       {...itemProps}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      className="group focusable hover:bg-surface-2 data-focused:bg-surface-2 flex w-full shrink-0 cursor-pointer items-center gap-2.5 rounded-sm px-5 py-2.5 text-left transition-colors"
+      className="group focusable hover:bg-surface-1 data-focused:bg-surface-1 flex w-full shrink-0 cursor-pointer items-center gap-2.5 rounded px-5 py-2.5 text-left transition-colors"
     >
-      <img
-        src={fileIcon}
-        alt=""
-        aria-hidden
-        className="size-10 shrink-0 object-contain"
-      />
-
-      <span className="min-w-0 flex-1">
-        <span title={name} className="line-clamp-2 font-semibold wrap-anywhere">
+      <div className="flex shrink-0 items-center justify-center">
+        <img
+          src={fileIcon}
+          alt=""
+          aria-hidden
+          className="size-10 shrink-0 object-contain"
+        />
+      </div>
+      <div className="w-full min-w-0 flex-1 gap-2">
+        {/* Already height-bounded by `line-clamp-2`; `dir="auto"` is the RTL
+            half — without it the row's LTR base direction reorders an RTL name
+            so the clamp's ellipsis lands on the wrong end. */}
+        <Heading
+          level="label"
+          title={name}
+          dir="auto"
+          className="line-clamp-2 font-semibold wrap-anywhere"
+          margin="none"
+        >
           {name}
-        </span>
-        {meta ? (
-          <span className="text-muted block truncate text-sm">{meta}</span>
-        ) : (
-          description && (
-            <span className="text-muted line-clamp-3 text-sm">
-              {description}
-            </span>
-          )
-        )}
-      </span>
+        </Heading>
+        {meta && <span className="text-sm text-current/70">{meta}</span>}
 
+        {description && (
+          <span className="line-clamp-3 text-sm text-current/70">
+            {description}
+          </span>
+        )}
+      </div>
       {hasMenu && (
-        <span className="flex shrink-0 items-center">
+        <div className="flex shrink-0 items-center">
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
             <DropdownMenuTrigger
               render={
+                // Stays enabled while a download runs. A disabled control
+                // cannot hold focus, so disabling it here would drop focus to
+                // `<body>` at exactly the moment the menu hands it back — and
+                // it would also lock the researcher out of Delete and See more
+                // info for the duration. The spinner carries the busy state,
+                // and the Download item alone is disabled.
                 <IconButton
+                  ref={triggerRef}
                   variant="text"
+                  color="dynamic"
                   aria-label={`Actions for ${name}`}
-                  disabled={downloading}
                   onClick={(event) => event.stopPropagation()}
                   icon={
                     downloading ? (
@@ -227,51 +286,79 @@ const PanelRow = ({
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-        </span>
+        </div>
       )}
     </div>
   );
 };
-type GalleryCardProps = {
-  itemProps: ItemProps;
-  onDismiss: () => void;
-};
-const GalleryCard = ({ itemProps, onDismiss }: GalleryCardProps) => {
-  const handleKeyDown = (event: React.KeyboardEvent) => {
-    itemProps.onKeyDown?.(event);
+
+const GalleryCard = () => {
+  // Persist the protocol-gallery card's dismissal so it stays hidden across
+  // reloads once the user closes it.
+  const GALLERY_CARD_DISMISSED_KEY = 'architect:templates-gallery-dismissed';
+
+  const [galleryDismissed, setGalleryDismissed] = useState(
+    () => localStorage.getItem(GALLERY_CARD_DISMISSED_KEY) === 'true',
+  );
+  const dismissGalleryCard = useCallback(() => {
+    setGalleryDismissed(true);
+    localStorage.setItem(GALLERY_CARD_DISMISSED_KEY, 'true');
+  }, []);
+
+  const cardRef = useRef<HTMLDivElement>(null);
+  // Dismissing unmounts the card, taking the Dismiss button — and, with it,
+  // keyboard focus — out of the document. Hand focus to the tab that owns this
+  // panel first, so the researcher stays where they were instead of being
+  // dropped onto `<body>`, from which the next Tab restarts at the page header.
+  // Found through the panel's own `aria-labelledby`, which is the tab, rather
+  // than by querying for a tab by name.
+  const handleDismiss = () => {
+    const panel = cardRef.current?.closest<HTMLElement>('[role="tabpanel"]');
+    const owningTabId = panel?.getAttribute('aria-labelledby');
+    const owningTab = owningTabId
+      ? panel?.ownerDocument.getElementById(owningTabId)
+      : null;
+    owningTab?.focus();
+    dismissGalleryCard();
   };
+
+  if (galleryDismissed) {
+    return null;
+  }
+
   return (
-    <div
-      {...itemProps}
-      onKeyDown={handleKeyDown}
-      className="border-outline bg-surface-2 focusable data-focused:bg-surface-3 relative mt-2.5 flex flex-col gap-1 rounded-sm border p-5"
+    <Surface
+      ref={cardRef}
+      role="group"
+      aria-label="Protocol gallery"
+      spacing="sm"
+      className="mb-4"
     >
+      <div>
+        <Heading level="h4">Looking for more?</Heading>
+        <Paragraph intent="smallText">
+          More examples of Network Canvas protocols can be found on our{' '}
+          <ExternalLink href="https://protocolgallery.networkcanvas.com/">
+            protocol gallery
+          </ExternalLink>
+        </Paragraph>
+      </div>
       <IconButton
         variant="text"
+        color="dynamic"
         size="sm"
         aria-label="Dismiss"
-        className="absolute top-1 right-1"
-        onClick={onDismiss}
+        className="absolute top-1 right-2"
+        onClick={handleDismiss}
         icon={<X />}
       />
-      <Paragraph className="m-0 pr-7 font-semibold">
-        Looking for more?
-      </Paragraph>
-      <Paragraph className="text-muted m-0 text-sm">
-        More examples of Network Canvas protocols can be found on our{' '}
-        <ExternalLink href="https://protocolgallery.networkcanvas.com/">
-          protocol gallery
-        </ExternalLink>
-      </Paragraph>
-    </div>
+    </Surface>
   );
 };
 const getLibraryItemKey = (item: LibraryPanelItem) => item.id;
 const getLibraryItemTextValue = (item: LibraryPanelItem) => item.textValue;
+
 const renderLibraryItem = (item: LibraryPanelItem, itemProps: ItemProps) => {
-  if (item.kind === 'gallery-card') {
-    return <GalleryCard itemProps={itemProps} onDismiss={item.onDismiss} />;
-  }
   return (
     <PanelRow
       itemProps={itemProps}
@@ -298,11 +385,12 @@ type LibraryPanelProps = {
   // Open one of the bundled research templates.
   onOpenTemplate: (template: BundledTemplate) => void;
 };
-const COLLECTION_CLASSES = 'h-[min(28rem,65dvh)] min-h-0';
-const COLLECTION_VIEWPORT_CLASSES = 'overflow-x-hidden px-2.5 pb-10';
-// Persist the protocol-gallery card's dismissal so it stays hidden across
-// reloads once the user closes it.
-const GALLERY_CARD_DISMISSED_KEY = 'architect:templates-gallery-dismissed';
+// A panel too short for both the list and the gallery card below it has to
+// give somewhere. It scrolls: `Surface` is `overflow-clip`, so anything the
+// panel cannot hold would otherwise be cut off with no way to reach it — which
+// is how the card disappears on a short window.
+const PANEL_CLASSES = 'flex min-h-0 flex-col overflow-x-hidden overflow-y-auto';
+
 const LibraryPanel = ({
   onOpenProtocol,
   onOpenSample,
@@ -322,13 +410,6 @@ const LibraryPanel = ({
     () => new ListLayout<LibraryPanelItem>({ gap: 0 }),
     [],
   );
-  const [galleryDismissed, setGalleryDismissed] = useState(
-    () => localStorage.getItem(GALLERY_CARD_DISMISSED_KEY) === 'true',
-  );
-  const dismissGalleryCard = useCallback(() => {
-    setGalleryDismissed(true);
-    localStorage.setItem(GALLERY_CARD_DISMISSED_KEY, 'true');
-  }, []);
   const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
   const [info, setInfo] = useState<{
     title: string;
@@ -336,9 +417,14 @@ const LibraryPanel = ({
     stats: MetaStat[];
   } | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
+  // The info dialog is rendered once for the whole panel, so the row that asked
+  // for it has to be remembered separately. A resolver rather than an element:
+  // by the time the dialog closes the menu item that opened it is long gone,
+  // and the dialog's own opener capture would have nothing usable to return to.
+  const infoFocusRef = useRef<ResolveMenuFocus | null>(null);
   const activeTab = tab;
   const handleDownload = useCallback(
-    async (protocol: StoredProtocolRow) => {
+    async (protocol: StoredProtocolRow, resolveFocus: ResolveMenuFocus) => {
       setDownloadingIds((prev) => new Set(prev).add(protocol.id));
       try {
         const skippedAssets = await downloadProtocolAsNetcanvas(
@@ -357,6 +443,7 @@ const LibraryPanel = ({
             title: 'Some assets could not be included',
             description: `"${protocol.name}" was downloaded, but these assets could not be included and are missing from the file: ${assetList}.`,
             actions: { primary: { label: 'OK', value: true } },
+            finalFocus: resolveFocus,
           });
         }
       } catch (error) {
@@ -370,6 +457,7 @@ const LibraryPanel = ({
           title: 'Download failed',
           description: `"${protocol.name}" could not be downloaded.`,
           actions: { primary: { label: 'OK', value: true } },
+          finalFocus: resolveFocus,
         });
       } finally {
         setDownloadingIds((prev) => {
@@ -382,7 +470,7 @@ const LibraryPanel = ({
     [openDialog],
   );
   const handleDelete = useCallback(
-    async (protocol: StoredProtocolRow) => {
+    async (protocol: StoredProtocolRow, resolveFocus: ResolveMenuFocus) => {
       const confirmed = await openDialog({
         type: 'choice',
         intent: 'destructive',
@@ -392,6 +480,12 @@ const LibraryPanel = ({
           primary: { label: 'Delete', value: true },
           cancel: { label: 'Cancel', value: false },
         },
+        // Both branches need this, for opposite reasons. The dialog's own
+        // remembered opener is the menu item, which has already unmounted by
+        // the time focus is returned; and on the confirm branch the Actions
+        // trigger goes too, which is why `resolveFocus` falls through to the
+        // listbox rather than naming one element.
+        finalFocus: resolveFocus,
       });
       if (!confirmed) {
         return;
@@ -406,58 +500,67 @@ const LibraryPanel = ({
           title: 'Delete failed',
           description: `"${protocol.name}" could not be deleted.`,
           actions: { primary: { label: 'OK', value: true } },
+          finalFocus: resolveFocus,
         });
       }
     },
     [dispatch, openDialog],
   );
-  const handleShowInfo = useCallback(async (protocol: StoredProtocolRow) => {
-    const { codebook } = protocol.protocol;
-    const assetCount = await getProtocolAssetCount(protocol.id);
-    const stats: MetaStat[] = [
-      { label: 'Stages', value: String(protocol.protocol.stages.length) },
-      {
-        label: 'Node types',
-        value: String(Object.keys(codebook.node ?? {}).length),
-      },
-      {
-        label: 'Edge types',
-        value: String(Object.keys(codebook.edge ?? {}).length),
-      },
-      { label: 'Assets', value: String(assetCount) },
-      { label: 'Added', value: formatTimestamp(protocol.createdAt) },
-      { label: 'Edited', value: formatTimestamp(protocol.updatedAt) },
-    ];
-    setInfo({
-      title: protocol.name,
-      description: protocol.protocol.description,
-      stats,
-    });
-    setInfoOpen(true);
-  }, []);
+  const handleShowInfo = useCallback(
+    async (protocol: StoredProtocolRow, resolveFocus: ResolveMenuFocus) => {
+      infoFocusRef.current = resolveFocus;
+      const { codebook } = protocol.protocol;
+      const assetCount = await getProtocolAssetCount(protocol.id);
+      const stats: MetaStat[] = [
+        { label: 'Stages', value: String(protocol.protocol.stages.length) },
+        {
+          label: 'Node types',
+          value: String(Object.keys(codebook.node ?? {}).length),
+        },
+        {
+          label: 'Edge types',
+          value: String(Object.keys(codebook.edge ?? {}).length),
+        },
+        { label: 'Assets', value: String(assetCount) },
+        { label: 'Added', value: formatTimestamp(protocol.createdAt) },
+        { label: 'Edited', value: formatTimestamp(protocol.updatedAt) },
+      ];
+      setInfo({
+        title: protocol.name,
+        description: protocol.protocol.description,
+        stats,
+      });
+      setInfoOpen(true);
+    },
+    [],
+  );
   // Templates aren't stored in the library, so build their info from the
   // in-memory protocol object rather than the asset DB. This surfaces the
   // template's full title and (rich) description, which the truncated row can't.
-  const handleShowTemplateInfo = useCallback((template: BundledTemplate) => {
-    const { protocol } = template;
-    const stats: MetaStat[] = [
-      { label: 'Stages', value: String(protocol.stages.length) },
-      {
-        label: 'Node types',
-        value: String(Object.keys(protocol.codebook.node ?? {}).length),
-      },
-      {
-        label: 'Edge types',
-        value: String(Object.keys(protocol.codebook.edge ?? {}).length),
-      },
-    ];
-    setInfo({
-      title: protocol.name ?? template.name,
-      description: protocol.description ?? template.description,
-      stats,
-    });
-    setInfoOpen(true);
-  }, []);
+  const handleShowTemplateInfo = useCallback(
+    (template: BundledTemplate, resolveFocus: ResolveMenuFocus) => {
+      infoFocusRef.current = resolveFocus;
+      const { protocol } = template;
+      const stats: MetaStat[] = [
+        { label: 'Stages', value: String(protocol.stages.length) },
+        {
+          label: 'Node types',
+          value: String(Object.keys(protocol.codebook.node ?? {}).length),
+        },
+        {
+          label: 'Edge types',
+          value: String(Object.keys(protocol.codebook.edge ?? {}).length),
+        },
+      ];
+      setInfo({
+        title: protocol.name ?? template.name,
+        description: protocol.description ?? template.description,
+        stats,
+      });
+      setInfoOpen(true);
+    },
+    [],
+  );
   const handleShowStorageInfo = useCallback(() => {
     void openDialog({
       type: 'acknowledge',
@@ -526,12 +629,15 @@ const LibraryPanel = ({
         id: protocol.id,
         textValue: protocol.name,
         name: protocol.name,
+        description: protocol.protocol.description,
         meta: formatProtocolMeta(protocol),
         downloading: downloadingIds.has(protocol.id),
         onOpen: () => onOpenProtocol(protocol.id),
-        onDownload: () => handleDownload(protocol),
-        onDelete: () => handleDelete(protocol),
-        onShowInfo: () => handleShowInfo(protocol),
+        onDownload: (resolveFocus) =>
+          void handleDownload(protocol, resolveFocus),
+        onDelete: (resolveFocus) => void handleDelete(protocol, resolveFocus),
+        onShowInfo: (resolveFocus) =>
+          void handleShowInfo(protocol, resolveFocus),
       })),
     [
       protocols,
@@ -552,6 +658,7 @@ const LibraryPanel = ({
         description:
           sampleProtocol.description ??
           'An example introducing the key features and techniques available in Network Canvas.',
+        meta: formatTemplateMeta(sampleProtocol),
         onOpen: onOpenSample,
       },
     ];
@@ -572,22 +679,14 @@ const LibraryPanel = ({
         textValue: template.name,
         name: template.name,
         description: template.description,
+        meta: formatTemplateMeta(template.protocol),
         onOpen: () => onOpenTemplate(template),
-        onShowInfo: () => handleShowTemplateInfo(template),
+        onShowInfo: (resolveFocus: ResolveMenuFocus) =>
+          handleShowTemplateInfo(template, resolveFocus),
       })),
     );
-    if (!galleryDismissed) {
-      items.push({
-        kind: 'gallery-card',
-        id: 'protocol-gallery-card',
-        textValue: 'Protocol gallery',
-        onDismiss: dismissGalleryCard,
-      });
-    }
     return items;
   }, [
-    dismissGalleryCard,
-    galleryDismissed,
     handleShowTemplateInfo,
     onOpenDevProtocol,
     onOpenSample,
@@ -604,7 +703,7 @@ const LibraryPanel = ({
   const headerEnd =
     activeTab === 'recent' ? (
       <div className="flex min-w-max items-center justify-end gap-2.5">
-        <Badge color="platinum" className="shadow-none">
+        <Badge color="platinum">
           {protocolCount} {protocolCount === 1 ? 'protocol' : 'protocols'}
         </Badge>
         <Tooltip>
@@ -646,7 +745,13 @@ const LibraryPanel = ({
       </div>
     ) : null;
   return (
-    <>
+    // `grow` takes the height `Home`'s column has left rather than stating one:
+    // no floor and no `max-h`, so the panel neither forces the page to scroll
+    // nor caps itself below the space it was given. What a short window gives
+    // up is taken inside, by the tab panels, which scroll (`PANEL_CLASSES`) —
+    // `Surface` is `overflow-clip`, so that is what keeps the gallery card
+    // reachable instead of cut off.
+    <Surface spacing="sm" className="publish-colors w-full grow" noContainer>
       <Tabs
         aria-label="Protocol library"
         layout="top"
@@ -661,9 +766,9 @@ const LibraryPanel = ({
           { value: 'templates', label: 'Templates' },
         ]}
         headerEnd={headerEnd}
-        className="bg-surface text-surface-contrast publish-colors max-h-[85dvh] w-full overflow-hidden rounded p-5 shadow-md"
+        className="h-full"
       >
-        <TabsPanel value="recent" className="flex min-h-0 flex-col">
+        <TabsPanel value="recent" className={PANEL_CLASSES}>
           <Collection
             id="recent-protocols"
             items={recentItems}
@@ -674,10 +779,10 @@ const LibraryPanel = ({
             selectionMode="none"
             animate={false}
             aria-label="Recent protocols"
-            className={COLLECTION_CLASSES}
-            viewportClassName={COLLECTION_VIEWPORT_CLASSES}
+            // className="p-0"
+            // viewportClassName={COLLECTION_VIEWPORT_CLASSES}
             emptyState={
-              <Paragraph className="text-muted px-5 py-10 text-center text-sm">
+              <Paragraph className="px-5 py-10 text-center text-sm text-current/70">
                 No recent protocols yet.
               </Paragraph>
             }
@@ -686,22 +791,27 @@ const LibraryPanel = ({
           </Collection>
         </TabsPanel>
 
-        <TabsPanel value="templates" className="flex min-h-0 flex-col">
-          <Collection
-            id="protocol-templates"
-            items={templateItems}
-            keyExtractor={getLibraryItemKey}
-            textValueExtractor={getLibraryItemTextValue}
-            layout={templateLayout}
-            renderItem={renderLibraryItem}
-            selectionMode="none"
-            animate={false}
-            aria-label="Protocol templates"
-            className={COLLECTION_CLASSES}
-            viewportClassName={COLLECTION_VIEWPORT_CLASSES}
-          >
-            {(CollectionElements) => CollectionElements}
-          </Collection>
+        <TabsPanel value="templates" className={PANEL_CLASSES}>
+          <ScrollArea>
+            <div className="px-2">
+              <Collection
+                id="protocol-templates"
+                items={templateItems}
+                keyExtractor={getLibraryItemKey}
+                textValueExtractor={getLibraryItemTextValue}
+                layout={templateLayout}
+                renderItem={renderLibraryItem}
+                selectionMode="none"
+                animate={false}
+                aria-label="Protocol templates"
+                viewportClassName="overflow-visible"
+                className="overflow-visible"
+              >
+                {(CollectionElements) => CollectionElements}
+              </Collection>
+              <GalleryCard />
+            </div>
+          </ScrollArea>
         </TabsPanel>
       </Tabs>
 
@@ -710,6 +820,7 @@ const LibraryPanel = ({
         closeDialog={() => setInfoOpen(false)}
         title={info?.title ?? ''}
         size="readable"
+        finalFocus={() => infoFocusRef.current?.() ?? null}
         footer={<Button onClick={() => setInfoOpen(false)}>Close</Button>}
       >
         {info && (
@@ -729,7 +840,7 @@ const LibraryPanel = ({
           </div>
         )}
       </Dialog>
-    </>
+    </Surface>
   );
 };
 export default LibraryPanel;

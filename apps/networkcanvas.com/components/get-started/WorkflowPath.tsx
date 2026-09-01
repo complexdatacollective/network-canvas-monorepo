@@ -6,13 +6,7 @@ import { AppChoiceCard } from '~/components/get-started/AppChoiceCard';
 import { Container } from '~/components/ui/Container';
 import { Reveal } from '~/components/ui/Reveal';
 import { scrollDrivenRevealMotion } from '~/components/ui/scrollDrivenMotion';
-import {
-  type classicApps,
-  type Workflow,
-  type webApps,
-} from '~/lib/getStarted';
-
-type AppRecord = (typeof webApps)[number] | (typeof classicApps)[number];
+import type { AppRecord, Workflow } from '~/lib/getStarted';
 
 export function WorkflowPath({
   workflow,

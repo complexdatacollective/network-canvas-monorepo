@@ -199,7 +199,7 @@ function NameGeneratorPromptEditor({
       return { success: false as const, errors: z.flattenError(result.error) };
     }
 
-    onSave({
+    onSave?.({
       id: item?.id ?? crypto.randomUUID(),
       text: result.data.text,
       additionalAttributes: result.data.additionalAttributes,
@@ -317,10 +317,10 @@ function AdditionalAttributeItem({
             <UnconnectedField
               name="variable"
               component={SelectField}
-              label="Variable"
-              hint="Select the variable to set"
+              label="Attribute"
+              hint="Select the attribute to set"
               value={variable}
-              placeholder="Select a variable..."
+              placeholder="Select an attribute..."
               onChange={(val) =>
                 setVariable(asEntityAttributeReference(String(val)))
               }

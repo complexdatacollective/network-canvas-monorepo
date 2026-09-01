@@ -106,6 +106,12 @@ test.describe('settings', () => {
       await expect(
         page.getByRole('progressbar', { name: 'Storage usage' }),
       ).toBeVisible();
+      // Keep the version in layout but hide its release-specific text after
+      // asserting it. A Playwright mask follows the text's intrinsic width, so
+      // prerelease and stable versions otherwise produce different rectangles.
+      await versionValue.evaluate((element) => {
+        element.style.visibility = 'hidden';
+      });
       await capture('settings-about', { mask: settingsAboutMasks(page) });
     },
   );

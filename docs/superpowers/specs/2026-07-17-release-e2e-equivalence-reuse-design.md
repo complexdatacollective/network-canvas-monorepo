@@ -1,7 +1,19 @@
 # Release E2E equivalence reuse
 
 **Date:** 2026-07-17
-**Status:** Implemented; extended across release branches on 2026-07-31
+**Status:** Partially superseded on 2026-08-03 and 2026-08-11
+
+> Architect and Interviewer now share the normal `changeset-release/main` lane
+> with libraries, so cross-branch reuse between a separate apps lane and the
+> library lane is no longer needed. See
+> `2026-08-03-stable-app-release-design.md` for the current topology.
+
+> **2026-08-11 update:** PR `quality` verdicts are now authoritative for the
+> merge queue. Full CI and E2E run on pull requests targeting `main`, including
+> generated release PRs; `merge_group` reports only a lightweight `quality`
+> acknowledgement and never runs E2E. The PR-time equivalence primitive below
+> remains current for refreshed release branches. The queue-time motivation,
+> alternatives, and design sections are retained as historical context.
 
 ## Problem
 

@@ -1,57 +1,94 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { act, render, screen } from '@testing-library/react';
+import type { ComponentType, ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
-import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/shared-consts';
+import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import {
+  BIOLOGICAL_SEX_OPTIONS,
+  type Stage,
+} from '@codaco/protocol-validation';
+import StageFormBridge from '~/components/StageEditor/StageFormBridge';
+import {
+  type StageFormContextValue,
+  useStageFormContext,
+} from '~/components/StageEditor/stageFormContext';
+import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 
-// Final-review sweep: FamilyPedigree's four nodeConfig slots are UNVALIDATED
-// writers, each carrying a picker exclusion (excludeValidatedUses with the
-// slot's own draft value as escape) and a field-level `crossClassPick` gate.
-// ValidatedField is mocked to EXPOSE both the validation rules object and the
+// FamilyPedigree's node label is a VALIDATED writer; its three structural node
+// slots remain UNVALIDATED writers. Each carries the matching picker exclusion
+// and field-level `crossClassPick` gate.
+// ArchitectField is mocked to EXPOSE both the validation rules object and the
 // picker's filtered options — the capture-a-handler-prop idiom
 // NodeConfiguration.crossClassGate.test.tsx (NetworkComposer) uses for this
-// app's other field-level gates. ValidatedFieldArray is mocked to capture the
+// app's other field-level gates. ArchitectArrayField is mocked to capture the
 // nodeConfig.form dialog's editorValidate, so the intra-draft MIRROR (a form
 // field picking a variable a still-unsaved slot drafts) is pinned too.
-vi.mock('~/components/EditorLayout', () => ({
-  Row: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  Section: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+vi.mock('@codaco/fresco-ui/Section', () => ({
+  default: ({ children, title }: { children: ReactNode; title: string }) => (
+    <section aria-label={title} data-component="Section">
+      {children}
+    </section>
+  ),
 }));
 vi.mock('~/components/IssueAnchor', () => ({ default: () => null }));
 vi.mock('~/components/NewVariableWindow', () => ({
   default: () => null,
   useNewVariableWindowState: (initial: unknown) => [initial, () => undefined],
 }));
-vi.mock(
-  '~/components/sections/fields/EntitySelectField/EntitySelectField',
-  () => ({ default: () => null }),
-);
+// Breaks a static import chain (FieldFields -> ValidationSection ->
+// ~/components/Validations) that a different in-flight batch has mid-rewrite;
+// ArchitectArrayField is mocked below too, so FieldFields is never rendered.
 vi.mock('~/components/sections/Form/FieldFields', () => ({
   default: () => null,
 }));
-vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
-  default: () => null,
+// The label's validation section is a real nested form over the selected
+// codebook variable; stubbing it keeps that second store out of this test and
+// exposes the subject/variable the label pick hands it.
+let capturedValidationSectionProps: Record<string, unknown> | undefined;
+vi.mock('~/components/sections/CodebookVariableValidationSection', () => ({
+  default: (props: Record<string, unknown>) => {
+    capturedValidationSectionProps = props;
+    return null;
+  },
 }));
-vi.mock('../NodeFormFieldPreview', () => ({ default: () => null }));
 
 type CapturedField = {
+  className?: string;
+  hint?: ReactNode;
+  inline?: boolean;
+  label?: string;
   validation?: Record<string, unknown>;
-  componentProps?: Record<string, unknown>;
+  options?: unknown;
 };
 const capturedFields: Record<string, CapturedField | undefined> = {};
-vi.mock('~/components/Form/ValidatedField', () => ({
+vi.mock('~/components/Form/ArchitectField', () => ({
   default: ({
     name,
+    className,
+    hint,
+    inline,
+    label,
     validation,
-    componentProps,
+    options,
   }: {
     name: string;
+    className?: string;
+    hint?: ReactNode;
+    inline?: boolean;
+    label: string;
     validation?: Record<string, unknown>;
-    componentProps?: Record<string, unknown>;
+    options?: unknown;
   }) => {
-    capturedFields[name] = { validation, componentProps };
+    capturedFields[name] = {
+      className,
+      hint,
+      inline,
+      label,
+      validation,
+      options,
+    };
     return <div data-testid={`field-${name}`} />;
   },
 }));
@@ -59,22 +96,39 @@ vi.mock('~/components/Form/ValidatedField', () => ({
 let capturedEditorValidate:
   | ((
       values: Record<string, unknown>,
-      props?: { initialValues?: unknown },
+      props?: { editIndex?: number; initialValues?: unknown },
     ) => Record<string, unknown>)
   | undefined;
-vi.mock('~/components/Form/ValidatedFieldArray', () => ({
+// The picker's sibling list travels the other way, as `editorProps`, so a test
+// can prove the gate and the picker read the same rows.
+let capturedEditorProps: Record<string, unknown> | undefined;
+let capturedEditorPreviewComponent:
+  | ComponentType<Record<string, unknown>>
+  | undefined;
+vi.mock('~/components/Form/ArchitectArrayField', () => ({
   default: ({
-    componentProps,
+    editorValidate,
+    editorProps,
+    editorPreviewComponent,
   }: {
-    componentProps?: Record<string, unknown>;
+    editorValidate?: (
+      values: Record<string, unknown>,
+      props?: { editIndex?: number; initialValues?: unknown },
+    ) => Record<string, unknown>;
+    editorProps?: Record<string, unknown>;
+    editorPreviewComponent?: ComponentType<Record<string, unknown>>;
   }) => {
-    const editorValidate = componentProps?.editorValidate;
     if (typeof editorValidate === 'function') {
-      capturedEditorValidate = editorValidate as typeof capturedEditorValidate;
+      capturedEditorValidate = editorValidate;
+      capturedEditorProps = editorProps;
+      capturedEditorPreviewComponent = editorPreviewComponent;
     }
     return <div data-testid="field-array" />;
   },
 }));
+
+// eslint-disable-next-line import/first -- must follow the vi.mock calls above
+import FieldEditorPreview from '~/components/sections/Form/FieldEditorPreview';
 
 // eslint-disable-next-line import/first -- must follow the vi.mock calls above
 import NodeConfiguration from '../NodeConfiguration';
@@ -93,7 +147,7 @@ const slotValidatorFor = (fieldName: string): SlotValidator => {
 };
 
 const slotOptionValuesFor = (fieldName: string): string[] => {
-  const options = capturedFields[fieldName]?.componentProps?.options;
+  const options = capturedFields[fieldName]?.options;
   if (!Array.isArray(options)) {
     throw new Error(`No options captured for ${fieldName}`);
   }
@@ -146,13 +200,24 @@ const FORM_STAGE = {
   },
 };
 
-// The same-class control: `freeLabel` written by ANOTHER FamilyPedigree
-// stage's slot (unvalidated) must never be excluded or rejected here.
+// Same-class validated control: another pedigree's label may safely reuse the
+// same variable.
 const OTHER_PEDIGREE_STAGE = {
   id: 's2',
   type: 'FamilyPedigree',
   label: 'P2',
   nodeConfig: { type: 'person', nodeLabelVariable: 'freeLabel' },
+};
+
+// Cross-class control: relationshipVariable is structural and therefore
+// unvalidated, so it must exclude/reject `freeLabel` as a node label. Its id
+// stays clear of the stage under edit (`s3`), which is excluded from the
+// composer views.
+const STRUCTURAL_PEDIGREE_STAGE = {
+  id: 's4',
+  type: 'FamilyPedigree',
+  label: 'P4',
+  nodeConfig: { type: 'person', relationshipVariable: 'freeLabel' },
 };
 
 const protocolWith = (stages: unknown[]) => ({
@@ -167,44 +232,154 @@ const renderComponent = ({
   initialNodeConfig,
 }: {
   protocol: unknown;
-  draftNodeConfig?: Record<string, unknown>;
+  draftNodeConfig?: Record<string, string>;
   initialNodeConfig?: Record<string, unknown>;
 }) => {
   for (const key of Object.keys(capturedFields)) {
     delete capturedFields[key];
   }
+  capturedValidationSectionProps = undefined;
   capturedEditorValidate = undefined;
+  capturedEditorProps = undefined;
+  capturedEditorPreviewComponent = undefined;
   const store = configureStore({
     reducer: {
       activeProtocol: (state = { present: protocol }) => state,
-      form: (
-        state = {
-          'edit-stage': {
-            values: { nodeConfig: { type: 'person', ...draftNodeConfig } },
-            ...(initialNodeConfig
-              ? { initial: { nodeConfig: initialNodeConfig } }
-              : {}),
-          },
-        },
-      ) => state,
+      stageEditorDraft,
     },
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({ serializableCheck: false, immutableCheck: false }),
   });
+
+  let context: StageFormContextValue | null = null;
+  const Probe = () => {
+    context = useStageFormContext();
+    return null;
+  };
+
   render(
     <Provider store={store}>
-      <NodeConfiguration
-        form="edit-stage"
-        stagePath="stages[0]"
-        stagePosition={0}
-        interfaceType="FamilyPedigree"
-      />
+      <FormStoreProvider>
+        <StageFormBridge
+          committedStage={
+            {
+              id: 's3',
+              type: 'FamilyPedigree',
+              nodeConfig: { type: 'person', ...initialNodeConfig },
+            } as unknown as Stage
+          }
+          stageId="s3"
+          formId="edit-stage"
+        >
+          <Probe />
+          <NodeConfiguration
+            stagePath="stages[0]"
+            stagePosition={0}
+            interfaceType="FamilyPedigree"
+          />
+        </StageFormBridge>
+      </FormStoreProvider>
     </Provider>,
   );
+
+  if (draftNodeConfig && context) {
+    const storeApi = (context as StageFormContextValue).storeApi;
+    act(() => {
+      for (const [field, value] of Object.entries(draftNodeConfig)) {
+        storeApi.getState().setFieldValue(`nodeConfig.${field}`, value);
+      }
+    });
+  }
+
+  return {
+    /**
+     * Rewrites `nodeConfig.form` the way the array editor does when the
+     * researcher adds or removes a row: the stage form holds it immediately,
+     * the saved stage does not carry it until the editor is saved.
+     */
+    setPedigreeFormFields: (fields: Record<string, unknown>[]) => {
+      if (!context) throw new Error('stage form context was not captured');
+      const storeApi = (context as StageFormContextValue).storeApi;
+      act(() => {
+        storeApi.getState().setFieldValue('nodeConfig.form', fields);
+      });
+    },
+  };
 };
 
+/** The `editorValidate` as it stands now, not as it stood at mount. */
+const currentEditorValidate = () => {
+  if (!capturedEditorValidate) {
+    throw new Error('editorValidate was not captured');
+  }
+  return capturedEditorValidate;
+};
+
+const currentSiblingFields = () => capturedEditorProps?.siblingFields;
+
 describe('FamilyPedigree NodeConfiguration slot picker exclusions', () => {
-  it('drops a variable a form elsewhere already validates from every slot pool', () => {
+  it('uses the standard interactive preview in its form field editor', () => {
+    renderComponent({ protocol: protocolWith([]) });
+
+    expect(capturedEditorPreviewComponent).toBe(FieldEditorPreview);
+  });
+
+  it('groups the attribute mappings in a nested Section with inline fields', () => {
+    renderComponent({ protocol: protocolWith([]) });
+
+    const familyMemberData = screen.getByRole('region', {
+      name: 'Family member data',
+    });
+    const attributes = screen.getByRole('region', {
+      name: 'Family member attributes',
+    });
+    const formConfiguration = screen.getByRole('region', {
+      name: 'Form configuration',
+    });
+
+    expect(attributes).toHaveAttribute('data-component', 'Section');
+    expect(familyMemberData).toContainElement(attributes);
+    expect(familyMemberData).toContainElement(formConfiguration);
+    expect(attributes).not.toContainElement(formConfiguration);
+    expect(capturedFields['nodeConfig.nodeLabelVariable']).toMatchObject({
+      className: '@min-lg:w-[50cqw]',
+      label: 'Display label',
+      inline: true,
+    });
+    expect(capturedFields['nodeConfig.egoVariable']).toMatchObject({
+      className: '@min-lg:w-[50cqw]',
+      label: 'Participant identifier',
+      inline: true,
+    });
+    expect(capturedFields['nodeConfig.relationshipVariable']).toMatchObject({
+      className: '@min-lg:w-[50cqw]',
+      label: 'Relationship to participant',
+      inline: true,
+    });
+    expect(capturedFields['nodeConfig.biologicalSexVariable']).toMatchObject({
+      className: '@min-lg:w-[50cqw]',
+      label: 'Biological sex',
+      inline: true,
+    });
+    expect(capturedFields['nodeConfig.type']?.className).toBeUndefined();
+  });
+
+  it('edits the label as a node variable, preserving every text validation rule', () => {
+    renderComponent({
+      protocol: protocolWith([]),
+      draftNodeConfig: { nodeLabelVariable: 'freeLabel' },
+    });
+
+    expect(capturedValidationSectionProps).toMatchObject({
+      entity: 'node',
+      type: 'person',
+      variableId: 'freeLabel',
+    });
+  });
+
+  it('keeps variables validated elsewhere for the label and drops them from structural slots', () => {
     renderComponent({ protocol: protocolWith([FORM_STAGE]) });
-    expect(slotOptionValuesFor('nodeConfig.nodeLabelVariable')).not.toContain(
+    expect(slotOptionValuesFor('nodeConfig.nodeLabelVariable')).toContain(
       'usedLabel',
     );
     expect(slotOptionValuesFor('nodeConfig.nodeLabelVariable')).toContain(
@@ -225,9 +400,18 @@ describe('FamilyPedigree NodeConfiguration slot picker exclusions', () => {
     );
   });
 
-  it('keeps a variable only an unvalidated writer elsewhere already claims (same class)', () => {
+  it('keeps a variable another validated label writer already claims', () => {
     renderComponent({ protocol: protocolWith([OTHER_PEDIGREE_STAGE]) });
     expect(slotOptionValuesFor('nodeConfig.nodeLabelVariable')).toContain(
+      'freeLabel',
+    );
+  });
+
+  it('drops a variable an unvalidated structural writer already claims from the label pool', () => {
+    renderComponent({
+      protocol: protocolWith([STRUCTURAL_PEDIGREE_STAGE]),
+    });
+    expect(slotOptionValuesFor('nodeConfig.nodeLabelVariable')).not.toContain(
       'freeLabel',
     );
   });
@@ -240,7 +424,7 @@ describe('FamilyPedigree NodeConfiguration slot picker exclusions', () => {
     expect(slotOptionValuesFor('nodeConfig.nodeLabelVariable')).toContain(
       'usedLabel',
     );
-    // The sibling text slot escapes only its OWN value.
+    // The sibling structural text slot has no escape for the label's value.
     expect(
       slotOptionValuesFor('nodeConfig.relationshipVariable'),
     ).not.toContain('usedLabel');
@@ -248,11 +432,11 @@ describe('FamilyPedigree NodeConfiguration slot picker exclusions', () => {
 });
 
 describe('FamilyPedigree NodeConfiguration slot cross-class gates', () => {
-  it('every slot rejects a pick a form elsewhere already collects, with the mirror message', () => {
+  it('allows a label pick collected by another validated field and rejects it from structural slots', () => {
     renderComponent({ protocol: protocolWith([FORM_STAGE]) });
-    expect(slotValidatorFor('nodeConfig.nodeLabelVariable')('usedLabel')).toBe(
-      '"Used Label" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
-    );
+    expect(
+      slotValidatorFor('nodeConfig.nodeLabelVariable')('usedLabel'),
+    ).toBeUndefined();
     expect(slotValidatorFor('nodeConfig.egoVariable')('usedFlag')).toContain(
       'is collected by a form elsewhere',
     );
@@ -267,28 +451,43 @@ describe('FamilyPedigree NodeConfiguration slot cross-class gates', () => {
   it('escapes when the pick equals the slot’s committed value (pre-existing conflict stays saveable)', () => {
     renderComponent({
       protocol: protocolWith([FORM_STAGE]),
-      initialNodeConfig: { type: 'person', nodeLabelVariable: 'usedLabel' },
+      initialNodeConfig: { nodeLabelVariable: 'usedLabel' },
     });
     expect(
       slotValidatorFor('nodeConfig.nodeLabelVariable')('usedLabel'),
     ).toBeUndefined();
   });
 
-  it('allows a pick only an unvalidated writer elsewhere already claims (same class)', () => {
+  it('allows a pick another validated label writer already claims', () => {
     renderComponent({ protocol: protocolWith([OTHER_PEDIGREE_STAGE]) });
     expect(
       slotValidatorFor('nodeConfig.nodeLabelVariable')('freeLabel'),
     ).toBeUndefined();
   });
 
-  it('rejects a pick this stage’s own still-unsaved nodeConfig.form draft collects (intra-draft)', () => {
+  // The label's own picker drops this variable (the sibling case above), so
+  // reaching the gate at all means a stale draft or an imported protocol —
+  // and the refusal names the interface that claims it, rather than the
+  // generic cross-class wording, because a variable an interface slot OWNS is
+  // refused for that stronger reason. `findExclusiveVariableConflicts` reports
+  // the same pairing, so the editor and the schema agree.
+  it('rejects a label pick an unvalidated structural writer already claims', () => {
+    renderComponent({
+      protocol: protocolWith([STRUCTURAL_PEDIGREE_STAGE]),
+    });
+    expect(
+      slotValidatorFor('nodeConfig.nodeLabelVariable')('freeLabel'),
+    ).toContain('is set by the Family Pedigree interface');
+  });
+
+  it('allows a label pick this stage’s own form also validates', () => {
     renderComponent({ protocol: protocolWith([]) });
     const allValues = {
       nodeConfig: { type: 'person', form: [{ variable: 'freeLabel' }] },
     };
     expect(
       slotValidatorFor('nodeConfig.nodeLabelVariable')('freeLabel', allValues),
-    ).toContain('is collected by a form elsewhere');
+    ).toBeUndefined();
     expect(
       slotValidatorFor('nodeConfig.nodeLabelVariable')('freeFlag', allValues),
     ).toBeUndefined();
@@ -296,10 +495,13 @@ describe('FamilyPedigree NodeConfiguration slot cross-class gates', () => {
 });
 
 describe('FamilyPedigree nodeConfig.form editorValidate intra-draft mirror', () => {
-  it('rejects a form-field pick a still-unsaved slot drafts, and allows an unconflicted one', () => {
+  it('allows a field to share the validated label and rejects a structural slot draft', () => {
     renderComponent({
       protocol: protocolWith([]),
-      draftNodeConfig: { nodeLabelVariable: 'freeLabel' },
+      draftNodeConfig: {
+        nodeLabelVariable: 'freeLabel',
+        relationshipVariable: 'usedLabel',
+      },
     });
     if (!capturedEditorValidate) {
       throw new Error('editorValidate was not captured');
@@ -309,15 +511,61 @@ describe('FamilyPedigree nodeConfig.form editorValidate intra-draft mirror', () 
         { variable: 'freeLabel', component: 'Text', validation: {} },
         { initialValues: {} },
       ),
-    ).toEqual({
-      variable:
-        '"Free Label" is written without validation by another stage, so it cannot be used as a form field',
-    });
+    ).toEqual({});
     expect(
       capturedEditorValidate(
         { variable: 'usedLabel', component: 'Text', validation: {} },
         { initialValues: {} },
       ),
-    ).toEqual({});
+    ).toEqual({
+      variable:
+        '"Used Label" is written without validation by another stage, so it cannot be used as a form field',
+    });
+  });
+
+  // The rows to check against are the ones in the OPEN editor, not the ones on
+  // the saved stage. A field added in this session is not on the saved stage
+  // yet, so a committed sibling list would let its variable be picked a second
+  // time — and would not hide it in the picker either — leaving a stage the
+  // schema refuses on save.
+  it('rejects a variable a field added in this editing session already collects', () => {
+    const { setPedigreeFormFields } = renderComponent({
+      protocol: protocolWith([]),
+    });
+
+    setPedigreeFormFields([{ variable: 'freeLabel', component: 'Text' }]);
+
+    expect(
+      currentEditorValidate()({
+        variable: 'freeLabel',
+        component: 'Text',
+        validation: {},
+      }).variable,
+    ).toBe(
+      'This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.',
+    );
+    expect(currentSiblingFields()).toEqual([
+      { variable: 'freeLabel', component: 'Text' },
+    ]);
+  });
+
+  it('stops rejecting a variable whose field was removed in this editing session', () => {
+    const { setPedigreeFormFields } = renderComponent({
+      protocol: protocolWith([]),
+      initialNodeConfig: {
+        form: [{ variable: 'freeLabel', component: 'Text' }],
+      },
+    });
+
+    setPedigreeFormFields([]);
+
+    expect(
+      currentEditorValidate()({
+        variable: 'freeLabel',
+        component: 'Text',
+        validation: {},
+      }).variable,
+    ).toBeUndefined();
+    expect(currentSiblingFields()).toEqual([]);
   });
 });

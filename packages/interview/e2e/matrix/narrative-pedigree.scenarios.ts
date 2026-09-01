@@ -3,7 +3,7 @@ import {
   BIOLOGICAL_SEX_OPTIONS,
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
-} from '@codaco/shared-consts';
+} from '@codaco/protocol-validation';
 
 import type { ProtocolPayload } from '../../src/contract/types.js';
 import { expect } from '../fixtures/matrix-test.js';
@@ -217,7 +217,7 @@ function buildAdScenario(): SyntheticInterview {
       {
         id: 'hd',
         label: "Huntington's Disease",
-        color: '#e53e3e',
+        color: 'node-color-seq-1',
         variable: HD_VAR,
         inheritancePattern: 'autosomalDominant',
       },
@@ -297,7 +297,7 @@ function buildCousinUnion(showAtRiskStatuses: boolean): SyntheticInterview {
       {
         id: 'cf',
         label: 'Cystic Fibrosis',
-        color: '#805ad5',
+        color: 'node-color-seq-3',
         variable: CF_VAR,
         inheritancePattern: 'autosomalRecessive',
       },
@@ -345,14 +345,14 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
             {
               id: 'hd',
               label: "Huntington's Disease",
-              color: '#e53e3e',
+              color: 'node-color-seq-1',
               variable: HD_VAR,
               inheritancePattern: 'autosomalDominant',
             },
             {
               id: 'cf',
               label: 'Cystic Fibrosis',
-              color: '#805ad5',
+              color: 'node-color-seq-3',
               variable: CF_VAR,
               inheritancePattern: 'autosomalRecessive',
             },
@@ -423,10 +423,14 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         await expect(
           page.locator('[data-node-id="grandparent"] [data-filled-shape]'),
         ).toHaveCount(1);
-        // The condition-key swatch renders in the disease's authored colour.
+        // Architect persists a node palette token; the runtime resolves it to
+        // the matching theme variable for both CSS and SVG consumers.
         await expect(
           conditionButton.locator('span[aria-hidden]').first(),
-        ).toHaveCSS('background-color', 'rgb(229, 62, 62)');
+        ).toHaveAttribute('style', 'background-color: var(--node-1);');
+        await expect(
+          page.locator('[data-node-id="grandparent"] [data-filled-shape]'),
+        ).toHaveAttribute('fill', 'var(--node-1)');
         await expect(
           page.getByText("Showing Huntington's Disease"),
         ).toBeVisible();
@@ -687,28 +691,28 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
             {
               id: 'haemophilia',
               label: 'Haemophilia',
-              color: '#3182ce',
+              color: 'node-color-seq-6',
               variable: HAEMOPHILIA_VAR,
               inheritancePattern: 'xLinkedRecessive',
             },
             {
               id: 'hypophosphataemia',
               label: 'Hypophosphataemia',
-              color: '#38a169',
+              color: 'node-color-seq-5',
               variable: HYPOPHOSPHATAEMIA_VAR,
               inheritancePattern: 'xLinkedDominant',
             },
             {
               id: 'hearing-loss',
               label: 'Hearing Loss',
-              color: '#d69e2e',
+              color: 'node-color-seq-8',
               variable: HEARING_LOSS_VAR,
               inheritancePattern: 'yLinked',
             },
             {
               id: 'myopathy',
               label: 'Mitochondrial Myopathy',
-              color: '#805ad5',
+              color: 'node-color-seq-3',
               variable: MYOPATHY_VAR,
               inheritancePattern: 'mitochondrial',
             },
@@ -878,14 +882,14 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
             {
               id: 'heart-disease',
               label: 'Heart Disease',
-              color: '#dd6b20',
+              color: 'node-color-seq-4',
               variable: MULTI_VAR,
               inheritancePattern: 'multifactorial',
             },
             {
               id: 'rare-condition',
               label: 'Rare Condition',
-              color: '#319795',
+              color: 'node-color-seq-2',
               variable: UNKNOWN_VAR,
               inheritancePattern: 'unknown',
             },
@@ -942,10 +946,31 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
       stageMetadata: {
         0: {
           isNetworkCommitted: true,
+          edgeIdVersion: 1,
           nodes: [
             { id: 'mother', label: 'Mother', isEgo: false },
             { id: 'father', label: 'Father', isEgo: false },
             { id: 'ego', label: 'You', isEgo: true },
+          ],
+          edges: [
+            {
+              id: 'b1',
+              from: 'mother',
+              to: 'ego',
+              attributes: {
+                [REL_TYPE_VAR]: ['biological'],
+                [IS_ACTIVE_VAR]: true,
+              },
+            },
+            {
+              id: 'b2',
+              from: 'father',
+              to: 'ego',
+              attributes: {
+                [REL_TYPE_VAR]: ['biological'],
+                [IS_ACTIVE_VAR]: true,
+              },
+            },
           ],
         },
       },
@@ -966,6 +991,9 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
           [nameVarId]: 'Outsider',
           [BIO_SEX_VAR]: 'intersex',
         });
+        // A later same-typed edge must not pull the outsider into the source
+        // pedigree's layout or genetics graph.
+        bioEdge('later-outsider-edge', 'outsider', 'ego');
         synth.addStage('NarrativePedigree', {
           label: 'Inheritance Pathways',
           sourceStageId: fpStageId,
@@ -974,7 +1002,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
             {
               id: 'hd',
               label: "Huntington's Disease",
-              color: '#e53e3e',
+              color: 'node-color-seq-1',
               variable: HD_VAR,
               inheritancePattern: 'autosomalDominant',
             },
@@ -1066,7 +1094,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
             {
               id: 'hd',
               label: "Huntington's Disease",
-              color: '#e53e3e',
+              color: 'node-color-seq-1',
               variable: HD_VAR,
               inheritancePattern: 'autosomalDominant',
             },

@@ -8,14 +8,15 @@
     - button "Node5"
   - button "Drag to reposition"
   - toolbar "Presets":
-    - button "Previous preset" [disabled]
-    - button "bleakly custody" [expanded]
-    - button "Next preset" [disabled]
+    - group "Preset navigation":
+      - button "Previous preset" [disabled]
+      - button "bleakly custody" [expanded]
+      - dialog
+      - button "Next preset" [disabled]
   - status
-  - dialog:
-    - region
   - toolbar "Layout and drawing tools":
-    - button "Pause automatic layout"
+    - group "Layout controls":
+      - button "Pause automatic layout"
   - navigation:
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x

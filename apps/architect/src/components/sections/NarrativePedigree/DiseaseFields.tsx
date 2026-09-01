@@ -1,112 +1,137 @@
 import { startCase } from 'es-toolkit/compat';
-import type { ComponentType } from 'react';
-import { useSelector } from 'react-redux';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
-import { INHERITANCE_PATTERNS } from '@codaco/shared-consts';
-import { Row, Section } from '~/components/EditorLayout';
+import Section from '@codaco/fresco-ui/Section';
+import { INHERITANCE_PATTERNS } from '@codaco/protocol-validation';
+import ArchitectField from '~/components/Form/ArchitectField';
 import ColorPicker from '~/components/Form/Fields/ColorPicker';
-import VariablePicker from '~/components/Form/Fields/VariablePicker/VariablePicker';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
-import ValidatedField from '~/components/Form/ValidatedField';
+import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import IssueAnchor from '~/components/IssueAnchor';
-import type { RootState } from '~/ducks/store';
+import { COLOR_PALETTES } from '~/config';
+import { useAppSelector } from '~/ducks/hooks';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
+import { excludeInterfaceOwned } from '~/selectors/roleFilters';
+
+import { isVariableUsedBySibling } from '../Form/composerHelpers';
 
 const INHERITANCE_PATTERN_OPTIONS = INHERITANCE_PATTERNS.map((value) => ({
   value,
   label: startCase(value),
 }));
 
-const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
-const FrescoStyledSelectField = StyledSelectField as ComponentType<
-  Record<string, unknown>
->;
-
 type DiseaseFieldsProps = {
   nodeType: string | undefined;
+  /**
+   * The committed disease rows of the stage this editor edits a row of, and
+   * that row's array index. One Narrative Pedigree may not map two diseases to
+   * one variable, so a variable a sibling row already claims must not be
+   * offered.
+   */
+  siblingDiseases?: unknown;
+  editIndex?: number;
+  /**
+   * The row being edited, supplied by DialogArrayField's `item` spread. This
+   * dialog mounts its own `FormStoreProvider` (a different store per row), so
+   * it cannot resolve its own initial values from stage context — every
+   * control seeds its `initialValue` from here instead.
+   */
+  item?: Record<string, unknown>;
 };
 
-const DiseaseFields = ({ nodeType }: DiseaseFieldsProps) => {
-  const booleanNodeVariables = useSelector((state: RootState) => {
+const asString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
+
+const DiseaseFields = ({
+  nodeType,
+  siblingDiseases,
+  editIndex,
+  item,
+}: DiseaseFieldsProps) => {
+  const currentVariable = asString(item?.variable);
+  const booleanNodeVariables = useAppSelector((state) => {
     if (!nodeType) return [];
-    return getVariableOptionsForSubject(state, {
+    const booleans = getVariableOptionsForSubject(state, {
       entity: 'node',
       type: nodeType,
     }).filter((v) => v.type === 'boolean');
+    // A disease maps an affected/not-affected answer someone else collects.
+    // The pedigree's own structural variables are not answers — mapping the
+    // ego marker as a disease paints the participant as affected on every
+    // seed. The row's current value is always kept so an imported protocol's
+    // pick never renders blank.
+    return excludeInterfaceOwned(
+      state,
+      { entity: 'node', type: nodeType },
+      booleans,
+      currentVariable,
+    );
   });
+  // The same predicate `Diseases.tsx`'s save-time gate applies, so the picker
+  // and the gate exclude exactly the same rows.
+  const availableVariables = booleanNodeVariables.filter(
+    (option) =>
+      option.value === currentVariable ||
+      !isVariableUsedBySibling(siblingDiseases, option.value, editIndex),
+  );
 
   return (
-    <>
-      <Section title="Disease Label" layout="vertical">
-        <Row>
-          <IssueAnchor fieldName="label" description="Disease label" />
-          <ValidatedField
-            name="label"
-            label="Disease label"
-            labelHidden
-            component={FrescoReduxField}
-            validation={{ required: true }}
-            componentProps={{
-              fieldComponent: FrescoInputField,
-              placeholder: 'Enter a name for this disease...',
-            }}
-          />
-        </Row>
-      </Section>
-      <Section title="Color" layout="vertical">
-        <Row>
-          <IssueAnchor fieldName="color" description="Disease color" />
-          <ValidatedField
-            name="color"
-            component={ColorPicker as React.ComponentType}
-            validation={{ required: true }}
-            componentProps={{
-              palette: 'node-color-seq',
-              paletteRange: 10,
-              label: 'Select a color for this disease',
-            }}
-          />
-        </Row>
-      </Section>
-      <Section title="Node Variable" layout="vertical">
-        <Row>
-          <IssueAnchor fieldName="variable" description="Disease variable" />
-          <ValidatedField
-            name="variable"
-            component={VariablePicker}
-            validation={{ required: true }}
-            componentProps={{
-              entity: 'node',
-              type: nodeType ?? '',
-              label: 'Select boolean node variable',
-              options: booleanNodeVariables,
-            }}
-          />
-        </Row>
-      </Section>
-      <Section title="Inheritance Pattern" layout="vertical">
-        <Row>
-          <IssueAnchor
-            fieldName="inheritancePattern"
-            description="Inheritance pattern"
-          />
-          <ValidatedField
-            name="inheritancePattern"
-            label="Inheritance pattern"
-            labelHidden
-            component={FrescoReduxField}
-            validation={{ required: true }}
-            componentProps={{
-              fieldComponent: FrescoStyledSelectField,
-              options: INHERITANCE_PATTERN_OPTIONS,
-              placeholder: 'Select an inheritance pattern...',
-            }}
-          />
-        </Row>
-      </Section>
-    </>
+    <Section
+      title="Disease details"
+      description="Define how this disease appears, map it to the source pedigree's affected-status attribute, and choose how its inheritance is interpreted."
+    >
+      <IssueAnchor fieldName="label" description="Disease label" />
+      <ArchitectField
+        name="label"
+        label="Disease label"
+        component={InputField}
+        validation={{ required: true }}
+        initialValue={asString(item?.label)}
+        placeholder="Enter a name for this disease..."
+      />
+      <IssueAnchor fieldName="color" description="Disease color" />
+      <ArchitectField
+        name="color"
+        component={ColorPicker}
+        validation={{ required: true }}
+        label="Color"
+        hint="Select a color for this disease."
+        initialValue={asString(item?.color)}
+        palette="node-color-seq"
+        // The palette's real size, not a hard-coded 10: the theme defines
+        // `--node-1` … `--node-8`, so the two extra swatches this used to
+        // offer rendered as nothing and stored a colour that renders as
+        // nothing wherever it is used. A protocol that already holds one
+        // still gets it back — see ColorPicker.
+        paletteRange={COLOR_PALETTES['node-color-seq']}
+      />
+      <IssueAnchor fieldName="variable" description="Disease attribute" />
+      <ArchitectField
+        name="variable"
+        component={VariablePickerControl}
+        validation={{ required: true }}
+        label="Node attribute"
+        hint="Select a boolean node attribute."
+        initialValue={asString(item?.variable)}
+        entity="node"
+        type={nodeType ?? ''}
+        options={availableVariables}
+      />
+      <IssueAnchor
+        fieldName="inheritancePattern"
+        description="Inheritance pattern"
+      />
+      <ArchitectField
+        name="inheritancePattern"
+        label="Inheritance pattern"
+        hint="Choose how this disease is inherited. Mendelian patterns are used with biological relationships and recorded sex to infer carrier and possible at-risk statuses. Multifactorial and Unknown show affected status only and do not infer carrier or at-risk statuses."
+        component={StyledSelectField}
+        validation={{ required: true }}
+        initialValue={asString(item?.inheritancePattern)}
+        options={INHERITANCE_PATTERN_OPTIONS}
+        placeholder="Select an inheritance pattern..."
+      />
+    </Section>
   );
 };
 

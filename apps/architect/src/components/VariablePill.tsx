@@ -25,13 +25,8 @@ import {
 import { cx } from '~/utils/cva';
 import { validations } from '~/utils/validations';
 
-type VariablePillSizingProps = {
-  width?: string;
-  minWidth?: string;
-  maxWidth?: string;
-};
-
-export type VariablePillProps = VariablePillSizingProps & {
+export type VariablePillProps = {
+  className?: string;
   label: string;
   type: VariableType;
   animated?: boolean;
@@ -40,17 +35,15 @@ export type VariablePillProps = VariablePillSizingProps & {
   validateLabel?: (label: string) => string | null | undefined;
 };
 
-export type ConnectedVariablePillProps = VariablePillSizingProps & {
+export type ConnectedVariablePillProps = Pick<
+  VariablePillProps,
+  'animated' | 'className' | 'editable'
+> & {
   uuid: string;
-  animated?: boolean;
-  editable?: boolean;
 };
 
 type VariablePillStyle = React.CSSProperties & {
   '--variable-pill-accent': string;
-  '--variable-pill-width': string;
-  '--variable-pill-min-width': string;
-  '--variable-pill-max-width': string;
 };
 
 type VariablePillEditorAnchor = {
@@ -61,8 +54,7 @@ type VariablePillEditorAnchor = {
 };
 
 const DARK_COLOR_SUFFIX = '-dark';
-const DEFAULT_MIN_WIDTH = '12rem';
-const DEFAULT_MAX_WIDTH = '20rem';
+const DEFAULT_EDITOR_MAX_WIDTH_REM = 20;
 const EDIT_MODE_SCALE = 1.5;
 const EDITOR_FRAME_GUTTER = 32;
 const EDITOR_FRAME_MIN_WIDTH = 320;
@@ -79,79 +71,90 @@ const getRawColorToken = (color: string) =>
     ? `${color.slice(0, -DARK_COLOR_SUFFIX.length)}--dark`
     : color;
 
+/**
+ * How wide the zoomed name editor may grow the pill to. The trigger's default
+ * `max-w-full` is a layout constraint, but the editor becomes a viewport
+ * overlay and must be able to grow beyond that containing block. A concrete
+ * caller-provided `max-w-*` remains an editor ceiling; the default percentage
+ * cap falls back to the internal 20rem editing width.
+ */
 const getResolvedMaximumWidth = (
   element: HTMLElement,
   currentWidth: number,
 ) => {
   const computedMaxWidth = window.getComputedStyle(element).maxWidth.trim();
   const numericMaxWidth = Number.parseFloat(computedMaxWidth);
+  const rootFontSize =
+    Number.parseFloat(
+      window.getComputedStyle(document.documentElement).fontSize,
+    ) || 16;
+  const defaultEditorMaxWidth = DEFAULT_EDITOR_MAX_WIDTH_REM * rootFontSize;
 
-  if (!Number.isFinite(numericMaxWidth)) {
-    return currentWidth;
-  }
-
-  if (computedMaxWidth.endsWith('%')) {
-    const containingWidth =
-      element.parentElement?.getBoundingClientRect().width ?? currentWidth;
-    return Math.max(currentWidth, containingWidth * (numericMaxWidth / 100));
+  if (!Number.isFinite(numericMaxWidth) || computedMaxWidth.endsWith('%')) {
+    return Math.max(currentWidth, defaultEditorMaxWidth);
   }
 
   return Math.max(currentWidth, numericMaxWidth);
 };
 
-const getVariablePillStyle = (
-  type: VariableType,
-  {
-    width,
-    minWidth,
-    maxWidth,
-  }: Pick<VariablePillProps, 'width' | 'minWidth' | 'maxWidth'>,
-): VariablePillStyle => {
+const getVariablePillStyle = (type: VariableType): VariablePillStyle => {
   const accentColor = getRawColorToken(getColorForType(type));
   return {
     '--variable-pill-accent': `oklch(var(--${accentColor}))`,
-    '--variable-pill-width': width ?? 'fit-content',
-    '--variable-pill-min-width': minWidth ?? DEFAULT_MIN_WIDTH,
-    '--variable-pill-max-width': maxWidth ?? width ?? DEFAULT_MAX_WIDTH,
   };
 };
 
 const getVariablePillClassName = ({
   animated,
-  fluid,
+  className,
   interactive,
 }: {
   animated?: boolean;
-  fluid?: boolean;
+  className?: string;
   interactive?: boolean;
 }) =>
   cx(
     // `variable-pill` marker — hook for same-area cascades in VariablePicker
     // (nested margin), PreviewRule (zoom), and the printable summary (scale).
-    'variable-pill font-monospace inline-flex h-12 w-(--variable-pill-width) max-w-(--variable-pill-max-width) min-w-(--variable-pill-min-width) flex-nowrap rounded-full p-0.5 text-base',
+    // `w-max` gives WebKit an explicit max-content basis. `w-fit` combined
+    // with the formerly percentage-sized inner wrapper collapsed to the
+    // ellipsis width in Safari instead of measuring the full label.
+    'variable-pill font-monospace inline-flex h-12 w-max max-w-full min-w-0 flex-nowrap rounded-full p-0.5 text-base',
     'effect-shadow-sm',
     animated ? 'variable-pill-effect-border' : 'bg-(--variable-pill-accent)',
     !interactive && 'cursor-default',
-    fluid && 'flex-1',
     interactive &&
       'focusable hover:effect-shadow focus-visible:effect-shadow active:effect-shadow data-popup-open:effect-shadow cursor-pointer appearance-none border-0 text-left transition-[box-shadow,translate] duration-150 ease-out hover:-translate-y-0.5 focus-visible:-translate-y-0.5 active:-translate-y-0.5 data-popup-open:-translate-y-0.5',
+    className,
   );
 
 function VariablePillContents({
   children,
+  fill = false,
   type,
 }: {
   children: React.ReactNode;
+  fill?: boolean;
   type: VariableType;
 }) {
   const icon = useMemo(() => getIconForType(type), [type]);
 
   return (
-    <span className="text-text bg-surface flex h-full w-full overflow-hidden rounded-[inherit]">
-      <span className="flex shrink-0 basis-12 items-center justify-center border-r border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
-        <img className="icon opacity-80" src={icon} alt={`${type} variable`} />
+    // A two-track grid gives WebKit a stable intrinsic width: the icon is
+    // fixed, while the label contributes its max-content width and may still
+    // shrink to zero when the pill reaches its container or explicit max.
+    <span
+      className={cx(
+        'text-text bg-surface grid h-full min-w-0 overflow-hidden rounded-[inherit]',
+        fill
+          ? 'w-full grid-cols-[3rem_minmax(0,1fr)]'
+          : 'grid-cols-[3rem_minmax(0,auto)]',
+      )}
+    >
+      <span className="flex items-center justify-center border-r border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
+        <img className="icon opacity-80" src={icon} alt={`${type} attribute`} />
       </span>
-      <span className="flex w-[calc(100%-3rem)] min-w-0 flex-1 items-center justify-between">
+      <span className="flex min-w-0 items-center justify-between">
         {children}
       </span>
     </span>
@@ -165,14 +168,12 @@ function VariablePillContents({
  */
 export const VariablePill = ({
   animated = false,
+  className,
   editable = false,
   label,
-  maxWidth,
-  minWidth,
   onLabelChange,
   type,
   validateLabel,
-  width,
 }: VariablePillProps) => {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const restoreFocusRef = useRef(false);
@@ -192,7 +193,7 @@ export const VariablePill = ({
   const hasChanges = newName !== label;
 
   const getValidation = (value: string) => {
-    const required = validations.required('You must enter a variable name')(
+    const required = validations.required('You must enter an attribute name')(
       value,
     );
     const external = validateLabel?.(value);
@@ -233,7 +234,7 @@ export const VariablePill = ({
     const nextValidation = getValidation(label);
     setValidation(nextValidation);
     setIsValid(!nextValidation);
-    setAnnouncement(`Editing variable ${label}`);
+    setAnnouncement(`Editing attribute ${label}`);
     restoreFocusRef.current = true;
     setEditing(true);
   };
@@ -260,7 +261,7 @@ export const VariablePill = ({
 
   const handleCancel = () => {
     closeEditor({
-      announcement: 'Variable name edit cancelled',
+      announcement: 'Attribute name edit cancelled',
     });
   };
 
@@ -270,7 +271,7 @@ export const VariablePill = ({
     }
 
     closeEditor({
-      announcement: `Variable renamed to ${newName}`,
+      announcement: `Attribute renamed to ${newName}`,
       beforeClose: () => onLabelChange(newName),
     });
   };
@@ -294,40 +295,48 @@ export const VariablePill = ({
     }
   };
 
-  const style = getVariablePillStyle(type, { width, minWidth, maxWidth });
+  const style = getVariablePillStyle(type);
   const editorFrame = useMemo(() => {
     if (!editorAnchor) {
       return null;
     }
 
     const availableWidth = window.innerWidth - EDITOR_FRAME_GUTTER;
-    const targetPillWidth = Math.max(
+    const availablePillWidth =
+      (availableWidth - EDITOR_FRAME_PADDING * 2) / EDIT_MODE_SCALE;
+    const targetPillWidth = Math.min(editorAnchor.maxWidth, availablePillWidth);
+    const initialPillWidth = Math.min(
       editorAnchor.width,
-      Math.min(
-        editorAnchor.maxWidth,
-        (availableWidth - EDITOR_FRAME_PADDING * 2) / EDIT_MODE_SCALE,
-      ),
+      availableWidth - EDITOR_FRAME_PADDING * 2,
     );
     const frameWidth = Math.min(
       availableWidth,
       Math.max(
         EDITOR_FRAME_MIN_WIDTH,
+        initialPillWidth + EDITOR_FRAME_PADDING * 2,
         targetPillWidth * EDIT_MODE_SCALE + EDITOR_FRAME_PADDING * 2,
       ),
     );
+    const centeredLeft =
+      editorAnchor.left + editorAnchor.width / 2 - frameWidth / 2;
+    const left = Math.min(
+      window.innerWidth - EDITOR_FRAME_GUTTER / 2 - frameWidth,
+      Math.max(EDITOR_FRAME_GUTTER / 2, centeredLeft),
+    );
 
     return {
+      initialPillWidth,
       targetPillWidth,
       style: {
-        left: editorAnchor.left + editorAnchor.width / 2 - frameWidth / 2,
+        left,
         top: editorAnchor.top - EDITOR_FRAME_PADDING,
         width: frameWidth,
       } satisfies React.CSSProperties,
       pillStyle: {
         ...style,
-        '--variable-pill-width': `${targetPillWidth}px`,
-        '--variable-pill-min-width': `${editorAnchor.width}px`,
-        '--variable-pill-max-width': `${targetPillWidth}px`,
+        width: `${targetPillWidth}px`,
+        minWidth: `${Math.min(initialPillWidth, targetPillWidth)}px`,
+        maxWidth: `${Math.max(initialPillWidth, targetPillWidth)}px`,
       } satisfies VariablePillStyle,
     };
   }, [editorAnchor, style]);
@@ -338,7 +347,7 @@ export const VariablePill = ({
         value={label}
         className={getVariablePillClassName({
           animated,
-          fluid: width === '100%',
+          className,
         })}
         style={style}
       >
@@ -360,10 +369,10 @@ export const VariablePill = ({
               ref={triggerRef}
               type="button"
               aria-haspopup="dialog"
-              aria-label={`Edit variable name: ${label}`}
+              aria-label={`Edit attribute name: ${label}`}
               className={getVariablePillClassName({
                 animated,
-                fluid: width === '100%',
+                className,
                 interactive: true,
               })}
               style={style}
@@ -377,7 +386,7 @@ export const VariablePill = ({
             </button>
           }
         />
-        <TooltipContent side="top">Edit variable name: {label}</TooltipContent>
+        <TooltipContent side="top">Edit attribute name: {label}</TooltipContent>
       </Tooltip>
 
       <Modal
@@ -393,7 +402,7 @@ export const VariablePill = ({
         {editorFrame && (
           <ModalPopup
             key="variable-pill-editor"
-            aria-label="Edit variable name"
+            aria-label="Edit attribute name"
             className="fixed z-40 flex flex-col items-center gap-6 p-6 outline-none"
             style={editorFrame.style}
             initial={{ opacity: 0.9999 }}
@@ -403,7 +412,9 @@ export const VariablePill = ({
           >
             <motion.div
               initial={
-                reduceMotion ? false : { scale: 1, width: editorAnchor?.width }
+                reduceMotion
+                  ? false
+                  : { scale: 1, width: editorFrame.initialPillWidth }
               }
               animate={{
                 scale: reduceMotion ? 1 : EDIT_MODE_SCALE,
@@ -411,7 +422,7 @@ export const VariablePill = ({
               }}
               exit={{
                 scale: 1,
-                width: editorAnchor?.width,
+                width: editorFrame.initialPillWidth,
               }}
               transition={
                 reduceMotion ? { duration: 0 } : EDIT_MODE_LAYOUT_SPRING
@@ -421,14 +432,14 @@ export const VariablePill = ({
               })}
               style={editorFrame.pillStyle}
             >
-              <VariablePillContents type={type}>
+              <VariablePillContents fill type={type}>
                 <InputField
                   autoFocus
-                  aria-label="Variable name"
+                  aria-label="Attribute name"
                   aria-invalid={validation ? true : undefined}
                   aria-describedby={validation ? validationId : undefined}
                   className="h-full w-full rounded-l-none! outline-none!"
-                  placeholder="Enter a variable name..."
+                  placeholder="Enter an attribute name..."
                   value={newName}
                   onChange={handleUpdateName}
                   onKeyDown={handleKeyDown}
@@ -437,14 +448,13 @@ export const VariablePill = ({
             </motion.div>
 
             {validation && (
-              <div className="[&>div]:bg-destructive! [&>div]:text-destructive-contrast! [&>div]:px-4 [&>div]:py-2">
-                <FieldErrors
-                  id={validationId}
-                  name="variable-name"
-                  errors={[validation]}
-                  show
-                />
-              </div>
+              <FieldErrors
+                id={validationId}
+                name="variable-name"
+                errors={[validation]}
+                show
+                variant="box"
+              />
             )}
 
             <motion.div
@@ -490,11 +500,9 @@ export const VariablePill = ({
 
 const ConnectedVariablePillComponent = ({
   animated = false,
+  className,
   editable = false,
-  maxWidth,
-  minWidth,
   uuid,
-  width,
 }: ConnectedVariablePillProps) => {
   const dispatch = useAppDispatch();
   const variableSelector = useMemo(
@@ -529,12 +537,10 @@ const ConnectedVariablePillComponent = ({
   return (
     <VariablePill
       animated={animated}
+      className={className}
       editable={editable}
       label={name ?? ''}
-      maxWidth={maxWidth}
-      minWidth={minWidth}
       type={type}
-      width={width}
       onLabelChange={(nextName) => {
         const action = updateVariableByUUID(uuid, { name: nextName });
         void dispatch(action);

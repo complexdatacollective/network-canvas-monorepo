@@ -1,21 +1,15 @@
 'use client';
 
-import { invariant } from 'es-toolkit';
 import { AnimatePresence, motion } from 'motion/react';
-import { type ComponentType, type ReactNode, useContext } from 'react';
 
 import type { SkipContext } from '@codaco/fresco-ui/dialogs/DialogProvider';
-import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import { FRAMING_TERMS, type FramingTerms } from '@codaco/shared-consts';
 
 import { useTrack } from '../../../../analytics/useTrack';
 import ActionButton from '../../../../components/ActionButton';
 import { useStageSelector } from '../../../../hooks/useStageSelector';
-import {
-  FamilyPedigreeContext,
-  FamilyPedigreeStoreBridge,
-  useFamilyPedigreeStore,
-} from '../../FamilyPedigreeContext';
+import { useFamilyPedigreeStore } from '../../FamilyPedigreeContext';
+import { useFamilyPedigreeDialog } from '../../familyPedigreeDialog';
+import { FRAMING_TERMS, type FramingTerms } from '../../framingTerms';
 import type { VariableConfig } from '../../store';
 import { getFramingConfig, getIntroScreen } from '../../utils/stageConfig';
 import AdditionalParentsStep from '../quickStartWizard/AdditionalParentsStep';
@@ -36,6 +30,7 @@ import {
   type EgoCellResult,
   egoCellTransform,
 } from './transforms/egoCellTransform';
+import { runFamilyPedigreeTransform } from './transforms/personAttributes';
 
 type EgoCellWizardProps = {
   egoId?: string;
@@ -46,8 +41,9 @@ type EgoCellWizardProps = {
 // A wizard step title that reflects the currently-selected framing. The framing
 // can be chosen inside the wizard (the FramingSelectionStep), so parent-step
 // titles must read it live rather than capture it when the steps are built.
-// Rendered inside a FamilyPedigreeStoreBridge (see `bridgedTitle`), which
-// re-provides the store to the portalled dialog chrome.
+// Every dialog opened through `useFamilyPedigreeDialog` has its step titles
+// bridged back to the pedigree store, so a stateful title can read it from
+// inside the dialog chrome.
 function FramingStepTitle({
   termKey,
 }: {
@@ -65,31 +61,10 @@ export default function EgoCellWizard({
   onSubmit,
   variableConfig,
 }: EgoCellWizardProps) {
-  const { openDialog } = useDialog();
+  const { openDialog } = useFamilyPedigreeDialog();
   const track = useTrack();
   const introScreen = useStageSelector(getIntroScreen);
   const framingConfig = useStageSelector(getFramingConfig);
-
-  const store = useContext(FamilyPedigreeContext);
-  invariant(
-    store,
-    'EgoCellWizard must be used within a FamilyPedigreeProvider',
-  );
-
-  const wrap = (Step: ComponentType) =>
-    function BridgedStep() {
-      return (
-        <FamilyPedigreeStoreBridge store={store}>
-          <Step />
-        </FamilyPedigreeStoreBridge>
-      );
-    };
-
-  // Wrap a title node in the store bridge so a live title (FramingStepTitle) can
-  // read the FamilyPedigree store from inside the portalled dialog chrome.
-  const bridgedTitle = (node: ReactNode) => (
-    <FamilyPedigreeStoreBridge store={store}>{node}</FamilyPedigreeStoreBridge>
-  );
 
   const handleClick = async () => {
     const result = await openDialog({
@@ -97,6 +72,14 @@ export default function EgoCellWizard({
       title: 'Your Biological Parents',
       className: 'tablet-portrait:min-w-[70ch]',
       progress: null,
+      confirmCancel: {
+        title: 'Close family pedigree setup?',
+        description:
+          'If you continue, all information you have entered in this family pedigree will be lost. You will need to start again.',
+        primaryLabel: 'Close and lose progress',
+        cancelLabel: 'Continue setup',
+        intent: 'destructive',
+      },
       steps: [
         // IntroStep and FramingSelectionStep depend only on stage config
         // (known now), so include them conditionally rather than relying on a
@@ -105,56 +88,54 @@ export default function EgoCellWizard({
         // fixed-framing protocol with no intro screen.
         ...(shouldSkipIntroStep(introScreen)
           ? []
-          : [{ title: 'Introduction', content: wrap(IntroStep) }]),
+          : [{ title: 'Introduction', content: IntroStep }]),
         ...(shouldSkipFramingSelectionStep(framingConfig)
           ? []
           : [
               {
                 title: 'How we’ll refer to your parents',
-                content: wrap(FramingSelectionStep),
+                content: FramingSelectionStep,
               },
             ]),
         {
           title: 'About you',
-          content: wrap(EgoSexStep),
+          content: EgoSexStep,
         },
         {
-          title: bridgedTitle(<FramingStepTitle termKey="eggParent" />),
-          content: wrap(EggParentStep),
+          title: <FramingStepTitle termKey="eggParent" />,
+          content: EggParentStep,
         },
         {
-          title: bridgedTitle(
-            <FramingStepTitle termKey="gestationalCarrier" />,
-          ),
-          content: wrap(GestationalCarrierStep),
+          title: <FramingStepTitle termKey="gestationalCarrier" />,
+          content: GestationalCarrierStep,
           skip: ({ getFieldValue }: SkipContext) =>
             getFieldValue('egg-parent.gestationalCarrier') !== false,
         },
         {
-          title: bridgedTitle(<FramingStepTitle termKey="spermParent" />),
-          content: wrap(SpermParentStep),
+          title: <FramingStepTitle termKey="spermParent" />,
+          content: SpermParentStep,
         },
         {
           title: 'Other parents',
-          content: wrap(OtherParentsStep),
+          content: OtherParentsStep,
         },
         {
           title: 'Additional parents',
-          content: wrap(AdditionalParentsStep),
+          content: AdditionalParentsStep,
           skip: ({ getFieldValue }: SkipContext) =>
             getFieldValue('hasOtherParents') !== true,
         },
         {
           title: 'Parent partnerships',
-          content: wrap(ParentPartnershipsStep),
+          content: ParentPartnershipsStep,
         },
         {
           title: 'Partner and children',
-          content: wrap(PartnerAndChildrenStep),
+          content: PartnerAndChildrenStep,
         },
         {
           title: 'Children details',
-          content: wrap(ChildrenDetailStep),
+          content: ChildrenDetailStep,
           skip: ({ getFieldValue }: SkipContext) => {
             if (getFieldValue('hasPartner') !== true) return true;
             return Number(getFieldValue('childrenWithPartnerCount') ?? 0) === 0;
@@ -162,7 +143,9 @@ export default function EgoCellWizard({
         },
       ],
       onFinish: (formValues: Record<string, unknown>) => {
-        return egoCellTransform(formValues, variableConfig, egoId);
+        return runFamilyPedigreeTransform(() =>
+          egoCellTransform(formValues, variableConfig, egoId),
+        );
       },
     });
 

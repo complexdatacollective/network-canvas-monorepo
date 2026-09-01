@@ -69,10 +69,11 @@ const SAMPLE_SIZE = 32;
  * Hook that measures item dimensions for virtualization.
  * Renders items in a hidden container and measures their bounding boxes.
  *
- * Includes a sentinel element that detects root font-size changes via
- * ResizeObserver. This handles cases where external stylesheets load after
- * measurement (e.g. dynamically injected theme CSS), which would cause
- * rem-based values to change.
+ * Includes a sentinel element that detects type-scale changes via
+ * ResizeObserver. This handles stylesheets loading after measurement
+ * (e.g. dynamically injected theme CSS) as well as themed regions changing
+ * their --theme-root-size while mounted (viewport ramp media conditions,
+ * the interview's participant text-size multiplier).
  *
  * For 'height-only' mode: Items are constrained to a specific width, only height is measured.
  * For 'intrinsic' mode: Items render naturally, full width and height are measured.
@@ -92,7 +93,7 @@ export function useMeasureItems<T>({
   // Track container width that was used for last measurement
   const lastMeasuredWidthRef = useRef<number>(0);
 
-  // Sentinel ref for detecting root font-size changes via ResizeObserver
+  // Sentinel ref for detecting type-scale changes via ResizeObserver
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Sentinel size captured at the time of last successful measurement.
@@ -216,9 +217,11 @@ export function useMeasureItems<T>({
     return widthChange > WIDTH_CHANGE_THRESHOLD;
   }, [containerWidth, measurementInfo.mode]);
 
-  // Observe sentinel element for size changes caused by root font-size updates.
-  // The sentinel is a 1rem x 1rem div, so it resizes when the root font-size
-  // changes (e.g. from 16px default to 20px after a theme stylesheet loads).
+  // Observe sentinel element for size changes caused by type-scale updates.
+  // The sentinel is a --theme-root-size square div, so it resizes when the
+  // effective scale changes — a late-loading theme stylesheet (rem fallback),
+  // a themed region's viewport ramp crossing a media condition, or the
+  // interview's participant text-size multiplier.
   //
   // Compares against the sentinel size captured at measurement time (stored in
   // lastMeasuredSentinelSizeRef) rather than the size when the effect runs.
@@ -452,9 +455,15 @@ export function useMeasureItems<T>({
     needsRemeasurement,
   ]);
 
-  // Sentinel element for detecting root font-size changes.
+  // Sentinel element for detecting type-scale changes.
   // Always rendered (even after measurement completes) so ResizeObserver
-  // can detect when rem values change due to late-loading stylesheets.
+  // can detect when the effective scale changes after items were measured.
+  // Sized in the theme's --theme-root-size unit (not rem): item sizes derive
+  // from the inherited theme sentinel, which themed regions override locally
+  // — e.g. the interview Shell's viewport ramp and participant text-size
+  // multiplier — without the document root font-size (rem) ever changing.
+  // The rem fallback preserves the original behaviour (late-loading theme
+  // stylesheets changing rem) outside themed regions.
   const sentinel =
     skip || measurementInfo.mode === 'none' ? null : (
       <div
@@ -464,8 +473,8 @@ export function useMeasureItems<T>({
           position: 'absolute',
           visibility: 'hidden',
           pointerEvents: 'none',
-          width: '1rem',
-          height: '1rem',
+          width: 'var(--theme-root-size, 1rem)',
+          height: 'var(--theme-root-size, 1rem)',
         }}
       />
     );

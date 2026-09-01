@@ -31,7 +31,7 @@ describe('commitBatch', () => {
         {
           tempId: 'ego',
           data: {
-            attributes: { name: '', [variableConfig.egoVariable]: true },
+            attributes: { [variableConfig.egoVariable]: true },
           },
         },
         {
@@ -126,7 +126,7 @@ describe('commitBatch', () => {
         {
           tempId: 'ego',
           data: {
-            attributes: { name: '', [variableConfig.egoVariable]: true },
+            attributes: { [variableConfig.egoVariable]: true },
           },
         },
         {

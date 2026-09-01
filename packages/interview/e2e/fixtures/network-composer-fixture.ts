@@ -1,23 +1,25 @@
 import type { Locator, Page } from '@playwright/test';
 
+import { FormFixture } from './stage-fixture.js';
+
 /**
  * NetworkComposer fixture: single-screen free-form network canvas.
  *
  * Toolbar buttons are icon-only (aria-label only, no visible text) — see
- * packages/interview/src/interfaces/NetworkComposer/ToolPalette.tsx and the
- * SegmentedToolbar `segmentButton` helper (aria-label = the segment's label).
- * The add-node and groups segments are Base UI popovers whose trigger button
- * carries no `aria-pressed`, so open-state is detected via the popover contents
- * being visible rather than an attribute on the button.
+ * packages/interview/src/interfaces/NetworkComposer/ToolPalette.tsx. The
+ * add-node and groups controls compose Base UI popovers with toolbar buttons;
+ * open-state can be observed through their pressed state or popup contents.
  *
  * Owned by the NetworkComposer matrix scenarios; instantiated directly in each
  * scenario's run() rather than hung off StageFixture.
  */
 export class NetworkComposerFixture {
   readonly page: Page;
+  private readonly form: FormFixture;
 
   constructor(page: Page) {
     this.page = page;
+    this.form = new FormFixture(page);
   }
 
   get root(): Locator {
@@ -250,10 +252,11 @@ export class NetworkComposerFixture {
   }
 
   /**
-   * Attribute-form field container, keyed by the codebook variable id — the
-   * same `data-field-name` convention the shared form fixture uses.
+   * Attribute-form field container, keyed by the codebook variable id. Routed
+   * through the shared form fixture's `field()` seam, scoped to the inspector
+   * panel because that is where NetworkComposer renders the attribute form.
    */
   getField(variableId: string): Locator {
-    return this.inspectorPanel.locator(`[data-field-name="${variableId}"]`);
+    return this.form.field(variableId, this.inspectorPanel);
   }
 }

@@ -305,7 +305,7 @@ git commit -m "refactor: mark classic apps' user-facing names as Classic"
 
 **Files:**
 
-- Modify: `README.md`, `CLAUDE.md`, `.claude/skills/developing-in-network-canvas/SKILL.md`, `.claude/skills/creating-a-changeset/SKILL.md`, `.claude/skills/creating-a-network-canvas-interface/SKILL.md`, `apps/documentation/public/sidebar.json`, `docs/protocol-template-proposals.md`, `docs/research/2026-06-27-narrative-group-aware-layout.md`.
+- Modify: `README.md`, `CLAUDE.md`, `.claude/skills/developing-network-canvas-ui/SKILL.md`, `.claude/skills/creating-a-changeset/SKILL.md`, `.claude/skills/creating-a-network-canvas-interface/SKILL.md`, `apps/documentation/public/sidebar.json`, `docs/protocol-template-proposals.md`, `docs/research/2026-06-27-narrative-group-aware-layout.md`.
 
 **Interfaces:** documentation only; no code consumers.
 
@@ -316,7 +316,7 @@ git commit -m "refactor: mark classic apps' user-facing names as Classic"
 
 - [ ] **Step 2: `.claude/skills/*` — mirror the CLAUDE.md interface-surface + changeset edits**
 
-- `developing-in-network-canvas/SKILL.md`: same interface-surface line rewrite as CLAUDE.md Step 1.
+- `developing-network-canvas-ui/SKILL.md`: same interface-surface line rewrite as CLAUDE.md Step 1.
 - `creating-a-changeset/SKILL.md`: `An app: `@codaco/architect-web`or`@codaco/interviewer-v8`.` → `@codaco/architect` or `@codaco/interviewer`; table `Apps (`architect-web`, `interviewer-v8`)` → `Apps (`architect`, `interviewer`)`.
 - `creating-a-network-canvas-interface/SKILL.md`: `apps/architect-web` → `apps/architect` in the Builder row and the editor-registry path (`apps/architect-web/src/components/StageEditor/Interfaces.tsx` → `apps/architect/src/…`).
 

@@ -1,3 +1,50 @@
+/**
+ * The migration chain: the registered steps that carry a protocol document
+ * forward one schema version at a time, and the machinery that walks them.
+ *
+ * TWO INVARIANTS BIND EVERY RULE A MIGRATION STEP MAY APPLY. Neither can be
+ * checked by the schema the output is validated against, because both are
+ * about the relationship between the document that went IN and the one that
+ * comes out — and both exist because a protocol is migrated underneath
+ * interviews that have already collected data against it.
+ *
+ * 1. A migration never adds, removes, or reorders stages. Fresco migrates its
+ *    stored protocols IN PLACE (`prisma.protocol.update` keyed by the existing
+ *    row id — apps/fresco/scripts/migrate-protocols.ts), so every
+ *    in-progress interview goes on pointing at the same protocol row
+ *    afterwards, and a session's resume position is a stage INDEX
+ *    (`Interview.currentStep`) into that protocol's `stages`. A step that
+ *    inserted, dropped, or moved a stage would silently resume a part-finished
+ *    interview somewhere other than where its participant left it. Any host
+ *    that migrates a stored protocol is held to the same contract: it points
+ *    the sessions it already has at the migrated protocol rather than starting
+ *    them over.
+ *
+ * 2. A migration never changes the shape of a collected answer value. That
+ *    same in-place update rewrites the codebook while leaving every interview's
+ *    already-collected network exactly as it was — no host rewrites the data a
+ *    session holds when the protocol behind it moves forward. So a value
+ *    recorded under the old codebook has to still read correctly under the new
+ *    one: re-spelling how an answer is stored — a scalar becoming a
+ *    single-element array, an option's `value` being rewritten — reinterprets
+ *    data that has already been gathered. Rules ABOUT a value (validation,
+ *    input control, option labels, prompt text) are fair game; the recorded
+ *    value itself is not.
+ *
+ * A repair that cannot be made without breaking one of these is not a
+ * migration. It belongs in the schema, as a rejection the researcher is told
+ * about and resolves themselves — and a rule that MUST break one forces the
+ * host-side handling to be redesigned in the same change.
+ *
+ * The exceptions that do exist are all the same forced choice, where the
+ * target schema cannot express the old shape AT ALL and the alternative is
+ * refusing to migrate the protocol: `migrationV7toV8` drops EgoForm /
+ * AlterForm / AlterEdgeForm stages left with no fields (v8 requires at least
+ * one) and coerces boolean and fractional ordinal/categorical option values to
+ * their string form (v8 admits neither). Neither is licence to touch a stage or
+ * a value the target schema could have represented.
+ */
+
 // Import the actual protocol types for each version
 import type { z } from 'zod';
 

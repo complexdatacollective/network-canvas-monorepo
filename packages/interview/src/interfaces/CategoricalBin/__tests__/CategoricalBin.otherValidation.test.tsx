@@ -8,7 +8,7 @@ import {
 } from '@testing-library/react';
 import { useEffect } from 'react';
 import { Provider } from 'react-redux';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StoreApi } from 'zustand';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -33,6 +33,19 @@ import ui from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
 import CategoricalBin from '../CategoricalBin';
 import { getCatBinDropTargetId } from '../components/CategoricalBinItem';
+
+const { celebrate, track } = vi.hoisted(() => ({
+  celebrate: vi.fn(),
+  track: vi.fn(),
+}));
+
+vi.mock('../../../hooks/useCelebrate', () => ({
+  useCelebrate: () => celebrate,
+}));
+
+vi.mock('../../../analytics/useTrack', () => ({
+  useTrack: () => track,
+}));
 
 class StubResizeObserver {
   observe() {}
@@ -80,6 +93,11 @@ beforeAll(() => {
   vi.stubGlobal('scrollTo', vi.fn());
 });
 
+beforeEach(() => {
+  celebrate.mockClear();
+  track.mockClear();
+});
+
 const NODE_TYPE = 'person';
 const CATEGORY_VARIABLE = 'category';
 const OTHER_VARIABLE = 'otherReason';
@@ -93,14 +111,16 @@ const RESERVED_NOTE_VALUE = 'reserved-value';
 // [category option, other bin] — the other bin is always index 1 here.
 const OTHER_BIN_INDEX = 1;
 
-const node: NcNode = {
-  [entityPrimaryKeyProperty]: 'node-1',
-  type: NODE_TYPE,
-  [entityAttributesProperty]: {
-    [NOTE_VARIABLE]: RESERVED_NOTE_VALUE,
-    [COLLIDING_SIBLING_VARIABLE]: RESERVED_NOTE_VALUE,
-  },
-};
+function buildNode(): NcNode {
+  return {
+    [entityPrimaryKeyProperty]: 'node-1',
+    type: NODE_TYPE,
+    [entityAttributesProperty]: {
+      [NOTE_VARIABLE]: RESERVED_NOTE_VALUE,
+      [COLLIDING_SIBLING_VARIABLE]: RESERVED_NOTE_VALUE,
+    },
+  };
+}
 
 function buildCodebook(
   otherValidation?: Validation,
@@ -109,6 +129,8 @@ function buildCodebook(
   // otherVariable is the realistic (not synthetic-only) case the regression
   // test below exercises.
   omitOtherComponent = false,
+  omitOtherVariable = false,
+  otherVariable = OTHER_VARIABLE,
 ): Codebook {
   return {
     node: {
@@ -129,12 +151,16 @@ function buildCodebook(
             // OTHER_BIN_INDEX below.
             options: [{ label: 'Family', value: 1 }],
           },
-          [OTHER_VARIABLE]: {
-            name: 'Other reason',
-            type: 'text',
-            ...(omitOtherComponent ? {} : { component: 'Text' }),
-            ...(otherValidation ? { validation: otherValidation } : {}),
-          },
+          ...(omitOtherVariable
+            ? {}
+            : {
+                [otherVariable]: {
+                  name: 'Other reason',
+                  type: 'text' as const,
+                  ...(omitOtherComponent ? {} : { component: 'Text' as const }),
+                  ...(otherValidation ? { validation: otherValidation } : {}),
+                },
+              }),
           [NOTE_VARIABLE]: {
             name: 'Existing note',
             type: 'text',
@@ -155,7 +181,7 @@ function buildCodebook(
 
 type CategoricalBinStage = StageProps<'CategoricalBin'>['stage'];
 
-function buildStage(): CategoricalBinStage {
+function buildStage(otherVariable = OTHER_VARIABLE): CategoricalBinStage {
   return {
     id: STAGE_ID,
     type: 'CategoricalBin',
@@ -166,7 +192,7 @@ function buildStage(): CategoricalBinStage {
         id: PROMPT_ID,
         text: 'Which category?',
         variable: asEntityAttributeReference(CATEGORY_VARIABLE),
-        otherVariable: asEntityAttributeReference(OTHER_VARIABLE),
+        otherVariable: asEntityAttributeReference(otherVariable),
         otherVariablePrompt: OTHER_PROMPT_TEXT,
         otherOptionLabel: 'Other',
       },
@@ -175,6 +201,7 @@ function buildStage(): CategoricalBinStage {
 }
 
 function buildSession(): SessionState {
+  const node = buildNode();
   return {
     id: 'session',
     startTime: '2024-01-01T00:00:00.000Z',
@@ -195,6 +222,8 @@ function buildSession(): SessionState {
 function buildProtocol(
   otherValidation?: Validation,
   omitOtherComponent = false,
+  omitOtherVariable = false,
+  otherVariable = OTHER_VARIABLE,
 ): ProtocolPayload {
   return {
     id: 'protocol',
@@ -203,8 +232,13 @@ function buildProtocol(
     assets: [],
     name: 'Test protocol',
     schemaVersion: 8,
-    codebook: buildCodebook(otherValidation, omitOtherComponent),
-    stages: [buildStage()],
+    codebook: buildCodebook(
+      otherValidation,
+      omitOtherComponent,
+      omitOtherVariable,
+      otherVariable,
+    ),
+    stages: [buildStage(otherVariable)],
   };
 }
 
@@ -223,12 +257,19 @@ function CaptureDndStore({
 function renderCategoricalBin(
   otherValidation?: Validation,
   omitOtherComponent = false,
+  omitOtherVariable = false,
+  otherVariable = OTHER_VARIABLE,
 ) {
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
       session: buildSession(),
-      protocol: buildProtocol(otherValidation, omitOtherComponent),
+      protocol: buildProtocol(
+        otherValidation,
+        omitOtherComponent,
+        omitOtherVariable,
+        otherVariable,
+      ),
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),
@@ -249,7 +290,7 @@ function renderCategoricalBin(
             {/* CategoricalBin never reads its props (destructures `_props`);
                 these satisfy the type without any bearing on behaviour. */}
             <CategoricalBin
-              stage={buildStage()}
+              stage={buildStage(otherVariable)}
               getNavigationHelpers={() => ({
                 moveForward: () => {},
                 moveBackward: () => {},
@@ -267,12 +308,12 @@ function renderCategoricalBin(
 /** Simulate dropping `node` onto the "other" bin by driving the dnd store
  * directly (mirrors the pattern used by NodeDrawer's tests), since a real
  * pointer-driven drag gesture is not reliable in jsdom. */
-async function dropNodeIntoOtherBin(getDndStore: () => StoreApi<DndStore>) {
-  const dropTargetId = getCatBinDropTargetId(
-    STAGE_ID,
-    PROMPT_ID,
-    OTHER_BIN_INDEX,
-  );
+async function dropNodeIntoBin(
+  getDndStore: () => StoreApi<DndStore>,
+  binIndex: number,
+) {
+  const dropTargetId = getCatBinDropTargetId(STAGE_ID, PROMPT_ID, binIndex);
+  const node = buildNode();
 
   act(() => {
     getDndStore().getState().startDrag(
@@ -298,16 +339,20 @@ async function dropNodeIntoOtherBin(getDndStore: () => StoreApi<DndStore>) {
   });
 }
 
+async function dropNodeIntoOtherBin(getDndStore: () => StoreApi<DndStore>) {
+  await dropNodeIntoBin(getDndStore, OTHER_BIN_INDEX);
+}
+
 function getOtherAttribute(
   store: ReturnType<typeof renderCategoricalBin>['store'],
+  otherVariable = OTHER_VARIABLE,
 ) {
   const updatedNode = store
     .getState()
     .session.network?.nodes.find(
-      (candidate: NcNode) =>
-        candidate[entityPrimaryKeyProperty] === node[entityPrimaryKeyProperty],
+      (candidate: NcNode) => candidate[entityPrimaryKeyProperty] === 'node-1',
     );
-  return updatedNode?.[entityAttributesProperty][OTHER_VARIABLE];
+  return updatedNode?.[entityAttributesProperty][otherVariable];
 }
 
 async function waitForDialogToClose() {
@@ -323,9 +368,9 @@ async function waitForDialogToClose() {
 }
 
 describe('CategoricalBin other-input honours codebook validation', () => {
-  it('keeps the special writer required while honoring the other codebook rules', async () => {
+  it('rejects an empty entry and an entry over maxLength when the codebook requires the field', async () => {
     const { store, getDndStore } = renderCategoricalBin({
-      required: false,
+      required: true,
       maxLength: 5,
     });
 
@@ -350,24 +395,165 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     expect(getOtherAttribute(store)).toBeUndefined();
   });
 
-  it('requires an entry when the codebook has no validation rules for the field', async () => {
+  it('accepts an empty submission when the codebook has no validation rules and places the node in Other', async () => {
     const { store, getDndStore } = renderCategoricalBin(undefined);
 
     await dropNodeIntoOtherBin(getDndStore);
 
-    const input = await screen.findByRole('textbox');
-    fireEvent.click(screen.getByTestId('dialog-submit'));
-
-    await screen.findByTestId(`${OTHER_VARIABLE}-field-error`);
-    expect(screen.getByTestId('dialog-submit')).toBeInTheDocument();
-    expect(getOtherAttribute(store)).toBeUndefined();
-
-    fireEvent.change(input, { target: { value: 'a reason' } });
+    await screen.findByRole('textbox');
     fireEvent.click(screen.getByTestId('dialog-submit'));
 
     await waitForDialogToClose();
 
-    expect(getOtherAttribute(store)).toBe('a reason');
+    expect(getOtherAttribute(store)).toBe('');
+    expect(
+      screen.getByRole('button', { name: 'Category Other, 1 items' }),
+    ).toBeInTheDocument();
+    expect(celebrate).toHaveBeenCalledOnce();
+    expect(track).toHaveBeenCalledWith('node_binned', {
+      node_id: 'node-1',
+      node_type: NODE_TYPE,
+      bin_index: OTHER_BIN_INDEX,
+    });
+  });
+
+  it('removes the mutually exclusive category value when placing a node in Other', async () => {
+    const { store, getDndStore } = renderCategoricalBin(undefined);
+    await store.dispatch({
+      type: 'NETWORK/UPDATE_NODE/fulfilled',
+      payload: {
+        nodeId: 'node-1',
+        attributePatch: {
+          set: { [CATEGORY_VARIABLE]: [1] },
+          unset: [],
+        },
+        newModelData: undefined,
+        secureSet: undefined,
+      },
+    });
+
+    await dropNodeIntoOtherBin(getDndStore);
+    await screen.findByRole('textbox');
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+    await waitForDialogToClose();
+
+    const attributes =
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty] ??
+      {};
+    expect(Object.hasOwn(attributes, CATEGORY_VARIABLE)).toBe(false);
+    expect(attributes[OTHER_VARIABLE]).toBe('');
+  });
+
+  it('removes the Other value when placing a node in a regular bin', async () => {
+    const { store, getDndStore } = renderCategoricalBin(undefined);
+    await store.dispatch({
+      type: 'NETWORK/UPDATE_NODE/fulfilled',
+      payload: {
+        nodeId: 'node-1',
+        attributePatch: {
+          set: { [OTHER_VARIABLE]: 'Previous response' },
+          unset: [],
+        },
+        newModelData: undefined,
+        secureSet: undefined,
+      },
+    });
+
+    await dropNodeIntoBin(getDndStore, 0);
+
+    await waitFor(() => {
+      const attributes =
+        store.getState().session.network.nodes[0]?.[entityAttributesProperty] ??
+        {};
+      expect(attributes[CATEGORY_VARIABLE]).toEqual([1]);
+      expect(Object.hasOwn(attributes, OTHER_VARIABLE)).toBe(false);
+    });
+  });
+
+  it('treats a dotted otherVariable containing a dangerous segment as one opaque identifier', async () => {
+    const dottedOtherVariable = 'safe.__proto__.polluted';
+    const { store, getDndStore } = renderCategoricalBin(
+      undefined,
+      false,
+      false,
+      dottedOtherVariable,
+    );
+
+    await dropNodeIntoOtherBin(getDndStore);
+
+    const input = await screen.findByRole('textbox');
+    fireEvent.change(input, { target: { value: 'opaque value' } });
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+
+    await waitForDialogToClose();
+
+    expect(getOtherAttribute(store, dottedOtherVariable)).toBe('opaque value');
+    expect(Object.hasOwn(Object.prototype, 'polluted')).toBe(false);
+  });
+
+  it('returns a cancelled drop to the drawer without success feedback or analytics', async () => {
+    const { store, getDndStore } = renderCategoricalBin(undefined);
+
+    await dropNodeIntoOtherBin(getDndStore);
+    await screen.findByRole('textbox');
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('dialog-cancel'));
+      await new Promise((resolve) => setTimeout(resolve, 550));
+    });
+
+    await waitForDialogToClose();
+
+    expect(getOtherAttribute(store)).toBeUndefined();
+    expect(
+      screen.getByRole('button', { name: RESERVED_NOTE_VALUE }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Category Other, 0 items' }),
+    ).toBeInTheDocument();
+    expect(celebrate).not.toHaveBeenCalled();
+    expect(track).not.toHaveBeenCalled();
+  });
+
+  it('does not commit an Other drop when the node update is rejected', async () => {
+    const { store, getDndStore } = renderCategoricalBin(undefined, false, true);
+
+    await dropNodeIntoOtherBin(getDndStore);
+    await screen.findByRole('textbox');
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+
+    await waitForDialogToClose();
+
+    expect(getOtherAttribute(store)).toBeUndefined();
+    expect(
+      screen.getByRole('button', { name: RESERVED_NOTE_VALUE }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Category Other, 0 items' }),
+    ).toBeInTheDocument();
+    expect(celebrate).not.toHaveBeenCalled();
+    expect(track).not.toHaveBeenCalled();
+  });
+
+  it('does not commit a regular-bin drop when the node update is rejected', async () => {
+    const { store, getDndStore } = renderCategoricalBin(undefined, false, true);
+
+    await dropNodeIntoBin(getDndStore, 0);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: RESERVED_NOTE_VALUE }),
+      ).toBeInTheDocument();
+    });
+    expect(
+      store.getState().session.network?.nodes[0]?.[entityAttributesProperty][
+        CATEGORY_VARIABLE
+      ],
+    ).toBeUndefined();
+    expect(
+      screen.getByRole('button', { name: 'Category Family, 0 items' }),
+    ).toBeInTheDocument();
+    expect(celebrate).not.toHaveBeenCalled();
+    expect(track).not.toHaveBeenCalled();
   });
 
   it('rejects a value matching a sibling attribute on the same node and accepts a distinct one, proving validationContext (network + currentEntityId) reaches the dialog Field', async () => {

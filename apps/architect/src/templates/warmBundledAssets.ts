@@ -13,10 +13,10 @@ export const bundledTemplateAssetUrls: string[] = [
 const SW_CONTROL_TIMEOUT_MS = 8000;
 
 // Resolves once the service worker controls the page, so that fetches are
-// intercepted and cached. On first load the worker is `ready` (active) before it
-// claims the page (clientsClaim fires a `controllerchange`); fetching in that gap
-// bypasses the cache, so we wait for control. Resolves false if control is never
-// taken (e.g. in dev, where the service worker is disabled).
+// intercepted and cached. On first load the worker can be `ready` (active)
+// before the page is controlled; fetching in that gap bypasses the cache, so we
+// wait for a future navigation/controller change. Resolves false if control is
+// never taken (e.g. in dev, where the service worker is disabled).
 const waitForController = async (): Promise<boolean> => {
   await navigator.serviceWorker.ready;
   if (navigator.serviceWorker.controller) return true;

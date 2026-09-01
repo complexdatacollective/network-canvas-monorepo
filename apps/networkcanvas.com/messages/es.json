@@ -93,10 +93,19 @@
   "Publications": {
     "heading": "Publicaciones recientes que utilizan Network Canvas",
     "carouselLabel": "Carrusel de publicaciones recientes",
-    "introduction": "Estas son las ocho publicaciones más recientes que utilizan Network Canvas. Para obtener orientación sobre cómo citar Network Canvas, consulte nuestro <article>artículo de documentación</article>.",
+    "introduction": "Estas son las ocho publicaciones más recientes que utilizan Network Canvas. Consulte la <all>lista completa de publicaciones</all> o nuestro <article>artículo de documentación</article> para obtener orientación sobre cómo citar Network Canvas.",
     "submission": "Si desea que incluyamos su publicación, comuníquenoslo en el <thread>hilo</thread> de nuestro sitio de la comunidad.",
     "article": "artículo de documentación",
     "thread": "hilo"
+  },
+  "PublicationsPage": {
+    "metadata": {
+      "title": "Publicaciones",
+      "description": "Investigación y trabajos académicos que utilizan las herramientas de Network Canvas para recopilar y estudiar datos de redes sociales."
+    },
+    "heading": "Publicaciones que utilizan Network Canvas",
+    "citing": "Para obtener orientación sobre cómo citar Network Canvas, consulte nuestro <article>artículo de documentación</article>.",
+    "submission": "Si desea que incluyamos su publicación, comuníquenoslo en el <thread>hilo</thread> de nuestro sitio de la comunidad."
   },
   "Team": {
     "heading": "Equipo principal",

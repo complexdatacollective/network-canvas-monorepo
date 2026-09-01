@@ -1,0 +1,20 @@
+# Context filter for monorepo-rooted Docker builds (currently
+# apps/studio/Dockerfile; apps/fresco's Dockerfile builds from its mirrored
+# standalone repository, not this context).
+.git
+# Local environment files must never enter the build context — layers and
+# exported build caches would retain any credentials they carry.
+**/.env
+**/.env.*
+!**/.env.example
+**/node_modules
+**/dist
+**/dist-web
+**/out
+**/.next
+**/.nitro
+**/.output
+**/storybook-static
+**/coverage
+**/test-results
+**/playwright-report

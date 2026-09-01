@@ -1,63 +1,91 @@
-import { get } from 'es-toolkit/compat';
-import { useCallback, useId, type ComponentType } from 'react';
-import { compose } from 'react-recompose';
-import { v4 as uuid } from 'uuid';
+import { useCallback, useMemo } from 'react';
 
-import Button from '@codaco/fresco-ui/Button';
-import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
-import Heading from '@codaco/fresco-ui/typography/Heading';
 
-import EditRule from './EditRule';
 import PreviewRules from './PreviewRules';
-import RuleField from './RuleField';
-import validateRule, { type Rule } from './validateRule';
-import withDraftRule from './withDraftRule';
-const FrescoRadioGroupField = RadioGroupField as ComponentType<
-  Record<string, unknown>
->;
-type RulesProps = {
-  type?: 'filter' | 'query';
-  allowEdgeRules?: boolean;
-  rules?: Rule[];
-  join?: string | null;
-  error?: string | null;
-  meta?: Record<string, unknown>;
-  codebook: Record<string, unknown>;
-  draftRule?: Rule | null;
-  resetDraft: () => void;
-  handleChangeDraft: (value: Rule) => void;
-  handleCancelDraft: () => void;
-  handleClickRule: (id: string) => void;
-  handleCreateAlterRule: () => void;
-  handleCreateEdgeRule: () => void;
-  handleCreateEgoRule: () => void;
-  onChange?: (value: unknown) => void;
+import type { RuleTypeOption } from './ruleCodebook';
+import type { Rule } from './validateRule';
+
+/**
+ * The identity `Field` hands its control, forwarded to the rule builder's
+ * `role="group"` because a rule set is a region rather than a single input.
+ * `RuleSetFields` fills these in; a caller outside a form may omit them.
+ */
+export type RuleSetGroupProps = {
+  'id'?: string;
+  'aria-labelledby'?: string;
+  'aria-describedby'?: string;
+  'aria-required'?: boolean;
+  'aria-invalid'?: boolean;
 };
+
+/**
+ * Which rule set this builder is, and what its one list-add control is called.
+ *
+ * The label is required and supplied as a whole string so the two builders
+ * commonly mounted in one stage editor remain distinguishable to screen
+ * readers and voice control. The rule's target is selected in the editor,
+ * instead of representing one editable list with three unrelated add buttons.
+ */
+type RuleSetVariantProps =
+  | {
+      type?: 'filter';
+      addRuleLabel: string;
+    }
+  | {
+      type: 'query';
+      addRuleLabel: string;
+    };
+
+export type RulesOuterProps = RuleSetGroupProps &
+  RuleSetVariantProps & {
+    rules?: Rule[];
+    join?: string;
+    onChange?: (value: unknown) => void;
+    codebook?: Record<string, unknown>;
+    allowEdgeRules?: boolean;
+  };
+
+const NODE_RULE: RuleTypeOption = {
+  label: 'Node - match a node type or one of its attributes.',
+  value: 'node',
+};
+const EDGE_RULE: RuleTypeOption = {
+  label: 'Edge - match an edge type or one of its attributes.',
+  value: 'edge',
+};
+const EGO_RULE: RuleTypeOption = {
+  label: 'Ego - match one of the ego attributes.',
+  value: 'ego',
+};
+
+const JOIN_OPTIONS = [
+  { label: 'All rules must match', value: 'AND' },
+  { label: 'Any rule can match', value: 'OR' },
+];
+
 const Rules = ({
-  type = 'filter',
   allowEdgeRules = true,
   rules = [],
-  join = null,
-  error = null,
-  meta = {},
-  codebook,
-  draftRule = null,
-  resetDraft,
-  handleChangeDraft,
-  handleCancelDraft,
-  handleClickRule,
-  handleCreateAlterRule,
-  handleCreateEdgeRule,
-  handleCreateEgoRule,
+  join,
+  codebook = {},
+  id,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
+  'aria-required': ariaRequired,
+  'aria-invalid': ariaInvalid,
+  addRuleLabel,
   onChange = () => {},
-}: RulesProps) => {
-  const { confirm, openDialog } = useDialog();
-  const errorId = useId();
-  // Default to true as may not be defined if used without redux-form
-  const isTouched = get(meta, 'touched', true) as boolean;
-  const hasError = isTouched && !!error;
+  ...variantProps
+}: RulesOuterProps) => {
+  const ruleTypes = useMemo(() => {
+    const options = [NODE_RULE];
+    if (allowEdgeRules) options.push(EDGE_RULE);
+    if (variantProps.type === 'query') options.push(EGO_RULE);
+    return options;
+  }, [allowEdgeRules, variantProps.type]);
+
   const updateJoin = useCallback(
     (nextJoin: string) =>
       onChange({
@@ -66,154 +94,64 @@ const Rules = ({
       }),
     [onChange, rules],
   );
-  const updateRule = useCallback(
-    (rule: Rule) => {
-      let updatedRules: Rule[] = [];
-      if (!rule.id) {
-        updatedRules = [...rules, { ...rule, id: uuid() }];
-      } else {
-        updatedRules = rules.map((existingRule) => {
-          if (existingRule.id === rule.id) {
-            return rule;
-          }
-          return existingRule;
-        });
-      }
-      onChange({
-        join: join ?? undefined,
-        rules: updatedRules,
-      });
-    },
-    [join, onChange, rules],
-  );
-  const deleteRule = useCallback(
-    (ruleId: string) => {
-      const updatedRules = rules.filter((rule) => rule.id !== ruleId);
-      if (updatedRules.length < 2) {
-        onChange({
-          rules: updatedRules,
-        });
+
+  const updateRules = useCallback(
+    (nextRules: Rule[]) => {
+      if (nextRules.length < 2) {
+        onChange({ rules: nextRules });
         return;
       }
+
       onChange({
-        join: join ?? undefined,
-        rules: updatedRules,
+        join,
+        rules: nextRules,
       });
     },
-    [join, onChange, rules],
+    [join, onChange],
   );
-  const handleSaveDraft = useCallback(() => {
-    if (!validateRule(draftRule)) {
-      void openDialog({
-        type: 'acknowledge',
-        intent: 'warning',
-        title: 'Please complete all fields',
-        description:
-          'To create your rule, all fields are required. Please complete all fields before clicking save, or use cancel to abandon this rule.',
-        actions: { primary: { label: 'OK', value: true } },
-      });
-      return;
-    }
-    if (draftRule) {
-      updateRule(draftRule);
-    }
-    resetDraft();
-  }, [draftRule, openDialog, resetDraft, updateRule]);
-  const handleDeleteRule = useCallback(
-    (ruleId: string) => {
-      void confirm({
-        title: 'Are you sure you want to delete this rule?',
-        description: 'This rule will be removed from the list.',
-        confirmLabel: 'Delete rule',
-        cancelLabel: 'Cancel',
-        intent: 'destructive',
-        onConfirm: () => deleteRule(ruleId),
-      });
-    },
-    [confirm, deleteRule],
-  );
+
   return (
-    <div>
-      <EditRule
+    <div
+      id={id}
+      role="group"
+      aria-labelledby={ariaLabelledBy}
+      aria-describedby={ariaDescribedBy}
+      aria-required={ariaRequired}
+      aria-invalid={ariaInvalid}
+      className="flex flex-col gap-8"
+    >
+      <PreviewRules
+        rules={rules}
         codebook={codebook}
-        rule={draftRule || undefined}
-        onChange={(value) => handleChangeDraft(value as Rule)}
-        onCancel={handleCancelDraft}
-        onSave={handleSaveDraft}
+        ruleTypes={ruleTypes}
+        addButtonLabel={addRuleLabel}
+        onChange={updateRules}
+        hasError={!!ariaInvalid}
       />
 
-      <div>
-        <Heading level="h4">Rules</Heading>
-        <PreviewRules
-          rules={
-            rules as Array<
-              Record<string, unknown> & {
-                id: string;
-              }
-            >
-          }
-          join={join}
-          onClickRule={handleClickRule}
-          onDeleteRule={handleDeleteRule}
-          codebook={codebook}
-          hasError={hasError}
-        />
-        <FieldErrors
-          id={errorId}
-          errors={error ? [error] : []}
-          show={hasError}
-        />
-      </div>
-
-      <div className="mt-5 [&_button]:mr-5">
-        <Button type="button" color="info" onClick={handleCreateAlterRule}>
-          Add alter rule
-        </Button>
-        {allowEdgeRules && (
-          <Button
-            type="button"
-            color="destructive"
-            onClick={handleCreateEdgeRule}
-          >
-            Add edge rule
-          </Button>
-        )}
-        {type === 'query' && (
-          <Button type="button" color="warning" onClick={handleCreateEgoRule}>
-            Add ego rule
-          </Button>
-        )}
-      </div>
-
       {rules.length > 1 && (
-        <div className="mt-10">
-          <Heading level="h4">Must match</Heading>
-          <RuleField
-            component={FrescoRadioGroupField}
-            label="Rule matching"
-            labelHidden
-            options={[
-              { label: 'All rules', value: 'AND' },
-              { label: 'Any rule', value: 'OR' },
-            ]}
-            value={join}
-            onChange={(_event, value) => updateJoin(value as string)}
-          />
-        </div>
+        /*
+          The whole rule set is ONE value of the surrounding form (see
+          `RuleSetFields`), so its parts are not registered fields — hence
+          `UnconnectedField` rather than `ArchitectField`. It carries no rules
+          of its own either: a missing join is reported by `ruleValidator` on
+          the rule set itself, and the same message shown twice is worse than
+          shown once.
+        */
+        <UnconnectedField
+          name="join"
+          component={RadioGroupField}
+          label="Rule Matching"
+          hint="When you have multiple rules, how should matching work?"
+          options={JOIN_OPTIONS}
+          value={join}
+          onChange={(value) => {
+            if (typeof value === 'string') updateJoin(value);
+          }}
+        />
       )}
     </div>
   );
 };
-export default compose<
-  RulesProps,
-  {
-    rules?: Rule[];
-    join?: string;
-    onChange?: (value: unknown) => void;
-    codebook?: Record<string, unknown>;
-    type?: 'filter' | 'query';
-    allowEdgeRules?: boolean;
-    error?: string | null;
-    meta?: Record<string, unknown>;
-  }
->(withDraftRule)(Rules);
+
+export default Rules;

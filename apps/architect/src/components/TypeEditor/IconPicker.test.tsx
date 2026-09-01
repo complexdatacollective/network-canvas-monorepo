@@ -1,27 +1,33 @@
-import { configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import { Field, reducer as formReducer, reduxForm } from 'redux-form';
+import { useContext, type ContextType } from 'react';
 import { describe, expect, it } from 'vitest';
+
+import Field from '@codaco/fresco-ui/form/Field/Field';
+import Form from '@codaco/fresco-ui/form/Form';
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 
 import IconPicker from './IconPicker';
 
-const Harness = reduxForm<{ icon?: string }>({ form: 'icon-picker-test' })(
-  () => <Field name="icon" component={IconPicker} label="Node icon" />,
-);
+type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
 
 describe('IconPicker', () => {
   it('uses shared field semantics and persists a searchable selection', async () => {
-    const store = configureStore({
-      reducer: { form: formReducer },
-      middleware: (getDefaultMiddleware) =>
-        getDefaultMiddleware({ serializableCheck: false }),
-    });
+    let storeApi: StoreApi | null = null;
+    const CaptureStore = () => {
+      storeApi = useContext(FormStoreContext) ?? null;
+      return null;
+    };
 
     render(
-      <Provider store={store}>
-        <Harness initialValues={{ icon: 'Circle' }} />
-      </Provider>,
+      <Form onSubmit={() => ({ success: true })}>
+        <CaptureStore />
+        <Field
+          name="icon"
+          label="Node icon"
+          component={IconPicker}
+          initialValue="Circle"
+        />
+      </Form>,
     );
 
     const trigger = screen.getByRole('combobox', { name: 'Node icon' });
@@ -38,9 +44,7 @@ describe('IconPicker', () => {
     fireEvent.click(screen.getByRole('option', { name: /add-a-person/ }));
 
     await waitFor(() => {
-      expect(store.getState().form['icon-picker-test']?.values?.icon).toBe(
-        'add-a-person',
-      );
+      expect(storeApi?.getState().getFormValues().icon).toBe('add-a-person');
     });
   });
 });

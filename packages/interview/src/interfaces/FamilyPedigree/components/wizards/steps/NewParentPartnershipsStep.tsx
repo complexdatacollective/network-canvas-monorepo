@@ -6,8 +6,8 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { FRAMING_TERMS } from '@codaco/shared-consts';
 
+import { FRAMING_TERMS } from '../../../framingTerms';
 import { useFramedTerms } from '../../../hooks/useFramedTerms';
 import { BioTriadConfigContext } from './BioTriadStep';
 

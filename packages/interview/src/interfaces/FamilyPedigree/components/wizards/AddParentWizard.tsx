@@ -1,31 +1,25 @@
 'use client';
 
 import type { SkipContext } from '@codaco/fresco-ui/dialogs/DialogProvider';
-import type useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldGroup from '@codaco/fresco-ui/form/FieldGroup';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
-import type {
-  FramingId,
-  NcEdge,
-  NcNode,
-  RelationshipType,
-  VariableValue,
-} from '@codaco/shared-consts';
+import type { FramingId, RelationshipType } from '@codaco/protocol-validation';
+import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
 
-import { FamilyPedigreeStoreBridge } from '../../FamilyPedigreeContext';
+import type { OpenPedigreeDialog } from '../../familyPedigreeDialog';
 import { getNodeLabel } from '../../pedigree-layout/utils/getDisplayLabel';
-import type {
-  CommitBatch,
-  FamilyPedigreeStoreApi,
-  VariableConfig,
-} from '../../store';
+import type { CommitBatch, VariableConfig } from '../../store';
 import { getEdgeRelationshipType } from '../../utils/edgeUtils';
+import { writeOwnAttribute } from '../../utils/writeOwnAttributes';
 import type { ParentEdgeTypeOption } from '../quickStartWizard/fieldOptions';
 import PersonFields from '../quickStartWizard/PersonFields';
 import { socialParentCandidates } from './parentCandidates';
-import { extractCustomAttributes } from './transforms/personAttributes';
+import {
+  extractCustomAttributes,
+  runFamilyPedigreeTransform,
+} from './transforms/personAttributes';
 
 const partnershipOptions = [
   { value: 'current', label: 'Current partners' },
@@ -144,7 +138,11 @@ export function transformToCommitBatch(
     [variableConfig.isActiveVariable]: true,
   };
   if (edgeType === 'surrogate') {
-    edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
+    writeOwnAttribute(
+      edgeAttributes,
+      variableConfig.isGestationalCarrierVariable,
+      true,
+    );
   }
 
   const batch: CommitBatch = { nodes: [], edges: [] };
@@ -200,8 +198,7 @@ export function transformToCommitBatch(
 }
 
 export async function openAddParentWizard(
-  openDialog: ReturnType<typeof useDialog>['openDialog'],
-  store: FamilyPedigreeStoreApi,
+  openDialog: OpenPedigreeDialog,
   anchorNodeId: string,
   nodes: Map<string, NcNode>,
   edges: Map<string, NcEdge>,
@@ -241,30 +238,23 @@ export async function openAddParentWizard(
       {
         title: 'Parent details',
         content: () => (
-          <FamilyPedigreeStoreBridge store={store}>
-            <ParentDetailsStep
-              parentTypeOptions={parentTypeOptions}
-              candidateOptions={candidateOptions}
-            />
-          </FamilyPedigreeStoreBridge>
+          <ParentDetailsStep
+            parentTypeOptions={parentTypeOptions}
+            candidateOptions={candidateOptions}
+          />
         ),
       },
       {
         title: 'Partnerships',
         content: () => (
-          <FamilyPedigreeStoreBridge store={store}>
-            <ExistingParentPartnershipsStep existingParents={existingParents} />
-          </FamilyPedigreeStoreBridge>
+          <ExistingParentPartnershipsStep existingParents={existingParents} />
         ),
         skip: (_ctx: SkipContext) => existingParentIds.length === 0,
       },
     ],
     onFinish: (formValues: Record<string, unknown>) => {
-      return transformToCommitBatch(
-        formValues,
-        anchorNodeId,
-        edges,
-        variableConfig,
+      return runFamilyPedigreeTransform(() =>
+        transformToCommitBatch(formValues, anchorNodeId, edges, variableConfig),
       );
     },
   });

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { assetReference } from '../asset-reference.ts';
+
 // Parsed in two stages: a loose shape whose superRefine produces the targeted,
 // author-facing messages, piped into a union that narrows the STATIC TYPE to
 // the two real variants (image XOR concentric circles). The union must accept
@@ -7,7 +9,7 @@ import { z } from 'zod';
 // the friendly message and the pipe stage never fails on its own.
 export const imageOrCirclesBackgroundSchema = z
   .strictObject({
-    image: z.string().min(1).optional(),
+    image: assetReference().optional(),
     concentricCircles: z.number().int().nonnegative().optional(),
     skewedTowardCenter: z.boolean().optional(),
   })
@@ -33,7 +35,7 @@ export const imageOrCirclesBackgroundSchema = z
   .pipe(
     z.union([
       z.strictObject({
-        image: z.string().min(1),
+        image: assetReference(),
         concentricCircles: z.undefined().optional(),
         skewedTowardCenter: z.boolean().optional(),
       }),

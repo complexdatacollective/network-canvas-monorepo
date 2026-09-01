@@ -3,15 +3,28 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AuthStateKind } from '~/lib/auth/AuthContext';
 
-const { mockUseAuth, mockUseLocation, mockNavigate, mockIsRunningInstalled } =
-  vi.hoisted(() => ({
-    mockUseAuth: vi.fn(),
-    mockUseLocation: vi.fn(),
-    mockNavigate: vi.fn(),
-    mockIsRunningInstalled: vi.fn(),
-  }));
+const {
+  mockUseAuth,
+  mockUseLocation,
+  mockNavigate,
+  mockIsRunningInstalled,
+  mockStoredProtocolMigration,
+} = vi.hoisted(() => ({
+  mockUseAuth: vi.fn(),
+  mockUseLocation: vi.fn(),
+  mockNavigate: vi.fn(),
+  mockIsRunningInstalled: vi.fn(),
+  mockStoredProtocolMigration: vi.fn(),
+}));
 
 vi.mock('~/lib/auth/AuthContext', () => ({ useAuth: () => mockUseAuth() }));
+
+// The real hook reaches into Dexie. What the gate is responsible for is when it
+// runs the sweep and what it does while the sweep is pending.
+vi.mock('~/lib/protocol/useStoredProtocolMigration', () => ({
+  useStoredProtocolMigration: (enabled: boolean) =>
+    mockStoredProtocolMigration(enabled),
+}));
 
 vi.mock('wouter', () => ({
   useLocation: () => mockUseLocation(),
@@ -38,14 +51,17 @@ function setup({
   kind,
   location = '/',
   installed = false,
+  migrationPhase = 'settled',
 }: {
   kind: AuthStateKind;
   location?: string;
   installed?: boolean;
+  migrationPhase?: 'pending' | 'settled';
 }) {
   mockUseAuth.mockReturnValue({ kind });
   mockUseLocation.mockReturnValue([location, mockNavigate]);
   mockIsRunningInstalled.mockReturnValue(installed);
+  mockStoredProtocolMigration.mockReturnValue(migrationPhase);
   return render(<AuthGate>{CHILD}</AuthGate>);
 }
 
@@ -88,6 +104,7 @@ describe('AuthGate — appinstalled', () => {
     mockUseLocation.mockReturnValue(['/', mockNavigate]);
     // Simulate installing from a browser tab: display-mode has not flipped yet.
     mockIsRunningInstalled.mockReturnValue(false);
+    mockStoredProtocolMigration.mockReturnValue('settled');
   });
 
   it('navigates to /welcome when appinstalled fires while unconfigured', () => {
@@ -148,5 +165,36 @@ describe('AuthGate — other states unchanged', () => {
     setup({ kind: 'unlocked', location: '/welcome', installed: false });
     expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
     expect(screen.queryByTestId('app-child')).not.toBeInTheDocument();
+  });
+});
+
+describe('AuthGate — stored-protocol migration', () => {
+  it.each([
+    ['unlocked', true],
+    ['unconfigured', true],
+    ['locked', false],
+    ['corrupt', false],
+    ['loading', false],
+  ] as [AuthStateKind, boolean][])(
+    'runs the sweep when %s only if the database is readable',
+    (kind, expected) => {
+      setup({ kind });
+      expect(mockStoredProtocolMigration).toHaveBeenCalledWith(expected);
+    },
+  );
+
+  it('holds the spinner until the sweep settles, so no route can read a stale protocol', () => {
+    setup({ kind: 'unlocked', migrationPhase: 'pending' });
+    expect(screen.queryByTestId('app-child')).not.toBeInTheDocument();
+  });
+
+  it('renders the app once the sweep settles', () => {
+    setup({ kind: 'unlocked', migrationPhase: 'settled' });
+    expect(screen.getByTestId('app-child')).toBeInTheDocument();
+  });
+
+  it('still shows the lock screen while the sweep has not run', () => {
+    setup({ kind: 'locked', migrationPhase: 'pending' });
+    expect(screen.getByTestId('lock-screen')).toBeInTheDocument();
   });
 });

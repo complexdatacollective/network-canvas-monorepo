@@ -1,66 +1,50 @@
-import { useSelector } from 'react-redux';
-import { change, formValueSelector } from 'redux-form';
-
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
+import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import {
-  FRAMING_AUTHOR_LABELS,
-  FRAMING_IDS,
-  type FramingId,
-} from '@codaco/shared-consts';
-import { Section } from '~/components/EditorLayout';
+import { FRAMING_IDS, type FramingId } from '@codaco/protocol-validation';
+import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-import { useAppDispatch } from '~/ducks/hooks';
-import type { RootState } from '~/ducks/store';
-type FramingValue =
-  | {
-      mode: 'fixed';
-      value: FramingId;
-    }
-  | {
-      mode: 'participantChoice';
-    };
+import {
+  useStageFormValue,
+  useStageInitialValue,
+} from '~/components/StageEditor/stageFormHooks';
+
 const FRAMING_MODE_OPTIONS = [
   { value: 'fixed', label: 'Fixed framing' },
   { value: 'participantChoice', label: 'Let the participant choose' },
 ];
+
+/**
+ * Author-facing names for each framing. The framing ids are schema contract
+ * (`@codaco/protocol-validation`); these labels are editor copy, so they live
+ * with the editor that shows them. The participant-facing terminology each
+ * framing selects lives in the interview runtime.
+ */
+const FRAMING_AUTHOR_LABELS: Record<FramingId, string> = {
+  gamete: 'Gamete-based',
+  gendered: 'Gendered',
+};
+
 const FRAMING_VALUE_OPTIONS = FRAMING_IDS.map((value) => ({
   value,
   label: FRAMING_AUTHOR_LABELS[value],
 }));
-const FramingConfig = ({ form }: StageEditorSectionProps) => {
-  const dispatch = useAppDispatch();
-  const formSelector = formValueSelector(form);
-  const framing = useSelector(
-    (state: RootState) =>
-      formSelector(state, 'framing') as FramingValue | undefined,
-  );
-  const mode = framing?.mode ?? 'fixed';
-  const fixedValue: FramingId =
-    framing?.mode === 'fixed' ? framing.value : 'gamete';
-  const handleModeChange = (newMode: unknown) => {
-    if (newMode === 'participantChoice') {
-      dispatch(change(form, 'framing', { mode: 'participantChoice' }));
-    } else {
-      dispatch(change(form, 'framing', { mode: 'fixed', value: 'gamete' }));
-    }
-  };
-  const handleValueChange = (value: string | number | undefined) => {
-    if (typeof value === 'string') {
-      dispatch(change(form, 'framing.value', value));
-    }
-  };
+
+const FramingConfig = (_props: StageEditorSectionProps) => {
+  // `framing.value` only ever registers while the mode field is 'fixed' (it is
+  // conditionally rendered below), so its dormant value drops out of
+  // getFormValues() the moment the mode switches away — the discriminated
+  // union's `participantChoice` variant carries no `value` key, matching the
+  // schema without an explicit clear.
+  const mode = useStageFormValue<string>('framing.mode') ?? 'fixed';
+  const modeInitial = useStageInitialValue<string>('framing.mode');
+  const valueInitial = useStageInitialValue<string>('framing.value');
+
   return (
     <Section
-      title="Framing Configuration"
-      summary={
-        <Paragraph>
-          Choose how the pedigree interface is framed for participants. Fixed
-          framing uses a single consistent terminology, while participant choice
-          allows each participant to select the framing that suits them.
-        </Paragraph>
-      }
+      title="Pedigree framing"
+      description="Choose fixed terminology or let each participant select their preferred framing."
     >
       <Paragraph>
         The framing determines the language the interface uses when talking
@@ -85,21 +69,25 @@ const FramingConfig = ({ form }: StageEditorSectionProps) => {
       <Paragraph className="mb-5">
         Both framings use the same wording for gestational carriers and donors.
       </Paragraph>
-      <RadioGroupField
-        options={FRAMING_MODE_OPTIONS}
+      <ArchitectField
         name="framing.mode"
-        value={mode}
-        onChange={handleModeChange}
+        component={RadioGroupField}
+        label="Framing mode"
+        initialValue={modeInitial}
+        options={FRAMING_MODE_OPTIONS}
       />
 
       {mode === 'fixed' && (
         <div className="mt-5">
-          <NativeSelectField
-            aria-label="Select framing"
-            options={FRAMING_VALUE_OPTIONS}
+          <ArchitectField
             name="framing.value"
-            value={fixedValue}
-            onChange={handleValueChange}
+            component={NativeSelectField}
+            label="Fixed framing terminology"
+            // Falls back to the canonical default so switching from
+            // participantChoice to fixed always registers a valid value —
+            // the enhancer's old `handleModeChange` default.
+            initialValue={valueInitial ?? 'gamete'}
+            options={FRAMING_VALUE_OPTIONS}
           />
         </div>
       )}

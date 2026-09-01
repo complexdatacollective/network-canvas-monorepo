@@ -1,0 +1,13 @@
+- main:
+  - status:
+    - heading "Who do you know?" [level=2]
+  - listbox "Added Nodes":
+    - option "Person"
+  - textbox "Person name":
+    - /placeholder: Type a label and press enter...
+  - button "Quick add input" [pressed]
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

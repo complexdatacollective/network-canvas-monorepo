@@ -1,0 +1,13 @@
+- main:
+  - status:
+    - heading "Please build your family pedigree." [level=2]
+  - heading "Build your family pedigree" [level=3]
+  - paragraph: A family pedigree is a diagram of your relatives and how they are connected to you.
+  - paragraph: To begin, we will ask a few quick questions and sketch out your immediate family for you. From there, you can click on any person to add more relatives and fill in their details.
+  - paragraph: Click the button below to get started.
+  - button "Build family pedigree"
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

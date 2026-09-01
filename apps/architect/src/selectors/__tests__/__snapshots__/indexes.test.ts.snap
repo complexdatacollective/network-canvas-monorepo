@@ -2,10 +2,7 @@
 
 exports[`indexes selectors > getAssetIndex() > extracts asset references into index 1`] = `
 {
-  "stages[6].background.image": "1234-asset-5",
-  "stages[6].dataSource": "1234-asset-3",
-  "stages[6].items[0].content": "1234-asset-4",
-  "stages[6].panels[0].dataSource": "1234-asset-2",
+  "stages.6.items.0.content": "1234-asset-4",
 }
 `;
 

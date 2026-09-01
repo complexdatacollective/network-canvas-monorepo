@@ -1,7 +1,7 @@
 'use client';
 
 import { LayoutGroup } from 'motion/react';
-import { type ComponentProps, useId } from 'react';
+import { type ComponentProps, useId, useRef } from 'react';
 
 import { cx } from '../utils/cva';
 import FormErrorsList from './FormErrors';
@@ -35,10 +35,17 @@ type FormProps = {
 export function FormWithoutProvider(props: FormProps) {
   const { onSubmit, children, className, ...rest } = props;
 
+  // Scopes the invalid-submit search to THIS form's own markup. Two forms can
+  // be mounted at once — a dialog over the page behind it, two interview
+  // slides mid-transition — and they render the same field paths, so an
+  // unscoped search can hand the earlier form's control to the later form's
+  // failed submit.
+  const formRef = useRef<HTMLFormElement>(null);
+
   const { formProps, formErrors } = useForm({
     onSubmit,
     onSubmitInvalid: (errors) => {
-      focusFirstError(errors);
+      focusFirstError(errors, formRef.current);
     },
   });
 
@@ -46,6 +53,7 @@ export function FormWithoutProvider(props: FormProps) {
 
   return (
     <form
+      ref={formRef}
       noValidate // Don't show native HTML validation UI
       className={cx('w-full', className)}
       onSubmit={formProps.onSubmit}

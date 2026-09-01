@@ -37,26 +37,64 @@ import { type Locator, type Page } from '@playwright/test';
 // the click still resolves against `page`, same as the unscoped case.
 export async function createVariableViaSpotlight(
   page: Page,
-  opts: { variableName: string; buttonName?: string; scope?: Locator },
+  opts: {
+    variableName: string;
+    buttonName?: string;
+    scope?: Locator;
+    // A locator that becomes visible once the pick/create actually took
+    // effect (the picker's own 'Change variable' button for simple-create
+    // pickers; the NewVariableWindow's 'Variable name' textbox for
+    // locked-type pickers whose create path opens that window instead).
+    // When set, the outcome is REQUIRED and the whole interaction retries
+    // once if it doesn't materialize: a concurrent codebook commit (a
+    // variable created moments earlier validates asynchronously) can
+    // re-render the spotlight list mid-click and swallow the row click
+    // entirely — observed live via trace: the click completed, the
+    // spotlight closed, and nothing was created. Deliberately NOT
+    // defaulted: each caller knows what its picker's success looks like,
+    // and a wrong default (waiting for 'Change variable' while
+    // NewVariableWindow is open) would retry into a modal.
+    until?: Locator;
+  },
 ): Promise<void> {
-  await (opts.scope ?? page)
-    .getByRole('button', { name: opts.buttonName ?? 'Select variable' })
-    .click();
-  const search = page.getByRole('searchbox', {
-    name: 'Find or create a variable',
+  const trigger = (opts.scope ?? page).getByRole('button', {
+    name: opts.buttonName ?? 'Select attribute',
   });
-  await search.fill(opts.variableName);
-  const createRow = page
-    .getByTestId('spotlight-list-item')
-    .filter({ hasText: 'Create new variable called' })
-    .first();
-  if (await createRow.count()) {
-    await createRow.click();
-  } else {
-    // No exact "create" row (e.g. the typed name exactly matches an existing
-    // option) — Enter selects the single filtered match
-    // (VariableSpotlight.tsx's `handleInputKeyDown`).
-    await search.press('Enter');
+
+  const attempt = async () => {
+    await trigger.click();
+    const search = page.getByRole('searchbox', {
+      name: 'Find or create an attribute',
+    });
+    await search.fill(opts.variableName);
+    // The list may still show the pre-filter rows for a beat after the
+    // fill; branching on a count() taken then either misses the create row
+    // or presses Enter against a stale filter. Wait until some row reflects
+    // the typed term — both the create row (`Create new variable called
+    // "<term>".`) and any existing-match row contain it.
+    const rows = page.getByTestId('spotlight-list-item');
+    await rows.filter({ hasText: opts.variableName }).first().waitFor();
+    const createRow = rows
+      .filter({ hasText: 'Create new attribute called' })
+      .first();
+    if (await createRow.count()) {
+      await createRow.click();
+    } else {
+      // No "create" row (the typed name exactly matches an existing
+      // option) — Enter selects the single filtered match
+      // (VariableSpotlight.tsx's `handleInputKeyDown`).
+      await search.press('Enter');
+    }
+  };
+
+  await attempt();
+  if (opts.until) {
+    try {
+      await opts.until.waitFor({ state: 'visible', timeout: 4_000 });
+    } catch {
+      await attempt();
+      await opts.until.waitFor({ state: 'visible' });
+    }
   }
 }
 
@@ -79,9 +117,9 @@ export async function createVariableViaSpotlight(
 // disabled — only click through it when it's actually interactive.
 //
 // Options (components/Options/Options.tsx) only reveal once an
-// ordinal/categorical type is set. "Add new" commits a blank row straight
-// into the array (`immediateAdd` — no separate confirm-to-add step), but
-// Option.tsx's own mount effect immediately opens that blank row into edit
+// ordinal/categorical type is set. "Create new option" commits a blank row
+// straight into the array (`immediateAdd` — no separate confirm-to-add step),
+// but Option.tsx's own mount effect immediately opens that blank row into edit
 // mode. Only one option can be "being edited" at a time (ArrayField tracks a
 // single editingId) — opening a row collapses whichever one was previously
 // edited back to a read-only summary line ("label — value") and unmounts its
@@ -93,34 +131,65 @@ export async function createVariableViaSpotlight(
 // moving on; the Check-icon button (aria-label "Finish editing option") just
 // collapses it back to summary. We click that after each option, before
 // adding the next, to avoid depending on the auto-open effect racing our own
-// next "Add new" click.
+// next "Create new option" click.
 export async function createVariableWithOptions(
   page: Page,
   opts: {
     variableName: string;
-    options: string[];
+    options: (string | OptionRow)[];
     type?: 'ordinal' | 'categorical';
   },
 ): Promise<void> {
   await page
-    .getByRole('textbox', { name: 'Variable name' })
+    .getByRole('textbox', { name: 'Attribute name' })
     .fill(opts.variableName);
 
   const typeLabel = opts.type === 'ordinal' ? 'Ordinal' : 'Categorical';
-  const typeCombobox = page.getByRole('combobox', { name: 'Variable type' });
+  const typeCombobox = page.getByRole('combobox', { name: 'Attribute type' });
   if (await typeCombobox.isEnabled()) {
     await typeCombobox.click();
     await page.getByRole('option', { name: typeLabel }).click();
   }
 
-  for (const optionLabel of opts.options) {
-    await page.getByRole('button', { name: 'Add new' }).click();
-    await page.getByRole('textbox', { name: 'Label' }).fill(optionLabel);
-    await page
-      .getByRole('textbox', { name: 'Value' })
-      .fill(optionLabel.toLowerCase());
+  await fillOptionRows(
+    page.getByRole('dialog', { name: 'Create New Attribute' }),
+    opts.options.map((option) =>
+      typeof option === 'string'
+        ? { label: option, value: option.toLowerCase() }
+        : option,
+    ),
+  );
+
+  const saveAndClose = page.getByRole('button', { name: 'Save and Close' });
+  await saveAndClose.click();
+  // Wait out the dialog's exit animation before the caller interacts with
+  // controls behind it (see prompts.ts for the shared-dialog-form hazard).
+  await saveAndClose.waitFor({ state: 'detached' });
+}
+
+export type OptionRow = { label: string; value: string };
+
+// Fill an Options editor's rows (components/Options/*), shared between the
+// NewVariableWindow flow above and the form-field dialog's
+// 'Categorical/Ordinal options' field (editor-sections/form-field-controls.ts).
+// `scope` names WHICH editor to fill, not which of
+// several same-named buttons to press: every options list is now the only
+// "Create new option" on its surface. The row edit fields are page-unique
+// because only one option row is ever open (see the Option.tsx notes above).
+// The Value input coerces number-like strings to numbers on write (Option.tsx
+// parseOptionValue: `'5'` → 5, `'-2'` → -2), so callers pass raw strings for
+// both numeric and string-valued options.
+export async function fillOptionRows(
+  scope: Locator,
+  rows: OptionRow[],
+): Promise<void> {
+  const page = scope.page();
+  for (const row of rows) {
+    await scope
+      .getByRole('button', { name: 'Create new option', exact: true })
+      .click();
+    await page.getByRole('textbox', { name: 'Label' }).fill(row.label);
+    await page.getByRole('textbox', { name: 'Value' }).fill(row.value);
     await page.getByRole('button', { name: 'Finish editing option' }).click();
   }
-
-  await page.getByRole('button', { name: 'Save and Close' }).click();
 }

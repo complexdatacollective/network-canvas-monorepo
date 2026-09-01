@@ -1,26 +1,23 @@
 import GeoJSONThumbnail from '~/components/Thumbnail/GeoJSON';
 
-import File, { type FileInputPropsWithoutHOC } from '../File';
+import File, { type FileInputProps } from '../File';
 
 type GeoDataSourceProps = Omit<
-  FileInputPropsWithoutHOC,
+  FileInputProps,
   'type' | 'selected' | 'children'
 > & {
   canUseExisting?: boolean;
 };
 
-const GeoDataSource = (props: GeoDataSourceProps) => {
-  const { input } = props;
-  return (
-    <File
-      type="geojson"
-      selected={input.value}
-      // eslint-disable-next-line react/jsx-props-no-spreading
-      {...props}
-    >
-      {(id: string) => <GeoJSONThumbnail id={id} />}
-    </File>
-  );
-};
+// `canUseExisting` is accepted for call-site symmetry with `DataSource` but has
+// no geospatial equivalent, so it is dropped rather than forwarded onto the DOM.
+const GeoDataSource = ({
+  canUseExisting: _canUseExisting,
+  ...props
+}: GeoDataSourceProps) => (
+  <File type="geojson" {...props}>
+    {(id: string) => <GeoJSONThumbnail id={id} />}
+  </File>
+);
 
 export default GeoDataSource;

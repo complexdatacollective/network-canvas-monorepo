@@ -66,7 +66,7 @@ Pin every non-`actions/*` reference across all workflows to a full 40-character 
 
 Third-party actions in scope:
 
-- `pnpm/action-setup@v5`
+- `pnpm/setup@v2`
 - `changesets/action@v1`
 - `chromaui/action@v11`
 - `softprops/action-gh-release@v2`
@@ -78,7 +78,7 @@ Run:
 
 ```bash
 for ref in \
-  "pnpm/action-setup@v5" \
+  "pnpm/setup@v2" \
   "changesets/action@v1" \
   "chromaui/action@v11" \
   "softprops/action-gh-release@v2" \
@@ -104,13 +104,13 @@ Apply the resolved SHAs. The format is: `uses: <repo>@<sha>  # <original-version
 Replace every occurrence of:
 
 ```yaml
-uses: pnpm/action-setup@v5
+uses: pnpm/setup@v2
 ```
 
 with (substituting the resolved SHA from Step 1):
 
 ```yaml
-uses: pnpm/action-setup@<resolved-sha> # v5
+uses: pnpm/setup@<resolved-sha> # v2
 ```
 
 Replace:
@@ -125,15 +125,15 @@ with:
 uses: changesets/action@<resolved-sha> # v1
 ```
 
-There are 4 occurrences of `pnpm/action-setup@v5` and 1 of `changesets/action@v1` in this file.
+There are 4 occurrences of `pnpm/setup@v2` and 1 of `changesets/action@v1` in this file.
 
 - [ ] **Step 4: Update `chromatic.yml`**
 
-Replace both occurrences of `pnpm/action-setup@v5` and both occurrences of `chromaui/action@v11` with their SHA-pinned forms (same comment-suffix pattern).
+Replace both occurrences of `pnpm/setup@v2` and both occurrences of `chromaui/action@v11` with their SHA-pinned forms (same comment-suffix pattern).
 
 - [ ] **Step 5: Update `development-protocol-main.yml`**
 
-Replace the single `pnpm/action-setup@v5` reference.
+Replace the single `pnpm/setup@v2` reference.
 
 - [ ] **Step 6: Update `development-protocol-release.yml`**
 
@@ -145,7 +145,7 @@ Replace `dorny/paths-filter@v3` with its SHA-pinned form.
 
 - [ ] **Step 8: Update `documentation-test-redirects.yml`**
 
-Replace `dorny/paths-filter@v3` and `pnpm/action-setup@v5` with their SHA-pinned forms.
+Replace `dorny/paths-filter@v3` and `pnpm/setup@v2` with their SHA-pinned forms.
 
 - [ ] **Step 9: Verify `interview-e2e.yml` has no third-party actions**
 

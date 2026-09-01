@@ -1,8 +1,18 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { useContext, type ContextType, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Provider } from 'react-redux';
-import { Field, reducer as formReducer, reduxForm } from 'redux-form';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+
+import Form from '@codaco/fresco-ui/form/Form';
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 
 vi.mock('~/components/VariablePill', () => ({
   ConnectedVariablePill: () => (
@@ -15,90 +25,185 @@ vi.mock('../VariableSpotlight', () => ({
   default: ({
     open,
     onSelect,
-    onCancel,
+    onOpenChange,
+    onCreateOption,
+    shouldPropagateBlur,
   }: {
     open: boolean;
     onSelect: (value: string) => void;
-    onCancel: () => void;
+    onOpenChange: (open: boolean) => void;
+    onCreateOption: (value: string) => void;
+    shouldPropagateBlur?: () => boolean;
   }) =>
-    open ? (
-      <div role="dialog" aria-label="Variable library">
-        <button type="button" onClick={() => onSelect('age')}>
-          Choose age
-        </button>
-        <button type="button" onClick={onCancel}>
-          Cancel selection
-        </button>
-      </div>
-    ) : null,
+    open
+      ? createPortal(
+          <div
+            role="dialog"
+            aria-label="Attribute library"
+            data-variable-spotlight=""
+            onBlur={(event) => {
+              if (!shouldPropagateBlur?.()) event.stopPropagation();
+            }}
+          >
+            <button
+              autoFocus
+              type="button"
+              onClick={(event) => {
+                onSelect('age');
+                // The real Base UI popup emits a final focusout as it unmounts.
+                // Keep the mock mounted until this handler returns so jsdom can
+                // exercise the same answered-selection boundary.
+                event.currentTarget.blur();
+              }}
+            >
+              Choose age
+            </button>
+            <button type="button" onClick={() => onCreateOption('height')}>
+              Create new attribute called height
+            </button>
+            <button type="button" onClick={() => onOpenChange(false)}>
+              Cancel selection
+            </button>
+          </div>,
+          document.body,
+        )
+      : null,
 }));
 
-import VariablePicker from '../VariablePicker';
+import ArchitectField from '../../../ArchitectField';
+import { VariablePickerControl as VariablePicker } from '../VariablePicker';
 
 const options = [
   { label: 'Age', value: 'age', type: 'number' },
   { label: 'New variable', value: 'new-variable' },
 ];
 
-const ReduxHarness = reduxForm<{ variable?: string }>({
-  form: 'variable-picker-test',
-})(() => (
-  <Field
-    name="variable"
-    component={VariablePicker}
-    label="Variable"
-    required
-    options={options}
-  />
-));
+type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
+
+let storeApi: StoreApi | null = null;
+const CaptureStore = () => {
+  storeApi = useContext(FormStoreContext) ?? null;
+  return null;
+};
+
+const reduxStore = configureStore({
+  reducer: {
+    protocol: () => ({
+      present: {
+        codebook: {
+          node: { person: { variables: { age: {} } } },
+          edge: {},
+          ego: {},
+        },
+      },
+    }),
+  },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({ serializableCheck: false }),
+});
+
+const renderPicker = (field: ReactNode) => {
+  storeApi = null;
+
+  return render(
+    <Provider store={reduxStore}>
+      <Form onSubmit={() => ({ success: true })}>
+        <CaptureStore />
+        {field}
+        <button type="submit">Save</button>
+      </Form>
+    </Provider>,
+  );
+};
 
 const setup = (initialValue?: string) => {
-  const store = configureStore({
-    reducer: {
-      form: formReducer,
-      protocol: () => ({
-        present: {
-          codebook: {
-            node: { person: { variables: { age: {} } } },
-            edge: {},
-            ego: {},
-          },
-        },
-      }),
-    },
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
-
-  render(
-    <Provider store={store}>
-      <ReduxHarness initialValues={{ variable: initialValue }} />
-    </Provider>,
+  const view = renderPicker(
+    <ArchitectField
+      name="variable"
+      label="Attribute"
+      component={VariablePicker}
+      initialValue={initialValue}
+      validation={{ required: true }}
+      options={options}
+    />,
   );
 
   return {
-    getValue: () =>
-      store.getState().form['variable-picker-test']?.values?.variable as
-        | string
-        | undefined,
+    ...view,
+    getValue: () => {
+      if (!storeApi) throw new Error('form store was not captured');
+      return storeApi.getState().getFormValues().variable as string | undefined;
+    },
   };
 };
 
 describe('VariablePicker', () => {
   beforeAll(() => {
     Element.prototype.scrollIntoView = vi.fn();
+    // fresco-ui's default `onSubmitInvalid` scrolls the first invalid field
+    // into view; jsdom implements no scrolling at all.
+    Element.prototype.scrollTo ??= () => undefined;
   });
 
   it('uses the shared field label and group semantics', () => {
     setup();
 
-    expect(screen.getByRole('group', { name: 'Variable' })).toBeInTheDocument();
     expect(
-      screen.getByRole('group', { name: 'Variable' }),
-    ).toHaveAccessibleDescription('Required');
-    expect(
-      screen.getByRole('button', { name: 'Select variable' }),
+      screen.getByRole('group', { name: 'Attribute' }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: 'Attribute' }),
+    ).toHaveAccessibleDescription(/Required/);
+    expect(
+      screen.getByRole('button', { name: 'Select attribute' }),
+    ).toBeInTheDocument();
+  });
+
+  it('applies a caller class name to the picker root', () => {
+    const { container } = renderPicker(
+      <ArchitectField
+        name="variable"
+        label="Attribute"
+        component={VariablePicker}
+        className="@min-lg:w-[50cqw]"
+        options={options}
+      />,
+    );
+
+    expect(container.querySelector('[data-name="variable"]')).toHaveClass(
+      '@min-lg:w-[50cqw]',
+    );
+  });
+
+  it('renders label, hint and errors through the BaseField slots only', async () => {
+    const { container } = renderPicker(
+      <ArchitectField
+        name="variable"
+        label="Layout attribute"
+        hint="Positions are stored against this attribute."
+        component={VariablePicker}
+        validation={{ required: true }}
+        options={options}
+      />,
+    );
+
+    // The picker used to hand-roll BaseField's label/hint/required/error
+    // layout. One implementation now owns all four, keyed on the same seam
+    // the Issues panel and the E2E specs target.
+    const field = container.querySelector('[data-field-name="variable"]');
+    expect(field).not.toBeNull();
+    expect(field?.querySelectorAll('label')).toHaveLength(1);
+
+    const group = screen.getByRole('group', { name: 'Layout attribute' });
+    expect(group).toHaveAccessibleDescription(
+      /Positions are stored against this attribute\./,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByTestId('variable-field-error')).toHaveTextContent(
+      'This field is required.',
+    );
   });
 
   it('renders the selected variable using the appropriate pill', () => {
@@ -106,7 +211,7 @@ describe('VariablePicker', () => {
 
     expect(screen.getByTestId('connected-variable-pill')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Change variable' }),
+      screen.getByRole('button', { name: 'Change attribute' }),
     ).toBeInTheDocument();
   });
 
@@ -116,13 +221,154 @@ describe('VariablePicker', () => {
     expect(screen.getByTestId('variable-pill')).toBeInTheDocument();
   });
 
-  it('persists a spotlight selection to Redux Form', () => {
+  it('persists a spotlight selection to the form store', () => {
     const { getValue } = setup();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Select variable' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Select attribute' }));
     fireEvent.click(screen.getByRole('button', { name: 'Choose age' }));
 
     expect(getValue()).toBe('age');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('does not validate the field while focus moves into its portalled spotlight', async () => {
+    const { getValue } = setup();
+    if (!storeApi) throw new Error('form store was not captured');
+
+    // Mirrors a newly-added AssignAttributes row: the owning field is dirty
+    // before its picker opens, but the researcher has not left that field.
+    act(() => {
+      storeApi?.getState().setFieldValue('variable', '');
+    });
+
+    const selectAttribute = screen.getByRole('button', {
+      name: 'Select attribute',
+    });
+    selectAttribute.focus();
+    fireEvent.click(selectAttribute);
+    // Base UI can move focus through its guards while opening a nested modal,
+    // in which case the browser reports no related target for this blur. The
+    // picker's open state still makes it part of the same field interaction.
+    fireEvent.blur(selectAttribute, { relatedTarget: null });
+
+    const chooseAge = screen.getByRole('button', { name: 'Choose age' });
+    await waitFor(() => expect(chooseAge).toHaveFocus());
+    expect(screen.queryByTestId('variable-field-error')).toBeNull();
+
+    // The same interaction still commits the option and closes the picker on
+    // its first click.
+    fireEvent.click(chooseAge);
+    expect(getValue()).toBe('age');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(storeApi.getState().getFieldState('variable')?.meta.isBlurred).toBe(
+      true,
+    );
+  });
+
+  it('does not blur an owning array while a nested row is still incomplete', async () => {
+    const onArrayBlur = vi.fn();
+    const onChange = vi.fn();
+    render(
+      <div
+        data-field-name="additionalAttributes"
+        data-field-path="additionalAttributes"
+        onBlur={onArrayBlur}
+      >
+        <div data-field-name="additionalAttributes[0].variable">
+          <VariablePicker
+            name="additionalAttributes[0].variable"
+            value=""
+            onChange={onChange}
+            options={options}
+          />
+        </div>
+      </div>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select attribute' }));
+    const chooseAge = screen.getByRole('button', { name: 'Choose age' });
+    await waitFor(() => expect(chooseAge).toHaveFocus());
+    onArrayBlur.mockClear();
+    fireEvent.click(chooseAge);
+
+    expect(onChange).toHaveBeenCalledWith('age');
+    expect(onArrayBlur).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Creating a variable is a two-step write: the picker clears the field
+   * (`onChange('')`, which validates and raises "This field is required.")
+   * and the host then writes the real id with `setFieldValue`. The host write
+   * used to leave the message and the invalid styling in place, so the field
+   * showed the new variable's pill and a red "required" error at the same
+   * time.
+   *
+   * Filed as persisting "until reopen"; it in fact also cleared on the next
+   * save attempt, because submit revalidates everything. Both are pinned here
+   * — reopening the editor is NOT what fixes it, and this must not degrade
+   * into the reported behaviour either.
+   */
+  describe('creating a variable from the picker', () => {
+    const createVariable = () => {
+      const view = setup();
+      const setFieldValue = () => {
+        if (!storeApi) throw new Error('form store was not captured');
+        return storeApi.getState().setFieldValue;
+      };
+
+      // Raise the error first, exactly as a failed save does.
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+      return { ...view, setFieldValue };
+    };
+
+    it('clears the required error as soon as the created variable is written', async () => {
+      const { setFieldValue, getValue } = createVariable();
+
+      expect(
+        await screen.findByTestId('variable-field-error'),
+      ).toHaveTextContent('This field is required.');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Select attribute' }));
+      // The picker's own create path: clear, close, hand the name to the host.
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'Create new attribute called height',
+        }),
+      );
+      // What `withFieldsHandlers.handleNewVariable` does next.
+      act(() => {
+        setFieldValue()('variable', 'height');
+      });
+
+      expect(getValue()).toBe('height');
+      expect(screen.queryByTestId('variable-field-error')).toBeNull();
+      expect(
+        screen.getByRole('group', { name: 'Attribute' }),
+      ).not.toHaveAttribute('aria-invalid', 'true');
+      // And the control itself has moved on.
+      expect(
+        screen.getByRole('button', { name: 'Change attribute' }),
+      ).toBeInTheDocument();
+    });
+
+    it('does not need the editor reopened, or a second save, to clear it', async () => {
+      const { setFieldValue } = createVariable();
+      await screen.findByTestId('variable-field-error');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Select attribute' }));
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'Create new attribute called height',
+        }),
+      );
+      act(() => {
+        setFieldValue()('variable', 'height');
+      });
+
+      // No remount, no second submit — the assertion the filed description
+      // would fail.
+      expect(screen.queryByTestId('variable-field-error')).toBeNull();
+    });
   });
 });

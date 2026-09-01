@@ -2,12 +2,24 @@ import { debounce } from 'es-toolkit';
 import { type ReactNode, useCallback, useEffect, useId, useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
+import {
+  type FieldElements,
+  fieldDescribedBy,
+  fieldElementIds,
+} from '../Field/fieldElements';
 import type {
   FieldSlotController,
   FieldValue,
   ValidationPropsCatalogue,
 } from '../Field/types';
-import { useFieldNamespace } from '../FieldNamespace';
+import {
+  type FieldNameMode,
+  resolveFieldName,
+  resolveFieldPath,
+  useFieldNamespace,
+  useFieldNamespacePath,
+} from '../FieldNamespace';
+import { useShouldDiscardFieldOnUnmount } from '../FieldUnmountPolicy';
 import type { FieldState, ValidationContext } from '../store/types';
 import { validationPropKeys } from '../validation/functions';
 import {
@@ -25,7 +37,7 @@ import useFormStore from './useFormStore';
  * For fields without validateOnChange: shows errors after the field has been
  * blurred, is dirty, and validation has completed.
  */
-function shouldShowFieldError(
+export function shouldShowFieldError(
   fieldState: FieldState | undefined,
   fieldErrors: string[] | null,
   validateOnChange: boolean,
@@ -63,21 +75,52 @@ type UseFieldResult = {
     isValid: boolean;
   };
   containerProps: {
-    'data-field-name': string; // Used for scrolling to field errors
+    'data-field-name': string;
+    'data-field-path': string; // Canonical internal key used to focus errors
     // Validate-on-blur is scoped to the whole field: this fires on focusout
     // bubbling from any descendant, so moving focus to an in-field control
     // (a slot button, a sibling radio…) does not validate prematurely.
     'onBlur': (e: React.FocusEvent<HTMLElement>) => void;
   };
   fieldProps: {
+    /**
+     * The stored value, verbatim — which is NOT necessarily a value of the
+     * shape the control's own props declare.
+     *
+     * CONTRACT: a control connected through `Field`/`useField` MUST render
+     * without throwing for any `FieldValue` shape it is handed.
+     *
+     * The form store owns the value, and the resets that follow a change of
+     * type — an Architect rule swapping its attribute from boolean to
+     * categorical, a cascade clearing a dependent field — run as observer
+     * effects AFTER the render commits. So there is always a window of one
+     * render in which a control is holding the previous field's value. A
+     * control that throws during that render never commits it, the effect that
+     * would have replaced the value never runs, and the value stays foreign:
+     * the reset can only ever arrive behind a render that survived.
+     *
+     * Controls satisfy this by normalising for RENDERING alone —
+     * `Array.isArray(v) ? v : []`, `typeof v === 'string' ? v : ''` — and
+     * showing the empty/unselected state for that one pass. What `onChange`
+     * emits for a real interaction is unaffected.
+     *
+     * Enforced for every control in `form/fields/**` by
+     * `form/fields/__tests__/fieldValueContract.test.tsx`.
+     */
     'value': FieldValue;
     'onChange': (value: FieldValue) => void;
     'disabled': boolean;
     'readOnly': boolean;
     'aria-required': boolean; // Indicates if the field is required
     'aria-invalid': boolean; // Indicates if the field is invalid
-    'aria-describedby': string; // IDs of elements that provide additional information about the field
-    'aria-labelledby': string; // ID of the visible field label
+    // IDs of elements that provide additional information about the field.
+    // `undefined` when the caller renders none of them, so the attribute is
+    // omitted rather than emitted empty.
+    'aria-describedby': string | undefined;
+    // ID of the visible field label. `undefined` when the caller renders no
+    // label element — a reference to one that does not exist would displace
+    // the control's own `aria-label` and leave it unnamed.
+    'aria-labelledby': string | undefined;
     'aria-disabled': boolean; // Indicates if the field is disabled
     'aria-readonly': boolean; // Indicates if the field is read-only
   };
@@ -94,6 +137,7 @@ const DEFAULT_VALIDATE_ON_CHANGE_DELAY = 1000;
 
 type UseFieldConfig = {
   name: string;
+  nameMode?: FieldNameMode;
   initialValue?: FieldValue;
   showValidationHints?: boolean;
   /**
@@ -120,19 +164,64 @@ type UseFieldConfig = {
    * field. Off by default — the field is the unit of focus.
    */
   validateOnControlBlur?: boolean;
+  /**
+   * The caller's own hint content, if any. Only its presence matters here:
+   * it shares the `${id}-hint` element with the validation summary, and
+   * `aria-describedby` must not name an element that was never rendered.
+   */
+  hint?: ReactNode;
+  /**
+   * Which of the elements `fieldElementIds` names the caller actually renders.
+   *
+   * `fieldProps` points `aria-labelledby` and `aria-describedby` at those IDs,
+   * and an IDREF that resolves to nothing is worse than no reference at all: a
+   * dangling `aria-labelledby` outranks the control's own `aria-label` in the
+   * accessible-name computation, so the control can end up with no name.
+   *
+   * Defaults to naming nothing, so a caller that spreads `fieldProps` onto
+   * markup of its own is correct without knowing this option exists. `Field`,
+   * which renders the control inside a `BaseField`, passes
+   * `BASE_FIELD_ELEMENTS` from the same file as that markup; a caller that
+   * renders only its own `FieldErrors` region passes `{ error: true }`.
+   */
+  renderedElements?: FieldElements;
 } & Partial<ValidationPropsCatalogue>;
+
+// A caller that says nothing renders none of BaseField's elements, so
+// `fieldProps` names none of them. Hoisted so the default is one stable object.
+const NO_FIELD_ELEMENTS: FieldElements = {};
 
 export function useField(config: UseFieldConfig): UseFieldResult {
   const {
     name,
+    nameMode = 'legacy',
     initialValue,
     showValidationHints = false,
     validationContext,
+    hint,
+    renderedElements = NO_FIELD_ELEMENTS,
     ...validationProps
   } = config;
 
-  const namespace = useFieldNamespace();
-  const resolvedName = namespace ? `${namespace}.${name}` : name;
+  const namespace = useFieldNamespacePath();
+  const namespaceName = useFieldNamespace();
+  const resolvedPath = useMemo(
+    () => resolveFieldPath(namespace, name, nameMode),
+    [namespace, name, nameMode],
+  );
+  const resolvedName = resolveFieldName(namespace, name, nameMode);
+  const publicResolvedName = namespaceName ? `${namespaceName}.${name}` : name;
+  const resolvedValidationContext = useMemo(
+    () =>
+      namespace.length > 0 && validationContext
+        ? {
+            ...validationContext,
+            formValueNamespace: namespaceName,
+            formValueNamespacePath: namespace,
+          }
+        : validationContext,
+    [namespace, namespaceName, validationContext],
+  );
 
   const id = useId();
 
@@ -149,12 +238,15 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   const validationPropsJson = JSON.stringify(validationOnlyProps);
 
   // Include validationContext in the props passed to makeValidationFunction
-  const propsWithContext = { ...validationProps, validationContext };
+  const propsWithContext = {
+    ...validationProps,
+    validationContext: resolvedValidationContext,
+  };
 
   const validation = useMemo(
     () => makeValidationFunction(propsWithContext),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [validationPropsJson, validationContext],
+    [validationPropsJson, resolvedValidationContext],
   );
 
   // Memoize the validation summary (only compute if showValidationHints is true)
@@ -162,20 +254,30 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     () =>
       showValidationHints ? makeValidationHints(propsWithContext) : undefined,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [showValidationHints, validationPropsJson, validationContext],
+    [showValidationHints, validationPropsJson, resolvedValidationContext],
   );
 
-  const fieldState = useFormStore((state) => state.getFieldState(resolvedName));
+  const fieldState = useFormStore((state) =>
+    state.pathOperations
+      ? state.pathOperations.getFieldState(resolvedPath)
+      : state.getFieldState(publicResolvedName),
+  );
   const isSubmitting = useFormStore((state) => state.isSubmitting);
 
   const fieldErrors = useFormStore(
-    useShallow((state) => state.getFieldErrors(resolvedName)),
+    useShallow((state) =>
+      state.pathOperations
+        ? state.pathOperations.getFieldErrors(resolvedPath)
+        : state.getFieldErrors(publicResolvedName),
+    ),
   );
+  const pathOperations = useFormStore((store) => store.pathOperations);
   const registerField = useFormStore((store) => store.registerField);
   const unregisterField = useFormStore((store) => store.unregisterField);
   const setFieldValue = useFormStore((store) => store.setFieldValue);
   const setFieldBlurred = useFormStore((store) => store.setFieldBlurred);
   const validateField = useFormStore((store) => store.validateField);
+  const shouldDiscardOnUnmount = useShouldDiscardFieldOnUnmount();
 
   // Disable fields while form is submitting
   const isDisabled = isSubmitting || config.disabled;
@@ -191,14 +293,37 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     validateOnChange,
   );
 
+  const validateResolvedField = useCallback(() => {
+    const request = pathOperations
+      ? pathOperations.validateField(resolvedPath)
+      : validateField(publicResolvedName);
+    void request;
+  }, [pathOperations, publicResolvedName, resolvedPath, validateField]);
+
+  const setResolvedFieldValue = useCallback(
+    (value: FieldValue) => {
+      if (pathOperations) {
+        pathOperations.setFieldValue(resolvedPath, value);
+        return;
+      }
+      setFieldValue(publicResolvedName, value);
+    },
+    [pathOperations, publicResolvedName, resolvedPath, setFieldValue],
+  );
+
+  const setResolvedFieldBlurred = useCallback(() => {
+    if (pathOperations) {
+      pathOperations.setFieldBlurred(resolvedPath);
+      return;
+    }
+    setFieldBlurred(publicResolvedName);
+  }, [pathOperations, publicResolvedName, resolvedPath, setFieldBlurred]);
+
   // Create a debounced validation function for validateOnChange
   // This prevents excessive validation calls while the user is typing
   const debouncedValidate = useMemo(() => {
-    const validate = (fieldName: string) => {
-      void validateField(fieldName);
-    };
-    return debounce(validate, validateOnChangeDelay);
-  }, [validateField, validateOnChangeDelay]);
+    return debounce(validateResolvedField, validateOnChangeDelay);
+  }, [validateResolvedField, validateOnChangeDelay]);
 
   // Cancel debounced validation on unmount
   useEffect(() => {
@@ -209,36 +334,64 @@ export function useField(config: UseFieldConfig): UseFieldResult {
 
   // Register field on mount
   useEffect(() => {
-    registerField({
-      name: resolvedName,
-      initialValue,
-      validation,
-    });
+    const submissionErrorKey =
+      publicResolvedName !== resolvedName ? publicResolvedName : undefined;
+    if (pathOperations) {
+      pathOperations.registerField({
+        name: resolvedPath,
+        submissionErrorKey,
+        initialValue,
+        validation,
+      });
+    } else {
+      registerField({
+        name: publicResolvedName,
+        submissionErrorKey,
+        initialValue,
+        validation,
+      });
+    }
 
     return () => {
-      unregisterField(resolvedName);
+      const options = {
+        preserveValue: !(shouldDiscardOnUnmount?.() ?? false),
+      };
+      if (pathOperations) {
+        pathOperations.unregisterField(resolvedPath, options);
+        return;
+      }
+      unregisterField(publicResolvedName, options);
     };
-  }, [resolvedName, initialValue, validation, unregisterField, registerField]);
+  }, [
+    resolvedPath,
+    pathOperations,
+    publicResolvedName,
+    resolvedName,
+    initialValue,
+    validation,
+    shouldDiscardOnUnmount,
+    unregisterField,
+    registerField,
+  ]);
 
   const handleChange = useCallback(
     (value: FieldValue) => {
-      setFieldValue(resolvedName, value);
+      setResolvedFieldValue(value);
 
       // If validateOnChange is enabled, use debounced validation
       // Otherwise, only validate after the field has been blurred once
       if (config.validateOnChange) {
-        debouncedValidate(resolvedName);
+        debouncedValidate();
       } else if (fieldState?.meta.isBlurred) {
         // After first blur, validate immediately on change (no debounce)
-        void validateField(resolvedName);
+        validateResolvedField();
       }
     },
     [
-      resolvedName,
       config.validateOnChange,
-      setFieldValue,
+      setResolvedFieldValue,
       fieldState?.meta.isBlurred,
-      validateField,
+      validateResolvedField,
       debouncedValidate,
     ],
   );
@@ -267,20 +420,19 @@ export function useField(config: UseFieldConfig): UseFieldResult {
       }
 
       // Mark the field as having been blurred at least once
-      setFieldBlurred(resolvedName);
+      setResolvedFieldBlurred();
 
       // For validateOnChange fields, don't validate on blur - the debounced
       // change validation handles it. For other fields, validate on blur.
       if (!config.validateOnChange) {
-        void validateField(resolvedName);
+        validateResolvedField();
       }
     },
     [
-      resolvedName,
       config.validateOnChange,
       config.validateOnControlBlur,
-      setFieldBlurred,
-      validateField,
+      setResolvedFieldBlurred,
+      validateResolvedField,
     ],
   );
 
@@ -294,17 +446,15 @@ export function useField(config: UseFieldConfig): UseFieldResult {
 
   const controller = useMemo<FieldSlotController>(
     () => ({
-      name: resolvedName,
+      name: publicResolvedName,
       value: currentValue,
       setValue: handleChange,
-      validate: () => {
-        void validateField(resolvedName);
-      },
+      validate: validateResolvedField,
       focusInput: () => {
         document.getElementById(id)?.focus();
       },
     }),
-    [resolvedName, currentValue, handleChange, validateField, id],
+    [publicResolvedName, currentValue, handleChange, validateResolvedField, id],
   );
 
   const result: UseFieldResult = {
@@ -319,7 +469,8 @@ export function useField(config: UseFieldConfig): UseFieldResult {
       isValidating: fieldState?.meta.isValidating ?? false,
     },
     containerProps: {
-      'data-field-name': resolvedName, // Used for scrolling to field errors
+      'data-field-name': publicResolvedName,
+      'data-field-path': resolvedName,
       'onBlur': handleContainerBlur,
     },
     fieldProps: {
@@ -333,18 +484,36 @@ export function useField(config: UseFieldConfig): UseFieldResult {
       'readOnly': isReadOnly ?? false,
       'aria-required': !!validationProps.required,
       'aria-invalid': showInvalid,
-      'aria-labelledby': `${id}-label`,
+      /**
+       * Named only when the caller renders the label element. A caller that
+       * does not — because it names its control with `aria-label` instead —
+       * would otherwise carry an `aria-labelledby` pointing at nothing, and a
+       * dangling `aria-labelledby` beats `aria-label` in the accessible-name
+       * computation: the control ends up unnamed rather than named.
+       */
+      'aria-labelledby': renderedElements.label
+        ? fieldElementIds(id).label
+        : undefined,
       'aria-disabled': isDisabled ?? false,
       'aria-readonly': isReadOnly ?? false,
       /**
-       * Set this so that screen readers can properly announce the hint and error messages.
-       * If either the hint or error ID is not present, it will be ignored by the screen reader.
-       * The alternative would require us to check if the hint prop exists and if the error state
-       * is set, which doesn't seem worth it.
+       * Assembled by the single owner of the list, from what the caller says
+       * it renders (`renderedElements`, defaulting to nothing) and the field's
+       * own state. The error region is named whenever it is rendered, message
+       * or not: BaseField mounts it unconditionally and a connected field's
+       * errors arrive asynchronously, so the control has to already describe
+       * the region that is about to hold the message.
        *
        * Note: we cannot use aria-description yet, as it is not widely supported.
        */
-      'aria-describedby': `${id}-required ${id}-hint ${id}-error`.trim(),
+      'aria-describedby':
+        fieldDescribedBy(id, {
+          required:
+            renderedElements.required && Boolean(validationProps.required),
+          // The same condition BaseField uses to render the Hint element.
+          hint: renderedElements.hint && Boolean(hint ?? validationSummary),
+          error: renderedElements.error,
+        }) || undefined,
     },
     controller,
     validationSummary,

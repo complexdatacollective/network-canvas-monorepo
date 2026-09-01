@@ -16,7 +16,7 @@ import Icon from '@codaco/fresco-ui/Icon';
 import Node from '@codaco/fresco-ui/Node';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
-import type { Codebook } from '@codaco/protocol-validation';
+import type { Codebook, NodeColorReference } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   type NcEdge,
@@ -37,7 +37,11 @@ import PedigreeLayout from '../../FamilyPedigree/pedigree-layout/components/Pedi
 import { computeNodeDisplayLabels } from '../../FamilyPedigree/pedigree-layout/components/PedigreeNode';
 import { dimColor } from '../../FamilyPedigree/pedigree-layout/dimColor';
 import type { VariableConfig } from '../../FamilyPedigree/store';
-import { pedigreeMemberIds } from '../../FamilyPedigree/utils/pedigreeMembership';
+import {
+  edgesWithinPedigreeMembership,
+  pedigreeEdgeMembership,
+  pedigreeMemberIds,
+} from '../../FamilyPedigree/utils/pedigreeMembership';
 import { PedigreeSnapshotDocument } from '../export/PedigreeSnapshotDocument';
 import { exportSnapshot } from '../export/snapshot';
 import { computeStatuses } from '../genetics/computeStatuses';
@@ -51,6 +55,22 @@ import ZoomableViewport from './ZoomableViewport';
 
 type NarrativeStage = StageProps<'NarrativePedigree'>['stage'];
 type Disease = NarrativeStage['diseases'][number];
+type ResolvedDisease = Omit<Disease, 'color'> & { color: string };
+
+const NODE_COLOR_VARIABLES = {
+  'node-color-seq-1': 'var(--node-1)',
+  'node-color-seq-2': 'var(--node-2)',
+  'node-color-seq-3': 'var(--node-3)',
+  'node-color-seq-4': 'var(--node-4)',
+  'node-color-seq-5': 'var(--node-5)',
+  'node-color-seq-6': 'var(--node-6)',
+  'node-color-seq-7': 'var(--node-7)',
+  'node-color-seq-8': 'var(--node-8)',
+} as const satisfies Record<NodeColorReference, string>;
+
+export function resolveDiseaseColor(color: NodeColorReference): string {
+  return NODE_COLOR_VARIABLES[color];
+}
 
 type SourceStageConfig = {
   nodeType: string;
@@ -101,15 +121,17 @@ function makeSourceConfigSelector(sourceStageId: string) {
   });
 }
 
-// The set of node ids the source FamilyPedigree committed to its private
-// network, or null when it has no committed membership (a synthetic/seeded
-// network, or a pedigree not yet built). Stage metadata is keyed by stage index,
-// so resolve the source stage's position first.
-function makeSourceMembersSelector(sourceStageId: string) {
+// The node and edge ids the source FamilyPedigree committed to its private
+// network, or null when the relevant membership is unknown. Stage metadata is
+// keyed by stage index, so resolve the source stage's position first.
+function makeSourceMembershipSelector(sourceStageId: string) {
   return createSelector(getStages, getActiveSession, (stages, session) => {
     const index = stages.findIndex((s) => s.id === sourceStageId);
-    if (index < 0) return null;
-    return pedigreeMemberIds(session?.stageMetadata?.[index]);
+    const metadata = index < 0 ? undefined : session?.stageMetadata?.[index];
+    return {
+      nodeIds: pedigreeMemberIds(metadata),
+      edgeMembership: pedigreeEdgeMembership(metadata),
+    };
   });
 }
 
@@ -122,7 +144,18 @@ type NarrativePedigreeViewProps = {
 export default function NarrativePedigreeView({
   stage,
 }: NarrativePedigreeViewProps) {
-  const { diseases } = stage;
+  // Architect stores the selected node palette entry as a typed protocol
+  // reference. SVG and inline CSS need the corresponding theme variable, so
+  // resolve every disease once at the view boundary before it reaches the key,
+  // pedigree, dimming, or printable snapshot.
+  const diseases = useMemo<ResolvedDisease[]>(
+    () =>
+      stage.diseases.map((disease) => ({
+        ...disease,
+        color: resolveDiseaseColor(disease.color),
+      })),
+    [stage.diseases],
+  );
 
   const sourceConfigSelector = useMemo(
     () => makeSourceConfigSelector(stage.sourceStageId),
@@ -130,11 +163,11 @@ export default function NarrativePedigreeView({
   );
   const sourceConfig = useStageSelector(sourceConfigSelector);
 
-  const sourceMembersSelector = useMemo(
-    () => makeSourceMembersSelector(stage.sourceStageId),
+  const sourceMembershipSelector = useMemo(
+    () => makeSourceMembershipSelector(stage.sourceStageId),
     [stage.sourceStageId],
   );
-  const sourceMemberIds = useStageSelector(sourceMembersSelector);
+  const sourceMembership = useStageSelector(sourceMembershipSelector);
 
   const allNodes = useStageSelector(getNetworkNodes);
   const allEdges = useStageSelector(getNetworkEdges);
@@ -162,16 +195,20 @@ export default function NarrativePedigreeView({
     return allNodes.filter(
       (node) =>
         node.type === sourceConfig.config.nodeType &&
-        (sourceMemberIds === null || sourceMemberIds.has(node._uid)),
+        (sourceMembership.nodeIds === null ||
+          sourceMembership.nodeIds.has(node._uid)),
     );
-  }, [allNodes, sourceConfig, sourceMemberIds]);
+  }, [allNodes, sourceConfig, sourceMembership.nodeIds]);
 
   const pedigreeEdges = useMemo<NcEdge[]>(() => {
     if (!sourceConfig) return [];
-    return allEdges.filter(
-      (edge) => edge.type === sourceConfig.config.edgeType,
+    return edgesWithinPedigreeMembership(
+      allEdges,
+      sourceConfig.config.edgeType,
+      new Set(pedigreeNodes.map((node) => node._uid)),
+      sourceMembership.edgeMembership,
     );
-  }, [allEdges, sourceConfig]);
+  }, [allEdges, pedigreeNodes, sourceConfig, sourceMembership.edgeMembership]);
 
   const resolveSexFn = useMemo(() => {
     if (!sourceConfig) return () => 'unknown' as const;
@@ -206,7 +243,7 @@ export default function NarrativePedigreeView({
   }, [pedigreeNodes, sourceConfig]);
 
   // When a disease is selected, show only that disease; otherwise show all.
-  const shownDiseases = useMemo<Disease[]>(() => {
+  const shownDiseases = useMemo<ResolvedDisease[]>(() => {
     if (selectedDiseaseId === null) return diseases;
     const found = diseases.find((d) => d.id === selectedDiseaseId);
     return found !== undefined ? [found] : diseases;
@@ -434,7 +471,7 @@ export default function NarrativePedigreeView({
     node: RenderableNode,
     shape: NodeShape,
     label: string,
-    disease: Disease,
+    disease: ResolvedDisease,
     dimmed: boolean,
     selected: boolean,
   ): ReactNode => {

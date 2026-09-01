@@ -88,3 +88,31 @@ describe('collection store — focus after filtering (resortItems)', () => {
     expect(selected.size).toBe(1);
   });
 });
+
+describe('collection store — focus after items are removed (setItems)', () => {
+  it('moves focus to the next surviving item instead of the collection start', () => {
+    const store = makeStore();
+    store.getState().setFocusedKey('b');
+
+    // A successful roster drag removes its focused source card. Virtualized
+    // collections scroll the focused key into view, so falling back to the
+    // first key here would reset a scrolled roster to the top.
+    store
+      .getState()
+      .setItems([items[0]!, items[2]!], keyExtractor, textValueExtractor);
+
+    expect(store.getState().orderedKeys).toEqual(['a', 'c']);
+    expect(store.getState().focusedKey).toBe('c');
+  });
+
+  it('moves focus to the previous item when the final item is removed', () => {
+    const store = makeStore();
+    store.getState().setFocusedKey('c');
+
+    store
+      .getState()
+      .setItems([items[0]!, items[1]!], keyExtractor, textValueExtractor);
+
+    expect(store.getState().focusedKey).toBe('b');
+  });
+});

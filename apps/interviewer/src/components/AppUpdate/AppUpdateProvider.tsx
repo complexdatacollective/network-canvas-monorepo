@@ -7,7 +7,6 @@ import {
   useState,
 } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
-import { useLocation } from 'wouter';
 
 import { installServiceWorkerUpdate } from '@codaco/fresco-ui/appUpdate/serviceWorkerUpdate';
 import useAppUpdate, {
@@ -17,7 +16,7 @@ import { APP_VERSION } from '~/lib/appVersion';
 
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000; // hourly
 
-type AppUpdateContextValue = UseAppUpdateResult & { hasUnsavedWork: boolean };
+type AppUpdateContextValue = UseAppUpdateResult;
 
 const AppUpdateContext = createContext<AppUpdateContextValue | null>(null);
 
@@ -33,12 +32,8 @@ export function useAppUpdateContext(): AppUpdateContextValue {
 
 // Owns service-worker registration (so the app stays installable/offline) and
 // the update state, exposing it to the version pill via context. Replaces the
-// old PwaUpdateBanner. A reload during an interview would interrupt data
-// collection, so `/interview/*` counts as work in progress.
+// old PwaUpdateBanner.
 export function AppUpdateProvider({ children }: { children: ReactNode }) {
-  const [location] = useLocation();
-  const hasUnsavedWork = location.startsWith('/interview/');
-
   const [registration, setRegistration] = useState<
     ServiceWorkerRegistration | undefined
   >();
@@ -49,6 +44,10 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
     onRegisteredSW: (_swScriptUrl, swRegistration) => {
       setRegistration(swRegistration);
     },
+    // The shared install action is the sole reload owner. vite-plugin-pwa's
+    // default callback reloads as soon as the new worker takes control, which
+    // can navigate an already-rendered app without the user requesting it.
+    onNeedReload: () => undefined,
   });
 
   useEffect(() => {
@@ -68,12 +67,11 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
     app: 'interviewer',
     currentVersion: APP_VERSION,
     needRefresh,
-    hasUnsavedWork,
     installUpdate,
   });
 
   return (
-    <AppUpdateContext.Provider value={{ ...update, hasUnsavedWork }}>
+    <AppUpdateContext.Provider value={update}>
       {children}
     </AppUpdateContext.Provider>
   );

@@ -1,25 +1,17 @@
 import { get, isNull, isUndefined } from 'es-toolkit/compat';
-import type { ComponentType } from 'react';
-import { useCallback, useMemo } from 'react';
-import { useSelector } from 'react-redux';
-import { change, FormSection, formValueSelector } from 'redux-form';
+import { useCallback } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
-import FrescoReduxField, {
-  reduxIntegerValue,
-} from '~/components/Form/FrescoReduxField';
-import ValidatedField from '~/components/Form/ValidatedField';
+import Section from '@codaco/fresco-ui/Section';
+import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-import { useAppDispatch } from '~/ducks/hooks';
-import type { RootState } from '~/ducks/modules/root';
-
-import IssueAnchor from '../IssueAnchor';
-
-const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+import {
+  useStageFormValue,
+  useStageInitialValue,
+} from '~/components/StageEditor/stageFormHooks';
 
 const maxValidation = (
   value: number | null | undefined,
@@ -48,21 +40,53 @@ const minValidation = (
     ? undefined
     : 'Minimum number of alters must be less than or equal to the maximum number';
 };
+
+// `size` is dropped: the native `<input>` element's `size` attribute (a
+// character-width number) would otherwise collide with `InputField`'s own
+// `size` prop (a `'sm' | 'md' | 'lg' | 'xl'` CVA variant) when `...rest` is
+// spread onto it below — nothing here ever sets it.
+type IntegerInputFieldProps = Omit<
+  CreateFormFieldProps<number, 'input'>,
+  'size'
+>;
+
+/**
+ * `InputField` is string-valued (it always emits `e.target.value` verbatim,
+ * even for `type="number"`); this presents an integer value/onChange pair
+ * over it, replacing `FrescoReduxField`'s deleted `reduxIntegerValue`
+ * fromReduxValue/toReduxValue pair.
+ */
+const IntegerInputField = ({
+  value,
+  onChange,
+  ...rest
+}: IntegerInputFieldProps) => (
+  <InputField
+    {...rest}
+    type="number"
+    value={value === undefined ? '' : String(value)}
+    onChange={(nextValue: string | undefined) => {
+      if (!nextValue || nextValue.trim() === '') {
+        onChange?.(undefined);
+        return;
+      }
+      const parsed = Number(nextValue);
+      onChange?.(Number.isInteger(parsed) ? parsed : undefined);
+    }}
+  />
+);
+
 const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
-  const formSelector = useMemo(() => formValueSelector('edit-stage'), []);
-  const currentMinValue = useSelector(
-    (state: RootState) =>
-      formSelector(state, 'behaviours.minNodes') as number | undefined,
+  const currentMinValue = useStageFormValue<number | undefined>(
+    'behaviours.minNodes',
   );
-  const currentMaxValue = useSelector(
-    (state: RootState) =>
-      formSelector(state, 'behaviours.maxNodes') as number | undefined,
+  const currentMaxValue = useStageFormValue<number | undefined>(
+    'behaviours.maxNodes',
   );
-  const hasMultiplePrompts = useSelector((state: RootState) => {
-    const prompts = formSelector(state, 'prompts') as unknown[] | undefined;
-    return !!prompts && prompts.length > 1;
-  });
-  const dispatch = useAppDispatch();
+  const prompts = useStageFormValue<unknown[] | undefined>('prompts');
+  const hasMultiplePrompts = !!prompts && prompts.length > 1;
+  const initialMinValue = useStageInitialValue<number>('behaviours.minNodes');
+  const initialMaxValue = useStageInitialValue<number>('behaviours.maxNodes');
   const { confirm } = useDialog();
   const handleToggleChange = useCallback(
     async (newState: boolean) => {
@@ -72,42 +96,29 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
       ) {
         return true;
       }
-      const confirmed = await confirm({
-        title: 'This will clear your values',
-        description:
-          'This will clear the minimum and maximum alter values. Do you want to continue?',
-        confirmLabel: 'Clear values',
-        cancelLabel: 'Cancel',
-        intent: 'warning',
-        onConfirm: () => {},
-      });
-      if (confirmed) {
-        dispatch(change('edit-stage', 'behaviours.minNodes', null));
-        dispatch(change('edit-stage', 'behaviours.maxNodes', null));
-        return true;
-      }
-      return false;
+      return (
+        (await confirm({
+          title: 'This will clear your values',
+          description:
+            'This will clear the minimum and maximum alter values. Do you want to continue?',
+          confirmLabel: 'Clear values',
+          cancelLabel: 'Cancel',
+          intent: 'warning',
+          onConfirm: () => {},
+        })) === true
+      );
     },
-    [confirm, dispatch, currentMinValue, currentMaxValue],
+    [confirm, currentMinValue, currentMaxValue],
   );
-  const startExpanded = useMemo(
-    () => !isUndefined(currentMinValue) || !isUndefined(currentMaxValue),
-    [currentMaxValue, currentMinValue],
-  );
+  const defaultOpen =
+    !isUndefined(currentMinValue) || !isUndefined(currentMaxValue);
   return (
     <Section
-      title="Min/max alters"
-      summary={
-        <Paragraph>
-          This feature allows you to specify a minimum or maximum number of
-          alters that can be named on this stage. Please note that these limits
-          apply to the <strong>stage as a whole</strong>, regardless of the
-          number of prompts you have created.
-        </Paragraph>
-      }
+      title="Nomination limits"
+      description="Set the minimum or maximum number of alters that can be named across the whole stage."
       toggleable
-      startExpanded={startExpanded}
-      handleToggleChange={handleToggleChange}
+      defaultOpen={defaultOpen}
+      onOpenChange={handleToggleChange}
     >
       {hasMultiplePrompts && (
         <Alert variant="warning" className="my-7">
@@ -122,57 +133,38 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
           </AlertDescription>
         </Alert>
       )}
-      <FormSection name="behaviours">
-        <Row>
-          <IssueAnchor
-            fieldName="behaviours.minNodes"
-            description="Minimum alters"
-          />
-          <ValidatedField
-            name="minNodes"
-            component={FrescoReduxField}
-            validation={{
-              lessThanMax: minValidation,
-              positiveNumber: (value: number | null | undefined) => {
-                if (!value && value !== 0) return undefined;
-                return value >= 0 ? undefined : 'Must be a positive number';
-              },
-            }}
-            label="Minimum Number of Alters. (0 = no minimum)"
-            componentProps={{
-              fieldComponent: FrescoInputField,
-              placeholder: '0',
-              type: 'number',
-              ...reduxIntegerValue,
-            }}
-          />
-        </Row>
-        <Row>
-          <IssueAnchor
-            fieldName="behaviours.maxNodes"
-            description="Maximum alters"
-          />
-          <ValidatedField
-            name="maxNodes"
-            component={FrescoReduxField}
-            validation={{
-              greaterThanMin: maxValidation,
-              minValue: (value: number | null | undefined) => {
-                if (!value) return undefined;
-                return value >= 1 ? undefined : 'Must be at least 1';
-              },
-            }}
-            label="Maximum Number of Alters. _(Leave empty for no maximum)_"
-            componentProps={{
-              fieldComponent: FrescoInputField,
-              placeholder: 'Infinity',
-              type: 'number',
-              ...reduxIntegerValue,
-            }}
-          />
-        </Row>
-      </FormSection>
+      <ArchitectField
+        name="behaviours.minNodes"
+        component={IntegerInputField}
+        initialValue={initialMinValue}
+        validation={{
+          lessThanMax: minValidation,
+          positiveNumber: (value: number | null | undefined) => {
+            if (!value && value !== 0) return undefined;
+            return value >= 0 ? undefined : 'Must be a positive number';
+          },
+        }}
+        label="Minimum number of alters"
+        hint="0 = no minimum"
+        placeholder="0"
+      />
+      <ArchitectField
+        name="behaviours.maxNodes"
+        component={IntegerInputField}
+        initialValue={initialMaxValue}
+        validation={{
+          greaterThanMin: maxValidation,
+          minValue: (value: number | null | undefined) => {
+            if (!value) return undefined;
+            return value >= 1 ? undefined : 'Must be at least 1';
+          },
+        }}
+        label="Maximum number of alters"
+        hint="Leave empty for no maximum"
+        placeholder="Infinity"
+      />
     </Section>
   );
 };
+
 export default MinMaxAlterLimits;

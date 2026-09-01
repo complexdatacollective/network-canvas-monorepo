@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, waitFor, within } from 'storybook/test';
 
 import type { AuthMode } from '~/lib/auth/api';
 
@@ -16,6 +17,7 @@ type StoryArgs = {
   persisted: boolean;
   installed: boolean;
   usage: number;
+  version: string;
 };
 
 const meta: Meta<StoryArgs> = {
@@ -27,6 +29,7 @@ const meta: Meta<StoryArgs> = {
     persisted: true,
     installed: false,
     usage: 4.2 * 1024 * 1024,
+    version: '0.0.0',
   },
   argTypes: {
     mode: {
@@ -45,6 +48,10 @@ const meta: Meta<StoryArgs> = {
         'calm "best effort" state — there is no install action left to take.',
     },
     usage: { control: 'number', description: 'Bytes reported by estimate()' },
+    version: {
+      control: 'text',
+      description: 'Fixed story fixture; production reads the package version',
+    },
   },
   render: ({
     protocolCount,
@@ -53,6 +60,7 @@ const meta: Meta<StoryArgs> = {
     persisted,
     installed,
     usage,
+    version,
   }) => (
     <StatusRowView
       protocolCount={protocolCount}
@@ -60,6 +68,7 @@ const meta: Meta<StoryArgs> = {
       mode={mode}
       durability={{ persisted, usage }}
       installed={installed}
+      versionSlot={<span>Interviewer {version}</span>}
     />
   ),
 };
@@ -67,10 +76,35 @@ const meta: Meta<StoryArgs> = {
 export default meta;
 type Story = StoryObj<StoryArgs>;
 
-export const Default: Story = {};
+export const Default: Story = {
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText('Interviewer 0.0.0')).toBeVisible();
+  },
+};
 
 export const NotEncryptedNotPersisted: Story = {
   args: { mode: 'none', persisted: false },
+};
+
+// Touch regression: the explanations were hover/focus-only Tooltips, which a
+// tablet user could never open. A plain click/tap must reveal them (the
+// popover portals outside the canvas, so query the document body). Ends with
+// the encryption popover open so Chromatic also captures its rendering.
+export const ExplanationPopover: Story = {
+  args: { mode: 'none', persisted: false },
+  play: async ({ canvas, userEvent }) => {
+    const body = within(document.body);
+
+    await userEvent.click(canvas.getByTestId('storage-status-trigger'));
+    await waitFor(() =>
+      expect(body.getByText(/^Storage not persistent\./)).toBeVisible(),
+    );
+
+    await userEvent.click(canvas.getByTestId('encryption-status-trigger'));
+    await waitFor(() =>
+      expect(body.getByText(/^Not encrypted\./)).toBeVisible(),
+    );
+  },
 };
 
 // Safari decides persist() from opaque interaction heuristics and may never

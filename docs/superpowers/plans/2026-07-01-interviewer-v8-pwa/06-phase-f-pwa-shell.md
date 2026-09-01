@@ -760,7 +760,7 @@ const PwaInstallNudge = () => {
         type="button"
         aria-label="Dismiss"
         onClick={dismiss}
-        className="text-muted-foreground hover:text-surface-1-foreground absolute top-3 right-3 inline-flex size-6 items-center justify-center rounded-full transition-colors hover:bg-current/10"
+        className="text-current/70-foreground hover:text-surface-1-foreground absolute top-3 right-3 inline-flex size-6 items-center justify-center rounded-full transition-colors hover:bg-current/10"
       >
         <X className="size-4" />
       </button>
@@ -1057,7 +1057,7 @@ const PwaUpdateBanner = () => {
         type="button"
         aria-label="Dismiss"
         onClick={() => setPromptVisible(false)}
-        className="text-muted-foreground hover:text-surface-1-foreground inline-flex size-6 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-current/10"
+        className="text-current/70-foreground hover:text-surface-1-foreground inline-flex size-6 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-current/10"
       >
         <X className="size-4" />
       </button>

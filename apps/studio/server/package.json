@@ -1,0 +1,68 @@
+{
+  "name": "@codaco/studio-server",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Network Canvas Studio server — the Node deployable: public data API, internal RPC surface, app WebSocket endpoint, and self-host static serving.",
+  "author": "Complex Data Collective <hello@complexdatacollective.org>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
+    "directory": "apps/studio/server"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n s3,pg,server \"node scripts/dev-s3.ts\" \"node scripts/dev-pg.ts\" \"node --env-file-if-exists=.env.development --env-file-if-exists=.env --watch --watch-path=src --watch-path=../../../packages/studio-rpc/src --watch-path=../../../packages/studio-sync/src --watch-path=../../../packages/shared-consts/src --watch-path=../../../packages/protocol-validation/src --watch-path=package.json src/index.ts\"",
+    "build": "vite build",
+    "build:netlify": "vite build --config vite.netlify.config.ts",
+    "apply-schema": "pnpm run sync-fingerprint && node --env-file-if-exists=.env scripts/apply-schema.ts",
+    "sync-fingerprint": "node scripts/sync-fingerprint.ts",
+    "seed": "node --env-file-if-exists=.env scripts/seed.ts",
+    "db:reset": "pnpm run sync-fingerprint && node scripts/db-reset.ts",
+    "protocol-demo": "node scripts/protocol-demo.ts",
+    "generate:env-docs": "node scripts/generate-env-docs.ts",
+    "generate:erd": "node scripts/generate-schema-docs.ts",
+    "start": "NODE_ENV=production CLIENT_DIST=../client/dist node --env-file-if-exists=.env dist/index.js",
+    "typecheck": "tsc --build --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1101.0",
+    "@codaco/protocol-validation": "workspace:^",
+    "@codaco/shared-consts": "workspace:^",
+    "@codaco/studio-rpc": "workspace:^",
+    "@codaco/studio-sync": "workspace:^",
+    "@hono/node-server": "^2.1.0",
+    "@noble/hashes": "^2.3.0",
+    "@orpc/contract": "2.0.0-beta.26",
+    "@orpc/openapi": "2.0.0-beta.26",
+    "@orpc/server": "2.0.0-beta.26",
+    "@orpc/zod": "2.0.0-beta.26",
+    "@t3-oss/env-core": "^0.13.11",
+    "better-auth": "catalog:",
+    "drizzle-orm": "catalog:",
+    "hono": "^4.13.0",
+    "nodemailer": "9.0.5",
+    "pg": "^8.22.0",
+    "ws": "^8.21.2",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@codaco/protocols": "workspace:^",
+    "@codaco/tsconfig": "workspace:^",
+    "@dbml/core": "10.1.1",
+    "@orpc/client": "2.0.0-beta.26",
+    "@softwaretechnik/dbml-renderer": "1.0.31",
+    "@types/nodemailer": "8.0.1",
+    "@types/pg": "^8.20.4",
+    "@types/ws": "^8.18.1",
+    "concurrently": "^10.0.4",
+    "drizzle-kit": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

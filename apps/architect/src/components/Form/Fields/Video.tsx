@@ -1,7 +1,7 @@
 import { Video } from '../../Assets';
-import File, { type FileInputPropsWithoutHOC } from './File';
+import File, { type FileInputProps } from './File';
 
-type VideoInputProps = Omit<FileInputPropsWithoutHOC, 'children' | 'type'>;
+type VideoInputProps = Omit<FileInputProps, 'children' | 'type'>;
 
 const VideoInput = (props: VideoInputProps) => (
   <File type="video" {...props}>

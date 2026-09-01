@@ -1,7 +1,7 @@
 import type { DocumentFragment } from '@xmldom/xmldom';
 
 import type { Codebook } from '@codaco/protocol-validation';
-import type { NcEgo } from '@codaco/shared-consts';
+import type { NcEgo, VariableValue } from '@codaco/shared-consts';
 
 import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
 import type { ExportOptions } from '../../options';
@@ -24,6 +24,7 @@ async function processAttributes(
   entity: NodeWithResequencedID | EdgeWithResequencedID | NcEgo,
   codebook: Codebook,
   exportOptions: ExportOptions,
+  externalKeyIds: ReadonlyMap<string, string>,
 ): Promise<DocumentFragment> {
   const fragment = createDocumentFragment();
 
@@ -36,18 +37,14 @@ async function processAttributes(
   const entityAttributes = getEntityAttributes(entity);
 
   for (const [key, value] of Object.entries(entityAttributes)) {
-    // Don't process empty values.
-    if (value === null) {
-      continue;
-    }
-
     const codebookEntry = variables?.[key];
 
-    // If there's no codebook entry for type, treat it as a string
-    // TODO: try to detect the type from the value.
     if (!codebookEntry) {
-      // eslint-disable-next-line @typescript-eslint/no-base-to-string
-      createDomDataElement(key, String(value));
+      const externalKey = externalKeyIds.get(key);
+      if (!externalKey) {
+        throw new Error(`Missing GraphML key for external attribute: ${key}`);
+      }
+      createDomDataElement(externalKey, stringifyValue(value));
       continue;
     }
 
@@ -90,10 +87,18 @@ async function processAttributes(
           break;
         }
 
-        const { x: xCoord, y: yCoord } = entityAttributes[key] as {
-          x: number;
-          y: number;
-        };
+        if (
+          typeof value !== 'object' ||
+          Array.isArray(value) ||
+          !('x' in value) ||
+          !('y' in value) ||
+          typeof value.x !== 'number' ||
+          typeof value.y !== 'number'
+        ) {
+          break;
+        }
+
+        const { x: xCoord, y: yCoord } = value;
 
         createDomDataElement(`${key}_X`, String(xCoord));
         createDomDataElement(`${key}_Y`, String(yCoord));
@@ -125,10 +130,7 @@ async function processAttributes(
           break;
         }
 
-        const rawValue = value as string | number | boolean | unknown[];
-        // Cooerce value to string
-        const coercedValue = String(rawValue);
-        createDomDataElement(key, coercedValue);
+        createDomDataElement(key, stringifyValue(value));
         break;
       }
     }
@@ -136,5 +138,8 @@ async function processAttributes(
 
   return fragment;
 }
+
+const stringifyValue = (value: VariableValue): string =>
+  typeof value === 'object' ? JSON.stringify(value) : String(value);
 
 export default processAttributes;

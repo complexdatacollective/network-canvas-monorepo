@@ -30,6 +30,7 @@ const mockProtocol = {
             name: 'Name',
             type: 'text',
             component: 'Text',
+            validation: { required: true },
           },
         },
       } satisfies NodeDefinition,
@@ -212,7 +213,7 @@ export const Default: Story = {
     docs: {
       description: {
         story:
-          'The QuickNodeForm provides a quick way to add nodes with a single required field. Click the button to reveal the input, type a name, and press Enter to add.',
+          'The QuickNodeForm provides a quick way to add nodes with one field. This story makes the codebook variable required; click the button to reveal the input, type a name, and press Enter to add.',
       },
     },
   },
@@ -274,7 +275,7 @@ export const RequiredEntry: Story = {
     docs: {
       description: {
         story:
-          'Quick Add always requires a non-empty entry, while any additional validation rules still come from the codebook. Pressing Enter with nothing typed is rejected.',
+          'The target variable has `validation.required: true` in the codebook, so pressing Enter with nothing typed is rejected.',
       },
     },
   },

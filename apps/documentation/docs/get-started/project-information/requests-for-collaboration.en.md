@@ -19,7 +19,7 @@ Our team welcomes opportunities for formal collaboration with external partners.
 
 ### Customized Training
 
-**Bespoke hands-on training in Network Canvas for a research group or organization.** Such collaborations might include the preparation and delivery of a workshop designed around the needs of a particular research group or study within a specific institution or organization. Outside of contracted training collaborations, our team conducts yearly workshops at the annual Sunbelt Conference for the International Network of Social Network Analysis (INSNA) and regularly updates our online user [documentation](https://documentation.networkcanvas.com/) and tutorial [videos](https://www.youtube.com/channel/UC3uFCh2HlR8iqiYhRNomUqQ) to facilitate easy uptake of the tool.
+**Bespoke hands-on training in Network Canvas for a research group or organization.** Such collaborations might include the preparation and delivery of a workshop designed around the needs of a particular research group or study within a specific institution or organization. Outside of contracted training collaborations, our team conducts yearly workshops at the annual Sunbelt Conference for the International Network of Social Network Analysis (INSNA) and regularly updates our online user [documentation](/en) and tutorial [videos](https://www.youtube.com/channel/UC3uFCh2HlR8iqiYhRNomUqQ) to facilitate easy uptake of the tool.
 
 ### Technical Support
 

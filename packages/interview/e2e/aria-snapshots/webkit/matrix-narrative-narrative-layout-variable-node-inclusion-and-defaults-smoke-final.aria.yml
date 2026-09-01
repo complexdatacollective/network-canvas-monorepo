@@ -5,18 +5,12 @@
     - button "Cara"
   - button "Drag to reposition"
   - toolbar "Presets":
-    - button "Previous preset" [disabled]
-    - button
-    - button "Social View" [expanded]
-    - button
-    - button "Next preset" [disabled]
+    - group "Preset navigation":
+      - button "Previous preset" [disabled]
+      - button "Social View" [expanded]
+      - dialog
+      - button "Next preset" [disabled]
   - status
-  - button
-  - button
-  - dialog:
-    - region
-  - button
-  - button
   - navigation:
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x

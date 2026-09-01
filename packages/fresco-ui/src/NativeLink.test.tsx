@@ -17,17 +17,28 @@ RouterLink.displayName = 'RouterLink';
 
 describe('NativeLink', () => {
   it('renders an accessible native link with the animated label', () => {
-    render(<NativeLink href="/docs">Documentation</NativeLink>);
+    render(
+      <div className="group/field">
+        <NativeLink href="/docs">Documentation</NativeLink>
+      </div>,
+    );
 
     const link = screen.getByRole('link', { name: 'Documentation' });
     const label = link.firstElementChild;
 
     expect(link).toHaveAttribute('href', '/docs');
-    expect(link).toHaveClass('focusable', 'text-link', 'font-semibold');
-    expect(label).toHaveClass(
-      'group-hover:bg-[length:100%_2px]',
-      'group-focus-visible:bg-[length:100%_2px]',
+    expect(link).toHaveClass(
+      'group/link',
+      'focusable',
+      'text-link',
+      'font-semibold',
     );
+    expect(link).not.toHaveClass('group');
+    expect(label).toHaveClass(
+      'group-hover/link:bg-[length:100%_2px]',
+      'group-focus-visible/link:bg-[length:100%_2px]',
+    );
+    expect(label).not.toHaveClass('group-hover:bg-[length:100%_2px]');
   });
 
   it('forwards refs, anchor props, and events', () => {

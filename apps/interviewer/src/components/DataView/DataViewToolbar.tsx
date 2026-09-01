@@ -78,10 +78,8 @@ export function DataViewToolbar({
   selectedCount,
   exporting,
   deleting,
-  pendingShare,
   onExport,
   onDelete,
-  onShareReady,
 }: {
   table: Table<StoredSessionLite>;
   // Passed explicitly rather than read from table.getState(): Tanstack
@@ -93,10 +91,8 @@ export function DataViewToolbar({
   selectedCount: number;
   exporting: boolean;
   deleting: boolean;
-  pendingShare: boolean;
   onExport: () => void;
   onDelete: () => void;
-  onShareReady: () => void;
 }) {
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
 
@@ -204,7 +200,11 @@ export function DataViewToolbar({
                 size="md"
                 color={isFilterActive ? 'primary' : 'default'}
                 icon={<FilterIcon size={14} strokeWidth={2.5} aria-hidden />}
-                aria-pressed={isFilterActive}
+                // `selected`, not `aria-pressed`: PopoverTrigger already makes
+                // this a disclosure (`aria-expanded`/`aria-haspopup`), and a
+                // control must not also claim to be a toggle. That a filter is
+                // active is carried by the visible "· N" count in the label.
+                selected={isFilterActive}
                 data-testid="data-filter-trigger"
               >
                 Filter
@@ -321,19 +321,6 @@ export function DataViewToolbar({
             </Button>
           </motion.div>
         </>
-      ) : null}
-      {pendingShare ? (
-        <motion.div variants={toolbarItemVariants}>
-          <Button
-            color="primary"
-            size="md"
-            icon={<Download aria-hidden />}
-            onClick={onShareReady}
-            data-testid="data-save-export"
-          >
-            Save export
-          </Button>
-        </motion.div>
       ) : null}
     </motion.div>
   );

@@ -18,9 +18,10 @@ export type PreviewPayload = {
   protocolId: string;
   startStage: number;
   useSyntheticData: boolean;
-  // True when the previewed stage should receive a one-stage initial override
-  // so it always shows. Its real skip logic remains in the protocol.
-  skipLogicBypassed: boolean;
+  // When false, PreviewHost removes skip logic from every stage before handing
+  // the protocol to Shell. When true, routing remains active except for Shell's
+  // one-stage initial override on the stage launched from Architect.
+  respectSkipLogic: boolean;
   // In-memory fallback assets ferried from the editor realm (blobs survive
   // structured clone over postMessage). Empty in the normal IndexedDB path.
   memoryAssets: PreviewMemoryAsset[];

@@ -1,0 +1,18 @@
+{
+  "nodes": [
+    {
+      "attributes": {
+        "name": "Cara Chen",
+        "age": 40,
+        "location": "Denver"
+      }
+    },
+    {
+      "attributes": {
+        "name": "Amy Adams",
+        "age": 30,
+        "location": "Boston"
+      }
+    }
+  ]
+}

@@ -15,7 +15,8 @@
     "incremental": true,
     "noUncheckedIndexedAccess": true,
     "erasableSyntaxOnly": true,
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "types": ["@total-typescript/ts-reset"]
   },
   "exclude": ["node_modules", "build", "dist", ".next", ".expo"]
 }

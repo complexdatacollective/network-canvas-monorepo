@@ -64,7 +64,7 @@ directly at `/assets/img/interviewer-guide/`.
 
 ## Building a protocol (Architect screenshots)
 
-Source: `docs/design-protocols/building-a-protocol.en.mdx`
+Source: `docs/design-protocols/tutorials/building-a-protocol.en.mdx`
 
 This article switches every screenshot between Architect and Architect
 Desktop via `<AppScreenshot name="<name>" web="true"></AppScreenshot>`. The

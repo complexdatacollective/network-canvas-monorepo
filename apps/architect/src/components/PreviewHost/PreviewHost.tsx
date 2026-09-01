@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
@@ -7,6 +7,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   createInitialNetwork,
+  type FinishHandler,
   type InterviewPayload,
   type SessionPayload,
   Shell,
@@ -16,6 +17,7 @@ import {
   generateNetwork,
   SyntheticDataConstraintError,
 } from '@codaco/protocol-utilities';
+import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
 import { assetKey } from '~/utils/assetDB';
 import { hydrateMemoryAsset } from '~/utils/inMemoryAssetStore';
@@ -26,7 +28,26 @@ import { collectPreviewRosterData } from './previewRosterData';
 import { useAssetResolver } from './useAssetResolver';
 const PAYLOAD_TIMEOUT_MS = 5000;
 const noopSync = async () => {};
-const noopFinish = async () => {};
+
+// Shown in the interview's finish confirmation instead of the participant
+// default ("…satisfied with your responses"), which is untrue in a preview:
+// nothing is stored, and confirming ends the run the researcher has been
+// clicking through. The dialog keeps its Cancel action, so this is the point
+// at which the researcher chooses to give up that run.
+const PREVIEW_FINISH_CONFIRMATION =
+  'This is a preview, so nothing is saved. Finishing ends this run of the protocol, and you can start it again afterwards.';
+
+const COMPLETION_DESCRIPTION_ID = 'preview-finished-description';
+
+function protocolWithoutSkipLogic(protocol: CurrentProtocol): CurrentProtocol {
+  return {
+    ...protocol,
+    stages: protocol.stages.map(
+      ({ skipLogic: _skipLogic, ...stage }) => stage as Stage,
+    ),
+  };
+}
+
 async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
   const now = new Date().toISOString();
   const base: SessionPayload = {
@@ -93,12 +114,17 @@ export function PreviewHost() {
   const [currentStep, setCurrentStep] = useState(0);
   const [failure, setFailure] = useState<PreviewFailure | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
+  // Set when the interview's finish confirmation completes. The preview has no
+  // store to write a finish time to, so this is the only record that the
+  // completion event was handled — and rendering it in place of the Shell is
+  // what stops Finish being confirmable a second time.
+  const [finished, setFinished] = useState(false);
+  const completionHeadingRef = useRef<HTMLHeadingElement>(null);
   // Index of the stage receiving a one-stage preview override, or null.
-  const [bypassedStageIndex, setBypassedStageIndex] = useState<number | null>(
-    null,
-  );
+  const [initialStageOverrideIndex, setInitialStageOverrideIndex] = useState<
+    number | null
+  >(null);
   const onRequestAsset = useAssetResolver(protocolId);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: retryNonce is the deliberate retrigger key
   useEffect(() => {
     const opener = window.opener as Window | null;
     if (!opener) return;
@@ -111,7 +137,10 @@ export function PreviewHost() {
         // Resolve the protocol payload first (a throw here means an invalid
         // protocol shape), then build the session, which is async because
         // synthetic previews fetch and parse the protocol's roster assets.
-        const protocol = currentProtocolToPayload(previewPayload.protocol);
+        const previewProtocol = previewPayload.respectSkipLogic
+          ? previewPayload.protocol
+          : protocolWithoutSkipLogic(previewPayload.protocol);
+        const protocol = currentProtocolToPayload(previewProtocol);
         const session = await buildSession(previewPayload);
         if (cancelled) return;
         nextPayload = { protocol, session };
@@ -132,8 +161,8 @@ export function PreviewHost() {
       setInterviewPayload(nextPayload);
       setProtocolId(previewPayload.protocolId);
       setCurrentStep(previewPayload.startStage);
-      setBypassedStageIndex(
-        previewPayload.skipLogicBypassed ? previewPayload.startStage : null,
+      setInitialStageOverrideIndex(
+        previewPayload.respectSkipLogic ? previewPayload.startStage : null,
       );
     };
     const onMessage = (event: MessageEvent) => {
@@ -171,6 +200,34 @@ export function PreviewHost() {
       clearTimeout(timeoutId);
     };
   }, [retryNonce]);
+  // The Shell unmounts in the same commit that sets `finished`, taking the
+  // Finish button — and the whole interview — with it, so focus would
+  // otherwise be dropped on <body> with nothing announced. Move it to the
+  // completion heading, which is described by the "nothing was saved"
+  // paragraph so both sentences are spoken together.
+  useEffect(() => {
+    if (!finished) return;
+    completionHeadingRef.current?.focus();
+  }, [finished]);
+  const handleFinish = useCallback<FinishHandler>(async () => {
+    setFinished(true);
+  }, []);
+  // Re-run the handshake: the opener answers `preview:ready` with the payload
+  // it captured at launch, and processPayload rebuilds a fresh session from it.
+  //
+  // This is the only way out of `finished`, and it clears the flag itself
+  // rather than leaving that to processPayload — the completion screen
+  // outranks the failure screens below, so a restart that then times out would
+  // otherwise sit on a finished interview with no sign that the rebuild never
+  // arrived. Dropping the payload too means the interim screen is "Loading
+  // preview…", not the spent interview with a Finish that can no longer do
+  // anything.
+  const restartPreview = () => {
+    setFinished(false);
+    setFailure(null);
+    setInterviewPayload(null);
+    setRetryNonce((n) => n + 1);
+  };
   if (!window.opener) {
     return (
       <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
@@ -183,6 +240,51 @@ export function PreviewHost() {
         <Button color="primary" onClick={() => window.close()}>
           Close tab
         </Button>
+      </div>
+    );
+  }
+  // Deliberately below the closed-opener branch: without an opener there is
+  // nothing to restart from, so "This preview has ended" is the truthful
+  // screen even for a run that finished first.
+  if (finished) {
+    return (
+      <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
+        <Heading
+          ref={completionHeadingRef}
+          tabIndex={-1}
+          level="h1"
+          margin="none"
+          className="text-2xl font-semibold"
+          aria-describedby={COMPLETION_DESCRIPTION_ID}
+        >
+          Preview finished
+        </Heading>
+        <Paragraph
+          id={COMPLETION_DESCRIPTION_ID}
+          margin="none"
+          className="max-w-xl"
+        >
+          The interview finished, just as it would for a participant. Nothing
+          was saved — preview responses are never stored.
+        </Paragraph>
+        <Paragraph
+          margin="none"
+          intent="smallText"
+          emphasis="muted"
+          className="max-w-xl"
+        >
+          Starting again reruns the protocol as it was when this preview opened.
+          To preview changes you have made in Architect since then, start a new
+          preview from there.
+        </Paragraph>
+        <div className="flex gap-3">
+          <Button color="primary" onClick={restartPreview}>
+            Start the preview again
+          </Button>
+          <Button color="default" onClick={() => window.close()}>
+            Close tab
+          </Button>
+        </div>
       </div>
     );
   }
@@ -286,11 +388,13 @@ export function PreviewHost() {
       <Shell
         payload={interviewPayload}
         onSync={noopSync}
-        onFinish={noopFinish}
+        onFinish={handleFinish}
+        finishConfirmationDescription={PREVIEW_FINISH_CONFIRMATION}
         onRequestAsset={onRequestAsset}
         currentStep={currentStep}
         onStepChange={setCurrentStep}
-        initialStageOverrideIndex={bypassedStageIndex ?? undefined}
+        flags={{ isDevelopment: import.meta.env.DEV }}
+        initialStageOverrideIndex={initialStageOverrideIndex ?? undefined}
         allowStageNavigation
         disableAnalytics
         analytics={{

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { createRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import Dropzone from '../Dropzone';
@@ -72,5 +73,55 @@ describe('Dropzone', () => {
       new File(['{}'], 'data.json', { type: 'application/octet-stream' }),
     );
     expect(onDrop).not.toHaveBeenCalled();
+  });
+
+  it('stays in the tab order while an import is running', async () => {
+    // The control disables itself for the duration of an import, and
+    // react-dropzone answers a disabled dropzone by omitting `tabIndex`
+    // altogether. Taking a FOCUSED control out of the tab order makes the
+    // browser drop focus to `<body>` mid-import — which is why dismissing the
+    // resulting error dialog left nothing focused, and why Tab afterwards
+    // restarted from the top of the page.
+    //
+    // The tab stop is what this test can measure. jsdom does NOT blur an
+    // element when its tabindex is removed, so asserting `document.activeElement`
+    // here would pass whether or not the control kept its tab stop — the focus
+    // consequence is asserted in a real browser by the `dismissing an import
+    // error returns focus to the upload control` e2e spec.
+    const onDrop = vi.fn(() => new Promise<void>(() => undefined));
+    render(<Dropzone accepts={['.json']} onDrop={onDrop} />);
+    const dropzone = screen.getByRole('button', { name: 'Upload file' });
+    dropzone.focus();
+
+    dropFile(
+      dropzone,
+      new File(['{}'], 'data.json', { type: 'application/octet-stream' }),
+    );
+
+    await waitFor(() => expect(dropzone).toHaveAttribute('aria-busy', 'true'));
+    expect(dropzone).toHaveAttribute('tabindex', '0');
+  });
+
+  it('stays in the tab order while disabled', () => {
+    // `aria-disabled`, not `disabled`: a control that announces itself as
+    // unavailable should still be reachable, so a researcher can find where
+    // resources are added and hear why they cannot add one right now.
+    render(<Dropzone accepts={['.json']} onDrop={vi.fn()} disabled />);
+
+    expect(screen.getByRole('button', { name: 'Upload file' })).toHaveAttribute(
+      'tabindex',
+      '0',
+    );
+  });
+
+  it('hands the control itself to a caller through rootRef', () => {
+    // What a dialog raised from `onDrop` names as its focus-return target: a
+    // dropped file activates nothing, so there is no opener to go back to.
+    const rootRef = createRef<HTMLElement>();
+    render(<Dropzone accepts={['.json']} onDrop={vi.fn()} rootRef={rootRef} />);
+
+    expect(rootRef.current).toBe(
+      screen.getByRole('button', { name: 'Upload file' }),
+    );
   });
 });

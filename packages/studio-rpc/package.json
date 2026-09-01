@@ -1,0 +1,27 @@
+{
+  "name": "@codaco/studio-rpc",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Internal RPC boundary between the Studio client and server — the Zod schemas and typed oRPC contract for the unpublished /rpc surface.",
+  "author": "Complex Data Collective <hello@complexdatacollective.org>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
+    "directory": "packages/studio-rpc"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./src/contract.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@orpc/contract": "2.0.0-beta.26",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@codaco/tsconfig": "workspace:^",
+    "typescript": "catalog:"
+  }
+}

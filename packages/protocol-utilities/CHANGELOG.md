@@ -1,5 +1,189 @@
 # @codaco/protocol-utilities
 
+## 4.0.0
+
+### Major Changes
+
+- c599dac: This release improves the reliability, accessibility, and recovery of protocol editing in Architect.
+
+  - Stage edits are now transactional: cancelling restores Codebook changes, incomplete settings remain open with actionable errors, and Information blocks retain their drafts while switching media types.
+  - Forms, rule builders, the Codebook, timeline, dialogs, and resource library now provide accurate labels, keyboard operation, focus restoration, and layouts that work on smaller screens. Undo and Redo operate one change at a time without recording no-op edits.
+  - A second tab now shows a read-only protocol instead of accepting changes it cannot save. Closing the editing tab restores editing from the saved copy, and deleting a protocol clears its history and releases associated resources.
+  - Protocol names, resource cards, variable identifiers, and stage editors are bounded on narrow screens. Duplicate resource filenames are distinguishable without changing the names stored in the protocol.
+  - Invalid imports, blocked edits, migration conflicts, preview completion, and deleted protocol routes now explain what happened and provide a safe recovery path.
+  - Recent protocols in the library now show their description, and starter templates show their stage, node type, and edge type counts.
+  - The CEGRM starter template now uses an available color for its Narrative Pedigree condition. Protocol colors are constrained to typed node, edge, ordinal, or categorical palette references; Narrative Pedigree and Geospatial resolve those references through the active theme. A protocol created from the previous release's CEGRM template will report a validation error on its condition color — open the stage editor and select one of the available colors to fix it. A downloaded protocol file with this problem must be corrected before it can be imported again. Neutral dialog actions remain distinct from white dialog surfaces.
+
+- e9a6522: Synthetic interview attribute setters now accept only defined `VariableValue` values, and generated networks no longer fill unanswered attributes with null placeholders.
+
+  This is a breaking API change. Use `unsetNodeAttribute` or `unsetEdgeAttribute` when a generated entity should keep an attribute absent.
+
+### Minor Changes
+
+- 23d0fab: Generated networks now draw realistic full names ("First Last") for name variables, falling back to a first name only when a declared maximum length has no room for one, and adding a middle name only when a minimum demands it. The set of variables treated as names now mirrors the interview runtime's label resolution — anything whose name contains "name" — so every value a node would actually display exercises label fitting. Seeded output changes as a result: the same seed draws different values than previous releases.
+
+### Patch Changes
+
+- e9a6522: Synthetic protocol and interview utilities now respect interface-owned variables, duplicate form-variable rules, and the stricter Family and Narrative Pedigree reference constraints enforced by protocol validation.
+- c37a801: Applications now derive their protocol schema compatibility from the interview runtime they embed, instead of hard-coding a version number, and each application can upgrade stored protocols when a future schema version ships.
+
+  - `@codaco/interview` exports its supported protocol schema version as `COMPATIBLE_PROTOCOL_SCHEMA_VERSION` (from `@codaco/interview/protocol-schema-version`). Fresco and Interviewer read it for import limits, stored-data migration, and interview payloads; Architect derives its own compatibility from `@codaco/protocol-validation` directly.
+  - Interviewer checks stored protocols at launch. A protocol saved under an older schema version is migrated, re-identified under its new content hash, and its interview sessions and media follow it in a single transaction, with a notification when this happens. A protocol that cannot be migrated is left untouched, with a message directing you to repair it in Architect.
+  - Architect upgrades a library protocol automatically when you open it, with a notification, leaving the protocol untouched if the upgrade cannot complete. Protocols made with a newer version of Architect are refused with an explanation instead of opening incorrectly.
+  - Fresco's deployment migration targets the runtime's supported version rather than a fixed number, and an interview can no longer start from a protocol stored under a version the runtime does not support — it reports the mismatch instead.
+
+  Nothing changes for existing data today — every stored protocol is already at the current schema version. This machinery exists so a future schema version change cannot orphan interview sessions or mislabel stored protocols.
+
+- Updated dependencies ([c599dac](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c599dacf78b18efb7d0c5c5fad4d38644a57e775), [e9a6522](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e9a652266ef9ddfa7fc42de1c8123bd7011c52a1), [fdb3b56](https://github.com/complexdatacollective/network-canvas-monorepo/commit/fdb3b56440f6cad89a44718d24ff725be3bb5e15))
+  - @codaco/protocol-validation@13.0.0
+  - @codaco/shared-consts@6.0.0
+  - @codaco/network-query@1.2.4
+
+## 3.2.1
+
+### Patch Changes
+
+- fec9536: Add a Colored Eco-Genetic Relationship Map (CEGRM) template for families living with an inherited condition. It combines a family pedigree with the participant's wider social network, records relationship closeness and contact frequency alongside exchanges of information, practical help, emotional and spiritual support, and closes on a visual map and an inheritance view.
+
+  Treat the Family Pedigree node label as a validated codebook field, apply its rules to every family-member name entry point, and expose those rules beside the label-variable selector in Architect. Keep the iconically rendered ego node outside label and additional family-member form collection, including in synthetic previews. Reduce the default synthetic Sociogram edge density so preview networks remain legible as their node count grows.
+
+  Keep optional unique fields empty without false duplicate errors, scope comparison rules to the active field namespace, and prevent dormant or duplicate pedigree name controls from affecting validation.
+
+- Updated dependencies [fec9536]
+  - @codaco/protocol-validation@12.1.1
+
+## 3.2.0
+
+### Minor Changes
+
+- 3c8fe35: Generate realistic, source-backed family pedigrees with reproductive scenarios and multi-generational disease lineages, while respecting each stage's collected variables, keeping pedigree membership isolated from other interview stages, correctly rendering shared and multiple unions, widening partnership response columns, and warning participants before discarding onboarding progress.
+
+  Improve pedigree editing and parentage capture by confirming destructive deletions, preserving biological-sex values, allowing current/ex-partner status changes, and recording reproductive roles independently from sex recorded at birth.
+
+### Patch Changes
+
+- Updated dependencies [3c8fe35]
+  - @codaco/shared-consts@5.6.1
+
+## 3.1.1
+
+### Patch Changes
+
+- d985cd3: Expose the shared default seed used by `SyntheticInterview` so deterministic fixtures can use the same value explicitly.
+
+## 3.1.0
+
+### Minor Changes
+
+- 59625a8: The defaults a date field falls back on, when a protocol declares no bounds of its own, now live in one place.
+
+  `@codaco/shared-consts` exports `DATE_PICKER_DEFAULT_MIN`,
+  `DATE_PICKER_EARLIEST_DATE`, `DATE_PICKER_LATEST_DATE`,
+  `RELATIVE_DATE_PICKER_DEFAULT_BEFORE`, and
+  `RELATIVE_DATE_PICKER_DEFAULT_AFTER`. `@codaco/fresco-ui` renders its date
+  fields from them, `@codaco/interview` derives the bounds a submitted date is
+  validated against from them, `@codaco/protocol-validation` models those bounds
+  when detecting contradictions, and `@codaco/protocol-utilities` generates
+  synthetic dates to fit them. Each package previously kept some local copies and
+  tested only those copies, so widening or narrowing a bound in one place could
+  leave another package predicting a window that no longer existed. No default
+  or limit has changed value, and generated data is unchanged.
+
+  `@codaco/protocol-utilities` additionally exports `todayYmd`, the clock read behind `GenerationConfig.today`'s default.
+
+- 7cffcc9: Synthetic interview data now respects the validation rules configured on your variables.
+
+  Previously, generated networks ignored the rules a protocol author sets in Architect, so previewing a protocol or bulk-generating interviews could produce data a participant could never have entered — names shorter than a required minimum length, numbers outside their permitted range, dates outside a date picker's window, duplicate values on a variable marked unique, or a "start date" later than the "end date" it is required to precede. Generated values now satisfy required, minimum/maximum length, minimum/maximum value, minimum/maximum selected, unique, same as, different from, and the greater/less than (or equal to) cross-variable comparisons, as well as the bounds a date picker or relative date picker imposes.
+
+  Where rules refer to one another, generation follows that order, so a variable compared against another is filled in after the variable it depends on.
+
+  If a protocol's rules cannot all be satisfied at once — for example a minimum length greater than its maximum length, a permitted range with no values in it, or a variable required to be both unique and drawn from fewer options than there are entities to fill — generation is now refused with a `SyntheticDataConstraintError` that names the variable and describes the conflict, instead of silently producing data that could never be collected. `SyntheticDataConstraintError` and the `ConstraintConflict` type it carries are exported from `@codaco/protocol-utilities`.
+
+  When skip logic and filtering are respected, controls on stages proven unreachable no longer create synthetic-data rendering conflicts with reachable Network Composer stages.
+
+  Read-only stage references no longer make validation rules apply to values written only by binning stages. Writers on stages proven unreachable by skip logic are likewise ignored consistently by both the feasibility check and the synthetic draw.
+
+  Manually seeded nodes and edges keep omitted Boolean attributes at the neutral
+  `false` value regardless of how the control's options are ordered.
+
+  When multiple reachable Network Composer stages render one date variable at the
+  same resolution, generation now uses the intersection of their accepted
+  windows. It refuses only controls at incompatible resolutions or controls whose
+  windows do not overlap. When an ordinary form also renders that variable,
+  generation includes its codebook control in the same intersection.
+
+  Categorical Bin "other" inputs must now target a text variable, matching the
+  text field the interview renders. Importing a version 7 protocol removes an
+  incompatible non-text "other" configuration instead of preserving a control
+  that cannot record the target variable's value.
+
+  `@codaco/fresco-ui` adds a `./form/validation/helpers` export subpath so consumers can build the same validator stack the interview uses. `@codaco/interview` now fails loudly, naming the variable, when a protocol carries a validation rule of the wrong type, rather than passing it to a validator that would report a generic error.
+
+- 3548c35: `SyntheticInterview.getNetwork()` now answers the ego's variables instead of leaving them blank.
+
+  The ego previously came back with no attributes at all, whatever its codebook declared. An ego form built from synthetic data therefore rendered empty every time, a required ego variable arrived unanswered, and rules written between ego variables — same as, different from, and the greater/less than (or equal to) comparisons — were ignored entirely.
+
+  Ego attributes are now drawn through the same solver the nodes and edges already used, so they satisfy the rules its codebook declares and a protocol whose ego rules cannot all be met at once is refused with the same `SyntheticDataConstraintError`. Ego is drawn after the nodes and edges, so adding an ego variable to an existing fixture does not disturb the values its nodes and edges were already given.
+
+### Patch Changes
+
+- 1a3fe60: Improve node entry and display across interview interfaces. Synthetic `name`
+  variables now use realistic personal names whenever their validation rules
+  allow it, long labels wrap and truncate without distorting node shapes, and
+  Network Composer quick add retains focus after submitting a node. Shared modal,
+  form-field, and theme refinements support the updated Architect editing
+  experience.
+- efc3a92: A relative date question anchored near either end of the calendar no longer refuses every date it offers.
+
+  A relative date question works out the dates it accepts by counting days forward and back from an anchor. With an anchor late in the calendar that count could pass the year 9999 — an anchor of 9999-12-31 accepting one day after it worked out a latest date of 10000-01-01 — and with an early anchor it could pass year zero, working out 0000-07-05 or, further back, something that was not a date at all. Neither is a date the software recognises, so the check on what a participant entered stopped comparing dates and compared plain text instead, where a five-digit year sorts before every four-digit one. Every date the question could offer was then rejected as too late, including the one the participant had just chosen. Both ends of the window now stop at the first and last dates a date field can hold.
+
+  `@codaco/shared-consts` exports `dateWithinPickerRange`, `DATE_PICKER_EARLIEST_DATE` and `DATE_PICKER_LATEST_DATE`. The field in `@codaco/fresco-ui`, the submission checks in `@codaco/interview` and the synthetic dates drawn by `@codaco/protocol-utilities` all work the window out from that one function, so the three cannot disagree about it. Questions anchored anywhere else are unaffected, and generated data for them is unchanged.
+
+- 5d91508: Synthetic networks no longer contain duplicate edges of one type between one
+  pair. `generateNetwork` now looks a pair up before drawing an edge for it and
+  reuses the one already there, the way the interview does — so two prompts, two
+  censuses, or a census and a sociogram all asking about the same people leave a
+  single edge behind rather than one apiece. A reused pair is recorded as an
+  answered "yes" rather than as a negative response, and a tie strength census
+  writes its ordinal value onto the existing edge instead of adding another.
+  Family pedigree edges keep their own rule: several edges of one type between one
+  pair are meaningful there, so a pedigree still draws each parent-child link
+  without looking for an existing one.
+
+  Because fewer edges are drawn, the feasibility check for `unique` edge variables
+  now counts one set of pairs per subject node type instead of one per prompt, so
+  protocols it previously refused for needing more distinct values than the draw
+  actually spends are accepted. Seeded output for any protocol whose stages share
+  an edge type changes.
+
+- 63cd3ca: Synthetic family pedigree edges now record a relationship. Every parent-child
+  edge `generateNetwork` builds carries the relationship type and active flag its
+  stage's `edgeConfig` names — `biological` and `true`, which is what the
+  interview writes on every parent-child edge it commits and what every reader
+  already assumes when the values are missing. Previously those edges were created
+  with no attributes at all, so anything reading synthetic pedigree data saw a
+  relationship the protocol had no value for.
+
+  The two gamete-side variables (`isGestationalCarrier`, `gameteRole`) stay
+  unwritten: they record which parent supplied which gamete and who carried the
+  pregnancy, and a pedigree without those features carries no such value in a real
+  interview either.
+
+  The values are written rather than drawn, so a seeded run produces the same
+  people, the same parentage and the same values as before — the new attributes
+  are all that is added. Feasibility counts them like any other written value, so
+  a `unique` rule on one of those two variables is now measured against the edges
+  that really hold it.
+
+- Updated dependencies [b777dc1]
+- Updated dependencies [59625a8]
+- Updated dependencies [b777dc1]
+- Updated dependencies [8b660f5]
+- Updated dependencies [efc3a92]
+- Updated dependencies [7cffcc9]
+  - @codaco/protocol-validation@12.1.0
+  - @codaco/shared-consts@5.6.0
+
 ## 3.0.1
 
 ### Patch Changes

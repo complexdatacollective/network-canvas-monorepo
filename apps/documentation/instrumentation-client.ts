@@ -1,12 +1,31 @@
 import posthog from 'posthog-js';
 
-const POSTHOG_API_KEY = 'phc_OThPUolJumHmf142W78TKWtjoYYAxGlF0ZZmhcV7J3c';
-const POSTHOG_HOST = 'https://ph-relay.networkcanvas.com';
+import {
+  buildAppSuperProperties,
+  POSTHOG_API_KEY,
+  POSTHOG_HOST,
+} from '@codaco/shared-consts';
+import { isProductionHost } from '~/lib/analytics/isProductionHost';
 
-if (process.env.NEXT_PUBLIC_IS_PRODUCTION === 'true') {
+import pkg from './package.json' with { type: 'json' };
+
+// Built from the shared helper so this site's events carry the same
+// super-property schema as every other Network Canvas product, and a mistyped
+// key is a compile error rather than a dimension that quietly stops reporting.
+const POSTHOG_APP_PROPERTIES = buildAppSuperProperties({
+  appKey: 'Documentation',
+  appName: 'Documentation',
+  version: pkg.version,
+  installationId: 'documentation-production',
+});
+
+if (isProductionHost(window.location.hostname)) {
   posthog.init(POSTHOG_API_KEY, {
     api_host: POSTHOG_HOST,
-    capture_pageview: true,
+    // 'history_change', not `true`: the site navigates client-side through the App
+    // Router, and plain `true` only captures the initial load, not the pages
+    // visited after it.
+    capture_pageview: 'history_change',
     capture_pageleave: true,
     capture_exceptions: true,
     autocapture: true,
@@ -18,8 +37,5 @@ if (process.env.NEXT_PUBLIC_IS_PRODUCTION === 'true') {
     persistence: 'localStorage+cookie',
   });
 
-  posthog.register({
-    app: 'Documentation',
-    installation_id: 'documentation-production',
-  });
+  posthog.register(POSTHOG_APP_PROPERTIES);
 }

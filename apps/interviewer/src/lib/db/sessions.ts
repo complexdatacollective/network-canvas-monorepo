@@ -236,11 +236,18 @@ export async function queryMatchingSessionIds(
   return ids;
 }
 
-export async function getSession(
-  id: string,
-): Promise<StoredSession | undefined> {
-  const row = await db.sessions.get(id);
-  return row ? decryptSession(row) : undefined;
+export function getSession(id: string): Promise<StoredSession | undefined> {
+  // This read joins the per-id mutation chain (below) so it can never overtake
+  // a write already enqueued in this tab. The interview Shell hands its final
+  // autosave to updateSession while unmounting on exit; a prompt resume's
+  // hydration read must wait for that write — hydrating from the pre-write row
+  // would render without the participant's latest answers, and the engine's
+  // next autosave would persist that stale network back over the newer stored
+  // record, silently destroying data.
+  return enqueueSessionMutation(id, async () => {
+    const row = await db.sessions.get(id);
+    return row ? decryptSession(row) : undefined;
+  });
 }
 
 export async function getSessionsByIds(
@@ -288,7 +295,9 @@ export async function createSession(args: {
 // per-id mutation goes through one promise chain keyed by id: each waits for
 // the previous one on the same id to settle before it reads. This serialises
 // updateSession against markSessionFinished/markSessionsExported too, so a
-// trailing sync can't clobber a completion/export marker.
+// trailing sync can't clobber a completion/export marker. getSession joins
+// the same chain so a single-session read observes every write this tab has
+// already enqueued (read-your-writes; see the comment on getSession).
 const updateChains = new Map<string, Promise<unknown>>();
 
 function enqueueSessionMutation<T>(
@@ -310,6 +319,41 @@ function enqueueSessionMutation<T>(
   return next;
 }
 
+/**
+ * Resolve once every session mutation enqueued so far has settled.
+ *
+ * These mutations read the vault key when they RUN, not when they are queued:
+ * `updateSession` waits its turn on the chain above, reads the stored row and
+ * decrypts it, and only then reaches `encryptSession`. Clearing the key while
+ * any of that is outstanding makes it fail closed and loses the answers it was
+ * carrying, so the idle lock waits for this first — see `AuthContext`.
+ *
+ * An empty queue is not the same as a quiet pipeline. The route's sync handler
+ * batches (`createDebouncedSyncHandler`), so while one write is in flight a
+ * newer answer is held in the handler rather than queued here — and released on
+ * a zero-delay timer once that write lands. For an instant the queue is empty
+ * with an answer still one tick from entering it, and concluding "quiet" there
+ * clears the key out from under it. So yield a macrotask before believing an
+ * empty queue: the handler's timer was scheduled first and therefore runs
+ * first. This holds because that handler's window is zero; a host that held
+ * answers for longer would need the lock to wait on the handler itself.
+ *
+ * Bounded: a mutation already in flight can land while we wait, so re-check,
+ * but never indefinitely. The caller is entitled to proceed, and puts its own
+ * deadline around this as well.
+ */
+export async function whenSessionWritesSettle(): Promise<void> {
+  for (let pass = 0; pass < 3; pass += 1) {
+    // allSettled: a failed write is still a settled one, and this is a wait,
+    // not a retry.
+    await Promise.allSettled(updateChains.values());
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    if (updateChains.size === 0) return;
+  }
+}
+
 export function updateSession(
   id: string,
   patch: Partial<StoredSession>,
@@ -324,8 +368,19 @@ export function updateSession(
       lastUpdatedAt: new Date().toISOString(),
     };
     const row = await encryptSession(updated);
-    await db.sessions.put(row);
-    return updated;
+    // The read above happened before the crypto awaits, and the per-id chain
+    // only serialises THIS tab. In the gap, the launch-time protocol
+    // migration — possibly in another tab — may have repointed this session's
+    // `protocolHash`, or the session may have been deleted. `protocolHash` is
+    // never legitimately part of a session patch, so commit it from the
+    // freshest stored row, and drop the write entirely rather than resurrect
+    // a deleted session.
+    return db.transaction('rw', db.sessions, async () => {
+      const latest = await db.sessions.get(id);
+      if (!latest) return undefined;
+      await db.sessions.put({ ...row, protocolHash: latest.protocolHash });
+      return { ...updated, protocolHash: latest.protocolHash };
+    });
   });
 }
 

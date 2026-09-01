@@ -27,7 +27,8 @@ type CategoricalBinItemProps = {
   isExpanded: boolean;
   onToggleExpand: () => void;
   catColor: string | null;
-  onDropNode: (node: NcNode) => Promise<void>;
+  /** Resolves true only when the drop commits a bin assignment. */
+  onDropNode: (node: NcNode) => Promise<boolean>;
   nodes: NcNode[];
   /**
    * 1-based position among in-flow (non-expanded) bins. Drives the
@@ -94,8 +95,8 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
 
   const handleDrop = async (metadata?: DragMetadata) => {
     const node = metadata as NcNode;
-    await onDropNode(node);
-    celebrate();
+    const committed = await onDropNode(node);
+    if (committed) celebrate();
   };
 
   const listId = getCatBinListId(stageId, promptId, index);
@@ -218,21 +219,23 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
       transition={springTransition}
       variants={binItemVariants}
     >
-      <Heading level="h4">
-        <RenderMarkdown>{label}</RenderMarkdown>
-      </Heading>
-      <AnimatePresence>
-        {nodes.length > 0 && (
-          <motion.div
-            className="catbin-summary"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <BinSummary nodes={nodes} />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className="catbin-content">
+        <Heading level="h4" className="line-clamp-3">
+          <RenderMarkdown>{label}</RenderMarkdown>
+        </Heading>
+        <AnimatePresence>
+          {nodes.length > 0 && (
+            <motion.div
+              className="catbin-summary"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <BinSummary nodes={nodes} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </motion.div>
   );
 };

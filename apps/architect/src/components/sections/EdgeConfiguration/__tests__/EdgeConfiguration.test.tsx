@@ -1,60 +1,34 @@
-import { render, screen } from '@testing-library/react';
-import { type ReactNode } from 'react';
+import { screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('~/components/EditorLayout', () => ({
-  Section: ({
-    children,
-    title,
-  }: {
-    children: ReactNode;
-    title?: ReactNode;
-  }) => (
-    <div
-      data-testid="section"
-      data-title={typeof title === 'string' ? title : ''}
-    >
-      {title && <h2>{title}</h2>}
-      {children}
-    </div>
-  ),
-  Subsection: ({
-    children,
-    title,
-  }: {
-    children: ReactNode;
-    title?: ReactNode;
-  }) => (
-    <section data-testid="subsection">
-      {title && <h3>{title}</h3>}
-      {children}
-    </section>
-  ),
-  Row: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
+import {
+  asStage,
+  renderStageForm,
+} from '~/components/StageEditor/__tests__/stageFormTestHarness';
 
 // The multi-select is exercised in its own test; here we only assert it renders.
 vi.mock('../EdgeTypeMultiSelect', () => ({
-  default: ({ form }: { form: string }) => (
-    <div data-testid="edge-type-multiselect" data-parentform={form} />
-  ),
+  default: () => <div data-testid="edge-type-multiselect" />,
 }));
 
-// Surface the wiring (fieldName, entity, type, editFormName) as data-attributes
-// so the tests assert the real bindings rather than just "a mock rendered".
-vi.mock('~/components/EditableAttributesList/EditableAttributesList', () => ({
+// Surface the wiring (fieldName, entity, type, editFormName, addButtonLabel)
+// as data-attributes so the tests assert the real bindings rather than just
+// "a mock rendered".
+vi.mock('~/components/Form/arrayFields/EditableAttributesList', () => ({
   default: ({
     fieldName,
     entity,
     type,
     form,
     editFormName,
+    addButtonLabel,
   }: {
     fieldName: string;
     entity: string;
     type: string | null;
     form: string;
     editFormName: string;
+    addButtonLabel?: string;
     handleChangeFields: unknown;
   }) => (
     <div
@@ -64,19 +38,16 @@ vi.mock('~/components/EditableAttributesList/EditableAttributesList', () => ({
       data-type={type ?? ''}
       data-parentform={form}
       data-editformname={editFormName}
+      data-addbuttonlabel={addButtonLabel ?? ''}
     />
   ),
 }));
 
-// withComposerFormHandlers passes through, recording the scoping props it was
-// invoked with (entity/type/form) onto the injected handler-bearing element so
-// the test can prove the handler is scoped per edge type.
-vi.mock('~/components/sections/Form/withComposerFormHandlers', () => ({
-  default:
-    (Component: React.ComponentType<Record<string, unknown>>) =>
-    (props: Record<string, unknown>) => (
-      <Component {...props} handleChangeFields={() => undefined} />
-    ),
+// `EdgeAttributeBlock` calls `useComposerFieldCommit({entity, type})` itself
+// now (no more `withComposerFormHandlers` wrapper) — stub it so the test
+// doesn't need a full `activeProtocol`/dispatch-capable store.
+vi.mock('~/components/sections/Form/fieldCommit', () => ({
+  useComposerFieldCommit: () => () => ({ success: true as const }),
 }));
 
 const mockCodebook = {
@@ -86,37 +57,11 @@ const mockCodebook = {
   },
 };
 
-// Drive useSelector without a Provider: each selector is invoked with a stub
-// state. `getCodebook` (mocked below) ignores it, and the live-edges selector
-// reads from the mocked `formValueSelector`, so the stub state is never used.
-vi.mock('react-redux', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react-redux')>();
-  const useSelector = (selector: (state: unknown) => unknown) => selector({});
-  Object.assign(useSelector, { withTypes: actual.useSelector.withTypes });
-  return {
-    ...actual,
-    useSelector,
-  };
-});
-
 vi.mock('~/selectors/protocol', async (importOriginal) => {
   const actual = await importOriginal<typeof import('~/selectors/protocol')>();
   return {
     ...actual,
     getCodebook: () => mockCodebook,
-  };
-});
-
-// `formValueSelector(form)(state, 'edges')` is how the section reads the LIVE
-// edges array. Drive it via a mutable holder so each test exercises the real
-// live-edges code path.
-const liveFormValues: { edges?: unknown } = {};
-vi.mock('redux-form', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('redux-form')>();
-  return {
-    ...actual,
-    formValueSelector: () => (_state: unknown, field: string) =>
-      field === 'edges' ? liveFormValues.edges : undefined,
   };
 });
 
@@ -128,34 +73,35 @@ type EdgeArg = {
   form?: Record<string, unknown>;
 };
 
-const renderSection = ({ edges }: { edges: EdgeArg[] }) => {
-  liveFormValues.edges = edges;
-  return render(
-    <EdgeConfiguration
-      form="edit-stage"
-      stagePath="stages[0]"
-      stagePosition={0}
-      interfaceType="NetworkComposer"
-    />,
-  );
-};
-
-describe('EdgeConfiguration', () => {
-  it('renders the multi-select bound to the parent form', () => {
-    renderSection({ edges: [] });
-    const multiSelect = screen.getByTestId('edge-type-multiselect');
-    expect(multiSelect).toBeInTheDocument();
-    expect(multiSelect.getAttribute('data-parentform')).toBe('edit-stage');
+// The section reads its live `edges` array off the stage form store, which
+// only holds registered fields — `edges` here registers through the (mocked)
+// multi-select's ArchitectField, seeded by the committed stage passed to
+// renderStageForm. Rendering through the real bridge (rather than stubbing
+// `formValueSelector`) is what makes this an honest test of the hook-based
+// read.
+const renderSection = ({ edges }: { edges: EdgeArg[] }) =>
+  renderStageForm({
+    committedStage: asStage({ edges }),
+    children: (
+      <EdgeConfiguration
+        stagePath="stages[0]"
+        stagePosition={0}
+        interfaceType="NetworkComposer"
+      />
+    ),
   });
 
-  it('renders the multi-select under the "Edge types" subsection heading', () => {
+describe('EdgeConfiguration', () => {
+  it('renders the multi-select', () => {
+    renderSection({ edges: [] });
+    expect(screen.getByTestId('edge-type-multiselect')).toBeInTheDocument();
+  });
+
+  it('renders the multi-select under the nested connection-types heading', () => {
     renderSection({ edges: [] });
     expect(
-      screen.getByRole('heading', { name: /edge types/i }),
+      screen.getByRole('heading', { name: /connection types/i }),
     ).toBeInTheDocument();
-    expect(screen.getByTestId('subsection')).toContainElement(
-      screen.getByTestId('edge-type-multiselect'),
-    );
   });
 
   it('renders only the multi-select when no edge types are selected', () => {
@@ -219,7 +165,32 @@ describe('EdgeConfiguration', () => {
     ).toBeInTheDocument();
   });
 
-  it('wraps each edge attributes list in an "Editable attributes" subsection', () => {
+  it('names every add button after the edge type it adds to, so no two share a name', () => {
+    // The 1+N problem: this stage renders one attribute list per selected edge
+    // type, plus the node type's own, all on one screen. Any label belonging
+    // to the list component would repeat; only the edge type's name separates
+    // them. The unknown type is here because a fallback that resolved to an
+    // empty string would put two buttons back to "Create new attribute for ".
+    renderSection({
+      edges: [
+        { id: 'a', subject: { entity: 'edge', type: 'knows' } },
+        { id: 'b', subject: { entity: 'edge', type: 'likes' } },
+        { id: 'c', subject: { entity: 'edge', type: 'unknownType' } },
+      ],
+    });
+    const labels = screen
+      .getAllByTestId('attributes-list')
+      .map((list) => list.dataset.addbuttonlabel);
+
+    expect(labels).toEqual([
+      'Create new attribute for Knows',
+      'Create new attribute for Likes',
+      'Create new attribute for unknownType',
+    ]);
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+
+  it('wraps each edge attributes list in a nested "Editable attributes" section', () => {
     renderSection({
       edges: [
         { id: 'a', subject: { entity: 'edge', type: 'knows' } },

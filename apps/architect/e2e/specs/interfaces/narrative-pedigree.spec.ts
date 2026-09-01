@@ -1,12 +1,12 @@
 import type { Page } from '@playwright/test';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
-import { asEntityAttributeReference } from '@codaco/protocol-validation';
 import {
+  asEntityAttributeReference,
   BIOLOGICAL_SEX_OPTIONS,
+  type CurrentProtocol,
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
-} from '@codaco/shared-consts';
+} from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
 import { emptyProtocol } from '../../fixtures/seed.js';
@@ -176,63 +176,70 @@ test('creates a valid NarrativePedigree stage from scratch', async ({
   await editor.createNew('NarrativePedigree');
   await editor.setStageName('Family Health History');
 
-  // SourceStage.tsx: `Field name="sourceStageId" ... fieldComponent={
-  // FrescoStyledSelectField} label="Family Pedigree stage"` — a Base UI
-  // Select combobox (same "combobox" trigger role + "option" item role
-  // pattern `createVariableWithOptions` already exercises for "Variable
-  // type"), listing only the seeded FamilyPedigree stage by its `label`.
+  // SourceStage.tsx owns `sourceStageId` through a StyledSelectField labelled
+  // "Source stage" — a Base UI Select combobox (same "combobox" trigger role
+  // + "option" item role pattern `createVariableWithOptions` already
+  // exercises for "Variable type"), listing only the seeded FamilyPedigree
+  // stage by its `label`.
   // Diseases.tsx reads `nodeType` from THIS field's live value (via
   // `getStage(state, sourceStageId)`), so it must be set before the disease
   // dialog's variable picker has anything to offer — hence selecting it
   // first, as the task brief specifies.
   await editor
     .field('sourceStageId')
-    .getByRole('combobox', { name: 'Family Pedigree stage' })
+    .getByRole('combobox', { name: 'Source stage' })
     .click();
   await architectPage.getByRole('option', { name: 'Family Pedigree' }).click();
 
-  // Diseases.tsx wraps its `diseases` array in the same DialogArrayField
-  // pattern every other prompt-array section in this suite uses (addPrompt's
-  // "Create new"/"Add" contract), even though the section is titled
-  // "Diseases" rather than "Prompts".
-  await addPrompt(editor.section('Diseases'), async () => {
-    // DiseaseFields.tsx: "Disease label" (labelHidden InputField).
-    await architectPage
-      .getByRole('textbox', { name: 'Disease label' })
-      .fill('Condition X');
+  // Diseases.tsx exposes its `diseases` ArchitectArrayField through the same
+  // DialogArrayField pattern every other prompt array in this suite uses, so
+  // the add button is named for what it adds and addPrompt is told which label
+  // to click.
+  await addPrompt(
+    editor.field('diseases'),
+    async () => {
+      // DiseaseFields.tsx: visible "Disease label" InputField.
+      await architectPage
+        .getByRole('textbox', { name: 'Disease label' })
+        .fill('Condition X');
 
-    // ColorPicker (`palette: 'node-color-seq'`, `paletteRange: 10`) renders a
-    // Base UI RadioGroup of 10 swatch buttons, each `role="radio"` with
-    // `aria-label` `node-color-seq-{n}` (ColorPicker.tsx's `asColorOption`) —
-    // same Base UI Radio primitive already confirmed for
-    // EntitySelectField's node/edge-type pills. Any swatch is a valid,
-    // non-empty color; picking the first keeps this deterministic.
-    await architectPage.getByRole('radio').first().click();
+      // ColorPicker (`palette: 'node-color-seq'`, ranged to the palette's real
+      // eight colours) renders a Base UI RadioGroup of swatch buttons, each
+      // `role="radio"` named for its hue rather than its token — the same Base
+      // UI Radio primitive already confirmed for EntitySelectField's
+      // node/edge-type pills. Picked by name so the spec fails if the swatches
+      // ever go back to announcing `node-color-seq-1`.
+      await architectPage
+        .getByRole('radio', { name: 'Neon Coral', exact: true })
+        .click();
 
-    // DiseaseFields.tsx's "variable" VariablePicker passes NO
-    // `onCreateOption` (unlike every other variable picker in this suite),
-    // so its `onCreateOption` no-ops — this is a genuinely pick-only picker,
-    // as the task brief specifies. `createVariableViaSpotlight` still works
-    // unmodified: searching the EXACT existing variable name
-    // (`hasConditionX`, seeded above on the source stage's node type) means
-    // VariableSpotlight's "Create new variable called…" row never appears
-    // (an exact match exists), so the helper's fallback branch
-    // (`search.press('Enter')`, selecting the single filtered match) fires
-    // instead of ever attempting to create anything.
-    await createVariableViaSpotlight(architectPage, {
-      variableName: 'hasConditionX',
-    });
+      // DiseaseFields.tsx's "variable" VariablePicker passes NO
+      // `onCreateOption` (unlike every other variable picker in this suite),
+      // so its `onCreateOption` no-ops — this is a genuinely pick-only picker,
+      // as the task brief specifies. `createVariableViaSpotlight` still works
+      // unmodified: searching the EXACT existing variable name
+      // (`hasConditionX`, seeded above on the source stage's node type) means
+      // VariableSpotlight's "Create new variable called…" row never appears
+      // (an exact match exists), so the helper's fallback branch
+      // (`search.press('Enter')`, selecting the single filtered match) fires
+      // instead of ever attempting to create anything.
+      await createVariableViaSpotlight(architectPage, {
+        variableName: 'hasConditionX',
+      });
 
-    // "Inheritance pattern" (labelHidden FrescoStyledSelectField) — options
-    // are `startCase(INHERITANCE_PATTERNS[n])`; 'autosomalDominant' ->
-    // "Autosomal Dominant".
-    await architectPage
-      .getByRole('combobox', { name: 'Inheritance pattern' })
-      .click();
-    await architectPage
-      .getByRole('option', { name: 'Autosomal Dominant' })
-      .click();
-  });
+      // The visibly labelled "Inheritance pattern" field is grouped with the
+      // other disease mapping fields in "Disease details". Its options are
+      // `startCase(INHERITANCE_PATTERNS[n])`; 'autosomalDominant' becomes
+      // "Autosomal Dominant".
+      await architectPage
+        .getByRole('combobox', { name: 'Inheritance pattern' })
+        .click();
+      await architectPage
+        .getByRole('option', { name: 'Autosomal Dominant' })
+        .click();
+    },
+    { addButtonLabel: 'Create new disease' },
+  );
 
   // AtRiskStatuses.tsx's `showAtRiskStatuses` toggle defaults to `false` via
   // the interface's own `template` (Interfaces.tsx) and is optional/boolean

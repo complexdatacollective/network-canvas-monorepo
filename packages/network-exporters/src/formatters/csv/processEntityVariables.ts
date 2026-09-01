@@ -2,10 +2,10 @@
 
 import type { Codebook, EntityDefinition } from '@codaco/protocol-validation';
 import {
-  entityAttributesProperty,
   type NcEdge,
   type NcEgo,
   type NcNode,
+  entityAttributesProperty,
 } from '@codaco/shared-consts';
 
 import type { ExportOptions } from '../../options';
@@ -19,15 +19,17 @@ export type VariableDefinition = NonNullable<
   EntityDefinition['variables']
 >[string];
 
-const processEntityVariables = (
-  entityObject: NcEdge | NcNode | NcEgo,
+const processEntityVariables = <Entity extends NcEdge | NcNode | NcEgo>(
+  entityObject: Entity,
   entity: 'ego' | 'node' | 'edge',
   codebook: Codebook,
   exportOptions: ExportOptions,
 ) => {
   const attributes: Record<string, unknown> = {};
 
-  for (const attributeUUID of Object.keys(getEntityAttributes(entityObject))) {
+  for (const [attributeUUID, attributeData] of Object.entries(
+    getEntityAttributes(entityObject),
+  )) {
     let codebookAttribute: VariableDefinition | undefined;
 
     if (entity === 'ego') {
@@ -40,8 +42,6 @@ const processEntityVariables = (
     const attributeName = codebookAttribute?.name;
     const attributeType = codebookAttribute?.type;
     const attributeIsEncrypted = codebookAttribute?.encrypted;
-    const attributeData = entityObject[entityAttributesProperty][attributeUUID];
-
     if (attributeType === 'categorical') {
       const attributeOptions = codebookAttribute?.options ?? [];
 
@@ -60,12 +60,20 @@ const processEntityVariables = (
     }
 
     if (attributeType === 'layout') {
-      const coords = attributeData as
-        | { x: number; y: number }
-        | null
-        | undefined;
-      const xCoord = coords?.x;
-      const yCoord = coords?.y;
+      const xCoord =
+        typeof attributeData === 'object' &&
+        !Array.isArray(attributeData) &&
+        'x' in attributeData &&
+        typeof attributeData.x === 'number'
+          ? attributeData.x
+          : undefined;
+      const yCoord =
+        typeof attributeData === 'object' &&
+        !Array.isArray(attributeData) &&
+        'y' in attributeData &&
+        typeof attributeData.y === 'number'
+          ? attributeData.y
+          : undefined;
 
       if (attributeIsEncrypted) {
         attributes[`${attributeName}_x`] = 'ENCRYPTED';
@@ -77,7 +85,6 @@ const processEntityVariables = (
       attributes[`${attributeName}_y`] = yCoord;
 
       if (
-        attributeData &&
         exportOptions.globalOptions.useScreenLayoutCoordinates &&
         xCoord !== undefined &&
         yCoord !== undefined

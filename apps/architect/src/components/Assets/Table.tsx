@@ -45,7 +45,7 @@ type TableProps = {
 };
 
 const tableClasses = cx(
-  'bg-table-row-tint max-h-[60vh] overflow-auto rounded',
+  'bg-platinum max-h-[60vh] overflow-auto rounded',
   '[&_td]:min-w-32 [&_th]:min-w-32',
   '[&_th]:text-sm [&_th]:font-semibold [&_th]:tracking-wider [&_th]:break-keep [&_th]:whitespace-nowrap [&_th]:uppercase',
   '[&_th]:px-5 [&_th]:py-2.5 [&_th]:leading-10',
@@ -53,7 +53,7 @@ const tableClasses = cx(
   '[&_th:not(:last-child)]:border-r-[3px] [&_th:not(:last-child)]:border-r-white',
   '[&_td]:p-5',
   '[&_td:not(:last-child)]:border-r-[3px] [&_td:not(:last-child)]:border-r-white',
-  '[&_tbody>tr:nth-child(odd)>td]:bg-table-row-tint',
+  '[&_tbody>tr:nth-child(odd)>td]:bg-platinum-dark',
 );
 
 const Table = ({ data, columns }: TableProps) => {

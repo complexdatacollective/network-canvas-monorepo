@@ -1,19 +1,27 @@
 import { asEntityAttributeReference } from './schemas/8/entity-attribute-reference.ts';
 import { getAssetMimeType } from './utils/asset-mime-type.ts';
 import {
+  type AssetReferenceHit,
+  collectAssetReferences,
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
   type EntityAttributeReferenceHit,
   type EntityTypeReferenceHit,
 } from './utils/collectEntityAttributeReferences.ts';
+import { describeProtocolFileError } from './utils/describeProtocolFileError.ts';
 import {
   type ExtractedAsset,
   extractProtocol,
   extractProtocolFromZip,
+  loadNetcanvasArchive,
   MAX_INFLATED_BYTES,
   NetcanvasInflationLimitError,
 } from './utils/extractProtocol.ts';
 import { hashProtocol } from './utils/hashProtocol.ts';
+import {
+  MalformedNetcanvasError,
+  type MalformedNetcanvasReason,
+} from './utils/malformedNetcanvasError.ts';
 import {
   getVariableNamesFromNetwork,
   type Network,
@@ -44,6 +52,27 @@ export {
 
 // Export schema types and constants (Protocol, Codebook, etc)
 export * from './schemas/index.ts';
+// Interface-owned value sets that are part of the current schema's contract.
+// They live in the schema version directory and are copied — never shared —
+// when a new version directory is created, so a host always reads the set the
+// version it targets defines.
+export {
+  BIOLOGICAL_SEX_OPTIONS,
+  BIOLOGICAL_SEX_VALUES,
+  type BiologicalSex,
+  FRAMING_IDS,
+  type FramingId,
+  GAMETE_ROLE_OPTIONS,
+  GAMETE_ROLES,
+  type GameteRole,
+  RELATIONSHIP_TYPE_OPTIONS,
+  RELATIONSHIP_TYPES,
+  type RelationshipType,
+} from './schemas/8/family-pedigree-values.ts';
+export {
+  INHERITANCE_PATTERNS,
+  type InheritancePattern,
+} from './schemas/8/narrative-pedigree-values.ts';
 export {
   findValidationContradictions,
   type ValidationContradiction,
@@ -55,10 +84,22 @@ export {
   type VariableRoleGroup,
   type VariableRoleHit,
 } from './utils/findVariableRoleConflicts.ts';
+// `findExclusiveVariableConflicts` stays internal: it exists to feed the
+// protocol schema's own refinement, and a host that wants to know whether a
+// protocol is admissible should call `validateProtocol`.
+export {
+  type ExclusiveVariableSlot,
+  findExclusiveVariableSlots,
+  findInterfaceOwnedOptionBindings,
+  type InterfaceOwnedOptionBinding,
+} from './utils/findExclusiveVariableConflicts.ts';
 export {
   asEntityAttributeReference,
+  type AssetReferenceHit,
+  collectAssetReferences,
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
+  describeProtocolFileError,
   type EntityAttributeReferenceHit,
   type EntityTypeReferenceHit,
   type ExtractedAsset,
@@ -68,6 +109,9 @@ export {
   getAssetMimeType,
   getVariableNamesFromNetwork,
   hashProtocol,
+  loadNetcanvasArchive,
+  MalformedNetcanvasError,
+  type MalformedNetcanvasReason,
   MAX_INFLATED_BYTES,
   type Network,
   NetcanvasInflationLimitError,

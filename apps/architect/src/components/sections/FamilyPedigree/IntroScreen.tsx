@@ -1,12 +1,10 @@
-import { useCallback } from 'react';
-import { useSelector } from 'react-redux';
-import { change, formValueSelector } from 'redux-form';
+import type { ComponentType } from 'react';
 
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import Section from '@codaco/fresco-ui/Section';
 import type { FamilyPedigreeIntroItem } from '@codaco/protocol-validation';
-import { Row, Section } from '~/components/EditorLayout';
-import DialogArrayField from '~/components/Form/DialogArrayField';
-import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
+import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import type { DialogArrayItemSelector } from '~/components/Form/arrayFields/DialogArrayField';
+import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import ItemEditor from '~/components/sections/ContentGrid/ItemEditor';
 import ItemPreview from '~/components/sections/ContentGrid/ItemPreview';
 import {
@@ -14,71 +12,51 @@ import {
   normalizeType,
 } from '~/components/sections/ContentGrid/itemTypes';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-import { useAppDispatch } from '~/ducks/hooks';
-import type { RootState } from '~/ducks/store';
-type IntroScreenValue = {
-  items: FamilyPedigreeIntroItem[];
-} | null;
-const notEmpty = (value: unknown) =>
-  value && Array.isArray(value) && value.length > 0
-    ? undefined
-    : 'You must create at least one item.';
-const IntroScreen = ({ form }: StageEditorSectionProps) => {
-  const dispatch = useAppDispatch();
-  const formSelector = formValueSelector(form);
-  const introScreen = useSelector(
-    (state: RootState) =>
-      formSelector(state, 'introScreen') as IntroScreenValue | undefined,
+import {
+  useStageFormValue,
+  useStageInitialValue,
+} from '~/components/StageEditor/stageFormHooks';
+
+// `ItemPreview`'s default export is a react-redux `connect()`ed component
+// (ContentGrid batch), so its prop type is too specific to satisfy the array
+// field's generic `Renderer` bag; DialogArrayField always spreads the row's
+// own properties into it, so the cast is safe.
+type Renderer = ComponentType<Record<string, unknown>>;
+
+const IntroScreen = (_props: StageEditorSectionProps) => {
+  const items = useStageFormValue<FamilyPedigreeIntroItem[] | undefined>(
+    'introScreen.items',
   );
-  const isEnabled = introScreen !== null && introScreen !== undefined;
-  const handleToggleChange = useCallback(
-    async (newState: boolean) => {
-      if (newState) {
-        dispatch(change(form, 'introScreen', { items: [] }));
-        return true;
-      }
-      dispatch(change(form, 'introScreen', null));
-      return true;
-    },
-    [dispatch, form],
-  );
+  const initialItems =
+    useStageInitialValue<FamilyPedigreeIntroItem[]>('introScreen.items');
+  const isEnabled = items !== undefined;
+
   return (
     <Section
-      title="Intro Screen"
-      summary={
-        <Paragraph>
-          Optionally show an introductory screen to participants before the
-          family pedigree task begins. Add text and media sections below, and
-          drag them to reorder.
-        </Paragraph>
-      }
+      title="Introductory screen"
+      description="Optionally show participants text or media before the family pedigree task begins."
       toggleable
-      startExpanded={isEnabled}
-      handleToggleChange={handleToggleChange}
+      defaultOpen={isEnabled}
     >
-      <Row>
-        <ValidatedFieldArray
-          name="introScreen.items"
-          label="Content sections"
-          component={DialogArrayField}
-          validation={{ notEmpty }}
-          componentProps={{
-            addTitle: 'Edit Section',
-            previewComponent: ItemPreview,
-            editorFieldsComponent: ItemEditor,
-            editorTitle: 'Edit Section',
-            itemLabel: 'content section',
-            sortable: true,
-            normalizeItem: normalizeType as unknown as (
-              value: unknown,
-            ) => unknown,
-            itemSelector: denormalizeType,
-            requestedEditFormName: 'editable-list-form',
-            emptyStateMessage:
-              'No content sections have been created yet. Click "Create new" to add text or media to the intro screen.',
-          }}
-        />
-      </Row>
+      <ArchitectArrayField
+        name="introScreen.items"
+        label="Content sections"
+        component={DialogArrayField}
+        addButtonLabel="Create new content section"
+        validation={{ required: 'You must create at least one item.' }}
+        initialValue={initialItems ?? []}
+        addTitle="Edit Section"
+        previewComponent={ItemPreview as unknown as Renderer}
+        editorFieldsComponent={ItemEditor}
+        editorDialogSize="workspace"
+        editorTitle="Edit Section"
+        itemLabel="content section"
+        sortable
+        normalizeItem={normalizeType as unknown as (value: unknown) => unknown}
+        itemSelector={denormalizeType as unknown as DialogArrayItemSelector}
+        requestedEditFormName="editable-list-form"
+        emptyStateMessage='No content sections have been created yet. Click "Create new content section" to add text or media to the intro screen.'
+      />
     </Section>
   );
 };

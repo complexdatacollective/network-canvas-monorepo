@@ -775,6 +775,8 @@ export function generateEntityAttributes(
   options?: {
     existing?: Record<string, VariableValue>;
     only?: Set<string>;
+    /** Text variables that represent person labels even when not named `name`. */
+    preferRealisticNameVariables?: ReadonlySet<string>;
   },
 ): Record<string, VariableValue> {
   const { order, membersOf, groupOf } = resolveGenerationOrder(entity);
@@ -818,7 +820,14 @@ export function generateEntityAttributes(
   )) {
     for (const group of component.groups) componentOf.set(group, component);
   }
-  const state: DrawState = { scope, index, resolved, only, existing };
+  const state: DrawState = {
+    scope,
+    index,
+    resolved,
+    only,
+    existing,
+    preferRealisticNameVariables: options?.preferRealisticNameVariables,
+  };
   const solved = new Map<string, VariableValue>();
   const attempted = new Set<SolvableComponent>();
 
@@ -858,6 +867,7 @@ export function generateEntityAttributes(
       state,
       solved.get(group),
     );
+    if (value === undefined) continue;
 
     for (const id of memberIds) {
       resolved[id] = value;
@@ -1090,6 +1100,7 @@ type DrawState = {
   resolved: Record<string, VariableValue>;
   only: Set<string> | undefined;
   existing: Record<string, VariableValue> | undefined;
+  preferRealisticNameVariables: ReadonlySet<string> | undefined;
 };
 
 /**
@@ -1141,7 +1152,7 @@ function exhaustedConflict(
     rules: declaredRules(members),
     reason:
       'no value satisfies these rules alongside the values chosen for the ' +
-      'variables they refer to',
+      'attributes they refer to',
   };
 }
 
@@ -1150,9 +1161,16 @@ function drawGroup(
   group: string,
   variable: ConstrainedVariable,
   ctx: GenerationContext,
-  { scope, index, resolved, only, existing }: DrawState,
+  {
+    scope,
+    index,
+    resolved,
+    only,
+    existing,
+    preferRealisticNameVariables,
+  }: DrawState,
   solved?: VariableValue,
-): VariableValue {
+): VariableValue | undefined {
   const { membersOf } = plan;
   const memberIds = membersOf.get(group) ?? [group];
   const { unique } = variable.constraints;
@@ -1170,13 +1188,15 @@ function drawGroup(
   if (only && existing) {
     for (const id of memberIds) {
       const held = existing[id];
-      if (!only.has(id) && held !== undefined) return claim(held);
+      if (!only.has(id) && held !== undefined && held !== null) {
+        return claim(held);
+      }
     }
   }
 
   // A value the component solve already chose. Its slot was released before
   // the solve read the registry, so claiming is all that is left to do.
-  if (solved !== undefined) return claim(solved);
+  if (solved !== undefined && solved !== null) return claim(solved);
 
   // A group being redrawn over a value the entity already holds gives that
   // value's slot back first. Without it the entity would occupy two of the
@@ -1186,7 +1206,7 @@ function drawGroup(
   // value reclaims it: the entity's one claim is never left at zero.
   if (unique && existing !== undefined) {
     const previous = groupValue(memberIds, existing);
-    if (previous !== undefined) {
+    if (previous !== undefined && previous !== null) {
       ctx.uniqueRegistry.release(registry, slot, previous);
     }
   }
@@ -1201,10 +1221,14 @@ function drawGroup(
     ),
   });
 
+  type DrawResult =
+    | { kind: 'value'; value: VariableValue }
+    | { kind: 'undrawable' };
+
   const draw = (
     bounded: ConstrainedVariable,
     avoidReserved: boolean,
-  ): { value: VariableValue } | undefined => {
+  ): DrawResult | undefined => {
     // Values written onto an entity from outside the registry — a roster row's,
     // a prompt's `additionalAttributes` — are claimed without the sequence
     // advancing past them, so a slot can arrive at its first drawn entity with
@@ -1227,8 +1251,16 @@ function drawGroup(
 
       const value = ctx.valueGen.generateConstrained(bounded, index, {
         ...(seq !== undefined ? { distinctSeq: seq } : {}),
-        ...(attempt === 0 ? { preferRealisticName: true } : {}),
+        ...(attempt === 0
+          ? {
+              preferRealisticName:
+                preferRealisticNameVariables?.has(variable.entry.id) ?? true,
+              forceRealisticName:
+                preferRealisticNameVariables?.has(variable.entry.id) ?? false,
+            }
+          : {}),
       });
+      if (value === undefined) return { kind: 'undrawable' };
       const excluded = forbidden.has(valueKey(value));
       const taken = unique && ctx.uniqueRegistry.isTaken(registry, slot, value);
 
@@ -1241,7 +1273,7 @@ function drawGroup(
           ctx.uniqueRegistry.isReserved(registry, slot, value)
         )
       ) {
-        return { value };
+        return { kind: 'value', value };
       }
 
       // Only a position turned away by the registry alone is free. A value the
@@ -1266,9 +1298,7 @@ function drawGroup(
   // giving up on a value that was available all along. Only a draw that has
   // already failed reaches here, so nothing that succeeds is drawn differently.
   const unreserved = plan.propagated.get(group);
-  const attempt = (
-    avoidReserved: boolean,
-  ): { value: VariableValue } | undefined =>
+  const attempt = (avoidReserved: boolean): DrawResult | undefined =>
     draw(boundsOf(variable), avoidReserved) ??
     (unreserved === undefined
       ? undefined
@@ -1278,6 +1308,8 @@ function drawGroup(
   // same kind, and give way for the same reason: a row that is never drawn
   // holds nothing, so a value it reserved is better taken than refused.
   const drawn = attempt(true) ?? (unique ? attempt(false) : undefined);
+
+  if (drawn?.kind === 'undrawable') return undefined;
 
   if (drawn === undefined) {
     const members: ConstrainedVariable[] = [];

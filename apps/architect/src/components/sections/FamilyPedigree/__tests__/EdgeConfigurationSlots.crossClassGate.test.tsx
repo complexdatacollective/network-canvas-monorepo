@@ -1,13 +1,21 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
+import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import {
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
-} from '@codaco/shared-consts';
+  type Stage,
+} from '@codaco/protocol-validation';
+import StageFormBridge from '~/components/StageEditor/StageFormBridge';
+import {
+  type StageFormContextValue,
+  useStageFormContext,
+} from '~/components/StageEditor/stageFormContext';
+import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 
 // Final-review sweep: FamilyPedigree's four edgeConfig slots are UNVALIDATED
 // writers, each carrying a picker exclusion (excludeValidatedUses with the
@@ -15,39 +23,54 @@ import {
 // the mirror of NodeConfigurationSlots.crossClassGate.test.tsx on the edge
 // subject. There is no intra-draft case here: FamilyPedigree has no validated
 // writer on its edge type.
-vi.mock('~/components/EditorLayout', () => ({
-  Row: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  Section: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+vi.mock('@codaco/fresco-ui/Section', () => ({
+  default: ({ children, title }: { children: ReactNode; title: string }) => (
+    <section aria-label={title} data-component="Section">
+      {children}
+    </section>
+  ),
 }));
 vi.mock('~/components/IssueAnchor', () => ({ default: () => null }));
 vi.mock('~/components/NewVariableWindow', () => ({
   default: () => null,
   useNewVariableWindowState: (initial: unknown) => [initial, () => undefined],
 }));
-vi.mock(
-  '~/components/sections/fields/EntitySelectField/EntitySelectField',
-  () => ({ default: () => null }),
-);
-vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
-  default: () => null,
-}));
 
 type CapturedField = {
+  className?: string;
+  hint?: ReactNode;
+  inline?: boolean;
+  label?: string;
   validation?: Record<string, unknown>;
-  componentProps?: Record<string, unknown>;
+  options?: unknown;
 };
 const capturedFields: Record<string, CapturedField | undefined> = {};
-vi.mock('~/components/Form/ValidatedField', () => ({
+vi.mock('~/components/Form/ArchitectField', () => ({
   default: ({
     name,
+    className,
+    hint,
+    inline,
+    label,
     validation,
-    componentProps,
+    options,
   }: {
     name: string;
+    className?: string;
+    hint?: ReactNode;
+    inline?: boolean;
+    label: string;
     validation?: Record<string, unknown>;
-    componentProps?: Record<string, unknown>;
+    options?: unknown;
   }) => {
-    capturedFields[name] = { validation, componentProps };
+    capturedFields[name] = {
+      className,
+      hint,
+      inline,
+      label,
+      validation,
+      options,
+    };
     return <div data-testid={`field-${name}`} />;
   },
 }));
@@ -66,7 +89,7 @@ const slotValidatorFor = (fieldName: string): SlotValidator => {
 };
 
 const slotOptionValuesFor = (fieldName: string): string[] => {
-  const options = capturedFields[fieldName]?.componentProps?.options;
+  const options = capturedFields[fieldName]?.options;
   if (!Array.isArray(options)) {
     throw new Error(`No options captured for ${fieldName}`);
   }
@@ -150,7 +173,7 @@ const renderComponent = ({
   initialEdgeConfig,
 }: {
   protocol: unknown;
-  draftEdgeConfig?: Record<string, unknown>;
+  draftEdgeConfig?: Record<string, string>;
   initialEdgeConfig?: Record<string, unknown>;
 }) => {
   for (const key of Object.keys(capturedFields)) {
@@ -159,31 +182,93 @@ const renderComponent = ({
   const store = configureStore({
     reducer: {
       activeProtocol: (state = { present: protocol }) => state,
-      form: (
-        state = {
-          'edit-stage': {
-            values: { edgeConfig: { type: 'partner', ...draftEdgeConfig } },
-            ...(initialEdgeConfig
-              ? { initial: { edgeConfig: initialEdgeConfig } }
-              : {}),
-          },
-        },
-      ) => state,
+      stageEditorDraft,
     },
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({ serializableCheck: false, immutableCheck: false }),
   });
+
+  let context: StageFormContextValue | null = null;
+  const Probe = () => {
+    context = useStageFormContext();
+    return null;
+  };
+
   render(
     <Provider store={store}>
-      <EdgeConfiguration
-        form="edit-stage"
-        stagePath="stages[0]"
-        stagePosition={0}
-        interfaceType="FamilyPedigree"
-      />
+      <FormStoreProvider>
+        <StageFormBridge
+          committedStage={
+            {
+              id: 's2',
+              type: 'FamilyPedigree',
+              edgeConfig: { type: 'partner', ...initialEdgeConfig },
+            } as unknown as Stage
+          }
+          stageId="s2"
+          formId="edit-stage"
+        >
+          <Probe />
+          <EdgeConfiguration
+            stagePath="stages[0]"
+            stagePosition={0}
+            interfaceType="FamilyPedigree"
+          />
+        </StageFormBridge>
+      </FormStoreProvider>
     </Provider>,
   );
+
+  if (draftEdgeConfig && context) {
+    const storeApi = (context as StageFormContextValue).storeApi;
+    act(() => {
+      for (const [field, value] of Object.entries(draftEdgeConfig)) {
+        storeApi.getState().setFieldValue(`edgeConfig.${field}`, value);
+      }
+    });
+  }
 };
 
 describe('FamilyPedigree EdgeConfiguration slot picker exclusions', () => {
+  it('groups the attribute mappings in a nested Section with inline fields', () => {
+    renderComponent({ protocol: protocolWith([]) });
+
+    const relationshipData = screen.getByRole('region', {
+      name: 'Relationship data',
+    });
+    const attributes = screen.getByRole('region', {
+      name: 'Relationship attributes',
+    });
+
+    expect(attributes).toHaveAttribute('data-component', 'Section');
+    expect(relationshipData).toContainElement(attributes);
+    expect(capturedFields['edgeConfig.relationshipTypeVariable']).toMatchObject(
+      {
+        className: '@min-lg:w-[50cqw]',
+        label: 'Relationship type',
+        inline: true,
+      },
+    );
+    expect(capturedFields['edgeConfig.isActiveVariable']).toMatchObject({
+      className: '@min-lg:w-[50cqw]',
+      label: 'Active status',
+      inline: true,
+    });
+    expect(
+      capturedFields['edgeConfig.isGestationalCarrierVariable'],
+    ).toMatchObject({
+      className: '@min-lg:w-[50cqw]',
+      label: 'Gestational carrier',
+      inline: true,
+    });
+    expect(capturedFields['edgeConfig.gameteRoleVariable']).toMatchObject({
+      className: '@min-lg:w-[50cqw]',
+      label: 'Gamete role',
+      inline: true,
+    });
+    expect(capturedFields['edgeConfig.type']?.className).toBeUndefined();
+  });
+
   it('drops a variable a form elsewhere already validates from every slot pool', () => {
     renderComponent({ protocol: protocolWith([EDGE_FORM_STAGE]) });
     expect(
@@ -253,7 +338,7 @@ describe('FamilyPedigree EdgeConfiguration slot cross-class gates', () => {
   it('escapes when the pick equals the slot’s committed value (pre-existing conflict stays saveable)', () => {
     renderComponent({
       protocol: protocolWith([EDGE_FORM_STAGE]),
-      initialEdgeConfig: { type: 'partner', isActiveVariable: 'usedFlag' },
+      initialEdgeConfig: { isActiveVariable: 'usedFlag' },
     });
     expect(
       slotValidatorFor('edgeConfig.isActiveVariable')('usedFlag'),

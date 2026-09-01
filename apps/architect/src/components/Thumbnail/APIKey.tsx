@@ -6,7 +6,6 @@ import { cx } from '~/utils/cva';
 import {
   thumbnailBase,
   thumbnailExisting,
-  thumbnailFullWidth,
   thumbnailIcon,
   thumbnailInteractive,
   thumbnailLabel,
@@ -18,20 +17,17 @@ type APIKeyThumbnailProps = {
     name: string;
   };
   interactive?: boolean;
-  fullWidth?: boolean;
 };
 
 const APIKeyThumbnail = ({
   id,
   meta = { name: '' },
   interactive,
-  fullWidth,
 }: APIKeyThumbnailProps) => (
   <div
     className={cx(
       thumbnailBase,
       id === 'existing' && thumbnailExisting,
-      fullWidth && thumbnailFullWidth,
       interactive && thumbnailInteractive,
     )}
   >

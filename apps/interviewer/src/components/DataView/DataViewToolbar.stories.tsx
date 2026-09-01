@@ -58,15 +58,11 @@ function ToolbarHarness({ selectedCount }: StoryArgs) {
       selectedCount={selectedCount}
       exporting={false}
       deleting={false}
-      pendingShare={false}
       onExport={() => {
         // No-op in the story: no export pipeline to run.
       }}
       onDelete={() => {
         // No-op in the story: no rows to delete.
-      }}
-      onShareReady={() => {
-        // No-op in the story: no pending export to hand off.
       }}
     />
   );

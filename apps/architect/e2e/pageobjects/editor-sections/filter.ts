@@ -1,0 +1,36 @@
+import { type StageEditor } from '../stage-editor.js';
+import {
+  addFilterRule,
+  assertJoinMatchesRules,
+  chooseJoin,
+  type FilterRuleSpec,
+} from './rule-builder.js';
+
+// Stage-level network filter (sections/Filter.tsx, `Section title="Stage filter"`,
+// toggleable, collapsed on a fresh stage). Rendered NESTED inside the
+// "Node setup" section by FilteredNodeType (NodeType.tsx `withFilter`), but
+// the accessible region name is globally unique on the sample-protocol stage
+// types, so `editor.section('Stage filter')` resolves it directly. The rules UI is
+// the shared Query primitive with `type="filter"` — no ego rules here, which
+// is why the specs it accepts are `FilterRuleSpec`. Toggling ON writes
+// nothing; a single-rule filter writes no `join` key.
+//
+// ORDER: the subject (Node setup) must be selected BEFORE configuring the
+// filter — changing the subject afterwards resets `filter` (and `skipLogic`)
+// via useResetStageOnSubjectChange.
+export async function configureStageFilter(
+  editor: StageEditor,
+  opts: { rules: FilterRuleSpec[]; join?: 'All rules' | 'Any rule' },
+): Promise<void> {
+  assertJoinMatchesRules(opts.rules, opts.join);
+  const section = editor.section('Stage filter');
+  await section
+    .getByRole('switch', { name: 'Stage filter', exact: true })
+    .click();
+  for (const rule of opts.rules) {
+    await addFilterRule(section, rule);
+  }
+  if (opts.join) {
+    await chooseJoin(section, opts.join);
+  }
+}

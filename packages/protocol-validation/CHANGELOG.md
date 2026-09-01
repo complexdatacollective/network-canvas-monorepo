@@ -1,5 +1,128 @@
 # @codaco/protocol-validation
 
+## 13.0.0
+
+### Major Changes
+
+- c599dac: This release improves the reliability, accessibility, and recovery of protocol editing in Architect.
+
+  - Stage edits are now transactional: cancelling restores Codebook changes, incomplete settings remain open with actionable errors, and Information blocks retain their drafts while switching media types.
+  - Forms, rule builders, the Codebook, timeline, dialogs, and resource library now provide accurate labels, keyboard operation, focus restoration, and layouts that work on smaller screens. Undo and Redo operate one change at a time without recording no-op edits.
+  - A second tab now shows a read-only protocol instead of accepting changes it cannot save. Closing the editing tab restores editing from the saved copy, and deleting a protocol clears its history and releases associated resources.
+  - Protocol names, resource cards, variable identifiers, and stage editors are bounded on narrow screens. Duplicate resource filenames are distinguishable without changing the names stored in the protocol.
+  - Invalid imports, blocked edits, migration conflicts, preview completion, and deleted protocol routes now explain what happened and provide a safe recovery path.
+  - Recent protocols in the library now show their description, and starter templates show their stage, node type, and edge type counts.
+  - The CEGRM starter template now uses an available color for its Narrative Pedigree condition. Protocol colors are constrained to typed node, edge, ordinal, or categorical palette references; Narrative Pedigree and Geospatial resolve those references through the active theme. A protocol created from the previous release's CEGRM template will report a validation error on its condition color — open the stage editor and select one of the available colors to fix it. A downloaded protocol file with this problem must be corrected before it can be imported again. Neutral dialog actions remain distinct from white dialog surfaces.
+
+### Minor Changes
+
+- e9a6522: Protocol validation now catches references and variable uses that could previously produce missing or conflicting interview data.
+
+  - Form fields cannot write the same variable twice, and Family or Narrative Pedigree attributes cannot be overwritten by incompatible prompts, diseases, or interactions.
+  - Pedigree prompts, forms, and diseases now resolve their Codebook references during validation rather than failing silently during an interview.
+  - Prompt sort orders and roster display, search, and sort variables are included when collecting Codebook usage.
+  - Asset references are derived from schema metadata through the new `collectAssetReferences` helper.
+  - Malformed `.netcanvas` archives now produce structured `MalformedNetcanvasError` failures, with `loadNetcanvasArchive` and `describeProtocolFileError` available for actionable import messages.
+  - The pedigree value sets a protocol must carry — `RELATIONSHIP_TYPES`, `GAMETE_ROLES`, `BIOLOGICAL_SEX_VALUES`, their option lists, `FRAMING_IDS`, and `INHERITANCE_PATTERNS` — are now defined and exported here rather than in `@codaco/shared-consts`. They live inside the schema version that defines them, so editing shared constants can no longer change what a released schema accepts.
+  - Protocol colors must be palette references. Narrative Pedigree disease colors and Geospatial map colors no longer accept raw or empty strings, and disease colors must name one of the eight available node colors.
+  - Migrating a version 7 protocol now wraps node colors 9 and 10 (which the classic Architect palette offered) onto the eight-color palette, so those protocols import successfully instead of failing validation.
+  - Migrating a version 7 protocol whose forms collect the same attribute twice keeps the first field and removes the repeat — the repeated field never collected anything of its own — and the upgrade notes disclose the change.
+
+  Protocols containing one of the newly detected problems may now be reported as invalid even though the underlying problem was already present. This includes protocols whose pedigree option sets were edited away from the canonical values, protocols with duplicate form fields, protocols with an empty panel data source, and protocols using an unavailable or raw disease or map color — including protocols created from the CEGRM starter template as previously released. The remedy is to correct the protocol in Architect's editor (for example, by re-picking the disease color). An exported `.netcanvas` file containing one of these problems cannot be imported until it is corrected, because import validates before anything is stored.
+
+### Patch Changes
+
+- Updated dependencies ([e9a6522](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e9a652266ef9ddfa7fc42de1c8123bd7011c52a1), [fdb3b56](https://github.com/complexdatacollective/network-canvas-monorepo/commit/fdb3b56440f6cad89a44718d24ff725be3bb5e15))
+  - @codaco/shared-consts@6.0.0
+
+## 12.1.1
+
+### Patch Changes
+
+- fec9536: Add a Colored Eco-Genetic Relationship Map (CEGRM) template for families living with an inherited condition. It combines a family pedigree with the participant's wider social network, records relationship closeness and contact frequency alongside exchanges of information, practical help, emotional and spiritual support, and closes on a visual map and an inheritance view.
+
+  Treat the Family Pedigree node label as a validated codebook field, apply its rules to every family-member name entry point, and expose those rules beside the label-variable selector in Architect. Keep the iconically rendered ego node outside label and additional family-member form collection, including in synthetic previews. Reduce the default synthetic Sociogram edge density so preview networks remain legible as their node count grows.
+
+  Keep optional unique fields empty without false duplicate errors, scope comparison rules to the active field namespace, and prevent dormant or duplicate pedigree name controls from affecting validation.
+
+## 12.1.0
+
+### Minor Changes
+
+- b777dc1: Attribute-writing schema references are now classified by whether the interview applies the variable's validation rules when writing (`validatedAttribute`) or writes directly without them (`unvalidatedAttribute`). This includes Network Composer group and lasso membership changes through `convexHullVariable`, which write values without field validation. A new `findVariableRoleConflicts` export (with `collectVariableRoleHits`) reports any variable written by both classes for the same subject, so editors can surface the conflict. The v7→v8 migration now marks every variable referenced as a CategoricalBin `otherVariable` or NameGenerator `quickAdd` target as `required`, preserving the effective behaviour of migrated protocols now that those inputs honour configured validation instead of a hard-coded requirement.
+- 8b660f5: Contradictory variable validation rules are now unexpressible. The schema
+  rejects inverted `min`/`max` pairs, `minSelected` above the option count,
+  `sameAs`+`differentFrom` naming one target, comparator structures no data can
+  satisfy (impossible cycles, comparisons inside a `sameAs` group, comparisons
+  with disjoint bounds), cross-type validation references, count-valued rules
+  below their floors, and malformed or inverted DatePicker `min`/`max`
+  parameters. Required text and categorical variables also cannot set their
+  maximum answer size to zero. The v7→v8 migration strips or normalises all of
+  these in existing protocols (see the migration notes). Protocols already at
+  schema version 8 that carry a contradiction will now fail validation — the
+  interview forms they produced were already unsubmittable.
+
+  Three further unanswerable configurations are rejected for the same reason: a
+  Network Composer form listing one variable in two fields (both fields render
+  under the same form value), a Network Composer field whose input control
+  cannot render its variable's type (for example a date picker on a numeric
+  variable), and a boolean variable whose `options` list is empty (the control
+  renders no choices at all). The migration removes an empty boolean `options`
+  list so existing protocols keep the standard Yes/No choices.
+
+  The contradiction check now also evaluates the participant-facing controls on
+  Ego, node, edge, name-generator, and Family Pedigree forms. Its date reasoning
+  recognises stable single-value coarse picker windows, equality forced by
+  non-strict comparisons between full-date fields, and singleton values that
+  propagate through a chain of `differentFrom` rules.
+
+### Patch Changes
+
+- b777dc1: The Categorical Bin "other" input and the Name Generator quick-add field now apply the referenced variable's configured validation rules, exactly as form fields do — including context-dependent rules such as `differentFrom` and `unique`. The Network Composer's add-node input applies the quick-add variable's codebook rules in the same way, a behaviour change for existing protocols whose quick-add variable carries validation. Previously these inputs ignored the codebook and enforced only their local requirements. In native v8 protocols, both Categorical Bin "other" and Name Generator quick-add are optional when their referenced variable has no required validation. The v7→v8 migration adds `required: true` to variables referenced by either writer, preserving existing protocols' required responses while retaining their other validation rules. Variables without an explicit input `component` work correctly. After a valid Network Composer node is added, its quick-add field now resets its value and validation state so the fresh blank entry does not announce a required-field error.
+
+  Network Composer also waits for a quick-add node to finish being stored before
+  clearing and reopening the input, preventing two rapid submissions from
+  bypassing uniqueness validation against the first node.
+
+  The Categorical Bin dialog registers its response under the referenced
+  codebook variable ID, so a sibling variable literally named `otherVariable`
+  cannot be mistaken for the live response by cross-variable validation.
+
+  Deferred invalid-field focus now remains safe when its form unmounts before
+  smooth scrolling finishes.
+
+- 7cffcc9: Synthetic interview data now respects the validation rules configured on your variables.
+
+  Previously, generated networks ignored the rules a protocol author sets in Architect, so previewing a protocol or bulk-generating interviews could produce data a participant could never have entered — names shorter than a required minimum length, numbers outside their permitted range, dates outside a date picker's window, duplicate values on a variable marked unique, or a "start date" later than the "end date" it is required to precede. Generated values now satisfy required, minimum/maximum length, minimum/maximum value, minimum/maximum selected, unique, same as, different from, and the greater/less than (or equal to) cross-variable comparisons, as well as the bounds a date picker or relative date picker imposes.
+
+  Where rules refer to one another, generation follows that order, so a variable compared against another is filled in after the variable it depends on.
+
+  If a protocol's rules cannot all be satisfied at once — for example a minimum length greater than its maximum length, a permitted range with no values in it, or a variable required to be both unique and drawn from fewer options than there are entities to fill — generation is now refused with a `SyntheticDataConstraintError` that names the variable and describes the conflict, instead of silently producing data that could never be collected. `SyntheticDataConstraintError` and the `ConstraintConflict` type it carries are exported from `@codaco/protocol-utilities`.
+
+  When skip logic and filtering are respected, controls on stages proven unreachable no longer create synthetic-data rendering conflicts with reachable Network Composer stages.
+
+  Read-only stage references no longer make validation rules apply to values written only by binning stages. Writers on stages proven unreachable by skip logic are likewise ignored consistently by both the feasibility check and the synthetic draw.
+
+  Manually seeded nodes and edges keep omitted Boolean attributes at the neutral
+  `false` value regardless of how the control's options are ordered.
+
+  When multiple reachable Network Composer stages render one date variable at the
+  same resolution, generation now uses the intersection of their accepted
+  windows. It refuses only controls at incompatible resolutions or controls whose
+  windows do not overlap. When an ordinary form also renders that variable,
+  generation includes its codebook control in the same intersection.
+
+  Categorical Bin "other" inputs must now target a text variable, matching the
+  text field the interview renders. Importing a version 7 protocol removes an
+  incompatible non-text "other" configuration instead of preserving a control
+  that cannot record the target variable's value.
+
+  `@codaco/fresco-ui` adds a `./form/validation/helpers` export subpath so consumers can build the same validator stack the interview uses. `@codaco/interview` now fails loudly, naming the variable, when a protocol carries a validation rule of the wrong type, rather than passing it to a validator that would report a generic error.
+
+- Updated dependencies [59625a8]
+- Updated dependencies [efc3a92]
+  - @codaco/shared-consts@5.6.0
+
 ## 12.0.0
 
 ### Major Changes

@@ -1,5 +1,4 @@
 #!/usr/bin/env tsx
-/** biome-ignore-all lint/suspicious/noConsole: test logging */
 /**
  * Tests redirect rules against a live deployment
  * Verifies that redirects work correctly on the actual site
@@ -25,6 +24,11 @@ const redirectTests: RedirectTest[] = [
     from: '/',
     expectedDestination: '/en',
     description: 'Root redirects to /en',
+  },
+  {
+    from: '/en/design-protocols/building-a-protocol',
+    expectedDestination: '/en/design-protocols/tutorials/building-a-protocol',
+    description: 'Building a protocol moved into the Tutorials group',
   },
   {
     from: '/en/design-protocols/installing-architect-desktop',
@@ -95,7 +99,7 @@ const redirectTests: RedirectTest[] = [
   // Two-section layout: /en/desktop/*
   {
     from: '/en/desktop/tutorials/building-a-protocol',
-    expectedDestination: '/en/design-protocols/building-a-protocol',
+    expectedDestination: '/en/design-protocols/tutorials/building-a-protocol',
     description: 'desktop tutorial remapped into design-protocols',
   },
   {

@@ -1,5 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { LayoutGroup } from 'motion/react';
 import { useState } from 'react';
+import { useArgs } from 'storybook/preview-api';
+import { expect, userEvent, within } from 'storybook/test';
 
 import Heading from '../../typography/Heading';
 import ToggleField from './ToggleField';
@@ -74,14 +77,17 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  render: () => {
-    const [value, setValue] = useState(false);
+  render: function Render(args) {
+    const [, updateArgs] = useArgs();
 
     return (
       <div className="w-full max-w-md">
         <ToggleField
-          value={value}
-          onChange={(v) => setValue(v ?? false)}
+          {...args}
+          onChange={(value) => {
+            updateArgs({ value });
+            args.onChange?.(value);
+          }}
           aria-label="Enable Option"
         />
       </div>
@@ -211,6 +217,69 @@ export const Invalid: Story = {
         </div>
       </div>
     );
+  },
+};
+
+/**
+ * A `LayoutGroup` wraps the content of every Dialog opened without a
+ * `layoutId`, so toggles routinely render inside one. A group re-snapshots
+ * every member whenever any member updates, which used to make each toggle
+ * replay its thumb animation whenever nearby content reflowed. The thumb keeps
+ * its own group so only the toggle the participant actually operated animates.
+ */
+export const IsolatedFromEnclosingLayoutGroup: Story = {
+  name: 'Isolated From Enclosing Layout Group',
+  render: () => {
+    const [expanded, setExpanded] = useState(false);
+    const [neighbour, setNeighbour] = useState(false);
+
+    return (
+      <LayoutGroup>
+        <div className="flex w-full max-w-md flex-col gap-4">
+          <div className="flex flex-col gap-4">
+            <ToggleField
+              value={expanded}
+              onChange={(v) => setExpanded(v ?? false)}
+              aria-label="Expanding toggle"
+            />
+            {expanded && <div className="h-30 rounded bg-current opacity-10" />}
+          </div>
+          <ToggleField
+            value={neighbour}
+            onChange={(v) => setNeighbour(v ?? false)}
+            aria-label="Neighbour toggle"
+          />
+        </div>
+      </LayoutGroup>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const neighbour = canvas.getByRole('switch', { name: 'Neighbour toggle' });
+    const thumb = neighbour.firstElementChild;
+
+    await expect(thumb).not.toBeNull();
+
+    const thumbOffset = () =>
+      thumb!.getBoundingClientRect().top -
+      neighbour.getBoundingClientRect().top;
+
+    const nextFrame = () =>
+      new Promise((resolve) => requestAnimationFrame(resolve));
+
+    await userEvent.click(
+      canvas.getByRole('switch', { name: 'Expanding toggle' }),
+    );
+
+    const samples: number[] = [];
+    for (let frame = 0; frame < 8; frame++) {
+      await nextFrame();
+      samples.push(thumbOffset());
+    }
+
+    for (const sample of samples) {
+      await expect(sample).toBeCloseTo(samples[0]!, 1);
+    }
   },
 };
 

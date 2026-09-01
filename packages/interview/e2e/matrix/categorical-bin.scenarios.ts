@@ -6,6 +6,11 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 import { expect } from '../fixtures/matrix-test.js';
 import type { InterfaceScenarios, ScenarioDefinition } from './types.js';
 
+const LONG_CATEGORY_LABEL =
+  'People I know through my extended family and their close friends';
+const LONG_NODE_LABEL =
+  'Aleksandra Konstantina Kowalczyk-Nowakowska de la Fuente y Villanueva von Hohenberg-Sforza Montgomery-Wellington the Third';
+
 /**
  * Keyboard-drag a node onto a drop target the CategoricalBinFixture cannot
  * express: the "Other" bin (whose drop opens a follow-up dialog before writing,
@@ -188,6 +193,78 @@ export const categoricalBinScenarios: InterfaceScenarios = {
         },
       };
     })(),
+
+    {
+      id: 'long-category-and-node-labels',
+      covers: ['codebook:variable-options', 'codebook:node-label-and-type'],
+      visual: true,
+      seedNetwork: true,
+      build: () => {
+        const synth = new SyntheticInterview();
+        const personType = synth.addNodeType({ name: 'Person' });
+        const personName = personType.addVariable({
+          name: 'name',
+          type: 'text',
+        });
+        const categoryVar = personType.addVariable({
+          name: 'Category',
+          type: 'categorical',
+          // Ten bins keep the circles small enough to exercise the clipped
+          // layout while remaining above the breakpoint that hides summaries.
+          options: [
+            { label: 'Family', value: 1 },
+            { label: LONG_CATEGORY_LABEL, value: 2 },
+            { label: 'Work', value: 3 },
+            { label: 'School', value: 4 },
+            { label: 'Neighborhood', value: 5 },
+            { label: 'Social', value: 6 },
+            { label: 'Online', value: 7 },
+            { label: 'Sports', value: 8 },
+            { label: 'Religious', value: 9 },
+            { label: 'Political', value: 10 },
+          ],
+        });
+
+        const stage = synth.addStage('CategoricalBin', {
+          label: 'Categorise People',
+          subject: { entity: 'node', type: personType.id },
+          initialNodes: { count: 3 },
+        });
+        stage.addPrompt({ variable: categoryVar.id });
+
+        synth.setNodeAttribute(0, personName.id, LONG_NODE_LABEL);
+        synth.setNodeAttribute(0, categoryVar.id, []);
+        synth.setNodeAttribute(1, personName.id, 'Beatrice');
+        synth.setNodeAttribute(1, categoryVar.id, []);
+        synth.setNodeAttribute(2, personName.id, 'Charlotte');
+        synth.setNodeAttribute(2, categoryVar.id, []);
+
+        return synth;
+      },
+      run: async ({ stage }) => {
+        const longCategoryBin =
+          stage.categoricalBin.getBin(LONG_CATEGORY_LABEL);
+        await expect(
+          longCategoryBin.getByRole('heading', {
+            name: LONG_CATEGORY_LABEL,
+          }),
+        ).toBeVisible();
+
+        await stage.categoricalBin.dragNodeToBin(LONG_NODE_LABEL, 'Family');
+        await stage.categoricalBin.dragNodeToBin('Beatrice', 'Family');
+        await stage.categoricalBin.dragNodeToBin('Charlotte', 'Family');
+
+        const familyBin = stage.categoricalBin.getBin('Family');
+        await expect(familyBin).toHaveAccessibleName(
+          'Category Family, 3 items',
+        );
+        await expect(
+          familyBin.getByRole('heading', { name: 'Family' }),
+        ).toBeVisible();
+        await expect(familyBin.getByText(LONG_NODE_LABEL)).toBeVisible();
+        await expect(familyBin.getByText('and 2 others')).toBeVisible();
+      },
+    },
 
     ((): ScenarioDefinition => {
       let varAId = '';
@@ -403,10 +480,10 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
           synth.setNodeAttribute(0, personName.id, 'Alice');
           synth.setNodeAttribute(0, categoryVar.id, []);
-          synth.setNodeAttribute(0, otherReason.id, null);
+          synth.unsetNodeAttribute(0, otherReason.id);
           synth.setNodeAttribute(1, personName.id, 'Bob');
           synth.setNodeAttribute(1, categoryVar.id, []);
-          synth.setNodeAttribute(1, otherReason.id, null);
+          synth.unsetNodeAttribute(1, otherReason.id);
           synth.setNodeAttribute(2, personName.id, 'Carol');
           synth.setNodeAttribute(2, categoryVar.id, []);
           // Carol starts in the Other bin so the "move to a regular bin clears
@@ -499,8 +576,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
       let otherVarId = '';
       let nameVarId = '';
       return {
-        id: 'other-bin-empty-submit-rejected',
-        covers: ['other-dialog-submit-empty-rejected-when-rule-less'],
+        id: 'other-bin-empty-submit-accepted',
+        covers: ['other-dialog-submit-empty-accepted-when-rule-less'],
         seedNetwork: true,
         build: () => {
           const synth = new SyntheticInterview();
@@ -518,9 +595,9 @@ export const categoricalBinScenarios: InterfaceScenarios = {
             ],
           });
           // No `component` and no `validation` block: this is the state
-          // Architect's "Create New Variable" dialog produces by default.
-          // The special writer must still be locally required without needing
-          // a component because it renders its own Field/InputField.
+          // Architect's "Create New Variable" dialog produces by default (and
+          // the state of the sample protocol's `group_other` variable). The
+          // dialog must remain optional and must not require a component.
           const otherReason = personType.addVariable({
             name: 'otherReason',
             type: 'text',
@@ -543,10 +620,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
           synth.setNodeAttribute(0, personName.id, 'Alice');
           synth.setNodeAttribute(0, categoryVar.id, []);
-          // seedNetwork randomises unset attributes on non-manual nodes; a
-          // random non-null otherReason would place Alice straight into the
-          // Other bin instead of the drawer.
-          synth.setNodeAttribute(0, otherReason.id, null);
+          // Suppress generation so Alice starts without an Other response.
+          synth.unsetNodeAttribute(0, otherReason.id);
           return synth;
         },
         run: async ({ page, stage, protocol, interview }) => {
@@ -558,32 +633,26 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           const dialog = page.getByRole('dialog');
           await expect(dialog.getByText('Please specify:')).toBeVisible();
 
-          // Submit with nothing typed: the writer-local required rule rejects
-          // it even though the codebook variable carries no validation block.
+          // Submit with nothing typed: accepted because the codebook variable
+          // has no required rule.
           await page.getByTestId('dialog-submit').click();
-          await expect(dialog).toBeVisible();
-          await expect(
-            page.getByTestId(`${otherVarId}-field-error`),
-          ).toBeVisible();
+          await expect(dialog).not.toBeVisible();
 
           const state = await protocol.getNetworkState(interview.interviewId);
           const alice = state!.nodes.find(
             (n) => n[entityAttributesProperty][nameVarId] === 'Alice',
           )!;
-          expect(alice[entityAttributesProperty][categoryVarId]).toEqual([]);
           expect(
-            alice[entityAttributesProperty][otherVarId] ?? null,
+            alice[entityAttributesProperty][categoryVarId] ?? null,
           ).toBeNull();
-          await dialog.getByRole('button', { name: 'Cancel' }).click();
-          await expect(dialog).not.toBeVisible();
-
-          expect(await stage.categoricalBin.getNodeCountInBin('Other')).toBe(0);
+          expect(alice[entityAttributesProperty][otherVarId]).toBe('');
+          expect(await stage.categoricalBin.getNodeCountInBin('Other')).toBe(1);
           await expect(stage.categoricalBin.drawerToggle).toContainText(
-            '1 unplaced',
+            '0 unplaced',
           );
           await expect(
             stage.categoricalBin.getNodeInDrawer('Alice'),
-          ).toBeVisible();
+          ).toHaveCount(0);
         },
       };
     })(),
@@ -635,10 +704,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
           synth.setNodeAttribute(0, personName.id, 'Alice');
           synth.setNodeAttribute(0, categoryVar.id, []);
-          // seedNetwork randomises unset attributes on non-manual nodes; a
-          // random non-null otherReason would place Alice straight into the
-          // Other bin instead of the drawer.
-          synth.setNodeAttribute(0, otherReason.id, null);
+          // Suppress generation so Alice starts without an Other response.
+          synth.unsetNodeAttribute(0, otherReason.id);
           return synth;
         },
         run: async ({ page, stage, protocol, interview }) => {
@@ -845,11 +912,9 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           // node 1: empty array (unset).
           synth.setNodeAttribute(1, personName.id, 'Empty');
           synth.setNodeAttribute(1, categoryVar.id, []);
-          // node 2: null (the builder cannot emit a truly-undefined attribute
-          // under seedNetwork, so null stands in for the "no value" case — it
-          // is treated identically to the empty array).
+          // node 2: absent, with generation suppressed.
           synth.setNodeAttribute(2, personName.id, 'Unset');
-          synth.setNodeAttribute(2, categoryVar.id, null);
+          synth.unsetNodeAttribute(2, categoryVar.id);
 
           return synth;
         },

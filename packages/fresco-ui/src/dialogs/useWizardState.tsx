@@ -29,6 +29,53 @@ type WizardDialogProps = {
   footer: ReactNode;
 };
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const writeOwnProperty = (
+  target: Record<string, unknown>,
+  key: string,
+  value: unknown,
+): void => {
+  Object.defineProperty(target, key, {
+    configurable: true,
+    enumerable: true,
+    value,
+    writable: true,
+  });
+};
+
+// Merge one step's field values over the accumulator. Plain objects merge
+// recursively so nested paths registered by DIFFERENT steps under one
+// top-level key (e.g. `user.firstName` then `user.lastName`) keep their
+// siblings; arrays and primitives REPLACE, so a revisited step whose
+// repeated-entry answer shrank (e.g. a count-driven list) doesn't leave
+// orphaned entries behind.
+//
+// Deliberately NOT pruned: a key whose field no longer renders (a FieldGroup
+// condition flipped, or its whole step is now skipped) keeps its accumulated
+// answer in the wizard payload. That preserves the wizard's long-standing
+// contract — consumers gate on the controlling flag (e.g. reading
+// `partner.*` only when `hasPartner` is true) — and pruning here could not
+// be done reliably anyway: a dynamically skipped step never refolds, so
+// tracking per-step contributed paths would only ever catch the
+// revisited-step case while silently keeping the skipped-step one.
+const mergeStepValues = (
+  base: Record<string, unknown>,
+  incoming: Record<string, unknown>,
+): Record<string, unknown> => {
+  const result = { ...base };
+  for (const [key, value] of Object.entries(incoming)) {
+    const existing = Object.hasOwn(result, key) ? result[key] : undefined;
+    const mergedValue =
+      isPlainObject(existing) && isPlainObject(value)
+        ? mergeStepValues(existing, value)
+        : value;
+    writeOwnProperty(result, key, mergedValue);
+  }
+  return result;
+};
+
 export default function useWizardState({
   dialog,
   dialogId,
@@ -40,6 +87,9 @@ export default function useWizardState({
 }: UseWizardStateArgs): WizardDialogProps | null {
   const [stepIndex, setStepIndex] = useState(0);
   const [data, setData] = useState<Record<string, unknown>>({});
+  const [completedStepValues, setCompletedStepValues] = useState<
+    Record<number, Record<string, unknown>>
+  >({});
   const [nextEnabled, setNextEnabled] = useState(true);
   const [backEnabled, setBackEnabled] = useState(true);
   const [nextLabelOverride, setNextLabelOverride] = useState<string | null>(
@@ -101,6 +151,29 @@ export default function useWizardState({
   const goToStep = useCallback(
     (target: number) => {
       if (target < 0 || target >= totalSteps) return;
+      if (target <= stepIndex) {
+        setCompletedStepValues((previous) =>
+          Object.fromEntries(
+            Object.entries(previous).filter(
+              ([completedIndex]) => Number(completedIndex) < target,
+            ),
+          ),
+        );
+      }
+
+      // The current step's fields are about to unmount (the FormStoreProvider
+      // is shared across all steps, but only the active step's fields are
+      // registered). Fold their values into the accumulator before that
+      // happens — otherwise they'd only live on in dormant storage, which no
+      // longer feeds getFormValues(). The setData update MUST be functional:
+      // a beforeNext handler may have staged data via setStepData in this
+      // same tick, and a non-functional replacement computed from the ref
+      // would clobber that queued update. The ref is merged eagerly too so
+      // same-tick readers stay consistent; the next render re-syncs it from
+      // the authoritative state.
+      const stepValues = getFormValues();
+      dataRef.current = mergeStepValues(dataRef.current, stepValues);
+      setData((prev) => mergeStepValues(prev, stepValues));
       prevStepRef.current = stepIndex;
       resetStepOverrides();
       setStepIndex(target);
@@ -110,7 +183,7 @@ export default function useWizardState({
           ?.scrollTo(0, 0);
       });
     },
-    [stepIndex, totalSteps, resetStepOverrides],
+    [stepIndex, totalSteps, resetStepOverrides, getFormValues],
   );
 
   const handleNext = useCallback(async () => {
@@ -123,7 +196,7 @@ export default function useWizardState({
         const firstErrorField = Object.keys(fieldErrors)[0];
         if (firstErrorField) {
           const el = document.querySelector(
-            `[data-field-name="${CSS.escape(firstErrorField)}"]`,
+            `[data-field-path="${CSS.escape(firstErrorField)}"]`,
           );
           el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
@@ -144,12 +217,18 @@ export default function useWizardState({
 
     const next = findNextUnskipped(stepIndex, 'forward');
     if (next === null) {
-      const formValues = { ...dataRef.current, ...getFormValues() };
+      // dataRef is kept fresh by setStepData's eager merge, so data staged by
+      // a beforeNext handler in this same tick is included here.
+      const formValues = mergeStepValues(dataRef.current, getFormValues());
       const result = dialog.onFinish ? dialog.onFinish(formValues) : formValues;
       await closeDialog(dialogId, result);
       return;
     }
 
+    setCompletedStepValues((previous) => ({
+      ...previous,
+      [stepIndex]: getFormValues(),
+    }));
     goToStep(next);
   }, [
     dialog,
@@ -173,6 +252,11 @@ export default function useWizardState({
   }, [closeDialog, dialogId]);
 
   const setStepData = useCallback((stepData: Record<string, unknown>) => {
+    // Eagerly reflect the patch in the ref so same-tick readers see it — a
+    // beforeNext handler staging data immediately before goToStep folds or
+    // the finish path resolves must not lose it to the not-yet-committed
+    // state update. The next render re-syncs the ref from state.
+    dataRef.current = { ...dataRef.current, ...stepData };
     setData((prev) => ({ ...prev, ...stepData }));
   }, []);
 
@@ -185,6 +269,7 @@ export default function useWizardState({
       currentStep: stepIndex,
       totalSteps,
       data,
+      completedStepValues,
       setStepData,
       setNextEnabled,
       setBackEnabled: (enabled: boolean) => setBackEnabled(enabled),
@@ -192,7 +277,15 @@ export default function useWizardState({
       setBeforeNext,
       goToStep,
     }),
-    [stepIndex, totalSteps, data, setStepData, setBeforeNext, goToStep],
+    [
+      stepIndex,
+      totalSteps,
+      data,
+      completedStepValues,
+      setStepData,
+      setBeforeNext,
+      goToStep,
+    ],
   );
 
   if (!currentStep) return null;

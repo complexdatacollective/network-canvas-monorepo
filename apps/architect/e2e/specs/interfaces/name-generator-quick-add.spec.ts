@@ -19,22 +19,21 @@ test('creates a valid NameGeneratorQuickAdd stage from scratch', async ({
   await editor.setStageName('Quickly Add Friends');
 
   // Same NodeType.tsx section as NameGenerator (`Section title="Node
-  // Type"`); QuickAdd.tsx's own `withDisabledSubjectRequired` gates its
+  // setup"`); QuickAdd.tsx's own `withDisabledSubjectRequired` gates its
   // section until `subject.type` is set.
   await selectOrCreateNodeType(architectPage, 'person');
 
-  // QuickAdd.tsx, `Section title="Quick Add Variable"` — a single
+  // QuickAdd.tsx, `Section title="Quick add configuration"` — a single
   // VariablePicker field (`quickAdd`) with no `value` yet, so its button
   // reads the picker's default "Select variable" (variables.ts's own
   // default), driven the same spotlight flow as addFormField's variable
   // step.
   await createVariableViaSpotlight(architectPage, { variableName: 'name' });
 
-  // NameGeneratorQuickAdd reuses the same NameGeneratorPrompts.tsx section
-  // (`Section title="Prompts"`) as NameGenerator — see name-generator.spec.ts
-  // for why the RichText field's accessible name is "Prompt text", not the
-  // brief's guessed `'text'`.
-  await addPrompt(editor.section('Prompts'), async () => {
+  // NameGeneratorQuickAdd reuses NameGeneratorPrompts.tsx's `prompts`
+  // ArchitectArrayField — see name-generator.spec.ts for why the RichText
+  // field's accessible name is "Prompt text", not the brief's guessed `'text'`.
+  await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Name someone you know');
   });
 

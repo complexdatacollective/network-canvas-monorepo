@@ -17,7 +17,6 @@ import {
 
 import { Button } from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
-import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -27,6 +26,7 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { buildPedigreeDialog } from '../buildPedigreeDialog';
 import { useFamilyPedigreeStore } from '../FamilyPedigreeContext';
+import { useFamilyPedigreeDialog } from '../familyPedigreeDialog';
 import type { VariableConfig } from '../store';
 import {
   getEdgeRelationshipType,
@@ -61,7 +61,7 @@ export default function PedigreeChecklist({
   const relationshipTypeVariable = useStageSelector(
     getRelationshipTypeVariable,
   );
-  const { openDialog } = useDialog();
+  const { openDialog } = useFamilyPedigreeDialog();
   const noChildrenAffirmed = useFamilyPedigreeStore(
     (s) => s.noChildrenAffirmed,
   );
@@ -392,6 +392,7 @@ export default function PedigreeChecklist({
         <MotionSurface
           key="pedigree-checklist"
           data-testid="pedigree-checklist"
+          data-motion-drag-container="pedigree-checklist"
           className="bg-surface/80 absolute bottom-4 left-4 z-20 w-80 cursor-move overflow-hidden border-b-2 shadow-2xl backdrop-blur-md"
           layout
           drag

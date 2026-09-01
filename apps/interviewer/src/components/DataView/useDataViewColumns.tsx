@@ -57,6 +57,9 @@ export function useDataViewColumns({
   allOnPageSelected,
   someOnPageSelected,
   markingUnfinishedId,
+  // Disables row mutations while a bulk mutation (export/delete) is
+  // preparing or in flight, so a session update can't race it.
+  mutationsBusy,
   onMarkUnfinished,
 }: {
   // Total interview steps (including the appended finish stage) by protocol
@@ -68,6 +71,7 @@ export function useDataViewColumns({
   allOnPageSelected: boolean;
   someOnPageSelected: boolean;
   markingUnfinishedId: string | null;
+  mutationsBusy: boolean;
   onMarkUnfinished: (session: StoredSessionLite) => void;
 }) {
   const [, navigate] = useLocation();
@@ -214,7 +218,7 @@ export function useDataViewColumns({
                   color="dynamic"
                   icon={<RotateCcw aria-hidden />}
                   aria-label={`Mark ${session.caseId} unfinished`}
-                  disabled={markingUnfinishedId !== null}
+                  disabled={markingUnfinishedId !== null || mutationsBusy}
                   onClick={() => onMarkUnfinished(session)}
                   className="min-w-max"
                   data-testid="data-mark-unfinished"
@@ -252,6 +256,7 @@ export function useDataViewColumns({
       togglePageSelected,
       protocolTotalSteps,
       markingUnfinishedId,
+      mutationsBusy,
       navigate,
       onMarkUnfinished,
     ],

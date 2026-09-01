@@ -1,9 +1,8 @@
-import { useState, type ComponentType, type FocusEventHandler } from 'react';
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { WrappedFieldProps } from 'redux-form';
 
 import Button from '@codaco/fresco-ui/Button';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
+import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import { cx } from '~/utils/cva';
 
 import MapView from './MapView';
@@ -18,7 +17,14 @@ export type MapValue = {
   style?: string;
 };
 
-export const requiredMapView = (value: unknown) => {
+/**
+ * Validates the part of a present map-options object that native `required`
+ * cannot inspect. Absence is deliberately left to that native rule so the
+ * field also carries the visible and semantic required cues.
+ */
+export const completeMapView = (value: unknown) => {
+  if (value === null || value === undefined) return undefined;
+
   if (!value || typeof value !== 'object' || !('center' in value)) {
     return 'Required';
   }
@@ -34,24 +40,27 @@ export const requiredMapView = (value: unknown) => {
     : 'Required';
 };
 
-type MapSelectionControlProps = {
-  'id'?: string;
-  'name'?: string;
-  'value'?: MapValue;
-  'onChange'?: (value: MapValue) => void;
-  'onBlur'?: FocusEventHandler;
-  'onFocus'?: FocusEventHandler;
-  'disabled'?: boolean;
-  'readOnly'?: boolean;
-  'aria-describedby'?: string;
-  'aria-invalid'?: boolean;
-  'aria-labelledby'?: string;
+type MapSelectionProps = CreateFormFieldProps<MapValue, 'fieldset'> & {
+  /**
+   * The LIVE values of the sibling `mapOptions.*` fields that the map preview
+   * needs but this field does not own. Under redux-form every `mapOptions.*`
+   * control wrote into one shared nested value tree, so this field's own
+   * `value` always carried its siblings' latest edits; the form store keys
+   * fields independently, so they have to be handed over explicitly or the
+   * preview opens with no API key and no style.
+   */
+  previewOptions?: Pick<MapValue, 'tokenAssetId' | 'style'>;
 };
 
-const MapSelectionControl = ({
+/**
+ * Opens the map editor to set a stage's initial map view. Labelling belongs to
+ * the surrounding field — pass it through `ArchitectField`'s `label`/`hint`.
+ */
+const MapSelection = ({
   id,
   name,
   value = {},
+  previewOptions,
   onChange,
   onBlur,
   onFocus,
@@ -60,7 +69,7 @@ const MapSelectionControl = ({
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
   'aria-labelledby': ariaLabelledBy,
-}: MapSelectionControlProps) => {
+}: MapSelectionProps) => {
   const [showMap, setShowMap] = useState(false);
 
   return (
@@ -93,8 +102,24 @@ const MapSelectionControl = ({
       {showMap &&
         createPortal(
           <MapView
-            mapOptions={value}
-            onChange={(nextValue) => onChange?.(nextValue)}
+            mapOptions={{
+              ...value,
+              // A stage being re-edited seeds `value` from its committed
+              // `mapOptions`, so these two keys can be present but stale —
+              // the live sibling field wins whenever it has an answer.
+              tokenAssetId: previewOptions?.tokenAssetId ?? value.tokenAssetId,
+              style: previewOptions?.style ?? value.style,
+            }}
+            // Only the map view itself belongs to this field. Writing the
+            // preview's copy of the sibling values back would put a second
+            // writer on paths the sibling fields own.
+            onChange={(nextValue) =>
+              onChange?.({
+                ...value,
+                center: nextValue.center,
+                initialZoom: nextValue.initialZoom,
+              })
+            }
             close={() => setShowMap(false)}
           />,
           document.body,
@@ -102,33 +127,5 @@ const MapSelectionControl = ({
     </>
   );
 };
-
-type MapSelectionProps = WrappedFieldProps & {
-  label?: string;
-  disabled?: boolean;
-  readOnly?: boolean;
-};
-
-const FrescoMapSelectionControl = MapSelectionControl as ComponentType<
-  Record<string, unknown>
->;
-const ReduxFieldAdapter = FrescoReduxField as unknown as ComponentType<
-  Record<string, unknown>
->;
-
-const MapSelectionBase = ({
-  label = 'Initial map view',
-  ...props
-}: MapSelectionProps) => (
-  <ReduxFieldAdapter
-    {...props}
-    label={label}
-    fieldComponent={FrescoMapSelectionControl}
-  />
-);
-
-const MapSelection = MapSelectionBase as unknown as ComponentType<
-  Record<string, unknown>
->;
 
 export default MapSelection;

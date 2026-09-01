@@ -1,4 +1,3 @@
-import { MotionConfig } from 'motion/react';
 import {
   useCallback,
   useEffect,
@@ -8,6 +7,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 
+import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import type {
   AssetRequestHandler,
   InterviewPayload,
@@ -51,8 +51,6 @@ async function autoBootstrap(slug: string): Promise<string | null> {
     return null;
   }
 }
-
-globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
 
 const mockAssetReq: AssetRequestHandler = async (assetId: string) => {
   const url = getTestState().assetUrls.get(assetId);
@@ -151,7 +149,7 @@ export default function App() {
   }
 
   return (
-    <MotionConfig reducedMotion="always" skipAnimations>
+    <AnimationProvider disableAnimations reducedMotion="always">
       <Shell
         payload={payload}
         onSync={mockSync}
@@ -164,6 +162,6 @@ export default function App() {
         analytics={{ installationId: 'e2e', hostApp: 'e2e' }}
         disableAnalytics={true}
       />
-    </MotionConfig>
+    </AnimationProvider>
   );
 }

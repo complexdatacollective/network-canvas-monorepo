@@ -78,6 +78,13 @@ describe('AnalyticsProvider opt-out no-network guarantee', () => {
     await waitFor(() => expect(result.current.client).toBe(client));
     expect(mockGetAnalyticsClient).toHaveBeenCalledTimes(1);
     expect(result.current.enabled).toBe(true);
+    expect(client.register).toHaveBeenCalledWith({
+      app: 'interviewer',
+      $app_name: 'Interviewer',
+      installation_id: expect.any(String),
+      host_version: expect.any(String),
+      $app_version: expect.any(String),
+    });
     expect(client.opt_in_capturing).toHaveBeenCalledTimes(1);
     expect(client.opt_out_capturing).not.toHaveBeenCalled();
   });

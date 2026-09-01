@@ -1,72 +1,97 @@
-import { compose } from 'react-recompose';
+import type { ComponentType } from 'react';
 
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
-import DialogArrayField from '~/components/Form/DialogArrayField';
-import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
+import Section from '@codaco/fresco-ui/Section';
+import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import type { DialogArrayItemSelector } from '~/components/Form/arrayFields/DialogArrayField';
+import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import {
+  useStageInitialValue,
+  useSubject,
+} from '~/components/StageEditor/stageFormHooks';
+import type { CrossClassPick } from '~/components/Validations/crossClassPicks';
+import { getOptionsForVariable } from '~/selectors/codebook';
 
-import withDisabledSubjectRequired from '../../enhancers/withDisabledSubjectRequired';
-import withSubject from '../../enhancers/withSubject';
-import { PromptPreview } from '../NameGeneratorPrompts';
-import { itemSelector, normalizeField } from './helpers';
+// Imported from its own file rather than the `NameGeneratorPrompts` barrel
+// index, which also re-exports the section component itself.
+import PromptPreview from '../NameGeneratorPrompts/PromptPreview';
+import { useCrossClassEditorValidate } from '../useCrossClassEditorValidate';
 import PromptFields from './PromptFields';
-import withPromptChangeHandler from './withPromptChangeHandler';
-const notEmpty = (value: unknown) =>
-  value && Array.isArray(value) && value.length > 0
-    ? undefined
-    : 'You must create at least one item.';
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-type CategoricalBinPromptsProps = StageEditorSectionProps & {
-  handleChangePrompt: (value: unknown) => unknown;
-  entity?: string | null;
-  type?: string | null;
-  disabled?: boolean;
-  disabledMessage?: string;
+import { useOnBeforeSavePrompt } from './useOnBeforeSavePrompt';
+
+type Prompt = Record<string, unknown>;
+
+/**
+ * Enriches the row being edited with its variable's live codebook options
+ * (mirroring the deleted `helpers.tsx` `itemSelector`).
+ */
+const makeItemSelector =
+  (entity: string | null, type: string | null): DialogArrayItemSelector =>
+  (state, { item }) => {
+    const prompt = item as Prompt;
+    const variable = typeof prompt.variable === 'string' ? prompt.variable : '';
+    const variableOptions = getOptionsForVariable(state, {
+      entity: (entity ?? 'node') as 'node' | 'edge' | 'ego',
+      type: type ?? undefined,
+      variable,
+    });
+
+    return { ...prompt, variableOptions };
+  };
+
+/**
+ * The bin itself writes through drag-and-drop, with no validation of its own;
+ * the follow-up "other" attribute is collected through an input that honours
+ * that variable's codebook validation. Opposite classes, so their gates check
+ * opposite directions.
+ */
+const PROMPT_PICKS = [
+  { path: 'variable', writerClass: 'unvalidated' },
+  { path: 'otherVariable', writerClass: 'validated' },
+] as const satisfies readonly CrossClassPick[];
+
+const CategoricalBinPrompts = (_props: StageEditorSectionProps) => {
+  const { entity, type } = useSubject();
+  const initialPrompts = useStageInitialValue<Prompt[]>('prompts');
+  const onBeforeSave = useOnBeforeSavePrompt(entity, type);
+  const editorValidate = useCrossClassEditorValidate({
+    picks: PROMPT_PICKS,
+    subjectForRow: () => (type ? { entity, type } : null),
+  });
+
+  return (
+    <Section
+      title="Prompt collection"
+      description="Create and reorder the prompts shown in this stage."
+      disabled={!type}
+    >
+      <ArchitectArrayField
+        name="prompts"
+        label="Prompts"
+        hint="Add at least one prompt and drag prompts to reorder them."
+        component={DialogArrayField}
+        addButtonLabel="Create new prompt"
+        validation={{ required: 'You must create at least one item.' }}
+        initialValue={initialPrompts}
+        addTitle="Edit Prompt"
+        previewComponent={
+          PromptPreview as ComponentType<Record<string, unknown>>
+        }
+        editorFieldsComponent={
+          PromptFields as ComponentType<Record<string, unknown>>
+        }
+        editorTitle="Edit Prompt"
+        itemLabel="prompt"
+        editorDialogSize="editor"
+        onBeforeSave={onBeforeSave}
+        editorValidate={editorValidate}
+        itemSelector={makeItemSelector(entity, type)}
+        editorProps={{ entity, type }}
+        requestedEditFormName="editable-list-form"
+        sortable
+      />
+    </Section>
+  );
 };
-const CategoricalBinPrompts = ({
-  handleChangePrompt,
-  entity = null,
-  type = null,
-  disabled,
-  disabledMessage,
-}: CategoricalBinPromptsProps) => (
-  <Section
-    disabled={disabled}
-    disabledMessage={disabledMessage}
-    summary={
-      <Paragraph>
-        Add one or more prompts below to frame the task for the user. You can
-        reorder the prompts using the draggable handles on the left hand side.
-      </Paragraph>
-    }
-    title="Prompts"
-  >
-    <ValidatedFieldArray
-      name="prompts"
-      label="Prompts"
-      component={DialogArrayField}
-      validation={{ notEmpty }}
-      componentProps={{
-        addTitle: 'Edit Prompt',
-        previewComponent: PromptPreview,
-        editorFieldsComponent: PromptFields,
-        editorTitle: 'Edit Prompt',
-        itemLabel: 'prompt',
-        onBeforeSave: handleChangePrompt,
-        normalizeItem: (value: unknown) =>
-          isRecord(value) ? normalizeField(value) : value,
-        itemSelector: itemSelector(entity, type),
-        editorProps: { entity, type },
-        requestedEditFormName: 'editable-list-form',
-        sortable: true,
-      }}
-    />
-  </Section>
-);
-export default compose<CategoricalBinPromptsProps, StageEditorSectionProps>(
-  withSubject,
-  withDisabledSubjectRequired,
-  withPromptChangeHandler,
-)(CategoricalBinPrompts);
+
+export default CategoricalBinPrompts;

@@ -1,29 +1,31 @@
+import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
-import RichText from '~/components/Form/Fields/RichText/Field';
-import ValidatedField from '~/components/Form/ValidatedField';
+import RichText from '@codaco/protocol-builder/fields/RichTextField';
+import ArchitectField from '~/components/Form/ArchitectField';
 import IssueAnchor from '~/components/IssueAnchor';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-const CensusPrompt = (_props: StageEditorSectionProps) => (
-  <Section
-    title="Census Prompt"
-    summary={
-      <Paragraph>
-        Configure the prompt shown to participants during the family building
-        phase.
-      </Paragraph>
-    }
-  >
-    <Row>
-      <IssueAnchor fieldName="censusPrompt" description="Census Prompt" />
-      <ValidatedField
+import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
+
+const CensusPrompt = (_props: StageEditorSectionProps) => {
+  const initialValue = useStageInitialValue<string>('censusPrompt');
+
+  return (
+    <Section title="Family-building prompt">
+      <IssueAnchor fieldName="censusPrompt" description="Census prompt" />
+      <ArchitectField
         name="censusPrompt"
         component={RichText}
-        label="Prompt for building the family pedigree"
-        labelHidden
+        label="Census prompt"
+        hint={
+          <Paragraph>
+            Configure the prompt shown to participants during the family
+            building phase.
+          </Paragraph>
+        }
+        initialValue={initialValue}
         validation={{ required: true }}
       />
-    </Row>
-  </Section>
-);
+    </Section>
+  );
+};
 export default CensusPrompt;

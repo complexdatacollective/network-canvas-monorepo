@@ -1,7 +1,6 @@
 'use client';
 
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip';
-import { AnimatePresence } from 'motion/react';
 import * as React from 'react';
 
 import { MotionSurface } from './layout/Surface';
@@ -27,6 +26,11 @@ type TooltipContentProps = Omit<
   side?: 'top' | 'bottom' | 'left' | 'right';
   align?: 'start' | 'center' | 'end';
   showArrow?: boolean;
+  /**
+   * `none` makes the popup transparent to the pointer, for tooltips that are
+   * purely decorative and must never intercept a gesture underneath them.
+   */
+  pointerEvents?: 'auto' | 'none';
   children?: React.ReactNode;
 };
 
@@ -41,6 +45,7 @@ const TooltipContent = React.forwardRef<
       side = 'top',
       align = 'center',
       showArrow = true,
+      pointerEvents = 'auto',
       children,
       ...props
     },
@@ -54,33 +59,38 @@ const TooltipContent = React.forwardRef<
           sideOffset={sideOffset}
           align={align}
           arrowPadding={POPOVER_ARROW_PADDING}
+          // The portal container re-enables pointer events on its children, so
+          // opting out has to win over that rule.
+          className={cx(pointerEvents === 'none' && 'pointer-events-none!')}
         >
-          <AnimatePresence>
-            <BaseTooltip.Popup
-              ref={ref}
-              role="tooltip"
-              render={
-                <MotionSurface
-                  floating
-                  spacing="sm"
-                  shadow="sm"
-                  className={cx(
-                    'max-w-(--available-width) overflow-visible text-sm',
-                    className,
-                  )}
-                  initial={{ opacity: 0, scale: 0.96 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.96 }}
-                  noContainer
-                  transition={{ type: 'spring', duration: 0.5 }}
-                />
-              }
-              {...props}
-            >
-              {showArrow && <TooltipArrow />}
-              {children}
-            </BaseTooltip.Popup>
-          </AnimatePresence>
+          {/* Deliberately no exit animation: Base UI keeps a closing popup
+              mounted until its animations finish, so an exit tween lets stale
+              tooltips pile up when the provider group short-circuits the delay
+              (fast scrubbing across a toolbar). Closing instantly guarantees a
+              newly opened tooltip is the only one visible. */}
+          <BaseTooltip.Popup
+            ref={ref}
+            role="tooltip"
+            render={
+              <MotionSurface
+                floating
+                spacing="sm"
+                shadow="sm"
+                className={cx(
+                  'max-w-(--available-width) overflow-visible text-sm',
+                  className,
+                )}
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                noContainer
+                transition={{ type: 'spring', duration: 0.5 }}
+              />
+            }
+            {...props}
+          >
+            {showArrow && <TooltipArrow />}
+            {children}
+          </BaseTooltip.Popup>
         </BaseTooltip.Positioner>
       </BaseTooltip.Portal>
     );

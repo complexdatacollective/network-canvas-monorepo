@@ -1,61 +1,53 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
-vi.mock('~/components/Form/ValidatedField', () => ({
-  default: ({
-    name,
-    componentProps,
-  }: {
-    name: string;
-    componentProps?: { label?: string };
-  }) => (
-    <div data-testid={`field-${name}`}>
-      {componentProps?.label && <span>{componentProps.label}</span>}
-    </div>
-  ),
-}));
-
-vi.mock('~/components/EditorLayout', () => ({
-  Row: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  Section: ({
-    children,
-    title,
-    summary,
-  }: {
-    children: React.ReactNode;
-    title: string;
-    summary?: React.ReactNode;
-  }) => (
-    <div>
-      <h2>{title}</h2>
-      <div>{summary}</div>
-      {children}
-    </div>
-  ),
-}));
+import {
+  asStage,
+  renderStageForm,
+} from '~/components/StageEditor/__tests__/stageFormTestHarness';
 
 import AtRiskStatuses from '../AtRiskStatuses';
 
-const renderSection = () =>
-  render(
-    <AtRiskStatuses
-      form="edit-stage"
-      stagePath={null}
-      stagePosition={0}
-      interfaceType="NarrativePedigree"
-    />,
-  );
+const renderSection = (committedStage: Record<string, unknown> | null = null) =>
+  renderStageForm({
+    committedStage: committedStage ? asStage(committedStage) : null,
+    children: (
+      <AtRiskStatuses
+        stagePath={null}
+        stagePosition={0}
+        interfaceType="NarrativePedigree"
+      />
+    ),
+  });
 
 describe('AtRiskStatuses', () => {
   it('renders the section title', () => {
     renderSection();
-    expect(screen.getByText('At-Risk Statuses')).toBeDefined();
+    expect(screen.getByText('At-risk statuses')).toBeDefined();
   });
 
-  it('binds the toggle to showAtRiskStatuses with the expected label', () => {
-    renderSection();
-    const field = screen.getByTestId('field-showAtRiskStatuses');
-    expect(field.textContent).toContain('Show possible (at-risk) statuses');
+  it('binds the toggle to showAtRiskStatuses, defaulting to off, with the expected label', () => {
+    const view = renderSection();
+    const toggle = screen.getByRole('switch', {
+      name: 'Show possible (at-risk) statuses',
+    });
+    expect(toggle).not.toBeChecked();
+    expect(view.getFormValues().showAtRiskStatuses).toBe(false);
+  });
+
+  it('starts from the committed stage when at-risk statuses are already on', () => {
+    // Regression: the field was registered with a hardcoded `false`, so a stage
+    // that had this on opened showing it off — and because the stage saves with
+    // `overwrite: true` over `getFormValues()`, saving any unrelated edit wrote
+    // the `false` back and silently turned the at-risk symbols off.
+    const view = renderSection({ showAtRiskStatuses: true });
+
+    expect(
+      screen.getByRole('switch', {
+        name: 'Show possible (at-risk) statuses',
+      }),
+    ).toBeChecked();
+    expect(view.getFormValues().showAtRiskStatuses).toBe(true);
   });
 
   it('explains what is displayed, how it is calculated, and why it defaults off', () => {

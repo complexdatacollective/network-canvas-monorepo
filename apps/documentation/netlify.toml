@@ -1,3 +1,6 @@
+[context.deploy-preview]
+ignore = "cd \"$(git rev-parse --show-toplevel)\" && if test -n \"$CACHED_COMMIT_REF\" && test \"$CACHED_COMMIT_REF\" != \"$COMMIT_REF\" && git diff --quiet \"$CACHED_COMMIT_REF\" \"$COMMIT_REF\" -- package.json pnpm-lock.yaml pnpm-workspace.yaml && npx --yes turbo@2.10.4 query affected --packages @codaco/documentation networkcanvas.com --base \"$CACHED_COMMIT_REF\" --head \"$COMMIT_REF\" --exit-code; then true; else false; fi"
+
 [[redirects]]
 from = "/"
 to = "/en"
@@ -8,6 +11,21 @@ status = 301
 force = true
 
 # Renamed page slugs (keep old URLs working — may be embedded in apps/documents)
+[[redirects]]
+from = "/en/design-protocols/building-a-protocol"
+to = "/en/design-protocols/tutorials/building-a-protocol"
+status = 301
+
+[[redirects]]
+from = "/en/design-protocols/working-with-rosters"
+to = "/en/design-protocols/tutorials/working-with-rosters"
+status = 301
+
+[[redirects]]
+from = "/en/design-protocols/implementing-cegrm"
+to = "/en/design-protocols/tutorials/implementing-cegrm"
+status = 301
+
 [[redirects]]
 from = "/en/design-protocols/installing-architect-desktop"
 to = "/en/design-protocols/installing-architect-classic"
@@ -292,12 +310,12 @@ status = 301
 
 [[redirects]]
 from = "/en/desktop/tutorials/working-with-rosters"
-to = "/en/design-protocols/working-with-rosters"
+to = "/en/design-protocols/tutorials/working-with-rosters"
 status = 301
 
 [[redirects]]
 from = "/en/desktop/tutorials/building-a-protocol"
-to = "/en/design-protocols/building-a-protocol"
+to = "/en/design-protocols/tutorials/building-a-protocol"
 status = 301
 
 [[redirects]]
