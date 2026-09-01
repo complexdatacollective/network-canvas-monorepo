@@ -29,6 +29,32 @@ const svg = (inner: string) => {
   return host;
 };
 
+/**
+ * A document from another REALM, which is the second way these predicates can
+ * be wrong about a real focus owner.
+ *
+ * `instanceof` compares against the constructor of the realm the checking code
+ * was loaded in, so an element built by another window's `document` — an
+ * iframe here, a popped-out window in production — answers `false` to
+ * `instanceof Element` while being an element in every sense that matters.
+ * Both predicates are reached with `activeElement` read from exactly such a
+ * document (`focusRouteTarget`, `focusFirstError` and `ModalPopup` all take an
+ * `ownerDocument`), so an `instanceof` here reports that researcher's focused
+ * control as "nothing is focused".
+ *
+ * An iframe, not `document.implementation.createHTMLDocument()`: that one
+ * builds its elements from THIS realm's constructors, so it would not
+ * reproduce the bug and the test would pass either way.
+ */
+const otherRealm = () => {
+  const frame = document.createElement('iframe');
+  document.body.append(frame);
+
+  const inner = frame.contentDocument;
+  if (!inner) throw new Error('the iframe must expose a content document');
+  return inner;
+};
+
 afterEach(() => {
   document.body.innerHTML = '';
 });
@@ -61,6 +87,28 @@ describe('holdsFocus — the STATE question', () => {
   it('does not count a detached element', () => {
     expect(holdsFocus(document.createElement('button'))).toBe(false);
   });
+
+  it('counts a focused element in another document as holding focus', () => {
+    const inner = otherRealm();
+    const button = inner.createElement('button');
+    inner.body.append(button);
+    button.focus();
+
+    // The realm boundary itself, and the reason this cannot be checked with
+    // `instanceof`: the element is an element, and it holds focus.
+    expect(button instanceof Element).toBe(false);
+    expect(inner.activeElement).toBe(button);
+
+    expect(holdsFocus(button)).toBe(true);
+  });
+
+  it("still does not count the other document's parked-focus nodes", () => {
+    const inner = otherRealm();
+
+    expect(holdsFocus(inner.body)).toBe(false);
+    expect(holdsFocus(inner.documentElement)).toBe(false);
+    expect(holdsFocus(inner.createElement('button'))).toBe(false);
+  });
 });
 
 describe('asFinalFocusTarget — the DESTINATION question', () => {
@@ -82,6 +130,29 @@ describe('asFinalFocusTarget — the DESTINATION question', () => {
     expect(asFinalFocusTarget(document.body)).toBeNull();
     expect(asFinalFocusTarget(document.documentElement)).toBeNull();
     expect(asFinalFocusTarget(document.createElement('button'))).toBeNull();
+  });
+
+  it('accepts an HTML element from another document', () => {
+    const inner = otherRealm();
+    const button = inner.createElement('button');
+    inner.body.append(button);
+
+    expect(button instanceof HTMLElement).toBe(false);
+    expect(asFinalFocusTarget(button)).toBe(button);
+  });
+
+  it('refuses an SVG element from another document', () => {
+    const inner = otherRealm();
+    const host = inner.createElement('div');
+    host.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg"><a href="#x"><text>Open</text></a></svg>';
+    inner.body.append(host);
+    const link = host.querySelector('a');
+
+    // The distinction the destination question exists to make, made across a
+    // realm boundary: focus can sit on this, and Base UI still cannot take it.
+    expect(holdsFocus(link)).toBe(true);
+    expect(asFinalFocusTarget(link)).toBeNull();
   });
 });
 

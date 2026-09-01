@@ -52,11 +52,49 @@ export type FinalFocusTarget =
   | (() => HTMLElement | null | undefined);
 
 /**
- * Whether `element` is worth handing to Base UI as a focus-return target at
- * all. Exported because EVERY path that names a target explicitly needs it: an
- * explicit `finalFocus` bypasses Base UI's own connectivity check, so a target
- * that has since been removed is strictly worse than answering "no opinion".
+ * `Node.ELEMENT_NODE`, written as its literal value.
+ *
+ * Every predicate below asks what a node IS without using `instanceof`, which
+ * compares against the constructor of the realm the checking code was loaded
+ * in. These are asked about `activeElement` read from a document the CALLER
+ * supplies — `ModalPopup`, `focusFirstError` and `RouteFocus` all take an
+ * `ownerDocument` — and a UI rendered into an iframe or a popped-out window
+ * gives them elements from that window's realm, which no `instanceof` in this
+ * one recognises. A focused control would then read as "nothing is focused"
+ * and whoever asked would move focus off the researcher using it.
+ *
+ * The literal rather than `Node.ELEMENT_NODE`, and the string rather than a
+ * constant off some element, for the same reason the check exists: those are
+ * reached through THIS realm's bindings. Both values are fixed by the DOM
+ * standard and identical in every realm, which is what makes reading them off
+ * the node itself realm-independent.
  */
+const ELEMENT_NODE = 1;
+
+/** The namespace every `HTMLElement` is in, and nothing else is. */
+const HTML_NAMESPACE = 'http://www.w3.org/1999/xhtml';
+
+/**
+ * Whether `node` is an element, in any realm.
+ *
+ * Same answer as `node instanceof Element` for a node from this realm, and the
+ * right answer for one from another.
+ */
+const isElement = (node: Node | null | undefined): node is Element =>
+  node?.nodeType === ELEMENT_NODE;
+
+/**
+ * Whether `node` is an `HTMLElement`, in any realm.
+ *
+ * Same answer as `node instanceof HTMLElement`: an element is exposed through
+ * an HTML interface exactly when it is in the XHTML namespace — an unknown
+ * name there is still an `HTMLUnknownElement`, and anything outside it (SVG,
+ * MathML) is not an `HTMLElement`, which is the distinction the destination
+ * question below turns on.
+ */
+const isHtmlElement = (node: Node | null | undefined): node is HTMLElement =>
+  isElement(node) && node.namespaceURI === HTML_NAMESPACE;
+
 /**
  * Whether `node` is something meaningfully HOLDING focus right now.
  *
@@ -80,7 +118,7 @@ export type FinalFocusTarget =
  * predicate rejects them: the browser parks focus there when nothing owns it.
  */
 export const holdsFocus = (node: Node | null | undefined): node is Element =>
-  node instanceof Element &&
+  isElement(node) &&
   node.isConnected &&
   node !== node.ownerDocument.body &&
   node !== node.ownerDocument.documentElement;
@@ -102,6 +140,10 @@ export const holdsFocus = (node: Node | null | undefined): node is Element =>
  * same reason, and an explicit target bypasses that check. `<html>` is as bad,
  * and for the same reason: not tabbable itself, so it resolves to the
  * document's first tabbable element.
+ *
+ * Exported because EVERY path that names a target explicitly needs it: an
+ * explicit `finalFocus` bypasses Base UI's own connectivity check, so a target
+ * that has since been removed is strictly worse than answering "no opinion".
  */
 export const isUsableFinalFocusTarget = (
   element: HTMLElement | null | undefined,
@@ -119,7 +161,7 @@ export const isUsableFinalFocusTarget = (
 export const asFinalFocusTarget = (
   node: Node | null | undefined,
 ): HTMLElement | null =>
-  node instanceof HTMLElement && isUsableFinalFocusTarget(node) ? node : null;
+  isHtmlElement(node) && isUsableFinalFocusTarget(node) ? node : null;
 
 const resolveOne = (target: FinalFocusTarget): HTMLElement | null => {
   if (!target) return null;

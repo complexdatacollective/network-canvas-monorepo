@@ -40,8 +40,19 @@ const renderRoute = () => {
 
   return {
     heading: () => screen.getByRole('heading', { level: 1, name: ROUTE_TITLE }),
-    /** What a route change announces — proof the route-change effect ran. */
-    announcement: () => screen.getByRole('status'),
+    /**
+     * What a route change announces — proof the route-change effect ran.
+     *
+     * Everything the live regions hold, because there are two of them and
+     * which one carries the destination alternates: fresco-ui announces by
+     * moving the text between them, so that a route whose title matches the
+     * one before it still changes a region and is still announced.
+     */
+    announcement: () =>
+      screen
+        .getAllByRole('status')
+        .map((region) => region.textContent?.trim() ?? '')
+        .join(''),
     navigate: (path: string) => act(() => navigate(path)),
   };
 };
@@ -51,7 +62,7 @@ describe('RouteFocus', () => {
     const { announcement, heading, navigate } = renderRoute();
     // Nothing has been announced yet, and the heading does not hold focus:
     // arriving is not navigating.
-    expect(announcement()).toBeEmptyDOMElement();
+    expect(announcement()).toBe('');
     expect(document.activeElement).toBe(document.body);
 
     // A wouter navigation, not a re-render with a new prop. Subscribing to
@@ -61,7 +72,7 @@ describe('RouteFocus', () => {
     navigate('/protocol/codebook');
 
     expect(heading()).toHaveFocus();
-    expect(announcement()).toHaveTextContent(ROUTE_TITLE);
+    expect(announcement()).toBe(ROUTE_TITLE);
   });
 
   it("re-exports fresco-ui's helpers rather than a local copy of them", () => {
