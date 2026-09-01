@@ -255,7 +255,11 @@ without requiring a query.
   cannot revoke a promise the network already fulfilled, so a stale response
   that resolves after supersession is discarded, never rendered under the
   newer query. Late results insert at their ranked position within their
-  group, and the highlighted item is preserved by identity (invariant 4).
+  group, and the highlighted item is preserved by identity (invariant 4);
+  when an insertion above the highlight would push the highlighted item past
+  the group's visible bound, the group's window extends to keep it rendered
+  — `aria-activedescendant` always references a mounted option, and a
+  keyboard user never watches their selection vanish.
 - **Navigate**: arrow keys move through the flat result sequence across
   groups — a group's "show more" affordance is a row in that sequence, so
   arrowing past the last visible result reaches it and `Enter` reveals the
@@ -337,9 +341,13 @@ natural id — a destination and a command both named "settings" — therefore
 cannot collide, and recents already store the same provider-plus-id pair.
 
 `rank` is how §3.4's ordering crosses the seam: providers normalize their own
-context into the tier (the entity provider maps current study → 0, current
-team → 1, other teams → 2, platform → 3; the manifest and command providers
-map current area → 0 and so on), and the component merges every provider's
+context into the tier. In Go to, tiers follow resource ownership for
+destinations and entities alike — current study → 0, its team → 1, other
+teams → 2, platform → 3 — so a study destination stays tier 0 from every
+screen of that study, and on a team screen a team destination shares tier 1
+with team entities rather than outranking them. Commands tier by area:
+current area → 0, other areas → 1, global → 2. The component merges every
+provider's
 items within a group by tier, then position (ascending, when given), then
 recency (descending), then label, then the provider-qualified key as the
 total-order final tie-breaker. `position` is how a provider whose server
@@ -381,16 +389,18 @@ same reason: a sensitive provider that forgot to mark one participant row
 would otherwise leak an identifying label into `localStorage`. A provider
 declared `'never'` has no per-item escape hatch.
 
-Continuation flows through the seam for remote providers: one with more than
-one bounded page returns `next`, the component renders that group's "show
-more" affordance (§3.4), and activating it calls `search` again with the
-cursor — the Studio providers pass it straight through to their procedures'
-`cursor`/`nextCursor` (§5.4, §5.5). Local inventories are paged by the
-component itself: it holds the full filtered set in memory, renders the
-affordance whenever matches remain beyond the group bound, and reveals the
-next bounded slice — a sixth matching destination is reachable, not silently
-cut (invariant 1). Late and revealed results honour selection stability
-(invariant 4) on both paths.
+Continuation is a property of the group, not of any one source. Each group
+renders one "show more" row whenever anything remains: local matches beyond
+the bound, remote items fetched but unrevealed, or a provider holding a
+`next` cursor. Activating it reveals the next bounded slice of the group's
+merged total order — drawing first from results the component already holds
+and calling a provider's `search` with its cursor only when that provider's
+contribution is exhausted — so a mixed group cannot strand one source's
+results behind another's pagination, and never reveals more than the slice.
+Studio's remote providers pass cursors straight through to their procedures'
+`cursor`/`nextCursor` (§5.4, §5.5); a sixth matching local destination is
+reachable, not silently cut (invariant 1). Late and revealed results honour
+selection stability (invariant 4) on both paths.
 
 The component owns matching over local inventories (case- and
 diacritic-folded substring and initials matching), the keyboard model,
@@ -407,14 +417,18 @@ type NavManifestEntry = {
   labelKey: string;             // whole-string translation key
   href: string;
   icon?: ComponentType;
-  access: string | 'public';    // required: a capability, or explicitly public
+  access: Capability | 'public';  // required: a typed capability key, or explicitly public
   topology: 'both' | 'managed' | 'self-hosted';  // required, like access
   chord?: string;               // the key after 'g', contributed to the shortcut registry
 };
 ```
 
 `access` is required, exactly as the command registry requires it: an entry
-must name the capability that gates it or declare itself `public` on purpose.
+must name the capability that gates it or declare itself `public` on purpose,
+and `Capability` is the typed key union of the authorization vocabulary — a
+mistyped capability is a type error, not a destination that silently
+disappears for everyone while the parity test still passes. The command
+registry uses the same type.
 An optional field would make a forgotten gate indistinguishable from an
 intentionally public route, and the parity test would pass while both the
 sidebar and the bar exposed a destination the researcher cannot use. The
@@ -535,11 +549,13 @@ Matching is name-prefix and substring on display names; anything cleverer is a
 ranking refinement inside the procedure, not a contract change.
 
 Inputs are bounded at the RPC boundary, shared by both search procedures: a
-server-enforced maximum `query` length (an oversized query is rejected — the
-debounced UI never produces one, so only a bypassing client hits it), a
-capped `limit`, and a cursor that must parse. The result `limit` bounds
-output; the query bound is what keeps a hostile client from feeding the
-matcher and ranker unbounded input.
+`query` that must be non-empty after whitespace normalization and within a
+server-enforced maximum length (an empty or oversized query is rejected —
+the debounced UI never produces either, so only a bypassing client hits
+them), a capped `limit`, and a cursor that must parse. The result `limit`
+bounds output; the query bounds are what keep a hostile client from turning
+the matcher and ranker into a scan over every visible row or feeding them
+unbounded input.
 
 `search.entities` is non-sensitive by contract: every kind it can ever return
 is metadata a team member may see. Under the audit design that makes it an
@@ -594,8 +610,9 @@ never as a subsequent sort key, which would demote it to a tie-breaker that
 only ever reorders exact score ties. The resulting ordering is total, as
 §5.4's is: boosted score, then the record's anchored URL as the immutable
 unique final key, with the cursor encoding the full tuple, so tied scores at
-a page boundary cannot skip or repeat records. The procedure shares §5.4's input bounds: maximum
-query length, capped limit, parseable cursor.
+a page boundary cannot skip or repeat records. The procedure shares §5.4's
+input bounds: a non-empty normalized query up to the maximum length, capped
+limit, parseable cursor.
 
 Ranking is the index's lexical ranking with a fixed boost for records whose
 `products` includes `studio` — a boost, never a filter, so every
@@ -604,11 +621,12 @@ Studio locale when the index manifest publishes it and `en` otherwise; the
 published-locale list ships in the index manifest, never guessed (today it is
 `['en']`).
 
-The artifact contract is versioned (§6): the manifest names its schema major,
-Studio fetches the versioned path for the major it supports, and every
-fetched artifact is validated against Studio's schema before it replaces the
-cached index — an unparseable or wrong-major artifact is rejected, the
-last-good index keeps serving, and an operational signal is raised. The
+The artifact contract is versioned (§6): the manifest maps every published
+schema major to its artifacts, Studio selects its supported major from that
+map and fetches those paths, and every fetched artifact is validated against
+Studio's schema before it replaces the cached index — an unparseable or
+wrong-major artifact is rejected, the last-good index keeps serving, and an
+operational signal is raised. The
 documentation site and Studio release independently (separate release lanes),
 so a docs deploy publishing a newer schema must not be able to silently take
 documentation search away from a running Studio.
@@ -620,8 +638,16 @@ An operator can point it at a mirror, or set the literal value `off` to
 disable it — a sentinel rather than an empty string, because the env
 boundary's `emptyStringAsUndefined` folds an empty value back into the
 default and would make "set it empty" silently re-enable the feature.
-Without an index the Documentation group does not exist and the rest of the
-bar is unaffected.
+
+Absence and failure are distinct states. With `off`, documentation search is
+intentionally not part of this instance: the Documentation group does not
+exist and the rest of the bar is unaffected. With a configured URL whose
+manifest or artifacts have never successfully loaded (or whose last fetch
+failed validation with no last-good index to fall back on), the group
+renders §8's documentation-unavailable state as text — a researcher must be
+able to tell "this instance has no documentation search" from "documentation
+search is broken", and an operator must not be able to mistake a fetch
+failure for a clean disable.
 
 ### 5.6 Recents
 
@@ -830,7 +856,10 @@ foundations work (#1315).
   is highlighted (the oracle: the highlighted provider-qualified key before
   and after resolve are equal, proven able to fail by breaking the
   identity-tracking path), and the inserted results land in §3.4 rank order,
-  not appended below lower-priority rows.
+  not appended below lower-priority rows. When the insertion would push the
+  highlighted item past the group's visible bound, the window extends to
+  keep it mounted — `aria-activedescendant` never references an unmounted
+  option.
 - Rank merging: items from different providers in one group merge by
   (tier, position, recency, label, qualified key) — a tier-0 remote item
   sorts above a tier-1 local item that rendered first, and a same-tier
@@ -857,8 +886,11 @@ foundations work (#1315).
   appends the page without moving the highlighted item; a local group whose
   filtered matches exceed the group bound renders the affordance from
   component state and reveals the next bounded slice, so a sixth matching
-  destination is reachable; only a group with nothing further renders no
-  affordance.
+  destination is reachable; a mixed group — local remainder plus a provider
+  cursor — reveals exactly one bounded slice of the merged order per
+  activation, draining held results before requesting a provider's next page
+  (§5.1), with neither source stranded; only a group with nothing further
+  renders no affordance.
 
 ### 12.2 Studio integration tests
 
@@ -890,15 +922,18 @@ foundations work (#1315).
   tied on last-modified and name, which must neither skip nor repeat any row
   — platform-scoped results carrying no invented team, the
   no-existence-oracle posture on unknown context ids, and rejection of an
-  over-length query and an unparseable cursor (both search procedures).
+  empty-after-normalization query, an over-length query, and an unparseable
+  cursor (both search procedures).
 - **Command availability**: a command with an `availability` predicate is
   absent while the shell context fails it (pause collection on an
   already-paused study) and present when it passes, evaluated without the
   owning area mounted.
-- **Docs provider**: absent without an index and when
-  `STUDIO_DOCS_INDEX_URL=off` (the sentinel disables despite
-  `emptyStringAsUndefined` folding empty values into the default — both
-  asserted); the documentation path issues no outbound request carrying
+- **Docs provider**: absent when `STUDIO_DOCS_INDEX_URL=off` (the sentinel
+  disables despite `emptyStringAsUndefined` folding empty values into the
+  default — both asserted), and rendering the documentation-unavailable
+  state — not absence — when the URL is configured but no index has ever
+  loaded or the last fetch failed validation with no last-good fallback
+  (§5.5); the documentation path issues no outbound request carrying
   query text — the only outbound documentation traffic observed in the test
   double is the index refresh (asserted by inspecting outbound traffic, not
   assumed); locale filter and `en` fallback from the index manifest; a
@@ -926,8 +961,13 @@ a study name from another team, land on it (focus on its `h1`), reopen, run
 "Invite a team member" and land in the members screen's invitation flow,
 reopen, type a query and verify the Documentation group renders inline
 results from a fixture index (`STUDIO_DOCS_INDEX_URL` points at a local
-fixture in E2E — no external dependency in CI) while the network log shows no
-outbound request containing the query text.
+fixture in E2E — no external dependency in CI) while the browser's network
+log shows no cross-origin request containing the query text. The browser
+necessarily sends the query to Studio's own same-origin RPC, so the
+cross-origin assertion covers only the client half; the server half — that
+Studio's outbound traffic to the documentation host is the index refresh and
+never carries a query — is §12.2's server-side outbound-traffic test, not
+this journey's.
 
 ## 13. Delivery plan
 
