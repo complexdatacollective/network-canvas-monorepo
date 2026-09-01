@@ -404,4 +404,40 @@ describe('CodebookVariableValidationEditor', () => {
       await screen.findByRole('spinbutton', { name: 'Minimum value' }),
     ).toHaveValue(5);
   });
+
+  it('keeps a dirty draft visible but blocks saving after a remote variable type change', async () => {
+    const initial = entityDocument();
+    const onSubmitRequest = vi.fn(() => appliedResult());
+    const { rerender, props } = renderEditor({
+      authoritativeEntityDocument: initial,
+      allSubjectVariables: variablesFrom(initial),
+      onSubmitRequest,
+    });
+    const user = await replaceMinimumValue('5');
+    const remote = entityDocument();
+    variablesFrom(remote).age = {
+      name: 'Age',
+      type: 'text',
+      component: 'Text',
+      validation: { required: true },
+    };
+
+    rerender(
+      <CodebookVariableValidationEditor
+        {...props}
+        authoritativeEntityDocument={remote}
+        allSubjectVariables={variablesFrom(remote)}
+      />,
+    );
+
+    expect(await screen.findByText('Attribute type changed')).toBeVisible();
+    expect(screen.getByText(/close and reopen this editor/i)).toBeVisible();
+    expect(
+      screen.getByRole('spinbutton', { name: 'Minimum value' }),
+    ).toHaveValue(5);
+    const save = screen.getByRole('button', { name: 'Save validation' });
+    expect(save).toBeDisabled();
+    await user.click(save);
+    expect(onSubmitRequest).not.toHaveBeenCalled();
+  });
 });

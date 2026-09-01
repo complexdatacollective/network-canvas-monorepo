@@ -45,6 +45,41 @@ describe('attributeValidationIssues', () => {
     ]);
   });
 
+  it('maps experiment issues and current attribution to the settings section', () => {
+    const settingsSection = sectionId({ kind: 'settings' });
+    const currentRevision = revision(4n);
+    const attribution = remoteChange(currentRevision);
+
+    expect(
+      attributeValidationIssues(
+        [
+          {
+            code: 'invalid_type',
+            path: ['experiments', 'treatment'],
+            message: 'Invalid experiment definition',
+          },
+        ],
+        {
+          [settingsSection]: {
+            name: 'Experiment protocol',
+            schemaVersion: 8,
+            experiments: {},
+          },
+        },
+        { [settingsSection]: attribution },
+        currentRevision,
+      ),
+    ).toEqual([
+      {
+        code: 'invalid_type',
+        path: ['experiments', 'treatment'],
+        message: 'Invalid experiment definition',
+        sectionId: settingsSection,
+        attributedChange: { sectionId: settingsSection, attribution },
+      },
+    ]);
+  });
+
   it('attributes a dependency consequence to the referenced entity change', () => {
     const stageSection = sectionId({ kind: 'stage', stageId: 'stage-one' });
     const deletedNodeSection = sectionId({

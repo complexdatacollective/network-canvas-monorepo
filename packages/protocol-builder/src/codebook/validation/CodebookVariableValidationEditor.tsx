@@ -176,6 +176,15 @@ export default function CodebookVariableValidationEditor({
     draftVariable !== undefined && typeof draftVariable.type === 'string'
       ? draftVariable.type
       : '';
+  const authoritativeVariableType =
+    authoritativeVariable !== undefined &&
+    typeof authoritativeVariable.type === 'string'
+      ? authoritativeVariable.type
+      : '';
+  const attributeTypeChanged =
+    !attributeUnavailable &&
+    draftVariable !== undefined &&
+    variableType !== authoritativeVariableType;
   const validation =
     draftVariable === undefined ? {} : validationFromVariable(draftVariable);
   const variablesForValidation = useMemo(() => {
@@ -194,14 +203,16 @@ export default function CodebookVariableValidationEditor({
   const issue =
     attributeUnavailable || draftVariable === undefined
       ? 'The attribute no longer exists in this entity.'
-      : (missingTargetIssue(validation, variablesForValidation) ??
-        ruleMapIssue(validation, {
-          allVariables: Object.fromEntries(
-            Object.entries(variablesForValidation),
-          ),
-          currentVariableId: variableId,
-          variableType,
-        }));
+      : attributeTypeChanged
+        ? 'The attribute type changed while this validation draft was open.'
+        : (missingTargetIssue(validation, variablesForValidation) ??
+          ruleMapIssue(validation, {
+            allVariables: Object.fromEntries(
+              Object.entries(variablesForValidation),
+            ),
+            currentVariableId: variableId,
+            variableType,
+          }));
   const busy = snapshot.status !== 'editing';
   const dirty = session.isDirty();
   const variableName =
@@ -266,12 +277,26 @@ export default function CodebookVariableValidationEditor({
             </Paragraph>
           </div>
 
-          {snapshot.authoritativeChanged && !attributeUnavailable && (
+          {snapshot.authoritativeChanged &&
+            !attributeUnavailable &&
+            !attributeTypeChanged && (
+              <Alert variant="warning" appearance="soft" density="compact">
+                <AlertTitle>Newer codebook data is available</AlertTitle>
+                <AlertDescription>
+                  Your validation draft has been kept. Saving will apply it to
+                  the latest authoritative entity data.
+                </AlertDescription>
+              </Alert>
+            )}
+
+          {attributeTypeChanged && (
             <Alert variant="warning" appearance="soft" density="compact">
-              <AlertTitle>Newer codebook data is available</AlertTitle>
+              <AlertTitle>Attribute type changed</AlertTitle>
               <AlertDescription>
-                Your validation draft has been kept. Saving will apply it to the
-                latest authoritative entity data.
+                The attribute type changed while this validation draft was open.
+                Your draft is still visible, but it cannot be saved. Close and
+                reopen this editor to configure validation for the new attribute
+                type.
               </AlertDescription>
             </Alert>
           )}
@@ -315,7 +340,7 @@ export default function CodebookVariableValidationEditor({
                   ),
                 );
               }}
-              readOnly={readOnly || busy}
+              readOnly={readOnly || busy || attributeTypeChanged}
             />
           )}
 

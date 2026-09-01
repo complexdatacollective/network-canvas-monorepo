@@ -146,6 +146,7 @@ function sectionForIssuePath(
   if (
     root === 'name' ||
     root === 'description' ||
+    root === 'experiments' ||
     root === 'schemaVersion' ||
     root === 'lastModified'
   ) {
