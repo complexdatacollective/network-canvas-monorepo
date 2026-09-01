@@ -309,12 +309,16 @@ same reason: a sensitive provider that forgot to mark one participant row
 would otherwise leak an identifying label into `localStorage`. A provider
 declared `'never'` has no per-item escape hatch.
 
-Continuation flows through the seam: a provider with more than one bounded
-page returns `next`, the component renders that group's "show more"
-affordance (§3.4), and activating it calls `search` again with the cursor —
-the Studio providers pass it straight through to their procedures'
-`cursor`/`nextCursor` (§5.4, §5.5). Local providers simply omit `next`.
-Appended pages obey selection stability (invariant 4).
+Continuation flows through the seam for remote providers: one with more than
+one bounded page returns `next`, the component renders that group's "show
+more" affordance (§3.4), and activating it calls `search` again with the
+cursor — the Studio providers pass it straight through to their procedures'
+`cursor`/`nextCursor` (§5.4, §5.5). Local providers omit `next` and the
+component pages them itself: it holds the full filtered set in memory,
+renders the affordance whenever matches remain beyond the group bound, and
+reveals the next bounded slice — a sixth matching destination is reachable,
+not silently cut (invariant 1). Appended pages obey selection stability
+(invariant 4) on both paths.
 
 The component owns matching for local providers (case- and diacritic-folded
 substring and initials matching), the keyboard model, grouping, bounds,
@@ -332,6 +336,7 @@ type NavManifestEntry = {
   href: string;
   icon?: ComponentType;
   access: string | 'public';    // required: a capability, or explicitly public
+  topology?: 'managed' | 'self-hosted';  // absent = both deployment modes
   chord?: string;               // the key after 'g', contributed to the shortcut registry
 };
 ```
@@ -343,13 +348,27 @@ intentionally public route, and the parity test would pass while both the
 sidebar and the bar exposed a destination the researcher cannot use. The
 server denial remains the boundary either way; this keeps the chrome honest.
 
-`NavList` renders the manifest; the bar's destination provider searches the
-union of every manifest the researcher can reach (§3.1), not only the mounted
-area's. This is the structural parity guarantee: adding a route to an area
-means adding a manifest entry, and that one addition surfaces it in the
-sidebar, the bar, and the shortcut registry at once. If #1561's slice 2 ships
-its sidebars as JSX before this design lands, converting them to manifest
-data is the first task of this design's slice 2.
+`topology` carries the shell's deployment-mode gating (#1561 §10.4) into the
+shared filter: a managed-only destination such as team billing declares
+`topology: 'managed'`, and the one manifest filter — capabilities from
+`study.shell`/team context plus the deployment mode from `ShellContext` —
+produces the entry set that both `NavList` and the bar consume. Capability
+filtering alone could not remove a managed-only route on a self-hosted
+instance, and the shell 404s it server-side; the chrome must not offer a dead
+door.
+
+There is no manifest-less chrome: the platform destinations the header
+renders (gallery, templates, account) are themselves a platform manifest, and
+the header renders it the way area sidebars render theirs. A header link
+cannot be added outside the manifest, so the parity invariant covers the
+header too. `NavList` renders each area's manifest; the bar's destination
+provider searches the filtered union of every manifest the researcher can
+reach (§3.1), not only the mounted area's. This is the structural parity
+guarantee: adding a route means adding a manifest entry, and that one
+addition surfaces it in its chrome, the bar, and the shortcut registry at
+once. If #1561's slice 2 ships its sidebars or header links as JSX before
+this design lands, converting them to manifest data is the first task of this
+design's slice 2.
 
 ### 5.3 The command and shortcut registries
 
@@ -387,6 +406,15 @@ search.entities({ query, context: { studyId?, teamId? }, limit?, cursor? }) -> {
         updatedAt: string;
       }
     | {
+        scope: 'study';                   // study-owned entities (sessions,
+        kind: ...;                        // published versions — added by owners)
+        id: string;
+        label: string;
+        studyId: string;
+        teamId: string;
+        updatedAt: string;
+      }
+    | {
         scope: 'platform';                // platform-level entities (#1561 §4)
         kind: 'template' | ...;
         id: string;
@@ -398,25 +426,36 @@ search.entities({ query, context: { studyId?, teamId? }, limit?, cursor? }) -> {
 }
 ```
 
-Team-scoped and platform-scoped results are separate union branches because
-templates and the gallery live above teams in the accepted ownership model —
-a template has no tenant to attribute, and a shape that required `teamId` on
-it would force the server to invent one. `limit` defaults to the group bound
-in §3.4 and is server-capped; `nextCursor` is what the group's "show more"
-affordance requests the next bounded page with. The ordering ends in the
-immutable unique key (scope, team, id) per §3.4, and the cursor encodes the
-full ordering tuple — keyset pagination over a total order, so equal
-last-modified values and duplicate display names cannot make a page boundary
-skip or repeat rows.
+The branches follow the accepted ownership model, and each carries every
+identifier its kind's canonical route requires — the provider constructs
+hrefs from the result alone and never performs a second lookup. Templates and
+the gallery live above teams, so the platform branch has no tenant to
+attribute; a shape that required `teamId` on it would force the server to
+invent one. Study-owned kinds (sessions at `/study/$studyId/sessions/…`,
+published versions at `/study/$studyId/versions`) carry their `studyId` on
+the study branch when their owning features add them. `limit` defaults to the
+group bound in §3.4 and is server-capped; `nextCursor` is what the group's
+"show more" affordance requests the next bounded page with. The ordering ends
+in the immutable unique key (scope, team, id) per §3.4, and the cursor
+encodes the full ordering tuple — keyset pagination over a total order, so
+equal last-modified values and duplicate display names cannot make a page
+boundary skip or repeat rows.
 
 The server resolves the researcher's memberships once, searches each team
 under its own tenant scope (row-level security intact — no cross-team query),
 bounds results per kind, and applies the context-first ranking in §3.4.
 Matching is name-prefix and substring on display names; anything cleverer is a
-ranking refinement inside the procedure, not a contract change. The procedure
-is a read of non-sensitive metadata and registers `none` in the audit command
-registry — until a sensitive kind (participants) is added, at which point that
-kind's clauses carry their own classification (§7).
+ranking refinement inside the procedure, not a contract change.
+
+`search.entities` is non-sensitive by contract: every kind it can ever return
+is metadata a team member may see, and it registers `none` in the audit
+command registry with that reason. Sensitive kinds never join it —
+participants arrive as their own procedure called by their own
+`persistence: 'never'` provider (§7), so the server response shape, the audit
+classification, and the persistence policy share one boundary. A mixed
+procedure would either fetch participant-identifying rows on every ordinary
+study search or force the safe kinds out of recents along with the sensitive
+one.
 
 ### 5.5 The documentation provider
 
@@ -447,7 +486,10 @@ are the single documentation-search path. `limit` defaults to the group bound
 in §3.4 and is server-capped; a common query matching many heading records
 returns one bounded page, and the "show more" affordance requests the next
 with `nextCursor` — the server never streams the whole matching index at a
-keystroke.
+keystroke. The ordering is total, as §5.4's is: score, then Studio-tag
+boost, then the record's anchored URL as the immutable unique final key, with
+the cursor encoding the full tuple, so tied scores at a page boundary cannot
+skip or repeat records.
 
 Ranking is the index's lexical ranking with a fixed boost for records whose
 `products` includes `studio` — a boost, never a filter, so every
@@ -539,14 +581,17 @@ bypassing none.
   and templates are non-sensitive metadata; the procedure registers `none` in
   the audit command registry with that reason.
 - **Participants** are the sensitive case, and they arrive with #1263/#1264,
-  not before. When that provider lands: results identifying a person are
-  returned only to holders of the PII grant (absent otherwise — masked rows
-  would still leak existence); the search read registers its audit
+  not before. When they land they are their own procedure and their own
+  provider, never new kinds on `search.entities` (§5.4): results identifying
+  a person are returned only to holders of the PII grant (absent otherwise —
+  masked rows would still leak existence); the procedure registers its audit
   classification under the audit specification's "viewing
   participant-identifying information" policy at that time; and the provider
   declares `persistence: 'never'`, which keeps every result out of local
-  recents with no per-item opt-out (§5.1, §5.6). The bar's architecture
-  treats this as one more provider — nothing in the component changes.
+  recents with no per-item opt-out (§5.1, §5.6). One boundary carries the
+  response shape, the audit policy, and the persistence policy together. The
+  bar's architecture treats this as one more provider — nothing in the
+  component changes.
 - **Opening the bar and typing** is ordinary navigation and is excluded from
   the audit log, per the audit specification's §7.2 exclusions.
 - **Documentation queries** never reach a third party. They are answered
@@ -669,10 +714,13 @@ foundations work (#1315).
   restores focus; reduced-motion path renders without transitions.
 - Matching: diacritic folding, initials, index-mapped highlight on non-Latin
   labels.
-- Pagination: a provider returning `next` renders its group's "show more"
-  affordance; activating it calls `search` with the cursor and appends the
-  page without moving the highlighted item; a provider omitting `next`
-  renders no affordance.
+- Pagination: a remote provider returning `next` renders its group's "show
+  more" affordance, and activating it calls `search` with the cursor and
+  appends the page without moving the highlighted item; a local group whose
+  filtered matches exceed the group bound renders the affordance from
+  component state and reveals the next bounded slice, so a sixth matching
+  destination is reachable; only a group with nothing further renders no
+  affordance.
 
 ### 12.2 Studio integration tests
 
@@ -681,10 +729,13 @@ foundations work (#1315).
   and an entry whose `access` capability the test session lacks is absent
   from both sidebar and bar; one test over the shared data, which is the
   point of §5.2. The same cross-area assertion covers commands: a team-area
-  command is found from a study screen (§3.2). A type-level assertion (or
-  registry test) proves `access` cannot be omitted, and the provider type's
-  discriminated union proves a `persistence: 'recents'` provider cannot omit
-  `resolve`.
+  command is found from a study screen (§3.2). The header is enumerated too:
+  every header destination is a platform-manifest entry, so a link added
+  outside the manifest fails the test. In self-hosted mode a
+  `topology: 'managed'` entry (team billing) is absent from sidebar, header,
+  and bar alike. A type-level assertion (or registry test) proves `access`
+  cannot be omitted, and the provider type's discriminated union proves a
+  `persistence: 'recents'` provider cannot omit `resolve`.
 - **Launcher rule**: the registry test in §5.3 — every activation is a
   route, an external link, or a route paired with a surface its destination
   screen registers; the activation type admits no callback, so a mutation is
@@ -709,7 +760,9 @@ foundations work (#1315).
   assumed); locale filter and `en` fallback from the index manifest; a
   `studio`-tagged record ranks above an otherwise-equal untagged one, and
   untagged records still appear (boost, not filter); a broad query returns
-  one server-capped page with a working `nextCursor`; a failed refresh, a
+  one server-capped page with a working `nextCursor`, and a page boundary
+  inside a run of equal-score records neither skips nor repeats (the
+  anchored-URL final key makes the order total); a failed refresh, a
   wrong-schema-major artifact, and an unparseable artifact each keep serving
   the last good index and raise the operational signal.
 - **Recents**: items from a `persistence: 'never'` provider are not written
