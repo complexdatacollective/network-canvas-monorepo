@@ -1,14 +1,23 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import {
+  BUNDLED_RUNTIME_DEPENDENTS,
   classifyChangeset,
   GATED_PRODUCT_PACKAGES,
   isMixedChangeset,
   isMultiProductLaneChangeset,
+  missingBundlingApps,
   nextStableVersion,
   parseChangeset,
   readChangesets,
@@ -148,6 +157,91 @@ test('isMultiProductLaneChangeset allows products in one release lane', () => {
   assert.equal(isMultiProductLaneChangeset(twoLanes), true);
   assert.equal(isMultiProductLaneChangeset(studioLane), false);
   assert.equal(isMultiProductLaneChangeset(studioPlusDocs), true);
+});
+
+test('missingBundlingApps flags a bundled runtime released without its apps', () => {
+  const partial = {
+    releases: [
+      { name: '@codaco/interview', type: 'patch' },
+      { name: '@codaco/interviewer', type: 'patch' },
+      { name: 'fresco', type: 'patch' },
+    ],
+  };
+  assert.deepEqual(missingBundlingApps(partial), [
+    { package: '@codaco/interview', missingApps: ['@codaco/architect'] },
+  ]);
+
+  const complete = {
+    releases: [
+      { name: '@codaco/interview', type: 'patch' },
+      { name: '@codaco/architect', type: 'patch' },
+      { name: 'fresco', type: 'patch' },
+      { name: '@codaco/interviewer', type: 'patch' },
+    ],
+  };
+  assert.deepEqual(missingBundlingApps(complete), []);
+
+  const unrelated = {
+    releases: [{ name: '@codaco/fresco-ui', type: 'minor' }],
+  };
+  assert.deepEqual(missingBundlingApps(unrelated), []);
+});
+
+const byName = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
+test('BUNDLED_RUNTIME_DEPENDENTS matches the apps that really bundle each runtime', () => {
+  // The guard's map is static so it works on changeset fixtures; this test
+  // pins it to the workspace's actual dependency graph. If it fails, an app
+  // adopted or dropped a bundled runtime — update BUNDLED_RUNTIME_DEPENDENTS.
+  const root = new URL('..', import.meta.url);
+  const workspace = readFileSync(new URL('pnpm-workspace.yaml', root), 'utf8');
+  // The app globs are the `- apps/...` lines of the leading `packages:` block;
+  // parse them without a YAML dependency. Comments are indented and skipped;
+  // the next top-level key ends the block.
+  const appGlobs = [];
+  let inPackages = false;
+  for (const line of workspace.split('\n')) {
+    if (line.startsWith('packages:')) {
+      inPackages = true;
+      continue;
+    }
+    if (!inPackages) continue;
+    if (/^\S/.test(line)) break;
+    const glob = line.match(/^\s+-\s+(\S+)/)?.[1];
+    if (glob?.startsWith('apps/')) appGlobs.push(glob);
+  }
+  assert.ok(appGlobs.includes('apps/*'), 'workspace parsing broke');
+
+  const { ignore } = JSON.parse(
+    readFileSync(new URL('.changeset/config.json', root), 'utf8'),
+  );
+  const ignored = new Set(ignore);
+  const manifests = appGlobs.flatMap((glob) => {
+    assert.match(glob, /\/\*$/, `unsupported workspace glob shape: ${glob}`);
+    const parent = fileURLToPath(new URL(glob.slice(0, -1), root));
+    return readdirSync(parent, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => join(parent, entry.name, 'package.json'))
+      .filter((manifestPath) => existsSync(manifestPath))
+      .map((manifestPath) => JSON.parse(readFileSync(manifestPath, 'utf8')));
+  });
+  assert.ok(manifests.length > 0);
+
+  for (const [pkg, apps] of Object.entries(BUNDLED_RUNTIME_DEPENDENTS)) {
+    const actual = manifests
+      .filter((manifest) => !ignored.has(manifest.name))
+      .filter(
+        (manifest) =>
+          pkg in { ...manifest.dependencies, ...manifest.devDependencies },
+      )
+      .map((manifest) => manifest.name)
+      .toSorted(byName);
+    assert.deepEqual(
+      actual,
+      [...apps].toSorted(byName),
+      `apps depending on ${pkg} drifted from BUNDLED_RUNTIME_DEPENDENTS`,
+    );
+  }
 });
 
 test('nextStableVersion applies the highest requested semver bump', () => {
