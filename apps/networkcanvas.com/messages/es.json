@@ -165,19 +165,15 @@
     "intro": {
       "heading": "Galería de protocolos",
       "introduction": "Explore los protocolos compartidos por personas investigadoras que utilizan Network Canvas. Revise el diseño de cada estudio, descargue su libro de códigos y protocolo, o ábralo en Fresco.",
-      "submission": "La Galería de protocolos es un recurso vivo que construye la comunidad de investigación en redes. Si ha desarrollado un protocolo de Network Canvas y desea que lo incluyamos, escríbanos a <email>{address}</email>.",
-      "featured": "Protocolo destacado",
-      "exploreFeatured": "Explorar {title}",
-      "viewFeatured": "Explorar el protocolo destacado"
+      "submission": "Si ha desarrollado un protocolo de Network Canvas y desea que lo incluyamos, escríbanos a <email>{address}</email>.",
+      "featured": "Protocolo destacado"
     },
     "collection": {
       "heading": "Explore la colección",
-      "introduction": "Busque por estudio, autoría, campo, población o método y, a continuación, filtre y ordene los resultados.",
       "searchLabel": "Buscar protocolos",
       "searchPlaceholder": "Buscar protocolos",
       "clearSearch": "Borrar búsqueda",
       "results": "{count, plural, =1 {# protocolo} other {# protocolos}}",
-      "featured": "Protocolo destacado",
       "filterLabel": "Filtrar protocolos",
       "filters": {
         "all": "Todos",
@@ -192,25 +188,10 @@
         "titleAsc": "Título A–Z",
         "titleDesc": "Título Z–A"
       },
-      "viewLabel": "Elegir una vista de la galería",
-      "views": {
-        "cards": "Tarjetas",
-        "table": "Tabla"
-      },
       "emptyHeading": "No se encontraron protocolos",
       "emptyDescription": "Pruebe a cambiar la búsqueda o el filtro.",
       "openProtocol": "Explorar {title}",
-      "viewDetails": "Ver detalles",
-      "fieldLabel": "Campo",
-      "populationLabel": "Población",
-      "methodLabel": "Método",
-      "dateAddedLabel": "Añadido",
-      "tableHeaders": {
-        "study": "Estudio",
-        "field": "Campo",
-        "population": "Población",
-        "methods": "Métodos"
-      }
+      "viewDetails": "Ver detalles"
     },
     "detail": {
       "back": "Volver a todos los protocolos",
@@ -225,14 +206,11 @@
       "population": "Población",
       "clinicalTrials": "Registro de ensayos clínicos",
       "dateAdded": "Fecha de incorporación",
-      "publication": "Publicación",
       "viewPublication": "Ver publicación",
       "downloads": "Utilizar este protocolo",
       "downloadDescription": "Descargue el protocolo de Network Canvas y su libro de códigos imprimible. Se incluyen materiales de apoyo adicionales cuando están disponibles.",
       "supportingMaterials": "Materiales de apoyo",
       "wave": "Oleada {wave}",
-      "protocol": "Archivo de protocolo",
-      "codebook": "PDF del libro de códigos",
       "openSandbox": "Abrir en Fresco",
       "downloadProtocol": "Descargar protocolo",
       "viewCodebook": "Ver libro de códigos"
