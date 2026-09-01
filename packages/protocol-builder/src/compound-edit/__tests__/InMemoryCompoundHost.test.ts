@@ -29,6 +29,9 @@ const edgeSection = sectionId({
   kind: 'codebookEdge',
   typeId: 'knows',
 });
+const settingsSection = sectionId({ kind: 'settings' });
+const stageOrderSection = sectionId({ kind: 'stageOrder' });
+const assetsSection = sectionId({ kind: 'assets' });
 
 const initialSections: Record<string, SectionDoc> = {
   [stageSection]: {
@@ -219,6 +222,157 @@ describe('InMemoryCompoundHost', () => {
     });
     expect(compoundHost.getSnapshot()).toEqual(before);
   });
+
+  it.each([
+    {
+      name: 'duplicate stage order',
+      sectionId: stageOrderSection,
+      document: { stages: ['stage-1'] },
+      command: {
+        op: 'set',
+        key: 'stages',
+        value: ['stage-1', 'stage-1'],
+      },
+    },
+    {
+      name: 'invalid settings',
+      sectionId: settingsSection,
+      document: { name: 'Protocol', schemaVersion: 8 },
+      command: { op: 'set', key: 'schemaVersion', value: 7 },
+    },
+    {
+      name: 'invalid assets',
+      sectionId: assetsSection,
+      document: {},
+      command: {
+        op: 'set',
+        key: 'portrait',
+        value: {
+          name: 'Portrait',
+          type: 'image',
+          source: '../portrait.png',
+        },
+      },
+    },
+  ] as const)(
+    'rejects and rolls back $name with default validation',
+    (testCase) => {
+      const authoritativeSections = {
+        ...initialSections,
+        [testCase.sectionId]: testCase.document,
+      };
+      const compoundHost = new InMemoryCompoundHost({
+        protocolSections: authoritativeSections,
+        manifestRevision: { sequence: 7n, hash: 'revision-7' },
+        leases: [lease(stageSection, 'owner-primary', 4n, primaryHolder)],
+      });
+      const before = compoundHost.getSnapshot();
+
+      const result = compoundHost.submit(
+        submission(`malformed-${testCase.sectionId}`, [
+          {
+            kind: 'update',
+            sectionId: testCase.sectionId,
+            expectedContentHash: contentHash(testCase.document),
+            commands: [testCase.command],
+          },
+        ]),
+      );
+
+      expect(result).toMatchObject({
+        status: 'failed',
+        reason: 'host-error',
+        sectionId: testCase.sectionId,
+      });
+      expect(compoundHost.getSnapshot()).toEqual(before);
+    },
+  );
+
+  it.each([
+    {
+      name: 'settings',
+      sectionId: settingsSection,
+      document: { name: 'Protocol', schemaVersion: 8 },
+      command: { op: 'set', key: 'description', value: 'Updated protocol' },
+      expectedDocument: {
+        name: 'Protocol',
+        schemaVersion: 8,
+        description: 'Updated protocol',
+      },
+    },
+    {
+      name: 'stage order',
+      sectionId: stageOrderSection,
+      document: { stages: ['stage-1'] },
+      command: {
+        op: 'set',
+        key: 'stages',
+        value: ['stage-1', 'stage-2'],
+      },
+      expectedDocument: { stages: ['stage-1', 'stage-2'] },
+    },
+    {
+      name: 'assets',
+      sectionId: assetsSection,
+      document: {},
+      command: {
+        op: 'set',
+        key: 'portrait',
+        value: {
+          name: 'Portrait',
+          type: 'image',
+          source: 'portrait.png',
+        },
+      },
+      expectedDocument: {
+        portrait: {
+          name: 'Portrait',
+          type: 'image',
+          source: 'portrait.png',
+        },
+      },
+    },
+  ] as const)(
+    'accepts a valid $name edit with default validation',
+    (testCase) => {
+      const authoritativeSections = {
+        ...initialSections,
+        [testCase.sectionId]: testCase.document,
+      };
+      const compoundHost = new InMemoryCompoundHost({
+        protocolSections: authoritativeSections,
+        manifestRevision: { sequence: 7n, hash: 'revision-7' },
+        leases: [lease(stageSection, 'owner-primary', 4n, primaryHolder)],
+      });
+
+      const result = compoundHost.submit(
+        submission(`valid-${testCase.sectionId}`, [
+          {
+            kind: 'update',
+            sectionId: testCase.sectionId,
+            expectedContentHash: contentHash(testCase.document),
+            commands: [testCase.command],
+          },
+        ]),
+      );
+
+      expect(result).toMatchObject({
+        status: 'applied',
+        update: {
+          protocolSections: {
+            [testCase.sectionId]: testCase.expectedDocument,
+          },
+          manifestRevision: { sequence: 8n },
+        },
+      });
+      expect(compoundHost.getSnapshot()).toMatchObject({
+        protocolSections: {
+          [testCase.sectionId]: testCase.expectedDocument,
+        },
+        manifestRevision: { sequence: 8n },
+      });
+    },
+  );
 
   it('rejects a stale primary epoch before changing any section', () => {
     const compoundHost = host();

@@ -219,6 +219,104 @@ describe('codebook variable requests', () => {
     ).toThrow(DuplicateVariableNameError);
   });
 
+  it.each([
+    {
+      caseName: 'an incomplete row',
+      options: [
+        { label: 'First', value: 'first' },
+        { label: '   ', value: '' },
+      ],
+      expectedIssue: 'Every option needs both a label and a value.',
+    },
+    {
+      caseName: 'duplicate values',
+      options: [
+        { label: 'First', value: 'Caf\u00e9' },
+        { label: 'Second', value: 'CAFE\u0301' },
+      ],
+      expectedIssue: 'Every option needs a unique value.',
+    },
+    {
+      caseName: 'string and numeric values with the same export key',
+      options: [
+        { label: 'Number', value: 1 },
+        { label: 'Text', value: '1' },
+      ],
+      expectedIssue: 'Every option needs a unique value.',
+    },
+    {
+      caseName: 'duplicate labels',
+      options: [
+        { label: 'Caf\u00e9', value: 'first' },
+        { label: 'CAFE\u0301', value: 'second' },
+      ],
+      expectedIssue: 'Every option needs a unique label.',
+    },
+    {
+      caseName: 'an export-unsafe value',
+      options: [
+        { label: 'Safe', value: 'safe' },
+        { label: 'Unsafe', value: 'not safe' },
+      ],
+      expectedIssue:
+        'Not a valid option value. Only letters, numbers and the symbols ._-: are supported',
+    },
+  ])(
+    'rejects categorical options with $caseName',
+    ({ options, expectedIssue }) => {
+      let error: unknown;
+      try {
+        buildCreateVariableRequest({
+          requestId: 'request-invalid-options',
+          description: 'Create attribute',
+          subject: SUBJECT,
+          authoritativeDocument: personDocument(),
+          variableId: 'choice',
+          protocolContext: EMPTY_CONTEXT,
+          draft: { name: 'choice', type: 'categorical', options },
+        });
+      } catch (caught: unknown) {
+        error = caught;
+      }
+
+      expect(error).toBeInstanceOf(InvalidCodebookDraftError);
+      if (!(error instanceof InvalidCodebookDraftError)) {
+        throw new Error('expected an invalid codebook draft');
+      }
+      expect(error.issues).toContainEqual({
+        path: ['options'],
+        message: expectedIssue,
+      });
+    },
+  );
+
+  it('delegates the minimum categorical option count to VariableSchema', () => {
+    let error: unknown;
+    try {
+      buildCreateVariableRequest({
+        requestId: 'request-one-option',
+        description: 'Create attribute',
+        subject: SUBJECT,
+        authoritativeDocument: personDocument(),
+        variableId: 'choice',
+        protocolContext: EMPTY_CONTEXT,
+        draft: {
+          name: 'choice',
+          type: 'categorical',
+          options: [{ label: 'Only', value: 'only' }],
+        },
+      });
+    } catch (caught: unknown) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(InvalidCodebookDraftError);
+    if (!(error instanceof InvalidCodebookDraftError)) {
+      throw new Error('expected an invalid codebook draft');
+    }
+    expect(error.issues.some(({ path }) => path[0] === 'options')).toBe(true);
+  });
+
   it('stores __proto__ as an own variable id without polluting prototypes', () => {
     const authoritativeDocument = personDocument();
     const request = buildCreateVariableRequest({
@@ -263,6 +361,27 @@ describe('codebook variable requests', () => {
       type: 'number',
       component: 'Number',
       validation: { required: true },
+    });
+  });
+
+  it('preserves schema-valid punctuation in attribute names', () => {
+    const authoritativeDocument = personDocument({
+      'variable-1': { name: 'person-age', type: 'number' },
+    });
+    const request = buildUpdateVariableRequest({
+      requestId: 'request-punctuated-variable-update',
+      description: 'Rename attribute with schema-valid punctuation',
+      subject: SUBJECT,
+      authoritativeDocument,
+      variableId: 'variable-1',
+      draft: { name: 'person.age' },
+    });
+    const variables = updateDocumentFrom(authoritativeDocument, request)
+      .variables as Record<string, unknown>;
+
+    expect(variables['variable-1']).toEqual({
+      name: 'person.age',
+      type: 'number',
     });
   });
 

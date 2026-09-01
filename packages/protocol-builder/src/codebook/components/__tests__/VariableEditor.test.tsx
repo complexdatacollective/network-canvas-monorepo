@@ -216,6 +216,94 @@ describe('VariableEditor', () => {
     });
   });
 
+  it('migrates compatible validation and clears incompatible metadata on a type change', async () => {
+    const user = userEvent.setup();
+    const existing = {
+      name: 'birthday',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'year', min: '1900' },
+      validation: { required: true, lessThanVariable: 'retirement' },
+    } as const;
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+
+    render(
+      <VariableEditor
+        openId="edit-type-change"
+        mode="update"
+        subject={SUBJECT}
+        authoritativeDocument={personDocument({ birthday: existing })}
+        variableId="birthday"
+        initialDraft={existing}
+        description="Update birthday"
+        createRequestId={() => 'request-type-change'}
+        onSubmitRequest={onSubmitRequest}
+        onComplete={() => undefined}
+      />,
+    );
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: /attribute type/i }),
+      'text',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    const request = onSubmitRequest.mock.calls[0]?.[0];
+    if (request === undefined) throw new Error('missing submitted request');
+    expect(submittedVariables(request).birthday).toEqual({
+      name: 'birthday',
+      type: 'text',
+      validation: { required: true },
+    });
+  });
+
+  it('clears text-only encryption when changing to a non-text type', async () => {
+    const user = userEvent.setup();
+    const existing = {
+      name: 'secret',
+      type: 'text',
+      encrypted: true,
+      component: 'TextArea',
+      validation: { required: true, minLength: 3 },
+    } as const;
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+
+    render(
+      <VariableEditor
+        openId="edit-encrypted-type-change"
+        mode="update"
+        subject={SUBJECT}
+        authoritativeDocument={personDocument({ secret: existing })}
+        variableId="secret"
+        initialDraft={existing}
+        description="Update secret"
+        createRequestId={() => 'request-encrypted-type-change'}
+        onSubmitRequest={onSubmitRequest}
+        onComplete={() => undefined}
+      />,
+    );
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: /attribute type/i }),
+      'number',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    const request = onSubmitRequest.mock.calls[0]?.[0];
+    if (request === undefined) throw new Error('missing submitted request');
+    expect(submittedVariables(request).secret).toEqual({
+      name: 'secret',
+      type: 'number',
+      validation: { required: true },
+    });
+  });
+
   it('applies owned fields onto the latest authoritative variable without clobbering remote properties', async () => {
     const user = userEvent.setup();
     const initialVariable = {
@@ -276,6 +364,60 @@ describe('VariableEditor', () => {
     expect(request.edits[0]).toMatchObject({
       expectedContentHash: contentHash(remoteDocument),
     });
+  });
+
+  it('blocks a dirty draft when the authoritative variable type changes remotely', async () => {
+    const user = userEvent.setup();
+    const initialVariable = {
+      name: 'comment',
+      type: 'text',
+      component: 'Text',
+    } as const;
+    const remoteVariable = {
+      name: 'comment',
+      type: 'number',
+      component: 'NumberInput',
+      validation: { minValue: 0 },
+    } as const;
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const common = {
+      openId: 'edit-remote-type',
+      mode: 'update' as const,
+      subject: SUBJECT,
+      variableId: 'comment',
+      description: 'Update comment',
+      createRequestId: () => 'request-remote-type',
+      onSubmitRequest,
+      onComplete: () => undefined,
+    };
+    const { rerender } = render(
+      <VariableEditor
+        {...common}
+        authoritativeDocument={personDocument({ comment: initialVariable })}
+        initialDraft={initialVariable}
+      />,
+    );
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'localComment');
+    rerender(
+      <VariableEditor
+        {...common}
+        authoritativeDocument={personDocument({ comment: remoteVariable })}
+        initialDraft={initialVariable}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    expect(
+      await screen.findByText(
+        'The attribute type changed elsewhere. Close and reopen this editor before saving.',
+      ),
+    ).toBeVisible();
+    expect(onSubmitRequest).not.toHaveBeenCalled();
   });
 
   it('shows and persists interface-owned options without editable controls', async () => {

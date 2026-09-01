@@ -13,6 +13,7 @@ import Button from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelect from '@codaco/fresco-ui/form/fields/Select/Native';
+import { isInterviewerIconName } from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -95,7 +96,7 @@ const validateFields = (
   const errors: Partial<Record<keyof EntityFieldErrors, string>> = {};
   const name = stringValue(draft.name);
   if (name.trim() === '') errors.name = 'Enter a type name.';
-  else if (/[.$[\]{}]/.test(name)) {
+  else if (/[$[\]{}]/.test(name)) {
     errors.name = 'The type name contains unsupported characters.';
   } else if (existingEntityNames.includes(name)) {
     errors.name = `A type named "${name}" already exists.`;
@@ -104,7 +105,11 @@ const validateFields = (
   if (subject.entity === 'node') {
     const shape = isRecord(draft.shape) ? stringValue(draft.shape.default) : '';
     if (shape === '') errors.shape = 'Choose a default shape.';
-    if (stringValue(draft.icon) === '') errors.icon = 'Enter an icon name.';
+    const icon = stringValue(draft.icon);
+    if (icon === '') errors.icon = 'Enter an icon name.';
+    else if (!isInterviewerIconName(icon)) {
+      errors.icon = 'Choose an icon supported by Network Canvas.';
+    }
   }
   return errors;
 };
@@ -234,6 +239,8 @@ type CommonEditorProps = Readonly<{
   subject: CodebookSubject;
   initialDraft: CodebookEntityDraft;
   existingEntityNames?: readonly string[];
+  /** Disables editing and submission without discarding the current draft. */
+  readOnly?: boolean;
   onSubmit(
     request: CompoundEditRequest,
   ): Promise<CompoundEditResult> | CompoundEditResult;
@@ -261,6 +268,7 @@ export default function CodebookEntityEditor({
   subject,
   initialDraft,
   existingEntityNames = [],
+  readOnly = false,
   onSubmit,
   onApplied,
   onCancel,
@@ -307,6 +315,7 @@ export default function CodebookEntityEditor({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (readOnly || snapshot.status !== 'editing') return;
     const nextErrors = validateFields(
       subject,
       snapshot.draft,
@@ -349,6 +358,7 @@ export default function CodebookEntityEditor({
   };
 
   const busy = snapshot.status !== 'editing';
+  const interactionDisabled = readOnly || busy;
   const canSubmit = modeProps.mode === 'create' || subject.entity !== 'ego';
 
   return (
@@ -399,7 +409,7 @@ export default function CodebookEntityEditor({
               session.replaceDraft(draft);
             }}
             errors={errors}
-            disabled={busy}
+            disabled={interactionDisabled}
           />
 
           <div className="flex flex-wrap justify-end gap-3">
@@ -418,7 +428,7 @@ export default function CodebookEntityEditor({
                 type="submit"
                 color="primary"
                 disabled={
-                  busy ||
+                  interactionDisabled ||
                   snapshot.authoritativeChanged ||
                   (modeProps.mode === 'update' && !session.isDirty())
                 }

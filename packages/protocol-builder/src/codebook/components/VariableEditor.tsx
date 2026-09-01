@@ -19,6 +19,8 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
+  VARIABLE_REFERENCE_VALIDATIONS,
+  VARIABLE_TYPE_VALIDATIONS,
   type VariableOption,
   type VariableType,
   VariableTypes,
@@ -57,6 +59,14 @@ const OPTION_TYPES = new Set<VariableType>([
   VariableTypes.ordinal,
   VariableTypes.categorical,
 ]);
+
+const VARIABLE_EDITOR_PROPERTIES = ['name', 'type', 'options'] as const;
+const TYPE_OWNED_PROPERTIES = [
+  'component',
+  'parameters',
+  'validation',
+  'encrypted',
+] as const;
 
 type EditableOption = Readonly<{
   label: string;
@@ -138,6 +148,13 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const [seededDraft] = useState(() =>
     draftWithLockedOptions(initialDraft, lockedOptions),
   );
+  const [initialAuthoritativeType] = useState(() =>
+    props.mode === 'update'
+      ? variableTypeFrom(
+          variableFromDocument(authoritativeDocument, variableId)?.type,
+        )
+      : null,
+  );
   const [draftSession] = useState(
     () =>
       new AuxiliaryCodebookDraftSession(
@@ -169,6 +186,17 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   );
   const options = readEditableOptions(snapshot.draft.options);
   const selectedType = variableTypeFrom(snapshot.draft.type);
+  const currentAuthoritativeVariable =
+    props.mode === 'update'
+      ? variableFromDocument(authoritativeDocument, variableId)
+      : null;
+  const authoritativeType = variableTypeFrom(
+    currentAuthoritativeVariable?.type,
+  );
+  const authoritativeTypeConflict =
+    props.mode === 'update' && authoritativeType !== initialAuthoritativeType;
+  const typeChanged =
+    props.mode === 'update' && selectedType !== authoritativeType;
   const hasOptions = selectedType !== null && OPTION_TYPES.has(selectedType);
   const optionsLocked =
     lockedOptions !== null || snapshot.draft.readOnly === true;
@@ -255,21 +283,23 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const handleTypeChange = (value: string | number | undefined) => {
     const nextType = variableTypeFrom(value);
     if (nextType === null) return;
-    const next: Record<string, unknown> = {
-      ...snapshot.draft,
-      type: nextType,
-    };
-    if (OPTION_TYPES.has(nextType)) {
-      if (!Array.isArray(next.options)) next.options = [];
-    } else {
-      delete next.options;
-    }
-    replaceDraft(next);
+    replaceDraft(draftForType(snapshot.draft, nextType));
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (interactionDisabled) return;
+    if (authoritativeTypeConflict) {
+      activeRequestId.current = null;
+      setIssues([
+        {
+          path: ['type'],
+          message:
+            'The attribute type changed elsewhere. Close and reopen this editor before saving.',
+        },
+      ]);
+      return;
+    }
     setIssues([]);
     const requestId = activeRequestId.current ?? createRequestId();
     activeRequestId.current = requestId;
@@ -280,7 +310,11 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     const submittedDraft =
       props.mode === 'create'
         ? snapshot.draft
-        : draftOwnedByVariableEditor(snapshot.draft, lockedOptions !== null);
+        : draftOwnedByVariableEditor(
+            snapshot.draft,
+            lockedOptions !== null,
+            typeChanged,
+          );
     const buildRequest =
       props.mode === 'create'
         ? () =>
@@ -301,7 +335,9 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               authoritativeDocument,
               variableId,
               draft: submittedDraft,
-              replaceProperties: ['name', 'type', 'options'],
+              replaceProperties: typeChanged
+                ? [...VARIABLE_EDITOR_PROPERTIES, ...TYPE_OWNED_PROPERTIES]
+                : VARIABLE_EDITOR_PROPERTIES,
             });
 
     try {
@@ -542,13 +578,63 @@ function draftWithLockedOptions(
 function draftOwnedByVariableEditor(
   draft: Readonly<SectionDoc>,
   persistLockedOptions: boolean,
+  includeTypeMetadata: boolean,
 ): CodebookVariableDraft {
   const owned: Record<string, unknown> = Object.create(null);
-  for (const property of ['name', 'type', 'options'] as const) {
+  const properties = includeTypeMetadata
+    ? [...VARIABLE_EDITOR_PROPERTIES, ...TYPE_OWNED_PROPERTIES]
+    : VARIABLE_EDITOR_PROPERTIES;
+  for (const property of properties) {
     if (Object.hasOwn(draft, property)) owned[property] = draft[property];
   }
   if (persistLockedOptions) owned.readOnly = true;
   return owned;
+}
+
+function draftForType(
+  draft: Readonly<SectionDoc>,
+  nextType: VariableType,
+): CodebookVariableDraft {
+  if (draft.type === nextType) return draft;
+  const next: Record<string, unknown> = { ...draft, type: nextType };
+
+  // Input controls and their parameters are selected for one variable type;
+  // no component name or parameter shape is portable across a type change.
+  delete next.component;
+  delete next.parameters;
+
+  // Keep only target-supported, value-independent rules. Reference rules can
+  // become cross-class comparisons after a type change, so they must be
+  // re-authored against a compatible target in the validation editor.
+  const validation = isRecord(next.validation)
+    ? Object.fromEntries(
+        Object.entries(next.validation).filter(
+          ([rule]) =>
+            Object.hasOwn(VARIABLE_TYPE_VALIDATIONS[nextType], rule) &&
+            !VARIABLE_REFERENCE_VALIDATIONS.some(
+              (referenceRule) => referenceRule === rule,
+            ),
+        ),
+      )
+    : null;
+  if (validation !== null && Object.keys(validation).length > 0) {
+    next.validation = validation;
+  } else {
+    delete next.validation;
+  }
+
+  // Encryption round-trips strings and is valid only for node text values.
+  if (nextType !== VariableTypes.text) delete next.encrypted;
+
+  if (OPTION_TYPES.has(nextType)) {
+    const previousType = variableTypeFrom(draft.type);
+    if (previousType === null || !OPTION_TYPES.has(previousType)) {
+      next.options = [];
+    }
+  } else {
+    delete next.options;
+  }
+  return next;
 }
 
 function variableFromDocument(

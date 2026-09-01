@@ -482,18 +482,26 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       );
     }
 
+    const pendingCommands = this.snapshot.pendingCommands;
     this.baseFields = cloneDoc(fields);
     this.undoStack.length = 0;
     this.redoStack.length = 0;
     this.historyGeneration += 1;
     this.fencedAtRevision = result.update.manifestRevision;
+    const reconciledFields = pendingCommands.reduce<SectionDoc>(
+      (draft, batch) => {
+        this.undoStack.push(cloneDoc(draft));
+        return applyCommands(draft, [...batch.commands]);
+      },
+      cloneDoc(this.baseFields),
+    );
     this.replaceSnapshot({
-      fields,
+      fields: reconciledFields,
       protocolSections: result.update.protocolSections,
       manifestRevision: result.update.manifestRevision,
       presence: result.update.presence ?? this.snapshot.presence,
       attribution: result.update.attribution ?? this.snapshot.attribution,
-      pendingCommands: [],
+      pendingCommands,
       validation: pendingValidation(),
       validatedProtocol: null,
     });
@@ -718,22 +726,26 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       validatedProtocol: CurrentProtocol | null;
     }>,
   ): void {
-    this.snapshot = this.makeSnapshot({
-      fields: update.fields ?? this.snapshot.editedSection.fields,
-      protocolSections:
-        update.protocolSections ?? this.snapshot.protocolSections,
-      manifestRevision:
-        update.manifestRevision ?? this.snapshot.manifestRevision,
-      access: update.access ?? this.snapshot.access,
-      presence: update.presence ?? this.snapshot.presence,
-      attribution: update.attribution ?? this.snapshot.attribution,
-      pendingCommands: update.pendingCommands ?? this.snapshot.pendingCommands,
-      validation: update.validation ?? this.snapshot.validation,
-      validatedProtocol:
-        update.validatedProtocol === undefined
-          ? this.snapshot.validatedProtocol
-          : update.validatedProtocol,
-    });
+    this.snapshot = this.makeSnapshot(
+      {
+        fields: update.fields ?? this.snapshot.editedSection.fields,
+        protocolSections:
+          update.protocolSections ?? this.snapshot.protocolSections,
+        manifestRevision:
+          update.manifestRevision ?? this.snapshot.manifestRevision,
+        access: update.access ?? this.snapshot.access,
+        presence: update.presence ?? this.snapshot.presence,
+        attribution: update.attribution ?? this.snapshot.attribution,
+        pendingCommands:
+          update.pendingCommands ?? this.snapshot.pendingCommands,
+        validation: update.validation ?? this.snapshot.validation,
+        validatedProtocol:
+          update.validatedProtocol === undefined
+            ? this.snapshot.validatedProtocol
+            : update.validatedProtocol,
+      },
+      this.snapshot,
+    );
     for (const listener of this.listeners) listener();
   }
 
@@ -749,7 +761,16 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       validation: ProtocolBuilderValidation;
       validatedProtocol: CurrentProtocol | null;
     }>,
+    previous?: ProtocolBuilderSnapshot,
   ): ProtocolBuilderSnapshot {
+    const protocolSections =
+      previous?.protocolSections === params.protocolSections
+        ? previous.protocolSections
+        : Object.freeze({ ...params.protocolSections });
+    const protocolContext =
+      previous?.protocolSections === protocolSections
+        ? previous.protocolContext
+        : protocolContextFromSections(protocolSections);
     return Object.freeze({
       editedSection: Object.freeze({
         sectionId: sectionId({
@@ -759,8 +780,8 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         identity: this.options.identity,
         fields: freezeDoc(params.fields),
       }),
-      protocolSections: Object.freeze({ ...params.protocolSections }),
-      protocolContext: protocolContextFromSections(params.protocolSections),
+      protocolSections,
+      protocolContext,
       manifestRevision: Object.freeze({ ...params.manifestRevision }),
       access: Object.freeze({ ...params.access }),
       presence: Object.freeze([...params.presence]),

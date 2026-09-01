@@ -41,6 +41,7 @@
   },
   "dependencies": {
     "@codaco/protocol-validation": "workspace:^",
+    "@codaco/shared-consts": "workspace:^",
     "@codaco/studio-sync": "workspace:^",
     "es-toolkit": "catalog:",
     "lucide-react": "catalog:",

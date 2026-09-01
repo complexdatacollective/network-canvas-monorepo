@@ -169,6 +169,43 @@ describe('ProtocolBuilderSessionStore', () => {
     });
   });
 
+  it('reuses protocol sections and context across field-only snapshots', () => {
+    const personDocument = {
+      name: 'Person',
+      color: 'node-color-seq-1',
+      shape: { default: 'circle' },
+      variables: {},
+    } satisfies SectionDoc;
+    const { session } = createSession({
+      protocolSections: { [nodeSection]: personDocument },
+    });
+    const initial = session.getSnapshot();
+
+    session.dispatch([{ op: 'set', key: 'label', value: 'Edited locally' }]);
+    const afterDispatch = session.getSnapshot();
+
+    expect(afterDispatch.protocolSections).toBe(initial.protocolSections);
+    expect(afterDispatch.protocolContext).toBe(initial.protocolContext);
+
+    session.receiveAuthoritativeUpdate({
+      protocolSections: {
+        [nodeSection]: { ...personDocument, name: 'People' },
+      },
+      manifestRevision: revision(2n),
+    });
+    const afterAuthoritative = session.getSnapshot();
+
+    expect(afterAuthoritative.protocolSections).not.toBe(
+      afterDispatch.protocolSections,
+    );
+    expect(afterAuthoritative.protocolContext).not.toBe(
+      afterDispatch.protocolContext,
+    );
+    expect(afterAuthoritative.protocolContext.codebook.node?.person?.name).toBe(
+      'People',
+    );
+  });
+
   it('rolls back pending commands and fences history when the lease is lost', async () => {
     const { session } = createSession();
     session.dispatch([{ op: 'set', key: 'label', value: 'Unacknowledged' }]);
@@ -286,6 +323,62 @@ describe('ProtocolBuilderSessionStore', () => {
     expect(session.getSnapshot().protocolSections[nodeSection]).toMatchObject({
       name: 'Person',
     });
+  });
+
+  it('preserves stage edits dispatched while a compound request is pending', async () => {
+    let resolveHost:
+      | ((result: {
+          status: 'applied';
+          update: {
+            protocolSections: Record<string, SectionDoc>;
+            manifestRevision: ReturnType<typeof revision>;
+          };
+        }) => void)
+      | undefined;
+    const onCompoundEdit = vi.fn(
+      () =>
+        new Promise<{
+          status: 'applied';
+          update: {
+            protocolSections: Record<string, SectionDoc>;
+            manifestRevision: ReturnType<typeof revision>;
+          };
+        }>((resolve) => {
+          resolveHost = resolve;
+        }),
+    );
+    const { onCommands, session } = createSession({ onCompoundEdit });
+    const pending = session.requestCompoundEdit(compoundRequest());
+
+    session.dispatch([
+      { op: 'set', key: 'label', value: 'Typed while the request was pending' },
+    ]);
+    resolveHost?.({
+      status: 'applied',
+      update: {
+        protocolSections: {
+          [currentStageSection]: {
+            ...currentStageDocument,
+            subject: { entity: 'node', type: 'person' },
+          },
+          [nodeSection]: {
+            name: 'Person',
+            color: '#123456',
+            shape: { default: 'circle' },
+          },
+        },
+        manifestRevision: revision(2n),
+      },
+    });
+
+    await expect(pending).resolves.toMatchObject({ status: 'applied' });
+    expect(session.getSnapshot().editedSection.fields).toMatchObject({
+      label: 'Typed while the request was pending',
+      subject: { entity: 'node', type: 'person' },
+    });
+    expect(session.getSnapshot().pendingCommands).toHaveLength(1);
+    expect(session.getSnapshot().history.canUndo).toBe(true);
+    expect(onCommands).toHaveBeenCalledOnce();
   });
 
   it('rejects malformed compound requests before invoking the host', async () => {

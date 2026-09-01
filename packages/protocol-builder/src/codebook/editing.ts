@@ -6,6 +6,10 @@ import {
   VariableSchema,
 } from '@codaco/protocol-validation';
 import {
+  normalizeForComparison,
+  VariableNameSchema,
+} from '@codaco/shared-consts';
+import {
   canonicalize,
   contentHash,
   type Command,
@@ -263,25 +267,77 @@ const validateEntityDocument = (
 
 const validateVariableDraft = (draft: CodebookVariableDraft): Variable => {
   const normalized = cloneDocument(draft);
-  if (typeof normalized.name === 'string') {
-    normalized.name = normalized.name.replace(/[.$[\]{}]+/g, '');
-    if (normalized.name === '') {
-      throw new InvalidCodebookDraftError(
-        'the variable draft is invalid',
-        Object.freeze([
-          Object.freeze({
-            path: Object.freeze(['name']),
-            message: 'Attribute name contains no valid characters',
-          }),
-        ]),
-      );
-    }
-  }
   const result = VariableSchema.safeParse(normalized);
   if (!result.success) {
     throw invalidDraft('the variable draft is invalid', result.error.issues);
   }
+  const optionIssue = categoricalOptionIssue(result.data);
+  if (optionIssue !== null) {
+    throw new InvalidCodebookDraftError(
+      'the variable draft is invalid',
+      Object.freeze([optionIssue]),
+    );
+  }
   return result.data;
+};
+
+const categoricalOptionIssue = (
+  variable: Variable,
+): CodebookDraftIssue | null => {
+  if (variable.type !== 'categorical' && variable.type !== 'ordinal') {
+    return null;
+  }
+
+  if (
+    variable.options.some(
+      ({ label, value }) => label.trim() === '' || value === '',
+    )
+  ) {
+    return Object.freeze({
+      path: Object.freeze(['options']),
+      message: 'Every option needs both a label and a value.',
+    });
+  }
+
+  const seen = new Set<string>();
+  for (const option of variable.options) {
+    // Export formats stringify option values into keys. A numeric 1 and text
+    // "1" must therefore collide here even when a non-UI caller bypasses the
+    // editor's numeric parser.
+    const comparableValue = normalizeForComparison(String(option.value));
+    if (seen.has(comparableValue)) {
+      return Object.freeze({
+        path: Object.freeze(['options']),
+        message: 'Every option needs a unique value.',
+      });
+    }
+    seen.add(comparableValue);
+  }
+
+  const labels = new Set<string>();
+  for (const { label } of variable.options) {
+    const comparableLabel = normalizeForComparison(label);
+    if (labels.has(comparableLabel)) {
+      return Object.freeze({
+        path: Object.freeze(['options']),
+        message: 'Every option needs a unique label.',
+      });
+    }
+    labels.add(comparableLabel);
+  }
+
+  if (
+    variable.options.some(
+      ({ value }) => !VariableNameSchema.safeParse(String(value)).success,
+    )
+  ) {
+    return Object.freeze({
+      path: Object.freeze(['options']),
+      message:
+        'Not a valid option value. Only letters, numbers and the symbols ._-: are supported',
+    });
+  }
+  return null;
 };
 
 const variablesFromDocument = (

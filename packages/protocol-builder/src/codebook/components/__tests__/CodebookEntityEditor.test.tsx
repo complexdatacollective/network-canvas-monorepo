@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -100,6 +100,81 @@ describe('CodebookEntityEditor', () => {
       ...NODE_DOCUMENT,
       name: 'Adult',
     });
+  });
+
+  it('accepts periods in a schema-valid entity name', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<
+      (request: CompoundEditRequest) => CompoundEditResult
+    >(() => appliedResult());
+    renderUpdateEditor(onSubmit);
+
+    const name = screen.getByRole('textbox', { name: 'Node type name' });
+    await user.clear(name);
+    await user.type(name, 'Person.v2');
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+  });
+
+  it('rejects an icon the Fresco renderer cannot display', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<
+      (request: CompoundEditRequest) => CompoundEditResult
+    >(() => appliedResult());
+    renderUpdateEditor(onSubmit);
+
+    const icon = screen.getByRole('textbox', { name: 'Interface icon' });
+    await user.clear(icon);
+    await user.type(icon, 'not-a-rendered-icon');
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(
+      screen.getByText('Choose an icon supported by Network Canvas.'),
+    ).toBeInTheDocument();
+    expect(icon).toHaveValue('not-a-rendered-icon');
+  });
+
+  it('reacts to live read-only access without losing the draft', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<
+      (request: CompoundEditRequest) => CompoundEditResult
+    >(() => appliedResult());
+    const commonProps = {
+      mode: 'update' as const,
+      sessionKey: 'live-read-only',
+      createRequestId: () => 'request-read-only',
+      description: 'Update person',
+      subject: NODE_SUBJECT,
+      initialDraft: NODE_DOCUMENT,
+      authoritativeDocument: NODE_DOCUMENT,
+      onSubmit,
+    };
+    const { container, rerender } = render(
+      <CodebookEntityEditor {...commonProps} readOnly={false} />,
+    );
+
+    const name = screen.getByRole('textbox', { name: 'Node type name' });
+    await user.clear(name);
+    await user.type(name, 'Unsaved local name');
+    rerender(<CodebookEntityEditor {...commonProps} readOnly />);
+
+    expect(name).toHaveValue('Unsaved local name');
+    expect(name).toBeDisabled();
+    expect(
+      screen.getByRole('textbox', { name: 'Interface icon' }),
+    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save entity' })).toBeDisabled();
+    const form = container.querySelector('form');
+    if (form === null) throw new Error('expected entity editor form');
+    fireEvent.submit(form);
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    rerender(<CodebookEntityEditor {...commonProps} readOnly={false} />);
+    expect(name).toBeEnabled();
+    expect(name).toHaveValue('Unsaved local name');
+    expect(screen.getByRole('button', { name: 'Save entity' })).toBeEnabled();
   });
 
   it.each<{

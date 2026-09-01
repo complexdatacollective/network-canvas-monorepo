@@ -1,4 +1,6 @@
 import {
+  assetSchema,
+  CurrentProtocolSchema,
   EdgeDefinitionSchema,
   EgoDefinitionSchema,
   NodeDefinitionSchema,
@@ -60,6 +62,32 @@ type StoredRequest = Readonly<{
   fingerprint: string;
   applied?: Extract<CompoundEditResult, { status: 'applied' }>;
 }>;
+
+type CanonicalSectionValidation =
+  | Readonly<{ success: true }>
+  | Readonly<{
+      success: false;
+      error: Readonly<{
+        issues: readonly Readonly<{ message: string }>[];
+      }>;
+    }>;
+
+const validSection: CanonicalSectionValidation = Object.freeze({
+  success: true,
+});
+
+const invalidSection = (message: string): CanonicalSectionValidation => ({
+  success: false,
+  error: { issues: [{ message }] },
+});
+
+const SETTINGS_KEYS = new Set([
+  'name',
+  'description',
+  'experiments',
+  'lastModified',
+  'schemaVersion',
+]);
 
 /**
  * A deterministic proof host for the protocol-builder compound-edit contract.
@@ -300,9 +328,11 @@ export const validateCanonicalChangedSections: InMemoryCompoundHostValidator = (
         case 'codebookEgo':
           return EgoDefinitionSchema.safeParse(document);
         case 'settings':
+          return validateSettingsSection(document);
         case 'stageOrder':
+          return validateStageOrderSection(document);
         case 'assets':
-          return { success: true } as const;
+          return validateAssetsSection(document);
       }
       throw new CompoundHostSectionError(
         sectionId,
@@ -317,6 +347,62 @@ export const validateCanonicalChangedSections: InMemoryCompoundHostValidator = (
     }
   }
 };
+
+function validateSettingsSection(
+  document: Readonly<SectionDoc>,
+): CanonicalSectionValidation {
+  const unknownKey = Object.keys(document).find(
+    (key) => !SETTINGS_KEYS.has(key),
+  );
+  if (unknownKey !== undefined) {
+    return invalidSection(
+      `protocol settings contain unknown key ${unknownKey}`,
+    );
+  }
+  const result = CurrentProtocolSchema.safeParse({
+    ...document,
+    codebook: {},
+    stages: [],
+  });
+  return result.success
+    ? validSection
+    : invalidSection(
+        result.error.issues[0]?.message ?? 'settings validation failed',
+      );
+}
+
+function validateStageOrderSection(
+  document: Readonly<SectionDoc>,
+): CanonicalSectionValidation {
+  if (Object.keys(document).some((key) => key !== 'stages')) {
+    return invalidSection('stage order contains an unknown key');
+  }
+  const stages = document.stages;
+  if (
+    !Array.isArray(stages) ||
+    stages.some((stageId) => typeof stageId !== 'string' || stageId === '')
+  ) {
+    return invalidSection('stage order must be a list of non-empty stage ids');
+  }
+  if (new Set(stages).size !== stages.length) {
+    return invalidSection('stage order lists the same stage twice');
+  }
+  return validSection;
+}
+
+function validateAssetsSection(
+  document: Readonly<SectionDoc>,
+): CanonicalSectionValidation {
+  for (const [assetId, asset] of Object.entries(document)) {
+    const result = assetSchema.safeParse(asset);
+    if (!result.success) {
+      return invalidSection(
+        `asset ${assetId}: ${result.error.issues[0]?.message ?? 'asset validation failed'}`,
+      );
+    }
+  }
+  return validSection;
+}
 
 function validateSubmissionShape(
   submission: CompoundEditSubmission,

@@ -78,7 +78,7 @@ describe('stage-owned codebook editor flow', () => {
           name: 'Place',
           color: 'node-color-seq-2',
           shape: { default: 'square' },
-          icon: 'map-pin',
+          icon: 'MapPin',
         }}
         onSubmit={(codebookRequest) =>
           session.requestCompoundEdit(
