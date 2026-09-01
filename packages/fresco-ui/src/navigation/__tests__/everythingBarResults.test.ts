@@ -72,10 +72,11 @@ describe('useEverythingBarResults provider invalidation', () => {
     const { rerender } = renderResults([keptProvider]);
     await waitFor(() => expect(kept).toEqual(['par']));
 
+    // Only the id differs — the invalidation key is (id, object identity), so
+    // the spread keeps the factory's remote shape without re-stating it.
     const addedProvider: EverythingBarProvider = {
       ...createProvider(added),
       id: 'documentation',
-      groups: ['documentation'],
     };
     rerender({ providers: [keptProvider, addedProvider] });
     await waitFor(() => expect(added).toEqual(['par']));
