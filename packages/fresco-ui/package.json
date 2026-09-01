@@ -1,6 +1,6 @@
 {
   "name": "@codaco/fresco-ui",
-  "version": "6.2.0",
+  "version": "6.3.0",
   "description": "Fresco UI components, styles, and utilities",
   "license": "MIT",
   "repository": {
@@ -40,6 +40,7 @@
     "./SplitButton": "./src/SplitButton.tsx",
     "./CloseButton": "./src/CloseButton.tsx",
     "./Icon": "./src/Icon.tsx",
+    "./Kbd": "./src/Kbd.tsx",
     "./Node": "./src/Node.tsx",
     "./Toast": "./src/Toast.tsx",
     "./Modal": "./src/Modal/index.tsx",
@@ -58,6 +59,7 @@
     "./layout/AppFrame": "./src/layout/AppFrame.tsx",
     "./layout/AppArea": "./src/layout/AppArea.tsx",
     "./navigation/SiteNavigation": "./src/navigation/SiteNavigation.tsx",
+    "./navigation/EverythingBar": "./src/navigation/EverythingBar.tsx",
     "./navigation/ThemeSwitcher": "./src/navigation/ThemeSwitcher.tsx",
     "./navigation/SiteFooter": "./src/navigation/SiteFooter.tsx",
     "./navigation/RouteFocus": "./src/navigation/RouteFocus.tsx",
@@ -276,6 +278,10 @@
         "types": "./dist/Icon.d.ts",
         "default": "./dist/Icon.js"
       },
+      "./Kbd": {
+        "types": "./dist/Kbd.d.ts",
+        "default": "./dist/Kbd.js"
+      },
       "./Node": {
         "types": "./dist/Node.d.ts",
         "default": "./dist/Node.js"
@@ -347,6 +353,10 @@
       "./navigation/SiteNavigation": {
         "types": "./dist/navigation/SiteNavigation.d.ts",
         "default": "./dist/navigation/SiteNavigation.js"
+      },
+      "./navigation/EverythingBar": {
+        "types": "./dist/navigation/EverythingBar.d.ts",
+        "default": "./dist/navigation/EverythingBar.js"
       },
       "./navigation/ThemeSwitcher": {
         "types": "./dist/navigation/ThemeSwitcher.d.ts",

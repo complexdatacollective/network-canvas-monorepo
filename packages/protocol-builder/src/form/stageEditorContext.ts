@@ -3,6 +3,7 @@ import { type ContextType, createContext, useContext } from 'react';
 import type { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 
 import type { StageEditorController } from '../controller.ts';
+import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
 import type { StageFormDraft, StageIdentity } from '../session.ts';
 import type { SectionOutlineStore } from './outlineStore.ts';
 
@@ -35,6 +36,8 @@ export type StageEditorFormContextValue = Readonly<{
   committedFields: StageFormDraft;
   /** Session-owned; never a form field. */
   identity: StageIdentity;
+  /** Tolerant, typed metadata derived from authoritative protocol sections. */
+  protocolContext: ProtocolBuilderProtocolContext;
   readOnly: boolean;
   outline: SectionOutlineStore;
 }>;
