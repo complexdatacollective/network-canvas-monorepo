@@ -58,6 +58,13 @@
  * is a highlight whose second usage is being conspicuous against the ground,
  * not carrying text, so it takes darker ink instead (see its declaration).
  *
+ * The `--surface-accent` depth series follows the same discipline with one
+ * extra trap: its five rungs share a single ink, so the pairing must be
+ * solved for the rung FURTHEST from that ink — the deeper rungs, not depth 0.
+ * They move opposite ways per mode (the ladder descends in light, ascends in
+ * dark, each matching its neutral surfaces), so the binding rung differs
+ * between the blocks. Checking depth 0 alone passes while depth 1-4 fails.
+ *
  * Before flipping any of these back, re-measure both usages — the filled
  * pairing and the matching `text-*` utility on `--background` and
  * `--surface`. Several of these values look arbitrary and are not.
@@ -232,22 +239,30 @@
      * relative derivation off `--surface-accent`) because the deeper rungs
      * move in opposite directions in the two modes.
      *
-     * The contrast ink is the accent taken down one notch of lightness rather
-     * than the accent itself: bare `--accent` on this chip is 4.33:1, a hair
-     * under AA, and darkening the ink clears it (5.15:1) without costing the
-     * chip any separation from the surface it sits on — the alternative,
-     * lightening the chip, buys contrast at exactly that cost.
+     * The contrast ink is the accent darkened rather than the accent itself:
+     * bare `--accent` on the depth-0 chip is 4.33:1, a hair under AA, and
+     * darkening the ink clears it without costing the chip any separation
+     * from the surface it sits on — the alternative, lightening the chip,
+     * buys contrast at exactly that cost.
+     *
+     * Solved for the DEEPER rungs, not depth 0. `Surface` puts normal-size
+     * content on these fills at every depth, and the nested rungs are darker
+     * here (the ladder descends in light, matching the neutral surfaces), so
+     * depth 1-4 is the binding rung. At `l - 0.04` it cleared AA by a hair
+     * (4.56:1); this goes one step further for real margin — 5.65:1 at depth
+     * 0, 5.00:1 at 1-4. The dark block solves the same way for its own
+     * binding rung, which is the light one there.
      */
     --surface-accent: oklch(0.94 0.034 var(--cyber-grape-hue));
-    --surface-accent-contrast: oklch(from var(--accent) calc(l - 0.04) c h);
+    --surface-accent-contrast: oklch(from var(--accent) calc(l - 0.06) c h);
     --surface-accent-1: oklch(0.9 0.05 var(--cyber-grape-hue));
-    --surface-accent-1-contrast: oklch(from var(--accent) calc(l - 0.04) c h);
+    --surface-accent-1-contrast: oklch(from var(--accent) calc(l - 0.06) c h);
     --surface-accent-2: oklch(0.9 0.05 var(--cyber-grape-hue));
-    --surface-accent-2-contrast: oklch(from var(--accent) calc(l - 0.04) c h);
+    --surface-accent-2-contrast: oklch(from var(--accent) calc(l - 0.06) c h);
     --surface-accent-3: oklch(0.9 0.05 var(--cyber-grape-hue));
-    --surface-accent-3-contrast: oklch(from var(--accent) calc(l - 0.04) c h);
+    --surface-accent-3-contrast: oklch(from var(--accent) calc(l - 0.06) c h);
     --surface-accent-4: oklch(0.9 0.05 var(--cyber-grape-hue));
-    --surface-accent-4-contrast: oklch(from var(--accent) calc(l - 0.04) c h);
+    --surface-accent-4-contrast: oklch(from var(--accent) calc(l - 0.06) c h);
 
     /* The command bar and every popover sit on the raised surface. */
     --surface-popover: var(--surface);
@@ -463,17 +478,35 @@
      * unmistakably violet against a surface ladder that is now itself tinted
      * — `--surface-3` sits at the same lightness, and chroma is what
      * separates them.
+     *
+     * The ink is the accent lifted 0.08, not the accent itself. `Surface`
+     * puts normal-size content on these fills at every depth (nested controls
+     * in ArrayField, layered popovers), and the nested rungs are LIGHTER than
+     * depth 0 — the ladder ascends in dark, matching the neutral surfaces —
+     * so depth 1-4 is the binding rung, not depth 0. Bare `--accent` gives
+     * 4.84:1 at depth 0 but only 3.99:1 from depth 1 on. Lifting the ink
+     * clears every depth with margin: 6.25:1 at depth 0, 5.15:1 at 1-4.
+     *
+     * Fixed on the ink and NOT by darkening the nested fills: those fills
+     * ascend on purpose, so darkening them would invert the accent ladder
+     * against the neutral one — a nested accent panel getting darker while a
+     * nested neutral panel gets lighter. Leaving the fills alone also keeps
+     * the separation the 0.105 chroma bump above was for: depth 0 against
+     * `--surface-3` and depth 1-4 against `--surface-4` are both unchanged.
+     *
+     * Written as a derivation so the ink tracks any future retune of
+     * `--accent`, the same way `--link` does.
      */
     --surface-accent: oklch(0.33 0.105 var(--cyber-grape-hue));
-    --surface-accent-contrast: var(--accent);
+    --surface-accent-contrast: oklch(from var(--accent) calc(l + 0.08) c h);
     --surface-accent-1: oklch(0.38 0.115 var(--cyber-grape-hue));
-    --surface-accent-1-contrast: var(--accent);
+    --surface-accent-1-contrast: oklch(from var(--accent) calc(l + 0.08) c h);
     --surface-accent-2: oklch(0.38 0.115 var(--cyber-grape-hue));
-    --surface-accent-2-contrast: var(--accent);
+    --surface-accent-2-contrast: oklch(from var(--accent) calc(l + 0.08) c h);
     --surface-accent-3: oklch(0.38 0.115 var(--cyber-grape-hue));
-    --surface-accent-3-contrast: var(--accent);
+    --surface-accent-3-contrast: oklch(from var(--accent) calc(l + 0.08) c h);
     --surface-accent-4: oklch(0.38 0.115 var(--cyber-grape-hue));
-    --surface-accent-4-contrast: var(--accent);
+    --surface-accent-4-contrast: oklch(from var(--accent) calc(l + 0.08) c h);
 
     --surface-popover: var(--surface);
     --surface-popover-contrast: var(--text);
