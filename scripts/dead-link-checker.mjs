@@ -132,24 +132,37 @@ function comparableBrowserURL(value) {
   }
 }
 
+function cachedRepresentationResponse(response, mainFrameResponses) {
+  if (response.status() !== 304) return null;
+  const responseIndex = mainFrameResponses.lastIndexOf(response);
+  const responseURL = comparableBrowserURL(response.url());
+  return mainFrameResponses
+    .slice(0, responseIndex)
+    .findLast(
+      (candidate) =>
+        isTerminalNavigation(candidate) &&
+        candidate.status() !== 304 &&
+        comparableBrowserURL(candidate.url()) === responseURL,
+    );
+}
+
 function effectiveContentType(response, mainFrameResponses) {
   const directContentType = response.headers()['content-type'] ?? '';
   if (directContentType || response.status() !== 304) {
     return directContentType;
   }
 
-  const responseIndex = mainFrameResponses.lastIndexOf(response);
-  const responseURL = comparableBrowserURL(response.url());
   return (
-    mainFrameResponses
-      .slice(0, responseIndex)
-      .findLast(
-        (candidate) =>
-          candidate.status() !== 304 &&
-          comparableBrowserURL(candidate.url()) === responseURL &&
-          candidate.headers()['content-type'],
-      )
-      ?.headers()['content-type'] ?? ''
+    cachedRepresentationResponse(response, mainFrameResponses)?.headers()[
+      'content-type'
+    ] ?? ''
+  );
+}
+
+function effectiveStatus(response, mainFrameResponses) {
+  return (
+    cachedRepresentationResponse(response, mainFrameResponses)?.status() ??
+    response.status()
   );
 }
 
@@ -654,7 +667,7 @@ export class BrowserVerifier {
             ? await page.content()
             : null,
         redirects: browserRedirects(mainFrameResponses),
-        status: navigation.status(),
+        status: effectiveStatus(navigation, mainFrameResponses),
       };
     } finally {
       await page?.close().catch(() => {});

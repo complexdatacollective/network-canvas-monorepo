@@ -925,7 +925,7 @@ test('browser verification accepts a follow-up no-content response', async () =>
   }
 });
 
-test('browser verification treats a cached 304 revalidation as terminal', async () => {
+test('browser verification preserves the cached error status behind a 304 revalidation', async () => {
   const frame = {};
   const navigationRequest = { isNavigationRequest: () => true };
   const response = (
@@ -940,7 +940,7 @@ test('browser verification treats a cached 304 revalidation as terminal', async 
     url: () => url,
   });
   const initial = response(403, 'https://publisher.test/challenge');
-  const recovered = response(200, 'https://publisher.test/revalidated');
+  const recovered = response(404, 'https://publisher.test/revalidated');
   const revalidated = response(304, 'https://publisher.test/revalidated', {});
   let responseListener;
   let settleCount = 0;
@@ -990,7 +990,7 @@ test('browser verification treats a cached 304 revalidation as terminal', async 
       finalUrl: 'https://publisher.test/revalidated',
       html: '<html><body><a href="/cached-link">cached</a></body></html>',
       redirects: [],
-      status: 304,
+      status: 404,
     });
   } finally {
     await verifier.close();
