@@ -10,23 +10,24 @@ import addonVitest from '@storybook/addon-vitest';
 import { definePreview } from '@storybook/react-vite';
 import { type PropsWithChildren, StrictMode } from 'react';
 
-import { ThemedRegion } from '../src/ThemedRegion';
-
 import './preview.css';
 import Providers from './Providers';
 import {
+  getInitialColorScheme,
   getInitialTheme,
   globalTypes,
+  StoryTheme,
   THEME_KEY,
   type ThemeKey,
   withTheme,
 } from './theme-switcher';
 
-// Wrap each docs page in <ThemedRegion> when the toolbar's selected theme is
-// "interview" so chrome rendered outside the per-story decorator tree
-// (notably `.sbdocs-preview`) inherits the interview palette and the portal
-// container — e.g. `bg-background` on the docs preview container resolves to
-// the interview --background instead of the default theme.
+// Wrap each docs page in the same themed region the story decorator uses, so
+// chrome rendered outside the per-story decorator tree (notably
+// `.sbdocs-preview`) inherits the selected palette and the portal container —
+// e.g. `bg-background` on the docs preview container resolves to the
+// interview / studio --background instead of the default theme. Light/dark
+// needs no handling here: it lives on the document element, above both trees.
 const ThemedDocsContainer = ({
   children,
   context,
@@ -36,15 +37,11 @@ const ThemedDocsContainer = ({
   const theme =
     (storyContext.globals[THEME_KEY] as ThemeKey | undefined) ?? 'dashboard';
 
-  if (theme === 'interview') {
-    return (
-      <ThemedRegion theme="interview">
-        <DocsContainer context={context}>{children}</DocsContainer>
-      </ThemedRegion>
-    );
-  }
-
-  return <DocsContainer context={context}>{children}</DocsContainer>;
+  return (
+    <StoryTheme theme={theme}>
+      <DocsContainer context={context}>{children}</DocsContainer>
+    </StoryTheme>
+  );
 };
 
 // @chromatic-com/storybook is not included here because it doesn't export a
@@ -118,5 +115,6 @@ export default definePreview({
 
   initialGlobals: {
     theme: getInitialTheme(),
+    colorScheme: getInitialColorScheme(),
   },
 });
