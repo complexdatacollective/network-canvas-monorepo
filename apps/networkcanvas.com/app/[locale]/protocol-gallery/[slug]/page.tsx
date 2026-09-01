@@ -1,4 +1,4 @@
-import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Star } from 'lucide-react';
 import type { Metadata } from 'next';
 import { hasLocale } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
@@ -14,10 +14,9 @@ import { ProtocolDownloads } from '~/components/protocol-gallery/ProtocolDownloa
 import { ProtocolPattern } from '~/components/protocol-gallery/ProtocolPattern';
 import { Container } from '~/components/ui/Container';
 import { HomepagePageBackground } from '~/components/ui/HomepagePageBackground';
-import { cn } from '~/lib/cn';
-import { Link } from '~/lib/i18n/navigation';
 import { routing } from '~/lib/i18n/routing';
 import { getProtocolBySlug, loadProtocolGallery } from '~/lib/protocolGallery';
+import { protocolGalleryHref, protocolGalleryUrl } from '~/lib/siteUrls';
 
 type ProtocolDetailPageProps = {
   params: Promise<{ locale: string; slug: string }>;
@@ -30,12 +29,9 @@ export async function generateStaticParams() {
   return protocols.map((protocol) => ({ slug: protocol.slug }));
 }
 
-function localeAlternates(pathname: string) {
+function localeAlternates(slug: string) {
   return Object.fromEntries(
-    routing.locales.map((locale) => [
-      locale,
-      `https://networkcanvas.com/${locale}${pathname}`,
-    ]),
+    routing.locales.map((locale) => [locale, protocolGalleryUrl(locale, slug)]),
   );
 }
 
@@ -48,14 +44,13 @@ export async function generateMetadata({
   const protocol = await getProtocolBySlug(slug);
   if (!protocol) notFound();
 
-  const pathname = `/protocol-gallery/${protocol.slug}`;
-  const canonical = `https://networkcanvas.com/${locale}${pathname}`;
+  const canonical = protocolGalleryUrl(locale, protocol.slug);
   return {
     title: protocol.title,
     description: protocol.description,
     alternates: {
       canonical,
-      languages: localeAlternates(pathname),
+      languages: localeAlternates(protocol.slug),
     },
     openGraph: {
       title: protocol.title,
@@ -140,16 +135,16 @@ export default async function ProtocolDetailPage({
   return (
     <main className="relative isolate">
       <HomepagePageBackground target="[data-protocol-detail-weave-target]" />
-      <Header activeItemId="protocolGallery" />
+      <Header activeItemId="protocolGallery" host="protocolGallery" />
 
       <Container maxWidth="wide" className="mt-12!">
-        <Link
-          href="/protocol-gallery"
+        <a
+          href={protocolGalleryHref(locale)}
           className="focusable text-primary inline-flex items-center gap-2 rounded-sm font-bold"
         >
           <ArrowLeft aria-hidden className="size-5" />
           {t('detail.back')}
-        </Link>
+        </a>
 
         <div
           data-protocol-detail-weave-target
@@ -163,18 +158,23 @@ export default async function ProtocolDetailPage({
             aria-hidden
             className="from-surface via-surface/95 tablet-landscape:bg-linear-to-r tablet-landscape:via-55% tablet-landscape:to-90% absolute inset-0 bg-linear-to-t via-65% to-transparent"
           />
+          {protocol.featured ? (
+            <div className="tablet-portrait:p-12 pointer-events-none absolute inset-0 z-10 flex items-start justify-end p-7">
+              <Badge className="gap-1.5">
+                <Star aria-hidden className="size-3" />
+                {t('intro.featured')}
+              </Badge>
+            </div>
+          ) : null}
           <div className="tablet-portrait:p-12 tablet-landscape:items-center relative z-10 flex min-h-[27rem] items-end p-7">
             <div className="tablet-landscape:max-w-[62%] max-w-3xl min-w-0">
-              {protocol.featured ? (
-                <Badge color="neon-coral">{t('intro.featured')}</Badge>
-              ) : null}
+              <p className="font-heading text-text/55 text-sm font-black tracking-wide">
+                {protocol.shortName}
+              </p>
               <Heading
                 level="h1"
                 margin="none"
-                className={cn(
-                  'text-2xl font-black wrap-break-word',
-                  protocol.featured && 'mt-6',
-                )}
+                className="mt-3 text-2xl font-black wrap-break-word"
               >
                 {protocol.title}
               </Heading>
@@ -184,6 +184,23 @@ export default async function ProtocolDetailPage({
               >
                 {protocol.authors}
               </Paragraph>
+              <div className="mt-6 flex flex-wrap gap-2">
+                {protocol.usesSociograms ? (
+                  <Badge color="sea-serpent">
+                    {t('collection.filters.sociograms')}
+                  </Badge>
+                ) : null}
+                {protocol.usesRosters ? (
+                  <Badge color="mustard">
+                    {t('collection.filters.rosters')}
+                  </Badge>
+                ) : null}
+                {protocol.usesDyadCensus ? (
+                  <Badge color="neon-coral">
+                    {t('collection.filters.dyadCensus')}
+                  </Badge>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>

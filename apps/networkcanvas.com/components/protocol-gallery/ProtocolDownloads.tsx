@@ -29,6 +29,42 @@ export function ProtocolDownloads({
   sandboxUrl?: string;
 }) {
   const t = useTranslations('ProtocolGallery.detail');
+  const hasWaves = downloads.length > 1;
+
+  const secondaryActions = (
+    <>
+      {supplementaryMaterials.map((material) => (
+        <a
+          key={material.filename}
+          href={material.path}
+          target="_blank"
+          rel="noreferrer"
+          className={buttonVariants({
+            color: 'secondary',
+            variant: 'outline',
+          })}
+        >
+          <Images aria-hidden className="size-5" />
+          {material.label}
+        </a>
+      ))}
+      {sandboxUrl ? (
+        <a
+          href={sandboxUrl}
+          target="_blank"
+          rel="noreferrer"
+          className={buttonVariants({
+            color: 'secondary',
+            variant: 'outline',
+          })}
+        >
+          <FileText aria-hidden className="size-5" />
+          {t('openSandbox')}
+          <ExternalLink aria-hidden className="size-4" />
+        </a>
+      ) : null}
+    </>
+  );
 
   return (
     <Surface spacing="lg" shadow="lg" className="overflow-visible">
@@ -45,17 +81,12 @@ export function ProtocolDownloads({
             key={download.wave}
             className="border-outline/45 border-t pt-6 first:border-t-0 first:pt-0"
           >
-            {downloads.length > 1 ? (
+            {hasWaves ? (
               <Heading level="h3" margin="none" className="text-lg">
                 {t('wave', { wave: download.wave })}
               </Heading>
             ) : null}
-            <div
-              className={cn(
-                'flex flex-wrap gap-3',
-                downloads.length > 1 && 'mt-4',
-              )}
-            >
+            <div className={cn('flex flex-wrap gap-3', hasWaves && 'mt-4')}>
               <a
                 href={download.protocolPath}
                 download={download.protocolFilename}
@@ -79,50 +110,14 @@ export function ProtocolDownloads({
                 <BookOpenText aria-hidden className="size-5" />
                 {t('viewCodebook')}
               </a>
+              {hasWaves ? null : secondaryActions}
             </div>
           </div>
         ))}
       </div>
 
-      {supplementaryMaterials.length > 0 ? (
-        <div className="border-outline/45 mt-7 border-t pt-6">
-          <Heading level="h3" margin="none" className="text-lg">
-            {t('supportingMaterials')}
-          </Heading>
-          <div className="mt-4 flex flex-wrap gap-3">
-            {supplementaryMaterials.map((material) => (
-              <a
-                key={material.filename}
-                href={material.path}
-                target="_blank"
-                rel="noreferrer"
-                className={buttonVariants({
-                  color: 'secondary',
-                  variant: 'outline',
-                })}
-              >
-                <Images aria-hidden className="size-5" />
-                {material.label}
-              </a>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {sandboxUrl ? (
-        <a
-          href={sandboxUrl}
-          target="_blank"
-          rel="noreferrer"
-          className={cn(
-            buttonVariants({ color: 'default', variant: 'text' }),
-            'mt-7',
-          )}
-        >
-          <FileText aria-hidden className="size-5" />
-          {t('openSandbox')}
-          <ExternalLink aria-hidden className="size-4" />
-        </a>
+      {hasWaves && secondaryActions ? (
+        <div className="mt-6 flex flex-wrap gap-3">{secondaryActions}</div>
       ) : null}
     </Surface>
   );

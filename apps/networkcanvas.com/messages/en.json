@@ -170,7 +170,6 @@
     },
     "collection": {
       "heading": "Explore the collection",
-      "featured": "Featured",
       "searchLabel": "Search protocols",
       "searchPlaceholder": "Search protocols",
       "clearSearch": "Clear search",
@@ -210,7 +209,6 @@
       "viewPublication": "View publication",
       "downloads": "Use this protocol",
       "downloadDescription": "Download the Network Canvas protocol and its printable codebook. Additional supporting materials are included when available.",
-      "supportingMaterials": "Supporting materials",
       "wave": "Wave {wave}",
       "openSandbox": "Open in Fresco",
       "downloadProtocol": "Download protocol",

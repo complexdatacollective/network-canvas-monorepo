@@ -170,7 +170,6 @@
     },
     "collection": {
       "heading": "Explore la colección",
-      "featured": "Destacado",
       "searchLabel": "Buscar protocolos",
       "searchPlaceholder": "Buscar protocolos",
       "clearSearch": "Borrar búsqueda",
@@ -210,7 +209,6 @@
       "viewPublication": "Ver publicación",
       "downloads": "Utilizar este protocolo",
       "downloadDescription": "Descargue el protocolo de Network Canvas y su libro de códigos imprimible. Se incluyen materiales de apoyo adicionales cuando están disponibles.",
-      "supportingMaterials": "Materiales de apoyo",
       "wave": "Oleada {wave}",
       "openSandbox": "Abrir en Fresco",
       "downloadProtocol": "Descargar protocolo",

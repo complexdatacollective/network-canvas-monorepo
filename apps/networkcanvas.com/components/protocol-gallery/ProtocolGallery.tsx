@@ -4,12 +4,13 @@ import {
   ArrowUpRight,
   Rows3,
   Search,
+  Star,
   UsersRound,
   Waypoints,
   X,
 } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
@@ -27,8 +28,8 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { ProtocolPattern } from '~/components/protocol-gallery/ProtocolPattern';
 import { Container } from '~/components/ui/Container';
-import { Link } from '~/lib/i18n/navigation';
 import type { GalleryProtocol } from '~/lib/protocolGallery';
+import { protocolGalleryHref } from '~/lib/siteUrls';
 
 type FilterId = 'all' | 'sociograms' | 'rosters' | 'dyadCensus';
 type SortId = 'newest' | 'oldest' | 'titleAsc' | 'titleDesc';
@@ -158,11 +159,13 @@ function GalleryProtocolCard({
   emphasized: boolean;
 }) {
   const t = useTranslations('ProtocolGallery.collection');
+  const tFeatured = useTranslations('ProtocolGallery.intro');
+  const locale = useLocale();
 
   return (
-    <Link
+    <a
       {...itemProps}
-      href={`/protocol-gallery/${protocol.slug}`}
+      href={protocolGalleryHref(locale, protocol.slug)}
       aria-label={t('openProtocol', { title: protocol.shortName })}
       className="focusable group block size-full rounded transition-transform hover:-translate-y-1 focus-visible:-translate-y-1 motion-reduce:transform-none"
     >
@@ -178,7 +181,10 @@ function GalleryProtocolCard({
           className="bg-surface text-surface-contrast flex size-full flex-col shadow-lg"
         >
           <div className="absolute inset-x-0 top-7 z-10 flex justify-end px-7">
-            <Badge>{t('featured')}</Badge>
+            <Badge className="gap-1.5">
+              <Star aria-hidden className="size-3" />
+              {tFeatured('featured')}
+            </Badge>
           </div>
           <div className="relative z-10 mt-24 flex flex-1 flex-col gap-3 p-7">
             <GalleryProtocolCardBody protocol={protocol} emphasized />
@@ -194,7 +200,7 @@ function GalleryProtocolCard({
           <GalleryProtocolCardBody protocol={protocol} emphasized={false} />
         </Surface>
       )}
-    </Link>
+    </a>
   );
 }
 
@@ -347,7 +353,7 @@ export function ProtocolGallery({
         animationKey={`${filter}-${sort}-${query}`}
         className="[&_[data-stagger-item]]:size-full"
         emptyState={
-          <div className="bg-surface/75 mx-auto max-w-lg rounded p-10 backdrop-blur-sm">
+          <div className="bg-surface/55 mx-auto max-w-lg rounded p-10 backdrop-blur-md">
             <Heading level="h3" margin="none" className="text-2xl">
               {t('emptyHeading')}
             </Heading>
