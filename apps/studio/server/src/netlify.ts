@@ -1,23 +1,38 @@
 import { createApp } from './app.ts';
-import { createPool } from './db/pool.ts';
-import { readEnv } from './env.ts';
+import { readEnv, type StudioEnv } from './env.ts';
 
 // Deliberately NOT ported from src/index.ts:
 //   - serveStatic / SPA fallback — Netlify's CDN serves apps/studio/client/dist
-//   - checkSchema — there is no boot in a serverless runtime; apply the
-//     schema once against the database out of band
-//     (`pnpm --filter @codaco/studio-server apply-schema`) rather than
-//     verifying on every cold start. That command is also the only place this
-//     lane ever detects a stale schema.
+//   - checkSchema — this lane holds no database at all (see below), so there
+//     is no schema to verify on a cold start
 //   - the WebSocket server and shutdown drain — /ws cannot be served here and
 //     is excluded from `config.path` below
 //   - background invitation delivery — no durable scheduler invokes this
 //     function, so RPC invitation creation is explicitly unavailable rather
 //     than committing an outbox job that nothing can drain
 
-const env = readEnv();
-const pool = env.db ? createPool(env.db) : undefined;
-const app = createApp(env, { invitationDeliveryAvailable: false, pool });
+// This lane runs with no database and auth off, for the reason netlify.toml
+// states at length: PUBLIC_URL has to match the origin the browser used, and a
+// deploy preview's origin is per-PR, so a configured database here mints
+// cookies and magic-link URLs for the wrong host and makes the CSRF check
+// refuse the preview's own requests.
+//
+// That used to rest on the Netlify site simply not defining DATABASE_URL, with
+// nothing enforcing it. Site-level environment variables are edited outside
+// this repository, so the invariant broke silently: with a database configured
+// but unusable from the function, better-auth answered /api/auth/get-session
+// with a 500, which the client reads as an unreachable server and replaces the
+// whole app with its "server could not be reached" screen — on production as
+// well as on previews. Drop the two surfaces here so the lane's documented
+// degradation is what actually runs: /api/auth/* refuses with 503, which the
+// client treats as a reachable server reporting nobody signed in (see
+// probeSession in client/src/router.tsx), and no CSRF gate is mounted against
+// an origin the preview cannot match.
+//
+// Serving auth from this lane needs the origin derived from the request, which
+// netlify.toml assigns to the real topology work — not a site-level variable.
+const env: StudioEnv = { ...readEnv(), db: undefined, auth: undefined };
+const app = createApp(env, { invitationDeliveryAvailable: false });
 
 export default async function handler(request: Request): Promise<Response> {
   return app.fetch(request);
