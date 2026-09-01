@@ -41,10 +41,11 @@
  * commit after the selected response prevents the preceding document's
  * DOMContentLoaded state from satisfying it. The initial response and every
  * follow-up are correlated with the latest main-frame commit, so a
- * response-free navigation cannot borrow an abandoned HTTP status. A later
- * same-document History API change has no pending response and therefore keeps
- * the representation already matched to the preceding document commit. Both
- * navigation starts and responses are tracked, and starts remain explicitly
+ * response-free navigation cannot borrow an abandoned HTTP status. Chrome's
+ * document events distinguish a same-document History API change, which keeps
+ * the matched representation, from a BFCache document restore, which must not
+ * borrow the newer document's response. Both navigation starts and responses
+ * are tracked, and starts remain explicitly
  * outstanding until their response or failure event arrives, so a request
  * that stalls before response headers cannot look quiet. Superseded/aborted
  * requests are retired; another navigation failure remains an error unless a
@@ -59,12 +60,14 @@
  * cache revalidation, not a redirect; its prior same-URL representation
  * supplies the effective status and content type so cached errors remain
  * errors and cached HTML remains crawlable. Browser navigations that become
- * downloads or return 204 No Content are the exceptions to requiring a
- * document load: Playwright rejects goto in those cases, so the captured HTTP
- * response verifies the non-HTML target without saving a file or inventing a
- * document. A download event is paired only with an uncommitted main-frame
- * response, preventing an independent page download from suppressing the HTML
- * crawl.
+ * downloads or return 204/205 without a document are the exceptions to
+ * requiring a document load: Playwright may reject goto in those cases, so the
+ * captured HTTP response verifies the non-HTML target without saving a file or
+ * inventing a document. Follow-up non-document responses still pass through
+ * the quiet window because the preceding document remains active and may
+ * navigate again. A download event is paired only with an uncommitted
+ * main-frame response, preventing an independent page download from
+ * suppressing the HTML crawl.
  *
  * Browser verification is not status suppression. Its final response is
  * authoritative: a browser-confirmed 403 (or any other >= 400 response) still
@@ -93,6 +96,7 @@ const MAX_RETRY_DELAY_MS = 30_000;
 const BASE_RETRY_DELAY_MS = 500;
 const MAX_BROWSER_PAGES = 4;
 const BROWSER_NAVIGATION_SETTLE_MS = 500;
+const BROWSER_NO_DOCUMENT_STATUSES = new Set([204, 205]);
 
 function isBrowserRedirectStatus(status) {
   return status >= 300 && status < 400 && status !== 304;
@@ -119,7 +123,7 @@ function browserRedirects(mainFrameResponses) {
 function isNonDocumentNavigation(response) {
   const contentDisposition = response.headers()['content-disposition'] ?? '';
   return (
-    response.status() === 204 ||
+    BROWSER_NO_DOCUMENT_STATUSES.has(response.status()) ||
     /^\s*attachment(?:\s*;|$)/i.test(contentDisposition)
   );
 }
@@ -380,6 +384,7 @@ export class BrowserVerifier {
     await this.#pageSlots.acquire(remainingTimeout(), browserTimeoutError);
     let context;
     let page;
+    let cdpSession;
     const spawnedPages = new Set();
     try {
       const { browser } = await withDeadline(
@@ -444,9 +449,10 @@ export class BrowserVerifier {
           notifyLifecycleChange();
         }
       });
-      page.on('framenavigated', (frame) => {
-        if (frame === page.mainFrame()) {
-          const commitURL = comparableBrowserURL(frame.url?.() ?? page.url());
+      const recordMainFrameCommit = (value, documentKind) => {
+        const commitURL = comparableBrowserURL(value);
+        let kind = documentKind;
+        if (documentKind === 'document') {
           const pendingResponses = mainFrameResponses.slice(
             committedResponseCount,
           );
@@ -455,19 +461,44 @@ export class BrowserVerifier {
               response.url &&
               comparableBrowserURL(response.url()) === commitURL,
           );
-          const kind =
-            matchingResponseIndex === -1
-              ? pendingResponses.length === 0
-                ? 'same-document'
-                : 'unmatched'
-              : 'document';
+          kind = matchingResponseIndex === -1 ? 'unmatched' : 'document';
           if (matchingResponseIndex !== -1) {
             committedResponseCount += matchingResponseIndex + 1;
           }
-          mainFrameCommitCount++;
-          mainFrameCommits.push({ kind, url: commitURL });
-          notifyLifecycleChange();
         }
+        mainFrameCommitCount++;
+        mainFrameCommits.push({ kind, url: commitURL });
+        notifyLifecycleChange();
+      };
+
+      if (context.newCDPSession) {
+        cdpSession = await withDeadline(context.newCDPSession(page));
+        await withDeadline(cdpSession.send('Page.enable'));
+        const { frameTree } = await withDeadline(
+          cdpSession.send('Page.getFrameTree'),
+        );
+        let mainFrameId = frameTree.frame.id;
+        cdpSession.on('Page.frameNavigated', ({ frame }) => {
+          if (frame.id !== mainFrameId && frame.parentId) return;
+          if (!frame.parentId) mainFrameId = frame.id;
+          recordMainFrameCommit(frame.url, 'document');
+        });
+        cdpSession.on(
+          'Page.navigatedWithinDocument',
+          ({ frameId, url: navigatedURL }) => {
+            if (frameId !== mainFrameId) return;
+            recordMainFrameCommit(navigatedURL, 'same-document');
+          },
+        );
+      }
+      page.on('framenavigated', (frame) => {
+        if (cdpSession || frame !== page.mainFrame()) return;
+        const pendingResponseCount =
+          mainFrameResponses.length - committedResponseCount;
+        recordMainFrameCommit(
+          frame.url?.() ?? page.url(),
+          pendingResponseCount === 0 ? 'same-document' : 'document',
+        );
       });
       page.on('request', (request) => {
         if (
@@ -525,7 +556,8 @@ export class BrowserVerifier {
           error.message.includes('Download is starting');
         if (
           nonDocumentResponse &&
-          (isDownload || nonDocumentResponse.status() === 204)
+          (isDownload ||
+            BROWSER_NO_DOCUMENT_STATUSES.has(nonDocumentResponse.status()))
         ) {
           return nonDocumentOutcome(nonDocumentResponse, mainFrameResponses);
         }
@@ -604,6 +636,54 @@ export class BrowserVerifier {
         }
         return terminalResponseAfter(start) ?? terminalResponse;
       };
+      const settleNonDocumentResponse = async () => {
+        while (true) {
+          const settleCommitStart = mainFrameCommitCount;
+          const settleRequestStart = mainFrameRequests.length;
+          const settleStart = mainFrameResponses.length;
+          await page.waitForTimeout(
+            Math.min(BROWSER_NAVIGATION_SETTLE_MS, remainingTimeout()),
+          );
+          remainingTimeout();
+          if (unrecoveredNavigationFailure) {
+            throw new Error(
+              `Browser navigation failed: ${unrecoveredNavigationFailure}`,
+            );
+          }
+
+          const laterTerminalResponse = terminalResponseAfter(settleStart);
+          if (laterTerminalResponse) return laterTerminalResponse;
+          const requestsAreQuiet =
+            mainFrameRequests.length === settleRequestStart;
+          const responsesAreQuiet = mainFrameResponses.length === settleStart;
+          const laterCommits = mainFrameCommits.slice(settleCommitStart);
+          const invalidCommit = laterCommits.find(
+            (commit) =>
+              commit.kind !== 'same-document' ||
+              !/^https?:\/\//i.test(commit.url),
+          );
+          if (invalidCommit) {
+            throw new Error(
+              `Browser navigation committed without an HTTP response: ${invalidCommit.url}`,
+            );
+          }
+          if (
+            requestsAreQuiet &&
+            responsesAreQuiet &&
+            laterCommits.length === 0 &&
+            outstandingMainFrameRequests.size === 0
+          ) {
+            return null;
+          }
+          if (
+            !requestsAreQuiet ||
+            !responsesAreQuiet ||
+            outstandingMainFrameRequests.size > 0
+          ) {
+            return waitForTerminalResponse(settleStart);
+          }
+        }
+      };
       const resolveResponseLifecycle = async (response) => {
         // page.goto already waited for the initial document's DOMContentLoaded.
         // Playwright Page always exposes waitForEvent; the guard keeps injected
@@ -679,10 +759,20 @@ export class BrowserVerifier {
 
       while (terminalResponse) {
         if (isNonDocumentNavigation(terminalResponse)) {
+          const laterResponse = await settleNonDocumentResponse();
+          if (laterResponse) {
+            terminalResponse = laterResponse;
+            continue;
+          }
           return nonDocumentOutcome(terminalResponse, mainFrameResponses);
         }
         const lifecycle = await resolveResponseLifecycle(terminalResponse);
         if (lifecycle.kind === 'download') {
+          const laterResponse = await settleNonDocumentResponse();
+          if (laterResponse) {
+            terminalResponse = laterResponse;
+            continue;
+          }
           return nonDocumentOutcome(terminalResponse, mainFrameResponses);
         }
         if (lifecycle.kind === 'superseded') {
@@ -776,6 +866,7 @@ export class BrowserVerifier {
     } finally {
       await page?.close().catch(() => {});
       await Promise.allSettled([...spawnedPages].map((popup) => popup.close()));
+      if (cdpSession?.detach) await cdpSession.detach().catch(() => {});
       if (context?.close) await context.close().catch(() => {});
       this.#pageSlots.release();
     }

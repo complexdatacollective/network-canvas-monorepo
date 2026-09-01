@@ -861,6 +861,57 @@ test('browser verification accepts a successful no-content response', async () =
   }
 });
 
+test('browser verification accepts a successful reset-content response', async () => {
+  const frame = {};
+  const navigationRequest = { isNavigationRequest: () => true };
+  const resetContentResponse = {
+    frame: () => frame,
+    headers: () => ({}),
+    request: () => navigationRequest,
+    status: () => 205,
+    url: () => 'https://publisher.test/reset-content',
+  };
+  let responseListener;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(resetContentResponse);
+      throw new Error(
+        'page.goto: net::ERR_ABORTED at https://publisher.test/reset-content',
+      );
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => 'about:blank',
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    const outcome = await verifier.verify(
+      'https://publisher.test/reset-content',
+      50,
+      { captureHTML: true },
+    );
+    assert.deepEqual(outcome, {
+      contentType: '',
+      finalUrl: 'https://publisher.test/reset-content',
+      html: null,
+      redirects: [],
+      status: 205,
+    });
+  } finally {
+    await verifier.close();
+  }
+});
+
 test('browser verification accepts a follow-up download response', async () => {
   const frame = {};
   const navigationRequest = { isNavigationRequest: () => true };
@@ -901,6 +952,7 @@ test('browser verification accepts a follow-up download response', async () => {
       assert.equal(predicate(downloadResponse), true);
       return downloadResponse;
     },
+    waitForTimeout: async () => {},
   };
   const browser = {
     close: async () => {},
@@ -928,7 +980,7 @@ test('browser verification accepts a follow-up download response', async () => {
   }
 });
 
-test('browser verification accepts a follow-up no-content response', async () => {
+test('browser verification accepts a follow-up reset-content response', async () => {
   const frame = {};
   const navigationRequest = { isNavigationRequest: () => true };
   const initial = {
@@ -938,12 +990,12 @@ test('browser verification accepts a follow-up no-content response', async () =>
     status: () => 403,
     url: () => 'https://publisher.test/challenge',
   };
-  const noContentResponse = {
+  const resetContentResponse = {
     frame: () => frame,
     headers: () => ({}),
     request: () => navigationRequest,
-    status: () => 204,
-    url: () => 'https://publisher.test/no-content',
+    status: () => 205,
+    url: () => 'https://publisher.test/reset-content',
   };
   let responseListener;
   const page = {
@@ -958,13 +1010,14 @@ test('browser verification accepts a follow-up no-content response', async () =>
     },
     url: () => 'https://publisher.test/challenge',
     waitForLoadState: async () => {
-      throw new Error('a 204 has no document to load');
+      throw new Error('a 205 has no document to load');
     },
     waitForResponse: async (predicate) => {
-      responseListener(noContentResponse);
-      assert.equal(predicate(noContentResponse), true);
-      return noContentResponse;
+      responseListener(resetContentResponse);
+      assert.equal(predicate(resetContentResponse), true);
+      return resetContentResponse;
     },
+    waitForTimeout: async () => {},
   };
   const browser = {
     close: async () => {},
@@ -982,10 +1035,81 @@ test('browser verification accepts a follow-up no-content response', async () =>
     );
     assert.deepEqual(outcome, {
       contentType: '',
-      finalUrl: 'https://publisher.test/no-content',
+      finalUrl: 'https://publisher.test/reset-content',
       html: null,
       redirects: [],
-      status: 204,
+      status: 205,
+    });
+  } finally {
+    await verifier.close();
+  }
+});
+
+test('browser verification settles a follow-up no-content response before accepting it', async () => {
+  let pageUrl = 'https://publisher.test/challenge';
+  const frame = {};
+  const navigationRequest = { isNavigationRequest: () => true };
+  const response = (status, url, headers = {}) => ({
+    frame: () => frame,
+    headers: () => headers,
+    request: () => navigationRequest,
+    status: () => status,
+    url: () => url,
+  });
+  const initial = response(403, pageUrl, { 'content-type': 'text/html' });
+  const noContent = response(204, 'https://publisher.test/no-content');
+  const missing = response(404, 'https://publisher.test/missing', {
+    'content-type': 'text/html',
+  });
+  let laterNavigationObserved = false;
+  let responseListener;
+  let waitForResponseCount = 0;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => pageUrl,
+    waitForLoadState: async () => {
+      assert.equal(laterNavigationObserved, true);
+    },
+    waitForResponse: async (predicate) => {
+      assert.equal(waitForResponseCount++, 0);
+      responseListener(noContent);
+      assert.equal(predicate(noContent), true);
+      return noContent;
+    },
+    waitForTimeout: async () => {
+      if (laterNavigationObserved) return;
+      laterNavigationObserved = true;
+      pageUrl = missing.url();
+      responseListener(missing);
+    },
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    const outcome = await verifier.verify(
+      'https://publisher.test/challenge',
+      50,
+    );
+    assert.deepEqual(outcome, {
+      contentType: 'text/html',
+      finalUrl: 'https://publisher.test/missing',
+      html: null,
+      redirects: [],
+      status: 404,
     });
   } finally {
     await verifier.close();
@@ -1162,6 +1286,7 @@ test('browser verification accepts a follow-up headerless download response', as
       downloadListener?.({ url: () => downloadResponse.url() });
       return downloadResponse;
     },
+    waitForTimeout: async () => {},
   };
   const browser = {
     close: async () => {},
@@ -1404,6 +1529,79 @@ test('browser verification preserves a response across same-document history cha
       redirects: [],
       status: 200,
     });
+  } finally {
+    await verifier.close();
+  }
+});
+
+test('browser verification rejects a BFCache document restore without a new response', async () => {
+  let finalUrl = 'https://publisher.test/challenge';
+  const frame = { url: () => finalUrl };
+  const navigationRequest = { isNavigationRequest: () => true };
+  const response = (status, url) => ({
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => status,
+    url: () => url,
+  });
+  const initial = response(403, 'https://publisher.test/challenge');
+  const recovered = response(200, 'https://publisher.test/recovered');
+  const cdpListeners = new Map();
+  const cdpSession = {
+    on: (event, listener) => cdpListeners.set(event, listener),
+    send: async (method) =>
+      method === 'Page.getFrameTree'
+        ? { frameTree: { frame: { id: 'main' } } }
+        : {},
+  };
+  let frameNavigatedListener;
+  let responseListener;
+  const emitDocumentCommit = (url, type = 'Navigation') => {
+    finalUrl = url;
+    frameNavigatedListener(frame);
+    cdpListeners.get('Page.frameNavigated')?.({
+      frame: { id: 'main', url },
+      type,
+    });
+  };
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      emitDocumentCommit(initial.url());
+      responseListener(recovered);
+      emitDocumentCommit(recovered.url());
+      emitDocumentCommit(initial.url(), 'BackForwardCacheRestore');
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'framenavigated') frameNavigatedListener = listener;
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => finalUrl,
+    waitForEvent: async () => {},
+    waitForLoadState: async () => {},
+    waitForTimeout: async () => {},
+  };
+  const context = {
+    newCDPSession: async () => cdpSession,
+    newPage: async () => page,
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => context,
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    await assert.rejects(
+      verifier.verify('https://publisher.test/challenge', 50),
+      /superseded before commit.*challenge/,
+    );
   } finally {
     await verifier.close();
   }
