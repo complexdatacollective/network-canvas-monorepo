@@ -1,6 +1,6 @@
 {
   "name": "@codaco/studio-sync",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Studio sync protocol core: shared apply engine, lease state machine, idempotent commit path, and manifest-hash resume.",
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
