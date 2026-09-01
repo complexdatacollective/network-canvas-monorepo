@@ -138,6 +138,7 @@ export type CompoundEditSubmission = CompoundEditRequest &
   }>;
 
 export type CompoundEditFailureReason =
+  | 'compound-in-flight'
   | 'host-error'
   | 'invalid-request'
   | 'invalid-response'
@@ -311,6 +312,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
   private fencedAtRevision: ManifestRevision | undefined;
   private nextBatchId = 1;
   private validationVersion = 0;
+  private compoundEditInFlight = false;
 
   constructor(options: ProtocolBuilderSessionOptions) {
     assertNoIdentityFields(options.fields);
@@ -390,6 +392,12 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     if (this.options.onCompoundEdit === undefined) {
       return compoundFailure('unavailable', 'compound editing is unavailable');
     }
+    if (this.compoundEditInFlight) {
+      return compoundFailure(
+        'compound-in-flight',
+        'another compound edit is still in progress',
+      );
+    }
 
     const access = this.snapshot.access;
     if (access.mode !== 'editable') {
@@ -405,108 +413,114 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       authority,
     });
 
-    let result: CompoundEditResult;
+    this.compoundEditInFlight = true;
     try {
-      result = await this.options.onCompoundEdit(submission);
-    } catch (error: unknown) {
-      return compoundFailure(
-        'host-error',
-        error instanceof Error ? error.message : 'the compound edit failed',
-      );
-    }
-    if (result.status !== 'applied') return result;
-
-    const currentAccess = this.snapshot.access;
-    if (currentAccess.mode !== 'editable') {
-      return compoundFailure(
-        'lease-lost',
-        'editing access was lost before the compound edit completed',
-      );
-    }
-    if (
-      currentAccess.leaseOwner !== authority.leaseOwner ||
-      currentAccess.leaseEpoch !== authority.leaseEpoch
-    ) {
-      return compoundFailure(
-        'stale-epoch',
-        'editing authority changed before the compound edit completed',
-      );
-    }
-    const resultRevisionOrder = revisionOrder(
-      result.update.manifestRevision,
-      this.snapshot.manifestRevision,
-    );
-    if (
-      resultRevisionOrder === 'older' ||
-      resultRevisionOrder === 'conflicting'
-    ) {
-      return compoundFailure(
-        'stale-result',
-        resultRevisionOrder === 'conflicting'
-          ? 'the compound result conflicts with the loaded authoritative revision'
-          : 'a newer authoritative protocol revision is already loaded',
-      );
-    }
-
-    const stageSectionId = this.snapshot.editedSection.sectionId;
-    const updatedStageDocument = result.update.protocolSections[stageSectionId];
-    let fields: typeof this.snapshot.editedSection.fields;
-    if (updatedStageDocument !== undefined) {
+      let result: CompoundEditResult;
       try {
-        const updatedStage = stageDraftFromDocument(updatedStageDocument);
-        if (
-          updatedStage.identity.id !==
-            this.snapshot.editedSection.identity.id ||
-          updatedStage.identity.type !==
-            this.snapshot.editedSection.identity.type
-        ) {
+        result = await this.options.onCompoundEdit(submission);
+      } catch (error: unknown) {
+        return compoundFailure(
+          'host-error',
+          error instanceof Error ? error.message : 'the compound edit failed',
+        );
+      }
+      if (result.status !== 'applied') return result;
+
+      const currentAccess = this.snapshot.access;
+      if (currentAccess.mode !== 'editable') {
+        return compoundFailure(
+          'lease-lost',
+          'editing access was lost before the compound edit completed',
+        );
+      }
+      if (
+        currentAccess.leaseOwner !== authority.leaseOwner ||
+        currentAccess.leaseEpoch !== authority.leaseEpoch
+      ) {
+        return compoundFailure(
+          'stale-epoch',
+          'editing authority changed before the compound edit completed',
+        );
+      }
+      const resultRevisionOrder = revisionOrder(
+        result.update.manifestRevision,
+        this.snapshot.manifestRevision,
+      );
+      if (
+        resultRevisionOrder === 'older' ||
+        resultRevisionOrder === 'conflicting'
+      ) {
+        return compoundFailure(
+          'stale-result',
+          resultRevisionOrder === 'conflicting'
+            ? 'the compound result conflicts with the loaded authoritative revision'
+            : 'a newer authoritative protocol revision is already loaded',
+        );
+      }
+
+      const stageSectionId = this.snapshot.editedSection.sectionId;
+      const updatedStageDocument =
+        result.update.protocolSections[stageSectionId];
+      let fields: typeof this.snapshot.editedSection.fields;
+      if (updatedStageDocument !== undefined) {
+        try {
+          const updatedStage = stageDraftFromDocument(updatedStageDocument);
+          if (
+            updatedStage.identity.id !==
+              this.snapshot.editedSection.identity.id ||
+            updatedStage.identity.type !==
+              this.snapshot.editedSection.identity.type
+          ) {
+            return compoundFailure(
+              'invalid-response',
+              'the authoritative response changed the edited stage identity',
+              stageSectionId,
+            );
+          }
+          fields = updatedStage.fields;
+        } catch {
           return compoundFailure(
             'invalid-response',
-            'the authoritative response changed the edited stage identity',
+            'the authoritative response contains an invalid edited stage',
             stageSectionId,
           );
         }
-        fields = updatedStage.fields;
-      } catch {
+      } else {
         return compoundFailure(
           'invalid-response',
-          'the authoritative response contains an invalid edited stage',
+          'the authoritative response omitted the current edited stage from its full protocol snapshot',
           stageSectionId,
         );
       }
-    } else {
-      return compoundFailure(
-        'invalid-response',
-        'the authoritative response omitted the current edited stage from its full protocol snapshot',
-        stageSectionId,
-      );
-    }
 
-    const pendingCommands = this.snapshot.pendingCommands;
-    this.baseFields = cloneDoc(fields);
-    this.undoStack.length = 0;
-    this.redoStack.length = 0;
-    this.historyGeneration += 1;
-    this.fencedAtRevision = result.update.manifestRevision;
-    const reconciledFields = pendingCommands.reduce<SectionDoc>(
-      (draft, batch) => {
-        this.undoStack.push(cloneDoc(draft));
-        return applyCommands(draft, [...batch.commands]);
-      },
-      cloneDoc(this.baseFields),
-    );
-    this.replaceSnapshot({
-      fields: reconciledFields,
-      protocolSections: result.update.protocolSections,
-      manifestRevision: result.update.manifestRevision,
-      presence: result.update.presence ?? this.snapshot.presence,
-      attribution: result.update.attribution ?? this.snapshot.attribution,
-      pendingCommands,
-      validation: pendingValidation(),
-      validatedProtocol: null,
-    });
-    void this.runValidation();
-    return result;
+      const pendingCommands = this.snapshot.pendingCommands;
+      this.baseFields = cloneDoc(fields);
+      this.undoStack.length = 0;
+      this.redoStack.length = 0;
+      this.historyGeneration += 1;
+      this.fencedAtRevision = result.update.manifestRevision;
+      const reconciledFields = pendingCommands.reduce<SectionDoc>(
+        (draft, batch) => {
+          this.undoStack.push(cloneDoc(draft));
+          return applyCommands(draft, [...batch.commands]);
+        },
+        cloneDoc(this.baseFields),
+      );
+      this.replaceSnapshot({
+        fields: reconciledFields,
+        protocolSections: result.update.protocolSections,
+        manifestRevision: result.update.manifestRevision,
+        presence: result.update.presence ?? this.snapshot.presence,
+        attribution: result.update.attribution ?? this.snapshot.attribution,
+        pendingCommands,
+        validation: pendingValidation(),
+        validatedProtocol: null,
+      });
+      void this.runValidation();
+      return result;
+    } finally {
+      this.compoundEditInFlight = false;
+    }
   }
 
   async finish(): Promise<void> {

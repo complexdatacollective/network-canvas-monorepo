@@ -250,7 +250,12 @@ export default function CodebookVariableValidationEditor({
       ) {
         activeRequestId.current = null;
       }
-      if (result.status === 'applied') onComplete?.(result);
+      if (
+        result.status === 'applied' &&
+        !session.getSnapshot().authoritativeChanged
+      ) {
+        onComplete?.(result);
+      }
     } catch {
       // The auxiliary session preserves the draft and exposes the failure.
     }

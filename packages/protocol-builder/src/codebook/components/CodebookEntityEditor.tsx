@@ -247,7 +247,8 @@ type CommonEditorProps = Readonly<{
   description: string;
   subject: CodebookSubject;
   initialDraft: CodebookEntityDraft;
-  existingEntityNames?: readonly string[];
+  /** Names of the other entities that this draft must not collide with. */
+  existingEntityNames: readonly string[];
   /** Disables editing and submission without discarding the current draft. */
   readOnly?: boolean;
   onSubmit(
@@ -285,7 +286,7 @@ export default function CodebookEntityEditor({
   description,
   subject,
   initialDraft,
-  existingEntityNames = [],
+  existingEntityNames,
   readOnly = false,
   onSubmit,
   onCancel,
@@ -333,7 +334,14 @@ export default function CodebookEntityEditor({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (readOnly || snapshot.status !== 'editing') return;
+    if (
+      readOnly ||
+      snapshot.status !== 'editing' ||
+      snapshot.authoritativeChanged ||
+      (modeProps.mode === 'update' && !session.isDirty())
+    ) {
+      return;
+    }
     const nextErrors = validateFields(
       subject,
       snapshot.draft,
@@ -378,7 +386,10 @@ export default function CodebookEntityEditor({
       ) {
         activeRequestId.current = null;
       }
-      if (result.status === 'applied') {
+      if (
+        result.status === 'applied' &&
+        !session.getSnapshot().authoritativeChanged
+      ) {
         if (modeProps.mode === 'create') modeProps.onApplied(result);
         else modeProps.onApplied?.(result);
       }

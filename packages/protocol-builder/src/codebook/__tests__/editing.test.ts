@@ -7,6 +7,7 @@ import {
 } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import type { CompoundEditRequest, CompoundEditResult } from '../../session.ts';
 import {
   AuxiliaryCodebookDraftSession,
   buildCreateEntityRequest,
@@ -44,6 +45,53 @@ const updateDocumentFrom = (
   const [edit] = request.edits;
   if (edit?.kind !== 'update') throw new Error('expected an update edit');
   return applyCommands(document, [...edit.commands]);
+};
+
+const deferred = <Value>() => {
+  let resolvePromise: ((value: Value) => void) | null = null;
+  let rejectPromise: ((reason?: unknown) => void) | null = null;
+  const promise = new Promise<Value>((resolve, reject) => {
+    resolvePromise = resolve;
+    rejectPromise = reject;
+  });
+  return {
+    promise,
+    resolve(value: Value) {
+      if (resolvePromise === null) throw new Error('deferred is not ready');
+      resolvePromise(value);
+    },
+    reject(reason: unknown) {
+      if (rejectPromise === null) throw new Error('deferred is not ready');
+      rejectPromise(reason);
+    },
+  };
+};
+
+const appliedResult = (): Extract<
+  CompoundEditResult,
+  { status: 'applied' }
+> => ({
+  status: 'applied',
+  update: {
+    protocolSections: {},
+    manifestRevision: { sequence: 2n, hash: 'revision-2' },
+  },
+});
+
+const entityUpdateRequest = (
+  draft: Readonly<SectionDoc>,
+  authoritativeDocument: Readonly<SectionDoc> | null,
+): CompoundEditRequest => {
+  if (authoritativeDocument === null) {
+    throw new Error('expected an authoritative entity document');
+  }
+  return buildUpdateEntityRequest({
+    requestId: 'request-pending-update',
+    description: 'Update person type',
+    subject: SUBJECT,
+    authoritativeDocument,
+    draft,
+  });
 };
 
 describe('codebook entity requests', () => {
@@ -518,5 +566,315 @@ describe('AuxiliaryCodebookDraftSession', () => {
       draft: { name: 'Local name' },
       authoritativeChanged: true,
     });
+  });
+
+  it('ignores a content-identical authoritative re-emission', () => {
+    const authoritativeDocument = personDocument();
+    const session = new AuxiliaryCodebookDraftSession(
+      authoritativeDocument,
+      authoritativeDocument,
+    );
+    session.replaceDraft({ ...authoritativeDocument, name: 'LocalName' });
+    const before = session.getSnapshot();
+    const listener = vi.fn();
+    session.subscribe(listener);
+
+    session.receiveAuthoritative(structuredClone(authoritativeDocument));
+
+    expect(session.getSnapshot()).toBe(before);
+    expect(listener).not.toHaveBeenCalled();
+    expect(session.getSnapshot()).toMatchObject({
+      draft: { name: 'LocalName' },
+      authoritativeChanged: false,
+      status: 'editing',
+    });
+  });
+
+  it('reconciles a matching authoritative update received before apply resolves', async () => {
+    const authoritativeDocument = personDocument();
+    const submittedDraft = { ...authoritativeDocument, name: 'Adult' };
+    const session = new AuxiliaryCodebookDraftSession(
+      authoritativeDocument,
+      authoritativeDocument,
+    );
+    session.replaceDraft(submittedDraft);
+    const pending = deferred<CompoundEditResult>();
+    const submission = session.submit(
+      entityUpdateRequest,
+      () => pending.promise,
+    );
+
+    session.receiveAuthoritative(structuredClone(submittedDraft));
+    pending.resolve(appliedResult());
+    await submission;
+
+    expect(session.getSnapshot()).toMatchObject({
+      authoritativeDocument: submittedDraft,
+      draft: submittedDraft,
+      authoritativeChanged: false,
+      lastFailure: null,
+      status: 'editing',
+    });
+    expect(session.isDirty()).toBe(false);
+  });
+
+  it('returns to an editable conflict when a different authoritative update arrives before apply resolves', async () => {
+    const authoritativeDocument = personDocument();
+    const submittedDraft = { ...authoritativeDocument, name: 'Adult' };
+    const remoteDocument = { ...authoritativeDocument, name: 'RemoteName' };
+    const session = new AuxiliaryCodebookDraftSession(
+      authoritativeDocument,
+      authoritativeDocument,
+    );
+    session.replaceDraft(submittedDraft);
+    const pending = deferred<CompoundEditResult>();
+    const submission = session.submit(
+      entityUpdateRequest,
+      () => pending.promise,
+    );
+
+    session.receiveAuthoritative(remoteDocument);
+    pending.resolve(appliedResult());
+    await submission;
+
+    expect(session.getSnapshot()).toMatchObject({
+      authoritativeDocument: remoteDocument,
+      draft: submittedDraft,
+      authoritativeChanged: true,
+      lastFailure: null,
+      status: 'editing',
+    });
+  });
+
+  it('settles an applied submit after changed content is published and then reverted', async () => {
+    const authoritativeDocument = personDocument();
+    const submittedDraft = { ...authoritativeDocument, name: 'Adult' };
+    const session = new AuxiliaryCodebookDraftSession(
+      authoritativeDocument,
+      authoritativeDocument,
+    );
+    session.replaceDraft(submittedDraft);
+    const pending = deferred<CompoundEditResult>();
+    const submission = session.submit(
+      entityUpdateRequest,
+      () => pending.promise,
+    );
+
+    session.receiveAuthoritative(structuredClone(submittedDraft));
+    session.receiveAuthoritative(structuredClone(authoritativeDocument));
+    pending.resolve(appliedResult());
+    await submission;
+
+    expect(session.getSnapshot()).toMatchObject({
+      authoritativeDocument,
+      draft: submittedDraft,
+      authoritativeChanged: true,
+      lastFailure: null,
+      status: 'editing',
+    });
+  });
+
+  it('still awaits publication when submit saw only an identity-only re-emission', async () => {
+    const authoritativeDocument = personDocument();
+    const submittedDraft = { ...authoritativeDocument, name: 'Adult' };
+    const session = new AuxiliaryCodebookDraftSession(
+      authoritativeDocument,
+      authoritativeDocument,
+    );
+    session.replaceDraft(submittedDraft);
+    const pending = deferred<CompoundEditResult>();
+    const submission = session.submit(
+      entityUpdateRequest,
+      () => pending.promise,
+    );
+
+    session.receiveAuthoritative(structuredClone(authoritativeDocument));
+    pending.resolve(appliedResult());
+    await submission;
+
+    expect(session.getSnapshot()).toMatchObject({
+      authoritativeDocument,
+      draft: submittedDraft,
+      authoritativeChanged: false,
+      lastFailure: null,
+      status: 'awaiting-authoritative',
+    });
+  });
+
+  it.each([
+    {
+      caseName: 'blocked',
+      result: {
+        status: 'blocked',
+        blockedSections: [{ sectionId: sectionId({ kind: 'codebookEgo' }) }],
+      } satisfies CompoundEditResult,
+    },
+    {
+      caseName: 'stale',
+      result: {
+        status: 'failed',
+        reason: 'stale-epoch',
+        message: 'editing authority changed',
+      } satisfies CompoundEditResult,
+    },
+  ])(
+    'keeps a pending remote conflict and the $caseName result visible',
+    async ({ result }) => {
+      const authoritativeDocument = personDocument();
+      const submittedDraft = { ...authoritativeDocument, name: 'Adult' };
+      const remoteDocument = {
+        ...authoritativeDocument,
+        name: 'RemoteName',
+      };
+      const session = new AuxiliaryCodebookDraftSession(
+        authoritativeDocument,
+        authoritativeDocument,
+      );
+      session.replaceDraft(submittedDraft);
+      const pending = deferred<CompoundEditResult>();
+      const submission = session.submit(
+        entityUpdateRequest,
+        () => pending.promise,
+      );
+
+      session.receiveAuthoritative(remoteDocument);
+      pending.resolve(result);
+      await submission;
+
+      expect(session.getSnapshot()).toMatchObject({
+        authoritativeDocument: remoteDocument,
+        draft: submittedDraft,
+        authoritativeChanged: true,
+        lastFailure: { kind: 'result', result },
+        status: 'editing',
+      });
+    },
+  );
+
+  it('reconciles a matching publication while retaining a blocked result', async () => {
+    const authoritativeDocument = personDocument();
+    const submittedDraft = { ...authoritativeDocument, name: 'Adult' };
+    const blocked = {
+      status: 'blocked',
+      blockedSections: [{ sectionId: sectionId({ kind: 'codebookEgo' }) }],
+    } satisfies CompoundEditResult;
+    const session = new AuxiliaryCodebookDraftSession(
+      authoritativeDocument,
+      authoritativeDocument,
+    );
+    session.replaceDraft(submittedDraft);
+    const pending = deferred<CompoundEditResult>();
+    const submission = session.submit(
+      entityUpdateRequest,
+      () => pending.promise,
+    );
+
+    session.receiveAuthoritative(structuredClone(submittedDraft));
+    pending.resolve(blocked);
+    await submission;
+
+    expect(session.getSnapshot()).toMatchObject({
+      authoritativeDocument: submittedDraft,
+      draft: submittedDraft,
+      authoritativeChanged: false,
+      lastFailure: { kind: 'result', result: blocked },
+      status: 'editing',
+    });
+    expect(session.isDirty()).toBe(false);
+  });
+
+  it.each([
+    {
+      caseName: 'blocked',
+      result: {
+        status: 'blocked',
+        blockedSections: [{ sectionId: sectionId({ kind: 'codebookEgo' }) }],
+      } satisfies CompoundEditResult,
+    },
+    {
+      caseName: 'stale',
+      result: {
+        status: 'failed',
+        reason: 'stale-epoch',
+        message: 'editing authority changed',
+      } satisfies CompoundEditResult,
+    },
+  ])(
+    'reconciles a matching publication received after a $caseName result',
+    async ({ result }) => {
+      const authoritativeDocument = personDocument();
+      const submittedDraft = { ...authoritativeDocument, name: 'Adult' };
+      const session = new AuxiliaryCodebookDraftSession(
+        authoritativeDocument,
+        authoritativeDocument,
+      );
+      session.replaceDraft(submittedDraft);
+
+      await session.submit(entityUpdateRequest, () => result);
+      session.receiveAuthoritative(structuredClone(submittedDraft));
+
+      expect(session.getSnapshot()).toMatchObject({
+        authoritativeDocument: submittedDraft,
+        draft: submittedDraft,
+        authoritativeChanged: false,
+        lastFailure: null,
+        status: 'editing',
+      });
+      expect(session.isDirty()).toBe(false);
+    },
+  );
+
+  it('keeps a pending remote conflict visible when submission rejects', async () => {
+    const authoritativeDocument = personDocument();
+    const submittedDraft = { ...authoritativeDocument, name: 'Adult' };
+    const remoteDocument = { ...authoritativeDocument, name: 'RemoteName' };
+    const session = new AuxiliaryCodebookDraftSession(
+      authoritativeDocument,
+      authoritativeDocument,
+    );
+    session.replaceDraft(submittedDraft);
+    const pending = deferred<CompoundEditResult>();
+    const submission = session.submit(
+      entityUpdateRequest,
+      () => pending.promise,
+    );
+
+    session.receiveAuthoritative(remoteDocument);
+    pending.reject(new Error('network unavailable'));
+    await expect(submission).rejects.toThrow('network unavailable');
+
+    expect(session.getSnapshot()).toMatchObject({
+      authoritativeDocument: remoteDocument,
+      draft: submittedDraft,
+      authoritativeChanged: true,
+      lastFailure: { kind: 'error', message: 'network unavailable' },
+      status: 'editing',
+    });
+  });
+
+  it('reconciles a matching publication received after submission rejects', async () => {
+    const authoritativeDocument = personDocument();
+    const submittedDraft = { ...authoritativeDocument, name: 'Adult' };
+    const session = new AuxiliaryCodebookDraftSession(
+      authoritativeDocument,
+      authoritativeDocument,
+    );
+    session.replaceDraft(submittedDraft);
+
+    await expect(
+      session.submit(entityUpdateRequest, () =>
+        Promise.reject(new Error('network unavailable')),
+      ),
+    ).rejects.toThrow('network unavailable');
+    session.receiveAuthoritative(structuredClone(submittedDraft));
+
+    expect(session.getSnapshot()).toMatchObject({
+      authoritativeDocument: submittedDraft,
+      draft: submittedDraft,
+      authoritativeChanged: false,
+      lastFailure: null,
+      status: 'editing',
+    });
+    expect(session.isDirty()).toBe(false);
   });
 });

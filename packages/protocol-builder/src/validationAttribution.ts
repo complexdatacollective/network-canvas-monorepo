@@ -1,4 +1,5 @@
 import {
+  collectAssetReferences,
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
   type ProtocolValidationIssue,
@@ -110,6 +111,11 @@ function referencedDependencySections(
           ? sectionId({ kind: 'codebookNode', typeId: subject.type })
           : sectionId({ kind: 'codebookEdge', typeId: subject.type });
     dependencies.set(pathKey(reference.path), owner);
+  }
+
+  const assetsSection = sectionId({ kind: 'assets' });
+  for (const reference of collectAssetReferences(protocol)) {
+    dependencies.set(pathKey(reference.path), assetsSection);
   }
   return dependencies;
 }

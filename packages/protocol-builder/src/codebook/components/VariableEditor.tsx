@@ -25,7 +25,7 @@ import {
   type VariableType,
   VariableTypes,
 } from '@codaco/protocol-validation';
-import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 import type { CompoundEditRequest, CompoundEditResult } from '../../session.ts';
@@ -197,10 +197,27 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     props.mode === 'update' && authoritativeType !== initialAuthoritativeType;
   const typeChanged =
     props.mode === 'update' && selectedType !== authoritativeType;
+  const replaceProperties = variableEditorReplaceProperties(typeChanged);
+  const submittedDraft =
+    props.mode === 'create'
+      ? snapshot.draft
+      : draftOwnedByVariableEditor(
+          snapshot.draft,
+          lockedOptions !== null,
+          typeChanged,
+        );
   const hasOptions = selectedType !== null && OPTION_TYPES.has(selectedType);
   const optionsLocked =
     lockedOptions !== null || snapshot.draft.readOnly === true;
   const interactionDisabled = readOnly || snapshot.status !== 'editing';
+  const unchangedUpdate =
+    props.mode === 'update' &&
+    currentAuthoritativeVariable !== null &&
+    updateLeavesVariableUnchanged(
+      currentAuthoritativeVariable,
+      submittedDraft,
+      replaceProperties,
+    );
   const statusId = useId();
 
   useEffect(() => {
@@ -301,21 +318,11 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       ]);
       return;
     }
+    if (unchangedUpdate) return;
     setIssues([]);
     const requestId = activeRequestId.current ?? createRequestId();
     activeRequestId.current = requestId;
 
-    // A create has no authoritative variable to merge onto, so preserve every
-    // property supplied by the host. An update overlays only this surface's
-    // rendered properties onto the latest authoritative variable.
-    const submittedDraft =
-      props.mode === 'create'
-        ? snapshot.draft
-        : draftOwnedByVariableEditor(
-            snapshot.draft,
-            lockedOptions !== null,
-            typeChanged,
-          );
     const buildRequest =
       props.mode === 'create'
         ? () =>
@@ -336,9 +343,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               authoritativeDocument,
               variableId,
               draft: submittedDraft,
-              replaceProperties: typeChanged
-                ? [...VARIABLE_EDITOR_PROPERTIES, ...TYPE_OWNED_PROPERTIES]
-                : VARIABLE_EDITOR_PROPERTIES,
+              replaceProperties,
             });
 
     try {
@@ -351,7 +356,12 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       ) {
         activeRequestId.current = null;
       }
-      if (result.status === 'applied') onComplete(variableId);
+      if (
+        result.status === 'applied' &&
+        !draftSession.getSnapshot().authoritativeChanged
+      ) {
+        onComplete(variableId);
+      }
     } catch (error: unknown) {
       if (error instanceof InvalidCodebookDraftError) {
         setIssues(error.issues);
@@ -561,7 +571,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
           <Button
             type="submit"
             color="primary"
-            disabled={readOnly || snapshot.status !== 'editing'}
+            disabled={interactionDisabled || unchangedUpdate}
             aria-busy={snapshot.status === 'submitting'}
           >
             {props.mode === 'create' ? 'Create attribute' : 'Save attribute'}
@@ -598,6 +608,29 @@ function draftOwnedByVariableEditor(
   }
   if (persistLockedOptions) owned.readOnly = true;
   return owned;
+}
+
+function variableEditorReplaceProperties(
+  includeTypeMetadata: boolean,
+): readonly string[] {
+  return includeTypeMetadata
+    ? [...VARIABLE_EDITOR_PROPERTIES, ...TYPE_OWNED_PROPERTIES]
+    : VARIABLE_EDITOR_PROPERTIES;
+}
+
+function updateLeavesVariableUnchanged(
+  authoritativeVariable: Readonly<SectionDoc>,
+  submittedDraft: Readonly<SectionDoc>,
+  replaceProperties: readonly string[],
+): boolean {
+  const nextVariable: Record<string, unknown> = {
+    ...authoritativeVariable,
+  };
+  for (const property of replaceProperties) delete nextVariable[property];
+  for (const [property, value] of Object.entries(submittedDraft)) {
+    nextVariable[property] = value;
+  }
+  return canonicalize(nextVariable) === canonicalize(authoritativeVariable);
 }
 
 function draftForType(

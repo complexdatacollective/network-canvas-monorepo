@@ -213,6 +213,14 @@ const frozenDocument = (
   return clone;
 };
 
+const hasSameDocumentContent = (
+  left: Readonly<SectionDoc> | null,
+  right: Readonly<SectionDoc> | null,
+): boolean => {
+  if (left === null || right === null) return left === right;
+  return canonicalize(left) === canonicalize(right);
+};
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
@@ -626,6 +634,7 @@ export type AuxiliaryCodebookDraftSnapshot = Readonly<{
  */
 export class AuxiliaryCodebookDraftSession {
   private readonly listeners = new Set<() => void>();
+  private authoritativeGeneration = 0;
   private snapshot: AuxiliaryCodebookDraftSnapshot;
 
   constructor(
@@ -673,6 +682,15 @@ export class AuxiliaryCodebookDraftSession {
 
   receiveAuthoritative(document: Readonly<SectionDoc>): void {
     const authoritativeDocument = frozenDocument(document);
+    if (
+      hasSameDocumentContent(
+        this.snapshot.authoritativeDocument,
+        authoritativeDocument,
+      )
+    ) {
+      return;
+    }
+    this.authoritativeGeneration += 1;
     if (this.snapshot.status === 'awaiting-authoritative') {
       this.replaceSnapshot({
         authoritativeDocument,
@@ -693,10 +711,23 @@ export class AuxiliaryCodebookDraftSession {
     }
 
     const dirty = this.isDirty();
+    const matchesDraft = hasSameDocumentContent(
+      authoritativeDocument,
+      this.snapshot.draft,
+    );
+    if (!dirty || matchesDraft) {
+      this.replaceSnapshot({
+        authoritativeDocument,
+        draft: authoritativeDocument,
+        authoritativeChanged: false,
+        lastFailure: null,
+      });
+      return;
+    }
+
     this.replaceSnapshot({
       authoritativeDocument,
-      ...(dirty ? {} : { draft: authoritativeDocument }),
-      authoritativeChanged: dirty,
+      authoritativeChanged: true,
     });
   }
 
@@ -704,7 +735,7 @@ export class AuxiliaryCodebookDraftSession {
     const authoritative = this.snapshot.authoritativeDocument;
     return (
       authoritative === null ||
-      canonicalize(authoritative) !== canonicalize(this.snapshot.draft)
+      !hasSameDocumentContent(authoritative, this.snapshot.draft)
     );
   }
 
@@ -720,32 +751,81 @@ export class AuxiliaryCodebookDraftSession {
     if (this.snapshot.status !== 'editing') throw new AuxiliaryDraftBusyError();
     const draft = frozenDocument(this.snapshot.draft);
     const authoritativeDocument = this.snapshot.authoritativeDocument;
+    const authoritativeGeneration = this.authoritativeGeneration;
     this.replaceSnapshot({ status: 'submitting', lastFailure: null });
 
     try {
       const result = await onSubmit(buildRequest(draft, authoritativeDocument));
+      const failure =
+        result.status === 'applied'
+          ? null
+          : Object.freeze({ kind: 'result' as const, result });
+      if (
+        this.settleWithPendingAuthoritative(
+          draft,
+          authoritativeGeneration,
+          failure,
+        )
+      ) {
+        return result;
+      }
       if (result.status === 'applied') {
         this.replaceSnapshot({
           status: 'awaiting-authoritative',
+          authoritativeChanged: false,
           lastFailure: null,
         });
       } else {
         this.replaceSnapshot({
           status: 'editing',
-          lastFailure: Object.freeze({ kind: 'result', result }),
+          lastFailure: failure,
         });
       }
       return result;
     } catch (error: unknown) {
-      this.replaceSnapshot({
-        status: 'editing',
-        lastFailure: Object.freeze({
-          kind: 'error',
-          message: error instanceof Error ? error.message : 'submission failed',
-        }),
+      const failure = Object.freeze({
+        kind: 'error' as const,
+        message: error instanceof Error ? error.message : 'submission failed',
       });
+      if (
+        !this.settleWithPendingAuthoritative(
+          draft,
+          authoritativeGeneration,
+          failure,
+        )
+      ) {
+        this.replaceSnapshot({
+          status: 'editing',
+          lastFailure: failure,
+        });
+      }
       throw error;
     }
+  }
+
+  private settleWithPendingAuthoritative(
+    submittedDraft: Readonly<SectionDoc>,
+    submittedAuthoritativeGeneration: number,
+    lastFailure: AuxiliaryCodebookDraftFailure | null,
+  ): boolean {
+    if (this.authoritativeGeneration === submittedAuthoritativeGeneration) {
+      return false;
+    }
+
+    const currentAuthoritative = this.snapshot.authoritativeDocument;
+    const reconciled = hasSameDocumentContent(
+      currentAuthoritative,
+      submittedDraft,
+    );
+    this.replaceSnapshot({
+      ...(reconciled && currentAuthoritative !== null
+        ? { draft: currentAuthoritative }
+        : {}),
+      status: 'editing',
+      authoritativeChanged: !reconciled,
+      lastFailure,
+    });
+    return true;
   }
 
   private replaceSnapshot(
