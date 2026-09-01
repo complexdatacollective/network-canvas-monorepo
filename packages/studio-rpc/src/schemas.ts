@@ -268,13 +268,26 @@ export const AuditListInputSchema = TeamScopedSchema.extend({
     .min(1)
     .max(AUDIT_CATEGORIES.length)
     .optional(),
-  eventTypes: z.array(z.string().min(1).max(120)).min(1).max(20).optional(),
+  // Not the event types this build registers: the filter list is drawn from
+  // the team's whole history, which includes rows a newer server appended, so
+  // the only bound that holds is the one the table itself enforces
+  // (`audit_events_identifier_lengths_check`: `event_type` is 1–128
+  // characters). A narrower bound here would show an event in the feed, offer
+  // it in the action menu, and then reject the selection as a bad request.
+  eventTypes: z.array(z.string().min(1).max(128)).min(1).max(20).optional(),
   actor: AuditActorFilterSchema.optional(),
   outcomes: z
     .array(AuditOutcomeSchema)
     .min(1)
     .max(AUDIT_OUTCOMES.length)
     .optional(),
+  // A half-open instant window, `from <= occurred_at < to`. `occurred_at` is
+  // `statement_timestamp()`, which Postgres keeps to microseconds, so an
+  // inclusive end could never name the true last instant of a day — any bound
+  // a millisecond-precision `Date` can express leaves the final fractional
+  // millisecond outside it. Callers selecting a calendar day send the start of
+  // the following day, and both bounds are absolute instants, so the day
+  // boundaries are the caller's local ones whatever timezone the server keeps.
   from: z.date().optional(),
   to: z.date().optional(),
 });

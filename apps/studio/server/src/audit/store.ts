@@ -64,6 +64,15 @@ export type AuditListFilters = {
   eventTypes?: readonly string[];
   actor?: AuditActorFilter;
   outcomes?: readonly string[];
+  /**
+   * A half-open instant window, `occurredFrom <= occurred_at < occurredTo`.
+   *
+   * `occurred_at` is `statement_timestamp()`, which Postgres keeps to
+   * microseconds, so an inclusive upper bound cannot name the last instant of
+   * a period: a `Date` only reaches milliseconds, and every event in the 999
+   * microseconds after the bound would fall outside a window that was supposed
+   * to contain them. Callers name the start of the next period instead.
+   */
   occurredFrom?: Date;
   occurredTo?: Date;
 };
@@ -223,7 +232,7 @@ export class AuditStore {
       where(options.occurredFrom, (p) => `occurred_at >= ${p}`);
     }
     if (options.occurredTo) {
-      where(options.occurredTo, (p) => `occurred_at <= ${p}`);
+      where(options.occurredTo, (p) => `occurred_at < ${p}`);
     }
     params.push(limit);
     const rows = await client.query<StoredAuditEvent>(

@@ -104,8 +104,21 @@ function hasActiveFilter(filters: ActivityFilters): boolean {
   return Object.values(filters).some((value) => value !== '' && value !== null);
 }
 
+// The selected end date runs to the start of the day after it: audit.list
+// takes a half-open window, and no inclusive bound a `Date` can express would
+// reach the end of a day the server records to the microsecond. Stepping the
+// date field rather than adding twenty-four hours keeps the boundary at local
+// midnight through a daylight-saving change.
+function nextLocalMidnight(day: string): Date {
+  const midnight = new Date(`${day}T00:00:00`);
+  midnight.setDate(midnight.getDate() + 1);
+  return midnight;
+}
+
 // Filter values become the audit.list input; from/to use the viewer's local
-// day boundaries to match the local times shown in the feed.
+// day boundaries to match the local times shown in the feed. Both are sent as
+// absolute instants, so the viewer's day is the one filtered on whatever
+// timezone the server keeps.
 function listInput(teamId: string, filters: ActivityFilters) {
   return {
     teamId,
@@ -116,9 +129,7 @@ function listInput(teamId: string, filters: ActivityFilters) {
     ...(filters.from === ''
       ? {}
       : { from: new Date(`${filters.from}T00:00:00`) }),
-    ...(filters.to === ''
-      ? {}
-      : { to: new Date(`${filters.to}T23:59:59.999`) }),
+    ...(filters.to === '' ? {} : { to: nextLocalMidnight(filters.to) }),
   };
 }
 

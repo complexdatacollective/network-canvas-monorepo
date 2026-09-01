@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { contract } from '@codaco/studio-rpc';
 import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import {
@@ -16,6 +17,23 @@ import { AUDIT_SEQUENCE_LOCK_SEED, AuditStore } from '../store.ts';
 
 const db = await reachableDb();
 const store = new AuditStore();
+
+// The schema audit.list actually validates its input with, reached through the
+// same standard-schema interface oRPC validates through, rather than a second
+// copy of the bound: what the wire rejects is the whole point of the assertion
+// below.
+const [auditListInputSchema] = contract.audit.list['~orpc'].inputSchemas ?? [];
+
+function auditListInputIssues(input: unknown) {
+  if (!auditListInputSchema) {
+    throw new Error('audit.list declares no input schema');
+  }
+  const result = auditListInputSchema['~standard'].validate(input);
+  if (result instanceof Promise) {
+    throw new Error('audit.list input validation is asynchronous');
+  }
+  return result.issues ?? [];
+}
 
 function invitationEvent(teamId: string): AuditEventInput {
   return {
@@ -60,6 +78,39 @@ async function appendAsOwner(pool: pg.Pool, teamId: string) {
   }
 }
 
+/**
+ * A row placed exactly where a test needs it, which `append` cannot do:
+ * `occurred_at` defaults to the insert's own clock, and `event_type` is
+ * confined to what this build registers. `at` plus `offset` names an instant
+ * to the microsecond — an interval literal rather than a float, so the value
+ * stored is the one written. Takes the owner pool: the point is to write what
+ * no producer in this build can.
+ */
+function insertRawEvent(
+  pool: pg.Pool,
+  teamId: string,
+  sequence: number,
+  row: { eventType?: string; at?: Date; offset?: string },
+) {
+  return pool.query(
+    `INSERT INTO audit_events (
+       id, team_id, team_label, sequence, occurred_at, event_type,
+       event_version, category, outcome, actor_kind, actor_id, actor_label,
+       request_id, details)
+     VALUES (gen_random_uuid(), $1, $1, $2,
+             COALESCE($3::timestamptz, statement_timestamp()) + $4::interval,
+             $5, 1, 'audit', 'succeeded', 'system', NULL, 'Studio',
+             gen_random_uuid(), '{}'::jsonb)`,
+    [
+      teamId,
+      sequence,
+      row.at ?? null,
+      row.offset ?? '0 microseconds',
+      row.eventType ?? 'audit.system_retention',
+    ],
+  );
+}
+
 describe.skipIf(!db)('immutable audit store', () => {
   let pool: pg.Pool;
   let app: pg.Pool;
@@ -81,6 +132,8 @@ describe.skipIf(!db)('immutable audit store', () => {
       'audit-predicate-high',
       'audit-timestamp',
       'audit-facets',
+      'audit-bounds',
+      'audit-window',
     ]) {
       await seedTeam(pool, teamId);
     }
@@ -348,6 +401,86 @@ describe.skipIf(!db)('immutable audit store', () => {
       }),
     );
     expect(userOnly.map((row) => row.sequence)).toEqual(['1']);
+  });
+
+  // The action menu is built from the team's whole history, which can hold
+  // event types this build never registered, so the filter input has to accept
+  // every event_type the table can store. The CHECK constraint is the only
+  // authority on that length; a narrower input schema would show an event in
+  // the feed, offer it in the menu, and then refuse the selection as a bad
+  // request.
+  it('accepts a filter on the longest event type the table can store', async () => {
+    const longest = `audit.${'e'.repeat(122)}`;
+    expect(longest).toHaveLength(128);
+    await insertRawEvent(pool, 'audit-bounds', 1, { eventType: longest });
+    // One character further is refused by the table, so 128 really is the
+    // ceiling this bound has to reach and no further.
+    await expect(
+      insertRawEvent(pool, 'audit-bounds', 2, { eventType: `${longest}e` }),
+    ).rejects.toThrow(/audit_events_identifier_lengths_check/);
+
+    expect(
+      auditListInputIssues({
+        teamId: 'audit-bounds',
+        eventTypes: [longest],
+        // The same table caps actor_id at 255 characters.
+        actor: { kind: 'user', id: 'a'.repeat(255) },
+      }),
+    ).toEqual([]);
+
+    const tenant = createTenantDb(app, 'audit-bounds');
+    const offered = await tenant.transaction((client) =>
+      store.facetsForTeam(client, 'audit-bounds', 10),
+    );
+    expect(offered.eventTypes).toContain(longest);
+    const filtered = await tenant.transaction((client) =>
+      store.listForTeam(client, 'audit-bounds', { eventTypes: [longest] }),
+    );
+    expect(filtered.map((row) => row.eventType)).toEqual([longest]);
+  });
+
+  // `occurred_at` is `statement_timestamp()`, which Postgres keeps to the
+  // microsecond, so no millisecond-precision cutoff can name the last instant
+  // of a day. The window is half-open instead: the caller passes the instant
+  // the next period begins, and everything before it belongs to the period
+  // that instant closes.
+  it('closes the occurred_at window on the instant the next period begins', async () => {
+    // The bounds the activity screen sends for "to: 5 March 2026" — the
+    // viewer's local midnights. Both these and the stored values are absolute
+    // instants, so whatever timezone the server keeps never enters the
+    // comparison: the day filtered on is the viewer's own.
+    const dayStart = new Date('2026-03-05T00:00:00');
+    const nextDayStart = new Date('2026-03-06T00:00:00');
+
+    await insertRawEvent(pool, 'audit-window', 1, { at: dayStart });
+    await insertRawEvent(pool, 'audit-window', 2, {
+      at: nextDayStart,
+      offset: '-500 microseconds',
+    });
+    await insertRawEvent(pool, 'audit-window', 3, { at: nextDayStart });
+
+    const tenant = createTenantDb(app, 'audit-window');
+    const withinDay = await tenant.transaction((client) =>
+      store.listForTeam(client, 'audit-window', {
+        occurredFrom: dayStart,
+        occurredTo: nextDayStart,
+      }),
+    );
+    // Sequence 2 sits 500 microseconds before midnight, inside the day and
+    // past anything a millisecond bound could express. Sequence 3 is midnight
+    // itself, which opens the next day rather than closing this one.
+    expect(withinDay.map((row) => row.sequence)).toEqual(['2', '1']);
+
+    // The cutoff this replaced, kept as the reason it had to: an inclusive
+    // end-of-day rounded to the millisecond drops sequence 2, so the day the
+    // viewer asked for silently loses its last event.
+    const millisecondCutoff = await tenant.transaction((client) =>
+      store.listForTeam(client, 'audit-window', {
+        occurredFrom: dayStart,
+        occurredTo: new Date('2026-03-05T23:59:59.999'),
+      }),
+    );
+    expect(millisecondCutoff.map((row) => row.sequence)).toEqual(['1']);
   });
 
   it('has no foreign key that could cascade mutable rows into history', async () => {

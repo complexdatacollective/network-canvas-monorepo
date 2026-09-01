@@ -165,6 +165,10 @@ function listPages(input: { cursor?: string; teamId: string }) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // One test pins a timezone to reach a daylight-saving boundary; undoing it
+  // here rather than in that test means a failed assertion cannot leave the
+  // rest of the file running in New York.
+  vi.unstubAllEnvs();
   fixtures.listAudit.mockImplementation(listPages);
   fixtures.getAudit.mockResolvedValue({
     ...fixtures.invitationCreated,
@@ -336,6 +340,56 @@ describe('Team activity screen', () => {
     // The option set is invariant across filter changes, so applying a filter
     // must not re-fetch it.
     expect(fixtures.auditFilterOptions).toHaveBeenCalledTimes(1);
+  });
+
+  // The server records event times to the microsecond, so an inclusive
+  // millisecond cutoff would leave the last fraction of the chosen day outside
+  // the window and quietly drop the events in it. The screen names the instant
+  // the next day begins and lets the server exclude it, which no event can sit
+  // just short of.
+  it('sends a chosen date range as local midnights bounding a half-open window', async () => {
+    renderActivity();
+    await screen.findByRole('cell', { name: 'Invitation created' });
+
+    fireEvent.change(screen.getByLabelText('From date'), {
+      target: { value: '2026-03-05' },
+    });
+    fireEvent.change(screen.getByLabelText('To date'), {
+      target: { value: '2026-03-05' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
+
+    await waitFor(() => {
+      expect(fixtures.listAudit).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          from: new Date('2026-03-05T00:00:00'),
+          to: new Date('2026-03-06T00:00:00'),
+        }),
+      );
+    });
+  });
+
+  // The boundary is the next local midnight, not twenty-four hours on. In a
+  // zone that observes daylight saving those differ: on 8 March 2026 New York
+  // puts its clocks forward, so the next midnight is 23 hours away and an
+  // added day would end the window an hour into 10 March. The suite otherwise
+  // runs in whatever zone the machine keeps, where the two agree and this
+  // could not fail.
+  it('ends the window at local midnight across a daylight-saving change', async () => {
+    vi.stubEnv('TZ', 'America/New_York');
+    renderActivity();
+    await screen.findByRole('cell', { name: 'Invitation created' });
+
+    fireEvent.change(screen.getByLabelText('To date'), {
+      target: { value: '2026-03-08' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
+
+    await waitFor(() => {
+      expect(fixtures.listAudit).toHaveBeenLastCalledWith(
+        expect.objectContaining({ to: new Date('2026-03-09T00:00:00') }),
+      );
+    });
   });
 
   it('filters for a system actor that carries no id', async () => {
