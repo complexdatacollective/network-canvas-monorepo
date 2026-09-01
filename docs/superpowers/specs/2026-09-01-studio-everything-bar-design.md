@@ -350,7 +350,12 @@ current area → 0, other areas → 1, global → 2. The component merges every
 provider's
 items within a group by tier, then position (ascending, when given), then
 recency (descending), then label, then the provider-qualified key as the
-total-order final tie-breaker. `position` is how a provider whose server
+total-order final tie-breaker, with absent optional fields placed
+deterministically: within a tier, items carrying `position` precede items
+without one, and among the positionless, present `recency` precedes absent.
+Two valid implementations cannot disagree about the first result or a
+pagination window because a comparison involving a missing field is defined,
+not implementation-chosen. `position` is how a provider whose server
 already ranked its results keeps that order through the merge — the
 documentation provider assigns each item its absolute position in the
 query's accumulated result sequence (a second page continues from the count
@@ -392,23 +397,37 @@ declared `'never'` has no per-item escape hatch.
 Continuation is a property of the group, not of any one source. Each group
 renders one "show more" row whenever anything remains: local matches beyond
 the bound, remote items fetched but unrevealed, or a provider holding a
-`next` cursor. Activating it first requests the next page from every
-provider in the group with an outstanding cursor, then merges everything
-held and reveals the next bounded slice of the merged total order — held
-rows are not revealed ahead of the fetch, because an unfetched page can
-contain higher-tier items that rank before them, and a slice revealed early
-would be contradicted by insertions above it. A mixed group therefore
-cannot strand one source's results behind another's pagination, never
-reveals more than the slice, and never reveals a slice out of merged order.
+`next` cursor. Activating it reveals the next bounded slice of the group's
+merged total order, and the frontier rule decides which fetches that
+requires: every provider delivers its results in its own
+merged-order-compatible ranking, so nothing in a provider's unfetched
+continuation can rank ahead of the last item it has already delivered — its
+frontier. A held row may be revealed once it ranks ahead of every
+cursor-holding provider's frontier; the component fetches a provider's next
+page only when the slice would read past that provider's frontier. This is
+what keeps both failure modes out: held rows are never revealed ahead of a
+page that could outrank them, and a multi-cursor group does not fetch every
+provider on every activation and accumulate unbounded unrevealed buffers. A
+mixed group therefore cannot strand one source's results behind another's
+pagination, never reveals more than the slice, and never reveals a slice
+out of merged order.
 Studio's remote providers pass cursors straight through to their procedures'
 `cursor`/`nextCursor` (§5.4, §5.5); a sixth matching local destination is
 reachable, not silently cut (invariant 1). Late and revealed results honour
 selection stability (invariant 4) on both paths.
 
+A rejected provider `search` (other than an abort the component itself
+issued) is caught by the component: the group's pending indicator clears and
+the group renders a localized, retryable error row in place of results — a
+transient RPC failure is never an unhandled rejection, an indefinite
+spinner, or a false "no matches". This is per-search failure handling,
+distinct from §5.5's documentation-unavailable state, which describes an
+instance whose index never loaded.
+
 The component owns matching over local inventories (case- and
 diacritic-folded substring and initials matching), the keyboard model,
-grouping, bounds, pagination, and recents. Providers own what exists and
-whether the researcher may see it.
+grouping, bounds, pagination, error containment, and recents. Providers own
+what exists and whether the researcher may see it.
 
 ### 5.2 The navigation manifest
 
@@ -868,7 +887,13 @@ foundations work (#1315).
   sorts above a tier-1 local item that rendered first, and a same-tier
   server-ranked page with deliberately non-alphabetical positions renders in
   position order, so a component that ignores `position` and alphabetizes
-  fails the test.
+  fails the test. A same-tier merge where only one item carries `position`
+  and only one carries `recency` renders in the defined null-placement
+  order, identically across runs.
+- Error containment: a provider `search` that rejects (not via the
+  component's own abort) clears the group's pending state and renders the
+  localized retryable error row — never an unhandled rejection, a stuck
+  spinner, or an empty "no matches".
 - Identity: two providers returning the same natural id render, highlight,
   and activate as distinct items — the provider-qualified key backs React
   keys and `aria-activedescendant`, asserted with a deliberate cross-provider
