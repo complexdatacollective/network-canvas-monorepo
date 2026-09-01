@@ -56,14 +56,16 @@ export class InterviewNav {
       .not.toBe(before);
   }
 
-  // Exits an in-progress interview through the Shell's settings menu and its
+  // Exits an in-progress interview through the Shell's settings popover and its
   // confirm dialog, landing back on Home.
   async exitInterview(): Promise<void> {
     await this.page.getByTestId('settings-button').click();
     await this.page.getByTestId('exit-button').click();
-    const dialog = this.page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
-    await dialog.getByRole('button', { name: 'Exit interview' }).click();
+    const exitDialog = this.page.getByRole('dialog', {
+      name: 'Exit this interview?',
+    });
+    await expect(exitDialog).toBeVisible();
+    await exitDialog.getByRole('button', { name: 'Exit interview' }).click();
     await expect(this.page).toHaveURL(/\/$/);
   }
 
