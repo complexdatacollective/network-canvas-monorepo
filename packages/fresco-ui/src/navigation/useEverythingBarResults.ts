@@ -209,6 +209,28 @@ type GroupDerivation = {
 
 type Derivation = Partial<Record<EverythingBarGroup, GroupDerivation>>;
 
+/**
+ * A stable token per provider OBJECT, so the search effect can key on provider
+ * IDENTITY rather than on provider ids.
+ *
+ * Ids are not enough: a consumer re-creates its providers when the context
+ * they close over changes — permissions, the current study, the current team —
+ * and those replacements keep their ids. Keying on ids alone leaves the last
+ * context's results on screen, still activatable. Keying on the objects
+ * refetches exactly when the sources actually changed.
+ */
+const providerTokens = new WeakMap<EverythingBarProvider, number>();
+let lastProviderToken = 0;
+
+function providerToken(provider: EverythingBarProvider): number {
+  const existing = providerTokens.get(provider);
+  if (existing !== undefined) return existing;
+
+  lastProviderToken += 1;
+  providerTokens.set(provider, lastProviderToken);
+  return lastProviderToken;
+}
+
 function entriesOf({
   providerId,
   items,
@@ -279,7 +301,9 @@ export function useEverythingBarResults({
   const seenGroupsRef = useRef<Record<string, EverythingBarGroup[]>>({});
 
   const remoteProviders = providers.filter(isRemoteProvider);
-  const remoteKey = remoteProviders.map((provider) => provider.id).join(' ');
+  // Identity, not id. The array itself may be a fresh literal on every render;
+  // only the provider objects inside it need stable references.
+  const remoteKey = remoteProviders.map(providerToken).join(' ');
   const compare = useMemo(() => createEntryComparator(locale), [locale]);
 
   const findRemoteProvider = useCallback((providerId: string) => {

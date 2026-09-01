@@ -346,13 +346,19 @@ function createControlledProvider(
   return { provider, calls };
 }
 
+/**
+ * One line per navigation the harness performed, tagged with the channel that
+ * performed it. Counting across BOTH channels is what makes "exactly one
+ * navigation per activation" an assertion rather than a hope.
+ */
+type Navigation = { via: 'link' | 'surface'; href: string };
+
 function Harness({
   providers,
   ...props
 }: Partial<EverythingBarProps> & { providers: EverythingBarProvider[] }) {
   const [open, setOpen] = useState(false);
-  const [activations, setActivations] = useState<string[]>([]);
-  const [surfaces, setSurfaces] = useState<string[]>([]);
+  const [navigations, setNavigations] = useState<Navigation[]>([]);
 
   const renderLink = (
     linkProps: EverythingBarLinkRenderProps,
@@ -362,11 +368,17 @@ function Harness({
       <a
         {...rest}
         onClick={(event) => {
-          // Stands in for the app's router: a story must never navigate the
-          // test page, and the recorded href is what proves a row activated.
-          event.preventDefault();
+          // Stands in for a router's `Link`, which is the contract the bar
+          // documents: run the caller's handler first, then navigate only if
+          // it did not claim the event. A story must never navigate the test
+          // page, so the navigation is recorded instead of performed.
           onClick(event);
-          setActivations((current) => [...current, rest.href]);
+          if (event.defaultPrevented) return;
+          event.preventDefault();
+          setNavigations((current) => [
+            ...current,
+            { via: 'link', href: rest.href },
+          ]);
         }}
       >
         {children}
@@ -386,19 +398,28 @@ function Harness({
         onOpenChange={setOpen}
         renderLink={renderLink}
         onOpenSurface={({ href, surface }) =>
-          setSurfaces((current) => [...current, `${href}#${surface}`])
+          // The documented integration: the consumer navigates, carrying the
+          // surface with it.
+          setNavigations((current) => [
+            ...current,
+            { via: 'surface', href: `${href}#${surface}` },
+          ])
         }
         recentsStorageKey={RECENTS_KEY}
       />
-      <pre data-testid="activation-log" className="sr-only">
-        {activations.join('\n')}
-      </pre>
-      <pre data-testid="surface-log" className="sr-only">
-        {surfaces.join('\n')}
+      <pre data-testid="navigation-log" className="sr-only">
+        {navigations.map(({ via, href }) => `${via} ${href}`).join('\n')}
       </pre>
     </div>
   );
 }
+
+/** Every navigation the harness has performed, in order, across both channels. */
+const navigationsIn = (canvasElement: HTMLElement) =>
+  within(canvasElement)
+    .getByTestId('navigation-log')
+    .textContent!.split('\n')
+    .filter(Boolean);
 
 // ─── Play helpers ────────────────────────────────────────────────────────────
 
@@ -932,9 +953,9 @@ export const CrossProviderIdCollision: Story = {
     await expect(highlightedOption(dialog)?.id).toBe(second?.id);
 
     await userEvent.keyboard('{Enter}');
-    const log = within(canvasElement).getByTestId('activation-log');
-    await waitFor(() => expect(log.textContent).toContain('/account/settings'));
-    await expect(log.textContent).not.toContain('/study/st_42/settings');
+    await waitFor(() =>
+      expect(navigationsIn(canvasElement)).toEqual(['link /account/settings']),
+    );
   },
 };
 
@@ -1107,8 +1128,9 @@ export const KeyboardTraversal: Story = {
     );
 
     await userEvent.keyboard('{Enter}');
-    const log = within(canvasElement).getByTestId('activation-log');
-    await waitFor(() => expect(log.textContent).toContain('/d5'));
+    await waitFor(() =>
+      expect(navigationsIn(canvasElement)).toEqual(['link /d5']),
+    );
     await waitFor(() =>
       expect(
         within(document.body).queryByRole('dialog', { name: labels.dialog }),
@@ -1438,7 +1460,10 @@ export const Recents: Story = {
 
 /**
  * An `open` activation reports the owning route and the surface identifier
- * that route's screen registers. The bar launches; the screen performs.
+ * that route's screen registers, and it is exactly ONE navigation: the
+ * consumer's, carrying the surface. The row keeps its `href`, so the link's
+ * own navigation to the same route would otherwise race it — and a plain
+ * arrival that wins drops the surface.
  */
 export const OpenActivation: Story = {
   beforeEach: () => {
@@ -1453,12 +1478,65 @@ export const OpenActivation: Story = {
     await userEvent.keyboard('{Enter}');
 
     await waitFor(() =>
-      expect(
-        within(canvasElement).getByTestId('surface-log'),
-      ).toHaveTextContent('/team/tm_7/members#members.invite'),
+      expect(navigationsIn(canvasElement)).toEqual([
+        'surface /team/tm_7/members#members.invite',
+      ]),
     );
+
+    // The pointer takes the same single path as the keyboard.
+    const reopened = await openBar(canvasElement);
+    await userEvent.type(reopened.input, 'invite');
+    await userEvent.click(
+      await within(reopened.dialog).findByRole('option', {
+        name: /Invite a team member/,
+      }),
+    );
+
+    await waitFor(() =>
+      expect(navigationsIn(canvasElement)).toEqual([
+        'surface /team/tm_7/members#members.invite',
+        'surface /team/tm_7/members#members.invite',
+      ]),
+    );
+  },
+};
+
+/**
+ * A modifier click is the browser opening a new tab, not an activation of the
+ * bar: nothing is recorded, the bar stays open, and the link is left to do
+ * what the browser asked of it.
+ */
+export const ModifierClickIsNotActivation: Story = {
+  beforeEach: () => {
+    clearRecents();
+  },
+  render: ({ providers: _providers, ...args }) => (
+    <Harness {...args} providers={[commands]} />
+  ),
+  play: async ({ canvasElement }) => {
+    const { dialog, input } = await openBar(canvasElement);
+    await userEvent.type(input, 'invite');
+
+    const row = await within(dialog).findByRole('option', {
+      name: /Invite a team member/,
+    });
+    // Modifiers come from user-event's keyboard state, and only a `setup()`
+    // instance keeps that state across calls — the direct API resets between
+    // them, which would send an ordinary click.
+    const user = userEvent.setup();
+    await user.keyboard('{Control>}');
+    await user.click(row);
+    await user.keyboard('{/Control}');
+
+    // The surface callback never fired, so nothing navigated in-app; the link
+    // kept its default, which is the browser's to act on.
     await expect(
-      within(canvasElement).getByTestId('activation-log').textContent,
-    ).toContain('/team/tm_7/members');
+      navigationsIn(canvasElement).filter((entry) =>
+        entry.startsWith('surface'),
+      ),
+    ).toEqual([]);
+    await expect(
+      within(document.body).getByRole('dialog', { name: labels.dialog }),
+    ).toBeVisible();
   },
 };

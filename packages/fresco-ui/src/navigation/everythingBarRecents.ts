@@ -24,6 +24,9 @@ export type EverythingBarRecentRef = { providerId: string; itemId: string };
 
 export const DEFAULT_RECENTS_LIMIT = 5;
 
+/** Stable, so clearing an already-empty list re-renders nothing. */
+const NO_ENTRIES: EverythingBarEntry[] = [];
+
 /** Recents are a convenience: unreadable storage yields no recents, never an error. */
 function getStorage(): Storage | null {
   try {
@@ -151,18 +154,21 @@ export function useEverythingBarRecents({
   storageKey: string;
   limit?: number;
 }) {
-  const [entries, setEntries] = useState<EverythingBarEntry[]>([]);
+  const [entries, setEntries] = useState<EverythingBarEntry[]>(NO_ENTRIES);
   const providersRef = useRef(providers);
   providersRef.current = providers;
 
   useEffect(() => {
+    // Nothing survives a close, and nothing survives into a new resolution.
+    // A reference is only ever rendered from a resolution that has just
+    // succeeded against current permissions — holding the last one would show
+    // labels of entities since renamed, and links into places the researcher
+    // may since have lost, for as long as the new resolution takes.
+    setEntries(NO_ENTRIES);
     if (!open) return undefined;
 
     const refs = readRecents(storageKey).slice(0, limit);
-    if (refs.length === 0) {
-      setEntries([]);
-      return undefined;
-    }
+    if (refs.length === 0) return undefined;
 
     let cancelled = false;
     const resolveAll = async () => {

@@ -124,6 +124,12 @@ export type EverythingBarLabels = {
  * Every prop must reach the rendered element: `id`, `role` and `aria-selected`
  * are what make the row an option the combobox can point
  * `aria-activedescendant` at.
+ *
+ * `onClick` must run BEFORE the link performs its own navigation, and that
+ * navigation must be skipped when `event.defaultPrevented` — which is what
+ * every router's `Link` already does. The bar relies on it for an `open`
+ * activation, where the consumer's `onOpenSurface` performs the one navigation
+ * and the link's plain navigation to the same route must not race it.
  */
 export type EverythingBarLinkRenderProps = {
   'href': string;
@@ -143,6 +149,13 @@ export type EverythingBarProps = {
   /**
    * The sources the bar searches. Providers own what exists and whether the
    * researcher may see it.
+   *
+   * Hold each provider in a stable reference (a module constant, a `useMemo`)
+   * and re-create it exactly when what it can see changes — permissions, the
+   * current study or team. Replacing a provider object refetches, which is
+   * what keeps a previous context's results off the screen; a provider
+   * re-created on every render would therefore search on every render. The
+   * array around them is free to be a fresh literal.
    */
   providers: EverythingBarProvider[];
   labels: EverythingBarLabels;
@@ -348,14 +361,33 @@ export default function EverythingBar({
   }, [highlightKey, open, optionId]);
 
   const activateItem = useCallback(
-    (entry: EverythingBarEntry) => {
-      recents.record(entry.providerId, entry.item);
-      if (entry.item.activate.kind === 'open') {
-        onOpenSurface?.({
-          href: entry.item.activate.href,
-          surface: entry.item.activate.surface,
-        });
+    (entry: EverythingBarEntry, event: MouseEvent<HTMLElement>) => {
+      // A modifier or middle click is the browser's to handle: opening a
+      // result in a new tab is not an activation of this bar, so nothing is
+      // recorded, nothing is closed, and the link is left alone.
+      if (
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
       }
+
+      const { activate } = entry.item;
+      // An `open` activation is ONE navigation, performed by the consumer —
+      // it has to carry the surface with it. The link's own navigation to the
+      // same route would be a second one, racing it, and the plain arrival
+      // can win and drop the surface. Preventing the default is what makes
+      // `onOpenSurface` the single path; the `href` stays for link semantics,
+      // hover feedback, and the modifier clicks handled above.
+      if (activate.kind === 'open' && onOpenSurface) {
+        event.preventDefault();
+        onOpenSurface({ href: activate.href, surface: activate.surface });
+      }
+
+      recents.record(entry.providerId, entry.item);
       setOpen(false);
     },
     [onOpenSurface, recents, setOpen],
@@ -508,7 +540,7 @@ export default function EverythingBar({
         'role': 'option',
         'aria-selected': highlighted,
         'tabIndex': -1,
-        'onClick': () => activateItem(entry),
+        'onClick': (event) => activateItem(entry, event),
         'target': isExternal ? '_blank' : undefined,
         'rel': isExternal ? 'noreferrer' : undefined,
         'data-highlighted': highlighted ? '' : undefined,

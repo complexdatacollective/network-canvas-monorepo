@@ -1,9 +1,15 @@
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import type {
+  EverythingBarItem,
+  EverythingBarProvider,
+} from '../everythingBarModel';
 import {
   addRecent,
   parseRecents,
   readRecents,
+  useEverythingBarRecents,
   writeRecents,
   type EverythingBarRecentRef,
 } from '../everythingBarRecents';
@@ -118,5 +124,122 @@ describe('storage access', () => {
       getItem.mockRestore();
       setItem.mockRestore();
     }
+  });
+});
+
+describe('useEverythingBarRecents', () => {
+  const key = 'fresco-ui:everything-bar:reopen';
+
+  const item: EverythingBarItem = {
+    id: 'team:tm_7:activity',
+    group: 'go-to',
+    label: 'Activity log',
+    rank: { tier: 1 },
+    activate: { kind: 'navigate', href: '/team/tm_7/activity' },
+  };
+
+  /** A provider whose `resolve` the test settles by hand. */
+  function createProvider() {
+    let settle: (value: EverythingBarItem | null) => void = () => undefined;
+    const provider: EverythingBarProvider = {
+      id: 'destinations',
+      local: true,
+      persistence: 'recents',
+      items: () => [item],
+      resolve: () =>
+        new Promise<EverythingBarItem | null>((resolve) => {
+          settle = resolve;
+        }),
+    };
+    return {
+      provider,
+      settle: (value: EverythingBarItem | null) => settle(value),
+    };
+  }
+
+  it('renders nothing until the CURRENT resolution succeeds, on every open', async () => {
+    window.localStorage.setItem(
+      key,
+      JSON.stringify([{ providerId: 'destinations', itemId: item.id }]),
+    );
+    const first = createProvider();
+
+    const { result, rerender } = renderHook(
+      ({
+        open,
+        provider,
+      }: {
+        open: boolean;
+        provider: EverythingBarProvider;
+      }) =>
+        useEverythingBarRecents({
+          providers: [provider],
+          open,
+          storageKey: key,
+        }),
+      { initialProps: { open: true, provider: first.provider } },
+    );
+
+    expect(result.current.entries).toEqual([]);
+    await act(async () => {
+      first.settle(item);
+    });
+    await waitFor(() => expect(result.current.entries).toHaveLength(1));
+
+    rerender({ open: false, provider: first.provider });
+    expect(result.current.entries).toEqual([]);
+
+    // Reopening with the resolution still in flight must show nothing at all:
+    // the previous resolution's row is exactly the stale, still-clickable
+    // label this guards against.
+    const second = createProvider();
+    rerender({ open: true, provider: second.provider });
+    expect(result.current.entries).toEqual([]);
+
+    // …and the entry appears again only once THIS resolution answers.
+    await act(async () => {
+      second.settle(item);
+    });
+    await waitFor(() => expect(result.current.entries).toHaveLength(1));
+  });
+
+  it('drops an entry the provider no longer resolves, without rendering it first', async () => {
+    window.localStorage.setItem(
+      key,
+      JSON.stringify([{ providerId: 'destinations', itemId: item.id }]),
+    );
+    const granted = createProvider();
+
+    const { result, rerender } = renderHook(
+      ({
+        open,
+        provider,
+      }: {
+        open: boolean;
+        provider: EverythingBarProvider;
+      }) =>
+        useEverythingBarRecents({
+          providers: [provider],
+          open,
+          storageKey: key,
+        }),
+      { initialProps: { open: true, provider: granted.provider } },
+    );
+
+    await act(async () => {
+      granted.settle(item);
+    });
+    await waitFor(() => expect(result.current.entries).toHaveLength(1));
+
+    rerender({ open: false, provider: granted.provider });
+    const revoked = createProvider();
+    rerender({ open: true, provider: revoked.provider });
+
+    expect(result.current.entries).toEqual([]);
+    await act(async () => {
+      revoked.settle(null);
+    });
+    await waitFor(() => expect(readRecents(key)).toEqual([]));
+    expect(result.current.entries).toEqual([]);
   });
 });
