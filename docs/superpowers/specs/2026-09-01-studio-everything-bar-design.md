@@ -264,7 +264,11 @@ type EverythingBarItem = {
 type EverythingBarProvider = {
   id: string;
   local: boolean;             // synchronous filter vs debounced fetch
-  search(query: string, signal: AbortSignal): Promise<EverythingBarItem[]>;
+  search(
+    query: string,
+    signal: AbortSignal,
+    cursor?: string,          // continuation from a previous result's `next`
+  ): Promise<{ items: EverythingBarItem[]; next?: string }>;
   empty?(signal: AbortSignal): Promise<EverythingBarItem[]>;
 } & (
   | {
@@ -291,9 +295,17 @@ same reason: a sensitive provider that forgot to mark one participant row
 would otherwise leak an identifying label into `localStorage`. A provider
 declared `'never'` has no per-item escape hatch.
 
+Continuation flows through the seam: a provider with more than one bounded
+page returns `next`, the component renders that group's "show more"
+affordance (§3.4), and activating it calls `search` again with the cursor —
+the Studio providers pass it straight through to their procedures'
+`cursor`/`nextCursor` (§5.4, §5.5). Local providers simply omit `next`.
+Appended pages obey selection stability (invariant 4).
+
 The component owns matching for local providers (case- and diacritic-folded
-substring and initials matching), the keyboard model, grouping, bounds, and
-recents. Providers own what exists and whether the researcher may see it.
+substring and initials matching), the keyboard model, grouping, bounds,
+pagination, and recents. Providers own what exists and whether the researcher
+may see it.
 
 ### 5.2 The navigation manifest
 
@@ -639,6 +651,10 @@ foundations work (#1315).
   restores focus; reduced-motion path renders without transitions.
 - Matching: diacritic folding, initials, index-mapped highlight on non-Latin
   labels.
+- Pagination: a provider returning `next` renders its group's "show more"
+  affordance; activating it calls `search` with the cursor and appends the
+  page without moving the highlighted item; a provider omitting `next`
+  renders no affordance.
 
 ### 12.2 Studio integration tests
 
