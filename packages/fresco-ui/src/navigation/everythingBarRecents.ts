@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { EverythingBarEntry } from './everythingBarMerge';
 import {
+  providerSetKey,
   qualifiedKey,
   type EverythingBarItem,
   type EverythingBarProvider,
@@ -157,6 +158,11 @@ export function useEverythingBarRecents({
   const [entries, setEntries] = useState<EverythingBarEntry[]>(NO_ENTRIES);
   const providersRef = useRef(providers);
   providersRef.current = providers;
+  // Recents are resolved BY the providers, so a provider swap invalidates a
+  // resolution exactly as it invalidates a search: the rows on screen were
+  // answered by sources that no longer exist, under permissions that may no
+  // longer hold. Same identity key, so the two cannot disagree.
+  const providerKey = providerSetKey(providers);
 
   useEffect(() => {
     // Nothing survives a close, and nothing survives into a new resolution.
@@ -192,9 +198,11 @@ export function useEverythingBarRecents({
     void resolveAll();
 
     return () => {
+      // Whatever the previous provider set had in flight is answered by
+      // sources this bar no longer has: it must never land.
       cancelled = true;
     };
-  }, [open, storageKey, limit]);
+  }, [open, storageKey, limit, providerKey]);
 
   const record = useCallback(
     (providerId: string, item: EverythingBarItem) => {

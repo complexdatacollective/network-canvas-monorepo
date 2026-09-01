@@ -19,6 +19,7 @@ import {
 import {
   EVERYTHING_BAR_GROUPS,
   isRemoteProvider,
+  providerSetKey,
   qualifiedKey,
   type EverythingBarGroup,
   type EverythingBarItem,
@@ -209,28 +210,6 @@ type GroupDerivation = {
 
 type Derivation = Partial<Record<EverythingBarGroup, GroupDerivation>>;
 
-/**
- * A stable token per provider OBJECT, so the search effect can key on provider
- * IDENTITY rather than on provider ids.
- *
- * Ids are not enough: a consumer re-creates its providers when the context
- * they close over changes — permissions, the current study, the current team —
- * and those replacements keep their ids. Keying on ids alone leaves the last
- * context's results on screen, still activatable. Keying on the objects
- * refetches exactly when the sources actually changed.
- */
-const providerTokens = new WeakMap<EverythingBarProvider, number>();
-let lastProviderToken = 0;
-
-function providerToken(provider: EverythingBarProvider): number {
-  const existing = providerTokens.get(provider);
-  if (existing !== undefined) return existing;
-
-  lastProviderToken += 1;
-  providerTokens.set(provider, lastProviderToken);
-  return lastProviderToken;
-}
-
 function entriesOf({
   providerId,
   items,
@@ -303,7 +282,7 @@ export function useEverythingBarResults({
   const remoteProviders = providers.filter(isRemoteProvider);
   // Identity, not id. The array itself may be a fresh literal on every render;
   // only the provider objects inside it need stable references.
-  const remoteKey = remoteProviders.map(providerToken).join(' ');
+  const remoteKey = providerSetKey(remoteProviders);
   const compare = useMemo(() => createEntryComparator(locale), [locale]);
 
   const findRemoteProvider = useCallback((providerId: string) => {
@@ -372,7 +351,20 @@ export function useEverythingBarResults({
 
   useEffect(() => {
     if (!open) {
-      setCommittedQuery('');
+      // Closing ends the session's results. Keeping them would paint the
+      // previous session's rows on the first frame of the next open — the
+      // remote half reads as in sync there, so the stale items render before
+      // this effect can reset them. Bumping the generation in the same breath
+      // discards any response the closed session had already been handed by
+      // the network.
+      //
+      // The committed query is deliberately left alone: the bar's own close
+      // clears the query, and an app that closes the bar by flipping `open`
+      // does not — dropping the committed value there would leave a reopened
+      // bar showing a query it never searched for.
+      const closing = generationRef.current + 1;
+      generationRef.current = closing;
+      dispatch({ type: 'reset', generation: closing, providers: [] });
       return undefined;
     }
 

@@ -146,6 +146,37 @@ export function qualifiedKey(providerId: string, itemId: string): string {
   return `${providerId}:${itemId}`;
 }
 
+/**
+ * A stable token per provider OBJECT, so an effect can key on provider
+ * IDENTITY rather than on provider ids.
+ *
+ * Ids are not enough: a consumer re-creates its providers when the context
+ * they close over changes — permissions, the current study, the current team —
+ * and those replacements keep their ids. Keying on ids alone leaves the last
+ * context's results and recents on screen, still activatable. Keying on the
+ * objects invalidates exactly when the sources actually changed, and a stable
+ * provider re-rendered inside a fresh array literal keeps its token.
+ *
+ * Shared by every part of the bar that has to notice a provider swap, so they
+ * cannot disagree about what counts as a change.
+ */
+const providerTokens = new WeakMap<EverythingBarProvider, number>();
+let lastProviderToken = 0;
+
+function providerToken(provider: EverythingBarProvider): number {
+  const existing = providerTokens.get(provider);
+  if (existing !== undefined) return existing;
+
+  lastProviderToken += 1;
+  providerTokens.set(provider, lastProviderToken);
+  return lastProviderToken;
+}
+
+/** Identity key for a set of providers, in order. */
+export function providerSetKey(providers: EverythingBarProvider[]): string {
+  return providers.map(providerToken).join(' ');
+}
+
 export function isRemoteProvider(
   provider: EverythingBarProvider,
 ): provider is EverythingBarRemoteProvider {

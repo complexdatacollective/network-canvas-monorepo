@@ -138,6 +138,12 @@ describe('useEverythingBarRecents', () => {
     activate: { kind: 'navigate', href: '/team/tm_7/activity' },
   };
 
+  /** Same reference, different label: proves WHICH resolution rendered. */
+  const renamed: EverythingBarItem = {
+    ...item,
+    label: 'Activity log (2027)',
+  };
+
   /** A provider whose `resolve` the test settles by hand. */
   function createProvider() {
     let settle: (value: EverythingBarItem | null) => void = () => undefined;
@@ -201,6 +207,84 @@ describe('useEverythingBarRecents', () => {
       second.settle(item);
     });
     await waitFor(() => expect(result.current.entries).toHaveLength(1));
+  });
+
+  it('re-resolves when a provider object is replaced while the bar is open', async () => {
+    window.localStorage.setItem(
+      key,
+      JSON.stringify([{ providerId: 'destinations', itemId: item.id }]),
+    );
+    const before = createProvider();
+
+    const { result, rerender } = renderHook(
+      ({
+        open,
+        provider,
+      }: {
+        open: boolean;
+        provider: EverythingBarProvider;
+      }) =>
+        useEverythingBarRecents({
+          providers: [provider],
+          open,
+          storageKey: key,
+        }),
+      { initialProps: { open: true, provider: before.provider } },
+    );
+
+    await act(async () => {
+      before.settle(item);
+    });
+    await waitFor(() => expect(result.current.entries).toHaveLength(1));
+
+    // The app rebuilt its providers — permissions or the current team changed
+    // — without closing the bar. The rows on screen were answered by sources
+    // that no longer exist, so they go, and the new sources are asked.
+    const after = createProvider();
+    rerender({ open: true, provider: after.provider });
+    expect(result.current.entries).toEqual([]);
+
+    await act(async () => {
+      after.settle(renamed);
+    });
+    await waitFor(() =>
+      expect(result.current.entries[0]?.item.label).toBe('Activity log (2027)'),
+    );
+  });
+
+  it('never lets a resolution from a replaced provider land', async () => {
+    window.localStorage.setItem(
+      key,
+      JSON.stringify([{ providerId: 'destinations', itemId: item.id }]),
+    );
+    const stale = createProvider();
+
+    const { result, rerender } = renderHook(
+      ({ provider }: { provider: EverythingBarProvider }) =>
+        useEverythingBarRecents({
+          providers: [provider],
+          open: true,
+          storageKey: key,
+        }),
+      { initialProps: { provider: stale.provider } },
+    );
+
+    // Swap providers with the first resolution still in flight, then answer it
+    // late: it belongs to a provider set this bar no longer has.
+    const current = createProvider();
+    rerender({ provider: current.provider });
+    await act(async () => {
+      stale.settle(item);
+    });
+
+    expect(result.current.entries).toEqual([]);
+
+    await act(async () => {
+      current.settle(renamed);
+    });
+    await waitFor(() =>
+      expect(result.current.entries[0]?.item.label).toBe('Activity log (2027)'),
+    );
   });
 
   it('drops an entry the provider no longer resolves, without rendering it first', async () => {
