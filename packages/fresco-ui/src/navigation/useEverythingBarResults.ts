@@ -73,6 +73,13 @@ type ProviderState = {
 
 type ResultsState = {
   generation: number;
+  /**
+   * The provider set these results belong to. Recorded so the RENDER can tell
+   * whose answers it is holding: a provider swap is visible to the render one
+   * commit before the effect that reacts to it, and rows answered by the
+   * previous authorization context must not paint in that gap.
+   */
+  providerKey: string;
   providers: Record<string, ProviderState>;
   /** Rows revealed per group; absent means the default bound. */
   revealed: Partial<Record<EverythingBarGroup, number>>;
@@ -84,6 +91,7 @@ type ResultsAction =
   | {
       type: 'reset';
       generation: number;
+      providerKey: string;
       providers: Array<{ id: string; pending: boolean }>;
     }
   | {
@@ -111,6 +119,7 @@ type ResultsAction =
 
 const INITIAL_STATE: ResultsState = {
   generation: 0,
+  providerKey: '',
   providers: {},
   revealed: {},
   awaiting: {},
@@ -123,6 +132,7 @@ function resultsReducer(
   if (action.type === 'reset') {
     return {
       generation: action.generation,
+      providerKey: action.providerKey,
       providers: Object.fromEntries(
         action.providers.map(({ id, pending }) => [
           id,
@@ -209,6 +219,18 @@ type GroupDerivation = {
 };
 
 type Derivation = Partial<Record<EverythingBarGroup, GroupDerivation>>;
+
+/**
+ * Whether a search effect would ask this provider for the given committed
+ * query. Shared by the effect that asks and by the render that has to predict
+ * what the imminent reset will produce, so the two cannot drift.
+ */
+function willBeAsked(
+  provider: EverythingBarRemoteProvider,
+  trimmedQuery: string,
+): boolean {
+  return trimmedQuery !== '' || provider.empty !== undefined;
+}
 
 function entriesOf({
   providerId,
@@ -364,7 +386,12 @@ export function useEverythingBarResults({
       // bar showing a query it never searched for.
       const closing = generationRef.current + 1;
       generationRef.current = closing;
-      dispatch({ type: 'reset', generation: closing, providers: [] });
+      dispatch({
+        type: 'reset',
+        generation: closing,
+        providerKey: '',
+        providers: [],
+      });
       return undefined;
     }
 
@@ -376,13 +403,14 @@ export function useEverythingBarResults({
 
     const remote = providersRef.current.filter(isRemoteProvider);
     const trimmed = committedQuery.trim();
-    const requested = remote.filter(
-      (provider) => trimmed !== '' || provider.empty !== undefined,
+    const requested = remote.filter((provider) =>
+      willBeAsked(provider, trimmed),
     );
 
     dispatch({
       type: 'reset',
       generation,
+      providerKey: remoteKey,
       providers: remote.map((provider) => ({
         id: provider.id,
         pending: requested.includes(provider),
@@ -406,6 +434,27 @@ export function useEverythingBarResults({
   // previous question's answers under this one.
   const remoteInSync = remoteIsEmptyQuery === isEmptyQuery;
 
+  // The render's own view of each remote provider's results.
+  //
+  // `state.providers` is keyed by provider id, so after a provider object is
+  // swapped for another with the same id, the recorded results are the OLD
+  // object's — and the reset that clears them only lands in the effect, a
+  // commit later. Rather than race that effect, the render refuses to read
+  // results recorded for a different provider set, and stands in exactly the
+  // state the imminent reset will write. Stale-context rows are then not
+  // representable in render output, and the frame before the effect is
+  // identical to the frame after it.
+  const remoteStateIsCurrent = state.providerKey === remoteKey;
+  const remoteStateOf = (
+    provider: EverythingBarRemoteProvider,
+  ): ProviderState =>
+    (remoteStateIsCurrent ? state.providers[provider.id] : undefined) ?? {
+      status: willBeAsked(provider, committedQuery.trim())
+        ? 'pending'
+        : 'ready',
+      items: [],
+    };
+
   const localEntries: EverythingBarEntry[] = [];
   for (const provider of providers) {
     if (!provider.local) continue;
@@ -423,8 +472,7 @@ export function useEverythingBarResults({
   const remoteEntries: EverythingBarEntry[] = [];
   if (remoteInSync) {
     for (const provider of remoteProviders) {
-      const providerState = state.providers[provider.id];
-      if (!providerState) continue;
+      const providerState = remoteStateOf(provider);
       remoteEntries.push(
         ...entriesOf({
           providerId: provider.id,
@@ -445,9 +493,7 @@ export function useEverythingBarResults({
     if (provider.groups && provider.groups.length > 0) return provider.groups;
 
     const delivered = [
-      ...new Set(
-        (state.providers[provider.id]?.items ?? []).map((i) => i.group),
-      ),
+      ...new Set(remoteStateOf(provider).items.map((i) => i.group)),
     ];
     if (delivered.length > 0) {
       seenGroupsRef.current[provider.id] = delivered;
@@ -481,8 +527,8 @@ export function useEverythingBarResults({
 
     const frontiers: EverythingBarFrontier[] = [];
     for (const provider of remoteProviders) {
-      const providerState = state.providers[provider.id];
-      if (providerState?.next === undefined) continue;
+      const providerState = remoteStateOf(provider);
+      if (providerState.next === undefined) continue;
       if (providerState.status === 'error') continue;
       const delivered = merged.filter(
         (entry) => entry.providerId === provider.id,
@@ -520,8 +566,7 @@ export function useEverythingBarResults({
   > = {};
 
   for (const provider of remoteProviders) {
-    const providerState = state.providers[provider.id];
-    if (!providerState) continue;
+    const providerState = remoteStateOf(provider);
     const isPending = providerState.status === 'pending' || !remoteInSync;
     const isFailed = providerState.status === 'error' && remoteInSync;
     if (!isPending && !isFailed) continue;

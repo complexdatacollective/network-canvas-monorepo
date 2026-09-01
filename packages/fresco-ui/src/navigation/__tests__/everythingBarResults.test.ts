@@ -177,6 +177,58 @@ describe('useEverythingBarResults session isolation', () => {
     );
   });
 
+  it("never paints a replaced provider's results, not even for one frame", async () => {
+    const before = createSettleableProvider();
+    // Every render is recorded, because the frame this guards against is the
+    // one BEFORE the effect reacts to the swap: asserting on settled state
+    // alone would step straight over it.
+    const frames: string[][] = [];
+
+    const { rerender } = renderHook(
+      ({ providers }: { providers: EverythingBarProvider[] }) => {
+        const results = useEverythingBarResults({
+          providers,
+          open: true,
+          query: 'panel',
+          recents: [],
+          debounceMs: 0,
+        });
+        frames.push(rowLabels(results.sections));
+        return results;
+      },
+      { initialProps: { providers: [before.provider] } },
+    );
+
+    await waitFor(() => expect(before.calls.length).toBeGreaterThan(0));
+    await act(async () => {
+      before.settle({ items: [item] });
+    });
+    await waitFor(() => expect(frames.at(-1)).toEqual([item.label]));
+
+    // The app rebuilt its providers mid-session — permissions, or the current
+    // team, changed. The recorded results are still keyed by the same provider
+    // id, so nothing but the render gate stops them painting.
+    const swapAt = frames.length;
+    const after = createSettleableProvider();
+    rerender({ providers: [after.provider] });
+
+    expect(frames.slice(swapAt)).not.toEqual([]);
+    for (const frame of frames.slice(swapAt)) {
+      expect(frame).toEqual([]);
+    }
+
+    // …and the new context's own answer renders normally.
+    await waitFor(() => expect(after.calls.length).toBeGreaterThan(0));
+    await act(async () => {
+      after.settle({
+        items: [{ ...item, label: 'Answered by the new context' }],
+      });
+    });
+    await waitFor(() =>
+      expect(frames.at(-1)).toEqual(['Answered by the new context']),
+    );
+  });
+
   it('discards a response the network hands over after the bar closed', async () => {
     const provider = createSettleableProvider();
 
