@@ -416,8 +416,11 @@ switcher's visibility. It is not an additional round trip: the route cannot
 render without it.
 
 Better Auth's active organization is reconciled to `team.id` as a side effect,
-reusing the existing `authClient.organization.setActive({ organizationId: team.id }, { disableSignal: true })`
-+ `refetchActiveTeam()` / `refetchActiveMember()` reconciliation pattern from `TeamWorkspace`.
+reusing the pattern `TeamWorkspace` established: `organization.setActive` with
+`disableSignal: true`, because Better Auth otherwise schedules an overlapping
+delayed refresh of its own, followed by settling both `refetchActiveTeam` and
+`refetchActiveMember` so exactly one refresh path is authoritative. Active team
+remains unused as an authorization input.
 
 ### 6.4 Landing destination
 
