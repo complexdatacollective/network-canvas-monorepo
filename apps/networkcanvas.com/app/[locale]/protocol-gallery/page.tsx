@@ -1,15 +1,17 @@
-import { BookOpenText } from 'lucide-react';
 import type { Metadata } from 'next';
 import { hasLocale } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import type { ReactNode } from 'react';
 
+import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Footer } from '~/components/layout/Footer';
 import { Header } from '~/components/layout/Header';
 import { ProtocolGallery } from '~/components/protocol-gallery/ProtocolGallery';
 import { HomepagePageBackground } from '~/components/ui/HomepagePageBackground';
+import { contactEmail } from '~/lib/content';
 import { routing } from '~/lib/i18n/routing';
 import { loadProtocolGallery } from '~/lib/protocolGallery';
 
@@ -45,6 +47,14 @@ export async function generateMetadata({
   };
 }
 
+function renderContactLink(chunks: ReactNode) {
+  return (
+    <NativeLink href={`mailto:${contactEmail}`} className="font-bold">
+      {chunks}
+    </NativeLink>
+  );
+}
+
 export default async function ProtocolGalleryPage({
   params,
 }: ProtocolGalleryPageProps) {
@@ -76,14 +86,20 @@ export default async function ProtocolGalleryPage({
           <Paragraph
             intent="lead"
             margin="none"
-            className="text-text/75 mx-auto mt-6 max-w-3xl text-lg text-pretty"
+            className="text-text/75 mt-6 text-lg text-pretty"
           >
             {t('intro.introduction')}
           </Paragraph>
-          <div className="font-heading text-primary mt-7 inline-flex items-center gap-2 font-black">
-            <BookOpenText aria-hidden className="size-5" />
-            {t('intro.count', { count: protocols.length })}
-          </div>
+          <Paragraph
+            intent="lead"
+            margin="none"
+            className="text-text/75 mt-3 text-lg text-pretty"
+          >
+            {t.rich('intro.submission', {
+              address: contactEmail,
+              email: renderContactLink,
+            })}
+          </Paragraph>
         </div>
       </div>
 

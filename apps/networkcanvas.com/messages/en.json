@@ -165,7 +165,7 @@
     "intro": {
       "heading": "Protocol Gallery",
       "introduction": "Explore protocols shared by researchers using Network Canvas. Review how each study was designed, download its codebook and protocol, or open it in Fresco.",
-      "count": "{count, plural, =1 {# shared protocol} other {# shared protocols}}",
+      "submission": "If you have developed a Network Canvas protocol and would like it included, email us at <email>{address}</email>.",
       "featured": "Featured protocol",
       "exploreFeatured": "Explore {title}",
       "viewFeatured": "Explore featured protocol"
