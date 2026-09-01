@@ -15,6 +15,7 @@ import type { contract } from '@codaco/studio-rpc';
 
 import { registerStudioEditorSession } from '../../editor/sessionLifecycle.ts';
 import { authClient } from '../../lib/auth.ts';
+import { reportUnauthorizedResponse } from '../../lib/session.ts';
 import { createAppRouter } from '../../router.tsx';
 
 vi.mock('../../lib/auth.ts', () => ({
@@ -88,6 +89,8 @@ const SESSION = {
   session: { id: 'session-1' },
 };
 
+const INVITATION_ID = '00000000-0000-4000-8000-000000000123';
+
 const signedIn = { data: SESSION, error: null } as unknown as GetSessionResult;
 const signedOut = { data: null, error: null } as unknown as GetSessionResult;
 const sessionLive = {
@@ -102,10 +105,13 @@ const sessionNone = {
 } as unknown as UseSessionResult;
 
 function renderWithClientAt(path: string) {
+  // One client behind both the router's guards and the components: the
+  // session guard reads what a component's `queryClient.clear()` removes.
+  const queryClient = new QueryClient();
   const router = createAppRouter(
     createMemoryHistory({ initialEntries: [path] }),
+    queryClient,
   );
-  const queryClient = new QueryClient();
   const view = render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
@@ -164,6 +170,26 @@ describe('route guard', () => {
     expect(router.state.location.pathname).toBe('/');
   });
 
+  it('leaves a visitor on the sign-in page when the server cannot be reached', async () => {
+    // The app branch turns "we could not ask" into the error screen, because a
+    // researcher who may still be signed in must not be bounced out. The
+    // sign-in page's guard asks a different question — "are you already signed
+    // in?" — and not knowing the answer is no reason to take the page away
+    // from someone who came here to sign in, which is what letting
+    // ServerUnreachableError out of this guard would do.
+    mocked.getSession.mockRejectedValue(new Error('network down'));
+    const router = renderAt('/sign-in');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: 'Sign in' }),
+      ).toBeInTheDocument(),
+    );
+    expect(router.state.location.pathname).toBe('/sign-in');
+    expect(
+      screen.queryByText(/The server could not be reached/),
+    ).not.toBeInTheDocument();
+  });
+
   it('sends a visitor to sign-in, not the error screen, when auth is switched off', async () => {
     mocked.getSession.mockResolvedValue({
       data: null,
@@ -180,6 +206,48 @@ describe('route guard', () => {
       ).toBeInTheDocument(),
     );
     expect(router.state.location.pathname).toBe('/sign-in');
+  });
+
+  it('asks the auth endpoint once, however many times the tree is entered', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    mocked.useSession.mockReturnValue(sessionLive);
+    const router = renderAt('/');
+    await screen.findByText(/Signed in as Researcher/);
+    expect(mocked.getSession).toHaveBeenCalledTimes(1);
+
+    // Out of the authenticated tree and back into it, twice. Every entry runs
+    // the app branch's guard; only the first costs a request, because the
+    // guard reads one query rather than probing per navigation.
+    for (const _visit of [1, 2]) {
+      await act(() =>
+        router.navigate({
+          to: '/invitations/$invitationId',
+          params: { invitationId: INVITATION_ID },
+        }),
+      );
+      await act(() => router.navigate({ to: '/' }));
+    }
+
+    await screen.findByText(/Signed in as Researcher/);
+    expect(mocked.getSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-asks the auth endpoint when a procedure refuses with 401', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    mocked.useSession.mockReturnValue(sessionLive);
+    const router = renderAt('/');
+    await screen.findByText(/Signed in as Researcher/);
+    expect(mocked.getSession).toHaveBeenCalledTimes(1);
+
+    // The cookie has gone; better-auth's own hook has not noticed yet, so the
+    // redirect below can only come from the 401 path re-running the guard.
+    mocked.getSession.mockResolvedValue(signedOut);
+    await act(() => reportUnauthorizedResponse());
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/sign-in'),
+    );
+    expect(mocked.getSession).toHaveBeenCalledTimes(2);
   });
 
   it('bounces an already-signed-in visitor off the sign-in page', async () => {

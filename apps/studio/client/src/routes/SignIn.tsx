@@ -19,7 +19,7 @@ import { authClient } from '../lib/auth.ts';
 import { studioEmailPattern } from '../lib/emailValidation.ts';
 import { GoogleIcon, MicrosoftIcon } from './ProviderIcons.tsx';
 
-const route = getRouteApi('/sign-in');
+const route = getRouteApi('/focused/sign-in');
 
 const PROVIDERS: Record<SocialProvider, { label: string; icon: ReactNode }> = {
   google: { label: 'Continue with Google', icon: <GoogleIcon /> },
