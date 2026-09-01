@@ -22,6 +22,10 @@ import {
   NodeColorSequence,
   NodeShapes,
 } from '@codaco/protocol-validation';
+import {
+  normalizeForComparison,
+  VariableNameSchema,
+} from '@codaco/shared-consts';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { CodebookSubject } from '../../protocol-context.ts';
@@ -96,9 +100,14 @@ const validateFields = (
   const errors: Partial<Record<keyof EntityFieldErrors, string>> = {};
   const name = stringValue(draft.name);
   if (name.trim() === '') errors.name = 'Enter a type name.';
-  else if (/[$[\]{}]/.test(name)) {
-    errors.name = 'The type name contains unsupported characters.';
-  } else if (existingEntityNames.includes(name)) {
+  else if (!VariableNameSchema.safeParse(name).success) {
+    errors.name = `Not a valid ${entityLabel(subject)} name. Only letters, numbers and the symbols ._-: are supported`;
+  } else if (
+    existingEntityNames.some(
+      (existingName) =>
+        normalizeForComparison(existingName) === normalizeForComparison(name),
+    )
+  ) {
     errors.name = `A type named "${name}" already exists.`;
   }
   if (stringValue(draft.color) === '') errors.color = 'Choose a color.';
@@ -244,16 +253,25 @@ type CommonEditorProps = Readonly<{
   onSubmit(
     request: CompoundEditRequest,
   ): Promise<CompoundEditResult> | CompoundEditResult;
-  onApplied?(result: Extract<CompoundEditResult, { status: 'applied' }>): void;
   onCancel?(): void;
 }>;
 
 export type CodebookEntityEditorProps = CommonEditorProps &
   (
-    | Readonly<{ mode: 'create'; authoritativeDocument?: never }>
+    | Readonly<{
+        mode: 'create';
+        authoritativeDocument?: never;
+        /** Completes navigation after a create, which has no document to reconcile. */
+        onApplied(
+          result: Extract<CompoundEditResult, { status: 'applied' }>,
+        ): void;
+      }>
     | Readonly<{
         mode: 'update';
         authoritativeDocument: SectionDoc;
+        onApplied?(
+          result: Extract<CompoundEditResult, { status: 'applied' }>,
+        ): void;
       }>
   );
 
@@ -270,7 +288,6 @@ export default function CodebookEntityEditor({
   existingEntityNames = [],
   readOnly = false,
   onSubmit,
-  onApplied,
   onCancel,
   ...modeProps
 }: CodebookEntityEditorProps) {
@@ -305,6 +322,7 @@ export default function CodebookEntityEditor({
 
   useEffect(() => {
     if (authoritativeDocument !== null) {
+      activeRequestId.current = null;
       session.receiveAuthoritative(authoritativeDocument);
     }
   }, [authoritativeDocument, session]);
@@ -350,7 +368,20 @@ export default function CodebookEntityEditor({
               }),
         onSubmit,
       );
-      if (result.status === 'applied') onApplied?.(result);
+      // A refreshed authority or content base changes the host fingerprint.
+      // Other failures keep the id stable so uncertain retries remain safe.
+      if (
+        result.status === 'failed' &&
+        (result.reason === 'stale-epoch' ||
+          result.reason === 'lease-lost' ||
+          result.reason === 'stale-base')
+      ) {
+        activeRequestId.current = null;
+      }
+      if (result.status === 'applied') {
+        if (modeProps.mode === 'create') modeProps.onApplied(result);
+        else modeProps.onApplied?.(result);
+      }
     } catch {
       // AuxiliaryCodebookDraftSession owns the visible failure and preserves
       // the draft. The submit handler must not close or reset the editor.

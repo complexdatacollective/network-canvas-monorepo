@@ -52,12 +52,17 @@ export function attributeValidationIssues(
         dependencySectionId === undefined
           ? undefined
           : changesAtRevision.get(dependencySectionId);
-      const causalChange =
-        ownerChange ??
-        (dependencySectionId !== undefined &&
-        dependencyAttribution !== undefined
+      const dependencyChange =
+        dependencySectionId !== undefined && dependencyAttribution !== undefined
           ? ([dependencySectionId, dependencyAttribution] as const)
-          : undefined);
+          : undefined;
+      const ambiguousCause =
+        ownerChange !== undefined &&
+        dependencyChange !== undefined &&
+        ownerChange[0] !== dependencyChange[0];
+      const causalChange = ambiguousCause
+        ? undefined
+        : (ownerChange ?? dependencyChange);
 
       return Object.freeze({
         code: issue.code,

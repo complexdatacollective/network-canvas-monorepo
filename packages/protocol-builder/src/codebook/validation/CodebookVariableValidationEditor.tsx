@@ -167,6 +167,11 @@ export default function CodebookVariableValidationEditor({
   }, [snapshot.lastFailure]);
 
   const draftVariable = variableFromDocument(snapshot.draft, variableId);
+  const authoritativeVariable = variableFromDocument(
+    authoritativeEntityDocument,
+    variableId,
+  );
+  const attributeUnavailable = authoritativeVariable === undefined;
   const variableType =
     draftVariable !== undefined && typeof draftVariable.type === 'string'
       ? draftVariable.type
@@ -176,6 +181,7 @@ export default function CodebookVariableValidationEditor({
   const variablesForValidation = useMemo(() => {
     if (
       draftVariable === undefined ||
+      attributeUnavailable ||
       Object.hasOwn(allSubjectVariables, variableId)
     ) {
       return allSubjectVariables;
@@ -184,9 +190,9 @@ export default function CodebookVariableValidationEditor({
       ...Object.entries(allSubjectVariables),
       [variableId, draftVariable],
     ]);
-  }, [allSubjectVariables, draftVariable, variableId]);
+  }, [allSubjectVariables, attributeUnavailable, draftVariable, variableId]);
   const issue =
-    draftVariable === undefined
+    attributeUnavailable || draftVariable === undefined
       ? 'The attribute no longer exists in this entity.'
       : (missingTargetIssue(validation, variablesForValidation) ??
         ruleMapIssue(validation, {
@@ -225,6 +231,14 @@ export default function CodebookVariableValidationEditor({
           replaceProperties: ['validation'],
         });
       }, onSubmitRequest);
+      if (
+        result.status === 'failed' &&
+        (result.reason === 'stale-epoch' ||
+          result.reason === 'lease-lost' ||
+          result.reason === 'stale-base')
+      ) {
+        activeRequestId.current = null;
+      }
       if (result.status === 'applied') onComplete?.(result);
     } catch {
       // The auxiliary session preserves the draft and exposes the failure.
@@ -252,7 +266,7 @@ export default function CodebookVariableValidationEditor({
             </Paragraph>
           </div>
 
-          {snapshot.authoritativeChanged && (
+          {snapshot.authoritativeChanged && !attributeUnavailable && (
             <Alert variant="warning" appearance="soft" density="compact">
               <AlertTitle>Newer codebook data is available</AlertTitle>
               <AlertDescription>
@@ -277,7 +291,7 @@ export default function CodebookVariableValidationEditor({
             </Alert>
           )}
 
-          {draftVariable === undefined ? (
+          {attributeUnavailable || draftVariable === undefined ? (
             <Alert variant="destructive" appearance="soft" density="compact">
               <AlertTitle>Attribute unavailable</AlertTitle>
               <AlertDescription>

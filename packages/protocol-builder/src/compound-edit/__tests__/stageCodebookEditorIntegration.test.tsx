@@ -16,6 +16,9 @@ import { InMemoryCompoundHost } from '../InMemoryCompoundHost.ts';
 
 const stageSection = sectionId({ kind: 'stage', stageId: 'stage-1' });
 const placeSection = sectionId({ kind: 'codebookNode', typeId: 'place' });
+const settingsSection = sectionId({ kind: 'settings' });
+const stageOrderSection = sectionId({ kind: 'stageOrder' });
+const assetsSection = sectionId({ kind: 'assets' });
 const initialStage = {
   id: 'stage-1',
   type: 'Information',
@@ -23,6 +26,12 @@ const initialStage = {
   title: 'Welcome',
   items: [],
 } satisfies SectionDoc;
+const initialSections: Record<string, SectionDoc> = {
+  [settingsSection]: { name: 'Stage codebook integration', schemaVersion: 8 },
+  [stageOrderSection]: { stages: ['stage-1'] },
+  [stageSection]: initialStage,
+  [assetsSection]: {},
+};
 const holder: ProtocolBuilderPresence = {
   sessionId: 'stage-tab',
   userId: 'researcher',
@@ -34,7 +43,7 @@ const holder: ProtocolBuilderPresence = {
 describe('stage-owned codebook editor flow', () => {
   it('creates an entity and updates the edited stage through one atomic request', async () => {
     const host = new InMemoryCompoundHost({
-      protocolSections: { [stageSection]: initialStage },
+      protocolSections: initialSections,
       manifestRevision: { sequence: 1n, hash: 'revision-1' },
       leases: [
         {

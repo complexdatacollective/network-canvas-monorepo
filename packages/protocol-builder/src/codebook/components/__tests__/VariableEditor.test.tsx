@@ -366,6 +366,73 @@ describe('VariableEditor', () => {
     });
   });
 
+  it('uses a new intent id when authoritative data changes after a blocked submit', async () => {
+    const user = userEvent.setup();
+    const initialVariable = {
+      name: 'comment',
+      type: 'text',
+      component: 'Text',
+    } as const;
+    const remoteVariable = {
+      ...initialVariable,
+      component: 'TextArea',
+    } as const;
+    const createRequestId = vi
+      .fn<() => string>()
+      .mockReturnValueOnce('blocked-variable-intent')
+      .mockReturnValueOnce('rebased-variable-intent');
+    const onSubmitRequest = vi
+      .fn<(request: CompoundEditRequest) => CompoundEditResult>()
+      .mockReturnValueOnce({
+        status: 'blocked',
+        blockedSections: [{ sectionId: PERSON_SECTION }],
+      })
+      .mockReturnValueOnce(APPLIED);
+    const common = {
+      openId: 'edit-rebased-request',
+      mode: 'update' as const,
+      subject: SUBJECT,
+      variableId: 'comment',
+      description: 'Update comment',
+      createRequestId,
+      onSubmitRequest,
+      onComplete: () => undefined,
+    };
+    const { rerender } = render(
+      <VariableEditor
+        {...common}
+        authoritativeDocument={personDocument({ comment: initialVariable })}
+        initialDraft={initialVariable}
+      />,
+    );
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'localComment');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+    await screen.findByText('The edit is blocked', { exact: false });
+
+    const remoteDocument = personDocument({ comment: remoteVariable });
+    rerender(
+      <VariableEditor
+        {...common}
+        authoritativeDocument={remoteDocument}
+        initialDraft={initialVariable}
+      />,
+    );
+    expect(await screen.findByText('The codebook changed')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(2));
+    expect(onSubmitRequest.mock.calls.map(([request]) => request.id)).toEqual([
+      'blocked-variable-intent',
+      'rebased-variable-intent',
+    ]);
+    expect(onSubmitRequest.mock.calls[1]?.[0].edits[0]).toMatchObject({
+      expectedContentHash: contentHash(remoteDocument),
+    });
+  });
+
   it('blocks a dirty draft when the authoritative variable type changes remotely', async () => {
     const user = userEvent.setup();
     const initialVariable = {
@@ -584,6 +651,48 @@ describe('VariableEditor', () => {
       expect(
         screen.getByRole('button', { name: 'Create attribute' }),
       ).toBeEnabled();
+    },
+  );
+
+  it.each(['stale-epoch', 'lease-lost', 'stale-base'] as const)(
+    'uses a new intent id after the retry-invalidating %s failure',
+    async (reason) => {
+      const user = userEvent.setup();
+      const createRequestId = vi
+        .fn<() => string>()
+        .mockReturnValueOnce('stale-variable-intent')
+        .mockReturnValueOnce('refreshed-variable-intent');
+      const onSubmitRequest = vi
+        .fn<(request: CompoundEditRequest) => CompoundEditResult>()
+        .mockReturnValueOnce({
+          status: 'failed',
+          reason,
+          message: 'The request base changed.',
+        })
+        .mockReturnValueOnce(APPLIED);
+
+      render(
+        <VariableEditor
+          {...createProps({
+            initialDraft: { name: 'retriable', type: 'text' },
+            createRequestId,
+            onSubmitRequest,
+          })}
+        />,
+      );
+
+      await user.click(
+        screen.getByRole('button', { name: 'Create attribute' }),
+      );
+      await screen.findByText('The request base changed.', { exact: false });
+      await user.click(
+        screen.getByRole('button', { name: 'Create attribute' }),
+      );
+
+      await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(2));
+      expect(onSubmitRequest.mock.calls.map(([request]) => request.id)).toEqual(
+        ['stale-variable-intent', 'refreshed-variable-intent'],
+      );
     },
   );
 

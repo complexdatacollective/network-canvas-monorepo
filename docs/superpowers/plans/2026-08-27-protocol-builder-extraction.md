@@ -289,7 +289,7 @@ internally consistent stage-editor implementation during package development.
   tolerant protocol context, entity and variable request builders and UI,
   validation/role/contradiction semantics, auxiliary draft handling, validation
   attribution, atomic compound-edit fencing, and a deterministic in-memory
-  proof host. Its package suite currently covers 232 tests, including a real
+  proof host. Its package suite currently covers 252 tests, including a real
   stage-session UI flow that creates a codebook entity and changes the stage in
   one atomic revision; Architect's stage-editor host and Studio's production
   adapter remain deliberately unchanged.

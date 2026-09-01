@@ -497,11 +497,13 @@ const assertVariableNameAvailable = (
   variable: Variable,
   excludedVariableId?: string,
 ): void => {
+  const normalizedName = normalizeForComparison(variable.name);
   for (const [variableId, candidate] of Object.entries(variables)) {
     if (
       variableId !== excludedVariableId &&
       isRecord(candidate) &&
-      candidate.name === variable.name
+      typeof candidate.name === 'string' &&
+      normalizeForComparison(candidate.name) === normalizedName
     ) {
       throw new DuplicateVariableNameError(variable.name);
     }

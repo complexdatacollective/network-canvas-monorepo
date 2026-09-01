@@ -219,6 +219,38 @@ describe('codebook variable requests', () => {
     ).toThrow(DuplicateVariableNameError);
   });
 
+  it('rejects a normalized-equivalent name when creating a variable', () => {
+    expect(() =>
+      buildCreateVariableRequest({
+        requestId: 'request-canonical-duplicate-name',
+        description: 'Create attribute',
+        subject: SUBJECT,
+        authoritativeDocument: personDocument({
+          'existing-id': { name: 'Cafe', type: 'text' },
+        }),
+        variableId: 'new-id',
+        protocolContext: EMPTY_CONTEXT,
+        draft: { name: 'cafe', type: 'text' },
+      }),
+    ).toThrow(DuplicateVariableNameError);
+  });
+
+  it('rejects a case-equivalent name when renaming a variable', () => {
+    expect(() =>
+      buildUpdateVariableRequest({
+        requestId: 'request-case-duplicate-name',
+        description: 'Rename attribute',
+        subject: SUBJECT,
+        authoritativeDocument: personDocument({
+          edited: { name: 'height', type: 'number' },
+          existing: { name: 'Age', type: 'number' },
+        }),
+        variableId: 'edited',
+        draft: { name: 'age' },
+      }),
+    ).toThrow(DuplicateVariableNameError);
+  });
+
   it.each([
     {
       caseName: 'an incomplete row',

@@ -215,6 +215,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       return;
     }
     previousAuthoritativeDocument.current = authoritativeDocument;
+    activeRequestId.current = null;
     const authoritativeVariable = variableFromDocument(
       authoritativeDocument,
       variableId,
@@ -342,6 +343,14 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
 
     try {
       const result = await draftSession.submit(buildRequest, onSubmitRequest);
+      if (
+        result.status === 'failed' &&
+        (result.reason === 'stale-epoch' ||
+          result.reason === 'lease-lost' ||
+          result.reason === 'stale-base')
+      ) {
+        activeRequestId.current = null;
+      }
       if (result.status === 'applied') onComplete(variableId);
     } catch (error: unknown) {
       if (error instanceof InvalidCodebookDraftError) {

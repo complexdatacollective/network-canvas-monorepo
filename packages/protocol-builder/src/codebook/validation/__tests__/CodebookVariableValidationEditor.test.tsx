@@ -275,6 +275,41 @@ describe('CodebookVariableValidationEditor', () => {
     ]);
   });
 
+  it.each(['stale-epoch', 'lease-lost', 'stale-base'] as const)(
+    'uses a new intent id after the retry-invalidating %s failure',
+    async (reason) => {
+      const createId = vi
+        .fn<() => string>()
+        .mockReturnValueOnce('stale-validation-intent')
+        .mockReturnValueOnce('refreshed-validation-intent');
+      const onSubmitRequest = vi
+        .fn<(request: CompoundEditRequest) => CompoundEditResult>()
+        .mockReturnValueOnce({
+          status: 'failed',
+          reason,
+          message: 'The request base changed.',
+        })
+        .mockReturnValueOnce(appliedResult());
+      renderEditor({
+        requestMetadata: {
+          createId,
+          description: 'Update Age validation',
+        },
+        onSubmitRequest,
+      });
+      const user = await replaceMinimumValue('5');
+
+      await user.click(screen.getByRole('button', { name: 'Save validation' }));
+      await screen.findByText('The request base changed.');
+      await user.click(screen.getByRole('button', { name: 'Save validation' }));
+
+      await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(2));
+      expect(onSubmitRequest.mock.calls.map(([request]) => request.id)).toEqual(
+        ['stale-validation-intent', 'refreshed-validation-intent'],
+      );
+    },
+  );
+
   it('preserves a dirty draft but bases its request on a newer authoritative entity', async () => {
     const initial = entityDocument();
     const onSubmitRequest = vi.fn<
@@ -326,5 +361,47 @@ describe('CodebookVariableValidationEditor', () => {
         },
       ],
     });
+  });
+
+  it('blocks a dirty validation draft when the authoritative attribute was deleted remotely', async () => {
+    const initial = entityDocument();
+    const onSubmitRequest = vi.fn(() => appliedResult());
+    const { rerender, props } = renderEditor({
+      authoritativeEntityDocument: initial,
+      allSubjectVariables: variablesFrom(initial),
+      onSubmitRequest,
+    });
+    const user = await replaceMinimumValue('5');
+    const deleted = entityDocument();
+    delete variablesFrom(deleted).age;
+
+    rerender(
+      <CodebookVariableValidationEditor
+        {...props}
+        authoritativeEntityDocument={deleted}
+        allSubjectVariables={variablesFrom(deleted)}
+      />,
+    );
+
+    expect(await screen.findByText('Attribute unavailable')).toBeVisible();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'The latest entity data no longer contains this attribute.',
+    );
+    const save = screen.getByRole('button', { name: 'Save validation' });
+    expect(save).toBeDisabled();
+    await user.click(save);
+    expect(onSubmitRequest).not.toHaveBeenCalled();
+
+    const restored = entityDocument({ minValue: 2 });
+    rerender(
+      <CodebookVariableValidationEditor
+        {...props}
+        authoritativeEntityDocument={restored}
+        allSubjectVariables={variablesFrom(restored)}
+      />,
+    );
+    expect(
+      await screen.findByRole('spinbutton', { name: 'Minimum value' }),
+    ).toHaveValue(5);
   });
 });

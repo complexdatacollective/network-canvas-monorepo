@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
+import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
+import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import {
   sectionId,
   type ProtocolSectionId,
@@ -17,6 +19,14 @@ import {
 } from '../InMemoryCompoundHost.ts';
 
 const stageSection = sectionId({ kind: 'stage', stageId: 'stage-1' });
+const secondStageSection = sectionId({
+  kind: 'stage',
+  stageId: 'stage-2',
+});
+const formStageSection = sectionId({
+  kind: 'stage',
+  stageId: 'form-stage',
+});
 const personSection = sectionId({
   kind: 'codebookNode',
   typeId: 'person',
@@ -34,11 +44,20 @@ const stageOrderSection = sectionId({ kind: 'stageOrder' });
 const assetsSection = sectionId({ kind: 'assets' });
 
 const initialSections: Record<string, SectionDoc> = {
+  [settingsSection]: { name: 'Compound host test', schemaVersion: 8 },
+  [stageOrderSection]: { stages: ['stage-1', 'stage-2'] },
   [stageSection]: {
     id: 'stage-1',
     type: 'Information',
     label: 'Welcome',
     title: 'Welcome',
+    items: [],
+  },
+  [secondStageSection]: {
+    id: 'stage-2',
+    type: 'Information',
+    label: 'Closing',
+    title: 'Closing',
     items: [],
   },
   [personSection]: {
@@ -48,6 +67,7 @@ const initialSections: Record<string, SectionDoc> = {
     variables: {},
   },
   [edgeSection]: { name: 'Knows' },
+  [assetsSection]: {},
 };
 
 const primaryHolder = presence(
@@ -223,15 +243,68 @@ describe('InMemoryCompoundHost', () => {
     expect(compoundHost.getSnapshot()).toEqual(before);
   });
 
+  it('rejects a compound edit that breaks an untouched stage dependency', () => {
+    const personWithAge = {
+      ...initialSections[personSection],
+      variables: {
+        age: { name: 'Age', type: 'number', component: 'Number' },
+      },
+    } satisfies SectionDoc;
+    const authoritativeSections = {
+      ...initialSections,
+      [stageOrderSection]: {
+        stages: ['stage-1', 'stage-2', 'form-stage'],
+      },
+      [formStageSection]: {
+        id: 'form-stage',
+        type: 'AlterForm',
+        label: 'Person form',
+        subject: { entity: 'node', type: 'person' },
+        introductionPanel: { title: 'Questions', text: 'Answer these.' },
+        form: { fields: [{ variable: 'age', prompt: 'Age?' }] },
+      },
+      [personSection]: personWithAge,
+    } satisfies Record<string, SectionDoc>;
+    expect(
+      CurrentProtocolSchema.safeParse(
+        assembleProtocolSections(authoritativeSections),
+      ).success,
+    ).toBe(true);
+    const compoundHost = new InMemoryCompoundHost({
+      protocolSections: authoritativeSections,
+      manifestRevision: { sequence: 7n, hash: 'revision-7' },
+      leases: [lease(stageSection, 'owner-primary', 4n, primaryHolder)],
+    });
+    const before = compoundHost.getSnapshot();
+
+    const result = compoundHost.submit(
+      submission('delete-referenced-variable', [
+        {
+          kind: 'update',
+          sectionId: personSection,
+          expectedContentHash: contentHash(personWithAge),
+          commands: [{ op: 'set', key: 'variables', value: {} }],
+        },
+      ]),
+    );
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      reason: 'host-error',
+      sectionId: formStageSection,
+    });
+    expect(compoundHost.getSnapshot()).toEqual(before);
+  });
+
   it.each([
     {
       name: 'duplicate stage order',
       sectionId: stageOrderSection,
-      document: { stages: ['stage-1'] },
+      document: { stages: ['stage-1', 'stage-2'] },
       command: {
         op: 'set',
         key: 'stages',
-        value: ['stage-1', 'stage-1'],
+        value: ['stage-1', 'stage-1', 'stage-2'],
       },
     },
     {
@@ -303,13 +376,13 @@ describe('InMemoryCompoundHost', () => {
     {
       name: 'stage order',
       sectionId: stageOrderSection,
-      document: { stages: ['stage-1'] },
+      document: { stages: ['stage-1', 'stage-2'] },
       command: {
         op: 'set',
         key: 'stages',
-        value: ['stage-1', 'stage-2'],
+        value: ['stage-2', 'stage-1'],
       },
-      expectedDocument: { stages: ['stage-1', 'stage-2'] },
+      expectedDocument: { stages: ['stage-2', 'stage-1'] },
     },
     {
       name: 'assets',

@@ -136,6 +136,50 @@ describe('attributeValidationIssues', () => {
     });
   });
 
+  it('withholds attribution when owner and dependency both changed in the revision', () => {
+    const stageSection = sectionId({ kind: 'stage', stageId: 'stage-one' });
+    const personSection = sectionId({
+      kind: 'codebookNode',
+      typeId: 'person',
+    });
+    const currentRevision = revision(11n);
+
+    const [issue] = attributeValidationIssues(
+      [
+        {
+          code: 'custom',
+          path: ['stages', 0, 'form', 'fields', 0, 'variable'],
+          message: 'The attribute "age" does not exist in the codebook',
+        },
+      ],
+      {
+        stageOrder: { stages: ['stage-one'] },
+        [stageSection]: {
+          id: 'stage-one',
+          type: 'AlterForm',
+          label: 'People edited in the same revision',
+          subject: { entity: 'node', type: 'person' },
+          introductionPanel: { title: 'People', text: 'Answer questions.' },
+          form: { fields: [{ variable: 'age', prompt: 'Age?' }] },
+        },
+        [personSection]: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {},
+        },
+      },
+      {
+        [stageSection]: remoteChange(currentRevision),
+        [personSection]: remoteChange(currentRevision),
+      },
+      currentRevision,
+    );
+
+    expect(issue).toMatchObject({ sectionId: stageSection });
+    expect(issue).not.toHaveProperty('attributedChange');
+  });
+
   it('does not blame an unrelated sole change for a pre-existing stage issue', () => {
     const stageSection = sectionId({ kind: 'stage', stageId: 'stage-one' });
     const unrelatedSection = sectionId({

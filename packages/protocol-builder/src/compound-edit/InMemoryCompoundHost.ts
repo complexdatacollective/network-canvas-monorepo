@@ -13,8 +13,10 @@ import {
   manifestHash,
   type SectionDoc,
 } from '@codaco/studio-sync/apply';
+import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import {
   parseSectionId,
+  sectionId as protocolSectionId,
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
@@ -88,6 +90,11 @@ const SETTINGS_KEYS = new Set([
   'lastModified',
   'schemaVersion',
 ]);
+
+const settingsSectionId = protocolSectionId({ kind: 'settings' });
+const stageOrderSectionId = protocolSectionId({ kind: 'stageOrder' });
+const assetsSectionId = protocolSectionId({ kind: 'assets' });
+const egoSectionId = protocolSectionId({ kind: 'codebookEgo' });
 
 /**
  * A deterministic proof host for the protocol-builder compound-edit contract.
@@ -346,7 +353,92 @@ export const validateCanonicalChangedSections: InMemoryCompoundHostValidator = (
       throw new CompoundHostSectionError(sectionId, message);
     }
   }
+
+  validateCompleteCanonicalProtocol(protocolSections, changedSectionIds);
 };
+
+function validateCompleteCanonicalProtocol(
+  protocolSections: Readonly<Record<string, SectionDoc>>,
+  changedSectionIds: readonly ProtocolSectionId[],
+): void {
+  let protocol: Record<string, unknown>;
+  try {
+    protocol = assembleProtocolSections(protocolSections);
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : 'protocol assembly failed';
+    throw new CompoundHostSectionError(
+      sectionForAssemblyFailure(message, changedSectionIds),
+      message,
+    );
+  }
+
+  const result = CurrentProtocolSchema.safeParse(protocol);
+  if (result.success) return;
+
+  const issue = result.error.issues[0];
+  throw new CompoundHostSectionError(
+    sectionForProtocolIssue(
+      protocolSections,
+      issue?.path ?? [],
+      changedSectionIds,
+    ),
+    issue?.message ?? 'protocol validation failed',
+  );
+}
+
+function sectionForAssemblyFailure(
+  message: string,
+  changedSectionIds: readonly ProtocolSectionId[],
+): ProtocolSectionId {
+  if (message.includes('settings')) return settingsSectionId;
+  if (message.includes('stageOrder')) return stageOrderSectionId;
+  return changedSectionIds[0] ?? settingsSectionId;
+}
+
+function sectionForProtocolIssue(
+  protocolSections: Readonly<Record<string, SectionDoc>>,
+  path: readonly PropertyKey[],
+  changedSectionIds: readonly ProtocolSectionId[],
+): ProtocolSectionId {
+  const [root, category, entityId] = path;
+
+  if (root === 'stages') {
+    const order = protocolSections[stageOrderSectionId]?.stages;
+    const stageId =
+      Array.isArray(order) && typeof category === 'number'
+        ? order[category]
+        : undefined;
+    return typeof stageId === 'string'
+      ? protocolSectionId({ kind: 'stage', stageId })
+      : stageOrderSectionId;
+  }
+
+  if (root === 'codebook') {
+    if (category === 'ego') return egoSectionId;
+    if (typeof entityId === 'string') {
+      if (category === 'node') {
+        return protocolSectionId({ kind: 'codebookNode', typeId: entityId });
+      }
+      if (category === 'edge') {
+        return protocolSectionId({ kind: 'codebookEdge', typeId: entityId });
+      }
+    }
+  }
+
+  if (root === 'assetManifest') return assetsSectionId;
+  if (
+    root === 'name' ||
+    root === 'description' ||
+    root === 'experiments' ||
+    root === 'lastModified' ||
+    root === 'schemaVersion'
+  ) {
+    return settingsSectionId;
+  }
+
+  return changedSectionIds[0] ?? settingsSectionId;
+}
 
 function validateSettingsSection(
   document: Readonly<SectionDoc>,

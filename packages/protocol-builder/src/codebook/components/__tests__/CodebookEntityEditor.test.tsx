@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { applyCommands, type SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -10,7 +10,9 @@ import type {
   CompoundEditRequest,
   CompoundEditResult,
 } from '../../../session.ts';
-import CodebookEntityEditor from '../CodebookEntityEditor.tsx';
+import CodebookEntityEditor, {
+  type CodebookEntityEditorProps,
+} from '../CodebookEntityEditor.tsx';
 
 const NODE_SUBJECT = { entity: 'node', type: 'person:adult' } as const;
 
@@ -54,6 +56,16 @@ const renderUpdateEditor = (
   );
 
 describe('CodebookEntityEditor', () => {
+  it('requires create mode to provide a successful completion callback', () => {
+    type CreateEditorProps = Extract<
+      CodebookEntityEditorProps,
+      Readonly<{ mode: 'create' }>
+    >;
+    expectTypeOf<CreateEditorProps['onApplied']>().toEqualTypeOf<
+      (result: Extract<CompoundEditResult, { status: 'applied' }>) => void
+    >();
+  });
+
   it('does not submit an unchanged existing entity', async () => {
     const user = userEvent.setup();
     const createRequestId = vi.fn(() => 'should-not-be-created');
@@ -115,6 +127,60 @@ describe('CodebookEntityEditor', () => {
     await user.click(screen.getByRole('button', { name: 'Save entity' }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+  });
+
+  it.each(['Person Type', 'Person/Place', 'Person&Place'])(
+    'rejects the export-unsafe entity name %s',
+    async (invalidName) => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn<
+        (request: CompoundEditRequest) => CompoundEditResult
+      >(() => appliedResult());
+      renderUpdateEditor(onSubmit);
+
+      const name = screen.getByRole('textbox', { name: 'Node type name' });
+      await user.clear(name);
+      await user.type(name, invalidName);
+      await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(
+        screen.getByText(
+          'Not a valid node type name. Only letters, numbers and the symbols ._-: are supported',
+        ),
+      ).toBeInTheDocument();
+      expect(name).toHaveValue(invalidName);
+    },
+  );
+
+  it('rejects a canonically equivalent entity name', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<
+      (request: CompoundEditRequest) => CompoundEditResult
+    >(() => appliedResult());
+    render(
+      <CodebookEntityEditor
+        mode="update"
+        sessionKey="canonical-duplicate"
+        createRequestId={() => 'canonical-duplicate'}
+        description="Update adult type"
+        subject={NODE_SUBJECT}
+        initialDraft={{ ...NODE_DOCUMENT, name: 'Adult' }}
+        authoritativeDocument={{ ...NODE_DOCUMENT, name: 'Adult' }}
+        existingEntityNames={['Person']}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    const name = screen.getByRole('textbox', { name: 'Node type name' });
+    await user.clear(name);
+    await user.type(name, 'person');
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    expect(
+      screen.getByText('A type named "person" already exists.'),
+    ).toBeVisible();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it('rejects an icon the Fresco renderer cannot display', async () => {
@@ -187,7 +253,7 @@ describe('CodebookEntityEditor', () => {
       label: 'node',
       subject: { entity: 'node', type: 'new:person' },
       draft: {
-        name: 'New person',
+        name: 'NewPerson',
         color: 'node-color-seq-2',
         icon: 'add-a-person',
         shape: { default: 'square' },
@@ -213,6 +279,10 @@ describe('CodebookEntityEditor', () => {
       const onSubmit = vi.fn<
         (request: CompoundEditRequest) => CompoundEditResult
       >(() => appliedResult());
+      const onApplied =
+        vi.fn<
+          (result: Extract<CompoundEditResult, { status: 'applied' }>) => void
+        >();
       render(
         <CodebookEntityEditor
           mode="create"
@@ -222,12 +292,14 @@ describe('CodebookEntityEditor', () => {
           subject={subject}
           initialDraft={draft}
           onSubmit={onSubmit}
+          onApplied={onApplied}
         />,
       );
 
       await user.click(screen.getByRole('button', { name: 'Save entity' }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+      expect(onApplied).toHaveBeenCalledOnce();
       expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({
         id: `request-${expectedSection}`,
         edits: [{ kind: 'create', sectionId: expectedSection }],
@@ -264,7 +336,7 @@ describe('CodebookEntityEditor', () => {
 
     const name = screen.getByRole('textbox', { name: 'Node type name' });
     await user.clear(name);
-    await user.type(name, 'Unsaved local name');
+    await user.type(name, 'UnsavedLocalName');
     await user.click(screen.getByRole('button', { name: 'Save entity' }));
 
     const alert = await screen.findByRole('alert');
@@ -272,7 +344,7 @@ describe('CodebookEntityEditor', () => {
       'Morgan is currently editing a section needed for this change.',
     );
     expect(alert).toHaveFocus();
-    expect(name).toHaveValue('Unsaved local name');
+    expect(name).toHaveValue('UnsavedLocalName');
     expect(screen.getByRole('button', { name: 'Save entity' })).toBeEnabled();
   });
 
@@ -304,11 +376,11 @@ describe('CodebookEntityEditor', () => {
 
     const name = screen.getByRole('textbox', { name: 'Node type name' });
     await user.clear(name);
-    await user.type(name, 'First draft');
+    await user.type(name, 'FirstDraft');
     await user.click(screen.getByRole('button', { name: 'Save entity' }));
     await screen.findByText('Could not save this entity');
 
-    await user.type(name, ' revised');
+    await user.type(name, '_revised');
     await user.click(screen.getByRole('button', { name: 'Save entity' }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(2));
@@ -317,6 +389,51 @@ describe('CodebookEntityEditor', () => {
       'revised-intent',
     ]);
   });
+
+  it.each(['stale-epoch', 'lease-lost', 'stale-base'] as const)(
+    'uses a new intent id after the retry-invalidating %s failure',
+    async (reason) => {
+      const user = userEvent.setup();
+      const createRequestId = vi
+        .fn<() => string>()
+        .mockReturnValueOnce('stale-authority-intent')
+        .mockReturnValueOnce('refreshed-authority-intent');
+      const onSubmit = vi
+        .fn<(request: CompoundEditRequest) => CompoundEditResult>()
+        .mockReturnValueOnce({
+          status: 'failed',
+          reason,
+          message: 'Editing authority changed.',
+        })
+        .mockReturnValueOnce(appliedResult());
+      render(
+        <CodebookEntityEditor
+          mode="update"
+          sessionKey={`authority-${reason}`}
+          createRequestId={createRequestId}
+          description="Update person"
+          subject={NODE_SUBJECT}
+          initialDraft={NODE_DOCUMENT}
+          authoritativeDocument={NODE_DOCUMENT}
+          onSubmit={onSubmit}
+        />,
+      );
+
+      const name = screen.getByRole('textbox', { name: 'Node type name' });
+      await user.clear(name);
+      await user.type(name, 'RetriableName');
+      await user.click(screen.getByRole('button', { name: 'Save entity' }));
+      await screen.findByText('Editing authority changed.');
+
+      await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(2));
+      expect(onSubmit.mock.calls.map(([request]) => request.id)).toEqual([
+        'stale-authority-intent',
+        'refreshed-authority-intent',
+      ]);
+    },
+  );
 
   it('resets from the next opening identity even when the component never unmounts', async () => {
     const user = userEvent.setup();
