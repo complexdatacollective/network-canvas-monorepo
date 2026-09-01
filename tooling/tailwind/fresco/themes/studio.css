@@ -15,18 +15,24 @@
  * The neutrals deliberately DIVERGE from the everything-bar mockup.
  *
  * Josh's direction, 2026-09-01: studio's neutral scaffolding carries a warm
- * sand tint in light mode and a cool midnight blue in dark, rather than the
- * single grape-tinted neutral family both modes shared when this file was
- * first transcribed from the mockup. Please do not "correct" the neutrals
- * back toward the mockup — that divergence is the design.
+ * tint in light mode and a cool midnight blue in dark, rather than the single
+ * grape-tinted neutral family both modes shared when this file was first
+ * transcribed from the mockup. Please do not "correct" the neutrals back
+ * toward the mockup — that divergence is the design. Refined the same day:
+ * the light neutral moved from sand (hue 80) into the orange band (hue 60)
+ * and its chroma came down by roughly a third, so the ground reads as
+ * barely-warmed paper rather than tinted paper; the dark neutral moved from
+ * 258 to 270, off the green side of blue.
  *
  * The scaffolding that moves per mode: `--background`, the surface ladder,
  * `--outline`, `--neutral`, `--overlay`, `--shadow-color`, the ink
  * (`--text`), and every dark-mode contrast ink that sits on a light fill.
- * The brand stays where it was: the grape `--accent`, sea-green `--success`,
- * the mustard `--selected` pair, and the sequence colours are untouched.
- * `--surface-accent` gained a little chroma in both modes (light 0.03 -> 0.034,
- * dark 0.08 -> 0.105) so the accent-tinted chip still separates from a
+ * The brand hues stay where they were — grape `--accent`, sea-green
+ * `--success`, the mustard `--selected` pair, and the sequence colours are
+ * untouched — but two grape tokens were recalibrated for the warm ground
+ * (see `--primary` and `--secondary` in the light block), and
+ * `--surface-accent` gained a little chroma in both modes (light 0.03 ->
+ * 0.034, dark 0.08 -> 0.105) so the accent-tinted chip still separates from a
  * neutral surface now that surfaces are tinted rather than near-neutral.
  * ---------------------------------------------------------------------------
  *
@@ -85,14 +91,20 @@
 @layer theme {
   [data-theme-studio] {
     /*
-     * Warm sand. Hue 80 is the pale-tan end of the warm range; every neutral
-     * below carries it at very low chroma, which is all it takes to read as
-     * warm at these lightnesses. Deliberately near the mustard family
-     * (`--mustard-hue` 86.39) — at chroma 0.014 the ground reads as tinted
-     * paper, and `--selected` separates from it on lightness and chroma, not
-     * hue.
+     * Warm orange, held at whisper chroma. Hue 60 sits beside
+     * `--neon-carrot-hue` (62.61), so the neutral field belongs to the warm
+     * palette's own family — the same relationship dark mode has with
+     * `--cerulean-blue-hue`. Sharing a hue band with `--warning` is safe
+     * because separation comes from chroma and lightness, not hue: the ground
+     * is 0.008 chroma at L 0.982 against a 0.221-chroma fill at L 0.579
+     * (4.3:1). `--selected` clears the ground the same way, and gained hue
+     * distance in the bargain — mustard (86.39) is now 26 degrees off the
+     * neutral rather than 6.
+     *
+     * Chroma stays at or below 0.008 through the ladder. Above that the
+     * ground stops reading as paper and starts reading as a colour.
      */
-    --base-hue: 80;
+    --base-hue: 60;
 
     --heading-font: 'Nunito Variable', sans-serif;
     --body-font: 'Inclusive Sans Variable', sans-serif;
@@ -112,32 +124,52 @@
      */
     --radius-base: 0.875rem;
 
-    /* Sand ground: near-white, warm, and still light enough that the surface
+    /* Barely-warmed paper: near-white, and still light enough that the surface
        ladder's descending steps stay comfortably above mid grey. */
-    --background: oklch(0.982 0.014 var(--base-hue));
+    --background: oklch(0.982 0.008 var(--base-hue));
 
     /*
      * CHANGED from the mockup's cyber-grape ink. A deep warm neutral at low
-     * chroma — sepia rather than brown — so the ink belongs to the sand
-     * family without becoming a second brand colour. The grape identity now
-     * lives entirely in `--accent`.
+     * chroma, so the ink belongs to the warm family without reading as brown
+     * or becoming a second brand colour. The grape identity lives in the
+     * primary / secondary / accent ramp below.
      */
-    --text: oklch(0.3 0.032 var(--base-hue));
+    --text: oklch(0.3 0.022 var(--base-hue));
 
-    /* Brand slot: anchored to grape, so the neutral retint doesn't drag the
-       primary action colour into the sand family. */
-    --primary: oklch(10% 0.4 var(--cyber-grape-hue));
+    /*
+     * The grape ramp: primary (deepest) -> secondary -> accent (brightest),
+     * one hue, three legible steps, white foreground on all three.
+     *
+     * CHANGED from the default theme's `oklch(10% 0.4 …)`, which clamps to a
+     * vivid indigo (#3c00a3) — the direct complement of a warm ground, and
+     * the loudest thing on the page. Pulling lightness up and chroma down to
+     * 0.32 / 0.09 keeps it unmistakably grape while letting it sit on warm
+     * paper as a deep aubergine. Landing above the ink's 0.3 lightness is
+     * deliberate too: a primary button now reads as distinct from body text
+     * rather than merging with it.
+     */
+    --primary: oklch(0.32 0.09 var(--cyber-grape-hue));
     --primary-contrast: oklch(var(--white));
 
-    /* A sand chip, replacing the default theme's primary-derived lavender. */
-    --neutral: oklch(0.94 0.014 var(--base-hue));
+    /* A warm chip, replacing the default theme's primary-derived lavender. */
+    --neutral: oklch(0.94 0.008 var(--base-hue));
     --neutral-contrast: var(--text);
 
-    /* Slate blue, identical to the default theme. */
+    /* Slate blue, identical to the default theme. Complementary to the warm
+       ground, which is a contrast pairing rather than a clash — and the
+       quieter ground gives it more room than the sand one did. */
     --accent: oklch(var(--slate-blue));
     --accent-contrast: oklch(var(--white));
 
-    --secondary: oklch(from var(--primary) calc(l + 0.2) calc(c + 0.05) h);
+    /*
+     * CHANGED to a literal, dropping the default theme's
+     * `from var(--primary) calc(l + 0.2) calc(c + 0.05) h` derivation. That
+     * expression only produced a distinct secondary because the old primary
+     * was clamped; against the calmed primary it lands on top of `--accent`
+     * (1.11:1, indistinguishable). This value is the middle rung, ~1.6:1 from
+     * each neighbour.
+     */
+    --secondary: oklch(0.44 0.14 var(--cyber-grape-hue));
     --secondary-contrast: oklch(var(--white));
 
     /*
@@ -145,9 +177,9 @@
      * the command bar), then descending from the page ground in 0.03
      * lightness steps — the default theme's own relationship, re-anchored on
      * studio's `--background`, and preserving the mockup's rung spacing with
-     * the sand tint carried through at constant chroma.
+     * the warm tint carried through at constant chroma.
      */
-    --surface: oklch(0.995 0.005 var(--base-hue));
+    --surface: oklch(0.995 0.003 var(--base-hue));
     --surface-contrast: var(--text);
     --surface-1: var(--background);
     --surface-1-contrast: var(--text);
@@ -163,20 +195,26 @@
      * — the tint behind an active nav item, a selected result row, or an
      * accent-coloured icon chip — instead of aliasing the deepest neutral
      * surfaces the way the default theme does. Grape-anchored, so it reads as
-     * a lavender chip against the sand ladder. Literal values (rather than a
+     * a lavender chip against the warm ladder. Literal values (rather than a
      * relative derivation off `--surface-accent`) because the deeper rungs
      * move in opposite directions in the two modes.
+     *
+     * The contrast ink is the accent taken down one notch of lightness rather
+     * than the accent itself: bare `--accent` on this chip is 4.33:1, a hair
+     * under AA, and darkening the ink clears it (5.15:1) without costing the
+     * chip any separation from the surface it sits on — the alternative,
+     * lightening the chip, buys contrast at exactly that cost.
      */
     --surface-accent: oklch(0.94 0.034 var(--cyber-grape-hue));
-    --surface-accent-contrast: var(--accent);
+    --surface-accent-contrast: oklch(from var(--accent) calc(l - 0.04) c h);
     --surface-accent-1: oklch(0.9 0.05 var(--cyber-grape-hue));
-    --surface-accent-1-contrast: var(--accent);
+    --surface-accent-1-contrast: oklch(from var(--accent) calc(l - 0.04) c h);
     --surface-accent-2: oklch(0.9 0.05 var(--cyber-grape-hue));
-    --surface-accent-2-contrast: var(--accent);
+    --surface-accent-2-contrast: oklch(from var(--accent) calc(l - 0.04) c h);
     --surface-accent-3: oklch(0.9 0.05 var(--cyber-grape-hue));
-    --surface-accent-3-contrast: var(--accent);
+    --surface-accent-3-contrast: oklch(from var(--accent) calc(l - 0.04) c h);
     --surface-accent-4: oklch(0.9 0.05 var(--cyber-grape-hue));
-    --surface-accent-4-contrast: var(--accent);
+    --surface-accent-4-contrast: oklch(from var(--accent) calc(l - 0.04) c h);
 
     /* The command bar and every popover sit on the raised surface. */
     --surface-popover: var(--surface);
@@ -202,7 +240,9 @@
     /*
      * CHANGED: the mustard pair from the mockup, replacing the default
      * theme's off-palette `oklch(91% 0.21 80)`. The contrast value is the
-     * mockup's `--mustard-ink`.
+     * mockup's `--mustard-ink`. The highlight clears the warmed ground on
+     * lightness and chroma, not only hue (1.73:1 fill against the ground,
+     * 1.80:1 against `--surface`), which is what had to survive the retint.
      */
     --selected: oklch(var(--mustard));
     --selected-contrast: oklch(0.5 0.12 var(--mustard-hue));
@@ -213,21 +253,20 @@
     --link: oklch(from var(--accent) calc(l - 0.2) calc(c + 0.05) h);
 
     /*
-     * CHANGED: a deeper, more chromatic hairline than the default theme's
-     * `--background` derivation would give, so 1px rules stay visible against
-     * a ground this close to white. Carries slightly more chroma than the
-     * surfaces (0.022 vs 0.014) so the line reads as a warm rule rather than
-     * a smudge of the ground; the 0.097 lightness drop below `--background`
-     * is a little stronger than the 0.086 the grape-tinted version had, which
-     * compensates for the ground no longer being neutral.
+     * CHANGED: a deeper hairline than the default theme's `--background`
+     * derivation would give, so 1px rules stay visible against a ground this
+     * close to white. Visibility is carried entirely by the 0.097 lightness
+     * drop below `--background` (1.35:1), not by chroma — which is why the
+     * chroma could come down with the rest of the neutrals without the rule
+     * getting any fainter.
      */
-    --outline: oklch(0.885 0.022 var(--base-hue));
+    --outline: oklch(0.885 0.012 var(--base-hue));
 
     --input: var(--surface);
     --input-contrast: var(--text);
 
     /* CHANGED: a warm scrim, in place of the mockup's grape one. */
-    --overlay: oklch(0.25 0.05 var(--base-hue));
+    --overlay: oklch(0.25 0.03 var(--base-hue));
     --overlay-tone: oklch(from var(--overlay) l c h / 0.42);
 
     /*
@@ -235,7 +274,7 @@
      * a shade lighter than the default's 0.16 because a warm dark reads
      * heavier over a warm ground at the same lightness.
      */
-    --shadow-color: oklch(0.2 0.04 var(--base-hue));
+    --shadow-color: oklch(0.2 0.025 var(--base-hue));
 
     /*
      * The default theme's shadow geometry, restated once here so that every
@@ -292,13 +331,23 @@
   [data-theme-studio][data-theme='dark'],
   [data-theme='dark'] [data-theme-studio] {
     /*
-     * Midnight blue. Hue 258 sits beside `--cerulean-blue-hue` (260.09), so
-     * the neutral field and the `--info` colour belong to one family, and far
-     * enough from grape (281) that the accent still reads as violet against
-     * it. Chroma stays under 0.045 throughout: enough for the darks to read
-     * blue rather than black, not enough to compete with a brand fill.
+     * Midnight blue, on the violet side of blue. This started at 258 and was
+     * moved to 270 on Josh's note (2026-09-01) that the field read green: at
+     * 258 the darks carry a green channel 10-15 above red at the upper rungs,
+     * which lands on teal-slate rather than midnight. At 270 that gap roughly
+     * halves and the field reads blue-violet.
+     *
+     * 270 is 11 degrees off grape (281), which is closer than 258 was but
+     * costs the accent nothing: separation is carried by chroma (0.16 against
+     * a field held under 0.045) and lightness, not hue — measured chip-
+     * against-surface separation is flat across 258-275. It is ~10 degrees
+     * off `--cerulean-blue-hue` (260.09), so `--info` still belongs to the
+     * field's family rather than sitting orphaned in it.
+     *
+     * Chroma stays under 0.045 throughout: enough for the darks to read blue
+     * rather than black, not enough to compete with a brand fill.
      */
-    --base-hue: 258;
+    --base-hue: 270;
 
     --background: oklch(0.19 0.035 var(--base-hue));
 
