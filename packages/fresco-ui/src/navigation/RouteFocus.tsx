@@ -102,6 +102,26 @@ export type RouteFocusProps = {
 };
 
 /**
+ * What each of the two live regions is holding.
+ *
+ * A screen reader announces a live region when its content CHANGES, so a
+ * destination that reads the same as the one before it — two protocols with a
+ * "Name people" stage, two stages of one protocol sharing a title — would
+ * write the same string into the same region, React would bail out of the
+ * re-render, the DOM would never mutate and nothing would be announced. The
+ * researcher gets no other signal that the page changed.
+ *
+ * Alternating between two regions makes the announcement a mutation
+ * unconditionally: each navigation writes into whichever region is empty and
+ * empties the other, so the pair changes whatever the text is. Encoding a
+ * counter into the text instead would be read out to the researcher.
+ */
+type Announcements = readonly [string, string];
+
+/** Both regions empty: nothing has been announced, or nothing is to be. */
+const SILENT: Announcements = ['', ''];
+
+/**
  * Route-change focus and announcement, mounted once above the router.
  *
  * The destination is announced on every route change, because a screen-reader
@@ -110,27 +130,78 @@ export type RouteFocusProps = {
  */
 const RouteFocus = ({ location, ownerDocument }: RouteFocusProps) => {
   const lastLocation = useRef<string | null>(null);
-  const [destination, setDestination] = useState('');
+  const [announcements, setAnnouncements] = useState<Announcements>(SILENT);
 
   useEffect(() => {
     const previous = lastLocation.current;
     lastLocation.current = location;
     // First render is an arrival, not a navigation: whatever the app focused
     // on boot keeps it.
-    if (previous === null || previous === location) return;
+    if (previous === null || previous === location) return undefined;
 
-    // The announcement is not conditional on focus having moved: the page
-    // changed under the researcher either way.
-    const target = focusRouteTarget(ownerDocument);
-    if (!target) return;
+    const scope = ownerDocument ?? document;
 
-    setDestination(target.textContent?.trim() ?? '');
+    /**
+     * Lands on the new route and says where the researcher was put, or reports
+     * that the route has no landing point yet.
+     *
+     * The announcement is not conditional on focus having moved: the page
+     * changed under the researcher either way.
+     */
+    const land = () => {
+      const target = focusRouteTarget(scope);
+      if (!target) return false;
+
+      const destination = target.textContent?.trim() ?? '';
+      setAnnouncements(([first]): Announcements =>
+        first === '' ? [destination, ''] : ['', destination],
+      );
+      return true;
+    };
+
+    if (land()) return undefined;
+
+    // A route with no landing point has no name to announce — there is no
+    // heading to take one from, and inventing one would announce something the
+    // page does not say. What it must NOT do is stay quiet and leave the
+    // regions holding the PREVIOUS route's title, which tells a screen reader
+    // the researcher is on a page they have already left.
+    setAnnouncements(SILENT);
+
+    // …or the landing point simply is not here YET. A lazy or Suspense-backed
+    // route commits the location while it still shows a fallback, so this
+    // effect runs before the heading exists — and nothing changes the location
+    // afterwards, so without this it would never run again: focus would stay
+    // parked wherever the navigation left it and the page change would never
+    // be announced.
+    //
+    // Arriving late cannot take focus from anyone: `focusRouteTarget` moves it
+    // only when the navigation left nothing focused, so a researcher who has
+    // started using the fallback keeps what they are on. It still announces,
+    // because the page did change.
+    //
+    // Bounded by the first success, by the next route change and by unmount
+    // (both through the cleanup below), so at most one observer is watching at
+    // a time and only while the current route has nothing to land on. Built
+    // from the observed document's own realm where it has one, for the same
+    // reason this component takes an `ownerDocument` at all.
+    const view = scope.defaultView ?? window;
+    const observer = new view.MutationObserver(() => {
+      if (land()) observer.disconnect();
+    });
+    observer.observe(scope, { childList: true, subtree: true });
+    return () => observer.disconnect();
   }, [location, ownerDocument]);
 
   return (
-    <div role="status" aria-live="polite" className="sr-only">
-      {destination}
-    </div>
+    <>
+      <div role="status" aria-live="polite" className="sr-only">
+        {announcements[0]}
+      </div>
+      <div role="status" aria-live="polite" className="sr-only">
+        {announcements[1]}
+      </div>
+    </>
   );
 };
 
