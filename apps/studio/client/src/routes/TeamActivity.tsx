@@ -32,7 +32,7 @@ import {
 
 import { orpc } from '../lib/api.ts';
 
-const route = getRouteApi('/authenticated/teams/$teamId/activity');
+const route = getRouteApi('/app/teams/$teamId/activity');
 
 const CATEGORY_LABELS: Record<AuditCategory, string> = {
   team_access: 'Team access',

@@ -169,16 +169,19 @@ afterEach(() => {
 });
 
 function renderEditor() {
+  // One client behind both the router's guards and the components: the
+  // session guard reads what a component's `queryClient.clear()` removes.
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   const router = createAppRouter(
     createMemoryHistory({
       initialEntries: [
         `/teams/team-a/protocols/${DRAFT.protocol.id}/drafts/${DRAFT.protocol.draftId}`,
       ],
     }),
+    queryClient,
   );
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
   const result = render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />

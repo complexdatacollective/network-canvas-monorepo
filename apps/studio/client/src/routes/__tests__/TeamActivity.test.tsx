@@ -139,12 +139,15 @@ vi.mock('../../lib/api.ts', () => ({
 // tests pass a retrying default instead, so that a route query which forwards
 // no retry option of its own inherits it and visibly retries.
 function renderActivity(defaultRetry: RetryOption = false) {
-  const router = createAppRouter(
-    createMemoryHistory({ initialEntries: ['/teams/team-a/activity'] }),
-  );
+  // One client behind both the router's guards and the components: the
+  // session guard reads what a component's `queryClient.clear()` removes.
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: defaultRetry, retryDelay: 0 } },
   });
+  const router = createAppRouter(
+    createMemoryHistory({ initialEntries: ['/teams/team-a/activity'] }),
+    queryClient,
+  );
   return render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
