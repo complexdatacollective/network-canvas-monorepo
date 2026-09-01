@@ -144,6 +144,10 @@ function isHTMLContentType(contentType) {
   return /^\s*text\/html(?:\s*;|$)/i.test(contentType);
 }
 
+function isRedirectStatus(status) {
+  return status >= 300 && status < 400 && status !== 304;
+}
+
 function isCloudflareChallenge(response) {
   return (
     response.headers.get('cf-mitigated')?.trim().toLowerCase() === 'challenge'
@@ -431,7 +435,7 @@ async function fetchFollowingRedirects(url, options) {
 
   while (true) {
     const response = await fetchWithRetry(currentURL, options);
-    if (response.status < 300 || response.status >= 400) {
+    if (!isRedirectStatus(response.status)) {
       if (redirects.length > 0 && isCloudflareChallenge(response)) {
         await releaseBody(response);
         const initialRedirect = redirects[0];

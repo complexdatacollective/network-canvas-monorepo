@@ -506,6 +506,29 @@ test('redirects use their final URL, recurse internally, and detect loops', asyn
   }
 });
 
+test('a terminal 304 response is not treated as a redirect', async () => {
+  const server = await startServer((_request, response) => {
+    response.statusCode = 304;
+    response.end();
+  });
+
+  try {
+    const result = await runChecker([
+      server.origin,
+      '--format=json',
+      '--delay=0',
+      '--retries=0',
+    ]);
+    assert.equal(result.code, 0, result.stderr);
+    const report = jsonResult(result);
+    assert.equal(report.results[0].status, 304);
+    assert.equal(report.results[0].ok, true);
+    assert.deepEqual(report.results[0].redirects, []);
+  } finally {
+    await server.stop();
+  }
+});
+
 test('external redirects and transient responses are followed and retried', async () => {
   let transientRequests = 0;
   const external = await startServer((request, response) => {
