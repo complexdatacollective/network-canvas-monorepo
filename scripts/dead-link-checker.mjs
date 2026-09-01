@@ -122,6 +122,35 @@ function nonDocumentOutcome(response, mainFrameResponses) {
   };
 }
 
+function comparableBrowserURL(value) {
+  try {
+    return new URL(value).href;
+  } catch {
+    return value;
+  }
+}
+
+function effectiveContentType(response, mainFrameResponses) {
+  const directContentType = response.headers()['content-type'] ?? '';
+  if (directContentType || response.status() !== 304) {
+    return directContentType;
+  }
+
+  const responseIndex = mainFrameResponses.lastIndexOf(response);
+  const responseURL = comparableBrowserURL(response.url());
+  return (
+    mainFrameResponses
+      .slice(0, responseIndex)
+      .findLast(
+        (candidate) =>
+          candidate.status() !== 304 &&
+          comparableBrowserURL(candidate.url()) === responseURL &&
+          candidate.headers()['content-type'],
+      )
+      ?.headers()['content-type'] ?? ''
+  );
+}
+
 // Keep annotations useful without flooding the Actions log. The JSON artifact
 // and job summary remain complete when a crawl exceeds this limit.
 export const MAX_GITHUB_ERROR_ANNOTATIONS = 50;
@@ -279,11 +308,24 @@ export class BrowserVerifier {
       const mainFrameResponses = [];
       const outstandingMainFrameRequests = new Set();
       const responseCommitBaselines = new WeakMap();
+      const mainFrameCommitURLs = [];
+      const downloadURLs = new Set();
+      const lifecycleWaiters = new Set();
+      let lifecycleVersion = 0;
       let mainFrameCommitCount = 0;
       let unrecoveredNavigationFailure = '';
+      const notifyLifecycleChange = () => {
+        lifecycleVersion++;
+        for (const wake of lifecycleWaiters) wake();
+      };
       page.on('popup', (popup) => {
         spawnedPages.add(popup);
         void popup.close().catch(() => {});
+      });
+      page.on('download', (download) => {
+        downloadURLs.add(comparableBrowserURL(download.url()));
+        notifyLifecycleChange();
+        if (download.cancel) void download.cancel().catch(() => {});
       });
       page.on('response', (response) => {
         if (
@@ -296,10 +338,17 @@ export class BrowserVerifier {
           if (isTerminalNavigation(response)) {
             unrecoveredNavigationFailure = '';
           }
+          notifyLifecycleChange();
         }
       });
       page.on('framenavigated', (frame) => {
-        if (frame === page.mainFrame()) mainFrameCommitCount++;
+        if (frame === page.mainFrame()) {
+          mainFrameCommitCount++;
+          mainFrameCommitURLs.push(
+            comparableBrowserURL(frame.url?.() ?? page.url()),
+          );
+          notifyLifecycleChange();
+        }
       });
       page.on('request', (request) => {
         if (
@@ -308,6 +357,7 @@ export class BrowserVerifier {
         ) {
           mainFrameRequests.push(request);
           outstandingMainFrameRequests.add(request);
+          notifyLifecycleChange();
         }
       });
       page.on('requestfailed', (request) => {
@@ -322,6 +372,7 @@ export class BrowserVerifier {
           if (!errorText.includes('ERR_ABORTED')) {
             unrecoveredNavigationFailure = errorText;
           }
+          notifyLifecycleChange();
         }
       });
       const verificationDeadline = Date.now() + timeout;
@@ -333,6 +384,30 @@ export class BrowserVerifier {
         );
         error.name = 'TimeoutError';
         throw error;
+      };
+      const browserTimeoutError = () => {
+        const error = new Error(
+          `Browser verification timed out after ${timeout}ms`,
+        );
+        error.name = 'TimeoutError';
+        return error;
+      };
+      const waitForLifecycleChange = async (version) => {
+        if (lifecycleVersion !== version) return;
+        await new Promise((resolve, reject) => {
+          let timer;
+          const wake = () => {
+            lifecycleWaiters.delete(wake);
+            globalThis.clearTimeout(timer);
+            resolve();
+          };
+          timer = globalThis.setTimeout(() => {
+            lifecycleWaiters.delete(wake);
+            reject(browserTimeoutError());
+          }, remainingTimeout());
+          lifecycleWaiters.add(wake);
+          if (lifecycleVersion !== version) wake();
+        });
       };
 
       let initialResponse;
@@ -418,18 +493,52 @@ export class BrowserVerifier {
         }
         return terminalResponseAfter(start) ?? terminalResponse;
       };
-      const waitForResponseCommit = async (response) => {
+      const resolveResponseLifecycle = async (response) => {
         // page.goto already waited for the initial document's DOMContentLoaded.
         // Playwright Page always exposes waitForEvent; the guard keeps injected
         // unit-test doubles that model only response behavior lightweight.
-        if (response === initialResponse || !page.waitForEvent) return;
+        if (response === initialResponse) return { kind: 'document' };
+        if (!page.waitForEvent) {
+          const responseURL = response.url
+            ? comparableBrowserURL(response.url())
+            : null;
+          return {
+            kind:
+              responseURL && downloadURLs.has(responseURL)
+                ? 'download'
+                : 'document',
+          };
+        }
+        const responseURL = comparableBrowserURL(response.url());
         const commitBaseline =
           responseCommitBaselines.get(response) ?? mainFrameCommitCount;
-        if (mainFrameCommitCount <= commitBaseline) {
-          await page.waitForEvent('framenavigated', {
-            predicate: (frame) => frame === page.mainFrame(),
-            timeout: remainingTimeout(),
-          });
+
+        while (true) {
+          const responseIndex = mainFrameResponses.lastIndexOf(response);
+          const laterTerminalResponse = mainFrameResponses
+            .slice(responseIndex + 1)
+            .findLast(isTerminalNavigation);
+          if (laterTerminalResponse) {
+            return { kind: 'superseded', response: laterTerminalResponse };
+          }
+          if (downloadURLs.has(responseURL)) return { kind: 'download' };
+          if (unrecoveredNavigationFailure) {
+            throw new Error(
+              `Browser navigation failed: ${unrecoveredNavigationFailure}`,
+            );
+          }
+
+          const commits = mainFrameCommitURLs.slice(commitBaseline);
+          if (commits.includes(responseURL)) return { kind: 'document' };
+          const mismatchedCommit = commits.at(-1);
+          if (mismatchedCommit) {
+            throw new Error(
+              `Browser response ${responseURL} was superseded before commit by ${mismatchedCommit}`,
+            );
+          }
+
+          const version = lifecycleVersion;
+          await waitForLifecycleChange(version);
         }
       };
 
@@ -453,7 +562,14 @@ export class BrowserVerifier {
         if (isNonDocumentNavigation(terminalResponse)) {
           return nonDocumentOutcome(terminalResponse, mainFrameResponses);
         }
-        await waitForResponseCommit(terminalResponse);
+        const lifecycle = await resolveResponseLifecycle(terminalResponse);
+        if (lifecycle.kind === 'download') {
+          return nonDocumentOutcome(terminalResponse, mainFrameResponses);
+        }
+        if (lifecycle.kind === 'superseded') {
+          terminalResponse = lifecycle.response;
+          continue;
+        }
         navigation = terminalResponse;
         // A terminal status is not enough for recursive pages: page.content()
         // must represent the completed document or links after a stalled
@@ -527,7 +643,7 @@ export class BrowserVerifier {
         terminalResponse = await waitForTerminalResponse(settleStart);
       }
 
-      const contentType = navigation.headers()['content-type'] ?? '';
+      const contentType = effectiveContentType(navigation, mainFrameResponses);
       return {
         contentType,
         finalUrl: page.url(),

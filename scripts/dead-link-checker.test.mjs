@@ -568,16 +568,17 @@ test('browser verification propagates terminal document load timeouts', async ()
 });
 
 test('browser verification binds document loading to the selected navigation', async () => {
-  const frame = {};
+  const frame = { url: () => 'https://publisher.test/stalled-document' };
   const navigationRequest = { isNavigationRequest: () => true };
-  const response = (status) => ({
+  const response = (status, url) => ({
     frame: () => frame,
     headers: () => ({ 'content-type': 'text/html' }),
     request: () => navigationRequest,
     status: () => status,
+    url: () => url,
   });
-  const initial = response(403);
-  const final = response(200);
+  const initial = response(403, 'https://publisher.test/challenge');
+  const final = response(200, 'https://publisher.test/stalled-document');
   let committedFinalDocument = false;
   let frameNavigatedListener;
   let responseListener;
@@ -593,13 +594,7 @@ test('browser verification binds document loading to the selected navigation', a
       if (event === 'response') responseListener = listener;
     },
     url: () => 'https://publisher.test/stalled-document',
-    waitForEvent: async (event, { predicate }) => {
-      assert.equal(event, 'framenavigated');
-      assert.equal(predicate(frame), true);
-      committedFinalDocument = true;
-      frameNavigatedListener(frame);
-      return frame;
-    },
+    waitForEvent: async () => {},
     waitForLoadState: async () => {
       if (!committedFinalDocument) return;
       throw Object.assign(new Error('selected document load timed out'), {
@@ -609,6 +604,10 @@ test('browser verification binds document loading to the selected navigation', a
     waitForResponse: async (predicate) => {
       responseListener(final);
       assert.equal(predicate(final), true);
+      globalThis.setTimeout(() => {
+        committedFinalDocument = true;
+        frameNavigatedListener(frame);
+      }, 0);
       return final;
     },
     waitForTimeout: async () => {},
@@ -927,21 +926,27 @@ test('browser verification accepts a follow-up no-content response', async () =>
 test('browser verification treats a cached 304 revalidation as terminal', async () => {
   const frame = {};
   const navigationRequest = { isNavigationRequest: () => true };
-  const response = (status, url) => ({
+  const response = (
+    status,
+    url,
+    headers = { 'content-type': 'text/html' },
+  ) => ({
     frame: () => frame,
-    headers: () => ({ 'content-type': 'text/html' }),
+    headers: () => headers,
     request: () => navigationRequest,
     status: () => status,
     url: () => url,
   });
   const initial = response(403, 'https://publisher.test/challenge');
   const recovered = response(200, 'https://publisher.test/revalidated');
-  const revalidated = response(304, 'https://publisher.test/revalidated');
+  const revalidated = response(304, 'https://publisher.test/revalidated', {});
   let responseListener;
   let settleCount = 0;
   let waitForResponseCount = 0;
   const page = {
     close: async () => {},
+    content: async () =>
+      '<html><body><a href="/cached-link">cached</a></body></html>',
     goto: async () => {
       responseListener(initial);
       return initial;
@@ -976,13 +981,139 @@ test('browser verification treats a cached 304 revalidation as terminal', async 
     const outcome = await verifier.verify(
       'https://publisher.test/challenge',
       50,
+      { captureHTML: true },
     );
     assert.deepEqual(outcome, {
       contentType: 'text/html',
       finalUrl: 'https://publisher.test/revalidated',
-      html: null,
+      html: '<html><body><a href="/cached-link">cached</a></body></html>',
       redirects: [],
       status: 304,
+    });
+  } finally {
+    await verifier.close();
+  }
+});
+
+test('browser verification rejects a response superseded before commit by a response-free navigation', async () => {
+  let pageUrl = 'https://publisher.test/challenge';
+  const frame = { url: () => pageUrl };
+  const navigationRequest = { isNavigationRequest: () => true };
+  const response = (status, url) => ({
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => status,
+    url: () => url,
+  });
+  const initial = response(403, 'https://publisher.test/challenge');
+  const abandoned = response(200, 'https://publisher.test/recovered');
+  let frameNavigatedListener;
+  let responseListener;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'framenavigated') frameNavigatedListener = listener;
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => pageUrl,
+    waitForEvent: async () => {
+      throw new Error('the abandoned response must not appear committed');
+    },
+    waitForLoadState: async () => {},
+    waitForResponse: async (predicate) => {
+      responseListener(abandoned);
+      assert.equal(predicate(abandoned), true);
+      pageUrl = 'about:blank';
+      frameNavigatedListener(frame);
+      return abandoned;
+    },
+    waitForTimeout: async () => {},
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    await assert.rejects(
+      verifier.verify('https://publisher.test/challenge', 50),
+      /without an HTTP response|did not commit|superseded/,
+    );
+  } finally {
+    await verifier.close();
+  }
+});
+
+test('browser verification accepts a follow-up headerless download response', async () => {
+  const frame = {};
+  const navigationRequest = { isNavigationRequest: () => true };
+  const initial = {
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => 403,
+    url: () => 'https://publisher.test/challenge',
+  };
+  const downloadResponse = {
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'application/octet-stream' }),
+    request: () => navigationRequest,
+    status: () => 200,
+    url: () => 'https://publisher.test/archive.bin',
+  };
+  let downloadListener;
+  let responseListener;
+  const page = {
+    close: async () => {},
+    goto: async () => {
+      responseListener(initial);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'download') downloadListener = listener;
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => 'https://publisher.test/challenge',
+    waitForLoadState: async () => {
+      throw new Error('a headerless download has no document to load');
+    },
+    waitForResponse: async (predicate) => {
+      responseListener(downloadResponse);
+      assert.equal(predicate(downloadResponse), true);
+      downloadListener?.({ url: () => downloadResponse.url() });
+      return downloadResponse;
+    },
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    const outcome = await verifier.verify(
+      'https://publisher.test/challenge',
+      50,
+      { captureHTML: true },
+    );
+    assert.deepEqual(outcome, {
+      contentType: 'application/octet-stream',
+      finalUrl: 'https://publisher.test/archive.bin',
+      html: null,
+      redirects: [],
+      status: 200,
     });
   } finally {
     await verifier.close();
