@@ -48,7 +48,9 @@
  * failures, and the entire sequence shares one request deadline so reload
  * loops cannot retain a worker indefinitely. Browser-only HTTP redirects obey
  * the same maximum-hop rule as Node redirects. A browser 304 is a completed
- * cache revalidation, not a redirect. Browser navigations that become
+ * cache revalidation, not a redirect; its prior same-URL representation
+ * supplies the effective status and content type so cached errors remain
+ * errors and cached HTML remains crawlable. Browser navigations that become
  * downloads or return 204 No Content are the exceptions to requiring a
  * document load: Playwright rejects goto in those cases, so the captured HTTP
  * response verifies the non-HTML target without saving a file or inventing a
