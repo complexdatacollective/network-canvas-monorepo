@@ -34,6 +34,18 @@
  * `--surface-accent` gained a little chroma in both modes (light 0.03 ->
  * 0.034, dark 0.08 -> 0.105) so the accent-tinted chip still separates from a
  * neutral surface now that surfaces are tinted rather than near-neutral.
+ *
+ * One rule holds across the whole dark block, and it is a deliberate
+ * departure from the default theme rather than anything inherited from it:
+ * EVERY `-contrast` that sits on a light fill is the mode's dark neutral ink,
+ * never white. Studio lifts its dark fills so they read against the dark
+ * ground, and at those lightnesses white does not clear WCAG AA on any of
+ * them — `--accent`, `--success`, `--selected`, `--warning`, `--destructive`
+ * and `--info` all take dark ink, each with its measured pairing recorded at
+ * the declaration. Restoring white to any of them reintroduces a contrast
+ * failure; if a fill genuinely needs white, darken the fill rather than
+ * flipping the ink, and check what that costs the matching `text-*` utility
+ * standing on `--surface`.
  * ---------------------------------------------------------------------------
  *
  * `--base-hue` is the per-mode neutral hue knob. The default theme declares it
@@ -412,8 +424,21 @@
     --surface-popover: var(--surface);
     --surface-popover-contrast: var(--text);
 
+    /*
+     * CHANGED: dark ink, not the default dark theme's white. The fill is
+     * tomato lifted 0.08 so it stays legible against the dark ground, and at
+     * that lightness white lands on 3.85:1 — under AA for the normal-size
+     * text Alert, Toast, Badge and field errors put on it. Dark ink takes the
+     * pairing to 5.06:1 and brings the token in line with the rule the rest
+     * of this block already follows.
+     *
+     * Deliberately fixed on the ink rather than by darkening the fill: plain
+     * tomato would support white (4.94:1), but `text-destructive` standing on
+     * `--surface` — how a field error actually renders — would fall from
+     * 4.35:1 to 3.39:1. Keeping the fill bright serves both usages.
+     */
     --destructive: oklch(from oklch(var(--tomato)) calc(l + 0.08) c h);
-    --destructive-contrast: oklch(var(--white));
+    --destructive-contrast: oklch(0.16 0.03 var(--base-hue));
 
     --warning: oklch(from oklch(var(--neon-carrot)) calc(l + 0.04) c h);
     --warning-contrast: oklch(0.18 0.03 var(--base-hue));
@@ -426,8 +451,16 @@
     --success: oklch(0.74 0.16 var(--sea-green-hue));
     --success-contrast: oklch(0.16 0.03 var(--base-hue));
 
+    /*
+     * CHANGED: dark ink, for the same reason as `--destructive` above and
+     * more sharply — white on this fill is 3.18:1, the weakest pairing in the
+     * theme. Dark ink gives 6.12:1. Darkening the fill was not an option
+     * here: even unlifted cerulean only reaches 4.43:1 against white, so it
+     * would still miss AA while costing `text-info` its legibility on the
+     * dark ground.
+     */
     --info: oklch(from oklch(var(--cerulean-blue)) calc(l + 0.1) c h);
-    --info-contrast: oklch(var(--white));
+    --info-contrast: oklch(0.16 0.03 var(--base-hue));
 
     /* CHANGED: the mockup's dark mustard. */
     --selected: oklch(0.8 0.14 var(--mustard-hue));
