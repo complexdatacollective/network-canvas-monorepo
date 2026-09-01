@@ -1250,6 +1250,66 @@ test('browser verification correlates the initial response before accepting it',
   }
 });
 
+test('browser verification preserves a response across same-document history changes', async () => {
+  let finalUrl = 'https://publisher.test/recovered';
+  const frame = { url: () => finalUrl };
+  const navigationRequest = { isNavigationRequest: () => true };
+  const initial = {
+    frame: () => frame,
+    headers: () => ({ 'content-type': 'text/html' }),
+    request: () => navigationRequest,
+    status: () => 200,
+    url: () => 'https://publisher.test/recovered',
+  };
+  let frameNavigatedListener;
+  let responseListener;
+  const page = {
+    close: async () => {},
+    content: async () =>
+      '<html><body><a href="/linked">linked</a></body></html>',
+    goto: async () => {
+      responseListener(initial);
+      frameNavigatedListener(frame);
+      finalUrl = 'https://publisher.test/canonical';
+      frameNavigatedListener(frame);
+      return initial;
+    },
+    mainFrame: () => frame,
+    on: (event, listener) => {
+      if (event === 'framenavigated') frameNavigatedListener = listener;
+      if (event === 'response') responseListener = listener;
+    },
+    url: () => finalUrl,
+    waitForEvent: async () => {},
+    waitForLoadState: async () => {},
+    waitForTimeout: async () => {},
+  };
+  const browser = {
+    close: async () => {},
+    newContext: async () => ({ newPage: async () => page }),
+  };
+  const verifier = new BrowserVerifier({
+    loadChromium: async () => ({ launch: async () => browser }),
+  });
+
+  try {
+    const outcome = await verifier.verify(
+      'https://publisher.test/recovered',
+      50,
+      { captureHTML: true },
+    );
+    assert.deepEqual(outcome, {
+      contentType: 'text/html',
+      finalUrl: 'https://publisher.test/canonical',
+      html: '<html><body><a href="/linked">linked</a></body></html>',
+      redirects: [],
+      status: 200,
+    });
+  } finally {
+    await verifier.close();
+  }
+});
+
 test('browser verification reports the response for the document that finishes loading', async () => {
   const frame = {};
   const navigationRequest = { isNavigationRequest: () => true };

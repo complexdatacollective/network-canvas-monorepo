@@ -41,7 +41,9 @@
  * commit after the selected response prevents the preceding document's
  * DOMContentLoaded state from satisfying it. The initial response and every
  * follow-up are correlated with the latest main-frame commit, so a
- * response-free navigation cannot borrow an abandoned HTTP status. Both
+ * response-free navigation cannot borrow an abandoned HTTP status. A later
+ * same-document History API change has no pending response and therefore keeps
+ * the representation already matched to the preceding document commit. Both
  * navigation starts and responses are tracked, and starts remain explicitly
  * outstanding until their response or failure event arrives, so a request
  * that stalls before response headers cannot look quiet. Superseded/aborted
@@ -332,11 +334,12 @@ export class BrowserVerifier {
       const mainFrameResponses = [];
       const outstandingMainFrameRequests = new Set();
       const responseCommitBaselines = new WeakMap();
-      const mainFrameCommitURLs = [];
+      const mainFrameCommits = [];
       const downloadURLs = new Set();
       const lifecycleWaiters = new Set();
       let lifecycleVersion = 0;
       let mainFrameCommitCount = 0;
+      let committedResponseCount = 0;
       let unrecoveredNavigationFailure = '';
       const notifyLifecycleChange = () => {
         lifecycleVersion++;
@@ -367,10 +370,26 @@ export class BrowserVerifier {
       });
       page.on('framenavigated', (frame) => {
         if (frame === page.mainFrame()) {
-          mainFrameCommitCount++;
-          mainFrameCommitURLs.push(
-            comparableBrowserURL(frame.url?.() ?? page.url()),
+          const commitURL = comparableBrowserURL(frame.url?.() ?? page.url());
+          const pendingResponses = mainFrameResponses.slice(
+            committedResponseCount,
           );
+          const matchingResponseIndex = pendingResponses.findLastIndex(
+            (response) =>
+              response.url &&
+              comparableBrowserURL(response.url()) === commitURL,
+          );
+          const kind =
+            matchingResponseIndex === -1
+              ? pendingResponses.length === 0
+                ? 'same-document'
+                : 'unmatched'
+              : 'document';
+          if (matchingResponseIndex !== -1) {
+            committedResponseCount += matchingResponseIndex + 1;
+          }
+          mainFrameCommitCount++;
+          mainFrameCommits.push({ kind, url: commitURL });
           notifyLifecycleChange();
         }
       });
@@ -551,14 +570,25 @@ export class BrowserVerifier {
             );
           }
 
-          const commits = mainFrameCommitURLs.slice(commitBaseline);
-          const latestCommit = commits.at(-1);
-          if (latestCommit === responseURL) return { kind: 'document' };
-          if (latestCommit) {
+          const commits = mainFrameCommits.slice(commitBaseline);
+          let responseCommitted = false;
+          for (const commit of commits) {
+            if (commit.kind === 'document' && commit.url === responseURL) {
+              responseCommitted = true;
+              continue;
+            }
+            if (
+              responseCommitted &&
+              commit.kind === 'same-document' &&
+              /^https?:\/\//i.test(commit.url)
+            ) {
+              continue;
+            }
             throw new Error(
-              `Browser response ${responseURL} was superseded before commit by ${latestCommit}`,
+              `Browser response ${responseURL} was superseded before commit by ${commit.url}`,
             );
           }
+          if (responseCommitted) return { kind: 'document' };
 
           const version = lifecycleVersion;
           await waitForLifecycleChange(version);
