@@ -124,7 +124,9 @@ function nonDocumentOutcome(response, mainFrameResponses) {
 
 function comparableBrowserURL(value) {
   try {
-    return new URL(value).href;
+    const url = new URL(value);
+    url.hash = '';
+    return url.href;
   } catch {
     return value;
   }

@@ -567,8 +567,10 @@ test('browser verification propagates terminal document load timeouts', async ()
   }
 });
 
-test('browser verification binds document loading to the selected navigation', async () => {
-  const frame = { url: () => 'https://publisher.test/stalled-document' };
+test('browser verification binds document loading to the selected fragment navigation', async () => {
+  const frame = {
+    url: () => 'https://publisher.test/stalled-document#section',
+  };
   const navigationRequest = { isNavigationRequest: () => true };
   const response = (status, url) => ({
     frame: () => frame,
@@ -593,7 +595,7 @@ test('browser verification binds document loading to the selected navigation', a
       if (event === 'framenavigated') frameNavigatedListener = listener;
       if (event === 'response') responseListener = listener;
     },
-    url: () => 'https://publisher.test/stalled-document',
+    url: () => 'https://publisher.test/stalled-document#section',
     waitForEvent: async () => {},
     waitForLoadState: async () => {
       if (!committedFinalDocument) return;
