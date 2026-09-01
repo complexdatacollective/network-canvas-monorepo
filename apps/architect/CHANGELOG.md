@@ -1,5 +1,12 @@
 # @codaco/architect
 
+## 8.2.2
+
+### Patch Changes
+
+- a5b028b: Show the full shadow around the Recent and Templates panel on Architect's start screen.
+- a6f0723: Keep screen preview images available when the installed Architect or Interviewer app is used offline.
+
 ## 8.2.1
 
 ### Patch Changes

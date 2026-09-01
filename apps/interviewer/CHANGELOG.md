@@ -1,5 +1,11 @@
 # @codaco/interviewer
 
+## 8.2.2
+
+### Patch Changes
+
+- a6f0723: Keep screen preview images available when the installed Architect or Interviewer app is used offline.
+
 ## 8.2.1
 
 ### Patch Changes
