@@ -152,18 +152,14 @@ export const Default: StoryObj<Meta<WizardStoryArgs>> = {
     await screen.findByRole('dialog');
 
     // Step 1: Enter name — wait for dialog animation to finish
-    const nameInput = await screen.findByRole('textbox', {}, { timeout: 5000 });
+    const nameInput = await screen.findByRole('textbox');
     await userEvent.type(nameInput, 'Alice');
 
     // Navigate to step 2
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     // Step 2: Select role — default is "researcher", change to "admin"
-    const adminRadio = await screen.findByRole(
-      'radio',
-      { name: 'Admin' },
-      { timeout: 5000 },
-    );
+    const adminRadio = await screen.findByRole('radio', { name: 'Admin' });
     await userEvent.click(adminRadio);
 
     // Navigate to step 3
@@ -332,16 +328,12 @@ export const WithSkip: StoryObj<Meta<WizardStoryArgs>> = {
     await screen.findByRole('dialog');
 
     // Step 1: Enter name
-    const nameInput = await screen.findByRole('textbox', {}, { timeout: 5000 });
+    const nameInput = await screen.findByRole('textbox');
     await userEvent.type(nameInput, 'Alice');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     // Step 2: Select "No" for partner — this should skip step 3
-    const noButton = await screen.findByRole(
-      'button',
-      { name: 'No' },
-      { timeout: 5000 },
-    );
+    const noButton = await screen.findByRole('button', { name: 'No' });
     await userEvent.click(noButton);
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
@@ -482,11 +474,9 @@ export const InteractiveControls: StoryObj<Meta<WizardStoryArgs>> = {
     await screen.findByRole('dialog');
 
     // Step 1: Verify disabling Next button works — wait for dialog animation
-    const disableBtn = await screen.findByRole(
-      'button',
-      { name: 'Disable Next' },
-      { timeout: 5000 },
-    );
+    const disableBtn = await screen.findByRole('button', {
+      name: 'Disable Next',
+    });
     await userEvent.click(disableBtn);
     await expect(
       screen.getByRole('button', { name: 'Continue' }),
@@ -668,7 +658,7 @@ export const WithOnFinish: StoryObj<Meta<WizardStoryArgs>> = {
     // Step 1: Enter name — wait for dialog animation to finish. Wait
     // for the form store to actually commit the keystrokes before
     // advancing so a slow parallel run doesn't race the form state.
-    const nameInput = await screen.findByRole('textbox', {}, { timeout: 5000 });
+    const nameInput = await screen.findByRole('textbox');
     await userEvent.type(nameInput, 'Bob');
     await waitFor(async () => {
       await expect(nameInput).toHaveValue('Bob');
@@ -677,11 +667,9 @@ export const WithOnFinish: StoryObj<Meta<WizardStoryArgs>> = {
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     // Step 2: Select role — pick "participant"
-    const participantRadio = await screen.findByRole(
-      'radio',
-      { name: 'Participant' },
-      { timeout: 5000 },
-    );
+    const participantRadio = await screen.findByRole('radio', {
+      name: 'Participant',
+    });
     await userEvent.click(participantRadio);
 
     // Finish
@@ -908,12 +896,9 @@ export const BeforeNextDeterministic: StoryObj<Meta<WizardStoryArgs>> = {
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     // Wait for the async handler to complete
-    await waitFor(
-      async () => {
-        await expect(screen.getByTestId('validation-error')).toBeVisible();
-      },
-      { timeout: 5000 },
-    );
+    await waitFor(async () => {
+      await expect(screen.getByTestId('validation-error')).toBeVisible();
+    });
 
     // Should still be on step 1
     await expect(screen.getByText(/will fail/)).toBeVisible();
@@ -932,13 +917,10 @@ export const BeforeNextDeterministic: StoryObj<Meta<WizardStoryArgs>> = {
     // Click Continue — should pass
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
-    await waitFor(
-      async () => {
-        // Should have advanced to step 2
-        await expect(screen.getByText('Step content goes here')).toBeVisible();
-      },
-      { timeout: 5000 },
-    );
+    await waitFor(async () => {
+      // Should have advanced to step 2
+      await expect(screen.getByText('Step content goes here')).toBeVisible();
+    });
 
     // Finish
     await userEvent.click(screen.getByRole('button', { name: 'Finish' }));
@@ -1009,7 +991,7 @@ export const ConfirmCancel: StoryObj<Meta<WizardStoryArgs>> = {
     // — under parallel load `userEvent.type` can race the form store's
     // async setState and the textbox value may not be 'Alice' yet at the
     // moment the click handler reads it.
-    const nameInput = await screen.findByRole('textbox', {}, { timeout: 5000 });
+    const nameInput = await screen.findByRole('textbox');
     await userEvent.type(nameInput, 'Alice');
     await waitFor(async () => {
       await expect(nameInput).toHaveValue('Alice');
@@ -1100,7 +1082,7 @@ export const ConfirmCancelAllowsFinish: StoryObj<Meta<WizardStoryArgs>> = {
     await userEvent.click(canvas.getByRole('button', { name: 'Open Wizard' }));
     await screen.findByRole('dialog');
 
-    const nameInput = await screen.findByRole('textbox', {}, { timeout: 5000 });
+    const nameInput = await screen.findByRole('textbox');
     await userEvent.type(nameInput, 'Bob');
     await waitFor(() => expect(nameInput).toHaveValue('Bob'));
 
