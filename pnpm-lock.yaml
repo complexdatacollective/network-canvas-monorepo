@@ -2621,6 +2621,9 @@ importers:
       '@codaco/protocol-validation':
         specifier: workspace:^
         version: link:../protocol-validation
+      '@codaco/shared-consts':
+        specifier: workspace:^
+        version: link:../shared-consts
       '@codaco/studio-sync':
         specifier: workspace:^
         version: link:../studio-sync

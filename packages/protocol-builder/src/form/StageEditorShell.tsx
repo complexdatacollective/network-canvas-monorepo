@@ -208,6 +208,7 @@ function StageEditorFormBody({
             storeApi,
             committedFields,
             identity: snapshot.editedSection.identity,
+            protocolContext: snapshot.protocolContext,
             readOnly,
             outline,
           },
@@ -218,6 +219,7 @@ function StageEditorFormBody({
       outline,
       readOnly,
       snapshot.editedSection.identity,
+      snapshot.protocolContext,
       storeApi,
     ],
   );
