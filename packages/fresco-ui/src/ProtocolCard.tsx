@@ -1,3 +1,5 @@
+'use client';
+
 import { motion, type HTMLMotionProps } from 'motion/react';
 import type { ReactNode } from 'react';
 

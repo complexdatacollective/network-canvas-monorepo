@@ -22,6 +22,7 @@ export type GalleryProtocol = {
   [key: string]: unknown;
   slug: string;
   title: string;
+  shortName: string;
   authors: string;
   studyPi: string;
   contact: string;
@@ -154,6 +155,10 @@ function parseDateAdded(value: string): string {
     throw new Error(`Date Added: invalid date: ${value}`);
   }
   return `${year}-${month}-${day.padStart(2, '0')}`;
+}
+
+function protocolShortName(value: string): string {
+  return normalizeText(value).replace(/_+$/, '').replaceAll('_', ' ');
 }
 
 function assetPath(assetFilename: string): string {
@@ -296,6 +301,9 @@ export async function loadProtocolGallery(
     seenSlugs.add(row.Slug);
 
     const title = normalizeText(row['Study Title']);
+    const shortName = protocolShortName(
+      row['Protocol Title [StudyAcronym_DatePublishedtoPG]'],
+    );
     const authors = normalizeText(row['Protocol Authors']);
     const fields = normalizeText(row['Field(s)']);
     const population = normalizeText(row.Population);
@@ -306,6 +314,7 @@ export async function loadProtocolGallery(
     return {
       slug: row.Slug,
       title,
+      shortName,
       authors,
       studyPi: normalizeText(row['Study PI']),
       contact: normalizeText(row['Protocol Contact']),
@@ -327,6 +336,7 @@ export async function loadProtocolGallery(
       featured: row.Featured === 'yes',
       dateAdded: parseDateAdded(row['Date Added']),
       searchText: [
+        shortName,
         title,
         authors,
         fields,

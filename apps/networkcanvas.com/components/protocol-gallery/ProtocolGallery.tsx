@@ -21,13 +21,12 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import Surface from '@codaco/fresco-ui/layout/Surface';
-import { ProtocolCard as DeckProtocolCard } from '@codaco/fresco-ui/ProtocolCard';
+import { ProtocolCard } from '@codaco/fresco-ui/ProtocolCard';
 import SegmentedSwitcher from '@codaco/fresco-ui/SegmentedSwitcher';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { ProtocolPattern } from '~/components/protocol-gallery/ProtocolPattern';
 import { Container } from '~/components/ui/Container';
-import { cn } from '~/lib/cn';
 import { Link } from '~/lib/i18n/navigation';
 import type { GalleryProtocol } from '~/lib/protocolGallery';
 
@@ -36,15 +35,18 @@ type SortId = 'newest' | 'oldest' | 'titleAsc' | 'titleDesc';
 
 const sortConfig: Record<
   SortId,
-  { property: '*' | 'title'; direction: 'asc' | 'desc'; type: 'string' }
+  { property: '*' | 'shortName'; direction: 'asc' | 'desc'; type: 'string' }
 > = {
   newest: { property: '*', direction: 'desc', type: 'string' },
   oldest: { property: '*', direction: 'asc', type: 'string' },
-  titleAsc: { property: 'title', direction: 'asc', type: 'string' },
-  titleDesc: { property: 'title', direction: 'desc', type: 'string' },
+  titleAsc: { property: 'shortName', direction: 'asc', type: 'string' },
+  titleDesc: { property: 'shortName', direction: 'desc', type: 'string' },
 };
 const sortIds: SortId[] = ['newest', 'oldest', 'titleAsc', 'titleDesc'];
 const galleryFuseOptions = { threshold: 0.15, includeScore: false } as const;
+const GRID_MIN_ITEM_WIDTH = 400;
+const GRID_GAP_UNITS = 6;
+const TWO_COLUMN_MEDIA_QUERY = '(min-width: 1024px)';
 const galleryFilterKeys = ['searchText'];
 
 function galleryProtocolKey(protocol: GalleryProtocol): string {
@@ -52,7 +54,7 @@ function galleryProtocolKey(protocol: GalleryProtocol): string {
 }
 
 function galleryProtocolText(protocol: GalleryProtocol): string {
-  return protocol.title;
+  return protocol.shortName;
 }
 
 function parseSortId(value: unknown): SortId {
@@ -75,6 +77,8 @@ function matchesFilter(protocol: GalleryProtocol, filter: FilterId): boolean {
 }
 
 class ProtocolGalleryGridLayout extends GridLayout<GalleryProtocol> {
+  emphasizeFeatured = true;
+
   override getItemStyles(key?: Key): CSSProperties {
     const styles: CSSProperties = {
       height: '100%',
@@ -82,88 +86,114 @@ class ProtocolGalleryGridLayout extends GridLayout<GalleryProtocol> {
       width: '100%',
     };
 
+    if (!this.emphasizeFeatured) return styles;
     if (key === undefined || this.getColumnCount() < 2) return styles;
-    const protocol = this.items.get(key)?.value;
-    return protocol?.featured
+    return this.items.get(key)?.value.featured
       ? { ...styles, gridColumn: 'span 2 / span 2' }
       : styles;
   }
 }
 
+function GalleryProtocolCardBody({
+  protocol,
+  emphasized,
+}: {
+  protocol: GalleryProtocol;
+  emphasized: boolean;
+}) {
+  const t = useTranslations('ProtocolGallery.collection');
+
+  return (
+    <>
+      <Heading
+        level="h3"
+        margin="none"
+        className={
+          emphasized
+            ? 'text-3xl leading-tight font-black'
+            : 'text-xl leading-tight font-black'
+        }
+      >
+        {protocol.shortName}
+      </Heading>
+      <Paragraph margin="none" intent="smallText" emphasis="muted">
+        {protocol.title}
+      </Paragraph>
+      <Paragraph
+        margin="none"
+        intent="smallText"
+        className={emphasized ? 'max-w-3xl' : undefined}
+      >
+        {emphasized ? protocol.summary : protocol.description}
+      </Paragraph>
+      <div className="flex flex-wrap gap-2">
+        {protocol.usesSociograms ? (
+          <Badge color="sea-serpent">{t('filters.sociograms')}</Badge>
+        ) : null}
+        {protocol.usesRosters ? (
+          <Badge color="mustard">{t('filters.rosters')}</Badge>
+        ) : null}
+        {protocol.usesDyadCensus ? (
+          <Badge color="neon-coral">{t('filters.dyadCensus')}</Badge>
+        ) : null}
+      </div>
+      <span className="text-primary mt-auto flex items-center gap-2 pt-4 text-sm font-bold">
+        {t('viewDetails')}
+        <ArrowUpRight
+          aria-hidden
+          className="size-5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-focus-visible:translate-x-0.5 group-focus-visible:-translate-y-0.5 motion-reduce:transform-none"
+        />
+      </span>
+    </>
+  );
+}
+
 function GalleryProtocolCard({
   protocol,
   itemProps,
+  emphasized,
 }: {
   protocol: GalleryProtocol;
   itemProps: ItemProps;
+  emphasized: boolean;
 }) {
   const t = useTranslations('ProtocolGallery.collection');
 
   return (
     <Link
       {...itemProps}
-      data-featured={protocol.featured || undefined}
       href={`/protocol-gallery/${protocol.slug}`}
-      aria-label={t('openProtocol', { title: protocol.title })}
-      className={cn(
-        'focusable group block size-full rounded transition-transform hover:-translate-y-1 focus-visible:-translate-y-1 motion-reduce:transform-none',
-        protocol.featured &&
-          // Resolved from the shared Tailwind package imported by globals.css.
-          // oxlint-disable-next-line tailwindcss/no-unknown-classes
-          'variable-pill-effect-border p-1',
-      )}
+      aria-label={t('openProtocol', { title: protocol.shortName })}
+      className="focusable group block size-full rounded transition-transform hover:-translate-y-1 focus-visible:-translate-y-1 motion-reduce:transform-none"
     >
-      <DeckProtocolCard
-        background={
-          <ProtocolPattern
-            name={protocol.title}
-            className="absolute inset-0 size-full opacity-10 transition-opacity duration-500 ease-out group-hover:opacity-20 group-focus-visible:opacity-20 group-data-[selected]:opacity-20 motion-reduce:transition-none"
-          />
-        }
-        className="elevation-low bg-surface flex size-full min-h-[32rem]"
-      >
-        <div className="relative z-10 flex size-full min-h-[32rem] flex-1 flex-col gap-4 p-7">
-          <Heading
-            level="h3"
-            margin="none"
-            className={
-              protocol.featured
-                ? 'max-w-4xl text-[max(24px,3.5cqi)] leading-[1.05] font-black wrap-break-word hyphens-auto'
-                : 'text-[max(18px,5cqi)] leading-[1.05] font-black wrap-break-word hyphens-auto'
-            }
-          >
-            {protocol.title}
-          </Heading>
-          <Paragraph
-            margin="none"
-            className={
-              protocol.featured
-                ? 'max-w-3xl text-base leading-relaxed text-current/80'
-                : 'text-sm leading-relaxed text-current/80'
-            }
-          >
-            {protocol.description}
-          </Paragraph>
-          <div className="flex flex-wrap gap-2">
-            {protocol.usesSociograms ? (
-              <Badge color="sea-serpent">{t('filters.sociograms')}</Badge>
-            ) : null}
-            {protocol.usesRosters ? (
-              <Badge color="mustard">{t('filters.rosters')}</Badge>
-            ) : null}
-            {protocol.usesDyadCensus ? (
-              <Badge color="neon-coral">{t('filters.dyadCensus')}</Badge>
-            ) : null}
-          </div>
-          <span className="text-primary mt-auto flex items-center gap-2 pt-4 text-[max(13px,3.25cqi)] font-bold">
-            {t('viewDetails')}
-            <ArrowUpRight
-              aria-hidden
-              className="size-5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-focus-visible:translate-x-0.5 group-focus-visible:-translate-y-0.5 motion-reduce:transform-none"
+      {emphasized ? (
+        <ProtocolCard
+          background={
+            <ProtocolPattern
+              name={protocol.title}
+              className="absolute inset-0 size-full"
             />
-          </span>
-        </div>
-      </DeckProtocolCard>
+          }
+          gradientClassName="from-transparent via-surface/85 to-surface via-45% to-65%"
+          className="bg-surface text-surface-contrast flex size-full flex-col shadow-lg"
+        >
+          <div className="absolute inset-x-0 top-7 z-10 flex justify-end px-7">
+            <Badge>{t('featured')}</Badge>
+          </div>
+          <div className="relative z-10 mt-24 flex flex-1 flex-col gap-3 p-7">
+            <GalleryProtocolCardBody protocol={protocol} emphasized />
+          </div>
+        </ProtocolCard>
+      ) : (
+        <Surface
+          noContainer
+          spacing="md"
+          shadow="lg"
+          className="bg-surface/55 text-text flex size-full flex-col gap-3 backdrop-blur-md"
+        >
+          <GalleryProtocolCardBody protocol={protocol} emphasized={false} />
+        </Surface>
+      )}
     </Link>
   );
 }
@@ -178,16 +208,32 @@ export function ProtocolGallery({
   const [sort, setSort] = useState<SortId>('newest');
   const [query, setQuery] = useState('');
   const [resultCount, setResultCount] = useState(protocols.length);
+  const [fitsTwoColumns, setFitsTwoColumns] = useState(true);
   const prefersReducedMotion = useReducedMotion();
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(TWO_COLUMN_MEDIA_QUERY);
+    const sync = () => setFitsTwoColumns(mediaQuery.matches);
+
+    sync();
+    mediaQuery.addEventListener('change', sync);
+    return () => mediaQuery.removeEventListener('change', sync);
+  }, []);
 
   const filteredProtocols = useMemo(
     () => protocols.filter((protocol) => matchesFilter(protocol, filter)),
     [filter, protocols],
   );
   const layout = useMemo(
-    () => new ProtocolGalleryGridLayout({ minItemWidth: 400, gap: 6 }),
+    () =>
+      new ProtocolGalleryGridLayout({
+        minItemWidth: GRID_MIN_ITEM_WIDTH,
+        gap: GRID_GAP_UNITS,
+      }),
     [],
   );
+  const emphasizeFeatured = filter === 'all' && query.trim().length === 0;
+  layout.emphasizeFeatured = emphasizeFeatured && fitsTwoColumns;
   const activeSort = sortConfig[sort];
 
   useEffect(() => {
@@ -293,9 +339,10 @@ export function ProtocolGallery({
         filterFuseOptions={galleryFuseOptions}
         filterDebounceMs={150}
         onFilterResultsChange={(_, matchCount) => setResultCount(matchCount)}
-        sortBy={activeSort.property}
-        sortDirection={activeSort.direction}
-        sortType={activeSort.type}
+        sortRules={[
+          { property: 'featured', direction: 'desc', type: 'boolean' },
+          activeSort,
+        ]}
         animate={prefersReducedMotion !== true}
         animationKey={`${filter}-${sort}-${query}`}
         className="[&_[data-stagger-item]]:size-full"
@@ -310,7 +357,11 @@ export function ProtocolGallery({
           </div>
         }
         renderItem={(protocol, itemProps) => (
-          <GalleryProtocolCard protocol={protocol} itemProps={itemProps} />
+          <GalleryProtocolCard
+            protocol={protocol}
+            itemProps={itemProps}
+            emphasized={protocol.featured && emphasizeFeatured}
+          />
         )}
       >
         {(collectionElements) => (

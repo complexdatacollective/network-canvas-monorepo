@@ -170,6 +170,7 @@
     },
     "collection": {
       "heading": "Explore la colección",
+      "featured": "Destacado",
       "searchLabel": "Buscar protocolos",
       "searchPlaceholder": "Buscar protocolos",
       "clearSearch": "Borrar búsqueda",

@@ -170,6 +170,7 @@
     },
     "collection": {
       "heading": "Explore the collection",
+      "featured": "Featured",
       "searchLabel": "Search protocols",
       "searchPlaceholder": "Search protocols",
       "clearSearch": "Clear search",
