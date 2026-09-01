@@ -16,6 +16,21 @@
 # magic-link URLs point at the wrong host and whose CSRF check refuses the
 # preview's own requests. Deriving the origin from the request is the way in,
 # and belongs with the real topology work.
+#
+# This site is the managed topology, so it wants STUDIO_DEPLOYMENT_MODE=managed
+# — and that has to be set as a SITE environment variable (`netlify env:set`,
+# or the UI), never in [build.environment] below, which configures the build
+# and cannot reach the function at runtime. src/netlify.ts reads it inside the
+# running function, the same as src/index.ts does.
+#
+# The gate that variable drives (src/client-assets.ts) does not run on this
+# lane at all: the client is served by the CDN, and src/netlify.ts's
+# `config.path` claims only /api, /rpc, /storage and /healthz, so the redirect
+# at the bottom of this file answers `/`, `/pricing`, `/setup` and everything
+# else with index.html at 200. The mode still reaches the client here, over
+# the `status` procedure. If a topology-gated path ever has to be refused on
+# this lane, it must be added to `config.path` so the function sees it —
+# nothing in this file can express the refusal.
 
 [build]
 command = "pnpm exec turbo run build --filter=@codaco/studio-client && pnpm --filter @codaco/studio-server build:netlify"

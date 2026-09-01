@@ -2,7 +2,9 @@ import { createApp } from './app.ts';
 import { readEnv } from './env.ts';
 
 // Deliberately NOT ported from src/index.ts:
-//   - serveStatic / SPA fallback — Netlify's CDN serves apps/studio/client/dist
+//   - mountClient — serveStatic, the SPA fallback, and the deployment-mode
+//     404 gate registered ahead of them; Netlify's CDN serves
+//     apps/studio/client/dist (see below)
 //   - checkSchema — this lane holds no database at all (see below), so there
 //     is no schema to verify on a cold start
 //   - the WebSocket server and shutdown drain — /ws cannot be served here and
@@ -10,6 +12,17 @@ import { readEnv } from './env.ts';
 //   - background invitation delivery — no durable scheduler invokes this
 //     function, so RPC invitation creation is explicitly unavailable rather
 //     than committing an outbox job that nothing can drain
+
+// This lane serves the managed topology, and cannot gate on it. netlify.toml's
+// `/*` redirect answers every client path with index.html at 200, and
+// `config.path` below claims only the machine surfaces — not `/` or
+// `/pricing` — so no function-level refusal is reachable for a topology-gated
+// path. Nothing here is broken by that, because everything the gate would
+// refuse under `self-hosted` is exactly what this topology serves; but if a
+// gated path ever has to be refused on this lane, it has to be added to
+// `config.path` first. STUDIO_DEPLOYMENT_MODE=managed is still worth setting
+// on the site: `readEnv` is called below, and the mode reaches the client
+// through the `status` procedure.
 
 // This lane runs with no database and auth off, for the reason netlify.toml
 // states at length: PUBLIC_URL has to match the origin the browser used, and a

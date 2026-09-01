@@ -19,7 +19,7 @@ import {
 } from './auth/principal.ts';
 import type { AuthService } from './auth/service.ts';
 import { createPool } from './db/pool.ts';
-import type { AuthCapabilities } from './domain.ts';
+import { type AuthCapabilities, getDeploymentStatus } from './domain.ts';
 import { readEnv } from './env.ts';
 import { createRpcRouter } from './rpc.ts';
 
@@ -74,6 +74,10 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
       : [],
   };
 
+  // Which topology this deployment is. The client reads it from `status`;
+  // src/client-assets.ts enforces the same classification at the HTTP layer.
+  const deployment = getDeploymentStatus(env.deploymentMode);
+
   app.get('/healthz', (c) => c.json({ status: 'ok' }));
 
   // Registered before the problem-JSON catch-alls below, which would
@@ -100,7 +104,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
 
   // The public data API — a separate surface from the SPA's RPC below, per
   // the 2026-08-11 decision on #1248.
-  app.route('/api/v1', createApiV1(authCaps));
+  app.route('/api/v1', createApiV1(authCaps, deployment));
 
   // /storage, not /assets, which the client build claims for its hashed
   // chunks. Reading stays open: a session lookup per byte range would put the
@@ -126,6 +130,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   const rpcHandler = new RPCHandler(
     createRpcRouter(authCaps, {
       auth,
+      deployment,
       invitationDeliveryAvailable: Boolean(
         deps.invitationDeliveryAvailable && authCaps.magicLink,
       ),

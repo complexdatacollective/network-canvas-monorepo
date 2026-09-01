@@ -21,8 +21,10 @@ describe('studio server', () => {
     expect(body.name).toBe('Network Canvas Studio');
     expect(body.version).toMatch(/^\d+\.\d+\.\d+/);
     // The public surface's output schema is the serialization allowlist
-    // (#1248): the SPA-facing auth capability block must never leak here.
+    // (#1248): the SPA-facing auth capability and deployment blocks must
+    // never leak here.
     expect(body).not.toHaveProperty('auth');
+    expect(body).not.toHaveProperty('deployment');
   });
 
   it('publishes an OpenAPI 3.1 document describing the API', async () => {
