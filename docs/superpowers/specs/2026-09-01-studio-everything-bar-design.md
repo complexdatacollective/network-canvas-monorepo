@@ -107,8 +107,12 @@ how.
    enforces it.
 3. **No mutations.** The bar issues navigation and opens existing surfaces.
    It calls no mutation procedure.
-4. **Selection stability.** Asynchronous results appending to the list never
-   move the highlighted item or reorder groups already on screen.
+4. **Selection stability.** The highlighted item is tracked by its
+   provider-qualified identity, never by list position. Late asynchronous
+   results insert into their ranked position within their group (§3.4) —
+   a current-study entity arriving after local destinations still ranks
+   above them — but an insertion can never change which item is highlighted,
+   and group order itself never changes.
 5. **Query privacy.** Query text never leaves the instance. Every provider —
    including documentation — is answered by the instance itself; the only
    outbound documentation traffic is the server's periodic index refresh
@@ -231,11 +235,12 @@ without requiring a query.
   `⌘K` hint, like the documentation site's search button), or `⌘K` /
   `Ctrl+K` from any app route. The shortcut is registered at the app-shell
   layout, so it works identically everywhere, including the editor.
-- **Type**: local providers (destinations, commands) filter synchronously on
-  every keystroke. The entity and documentation providers debounce, abort
+- **Type**: local inventories (destinations, commands) filter synchronously
+  on every keystroke. The entity and documentation providers debounce, abort
   superseded requests, and render into their groups with per-group pending
   indicators — both are answered by the instance's own server. Late results
-  append; they never re-rank what is on screen (invariant 4).
+  insert at their ranked position within their group, and the highlighted
+  item is preserved by identity (invariant 4).
 - **Navigate**: arrow keys move through the flat result sequence across
   groups; `Enter` activates; `Esc` closes and returns focus to wherever it
   was. A footer row shows navigate / select / close hints, translated.
@@ -271,16 +276,25 @@ type EverythingBarItem = {
     | { kind: 'external'; href: string };    // documentation
 };
 
-type EverythingBarProvider = {
-  id: string;
-  local: boolean;             // synchronous filter vs debounced fetch
-  search(
-    query: string,
-    signal: AbortSignal,
-    cursor?: string,          // continuation from a previous result's `next`
-  ): Promise<{ items: EverythingBarItem[]; next?: string }>;
-  empty?(signal: AbortSignal): Promise<EverythingBarItem[]>;
-} & (
+type EverythingBarProvider = { id: string } & (
+  | {
+      // Local: a synchronous inventory. The component filters, matches,
+      // ranks, and pages it itself, on the same keystroke — no promise, so
+      // a local result can never be mistaken for a late remote one.
+      local: true;
+      items(): EverythingBarItem[];
+    }
+  | {
+      // Remote: a debounced, abortable, paged search.
+      local: false;
+      search(
+        query: string,
+        signal: AbortSignal,
+        cursor?: string,      // continuation from a previous result's `next`
+      ): Promise<{ items: EverythingBarItem[]; next?: string }>;
+      empty?(signal: AbortSignal): Promise<EverythingBarItem[]>;
+    }
+) & (
   | {
       persistence: 'recents';
       // Required on this branch: recents are stored as references and must
@@ -290,6 +304,12 @@ type EverythingBarProvider = {
   | { persistence: 'never' }  // no resolve, no per-item opt-in
 );
 ```
+
+Item identity is provider-qualified: the component keys every result as
+`providerId:itemId` and uses that key for highlighting, activation, React
+reconciliation, and `aria-activedescendant`. Two providers returning the same
+natural id — a destination and a command both named "settings" — therefore
+cannot collide, and recents already store the same provider-plus-id pair.
 
 The `open` variant deliberately carries no callback. It is declarative route
 plus surface: `href` is the owning screen's route and `surface` an identifier
@@ -313,17 +333,17 @@ Continuation flows through the seam for remote providers: one with more than
 one bounded page returns `next`, the component renders that group's "show
 more" affordance (§3.4), and activating it calls `search` again with the
 cursor — the Studio providers pass it straight through to their procedures'
-`cursor`/`nextCursor` (§5.4, §5.5). Local providers omit `next` and the
-component pages them itself: it holds the full filtered set in memory,
-renders the affordance whenever matches remain beyond the group bound, and
-reveals the next bounded slice — a sixth matching destination is reachable,
-not silently cut (invariant 1). Appended pages obey selection stability
+`cursor`/`nextCursor` (§5.4, §5.5). Local inventories are paged by the
+component itself: it holds the full filtered set in memory, renders the
+affordance whenever matches remain beyond the group bound, and reveals the
+next bounded slice — a sixth matching destination is reachable, not silently
+cut (invariant 1). Late and revealed results honour selection stability
 (invariant 4) on both paths.
 
-The component owns matching for local providers (case- and diacritic-folded
-substring and initials matching), the keyboard model, grouping, bounds,
-pagination, and recents. Providers own what exists and whether the researcher
-may see it.
+The component owns matching over local inventories (case- and
+diacritic-folded substring and initials matching), the keyboard model,
+grouping, bounds, pagination, and recents. Providers own what exists and
+whether the researcher may see it.
 
 ### 5.2 The navigation manifest
 
@@ -336,7 +356,7 @@ type NavManifestEntry = {
   href: string;
   icon?: ComponentType;
   access: string | 'public';    // required: a capability, or explicitly public
-  topology?: 'managed' | 'self-hosted';  // absent = both deployment modes
+  topology: 'both' | 'managed' | 'self-hosted';  // required, like access
   chord?: string;               // the key after 'g', contributed to the shortcut registry
 };
 ```
@@ -349,7 +369,10 @@ sidebar and the bar exposed a destination the researcher cannot use. The
 server denial remains the boundary either way; this keeps the chrome honest.
 
 `topology` carries the shell's deployment-mode gating (#1561 §10.4) into the
-shared filter: a managed-only destination such as team billing declares
+shared filter, and it is required for the same reason `access` is: an entry
+must say `'both'` on purpose, because an omitted classification defaulting to
+both is exactly how a managed-only destination would leak into self-hosted
+chrome. A managed-only destination such as team billing declares
 `topology: 'managed'`, and the one manifest filter — capabilities from
 `study.shell`/team context plus the deployment mode from `ShellContext` —
 produces the entry set that both `NavList` and the bar consume. Capability
@@ -448,14 +471,17 @@ Matching is name-prefix and substring on display names; anything cleverer is a
 ranking refinement inside the procedure, not a contract change.
 
 `search.entities` is non-sensitive by contract: every kind it can ever return
-is metadata a team member may see, and it registers `none` in the audit
-command registry with that reason. Sensitive kinds never join it —
-participants arrive as their own procedure called by their own
-`persistence: 'never'` provider (§7), so the server response shape, the audit
-classification, and the persistence policy share one boundary. A mixed
-procedure would either fetch participant-identifying rows on every ordinary
-study search or force the safe kinds out of recents along with the sensitive
-one.
+is metadata a team member may see. Under the audit design that makes it an
+excluded ordinary read — "opening non-sensitive metadata lists" is outside
+the log's scope (audit design §7.2), and the audit command registry
+classifies mutations, so a read-only query carries no registration at all.
+Sensitive kinds never join it — participants arrive as their own procedure
+called by their own `persistence: 'never'` provider (§7), and that procedure
+is a sensitive read under the audit design's audited-read path, so the server
+response shape, the audit policy, and the persistence policy share one
+boundary. A mixed procedure would either fetch participant-identifying rows
+on every ordinary study search or force the safe kinds out of recents along
+with the sensitive one.
 
 ### 5.5 The documentation provider
 
@@ -578,8 +604,10 @@ bypassing none.
   destination (#1561 invariant 4) is what makes this safe rather than
   merely tidy.
 - **Entity search** enforces membership server-side per team scope. Studies
-  and templates are non-sensitive metadata; the procedure registers `none` in
-  the audit command registry with that reason.
+  and templates are non-sensitive metadata, so the procedure is an excluded
+  ordinary read under the audit design's §7.2 — outside the audit log and
+  outside the mutation command registry, which classifies mutations, not
+  reads (§5.4).
 - **Participants** are the sensitive case, and they arrive with #1263/#1264,
   not before. When they land they are their own procedure and their own
   provider, never new kinds on `search.entities` (§5.4): results identifying
@@ -706,10 +734,16 @@ foundations work (#1315).
 
 - Combobox semantics: roles, `aria-activedescendant`, group labels, count
   announcements, focus trap and restore.
-- Selection stability: a late-arriving provider result set appended below the
-  highlighted item never changes which item is highlighted (the oracle: the
-  highlighted id before and after resolve are equal — proven able to fail by
-  breaking the append path).
+- Selection stability: a late-arriving result set inserting at its ranked
+  position — including above the highlighted item — never changes which item
+  is highlighted (the oracle: the highlighted provider-qualified key before
+  and after resolve are equal, proven able to fail by breaking the
+  identity-tracking path), and the inserted results land in §3.4 rank order,
+  not appended below lower-priority rows.
+- Identity: two providers returning the same natural id render, highlight,
+  and activate as distinct items — the provider-qualified key backs React
+  keys and `aria-activedescendant`, asserted with a deliberate cross-provider
+  collision.
 - Keyboard: arrows traverse across groups, Enter activates, Esc closes and
   restores focus; reduced-motion path renders without transitions.
 - Matching: diacritic folding, initials, index-mapped highlight on non-Latin
@@ -734,8 +768,9 @@ foundations work (#1315).
   outside the manifest fails the test. In self-hosted mode a
   `topology: 'managed'` entry (team billing) is absent from sidebar, header,
   and bar alike. A type-level assertion (or registry test) proves `access`
-  cannot be omitted, and the provider type's discriminated union proves a
-  `persistence: 'recents'` provider cannot omit `resolve`.
+  and `topology` cannot be omitted, and the provider type's discriminated
+  unions prove a `persistence: 'recents'` provider cannot omit `resolve` and
+  a local provider exposes a synchronous inventory rather than a promise.
 - **Launcher rule**: the registry test in §5.3 — every activation is a
   route, an external link, or a route paired with a surface its destination
   screen registers; the activation type admits no callback, so a mutation is
