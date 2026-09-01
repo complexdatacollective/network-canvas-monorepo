@@ -56,6 +56,7 @@
     "./layout/Surface": "./src/layout/Surface.tsx",
     "./layout/ResponsiveContainer": "./src/layout/ResponsiveContainer.tsx",
     "./navigation/SiteNavigation": "./src/navigation/SiteNavigation.tsx",
+    "./navigation/EverythingBar": "./src/navigation/EverythingBar.tsx",
     "./navigation/ThemeSwitcher": "./src/navigation/ThemeSwitcher.tsx",
     "./navigation/SiteFooter": "./src/navigation/SiteFooter.tsx",
     "./navigation/RouteFocus": "./src/navigation/RouteFocus.tsx",
@@ -334,6 +335,10 @@
       "./navigation/SiteNavigation": {
         "types": "./dist/navigation/SiteNavigation.d.ts",
         "default": "./dist/navigation/SiteNavigation.js"
+      },
+      "./navigation/EverythingBar": {
+        "types": "./dist/navigation/EverythingBar.d.ts",
+        "default": "./dist/navigation/EverythingBar.js"
       },
       "./navigation/ThemeSwitcher": {
         "types": "./dist/navigation/ThemeSwitcher.d.ts",
