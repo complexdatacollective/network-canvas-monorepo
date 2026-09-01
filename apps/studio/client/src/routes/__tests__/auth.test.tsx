@@ -33,6 +33,7 @@ const STATUS: Status = {
   name: 'Network Canvas Studio',
   version: '0.1.0',
   auth: { enabled: true, magicLink: true, socialProviders: [] },
+  deployment: { mode: 'managed', billing: false },
 };
 let currentStatus: Status = STATUS;
 

@@ -248,3 +248,31 @@ describe('process configuration', () => {
     expect(() => readEnv()).toThrow();
   });
 });
+
+describe('the deployment mode', () => {
+  it('is managed under the development defaults', () => {
+    // So the local lane can develop the managed-only surfaces at all.
+    expect(readEnv().deploymentMode).toBe('managed');
+  });
+
+  it('is self-hosted when the variable is unset', () => {
+    vi.stubEnv('STUDIO_DEPLOYMENT_MODE', '');
+    // The fail-closed direction, and the reason no default is declared in
+    // variables.ts: a managed deployment that forgets the variable 404s its
+    // own pricing page on the first smoke request, where the other default
+    // would have an institution's own instance quietly publishing one.
+    expect(readEnv().deploymentMode).toBe('self-hosted');
+  });
+
+  it('reads an explicit self-hosted value', () => {
+    vi.stubEnv('STUDIO_DEPLOYMENT_MODE', 'self-hosted');
+    expect(readEnv().deploymentMode).toBe('self-hosted');
+  });
+
+  it('refuses a value that is neither topology', () => {
+    // A typo must not resolve to a topology by accident, in either
+    // direction.
+    vi.stubEnv('STUDIO_DEPLOYMENT_MODE', 'hosted');
+    expect(() => readEnv()).toThrow();
+  });
+});

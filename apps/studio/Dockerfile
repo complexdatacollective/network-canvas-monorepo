@@ -3,8 +3,15 @@
 # the Node server plus the built client assets, which the server serves
 # itself. The managed topology runs this same image behind a CDN that serves
 # the client assets instead; managed backend deploys key on
-# @codaco/studio-server version changes, not on image rebuilds. Build from the
-# monorepo root:
+# @codaco/studio-server version changes, not on image rebuilds.
+#
+# The image deliberately sets no STUDIO_DEPLOYMENT_MODE, so a self-host gets
+# the fail-closed default and refuses the managed-only surfaces (pricing, the
+# sign-up funnel, billing) with a 404. The managed deployment sets
+# STUDIO_DEPLOYMENT_MODE=managed in its container environment — at runtime, not
+# in this file, which is what lets one image serve both topologies.
+#
+# Build from the monorepo root:
 #
 #   docker build -f apps/studio/Dockerfile -t network-canvas-studio .
 

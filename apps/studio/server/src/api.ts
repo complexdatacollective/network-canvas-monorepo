@@ -6,7 +6,11 @@ import { ZodToJsonSchemaConverter } from '@orpc/zod';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
-import { type AuthCapabilities, getInstanceStatus } from './domain.ts';
+import {
+  type AuthCapabilities,
+  type DeploymentStatus,
+  getInstanceStatus,
+} from './domain.ts';
 
 // The public data API (#1248): resource-shaped REST for researchers and
 // external tools, with the normative OpenAPI 3.1 document served from within
@@ -52,13 +56,16 @@ const generator = new OpenAPIGenerator({
   converters: [new ZodToJsonSchemaConverter()],
 });
 
-export function createApiV1(auth: AuthCapabilities) {
-  // The domain's status includes auth capabilities for the SPA; this
-  // surface's Status schema deliberately does not name them, so they are
-  // stripped from the published API (output schemas are the serialization
-  // allowlist).
+export function createApiV1(
+  auth: AuthCapabilities,
+  deployment: DeploymentStatus,
+) {
+  // The domain's status includes auth capabilities and the deployment block
+  // for the SPA; this surface's Status schema deliberately names neither, so
+  // both are stripped from the published API (output schemas are the
+  // serialization allowlist).
   const apiRouter = {
-    status: os.status.handler(() => getInstanceStatus(auth)),
+    status: os.status.handler(() => getInstanceStatus(auth, deployment)),
   };
 
   const handler = new OpenAPIHandler(apiRouter, {
