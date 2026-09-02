@@ -99,7 +99,7 @@
     "@vitest/coverage-v8": "catalog:",
     "babel-plugin-react-compiler": "^1.0.0",
     "chromatic": "catalog:",
-    "concurrently": "^10.0.4",
+    "concurrently": "^10.0.5",
     "cross-env": "^10.1.0",
     "esbuild": "^0.28.1",
     "fflate": "^0.8.3",
