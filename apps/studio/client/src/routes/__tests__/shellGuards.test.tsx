@@ -369,8 +369,17 @@ describe('the site shell', () => {
 
     // WCAG 2.4.1: the site header repeats on every public page, so the bypass
     // has to be reachable before it — which means first in the document.
+    // `SiteNavigation` owns the link; this asserts the site shell puts that
+    // header first, which is what makes its bypass the first focusable thing.
     const links = screen.getAllByRole('link');
     expect(links[0]).toHaveAccessibleName('Skip to main content');
+
+    // Exactly one. The site shell used to render a bypass of its own, and a
+    // second link with the same name and the same target is what a visitor
+    // meets first on every public page.
+    expect(
+      screen.getAllByRole('link', { name: 'Skip to main content' }),
+    ).toHaveLength(1);
   });
 
   it('moves focus to the page main when that link is used', async () => {
@@ -383,6 +392,8 @@ describe('the site shell', () => {
 
     // A `<main>` is not focusable on its own, so a plain fragment link would
     // leave focus on the bypass and the next Tab would restart at the top.
+    // The handler that prevents that is `SiteNavigation`'s; this pins that it
+    // still reaches the `id` Studio's own site screens render.
     expect(document.activeElement).toBe(screen.getByRole('main'));
   });
 });
