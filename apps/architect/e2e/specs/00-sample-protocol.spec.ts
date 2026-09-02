@@ -9,10 +9,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
-import {
-  abortUnmockedMapboxRequests,
-  installMapboxMocks,
-} from '../fixtures/mapbox-mocks.js';
+import { installMapboxMocks } from '../fixtures/mapbox-mocks.js';
 import { emptyProtocol, seedProtocol } from '../fixtures/seed.js';
 import {
   assertBuiltProtocolInvariants,
@@ -198,10 +195,9 @@ test.describe.serial('sample protocol built from scratch', () => {
       ...contextOptions,
     });
     // Re-applied by hand for the same reason as the `use` options above: the
-    // `architect-test` fixture's Mapbox guard and mocks never see this context.
-    escapedMapbox = await abortUnmockedMapboxRequests(context);
+    // `architect-test` fixture's Mapbox mocks and guard never see this context.
+    escapedMapbox = await installMapboxMocks(context);
     page = await context.newPage();
-    await installMapboxMocks(page);
     editor = new StageEditor(page);
     // `experiments: {}` is seeded because it is UNWRITABLE through the
     // running editor (ExperimentsPage can only ever write an

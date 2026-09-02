@@ -231,8 +231,8 @@ test('creates a valid Geospatial stage from scratch', async ({
   // `value.center ? 'Edit map view' : 'Set map view'`) and opens MapView.tsx,
   // a REAL `mapboxgl.Map` instance (title "Initial Map View"). Its style,
   // tiles and search go to the `installMapboxMocks` routes the `architect-test`
-  // fixture installs on every page, so nothing here reaches Mapbox — and the
-  // fixture fails the test if anything does.
+  // fixture installs on the browser context, so nothing here reaches Mapbox —
+  // and the fixture fails the test if anything does.
   await editor
     .field('mapOptions')
     .getByRole('button', { name: 'Set map view' })
