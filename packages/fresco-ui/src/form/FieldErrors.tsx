@@ -55,21 +55,30 @@ export default function FieldErrors({
     messages: liveMessages,
     signature: liveSignature,
   }));
+
+  // A new/changed message is adopted in THIS render, not from a passive
+  // effect a beat later: an effect-only update would commit and paint the
+  // previous message first, then re-render with the real one — a stale
+  // frame, and a live region that receives the new text later than the
+  // commit that supplied it (screen readers only announce what's there when
+  // they observe it, so a late arrival reads as late or not at all — the
+  // exact failure `aria-live` being unconditionally mounted, above, exists to
+  // avoid). Only *hiding* is deferred; see the effect below.
+  if (liveMessages.length > 0 && liveSignature !== displayed.signature) {
+    setDisplayed({ messages: liveMessages, signature: liveSignature });
+  }
+
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     if (hideTimeoutRef.current !== undefined) {
+      // A hide scheduled a moment ago (the field was briefly clear mid-
+      // revalidation) is moot now that a message is showing again.
       clearTimeout(hideTimeoutRef.current);
       hideTimeoutRef.current = undefined;
     }
 
-    if (liveMessages.length > 0) {
-      setDisplayed((prev) =>
-        prev.signature === liveSignature
-          ? prev
-          : { messages: liveMessages, signature: liveSignature },
-      );
-    } else {
+    if (liveMessages.length === 0) {
       hideTimeoutRef.current = setTimeout(() => {
         hideTimeoutRef.current = undefined;
         setDisplayed({ messages: [], signature: '' });
