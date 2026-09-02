@@ -33,9 +33,9 @@ export default function FieldErrors({
   // JSON.stringify, not a plain join: a join delimiter can appear inside a
   // message itself (a protocol author's custom validation text, say), which
   // would let two genuinely different message lists hash to the same string.
-  // That's more than a missed animation here — `prev.signature === liveSignature`
-  // below would then also skip the content update, leaving stale text on
-  // screen — so the signature has to actually disambiguate the content.
+  // That's more than a missed animation here — the signature also gates
+  // whether the *displayed content* updates below — so it has to actually
+  // disambiguate the content, not just usually do so.
   const liveSignature = JSON.stringify(liveMessages);
 
   // What's actually rendered, kept distinct from the live `errors`/`show`
@@ -46,34 +46,34 @@ export default function FieldErrors({
   // live props flicker to "no error" and back on every keystroke even though
   // nothing the user can perceive actually changed. A naively `show`/content-
   // driven remount replays `animate-shake` on every one of those flickers.
-  // Showing a NEW message happens immediately; clearing one is deferred to
-  // the next macrotask, which is always after that same-tick flicker has
-  // resolved (field validation here never does real async I/O — it's a
-  // zod `safeParseAsync` over an in-memory value — so it never outlasts one
-  // microtask), and cancelled outright if the message comes back before then.
   const [displayed, setDisplayed] = useState(() => ({
     messages: liveMessages,
     signature: liveSignature,
   }));
 
-  // A new/changed message is adopted in THIS render, not from a passive
-  // effect a beat later: an effect-only update would commit and paint the
-  // previous message first, then re-render with the real one — a stale
-  // frame, and a live region that receives the new text later than the
-  // commit that supplied it (screen readers only announce what's there when
-  // they observe it, so a late arrival reads as late or not at all — the
-  // exact failure `aria-live` being unconditionally mounted, above, exists to
-  // avoid). Only *hiding* is deferred; see the effect below.
+  // A new/changed message is adopted directly in the render body — React's
+  // documented pattern for deriving state from props — so it lands in the
+  // SAME commit as the props that supplied it: no stale frame, no delay
+  // before the aria-live region receives it (screen readers only announce
+  // what's there when they observe it, so a late arrival reads as late or
+  // not at all).
   if (liveMessages.length > 0 && liveSignature !== displayed.signature) {
     setDisplayed({ messages: liveMessages, signature: liveSignature });
   }
 
+  // Clearing to no message, by contrast, is deferred by one macrotask and
+  // cancelled outright if the message comes back before then — the only
+  // reliable way to distinguish "about to restore" from "now settled empty"
+  // from the props alone (field validation here never does real async I/O —
+  // it's a zod `safeParseAsync` over an in-memory value — so it never
+  // outlasts one microtask, and every macrotask runs after any pending
+  // microtask has drained). Callers whose own assertions don't tolerate that
+  // one-macrotask delay should await it (`waitFor`/`findBy*`), same as any
+  // other state that settles asynchronously.
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     if (hideTimeoutRef.current !== undefined) {
-      // A hide scheduled a moment ago (the field was briefly clear mid-
-      // revalidation) is moot now that a message is showing again.
       clearTimeout(hideTimeoutRef.current);
       hideTimeoutRef.current = undefined;
     }
@@ -81,7 +81,9 @@ export default function FieldErrors({
     if (liveMessages.length === 0) {
       hideTimeoutRef.current = setTimeout(() => {
         hideTimeoutRef.current = undefined;
-        setDisplayed({ messages: [], signature: '' });
+        setDisplayed((prev) =>
+          prev.messages.length > 0 ? { messages: [], signature: '' } : prev,
+        );
       }, 0);
     }
 

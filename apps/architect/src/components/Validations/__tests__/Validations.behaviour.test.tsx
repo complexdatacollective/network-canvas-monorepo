@@ -1248,9 +1248,11 @@ describe('Validations behaviour', () => {
       fireEvent.blur(typeValue('Minimum value', '1'));
 
       expect(committedValidation()).toEqual({ minValue: 1, maxValue: 2 });
-      expect(
-        screen.queryByText(/is greater than maxValue/),
-      ).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.queryByText(/is greater than maxValue/),
+        ).not.toBeInTheDocument();
+      });
       await expectSaveAllowed();
     });
 
@@ -1493,9 +1495,11 @@ describe('Validations behaviour', () => {
       fireEvent.click(toggle('Minimum value'));
       fireEvent.click(toggle('Minimum value'));
 
-      expect(
-        screen.queryByText(/Enter a value for "Minimum value"/),
-      ).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.queryByText(/Enter a value for "Minimum value"/),
+        ).not.toBeInTheDocument();
+      });
     });
 
     // Every rule row lives INSIDE this field, so editing one never blurs out
