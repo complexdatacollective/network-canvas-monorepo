@@ -303,6 +303,9 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 30.0.0(@noble/hashes@2.3.0)
+      jszip:
+        specifier: 'catalog:'
+        version: 3.10.1
       knip:
         specifier: ^6.26.0
         version: 6.26.0

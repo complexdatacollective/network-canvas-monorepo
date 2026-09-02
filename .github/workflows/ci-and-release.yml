@@ -524,6 +524,10 @@ jobs:
         id: compat-protocols
         continue-on-error: true
         run: pnpm check:compat-protocols
+      - name: Check no Mapbox token other than the sandbox testing token is committed
+        id: mapbox-tokens
+        continue-on-error: true
+        run: pnpm check:mapbox-tokens
       - name: Check changed public package versions are unoccupied on npm
         id: npm_versions
         continue-on-error: true
@@ -568,6 +572,7 @@ jobs:
           KNIP_OUTCOME: ${{ steps.knip.outcome }}
           CHANGESETS_OUTCOME: ${{ steps.changesets.outcome }}
           COMPAT_PROTOCOLS_OUTCOME: ${{ steps.compat-protocols.outcome }}
+          MAPBOX_TOKENS_OUTCOME: ${{ steps.mapbox-tokens.outcome }}
           NPM_VERSIONS_OUTCOME: ${{ steps.npm_versions.outcome }}
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
@@ -578,6 +583,7 @@ jobs:
             "knip=$KNIP_OUTCOME" \
             "changesets=$CHANGESETS_OUTCOME" \
             "compat-protocols=$COMPAT_PROTOCOLS_OUTCOME" \
+            "mapbox-tokens=$MAPBOX_TOKENS_OUTCOME" \
             "npm-versions=$NPM_VERSIONS_OUTCOME" \
             "scripts=$SCRIPTS_OUTCOME" \
             "build=$BUILD_OUTCOME" \
