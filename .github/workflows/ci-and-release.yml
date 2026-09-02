@@ -524,6 +524,10 @@ jobs:
         id: compat-protocols
         continue-on-error: true
         run: pnpm check:compat-protocols
+      - name: Check no Mapbox token other than the sandbox testing token is committed
+        id: mapbox-tokens
+        continue-on-error: true
+        run: pnpm check:mapbox-tokens
       - name: Check changed public package versions are unoccupied on npm
         id: npm_versions
         continue-on-error: true
@@ -568,6 +572,7 @@ jobs:
           KNIP_OUTCOME: ${{ steps.knip.outcome }}
           CHANGESETS_OUTCOME: ${{ steps.changesets.outcome }}
           COMPAT_PROTOCOLS_OUTCOME: ${{ steps.compat-protocols.outcome }}
+          MAPBOX_TOKENS_OUTCOME: ${{ steps.mapbox-tokens.outcome }}
           NPM_VERSIONS_OUTCOME: ${{ steps.npm_versions.outcome }}
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
@@ -578,6 +583,7 @@ jobs:
             "knip=$KNIP_OUTCOME" \
             "changesets=$CHANGESETS_OUTCOME" \
             "compat-protocols=$COMPAT_PROTOCOLS_OUTCOME" \
+            "mapbox-tokens=$MAPBOX_TOKENS_OUTCOME" \
             "npm-versions=$NPM_VERSIONS_OUTCOME" \
             "scripts=$SCRIPTS_OUTCOME" \
             "build=$BUILD_OUTCOME" \
@@ -922,7 +928,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+      - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
         with:
           install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
@@ -1154,7 +1160,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+      - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
         with:
           install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
@@ -1972,7 +1978,7 @@ jobs:
       - name: Deploy report to Pages
         id: deploy
         if: steps.merge.outputs.needs_deploy == 'true'
-        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
         timeout-minutes: 3
         continue-on-error: true
       - name: Record the deployed state
@@ -2187,7 +2193,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+      - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
         with:
           install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
@@ -2329,7 +2335,7 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.architect_version }}
         run: bash .github/scripts/app-release-guard.sh
       - if: steps.guard.outputs.skip != 'true'
-        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
         with:
           install: false
       - if: steps.guard.outputs.skip != 'true'
@@ -2377,7 +2383,7 @@ jobs:
           --since "$SINCE"
           --out "${RUNNER_TEMP}/architect-notes.md"
       - if: steps.guard.outputs.skip != 'true'
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: '@codaco/architect@${{ needs.apps-release-detect.outputs.architect_version }}'
           name: Architect ${{ needs.apps-release-detect.outputs.architect_version }}
@@ -2422,7 +2428,7 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.interviewer_version }}
         run: bash .github/scripts/app-release-guard.sh
       - if: steps.guard.outputs.skip != 'true'
-        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
         with:
           install: false
       - if: steps.guard.outputs.skip != 'true'
@@ -2465,7 +2471,7 @@ jobs:
           --since "$SINCE"
           --out "${RUNNER_TEMP}/interviewer-notes.md"
       - if: steps.guard.outputs.skip != 'true'
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: '@codaco/interviewer@${{ needs.apps-release-detect.outputs.interviewer_version }}'
           name: Interviewer ${{ needs.apps-release-detect.outputs.interviewer_version }}
@@ -2505,7 +2511,7 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.background_creator_version }}
         run: bash .github/scripts/app-release-guard.sh
       - if: steps.guard.outputs.skip != 'true'
-        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
         with:
           install: false
       - if: steps.guard.outputs.skip != 'true'
@@ -2540,7 +2546,7 @@ jobs:
           --since "$SINCE"
           --out "${RUNNER_TEMP}/background-creator-notes.md"
       - if: steps.guard.outputs.skip != 'true'
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: '@codaco/background-creator@${{ needs.apps-release-detect.outputs.background_creator_version }}'
           name: Background Creator ${{ needs.apps-release-detect.outputs.background_creator_version }}
@@ -2588,7 +2594,7 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
       - if: steps.guard.outputs.skip != 'true'
-        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
         with:
           install: false
       - if: steps.guard.outputs.skip != 'true'
@@ -2622,7 +2628,7 @@ jobs:
           --out "${RUNNER_TEMP}/fresco-notes.md"
       - name: Create the release on the Fresco repository
         if: steps.guard.outputs.skip != 'true'
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           repository: complexdatacollective/Fresco
           token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
@@ -2636,7 +2642,7 @@ jobs:
       # the mirror is not repeated on the next push to main.
       - name: Tag the released version in this repository
         if: steps.guard.outputs.skip != 'true'
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: 'fresco@${{ needs.apps-release-detect.outputs.fresco_version }}'
           name: Fresco ${{ needs.apps-release-detect.outputs.fresco_version }}
@@ -2975,7 +2981,7 @@ jobs:
           --version ${{ needs.legacy-release-detect.outputs.interviewer_version }}
           --out "${RUNNER_TEMP}/notes.md"
       - name: Create draft release
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           repository: complexdatacollective/interviewer
           token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
@@ -3001,7 +3007,7 @@ jobs:
           merge-multiple: true
       - run: ls -la artifacts/
       - name: Attach artifacts and publish
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           repository: complexdatacollective/interviewer
           token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
@@ -3026,7 +3032,7 @@ jobs:
       mirror_sha: ${{ steps.mirror.outputs.mirror_sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-      - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+      - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
         with:
           install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
@@ -3054,7 +3060,7 @@ jobs:
           --version ${{ needs.legacy-release-detect.outputs.architect_version }}
           --out "${RUNNER_TEMP}/notes.md"
       - name: Create draft release
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           repository: complexdatacollective/architect
           token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
@@ -3079,7 +3085,7 @@ jobs:
           merge-multiple: true
       - run: ls -la artifacts/
       - name: Attach artifacts and publish
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           repository: complexdatacollective/architect
           token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}

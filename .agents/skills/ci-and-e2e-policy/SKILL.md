@@ -47,6 +47,32 @@ required for TurboSnap. Keep Interview's `.storybook/static/**` directory in
 its Chromatic externals so static-asset changes invalidate the relevant
 stories.
 
+Chromatic captures every story in an unfocused background tab. There
+`document.hasFocus()` is false and `:focus` / `:focus-visible` never match,
+even though `element.focus()` still sets `document.activeElement` and fires
+`focus`. A play function that focuses a trigger and then waits for
+focus-gated UI (Base UI tooltips and popovers open on focus only while the
+trigger matches `:focus-visible`) passes `toHaveFocus()` and then times out
+in Chromatic while staying green under `test:storybook`, whose Playwright
+focus emulation reports every page as focused. Drive such stories through
+hover (JS-dispatched pointer events ignore window focus), or keep the
+keyboard story and exclude it from Chromatic with
+`parameters.chromatic.disableSnapshot`, which also skips its play function.
+
+Hover-first plays race React's passive effects. Storybook starts the play as
+soon as the story has committed, before `useEffect` callbacks run in their
+scheduler task; Base UI attaches a tooltip trigger's `mouseenter` listener in
+one and blocks hover until it fires, so `userEvent.hover` on the first line of
+a play is swallowed and the tooltip never opens. Playwright-driven input in
+`test:storybook` is slow enough to cross the gap; Chromatic's JS-dispatched
+events are not. Await `awaitPassiveEffects()` from
+`packages/fresco-ui/src/storybook-support` before the first synthetic
+interaction of such a play.
+Confirm a Chromatic result really ran before trusting it: a build over the
+account's monthly snapshot limit reports success while running a handful of
+tests or none at all (`Running N tests (skipping M tests)`, or "did not run"
+on the build page).
+
 #### Affected E2E checks
 
 CI runs the Architect, Interview, and Interviewer E2E suites on feature PRs
