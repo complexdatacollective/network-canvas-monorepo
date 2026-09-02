@@ -22,7 +22,6 @@ allowBuilds:
   unrs-resolver: true
   electron: false
   electron-winstaller: false
-  phantomjs-prebuilt: false
   protobufjs: false
   workerd: false
   '@posthog/cli': false
