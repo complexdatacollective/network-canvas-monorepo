@@ -8,7 +8,7 @@
       "id": "mapbox-testing-token",
       "type": "apikey",
       "name": "Mapbox token (testing only)",
-      "value": "pk.eyJ1IjoibmV0d29ya2NhbnZhcyIsImEiOiJjbTZmaDJ0cTcwNTVpMmtvbDZhcXJneG1hIn0.wI5ooUHDWwFsH4jLXo3CVw"
+      "value": "pk.eyJ1IjoibmV0d29ya2NhbnZhcyIsImEiOiJjbXRqdnd4dnowY2M5MnlzZWNqYjNlZG5rIn0.KH3OS_O2Hk6gAbDjKGPAJg"
     },
     "world-countries-geojson": {
       "id": "world-countries-geojson",
