@@ -5,6 +5,7 @@ import SiteNavigation, {
   type SiteNavigationItemId,
   type SiteNavigationLocale,
 } from '@codaco/fresco-ui/navigation/SiteNavigation';
+import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/SiteNavigation.constants';
 import { PortalContainerProvider } from '@codaco/fresco-ui/PortalContainer';
 
 import { ensureDocumentStyles } from './documentStyles';
@@ -58,8 +59,28 @@ function parseAttribute<T extends string>(
   return fallback;
 }
 
+/**
+ * Reads a free-form attribute that names something on the host page. Unlike
+ * `parseAttribute` there is no allow-list to check it against, so the only
+ * rejectable value is an empty one.
+ */
+function parseIdAttribute(
+  host: HTMLElement,
+  name: string,
+  fallback: string,
+): string {
+  const value = host.getAttribute(name);
+  if (value === null) return fallback;
+  const trimmed = value.trim();
+  if (trimmed !== '') return trimmed;
+  console.warn(
+    `<${TAG_NAME}>: ignoring empty ${name} (expected the id of an element on the page)`,
+  );
+  return fallback;
+}
+
 class NcSiteNavigation extends HTMLElement {
-  static observedAttributes = ['active-item', 'locale', 'theme'];
+  static observedAttributes = ['active-item', 'locale', 'skip-to-id', 'theme'];
 
   #reactRoot: Root | null = null;
   #colorScheme = window.matchMedia('(prefers-color-scheme: dark)');
@@ -97,6 +118,11 @@ class NcSiteNavigation extends HTMLElement {
       undefined,
     );
     const locale = parseAttribute(this, 'locale', LOCALES, 'en-US') ?? 'en-US';
+    const skipToId = parseIdAttribute(
+      this,
+      'skip-to-id',
+      SITE_NAVIGATION_SKIP_TARGET_ID,
+    );
     const theme: Theme =
       parseAttribute(this, 'theme', THEMES, 'auto') ?? 'auto';
     const resolvedTheme =
@@ -113,6 +139,7 @@ class NcSiteNavigation extends HTMLElement {
               activeItemId={activeItemId}
               locale={locale}
               site="external"
+              skipToId={skipToId}
             />
           </PortalContainerProvider>
         </div>
