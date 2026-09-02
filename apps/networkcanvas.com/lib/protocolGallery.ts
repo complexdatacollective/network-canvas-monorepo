@@ -4,13 +4,20 @@ import { basename, join } from 'node:path';
 import csv from 'csvtojson';
 import { z } from 'zod';
 
+import { type ProtocolStage, readProtocolStages } from '~/lib/protocolStages';
+
+export type { ProtocolStage } from '~/lib/protocolStages';
+
 export type ProtocolDownload = {
   wave: number;
   protocolFilename: string;
   protocolPath: string;
   codebookFilename: string;
   codebookPath: string;
+  stages: ProtocolStage[];
 };
+
+type PendingDownload = Omit<ProtocolDownload, 'stages'>;
 
 export type ProtocolSupplementaryMaterial = {
   filename: string;
@@ -30,12 +37,10 @@ export type GalleryProtocol = {
   publicationUrl: string;
   grantNumber: string;
   clinicalTrialsRegistration: string;
-  fields: string;
+  fields: string[];
   population: string;
-  edgeGeneration: string;
+  edgeGeneration: string[];
   usesRosters: boolean;
-  usesSociograms: boolean;
-  usesDyadCensus: boolean;
   summary: string;
   description: string;
   sandboxUrl: string | undefined;
@@ -132,6 +137,13 @@ function normalizeText(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
 }
 
+function splitList(value: string): string[] {
+  return normalizeText(value)
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
 function parseDateAdded(value: string): string {
   const match = value.match(/^([A-Z][a-z]{2})\.?\s+(\d{1,2}),\s*(\d{4})$/);
   const months: Record<string, string> = {
@@ -165,8 +177,8 @@ function assetPath(assetFilename: string): string {
   return `${publicAssetRoot}/${encodeURIComponent(assetFilename)}`;
 }
 
-function buildDownloads(row: ProtocolRow): ProtocolDownload[] {
-  const downloads: ProtocolDownload[] = [
+function buildDownloads(row: ProtocolRow): PendingDownload[] {
+  const downloads: PendingDownload[] = [
     {
       wave: 1,
       protocolFilename: row['Protocol File (asset)'],
@@ -219,33 +231,39 @@ function buildSupplementaryMaterials(
 }
 
 async function assertAssetsExist(
-  protocols: GalleryProtocol[],
+  assetFilenames: string[],
   assetDirectory: string,
 ): Promise<void> {
   await Promise.all(
-    protocols.flatMap((protocol) =>
-      [
-        ...protocol.downloads.flatMap((download) => [
-          download.protocolFilename,
-          download.codebookFilename,
-        ]),
-        ...protocol.supplementaryMaterials.map(
-          ({ filename: materialFilename }) => materialFilename,
-        ),
-      ].map(async (assetFilename) => {
-        try {
-          await access(join(assetDirectory, assetFilename));
-        } catch (error) {
-          throw new Error(`Missing gallery asset: ${assetFilename}`, {
-            cause: error,
-          });
-        }
-      }),
-    ),
+    assetFilenames.map(async (assetFilename) => {
+      try {
+        await access(join(assetDirectory, assetFilename));
+      } catch (error) {
+        throw new Error(`Missing gallery asset: ${assetFilename}`, {
+          cause: error,
+        });
+      }
+    }),
   );
 }
 
-export async function loadProtocolGallery(
+async function attachStages(
+  downloads: PendingDownload[],
+  assetDirectory: string,
+): Promise<ProtocolDownload[]> {
+  return Promise.all(
+    downloads.map(async (download) => ({
+      ...download,
+      stages: await readProtocolStages(
+        join(assetDirectory, download.protocolFilename),
+      ),
+    })),
+  );
+}
+
+const galleryCache = new Map<string, Promise<GalleryProtocol[]>>();
+
+export function loadProtocolGallery(
   contentFile = join(process.cwd(), 'content', 'protocol-gallery.csv'),
   assetDirectory = join(
     process.cwd(),
@@ -253,6 +271,24 @@ export async function loadProtocolGallery(
     'protocols',
     'protocol-gallery',
   ),
+): Promise<GalleryProtocol[]> {
+  if (process.env.NODE_ENV === 'development') {
+    return readProtocolGallery(contentFile, assetDirectory);
+  }
+
+  const key = `${contentFile}\n${assetDirectory}`;
+  const cached = galleryCache.get(key);
+  if (cached) return cached;
+
+  const pending = readProtocolGallery(contentFile, assetDirectory);
+  galleryCache.set(key, pending);
+  pending.catch(() => galleryCache.delete(key));
+  return pending;
+}
+
+async function readProtocolGallery(
+  contentFile: string,
+  assetDirectory: string,
 ): Promise<GalleryProtocol[]> {
   let source: string;
   try {
@@ -292,7 +328,7 @@ export async function loadProtocolGallery(
   });
 
   const seenSlugs = new Set<string>();
-  const protocols = rows.map<GalleryProtocol>((row, index) => {
+  const pendingRows = rows.map((row, index) => {
     if (seenSlugs.has(row.Slug)) {
       throw new Error(
         `protocol-gallery.csv: row ${index + 2}: Slug: duplicate slug`,
@@ -300,59 +336,78 @@ export async function loadProtocolGallery(
     }
     seenSlugs.add(row.Slug);
 
-    const title = normalizeText(row['Study Title']);
-    const shortName = protocolShortName(
-      row['Protocol Title [StudyAcronym_DatePublishedtoPG]'],
-    );
-    const authors = normalizeText(row['Protocol Authors']);
-    const fields = normalizeText(row['Field(s)']);
-    const population = normalizeText(row.Population);
-    const edgeGeneration = normalizeText(row['Edge Generation Methodology']);
-    const description = normalizeText(row['Descriptive Sentence']);
-    const normalizedEdgeGeneration = edgeGeneration.toLocaleLowerCase('en');
-
     return {
-      slug: row.Slug,
-      title,
-      shortName,
-      authors,
-      studyPi: normalizeText(row['Study PI']),
-      contact: normalizeText(row['Protocol Contact']),
-      citation: row['Cite Publication'].trim(),
-      publicationUrl: row['Publication URL'],
-      grantNumber: normalizeText(row['Grant Number']),
-      clinicalTrialsRegistration: normalizeText(
-        row['Clinical Trials Registration'],
-      ),
-      fields,
-      population,
-      edgeGeneration,
-      usesRosters: row['Uses Rosters'] === 'yes',
-      usesSociograms: normalizedEdgeGeneration.includes('sociogram'),
-      usesDyadCensus: normalizedEdgeGeneration.includes('dyad census'),
-      summary: normalizeText(row['Qualitative Summary']),
-      description,
-      sandboxUrl: row.Fresco || undefined,
-      featured: row.Featured === 'yes',
-      dateAdded: parseDateAdded(row['Date Added']),
-      searchText: [
-        shortName,
-        title,
-        authors,
-        fields,
-        population,
-        edgeGeneration,
-        description,
-      ]
-        .join(' ')
-        .toLocaleLowerCase('en'),
+      row,
       downloads: buildDownloads(row),
       supplementaryMaterials: buildSupplementaryMaterials(row),
     };
   });
 
-  await assertAssetsExist(protocols, assetDirectory);
-  return protocols;
+  await assertAssetsExist(
+    pendingRows.flatMap(({ downloads, supplementaryMaterials }) => [
+      ...downloads.flatMap((download) => [
+        download.protocolFilename,
+        download.codebookFilename,
+      ]),
+      ...supplementaryMaterials.map(
+        ({ filename: materialFilename }) => materialFilename,
+      ),
+    ]),
+    assetDirectory,
+  );
+
+  return Promise.all(
+    pendingRows.map<Promise<GalleryProtocol>>(
+      async ({ row, downloads, supplementaryMaterials }) => {
+        const title = normalizeText(row['Study Title']);
+        const shortName = protocolShortName(
+          row['Protocol Title [StudyAcronym_DatePublishedtoPG]'],
+        );
+        const authors = normalizeText(row['Protocol Authors']);
+        const fields = splitList(row['Field(s)']);
+        const population = normalizeText(row.Population);
+        const edgeGeneration = splitList(row['Edge Generation Methodology']);
+        const description = normalizeText(row['Descriptive Sentence']);
+
+        return {
+          slug: row.Slug,
+          title,
+          shortName,
+          authors,
+          studyPi: normalizeText(row['Study PI']),
+          contact: normalizeText(row['Protocol Contact']),
+          citation: row['Cite Publication'].trim(),
+          publicationUrl: row['Publication URL'],
+          grantNumber: normalizeText(row['Grant Number']),
+          clinicalTrialsRegistration: normalizeText(
+            row['Clinical Trials Registration'],
+          ),
+          fields,
+          population,
+          edgeGeneration,
+          usesRosters: row['Uses Rosters'] === 'yes',
+          summary: normalizeText(row['Qualitative Summary']),
+          description,
+          sandboxUrl: row.Fresco || undefined,
+          featured: row.Featured === 'yes',
+          dateAdded: parseDateAdded(row['Date Added']),
+          searchText: [
+            shortName,
+            title,
+            authors,
+            ...fields,
+            population,
+            ...edgeGeneration,
+            description,
+          ]
+            .join(' ')
+            .toLocaleLowerCase('en'),
+          downloads: await attachStages(downloads, assetDirectory),
+          supplementaryMaterials,
+        };
+      },
+    ),
+  );
 }
 
 export async function getProtocolBySlug(

@@ -1714,6 +1714,9 @@ importers:
       '@codaco/interface-images':
         specifier: workspace:^
         version: link:../../packages/interface-images
+      '@codaco/protocol-validation':
+        specifier: workspace:^
+        version: link:../../packages/protocol-validation
       '@codaco/shared-consts':
         specifier: workspace:^
         version: link:../../packages/shared-consts

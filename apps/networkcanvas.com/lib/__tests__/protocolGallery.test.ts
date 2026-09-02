@@ -5,6 +5,17 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { loadProtocolGallery } from '~/lib/protocolGallery';
+import { isStageType } from '~/lib/stageTypes';
+
+const expectedStageCounts: Record<string, number[]> = {
+  'gate': [42],
+  'kaya': [16],
+  'robust': [18],
+  'sixhumene': [32, 28, 20],
+  'snaaps': [17],
+  'test-to-prep': [24],
+  'uk-jcoin-i': [26],
+};
 
 describe('loadProtocolGallery', () => {
   let directory: string;
@@ -33,8 +44,8 @@ describe('loadProtocolGallery', () => {
       dateAdded: '2026-06-12',
       sandboxUrl: undefined,
       usesRosters: true,
-      usesSociograms: true,
-      usesDyadCensus: false,
+      fields: ['Social work', 'Aging'],
+      edgeGeneration: ['sociogram'],
       supplementaryMaterials: [
         {
           filename: 'SNAAPS_v1.0 Sample Interview Screenshots.pdf',
@@ -63,6 +74,41 @@ describe('loadProtocolGallery', () => {
         expect(material.path).not.toContain('assets.networkcanvas.com');
       }
     }
+  });
+
+  it("reads every wave's stage sequence out of its .netcanvas file", async () => {
+    const protocols = await loadProtocolGallery();
+
+    for (const protocol of protocols) {
+      expect(
+        protocol.downloads.map(({ stages }) => stages.length),
+        protocol.slug,
+      ).toEqual(expectedStageCounts[protocol.slug]);
+      for (const stage of protocol.downloads.flatMap(({ stages }) => stages)) {
+        expect(stage.label).not.toBe('');
+        expect(isStageType(stage.type), stage.type).toBe(true);
+      }
+    }
+  });
+
+  it('keeps facet values free of case-only duplicates', async () => {
+    const protocols = await loadProtocolGallery();
+    const values = new Set(protocols.flatMap(({ fields }) => fields));
+    const folded = new Set(
+      [...values].map((value) => value.toLocaleLowerCase('en')),
+    );
+
+    expect(folded.size).toBe(values.size);
+  });
+
+  it('parses the shipped dataset once per process', async () => {
+    const [first, second] = await Promise.all([
+      loadProtocolGallery(),
+      loadProtocolGallery(),
+    ]);
+
+    expect(second).toBe(first);
+    expect(await loadProtocolGallery()).toBe(first);
   });
 
   it('rejects duplicate slugs with the CSV row number', async () => {
