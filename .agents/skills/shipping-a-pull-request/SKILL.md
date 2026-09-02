@@ -123,12 +123,55 @@ never mounted so an entire accessibility mechanism was inert, and a sign-out
 that could resume after the researcher cancelled it. Read the mechanism, decide
 for yourself, and let the badge break ties rather than make decisions.
 
-**Control the loop.** Each push triggers a fresh review round, so a branch can
-churn indefinitely. Fix real defects; for nitpicks on newly-added code, reply
-with the reasoning and resolve. Tell the user explicitly which threads you
-resolved *without* changing code, so they can overrule you. If a round produces
-only findings you resolve without action, the loop is finished — say so rather
-than requesting another round.
+**Tell the user which threads you resolved _without_ changing code**, so they
+can overrule you. Never let a no-action resolution pass silently.
+
+### Breaking a review spiral
+
+A spiral is not the reviewer repeating itself. Each push triggers a fresh
+round, and on a large diff each round samples findings the previous rounds
+never mentioned — about code that has not changed. Fixing does not deplete the
+pool, so "keep fixing until the reviewer goes quiet" has no fixed point.
+
+Diagnose by origin, not by round count. For each finding ask which population
+it belongs to:
+
+- **Exposed by the last push** — `git diff <previous head>..<current head>`
+  touches the mechanism it names. Ordinary review of new work; always act.
+- **Resampled** — about code that was already in the diff during an earlier
+  round and went unmentioned then. The reviewer is still discovering the
+  original diff.
+
+A round that is mostly resampled means you are nowhere near the end, however
+many rounds you have done. Reacting to it a few findings at a time is the
+spiral.
+
+Three moves break it, and all three raise quality rather than trading it away:
+
+1. **Sweep once instead of reacting N times.** After the first round, stop
+   reacting and audit the whole diff yourself, in parallel, along the
+   dimensions the reviewer uses. Emptying the pool deliberately is faster than
+   having it sampled back at you six at a time.
+2. **Fix the family, not the instance.** A finding is one sample of a class.
+   Told that one screen is missing a contract, check every screen; told one
+   guard is wrong, check every guard. An instance-level fix guarantees its
+   sibling arrives next round — and reaching for the class is how a fix that
+   merely satisfies a reviewer becomes one that removes the defect.
+3. **One push per round, never one per finding.** Each push starts a round.
+
+**Do not break a spiral by deferring real defects to follow-up issues.** That
+trades quality for speed, and this repository's standing rule is that what you
+discover lands in the same PR. Front-load the thoroughness instead.
+
+**Terminating.** The loop ends when a round produces no finding that both names
+a reachable failure and concerns code this PR introduced — not when the reviewer
+falls silent, and not at a round budget. Say so explicitly, listing what you
+resolved without code changes.
+
+**When the diff is the problem.** If two rounds _after_ your own sweep are still
+surfacing confirmed defects in code the PR introduced, it is too large to
+converge under review. Say that to the user and offer to split it. That is the
+quality-preserving exit; deferral is not.
 
 ### Stopping conditions
 
@@ -144,13 +187,17 @@ than requesting another round.
 
 ## Common mistakes
 
-| Mistake                                            | Do instead                                                                     |
-| -------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Opening the PR then ending the turn                | Move straight into Phase 2 monitoring — that's the point of this skill.        |
-| Busy-polling with `sleep` in a loop                | Use available wakeup/automation tooling when present, or report pending state. |
-| Applying every review comment verbatim             | Verify the feedback before implementing.                                       |
-| Triaging by severity badge instead of mechanism    | Read what actually breaks; badges are confidence, not severity.                |
-| Leaving a thread unresolved because it needed no fix | Reply with the evidence and resolve it — unresolved threads hold `BLOCKED`.   |
-| Force-pushing to satisfy a check                   | Fix root cause and push a normal commit; don't rewrite history reflexively.    |
-| Merging once checks go green                       | Merging is the user's call — report readiness, don't merge automatically.      |
-| Re-guessing the same fix after two failed attempts | Stop and hand back to the user with the failure history.                       |
+| Mistake                                              | Do instead                                                                     |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Opening the PR then ending the turn                  | Move straight into Phase 2 monitoring — that's the point of this skill.        |
+| Busy-polling with `sleep` in a loop                  | Use available wakeup/automation tooling when present, or report pending state. |
+| Applying every review comment verbatim               | Verify the feedback before implementing.                                       |
+| Triaging by severity badge instead of mechanism      | Read what actually breaks; badges are confidence, not severity.                |
+| Leaving a thread unresolved because it needed no fix | Reply with the evidence and resolve it — unresolved threads hold `BLOCKED`.    |
+| Force-pushing to satisfy a check                     | Fix root cause and push a normal commit; don't rewrite history reflexively.    |
+| Merging once checks go green                         | Merging is the user's call — report readiness, don't merge automatically.      |
+| Re-guessing the same fix after two failed attempts   | Stop and hand back to the user with the failure history.                       |
+| Fixing only the file a finding names                 | Fix every instance of the class; the sibling arrives next round otherwise.     |
+| Pushing after each individual fix                    | Batch a round's fixes into one push — each push starts a new review round.     |
+| Reacting round after round on a large diff           | Sweep the whole diff yourself once, in parallel, then respond.                 |
+| Deferring real defects to escape a review spiral     | Front-load the sweep; if it still won't converge, offer to split the PR.       |
