@@ -26,6 +26,8 @@ const fixtures = vi.hoisted(() => ({
   TEAM_A: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
   TEAM_B: { id: 'team-b', name: 'Beta research team', slug: 'beta' },
   deployment: { mode: 'managed', billing: false },
+  /** Whether `getSession` answers with a session, read at call time. */
+  signedIn: true,
   /** What `organization.list` answers with, read at call time. */
   teams: [] as { id: string; name: string }[],
   /** The session's `activeOrganizationId`, which `setActive` moves. */
@@ -40,13 +42,17 @@ const fixtures = vi.hoisted(() => ({
 vi.mock('../../lib/auth.ts', () => ({
   authClient: {
     getSession: vi.fn(() =>
-      Promise.resolve({
-        data: {
-          user: {},
-          session: { activeOrganizationId: fixtures.activeTeamId },
-        },
-        error: null,
-      }),
+      Promise.resolve(
+        fixtures.signedIn
+          ? {
+              data: {
+                user: {},
+                session: { activeOrganizationId: fixtures.activeTeamId },
+              },
+              error: null,
+            }
+          : { data: null, error: null },
+      ),
     ),
     useSession: vi.fn().mockReturnValue({
       data: { user: { name: 'Researcher', email: 'researcher@example.com' } },
@@ -121,6 +127,7 @@ function unresolved() {
 beforeEach(() => {
   vi.clearAllMocks();
   fixtures.deployment = { mode: 'managed', billing: false };
+  fixtures.signedIn = true;
   fixtures.teams = [fixtures.TEAM_A, fixtures.TEAM_B];
   fixtures.activeTeamId = fixtures.TEAM_A.id;
   fixtures.listTeams.mockImplementation(() =>
@@ -284,6 +291,71 @@ describe('a session that belongs to no team', () => {
       await screen.findByRole('heading', { name: 'Profile' }),
     ).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/account');
+  });
+});
+
+/**
+ * `/no-team` is a claim about the researcher, not a screen anyone may open:
+ * "you belong to no team, here is how to get one". §6.4's landing sends people
+ * here, and every other way of arriving — a bookmark, a shared link, the back
+ * button after leaving a team — has to be answered by the same resolution the
+ * landing used, or the screen says something untrue and offers no way out of
+ * it.
+ */
+describe('the no-team screen', () => {
+  it('sends a signed-out visitor to sign in', async () => {
+    fixtures.signedIn = false;
+    const router = renderAt('/no-team');
+
+    // Nothing here is public: it describes a session's memberships, and a
+    // visitor with no session has none to describe.
+    expect(
+      await screen.findByRole('heading', { name: 'Sign in' }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/sign-in');
+  });
+
+  it('sends a researcher who does belong to a team where they belong', async () => {
+    const router = renderAt('/no-team');
+
+    // Without this the screen tells a researcher with two teams that they
+    // have none, and offers to create one — and nothing on it ever changes
+    // its mind, because it reads nothing.
+    //
+    // The destination RENDERED, because `state.location` is set to it before
+    // the app shell's own guard has had a chance to refuse it: reading the
+    // pathname alone would pass on a redirect that is about to be undone.
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Studies' }),
+    ).toBeInTheDocument();
+    expect(router.state.resolvedLocation?.pathname).toBe('/team/team-a');
+  });
+
+  it('keeps a researcher who really has no team', async () => {
+    fixtures.teams = [];
+    const router = renderAt('/no-team');
+
+    expect(
+      await screen.findByRole('heading', { name: 'No team yet' }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/no-team');
+  });
+
+  it('keeps a researcher whose teams could not be read', async () => {
+    fixtures.listTeams.mockResolvedValue({
+      data: null,
+      error: { message: 'unavailable' },
+    });
+    const router = renderAt('/no-team');
+
+    // The app shell's guard sends an unresolved list THROUGH; this one has to
+    // leave it WHERE IT IS, and the two agree: only a resolved answer moves
+    // anybody. Redirecting on a failed read would bounce the researcher
+    // between here and the shell for as long as the outage lasts.
+    expect(
+      await screen.findByRole('heading', { name: 'No team yet' }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/no-team');
   });
 });
 

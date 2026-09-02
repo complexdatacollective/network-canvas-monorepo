@@ -490,6 +490,50 @@ describe('the team studies list', () => {
       fixtures.createProtocol.mock.calls[0]?.[0],
     );
   });
+
+  it('does not carry a creation identity across a team switch', async () => {
+    fixtures.createProtocol.mockRejectedValueOnce(new Error('response lost'));
+    const { router } = renderTeam(STUDIES);
+
+    const nameIn = async (value: string) => {
+      const field = await screen.findByRole('textbox', { name: 'Study name' });
+      // Cleared first: the header switches teams without remounting this
+      // screen, so the field may still hold what was typed into it before.
+      fireEvent.change(field, { target: { value: '' } });
+      fireEvent.change(field, { target: { value } });
+    };
+
+    await nameIn('Shared name');
+    fireEvent.click(screen.getByRole('button', { name: 'Create study' }));
+    await screen.findByText(/study could not be created/i);
+
+    await act(() =>
+      router.navigate({ to: '/team/$teamId', params: { teamId: TEAM_B.id } }),
+    );
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(`/team/${TEAM_B.id}`),
+    );
+
+    await nameIn('Shared name');
+    fireEvent.click(screen.getByRole('button', { name: 'Create study' }));
+
+    await waitFor(() =>
+      expect(fixtures.createProtocol).toHaveBeenCalledTimes(2),
+    );
+    const [first, second] = fixtures.createProtocol.mock.calls.map(
+      ([input]) =>
+        input as { teamId: string; protocolId: string; draftId: string },
+    );
+    expect(first?.teamId).toBe(TEAM_A.id);
+    expect(second?.teamId).toBe(TEAM_B.id);
+    // A protocol id is unique across the whole instance, not within a team.
+    // Reusing team A's here is not a harmless duplicate: if A's ambiguous
+    // request had actually committed, the id is taken, and the server refuses
+    // B's creation outright — the researcher cannot create a study in team B
+    // under that name at all.
+    expect(second?.protocolId).not.toBe(first?.protocolId);
+    expect(second?.draftId).not.toBe(first?.draftId);
+  });
 });
 
 describe('the team members screen', () => {

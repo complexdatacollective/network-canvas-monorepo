@@ -10,11 +10,14 @@ the skip link reached depended on which branch had rendered.
 The app branch now renders the shared `AppFrame`: one skip link, one header, and
 a region that each area layout renders its navigation region and its `<main>`
 into. The header carries a team switcher over the teams the researcher belongs
-to, and an account menu holding sign out, whose sequence is unchanged. The team
-workspace and the activity screen sit under a team area layout with a sidebar,
-and the Activity destination moves into it from the workspace's own header, so
-it is offered in one place rather than two. The editor sits under an area of its
-own, which owns the landmark its three branches used to declare separately.
+to, and an account menu holding sign out. That sign-out now carries a token on
+the navigation it makes and checks for it before ending the session, so a sign-
+out the researcher cancelled at the editor's unsaved-work prompt cannot resume
+when they navigate somewhere else later. The team workspace and the activity
+screen sit under a team area layout with a sidebar, and the Activity destination
+moves into it from the workspace's own header, so it is offered in one place
+rather than two. The editor sits under an area of its own, which owns the
+landmark its three branches used to declare separately.
 
 The shell also stops subscribing to the session. `AppLayout` called
 `authClient.useSession()`, which fetched `/api/auth/get-session` a second time on

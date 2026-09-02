@@ -12,6 +12,7 @@ import { TeamInvitationIdSchema, type TeamRole } from '@codaco/studio-rpc';
 
 import { rpcClient } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
+import { invalidateMemberships } from '../lib/landing.ts';
 
 function roleLabel(role: TeamRole): string {
   switch (role) {
@@ -70,7 +71,6 @@ export default function AcceptInvitation(props: { invitationId: string }) {
       const result = await rpcClient.team.acceptInvitation({
         invitationId: invitationId.data,
       });
-      setAccepted(result);
       try {
         const active = await authClient.organization.setActive({
           organizationId: result.teamId,
@@ -79,6 +79,20 @@ export default function AcceptInvitation(props: { invitationId: string }) {
       } catch {
         setActivationFailed(true);
       }
+      // The researcher's memberships have just changed, and §6.4's landing
+      // resolution answers from a cache that was filled before they did —
+      // for a teamless session, with an empty list that stays fresh for
+      // thirty seconds. Both the app shell's guard and `/no-team`'s read that
+      // same cache, so without this the "Open team" link below enters the
+      // shell, is told the researcher belongs to no team, and is sent
+      // straight back to `/no-team`, which agrees.
+      //
+      // Before the link is offered rather than after, because the link is the
+      // navigation that would read it. A cache that could not be marked stale
+      // is not a failed acceptance, so it cannot become the error below: the
+      // researcher is in the team either way.
+      await invalidateMemberships(queryClient).catch(() => undefined);
+      setAccepted(result);
     } catch {
       setError('accept');
     } finally {

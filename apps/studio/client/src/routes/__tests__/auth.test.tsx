@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import {
   act,
+  cleanup,
   fireEvent,
   render,
   screen,
@@ -424,6 +425,33 @@ describe('sign-out', () => {
     unregister();
   });
 
+  it('signs out from the account area itself', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    mocked.signOut.mockImplementation(() => {
+      // The cookie is gone from here on, which is what makes the sign-in page
+      // the end of this sequence rather than a bounce back to the landing.
+      mocked.getSession.mockResolvedValue(signedOut);
+      return Promise.resolve({
+        data: { success: true },
+        error: null,
+      }) as ReturnType<typeof authClient.signOut>;
+    });
+    const router = renderAt('/account');
+    await findAppShell();
+
+    // The sequence navigates to `/account` to settle the editor's blocker,
+    // and a researcher who is already there is the case where "did my own
+    // navigation commit?" is hardest to answer: the address does not change,
+    // so nothing about the location distinguishes arriving from staying. The
+    // generation token the navigation carries is what does.
+    await clickSignOut();
+
+    await waitFor(() => expect(mocked.signOut).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/sign-in'),
+    );
+  });
+
   it('stays put and reports failure when sign-out does not complete', async () => {
     mocked.getSession.mockResolvedValue(signedIn);
     mocked.signOut.mockResolvedValue({
@@ -458,13 +486,47 @@ describe('sign-in page', () => {
     expect(mocked.signIn.magicLink).toHaveBeenCalledWith(
       expect.objectContaining({
         email: 'researcher@example.com',
-        callbackURL: '/',
+        callbackURL: '/sign-in',
       }),
     );
     fireEvent.click(
       screen.getByRole('button', { name: 'Use a different email address' }),
     );
     expect(await screen.findByLabelText(/Email address/)).toBeInTheDocument();
+  });
+
+  it('sends the researcher where they belong when the link is opened', async () => {
+    // The end of the sign-in journey, walked rather than asserted about: the
+    // page hands better-auth a URL, better-auth's verify redirect is a full
+    // document load at it, and this follows the one the page actually gave.
+    //
+    // `/` cannot be that URL. On a managed deployment it renders marketing
+    // signed in or out (§10.4), so a researcher who has just proved who they
+    // are lands back on the public page and has to press "Sign in" again —
+    // and no assertion about the callback string alone would have said so.
+    mocked.signIn.magicLink.mockResolvedValue({
+      data: { status: true },
+      error: null,
+    } as unknown as MagicLinkResult);
+    renderAt('/sign-in');
+    const email = await screen.findByLabelText(/Email address/);
+    fireEvent.change(email, { target: { value: 'researcher@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send sign-in link' }));
+    await waitFor(() => expect(mocked.signIn.magicLink).toHaveBeenCalled());
+
+    const callbackURL = mocked.signIn.magicLink.mock.calls[0]?.[0].callbackURL;
+    if (typeof callbackURL !== 'string') {
+      throw new Error('the sign-in page passed no callback URL');
+    }
+
+    cleanup();
+    mocked.getSession.mockResolvedValue(signedIn);
+    const router = renderAt(callbackURL);
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Studies' }),
+    ).toBeInTheDocument();
+    expect(router.state.resolvedLocation?.pathname).toBe(LANDING);
   });
 
   it('rejects a malformed email before any request is made', async () => {
@@ -595,7 +657,13 @@ describe('OAuth sign-in', () => {
     fireEvent.click(button);
     await waitFor(() =>
       expect(mocked.signIn.social).toHaveBeenCalledWith(
-        expect.objectContaining({ provider: 'google', callbackURL: '/' }),
+        // The same callback the magic link uses, and for the same reason: the
+        // provider's redirect back is a document load, and it has to land
+        // somewhere that reads the new session (§6.4, §10.4).
+        expect.objectContaining({
+          provider: 'google',
+          callbackURL: '/sign-in',
+        }),
       ),
     );
     expect(button).toBeDisabled();

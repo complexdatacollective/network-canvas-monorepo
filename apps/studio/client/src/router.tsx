@@ -11,6 +11,7 @@ import {
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import AppArea from '@codaco/fresco-ui/layout/AppArea';
+import RouteFocus from '@codaco/fresco-ui/navigation/RouteFocus';
 import { TeamInvitationIdSchema } from '@codaco/studio-rpc';
 
 import { fetchDeploymentMode } from './lib/deployment.ts';
@@ -51,9 +52,27 @@ type ShellContext = {
   queryClient: QueryClient;
 };
 
+/**
+ * Above every branch, because §11.2's route-change contract is the whole
+ * router's and not the app shell's: a participant moving through an interview
+ * and a visitor moving around the public site are owed the same landing and
+ * the same announcement as a researcher inside the shell.
+ *
+ * Every screen in the tree already spreads `routeFocusTargetProps` on its
+ * `<h1>`, which marks a landing point and does nothing else — this is what
+ * uses them. It is fed the COMMITTED location: a pending one changes before
+ * the destination has rendered, so the effect would land on and announce the
+ * heading of the screen the researcher is leaving, and nothing would change
+ * again once the real one arrived.
+ */
 function RootLayout() {
+  const location = useRouterState({
+    select: (state) => (state.resolvedLocation ?? state.location).pathname,
+  });
+
   return (
     <DialogProvider>
+      <RouteFocus location={location} />
       <Outlet />
     </DialogProvider>
   );
@@ -318,6 +337,36 @@ const setupRoute = createRoute({
 const noTeamRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/no-team',
+  // The fourth caller §6.4 said would join the landing resolution, and the
+  // half of it the app shell's guard cannot do: that guard sends a teamless
+  // session HERE, and nothing until now asked whether the session arriving
+  // here is teamless at all.
+  //
+  // Both wrong answers are reachable without it. A signed-out visitor opens a
+  // screen that describes a session they do not have. And a researcher who
+  // does belong to a team — arriving by bookmark, by a link someone sent
+  // them, or by the back button after an invitation was accepted — is told
+  // they belong to none and offered a team to create, on a screen that reads
+  // nothing and so never corrects itself.
+  //
+  // Resolved through `resolveLandingDestination`, the same function `/`, the
+  // sign-in bounce and the app shell use, so a fourth guard cannot answer
+  // differently — and, like the app shell's, only a RESOLVED answer moves
+  // anybody: a team list that could not be read leaves the researcher here,
+  // because bouncing them into a shell whose guard is about to read the same
+  // failure would put them in a loop for as long as the outage lasts.
+  beforeLoad: async ({ context }) => {
+    const session = await context.queryClient.fetchQuery(sessionQueryOptions);
+    if (session === 'signedOut') throw redirect({ to: '/sign-in' });
+
+    const destination = await resolveLandingDestination(
+      context.queryClient,
+    ).catch(() => undefined);
+    // `/no-team` resolving to itself is the one answer that means "stay", and
+    // throwing its redirect from its own guard would be a loop.
+    if (destination === undefined || destination.to === '/no-team') return;
+    throw landingRedirect(destination);
+  },
   component: screenPlaceholder({
     title: 'No team yet',
     description:

@@ -53,9 +53,23 @@ export default function SignIn() {
 
   const magicLink = auth ? auth.magicLink : true;
   const socialProviders = auth?.socialProviders ?? [];
+  // Where both routes into a session come back to. Each is a full document
+  // load — the magic link's verify redirect and the provider's callback — so
+  // the URL has to be one that reads the session that has just been
+  // established and sends the researcher on (§6.4).
+  //
+  // `/` is not that URL. On a managed deployment it renders marketing whether
+  // or not anyone is signed in (§10.4), so a researcher who has just signed in
+  // would land back on the public page and have to press "Sign in" again. This
+  // page is where the resolution already lives: its own guard bounces an
+  // already-signed-in visitor to their landing destination, and leaves them
+  // here to try again in the one case it cannot resolve — which is the right
+  // answer for an arrival that did not produce a session either.
+  //
+  // An invitation is the exception, because it names a destination of its own.
   const callbackURL = invitationId
     ? `/invitations/${encodeURIComponent(invitationId)}`
-    : '/';
+    : '/sign-in';
   const errorCallbackURL = invitationId
     ? `/sign-in?invitationId=${encodeURIComponent(invitationId)}`
     : '/sign-in';

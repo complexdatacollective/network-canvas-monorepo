@@ -7,11 +7,12 @@ import { authClient } from './auth.ts';
  * §6.4's landing destination: where a signed-in researcher belongs when they
  * have not asked for anywhere in particular.
  *
- * Three callers share it, and they must not answer differently: `/`, which is
+ * Four callers share it, and they must not answer differently: `/`, which is
  * a redirect-only route on a self-hosted instance (§10.4); the sign-in page's
- * already-signed-in guard; and the app shell's own guard, which asks the one
- * question below that needs no session read. A fourth joins them when
- * `/no-team` gains its own guard.
+ * already-signed-in guard, which is also where both sign-in callbacks come
+ * back to; `/no-team`, which is the screen for the one answer below that
+ * means "stay"; and the app shell's own guard, which asks the one question
+ * below that needs no session read.
  */
 
 /** The teams the researcher belongs to, and the one they were last acting in. */

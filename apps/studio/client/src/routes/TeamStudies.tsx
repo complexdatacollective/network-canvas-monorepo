@@ -37,7 +37,20 @@ import { createUuid } from '../lib/createUuid.ts';
  * is what the app shell's reconciler does (§6.6).
  */
 
+/**
+ * The identity a creation keeps across retries, and everything that has to
+ * match for a submission to BE the same attempt.
+ *
+ * The team is part of that, not context around it. The header switches teams
+ * without remounting this screen, so one instance sees both — and a protocol
+ * id is unique across the whole instance rather than within a team. Keyed on
+ * the name alone, the same name submitted in another team reuses the first
+ * team's ids, and if the ambiguous request had in fact committed, the id is
+ * taken: the second team's creation is refused outright rather than
+ * duplicated.
+ */
 type StudyCreationAttempt = {
+  teamId: string;
   name: string;
   protocolId: string;
   draftId: string;
@@ -137,9 +150,10 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
               const name = typeof values.name === 'string' ? values.name : '';
               const previous = creationAttempt.current;
               const attempt =
-                previous?.name === name
+                previous?.name === name && previous.teamId === teamId
                   ? previous
                   : {
+                      teamId,
                       name,
                       protocolId: createUuid(),
                       draftId: createUuid(),
@@ -153,10 +167,11 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
               // still the current one drags them back into stale context.
               const startedAt = router.state.location.pathname;
               try {
-                const created = await createStudy.mutateAsync({
-                  teamId,
-                  ...attempt,
-                });
+                // The attempt IS the request: its team, name and identifiers
+                // are exactly what the procedure takes, so a retry cannot
+                // send them against a different team than the one they were
+                // minted for.
+                const created = await createStudy.mutateAsync(attempt);
                 if (creationAttempt.current === attempt) {
                   creationAttempt.current = undefined;
                 }

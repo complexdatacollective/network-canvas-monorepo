@@ -595,6 +595,47 @@ describe('Studio editor shell', () => {
     expect(authClient.signOut).not.toHaveBeenCalled();
   });
 
+  it('does not revive a cancelled sign-out when a later navigation commits', async () => {
+    const { router } = renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    fireEvent.change(label, { target: { value: 'Unsaved welcome' } });
+
+    // Sign out, then think better of it. A blocked navigation's promise does
+    // not reject — it parks, and resolves later when some OTHER navigation
+    // commits (§6.5) — so the sign-out's continuation is still waiting after
+    // this, with nothing to tell it that it was abandoned.
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Sign out' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Keep editing' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('heading', {
+          name: 'Discard unsaved screen changes?',
+        }),
+      ).not.toBeInTheDocument(),
+    );
+
+    // Later — a separate decision, minutes later in real time — the
+    // researcher goes to their profile, and discards the draft on the way.
+    // This is the navigation the parked promise resumes on, and it commits at
+    // exactly the pathname the abandoned sign-out was waiting to see.
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Profile' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Profile' }),
+    ).toBeInTheDocument();
+
+    // The researcher asked to see their profile, not to be signed out.
+    expect(authClient.signOut).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Sign-out did not complete/)).toBeNull();
+    expect(router.state.resolvedLocation?.pathname).toBe('/account');
+  });
+
   it('bypasses the dirty blocker when the session expires', async () => {
     const { queryClient, router } = renderEditor();
     const label = await screen.findByRole('textbox', { name: 'Screen name' });

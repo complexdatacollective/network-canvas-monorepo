@@ -149,6 +149,8 @@ type Destination = {
   heading: string;
   /** Screens that are only reachable signed out. */
   signedOut?: true;
+  /** Screens only a session belonging to no team at all can reach (§6.4). */
+  teamless?: true;
 };
 
 /** Every destination in §5.2, in the order the design tables them. */
@@ -175,7 +177,7 @@ const DESTINATIONS: Destination[] = [
     heading: 'Accept team invitation',
   },
   { path: '/setup', url: '/setup', heading: 'First-run setup' },
-  { path: '/no-team', url: '/no-team', heading: 'No team yet' },
+  { path: '/no-team', url: '/no-team', heading: 'No team yet', teamless: true },
 
   // Participant
   { path: '/enter/$token', url: '/enter/token-1', heading: 'Welcome' },
@@ -410,6 +412,21 @@ function sidebarNames(): (string | null)[] {
     .map((region) => region.getAttribute('aria-label'));
 }
 
+/**
+ * What the shell is currently telling a screen reader, ignoring the half of
+ * `RouteFocus`'s live-region pair that is deliberately empty.
+ *
+ * `queryAllByRole` rather than `getAllByRole`: with nothing mounted to
+ * announce through there are no regions at all, and that is a result to
+ * assert on rather than an error to throw.
+ */
+function announcements(): string[] {
+  return screen
+    .queryAllByRole('status')
+    .map((region) => region.textContent?.trim() ?? '')
+    .filter((text) => text !== '');
+}
+
 /** The same, for the links inside an open dropdown menu. */
 function menuDestinations(
   router: ReturnType<typeof createAppRouter>,
@@ -521,10 +538,14 @@ describe('every destination in §5.2', () => {
 
   it.each(DESTINATIONS)(
     'renders $path with exactly one main landmark',
-    async ({ url, heading, signedOut }) => {
+    async ({ url, heading, signedOut, teamless }) => {
       if (signedOut) {
         fixtures.getSession.mockResolvedValue({ data: null, error: null });
       }
+      // §6.4's fourth case, which `/no-team` is the screen for: its guard
+      // sends a researcher who does belong to a team to that team, so the
+      // only session this URL renders for is one that belongs to none.
+      if (teamless) fixtures.teams = [];
 
       const router = renderAt(url);
 
@@ -651,6 +672,41 @@ describe('navigation', () => {
     });
 
     expect(menuDestinations(router)).toEqual(['/team/$teamId']);
+  });
+});
+
+/**
+ * §11.2's route-change contract, end to end.
+ *
+ * Every screen in the tree spreads `routeFocusTargetProps` on its `<h1>`, and
+ * that alone does nothing: the props only mark a landing point, and something
+ * has to be mounted above the router to use them. Asserting that a heading
+ * carries the attribute would pass with nothing mounted at all, which is
+ * exactly the state this file was written in — so the assertion is the
+ * researcher's experience of a real navigation instead: where the caret ends
+ * up, and what a screen reader is told.
+ */
+describe('a route change', () => {
+  it('lands focus on the destination heading and announces it', async () => {
+    renderAt('/team/team-a');
+    const roles = await screen.findByRole('link', { name: 'Roles' });
+    // Arriving is not a change: the boot location announces nothing.
+    expect(announcements()).toEqual([]);
+
+    // Activated without focusing it first, which is the case the contract is
+    // about: the control the researcher used is gone and focus has dropped to
+    // `<body>`, so the next Tab would restart at the top of the document.
+    fireEvent.click(roles);
+
+    const heading = await screen.findByRole('heading', {
+      level: 1,
+      name: 'Roles',
+    });
+    await waitFor(() => expect(heading).toHaveFocus());
+    // The DESTINATION, not the screen just left: a live region still holding
+    // "Studies" tells a screen reader the researcher is on a page they have
+    // already left.
+    expect(announcements()).toEqual(['Roles']);
   });
 });
 
