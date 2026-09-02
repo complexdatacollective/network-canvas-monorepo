@@ -760,10 +760,12 @@ jobs:
   # Unlike every other check, this one is about the merged tree rather than the
   # PR head, so it runs on merge-group commits (the exact tree that lands on
   # main) as well as on the release PR itself, and `quality` consults it in
-  # both modes. A merge-queue entry names its pull request by number only; the
-  # head branch comes from the API, with the queue commit's message — the same
-  # "Merge pull request #N from <owner>/<branch>" that lands on main — as the
-  # fallback.
+  # both modes. The queue batches up to five entries, each built on top of the
+  # entries ahead of it, and a group's ref names only its last pull request —
+  # so whether this tree merges the release PR is decided by ancestry (does it
+  # contain the open release PR's head?), never by the ref suffix. A later
+  # entry that lands a changeset on top of the release PR fails here, drops
+  # out of the queue, and lets the release PR merge alone.
   version-packages-freshness:
     if: >-
       github.event_name == 'merge_group'
@@ -772,36 +774,42 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Resolve the pull request's head branch
+      - name: Decide whether this tree merges the Version Packages PR
         id: head
         env:
           GH_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ github.event_name }}
           PR_HEAD_REF: ${{ github.head_ref }}
-          MERGE_GROUP_REF: ${{ github.event.merge_group.head_ref }}
-          MERGE_GROUP_MESSAGE: ${{ github.event.merge_group.head_commit.message }}
         run: |
-          head="$PR_HEAD_REF"
-          if [[ "$EVENT_NAME" == 'merge_group' ]]; then
-            number=$(printf '%s\n' "$MERGE_GROUP_REF" \
-              | sed -n 's#.*/pr-\([0-9][0-9]*\)-[0-9a-f]\{40\}$#\1#p')
-            head=''
-            if [[ -n "$number" ]]; then
-              head=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${number}" \
-                --jq .head.ref 2>/dev/null || true)
-            fi
-            if [[ -z "$head" ]]; then
-              head=$(printf '%s\n' "$MERGE_GROUP_MESSAGE" \
-                | sed -n '1s#^Merge pull request \#[0-9][0-9]* from [^/]*/##p')
-              echo "::notice::Could not read the pull request head from the API; using the merge-group commit message ('${head:-unknown}')"
+          release_pr=false
+          if [[ "$EVENT_NAME" == 'pull_request' ]]; then
+            [[ "$PR_HEAD_REF" == 'changeset-release/main' ]] && release_pr=true
+          else
+            # The queue only ever merges the open PR's current head (a push
+            # to the branch dequeues it), so this tree merges the release PR
+            # exactly when it contains that head. An API failure fails the
+            # job: a queue entry that cannot be judged must not merge on a
+            # guess, and re-queueing retries it.
+            vp_head=$(gh api \
+              "repos/${GITHUB_REPOSITORY}/pulls?state=open&head=${GITHUB_REPOSITORY_OWNER}:changeset-release/main" \
+              --jq '.[0].head.sha // empty')
+            if [[ -z "$vp_head" ]]; then
+              echo "No open Version Packages PR — nothing to check"
+            else
+              status=$(gh api \
+                "repos/${GITHUB_REPOSITORY}/compare/${vp_head}...${GITHUB_SHA}" \
+                --jq .status)
+              case "$status" in
+                ahead | identical) release_pr=true ;;
+              esac
+              echo "Open Version Packages PR head $vp_head is '$status' relative to this tree"
             fi
           fi
-          if [[ "$head" == 'changeset-release/main' ]]; then
-            echo "release_pr=true" >> "$GITHUB_OUTPUT"
-            echo "Checking the Version Packages PR (head $head)"
+          echo "release_pr=$release_pr" >> "$GITHUB_OUTPUT"
+          if [[ "$release_pr" == 'true' ]]; then
+            echo "This tree merges the Version Packages PR — checking it"
           else
-            echo "release_pr=false" >> "$GITHUB_OUTPUT"
-            echo "Not the Version Packages PR (head ${head:-unknown}) — nothing to check"
+            echo "This tree does not merge the Version Packages PR — nothing to check"
           fi
       - if: steps.head.outputs.release_pr == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
@@ -2180,6 +2188,20 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: npm-publish
+    # One release job at a time. The tip check below is a check-then-act on a
+    # branch this job cannot lock, so a push can still land between the check
+    # and changesets/action. Serialising the job means the run for that push
+    # cannot act until this one has finished — and that run, the only one that
+    # sees the true tip, then publishes, regenerates the release PR, or closes
+    # the one this run left behind (the cleanup step after the action). A
+    # versionless group keeps only one pending run, so in a burst of merges the
+    # middle runs' release jobs are dropped; that is safe because the newest
+    # run's tree contains everything theirs did and every decision here is
+    # made from state (changeset files, npm, tags), never from the event.
+    # Never cancel-in-progress: that would kill a publish mid-flight.
+    concurrency:
+      group: release-main
+      cancel-in-progress: false
     permissions:
       contents: write
       pull-requests: write
@@ -2218,8 +2240,8 @@ jobs:
         # from that stale tree regenerated an already-merged release PR
         # (#1597, 2026-09-02). The newer commit's run covers everything this
         # one would do, so a superseded run stops here. Checked last, right
-        # before the action reads the tree; the script explains why this is a
-        # runtime query rather than a concurrency setting.
+        # before the action reads the tree; the job's concurrency group and the
+        # cleanup step below close the window that remains after the check.
         id: tip
         env:
           EXPECTED_SHA: ${{ github.sha }}
@@ -2248,6 +2270,28 @@ jobs:
           github-token: ${{ secrets.RELEASE_PR_TOKEN }}
         env:
           NPM_CONFIG_PROVENANCE: true
+      - name: Close a release PR the tip no longer needs
+        # A run superseded between its tip check and the action above can
+        # still open or refresh a Version Packages PR for changesets the newer
+        # commit has already released (#1597). This run holds the tip, and it
+        # found nothing left to version, so any open release PR was generated
+        # from a tree older than main and is stale by definition. Closing it
+        # here makes the tip run the last word, which the job's concurrency
+        # group guarantees it is: a superseded run that slipped past its check
+        # finished before this one started.
+        if: >-
+          steps.tip.outputs.current == 'true'
+          && steps.changesets.outputs['has-changesets'] == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr list --repo "$GITHUB_REPOSITORY" --state open \
+            --head changeset-release/main --json number --jq '.[].number' \
+            | while read -r number; do
+                gh pr close "$number" --repo "$GITHUB_REPOSITORY" --comment \
+                  "Closing: main ($GITHUB_SHA) has no changesets left to version, so this release PR was generated from a superseded tree. The next push that adds a changeset opens a fresh one."
+                echo "::notice::Closed stale Version Packages PR #$number"
+              done
 
   # Maintains generated PRs for the products that remain outside the normal
   # "Version Packages" PR. Normal-lane apps use that standard Changesets lane;

@@ -52,7 +52,8 @@ backwards — the mirror is a linear append whose newest push becomes `latest`:
   mirrored 4.1.3 on top of the 4.1.4 push.)
 - The `release` job that publishes the `@codaco/*` packages stops if its
   commit is no longer main's tip (`.github/scripts/superseded-push-guard.sh`),
-  so a superseded run cannot regenerate an already-merged Version Packages PR.
+  runs one at a time, and when it holds the tip with nothing left to version
+  it closes any Version Packages PR a superseded run regenerated.
 
 The Version Packages PR itself must be current when it merges. If main gains a
 normal-lane changeset after the PR head was generated, the merged tree carries

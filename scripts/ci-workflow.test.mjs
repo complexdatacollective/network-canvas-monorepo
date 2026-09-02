@@ -827,6 +827,32 @@ test('release-side jobs stop once their main commit has been superseded', () => 
     'changesets/action is the next step and is gated on the guard',
   );
 
+  // The check cannot lock main, so a push can land between it and the
+  // action. Serialising the job makes the run for that push act last, and
+  // that run — holding the tip with nothing left to version — closes any
+  // release PR the superseded run left behind.
+  assert.match(
+    releaseJob,
+    /concurrency:\n\s+group: release-main\n\s+cancel-in-progress: false/,
+    'release jobs serialise without cancelling a publish mid-flight',
+  );
+  const cleanupIndex = releaseJob.indexOf(
+    '- name: Close a release PR the tip no longer needs',
+  );
+  assert.ok(cleanupIndex !== -1, 'the tip run closes a stale release PR');
+  assert.ok(cleanupIndex > actionIndex, 'cleanup runs after the action');
+  assert.equal(
+    parsedWorkflow.jobs.release.steps.find(
+      ({ name }) => name === 'Close a release PR the tip no longer needs',
+    )?.if,
+    "steps.tip.outputs.current == 'true' && steps.changesets.outputs['has-changesets'] == 'false'",
+  );
+  assert.match(
+    releaseJob,
+    /gh pr list --repo "\$GITHUB_REPOSITORY" --state open \\\n\s+--head changeset-release\/main --json number/,
+  );
+  assert.match(releaseJob, /gh pr close "\$number"/);
+
   const productReleaseJob = job('product-release-pr');
   assert.match(productReleaseJob, guardStep);
   assert.match(
@@ -863,12 +889,27 @@ test('a stale Version Packages PR cannot merge', () => {
     condition,
     /github\.event_name == 'pull_request'\s+&& github\.head_ref == 'changeset-release\/main'/,
   );
+  // The queue batches entries, each built on the ones ahead of it, and a
+  // group's ref names only its last PR — membership must come from ancestry
+  // of the open release PR's head, never from the ref suffix.
   assert.match(
     freshness,
-    /gh api "repos\/\$\{GITHUB_REPOSITORY\}\/pulls\/\$\{number\}"/,
+    /pulls\?state=open&head=\$\{GITHUB_REPOSITORY_OWNER\}:changeset-release\/main"[^\n]*\n\s+--jq '\.\[0\]\.head\.sha \/\/ empty'/,
   );
-  assert.match(freshness, /--jq \.head\.ref/);
-  assert.match(freshness, /Merge pull request/, 'commit-message fallback');
+  assert.match(
+    freshness,
+    /compare\/\$\{vp_head\}\.\.\.\$\{GITHUB_SHA\}"[^\n]*\n\s+--jq \.status/,
+  );
+  assert.match(freshness, /ahead \| identical\) release_pr=true/);
+  assert.doesNotMatch(freshness, /merge_group\.head_ref/);
+  assert.doesNotMatch(freshness, /head_commit\.message/);
+  // A judgement that cannot be made must fail the entry, not wave it through:
+  // nothing in the resolving step may swallow a failed API call.
+  const resolve = parsedWorkflow.jobs['version-packages-freshness'].steps.find(
+    ({ id }) => id === 'head',
+  );
+  assert.ok(resolve?.run, 'the resolving step exists');
+  assert.doesNotMatch(resolve.run, /\|\| true|2>\/dev\/null|set \+e/);
   assert.match(
     freshness,
     /if: steps\.head\.outputs\.release_pr == 'true'\n\s+run: node scripts\/check-version-packages-freshness\.mjs/,

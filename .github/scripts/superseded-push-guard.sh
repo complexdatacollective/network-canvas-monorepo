@@ -24,13 +24,14 @@
 # release lane that silently never acts is worse than a red job. The script
 # therefore exits non-zero rather than guessing when it cannot see the branch.
 #
-# The check is deliberately a runtime query of the remote rather than a
-# concurrency setting. Cancelling superseded runs would kill an npm publish
-# mid-flight, and serialising the jobs in one group would only order the stale
-# run before the current one — it would still act. A remote query leaves a
-# window of a few seconds between the answer and the action's own push; a run
-# superseded inside that window regenerates the PR the newer run then updates,
-# which is the same benign outcome the tip run produces anyway.
+# The check is a runtime query of the remote because no concurrency setting
+# can answer the question: cancelling superseded runs would kill an npm
+# publish mid-flight, and serialising the jobs only orders a stale run before
+# the current one — it still acts. The query leaves a window of seconds
+# between the answer and the caller's own push, which the caller closes from
+# the other side: the `release` job serialises on one group, so the run for a
+# push that lands inside the window acts after this one, and that run —
+# holding the tip — closes any release PR a superseded run left behind.
 #
 # Inputs (env): EXPECTED_SHA (full sha), REF (a full ref, e.g. refs/heads/main),
 # REMOTE (remote name or URL; default origin), GITHUB_OUTPUT.

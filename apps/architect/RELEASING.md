@@ -41,7 +41,9 @@ The `version-packages-freshness` job refuses such a merge; wait for the bot to
 regenerate the head and queue that. Pushes to main also run concurrently, so a
 `release` job whose commit is no longer main's tip stops before
 `changesets/action` runs (`.github/scripts/superseded-push-guard.sh`) rather
-than regenerating a release PR that has already merged. The app lane needs no
+than regenerating a release PR that has already merged; release jobs run one
+at a time, and a tip run with nothing left to version closes any release PR a
+superseded run still managed to open. The app lane needs no
 such check: `app-release-guard.sh` below already makes a superseded tree
 harmless, and it skips with a warning that needs no follow-up.
 
