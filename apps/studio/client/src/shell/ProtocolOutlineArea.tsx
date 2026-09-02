@@ -22,7 +22,9 @@ import { editorDestinations } from './navigationManifest.ts';
  */
 export default function ProtocolOutlineArea({ studyId }: { studyId: string }) {
   const pathname = useRouterState({
-    select: (state) => state.location.pathname,
+    // The COMMITTED location, which is `resolvedLocation`: `location` is the
+    // PENDING one, set to the destination before the transaction runs.
+    select: (state) => (state.resolvedLocation ?? state.location).pathname,
   });
 
   return (

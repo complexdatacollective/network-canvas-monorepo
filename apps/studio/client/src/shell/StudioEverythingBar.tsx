@@ -93,7 +93,7 @@ export default function StudioEverythingBar() {
   const pathname = useRouterState({
     // The COMMITTED location, so the current-context ranking follows what is on
     // screen rather than a pending navigation a blocker may still cancel.
-    select: (state) => state.location.pathname,
+    select: (state) => (state.resolvedLocation ?? state.location).pathname,
   });
   // `strict: false` because most app routes have neither parameter, and the
   // absence is the answer for them rather than a type error.

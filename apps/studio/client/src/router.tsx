@@ -126,7 +126,9 @@ function screenPlaceholder(props: PlaceholderProps) {
 function libraryPlaceholder(props: PlaceholderProps) {
   return function LibraryPlaceholder() {
     const pathname = useRouterState({
-      select: (state) => state.location.pathname,
+      // The COMMITTED location, which is `resolvedLocation`: `location` is the
+      // PENDING one, set to the destination before the transaction runs.
+      select: (state) => (state.resolvedLocation ?? state.location).pathname,
     });
     return (
       <AppArea location={pathname}>

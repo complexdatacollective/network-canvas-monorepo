@@ -41,7 +41,7 @@ export default function TeamArea() {
     // The COMMITTED location. Active state and the drawer's close both derive
     // from it — never from a pending navigation, which a blocker may still
     // cancel (§6.5, §7.3).
-    select: (state) => state.location.pathname,
+    select: (state) => (state.resolvedLocation ?? state.location).pathname,
   });
   // Every route in this area names its team in the URL, and the URL is what
   // this reads: §2.2's invariant is that the URL is authoritative and the

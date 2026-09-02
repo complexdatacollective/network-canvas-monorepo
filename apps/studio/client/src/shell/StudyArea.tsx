@@ -28,7 +28,7 @@ export default function StudyArea({ studyId }: { studyId: string }) {
   const pathname = useRouterState({
     // The COMMITTED location: a blocker may still cancel a pending one
     // (§6.5, §7.3).
-    select: (state) => state.location.pathname,
+    select: (state) => (state.resolvedLocation ?? state.location).pathname,
   });
 
   return (

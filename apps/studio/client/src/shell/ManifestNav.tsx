@@ -29,7 +29,7 @@ export default function ManifestNav({
     // The COMMITTED location. Active state and the drawer's close both derive
     // from it — never from a pending navigation, which a blocker may still
     // cancel (§6.5, §7.3).
-    select: (state) => state.location.pathname,
+    select: (state) => (state.resolvedLocation ?? state.location).pathname,
   });
 
   return (
