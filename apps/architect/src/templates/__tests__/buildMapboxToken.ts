@@ -3,7 +3,7 @@
  * `pk.<base64url JSON {"u": account, "a": token id}>.<signature>`, so a retired
  * token can be reconstructed from its id at test time without a token-shaped
  * literal ever being written into the repository — which GitHub push
- * protection would block, and which `mapbox-public-tokens.test.ts` forbids
+ * protection would block, and which `scripts/check-mapbox-tokens.mjs` forbids
  * anywhere near a fixture. The signature is not verified by anything that
  * reads the token here, so any string will do.
  */
