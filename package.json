@@ -24,7 +24,7 @@
     "knip": "SKIP_ENV_VALIDATION=true knip"
   },
   "devDependencies": {
-    "@changesets/cli": "^3.0.0",
+    "@changesets/cli": "^3.0.1",
     "@posthog/cli": "catalog:",
     "@posthog/plugin-utils": "catalog:",
     "@total-typescript/ts-reset": "catalog:",
