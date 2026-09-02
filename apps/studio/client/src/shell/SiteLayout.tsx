@@ -1,12 +1,25 @@
+import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet } from '@tanstack/react-router';
 
+import { buttonVariants } from '@codaco/fresco-ui/Button';
 import SiteFooter from '@codaco/fresco-ui/navigation/SiteFooter';
 import type {
   SiteFooterLink,
   SiteFooterSocialLink,
 } from '@codaco/fresco-ui/navigation/SiteFooter';
 import SiteNavigation from '@codaco/fresco-ui/navigation/SiteNavigation';
-import type { SiteNavigationLinkRenderProps } from '@codaco/fresco-ui/navigation/SiteNavigation';
+import type {
+  SiteNavigationLinkRenderProps,
+  SiteNavigationUtilityRenderProps,
+} from '@codaco/fresco-ui/navigation/SiteNavigation';
+import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
+import { cx } from '@codaco/fresco-ui/utils/cva';
+
+import {
+  useLandingDestination,
+  type LandingDestination,
+} from '../lib/landing.ts';
+import { sessionQueryOptions } from '../lib/session.ts';
 
 /**
  * The site shell (§5.3, §10.1): the Network Canvas header and footer, around
@@ -18,10 +31,10 @@ import type { SiteNavigationLinkRenderProps } from '@codaco/fresco-ui/navigation
  * item set, the ordering and the translated copy stay in the shared component,
  * where every site reads one copy of them.
  *
- * There is no app header here and no session: a visitor who has never signed
- * in is the expected reader. Each site screen renders its own
- * `<main id="main-content">`, because the site branch has no area layout to
- * own that landmark (§7.1).
+ * There is no app header here and no session GUARD: a visitor who has never
+ * signed in is the expected reader, and nothing on this branch may refuse
+ * them. Each site screen renders its own `<main id="main-content">`, because
+ * the site branch has no area layout to own that landmark (§7.1).
  *
  * The WCAG 2.4.1 bypass past that repeated header is `SiteNavigation`'s own,
  * and not this layout's. It briefly was this layout's, on the reasoning that
@@ -84,6 +97,93 @@ function renderSiteLink({
   );
 }
 
+/**
+ * The Studio entry, styled as the header's other pill so it reads as one of
+ * its controls rather than as page content that has drifted upward.
+ */
+const ENTRY_CLASSES = cx(
+  buttonVariants({ variant: 'outline', color: 'primary', size: 'sm' }),
+  'rounded-full no-underline',
+  headingVariants({ level: 'h4', variant: 'all-caps', margin: 'none' }),
+);
+
+/**
+ * The site header's way into Studio (§10.1).
+ *
+ * Every destination `SiteNavigation` owns is another Network Canvas site, so
+ * without this the persistent header on `/pricing` and `/legal/*` offers no
+ * way into the product whose pages they are — and no way to sign in. Only
+ * `/` carries those, in its own body copy, which is no use to a reader of the
+ * terms.
+ *
+ * **The utility slot, not the shared item set.** §10.1 reserves a canonical
+ * Studio destination in `SiteNavigationItemId`, and that is a different
+ * thing: it is one absolute URL, the same for every site that renders this
+ * header, and the shared component has no session with which to vary it.
+ * What belongs to a reader of THIS deployment's pages does vary, which is
+ * what `renderUtility` — the component's one sanctioned app-owned slot —
+ * exists for. It is rendered in both the desktop bar and the compact menu, so
+ * supplying it is what covers a narrow viewport too.
+ *
+ * **Where a signed-in researcher belongs is §6.4's landing destination**, not
+ * `/`: under `managed` that is marketing, and under `self-hosted` a redirect
+ * (§10.4). The entry is right in both topologies and so is not mode-gated —
+ * unlike the pages it appears on, which are managed-only.
+ *
+ * The session comes from the query every guard reads, so this is not the
+ * second live channel §6.2 removed from the app shell — it is the same one,
+ * asked by a component. Until it answers, and if it cannot, the entry is
+ * `/sign-in`: that is the honest answer for a visitor, and it is not a dead
+ * end for a researcher either, because the sign-in route's own guard resolves
+ * an existing session through this same landing rule.
+ */
+function StudioEntry({ closeMenu, view }: SiteNavigationUtilityRenderProps) {
+  const session = useQuery(sessionQueryOptions);
+  const landing = useLandingDestination(session.data === 'signedIn');
+  // Only the compact menu has anything to close, exactly as the header's own
+  // items decide it.
+  const onClick = view === 'mobile' ? closeMenu : undefined;
+
+  if (landing === undefined) {
+    return (
+      <Link className={ENTRY_CLASSES} onClick={onClick} to="/sign-in">
+        Sign in
+      </Link>
+    );
+  }
+  return <StudioDestinationLink destination={landing} onClick={onClick} />;
+}
+
+/**
+ * Split out because the two landing destinations take different `<Link>`
+ * props, and a router link's `to` is what types its `params`.
+ */
+function StudioDestinationLink({
+  destination,
+  onClick,
+}: {
+  destination: LandingDestination;
+  onClick: (() => void) | undefined;
+}) {
+  if (destination.to === '/no-team') {
+    return (
+      <Link className={ENTRY_CLASSES} onClick={onClick} to="/no-team">
+        Go to Studio
+      </Link>
+    );
+  }
+  return (
+    <Link
+      className={ENTRY_CLASSES}
+      onClick={onClick}
+      params={destination.params}
+      to="/team/$teamId"
+    >
+      Go to Studio
+    </Link>
+  );
+}
+
 export default function SiteLayout() {
   return (
     <div className="flex min-h-full flex-col">
@@ -91,6 +191,7 @@ export default function SiteLayout() {
         locale="en-US"
         site="external"
         renderLink={renderSiteLink}
+        renderUtility={(props) => <StudioEntry {...props} />}
       />
       <div className="flex-1">
         <Outlet />

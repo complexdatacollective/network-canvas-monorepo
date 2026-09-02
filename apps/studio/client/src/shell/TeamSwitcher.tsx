@@ -2,6 +2,7 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { ChevronDown } from 'lucide-react';
 import { useId } from 'react';
 
+import { Alert } from '@codaco/fresco-ui/Alert';
 import { Button } from '@codaco/fresco-ui/Button';
 import {
   DropdownMenu,
@@ -14,6 +15,30 @@ import {
 } from '@codaco/fresco-ui/DropdownMenu';
 
 import { authClient } from '../lib/auth.ts';
+
+/**
+ * The team list could not be read, and the researcher's way out of it.
+ *
+ * `AppLayout`'s `TeamSwitchFailure` is the pattern — a compact destructive
+ * alert with the one control that can change the answer — and this is the
+ * same failure one step earlier: there the write could not be made, here the
+ * teams to write cannot even be named. It sits where the chip would be rather
+ * than in the shell's alert band, because that is the extent of the damage:
+ * every screen still has its team from the URL, and what is missing is only
+ * the way to a different one.
+ */
+function TeamListFailure({ retry }: { retry: () => void }) {
+  return (
+    <Alert variant="destructive" density="compact" className="m-0 w-auto">
+      <div className="flex flex-wrap items-center gap-3">
+        <span>Your teams could not be loaded.</span>
+        <Button size="sm" variant="outline" onClick={retry}>
+          Try again
+        </Button>
+      </div>
+    </Alert>
+  );
+}
 
 /**
  * The header's team chip (§5.5): the team the researcher is acting in, and the
@@ -46,9 +71,22 @@ export default function TeamSwitcher() {
   const activeTeam = authClient.useActiveOrganization();
 
   const list = teams.data ?? [];
+  // An EMPTY list and a list that could not be read are the same `[]` here,
+  // and they mean opposite things. Better Auth holds `data` at `null` when a
+  // request fails and records the error instead, so a researcher who belongs
+  // to four teams and whose list request failed would silently get the same
+  // treatment as one who belongs to none: no chip, no explanation, and no way
+  // to change teams short of reloading the page.
+  if (teams.error && list.length === 0) {
+    return <TeamListFailure retry={() => void teams.refetch()} />;
+  }
   // No teams, or the list has not arrived: there is no team to name, and a
   // chip that names nothing tells the researcher less than no chip at all.
   // §6.4's `/no-team` route is where a researcher with no team belongs.
+  //
+  // A list that failed while an EARLIER one is still in hand is not this case:
+  // Better Auth leaves that `data` in place, and the switcher it fills is
+  // still the researcher's way to every team it names.
   if (list.length === 0) return null;
 
   const active = activeTeam.data;

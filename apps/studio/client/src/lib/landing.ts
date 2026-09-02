@@ -1,4 +1,9 @@
-import { queryOptions, type QueryClient } from '@tanstack/react-query';
+import {
+  queryOptions,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
 import { redirect } from '@tanstack/react-router';
 
 import { authClient } from './auth.ts';
@@ -185,6 +190,34 @@ export async function resolveLandingDestination(
   // The query's `null` and this vocabulary's `undefined` are the same answer;
   // only the cache needs the distinction.
   return landingDestination({ teams, activeTeamId: activeTeamId ?? undefined });
+}
+
+/**
+ * The same destination for a COMPONENT — the site header's way into Studio
+ * (§10.1) — which is the one reader of this resolution that cannot await it.
+ * `undefined` until it has one.
+ *
+ * `enabled` rather than a condition at the call site, because the pages that
+ * ask are public: a visitor with no session has no memberships to list, and
+ * asking anyway would put a request that can only fail behind every marketing
+ * page view.
+ *
+ * Keyed under the prefix the two queries beneath it share, so the
+ * invalidation above reaches this one too — a researcher who switches teams
+ * in the app and then opens a legal document is offered the team they are
+ * actually in.
+ */
+export function useLandingDestination(
+  enabled: boolean,
+): LandingDestination | undefined {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: [...MEMBERSHIPS_QUERY_PREFIX, 'landing'],
+    queryFn: () => resolveLandingDestination(queryClient),
+    enabled,
+    staleTime: 30_000,
+    retry: false,
+  }).data;
 }
 
 /**

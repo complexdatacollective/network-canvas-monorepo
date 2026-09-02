@@ -7,6 +7,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -247,6 +248,93 @@ describe('a failed active-team write', () => {
         { disableSignal: true },
       ),
     );
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+/**
+ * The half of a reconciliation that happens after the write.
+ *
+ * Better Auth's `refetch` resolves whether or not the request worked — it
+ * wraps it in a promise it settles from `finally` and records a failure on the
+ * hook — so `Promise.allSettled` reports success for two refreshes that never
+ * happened. A reconciliation marked settled there leaves the shell naming the
+ * team the researcher has just left, with the guard refusing to try again.
+ */
+describe('an active-team write whose refresh does not land', () => {
+  it('says so rather than reporting a switch nothing saw', async () => {
+    fixtures.useActiveMember.mockReturnValue({
+      data: null,
+      isPending: false,
+      error: { status: 500, message: 'unavailable' },
+      refetch: vi.fn(),
+    });
+    renderAt('/team/team-b');
+
+    await waitFor(() => expect(fixtures.setActive).toHaveBeenCalledTimes(1));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Studio could not switch to this team',
+    );
+  });
+
+  it('tries again even when the team query already names this team', async () => {
+    // The team refreshed and the member did not, so §6.6's comparison agrees
+    // with the URL while the shell is still describing the old team's
+    // membership. Taking the comparison here would refuse the retry outright —
+    // the optimisation deciding correctness, which §6.6 forbids.
+    fixtures.useActiveOrganization.mockReturnValue(
+      resolved({ ...fixtures.TEAM_B, members: [], invitations: [] }),
+    );
+    fixtures.useActiveMember.mockReturnValue({
+      data: null,
+      isPending: false,
+      error: { status: 500, message: 'unavailable' },
+      refetch: vi.fn(),
+    });
+    renderAt('/team/team-b');
+
+    await screen.findByRole('alert');
+    expect(fixtures.setActive).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(fixtures.setActive).toHaveBeenCalledTimes(2));
+  });
+});
+
+/**
+ * A team list that could not be read is not a researcher with no teams, and
+ * `teams.data ?? []` makes the two indistinguishable. The one who belongs to
+ * four teams then gets a header with no switcher in it, no word of what went
+ * wrong, and no way to a different team but reloading the page.
+ */
+describe('the team list, when it cannot be read', () => {
+  it('says so and offers to ask again', async () => {
+    const refetch = vi.fn();
+    fixtures.useListOrganizations.mockReturnValue({
+      data: null,
+      isPending: false,
+      error: { status: 500, message: 'unavailable' },
+      refetch,
+    });
+    renderAt('/team/team-a');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Your teams could not be loaded',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays quiet for a list that really is empty', async () => {
+    // The other half of the distinction: a RESOLVED empty list is an answer,
+    // and the switcher's absence is the right treatment for it.
+    fixtures.useListOrganizations.mockReturnValue(resolved([]));
+    renderAt('/team/team-a');
+
+    await screen.findByRole('link', { name: 'Studio' });
     expect(screen.queryByRole('alert')).toBeNull();
   });
 });
@@ -533,5 +621,66 @@ describe('the site shell', () => {
     // The handler that prevents that is `SiteNavigation`'s; this pins that it
     // still reaches the `id` Studio's own site screens render.
     expect(document.activeElement).toBe(screen.getByRole('main'));
+  });
+});
+
+/**
+ * The public pages that are NOT the marketing home. Every destination
+ * `SiteNavigation` owns leads to another Network Canvas site, so on `/pricing`
+ * and `/legal/*` the persistent header is the only chrome a reader has and it
+ * led nowhere: not into Studio, and not to a sign-in.
+ */
+describe('the site header, on a public page that is not marketing', () => {
+  it('offers a visitor a way to sign in', async () => {
+    fixtures.signedIn = false;
+    renderAt('/pricing');
+    await screen.findByRole('heading', { level: 1, name: 'Pricing' });
+
+    const entry = screen.getByRole('link', { name: 'Sign in' });
+    expect(entry).toHaveAttribute('href', '/sign-in');
+
+    // The destination RENDERED. An href alone says only where the link
+    // points, and the pending location would say the same thing before the
+    // route had committed.
+    fireEvent.click(entry);
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Sign in' }),
+    ).toBeInTheDocument();
+  });
+
+  it('carries a signed-in researcher to their landing destination', async () => {
+    renderAt('/pricing');
+
+    // §6.4, not `/`: under `managed` that is this same marketing site, and
+    // under `self-hosted` it is a redirect (§10.4).
+    const entry = await screen.findByRole('link', { name: 'Go to Studio' });
+    expect(entry).toHaveAttribute('href', '/team/team-a');
+
+    fireEvent.click(entry);
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Studies' }),
+    ).toBeInTheDocument();
+  });
+
+  it('offers the same entry in the compact menu', async () => {
+    // `renderUtility` is rendered in both presentations, and the compact one
+    // is where a narrow viewport puts every header item — so an entry that
+    // reached only the desktop bar would be missing on a phone, which is the
+    // viewport a shared legal link is most often opened on.
+    fixtures.signedIn = false;
+    renderAt('/pricing');
+    await screen.findByRole('heading', { level: 1, name: 'Pricing' });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Open site navigation' }),
+    );
+
+    const compactNavigation = screen.getAllByRole('navigation', {
+      name: 'Primary navigation',
+    })[1];
+    if (!compactNavigation) throw new Error('Expected the compact menu.');
+    expect(
+      within(compactNavigation).getByRole('link', { name: 'Sign in' }),
+    ).toHaveAttribute('href', '/sign-in');
   });
 });

@@ -53,6 +53,25 @@ export function useActiveTeamReconciler(): ActiveTeamFailure | undefined {
   const activeTeamId = activeTeam.data?.id;
   const refetchActiveTeam = activeTeam.refetch;
   const refetchActiveMember = activeMember.refetch;
+  // Whether either of the two queries is holding a failure, which is the only
+  // place a refresh outcome is recorded.
+  //
+  // **A refetch never rejects, and settling says nothing.** Better Auth's
+  // `useAuthQuery` wraps each request in a promise it resolves from `finally`
+  // whatever happens, and reports a failure by storing `error` on the atom —
+  // keeping the previous `data` unless the status was 401. So there is nothing
+  // for `Promise.allSettled` below to suppress, and equally nothing it can
+  // tell us: a write that landed followed by two refreshes that did not leaves
+  // the hooks naming the team the researcher has just left, with no error
+  // anywhere and, if the reconciliation were marked settled there, no way back
+  // but a reload.
+  //
+  // Read at RENDER time because that is the only place it is current. The
+  // atoms are set before the refetch promise resolves, but the value this
+  // component holds is the one its last render read, so an async continuation
+  // that consulted it would read the state from BEFORE the refresh.
+  const refreshFailed =
+    Boolean(activeTeam.error) || Boolean(activeMember.error);
   // The team a write is on the wire for, and while one is there no second write
   // starts — not even for a different team.
   //
@@ -72,8 +91,9 @@ export function useActiveTeamReconciler(): ActiveTeamFailure | undefined {
   const [writingTeamId, setWritingTeamId] = useState<string | undefined>(
     undefined,
   );
-  // The team the last SUCCESSFUL write was made for, and what keys §6.6's
-  // idempotency.
+  // The team the last COMPLETE reconciliation was made for — a write that
+  // landed AND a refresh that reached the two queries above — and what keys
+  // §6.6's idempotency.
   //
   // Not the comparison above it: `disableSignal` suppresses `$sessionSignal`
   // and nothing replaces it, so the active team this reads can still name the
@@ -90,13 +110,47 @@ export function useActiveTeamReconciler(): ActiveTeamFailure | undefined {
   const [failedTeamId, setFailedTeamId] = useState<string | undefined>(
     undefined,
   );
+  // The team whose write has landed and whose refresh has not been read yet.
+  //
+  // This is what splits the reconciliation in two. The closure below cannot
+  // read `refreshFailed` — it closes over the render that started the write —
+  // so it hands the team back here instead, and the pass this state change
+  // causes is where the reconciliation is finally marked settled or failed.
+  // That pass reads the hooks fresh, because a render is what re-reads them.
+  const [refreshedTeamId, setRefreshedTeamId] = useState<string | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
+    // The second half of a reconciliation, before anything else: the write
+    // landed and the two refreshes have now been given their chance.
+    //
+    // Ahead of the `committedTeamId` guard so it always completes. A
+    // researcher who navigates to a study or `/account` while the refreshes
+    // are out names no team on arrival, and leaving this half undone would
+    // strand the idempotency key on a write that did happen.
+    if (refreshedTeamId !== undefined) {
+      if (refreshFailed) {
+        setFailedTeamId(refreshedTeamId);
+      } else {
+        settledTeamId.current = refreshedTeamId;
+        setFailedTeamId(undefined);
+      }
+      setRefreshedTeamId(undefined);
+      return;
+    }
+
     if (committedTeamId === undefined) return;
-    if (committedTeamId === activeTeamId) return;
     if (committedTeamId === settledTeamId.current) return;
     if (writingTeamId !== undefined) return;
     if (failedTeamId === committedTeamId) return;
+    // §6.6's optimisation, and the one condition under which it is safe to
+    // take: that the queries it compares are current. A refresh that failed
+    // for the MEMBER alone leaves the team query already naming the committed
+    // team, and short-circuiting on that would refuse the very retry the
+    // researcher has just asked for — the comparison deciding correctness,
+    // which §6.6 says it must never do.
+    if (committedTeamId === activeTeamId && !refreshFailed) return;
 
     setWritingTeamId(committedTeamId);
     void (async () => {
@@ -123,17 +177,23 @@ export function useActiveTeamReconciler(): ActiveTeamFailure | undefined {
         // depend on it show another team's data over this team's URL only if
         // this pretends it succeeded, so it does not.
       } finally {
-        // Recorded before the refetches, which are what a later comparison
-        // would read: a failure leaves it alone, so `retry` has something to
-        // do and the guard above does not swallow it.
-        if (!failed) settledTeamId.current = committedTeamId;
+        // `allSettled` for form only — neither of these can reject. What they
+        // did is on the hooks, and only the next render can read it.
         await Promise.allSettled([refetchActiveTeam(), refetchActiveMember()]);
         setWritingTeamId(undefined);
-        setFailedTeamId(failed ? committedTeamId : undefined);
-        // The landing resolution caches which team was active for 30 seconds
-        // (§6.4). This write is what makes that answer stale, so `/` cannot
-        // send the researcher back to the team they just left.
-        if (!failed) await invalidateMemberships(queryClient);
+        if (failed) {
+          setFailedTeamId(committedTeamId);
+        } else {
+          // NOT settled here, whatever the write says. The screens this exists
+          // for read the queries above, not the server, so a write nothing
+          // told them about has not reconciled anything.
+          setRefreshedTeamId(committedTeamId);
+          // The landing resolution caches which team was active for 30 seconds
+          // (§6.4). This write is what makes that answer stale, so `/` cannot
+          // send the researcher back to the team they just left — and that is
+          // true of the write alone, whether or not the refreshes landed.
+          await invalidateMemberships(queryClient);
+        }
       }
     })();
   }, [
@@ -143,6 +203,8 @@ export function useActiveTeamReconciler(): ActiveTeamFailure | undefined {
     queryClient,
     refetchActiveMember,
     refetchActiveTeam,
+    refreshedTeamId,
+    refreshFailed,
     writingTeamId,
   ]);
 

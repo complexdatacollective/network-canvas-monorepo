@@ -5,7 +5,7 @@ import {
   createMemoryHistory,
   RouterProvider,
 } from '@tanstack/react-router';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAppRouter } from '../../router.tsx';
@@ -356,16 +356,20 @@ describe('rendered chrome', () => {
         name: 'Network Canvas Studio',
       }),
     ).toBeInTheDocument();
-    // The site shell, not the app shell: no account menu, no team chip, and
-    // no session was asked for to render it.
+    // The site shell, not the app shell: no account menu and no team chip.
+    //
+    // The header's Studio entry does read the session, and this page renders
+    // without waiting on it — the heading above arrived while it was still
+    // out. What the site branch must not have is a session GUARD, which the
+    // branch test above asserts directly.
     expect(
       screen.queryByRole('button', { name: 'Account' }),
     ).not.toBeInTheDocument();
-    expect(mocks.getSession).not.toHaveBeenCalled();
+    const main = screen.getByRole('main');
     expect(
-      screen.getByRole('link', { name: 'Create an account' }),
+      within(main).getByRole('link', { name: 'Create an account' }),
     ).toHaveAttribute('href', '/sign-up');
-    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
+    expect(within(main).getByRole('link', { name: 'Sign in' })).toHaveAttribute(
       'href',
       '/sign-in',
     );
