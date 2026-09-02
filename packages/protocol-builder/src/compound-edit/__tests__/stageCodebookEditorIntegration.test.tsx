@@ -89,6 +89,7 @@ describe('stage-owned codebook editor flow', () => {
           shape: { default: 'square' },
           icon: 'MapPin',
         }}
+        existingEntityNames={[]}
         onSubmit={(codebookRequest) =>
           session.requestCompoundEdit(
             withStageSectionEdit(codebookRequest, stageSection, initialStage, [

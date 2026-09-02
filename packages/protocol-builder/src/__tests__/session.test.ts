@@ -13,6 +13,7 @@ import {
   SessionReadOnlyError,
   stageDocument,
   StageIdentityCommandError,
+  type CompoundEditResult,
   type CompoundEditRequest,
   type ProtocolBuilderSessionOptions,
 } from '../session.ts';
@@ -379,6 +380,71 @@ describe('ProtocolBuilderSessionStore', () => {
     expect(session.getSnapshot().pendingCommands).toHaveLength(1);
     expect(session.getSnapshot().history.canUndo).toBe(true);
     expect(onCommands).toHaveBeenCalledOnce();
+  });
+
+  it('refuses a concurrent compound submission before it reaches the host', async () => {
+    let resolveFirst:
+      | ((result: Extract<CompoundEditResult, { status: 'applied' }>) => void)
+      | undefined;
+    const onCompoundEdit = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<Extract<CompoundEditResult, { status: 'applied' }>>(
+            (resolve) => {
+              resolveFirst = resolve;
+            },
+          ),
+      )
+      .mockResolvedValueOnce({
+        status: 'applied',
+        update: {
+          protocolSections: {
+            [currentStageSection]: currentStageDocument,
+            [nodeSection]: { name: 'Second edit' },
+          },
+          manifestRevision: revision(3n),
+        },
+      });
+    const { session } = createSession({ onCompoundEdit });
+    const first = session.requestCompoundEdit(compoundRequest());
+
+    await expect(
+      session.requestCompoundEdit({
+        ...compoundRequest(),
+        id: 'concurrent-person-edit',
+      }),
+    ).resolves.toMatchObject({
+      status: 'failed',
+      reason: 'compound-in-flight',
+    });
+    expect(onCompoundEdit).toHaveBeenCalledOnce();
+
+    resolveFirst?.({
+      status: 'applied',
+      update: {
+        protocolSections: {
+          [currentStageSection]: currentStageDocument,
+          [nodeSection]: { name: 'First edit' },
+        },
+        manifestRevision: revision(2n),
+      },
+    });
+    await expect(first).resolves.toMatchObject({ status: 'applied' });
+    expect(session.getSnapshot().protocolSections[nodeSection]).toEqual({
+      name: 'First edit',
+    });
+
+    await expect(
+      session.requestCompoundEdit({
+        ...compoundRequest(),
+        id: 'subsequent-person-edit',
+      }),
+    ).resolves.toMatchObject({ status: 'applied' });
+    expect(onCompoundEdit).toHaveBeenCalledTimes(2);
+    expect(session.getSnapshot().protocolSections[nodeSection]).toEqual({
+      name: 'Second edit',
+    });
   });
 
   it('rejects malformed compound requests before invoking the host', async () => {

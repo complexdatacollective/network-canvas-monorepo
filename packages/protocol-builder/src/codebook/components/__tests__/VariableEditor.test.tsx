@@ -1,4 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -27,6 +33,21 @@ const APPLIED: CompoundEditResult = {
     protocolSections: {},
     manifestRevision: { sequence: 2n, hash: 'revision-2' },
   },
+};
+
+const deferred = <Value,>() => {
+  let resolvePromise: ((value: Value) => void) | undefined;
+  const promise = new Promise<Value>((resolve) => {
+    resolvePromise = resolve;
+  });
+  return {
+    promise,
+    resolve(value: Value) {
+      if (resolvePromise === undefined)
+        throw new Error('deferred is not ready');
+      resolvePromise(value);
+    },
+  };
 };
 
 function personDocument(
@@ -216,6 +237,44 @@ describe('VariableEditor', () => {
     });
   });
 
+  it('disables and guards an unchanged update whose seed omits unowned fields', () => {
+    const existing = {
+      name: 'comment',
+      type: 'text',
+      component: 'TextArea',
+      validation: { required: true, minLength: 2 },
+    } as const;
+    const partialSeed = { name: existing.name, type: existing.type } as const;
+    const createRequestId = vi.fn(() => 'request-unchanged');
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const { container } = render(
+      <VariableEditor
+        openId="edit-unchanged"
+        mode="update"
+        subject={SUBJECT}
+        authoritativeDocument={personDocument({ comment: existing })}
+        variableId="comment"
+        initialDraft={partialSeed}
+        description="Update comment"
+        createRequestId={createRequestId}
+        onSubmitRequest={onSubmitRequest}
+        onComplete={() => undefined}
+      />,
+    );
+
+    const form = container.querySelector('form');
+    if (form === null) throw new Error('expected variable editor form');
+    fireEvent.submit(form);
+
+    expect(createRequestId).not.toHaveBeenCalled();
+    expect(onSubmitRequest).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    ).toBeDisabled();
+  });
+
   it('migrates compatible validation and clears incompatible metadata on a type change', async () => {
     const user = userEvent.setup();
     const existing = {
@@ -320,6 +379,7 @@ describe('VariableEditor', () => {
     const onSubmitRequest = vi.fn(
       (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
     );
+    const onComplete = vi.fn();
     const common = {
       openId: 'edit-live-remote',
       mode: 'update' as const,
@@ -328,7 +388,7 @@ describe('VariableEditor', () => {
       description: 'Update comment',
       createRequestId: () => 'request-live-remote',
       onSubmitRequest,
-      onComplete: () => undefined,
+      onComplete,
     };
     const { rerender } = render(
       <VariableEditor
@@ -364,6 +424,55 @@ describe('VariableEditor', () => {
     expect(request.edits[0]).toMatchObject({
       expectedContentHash: contentHash(remoteDocument),
     });
+    expect(onComplete).toHaveBeenCalledOnce();
+  });
+
+  it('does not complete an applied submit that settles with an authoritative conflict', async () => {
+    const user = userEvent.setup();
+    const initialVariable = {
+      name: 'comment',
+      type: 'text',
+      component: 'Text',
+    } as const;
+    const pending = deferred<CompoundEditResult>();
+    const onSubmitRequest = vi.fn(() => pending.promise);
+    const onComplete = vi.fn();
+    const common = {
+      openId: 'edit-pending-authority',
+      mode: 'update' as const,
+      subject: SUBJECT,
+      variableId: 'comment',
+      initialDraft: initialVariable,
+      description: 'Update comment',
+      createRequestId: () => 'request-pending-authority',
+      onSubmitRequest,
+      onComplete,
+    };
+    const { rerender } = render(
+      <VariableEditor
+        {...common}
+        authoritativeDocument={personDocument({ comment: initialVariable })}
+      />,
+    );
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'localComment');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+    expect(onSubmitRequest).toHaveBeenCalledOnce();
+
+    const remoteVariable = { ...initialVariable, component: 'TextArea' };
+    rerender(
+      <VariableEditor
+        {...common}
+        authoritativeDocument={personDocument({ comment: remoteVariable })}
+      />,
+    );
+    await act(async () => pending.resolve(APPLIED));
+
+    expect(await screen.findByText('The codebook changed')).toBeVisible();
+    expect(name).toHaveValue('localComment');
+    expect(onComplete).not.toHaveBeenCalled();
   });
 
   it('uses a new intent id when authoritative data changes after a blocked submit', async () => {
@@ -430,6 +539,124 @@ describe('VariableEditor', () => {
     ]);
     expect(onSubmitRequest.mock.calls[1]?.[0].edits[0]).toMatchObject({
       expectedContentHash: contentHash(remoteDocument),
+    });
+  });
+
+  it('preserves an uncertain retry id across a content-identical authority re-emission', async () => {
+    const user = userEvent.setup();
+    const initialVariable = {
+      name: 'comment',
+      type: 'text',
+      component: 'Text',
+    } as const;
+    const initialDocument = personDocument({ comment: initialVariable });
+    const createRequestId = vi
+      .fn<() => string>()
+      .mockReturnValueOnce('uncertain-variable-intent')
+      .mockReturnValueOnce('duplicate-variable-intent');
+    const onSubmitRequest = vi
+      .fn<(request: CompoundEditRequest) => Promise<CompoundEditResult>>()
+      .mockRejectedValueOnce(new Error('Connection dropped.'))
+      .mockResolvedValueOnce(APPLIED);
+    const commonProps = {
+      openId: 'uncertain-variable-retry',
+      mode: 'update' as const,
+      subject: SUBJECT,
+      variableId: 'comment',
+      initialDraft: initialVariable,
+      description: 'Update comment',
+      createRequestId,
+      onSubmitRequest,
+      onComplete: () => undefined,
+    };
+    const { rerender } = render(
+      <VariableEditor
+        {...commonProps}
+        authoritativeDocument={initialDocument}
+      />,
+    );
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'localComment');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+    await screen.findByText('Connection dropped.', { exact: false });
+
+    rerender(
+      <VariableEditor
+        {...commonProps}
+        authoritativeDocument={structuredClone(initialDocument)}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(2));
+    expect(onSubmitRequest.mock.calls.map(([request]) => request.id)).toEqual([
+      'uncertain-variable-intent',
+      'uncertain-variable-intent',
+    ]);
+    expect(createRequestId).toHaveBeenCalledOnce();
+  });
+
+  it('uses a new retry id when another variable changes the parent content base', async () => {
+    const user = userEvent.setup();
+    const initialVariable = {
+      name: 'comment',
+      type: 'text',
+      component: 'Text',
+    } as const;
+    const initialDocument = personDocument({ comment: initialVariable });
+    const createRequestId = vi
+      .fn<() => string>()
+      .mockReturnValueOnce('initial-parent-intent')
+      .mockReturnValueOnce('changed-parent-intent');
+    const onSubmitRequest = vi
+      .fn<(request: CompoundEditRequest) => Promise<CompoundEditResult>>()
+      .mockRejectedValueOnce(new Error('Connection dropped.'))
+      .mockResolvedValueOnce(APPLIED);
+    const commonProps = {
+      openId: 'changed-parent-retry',
+      mode: 'update' as const,
+      subject: SUBJECT,
+      variableId: 'comment',
+      initialDraft: initialVariable,
+      description: 'Update comment',
+      createRequestId,
+      onSubmitRequest,
+      onComplete: () => undefined,
+    };
+    const { rerender } = render(
+      <VariableEditor
+        {...commonProps}
+        authoritativeDocument={initialDocument}
+      />,
+    );
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'localComment');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+    await screen.findByText('Connection dropped.', { exact: false });
+
+    const changedParentDocument = personDocument({
+      comment: initialVariable,
+      weight: { name: 'Weight', type: 'number', component: 'Number' },
+    });
+    rerender(
+      <VariableEditor
+        {...commonProps}
+        authoritativeDocument={changedParentDocument}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(2));
+    expect(onSubmitRequest.mock.calls.map(([request]) => request.id)).toEqual([
+      'initial-parent-intent',
+      'changed-parent-intent',
+    ]);
+    expect(onSubmitRequest.mock.calls[1]?.[0].edits[0]).toMatchObject({
+      expectedContentHash: contentHash(changedParentDocument),
     });
   });
 

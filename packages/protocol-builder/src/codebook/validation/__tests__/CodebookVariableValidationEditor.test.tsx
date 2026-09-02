@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -67,6 +67,21 @@ const blockedResult = (): Extract<
   ],
 });
 
+const deferred = <Value,>() => {
+  let resolvePromise: ((value: Value) => void) | undefined;
+  const promise = new Promise<Value>((resolve) => {
+    resolvePromise = resolve;
+  });
+  return {
+    promise,
+    resolve(value: Value) {
+      if (resolvePromise === undefined)
+        throw new Error('deferred is not ready');
+      resolvePromise(value);
+    },
+  };
+};
+
 const renderEditor = (
   overrides: Partial<CodebookVariableValidationEditorProps> = {},
 ) => {
@@ -134,6 +149,40 @@ describe('CodebookVariableValidationEditor', () => {
     expect(
       screen.getByRole('spinbutton', { name: 'Minimum value' }),
     ).toHaveValue(5);
+  });
+
+  it('does not complete an applied submit that settles with an authoritative conflict', async () => {
+    const initial = entityDocument();
+    const pending = deferred<CompoundEditResult>();
+    const onSubmitRequest = vi.fn(() => pending.promise);
+    const onComplete = vi.fn();
+    const { rerender, props } = renderEditor({
+      authoritativeEntityDocument: initial,
+      allSubjectVariables: variablesFrom(initial),
+      onSubmitRequest,
+      onComplete,
+    });
+    const user = await replaceMinimumValue('5');
+    await user.click(screen.getByRole('button', { name: 'Save validation' }));
+    expect(onSubmitRequest).toHaveBeenCalledOnce();
+
+    const remote = entityDocument({ minValue: 2 });
+    rerender(
+      <CodebookVariableValidationEditor
+        {...props}
+        authoritativeEntityDocument={remote}
+        allSubjectVariables={variablesFrom(remote)}
+      />,
+    );
+    await act(async () => pending.resolve(appliedResult()));
+
+    expect(
+      await screen.findByText('Newer codebook data is available'),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('spinbutton', { name: 'Minimum value' }),
+    ).toHaveValue(5);
+    expect(onComplete).not.toHaveBeenCalled();
   });
 
   it('keeps a deleted comparison target visible and blocks submission', async () => {
@@ -273,6 +322,48 @@ describe('CodebookVariableValidationEditor', () => {
       'blocked-intent',
       'revised-intent',
     ]);
+  });
+
+  it('preserves an uncertain retry id across a content-identical authority re-emission', async () => {
+    const initial = entityDocument();
+    const createId = vi
+      .fn<() => string>()
+      .mockReturnValueOnce('uncertain-validation-intent')
+      .mockReturnValueOnce('duplicate-validation-intent');
+    const onSubmitRequest = vi
+      .fn<(request: CompoundEditRequest) => Promise<CompoundEditResult>>()
+      .mockRejectedValueOnce(new Error('Connection dropped.'))
+      .mockResolvedValueOnce(appliedResult());
+    const { rerender, props } = renderEditor({
+      authoritativeEntityDocument: initial,
+      allSubjectVariables: variablesFrom(initial),
+      requestMetadata: {
+        createId,
+        description: 'Update Age validation',
+      },
+      onSubmitRequest,
+    });
+    const user = await replaceMinimumValue('5');
+
+    await user.click(screen.getByRole('button', { name: 'Save validation' }));
+    await screen.findByText('Connection dropped.');
+
+    const reemitted = structuredClone(initial);
+    rerender(
+      <CodebookVariableValidationEditor
+        {...props}
+        authoritativeEntityDocument={reemitted}
+        allSubjectVariables={variablesFrom(reemitted)}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Save validation' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(2));
+    expect(onSubmitRequest.mock.calls.map(([request]) => request.id)).toEqual([
+      'uncertain-validation-intent',
+      'uncertain-validation-intent',
+    ]);
+    expect(createId).toHaveBeenCalledOnce();
   });
 
   it.each(['stale-epoch', 'lease-lost', 'stale-base'] as const)(

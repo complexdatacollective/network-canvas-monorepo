@@ -171,6 +171,129 @@ describe('attributeValidationIssues', () => {
     });
   });
 
+  it('attributes a stage asset-reference failure to a current assets change', () => {
+    const stageSection = sectionId({ kind: 'stage', stageId: 'stage-one' });
+    const assetsSection = sectionId({ kind: 'assets' });
+    const currentRevision = revision(12n);
+    const attribution = remoteChange(currentRevision);
+
+    const [issue] = attributeValidationIssues(
+      [
+        {
+          code: 'custom',
+          path: ['stages', 0, 'background', 'image'],
+          message:
+            'Canvas background image "network-background" does not reference an asset in the manifest.',
+        },
+      ],
+      {
+        stageOrder: { stages: ['stage-one'] },
+        [stageSection]: {
+          id: 'stage-one',
+          type: 'Sociogram',
+          label: 'Network map',
+          subject: { entity: 'node', type: 'person' },
+          background: { image: 'network-background' },
+          prompts: [
+            {
+              id: 'prompt-1',
+              text: 'Arrange the network',
+              layout: { layoutVariable: 'position' },
+            },
+          ],
+        },
+        [assetsSection]: {},
+      },
+      {
+        [stageSection]: remoteChange(revision(3n)),
+        [assetsSection]: attribution,
+      },
+      currentRevision,
+    );
+
+    expect(issue).toMatchObject({
+      sectionId: stageSection,
+      attributedChange: { sectionId: assetsSection, attribution },
+    });
+  });
+
+  it('does not attribute an unrelated stage issue to a current assets change', () => {
+    const stageSection = sectionId({ kind: 'stage', stageId: 'stage-one' });
+    const assetsSection = sectionId({ kind: 'assets' });
+    const currentRevision = revision(13n);
+
+    const [issue] = attributeValidationIssues(
+      [
+        {
+          code: 'too_small',
+          path: ['stages', 0, 'label'],
+          message: 'Stage label is required',
+        },
+      ],
+      {
+        stageOrder: { stages: ['stage-one'] },
+        [stageSection]: {
+          id: 'stage-one',
+          type: 'Sociogram',
+          label: 'Network map',
+          subject: { entity: 'node', type: 'person' },
+          background: { image: 'network-background' },
+          prompts: [
+            {
+              id: 'prompt-1',
+              text: 'Arrange the network',
+              layout: { layoutVariable: 'position' },
+            },
+          ],
+        },
+        [assetsSection]: {},
+      },
+      {
+        [stageSection]: remoteChange(revision(3n)),
+        [assetsSection]: remoteChange(currentRevision),
+      },
+      currentRevision,
+    );
+
+    expect(issue).toMatchObject({ sectionId: stageSection });
+    expect(issue).not.toHaveProperty('attributedChange');
+  });
+
+  it('does not attribute an empty stage asset field to a current assets change', () => {
+    const stageSection = sectionId({ kind: 'stage', stageId: 'stage-one' });
+    const assetsSection = sectionId({ kind: 'assets' });
+    const currentRevision = revision(14n);
+
+    const [issue] = attributeValidationIssues(
+      [
+        {
+          code: 'too_small',
+          path: ['stages', 0, 'items', 0, 'content'],
+          message: 'Asset references cannot be empty',
+        },
+      ],
+      {
+        stageOrder: { stages: ['stage-one'] },
+        [stageSection]: {
+          id: 'stage-one',
+          type: 'Information',
+          label: 'Information',
+          title: 'Information',
+          items: [{ id: 'item-1', type: 'asset', content: '' }],
+        },
+        [assetsSection]: {},
+      },
+      {
+        [stageSection]: remoteChange(revision(3n)),
+        [assetsSection]: remoteChange(currentRevision),
+      },
+      currentRevision,
+    );
+
+    expect(issue).toMatchObject({ sectionId: stageSection });
+    expect(issue).not.toHaveProperty('attributedChange');
+  });
+
   it('withholds attribution when owner and dependency both changed in the revision', () => {
     const stageSection = sectionId({ kind: 'stage', stageId: 'stage-one' });
     const personSection = sectionId({

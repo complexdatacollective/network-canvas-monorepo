@@ -270,30 +270,36 @@ export const LongDescription: Story = {
       );
     });
 
-    // The toast slides in from below over ~0.5s, so an in-flight frame can
-    // transiently read as overflowing in either direction — check the root's
-    // box and the Close control's box together in one `waitFor` so it only
-    // resolves once the entrance animation has actually settled.
+    // The toast slides in from below over ~0.5s, so any single frame can
+    // transiently satisfy on-screen checks while the toast is still moving.
+    // Gate on the position being identical across two invocations first: a
+    // running transition advances with wall-clock time, so two reads 50ms
+    // apart only match once it has finished — or not yet started, in which
+    // case the toast sits fully below the viewport and the on-screen
+    // assertions reject the premature match. Only the resting layout passes.
+    let lastSeenTop: number | null = null;
     await waitFor(() => {
       const box = toastRoot.getBoundingClientRect();
-      const closeBox = close.getBoundingClientRect();
+      const settled = lastSeenTop === box.top;
+      lastSeenTop = box.top;
+      expect(settled).toBe(true);
+
       // Anchored to the bottom and growing up, overflow shows as a negative
       // top: the title and Close control leaving the top of the screen.
       expect(box.top).toBeGreaterThanOrEqual(0);
       expect(box.height).toBeLessThanOrEqual(window.innerHeight);
-      // The Close control has to be on screen to be clickable at all.
+      // The Close control has to be on screen to be clickable at all...
+      const closeBox = close.getBoundingClientRect();
       expect(closeBox.top).toBeGreaterThanOrEqual(0);
       expect(closeBox.bottom).toBeLessThanOrEqual(window.innerHeight);
+      // ...and the topmost element at its own centre, or the click lands on
+      // whatever covers it.
+      const atCentre = doc.elementFromPoint(
+        closeBox.left + closeBox.width / 2,
+        closeBox.top + closeBox.height / 2,
+      );
+      expect(close.contains(atCentre)).toBe(true);
     });
-
-    // ...and it has to be the topmost element at its own centre, or the click
-    // lands on whatever covers it.
-    const closeBox = close.getBoundingClientRect();
-    const atCentre = doc.elementFromPoint(
-      closeBox.left + closeBox.width / 2,
-      closeBox.top + closeBox.height / 2,
-    );
-    expect(close.contains(atCentre)).toBe(true);
 
     // The description is what `aria-describedby` points at, and is now the
     // element that scrolls internally rather than growing the toast.
@@ -312,7 +318,13 @@ export const LongDescription: Story = {
     // A scrollable region with no focusable content is unreachable by
     // keyboard unless it is in the tab order itself — `focus()` alone would
     // still pass with `tabindex="-1"`, which no amount of tabbing can reach.
-    expect(description.tabIndex).toBeGreaterThanOrEqual(0);
+    // The tab stop comes from an overflow measurement ScrollArea takes in a
+    // requestAnimationFrame after mount, so it has to be polled for: every
+    // wait above forces layout from JS without ever needing a paint, so under
+    // a starved tab the play function can get here before that first frame
+    // has run. A region stuck at `tabindex="-1"` still fails — the poll times
+    // out.
+    await waitFor(() => expect(description.tabIndex).toBeGreaterThanOrEqual(0));
     description.focus();
     expect(doc.activeElement).toBe(description);
   },
