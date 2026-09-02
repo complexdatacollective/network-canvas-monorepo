@@ -9,6 +9,12 @@ import { cva, cx } from '../utils/cva';
  * The props handed to `renderLink`. Spread them onto the host's link component
  * — every one of them has to reach the rendered element, `className` and
  * `aria-current` included.
+ *
+ * `href` is the destination stated the one way this component knows: a URL. A
+ * router that builds its own — TanStack Router's `to` and `params`, React
+ * Router's `to` — takes it there rather than as `href`, and mapping it is the
+ * host's job, which is what `renderLink` exists for. Studio's sidebar maps a
+ * whole manifest of destinations this way.
  */
 export type NavItemLinkRenderProps = {
   'href': string;

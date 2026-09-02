@@ -63,10 +63,13 @@ import NavItem from '@codaco/fresco-ui/navigation/NavItem';
   so it joins the link's accessible name ("Participants 84") instead of being
   announced as a stray number. Zero is omitted entirely.
 - \`current\` — whether this is the destination being shown. Sets
-  \`aria-current="page"\`; the fill and the marker bar are additional to that
-  state, never the only carrier of it.
+  \`aria-current="page"\`; the tinted fill is additional to that state, never the
+  only carrier of it.
 - \`renderLink\` — renders the link element. Supplied by the host, so this
-  component knows nothing about routing; defaults to a plain \`<a>\`.
+  component knows nothing about routing; defaults to a plain \`<a>\`. \`href\` is
+  a URL, so a router that builds its own destination (TanStack Router's \`to\`,
+  React Router's \`to\`) is handed it there instead — the mapping is the host's,
+  which is the point of the prop.
 - \`disabled\` + \`unavailableReason\` — the destination is not available on this
   deployment. The pair is required together: \`disabled\` without a reason does
   not typecheck.

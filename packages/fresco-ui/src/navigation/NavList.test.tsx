@@ -163,6 +163,66 @@ describe('NavList', () => {
     warn.mockRestore();
   });
 
+  it('keeps a component that renders a destination in the surrounding list', () => {
+    // A component's element hides what it renders, and for a destination that
+    // does not matter: it is a row, which is what an ungrouped run is made of.
+    // This is the shape Studio's `ManifestNav` uses.
+    const Destination = ({ label }: { label: string }) => (
+      <NavItem href={`/team/1/${label}`} label={label} />
+    );
+
+    render(
+      <NavList>
+        <Destination label="Members" />
+        <Destination label="Roles" />
+      </NavList>,
+    );
+
+    const lists = screen.getAllByRole('list');
+    expect(lists).toHaveLength(1);
+    expect(within(lists[0]!).getAllByRole('listitem')).toHaveLength(2);
+  });
+
+  it('refuses a group that arrives inside a component', () => {
+    // Not a style rule: grouping is decided from the element handed to
+    // NavList, so a group inside a component is taken for a row and rendered
+    // into the ungrouped `<ul>` — `ul > div > ul`, which is invalid markup and
+    // the nested-list announcement this component exists to prevent.
+    const DesignSection = () => (
+      <NavListGroup heading="Design">
+        <NavItem href="/study/1/editor" label="Editor" />
+      </NavListGroup>
+    );
+    const error = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    expect(() =>
+      render(
+        <NavList>
+          <NavItem href="/study/1" label="Overview" />
+          <DesignSection />
+        </NavList>,
+      ),
+    ).toThrow(/NavListGroup was rendered inside a NavList run/);
+
+    error.mockRestore();
+  });
+
+  it('lets a group render on its own outside any ungrouped run', () => {
+    // The guard reads a context NavList sets on the contents of an ungrouped
+    // list, so it cannot fire on a group that is nobody's row.
+    expect(() =>
+      render(
+        <NavList>
+          <NavListGroup heading="Design">
+            <NavItem href="/study/1/editor" label="Editor" />
+          </NavListGroup>
+        </NavList>,
+      ),
+    ).not.toThrow();
+  });
+
   it('renders a group used on its own', () => {
     render(
       <NavListGroup heading="Data">

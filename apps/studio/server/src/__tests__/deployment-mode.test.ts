@@ -1,11 +1,13 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { afterAll, describe, expect, it } from 'vitest';
 
 import {
   type DeploymentMode,
+  gatedSurfacePaths,
   MANAGED_ONLY_PATHS,
   SELF_HOST_ONLY_PATHS,
 } from '@codaco/studio-rpc/surfaces';
@@ -51,8 +53,9 @@ function requestPath(routePath: string): string {
 async function expectGatedShell(response: Response) {
   expect(response.status).toBe(404);
   expect(response.headers.get('Content-Type')).toContain('text/html');
-  // The client still renders its branded not-found state, so the body is the
-  // shell — it is the status line that has to be honest.
+  // The body is the shell, so the refusal can be rendered in the app's own
+  // design once the client guards these routes; what this layer owes is the
+  // honest status line.
   expect(await response.text()).toBe(SHELL);
   // Nothing may cache a refusal that a redeploy in the other topology, or a
   // corrected variable, turns into a page.
@@ -178,5 +181,89 @@ describe('the machine surfaces under the gate', () => {
     const response = await app.request('/api/v1/status');
     expect(response.status).toBe(200);
     expect(await response.json()).not.toHaveProperty('deployment');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The managed Netlify lane, where the gate above never runs.
+// ---------------------------------------------------------------------------
+
+const NETLIFY_TOML = fileURLToPath(
+  new URL('../../../netlify.toml', import.meta.url),
+);
+
+type RedirectRule = { from: string; status: number };
+
+/**
+ * netlify.toml's redirect rules in file order, which is match order: Netlify
+ * applies the first rule whose `from` matches, so a refusal written after the
+ * SPA catch-all would never run.
+ *
+ * Comments are stripped first. That file's prose quotes both paths and status
+ * codes, and a commented-out rule must not read as a live one.
+ */
+function redirectRules(): RedirectRule[] {
+  const source = readFileSync(NETLIFY_TOML, 'utf8').replaceAll(
+    /^[ \t]*#.*$/gm,
+    '',
+  );
+  return (
+    source
+      .split(/^\[\[redirects\]\]$/m)
+      .slice(1)
+      // A rule ends at the next table header, so a table following the last
+      // rule cannot be absorbed into it.
+      .map((block) => block.split(/^\[/m)[0] ?? '')
+      .map((block) => ({
+        from: /^from = "([^"]*)"$/m.exec(block)?.[1] ?? '',
+        status: Number(/^status = (\d+)$/m.exec(block)?.[1]),
+      }))
+  );
+}
+
+/** A route path in Netlify's spelling: `/legal/$document` ⇒ `/legal/:document`. */
+function netlifyPath(routePath: string): string {
+  return routePath.replaceAll(/\$([A-Za-z0-9_]+)/g, ':$1');
+}
+
+describe("the managed lane's CDN rules", () => {
+  // This site serves the client from the CDN, and src/netlify.ts's
+  // `config.path` claims only the machine surfaces — so no function runs for a
+  // page path and `mountClient`'s gate cannot answer here at all. What the CDN
+  // can express is a rule with a 404 status, and these tests are what stop
+  // that hand-written rule drifting from the classification the gate reads.
+  const rules = redirectRules();
+  const fallback = rules.findIndex((rule) => rule.from === '/*');
+
+  it('keeps the SPA fallback last, so a refusal can precede it', () => {
+    expect(rules[fallback]).toEqual({ from: '/*', status: 200 });
+    expect(fallback).toBe(rules.length - 1);
+  });
+
+  it.each([...gatedSurfacePaths('managed')])(
+    'refuses %s ahead of that fallback',
+    (routePath) => {
+      const from = netlifyPath(routePath);
+      const index = rules.findIndex((rule) => rule.from === from);
+
+      expect({
+        from,
+        status: index === -1 ? undefined : rules[index]?.status,
+        aheadOfFallback: index !== -1 && index < fallback,
+      }).toEqual({ from, status: 404, aheadOfFallback: true });
+    },
+  );
+
+  it('still serves the surfaces this topology does have', () => {
+    // The other list pasted here would refuse the managed service its own
+    // pricing page — the failure the fail-closed default is loud about, made
+    // silent again by a config file nothing checks.
+    const refused = rules
+      .filter((rule) => rule.status === 404)
+      .map((rule) => rule.from);
+
+    expect(
+      MANAGED_ONLY_PATHS.filter((path) => refused.includes(netlifyPath(path))),
+    ).toEqual([]);
   });
 });

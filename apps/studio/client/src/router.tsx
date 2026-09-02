@@ -14,7 +14,11 @@ import AppArea from '@codaco/fresco-ui/layout/AppArea';
 import { TeamInvitationIdSchema } from '@codaco/studio-rpc';
 
 import { fetchDeploymentMode } from './lib/deployment.ts';
-import { landingRedirect, resolveLandingDestination } from './lib/landing.ts';
+import {
+  landingRedirect,
+  resolveLandingDestination,
+  resolveTeamlessSession,
+} from './lib/landing.ts';
 import { queryClient as applicationQueryClient } from './lib/queryClient.ts';
 import {
   ServerUnreachableError,
@@ -404,6 +408,24 @@ const appLayoutRoute = createRoute({
     // out of this guard, so the router renders its defaultErrorComponent
     // rather than bouncing a possibly-still-authenticated researcher to the
     // sign-in page.
+
+    // §6.4's second half: a session with no team memberships has nowhere in
+    // this tree to be. Without this, a bookmark or a deep link into
+    // `/team/…`, `/study/…`, `/account` or `/gallery` enters the shell and
+    // meets screens that spin, fail RPC authorization, or show a placeholder
+    // where the answer should be. The guard is what makes `/no-team`
+    // reachable from those addresses and not only from the post-sign-in
+    // landing.
+    //
+    // Resolved through the same resolution `/` and the sign-in bounce use, so
+    // three guards cannot answer differently — and only a RESOLVED zero
+    // redirects: a list that could not be read leaves the researcher where
+    // they asked to be, because "you belong to no team" is the one thing they
+    // are most likely to believe and the most expensive to be wrong about.
+    const teamless = await resolveTeamlessSession(context.queryClient).catch(
+      () => false,
+    );
+    if (teamless) throw redirect({ to: '/no-team' });
   },
   component: AppLayout,
 });

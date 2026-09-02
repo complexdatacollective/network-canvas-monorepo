@@ -7,10 +7,11 @@ import { authClient } from './auth.ts';
  * §6.4's landing destination: where a signed-in researcher belongs when they
  * have not asked for anywhere in particular.
  *
- * Two callers share it, and they must not answer differently: `/`, which is a
- * redirect-only route on a self-hosted instance (§10.4), and the sign-in
- * page's already-signed-in guard. A third joins them when `/no-team` gains its
- * own guard.
+ * Three callers share it, and they must not answer differently: `/`, which is
+ * a redirect-only route on a self-hosted instance (§10.4); the sign-in page's
+ * already-signed-in guard; and the app shell's own guard, which asks the one
+ * question below that needs no session read. A fourth joins them when
+ * `/no-team` gains its own guard.
  */
 
 /** The teams the researcher belongs to, and the one they were last acting in. */
@@ -32,42 +33,81 @@ class MembershipsUnavailableError extends Error {
   }
 }
 
-async function fetchMemberships(): Promise<Memberships> {
-  // Two reads, because the two facts live in different places: the team list
-  // is its own endpoint, and which team the researcher was last acting in is
-  // a session field (`activeOrganizationId`, stored as `activeTeamId`). The
-  // session query (§6.2) deliberately carries neither — it answers
-  // signedIn/signedOut and nothing that could go stale behind it — so this
-  // asks for itself rather than widening that answer.
-  const [teams, session] = await Promise.all([
-    authClient.organization.list().catch(() => {
-      throw new MembershipsUnavailableError();
-    }),
-    authClient.getSession().catch(() => {
-      throw new MembershipsUnavailableError();
-    }),
-  ]);
-
+async function fetchTeams(): Promise<Memberships['teams']> {
+  const teams = await authClient.organization.list().catch(() => {
+    throw new MembershipsUnavailableError();
+  });
   if (teams.error || !teams.data) throw new MembershipsUnavailableError();
+  return teams.data.map((team) => ({ id: team.id, name: team.name }));
+}
 
-  return {
-    teams: teams.data.map((team) => ({ id: team.id, name: team.name })),
-    activeTeamId: session.data?.session.activeOrganizationId ?? undefined,
-  };
+async function fetchActiveTeamId(): Promise<string | undefined> {
+  // Which team the researcher was last acting in is a session field
+  // (`activeOrganizationId`, stored as `activeTeamId`). The session query
+  // (§6.2) deliberately does not carry it — it answers signedIn/signedOut and
+  // nothing that could go stale behind it — so this asks for itself rather
+  // than widening that answer.
+  const session = await authClient.getSession().catch(() => {
+    throw new MembershipsUnavailableError();
+  });
+  return session.data?.session.activeOrganizationId ?? undefined;
 }
 
 /**
- * Resolved once per landing rather than held live: it is read by guards, and a
- * short staleness window keeps a sign-in that lands, bounces off `/sign-in`
- * and lands again from asking twice. Invalidation is what makes an accepted
- * invitation visible, not the timer.
+ * Two queries, because the two facts live in different places and not every
+ * caller needs both. §6.4's case 4 — "no team at all" — is answered by the
+ * list alone, and the app shell's guard asks only that on every cold entry to
+ * the authenticated tree; making it read the session too would put a second
+ * `/api/auth/get-session` request behind every one the session query already
+ * makes, which is the duplication §6.2 removed from the shell in the first
+ * place.
+ *
+ * Both are resolved once per landing rather than held live: they are read by
+ * guards, and a short staleness window keeps a sign-in that lands, bounces off
+ * `/sign-in` and lands again from asking twice. Invalidation is what makes an
+ * accepted invitation visible, not the timer.
  */
-const membershipsQueryOptions = queryOptions({
-  queryKey: ['memberships'],
-  queryFn: fetchMemberships,
+const teamsQueryOptions = queryOptions({
+  queryKey: ['memberships', 'teams'],
+  queryFn: fetchTeams,
   staleTime: 30_000,
   retry: false,
 });
+
+const activeTeamQueryOptions = queryOptions({
+  queryKey: ['memberships', 'activeTeam'],
+  queryFn: fetchActiveTeamId,
+  staleTime: 30_000,
+  retry: false,
+});
+
+/** The prefix both of the above share, so one call invalidates the pair. */
+const MEMBERSHIPS_QUERY_PREFIX = ['memberships'];
+
+/**
+ * The active team has moved, so the cached answers above are wrong in the one
+ * field the resolution below reads them for.
+ *
+ * The freshness window is there to stop a sign-in that lands, bounces off
+ * `/sign-in` and lands again from asking three times; it is not a claim that
+ * memberships cannot change inside it. Switching teams changes them, and
+ * without this the researcher who switches from A to B and then goes to `/`
+ * is redirected back to A for the rest of the window — the timer overriding
+ * the choice they just made.
+ *
+ * Invalidation rather than a `setQueryData` patch: the same write can coincide
+ * with an accepted invitation or a team they have just left, and the next
+ * resolution should ask rather than assume it knows what else changed. Neither
+ * query has observers — both are only ever read by `fetchQuery` — so this
+ * marks them stale and issues no request of its own.
+ */
+export async function invalidateMemberships(
+  queryClient: QueryClient,
+): Promise<void> {
+  await queryClient.invalidateQueries({
+    queryKey: MEMBERSHIPS_QUERY_PREFIX,
+  });
+}
 
 export type LandingDestination =
   | { to: '/no-team' }
@@ -115,7 +155,28 @@ export function landingRedirect(destination: LandingDestination) {
 export async function resolveLandingDestination(
   queryClient: QueryClient,
 ): Promise<LandingDestination> {
-  return landingDestination(
-    await queryClient.fetchQuery(membershipsQueryOptions),
+  const [teams, activeTeamId] = await Promise.all([
+    queryClient.fetchQuery(teamsQueryOptions),
+    queryClient.fetchQuery(activeTeamQueryOptions),
+  ]);
+  return landingDestination({ teams, activeTeamId });
+}
+
+/**
+ * Whether this session belongs to no team at all — §6.4's case 4, and the only
+ * question the app shell's guard has to answer.
+ *
+ * Resolved through `landingDestination` rather than by comparing a length, so
+ * the guard and the landing cannot come to disagree about what "no team"
+ * means. The active team is deliberately not read: case 4 is the one answer
+ * that cannot depend on it, and asking would cost the authenticated tree a
+ * second session request on every cold entry.
+ */
+export async function resolveTeamlessSession(
+  queryClient: QueryClient,
+): Promise<boolean> {
+  const teams = await queryClient.fetchQuery(teamsQueryOptions);
+  return (
+    landingDestination({ teams, activeTeamId: undefined }).to === '/no-team'
   );
 }

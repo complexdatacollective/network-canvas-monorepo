@@ -3,8 +3,10 @@
 import {
   Children,
   cloneElement,
+  createContext,
   Fragment,
   isValidElement,
+  useContext,
   type ReactNode,
 } from 'react';
 
@@ -35,10 +37,12 @@ import { cx } from '../utils/cva';
  *   `/study/$id/participants` is no more a child of COLLECT than of the study.
  *
  *   Sibling lists, which is what this renders. Each `<ul>` reports its own
- *   accurate count ("Design, list, 2 items"), takes the group's name from the
- *   heading through `aria-labelledby`, and states no depth — because there
- *   isn't any. Ungrouped destinations either side of the groups get a list of
- *   their own, which is the truth about them too.
+ *   accurate count ("Design, list, 2 items"), carries the group's name as its
+ *   own `aria-label` — deliberately not `aria-labelledby` pointed at the
+ *   visible heading, for the reason recorded on that element below — and
+ *   states no depth, because there isn't any. Ungrouped destinations either
+ *   side of the groups get a list of their own, which is the truth about them
+ *   too.
  *
  * The group heading is NOT an `<h2>`. The area's `<nav>` is already a landmark
  * with its own name, and the sidebar precedes `<main>` in the DOM, so heading
@@ -58,6 +62,13 @@ import { cx } from '../utils/cva';
  * `ArrayField` and Architect's `Timeline`.
  */
 const LIST_CLASSES = 'flex list-none flex-col gap-1';
+
+/**
+ * Marks the contents of an ungrouped run's `<ul>`. A group this component
+ * could not see coming can only be caught from the inside, so `NavListGroup`
+ * reads this — the invariant is spelled out there.
+ */
+const UngroupedRunContext = createContext(false);
 
 export type NavListGroupProps = {
   /**
@@ -85,6 +96,31 @@ export const NavListGroup = ({
   children,
   className,
 }: NavListGroupProps) => {
+  /*
+   * A GROUP CANNOT ARRIVE INSIDE A COMPONENT
+   * ========================================
+   *
+   * `NavList` decides grouping from the elements it is handed, and a
+   * component's element says only which component it is: a `<DesignSection />`
+   * that renders a group is indistinguishable from one that renders a row. The
+   * group is swept into a run of ungrouped destinations, and the `<div>` below
+   * then renders inside that run's `<ul>` — `ul > div > ul`, which is invalid,
+   * and a list inside a list, which is the "level 2" announcement this whole
+   * file exists to avoid.
+   *
+   * React offers no way to see through a component element without rendering
+   * it, so the misuse is caught from the inside instead: `NavList` marks the
+   * contents of every ungrouped run, and a group that finds itself in one says
+   * so, rather than shipping a sidebar that quietly claims a hierarchy.
+   */
+  const inUngroupedRun = useContext(UngroupedRunContext);
+
+  if (inUngroupedRun) {
+    throw new Error(
+      'NavListGroup was rendered inside a NavList run of ungrouped destinations. NavList reads grouping from the elements it is handed, so a group returned by a component is invisible to it and would end up as a list nested in a list. Hand the NavListGroup element to NavList itself — on its own, or inside a fragment or array — rather than a component that renders one.',
+    );
+  }
+
   return (
     <div className={cx('flex flex-col gap-1', className)}>
       <div
@@ -137,6 +173,10 @@ export type NavListProps = {
    * `NavItem`s and `NavListGroup`s, in the order they should appear. Items
    * outside a group are fine either side of the groups — a run of them becomes
    * a list of its own.
+   *
+   * A group has to be a `NavListGroup` element here — a fragment, array or
+   * variable around it is fine, a component that renders one is not, because
+   * grouping is decided from the element itself.
    */
   children: ReactNode;
   className?: string;
@@ -151,10 +191,17 @@ const isGroup = (node: ReactNode) =>
  * Grouping is decided by looking at what each child IS, and a fragment hides
  * that: `Children.toArray(<><NavItem/><NavListGroup/></>)` is one node, not
  * two, so the group inside it would be swept into a list of ungrouped
- * destinations. Fragments are how anyone assembles a sidebar — a component per
- * section, a conditional block — so they are opened out here rather than
- * forbidden in a doc comment nobody reads until it has already gone wrong.
- * Arrays need no help: React flattens those itself, keys and all.
+ * destinations. Fragments are how anyone assembles a sidebar — a section's
+ * destinations in one variable, a conditional block — so they are opened out
+ * here rather than forbidden in a doc comment nobody reads until it has
+ * already gone wrong. Arrays need no help: React flattens those itself, keys
+ * and all.
+ *
+ * A component is the one wrapper that cannot be opened out: its element says
+ * only which component it is. One that renders a destination is fine — it
+ * becomes a row in the surrounding list, which is what it is — and one that
+ * renders a group is caught by `NavListGroup` itself rather than silently
+ * nested.
  *
  * Keys are re-prefixed with the fragment's own key on the way out, because two
  * sibling fragments each hand back children keyed `.0`, `.1` — which collide
@@ -198,8 +245,10 @@ const flattenFragments = (children: ReactNode, prefix = ''): ReactNode[] =>
  * exactly the order they were written in.
  *
  * Fragments and arrays are opened out first, so a sidebar assembled from
- * per-section components or conditional blocks groups exactly as a hand-written
- * one does.
+ * per-section variables or conditional blocks groups exactly as a hand-written
+ * one does. A group has to reach this component as a `NavListGroup` element,
+ * though: a component that renders one hides it, and throws rather than
+ * nesting a list inside a list.
  *
  * This component makes no size-dependent layout decision and so establishes no
  * container query context of its own. A navigation list is one column at every
@@ -229,7 +278,12 @@ const NavList = ({ children, className }: NavListProps) => {
     sections.push(
       // oxlint-disable-next-line jsx-a11y/no-redundant-roles
       <ul key={key} role="list" className={LIST_CLASSES}>
-        {run}
+        {/*
+          Renders nothing itself. It is how a `NavListGroup` that arrived
+          inside a component — and so was taken for an ordinary row — finds out
+          that it is about to render a list inside this one.
+        */}
+        <UngroupedRunContext.Provider value>{run}</UngroupedRunContext.Provider>
       </ul>,
     );
     run = [];

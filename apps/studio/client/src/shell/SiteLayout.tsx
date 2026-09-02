@@ -1,5 +1,7 @@
 import { Link, Outlet } from '@tanstack/react-router';
+import type { MouseEvent } from 'react';
 
+import { DEFAULT_SKIP_TARGET_ID } from '@codaco/fresco-ui/layout/AppFrame';
 import SiteFooter from '@codaco/fresco-ui/navigation/SiteFooter';
 import type {
   SiteFooterLink,
@@ -21,7 +23,8 @@ import type { SiteNavigationLinkRenderProps } from '@codaco/fresco-ui/navigation
  * There is no app header here and no session: a visitor who has never signed
  * in is the expected reader. Each site screen renders its own
  * `<main id="main-content">`, because the site branch has no area layout to
- * own that landmark (§7.1).
+ * own that landmark (§7.1) — and this layout renders the bypass link that
+ * targets it, because the navigation above it repeats on every public page.
  */
 
 const SOCIAL_LINKS: readonly SiteFooterSocialLink[] = [
@@ -74,9 +77,61 @@ function renderSiteLink({
   );
 }
 
+/**
+ * Moves focus to the site page's own `<main>`.
+ *
+ * A fragment link scrolls its target into view but only moves focus when that
+ * target is already focusable, and `<main>` is not — so a plain `href="#…"`
+ * leaves focus on the bypass and the visitor's next Tab restarts at the top of
+ * the document, on the link they just used. The target is given `tabindex="-1"`
+ * for the length of this one focus and left as it was found, because it
+ * belongs to the screen rather than to this layout.
+ *
+ * Resolved through the anchor's own `ownerDocument` rather than the ambient
+ * `document`, which is the wrong page in a popped-out window or an iframe.
+ */
+function focusSiteMain(event: MouseEvent<HTMLAnchorElement>) {
+  // Always suppressed: the browser's fallback for a fragment that matches
+  // nothing is to write the hash into the URL, which here is a navigation
+  // nobody asked for.
+  event.preventDefault();
+  const target = event.currentTarget.ownerDocument.getElementById(
+    DEFAULT_SKIP_TARGET_ID,
+  );
+  if (!target) return;
+
+  if (!target.hasAttribute('tabindex')) {
+    target.setAttribute('tabindex', '-1');
+    target.addEventListener(
+      'blur',
+      () => {
+        target.removeAttribute('tabindex');
+      },
+      { once: true },
+    );
+  }
+  target.focus();
+}
+
 export default function SiteLayout() {
   return (
     <div className="flex min-h-full flex-col">
+      {/*
+        WCAG 2.4.1. The site header repeats on every public page, so the bypass
+        has to come before it — first in the layout, and so the first focusable
+        element of the document. `AppFrame` does the same for the app shell;
+        the site shell has to do it here because `SiteNavigation` is shared
+        with networkcanvas.com and the documentation site, and giving that
+        component a skip link is a change to all three (§7.1 wants it there
+        eventually, as one change reviewed against all of its consumers).
+      */}
+      <a
+        href={`#${DEFAULT_SKIP_TARGET_ID}`}
+        onClick={focusSiteMain}
+        className="focusable bg-surface text-surface-contrast fixed inset-s-2 top-2 z-50 -translate-y-24 rounded px-4 py-2 shadow-lg transition-transform focus:translate-y-0 motion-reduce:transition-none"
+      >
+        Skip to main content
+      </a>
       <SiteNavigation
         locale="en-US"
         site="external"

@@ -93,8 +93,12 @@ import NavList, { NavListGroup } from '@codaco/fresco-ui/navigation/NavList';
 - \`children\` — \`NavItem\`s and \`NavListGroup\`s, in the order they should
   appear. A run of items outside a group becomes a list of its own, either side
   of the groups. Fragments and arrays are opened out first, so a sidebar
-  assembled from per-section components groups exactly as a hand-written one
-  does.
+  assembled from per-section variables or conditional blocks groups exactly as a
+  hand-written one does. A group has to arrive as a \`NavListGroup\` element,
+  though: grouping is decided from the element itself, and a component that
+  renders a group hides it — so it throws rather than nesting one list inside
+  another. A component that renders a \`NavItem\` is fine; it is a row, which is
+  what the surrounding list is made of.
 - \`className\` — applied to the element wrapping the region's lists.
 
 **\`NavListGroup\`**
@@ -104,11 +108,20 @@ import NavList, { NavListGroup } from '@codaco/fresco-ui/navigation/NavList';
 - \`children\` — the group's \`NavItem\`s.
 - \`className\` — applied to the group's wrapper.
 
-**Grouping is sibling lists.** Each group is its own \`<ul>\`, named by its
-heading through \`aria-labelledby\`, so it reports an accurate item count and
-claims no depth — every destination in a sidebar is a peer of every other. One
-list with headings inside it would count the headings as destinations; nested
-lists would announce a hierarchy ("level 2") that does not exist.
+**Grouping is sibling lists.** Each group is its own \`<ul>\`, carrying its
+heading's string as its own \`aria-label\`, so it reports an accurate item count
+and claims no depth — every destination in a sidebar is a peer of every other.
+One list with headings inside it would count the headings as destinations;
+nested lists would announce a hierarchy ("level 2") that does not exist.
+
+**\`aria-label\`, deliberately, and not \`aria-labelledby\` pointed at the
+heading.** Chromium folds \`text-transform\` into the accessible name, so
+labelling the list by the \`all-caps\` heading exposes the group as "DESIGN" —
+which a screen reader may spell out letter by letter. \`aria-label\` takes the
+string as written. No test catches this: jsdom and the browser-mode test runner
+both compute names through \`dom-accessibility-api\`, which does not apply
+\`text-transform\`, so both agree with the visual source and disagree with the
+browser. Verified against Chromium's own accessibility tree.
 
 **The headings are not \`<h2>\`s.** The sidebar precedes \`<main>\`, so heading
 elements here would put the same chrome entries at the top of the heading rotor

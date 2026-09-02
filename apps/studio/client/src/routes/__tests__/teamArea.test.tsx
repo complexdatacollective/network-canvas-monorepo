@@ -231,7 +231,14 @@ vi.mock('../../lib/auth.ts', async () => {
       }),
       organization: {
         setActive: fixtures.authState.setActive,
-        list: vi.fn(),
+        // The app shell's guard resolves memberships before it renders any
+        // app route (§6.4), so this researcher has to belong to something.
+        list: vi.fn(() =>
+          Promise.resolve({
+            data: [fixtures.TEAM_A, fixtures.TEAM_B],
+            error: null,
+          }),
+        ),
       },
       signOut: vi.fn(),
     },
@@ -404,6 +411,51 @@ describe('the team studies list', () => {
         /^\/study\/[0-9a-f-]+\/editor$/,
       ),
     );
+  });
+
+  it('leaves a researcher who moved on where they went', async () => {
+    let finishCreation: ((created: { protocolId: string }) => void) | undefined;
+    fixtures.createProtocol.mockImplementation(
+      () =>
+        new Promise<{ protocolId: string }>((resolve) => {
+          finishCreation = resolve;
+        }),
+    );
+    const { router } = renderTeam(STUDIES);
+
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: 'Study name' }),
+      { target: { value: 'Slow study' } },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Create study' }));
+    await waitFor(() => expect(finishCreation).toBeDefined());
+
+    // The header is on every screen, so a creation can still be on the wire
+    // when the researcher switches teams.
+    await act(() =>
+      router.navigate({ to: '/team/$teamId', params: { teamId: TEAM_B.id } }),
+    );
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(`/team/${TEAM_B.id}`),
+    );
+
+    await act(async () => {
+      finishCreation?.({ protocolId: 'slow-study' });
+    });
+
+    // §6.5: a continuation that resolves after a later navigation has
+    // committed must not act on where the researcher used to be. The study
+    // exists and team A's list names it; being dragged into its editor from
+    // another team is the failure. Waiting for the form to finish submitting
+    // is what makes this able to fail — the navigation the guard suppresses
+    // happens BEFORE that, so an unguarded continuation unmounts this button
+    // rather than re-enabling it.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Create study' }),
+      ).toBeEnabled(),
+    );
+    expect(router.state.location.pathname).toBe(`/team/${TEAM_B.id}`);
   });
 
   it('reuses the creation identity after a lost response', async () => {

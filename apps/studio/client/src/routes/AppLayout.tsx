@@ -1,9 +1,40 @@
 import { Outlet } from '@tanstack/react-router';
 
+import { Alert } from '@codaco/fresco-ui/Alert';
+import Button from '@codaco/fresco-ui/Button';
 import AppFrame from '@codaco/fresco-ui/layout/AppFrame';
 
 import AppHeader from '../shell/AppHeader.tsx';
-import { useActiveTeamReconciler } from '../shell/useActiveTeamReconciler.ts';
+import {
+  useActiveTeamReconciler,
+  type ActiveTeamFailure,
+} from '../shell/useActiveTeamReconciler.ts';
+
+/**
+ * What the researcher sees when the active team could not be moved to the team
+ * whose URL they are on.
+ *
+ * It belongs to the shell rather than to any screen because that is the scope
+ * of the damage: every screen that reads the active team — membership,
+ * invitations, the researcher's own role — is now describing a different team
+ * from the one in the address bar, and each of them would otherwise sit on a
+ * spinner with nothing to say about why.
+ */
+function TeamSwitchFailure({ failure }: { failure: ActiveTeamFailure }) {
+  return (
+    <Alert variant="destructive" density="compact" className="m-0 rounded-none">
+      <div className="flex flex-wrap items-center gap-3">
+        <span>
+          Studio could not switch to this team. Screens that depend on it will
+          stay empty until it does.
+        </span>
+        <Button size="sm" variant="outline" onClick={failure.retry}>
+          Try again
+        </Button>
+      </div>
+    </Alert>
+  );
+}
 
 /**
  * The application shell (§5.3): the skip link, the header, and the region the
@@ -34,13 +65,27 @@ import { useActiveTeamReconciler } from '../shell/useActiveTeamReconciler.ts';
  * It does own one write, and exactly one: §6.6's active-team reconciliation,
  * which follows the committed URL. It lives here because this component is
  * mounted for every app route and unmounted for none of them, so the setting
- * cannot be left behind by an area transition.
+ * cannot be left behind by an area transition. When that write fails it says
+ * so here, above every area, for the reason `TeamSwitchFailure` records.
  */
 export default function AppLayout() {
-  useActiveTeamReconciler();
+  const teamSwitchFailure = useActiveTeamReconciler();
 
   return (
-    <AppFrame header={<AppHeader />} skipLinkLabel="Skip to main content">
+    <AppFrame
+      // In the header slot, so the message sits above every area's `<main>`
+      // without adding a row to the frame's own grid — which is the container
+      // each area sizes itself against.
+      header={
+        <>
+          <AppHeader />
+          {teamSwitchFailure && (
+            <TeamSwitchFailure failure={teamSwitchFailure} />
+          )}
+        </>
+      }
+      skipLinkLabel="Skip to main content"
+    >
       <Outlet />
     </AppFrame>
   );

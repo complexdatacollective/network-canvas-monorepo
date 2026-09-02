@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate, useRouter } from '@tanstack/react-router';
 import { useRef, useState } from 'react';
 
 import { Alert } from '@codaco/fresco-ui/Alert';
@@ -46,6 +46,7 @@ type StudyCreationAttempt = {
 export default function TeamStudies({ teamId }: { teamId: string }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const router = useRouter();
   const [creating, setCreating] = useState(false);
   // A creation whose response was lost keeps its identifiers, so retrying the
   // same name cannot leave two studies behind.
@@ -53,22 +54,13 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
   const studies = useQuery(
     orpc.protocols.list.queryOptions({ input: { teamId } }),
   );
-  const createStudy = useMutation(
-    orpc.protocols.create.mutationOptions({
-      onSuccess: async (created) => {
-        await queryClient.invalidateQueries({
-          queryKey: orpc.protocols.list.key({ input: { teamId } }),
-        });
-        // Straight into the editor: a new study's first act is designing its
-        // protocol, and an empty overview would be a screen nobody wants
-        // (§10.2 makes the same choice at the end of the sign-up funnel).
-        await navigate({
-          to: '/study/$studyId/editor',
-          params: { studyId: created.protocolId },
-        });
-      },
-    }),
-  );
+  // No `onSuccess`. A mutation's callbacks are read from the options object
+  // the LATEST render supplied — TanStack Query re-points a pending mutation
+  // at it on every re-render — so a callback here would run against whichever
+  // team the header had switched to by the time the response landed, not the
+  // team the study was created in. The continuation belongs to the submit
+  // handler below, whose closure is the one that started the request.
+  const createStudy = useMutation(orpc.protocols.create.mutationOptions());
 
   return (
     <div className="tablet-portrait:p-8 mx-auto flex w-full max-w-5xl flex-col gap-6 p-4">
@@ -154,10 +146,35 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
                     };
               creationAttempt.current = attempt;
               setCreating(true);
+              // Where the researcher was when they asked for this. §6.5's
+              // generation token: the header is on every screen, so a slow
+              // creation can resolve after they have switched teams or left
+              // the team area entirely, and a continuation that assumes it is
+              // still the current one drags them back into stale context.
+              const startedAt = router.state.location.pathname;
               try {
-                await createStudy.mutateAsync({ teamId, ...attempt });
+                const created = await createStudy.mutateAsync({
+                  teamId,
+                  ...attempt,
+                });
                 if (creationAttempt.current === attempt) {
                   creationAttempt.current = undefined;
+                }
+                await queryClient.invalidateQueries({
+                  queryKey: orpc.protocols.list.key({ input: { teamId } }),
+                });
+                // Straight into the editor: a new study's first act is
+                // designing its protocol, and an empty overview would be a
+                // screen nobody wants (§10.2 makes the same choice at the end
+                // of the sign-up funnel). Only from where the request was
+                // made, though: the study exists and the list above names it,
+                // so a researcher who has moved on loses nothing by staying
+                // where they chose to be.
+                if (router.state.location.pathname === startedAt) {
+                  await navigate({
+                    to: '/study/$studyId/editor',
+                    params: { studyId: created.protocolId },
+                  });
                 }
                 return { success: true };
               } catch {

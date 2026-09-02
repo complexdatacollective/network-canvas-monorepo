@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 
 import { authClient } from '../lib/auth.ts';
-import { landingDestination } from '../lib/landing.ts';
+import { landingDestination, type LandingDestination } from '../lib/landing.ts';
 import AccountMenu from './AccountMenu.tsx';
 import { platformDestinations } from './navigationManifest.ts';
 import StudioEverythingBar from './StudioEverythingBar.tsx';
@@ -25,6 +25,56 @@ import TeamSwitcher from './TeamSwitcher.tsx';
  * destination the everything bar could not find, so it is added there instead.
  */
 const HEADER_LINK_CLASSES = 'focusable font-heading rounded font-semibold';
+const WORDMARK_TEXT_CLASSES = 'font-heading font-bold';
+const WORDMARK_LINK_CLASSES = `focusable rounded no-underline ${WORDMARK_TEXT_CLASSES}`;
+
+/**
+ * Where the wordmark goes, or `undefined` while nothing has answered.
+ *
+ * **An unresolved team list is not an empty one.** Better Auth's hook holds
+ * `null` until the list arrives and keeps it if the request fails, and reading
+ * either as "this researcher has no teams" points the wordmark at `/no-team` —
+ * a route with no reconciliation guard, so a researcher who activates it in
+ * that window stays on the "No team yet" screen after their memberships
+ * arrive. Only a resolved list can answer that question; until one does, the
+ * active team is the destination the researcher is already in, and when even
+ * that is unknown there is no honest home to offer.
+ */
+function homeDestination(
+  teams: readonly { id: string; name: string }[] | null | undefined,
+  activeTeamId: string | undefined,
+): LandingDestination | undefined {
+  if (teams) return landingDestination({ teams, activeTeamId });
+  return activeTeamId === undefined
+    ? undefined
+    : { to: '/team/$teamId', params: { teamId: activeTeamId } };
+}
+
+function Wordmark({ home }: { home: LandingDestination | undefined }) {
+  if (home === undefined) {
+    return <span className={WORDMARK_TEXT_CLASSES}>Studio</span>;
+  }
+  if (home.to === '/no-team') {
+    return (
+      <Link className={WORDMARK_LINK_CLASSES} to="/no-team">
+        Studio
+      </Link>
+    );
+  }
+  return (
+    <Link
+      className={WORDMARK_LINK_CLASSES}
+      to="/team/$teamId"
+      params={home.params}
+      // The team's own path is a prefix of every route beneath it, so without
+      // this the wordmark would carry `aria-current="page"` on every team
+      // screen.
+      activeOptions={{ exact: true }}
+    >
+      Studio
+    </Link>
+  );
+}
 
 export default function AppHeader() {
   // The wordmark goes to the researcher's landing destination (§5.5), not to
@@ -35,33 +85,11 @@ export default function AppHeader() {
   // "home" is.
   const teams = authClient.useListOrganizations();
   const activeTeam = authClient.useActiveOrganization();
-  const landing = landingDestination({
-    teams: teams.data ?? [],
-    activeTeamId: activeTeam.data?.id,
-  });
+  const home = homeDestination(teams.data, activeTeam.data?.id);
 
   return (
     <div className="border-surface-2 flex flex-wrap items-center gap-4 border-b px-4 py-2">
-      {landing.to === '/no-team' ? (
-        <Link
-          className="focusable font-heading rounded font-bold no-underline"
-          to="/no-team"
-        >
-          Studio
-        </Link>
-      ) : (
-        <Link
-          className="focusable font-heading rounded font-bold no-underline"
-          to="/team/$teamId"
-          params={landing.params}
-          // The team's own path is a prefix of every route beneath it, so
-          // without this the wordmark would carry `aria-current="page"` on
-          // every team screen.
-          activeOptions={{ exact: true }}
-        >
-          Studio
-        </Link>
-      )}
+      <Wordmark home={home} />
       <TeamSwitcher />
       <StudySwitcher />
       {/* Grows into the space the switchers leave, because the field is also

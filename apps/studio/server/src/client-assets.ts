@@ -104,10 +104,9 @@ export function mountClient(
   // The deployment-mode gate, registered BEFORE both serveStatic mounts,
   // which would otherwise answer these with the shell at 200 — the SPA
   // fallback cannot tell a route this topology does not have from one it
-  // does. A client-side `throw notFound()` is not a substitute: it is a
-  // marker object with no status, and Studio's client has no SSR entry that
-  // could turn one into a status line. It stays the courtesy layer, for
-  // in-app navigations where no request is made.
+  // does. A client-side `throw notFound()` could not replace this layer: it
+  // is a marker object with no status, and Studio's client has no SSR entry
+  // that could turn one into a status line.
   //
   // Matched over a normalised path rather than a list of spellings, because
   // the client resolves more spellings to a route than Hono matches
@@ -119,9 +118,18 @@ export function mountClient(
     const path = normaliseForGate(c.req.path);
     if (!gatedMatchers.some((matcher) => matcher.test(path))) return next();
 
-    // The body is still the shell, so the client renders its branded
-    // not-found state; no-store because a corrected variable — or the same
-    // image deployed in the other topology — turns this into a page.
+    // The body is the shell rather than a page of this module's own, so the
+    // refusal can be rendered in the app's own design. That last step is the
+    // client's, and it is not written yet: no route carries a topology guard
+    // and the client has no not-found state at all, so the SPA boots under
+    // this 404 and renders the gated route's own component. The status line
+    // here is honest; the screen is not yet. It has to be fixed on the client
+    // rather than by serving some other document, because the client is also
+    // the only layer that covers the managed Netlify lane — there the CDN
+    // answers a page path before any of this runs (see netlify.toml).
+    //
+    // no-store because a corrected variable — or the same image deployed in
+    // the other topology — turns this into a page.
     c.header('Cache-Control', 'no-store');
     const shell = await readShell(clientRoot);
     return shell === undefined ? c.body(null, 404) : c.html(shell, 404);
