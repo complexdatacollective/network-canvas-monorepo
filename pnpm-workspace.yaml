@@ -46,8 +46,8 @@ catalog:
   '@fontsource-variable/inclusive-sans': ^5.2.8
   '@fontsource-variable/nunito': ^5.2.7
   '@microsoft/api-extractor': ^7.58.12
-  '@next/bundle-analyzer': ^16.3.2
-  '@next/third-parties': ^16.3.2
+  '@next/bundle-analyzer': ^16.3.4
+  '@next/third-parties': ^16.3.4
   # Keep in lock-step with `playwright` below (grouped in .github/dependabot.yml);
   # the interview-e2e Docker image tag is derived from this resolved version.
   '@playwright/test': ^1.62.1
@@ -107,7 +107,7 @@ catalog:
   jszip: ^3.10.1
   lucide-react: ^1.27.0
   motion: ^13.1.0
-  next: ^16.3.2
+  next: ^16.3.4
   # Keep in lock-step with `@playwright/test` above (grouped in dependabot); a
   # mismatch crashes interview-e2e with "two different versions of @playwright/test".
   playwright: ^1.62.1
@@ -172,7 +172,7 @@ overrides:
   # Next pins an exact PostCSS version, so keep transitives on the patched
   # catalog version rather than duplicating the version here.
   postcss: 'catalog:'
-  sharp: '^0.35.3'
+  sharp: '^0.35.4'
   valibot: '^1.4.2'
 autoInstallPeers: true
 linkWorkspacePackages: false
