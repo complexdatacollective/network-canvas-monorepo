@@ -1,5 +1,10 @@
 import type { NextConfig } from 'next';
 import { PHASE_PRODUCTION_BUILD } from 'next/constants';
+// Deliberate deep import: Next exposes no public API for matching a `source`
+// pattern, and a local prefix matcher would be a second implementation of the
+// same semantics that could drift from production. If a Next upgrade moves this
+// module, the import throws and the file fails loudly — it cannot pass
+// vacuously.
 import { getPathMatch } from 'next/dist/shared/lib/router/utils/path-match';
 import { describe, expect, it } from 'vitest';
 
