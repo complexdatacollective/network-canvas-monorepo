@@ -40,6 +40,7 @@
     "./SplitButton": "./src/SplitButton.tsx",
     "./CloseButton": "./src/CloseButton.tsx",
     "./Icon": "./src/Icon.tsx",
+    "./IdentityMark": "./src/IdentityMark.tsx",
     "./Kbd": "./src/Kbd.tsx",
     "./Node": "./src/Node.tsx",
     "./Toast": "./src/Toast.tsx",
@@ -61,6 +62,8 @@
     "./navigation/SiteNavigation": "./src/navigation/SiteNavigation.tsx",
     "./navigation/SiteNavigation.constants": "./src/navigation/SiteNavigation.constants.ts",
     "./navigation/EverythingBar": "./src/navigation/EverythingBar.tsx",
+    "./navigation/EntitySwitcher": "./src/navigation/EntitySwitcher.tsx",
+    "./navigation/SwitcherLockup": "./src/navigation/SwitcherLockup.tsx",
     "./navigation/ThemeSwitcher": "./src/navigation/ThemeSwitcher.tsx",
     "./navigation/SiteFooter": "./src/navigation/SiteFooter.tsx",
     "./navigation/RouteFocus": "./src/navigation/RouteFocus.tsx",
@@ -279,6 +282,10 @@
         "types": "./dist/Icon.d.ts",
         "default": "./dist/Icon.js"
       },
+      "./IdentityMark": {
+        "types": "./dist/IdentityMark.d.ts",
+        "default": "./dist/IdentityMark.js"
+      },
       "./Kbd": {
         "types": "./dist/Kbd.d.ts",
         "default": "./dist/Kbd.js"
@@ -362,6 +369,14 @@
       "./navigation/EverythingBar": {
         "types": "./dist/navigation/EverythingBar.d.ts",
         "default": "./dist/navigation/EverythingBar.js"
+      },
+      "./navigation/EntitySwitcher": {
+        "types": "./dist/navigation/EntitySwitcher.d.ts",
+        "default": "./dist/navigation/EntitySwitcher.js"
+      },
+      "./navigation/SwitcherLockup": {
+        "types": "./dist/navigation/SwitcherLockup.d.ts",
+        "default": "./dist/navigation/SwitcherLockup.js"
       },
       "./navigation/ThemeSwitcher": {
         "types": "./dist/navigation/ThemeSwitcher.d.ts",
