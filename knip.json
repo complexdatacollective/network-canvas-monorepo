@@ -32,7 +32,6 @@
       ],
       "ignoreDependencies": [
         "@playwright/test",
-        "jszip",
         // Resolved by @posthog/plugin-utils and spawned by path at build time.
         "@posthog/cli"
       ]

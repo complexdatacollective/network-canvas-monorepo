@@ -493,6 +493,7 @@ test('short quality checks share one setup without joining the critical path', (
   assert.match(support, /pnpm exec turbo run \/\/#knip/);
   assert.match(support, /pnpm check:changesets/);
   assert.match(support, /pnpm check:compat-protocols/);
+  assert.match(support, /pnpm check:mapbox-tokens/);
   assert.match(support, /pnpm test:scripts/);
   assert.match(support, /turbo run build --filter='\.\/packages\/\*'/);
   assert.match(support, /turbo run typecheck/);
