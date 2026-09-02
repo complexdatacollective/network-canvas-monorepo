@@ -1,5 +1,11 @@
 # @codaco/protocol-validation
 
+## 13.0.1
+
+### Patch Changes
+
+- b387946: Exclude schema-invalid asset-reference values from the collected asset usage index.
+
 ## 13.0.0
 
 ### Major Changes
