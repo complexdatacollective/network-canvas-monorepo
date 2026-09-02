@@ -83,7 +83,15 @@ edge.
   the **Version Packages** PR (`changeset-release/main`). Libraries publish to
   npm; changed apps deploy and receive a GitHub release after that PR merges —
   Architect, Background Creator, and Interviewer to Netlify, Fresco via the
-  mirror described below.
+  mirror described below. Merge the Version Packages PR only while it is
+  current: a head generated before main's newest normal-lane changeset lands a
+  tree that still carries a changeset, and `changesets/action` then
+  regenerates the PR instead of publishing (on 2026-09-01 that left three
+  bumped versions unpublished). The `version-packages-freshness` job refuses
+  that merge from the queue; wait for the regenerated head. Pushes to main
+  run concurrently, so the `release` job also stops when its commit is no
+  longer main's tip (`.github/scripts/superseded-push-guard.sh`) rather than
+  regenerating a release PR that has already merged.
 - **Separately gated products** are Documentation, networkcanvas.com, and
   Studio. Documentation and Website keep independent stable-semver release PRs,
   production deploys, and Git tags. The Studio lane covers all four Studio
@@ -128,7 +136,11 @@ Fresco additionally gets a generated single-package `pnpm-workspace.yaml` and a
 pnpm lockfile, because its `Dockerfile` builds the mirrored tree directly. The
 push to the Fresco repo's `main` is what triggers its container image build and
 push to GHCR; see `apps-release-fresco` in `.github/workflows/ci-and-release.yml`
-and `apps/fresco/CLAUDE.md`.
+and `apps/fresco/CLAUDE.md`. The lane is tag-driven and self-healing like the
+Netlify app lanes, and shares their guard: one concurrency group per app and
+`.github/scripts/app-release-guard.sh`, which refuses an older version or a
+tree missing the newest released commit, so a run for a superseded main commit
+skips instead of pushing older code over the newest release.
 
 ## Architecture Overview
 

@@ -747,6 +747,74 @@ jobs:
           echo "Running every storybook suite for $GITHUB_EVENT_NAME"
           pnpm exec turbo run test:storybook --concurrency=1
 
+  # Refuses to merge a stale Version Packages PR. Every push to main
+  # regenerates changeset-release/main, but a head generated before main's
+  # newest changeset can still be queued and merged: on 2026-09-01 #1558 merged
+  # 48 seconds after #1574 added a changeset. The merged tree then carried both
+  # the bumped versions and an unconsumed changeset, changesets/action took its
+  # regenerate-the-PR path instead of publishing, and fresco-ui 6.3.0,
+  # interview 9.0.1 and fresco 4.1.3 sat on main unpublished until the next
+  # release PR bumped past them — with apps-release-fresco failing on every
+  # push in between, because the mirror pinned versions npm never had.
+  #
+  # Unlike every other check, this one is about the merged tree rather than the
+  # PR head, so it runs on merge-group commits (the exact tree that lands on
+  # main) as well as on the release PR itself, and `quality` consults it in
+  # both modes. A merge-queue entry names its pull request by number only; the
+  # head branch comes from the API, with the queue commit's message — the same
+  # "Merge pull request #N from <owner>/<branch>" that lands on main — as the
+  # fallback.
+  version-packages-freshness:
+    if: >-
+      github.event_name == 'merge_group'
+      || (github.event_name == 'pull_request'
+      && github.head_ref == 'changeset-release/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Resolve the pull request's head branch
+        id: head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_HEAD_REF: ${{ github.head_ref }}
+          MERGE_GROUP_REF: ${{ github.event.merge_group.head_ref }}
+          MERGE_GROUP_MESSAGE: ${{ github.event.merge_group.head_commit.message }}
+        run: |
+          head="$PR_HEAD_REF"
+          if [[ "$EVENT_NAME" == 'merge_group' ]]; then
+            number=$(printf '%s\n' "$MERGE_GROUP_REF" \
+              | sed -n 's#.*/pr-\([0-9][0-9]*\)-[0-9a-f]\{40\}$#\1#p')
+            head=''
+            if [[ -n "$number" ]]; then
+              head=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${number}" \
+                --jq .head.ref 2>/dev/null || true)
+            fi
+            if [[ -z "$head" ]]; then
+              head=$(printf '%s\n' "$MERGE_GROUP_MESSAGE" \
+                | sed -n '1s#^Merge pull request \#[0-9][0-9]* from [^/]*/##p')
+              echo "::notice::Could not read the pull request head from the API; using the merge-group commit message ('${head:-unknown}')"
+            fi
+          fi
+          if [[ "$head" == 'changeset-release/main' ]]; then
+            echo "release_pr=true" >> "$GITHUB_OUTPUT"
+            echo "Checking the Version Packages PR (head $head)"
+          else
+            echo "release_pr=false" >> "$GITHUB_OUTPUT"
+            echo "Not the Version Packages PR (head ${head:-unknown}) — nothing to check"
+          fi
+      - if: steps.head.outputs.release_pr == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - if: steps.head.outputs.release_pr == 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version-file: '.nvmrc'
+      - name: Refuse a release PR that leaves normal-lane changesets behind
+        if: steps.head.outputs.release_pr == 'true'
+        run: node scripts/check-version-packages-freshness.mjs
+
   quality:
     needs:
       - lint
@@ -761,6 +829,7 @@ jobs:
       - interviewer-e2e-native
       - architect-e2e
       - architect-e2e-native
+      - version-packages-freshness
     if: >-
       ${{ !cancelled()
       && github.event_name != 'push'
@@ -786,7 +855,16 @@ jobs:
           INTERVIEWER_E2E_NATIVE_RESULT: ${{ needs.interviewer-e2e-native.result }}
           ARCHITECT_E2E_RESULT: ${{ needs.architect-e2e.result }}
           ARCHITECT_E2E_NATIVE_RESULT: ${{ needs.architect-e2e-native.result }}
+          FRESHNESS_RESULT: ${{ needs.version-packages-freshness.result }}
         run: |
+          # The one check whose subject is the merged tree rather than the PR
+          # head, so it is consulted in both modes. 'skipped' is a pull request
+          # whose head is not the release branch.
+          if [[ "$FRESHNESS_RESULT" != "success" && "$FRESHNESS_RESULT" != "skipped" ]]; then
+            echo "::error::quality gate failed — version-packages-freshness concluded '$FRESHNESS_RESULT'"
+            exit 1
+          fi
+
           if [[ "$EVENT_NAME" == "merge_group" ]]; then
             echo "PR quality verdicts are authoritative; merge-group CI is intentionally lightweight"
             exit 0
@@ -2132,7 +2210,23 @@ jobs:
         # the Changesets CLI to version alongside library packages.
         # Working-tree-only deletion; see the script header.
         run: node scripts/prune-ignored-changesets.mjs
+      - name: Confirm this run still describes main's tip
+        # Push-to-main runs never cancel each other (see the top of the file)
+        # and the build above takes minutes, so the run for an older main
+        # commit can reach this point after a newer commit — the merge of a
+        # Version Packages PR — has already published and released. Acting
+        # from that stale tree regenerated an already-merged release PR
+        # (#1597, 2026-09-02). The newer commit's run covers everything this
+        # one would do, so a superseded run stops here. Checked last, right
+        # before the action reads the tree; the script explains why this is a
+        # runtime query rather than a concurrency setting.
+        id: tip
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          REF: ${{ github.ref }}
+        run: bash .github/scripts/superseded-push-guard.sh
       - id: changesets
+        if: steps.tip.outputs.current == 'true'
         uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
         with:
           version-script: pnpm run version-packages
@@ -2203,11 +2297,22 @@ jobs:
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Guard against mixed changesets
         run: pnpm check:changesets
+      - name: Confirm this run still describes main's tip
+        # The superseded-run guard the `release` job uses: a run for an older
+        # main commit must not regenerate a product release PR that a newer
+        # commit has just merged.
+        id: tip
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          REF: ${{ github.ref }}
+        run: bash .github/scripts/superseded-push-guard.sh
       - name: Compute ${{ matrix.product }} version bump
+        if: steps.tip.outputs.current == 'true'
         run: >-
           node scripts/version-gated-products.mjs ${{ matrix.package_args }}
           --out "${RUNNER_TEMP}/product-release-body.md"
       - name: Open/update the ${{ matrix.product }} release PR
+        if: steps.tip.outputs.current == 'true'
         id: product_pr
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
@@ -2571,9 +2676,18 @@ jobs:
     if: needs.apps-release-detect.outputs.fresco_released == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # One release per version — see apps-release-architect for the rationale.
+    # One release at a time, whichever main commit carries it — the same
+    # versionless group as apps-release-architect, for the same reason: main
+    # runs execute concurrently, so two of them can hold different untagged
+    # versions of this app at once, and only exclusion over the whole
+    # check → mirror → tag sequence orders them. The mirror is a linear append
+    # onto the external repository's main, whose newest push is published as
+    # `latest`, so order matters even more than for a Netlify site. With a
+    # per-version group and a tag-only check, the run for cd9040bcf mirrored
+    # 4.1.3 on top of the 4.1.4 release on 2026-09-02 and an older library
+    # closure went out as `latest`.
     concurrency:
-      group: apps-release-fresco@${{ needs.apps-release-detect.outputs.fresco_version }}
+      group: apps-release-fresco
       cancel-in-progress: false
     permissions:
       contents: write
@@ -2581,18 +2695,20 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           fetch-tags: true
+          # Full history: the guard checks that this tree contains the newest
+          # released commit, which a shallow clone cannot answer.
+          fetch-depth: 0
           persist-credentials: false
-      - name: Skip if this version was already released
+      # Refuses a version older than the newest fresco@ tag and a tree that
+      # does not contain the newest released commit, so a run for a superseded
+      # main commit skips instead of mirroring older code over the newest
+      # release.
+      - name: Skip if this version should not be released
         id: guard
         env:
-          TAG: 'fresco@${{ needs.apps-release-detect.outputs.fresco_version }}'
-        run: |
-          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "$TAG already released — nothing to do"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
+          PKG_NAME: fresco
+          VERSION: ${{ needs.apps-release-detect.outputs.fresco_version }}
+        run: bash .github/scripts/app-release-guard.sh
       - if: steps.guard.outputs.skip != 'true'
         uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
         with:
@@ -2618,13 +2734,18 @@ jobs:
           --with-lockfile
       - name: fresco release notes
         if: steps.guard.outputs.skip != 'true'
+        # --since is the newest version released before this one, so the body
+        # also carries any CHANGELOG section whose own release never happened
+        # (4.1.3's did not) or was dropped while pending on this job's group.
         env:
           VERSION: ${{ needs.apps-release-detect.outputs.fresco_version }}
+          SINCE: ${{ steps.guard.outputs.newest }}
         run: >-
           node scripts/release-notes.mjs
           --app apps/fresco
           --pkg fresco
           --version "$VERSION"
+          --since "$SINCE"
           --out "${RUNNER_TEMP}/fresco-notes.md"
       - name: Create the release on the Fresco repository
         if: steps.guard.outputs.skip != 'true'
