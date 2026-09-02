@@ -73,8 +73,8 @@ catalogs:
       specifier: ^1.9.68
       version: 1.9.68
     '@posthog/plugin-utils':
-      specifier: ^1.1.2
-      version: 1.1.2
+      specifier: ^1.2.0
+      version: 1.2.0
     '@posthog/react':
       specifier: ^1.10.3
       version: 1.10.3
@@ -287,7 +287,7 @@ importers:
         version: 0.7.34
       '@posthog/plugin-utils':
         specifier: 'catalog:'
-        version: 1.1.2
+        version: 1.2.0
       '@total-typescript/ts-reset':
         specifier: 'catalog:'
         version: 0.6.1
@@ -7044,6 +7044,9 @@ packages:
 
   '@posthog/plugin-utils@1.1.2':
     resolution: {integrity: sha512-CS/14cMmny9NN/LHAb4QZdW3TfxhbKzsfyVYMCjsRdE0IKMTrXMr0cPRZxwczsN6VnWvVoy2Dd5wcG6RrIjlYA==}
+
+  '@posthog/plugin-utils@1.2.0':
+    resolution: {integrity: sha512-SXG2oVxPnliYKmixyIYqPv1CA4UYPZy9fQL5H+mvN/OQpKioRTawp8I2ofQmf6SfiYpnf+KAzLiRUlK7S3rOCw==}
 
   '@posthog/react@1.10.3':
     resolution: {integrity: sha512-Qu//fGQmVlX0B9kTA3LLg67e7AYLEmeuA0Bf1qSyUM0uUILcRQGjQezhNQPLYSTakOqvXEnl6fM2iQBF6Toxrw==}
@@ -21207,6 +21210,10 @@ snapshots:
       - webpack
 
   '@posthog/plugin-utils@1.1.2':
+    dependencies:
+      cross-spawn: 7.0.6
+
+  '@posthog/plugin-utils@1.2.0':
     dependencies:
       cross-spawn: 7.0.6
 
