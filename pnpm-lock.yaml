@@ -25,8 +25,8 @@ catalogs:
       specifier: ^8.4.0
       version: 8.4.0
     '@capacitor/core':
-      specifier: ^8.4.0
-      version: 8.4.0
+      specifier: ^8.5.1
+      version: 8.5.1
     '@capacitor/device':
       specifier: ^8.0.2
       version: 8.0.2
@@ -34,8 +34,8 @@ catalogs:
       specifier: ^8.1.2
       version: 8.1.2
     '@capacitor/ios':
-      specifier: ^8.4.0
-      version: 8.4.0
+      specifier: ^8.5.1
+      version: 8.5.1
     '@capacitor/share':
       specifier: ^8.0.1
       version: 8.0.1
@@ -1450,31 +1450,31 @@ importers:
     dependencies:
       '@capacitor/android':
         specifier: 'catalog:'
-        version: 8.4.0(@capacitor/core@8.4.0)
+        version: 8.4.0(@capacitor/core@8.5.1)
       '@capacitor/app':
         specifier: 'catalog:'
-        version: 8.1.0(@capacitor/core@8.4.0)
+        version: 8.1.0(@capacitor/core@8.5.1)
       '@capacitor/browser':
         specifier: 'catalog:'
-        version: 8.0.3(@capacitor/core@8.4.0)
+        version: 8.0.3(@capacitor/core@8.5.1)
       '@capacitor/core':
         specifier: 'catalog:'
-        version: 8.4.0
+        version: 8.5.1
       '@capacitor/device':
         specifier: 'catalog:'
-        version: 8.0.2(@capacitor/core@8.4.0)
+        version: 8.0.2(@capacitor/core@8.5.1)
       '@capacitor/filesystem':
         specifier: 'catalog:'
-        version: 8.1.2(@capacitor/core@8.4.0)
+        version: 8.1.2(@capacitor/core@8.5.1)
       '@capacitor/ios':
         specifier: 'catalog:'
-        version: 8.4.0(@capacitor/core@8.4.0)
+        version: 8.5.1(@capacitor/core@8.5.1)
       '@capacitor/share':
         specifier: 'catalog:'
-        version: 8.0.1(@capacitor/core@8.4.0)
+        version: 8.0.1(@capacitor/core@8.5.1)
       '@capawesome/capacitor-file-picker':
         specifier: 'catalog:'
-        version: 8.0.2(@capacitor/core@8.4.0)
+        version: 8.0.2(@capacitor/core@8.5.1)
       '@codaco/network-exporters':
         specifier: npm:@codaco/network-exporters@^1.1.3
         version: 1.1.3
@@ -3994,8 +3994,8 @@ packages:
     engines: {node: '>=22.0.0'}
     hasBin: true
 
-  '@capacitor/core@8.4.0':
-    resolution: {integrity: sha512-LrS1xPIrqLtJABBIPDGXxxKmI9OyesrzWw8DiHbxhSC9JoiLUleUAJlX1a0LWIVLRbuY4Szgf9huFeRqYH2SAQ==}
+  '@capacitor/core@8.5.1':
+    resolution: {integrity: sha512-IOQ7ynG1qgrJ/RLuCO3WgyRGmkmmG/cdStRR4ftU2dWEN1FdtLrnI/XpZmZuUsOEHEnzBRJY/PmRH8eTLiXfhA==}
 
   '@capacitor/device@8.0.2':
     resolution: {integrity: sha512-fIqSXnG0s6bz5A/0xFgSXDkbU+Xl65ti80LhucNvLI4kGhJzcNn6SwWVwpXN9SJTOFWXblXknHNppheP8X1frQ==}
@@ -4007,10 +4007,10 @@ packages:
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
 
-  '@capacitor/ios@8.4.0':
-    resolution: {integrity: sha512-tnwstEdbTJ2nHAfoAwnurXgYRscWeLY+IIGdz69o24gN2Crfj9Xc0TWo8L5uFLF1LmpbUywH1IT0U1oHV8c+CA==}
+  '@capacitor/ios@8.5.1':
+    resolution: {integrity: sha512-0EVqwCYf3RUp2JAjUGZ04xmG6dSpIsPmPacI9zKxn6mu9RSiHhmFF230ghe00HrkyB6ig6SfNdoADvVODxYhlQ==}
     peerDependencies:
-      '@capacitor/core': ^8.4.0
+      '@capacitor/core': ^8.5.0
 
   '@capacitor/share@8.0.1':
     resolution: {integrity: sha512-3cSBKBCJVon54rKDROP2rqGyeGks4pBh9TbaEk9S375Kbek/ZHe72N50zIa0Vn9Eac/SuhwgehO/mmA4CsUOiw==}
@@ -7046,9 +7046,6 @@ packages:
     engines: {node: '>=14.14', npm: '>=6'}
     hasBin: true
 
-  '@posthog/core@1.46.8':
-    resolution: {integrity: sha512-WQTSwlFhsWk09xngTimHiTyhFU8QZHFZEGSm+6brY3acwYdvTLcTxpIhgl/qOCgn/XoqlCFTZqU1ldWLxNntfA==}
-
   '@posthog/core@1.50.0':
     resolution: {integrity: sha512-25SnQycZbqqLodQs+GaDPGDC1oxT8+XOSGlyhiS2rtdVON9Opg2hmfJ/fpFNgMBL7YDi0rpvJiR/fudy96W4pA==}
 
@@ -7057,9 +7054,6 @@ packages:
     engines: {node: ^20.20.0 || >=22.22.0}
     peerDependencies:
       next: '>12.1.0'
-
-  '@posthog/plugin-utils@1.1.2':
-    resolution: {integrity: sha512-CS/14cMmny9NN/LHAb4QZdW3TfxhbKzsfyVYMCjsRdE0IKMTrXMr0cPRZxwczsN6VnWvVoy2Dd5wcG6RrIjlYA==}
 
   '@posthog/plugin-utils@1.2.0':
     resolution: {integrity: sha512-SXG2oVxPnliYKmixyIYqPv1CA4UYPZy9fQL5H+mvN/OQpKioRTawp8I2ofQmf6SfiYpnf+KAzLiRUlK7S3rOCw==}
@@ -7073,9 +7067,6 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
-
-  '@posthog/types@1.402.1':
-    resolution: {integrity: sha512-4PZ9wMYI8m8AqJuZ9YR1IAHGVtSnYbBVBgTevrKpzZbcSe/OUwhEV2Ks//rJh/L8eMTU8R5DrD4D/hlrOwaAiQ==}
 
   '@posthog/types@1.407.1':
     resolution: {integrity: sha512-WhbkXPC2rgylXqmxHqv70ffI3k+KxyR6s7DBIfr5NvIqHkxp6v0pk31D/jbz0DNVbzwkLjyll2pxr4FNbJiYzg==}
@@ -9541,11 +9532,6 @@ packages:
   base64-js@1.5.1:
     resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
 
-  baseline-browser-mapping@2.10.42:
-    resolution: {integrity: sha512-c/jurFrDLyui7o1J86yLkRu4LMsTYcBohveus7/I2Hzdn9KIP2bdJPTue/lR1KH46enoPbD77GKeSYNdyPoD3Q==}
-    engines: {node: '>=6.0.0'}
-    hasBin: true
-
   baseline-browser-mapping@2.11.20:
     resolution: {integrity: sha512-H0ulySigv6icDJ1F7SjtdCD6PrhTpdYCmP0CactWy1+ekh0AFd0o1Wn5T8b+hnTmdBx19u9yhL6wvCylXMY7zw==}
     engines: {node: '>=6.0.0'}
@@ -10935,9 +10921,6 @@ packages:
 
   electron-publish@26.15.1:
     resolution: {integrity: sha512-BMgMHOyexWn0UnOC+Afffw0DMrr0yfLp4U8YsLXwoJ3Da7LS7WUnz21teYZqO0gaApE1KgsjREWmbPqvF5JcPg==}
-
-  electron-to-chromium@1.5.388:
-    resolution: {integrity: sha512-Pl/aJaqOOxYxda3vcx1IKSJimwYXHDkEnGn0F+kG2EE68dDtx2uCinaS+Vih8Z91B9t8CSAbiF/HKyWcnXjhzw==}
 
   electron-to-chromium@1.5.418:
     resolution: {integrity: sha512-UzS26r3AEbG5wSoGVpJKqwHIU9zwQN7LHdVIThDrJpS0I5KdlXFMEb8543fhc9dVnIIAST6ar8rhwa00AL5MlA==}
@@ -13612,10 +13595,6 @@ packages:
 
   node-int64@0.4.0:
     resolution: {integrity: sha512-O5lz91xSOeoXP6DulyHfllpq+Eg00MWitZIbtPfoSEvqIHdl5gfcY6hYzDWnj0qD5tz52PI08u9qUvSVeUBeHw==}
-
-  node-releases@2.0.50:
-    resolution: {integrity: sha512-J6l92tKHX6w8Jy5nO1Vuc01NoIiRGi/d6qBKVxh+IQ8Cr3b6HbVNfKiF8ZpFKufTwpwxMmce2W3iQZ861ZRyTg==}
-    engines: {node: '>=18'}
 
   node-releases@2.0.54:
     resolution: {integrity: sha512-YHs7BmmcsdAI5Ozuf8JZo6PT0mv2GIWC9vMfvUC3dp65M8hn7Ux8CPL+2oBI7juNuj9d0ndhTcznq2ODBps9cQ==}
@@ -18588,13 +18567,13 @@ snapshots:
 
   '@canvas/image-data@1.1.0': {}
 
-  '@capacitor/android@8.4.0(@capacitor/core@8.4.0)':
+  '@capacitor/android@8.4.0(@capacitor/core@8.5.1)':
     dependencies:
-      '@capacitor/core': 8.4.0
+      '@capacitor/core': 8.5.1
 
-  '@capacitor/app@8.1.0(@capacitor/core@8.4.0)':
+  '@capacitor/app@8.1.0(@capacitor/core@8.5.1)':
     dependencies:
-      '@capacitor/core': 8.4.0
+      '@capacitor/core': 8.5.1
 
   '@capacitor/assets@3.0.5(@swc/core@1.15.40(@swc/helpers@0.5.23))(@types/node@24.13.3)(encoding@0.1.13)(supports-color@10.2.2)(typescript@7.0.2)':
     dependencies:
@@ -18618,9 +18597,9 @@ snapshots:
       - supports-color
       - typescript
 
-  '@capacitor/browser@8.0.3(@capacitor/core@8.4.0)':
+  '@capacitor/browser@8.0.3(@capacitor/core@8.5.1)':
     dependencies:
-      '@capacitor/core': 8.4.0
+      '@capacitor/core': 8.5.1
 
   '@capacitor/cli@5.7.8(supports-color@10.2.2)':
     dependencies:
@@ -18666,32 +18645,32 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@capacitor/core@8.4.0':
+  '@capacitor/core@8.5.1':
     dependencies:
       tslib: 2.8.1
 
-  '@capacitor/device@8.0.2(@capacitor/core@8.4.0)':
+  '@capacitor/device@8.0.2(@capacitor/core@8.5.1)':
     dependencies:
-      '@capacitor/core': 8.4.0
+      '@capacitor/core': 8.5.1
 
-  '@capacitor/filesystem@8.1.2(@capacitor/core@8.4.0)':
+  '@capacitor/filesystem@8.1.2(@capacitor/core@8.5.1)':
     dependencies:
-      '@capacitor/core': 8.4.0
+      '@capacitor/core': 8.5.1
       '@capacitor/synapse': 1.0.4
 
-  '@capacitor/ios@8.4.0(@capacitor/core@8.4.0)':
+  '@capacitor/ios@8.5.1(@capacitor/core@8.5.1)':
     dependencies:
-      '@capacitor/core': 8.4.0
+      '@capacitor/core': 8.5.1
 
-  '@capacitor/share@8.0.1(@capacitor/core@8.4.0)':
+  '@capacitor/share@8.0.1(@capacitor/core@8.5.1)':
     dependencies:
-      '@capacitor/core': 8.4.0
+      '@capacitor/core': 8.5.1
 
   '@capacitor/synapse@1.0.4': {}
 
-  '@capawesome/capacitor-file-picker@8.0.2(@capacitor/core@8.4.0)':
+  '@capawesome/capacitor-file-picker@8.0.2(@capacitor/core@8.5.1)':
     dependencies:
-      '@capacitor/core': 8.4.0
+      '@capacitor/core': 8.5.1
 
   '@changesets/apply-release-plan@8.0.0':
     dependencies:
@@ -21221,16 +21200,12 @@ snapshots:
 
   '@posthog/browser-common@0.4.0':
     dependencies:
-      '@posthog/core': 1.46.8
-      '@posthog/types': 1.402.1
+      '@posthog/core': 1.50.0
+      '@posthog/types': 1.407.1
 
   '@posthog/cli@0.7.34':
     dependencies:
       detect-libc: 2.1.2
-
-  '@posthog/core@1.46.8':
-    dependencies:
-      '@posthog/types': 1.402.1
 
   '@posthog/core@1.50.0':
     dependencies:
@@ -21239,16 +21214,12 @@ snapshots:
   '@posthog/nextjs-config@1.9.68(next@16.3.2(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-macros@2.8.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.102.0))(webpack@5.105.2(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.1)(lightningcss@1.33.0)(postcss@8.5.26)(uglify-js@3.19.3))':
     dependencies:
       '@posthog/cli': 0.7.34
-      '@posthog/plugin-utils': 1.1.2
+      '@posthog/plugin-utils': 1.2.0
       '@posthog/webpack-plugin': 1.5.26(webpack@5.105.2(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.1)(lightningcss@1.33.0)(postcss@8.5.26)(uglify-js@3.19.3))
       next: 16.3.2(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-macros@2.8.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.102.0)
       semver: 7.8.5
     transitivePeerDependencies:
       - webpack
-
-  '@posthog/plugin-utils@1.1.2':
-    dependencies:
-      cross-spawn: 7.0.6
 
   '@posthog/plugin-utils@1.2.0':
     dependencies:
@@ -21261,15 +21232,13 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.18
 
-  '@posthog/types@1.402.1': {}
-
   '@posthog/types@1.407.1': {}
 
   '@posthog/webpack-plugin@1.5.26(webpack@5.105.2(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.1)(lightningcss@1.33.0)(postcss@8.5.26)(uglify-js@3.19.3))':
     dependencies:
       '@posthog/cli': 0.7.34
       '@posthog/core': 1.50.0
-      '@posthog/plugin-utils': 1.1.2
+      '@posthog/plugin-utils': 1.2.0
       webpack: 5.105.2(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.1)(lightningcss@1.33.0)(postcss@8.5.26)(uglify-js@3.19.3)
 
   '@prettier/plugin-xml@2.2.0':
@@ -21649,7 +21618,7 @@ snapshots:
     dependencies:
       '@types/estree': 1.0.9
       estree-walker: 2.0.2
-      picomatch: 4.0.5
+      picomatch: 4.0.7
     optionalDependencies:
       rollup: 4.62.2
 
@@ -23850,8 +23819,6 @@ snapshots:
 
   base64-js@1.5.1: {}
 
-  baseline-browser-mapping@2.10.42: {}
-
   baseline-browser-mapping@2.11.20: {}
 
   bcrypt-pbkdf@1.0.2:
@@ -25138,8 +25105,6 @@ snapshots:
       mime: 2.6.0
     transitivePeerDependencies:
       - supports-color
-
-  electron-to-chromium@1.5.388: {}
 
   electron-to-chromium@1.5.418: {}
 
@@ -28315,8 +28280,8 @@ snapshots:
     dependencies:
       '@next/env': 16.3.2
       '@swc/helpers': 0.5.23
-      baseline-browser-mapping: 2.10.42
-      caniuse-lite: 1.0.30001803
+      baseline-browser-mapping: 2.11.20
+      caniuse-lite: 1.0.30001810
       postcss: 8.5.26
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
@@ -28394,8 +28359,6 @@ snapshots:
       he: 1.2.0
 
   node-int64@0.4.0: {}
-
-  node-releases@2.0.50: {}
 
   node-releases@2.0.54: {}
 
@@ -29362,8 +29325,8 @@ snapshots:
   posthog-js@1.413.2:
     dependencies:
       '@posthog/browser-common': 0.4.0
-      '@posthog/core': 1.46.8
-      '@posthog/types': 1.402.1
+      '@posthog/core': 1.50.0
+      '@posthog/types': 1.407.1
       core-js: 3.49.0
       dompurify: 3.4.13
       fflate: 0.4.8
@@ -32006,7 +31969,7 @@ snapshots:
     dependencies:
       '@jridgewell/remapping': 2.3.5
       acorn: 8.17.0
-      picomatch: 4.0.5
+      picomatch: 4.0.7
       webpack-virtual-modules: 0.6.2
 
   untildify@4.0.0: {}
@@ -32219,7 +32182,7 @@ snapshots:
       magic-string: 0.30.21
       obug: 2.1.3
       pathe: 2.0.3
-      picomatch: 4.0.5
+      picomatch: 4.0.7
       std-env: 4.1.0
       tinybench: 2.9.0
       tinyexec: 1.3.0
