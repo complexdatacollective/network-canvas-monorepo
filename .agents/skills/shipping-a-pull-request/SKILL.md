@@ -88,12 +88,47 @@ gh api repos/{owner}/{repo}/pulls/<number>/comments
 - A review with `state: CHANGES_REQUESTED`, or unresolved inline comments →
   take a code-review stance before touching code (Claude Code: invoke
   `superpowers:receiving-code-review`): verify each piece of feedback is
-  technically correct rather than implementing it reflexively.
-  Apply the fixes that hold up, reply to (or resolve) the threads, push.
+  technically correct rather than implementing it reflexively. Then triage it
+  by the rules below, reply to and resolve every thread, and push.
 - `APPROVED` with no unresolved threads and CI green → the PR is mergeable.
   Report this to the user and stop — **do not merge it yourself**; merging is
   a hard-to-reverse, outward-facing action that needs explicit confirmation
   each time, not implied by having opened the PR.
+
+### Triaging a finding: fix, or reply and resolve
+
+Every thread gets a reply and gets resolved — an unresolved bot thread holds
+the PR in `BLOCKED` regardless of merit. What varies is whether code changes.
+
+**Verify first, always.** Roughly a third of automated findings are wrong or
+overstated, and a wrong finding that gets "fixed" is worse than one left alone.
+Prove it against the real source, the real library, or a runnable probe. Also
+check provenance: `git diff <base>...HEAD -- <file>` tells you whether the
+finding is about your change or pre-existing debt the diff merely revealed.
+
+**Change the code when** the finding names a failure a user can reach, however
+it is badged; when it shows a claim you made — in a comment, a doc, a changeset
+— to be false; or when it touches a boundary where the failure is silent:
+tenancy, authorization, deployment gating, focus and announcement, data loss.
+
+**Reply and resolve without changing code when** you can disprove it with
+evidence; when it is already handled elsewhere and you can name where; when it
+is a preference with no reachable failure; or when it is real but belongs to
+another PR — say which, and why the split is right.
+
+**Do not triage on the severity badge alone.** A badge is the reviewer's
+confidence, not your severity assessment. Findings badged P2 have included a
+deployment gate defeated by one capital letter, a focus controller that was
+never mounted so an entire accessibility mechanism was inert, and a sign-out
+that could resume after the researcher cancelled it. Read the mechanism, decide
+for yourself, and let the badge break ties rather than make decisions.
+
+**Control the loop.** Each push triggers a fresh review round, so a branch can
+churn indefinitely. Fix real defects; for nitpicks on newly-added code, reply
+with the reasoning and resolve. Tell the user explicitly which threads you
+resolved *without* changing code, so they can overrule you. If a round produces
+only findings you resolve without action, the loop is finished — say so rather
+than requesting another round.
 
 ### Stopping conditions
 
@@ -114,6 +149,8 @@ gh api repos/{owner}/{repo}/pulls/<number>/comments
 | Opening the PR then ending the turn                | Move straight into Phase 2 monitoring — that's the point of this skill.        |
 | Busy-polling with `sleep` in a loop                | Use available wakeup/automation tooling when present, or report pending state. |
 | Applying every review comment verbatim             | Verify the feedback before implementing.                                       |
+| Triaging by severity badge instead of mechanism    | Read what actually breaks; badges are confidence, not severity.                |
+| Leaving a thread unresolved because it needed no fix | Reply with the evidence and resolve it — unresolved threads hold `BLOCKED`.   |
 | Force-pushing to satisfy a check                   | Fix root cause and push a normal commit; don't rewrite history reflexively.    |
 | Merging once checks go green                       | Merging is the user's call — report readiness, don't merge automatically.      |
 | Re-guessing the same fix after two failed attempts | Stop and hand back to the user with the failure history.                       |
