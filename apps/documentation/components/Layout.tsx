@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import { PageBackgroundProvider } from '@codaco/art';
+import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/SiteNavigation.constants';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { Sidebar } from '~/components/Sidebar';
 import WorkflowNav from '~/components/WorkflowNav';
@@ -76,6 +77,7 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
             </>
           )}
           <main
+            id={SITE_NAVIGATION_SKIP_TARGET_ID}
             className={cx(
               'flex h-full w-full flex-auto justify-center',
               // Space content away from the nav on content pages; the margin scales

@@ -1,8 +1,107 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { PortalContainerProvider } from '../../PortalContainer';
 import SiteNavigation from '../SiteNavigation';
+import { SITE_NAVIGATION_SKIP_TARGET_ID } from '../SiteNavigation.constants';
+
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+describe('SiteNavigation skip link', () => {
+  it('is the first focusable element in the header and reachable with one Tab', async () => {
+    const user = userEvent.setup();
+    render(<SiteNavigation locale="en-US" site="website" />);
+
+    const header = screen.getByRole('banner');
+    const skipLink = screen.getByRole('link', {
+      name: 'Skip to main content',
+    });
+
+    // Ahead of everything else the header renders, including the brand link
+    // that used to be first.
+    expect(header.querySelectorAll(FOCUSABLE_SELECTOR)[0]).toBe(skipLink);
+    expect(skipLink).toHaveAttribute('href', '#main-content');
+
+    await user.tab();
+    expect(skipLink).toHaveFocus();
+  });
+
+  it('links to the id the host page supplies', () => {
+    render(
+      <SiteNavigation locale="en-US" site="website" skipToId="content-start" />,
+    );
+
+    expect(
+      screen.getByRole('link', { name: 'Skip to main content' }),
+    ).toHaveAttribute('href', '#content-start');
+  });
+
+  it('translates the label with the rest of the navigation copy', () => {
+    render(<SiteNavigation locale="es" site="website" />);
+
+    expect(
+      screen.getByRole('link', { name: 'Saltar al contenido principal' }),
+    ).toHaveAttribute('href', '#main-content');
+  });
+
+  it('lands focus on the host target, making it focusable when it is not', async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <SiteNavigation locale="en-US" site="website" />
+        <main id={SITE_NAVIGATION_SKIP_TARGET_ID}>Page content</main>
+      </>,
+    );
+
+    const target = screen.getByRole('main');
+    expect(target).not.toHaveAttribute('tabindex');
+
+    await user.click(
+      screen.getByRole('link', { name: 'Skip to main content' }),
+    );
+
+    expect(target).toHaveAttribute('tabindex', '-1');
+    expect(target).toHaveFocus();
+  });
+
+  it('leaves a target the host already made focusable as it found it', async () => {
+    const user = userEvent.setup();
+    render(<SiteNavigation locale="en-US" site="website" />);
+
+    // Built outside the render tree so the host's own `tabindex` is the thing
+    // under test rather than something this file's JSX describes.
+    const target = document.createElement('main');
+    target.id = SITE_NAVIGATION_SKIP_TARGET_ID;
+    target.tabIndex = 0;
+    document.body.append(target);
+
+    try {
+      await user.click(
+        screen.getByRole('link', { name: 'Skip to main content' }),
+      );
+
+      expect(target.getAttribute('tabindex')).toBe('0');
+      expect(target).toHaveFocus();
+    } finally {
+      target.remove();
+    }
+  });
+
+  it('does nothing when the host page has no matching target', async () => {
+    const user = userEvent.setup();
+    render(<SiteNavigation locale="en-US" site="website" />);
+
+    const skipLink = screen.getByRole('link', {
+      name: 'Skip to main content',
+    });
+    await user.click(skipLink);
+
+    expect(document.getElementById(SITE_NAVIGATION_SKIP_TARGET_ID)).toBeNull();
+    expect(skipLink).toHaveFocus();
+  });
+});
 
 describe('SiteNavigation', () => {
   it('owns the canonical English destinations and active state', () => {

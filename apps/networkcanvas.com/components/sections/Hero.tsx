@@ -25,12 +25,18 @@ function renderStrong(chunks: ReactNode) {
 export function Hero({
   backdropItemVariants,
   containerVariants,
+  id,
   itemVariants,
   newsItems,
   scrollStyle,
 }: {
   backdropItemVariants?: Variants;
   containerVariants?: Variants;
+  /**
+   * Set by the page so the site header's skip link can land here — this is
+   * the first content the homepage shows after the header.
+   */
+  id?: string;
   itemVariants?: Variants;
   newsItems: readonly NewsItem[];
   scrollStyle?: MotionStyle;
@@ -39,6 +45,7 @@ export function Hero({
 
   return (
     <motion.div
+      id={id}
       variants={containerVariants}
       style={scrollStyle}
       data-testid="hero-root"

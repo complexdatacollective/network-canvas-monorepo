@@ -59,6 +59,7 @@
     "./layout/AppFrame": "./src/layout/AppFrame.tsx",
     "./layout/AppArea": "./src/layout/AppArea.tsx",
     "./navigation/SiteNavigation": "./src/navigation/SiteNavigation.tsx",
+    "./navigation/SiteNavigation.constants": "./src/navigation/SiteNavigation.constants.ts",
     "./navigation/EverythingBar": "./src/navigation/EverythingBar.tsx",
     "./navigation/ThemeSwitcher": "./src/navigation/ThemeSwitcher.tsx",
     "./navigation/SiteFooter": "./src/navigation/SiteFooter.tsx",
@@ -353,6 +354,10 @@
       "./navigation/SiteNavigation": {
         "types": "./dist/navigation/SiteNavigation.d.ts",
         "default": "./dist/navigation/SiteNavigation.js"
+      },
+      "./navigation/SiteNavigation.constants": {
+        "types": "./dist/navigation/SiteNavigation.constants.d.ts",
+        "default": "./dist/navigation/SiteNavigation.constants.js"
       },
       "./navigation/EverythingBar": {
         "types": "./dist/navigation/EverythingBar.d.ts",
