@@ -1,3 +1,7 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+
 import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
 
@@ -25,7 +29,57 @@ export default function FieldErrors({
   show: boolean;
   variant?: 'text' | 'box';
 }) {
-  const messages = show ? (errors ?? []) : [];
+  const liveMessages = show ? (errors ?? []) : [];
+  const liveSignature = liveMessages.join('|');
+
+  // What's actually rendered, kept distinct from the live `errors`/`show`
+  // props. Revalidating an already-invalid, already-dirty field discards its
+  // stored error and then writes the identical message back within the same
+  // keystroke (formStore's `discardFieldErrors` runs synchronously on every
+  // value change, ahead of the async revalidation that restores it) — so the
+  // live props flicker to "no error" and back on every keystroke even though
+  // nothing the user can perceive actually changed. A naively `show`/content
+  // -driven remount replays `animate-shake` on every one of those flickers.
+  // Showing a NEW message happens immediately; clearing one is deferred to
+  // the next macrotask, which is always after that same-tick flicker has
+  // resolved (field validation here never does real async I/O — it's a
+  // zod `safeParseAsync` over an in-memory value — so it never outlasts one
+  // microtask), and cancelled outright if the message comes back before then.
+  const [displayed, setDisplayed] = useState(() => ({
+    messages: liveMessages,
+    signature: liveSignature,
+  }));
+  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => {
+    if (hideTimeoutRef.current !== undefined) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = undefined;
+    }
+
+    if (liveSignature) {
+      setDisplayed((prev) =>
+        prev.signature === liveSignature
+          ? prev
+          : { messages: liveMessages, signature: liveSignature },
+      );
+    } else {
+      hideTimeoutRef.current = setTimeout(() => {
+        hideTimeoutRef.current = undefined;
+        setDisplayed({ messages: [], signature: '' });
+      }, 0);
+    }
+
+    return () => {
+      if (hideTimeoutRef.current !== undefined) {
+        clearTimeout(hideTimeoutRef.current);
+        hideTimeoutRef.current = undefined;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- liveMessages is derived from liveSignature in the same render
+  }, [liveSignature]);
+
+  const messages = displayed.messages;
 
   // The live region is ALWAYS mounted, message or not. A screen reader only
   // announces changes to a region it was already observing, so a region that
@@ -47,7 +101,7 @@ export default function FieldErrors({
             variant === 'box' &&
               'text-destructive-contrast bg-destructive mt-2 px-4 py-2',
           )}
-          key={messages.join('|')} // Remount when errors change, to trigger animation
+          key={displayed.signature} // Remount only when the displayed message actually changes
         >
           {messages.length === 1 && <Paragraph>{messages[0]}</Paragraph>}
           {messages.length > 1 && (
