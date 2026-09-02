@@ -157,10 +157,18 @@ overrides:
   'slate-history>immer': '^5.3.0'
   # Keep security-sensitive transitives on patched versions when upstream
   # manifests still pin vulnerable releases (inherited from fresco).
+  # @prisma/config pins deepmerge-ts to an exact 7.x release; 8.x fixes the
+  # recursive-graph stack exhaustion (GHSA-ggr8-5vv4-36mx) and keeps the
+  # variadic deepmerge() API Prisma's config loader calls.
+  deepmerge-ts: '^8.0.2'
   'effect@3.17.7': 'catalog:'
   fast-uri: '^3.1.4'
   find-my-way: '^9.7.0'
   'immutable@4.3.8': '4.3.9'
+  # prisma pins mysql2 to an exact release below the auth-plugin downgrade fix
+  # (GHSA-3f6p-5ww8-9rcr); nothing here talks to MySQL, so the driver only
+  # needs to resolve to a patched version.
+  mysql2: '^3.22.0'
   # Next pins an exact PostCSS version, so keep transitives on the patched
   # catalog version rather than duplicating the version here.
   postcss: 'catalog:'
