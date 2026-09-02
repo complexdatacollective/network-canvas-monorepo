@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { BrowserContext, Page } from '@playwright/test';
 
 const corsHeaders = { 'access-control-allow-origin': '*' };
 
@@ -60,8 +60,11 @@ const STREETS_TILEJSON = {
  * results vary by region/session, and a failed retrieve silently skips
  * the fly-to.
  *
- * Installed once on the shared page, before any stage mounts a map.
- * Stub-mode browsers (firefox/webkit) never request these URLs.
+ * Installed by the `architect-test` fixture on every page, before its first
+ * navigation: MapView creates the map during render (inside a rAF), so the
+ * routes have to exist before any goto that can reach a Geospatial editor.
+ * `abortUnmockedMapboxRequests` below fails the test whose traffic these
+ * routes do not answer.
  */
 export async function installMapboxMocks(page: Page): Promise<void> {
   // Billing/session probe (mapbox-gl v3 `map-sessions/v1`). Left unmocked it
@@ -146,4 +149,37 @@ export async function installMapboxMocks(page: Page): Promise<void> {
         },
       }),
   );
+}
+
+const MAPBOX_HOST = /^https?:\/\/([^/]+\.)?mapbox\.com\//;
+
+/**
+ * Fail closed on Mapbox traffic the mocks above do not answer.
+ *
+ * Every request to a `*.mapbox.com` host that no page-level mock claims is
+ * aborted — so it can never bill the shared testing token the all-interfaces
+ * fixture carries — and recorded, so the fixture that installed this can fail
+ * the test that caused it. Without the record a missing mock would surface only
+ * as a map that quietly errors, or not at all: the test that mounted it may
+ * never look at the map.
+ *
+ * Context-level on purpose. `page.route` handlers win over `context.route`
+ * handlers when both match, so registering here leaves `installMapboxMocks` in
+ * charge of every URL it knows about, while pages the fixture never sees — the
+ * preview popup, where the interview runtime's own Geospatial stage would mount
+ * a real map — still cannot reach Mapbox.
+ *
+ * Only the method and path are recorded. That is enough to name the missing
+ * mock, and it keeps the access token in the query string out of the report.
+ */
+export async function abortUnmockedMapboxRequests(
+  context: BrowserContext,
+): Promise<readonly string[]> {
+  const escaped: string[] = [];
+  await context.route(MAPBOX_HOST, (route, request) => {
+    const { origin, pathname } = new URL(request.url());
+    escaped.push(`${request.method()} ${origin}${pathname}`);
+    return route.abort();
+  });
+  return escaped;
 }

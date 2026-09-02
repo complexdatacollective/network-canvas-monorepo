@@ -2,7 +2,6 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import { TESTING_MAPBOX_TOKEN } from '../../../src/templates/testingMapboxToken.js';
 import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
-import { installMapboxMocks } from '../../fixtures/mapbox-mocks.js';
 import { emptyProtocol } from '../../fixtures/seed.js';
 import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readStageJson } from '../../helpers/read-store.js';
@@ -85,10 +84,6 @@ function protocolWithGeoDataAsset(): CurrentProtocol {
     },
   };
 }
-
-test.beforeEach(async ({ architectPage }) => {
-  await installMapboxMocks(architectPage);
-});
 
 // mapbox-gl-js's own `unproject`/`project` round trip introduces tiny
 // floating-point jitter into `getCenter()` — live-verified across ~15 repeat
@@ -234,8 +229,10 @@ test('creates a valid Geospatial stage from scratch', async ({
 
   // MapSelection.tsx: button reads "Set map view" (lower-case "map view" —
   // `value.center ? 'Edit map view' : 'Set map view'`) and opens MapView.tsx,
-  // a REAL `mapboxgl.Map` instance (title "Initial Map View", intercepted by
-  // `installMapboxMocks` for deterministic tiles/style/search).
+  // a REAL `mapboxgl.Map` instance (title "Initial Map View"). Its style,
+  // tiles and search go to the `installMapboxMocks` routes the `architect-test`
+  // fixture installs on every page, so nothing here reaches Mapbox — and the
+  // fixture fails the test if anything does.
   await editor
     .field('mapOptions')
     .getByRole('button', { name: 'Set map view' })
