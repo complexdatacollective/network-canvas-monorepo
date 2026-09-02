@@ -10,6 +10,7 @@ import {
   useState,
   type CSSProperties,
   type KeyboardEvent,
+  type MouseEvent,
   type ReactElement,
   type ReactNode,
 } from 'react';
@@ -22,6 +23,7 @@ import Spinner from '../Spinner';
 import { headingVariants } from '../typography/Heading';
 import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
+import { SITE_NAVIGATION_SKIP_TARGET_ID } from './SiteNavigation.constants';
 import { siteNavigationMessages } from './SiteNavigation.messages';
 
 export type SiteNavigationLocale = SiteLocale;
@@ -91,6 +93,13 @@ export type SiteNavigationProps = {
   renderLink?: (props: SiteNavigationLinkRenderProps) => ReactElement;
   renderUtility?: (props: SiteNavigationUtilityRenderProps) => ReactNode;
   site: 'documentation' | 'external' | 'website';
+  /**
+   * The `id` of the element the skip link jumps to. The host page owns that
+   * element — this header cannot supply one — so a page that renders the
+   * header must carry a matching `id` on the element where its content
+   * starts, usually its `<main>`.
+   */
+  skipToId?: string;
   className?: string;
   containerClassName?: string;
   style?: CSSProperties;
@@ -113,6 +122,18 @@ const destinations = {
 const linkClasses = cx(
   headingVariants({ level: 'h4', variant: 'all-caps', margin: 'none' }),
   'focusable text-text hover:text-neon-coral aria-[current=page]:text-neon-coral whitespace-nowrap transition-colors',
+);
+
+// `not-sr-only` resets padding, margin, and white-space, and under a `focus:`
+// variant it lands after the unprefixed utilities — so the visible treatment
+// it would otherwise undo is stated under the same variant. Position is left
+// to the wrapper, which keeps the link out of the header's own layout while
+// it is hidden. The surface treatment is the compact menu's, so the link
+// reads as part of this header when it appears.
+const skipLinkClasses = cx(
+  headingVariants({ level: 'h4', variant: 'all-caps', margin: 'none' }),
+  'focusable bg-surface text-surface-contrast rounded-full shadow-xl',
+  'sr-only focus:not-sr-only focus:px-5 focus:py-3 focus:whitespace-nowrap',
 );
 
 const breakpointClasses = {
@@ -526,6 +547,12 @@ function MobileLinkGroup({
  * The canonical Network Canvas site header. Its destinations, ordering, and
  * translated navigation copy live here so every site renders the same global
  * navigation. Apps may only adapt routing and inject sanctioned utility UI.
+ *
+ * The header is repeated on every page of a site, so it opens with the skip
+ * link that lets a keyboard or screen-reader user bypass it (WCAG 2.4.1). The
+ * link is the first focusable element in the header and therefore the first on
+ * any page that puts this header first; it jumps to `skipToId`, which the host
+ * page must carry on the element where its content starts.
  */
 export default function SiteNavigation({
   activeItemId,
@@ -535,6 +562,7 @@ export default function SiteNavigation({
   renderLink = defaultRenderLink,
   renderUtility,
   site,
+  skipToId = SITE_NAVIGATION_SKIP_TARGET_ID,
   className,
   containerClassName,
   style,
@@ -548,6 +576,21 @@ export default function SiteNavigation({
   const documentationRootHref =
     site === 'documentation' ? '/' : destinations.documentation;
   const closeMenu = () => setOpen(false);
+  // A fragment link only moves focus to a target the browser already considers
+  // focusable; every other browser merely sets the sequential focus navigation
+  // starting point, which Safari does not honour. The target belongs to the
+  // host page, so make it programmatically focusable and focus it here instead
+  // of relying on that. `ownerDocument` rather than the ambient `document`:
+  // this header also renders inside the `<nc-site-navigation>` shadow root and
+  // could render in a popped-out window, and the target lives in whichever
+  // document actually contains the header.
+  const handleSkipLinkClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    const target = event.currentTarget.ownerDocument.getElementById(skipToId);
+    if (!target) return;
+
+    if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
+    target.focus();
+  };
   const handleCompactMenuKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== 'Escape') return;
 
@@ -721,6 +764,16 @@ export default function SiteNavigation({
       className={cx('@container relative z-50', className)}
       style={style}
     >
+      <div className="absolute top-2 left-2 z-50">
+        <a
+          href={`#${skipToId}`}
+          onClick={handleSkipLinkClick}
+          className={skipLinkClasses}
+        >
+          {labels.skipToContent}
+        </a>
+      </div>
+
       <div
         className={cx(
           'tablet-landscape:px-10 flex w-full items-center justify-between px-4 py-6 @min-[30rem]:px-6',

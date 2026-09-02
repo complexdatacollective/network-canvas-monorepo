@@ -29,14 +29,51 @@ of loading it from a CDN.
 
 ## Attributes
 
-| Attribute     | Values                                                                                                     | Default | Notes                                                 |
-| ------------- | ---------------------------------------------------------------------------------------------------------- | ------- | ----------------------------------------------------- |
-| `active-item` | `home` \| `community` \| `documentation` \| `protocolGallery` \| `resources` \| `software` \| `getStarted` | unset   | Highlights the matching link (`aria-current="page"`). |
-| `locale`      | `en-US` \| `en-GB` \| `es`                                                                                 | `en-US` | Selects the nav's translated copy.                    |
-| `theme`       | `light` \| `dark` \| `auto`                                                                                | `auto`  | `auto` follows the page's `prefers-color-scheme`.     |
+| Attribute     | Values                                                                                                     | Default        | Notes                                                  |
+| ------------- | ---------------------------------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------ |
+| `active-item` | `home` \| `community` \| `documentation` \| `protocolGallery` \| `resources` \| `software` \| `getStarted` | unset          | Highlights the matching link (`aria-current="page"`).  |
+| `locale`      | `en-US` \| `en-GB` \| `es`                                                                                 | `en-US`        | Selects the nav's translated copy.                     |
+| `skip-to-id`  | any element `id` on the host page                                                                          | `main-content` | Where the skip link jumps to. See **Skip link** below. |
+| `theme`       | `light` \| `dark` \| `auto`                                                                                | `auto`         | `auto` follows the page's `prefers-color-scheme`.      |
 
 Attribute changes re-render the element live — updating `theme` or
 `active-item` after the element has connected takes effect immediately.
+
+## Skip link
+
+The header is repeated on every page of a site, so its first focusable element
+is a "Skip to main content" link that lets a keyboard or screen-reader user
+bypass it (WCAG 2.4.1). It is invisible until focused, so it costs the host
+page nothing visually.
+
+**The host page must supply the target.** The element renders inside a shadow
+root and cannot add an `id` to your markup, so give the element where your
+content starts — usually your `<main>` — the matching `id`:
+
+```html
+<nc-site-navigation></nc-site-navigation>
+<main id="main-content">…</main>
+```
+
+Use `skip-to-id` when that element already has a different `id`:
+
+```html
+<nc-site-navigation skip-to-id="content"></nc-site-navigation>
+<div id="content">…</div>
+```
+
+A fragment link works normally from inside the shadow root: the browser
+resolves `#main-content` against the host document, so it finds and scrolls to
+your element and the component moves focus onto it (adding `tabindex="-1"` if
+the element is not already focusable, which is what makes the jump land in
+Safari as well as Chrome and Firefox).
+
+**If the host page has no element with that `id`, activating the link does
+nothing** beyond appending `#main-content` to the address bar — no scroll, no
+focus change, no error. The header still renders and behaves normally, so a
+page that forgets the target simply keeps the accessibility gap it already had.
+Placing the element immediately before your main content and adding the `id` is
+all that is required.
 
 There's no utility slot (a place to render the account/theme switcher) in
 this version — hosts that want their own colour scheme reflected should set

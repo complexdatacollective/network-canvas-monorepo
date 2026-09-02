@@ -5,6 +5,7 @@ import { motion, useAnimationControls, useReducedMotion } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import { useLayoutEffect, useRef } from 'react';
 
+import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/SiteNavigation.constants';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -80,6 +81,7 @@ export function GetStartedIntro() {
         />
 
         <motion.div
+          id={SITE_NAVIGATION_SKIP_TARGET_ID}
           variants={entrance.heroVariants}
           style={heroScrollStyle}
           className="tablet-portrait:pt-24 tablet-portrait:pb-32 origin-center pt-16 pb-24 will-change-transform"
