@@ -2,9 +2,9 @@ import { find, get } from 'es-toolkit/compat';
 import { motion } from 'motion/react';
 import { useCallback, useEffect, useId, useMemo, useRef } from 'react';
 
+import Tag from '@codaco/fresco-ui/Tag';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import StageTypeImage from '~/components/StageTypeImage';
-import Tag from '~/components/Tag';
 
 import { INTERFACE_TYPES, TAG_COLORS } from './interfaceOptions';
 type InterfaceThumbnailProps = {
@@ -102,7 +102,7 @@ const InterfaceThumbnail = ({
           </div>
           <div id={tagsId} className="flex flex-wrap gap-2">
             {tags.map((tag: string) => (
-              <Tag key={tag} id={tag} color={get(TAG_COLORS, tag)} light>
+              <Tag key={tag} color={get(TAG_COLORS, tag)} light>
                 {tag}
               </Tag>
             ))}

@@ -52,6 +52,7 @@
     "./PortalContainer": "./src/PortalContainer.tsx",
     "./ThemedRegion": "./src/ThemedRegion.tsx",
     "./Table": "./src/Table.tsx",
+    "./Tag": "./src/Tag.tsx",
     "./Tabs": "./src/Tabs/Tabs.tsx",
     "./Label": "./src/Label.tsx",
     "./layout/Surface": "./src/layout/Surface.tsx",
@@ -319,6 +320,10 @@
       "./Table": {
         "types": "./dist/Table.d.ts",
         "default": "./dist/Table.js"
+      },
+      "./Tag": {
+        "types": "./dist/Tag.d.ts",
+        "default": "./dist/Tag.js"
       },
       "./Tabs": {
         "types": "./dist/Tabs/Tabs.d.ts",
