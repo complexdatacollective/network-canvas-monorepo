@@ -1,4 +1,10 @@
-import { queryOptions } from '@tanstack/react-query';
+import {
+  queryOptions,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
+import { useRouter, type AnyRouter } from '@tanstack/react-router';
+import { useEffect } from 'react';
 
 import { authClient } from './auth.ts';
 
@@ -68,6 +74,71 @@ export const sessionQueryOptions = queryOptions({
   // the moment the server goes away.
   retry: false,
 });
+
+/**
+ * Marks the cached session invalid and makes every COMMITTED guard re-ask on
+ * the spot, rather than waiting for the researcher's next navigation.
+ *
+ * `refetchType: 'none'` because the guards are the readers: invalidation alone
+ * is what makes the next `fetchQuery` go back to `/api/auth/*` past
+ * `staleTime: Infinity`, and a refetch issued here would only race them.
+ * Neither caller may decide the answer itself — `setQueryData('signedOut')`
+ * would let a procedure's authorization failure, or a tab switch, fabricate a
+ * state the auth endpoint never reported (§6.2).
+ */
+export async function revalidateSession(
+  queryClient: QueryClient,
+  router: AnyRouter,
+): Promise<void> {
+  await queryClient.invalidateQueries({
+    queryKey: sessionQueryOptions.queryKey,
+    refetchType: 'none',
+  });
+  await router.invalidate();
+}
+
+/**
+ * Re-asks whether the session is still there each time the tab comes back to
+ * the foreground.
+ *
+ * A session can end without any request failing. Another tab signs out; the
+ * cookie expires while the researcher reads a screen that makes no requests.
+ * Nothing answers 401, so the 401 path above never runs — and the session query
+ * is `staleTime: Infinity`, so no guard ever asks again on its own. Without
+ * this the shell stays on screen, with this researcher's cached data in it,
+ * until something happens to fail.
+ *
+ * `authClient.useSession()` used to cover this from the app shell, and it is
+ * gone because it was a SECOND request for an answer the guard already has
+ * (§6.2). This is not that channel back: it asks the same query the guards
+ * read, and only when the tab is re-entered, which is the trigger Better Auth's
+ * own session refresh uses for the same purpose. One revalidation at a time, so
+ * a researcher flicking between tabs cannot stack them up.
+ *
+ * It does not catch a session that ends while this tab stays in the foreground.
+ * Nothing short of polling would, and a second tab's sign-out is the case that
+ * matters: the researcher goes there to do it and comes back here.
+ */
+export function useSessionRevalidation(): void {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  useEffect(() => {
+    let inFlight = false;
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (inFlight) return;
+      inFlight = true;
+      void revalidateSession(queryClient, router).finally(() => {
+        inFlight = false;
+      });
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () =>
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [queryClient, router]);
+}
 
 type UnauthorizedResponseHandler = () => Promise<void>;
 

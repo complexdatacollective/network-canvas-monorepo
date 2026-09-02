@@ -22,6 +22,7 @@ import {
 } from './lib/landing.ts';
 import { queryClient as applicationQueryClient } from './lib/queryClient.ts';
 import {
+  revalidateSession,
   ServerUnreachableError,
   sessionQueryOptions,
   setUnauthorizedResponseHandler,
@@ -981,13 +982,9 @@ export function createAppRouter(
   setUnauthorizedResponseHandler(async () => {
     // A procedure answering 401 makes the cached session a lie, but it cannot
     // say which lie: only /api/auth/* can tell signed-out from unreachable
-    // from no-database. So mark it invalid without refetching here, then let
-    // the guards re-ask on the spot rather than at the next navigation.
-    await queryClient.invalidateQueries({
-      queryKey: sessionQueryOptions.queryKey,
-      refetchType: 'none',
-    });
-    await router.invalidate();
+    // from no-database. `revalidateSession` is what asks it — the same thing
+    // the shell does when the tab is re-entered, from the other trigger.
+    await revalidateSession(queryClient, router);
   });
 
   return router;

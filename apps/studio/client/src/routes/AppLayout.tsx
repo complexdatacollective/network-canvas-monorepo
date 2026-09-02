@@ -4,6 +4,7 @@ import { Alert } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import AppFrame from '@codaco/fresco-ui/layout/AppFrame';
 
+import { useSessionRevalidation } from '../lib/session.ts';
 import AppHeader from '../shell/AppHeader.tsx';
 import {
   useActiveTeamReconciler,
@@ -62,6 +63,13 @@ function TeamSwitchFailure({ failure }: { failure: ActiveTeamFailure }) {
  *   redirecting, so an effect here would be racing the guard's own redirect
  *   for the same fact and would lose it whenever the redirect is not blocked.
  *
+ * What it does keep from that hook is the moment to ASK. A session can end with
+ * nothing failing — signed out in another tab, or simply expired — and the
+ * guard's query is `staleTime: Infinity`, so left alone it never asks again.
+ * `useSessionRevalidation` re-asks the guard's own query when the tab is
+ * re-entered, which is where that second channel's value actually was; the
+ * guard still owns the answer and everything it does with it.
+ *
  * It does own one write, and exactly one: §6.6's active-team reconciliation,
  * which follows the committed URL. It lives here because this component is
  * mounted for every app route and unmounted for none of them, so the setting
@@ -70,6 +78,7 @@ function TeamSwitchFailure({ failure }: { failure: ActiveTeamFailure }) {
  */
 export default function AppLayout() {
   const teamSwitchFailure = useActiveTeamReconciler();
+  useSessionRevalidation();
 
   return (
     <AppFrame

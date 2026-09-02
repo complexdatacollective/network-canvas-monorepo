@@ -42,7 +42,18 @@ async function fetchTeams(): Promise<Memberships['teams']> {
   return teams.data.map((team) => ({ id: team.id, name: team.name }));
 }
 
-async function fetchActiveTeamId(): Promise<string | undefined> {
+/**
+ * `null`, not `undefined`, for "the session names no team".
+ *
+ * That is an ANSWER, and this one has to survive being cached: TanStack Query
+ * treats a `queryFn` resolving `undefined` as a failed query and throws
+ * `<queryHash> data is undefined` in its place (`query-core`'s `Query.fetch`).
+ * Spelt that way the answer never reaches `landingDestination` at all — every
+ * caller of the resolution below gets the error screen instead, and the
+ * sign-in bounce, which swallows a failed resolution by design, leaves the
+ * researcher on the page they have just signed in from.
+ */
+async function fetchActiveTeamId(): Promise<string | null> {
   // Which team the researcher was last acting in is a session field
   // (`activeOrganizationId`, stored as `activeTeamId`). The session query
   // (§6.2) deliberately does not carry it — it answers signedIn/signedOut and
@@ -51,7 +62,18 @@ async function fetchActiveTeamId(): Promise<string | undefined> {
   const session = await authClient.getSession().catch(() => {
     throw new MembershipsUnavailableError();
   });
-  return session.data?.session.activeOrganizationId ?? undefined;
+  // better-fetch resolves a refused read with an `error` field instead of
+  // rejecting, exactly as `fetchTeams` above has to allow for. Left to the
+  // nullish coalescing below, a read that failed would be indistinguishable
+  // from a session naming no team, and the two mean opposite things here: one
+  // is answered by falling back to the first team, and the other is the
+  // membership-unavailable error this module promises.
+  if (session.error) throw new MembershipsUnavailableError();
+  // And that answer is the ordinary state of a session that has never switched
+  // teams: nothing sets `activeOrganizationId` when a session is created —
+  // not Better Auth's organization plugin, and no database hook of ours — so it
+  // is what every first sign-in reads.
+  return session.data?.session.activeOrganizationId ?? null;
 }
 
 /**
@@ -160,7 +182,9 @@ export async function resolveLandingDestination(
     queryClient.fetchQuery(teamsQueryOptions),
     queryClient.fetchQuery(activeTeamQueryOptions),
   ]);
-  return landingDestination({ teams, activeTeamId });
+  // The query's `null` and this vocabulary's `undefined` are the same answer;
+  // only the cache needs the distinction.
+  return landingDestination({ teams, activeTeamId: activeTeamId ?? undefined });
 }
 
 /**

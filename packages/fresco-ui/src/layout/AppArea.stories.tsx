@@ -82,6 +82,7 @@ const Region = ({
   children: ReactNode;
 }) => (
   <div
+    data-testid="area-region"
     className={cx(
       'border-surface-2 bg-surface text-surface-contrast publish-colors',
       '@container/app-area grid h-[28rem] min-h-0 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)] overflow-hidden rounded border',
@@ -302,6 +303,46 @@ export const DrawerClosesOnNavigation: Story = {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     await expect(landingPoint).toHaveFocus();
     await expect(trigger).not.toHaveFocus();
+  },
+};
+
+/**
+ * The region grows past the threshold while the drawer is open — a rotation, a
+ * window resize, a surrounding panel closing. The container query hides the
+ * area bar and shows the sidebar with nothing re-rendering the area, so the
+ * drawer has to close itself or the researcher is left with both presentations
+ * of one navigation region and an inert page behind the modal.
+ *
+ * The width is changed on the region rather than through a control, because
+ * while the drawer is open every control outside it is inert — which is the
+ * point. This is the one assertion that exercises the CSS and the observation
+ * together; `__tests__/AppArea.test.tsx` pins the reaction to the observation.
+ */
+export const DrawerClosesWhenTheAreaWidens: Story = {
+  render: (args) => (
+    <Region className="w-[24rem]">
+      <AreaHost {...args} />
+    </Region>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const region = canvas.getByTestId('area-region');
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Open study navigation' }),
+    );
+    const dialog = await screen.findByRole('dialog', { name: 'Study' });
+    await waitFor(() =>
+      expect(dialog.contains(document.activeElement)).toBe(true),
+    );
+
+    region.classList.remove('w-[24rem]');
+    region.classList.add('w-[64rem]');
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await expect(
+      canvas.getByRole('navigation', { name: 'Study' }),
+    ).toBeVisible();
   },
 };
 

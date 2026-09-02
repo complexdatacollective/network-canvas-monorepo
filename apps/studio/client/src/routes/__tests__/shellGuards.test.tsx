@@ -28,6 +28,14 @@ const fixtures = vi.hoisted(() => ({
   deployment: { mode: 'managed', billing: false },
   /** Whether `getSession` answers with a session, read at call time. */
   signedIn: true,
+  /**
+   * How many `getSession` reads answer normally before the rest answer with an
+   * error — the shape better-fetch resolves a refused read with. The landing
+   * resolution reads the session a SECOND time, after the guard's read has
+   * already succeeded, so a transient failure is a failure of that one.
+   */
+  successfulSessionReads: Number.POSITIVE_INFINITY,
+  sessionReads: 0,
   /** What `organization.list` answers with, read at call time. */
   teams: [] as { id: string; name: string }[],
   /** The session's `activeOrganizationId`, which `setActive` moves. */
@@ -41,8 +49,15 @@ const fixtures = vi.hoisted(() => ({
 
 vi.mock('../../lib/auth.ts', () => ({
   authClient: {
-    getSession: vi.fn(() =>
-      Promise.resolve(
+    getSession: vi.fn(() => {
+      fixtures.sessionReads += 1;
+      if (fixtures.sessionReads > fixtures.successfulSessionReads) {
+        return Promise.resolve({
+          data: null,
+          error: { status: 500, message: 'unavailable' },
+        });
+      }
+      return Promise.resolve(
         fixtures.signedIn
           ? {
               data: {
@@ -52,8 +67,8 @@ vi.mock('../../lib/auth.ts', () => ({
               error: null,
             }
           : { data: null, error: null },
-      ),
-    ),
+      );
+    }),
     useSession: vi.fn().mockReturnValue({
       data: { user: { name: 'Researcher', email: 'researcher@example.com' } },
       isPending: false,
@@ -128,6 +143,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   fixtures.deployment = { mode: 'managed', billing: false };
   fixtures.signedIn = true;
+  fixtures.successfulSessionReads = Number.POSITIVE_INFINITY;
+  fixtures.sessionReads = 0;
   fixtures.teams = [fixtures.TEAM_A, fixtures.TEAM_B];
   fixtures.activeTeamId = fixtures.TEAM_A.id;
   fixtures.listTeams.mockImplementation(() =>
@@ -231,6 +248,127 @@ describe('a failed active-team write', () => {
       ),
     );
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('two team URLs committed while a write is on the wire', () => {
+  it('writes the newest team last, not whichever answers first', async () => {
+    // Neither team is the active one, so the reconciler has a write to make on
+    // arrival and another to make after the navigation.
+    fixtures.useActiveOrganization.mockReturnValue(
+      resolved({
+        id: 'team-z',
+        name: 'Zeta research team',
+        members: [],
+        invitations: [],
+      }),
+    );
+    let settleFirstWrite: (() => void) | undefined;
+    fixtures.setActive.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          settleFirstWrite = () => resolve({ data: {}, error: null });
+        }),
+    );
+
+    const router = renderAt('/team/team-a');
+    await waitFor(() => expect(fixtures.setActive).toHaveBeenCalledTimes(1));
+    expect(fixtures.setActive.mock.calls[0]?.[0]).toEqual({
+      organizationId: 'team-a',
+    });
+
+    await act(() =>
+      router.navigate({
+        to: '/team/$teamId/roles',
+        params: { teamId: 'team-b' },
+      }),
+    );
+    // The destination RENDERED. The reconciler reads committed params, so a
+    // pending location says nothing about what it has seen.
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Roles' }),
+    ).toBeInTheDocument();
+
+    // Given time to be wrong. Two writes in flight together are resolved by
+    // the server in whatever order it answers them, and the last one to land
+    // wins — which can be team A, the team the researcher has just left. A
+    // study route or `/account` names no team, so nothing would put it right.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(fixtures.setActive).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      settleFirstWrite?.();
+    });
+
+    await waitFor(() => expect(fixtures.setActive).toHaveBeenCalledTimes(2));
+    expect(fixtures.setActive.mock.calls[1]?.[0]).toEqual({
+      organizationId: 'team-b',
+    });
+  });
+});
+
+describe('the active team the landing resolution reads', () => {
+  it('lands a session that names no team on the first one it has', async () => {
+    fixtures.deployment = { mode: 'self-hosted', billing: false };
+    // Nothing sets `activeOrganizationId` when a session is created, so this is
+    // what a first sign-in reads — not an edge case, the ordinary case. §6.4
+    // answers it with the first team; a resolution that cannot HOLD the answer
+    // never gets that far, and the researcher meets the error screen at the
+    // one moment they have just proved who they are.
+    fixtures.activeTeamId = undefined;
+    const router = renderAt('/');
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Studies' }),
+    ).toBeInTheDocument();
+    expect(router.state.resolvedLocation?.pathname).toBe('/team/team-a');
+  });
+
+  it('reaches the error screen when the read itself fails', async () => {
+    fixtures.deployment = { mode: 'self-hosted', billing: false };
+    // The active team is the SECOND of the list, so "the session names no
+    // team" and "the session could not be read" resolve to different places:
+    // the first falls back to team A, and this one must not.
+    fixtures.activeTeamId = fixtures.TEAM_B.id;
+    // The guard's own read succeeds; the landing resolution's does not.
+    fixtures.successfulSessionReads = 1;
+
+    renderAt('/');
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Something went wrong',
+      }),
+    ).toBeInTheDocument();
+    // Not team A. Redirecting there would also have the reconciler persist it
+    // as the active team, so a read that merely failed would rewrite the fact
+    // it failed to read.
+    expect(screen.queryByRole('heading', { name: 'Studies' })).toBeNull();
+  });
+});
+
+describe('a session that ends outside this tab', () => {
+  it('gets the researcher out when the tab is re-entered', async () => {
+    const router = renderAt('/team/team-a');
+    await screen.findByRole('heading', { level: 1, name: 'Studies' });
+    const { queryClient } = router.options.context;
+    expect(queryClient.getQueryData(['protocols'])).toBeDefined();
+
+    // Signed out in another tab, or simply expired. Nothing here fails, and
+    // the session query is `staleTime: Infinity`, so left alone no guard ever
+    // asks again and this shell stays up with its cached data in it.
+    fixtures.signedIn = false;
+
+    fireEvent(document, new Event('visibilitychange'));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Sign in' }),
+    ).toBeInTheDocument();
+    expect(router.state.resolvedLocation?.pathname).toBe('/sign-in');
+    // §6.2: what was in the cache belonged to the researcher whose session has
+    // ended, and nobody signing in next may be served it.
+    expect(queryClient.getQueryData(['protocols'])).toBeUndefined();
   });
 });
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { Menu } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { IconButton } from '../Button';
 import NavDrawer from '../navigation/NavDrawer';
@@ -121,6 +121,43 @@ const AppArea = ({
   className,
 }: AppAreaProps) => {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const hasNavigation = navigation !== undefined;
+
+  /**
+   * The drawer must not outlive the width that called for it.
+   *
+   * Which presentation the region is in is a CONTAINER query, so the area can
+   * cross that threshold with nothing re-rendering it and nothing this
+   * component would otherwise notice: a rotation, a window resize, a
+   * surrounding panel closing. The bar and its trigger go, the sidebar appears
+   * — and `drawerOpen` is React state, so the modal stays. The researcher is
+   * then looking at both presentations of one navigation region at once, with
+   * the page behind the drawer inert and the sidebar they can see untouchable.
+   *
+   * So the CSS stays the single statement of which presentation is in force and
+   * this only reads it back: the sidebar is `display: none` in the narrow
+   * presentation, which measures 0×0, and any other size means it is on screen.
+   * Stated as an invariant rather than as an edge — whenever the sidebar is
+   * showing, the drawer is closed — so it holds however the area got there.
+   */
+  useEffect(() => {
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return undefined;
+
+    // The sidebar's own realm, for the reason fresco-ui takes an
+    // `ownerDocument` anywhere else: this renders into popped-out windows and
+    // iframes, where the ambient `window` is a different page.
+    const view = sidebar.ownerDocument.defaultView ?? window;
+    const observer = new view.ResizeObserver((entries) => {
+      const sidebarShowing = entries.some(
+        (entry) => entry.contentRect.width > 0 || entry.contentRect.height > 0,
+      );
+      if (sidebarShowing) setDrawerOpen(false);
+    });
+    observer.observe(sidebar);
+    return () => observer.disconnect();
+  }, [hasNavigation]);
 
   if (!navigation) {
     return (
@@ -158,6 +195,7 @@ const AppArea = ({
         </span>
       </div>
       <nav
+        ref={sidebarRef}
         aria-label={navigation.label}
         className={cx(
           // A width that steps up with the container rather than one fixed

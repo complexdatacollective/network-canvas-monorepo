@@ -2,6 +2,7 @@ import { Outlet, useRouterState } from '@tanstack/react-router';
 
 import AppArea from '@codaco/fresco-ui/layout/AppArea';
 
+import AreaMain from './AreaMain.tsx';
 import ManifestNav from './ManifestNav.tsx';
 import { studyDestinations } from './navigationManifest.ts';
 
@@ -40,7 +41,9 @@ export default function StudyArea({ studyId }: { studyId: string }) {
         content: <ManifestNav entries={studyDestinations(studyId)} />,
       }}
     >
-      <Outlet />
+      <AreaMain>
+        <Outlet />
+      </AreaMain>
     </AppArea>
   );
 }

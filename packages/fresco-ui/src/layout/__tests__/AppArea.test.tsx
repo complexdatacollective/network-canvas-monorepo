@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   render,
   screen,
@@ -7,7 +8,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import NavItem from '../../navigation/NavItem';
 import NavList from '../../navigation/NavList';
@@ -212,5 +213,124 @@ describe('AppArea drawer', () => {
     // assertion would pass even if the drawer were on its way out.
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /**
+   * The container query is what decides which presentation the region is in,
+   * and jsdom evaluates none: no layout engine, no container queries, no
+   * `ResizeObserver`. So the observation the browser would produce is supplied
+   * directly and everything downstream of it — the component's reading of it,
+   * the close, the modal's teardown — is the real thing. The other half of the
+   * pair, that the CSS produces that observation at all, is asserted in a real
+   * browser by `AppArea.stories.tsx`'s `DrawerClosesWhenTheAreaWidens`.
+   */
+  describe('when the area grows past the sidebar threshold', () => {
+    type Observation = {
+      target: Element;
+      observer: ControllableResizeObserver;
+    };
+    let observations: Observation[] = [];
+
+    /** Stands in for the layout engine: reports whatever a test asks it to. */
+    class ControllableResizeObserver implements ResizeObserver {
+      readonly callback: ResizeObserverCallback;
+
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
+      }
+
+      observe(target: Element) {
+        observations.push({ target, observer: this });
+      }
+
+      unobserve(target: Element) {
+        observations = observations.filter(
+          (observation) =>
+            observation.observer !== this || observation.target !== target,
+        );
+      }
+
+      disconnect() {
+        observations = observations.filter(
+          (observation) => observation.observer !== this,
+        );
+      }
+    }
+
+    let originalResizeObserver: typeof ResizeObserver;
+
+    beforeEach(() => {
+      observations = [];
+      originalResizeObserver = globalThis.ResizeObserver;
+      globalThis.ResizeObserver = ControllableResizeObserver;
+    });
+
+    afterEach(() => {
+      globalThis.ResizeObserver = originalResizeObserver;
+    });
+
+    /** What the browser reports about the sidebar at a given rendered size. */
+    const reportSidebar = (sidebar: Element, size: number) => {
+      act(() => {
+        observations
+          .filter((observation) => observation.target === sidebar)
+          .forEach(({ target, observer }) => {
+            observer.callback(
+              [
+                {
+                  target,
+                  contentRect: {
+                    width: size,
+                    height: size,
+                  } as DOMRectReadOnly,
+                } as ResizeObserverEntry,
+              ],
+              observer,
+            );
+          });
+      });
+    };
+
+    /**
+     * The sidebar element, captured before the drawer opens: while it is open
+     * the modal hides the rest of the page from the accessibility tree, so a
+     * role query would find the drawer's own `<nav>` instead.
+     */
+    const sidebarOf = (container: HTMLElement) => {
+      const sidebar = container.querySelector('nav[aria-label="Study"]');
+      expect(sidebar).not.toBeNull();
+      return sidebar as Element;
+    };
+
+    it('closes the drawer once the sidebar is showing', async () => {
+      const { container } = render(<Host />);
+      const sidebar = sidebarOf(container);
+
+      await openDrawer();
+      expect(document.querySelector('[inert]')).not.toBeNull();
+
+      reportSidebar(sidebar, 240);
+
+      // Both presentations of one navigation region, at once: the area bar and
+      // its trigger have gone with the container query, the sidebar beside
+      // `<main>` is on screen, and the drawer is still over the top of it
+      // holding the page inert. The researcher can see the destinations and
+      // reach none of them.
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      await waitFor(() => expect(document.querySelector('[inert]')).toBeNull());
+    });
+
+    it('leaves the drawer alone while the sidebar is still hidden', async () => {
+      const { container } = render(<Host />);
+      const sidebar = sidebarOf(container);
+      await openDrawer();
+
+      // A narrow container renders the sidebar `display: none`, which measures
+      // 0x0 — what every observation reports until the query flips.
+      reportSidebar(sidebar, 0);
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
   });
 });

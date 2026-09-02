@@ -5,6 +5,7 @@ import AppArea from '@codaco/fresco-ui/layout/AppArea';
 import { authClient } from '../lib/auth.ts';
 import { useSurfaceUnavailable } from '../lib/deployment.ts';
 import { canManageTeam } from '../lib/teamRoles.ts';
+import AreaMain from './AreaMain.tsx';
 import ManifestNav from './ManifestNav.tsx';
 import { teamDestinations } from './navigationManifest.ts';
 
@@ -67,7 +68,9 @@ export default function TeamArea() {
         ),
       }}
     >
-      <Outlet />
+      <AreaMain>
+        <Outlet />
+      </AreaMain>
     </AppArea>
   );
 }

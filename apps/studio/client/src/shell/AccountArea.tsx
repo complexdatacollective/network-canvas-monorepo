@@ -2,6 +2,7 @@ import { Outlet, useRouterState } from '@tanstack/react-router';
 
 import AppArea from '@codaco/fresco-ui/layout/AppArea';
 
+import AreaMain from './AreaMain.tsx';
 import ManifestNav from './ManifestNav.tsx';
 import { accountDestinations } from './navigationManifest.ts';
 
@@ -30,7 +31,9 @@ export default function AccountArea() {
         content: <ManifestNav entries={accountDestinations()} />,
       }}
     >
-      <Outlet />
+      <AreaMain>
+        <Outlet />
+      </AreaMain>
     </AppArea>
   );
 }

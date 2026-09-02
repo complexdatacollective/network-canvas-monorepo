@@ -1,10 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import { Alert } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -24,6 +25,22 @@ function roleLabel(role: TeamRole): string {
       return 'Member';
   }
   return role;
+}
+
+/**
+ * This screen's `<h1>`, in whichever of its five states is showing.
+ *
+ * Every route's heading is its landing point (§7.2), and this route arrives at
+ * one of five mutually exclusive headings — the last of them only after the
+ * session read resolves, which is the late arrival `RouteFocus` watches for.
+ * Written once so a sixth state cannot be added without it.
+ */
+function ScreenHeading({ children }: { children: ReactNode }) {
+  return (
+    <Heading level="h1" {...routeFocusTargetProps}>
+      {children}
+    </Heading>
+  );
 }
 
 type AcceptedInvitation = Awaited<
@@ -111,7 +128,7 @@ export default function AcceptInvitation(props: { invitationId: string }) {
       <Surface className="max-w-xl" spacing="lg">
         {!invitationId.success ? (
           <>
-            <Heading level="h1">Invitation unavailable</Heading>
+            <ScreenHeading>Invitation unavailable</ScreenHeading>
             <Alert variant="destructive">
               This invitation link is not valid. Ask the team owner for a new
               invitation.
@@ -124,14 +141,14 @@ export default function AcceptInvitation(props: { invitationId: string }) {
           </div>
         ) : session.error ? (
           <>
-            <Heading level="h1">Invitation unavailable</Heading>
+            <ScreenHeading>Invitation unavailable</ScreenHeading>
             <Alert variant="destructive">
               Studio could not check your account. Wait a moment and try again.
             </Alert>
           </>
         ) : accepted ? (
           <>
-            <Heading level="h1">Invitation accepted</Heading>
+            <ScreenHeading>Invitation accepted</ScreenHeading>
             <Paragraph role="status">
               You joined {accepted.teamName} as {roleLabel(accepted.role)}.
             </Paragraph>
@@ -154,7 +171,7 @@ export default function AcceptInvitation(props: { invitationId: string }) {
           </>
         ) : !session.data ? (
           <>
-            <Heading level="h1">Accept team invitation</Heading>
+            <ScreenHeading>Accept team invitation</ScreenHeading>
             <Paragraph>
               Sign in with the email address that received this invitation. You
               will review it before joining the team.
@@ -167,7 +184,7 @@ export default function AcceptInvitation(props: { invitationId: string }) {
           </>
         ) : (
           <>
-            <Heading level="h1">Accept team invitation</Heading>
+            <ScreenHeading>Accept team invitation</ScreenHeading>
             <Paragraph>
               Signed in as {session.data.user.email}. Joining gives this team
               access according to the role chosen by its owner.

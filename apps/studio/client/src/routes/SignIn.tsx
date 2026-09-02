@@ -9,6 +9,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Form from '@codaco/fresco-ui/form/Form';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -108,7 +109,15 @@ export default function SignIn() {
       className="flex h-full items-center justify-center p-4"
     >
       <Surface maxWidth="xl" spacing="lg">
-        <Heading level="h1">Sign in</Heading>
+        {/*
+          The landing point §7.2 requires of every route, and this one earns it
+          twice over: signing out is an SPA navigation to here, and it unmounts
+          the account menu the researcher activated, so focus falls to `<body>`
+          and there is nothing else to catch it.
+        */}
+        <Heading level="h1" {...routeFocusTargetProps}>
+          Sign in
+        </Heading>
         {error !== undefined && sentTo === null && (
           <Alert variant="destructive">
             {MAGIC_LINK_ERRORS.has(error)

@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { unclassifiedSurfacePaths } from '@codaco/studio-rpc/surfaces';
@@ -549,12 +555,21 @@ describe('every destination in §5.2', () => {
 
       const router = renderAt(url);
 
-      expect(
-        await screen.findByRole('heading', { level: 1, name: heading }),
-      ).toBeInTheDocument();
+      const title = await screen.findByRole('heading', {
+        level: 1,
+        name: heading,
+      });
+      expect(title).toBeInTheDocument();
       // The URL renders itself, rather than a redirect to somewhere that
       // happens to have the same heading.
       expect(router.state.location.pathname).toBe(url);
+
+      // §7.2's route-tree invariant, over every route rather than the ones
+      // somebody thought to navigate to. On its own this proves nothing about
+      // the researcher's experience — the behavioural assertion is below —
+      // but a route that omits the attribute cannot have that experience at
+      // all, and this is the only assertion that covers all of them.
+      expect(title).toHaveAttribute('data-route-focus-target');
 
       // One `<main>`, and the one the frame's skip link targets (§7.1). Two is
       // what an area layout nested inside another produces, and the skip link
@@ -707,6 +722,30 @@ describe('a route change', () => {
     // "Studies" tells a screen reader the researcher is on a page they have
     // already left.
     expect(announcements()).toEqual(['Roles']);
+  });
+
+  it('lands on the sign-in heading when the session ends', async () => {
+    // Signing out is an SPA navigation to `/sign-in` (`AccountMenu`), and it
+    // unmounts the control the researcher used, so focus is on `<body>` and
+    // nothing else will catch it. The screen off the app shell is exactly
+    // where a route without a landing point is easiest to leave: `RouteFocus`
+    // watches for a heading that arrives late, and a heading that never
+    // carries the attribute is one it waits for for ever.
+    fixtures.getSession.mockResolvedValue({ data: null, error: null });
+    const router = renderAt('/');
+    await screen.findByRole('heading', {
+      level: 1,
+      name: 'Network Canvas Studio',
+    });
+
+    await act(() => router.navigate({ to: '/sign-in' }));
+
+    const heading = await screen.findByRole('heading', {
+      level: 1,
+      name: 'Sign in',
+    });
+    await waitFor(() => expect(heading).toHaveFocus());
+    expect(announcements()).toEqual(['Sign in']);
   });
 });
 

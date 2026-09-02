@@ -53,10 +53,36 @@ export function useActiveTeamReconciler(): ActiveTeamFailure | undefined {
   const activeTeamId = activeTeam.data?.id;
   const refetchActiveTeam = activeTeam.refetch;
   const refetchActiveMember = activeMember.refetch;
-  // One write in flight at a time. The effect's own dependencies do not change
-  // while `setActive` is on the wire, but a re-render caused by anything else
-  // must not start a second one.
-  const writing = useRef<string | undefined>(undefined);
+  // The team a write is on the wire for, and while one is there no second write
+  // starts — not even for a different team.
+  //
+  // Two overlapping `setActive` calls are resolved by the server in whatever
+  // order it answers them, and the LAST one to land is the one that sticks. A
+  // researcher who commits a second team URL while the first write is still
+  // out can therefore be left with the team they have just left as their active
+  // one, and nothing corrects it once they move somewhere that names no team:
+  // a study route, `/account`, the gallery. The next landing resolution then
+  // sends them back to the earlier team. Waiting and re-reading the committed
+  // team on the next pass writes the newest team LAST, which is the only order
+  // that agrees with the URL.
+  //
+  // State rather than a ref, because the effect has to run again the moment
+  // this clears: it is what defers the second write, so nothing else about the
+  // effect's dependencies is guaranteed to change when the first one finishes.
+  const [writingTeamId, setWritingTeamId] = useState<string | undefined>(
+    undefined,
+  );
+  // The team the last SUCCESSFUL write was made for, and what keys §6.6's
+  // idempotency.
+  //
+  // Not the comparison above it: `disableSignal` suppresses `$sessionSignal`
+  // and nothing replaces it, so the active team this reads can still name the
+  // old team after a write that worked (§6.6 says so in as many words, and
+  // that the comparison is an optimisation rather than the correctness
+  // argument). Deferring the second write is what makes that matter — the
+  // effect now runs again the moment a write finishes, and without this it
+  // would meet a stale comparison and write the same team for ever.
+  const settledTeamId = useRef<string | undefined>(undefined);
   // The team a write failed for, so a failure is retried on request rather
   // than on the next render: nothing about the effect's dependencies changes
   // when a write fails, so an unrecorded failure would be re-attempted by
@@ -68,10 +94,11 @@ export function useActiveTeamReconciler(): ActiveTeamFailure | undefined {
   useEffect(() => {
     if (committedTeamId === undefined) return;
     if (committedTeamId === activeTeamId) return;
-    if (writing.current === committedTeamId) return;
+    if (committedTeamId === settledTeamId.current) return;
+    if (writingTeamId !== undefined) return;
     if (failedTeamId === committedTeamId) return;
 
-    writing.current = committedTeamId;
+    setWritingTeamId(committedTeamId);
     void (async () => {
       let failed = true;
       try {
@@ -96,8 +123,12 @@ export function useActiveTeamReconciler(): ActiveTeamFailure | undefined {
         // depend on it show another team's data over this team's URL only if
         // this pretends it succeeded, so it does not.
       } finally {
+        // Recorded before the refetches, which are what a later comparison
+        // would read: a failure leaves it alone, so `retry` has something to
+        // do and the guard above does not swallow it.
+        if (!failed) settledTeamId.current = committedTeamId;
         await Promise.allSettled([refetchActiveTeam(), refetchActiveMember()]);
-        writing.current = undefined;
+        setWritingTeamId(undefined);
         setFailedTeamId(failed ? committedTeamId : undefined);
         // The landing resolution caches which team was active for 30 seconds
         // (§6.4). This write is what makes that answer stale, so `/` cannot
@@ -112,6 +143,7 @@ export function useActiveTeamReconciler(): ActiveTeamFailure | undefined {
     queryClient,
     refetchActiveMember,
     refetchActiveTeam,
+    writingTeamId,
   ]);
 
   const retry = useCallback(() => {
