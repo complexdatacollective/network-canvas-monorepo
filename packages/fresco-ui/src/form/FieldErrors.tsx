@@ -30,7 +30,13 @@ export default function FieldErrors({
   variant?: 'text' | 'box';
 }) {
   const liveMessages = show ? (errors ?? []) : [];
-  const liveSignature = liveMessages.join('|');
+  // JSON.stringify, not a plain join: a join delimiter can appear inside a
+  // message itself (a protocol author's custom validation text, say), which
+  // would let two genuinely different message lists hash to the same string.
+  // That's more than a missed animation here — `prev.signature === liveSignature`
+  // below would then also skip the content update, leaving stale text on
+  // screen — so the signature has to actually disambiguate the content.
+  const liveSignature = JSON.stringify(liveMessages);
 
   // What's actually rendered, kept distinct from the live `errors`/`show`
   // props. Revalidating an already-invalid, already-dirty field discards its
@@ -38,8 +44,8 @@ export default function FieldErrors({
   // keystroke (formStore's `discardFieldErrors` runs synchronously on every
   // value change, ahead of the async revalidation that restores it) — so the
   // live props flicker to "no error" and back on every keystroke even though
-  // nothing the user can perceive actually changed. A naively `show`/content
-  // -driven remount replays `animate-shake` on every one of those flickers.
+  // nothing the user can perceive actually changed. A naively `show`/content-
+  // driven remount replays `animate-shake` on every one of those flickers.
   // Showing a NEW message happens immediately; clearing one is deferred to
   // the next macrotask, which is always after that same-tick flicker has
   // resolved (field validation here never does real async I/O — it's a
@@ -57,7 +63,7 @@ export default function FieldErrors({
       hideTimeoutRef.current = undefined;
     }
 
-    if (liveSignature) {
+    if (liveMessages.length > 0) {
       setDisplayed((prev) =>
         prev.signature === liveSignature
           ? prev
