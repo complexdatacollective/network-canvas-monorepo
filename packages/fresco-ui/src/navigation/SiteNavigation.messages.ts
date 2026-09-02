@@ -9,6 +9,7 @@ type SoftwareMessage = {
 export type SiteNavigationMessages = {
   home: string;
   navigationLabel: string;
+  skipToContent: string;
   community: string;
   documentation: string;
   protocolGallery: string;
@@ -30,6 +31,7 @@ export type SiteNavigationMessages = {
 const englishMessages = {
   home: 'Network Canvas home',
   navigationLabel: 'Primary navigation',
+  skipToContent: 'Skip to main content',
   community: 'Community',
   documentation: 'Documentation',
   protocolGallery: 'Protocol Gallery',
@@ -78,6 +80,7 @@ export const siteNavigationMessages = {
   'es': {
     home: 'Inicio de Network Canvas',
     navigationLabel: 'Navegación principal',
+    skipToContent: 'Saltar al contenido principal',
     community: 'Comunidad',
     documentation: 'Documentación',
     protocolGallery: 'Galería de protocolos',

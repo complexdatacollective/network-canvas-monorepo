@@ -2,14 +2,15 @@
  * @codaco/tailwind-config/fresco — Fresco design-system foundation
  *
  * Single CSS entry that bundles Fresco's color triplets, design tokens,
- * foundational utilities, custom Tailwind plugins, and both theme variants
- * (default + interview).
+ * foundational utilities, custom Tailwind plugins, and all three theme
+ * variants (default + interview + studio).
  *
- * Both themes ship together because they don't conflict at runtime: the
- * default theme writes its variables under `:root`, and the interview
- * theme scopes its overrides to `[data-theme-interview]`, which
- * matches any element carrying the attribute (typically the wrapper
- * rendered by `<ThemedRegion theme="interview">` from @codaco/fresco-ui).
+ * The themes ship together because they don't conflict at runtime: the
+ * default theme writes its variables under `:root`, and the interview and
+ * studio themes scope their overrides to `[data-theme-interview]` /
+ * `[data-theme-studio]`, which match any element carrying the attribute
+ * (for interview, typically the wrapper rendered by
+ * `<ThemedRegion theme="interview">` from @codaco/fresco-ui).
  *
  * Consumers that import this file MUST NOT also `@import "tailwindcss"`
  * themselves; doing so loads Tailwind's runtime twice and produces
@@ -28,10 +29,14 @@
 /* Foundational @utility / @custom-variant definitions used across packages. */
 @import './utilities.css';
 
-/* Theme variants. Default writes :root values; interview layers
-   overrides under [data-theme-interview]. */
+/* Theme variants. Default writes :root values; interview layers overrides
+   under [data-theme-interview]; studio layers a light/dark pair under
+   [data-theme-studio], with dark keyed off the same [data-theme='dark']
+   attribute the default theme uses. Studio comes last so a region carrying
+   both attributes resolves to studio — the more specific product theme. */
 @import './themes/default.css';
 @import './themes/interview.css';
+@import './themes/studio.css';
 
 /* Custom Tailwind plugins, loaded from TypeScript source. Tailwind compiles
    `@plugin` modules through jiti, which handles TS directly and registers the

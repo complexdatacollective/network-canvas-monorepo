@@ -1,5 +1,93 @@
 # @codaco/fresco-ui
 
+## 6.4.0
+
+### Minor Changes
+
+- 05ea832: Add the everything bar component and the studio theme.
+
+  `@codaco/fresco-ui` gains `navigation/EverythingBar`, the shared
+  search-and-command surface specified for Network Canvas Studio: a ⌘K dialog
+  with an ARIA combobox over app-supplied providers, fixed Go to / Commands /
+  Documentation groups, rank-merged results with identity-stable highlighting,
+  frontier-bounded pagination, reference-only recents with permission
+  revalidation, and per-group error containment. It also gains `Kbd`, a semantic
+  keyboard-key component used for the bar's chord and shortcut hints, and
+  `ThemedRegion` now accepts `theme="studio"`.
+
+  `@codaco/tailwind-config` gains the scoped studio theme: a light mode on
+  subtly warmed paper and a midnight-blue dark mode, keyed off
+  `[data-theme-studio]` with dark driven by the existing `[data-theme='dark']`
+  attribute.
+
+- 0666674: `SiteNavigation` now opens with a "Skip to main content" link, so every site
+  that renders the canonical header has the mechanism WCAG 2.4.1 requires for
+  bypassing a block repeated on every page.
+
+  The link is the first focusable element in the header, invisible until it takes
+  focus, and translated alongside the rest of the navigation copy. It jumps to the
+  new `skipToId` prop, which defaults to `main-content`. The new
+  `navigation/SiteNavigation.constants` subpath exports that default as
+  `SITE_NAVIGATION_SKIP_TARGET_ID`, so a page can mark its target with the same
+  value the header links to without importing the header itself.
+
+  The host page owns the target element — the header cannot supply one — and the
+  link moves focus onto it explicitly, adding `tabindex="-1"` when the page has
+  not already made it focusable, because browsers otherwise only set the
+  sequential focus navigation starting point and Safari does not honour it.
+
+  `<nc-site-navigation>` exposes the same target through a `skip-to-id`
+  attribute. The fragment resolves against the host document from inside the
+  shadow root, so the link reaches an element the component cannot see; a host
+  page with no matching element gets a link that does nothing, which the README
+  now spells out.
+
+### Patch Changes
+
+- b4b21ed: Expose a renderer-backed icon-name guard so protocol editors can reject unsupported participant icons before saving.
+
+## 6.3.0
+
+### Minor Changes
+
+- 080d355: Add `navigation/RouteFocus`: route-change focus management and screen-reader
+  announcement, router-agnostic so any host can use it.
+
+  On a route change it moves focus to the new route's `h1` — marked with the
+  exported `routeFocusTargetProps` — and announces the destination politely.
+  Focus only moves when the navigation actually lost focus, so it will not fight a
+  dialog returning focus to its opener, an autofocused field, or a focus trap; and
+  it refuses a target inside an `inert` subtree, where focusing silently fails and
+  would strand focus on `body`.
+
+  The announcement alternates between two live regions, so a route whose title
+  matches the one just announced still changes a region and is still read out —
+  two stages called "Name people" are announced twice, not once. A route with no
+  heading to name it by announces nothing and clears what the last route left, and
+  a heading that only appears after the location commits — a lazy or
+  Suspense-backed route showing a fallback — is picked up when it arrives, without
+  taking focus from anyone who started using the fallback.
+
+  The host supplies its own router's location as a prop. `focusRouteTarget` is
+  exported for the case where a route's content is replaced without the location
+  changing, and both it and the component accept an optional `ownerDocument` for
+  UI rendered into a popped-out window or an iframe.
+
+### Patch Changes
+
+- cead6fc: Correct empty date field text colors in Safari so placeholders use the intended neutral theme color.
+- 77c3736: Replace the interview text-size choices with an accessible percentage input that supports plus and minus controls, arrow keys, and direct entry.
+- 0584c69: Focus state is now read correctly in another window's document, so a modal, a
+  form error, or a route change in UI rendered into an iframe or a popped-out
+  window no longer treats the control the user is on as unfocused and moves focus
+  off it.
+
+  The shared `holdsFocus` predicate identified elements with `instanceof`, which
+  only recognises the realm it was loaded in; every caller that accepts an
+  `ownerDocument` — `Modal`, `focusFirstError`, `RouteFocus` — could be handed an
+  element from another one. It and `asFinalFocusTarget` now ask the node what it
+  is, and answer exactly as before for everything in the host's own document.
+
 ## 6.2.0
 
 ### Minor Changes

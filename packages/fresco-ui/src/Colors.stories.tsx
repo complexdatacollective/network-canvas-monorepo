@@ -3,6 +3,15 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
 
+/**
+ * Swatches read the BARE theme variables (`--primary`), never the `--color-*`
+ * aliases. Tailwind declares the aliases once at `:root`, so their computed
+ * value is inherited into a themed region rather than re-resolved there — an
+ * inline `var(--color-primary)` inside an interview or studio region paints
+ * the default theme's colour and the swatch quietly lies about the palette it
+ * is standing in. Utilities are safe (`@theme inline` substitutes them at
+ * build time); reading a variable by hand is not.
+ */
 const ColorSwatch = ({
   name,
   cssVar,
@@ -56,23 +65,23 @@ export const SemanticColors: Story = {
         <div className="tablet-landscape:grid-cols-4 grid grid-cols-2 gap-6">
           <ColorSwatch
             name="Primary"
-            cssVar="--color-primary"
-            contrastVar="--color-primary-contrast"
+            cssVar="--primary"
+            contrastVar="--primary-contrast"
           />
           <ColorSwatch
             name="Secondary"
-            cssVar="--color-secondary"
-            contrastVar="--color-secondary-contrast"
+            cssVar="--secondary"
+            contrastVar="--secondary-contrast"
           />
           <ColorSwatch
             name="Accent"
-            cssVar="--color-accent"
-            contrastVar="--color-accent-contrast"
+            cssVar="--accent"
+            contrastVar="--accent-contrast"
           />
           <ColorSwatch
             name="Neutral"
-            cssVar="--color-neutral"
-            contrastVar="--color-neutral-contrast"
+            cssVar="--neutral"
+            contrastVar="--neutral-contrast"
           />
         </div>
       </div>
@@ -87,23 +96,23 @@ export const SemanticColors: Story = {
         <div className="tablet-landscape:grid-cols-4 grid grid-cols-2 gap-6">
           <ColorSwatch
             name="Success"
-            cssVar="--color-success"
-            contrastVar="--color-success-contrast"
+            cssVar="--success"
+            contrastVar="--success-contrast"
           />
           <ColorSwatch
             name="Info"
-            cssVar="--color-info"
-            contrastVar="--color-info-contrast"
+            cssVar="--info"
+            contrastVar="--info-contrast"
           />
           <ColorSwatch
             name="Warning"
-            cssVar="--color-warning"
-            contrastVar="--color-warning-contrast"
+            cssVar="--warning"
+            contrastVar="--warning-contrast"
           />
           <ColorSwatch
             name="Destructive"
-            cssVar="--color-destructive"
-            contrastVar="--color-destructive-contrast"
+            cssVar="--destructive"
+            contrastVar="--destructive-contrast"
           />
         </div>
       </div>
@@ -306,43 +315,43 @@ export const AllColors: Story = {
         <div className="tablet-landscape:grid-cols-4 grid grid-cols-2 gap-4">
           <ColorSwatch
             name="Primary"
-            cssVar="--color-primary"
-            contrastVar="--color-primary-contrast"
+            cssVar="--primary"
+            contrastVar="--primary-contrast"
           />
           <ColorSwatch
             name="Secondary"
-            cssVar="--color-secondary"
-            contrastVar="--color-secondary-contrast"
+            cssVar="--secondary"
+            contrastVar="--secondary-contrast"
           />
           <ColorSwatch
             name="Accent"
-            cssVar="--color-accent"
-            contrastVar="--color-accent-contrast"
+            cssVar="--accent"
+            contrastVar="--accent-contrast"
           />
           <ColorSwatch
             name="Neutral"
-            cssVar="--color-neutral"
-            contrastVar="--color-neutral-contrast"
+            cssVar="--neutral"
+            contrastVar="--neutral-contrast"
           />
           <ColorSwatch
             name="Success"
-            cssVar="--color-success"
-            contrastVar="--color-success-contrast"
+            cssVar="--success"
+            contrastVar="--success-contrast"
           />
           <ColorSwatch
             name="Info"
-            cssVar="--color-info"
-            contrastVar="--color-info-contrast"
+            cssVar="--info"
+            contrastVar="--info-contrast"
           />
           <ColorSwatch
             name="Warning"
-            cssVar="--color-warning"
-            contrastVar="--color-warning-contrast"
+            cssVar="--warning"
+            contrastVar="--warning-contrast"
           />
           <ColorSwatch
             name="Destructive"
-            cssVar="--color-destructive"
-            contrastVar="--color-destructive-contrast"
+            cssVar="--destructive"
+            contrastVar="--destructive-contrast"
           />
         </div>
       </div>

@@ -9,24 +9,49 @@ import {
 import addonVitest from '@storybook/addon-vitest';
 import { definePreview } from '@storybook/react-vite';
 import { type PropsWithChildren, StrictMode } from 'react';
-
-import { ThemedRegion } from '../src/ThemedRegion';
+import { configure } from 'storybook/test';
 
 import './preview.css';
 import Providers from './Providers';
 import {
+  getInitialColorScheme,
   getInitialTheme,
   globalTypes,
+  StoryTheme,
   THEME_KEY,
   type ThemeKey,
   withTheme,
 } from './theme-switcher';
 
-// Wrap each docs page in <ThemedRegion> when the toolbar's selected theme is
-// "interview" so chrome rendered outside the per-story decorator tree
-// (notably `.sbdocs-preview`) inherits the interview palette and the portal
-// container — e.g. `bg-background` on the docs preview container resolves to
-// the interview --background instead of the default theme.
+/**
+ * How long a play function's `waitFor`/`findBy*` may poll before giving up.
+ *
+ * Testing Library's default is 1000ms, which is marginal for a suite whose
+ * stories run in parallel chromium and firefox instances: a starved tab can
+ * take longer than that just to mount a portal or finish a 0.5s entrance
+ * transition. `Toast.stories` `LongDescription` failed exactly that way in
+ * September 2026 — flaky under a full `test:storybook` run, green on re-run
+ * and in isolation.
+ *
+ * This is not a sleep and cannot make a wrong assertion pass: `waitFor` polls
+ * a real condition and still fails when the condition never holds. The only
+ * cost of the larger budget is how long a genuinely broken story takes to go
+ * red. Same mechanism as the 5s budget in `apps/architect/src/test-setup.ts`,
+ * with more headroom because real browser tabs under full-suite contention
+ * starve harder than that jsdom suite's workers; it lives in the preview
+ * (rather than a vitest setup file) so Chromatic's interaction runs get the
+ * same budget. Story-level `{ timeout: n }` options
+ * override this default *downwards* too, so don't add per-query timeouts for
+ * slowness — they would reintroduce the tighter budget this removes.
+ */
+configure({ asyncUtilTimeout: 10_000 });
+
+// Wrap each docs page in the same themed region the story decorator uses, so
+// chrome rendered outside the per-story decorator tree (notably
+// `.sbdocs-preview`) inherits the selected palette and the portal container —
+// e.g. `bg-background` on the docs preview container resolves to the
+// interview / studio --background instead of the default theme. Light/dark
+// needs no handling here: it lives on the document element, above both trees.
 const ThemedDocsContainer = ({
   children,
   context,
@@ -36,15 +61,11 @@ const ThemedDocsContainer = ({
   const theme =
     (storyContext.globals[THEME_KEY] as ThemeKey | undefined) ?? 'dashboard';
 
-  if (theme === 'interview') {
-    return (
-      <ThemedRegion theme="interview">
-        <DocsContainer context={context}>{children}</DocsContainer>
-      </ThemedRegion>
-    );
-  }
-
-  return <DocsContainer context={context}>{children}</DocsContainer>;
+  return (
+    <StoryTheme theme={theme}>
+      <DocsContainer context={context}>{children}</DocsContainer>
+    </StoryTheme>
+  );
 };
 
 // @chromatic-com/storybook is not included here because it doesn't export a
@@ -118,5 +139,6 @@ export default definePreview({
 
   initialGlobals: {
     theme: getInitialTheme(),
+    colorScheme: getInitialColorScheme(),
   },
 });

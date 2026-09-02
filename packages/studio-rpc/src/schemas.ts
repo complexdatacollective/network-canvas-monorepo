@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { DEPLOYMENT_MODES } from './surfaces.ts';
+
 // Schemas for the internal RPC boundary, shared source-first between server
 // validation and the client's types (type-only on the client). This surface
 // is unpublished (#1248, 2026-08-11): no OpenAPI metadata, no registry ids.
@@ -20,6 +22,19 @@ export const TeamInvitationIdSchema = z
   .max(255)
   .regex(/^[A-Za-z0-9_-]+$/);
 
+// Read through `StatusSchema`; the server's `DeploymentStatus` and the
+// client's view of it are both inferred from that one output type.
+const DeploymentSchema = z.object({
+  /** Which topology this deployment serves; see `./surfaces.ts`. */
+  mode: z.enum(DEPLOYMENT_MODES),
+  /**
+   * Whether the deployment offers billing. Not implied by `managed`: billing
+   * (#1253) is separate configuration, and the shell has to render correctly
+   * where it is absent.
+   */
+  billing: z.boolean(),
+});
+
 export const StatusSchema = z.object({
   name: z.string(),
   version: z.string(),
@@ -28,6 +43,7 @@ export const StatusSchema = z.object({
     magicLink: z.boolean(),
     socialProviders: z.array(z.enum(SOCIAL_PROVIDERS)),
   }),
+  deployment: DeploymentSchema,
 });
 
 export const MeSchema = z.object({

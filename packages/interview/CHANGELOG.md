@@ -1,5 +1,11 @@
 # @codaco/interview
 
+## 9.0.1
+
+### Patch Changes
+
+- 77c3736: Replace the interview text-size choices with an accessible percentage input that supports plus and minus controls, arrow keys, and direct entry.
+
 ## 9.0.0
 
 ### Major Changes

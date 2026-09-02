@@ -8,11 +8,11 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { useSyncExternalStore } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { rpcClient } from '../../lib/api.ts';
 import { authClient } from '../../lib/auth.ts';
+import { reportUnauthorizedResponse } from '../../lib/session.ts';
 import { createAppRouter } from '../../router.tsx';
 
 const STAGE_A = '11111111-1111-4111-8111-111111111111';
@@ -48,6 +48,35 @@ const DRAFT = {
   },
 };
 
+const TEAM_A = { id: 'team-a', name: 'Alpha research team' };
+const TEAM_B = { id: 'team-b', name: 'Beta research team' };
+
+/**
+ * The tenancy the editor has to resolve, read at call time so a test can move
+ * it before it renders. `owner` is the team whose `protocols.list` reports the
+ * study; every other team's list is empty, which is what the URL of a study in
+ * somebody else's team really looks like from here.
+ */
+const tenancy = {
+  teams: [TEAM_A, TEAM_B] as { id: string; name: string }[],
+  activeTeam: TEAM_A as { id: string; name: string } | null,
+  owner: TEAM_A.id as string,
+};
+
+function studiesIn(teamId: string) {
+  return teamId === tenancy.owner
+    ? [
+        {
+          id: DRAFT.protocol.id,
+          draftId: DRAFT.protocol.draftId,
+          name: DRAFT.protocol.name,
+          createdAt: DRAFT.protocol.createdAt,
+          updatedAt: DRAFT.protocol.updatedAt,
+        },
+      ]
+    : [];
+}
+
 function deferred<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((complete) => {
@@ -63,11 +92,30 @@ vi.mock('../../lib/auth.ts', () => ({
       data: { user: { name: 'Researcher', email: 'r@example.com' } },
       isPending: false,
     }),
-    useListOrganizations: vi.fn().mockReturnValue({
-      data: [],
+    // The editor resolves the study's OWNING team from the study id, over the
+    // teams this researcher belongs to — a study route names no team, and the
+    // active-team setting is whichever team route was left last.
+    useListOrganizations: vi.fn(() => ({
+      data: tenancy.teams,
       error: null,
       isPending: false,
+    })),
+    useActiveOrganization: vi.fn(() => ({
+      data: tenancy.activeTeam,
+      error: null,
+      isPending: false,
+      refetch: vi.fn(),
+    })),
+    useActiveMember: vi.fn().mockReturnValue({
+      data: { id: 'member-1', organizationId: 'team-a', role: 'owner' },
+      error: null,
+      isPending: false,
+      refetch: vi.fn(),
     }),
+    organization: {
+      setActive: vi.fn().mockResolvedValue({ data: null, error: null }),
+      list: vi.fn(),
+    },
     signOut: vi.fn(),
   },
 }));
@@ -77,16 +125,27 @@ vi.mock('../../lib/api.ts', () => ({
     status: {
       queryOptions: () => ({
         queryKey: ['status'],
-        queryFn: async () => ({ name: 'Studio', version: 'test' }),
+        queryFn: async () => ({
+          name: 'Studio',
+          version: 'test',
+          deployment: { mode: 'managed', billing: false },
+        }),
       }),
     },
     protocols: {
+      // The editor's owning team and draft id both come from here (§6.3's
+      // `study.shell` does not exist): `protocols.list` is team-scoped and
+      // already reports each protocol's current draft, so it answers both
+      // questions — one team at a time, which is why the key carries the team.
       list: {
-        queryOptions: () => ({
-          queryKey: ['protocols'],
-          queryFn: async () => [],
+        queryOptions: ({ input }: { input: { teamId: string } }) => ({
+          queryKey: ['protocols', input.teamId],
+          queryFn: async () => studiesIn(input.teamId),
         }),
-        key: () => ['protocols'],
+        key: ({ input }: { input: { teamId: string } }) => [
+          'protocols',
+          input.teamId,
+        ],
       },
       create: { mutationOptions: vi.fn() },
       draft: {
@@ -120,6 +179,9 @@ vi.mock('../../lib/api.ts', () => ({
 }));
 
 beforeEach(() => {
+  tenancy.teams = [TEAM_A, TEAM_B];
+  tenancy.activeTeam = TEAM_A;
+  tenancy.owner = TEAM_A.id;
   vi.mocked(authClient.getSession).mockReset();
   vi.mocked(authClient.getSession).mockResolvedValue({
     data: { user: {} },
@@ -169,16 +231,17 @@ afterEach(() => {
 });
 
 function renderEditor() {
-  const router = createAppRouter(
-    createMemoryHistory({
-      initialEntries: [
-        `/teams/team-a/protocols/${DRAFT.protocol.id}/drafts/${DRAFT.protocol.draftId}`,
-      ],
-    }),
-  );
+  // One client behind both the router's guards and the components: the
+  // session guard reads what a component's `queryClient.clear()` removes.
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
+  const router = createAppRouter(
+    createMemoryHistory({
+      initialEntries: [`/study/${DRAFT.protocol.id}/editor`],
+    }),
+    queryClient,
+  );
   const result = render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
@@ -187,15 +250,90 @@ function renderEditor() {
   return { ...result, queryClient, router };
 }
 
+/**
+ * A study URL is a canonical link (§2.2, §5.6): it names the study and nothing
+ * else, so following one has to open that study whoever follows it and however
+ * they got there. Everything here is a way of arriving that does NOT pass
+ * through the owning team's screens first.
+ */
+describe('opening a study by its URL', () => {
+  it('opens one owned by a team that is not the active one', async () => {
+    // A bookmark, or a link a colleague sent. The setting still names the team
+    // this researcher was last acting in, and a study route names no team, so
+    // §6.6's reconciler will never move it.
+    tenancy.owner = TEAM_B.id;
+    tenancy.activeTeam = TEAM_A;
+    renderEditor();
+
+    // The editor OPENED — the draft is on screen, not an explanation of why it
+    // is not.
+    expect(
+      await screen.findByRole('heading', { name: 'Protocol sections' }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Screen name' })).toHaveValue(
+        'Welcome',
+      ),
+    );
+    // And it opened against the team that owns it, which is what every editing
+    // procedure is authorized against.
+    await waitFor(() =>
+      expect(rpcClient.protocols.acquireSection).toHaveBeenCalledWith(
+        expect.objectContaining({ teamId: TEAM_B.id }),
+      ),
+    );
+  });
+
+  it('opens one when the session names no active team at all', async () => {
+    // Nothing sets `activeOrganizationId` when a session is created, so this
+    // is what a first sign-in reads — and with nothing to ask, the editor used
+    // to sit on its spinner for as long as the researcher left it there.
+    tenancy.activeTeam = null;
+    tenancy.owner = TEAM_A.id;
+    renderEditor();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Protocol sections' }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(rpcClient.protocols.acquireSection).toHaveBeenCalledWith(
+        expect.objectContaining({ teamId: TEAM_A.id }),
+      ),
+    );
+  });
+
+  it('says so, rather than spinning, when no team of theirs has it', async () => {
+    // With no active team AND no team that has the study, every read the
+    // screen can make has come back — so an unresolved spinner here is not
+    // "still working", it is the screen having nothing left to wait for.
+    tenancy.owner = 'team-somebody-else';
+    tenancy.activeTeam = null;
+    renderEditor();
+
+    // The one thing the researcher can act on: it is not a team they are in,
+    // so the way forward is an invitation rather than a team switch.
+    expect(
+      await screen.findByText(/not in any of your teams/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Opening protocol editor…')).toBeNull();
+  });
+});
+
 describe('Studio editor shell', () => {
   it('provides the outline, editing canvas, inspector, and keyboard reorder actions', async () => {
     renderEditor();
 
     expect(
-      await screen.findByRole('heading', { name: 'Protocol outline' }),
+      await screen.findByRole('heading', { name: 'Protocol sections' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('navigation', { name: 'Protocol sections' }),
+    ).toBeInTheDocument();
+    // The area's own sidebar, which replaced the study's (§5.3): the editor's
+    // section selector inside `<main>` is a different region with a different
+    // name, and neither is the other's duplicate.
+    expect(
+      screen.getByRole('navigation', { name: 'Protocol outline' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('main')).toHaveAttribute('id', 'main-content');
     expect(
@@ -498,7 +636,10 @@ describe('Studio editor shell', () => {
     const label = await screen.findByRole('textbox', { name: 'Screen name' });
     fireEvent.change(label, { target: { value: 'Unsaved welcome' } });
 
-    fireEvent.click(screen.getByRole('link', { name: 'Back to protocols' }));
+    // The way out belongs to the area's outline now (§5.5), and it is an
+    // ordinary router navigation, so the blocker applies to it without the
+    // sidebar knowing anything about the editor (§6.5).
+    fireEvent.click(screen.getByRole('link', { name: 'Back to study' }));
     expect(
       await screen.findByRole('heading', {
         name: 'Discard unsaved screen changes?',
@@ -507,15 +648,19 @@ describe('Studio editor shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
     await waitFor(() =>
-      expect(router.state.location.pathname).toContain('/drafts/'),
+      expect(router.state.location.pathname).toContain('/editor'),
     );
     expect(label).toHaveValue('Unsaved welcome');
 
-    fireEvent.click(screen.getByRole('link', { name: 'Back to protocols' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Back to study' }));
     fireEvent.click(
       await screen.findByRole('button', { name: 'Discard changes' }),
     );
-    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(
+        `/study/${DRAFT.protocol.id}`,
+      ),
+    );
   });
 
   it('keeps the editor session open when dirty sign-out is cancelled', async () => {
@@ -524,7 +669,9 @@ describe('Studio editor shell', () => {
     fireEvent.change(label, { target: { value: 'Unsaved welcome' } });
     vi.mocked(rpcClient.protocols.releaseSection).mockClear();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    // Sign out lives in the account menu now (§5.5).
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Sign out' }));
     expect(
       await screen.findByRole('heading', {
         name: 'Discard unsaved screen changes?',
@@ -539,47 +686,69 @@ describe('Studio editor shell', () => {
         }),
       ).not.toBeInTheDocument(),
     );
-    expect(router.state.location.pathname).toContain('/drafts/');
+    expect(router.state.location.pathname).toContain('/editor');
     expect(label).toHaveValue('Unsaved welcome');
     expect(rpcClient.protocols.releaseSection).not.toHaveBeenCalled();
     expect(authClient.signOut).not.toHaveBeenCalled();
   });
 
-  it('bypasses the dirty blocker when the live session expires', async () => {
-    const sessionLive = {
-      data: { user: { name: 'Researcher', email: 'r@example.com' } },
-      isPending: false,
-    } as ReturnType<typeof authClient.useSession>;
-    const sessionNone = {
-      data: null,
-      isPending: false,
-    } as ReturnType<typeof authClient.useSession>;
-    let currentSession = sessionLive;
-    const listeners = new Set<() => void>();
-    function useReactiveSession() {
-      return useSyncExternalStore(
-        (listener) => {
-          listeners.add(listener);
-          return () => listeners.delete(listener);
-        },
-        () => currentSession,
-        () => currentSession,
-      );
-    }
-    vi.mocked(authClient.useSession).mockImplementation(useReactiveSession);
+  it('does not revive a cancelled sign-out when a later navigation commits', async () => {
+    const { router } = renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    fireEvent.change(label, { target: { value: 'Unsaved welcome' } });
+
+    // Sign out, then think better of it. A blocked navigation's promise does
+    // not reject — it parks, and resolves later when some OTHER navigation
+    // commits (§6.5) — so the sign-out's continuation is still waiting after
+    // this, with nothing to tell it that it was abandoned.
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Sign out' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Keep editing' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('heading', {
+          name: 'Discard unsaved screen changes?',
+        }),
+      ).not.toBeInTheDocument(),
+    );
+
+    // Later — a separate decision, minutes later in real time — the
+    // researcher goes to their profile, and discards the draft on the way.
+    // This is the navigation the parked promise resumes on, and it commits at
+    // exactly the pathname the abandoned sign-out was waiting to see.
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Profile' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Profile' }),
+    ).toBeInTheDocument();
+
+    // The researcher asked to see their profile, not to be signed out.
+    expect(authClient.signOut).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Sign-out did not complete/)).toBeNull();
+    expect(router.state.resolvedLocation?.pathname).toBe('/account');
+  });
+
+  it('bypasses the dirty blocker when the session expires', async () => {
     const { queryClient, router } = renderEditor();
     const label = await screen.findByRole('textbox', { name: 'Screen name' });
     fireEvent.change(label, { target: { value: 'Unsaved welcome' } });
     queryClient.setQueryData(['private-draft'], { name: 'Private draft' });
+
+    // A procedure answers 401, which is the one thing that can report the
+    // session ending now that the shell holds no second live channel to
+    // `/api/auth/get-session`. The guard re-asks, is told the session is
+    // gone, and leaves — past the dirty blocker, because there is no editor
+    // state left worth keeping.
     vi.mocked(authClient.getSession).mockResolvedValue({
       data: null,
       error: null,
     });
-
-    act(() => {
-      currentSession = sessionNone;
-      for (const listener of listeners) listener();
-    });
+    await act(() => reportUnauthorizedResponse());
 
     await waitFor(() =>
       expect(queryClient.getQueryData(['private-draft'])).toBeUndefined(),
@@ -595,6 +764,52 @@ describe('Studio editor shell', () => {
     await waitFor(() =>
       expect(rpcClient.protocols.releaseSection).toHaveBeenCalledTimes(1),
     );
+  });
+
+  it('keeps a dirty editor mounted when the session cannot be re-read', async () => {
+    const { queryClient } = renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    fireEvent.change(label, { target: { value: 'Unsaved welcome' } });
+    queryClient.setQueryData(['private-draft'], { name: 'Private draft' });
+    const readsBefore = vi.mocked(authClient.getSession).mock.calls.length;
+
+    // The researcher went to another tab and came back, and while they were
+    // away `/api/auth/*` stopped answering. Re-entering the tab re-asks the
+    // session (§6.2), and the answer this time is "we could not ask".
+    vi.mocked(authClient.getSession).mockResolvedValue({
+      data: null,
+      error: { status: 500, message: 'unavailable' },
+    } as unknown as Awaited<ReturnType<typeof authClient.getSession>>);
+    fireEvent(document, new Event('visibilitychange'));
+
+    // The revalidation RAN — the guard re-asked and threw — so the assertions
+    // below are about what the shell did with that, not about a listener that
+    // never fired.
+    await waitFor(() =>
+      expect(
+        vi.mocked(authClient.getSession).mock.calls.length,
+      ).toBeGreaterThan(readsBefore),
+    );
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // An unreachable server has not said the session is gone, so nothing may
+    // be taken away on the strength of it: the editor is STILL THE MOUNTED
+    // SCREEN, with the values the researcher typed still in it. Replacing the
+    // app match with the error screen unmounts the editor, and `invalidate`
+    // runs no blocker, so the work goes without anybody being asked.
+    expect(screen.getByRole('textbox', { name: 'Screen name' })).toHaveValue(
+      'Unsaved welcome',
+    );
+    expect(
+      screen.queryByRole('heading', { name: 'Something went wrong' }),
+    ).toBeNull();
+    // And this researcher's cache is still theirs: clearing it belongs to a
+    // CONFIRMED signed-out answer.
+    expect(queryClient.getQueryData(['private-draft'])).toEqual({
+      name: 'Private draft',
+    });
   });
 
   it('does not add a screen when dirty-edit confirmation is cancelled', async () => {
@@ -676,7 +891,7 @@ describe('Studio editor shell', () => {
       new Error('response lost'),
     );
     renderEditor();
-    await screen.findByRole('heading', { name: 'Protocol outline' });
+    await screen.findByRole('heading', { name: 'Protocol sections' });
 
     const add = screen.getByRole('button', { name: 'Add' });
     fireEvent.click(add);

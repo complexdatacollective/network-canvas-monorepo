@@ -1,5 +1,24 @@
 # @codaco/architect
 
+## 8.2.4
+
+### Patch Changes
+
+- f217425: Rotate the shared Mapbox testing token embedded in the Transnational Networks template. The new token is URL-restricted to networkcanvas.com, networkcanvas.dev and localhost; it will not render maps on other domains or in Fresco, so researchers must add their own Mapbox token before fielding a study. Architect now shows an error banner when a protocol still carries the retired testing token, which was revoked on 2 September 2026, so researchers know to replace it.
+- Updated dependencies ([b387946](https://github.com/complexdatacollective/network-canvas-monorepo/commit/b387946d706f5779779e11956af04e0e4904d474), [b4b21ed](https://github.com/complexdatacollective/network-canvas-monorepo/commit/b4b21ed955b96bc3c59aeefd18f6f7d5bc3ea19a), [05ea832](https://github.com/complexdatacollective/network-canvas-monorepo/commit/05ea8325b4a5c93e2f8081309db45e3ecba948b2), [0666674](https://github.com/complexdatacollective/network-canvas-monorepo/commit/0666674c95a4865227bddc103b131720926ab7c8))
+  - @codaco/protocol-validation@13.0.1
+  - @codaco/fresco-ui@6.4.0
+  - @codaco/tailwind-config@1.4.0
+
+## 8.2.3
+
+### Patch Changes
+
+- 77c3736: Replace the interview text-size choices with an accessible percentage input that supports plus and minus controls, arrow keys, and direct entry.
+- Updated dependencies ([080d355](https://github.com/complexdatacollective/network-canvas-monorepo/commit/080d355e7bb30b7d9cf7c8653582a81103b6b8b5), [cead6fc](https://github.com/complexdatacollective/network-canvas-monorepo/commit/cead6fca6412f9322403896d09606bfcb1be1e58), [77c3736](https://github.com/complexdatacollective/network-canvas-monorepo/commit/77c37364a043f12fa38d97ec0004514c77636b88), [0584c69](https://github.com/complexdatacollective/network-canvas-monorepo/commit/0584c69b1b210e533c1a18d7456a7808934989e7))
+  - @codaco/fresco-ui@6.3.0
+  - @codaco/interview@9.0.1
+
 ## 8.2.2
 
 ### Patch Changes

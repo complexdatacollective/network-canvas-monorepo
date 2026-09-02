@@ -301,6 +301,9 @@ const walk = (
     }
     const assetDescriptor = getAssetReferenceDescriptor(node);
     if (assetDescriptor) {
+      // The walker tolerates invalid partial documents, but only a value that
+      // satisfies its tagged field schema can name a manifest dependency.
+      if (!node.safeParse(value).success) return [];
       // A sentinel occupying an asset site without being one (a panel's
       // `'existing'`). Emitting a hit would put it in every usage index as an
       // asset id no manifest can ever contain.

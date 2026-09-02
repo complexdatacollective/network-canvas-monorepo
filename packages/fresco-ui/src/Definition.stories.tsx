@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import Definition from './Definition';
+import { awaitPassiveEffects } from './storybook-support/awaitPassiveEffects';
 import { withTooltipProvider } from './storybook-support/withTooltipProvider';
 import Paragraph from './typography/Paragraph';
 
@@ -93,8 +94,14 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const term = canvas.getByText('personal network');
-    term.focus();
-    await expect(term).toHaveFocus();
+    // Pointer-driven on purpose. Base UI opens a tooltip on focus only while
+    // the term matches `:focus-visible`, and that pseudo-class can never match
+    // in a window that does not hold focus — which is how Chromatic captures
+    // every story (background tabs). Hover is dispatched from JS and works
+    // regardless of window focus, so it is the path a Chromatic-visible story
+    // can rely on. Keyboard opening is covered by `KeyboardFocus` below.
+    await awaitPassiveEffects();
+    await userEvent.hover(term);
     await waitFor(() => expect(term).toHaveAttribute('data-popup-open'));
     await expect(term).toHaveAccessibleDescription(
       'The people an individual knows and the relationships among them.',
@@ -148,6 +155,7 @@ export const LinkedDefinition: Story = {
     const canvas = within(canvasElement);
     const term = canvas.getByText('Architect Classic');
 
+    await awaitPassiveEffects();
     await userEvent.hover(term);
     await waitFor(() =>
       expect(document.querySelector('[data-base-ui-portal]')).toHaveTextContent(
@@ -157,11 +165,22 @@ export const LinkedDefinition: Story = {
   },
 };
 
+/**
+ * Tabbing onto the term opens the tooltip. Base UI gates focus-opening on
+ * `:focus-visible`, which requires the window itself to hold focus:
+ * `test:storybook` runs under Playwright's focus emulation and exercises the
+ * real keyboard contract in Chromium and Firefox, but Chromatic captures in
+ * unfocused background tabs where the pseudo-class never matches and the
+ * tooltip cannot open. The story is therefore excluded from Chromatic rather
+ * than left to fail there; `Default` keeps the tooltip visible in Chromatic
+ * through hover.
+ */
 export const KeyboardFocus: Story = {
+  parameters: { chromatic: { disableSnapshot: true } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const term = canvas.getByText('personal network');
-    term.focus();
+    await userEvent.tab();
     await expect(term).toHaveFocus();
     await waitFor(() => expect(term).toHaveAttribute('data-popup-open'));
     await expect(term).toHaveAccessibleDescription(

@@ -1,0 +1,579 @@
+/*
+ * @codaco/tailwind-config — Fresco studio theme
+ *
+ * Layered on top of `themes/default.css`. Activates on any element carrying
+ * the `data-theme-studio` attribute (same scoping mechanism as
+ * `themes/interview.css`), so a studio-themed region can coexist with
+ * default-themed chrome on the same page.
+ *
+ * Unlike interview (dark-only), studio is a light/dark pair. Dark activates
+ * through the SAME mechanism the default theme uses — `data-theme='dark'` —
+ * either on the studio region itself or on any ancestor (the shape
+ * `next-themes` produces with `attribute="data-theme"` on `<html>`).
+ *
+ * ---------------------------------------------------------------------------
+ * The neutrals deliberately DIVERGE from the everything-bar mockup.
+ *
+ * Josh's direction, 2026-09-01: studio's neutral scaffolding carries a warm
+ * tint in light mode and a cool midnight blue in dark, rather than the single
+ * grape-tinted neutral family both modes shared when this file was first
+ * transcribed from the mockup. Please do not "correct" the neutrals back
+ * toward the mockup — that divergence is the design. Refined the same day:
+ * the light neutral moved from sand (hue 80) into the orange band (hue 60)
+ * and its chroma came down by roughly a third, so the ground reads as
+ * barely-warmed paper rather than tinted paper; the dark neutral moved from
+ * 258 to 270, off the green side of blue.
+ *
+ * The scaffolding that moves per mode: `--background`, the surface ladder,
+ * `--outline`, `--neutral`, `--overlay`, `--shadow-color`, the ink
+ * (`--text`), and every dark-mode contrast ink that sits on a light fill.
+ * The brand hues stay where they were — grape `--accent`, sea-green
+ * `--success`, the mustard `--selected` pair, and the sequence colours are
+ * untouched — but two grape tokens were recalibrated for the warm ground
+ * (see `--primary` and `--secondary` in the light block), and
+ * `--surface-accent` gained a little chroma in both modes (light 0.03 ->
+ * 0.034, dark 0.08 -> 0.105) so the accent-tinted chip still separates from a
+ * neutral surface now that surfaces are tinted rather than near-neutral.
+ *
+ * Every status and brand fill in this file clears WCAG AA against its own
+ * `-contrast`, and each mode gets there by the opposite move. Both are
+ * deliberate studio choices that depart from the default theme's pairings —
+ * nothing here is inherited, and the measured ratios are recorded at each
+ * declaration.
+ *
+ *   DARK — keep the fill bright, use dark ink. Studio lifts its dark fills so
+ *   they read against the dark ground, and at those lightnesses white clears
+ *   AA on none of them. `--accent`, `--success`, `--selected`, `--warning`,
+ *   `--destructive` and `--info` all take the mode's dark neutral ink.
+ *   Darkening a fill instead would buy the filled pairing at the expense of
+ *   the matching `text-*` utility, which on a dark ground needs the fill to
+ *   stay bright.
+ *
+ *   LIGHT — keep white ink, darken the fill. On a light ground the two
+ *   usages move together: a darker fill raises BOTH white-on-fill and
+ *   `text-*`-on-ground, so `--warning`, `--info` and `--success` are all
+ *   palette hues taken down in lightness.
+ *
+ * `--selected` is the one light-mode exception, and for a stated reason: it
+ * is a highlight whose second usage is being conspicuous against the ground,
+ * not carrying text, so it takes darker ink instead (see its declaration).
+ *
+ * The `--surface-accent` depth series follows the same discipline with one
+ * extra trap: its five rungs share a single ink, so the pairing must be
+ * solved for the rung FURTHEST from that ink — the deeper rungs, not depth 0.
+ * They move opposite ways per mode (the ladder descends in light, ascends in
+ * dark, each matching its neutral surfaces), so the binding rung differs
+ * between the blocks. Checking depth 0 alone passes while depth 1-4 fails.
+ *
+ * Before flipping any of these back, re-measure both usages — the filled
+ * pairing and the matching `text-*` utility on `--background` and
+ * `--surface`. Several of these values look arbitrary and are not.
+ *
+ * Note for separate work, NOT to be fixed here: `themes/default.css` carries
+ * the same defects studio corrected — white on neat sea green (2.28:1) in its
+ * light block, and white on its lifted dark `--destructive` and `--info`. Any
+ * fix there is a change to every consumer of the default theme and belongs in
+ * its own PR.
+ * ---------------------------------------------------------------------------
+ *
+ * `--base-hue` is the per-mode neutral hue knob. The default theme declares it
+ * on `:root` (290) as the hue its neutrals derive from, and an app theme
+ * overriding it is already an established move (see
+ * `apps/studio/client/src/styles/studio-theme.css`). Studio redeclares it in
+ * each mode's block, so every neutral below follows the mode. Brand tokens
+ * anchor to `--cyber-grape-hue` / `--sea-green-hue` / `--mustard-hue` from
+ * `shared/colors.css` instead, which is what keeps them out of the retint.
+ *
+ * Elsewhere the mockup's own values stand, and studio still agrees with the
+ * default theme far more than it differs — what it changes is called out
+ * inline. Tokens with no comment are the default theme's own expressions,
+ * restated here because a `var()` inside a custom property resolves at the
+ * element the DECLARATION sits on: an expression left on `:root` snapshots
+ * `:root`'s `--background` / `--primary` / `--text` and cascades that snapshot
+ * into the region, ignoring studio's overrides. The same rule is why the dark
+ * block below restates every derived token rather than relying on the light
+ * block's expressions.
+ *
+ * Not restated (and deliberately so): the node / edge / ord / cat sequence
+ * colours. Those are static palette references with no theme-variable
+ * dependency, so the `:root` values inherit into a studio region correctly in
+ * both modes — the reason `themes/default.css`'s own dark block omits them.
+ *
+ * Mockup names with no shared semantic slot, and the in-system idiom that
+ * replaces them, so components never reach for a studio-only variable:
+ *   --ink-soft / --ink-faint  -> `text-text/70` and `text-text/55`
+ *   --rule-strong             -> `border-outline` on a raised surface, or
+ *                                `border-current/20`
+ *   --accent-soft             -> `--surface-accent` (mapped below)
+ *   --sea-green-soft          -> `bg-success/12 text-success`
+ *   --mustard-soft/-ink       -> `bg-selected/20 text-selected-contrast`
+ */
+
+@layer base {
+  [data-theme-studio] {
+    /*
+     * Product base, same fixed 1rem as the default theme: studio is dense
+     * product chrome, so a larger display shows more content rather than
+     * bigger content. `font-size` is set here (as in the interview theme) so
+     * the `em`-based `--container-*` widths resolve against the region.
+     */
+    --theme-root-size: 1rem;
+    font-size: var(--theme-root-size);
+    color-scheme: light;
+  }
+
+  [data-theme-studio][data-theme='dark'],
+  [data-theme='dark'] [data-theme-studio] {
+    color-scheme: dark;
+  }
+}
+
+@layer theme {
+  [data-theme-studio] {
+    /*
+     * Warm orange, held at whisper chroma. Hue 60 sits beside
+     * `--neon-carrot-hue` (62.61), so the neutral field belongs to the warm
+     * palette's own family — the same relationship dark mode has with
+     * `--cerulean-blue-hue`. Sharing a hue band with `--warning` is safe
+     * because separation comes from chroma and lightness, not hue: the ground
+     * is 0.008 chroma at L 0.982 against a 0.221-chroma fill at L 0.579
+     * (4.3:1). `--selected` clears the ground the same way, and gained hue
+     * distance in the bargain — mustard (86.39) is now 26 degrees off the
+     * neutral rather than 6.
+     *
+     * Chroma stays at or below 0.008 through the ladder. Above that the
+     * ground stops reading as paper and starts reading as a colour.
+     */
+    --base-hue: 60;
+
+    --heading-font: 'Nunito Variable', sans-serif;
+    --body-font: 'Inclusive Sans Variable', sans-serif;
+
+    /*
+     * Redeclared (not inherited) so the calc resolves against THIS region's
+     * `--theme-root-size` — the inner var() in a calc is resolved when the
+     * custom property is computed, so :root's snapshot would otherwise
+     * cascade down and freeze spacing.
+     */
+    --spacing-base: calc(0.25 * var(--theme-root-size));
+
+    /*
+     * CHANGED: a tighter radius base than the default 1.75rem. Studio's
+     * chrome is built from 7px controls, 14px panels and pill chips, which is
+     * exactly `rounded-sm` / `rounded` / `rounded-full` at this base.
+     */
+    --radius-base: 0.875rem;
+
+    /* Barely-warmed paper: near-white, and still light enough that the surface
+       ladder's descending steps stay comfortably above mid grey. */
+    --background: oklch(0.982 0.008 var(--base-hue));
+
+    /*
+     * CHANGED from the mockup's cyber-grape ink. A deep warm neutral at low
+     * chroma, so the ink belongs to the warm family without reading as brown
+     * or becoming a second brand colour. The grape identity lives in the
+     * primary / secondary / accent ramp below.
+     */
+    --text: oklch(0.3 0.022 var(--base-hue));
+
+    /*
+     * The grape ramp: primary (deepest) -> secondary -> accent (brightest),
+     * one hue, three legible steps, white foreground on all three.
+     *
+     * CHANGED from the default theme's `oklch(10% 0.4 …)`, which clamps to a
+     * vivid indigo (#3c00a3) — the direct complement of a warm ground, and
+     * the loudest thing on the page. Pulling lightness up and chroma down to
+     * 0.32 / 0.09 keeps it unmistakably grape while letting it sit on warm
+     * paper as a deep aubergine. Landing above the ink's 0.3 lightness is
+     * deliberate too: a primary button now reads as distinct from body text
+     * rather than merging with it.
+     */
+    --primary: oklch(0.32 0.09 var(--cyber-grape-hue));
+    --primary-contrast: oklch(var(--white));
+
+    /* A warm chip, replacing the default theme's primary-derived lavender. */
+    --neutral: oklch(0.94 0.008 var(--base-hue));
+    --neutral-contrast: var(--text);
+
+    /* Slate blue, identical to the default theme. Complementary to the warm
+       ground, which is a contrast pairing rather than a clash — and the
+       quieter ground gives it more room than the sand one did. */
+    --accent: oklch(var(--slate-blue));
+    --accent-contrast: oklch(var(--white));
+
+    /*
+     * CHANGED to a literal, dropping the default theme's
+     * `from var(--primary) calc(l + 0.2) calc(c + 0.05) h` derivation. That
+     * expression only produced a distinct secondary because the old primary
+     * was clamped; against the calmed primary it lands on top of `--accent`
+     * (1.11:1, indistinguishable). This value is the middle rung, ~1.6:1 from
+     * each neighbour.
+     */
+    --secondary: oklch(0.44 0.14 var(--cyber-grape-hue));
+    --secondary-contrast: oklch(var(--white));
+
+    /*
+     * Surface ladder. A warm near-white for raised chrome (headers, cards,
+     * the command bar), then descending from the page ground in 0.03
+     * lightness steps — the default theme's own relationship, re-anchored on
+     * studio's `--background`, and preserving the mockup's rung spacing with
+     * the warm tint carried through at constant chroma.
+     */
+    --surface: oklch(0.995 0.003 var(--base-hue));
+    --surface-contrast: var(--text);
+    --surface-1: var(--background);
+    --surface-1-contrast: var(--text);
+    --surface-2: oklch(from var(--background) calc(l - 0.03) c h);
+    --surface-2-contrast: var(--text);
+    --surface-3: oklch(from var(--background) calc(l - 0.06) c h);
+    --surface-3-contrast: var(--text);
+    --surface-4: oklch(from var(--background) calc(l - 0.09) c h);
+    --surface-4-contrast: var(--text);
+
+    /*
+     * CHANGED: the accent surface series carries the mockup's `--accent-soft`
+     * — the tint behind an active nav item, a selected result row, or an
+     * accent-coloured icon chip — instead of aliasing the deepest neutral
+     * surfaces the way the default theme does. Grape-anchored, so it reads as
+     * a lavender chip against the warm ladder. Literal values (rather than a
+     * relative derivation off `--surface-accent`) because the deeper rungs
+     * move in opposite directions in the two modes.
+     *
+     * The contrast ink is the accent darkened rather than the accent itself:
+     * bare `--accent` on the depth-0 chip is 4.33:1, a hair under AA, and
+     * darkening the ink clears it without costing the chip any separation
+     * from the surface it sits on — the alternative, lightening the chip,
+     * buys contrast at exactly that cost.
+     *
+     * Solved for the DEEPER rungs, not depth 0. `Surface` puts normal-size
+     * content on these fills at every depth, and the nested rungs are darker
+     * here (the ladder descends in light, matching the neutral surfaces), so
+     * depth 1-4 is the binding rung. At `l - 0.04` it cleared AA by a hair
+     * (4.56:1); this goes one step further for real margin — 5.65:1 at depth
+     * 0, 5.00:1 at 1-4. The dark block solves the same way for its own
+     * binding rung, which is the light one there.
+     */
+    --surface-accent: oklch(0.94 0.034 var(--cyber-grape-hue));
+    --surface-accent-contrast: oklch(from var(--accent) calc(l - 0.06) c h);
+    --surface-accent-1: oklch(0.9 0.05 var(--cyber-grape-hue));
+    --surface-accent-1-contrast: oklch(from var(--accent) calc(l - 0.06) c h);
+    --surface-accent-2: oklch(0.9 0.05 var(--cyber-grape-hue));
+    --surface-accent-2-contrast: oklch(from var(--accent) calc(l - 0.06) c h);
+    --surface-accent-3: oklch(0.9 0.05 var(--cyber-grape-hue));
+    --surface-accent-3-contrast: oklch(from var(--accent) calc(l - 0.06) c h);
+    --surface-accent-4: oklch(0.9 0.05 var(--cyber-grape-hue));
+    --surface-accent-4-contrast: oklch(from var(--accent) calc(l - 0.06) c h);
+
+    /* The command bar and every popover sit on the raised surface. */
+    --surface-popover: var(--surface);
+    --surface-popover-contrast: var(--text);
+
+    --destructive: oklch(var(--tomato));
+    --destructive-contrast: oklch(var(--white));
+
+    --warning: oklch(
+      from oklch(var(--neon-carrot)) calc(l - 0.17) calc(c + 0.06) h
+    );
+    --warning-contrast: oklch(var(--white));
+
+    /*
+     * CHANGED: sea green taken down 0.24 in lightness, where the default
+     * theme uses the palette hue neat. At its native L 0.7 the fill is 2.28:1
+     * against white — the worst pairing in either mode — and `text-success`
+     * standing on the ground was no better at 2.16:1, so BOTH usages failed.
+     * Darkening fixes both at once: 5.62:1 for white on the fill (Alert,
+     * Toast, Badge) and 5.33:1 for `text-success` on the ground, which is how
+     * password-strength labels, validation text and the `bg-success/10` box
+     * actually render (4.77:1 on that tint).
+     *
+     * This is the light block's own idiom, not a new invention — `--warning`
+     * and `--info` are both palette hues darkened for exactly this reason.
+     * It is also the opposite move from the dark block, and deliberately so:
+     * on a light ground a darker fill helps the filled AND the text-only
+     * usage together, whereas on a dark ground darkening a fill buys fill
+     * contrast at the text usage's expense (see `--destructive` in dark).
+     *
+     * Chroma is left alone. Sea green already sits at 0.2, and pushing it
+     * higher RAISES luminance — the `c + 0.06` variants measured lighter and
+     * needed even more lightness taken off to reach the same ratio.
+     */
+    --success: oklch(from oklch(var(--sea-green)) calc(l - 0.24) c h);
+    --success-contrast: oklch(var(--white));
+
+    --info: oklch(
+      from oklch(var(--cerulean-blue)) calc(l - 0.05) calc(c + 0.05) h
+    );
+    --info-contrast: oklch(var(--white));
+
+    /*
+     * CHANGED: the mustard pair from the mockup, replacing the default
+     * theme's off-palette `oklch(91% 0.21 80)`. The highlight clears the
+     * warmed ground on lightness and chroma, not only hue (1.73:1 fill
+     * against the ground, 1.80:1 against `--surface`), which is what had to
+     * survive the retint.
+     *
+     * The ink is the mockup's `--mustard-ink` taken from L 0.5 down to 0.4,
+     * chroma untouched: at 0.5 it was 3.29:1 on the fill, under AA for the
+     * normal-size text a pressed Button or a selected nav item puts there.
+     * At 0.4 it is 5.06:1, and it only helps the tinted variant the Button
+     * uses for open triggers (`bg-selected/15`, 8.38:1).
+     *
+     * Fixed on the ink and NOT by darkening the fill, unlike `--success`
+     * above: `--selected` is a highlight, and its second usage is being
+     * conspicuous against the ground rather than carrying text — there is no
+     * `text-selected` anywhere in fresco-ui, only `bg-selected` with
+     * `text-selected-contrast`. Darkening the fill would buy ink contrast by
+     * destroying the one job the token has.
+     */
+    --selected: oklch(var(--mustard));
+    --selected-contrast: oklch(0.4 0.12 var(--mustard-hue));
+
+    --drag-valid: oklch(var(--slate-blue) / 0.3);
+    --drag-over: oklch(var(--slate-blue) / 0.8);
+
+    --link: oklch(from var(--accent) calc(l - 0.2) calc(c + 0.05) h);
+
+    /*
+     * CHANGED: a deeper hairline than the default theme's `--background`
+     * derivation would give, so 1px rules stay visible against a ground this
+     * close to white. Visibility is carried entirely by the 0.097 lightness
+     * drop below `--background` (1.35:1), not by chroma — which is why the
+     * chroma could come down with the rest of the neutrals without the rule
+     * getting any fainter.
+     */
+    --outline: oklch(0.885 0.012 var(--base-hue));
+
+    --input: var(--surface);
+    --input-contrast: var(--text);
+
+    /* CHANGED: a warm scrim, in place of the mockup's grape one. */
+    --overlay: oklch(0.25 0.03 var(--base-hue));
+    --overlay-tone: oklch(from var(--overlay) l c h / 0.42);
+
+    /*
+     * CHANGED: a warm shadow tint rather than the default theme's grape. Kept
+     * a shade lighter than the default's 0.16 because a warm dark reads
+     * heavier over a warm ground at the same lightness.
+     */
+    --shadow-color: oklch(0.2 0.025 var(--base-hue));
+
+    /*
+     * The default theme's shadow geometry, restated once here so that every
+     * layer's `var(--shadow-color)` resolves against whichever value wins on
+     * THIS element — which means the dark block below re-tints the entire
+     * scale by declaring `--shadow-color` alone. Studio changes shadow
+     * colour, never the elevation system's geometry.
+     */
+    --shadow-sm-base:
+      0 1px 3px 0 color-mix(in oklab, var(--shadow-color) 12%, transparent),
+      0 1px 2px -1px color-mix(in oklab, var(--shadow-color) 20%, transparent);
+    --shadow-base:
+      0 4px 6px -1px color-mix(in oklab, var(--shadow-color) 12%, transparent),
+      0 2px 4px -2px color-mix(in oklab, var(--shadow-color) 20%, transparent);
+    --shadow-md-base:
+      0 6px 10px -2px color-mix(in oklab, var(--shadow-color) 14%, transparent),
+      0 3px 6px -3px color-mix(in oklab, var(--shadow-color) 22%, transparent);
+    --shadow-lg-base:
+      0 10px 15px -3px color-mix(in oklab, var(--shadow-color) 16%, transparent),
+      0 4px 6px -4px color-mix(in oklab, var(--shadow-color) 24%, transparent);
+    --shadow-xl-base:
+      0 20px 25px -5px color-mix(in oklab, var(--shadow-color) 16%, transparent),
+      0 8px 10px -6px color-mix(in oklab, var(--shadow-color) 24%, transparent);
+    --shadow-2xl-base: 0 25px 50px -12px
+      color-mix(in oklab, var(--shadow-color) 30%, transparent);
+
+    --effect-shadow-sm: 0 3px 7px
+      color-mix(in oklab, var(--shadow-color) 18%, transparent);
+    --effect-shadow: 0 6px 14px
+      color-mix(in oklab, var(--shadow-color) 25%, transparent);
+    --effect-shadow-md: 0 10px 22px
+      color-mix(in oklab, var(--shadow-color) 32%, transparent);
+    --effect-shadow-lg: 0 14px 30px
+      color-mix(in oklab, var(--shadow-color) 40%, transparent);
+    --effect-shadow-xl: 0 20px 40px
+      color-mix(in oklab, var(--shadow-color) 50%, transparent);
+    --effect-shadow-2xl: 0 30px 60px
+      color-mix(in oklab, var(--shadow-color) 70%, transparent);
+  }
+
+  /*
+   * Studio dark. Matches on the region itself when the dark attribute is set
+   * there, and on a studio region nested anywhere below a dark ancestor.
+   *
+   * Every token whose light value is derived — from `--background`,
+   * `--primary`, `--accent`, `--overlay` — is restated, because both blocks
+   * declare onto the same element: the light block's expressions would
+   * otherwise re-resolve against the DARK inputs and apply the light delta
+   * (a descending surface ladder on a dark ground, a darkened link, and so
+   * on). Tokens legitimately shared with the light block are the fonts, the
+   * spacing/radius bases, the sequence colours, and the shadow geometry —
+   * the last of which re-tints from `--shadow-color` below.
+   */
+  [data-theme-studio][data-theme='dark'],
+  [data-theme='dark'] [data-theme-studio] {
+    /*
+     * Midnight blue, on the violet side of blue. This started at 258 and was
+     * moved to 270 on Josh's note (2026-09-01) that the field read green: at
+     * 258 the darks carry a green channel 10-15 above red at the upper rungs,
+     * which lands on teal-slate rather than midnight. At 270 that gap roughly
+     * halves and the field reads blue-violet.
+     *
+     * 270 is 11 degrees off grape (281), which is closer than 258 was but
+     * costs the accent nothing: separation is carried by chroma (0.16 against
+     * a field held under 0.045) and lightness, not hue — measured chip-
+     * against-surface separation is flat across 258-275. It is ~10 degrees
+     * off `--cerulean-blue-hue` (260.09), so `--info` still belongs to the
+     * field's family rather than sitting orphaned in it.
+     *
+     * Chroma stays under 0.045 throughout: enough for the darks to read blue
+     * rather than black, not enough to compete with a brand fill.
+     */
+    --base-hue: 270;
+
+    --background: oklch(0.19 0.035 var(--base-hue));
+
+    /* Cool near-white — the same whisper of tint the ground carries. */
+    --text: oklch(0.93 0.018 var(--base-hue));
+
+    /* Brand slot, grape-anchored (see the light block). */
+    --primary: oklch(0.5 0.2 var(--cyber-grape-hue));
+    --primary-contrast: oklch(var(--white));
+
+    --neutral: oklch(0.33 0.032 var(--base-hue));
+    --neutral-contrast: oklch(0.96 0.012 var(--base-hue));
+
+    /*
+     * CHANGED: a much lighter accent than the default dark theme's
+     * `--slate-blue--dark`. Studio's dark fills read as light-on-dark chips,
+     * so their contrast colour is the mode's dark neutral ink, not white —
+     * the rule every `-contrast` on a light fill follows in this block.
+     */
+    --accent: oklch(0.72 0.16 var(--cyber-grape-hue));
+    --accent-contrast: oklch(0.16 0.03 var(--base-hue));
+
+    --secondary: oklch(from var(--primary) calc(l + 0.06) c h);
+    --secondary-contrast: oklch(var(--white));
+
+    /*
+     * CHANGED: not the default dark theme's strictly ascending ladder.
+     * Studio keeps its light-mode semantics in dark — `--surface` is the
+     * RAISED chrome (headers, cards, the command bar) and sits above
+     * `--surface-1`, the recessed panel that all but matches the page
+     * ground. Rungs 2-4 then ascend. Literal values because that shape is
+     * not a single offset from `--background`.
+     */
+    --surface: oklch(0.235 0.038 var(--base-hue));
+    --surface-contrast: var(--text);
+    --surface-1: oklch(0.215 0.034 var(--base-hue));
+    --surface-1-contrast: var(--text);
+    --surface-2: oklch(0.275 0.04 var(--base-hue));
+    --surface-2-contrast: var(--text);
+    --surface-3: oklch(0.32 0.042 var(--base-hue));
+    --surface-3-contrast: var(--text);
+    --surface-4: oklch(0.365 0.044 var(--base-hue));
+    --surface-4-contrast: var(--text);
+
+    /*
+     * Chroma raised to 0.105 (from the mockup's 0.08) so the accent chip is
+     * unmistakably violet against a surface ladder that is now itself tinted
+     * — `--surface-3` sits at the same lightness, and chroma is what
+     * separates them.
+     *
+     * The ink is the accent lifted 0.08, not the accent itself. `Surface`
+     * puts normal-size content on these fills at every depth (nested controls
+     * in ArrayField, layered popovers), and the nested rungs are LIGHTER than
+     * depth 0 — the ladder ascends in dark, matching the neutral surfaces —
+     * so depth 1-4 is the binding rung, not depth 0. Bare `--accent` gives
+     * 4.84:1 at depth 0 but only 3.99:1 from depth 1 on. Lifting the ink
+     * clears every depth with margin: 6.25:1 at depth 0, 5.15:1 at 1-4.
+     *
+     * Fixed on the ink and NOT by darkening the nested fills: those fills
+     * ascend on purpose, so darkening them would invert the accent ladder
+     * against the neutral one — a nested accent panel getting darker while a
+     * nested neutral panel gets lighter. Leaving the fills alone also keeps
+     * the separation the 0.105 chroma bump above was for: depth 0 against
+     * `--surface-3` and depth 1-4 against `--surface-4` are both unchanged.
+     *
+     * Written as a derivation so the ink tracks any future retune of
+     * `--accent`, the same way `--link` does.
+     */
+    --surface-accent: oklch(0.33 0.105 var(--cyber-grape-hue));
+    --surface-accent-contrast: oklch(from var(--accent) calc(l + 0.08) c h);
+    --surface-accent-1: oklch(0.38 0.115 var(--cyber-grape-hue));
+    --surface-accent-1-contrast: oklch(from var(--accent) calc(l + 0.08) c h);
+    --surface-accent-2: oklch(0.38 0.115 var(--cyber-grape-hue));
+    --surface-accent-2-contrast: oklch(from var(--accent) calc(l + 0.08) c h);
+    --surface-accent-3: oklch(0.38 0.115 var(--cyber-grape-hue));
+    --surface-accent-3-contrast: oklch(from var(--accent) calc(l + 0.08) c h);
+    --surface-accent-4: oklch(0.38 0.115 var(--cyber-grape-hue));
+    --surface-accent-4-contrast: oklch(from var(--accent) calc(l + 0.08) c h);
+
+    --surface-popover: var(--surface);
+    --surface-popover-contrast: var(--text);
+
+    /*
+     * CHANGED: dark ink, not the default dark theme's white. The fill is
+     * tomato lifted 0.08 so it stays legible against the dark ground, and at
+     * that lightness white lands on 3.85:1 — under AA for the normal-size
+     * text Alert, Toast, Badge and field errors put on it. Dark ink takes the
+     * pairing to 5.06:1 and brings the token in line with the rule the rest
+     * of this block already follows.
+     *
+     * Deliberately fixed on the ink rather than by darkening the fill: plain
+     * tomato would support white (4.94:1), but `text-destructive` standing on
+     * `--surface` — how a field error actually renders — would fall from
+     * 4.35:1 to 3.39:1. Keeping the fill bright serves both usages.
+     */
+    --destructive: oklch(from oklch(var(--tomato)) calc(l + 0.08) c h);
+    --destructive-contrast: oklch(0.16 0.03 var(--base-hue));
+
+    --warning: oklch(from oklch(var(--neon-carrot)) calc(l + 0.04) c h);
+    --warning-contrast: oklch(0.18 0.03 var(--base-hue));
+
+    /*
+     * CHANGED: the mockup's dark sea green, with dark ink. At L 0.74 a solid
+     * fill needs a dark foreground to clear WCAG AA — the default dark
+     * theme's white would land near 2.5:1.
+     */
+    --success: oklch(0.74 0.16 var(--sea-green-hue));
+    --success-contrast: oklch(0.16 0.03 var(--base-hue));
+
+    /*
+     * CHANGED: dark ink, for the same reason as `--destructive` above and
+     * more sharply — white on this fill is 3.18:1, the weakest pairing in the
+     * theme. Dark ink gives 6.12:1. Darkening the fill was not an option
+     * here: even unlifted cerulean only reaches 4.43:1 against white, so it
+     * would still miss AA while costing `text-info` its legibility on the
+     * dark ground.
+     */
+    --info: oklch(from oklch(var(--cerulean-blue)) calc(l + 0.1) c h);
+    --info-contrast: oklch(0.16 0.03 var(--base-hue));
+
+    /* CHANGED: the mockup's dark mustard. */
+    --selected: oklch(0.8 0.14 var(--mustard-hue));
+    --selected-contrast: oklch(0.18 0.03 var(--base-hue));
+
+    --drag-valid: oklch(var(--slate-blue) / 0.3);
+    --drag-over: oklch(var(--slate-blue) / 0.8);
+
+    --link: oklch(from var(--accent) calc(l + 0.1) c h);
+
+    /* A touch above the raised surface, as in the mockup. */
+    --outline: oklch(0.32 0.038 var(--base-hue));
+
+    /* Text entry sits on the recessed surface, below the chrome around it. */
+    --input: var(--surface-1);
+    --input-contrast: var(--text);
+
+    --overlay: oklch(0.09 0.032 var(--base-hue));
+    --overlay-tone: oklch(from var(--overlay) l c h / 0.55);
+
+    /*
+     * CHANGED: a midnight-blue near-black rather than the mockup's pure
+     * black. Reads as a shadow, not a colour cast, and keeps the dark mode's
+     * hue family consistent all the way down. Re-tints the whole scale
+     * declared in the light block above.
+     */
+    --shadow-color: oklch(0.06 0.03 var(--base-hue));
+  }
+}

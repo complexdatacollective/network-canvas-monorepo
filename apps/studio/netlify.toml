@@ -16,6 +16,32 @@
 # magic-link URLs point at the wrong host and whose CSRF check refuses the
 # preview's own requests. Deriving the origin from the request is the way in,
 # and belongs with the real topology work.
+#
+# This site is the managed topology, so it wants STUDIO_DEPLOYMENT_MODE=managed
+# — and that has to be set as a SITE environment variable (`netlify env:set`,
+# or the UI), never in [build.environment] below, which configures the build
+# and cannot reach the function at runtime. src/netlify.ts reads it inside the
+# running function, the same as src/index.ts does.
+#
+# The gate that variable drives (src/client-assets.ts) does not run on this
+# lane at all: the client is served by the CDN, and src/netlify.ts's
+# `config.path` claims only /api, /rpc, /storage and /healthz, so no function
+# is invoked for a page path and the function-level refusal is unreachable.
+# The mode still reaches the client here, over the `status` procedure.
+#
+# What the CDN can answer without a function is a redirect rule carrying a 404
+# status, and that is how a topology-gated path is refused on this lane — see
+# the /setup rule below. It is a hand-written copy of a classification that
+# lives in code (@codaco/studio-rpc's surfaces module), so
+# server/src/__tests__/deployment-mode.test.ts fails when the two disagree.
+#
+# That rule is matched literally, and literal matching is not the whole
+# refusal: TanStack Router resolves /Setup and //setup to the same route, and
+# only the Node lane normalises a path before matching it (`normaliseForGate`).
+# Nothing in this file can express that, and no status line withholds a screen
+# on its own — the SPA boots from the body either way. Refusing every spelling,
+# and rendering a not-found instead of the gated route, is the client's own
+# topology guard; this rule is the honest status line underneath it.
 
 [build]
 command = "pnpm exec turbo run build --filter=@codaco/studio-client && pnpm --filter @codaco/studio-server build:netlify"
@@ -28,8 +54,20 @@ NODE_OPTIONS = "--max-old-space-size=4096"
 [context.deploy-preview]
 ignore = "cd \"$(git rev-parse --show-toplevel)\" && if test -n \"$CACHED_COMMIT_REF\" && test \"$CACHED_COMMIT_REF\" != \"$COMMIT_REF\" && git diff --quiet \"$CACHED_COMMIT_REF\" \"$COMMIT_REF\" -- apps/studio/netlify.toml package.json pnpm-lock.yaml pnpm-workspace.yaml && npx --yes turbo@2.10.4 query affected --packages @codaco/studio-client @codaco/studio-server --base \"$CACHED_COMMIT_REF\" --head \"$COMMIT_REF\" --exit-code; then true; else false; fi"
 
-# SPA fallback so client-side routes deep-link. Function paths are claimed
-# declaratively by src/netlify.ts's `config.path` and are matched first.
+# /setup configures a whole instance on first run, and this site is the managed
+# topology — so it is one of the paths this deployment does not have. Ahead of
+# the catch-all below, because Netlify applies the first rule that matches.
+# `force` so the refusal does not depend on whether a file happens to sit at
+# that path. index.html at a 404 is the same answer the Node lane's gate gives.
+[[redirects]]
+from = "/setup"
+to = "/index.html"
+status = 404
+force = true
+
+# SPA fallback so client-side routes deep-link. Unforced, so it cannot shadow a
+# real asset. Function paths are claimed declaratively by src/netlify.ts's
+# `config.path` and are matched first.
 [[redirects]]
 from = "/*"
 to = "/index.html"

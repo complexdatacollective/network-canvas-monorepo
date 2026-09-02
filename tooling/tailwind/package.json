@@ -1,6 +1,6 @@
 {
   "name": "@codaco/tailwind-config",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Shared Tailwind v4 theme, color palette, and plugins for Fresco and other Codaco apps.",
   "license": "MIT",
   "repository": {
@@ -19,6 +19,7 @@
   ],
   "exports": {
     "./fresco.css": "./fresco/fresco.css",
+    "./studio.css": "./fresco/studio.css",
     "./colors.css": "./shared/colors.css",
     "./fonts/inclusive-sans.css": "./shared/fonts/inclusive-sans.css",
     "./fonts/nunito.css": "./shared/fonts/nunito.css"

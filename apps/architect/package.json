@@ -1,6 +1,6 @@
 {
   "name": "@codaco/architect",
-  "version": "8.2.2",
+  "version": "8.2.4",
   "private": true,
   "type": "module",
   "scripts": {

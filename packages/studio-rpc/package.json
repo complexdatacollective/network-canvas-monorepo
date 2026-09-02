@@ -11,7 +11,8 @@
   },
   "type": "module",
   "exports": {
-    ".": "./src/contract.ts"
+    ".": "./src/contract.ts",
+    "./surfaces": "./src/surfaces.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

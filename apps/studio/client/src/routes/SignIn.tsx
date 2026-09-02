@@ -9,6 +9,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Form from '@codaco/fresco-ui/form/Form';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -19,7 +20,7 @@ import { authClient } from '../lib/auth.ts';
 import { studioEmailPattern } from '../lib/emailValidation.ts';
 import { GoogleIcon, MicrosoftIcon } from './ProviderIcons.tsx';
 
-const route = getRouteApi('/sign-in');
+const route = getRouteApi('/focused/sign-in');
 
 const PROVIDERS: Record<SocialProvider, { label: string; icon: ReactNode }> = {
   google: { label: 'Continue with Google', icon: <GoogleIcon /> },
@@ -53,9 +54,23 @@ export default function SignIn() {
 
   const magicLink = auth ? auth.magicLink : true;
   const socialProviders = auth?.socialProviders ?? [];
+  // Where both routes into a session come back to. Each is a full document
+  // load — the magic link's verify redirect and the provider's callback — so
+  // the URL has to be one that reads the session that has just been
+  // established and sends the researcher on (§6.4).
+  //
+  // `/` is not that URL. On a managed deployment it renders marketing whether
+  // or not anyone is signed in (§10.4), so a researcher who has just signed in
+  // would land back on the public page and have to press "Sign in" again. This
+  // page is where the resolution already lives: its own guard bounces an
+  // already-signed-in visitor to their landing destination, and leaves them
+  // here to try again in the one case it cannot resolve — which is the right
+  // answer for an arrival that did not produce a session either.
+  //
+  // An invitation is the exception, because it names a destination of its own.
   const callbackURL = invitationId
     ? `/invitations/${encodeURIComponent(invitationId)}`
-    : '/';
+    : '/sign-in';
   const errorCallbackURL = invitationId
     ? `/sign-in?invitationId=${encodeURIComponent(invitationId)}`
     : '/sign-in';
@@ -86,9 +101,23 @@ export default function SignIn() {
   };
 
   return (
-    <main className="flex h-full items-center justify-center p-4">
+    // Every route in §5.2 renders exactly one `<main id="main-content">`
+    // (§11.2). A focused screen has no area layout to own that landmark, so
+    // it owns its own.
+    <main
+      id="main-content"
+      className="flex h-full items-center justify-center p-4"
+    >
       <Surface maxWidth="xl" spacing="lg">
-        <Heading level="h1">Sign in</Heading>
+        {/*
+          The landing point §7.2 requires of every route, and this one earns it
+          twice over: signing out is an SPA navigation to here, and it unmounts
+          the account menu the researcher activated, so focus falls to `<body>`
+          and there is nothing else to catch it.
+        */}
+        <Heading level="h1" {...routeFocusTargetProps}>
+          Sign in
+        </Heading>
         {error !== undefined && sentTo === null && (
           <Alert variant="destructive">
             {MAGIC_LINK_ERRORS.has(error)

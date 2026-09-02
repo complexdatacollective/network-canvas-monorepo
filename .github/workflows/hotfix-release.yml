@@ -145,7 +145,7 @@ jobs:
         id: version
         run: node .hotfix-lane/.github/scripts/resolve-hotfix-release.mjs
 
-      - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+      - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
         with:
           install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
@@ -254,7 +254,7 @@ jobs:
       # The tag already exists from the claim step; this only attaches the
       # release notes to it. Always the newest line — resolve-hotfix-release.mjs
       # refuses anything older than the current release.
-      - uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: '@codaco/${{ inputs.app }}@${{ steps.version.outputs.version }}'
           target_commitish: ${{ steps.commit.outputs.sha }}

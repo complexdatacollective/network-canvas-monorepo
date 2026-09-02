@@ -20,6 +20,33 @@ describe('ThemedRegion', () => {
     expect(screen.getByTestId('child')).toHaveTextContent('hello');
   });
 
+  it('renders a div with data-theme-studio, and no colour scheme, when theme=studio', () => {
+    const { container } = render(
+      <ThemedRegion theme="studio">
+        <span data-testid="child">hello</span>
+      </ThemedRegion>,
+    );
+
+    const wrapper = container.firstElementChild;
+    expect(wrapper?.hasAttribute('data-theme-studio')).toBe(true);
+    expect(wrapper?.hasAttribute('data-theme-interview')).toBe(false);
+    // Studio is a light/dark pair that declares `color-scheme` per mode in its
+    // own theme file; only the dark-only interview theme pins it here.
+    expect(wrapper).not.toHaveClass('scheme-dark');
+    expect(wrapper).toHaveClass('theme-base');
+    expect(screen.getByTestId('child')).toHaveTextContent('hello');
+  });
+
+  it('provides a portal container in every theme', () => {
+    const { result } = renderHook(() => usePortalContainer(), {
+      wrapper: ({ children }) => (
+        <ThemedRegion theme="studio">{children}</ThemedRegion>
+      ),
+    });
+
+    expect(result.current).toBeInstanceOf(HTMLElement);
+  });
+
   it('forwards className and other HTML props to the wrapper', () => {
     const { container } = render(
       <ThemedRegion theme="interview" className="custom-class" id="region">

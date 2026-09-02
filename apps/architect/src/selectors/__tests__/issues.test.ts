@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
 import type { RootState } from '~/ducks/modules/root';
-import { TESTING_MAPBOX_TOKEN } from '~/templates/testingMapboxToken';
+import { buildMapboxToken } from '~/templates/__tests__/buildMapboxToken';
+import {
+  RETIRED_MAPBOX_TOKEN_IDS,
+  TESTING_MAPBOX_TOKEN,
+} from '~/templates/testingMapboxToken';
 
 import {
   getHasUnusedAssets,
   getHasUnusedVariables,
   getUnusedAssets,
   getUnusedVariables,
+  getUsesRetiredMapboxToken,
   getUsesTestingMapboxToken,
 } from '../issues';
 
@@ -144,6 +149,88 @@ describe('issues selectors', () => {
     it('is false when the protocol has no apikey assets', () => {
       const state = buildState({ assetManifest: {} });
       expect(getUsesTestingMapboxToken(state)).toBe(false);
+    });
+
+    it('is false for a retired testing token: the match is exact, not historical', () => {
+      const state = buildState({
+        assetManifest: {
+          token: {
+            id: 'token',
+            type: 'apikey',
+            name: 'Mapbox token (testing only)',
+            value: buildMapboxToken(RETIRED_MAPBOX_TOKEN_IDS[0]),
+          },
+        },
+      });
+
+      expect(getUsesTestingMapboxToken(state)).toBe(false);
+    });
+  });
+
+  describe('getUsesRetiredMapboxToken()', () => {
+    // A protocol created from the template before the 2026-09-02 rotation
+    // still carries the token that was revoked that day. Rebuilt from its id
+    // at runtime so the revoked token is never written into the repository.
+    const withApiKey = (value: string) =>
+      buildState({
+        assetManifest: {
+          token: {
+            id: 'token',
+            type: 'apikey',
+            name: 'Mapbox token (testing only)',
+            value,
+          },
+        },
+      });
+
+    it('is true when an apikey asset holds a retired testing token', () => {
+      expect(RETIRED_MAPBOX_TOKEN_IDS.length).toBeGreaterThan(0);
+      for (const id of RETIRED_MAPBOX_TOKEN_IDS) {
+        expect(
+          getUsesRetiredMapboxToken(withApiKey(buildMapboxToken(id))),
+        ).toBe(true);
+      }
+    });
+
+    it('is false for a token of this account whose id is not retired', () => {
+      const state = withApiKey(buildMapboxToken('cmnotretired000000000000'));
+
+      expect(getUsesRetiredMapboxToken(state)).toBe(false);
+      expect(getUsesTestingMapboxToken(state)).toBe(false);
+    });
+
+    it('is false for the current testing token', () => {
+      expect(getUsesRetiredMapboxToken(withApiKey(TESTING_MAPBOX_TOKEN))).toBe(
+        false,
+      );
+    });
+
+    it('reports neither retired nor testing for a token that is neither', () => {
+      const state = withApiKey('pk.some.other.token');
+
+      expect(getUsesRetiredMapboxToken(state)).toBe(false);
+      expect(getUsesTestingMapboxToken(state)).toBe(false);
+    });
+
+    it('ignores a retired token string on an asset that is not an apikey', () => {
+      const state = buildState({
+        assetManifest: {
+          note: {
+            id: 'note',
+            type: 'image',
+            name: 'Not a key',
+            value: buildMapboxToken(RETIRED_MAPBOX_TOKEN_IDS[0]),
+          },
+        },
+      });
+
+      expect(getUsesRetiredMapboxToken(state)).toBe(false);
+    });
+
+    it('is false when the protocol has no apikey assets', () => {
+      expect(getUsesRetiredMapboxToken(buildState({ assetManifest: {} }))).toBe(
+        false,
+      );
     });
   });
 });

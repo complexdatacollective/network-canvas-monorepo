@@ -9,6 +9,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
+import { installMapboxMocks } from '../fixtures/mapbox-mocks.js';
 import { emptyProtocol, seedProtocol } from '../fixtures/seed.js';
 import {
   assertBuiltProtocolInvariants,
@@ -179,6 +180,7 @@ test.describe.serial('sample protocol built from scratch', () => {
   let context: BrowserContext | undefined;
   let page: Page;
   let editor: StageEditor;
+  let escapedMapbox: readonly string[] = [];
 
   test.beforeAll(async ({ browser }) => {
     // One page for the whole block: its own context gets a fresh IndexedDB.
@@ -192,6 +194,9 @@ test.describe.serial('sample protocol built from scratch', () => {
       viewport,
       ...contextOptions,
     });
+    // Re-applied by hand for the same reason as the `use` options above: the
+    // `architect-test` fixture's Mapbox mocks and guard never see this context.
+    escapedMapbox = await installMapboxMocks(context);
     page = await context.newPage();
     editor = new StageEditor(page);
     // `experiments: {}` is seeded because it is UNWRITABLE through the
@@ -211,6 +216,9 @@ test.describe.serial('sample protocol built from scratch', () => {
 
   test.afterAll(async () => {
     await context?.close();
+    // The fixture asserts this in its own teardown; this block owns its
+    // context, so it asserts it here.
+    expect(escapedMapbox).toEqual([]);
   });
 
   async function saveStage(

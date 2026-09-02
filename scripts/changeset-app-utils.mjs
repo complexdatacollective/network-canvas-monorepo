@@ -50,6 +50,32 @@ export function releaseLaneForProduct(
   );
 }
 
+// Apps compile workspace package source into their own bundles, so releasing a
+// package normally does not force an app release — the next app release picks
+// the new source up anyway. `@codaco/interview` is the exception: it is the
+// participant-facing interview runtime embedded in Architect (preview mode),
+// Interviewer, and Fresco, so an interview release that no app release carries
+// never reaches anyone. A changeset naming it must also name every bundling
+// app. `changeset-app-utils.test.mjs` guards this map against the apps' real
+// dependency lists.
+export const BUNDLED_RUNTIME_DEPENDENTS = {
+  '@codaco/interview': ['@codaco/architect', 'fresco', '@codaco/interviewer'],
+};
+
+export function missingBundlingApps(
+  cs,
+  dependents = BUNDLED_RUNTIME_DEPENDENTS,
+) {
+  const named = new Set(cs.releases.map((r) => r.name));
+  return Object.entries(dependents)
+    .filter(([pkg]) => named.has(pkg))
+    .map(([pkg, apps]) => ({
+      package: pkg,
+      missingApps: apps.filter((app) => !named.has(app)),
+    }))
+    .filter((entry) => entry.missingApps.length > 0);
+}
+
 export function parseChangeset(contents) {
   const m = contents.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
   if (!m) return { releases: [], summary: contents.trim() };
@@ -71,6 +97,22 @@ export function readChangesets(changesetDir) {
       id: f.slice(0, -3),
       ...parseChangeset(readFileSync(join(changesetDir, f), 'utf8')),
     }));
+}
+
+// Whether `changeset version` will leave this changeset alone: it names at
+// least one package and every package it names is in the config `ignore`
+// list. Such changesets belong to a separately gated lane and persist in
+// .changeset/ until that lane's release PR consumes them. Everything else —
+// a changeset naming any normal-lane package, or an empty one — is the normal
+// lane's, and its presence sends changesets/action down the "regenerate the
+// release PR" path instead of publishing. prune-ignored-changesets.mjs hides
+// the former from the action; check-version-packages-freshness.mjs refuses a
+// release-PR merge that leaves any of the latter behind.
+export function isIgnoredLaneChangeset(cs, ignored) {
+  return (
+    cs.releases.length > 0 &&
+    cs.releases.every((release) => ignored.has(release.name))
+  );
 }
 
 export function classifyChangeset(

@@ -1,6 +1,6 @@
 {
   "name": "@codaco/fresco-ui",
-  "version": "6.2.0",
+  "version": "6.4.0",
   "description": "Fresco UI components, styles, and utilities",
   "license": "MIT",
   "repository": {
@@ -41,6 +41,7 @@
     "./SplitButton": "./src/SplitButton.tsx",
     "./CloseButton": "./src/CloseButton.tsx",
     "./Icon": "./src/Icon.tsx",
+    "./Kbd": "./src/Kbd.tsx",
     "./Node": "./src/Node.tsx",
     "./Toast": "./src/Toast.tsx",
     "./Modal": "./src/Modal/index.tsx",
@@ -57,10 +58,17 @@
     "./Label": "./src/Label.tsx",
     "./layout/Surface": "./src/layout/Surface.tsx",
     "./layout/ResponsiveContainer": "./src/layout/ResponsiveContainer.tsx",
+    "./layout/AppFrame": "./src/layout/AppFrame.tsx",
+    "./layout/AppArea": "./src/layout/AppArea.tsx",
     "./navigation/SiteNavigation": "./src/navigation/SiteNavigation.tsx",
+    "./navigation/SiteNavigation.constants": "./src/navigation/SiteNavigation.constants.ts",
+    "./navigation/EverythingBar": "./src/navigation/EverythingBar.tsx",
     "./navigation/ThemeSwitcher": "./src/navigation/ThemeSwitcher.tsx",
     "./navigation/SiteFooter": "./src/navigation/SiteFooter.tsx",
     "./navigation/RouteFocus": "./src/navigation/RouteFocus.tsx",
+    "./navigation/NavList": "./src/navigation/NavList.tsx",
+    "./navigation/NavItem": "./src/navigation/NavItem.tsx",
+    "./navigation/NavDrawer": "./src/navigation/NavDrawer.tsx",
     "./typography/Heading": "./src/typography/Heading.tsx",
     "./typography/Paragraph": "./src/typography/Paragraph.tsx",
     "./typography/PageHeader": "./src/typography/PageHeader.tsx",
@@ -277,6 +285,10 @@
         "types": "./dist/Icon.d.ts",
         "default": "./dist/Icon.js"
       },
+      "./Kbd": {
+        "types": "./dist/Kbd.d.ts",
+        "default": "./dist/Kbd.js"
+      },
       "./Node": {
         "types": "./dist/Node.d.ts",
         "default": "./dist/Node.js"
@@ -341,9 +353,25 @@
         "types": "./dist/layout/ResponsiveContainer.d.ts",
         "default": "./dist/layout/ResponsiveContainer.js"
       },
+      "./layout/AppFrame": {
+        "types": "./dist/layout/AppFrame.d.ts",
+        "default": "./dist/layout/AppFrame.js"
+      },
+      "./layout/AppArea": {
+        "types": "./dist/layout/AppArea.d.ts",
+        "default": "./dist/layout/AppArea.js"
+      },
       "./navigation/SiteNavigation": {
         "types": "./dist/navigation/SiteNavigation.d.ts",
         "default": "./dist/navigation/SiteNavigation.js"
+      },
+      "./navigation/SiteNavigation.constants": {
+        "types": "./dist/navigation/SiteNavigation.constants.d.ts",
+        "default": "./dist/navigation/SiteNavigation.constants.js"
+      },
+      "./navigation/EverythingBar": {
+        "types": "./dist/navigation/EverythingBar.d.ts",
+        "default": "./dist/navigation/EverythingBar.js"
       },
       "./navigation/ThemeSwitcher": {
         "types": "./dist/navigation/ThemeSwitcher.d.ts",
@@ -356,6 +384,18 @@
       "./navigation/RouteFocus": {
         "types": "./dist/navigation/RouteFocus.d.ts",
         "default": "./dist/navigation/RouteFocus.js"
+      },
+      "./navigation/NavList": {
+        "types": "./dist/navigation/NavList.d.ts",
+        "default": "./dist/navigation/NavList.js"
+      },
+      "./navigation/NavItem": {
+        "types": "./dist/navigation/NavItem.d.ts",
+        "default": "./dist/navigation/NavItem.js"
+      },
+      "./navigation/NavDrawer": {
+        "types": "./dist/navigation/NavDrawer.d.ts",
+        "default": "./dist/navigation/NavDrawer.js"
       },
       "./typography/Heading": {
         "types": "./dist/typography/Heading.d.ts",
@@ -824,15 +864,15 @@
   },
   "dependencies": {
     "@radix-ui/react-slot": "catalog:",
-    "@tiptap/core": "^3.30.3",
-    "@tiptap/extension-bullet-list": "^3.30.3",
-    "@tiptap/extension-heading": "^3.30.3",
-    "@tiptap/extension-ordered-list": "^3.30.3",
-    "@tiptap/extension-paragraph": "^3.30.3",
-    "@tiptap/extension-placeholder": "^3.30.3",
-    "@tiptap/pm": "^3.30.3",
-    "@tiptap/react": "^3.30.3",
-    "@tiptap/starter-kit": "^3.30.3",
+    "@tiptap/core": "^3.31.0",
+    "@tiptap/extension-bullet-list": "^3.31.0",
+    "@tiptap/extension-heading": "^3.31.0",
+    "@tiptap/extension-ordered-list": "^3.31.0",
+    "@tiptap/extension-paragraph": "^3.31.0",
+    "@tiptap/extension-placeholder": "^3.31.0",
+    "@tiptap/pm": "^3.31.0",
+    "@tiptap/react": "^3.31.0",
+    "@tiptap/starter-kit": "^3.31.0",
     "comlink": "^4.4.2",
     "cva": "1.0.0-beta.4",
     "es-toolkit": "catalog:",

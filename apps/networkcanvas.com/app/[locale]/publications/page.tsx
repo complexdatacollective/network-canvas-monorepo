@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
+import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/SiteNavigation.constants';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Footer } from '~/components/layout/Footer';
@@ -91,7 +92,10 @@ export default async function PublicationsPage({
       <HomepagePageBackground />
       <div>
         <Header />
-        <div className="tablet-portrait:pt-24 mx-auto max-w-4xl px-6 pt-16 text-center">
+        <div
+          id={SITE_NAVIGATION_SKIP_TARGET_ID}
+          className="tablet-portrait:pt-24 mx-auto max-w-4xl px-6 pt-16 text-center"
+        >
           <Heading
             level="h1"
             variant="display-heading"
