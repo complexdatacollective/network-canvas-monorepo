@@ -1,23 +1,67 @@
-'use client';
-
-import {
-  BookOpenText,
-  Download,
-  ExternalLink,
-  FileText,
-  Images,
-} from 'lucide-react';
+import { BookOpenText, Download, ExternalLink, Images } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { useId } from 'react';
 
-import { buttonVariants } from '@codaco/fresco-ui/Button';
-import Surface from '@codaco/fresco-ui/layout/Surface';
-import Heading from '@codaco/fresco-ui/typography/Heading';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { cn } from '~/lib/cn';
+import { Eyebrow } from '~/components/protocol-gallery/Eyebrow';
+import { ButtonLink } from '~/components/ui/ButtonLink';
 import type {
   ProtocolDownload,
   ProtocolSupplementaryMaterial,
 } from '~/lib/protocolGallery';
+
+function WaveActions({
+  download,
+  children,
+}: {
+  download: ProtocolDownload;
+  children?: React.ReactNode;
+}) {
+  const t = useTranslations('ProtocolGallery.detail');
+
+  return (
+    <>
+      <ButtonLink
+        native
+        href={download.protocolPath}
+        download={download.protocolFilename}
+        color="primary"
+        variant="raised"
+      >
+        <Download aria-hidden />
+        {t('downloadProtocol')}
+      </ButtonLink>
+      {children}
+      <ButtonLink
+        external
+        href={download.codebookPath}
+        color="warning"
+        variant="raised"
+      >
+        <BookOpenText aria-hidden />
+        {t('viewCodebook')}
+      </ButtonLink>
+    </>
+  );
+}
+
+function WaveGroup({
+  download,
+  label,
+}: {
+  download: ProtocolDownload;
+  label: string;
+}) {
+  const labelId = useId();
+
+  return (
+    <div role="group" aria-labelledby={labelId} className="min-w-0">
+      <Eyebrow id={labelId}>{label}</Eyebrow>
+      <div className="mt-2 flex flex-wrap gap-3">
+        <WaveActions download={download} />
+      </div>
+    </div>
+  );
+}
 
 export function ProtocolDownloads({
   downloads,
@@ -29,96 +73,52 @@ export function ProtocolDownloads({
   sandboxUrl?: string;
 }) {
   const t = useTranslations('ProtocolGallery.detail');
-  const hasWaves = downloads.length > 1;
+  const [firstWave, ...laterWaves] = downloads;
+  if (!firstWave) return null;
 
-  const secondaryActions = (
-    <>
-      {supplementaryMaterials.map((material) => (
-        <a
-          key={material.filename}
-          href={material.path}
-          target="_blank"
-          rel="noreferrer"
-          className={buttonVariants({
-            color: 'secondary',
-            variant: 'outline',
-          })}
-        >
-          <Images aria-hidden className="size-5" />
-          {material.label}
-        </a>
-      ))}
-      {sandboxUrl ? (
-        <a
-          href={sandboxUrl}
-          target="_blank"
-          rel="noreferrer"
-          className={buttonVariants({
-            color: 'secondary',
-            variant: 'outline',
-          })}
-        >
-          <FileText aria-hidden className="size-5" />
-          {t('openSandbox')}
-          <ExternalLink aria-hidden className="size-4" />
-        </a>
-      ) : null}
-    </>
-  );
+  const sandboxAction = sandboxUrl ? (
+    <ButtonLink external href={sandboxUrl} color="secondary" variant="raised">
+      {t('openSandbox')}
+      <ExternalLink aria-hidden />
+    </ButtonLink>
+  ) : null;
+  const materialActions = supplementaryMaterials.map((material) => (
+    <ButtonLink
+      key={material.filename}
+      external
+      href={material.path}
+      color="secondary"
+      variant="raised"
+    >
+      <Images aria-hidden />
+      {material.label}
+    </ButtonLink>
+  ));
+
+  if (laterWaves.length === 0) {
+    return (
+      <div className="flex flex-wrap gap-3">
+        <WaveActions download={firstWave}>{sandboxAction}</WaveActions>
+        {materialActions}
+      </div>
+    );
+  }
 
   return (
-    <Surface spacing="lg" shadow="lg" className="overflow-visible">
-      <Heading level="h2" margin="none" className="text-xl">
-        {t('downloads')}
-      </Heading>
-      <Paragraph margin="none" className="text-text/70 mt-4 max-w-3xl">
-        {t('downloadDescription')}
-      </Paragraph>
-
-      <div className="mt-8 space-y-6">
-        {downloads.map((download) => (
-          <div
-            key={download.wave}
-            className="border-outline/45 border-t pt-6 first:border-t-0 first:pt-0"
-          >
-            {hasWaves ? (
-              <Heading level="h3" margin="none" className="text-lg">
-                {t('wave', { wave: download.wave })}
-              </Heading>
-            ) : null}
-            <div className={cn('flex flex-wrap gap-3', hasWaves && 'mt-4')}>
-              <a
-                href={download.protocolPath}
-                download={download.protocolFilename}
-                className={buttonVariants({
-                  color: 'primary',
-                  variant: 'raised',
-                })}
-              >
-                <Download aria-hidden className="size-5" />
-                {t('downloadProtocol')}
-              </a>
-              <a
-                href={download.codebookPath}
-                target="_blank"
-                rel="noreferrer"
-                className={buttonVariants({
-                  color: 'secondary',
-                  variant: 'outline',
-                })}
-              >
-                <BookOpenText aria-hidden className="size-5" />
-                {t('viewCodebook')}
-              </a>
-              {hasWaves ? null : secondaryActions}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {hasWaves && secondaryActions ? (
-        <div className="mt-6 flex flex-wrap gap-3">{secondaryActions}</div>
+    <div className="flex flex-col gap-4">
+      {sandboxAction ? (
+        <div className="flex flex-wrap gap-3">{sandboxAction}</div>
       ) : null}
-    </Surface>
+      {downloads.map((download) => (
+        <WaveGroup
+          key={download.wave}
+          download={download}
+          label={t('wave', { wave: download.wave })}
+        />
+      ))}
+      {materialActions.length > 0 ? (
+        <div className="flex flex-wrap gap-3">{materialActions}</div>
+      ) : null}
+    </div>
   );
 }

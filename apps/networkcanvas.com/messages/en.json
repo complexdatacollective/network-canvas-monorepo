@@ -165,7 +165,6 @@
     "intro": {
       "heading": "Protocol Gallery",
       "introduction": "Explore protocols shared by researchers using Network Canvas. Review how each study was designed, download its codebook and protocol, or open it in Fresco.",
-      "submission": "If you have developed a Network Canvas protocol and would like it included, email us at <email>{address}</email>.",
       "featured": "Featured protocol"
     },
     "collection": {
@@ -173,17 +172,16 @@
       "searchLabel": "Search protocols",
       "searchPlaceholder": "Search protocols",
       "clearSearch": "Clear search",
-      "results": "{count, plural, =1 {# protocol} other {# protocols}}",
+      "clearFilters": "Clear all",
+      "resultsOfTotal": "{count} of {total, plural, =1 {# protocol} other {# protocols}}",
       "filterLabel": "Filter protocols",
-      "filters": {
-        "all": "All",
-        "sociograms": "Uses sociograms",
-        "rosters": "Uses rosters",
-        "dyadCensus": "Uses dyad census"
+      "facets": {
+        "fields": "Field of study",
+        "edgeGeneration": "Edge generation"
       },
-      "sortLabel": "Sort protocols",
+      "sortLabel": "Sort by",
       "sortOptions": {
-        "newest": "Newest first",
+        "newest": "Most recent",
         "oldest": "Oldest first",
         "titleAsc": "Title A–Z",
         "titleDesc": "Title Z–A"
@@ -191,28 +189,75 @@
       "emptyHeading": "No protocols found",
       "emptyDescription": "Try changing your search or filter.",
       "openProtocol": "Explore {title}",
-      "viewDetails": "View details"
+      "viewDetails": "View"
+    },
+    "card": {
+      "edges": "Edges",
+      "fields": "Fields",
+      "added": "Added {date}"
+    },
+    "stages": {
+      "heading": "Stage sequence",
+      "waveTabs": "Waves",
+      "count": "{count, plural, =1 {# stage} other {# stages}}",
+      "waves": "{count, plural, =1 {# wave} other {# waves}}",
+      "edgeStageCounts": {
+        "Sociogram": "{count, plural, =1 {# sociogram} other {# sociograms}}",
+        "DyadCensus": "{count, plural, =1 {# dyad census} other {# dyad censuses}}",
+        "TieStrengthCensus": "{count, plural, =1 {# tie-strength census} other {# tie-strength censuses}}",
+        "OneToManyDyadCensus": "{count, plural, =1 {# one-to-many dyad census} other {# one-to-many dyad censuses}}",
+        "NetworkComposer": "{count, plural, =1 {# network composer} other {# network composers}}"
+      }
+    },
+    "stageTypes": {
+      "AlterEdgeForm": "Per Alter Edge Form",
+      "AlterForm": "Per Alter Form",
+      "Anonymisation": "Anonymisation Interface",
+      "CategoricalBin": "Categorical Bin",
+      "DyadCensus": "Dyad Census",
+      "EgoForm": "Ego Form",
+      "FamilyPedigree": "Family Pedigree",
+      "Geospatial": "Geospatial Interface",
+      "Information": "Information",
+      "NameGenerator": "Name Generator (using forms)",
+      "NameGeneratorQuickAdd": "Name Generator (quick add)",
+      "NameGeneratorRoster": "Name Generator for Roster Data",
+      "Narrative": "Narrative",
+      "NarrativePedigree": "Narrative Pedigree",
+      "NetworkComposer": "Network Composer",
+      "OneToManyDyadCensus": "One to Many Dyad Census",
+      "OrdinalBin": "Ordinal Bin",
+      "Sociogram": "Sociogram",
+      "TieStrengthCensus": "Tie-Strength Census"
     },
     "detail": {
-      "back": "Back to all protocols",
-      "summary": "Study summary",
-      "citation": "Citation",
+      "back": "Back to library",
+      "citation": "Cite this publication",
+      "protocolFile": "Protocol file",
+      "demonstrates": "What this protocol demonstrates",
       "details": "Study details",
       "studyPi": "Study PI",
       "grantNumber": "Grant number",
       "contact": "Protocol contact",
-      "methods": "Edge generation methodology",
-      "fields": "Field",
+      "methods": "Edge generation",
+      "fields": "Field(s)",
       "population": "Population",
-      "clinicalTrials": "Clinical trials registration",
+      "usesRosters": "Uses rosters",
+      "yes": "Yes",
+      "no": "No",
+      "clinicalTrials": "Trial registration",
+      "publication": "DOI / publication",
       "dateAdded": "Date added",
       "viewPublication": "View publication",
-      "downloads": "Use this protocol",
-      "downloadDescription": "Download the Network Canvas protocol and its printable codebook. Additional supporting materials are included when available.",
       "wave": "Wave {wave}",
-      "openSandbox": "Open in Fresco",
+      "openSandbox": "Preview in Fresco",
       "downloadProtocol": "Download protocol",
-      "viewCodebook": "View codebook"
+      "viewCodebook": "Codebook summary"
+    },
+    "submit": {
+      "heading": "Submit your protocol",
+      "description": "Send us your .netcanvas file, codebook, and citation and we will review it for the gallery.",
+      "action": "Email your protocol"
     }
   },
   "GetStarted": {

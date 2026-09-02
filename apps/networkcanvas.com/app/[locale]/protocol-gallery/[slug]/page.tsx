@@ -1,19 +1,24 @@
-import { ArrowLeft, ExternalLink, Star } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import type { Metadata } from 'next';
 import { hasLocale } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
-import { Badge } from '@codaco/fresco-ui/Badge';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Footer } from '~/components/layout/Footer';
 import { Header } from '~/components/layout/Header';
+import { Eyebrow } from '~/components/protocol-gallery/Eyebrow';
+import { OverlineHeading } from '~/components/protocol-gallery/OverlineHeading';
+import { ProtocolCitation } from '~/components/protocol-gallery/ProtocolCitation';
+import { ProtocolDetailFacts } from '~/components/protocol-gallery/ProtocolDetailFacts';
 import { ProtocolDownloads } from '~/components/protocol-gallery/ProtocolDownloads';
-import { ProtocolPattern } from '~/components/protocol-gallery/ProtocolPattern';
+import { StageSequenceRail } from '~/components/protocol-gallery/StageSequenceRail';
 import { Container } from '~/components/ui/Container';
 import { HomepagePageBackground } from '~/components/ui/HomepagePageBackground';
+import { NativeLink } from '~/components/ui/NativeLink';
+import { Pill } from '~/components/ui/Pill';
 import { routing } from '~/lib/i18n/routing';
 import { getProtocolBySlug, loadProtocolGallery } from '~/lib/protocolGallery';
 import { protocolGalleryHref, protocolGalleryUrl } from '~/lib/siteUrls';
@@ -66,51 +71,7 @@ export async function generateMetadata({
   };
 }
 
-function DetailItem({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="border-outline/40 border-b pb-5 last:border-b-0 last:pb-0">
-      <dt className="font-heading text-text/55 text-xs font-black tracking-wide uppercase">
-        {label}
-      </dt>
-      <dd className="mt-2 leading-relaxed">{children}</dd>
-    </div>
-  );
-}
-
-const contactEmailPattern = /[\w.%+-]+@[\w.-]+\.[A-Za-z]{2,}/g;
-
-function ProtocolContact({ contact }: { contact: string }) {
-  const matches = [...contact.matchAll(contactEmailPattern)];
-  if (matches.length === 0) return contact;
-
-  const parts: React.ReactNode[] = [];
-  let cursor = 0;
-
-  for (const match of matches) {
-    const email = match[0];
-    const index = match.index;
-    if (index > cursor) parts.push(contact.slice(cursor, index));
-    parts.push(
-      <a
-        key={`${index}-${email}`}
-        href={`mailto:${email}`}
-        className="focusable text-primary rounded-sm underline underline-offset-4"
-      >
-        {email}
-      </a>,
-    );
-    cursor = index + email.length;
-  }
-
-  if (cursor < contact.length) parts.push(contact.slice(cursor));
-  return parts;
-}
+const stageSequenceHeadingId = 'protocol-stage-sequence';
 
 export default async function ProtocolDetailPage({
   params,
@@ -123,175 +84,95 @@ export default async function ProtocolDetailPage({
   if (!protocol) notFound();
 
   const t = await getTranslations({ locale, namespace: 'ProtocolGallery' });
-  const dateAdded = new Intl.DateTimeFormat(locale, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(`${protocol.dateAdded}T00:00:00Z`));
-  const clinicalTrialsIsUrl =
-    protocol.clinicalTrialsRegistration.startsWith('https://');
+  const [firstWave] = protocol.downloads;
 
   return (
     <main className="relative isolate">
       <HomepagePageBackground target="[data-protocol-detail-weave-target]" />
       <Header activeItemId="protocolGallery" host="protocolGallery" />
 
-      <Container maxWidth="wide" className="mt-12!">
-        <a
-          href={protocolGalleryHref(locale)}
-          className="focusable text-primary inline-flex items-center gap-2 rounded-sm font-bold"
-        >
-          <ArrowLeft aria-hidden className="size-5" />
-          {t('detail.back')}
-        </a>
-
-        <div
-          data-protocol-detail-weave-target
-          className="elevation-low bg-surface relative mt-10 min-h-[27rem] overflow-clip rounded"
-        >
-          <ProtocolPattern
-            name={protocol.title}
-            className="absolute inset-0 size-full"
-          />
-          <div
-            aria-hidden
-            className="from-surface via-surface/95 tablet-landscape:bg-linear-to-r tablet-landscape:via-55% tablet-landscape:to-90% absolute inset-0 bg-linear-to-t via-65% to-transparent"
-          />
-          {protocol.featured ? (
-            <div className="tablet-portrait:p-12 pointer-events-none absolute inset-0 z-10 flex items-start justify-end p-7">
-              <Badge className="gap-1.5">
-                <Star aria-hidden className="size-3" />
-                {t('intro.featured')}
-              </Badge>
-            </div>
+      <Container maxWidth="full" margin="none" className="mt-12">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <span className="inline-flex items-center gap-2">
+            <ArrowLeft aria-hidden className="text-link size-5" />
+            <NativeLink href={protocolGalleryHref(locale)}>
+              {t('detail.back')}
+            </NativeLink>
+          </span>
+          {firstWave ? (
+            <Pill variant="filled">
+              <span className="sr-only">{t('detail.protocolFile')} </span>
+              {firstWave.protocolFilename}
+            </Pill>
           ) : null}
-          <div className="tablet-portrait:p-12 tablet-landscape:items-center relative z-10 flex min-h-[27rem] items-end p-7">
-            <div className="tablet-landscape:max-w-[62%] max-w-3xl min-w-0">
-              <p className="font-heading text-text/55 text-sm font-black tracking-wide">
-                {protocol.shortName}
-              </p>
+        </div>
+
+        <div className="tablet-landscape:grid-cols-[minmax(0,1.4fr)_minmax(24rem,1fr)] mt-8 grid grid-cols-1 gap-8">
+          <div className="min-w-0 space-y-8">
+            <div data-protocol-detail-weave-target>
+              {protocol.featured ? (
+                <Eyebrow tone="primary">{t('intro.featured')}</Eyebrow>
+              ) : null}
               <Heading
                 level="h1"
+                variant="section-heading"
                 margin="none"
-                className="mt-3 text-2xl font-black wrap-break-word"
+                className="mt-2"
               >
-                {protocol.title}
+                {protocol.shortName}
               </Heading>
+              <Paragraph intent="lead" margin="none" className="mt-4">
+                {protocol.title}
+              </Paragraph>
               <Paragraph
                 margin="none"
-                className="text-text/70 mt-4 max-w-2xl leading-relaxed"
+                intent="smallText"
+                emphasis="muted"
+                className="font-monospace mt-3"
               >
                 {protocol.authors}
               </Paragraph>
-              <div className="mt-6 flex flex-wrap gap-2">
-                {protocol.usesSociograms ? (
-                  <Badge color="sea-serpent">
-                    {t('collection.filters.sociograms')}
-                  </Badge>
-                ) : null}
-                {protocol.usesRosters ? (
-                  <Badge color="mustard">
-                    {t('collection.filters.rosters')}
-                  </Badge>
-                ) : null}
-                {protocol.usesDyadCensus ? (
-                  <Badge color="neon-coral">
-                    {t('collection.filters.dyadCensus')}
-                  </Badge>
-                ) : null}
+              <div className="mt-6">
+                <ProtocolDownloads
+                  downloads={protocol.downloads}
+                  supplementaryMaterials={protocol.supplementaryMaterials}
+                  sandboxUrl={protocol.sandboxUrl}
+                />
               </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="tablet-landscape:grid-cols-[minmax(0,1.5fr)_minmax(20rem,0.75fr)] mt-12 grid grid-cols-[minmax(0,1fr)] gap-8">
-          <div className="min-w-0 space-y-8">
-            <Surface spacing="lg" shadow="md">
-              <Heading level="h2" margin="none" className="text-xl">
-                {t('detail.summary')}
-              </Heading>
-              <Paragraph
-                margin="none"
-                className="text-text/80 mt-4 leading-relaxed"
-              >
+              <Paragraph margin="none" className="mt-8">
                 {protocol.summary}
               </Paragraph>
-            </Surface>
+            </div>
 
-            <Surface spacing="lg" shadow="md">
-              <Heading level="h2" margin="none" className="text-xl">
-                {t('detail.citation')}
-              </Heading>
-              <Paragraph
-                margin="none"
-                className="text-text/80 mt-5 leading-relaxed whitespace-pre-line"
-              >
-                {protocol.citation}
+            <Surface noContainer spacing="lg" shadow="md">
+              <OverlineHeading>{t('detail.demonstrates')}</OverlineHeading>
+              <Paragraph margin="none" className="mt-3">
+                {protocol.description}
               </Paragraph>
-              <a
-                href={protocol.publicationUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="focusable text-primary mt-5 inline-flex items-center gap-2 rounded-sm font-bold"
-              >
-                {t('detail.viewPublication')}
-                <ExternalLink aria-hidden className="size-4" />
-              </a>
             </Surface>
 
-            <ProtocolDownloads
-              downloads={protocol.downloads}
-              supplementaryMaterials={protocol.supplementaryMaterials}
-              sandboxUrl={protocol.sandboxUrl}
+            <ProtocolDetailFacts protocol={protocol} locale={locale} />
+
+            <ProtocolCitation
+              citation={protocol.citation}
+              publicationUrl={protocol.publicationUrl}
             />
           </div>
 
           <Surface
             as="aside"
+            noContainer
             spacing="lg"
             shadow="md"
+            aria-labelledby={stageSequenceHeadingId}
             className="min-w-0 self-start"
           >
-            <Heading level="h2" margin="none" className="text-xl">
-              {t('detail.details')}
-            </Heading>
-            <dl className="mt-7 space-y-5">
-              <DetailItem label={t('detail.studyPi')}>
-                {protocol.studyPi}
-              </DetailItem>
-              <DetailItem label={t('detail.grantNumber')}>
-                {protocol.grantNumber}
-              </DetailItem>
-              <DetailItem label={t('detail.contact')}>
-                <ProtocolContact contact={protocol.contact} />
-              </DetailItem>
-              <DetailItem label={t('detail.methods')}>
-                {protocol.edgeGeneration}
-              </DetailItem>
-              <DetailItem label={t('detail.fields')}>
-                {protocol.fields}
-              </DetailItem>
-              <DetailItem label={t('detail.population')}>
-                {protocol.population}
-              </DetailItem>
-              <DetailItem label={t('detail.clinicalTrials')}>
-                {clinicalTrialsIsUrl ? (
-                  <a
-                    href={protocol.clinicalTrialsRegistration}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="focusable text-primary inline-flex min-w-0 items-center gap-2 rounded-sm break-all underline underline-offset-4"
-                  >
-                    {protocol.clinicalTrialsRegistration}
-                    <ExternalLink aria-hidden className="size-4 shrink-0" />
-                  </a>
-                ) : (
-                  protocol.clinicalTrialsRegistration
-                )}
-              </DetailItem>
-              <DetailItem label={t('detail.dateAdded')}>{dateAdded}</DetailItem>
-            </dl>
+            <OverlineHeading id={stageSequenceHeadingId}>
+              {t('stages.heading')}
+            </OverlineHeading>
+            <div className="mt-4">
+              <StageSequenceRail downloads={protocol.downloads} />
+            </div>
           </Surface>
         </div>
       </Container>

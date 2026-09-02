@@ -2,16 +2,15 @@ import type { Metadata } from 'next';
 import { hasLocale } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
-import type { ReactNode } from 'react';
 
-import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Footer } from '~/components/layout/Footer';
 import { Header } from '~/components/layout/Header';
 import { ProtocolGallery } from '~/components/protocol-gallery/ProtocolGallery';
+import { SubmitProtocolCard } from '~/components/protocol-gallery/SubmitProtocolCard';
+import { Container } from '~/components/ui/Container';
 import { HomepagePageBackground } from '~/components/ui/HomepagePageBackground';
-import { contactEmail } from '~/lib/content';
 import { routing } from '~/lib/i18n/routing';
 import { loadProtocolGallery } from '~/lib/protocolGallery';
 import { protocolGalleryUrl } from '~/lib/siteUrls';
@@ -44,14 +43,6 @@ export async function generateMetadata({
   };
 }
 
-function renderContactLink(chunks: ReactNode) {
-  return (
-    <NativeLink href={`mailto:${contactEmail}`} className="font-bold">
-      {chunks}
-    </NativeLink>
-  );
-}
-
 export default async function ProtocolGalleryPage({
   params,
 }: ProtocolGalleryPageProps) {
@@ -67,38 +58,27 @@ export default async function ProtocolGalleryPage({
       <HomepagePageBackground target="[data-protocol-gallery-weave-target]" />
       <Header activeItemId="protocolGallery" host="protocolGallery" />
 
-      <div
-        data-protocol-gallery-weave-target
-        className="tablet-portrait:pt-24 tablet-portrait:pb-28 px-6 pt-16 pb-20 text-center"
-      >
-        <div className="mx-auto max-w-4xl">
-          <Heading
-            level="h1"
-            variant="display-heading"
-            margin="none"
-            className="text-text"
-          >
-            {t('intro.heading')}
-          </Heading>
-          <Paragraph
-            intent="lead"
-            margin="none"
-            className="text-text/75 mt-6 text-lg text-pretty"
-          >
-            {t('intro.introduction')}
-          </Paragraph>
-          <Paragraph
-            intent="lead"
-            margin="none"
-            className="text-text/75 mt-3 text-lg text-pretty"
-          >
-            {t.rich('intro.submission', {
-              address: contactEmail,
-              email: renderContactLink,
-            })}
-          </Paragraph>
+      <Container maxWidth="full" margin="none" className="mt-12">
+        <div
+          data-protocol-gallery-weave-target
+          className="tablet-landscape:grid-cols-[minmax(0,1fr)_minmax(28rem,40rem)] tablet-landscape:items-start grid gap-8"
+        >
+          <div className="min-w-0">
+            <Heading level="h1" variant="section-heading" margin="none">
+              {t('intro.heading')}
+            </Heading>
+            <Paragraph
+              intent="lead"
+              margin="none"
+              emphasis="muted"
+              className="mt-6 max-w-3xl"
+            >
+              {t('intro.introduction')}
+            </Paragraph>
+          </div>
+          <SubmitProtocolCard />
         </div>
-      </div>
+      </Container>
 
       <ProtocolGallery protocols={protocols} />
 
