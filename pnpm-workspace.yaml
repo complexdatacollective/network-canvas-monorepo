@@ -164,7 +164,7 @@ overrides:
   # Next pins an exact PostCSS version, so keep transitives on the patched
   # catalog version rather than duplicating the version here.
   postcss: 'catalog:'
-  sharp: '^0.35.3'
+  sharp: '^0.35.4'
   valibot: '^1.4.2'
 autoInstallPeers: true
 linkWorkspacePackages: false
