@@ -59,7 +59,7 @@
     "papaparse": "^5.5.4",
     "postcss": "catalog:",
     "posthog-js": "catalog:",
-    "posthog-node": "^5.47.3",
+    "posthog-node": "^5.51.5",
     "qrcode": "^1.5.4",
     "react": "catalog:",
     "react-dom": "catalog:",
