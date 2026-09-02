@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { GridLayout } from '@codaco/fresco-ui/collection/layout/GridLayout';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { GallerySidebar } from '~/components/protocol-gallery/GallerySidebar';
@@ -17,7 +18,11 @@ import {
   countFacetValues,
   toggleFacetValue,
 } from '~/lib/galleryFacets';
-import { type SortId, sortRules } from '~/lib/gallerySort';
+import {
+  type SortId,
+  sortGalleryProtocols,
+  sortRules,
+} from '~/lib/gallerySort';
 import type { GalleryProtocol } from '~/lib/protocolGallery';
 
 const galleryFuseOptions = { threshold: 0.15, includeScore: false } as const;
@@ -65,11 +70,14 @@ export function ProtocolGallery({
   );
   const filteredProtocols = useMemo(
     () =>
-      applyFacets(protocols, {
-        fields: selectedFields,
-        edgeGeneration: selectedEdges,
-      }),
-    [protocols, selectedEdges, selectedFields],
+      sortGalleryProtocols(
+        applyFacets(protocols, {
+          fields: selectedFields,
+          edgeGeneration: selectedEdges,
+        }),
+        sort,
+      ),
+    [protocols, selectedEdges, selectedFields, sort],
   );
   const layout = useMemo(
     () =>
@@ -150,7 +158,7 @@ export function ProtocolGallery({
               layout={layout}
               selectionMode="none"
               nativeItemSemantics
-              filterQuery={query}
+              filterQuery={query.trim()}
               filterExecution="sync"
               filterKeys={galleryFilterKeys}
               filterFuseOptions={galleryFuseOptions}
@@ -174,20 +182,26 @@ export function ProtocolGallery({
               ].join('::')}
               className="[&_[data-stagger-item]]:size-full"
               emptyState={
-                <Surface
-                  noContainer
-                  spacing="lg"
-                  shadow="sm"
-                  role="status"
-                  className="mx-auto max-w-lg"
-                >
-                  <Heading level="h3" margin="none">
-                    {t('emptyHeading')}
-                  </Heading>
-                  <Paragraph margin="none" emphasis="muted" className="mt-3">
-                    {t('emptyDescription')}
-                  </Paragraph>
-                </Surface>
+                hasActiveFilters ? (
+                  <Surface
+                    noContainer
+                    spacing="lg"
+                    shadow="sm"
+                    role="status"
+                    className="mx-auto max-w-lg"
+                  >
+                    <Heading level="h3" margin="none">
+                      {t('emptyHeading')}
+                    </Heading>
+                    <Paragraph margin="none" emphasis="muted" className="mt-3">
+                      {t('emptyDescription')}
+                    </Paragraph>
+                  </Surface>
+                ) : (
+                  // Without a filter, an empty collection can only mean the
+                  // items have not been mounted yet.
+                  <Spinner />
+                )
               }
               renderItem={(protocol, itemProps) => (
                 <ProtocolGalleryCard

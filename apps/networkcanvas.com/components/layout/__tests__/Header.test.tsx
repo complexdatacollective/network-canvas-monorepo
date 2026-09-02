@@ -75,6 +75,17 @@ describe('localized layout navigation', () => {
     ).toHaveAttribute('aria-expanded', 'true');
   });
 
+  it('opens the gallery in the same tab while it is a route of this site', () => {
+    renderWithIntl(<Header />, 'es');
+
+    const gallery = screen.getByRole('link', {
+      name: 'Galería de protocolos',
+    });
+    expect(gallery).toHaveAttribute('href', '/protocol-gallery');
+    expect(gallery).not.toHaveAttribute('target');
+    expect(gallery).not.toHaveAttribute('rel');
+  });
+
   it('carries the locale across hosts once the gallery has its own origin', () => {
     vi.stubEnv(
       'NEXT_PUBLIC_PROTOCOL_GALLERY_URL',

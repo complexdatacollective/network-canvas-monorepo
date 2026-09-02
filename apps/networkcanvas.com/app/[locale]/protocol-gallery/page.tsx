@@ -3,6 +3,7 @@ import { hasLocale } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
+import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/SiteNavigation.constants';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Footer } from '~/components/layout/Footer';
@@ -40,6 +41,17 @@ export async function generateMetadata({
       canonical: protocolGalleryUrl(locale),
       languages: localeAlternates(),
     },
+    openGraph: {
+      title: t('metadata.title'),
+      description: t('metadata.description'),
+      url: protocolGalleryUrl(locale),
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary',
+      title: t('metadata.title'),
+      description: t('metadata.description'),
+    },
   };
 }
 
@@ -60,6 +72,7 @@ export default async function ProtocolGalleryPage({
 
       <Container maxWidth="full" margin="none" className="mt-12">
         <div
+          id={SITE_NAVIGATION_SKIP_TARGET_ID}
           data-protocol-gallery-weave-target
           className="tablet-landscape:grid-cols-[minmax(0,1fr)_minmax(28rem,40rem)] tablet-landscape:items-start grid gap-8"
         >

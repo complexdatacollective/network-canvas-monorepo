@@ -30,15 +30,26 @@ export function Header({
 
   const renderNavigationLink = ({
     children,
+    target,
+    rel,
     ...props
-  }: SiteNavigationLinkRenderProps) => (
-    <Link
-      {...props}
-      href={resolveWebsiteNavigationUrl(props.href, locale, host)}
-    >
-      {children}
-    </Link>
-  );
+  }: SiteNavigationLinkRenderProps) => {
+    const href = resolveWebsiteNavigationUrl(props.href, locale, host);
+    // A destination rewritten onto this site is an ordinary in-site route and
+    // must not keep the new-tab treatment the shared navigation gives it.
+    const sameSite = href.startsWith('/');
+
+    return (
+      <Link
+        {...props}
+        href={href}
+        target={sameSite ? undefined : target}
+        rel={sameSite ? undefined : rel}
+      >
+        {children}
+      </Link>
+    );
+  };
 
   return (
     <SharedSiteNavigation

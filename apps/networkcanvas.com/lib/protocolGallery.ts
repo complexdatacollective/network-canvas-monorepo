@@ -166,7 +166,16 @@ function parseDateAdded(value: string): string {
   if (!month || !day || !year) {
     throw new Error(`Date Added: invalid date: ${value}`);
   }
-  return `${year}-${month}-${day.padStart(2, '0')}`;
+
+  const iso = `${year}-${month}-${day.padStart(2, '0')}`;
+  const parsed = new Date(`${iso}T00:00:00Z`);
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== iso
+  ) {
+    throw new Error(`Date Added: invalid date: ${value}`);
+  }
+  return iso;
 }
 
 function protocolShortName(value: string): string {

@@ -1,3 +1,5 @@
+import type { GalleryProtocol } from '~/lib/protocolGallery';
+
 export type SortId = 'newest' | 'oldest' | 'titleAsc' | 'titleDesc';
 
 export type SortRule = {
@@ -25,4 +27,23 @@ export function parseSortId(value: unknown): SortId {
     default:
       return 'newest';
   }
+}
+
+/**
+ * The same order `Collection` produces from `sortRules` — featured first,
+ * then the active rule — so the server-rendered grid already matches what
+ * the collection settles on after hydration.
+ */
+export function sortGalleryProtocols(
+  protocols: GalleryProtocol[],
+  sort: SortId,
+): GalleryProtocol[] {
+  const { property, direction } = sortRules[sort];
+  const sign = direction === 'asc' ? 1 : -1;
+
+  return protocols.toSorted(
+    (a, b) =>
+      Number(b.featured) - Number(a.featured) ||
+      sign * a[property].localeCompare(b[property], 'en'),
+  );
 }

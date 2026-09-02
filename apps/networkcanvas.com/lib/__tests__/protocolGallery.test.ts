@@ -124,6 +124,22 @@ describe('loadProtocolGallery', () => {
     );
   });
 
+  it('rejects well-formed but impossible dates', async () => {
+    const source = await readFile(
+      join(process.cwd(), 'content', 'protocol-gallery.csv'),
+      'utf8',
+    );
+    const contentFile = join(directory, 'protocol-gallery.csv');
+    await writeFile(
+      contentFile,
+      source.replace('"Oct. 22,2025"', '"Feb. 31,2026"'),
+    );
+
+    await expect(loadProtocolGallery(contentFile)).rejects.toThrow(
+      'Date Added: invalid date: Feb. 31,2026',
+    );
+  });
+
   it('fails the build when a referenced asset is missing', async () => {
     const emptyAssetDirectory = join(directory, 'assets');
     const sourceFile = join(process.cwd(), 'content', 'protocol-gallery.csv');

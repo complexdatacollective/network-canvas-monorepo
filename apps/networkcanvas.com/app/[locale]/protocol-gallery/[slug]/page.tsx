@@ -5,6 +5,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/SiteNavigation.constants';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Footer } from '~/components/layout/Footer';
@@ -92,7 +93,10 @@ export default async function ProtocolDetailPage({
       <Header activeItemId="protocolGallery" host="protocolGallery" />
 
       <Container maxWidth="full" margin="none" className="mt-12">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        <div
+          id={SITE_NAVIGATION_SKIP_TARGET_ID}
+          className="flex flex-wrap items-center justify-between gap-4"
+        >
           <span className="inline-flex items-center gap-2">
             <ArrowLeft aria-hidden className="text-link size-5" />
             <NativeLink href={protocolGalleryHref(locale)}>
