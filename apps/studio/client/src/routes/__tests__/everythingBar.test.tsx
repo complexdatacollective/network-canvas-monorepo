@@ -331,7 +331,7 @@ describe('go to', () => {
       teamId: 'team-a',
       studyId: 'study-1',
       canManageTeam: true,
-      billingUnavailable: false,
+      billingUnavailableReason: undefined,
     });
     const items = destinationItems({
       entries,
@@ -363,7 +363,7 @@ describe('go to', () => {
       teamId: 'team-a',
       studyId: 'study-1',
       canManageTeam: true,
-      billingUnavailable: false,
+      billingUnavailableReason: undefined,
     });
     const activatable = new Set(
       activatableDestinations(entries).map((entry) => entry.href),
@@ -493,7 +493,8 @@ describe('commands', () => {
 });
 
 describe('a destination this deployment does not have', () => {
-  it('is offered on the managed service', async () => {
+  it('is offered where the deployment reports billing', async () => {
+    fixtures.deployment = { mode: 'managed', billing: true };
     renderAt('/team/team-a');
     await screen.findByRole('link', { name: 'Billing' });
 
@@ -514,6 +515,28 @@ describe('a destination this deployment does not have', () => {
     // silence below is about the bar, not about the destination disappearing.
     expect(
       await screen.findByText('Managed deployments only'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Billing/ })).toBeNull();
+
+    const { dialog, input } = await openBar();
+    type(input, 'billing');
+
+    await within(dialog).findByText(NO_RESULTS);
+    expect(
+      within(dialog).queryByRole('option', { name: /Billing/ }),
+    ).toBeNull();
+  });
+
+  it('gets the same treatment on a managed deployment without billing', async () => {
+    // The topology serves the surface; this deployment has not got it, which
+    // is every deployment today (§10.3). Reading the mode alone offers a
+    // result that lands on a placeholder — the one thing a launcher must not
+    // do — so the capability decides this too.
+    fixtures.deployment = { mode: 'managed', billing: false };
+    renderAt('/team/team-a');
+
+    expect(
+      await screen.findByText('Not enabled on this deployment'),
     ).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Billing/ })).toBeNull();
 

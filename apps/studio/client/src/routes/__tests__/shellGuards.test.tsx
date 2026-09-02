@@ -690,6 +690,32 @@ describe('the site header, on a public page that is not marketing', () => {
     ).toBeInTheDocument();
   });
 
+  it('re-asks the session when the tab is re-entered', async () => {
+    renderAt('/pricing');
+    expect(
+      await screen.findByRole('link', { name: 'Go to Studio' }),
+    ).toHaveAttribute('href', '/team/team-a');
+
+    // Signed out in another tab while this one sat on a legal document or a
+    // pricing page. Nothing here fails — this branch makes no authenticated
+    // request at all — and the session query is `staleTime: Infinity`, so
+    // without a revalidation on this shell too the header keeps offering a way
+    // into Studio backed by a session that ended, and the app guard is handed
+    // the same cached answer when it is used.
+    fixtures.signedIn = false;
+    fireEvent(document, new Event('visibilitychange'));
+
+    const entry = await screen.findByRole('link', { name: 'Sign in' });
+    expect(screen.queryByRole('link', { name: 'Go to Studio' })).toBeNull();
+
+    // The destination RENDERED, so this is the researcher signing in again
+    // rather than an href that would meet a guard with other ideas.
+    fireEvent.click(entry);
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Sign in' }),
+    ).toBeInTheDocument();
+  });
+
   it('offers the same entry in the compact menu', async () => {
     // `renderUtility` is rendered in both presentations, and the compact one
     // is where a narrow viewport puts every header item — so an entry that

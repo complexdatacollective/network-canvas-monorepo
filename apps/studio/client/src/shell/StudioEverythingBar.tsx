@@ -12,7 +12,7 @@ import EverythingBar, {
 } from '@codaco/fresco-ui/navigation/EverythingBar';
 
 import { authClient } from '../lib/auth.ts';
-import { useSurfaceUnavailable } from '../lib/deployment.ts';
+import { useBillingUnavailableReason } from '../lib/deployment.ts';
 import { canManageTeam, teamRole } from '../lib/teamRoles.ts';
 import { createDestinationsProvider } from './everythingBarDestinations.ts';
 import {
@@ -100,7 +100,7 @@ export default function StudioEverythingBar() {
   const { studyId, teamId: routeTeamId } = useParams({ strict: false });
   const activeTeam = authClient.useActiveOrganization();
   const activeMember = authClient.useActiveMember();
-  const billingUnavailable = useSurfaceUnavailable('/team/$teamId/billing');
+  const billingUnavailableReason = useBillingUnavailableReason();
 
   // A study route names no team (§6.3), so inside a study this falls back to
   // the active-team setting — the same fallback the header's study chip makes,
@@ -141,9 +141,9 @@ export default function StudioEverythingBar() {
         teamId,
         studyId,
         canManageTeam: canManage,
-        billingUnavailable,
+        billingUnavailableReason,
       }),
-    [teamId, studyId, canManage, billingUnavailable],
+    [teamId, studyId, canManage, billingUnavailableReason],
   );
 
   const destinations = useMemo(

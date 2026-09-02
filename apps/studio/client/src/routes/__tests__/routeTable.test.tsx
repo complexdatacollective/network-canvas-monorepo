@@ -766,12 +766,30 @@ describe('a destination this deployment does not have', () => {
     expect(screen.queryByRole('link', { name: /Billing/ })).toBeNull();
   });
 
-  it('links billing on the managed service', async () => {
+  it('explains billing on a managed deployment that has not got it', async () => {
+    // The topology serves the surface and this deployment has no billing —
+    // which is EVERY deployment today, because the machinery is #1253's and
+    // separately configured (§10.3). The mode alone cannot tell the two
+    // absences apart, and marking it available links the sidebar at a
+    // placeholder.
+    fixtures.deployment = { mode: 'managed', billing: false };
+    renderAt('/team/team-a');
+
+    expect(
+      await screen.findByText('Not enabled on this deployment'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Billing')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Billing/ })).toBeNull();
+  });
+
+  it('links billing where the deployment reports it', async () => {
+    fixtures.deployment = { mode: 'managed', billing: true };
     renderAt('/team/team-a');
 
     expect(
       await screen.findByRole('link', { name: 'Billing' }),
     ).toHaveAttribute('href', '/team/team-a/billing');
     expect(screen.queryByText('Managed deployments only')).toBeNull();
+    expect(screen.queryByText('Not enabled on this deployment')).toBeNull();
   });
 });

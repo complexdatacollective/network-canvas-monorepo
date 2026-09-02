@@ -285,6 +285,66 @@ describe('header team switcher', () => {
     );
   });
 
+  it('names the committed team, not the one the setting still holds', async () => {
+    // The write is refused, so the setting stays on team A for good — the
+    // permanent version of the window every team switch passes through. The
+    // screen below is already team B's: it lists and creates studies against
+    // the `teamId` in the URL.
+    fixtures.setActive.mockResolvedValue({
+      data: null,
+      error: { message: 'You are not a member of that team.' },
+    });
+    renderAt('/team/team-b');
+    await screen.findByRole('heading', { level: 1, name: 'Studies' });
+
+    // A chip naming A over B's screen is not a slow update, it is a wrong
+    // answer to the one question the chip exists to answer — and the URL is
+    // what settles it (§2.2), exactly as `teamRole` settles the role.
+    expect(
+      await screen.findByRole('button', {
+        name: 'Current team Beta research team',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', {
+        name: 'Current team Alpha research team',
+      }),
+    ).toBeNull();
+  });
+
+  it('marks the committed team as the chosen one, and administers it', async () => {
+    fixtures.setActive.mockResolvedValue({
+      data: null,
+      error: { message: 'You are not a member of that team.' },
+    });
+    renderAt('/team/team-b');
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Current team Beta research team',
+      }),
+    );
+
+    // The trigger and the open menu have to agree: a chip that says B over a
+    // list that marks A is a worse answer than either alone, and "Team
+    // administration" is a link to a team, so it goes to the one on screen.
+    expect(
+      await screen.findByRole('menuitemradio', {
+        name: 'Beta research team',
+        checked: true,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitemradio', {
+        name: 'Alpha research team',
+        checked: false,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitem', { name: 'Team administration' }),
+    ).toHaveAttribute('href', '/team/team-b/settings');
+  });
+
   it('leaves the setting alone until a navigation commits', async () => {
     renderAt('/team/team-a');
     await screen.findByRole('button', {

@@ -48,6 +48,35 @@ const DRAFT = {
   },
 };
 
+const TEAM_A = { id: 'team-a', name: 'Alpha research team' };
+const TEAM_B = { id: 'team-b', name: 'Beta research team' };
+
+/**
+ * The tenancy the editor has to resolve, read at call time so a test can move
+ * it before it renders. `owner` is the team whose `protocols.list` reports the
+ * study; every other team's list is empty, which is what the URL of a study in
+ * somebody else's team really looks like from here.
+ */
+const tenancy = {
+  teams: [TEAM_A, TEAM_B] as { id: string; name: string }[],
+  activeTeam: TEAM_A as { id: string; name: string } | null,
+  owner: TEAM_A.id as string,
+};
+
+function studiesIn(teamId: string) {
+  return teamId === tenancy.owner
+    ? [
+        {
+          id: DRAFT.protocol.id,
+          draftId: DRAFT.protocol.draftId,
+          name: DRAFT.protocol.name,
+          createdAt: DRAFT.protocol.createdAt,
+          updatedAt: DRAFT.protocol.updatedAt,
+        },
+      ]
+    : [];
+}
+
 function deferred<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((complete) => {
@@ -63,20 +92,20 @@ vi.mock('../../lib/auth.ts', () => ({
       data: { user: { name: 'Researcher', email: 'r@example.com' } },
       isPending: false,
     }),
-    useListOrganizations: vi.fn().mockReturnValue({
-      data: [],
+    // The editor resolves the study's OWNING team from the study id, over the
+    // teams this researcher belongs to — a study route names no team, and the
+    // active-team setting is whichever team route was left last.
+    useListOrganizations: vi.fn(() => ({
+      data: tenancy.teams,
       error: null,
       isPending: false,
-    }),
-    // The editor resolves its team from the active-team setting, which
-    // §6.6's reconciler keeps pointed at the team whose URL the researcher
-    // arrived through.
-    useActiveOrganization: vi.fn().mockReturnValue({
-      data: { id: 'team-a', name: 'Alpha research team' },
+    })),
+    useActiveOrganization: vi.fn(() => ({
+      data: tenancy.activeTeam,
       error: null,
       isPending: false,
       refetch: vi.fn(),
-    }),
+    })),
     useActiveMember: vi.fn().mockReturnValue({
       data: { id: 'member-1', organizationId: 'team-a', role: 'owner' },
       error: null,
@@ -104,23 +133,19 @@ vi.mock('../../lib/api.ts', () => ({
       }),
     },
     protocols: {
-      // The editor's draft id comes from here (§6.3's `study.shell` does not
-      // exist): `protocols.list` already reports each protocol's current
-      // draft, and the team's studies list has usually cached it already.
+      // The editor's owning team and draft id both come from here (§6.3's
+      // `study.shell` does not exist): `protocols.list` is team-scoped and
+      // already reports each protocol's current draft, so it answers both
+      // questions — one team at a time, which is why the key carries the team.
       list: {
-        queryOptions: () => ({
-          queryKey: ['protocols'],
-          queryFn: async () => [
-            {
-              id: DRAFT.protocol.id,
-              draftId: DRAFT.protocol.draftId,
-              name: DRAFT.protocol.name,
-              createdAt: DRAFT.protocol.createdAt,
-              updatedAt: DRAFT.protocol.updatedAt,
-            },
-          ],
+        queryOptions: ({ input }: { input: { teamId: string } }) => ({
+          queryKey: ['protocols', input.teamId],
+          queryFn: async () => studiesIn(input.teamId),
         }),
-        key: () => ['protocols'],
+        key: ({ input }: { input: { teamId: string } }) => [
+          'protocols',
+          input.teamId,
+        ],
       },
       create: { mutationOptions: vi.fn() },
       draft: {
@@ -154,6 +179,9 @@ vi.mock('../../lib/api.ts', () => ({
 }));
 
 beforeEach(() => {
+  tenancy.teams = [TEAM_A, TEAM_B];
+  tenancy.activeTeam = TEAM_A;
+  tenancy.owner = TEAM_A.id;
   vi.mocked(authClient.getSession).mockReset();
   vi.mocked(authClient.getSession).mockResolvedValue({
     data: { user: {} },
@@ -221,6 +249,75 @@ function renderEditor() {
   );
   return { ...result, queryClient, router };
 }
+
+/**
+ * A study URL is a canonical link (§2.2, §5.6): it names the study and nothing
+ * else, so following one has to open that study whoever follows it and however
+ * they got there. Everything here is a way of arriving that does NOT pass
+ * through the owning team's screens first.
+ */
+describe('opening a study by its URL', () => {
+  it('opens one owned by a team that is not the active one', async () => {
+    // A bookmark, or a link a colleague sent. The setting still names the team
+    // this researcher was last acting in, and a study route names no team, so
+    // §6.6's reconciler will never move it.
+    tenancy.owner = TEAM_B.id;
+    tenancy.activeTeam = TEAM_A;
+    renderEditor();
+
+    // The editor OPENED — the draft is on screen, not an explanation of why it
+    // is not.
+    expect(
+      await screen.findByRole('heading', { name: 'Protocol sections' }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Screen name' })).toHaveValue(
+        'Welcome',
+      ),
+    );
+    // And it opened against the team that owns it, which is what every editing
+    // procedure is authorized against.
+    await waitFor(() =>
+      expect(rpcClient.protocols.acquireSection).toHaveBeenCalledWith(
+        expect.objectContaining({ teamId: TEAM_B.id }),
+      ),
+    );
+  });
+
+  it('opens one when the session names no active team at all', async () => {
+    // Nothing sets `activeOrganizationId` when a session is created, so this
+    // is what a first sign-in reads — and with nothing to ask, the editor used
+    // to sit on its spinner for as long as the researcher left it there.
+    tenancy.activeTeam = null;
+    tenancy.owner = TEAM_A.id;
+    renderEditor();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Protocol sections' }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(rpcClient.protocols.acquireSection).toHaveBeenCalledWith(
+        expect.objectContaining({ teamId: TEAM_A.id }),
+      ),
+    );
+  });
+
+  it('says so, rather than spinning, when no team of theirs has it', async () => {
+    // With no active team AND no team that has the study, every read the
+    // screen can make has come back — so an unresolved spinner here is not
+    // "still working", it is the screen having nothing left to wait for.
+    tenancy.owner = 'team-somebody-else';
+    tenancy.activeTeam = null;
+    renderEditor();
+
+    // The one thing the researcher can act on: it is not a team they are in,
+    // so the way forward is an invitation rather than a team switch.
+    expect(
+      await screen.findByText(/not in any of your teams/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Opening protocol editor…')).toBeNull();
+  });
+});
 
 describe('Studio editor shell', () => {
   it('provides the outline, editing canvas, inspector, and keyboard reorder actions', async () => {
@@ -667,6 +764,52 @@ describe('Studio editor shell', () => {
     await waitFor(() =>
       expect(rpcClient.protocols.releaseSection).toHaveBeenCalledTimes(1),
     );
+  });
+
+  it('keeps a dirty editor mounted when the session cannot be re-read', async () => {
+    const { queryClient } = renderEditor();
+    const label = await screen.findByRole('textbox', { name: 'Screen name' });
+    fireEvent.change(label, { target: { value: 'Unsaved welcome' } });
+    queryClient.setQueryData(['private-draft'], { name: 'Private draft' });
+    const readsBefore = vi.mocked(authClient.getSession).mock.calls.length;
+
+    // The researcher went to another tab and came back, and while they were
+    // away `/api/auth/*` stopped answering. Re-entering the tab re-asks the
+    // session (§6.2), and the answer this time is "we could not ask".
+    vi.mocked(authClient.getSession).mockResolvedValue({
+      data: null,
+      error: { status: 500, message: 'unavailable' },
+    } as unknown as Awaited<ReturnType<typeof authClient.getSession>>);
+    fireEvent(document, new Event('visibilitychange'));
+
+    // The revalidation RAN — the guard re-asked and threw — so the assertions
+    // below are about what the shell did with that, not about a listener that
+    // never fired.
+    await waitFor(() =>
+      expect(
+        vi.mocked(authClient.getSession).mock.calls.length,
+      ).toBeGreaterThan(readsBefore),
+    );
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // An unreachable server has not said the session is gone, so nothing may
+    // be taken away on the strength of it: the editor is STILL THE MOUNTED
+    // SCREEN, with the values the researcher typed still in it. Replacing the
+    // app match with the error screen unmounts the editor, and `invalidate`
+    // runs no blocker, so the work goes without anybody being asked.
+    expect(screen.getByRole('textbox', { name: 'Screen name' })).toHaveValue(
+      'Unsaved welcome',
+    );
+    expect(
+      screen.queryByRole('heading', { name: 'Something went wrong' }),
+    ).toBeNull();
+    // And this researcher's cache is still theirs: clearing it belongs to a
+    // CONFIRMED signed-out answer.
+    expect(queryClient.getQueryData(['private-draft'])).toEqual({
+      name: 'Private draft',
+    });
   });
 
   it('does not add a screen when dirty-edit confirmation is cancelled', async () => {

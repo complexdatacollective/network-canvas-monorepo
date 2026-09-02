@@ -76,12 +76,75 @@ export const sessionQueryOptions = queryOptions({
 });
 
 /**
+ * The session as the app shell's guard has to read it: the endpoint's answer
+ * when there is one, and the last answer it gave when it cannot be reached.
+ *
+ * **An unreachable server does not establish that the session is gone, and it
+ * does not establish that anything has changed at all.** The guard runs again
+ * for two different reasons and owes them different treatment. On a COLD
+ * entry, nothing has been established: there is no answer to fall back on, so
+ * not knowing reaches the router's `defaultErrorComponent`, which is what
+ * `auth.test.tsx` pins. On a REVALIDATION of a tree that is already on screen,
+ * there is one — and letting the error out there replaces the app match with
+ * the error screen, unmounting whatever the researcher was working in.
+ *
+ * That is unsaved work. `router.invalidate()` runs no navigation blocker, so
+ * an editor with unsaved values in it is discarded with nobody asked, on the
+ * strength of an outage that said nothing about the session. Answering with
+ * the last established state leaves the researcher where they are; every
+ * screen below still fails its own reads and says so, and the moment
+ * `/api/auth/*` answers again — the query stays invalidated after a failed
+ * fetch, so the next guard asks again — a real `signedOut` gets them out.
+ *
+ * TanStack Query keeps `data` on a query whose refetch failed, so the cache
+ * is the record of what was last established; `undefined` means nothing ever
+ * was.
+ *
+ * **The app shell's guard is the only caller, and the other three read the
+ * query directly on purpose.** This distinction is only reachable where a
+ * guard can run a SECOND time over a screen that is already up, which is what
+ * `revalidateSession` does — and only the app and site branches revalidate.
+ * `/sign-in` has its own answer for not knowing, recorded there. `/` reads the
+ * session only under `self-hosted`, where it always redirects and so has no
+ * committed screen to preserve. `/no-team` is on the focused branch, which
+ * mounts no revalidation and makes no request that could 401, so its guard
+ * runs exactly once — on the cold entry this would not change.
+ */
+export async function resolveSessionState(
+  queryClient: QueryClient,
+): Promise<SessionState> {
+  return await queryClient
+    .fetchQuery(sessionQueryOptions)
+    .catch((error: unknown) => {
+      if (!(error instanceof ServerUnreachableError)) throw error;
+      const established = queryClient.getQueryData(
+        sessionQueryOptions.queryKey,
+      );
+      if (established === undefined) throw error;
+      return established;
+    });
+}
+
+/**
  * Marks the cached session invalid and makes every COMMITTED guard re-ask on
  * the spot, rather than waiting for the researcher's next navigation.
  *
- * `refetchType: 'none'` because the guards are the readers: invalidation alone
- * is what makes the next `fetchQuery` go back to `/api/auth/*` past
- * `staleTime: Infinity`, and a refetch issued here would only race them.
+ * Both halves are here because the query has two kinds of reader and neither
+ * covers the other.
+ *
+ * - `router.invalidate()` re-runs the COMMITTED guards, which is how the app
+ *   branch re-asks: invalidation alone is what lets their `fetchQuery` go back
+ *   to `/api/auth/*` past `staleTime: Infinity`.
+ * - `refetchType: 'active'` re-asks for a COMPONENT observer, which is how the
+ *   site branch does — `SiteLayout`'s entry into Studio is the only one in the
+ *   app, and that branch has no guard to wake and may never gain one (§10.1).
+ *   It was `'none'` on the reasoning that a refetch would race the guards, and
+ *   there is nothing to race: no app route observes this query, so on that
+ *   branch this refetches nothing at all and the guards remain the only asker.
+ *   Where both could run — `/` under `self-hosted`, which is guarded AND on
+ *   the site branch — query-core hands the second caller the first one's
+ *   in-flight promise rather than issuing a second request.
+ *
  * Neither caller may decide the answer itself — `setQueryData('signedOut')`
  * would let a procedure's authorization failure, or a tab switch, fabricate a
  * state the auth endpoint never reported (§6.2).
@@ -92,7 +155,7 @@ export async function revalidateSession(
 ): Promise<void> {
   await queryClient.invalidateQueries({
     queryKey: sessionQueryOptions.queryKey,
-    refetchType: 'none',
+    refetchType: 'active',
   });
   await router.invalidate();
 }
@@ -118,6 +181,14 @@ export async function revalidateSession(
  * It does not catch a session that ends while this tab stays in the foreground.
  * Nothing short of polling would, and a second tab's sign-out is the case that
  * matters: the researcher goes there to do it and comes back here.
+ *
+ * **Mounted by both shells that read a session**, and by neither of the other
+ * two. `AppLayout` reads it through the app branch's guard and `SiteLayout`
+ * through the header's entry into Studio, so both would otherwise hold an
+ * answer nothing re-asks. It is deliberately NOT mounted at the root: the
+ * participant branch owns the viewport for an interview and has no session at
+ * all (§5.3), and the focused branch's one session reader — the sign-in
+ * guard — already treats not knowing as "carry on".
  */
 export function useSessionRevalidation(): void {
   const queryClient = useQueryClient();

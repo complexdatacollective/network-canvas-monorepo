@@ -22,6 +22,7 @@ import {
 } from './lib/landing.ts';
 import { queryClient as applicationQueryClient } from './lib/queryClient.ts';
 import {
+  resolveSessionState,
   revalidateSession,
   ServerUnreachableError,
   sessionQueryOptions,
@@ -443,7 +444,12 @@ const appLayoutRoute = createRoute({
     // whole authenticated tree costs one request rather than one per
     // navigation — and it re-asks once the query has been invalidated, which
     // `ensureQueryData` would not.
-    const session = await context.queryClient.fetchQuery(sessionQueryOptions);
+    //
+    // Through `resolveSessionState`, because this guard runs on a tree that is
+    // already on screen as well as on a cold entry: a server that cannot be
+    // reached is not a reason to unmount the researcher's work. What it does
+    // with each ANSWER is unchanged, and only an answer gets this far.
+    const session = await resolveSessionState(context.queryClient);
     if (session === 'signedOut') {
       // Everything else in the cache belongs to the researcher whose session
       // has just ended, and removal is the only operation that guarantees
@@ -464,10 +470,12 @@ const appLayoutRoute = createRoute({
       // already gone away, so there is no editor state left worth keeping.
       throw redirect({ to: '/sign-in', ignoreBlocker: true });
     }
-    // An unreachable server throws ServerUnreachableError out of the query and
-    // out of this guard, so the router renders its defaultErrorComponent
-    // rather than bouncing a possibly-still-authenticated researcher to the
-    // sign-in page.
+    // An unreachable server on a COLD entry throws ServerUnreachableError out
+    // of the resolution and out of this guard, so the router renders its
+    // defaultErrorComponent rather than bouncing a possibly-still-
+    // authenticated researcher to the sign-in page. On a revalidation of a
+    // tree already on screen it does not get this far — see
+    // `resolveSessionState`.
 
     // §6.4's second half: a session with no team memberships has nowhere in
     // this tree to be. Without this, a bookmark or a deep link into

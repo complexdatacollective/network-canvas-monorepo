@@ -41,7 +41,7 @@ import {
  * fields §5.2 requires. Studio has no capability vocabulary to type them
  * against — the team area asks Better Auth for a role, and deployment gating
  * goes through `@codaco/studio-rpc/surfaces` — so the two gates that exist
- * today are passed in as context (`canManageTeam`, `billingUnavailable`)
+ * today are passed in as context (`canManageTeam`, `billingUnavailableReason`)
  * instead of declared per entry. They become entry fields with #1257's
  * capability model, and the filter below is the one place that has to change.
  */
@@ -200,15 +200,21 @@ export type TeamManifestContext = {
    * procedure behind it refuses everyone else.
    */
   canManageTeam: boolean;
-  /** Whether this deployment has billing at all (§10.4). */
-  billingUnavailable: boolean;
+  /**
+   * Why this deployment does not have billing, or `undefined` when it has —
+   * `useBillingUnavailableReason` in `lib/deployment.ts`. The reason is
+   * carried rather than derived from a flag because there are two of them,
+   * and a self-hosted instance's absence and a managed deployment's
+   * unconfigured one are different things to say (§10.3, §10.4).
+   */
+  billingUnavailableReason: string | undefined;
 };
 
 /** The team area's sidebar (§5.5): the six destinations, in order. */
 export function teamDestinations({
   teamId,
   canManageTeam,
-  billingUnavailable,
+  billingUnavailableReason,
 }: TeamManifestContext): NavManifestEntry[] {
   const team = `/team/${teamId}`;
 
@@ -270,9 +276,9 @@ export function teamDestinations({
       area: 'team',
       context: 'Team',
       isCurrent: (pathname) => pathname === `${team}/billing`,
-      ...(billingUnavailable
-        ? { unavailableReason: 'Managed deployments only' }
-        : {}),
+      ...(billingUnavailableReason === undefined
+        ? {}
+        : { unavailableReason: billingUnavailableReason }),
     },
     {
       id: `team:${teamId}:settings`,
@@ -526,7 +532,7 @@ export type NavManifestContext = {
   /** The study the URL names, if any. */
   studyId?: string;
   canManageTeam: boolean;
-  billingUnavailable: boolean;
+  billingUnavailableReason: string | undefined;
 };
 
 /**
@@ -543,14 +549,14 @@ export function navigationManifest({
   teamId,
   studyId,
   canManageTeam,
-  billingUnavailable,
+  billingUnavailableReason,
 }: NavManifestContext): NavManifestEntry[] {
   return [
     ...(studyId === undefined ? [] : studyDestinations(studyId)),
     ...(studyId === undefined ? [] : editorDestinations(studyId)),
     ...(teamId === undefined
       ? []
-      : teamDestinations({ teamId, canManageTeam, billingUnavailable })),
+      : teamDestinations({ teamId, canManageTeam, billingUnavailableReason })),
     ...accountDestinations(),
     ...platformDestinations(),
   ];

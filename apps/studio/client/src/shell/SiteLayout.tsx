@@ -19,7 +19,7 @@ import {
   useLandingDestination,
   type LandingDestination,
 } from '../lib/landing.ts';
-import { sessionQueryOptions } from '../lib/session.ts';
+import { sessionQueryOptions, useSessionRevalidation } from '../lib/session.ts';
 
 /**
  * The site shell (§5.3, §10.1): the Network Canvas header and footer, around
@@ -139,12 +139,17 @@ const ENTRY_CLASSES = cx(
  */
 function StudioEntry({ closeMenu, view }: SiteNavigationUtilityRenderProps) {
   const session = useQuery(sessionQueryOptions);
-  const landing = useLandingDestination(session.data === 'signedIn');
+  const signedIn = session.data === 'signedIn';
+  const landing = useLandingDestination(signedIn);
   // Only the compact menu has anything to close, exactly as the header's own
   // items decide it.
   const onClick = view === 'mobile' ? closeMenu : undefined;
 
-  if (landing === undefined) {
+  // The SESSION decides which entry this is, not the memberships. Disabling
+  // the landing query does not throw away what it last resolved — a disabled
+  // `useQuery` still reports its cached data — so a session that ends while
+  // this page is open would otherwise keep offering the team it named.
+  if (!signedIn || landing === undefined) {
     return (
       <Link className={ENTRY_CLASSES} onClick={onClick} to="/sign-in">
         Sign in
@@ -185,6 +190,16 @@ function StudioDestinationLink({
 }
 
 export default function SiteLayout() {
+  // Not a guard, and it must never become one: this branch refuses nobody.
+  // But the header above reads the session, and on a managed deployment a
+  // signed-in researcher can sit on `/pricing` or `/legal/*` while they sign
+  // out in another tab. Nothing on a public page fails, so nothing here would
+  // ever ask again — the entry into Studio would keep naming a team the
+  // session no longer has, and the app guard would be handed the same cached
+  // answer when it was used. `AppLayout` mounts this for the same reason on
+  // the branch that does have a guard.
+  useSessionRevalidation();
+
   return (
     <div className="flex min-h-full flex-col">
       <SiteNavigation

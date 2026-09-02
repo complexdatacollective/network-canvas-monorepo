@@ -3,7 +3,7 @@ import { Outlet, useParams, useRouterState } from '@tanstack/react-router';
 import AppArea from '@codaco/fresco-ui/layout/AppArea';
 
 import { authClient } from '../lib/auth.ts';
-import { useSurfaceUnavailable } from '../lib/deployment.ts';
+import { useBillingUnavailableReason } from '../lib/deployment.ts';
 import { canManageTeam, teamRole } from '../lib/teamRoles.ts';
 import AreaMain from './AreaMain.tsx';
 import ManifestNav from './ManifestNav.tsx';
@@ -36,10 +36,12 @@ import { teamDestinations } from './navigationManifest.ts';
  * the whole of every team switch, so the sidebar would otherwise decide this
  * team's destinations from the last team's role.
  *
- * Billing is the one destination that can be absent rather than unbuilt: a
- * self-hosted instance has no billing at all (§10.4), so the row explains
- * itself instead of linking somewhere that would 404 — and the bar drops it
- * entirely rather than offering a result nobody can activate.
+ * Billing is the one destination that can be absent rather than unbuilt, and
+ * it is absent for two different reasons — a self-hosted instance does not
+ * serve the surface at all (§10.4), and a managed deployment has billing only
+ * where its own capability says so (§10.3). Either way the row explains itself
+ * instead of linking somewhere that would 404 or land on a placeholder, and
+ * the bar drops it entirely rather than offering a result nobody can use.
  */
 export default function TeamArea() {
   const pathname = useRouterState({
@@ -53,7 +55,7 @@ export default function TeamArea() {
   // active-team setting follows it (§6.6's reconciler is what makes it).
   const { teamId } = useParams({ from: '/app/team/$teamId' });
   const activeMember = authClient.useActiveMember();
-  const billingUnavailable = useSurfaceUnavailable('/team/$teamId/billing');
+  const billingUnavailableReason = useBillingUnavailableReason();
 
   return (
     <AppArea
@@ -67,7 +69,7 @@ export default function TeamArea() {
             entries={teamDestinations({
               teamId,
               canManageTeam: canManageTeam(teamRole(activeMember.data, teamId)),
-              billingUnavailable,
+              billingUnavailableReason,
             })}
           />
         ),
