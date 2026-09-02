@@ -34,6 +34,8 @@ const topLevelConcurrency = workflow.match(
   /^concurrency:\n(?<config>[\s\S]*?)\n\njobs:/m,
 )?.groups?.config;
 
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 function job(name) {
   return workflow.match(
     new RegExp(
@@ -756,6 +758,180 @@ test('stable app versions deploy to their Netlify production sites', () => {
     assert.match(releaseJob, /bash \.github\/scripts\/app-release-guard\.sh/);
     assert.match(releaseJob, /--since "\$SINCE"/);
   }
+});
+
+test('Fresco mirrors under the same release guard as the Netlify lanes', () => {
+  const detectJob = job('apps-release-detect');
+  assert.match(
+    detectJob,
+    /PKG_JSON: apps\/fresco\/package\.json[\s\S]*?PKG_NAME: 'fresco'[\s\S]*?RELEASE_CHANNEL: stable-tagged/,
+  );
+
+  const fresco = job('apps-release-fresco');
+  assert.ok(fresco, 'apps-release-fresco exists');
+  assert.match(fresco, /needs: \[apps-release-detect, release\]/);
+  // One group per app, not per version: two concurrent main runs holding
+  // different untagged versions must serialise over check → mirror → tag, or
+  // an older version can be pushed on top of the newer one (2026-09-02).
+  assert.match(
+    fresco,
+    /group: apps-release-fresco$/m,
+    'Fresco releases must serialise across versions',
+  );
+  assert.doesNotMatch(fresco, /group: apps-release-fresco@/);
+  assert.match(fresco, /fetch-depth: 0/);
+  assert.match(
+    fresco,
+    /id: guard\n\s+env:\n\s+PKG_NAME: fresco\n\s+VERSION: \$\{\{ needs\.apps-release-detect\.outputs\.fresco_version \}\}\n\s+run: bash \.github\/scripts\/app-release-guard\.sh/,
+  );
+  assert.doesNotMatch(
+    fresco,
+    /git rev-parse -q --verify "refs\/tags\/\$TAG"/,
+    'the inline tag-only check is gone',
+  );
+  assert.match(fresco, /SINCE: \$\{\{ steps\.guard\.outputs\.newest \}\}/);
+  assert.match(fresco, /--since "\$SINCE"/);
+  for (const step of [
+    'Mirror source to the Fresco repository',
+    'fresco release notes',
+    'Create the release on the Fresco repository',
+    'Tag the released version in this repository',
+  ]) {
+    assert.match(
+      fresco,
+      new RegExp(
+        `- name: ${escapeRegExp(step)}\\n(?:\\s+id: \\S+\\n)?\\s+if: steps\\.guard\\.outputs\\.skip != 'true'`,
+      ),
+      `${step} is gated on the guard`,
+    );
+  }
+});
+
+test('release-side jobs stop once their main commit has been superseded', () => {
+  const guardStep =
+    /- name: Confirm this run still describes main's tip\n(?:\s+#[^\n]*\n)*\s+id: tip\n\s+env:\n\s+EXPECTED_SHA: \$\{\{ github\.sha \}\}\n\s+REF: \$\{\{ github\.ref \}\}\n\s+run: bash \.github\/scripts\/superseded-push-guard\.sh\n/;
+
+  const releaseJob = job('release');
+  const tipIndex = releaseJob.search(guardStep);
+  const actionIndex = releaseJob.indexOf('uses: changesets/action@');
+  assert.ok(tipIndex !== -1, 'release job runs the superseded-push guard');
+  assert.ok(
+    tipIndex < actionIndex,
+    'the guard runs before changesets/action reads the tree',
+  );
+  // Last thing before the action: the build takes minutes, and a check made
+  // any earlier would leave that whole window open again.
+  assert.match(
+    releaseJob,
+    /run: bash \.github\/scripts\/superseded-push-guard\.sh\n\s+- id: changesets\n\s+if: steps\.tip\.outputs\.current == 'true'\n\s+uses: changesets\/action@/,
+    'changesets/action is the next step and is gated on the guard',
+  );
+
+  // The check cannot lock main, so a push can land between it and the
+  // action. Serialising the job makes the run for that push act last, and
+  // that run — holding the tip with nothing left to version — closes any
+  // release PR the superseded run left behind.
+  assert.match(
+    releaseJob,
+    /concurrency:\n\s+group: release-main\n\s+cancel-in-progress: false/,
+    'release jobs serialise without cancelling a publish mid-flight',
+  );
+  const cleanupIndex = releaseJob.indexOf(
+    '- name: Close a release PR the tip no longer needs',
+  );
+  assert.ok(cleanupIndex !== -1, 'the tip run closes a stale release PR');
+  assert.ok(cleanupIndex > actionIndex, 'cleanup runs after the action');
+  assert.equal(
+    parsedWorkflow.jobs.release.steps.find(
+      ({ name }) => name === 'Close a release PR the tip no longer needs',
+    )?.if,
+    "steps.tip.outputs.current == 'true' && steps.changesets.outputs['has-changesets'] == 'false'",
+  );
+  assert.match(
+    releaseJob,
+    /gh pr list --repo "\$GITHUB_REPOSITORY" --state open \\\n\s+--head changeset-release\/main --json number/,
+  );
+  assert.match(releaseJob, /gh pr close "\$number"/);
+
+  const productReleaseJob = job('product-release-pr');
+  assert.match(productReleaseJob, guardStep);
+  assert.match(
+    productReleaseJob,
+    /- name: Compute \$\{\{ matrix\.product \}\} version bump\n\s+if: steps\.tip\.outputs\.current == 'true'/,
+  );
+  assert.match(
+    productReleaseJob,
+    /- name: Open\/update the \$\{\{ matrix\.product \}\} release PR\n\s+if: steps\.tip\.outputs\.current == 'true'/,
+  );
+
+  // The app lanes deliberately do not use it: app-release-guard.sh already
+  // makes a superseded tree harmless, and skipping on supersession would
+  // defer every release that lands during a burst of merges.
+  for (const app of [
+    'architect',
+    'interviewer',
+    'background-creator',
+    'fresco',
+  ]) {
+    assert.doesNotMatch(job(`apps-release-${app}`), /superseded-push-guard/);
+  }
+});
+
+test('a stale Version Packages PR cannot merge', () => {
+  const freshness = job('version-packages-freshness');
+  assert.ok(freshness, 'version-packages-freshness exists');
+  const condition = parsedWorkflow.jobs['version-packages-freshness'].if;
+  // Every merge-group commit — it is the merged tree that matters, and the
+  // queue entry does not say which branch it merges — plus the release PR's
+  // own runs for early signal.
+  assert.match(condition, /github\.event_name == 'merge_group'/);
+  assert.match(
+    condition,
+    /github\.event_name == 'pull_request'\s+&& github\.head_ref == 'changeset-release\/main'/,
+  );
+  // The queue batches entries, each built on the ones ahead of it, and a
+  // group's ref names only its last PR — membership must come from ancestry
+  // of the open release PR's head, never from the ref suffix.
+  assert.match(
+    freshness,
+    /pulls\?state=open&head=\$\{GITHUB_REPOSITORY_OWNER\}:changeset-release\/main"[^\n]*\n\s+--jq '\.\[0\]\.head\.sha \/\/ empty'/,
+  );
+  assert.match(
+    freshness,
+    /compare\/\$\{vp_head\}\.\.\.\$\{GITHUB_SHA\}"[^\n]*\n\s+--jq \.status/,
+  );
+  assert.match(freshness, /ahead \| identical\) release_pr=true/);
+  assert.doesNotMatch(freshness, /merge_group\.head_ref/);
+  assert.doesNotMatch(freshness, /head_commit\.message/);
+  // A judgement that cannot be made must fail the entry, not wave it through:
+  // nothing in the resolving step may swallow a failed API call.
+  const resolve = parsedWorkflow.jobs['version-packages-freshness'].steps.find(
+    ({ id }) => id === 'head',
+  );
+  assert.ok(resolve?.run, 'the resolving step exists');
+  assert.doesNotMatch(resolve.run, /\|\| true|2>\/dev\/null|set \+e/);
+  assert.match(
+    freshness,
+    /if: steps\.head\.outputs\.release_pr == 'true'\n\s+run: node scripts\/check-version-packages-freshness\.mjs/,
+  );
+
+  const quality = job('quality');
+  assert.match(quality, /^      - version-packages-freshness$/m);
+  assert.match(
+    quality,
+    /FRESHNESS_RESULT: \$\{\{ needs\.version-packages-freshness\.result \}\}/,
+  );
+  const verdictIndex = quality.indexOf(
+    'if [[ "$FRESHNESS_RESULT" != "success" && "$FRESHNESS_RESULT" != "skipped" ]]; then',
+  );
+  const mergeGroupExit = quality.indexOf(
+    'if [[ "$EVENT_NAME" == "merge_group" ]]; then',
+  );
+  assert.ok(verdictIndex !== -1, 'quality consults the freshness verdict');
+  assert.ok(
+    verdictIndex < mergeGroupExit,
+    'the verdict is consulted before the merge-group early exit',
+  );
 });
 
 test('snapshot update workflow accepts only current release branches', () => {

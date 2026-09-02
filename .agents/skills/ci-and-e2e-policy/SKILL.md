@@ -143,7 +143,15 @@ can enter the queue, so merge-group commits deliberately do not repeat lint,
 tests, typechecking, builds, E2E, or Chromatic. GitHub still requires the
 `quality` context to be reported on the merge-group SHA; the acknowledgement
 exists only to satisfy that protocol and does not revalidate the combined
-queue commit.
+queue commit. The one real merge-group check is `version-packages-freshness`:
+it runs on every queue commit, decides by ancestry whether the tree contains
+the open Version Packages PR's head (the queue batches up to five entries and
+a group's ref names only its last PR, so the ref cannot say), and if so fails
+when the merged tree still carries a normal-lane changeset — a stale Version
+Packages merge makes `changesets/action` regenerate the PR instead of
+publishing. An entry that lands a changeset on top of the release PR fails
+and drops out, letting the release PR merge alone. `quality` consults the
+verdict before the merge-group early exit.
 
 The release jobs create and update generated branches with the fine-grained PAT
 stored as `RELEASE_PR_TOKEN`. That causes the normal `pull_request` workflow to
