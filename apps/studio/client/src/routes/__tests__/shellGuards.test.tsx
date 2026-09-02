@@ -326,23 +326,60 @@ describe('the team list, when it cannot be read', () => {
     });
     renderAt('/team/team-a');
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Your teams could not be loaded',
+    // The switcher is still there, and it must be: one that vanished would
+    // leave the researcher with no explanation and no way to another team
+    // short of reloading. It names no team because the list that would have
+    // named the URL's team is the thing that failed.
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Team Choose a team' }),
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(
+      await screen.findByText('Your teams could not be loaded.'),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Try again' }));
 
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps an earlier list usable when a later read fails', async () => {
+    // Better Auth leaves the last good `data` in place beside the error, and
+    // those teams are still the researcher's way to every team they name. The
+    // failure is reported alongside them rather than instead of them.
+    const refetch = vi.fn();
+    fixtures.useListOrganizations.mockReturnValue({
+      data: [fixtures.TEAM_A, fixtures.TEAM_B],
+      isPending: false,
+      error: { status: 500, message: 'unavailable' },
+      refetch,
+    });
+    renderAt('/team/team-a');
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Team Alpha research team' }),
+    );
+
+    expect(
+      await screen.findByRole('menuitemradio', { name: 'Beta research team' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Your teams could not be loaded.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitem', { name: 'Try again' }),
+    ).toBeInTheDocument();
+  });
+
   it('stays quiet for a list that really is empty', async () => {
     // The other half of the distinction: a RESOLVED empty list is an answer,
-    // and the switcher's absence is the right treatment for it.
+    // and the switcher's absence is the right treatment for it — §6.4's
+    // `/no-team` is where that researcher belongs.
     fixtures.useListOrganizations.mockReturnValue(resolved([]));
     renderAt('/team/team-a');
 
     await screen.findByRole('link', { name: 'Studio' });
     expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Team/ })).toBeNull();
   });
 });
 

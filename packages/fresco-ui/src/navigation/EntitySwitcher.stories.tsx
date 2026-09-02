@@ -379,7 +379,10 @@ export const SingleItem: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.queryByRole('button')).toBeNull();
-    await expect(canvasElement.querySelector('svg')).toBeNull();
+    // The CARET specifically, not "any svg": the identity mark draws a
+    // generated pattern, which is also an `<svg>`, so a bare tag query would
+    // pass or fail on the mark rather than on what this story is about.
+    await expect(canvasElement.querySelector('[data-caret]')).toBeNull();
     await expect(canvasElement.textContent).toContain('SONIC Lab');
 
     // And it is genuinely out of the tab order, not merely unstyled.

@@ -195,7 +195,7 @@ function SwitcherFace({
         </span>
       </span>
       {caret ? (
-        <ChevronDown aria-hidden className="shrink-0 opacity-70" />
+        <ChevronDown aria-hidden data-caret className="shrink-0 opacity-70" />
       ) : null}
     </>
   );

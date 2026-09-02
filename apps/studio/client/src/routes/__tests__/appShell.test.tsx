@@ -15,19 +15,43 @@ import { createAppRouter } from '../../router.tsx';
 const fixtures = vi.hoisted(() => ({
   TEAM_A: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
   TEAM_B: { id: 'team-b', name: 'Beta research team', slug: 'beta' },
+  STUDY_1: {
+    id: 'study-1',
+    draftId: 'draft-1',
+    name: 'Wave one pilot',
+    createdAt: new Date('2026-08-28T00:00:00Z'),
+    updatedAt: new Date('2026-08-28T00:00:00Z'),
+  },
+  STUDY_2: {
+    id: 'study-2',
+    draftId: null,
+    name: 'Methods comparison',
+    createdAt: new Date('2026-08-29T00:00:00Z'),
+    updatedAt: new Date('2026-08-29T00:00:00Z'),
+  },
   setActive: vi.fn(),
   useActiveMember: vi.fn(),
+  // Hoisted rather than fixed in the mock factory, because the team list's
+  // three states — resolved, still loading, and failed — are what half of the
+  // switcher's behaviour is about, and each test says which one it is in.
+  useListOrganizations: vi.fn(),
+  // Read at call time, so a test can put a study in the team's list or leave
+  // it out. `protocols.list` is team-scoped, so a study missing from it is a
+  // study this team does not own.
+  studies: [] as {
+    id: string;
+    draftId: string | null;
+    name: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }[],
 }));
 
 vi.mock('../../lib/auth.ts', () => ({
   authClient: {
     getSession: vi.fn().mockResolvedValue({ data: { user: {} }, error: null }),
     useSession: vi.fn(),
-    useListOrganizations: vi.fn().mockReturnValue({
-      data: [fixtures.TEAM_A, fixtures.TEAM_B],
-      isPending: false,
-      error: null,
-    }),
+    useListOrganizations: fixtures.useListOrganizations,
     useActiveOrganization: vi.fn().mockReturnValue({
       data: { ...fixtures.TEAM_A, members: [], invitations: [] },
       isPending: false,
@@ -60,7 +84,10 @@ vi.mock('../../lib/api.ts', () => ({
     },
     protocols: {
       list: {
-        queryOptions: () => ({ queryKey: ['protocols'], queryFn: () => [] }),
+        queryOptions: () => ({
+          queryKey: ['protocols'],
+          queryFn: () => fixtures.studies,
+        }),
         key: () => ['protocols'],
       },
       create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
@@ -113,6 +140,30 @@ function renderAt(path: string) {
   return router;
 }
 
+/** Better Auth's list hook, for a list that has resolved. */
+function resolvedTeams(teams: { id: string; name: string }[]) {
+  return { data: teams, isPending: false, error: null, refetch: vi.fn() };
+}
+
+/**
+ * How many segments the header's lockup is currently drawing, read from the
+ * bordered box the switchers share.
+ *
+ * The count is the point. `SwitcherLockup` draws a box and a divider for every
+ * CHILD it is given, and a child that renders `null` is still a child, so a
+ * study segment left mounted outside a study would leave an empty compartment
+ * beside the team. "Absent" and "empty" are different structures and only a
+ * count tells them apart.
+ */
+function lockupSegments(): number {
+  const trigger = screen.getByRole('button', { name: /^Team/ });
+  const box = trigger.parentElement?.parentElement;
+  if (box === null || box === undefined) {
+    throw new Error('the team switcher is not inside a lockup');
+  }
+  return box.children.length;
+}
+
 beforeEach(() => {
   fixtures.setActive.mockReset();
   fixtures.setActive.mockResolvedValue({ data: {}, error: null });
@@ -122,6 +173,10 @@ beforeEach(() => {
     error: null,
     refetch: vi.fn(),
   });
+  fixtures.useListOrganizations.mockReturnValue(
+    resolvedTeams([fixtures.TEAM_A, fixtures.TEAM_B]),
+  );
+  fixtures.studies = [fixtures.STUDY_1, fixtures.STUDY_2];
 });
 
 describe('composed app shell', () => {
@@ -251,9 +306,12 @@ describe('composed app shell', () => {
 describe('header team switcher', () => {
   it('names the team the researcher is acting in', async () => {
     renderAt('/team/team-a');
+    // The kicker qualifying the name, joined by the accessible-name algorithm
+    // rather than by JavaScript — "Team" is a whole translated word and the
+    // team name is a datum, and neither is a fragment of the other.
     expect(
       await screen.findByRole('button', {
-        name: 'Current team Alpha research team',
+        name: 'Team Alpha research team',
       }),
     ).toBeInTheDocument();
   });
@@ -262,7 +320,7 @@ describe('header team switcher', () => {
     const router = renderAt('/team/team-a');
     fireEvent.click(
       await screen.findByRole('button', {
-        name: 'Current team Alpha research team',
+        name: 'Team Alpha research team',
       }),
     );
     fireEvent.click(
@@ -297,17 +355,17 @@ describe('header team switcher', () => {
     renderAt('/team/team-b');
     await screen.findByRole('heading', { level: 1, name: 'Studies' });
 
-    // A chip naming A over B's screen is not a slow update, it is a wrong
-    // answer to the one question the chip exists to answer — and the URL is
-    // what settles it (§2.2), exactly as `teamRole` settles the role.
+    // A switcher naming A over B's screen is not a slow update, it is a wrong
+    // answer to the one question the switcher exists to answer — and the URL
+    // is what settles it (§2.2), exactly as `teamRole` settles the role.
     expect(
       await screen.findByRole('button', {
-        name: 'Current team Beta research team',
+        name: 'Team Beta research team',
       }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole('button', {
-        name: 'Current team Alpha research team',
+        name: 'Team Alpha research team',
       }),
     ).toBeNull();
   });
@@ -317,17 +375,16 @@ describe('header team switcher', () => {
       data: null,
       error: { message: 'You are not a member of that team.' },
     });
-    renderAt('/team/team-b');
+    const router = renderAt('/team/team-b');
 
     fireEvent.click(
       await screen.findByRole('button', {
-        name: 'Current team Beta research team',
+        name: 'Team Beta research team',
       }),
     );
 
-    // The trigger and the open menu have to agree: a chip that says B over a
-    // list that marks A is a worse answer than either alone, and "Team
-    // administration" is a link to a team, so it goes to the one on screen.
+    // The trigger and the open menu have to agree: a switcher that says B over
+    // a list that marks A is a worse answer than either alone.
     expect(
       await screen.findByRole('menuitemradio', {
         name: 'Beta research team',
@@ -340,25 +397,158 @@ describe('header team switcher', () => {
         checked: false,
       }),
     ).toBeInTheDocument();
-    expect(
+
+    // And "Team administration" administers the team on screen rather than the
+    // one the setting still holds. It is the switcher's trailing COMMAND
+    // rather than a link, so where it goes is asserted by going there.
+    fireEvent.click(
       screen.getByRole('menuitem', { name: 'Team administration' }),
-    ).toHaveAttribute('href', '/team/team-b/settings');
+    );
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/team/team-b/settings'),
+    );
   });
 
   it('leaves the setting alone until a navigation commits', async () => {
     renderAt('/team/team-a');
     await screen.findByRole('button', {
-      name: 'Current team Alpha research team',
+      name: 'Team Alpha research team',
     });
 
     // The committed team is already the active one, so the reconciler has
     // nothing to write. Opening the menu is not a switch either: the write
     // follows the URL, and nothing has changed it.
     fireEvent.click(
-      screen.getByRole('button', { name: 'Current team Alpha research team' }),
+      screen.getByRole('button', { name: 'Team Alpha research team' }),
     );
     await screen.findByRole('menuitemradio', { name: 'Beta research team' });
 
     expect(fixtures.setActive).not.toHaveBeenCalled();
+  });
+
+  it('does nothing at all when the team already current is chosen', async () => {
+    // Asserted from a screen INSIDE the team rather than from its landing
+    // destination, because that is where the difference shows: a switch goes
+    // to `/team/$teamId`, so re-selecting the team already current would move
+    // the researcher off the settings screen they were reading.
+    const router = renderAt('/team/team-a/settings');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Team Alpha research team' }),
+    );
+
+    // Base UI reports every press of a radio item, the checked one included.
+    // Re-selecting where you already are is not a switch, and in a
+    // router-driven header it is a navigation the editor's dirty-state blocker
+    // would have to prompt about.
+    fireEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'Alpha research team' }),
+    );
+
+    await waitFor(() => expect(router.state.status).toBe('idle'));
+    expect(router.state.location.pathname).toBe('/team/team-a/settings');
+    expect(fixtures.setActive).not.toHaveBeenCalled();
+  });
+
+  it('keeps the switcher present, and busy, while the team list is loading', async () => {
+    fixtures.useListOrganizations.mockReturnValue({
+      data: null,
+      isPending: true,
+      error: null,
+      refetch: vi.fn(),
+    });
+    renderAt('/team/team-a');
+
+    // Neither absent nor naming a team nobody has answered about: the kicker
+    // and a skeleton hold the space the name will take, and the element says
+    // it is busy. Rendering nothing until the list lands makes the header jump
+    // sideways the moment it does.
+    //
+    // Not a button, deliberately. With no teams to switch to, no command and
+    // no failure to retry there is nothing to open, and the switcher renders
+    // inert rather than spending a tab stop on a menu that names nothing.
+    await screen.findByRole('button', { name: 'Account' });
+    const face = document.querySelector('header [aria-busy="true"]');
+    expect(face).not.toBeNull();
+    expect(face).toHaveTextContent('Team');
+    expect(screen.queryByText('Choose a team')).toBeNull();
+  });
+});
+
+/**
+ * §5.5's header object: the team, and the study inside it, as one control that
+ * reads as a path.
+ */
+describe('the header switcher lockup', () => {
+  it('draws the study segment beside the team on a study route', async () => {
+    renderAt('/study/study-1');
+
+    expect(
+      await screen.findByRole('button', { name: 'Team Alpha research team' }),
+    ).toBeInTheDocument();
+    // The team's own studies list contains this study, so it is genuinely this
+    // team's, and its siblings are genuinely its siblings.
+    expect(
+      await screen.findByRole('button', { name: 'Study Wave one pilot' }),
+    ).toBeInTheDocument();
+    expect(lockupSegments()).toBe(2);
+  });
+
+  it('offers the study its siblings, and the way back to all of them', async () => {
+    const router = renderAt('/study/study-1');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Study Wave one pilot' }),
+    );
+
+    expect(
+      await screen.findByRole('menuitemradio', {
+        name: 'Wave one pilot',
+        checked: true,
+      }),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('menuitem', { name: 'All studies in this team' }),
+    );
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/team/team-a'),
+    );
+  });
+
+  it('leaves the study segment out entirely outside a study', async () => {
+    renderAt('/team/team-a');
+    await screen.findByRole('button', { name: 'Team Alpha research team' });
+
+    // Absent, not empty. Outside a study there is no study, and a divider with
+    // a blank beside it would say the opposite.
+    expect(screen.queryByRole('button', { name: /^Study/ })).toBeNull();
+    expect(lockupSegments()).toBe(1);
+  });
+
+  it('names a study its team cannot vouch for by its identifier', async () => {
+    // A canonical link into a study no team of this researcher's answers for —
+    // the case §6.3's `study.shell` is what will actually resolve. The active
+    // team's studies are NOT this study's siblings, so none is offered: the
+    // identifier is what the shell honestly knows.
+    fixtures.studies = [fixtures.STUDY_2];
+    renderAt('/study/study-1');
+
+    // Gate on the list having SETTLED rather than on the name that proves the
+    // point. The identifier is also what a still-loading switcher would fall
+    // back to, so asserting the name straight away would pass on the
+    // transient — and go on passing if the settled answer were wrong.
+    const study = await screen.findByRole('button', { name: /^Study/ });
+    await waitFor(() => expect(study).not.toHaveAttribute('aria-busy'));
+
+    expect(study).toHaveAccessibleName('Study study-1');
+    fireEvent.click(study);
+    // No sibling is offered, because none of the active team's studies is one:
+    // the switcher would otherwise present another team's studies as this
+    // study's own.
+    expect(
+      await screen.findByRole('menuitemradio', { name: 'study-1' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('menuitemradio', { name: 'Methods comparison' }),
+    ).toBeNull();
   });
 });

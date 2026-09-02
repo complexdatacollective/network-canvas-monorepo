@@ -667,26 +667,43 @@ describe('navigation', () => {
     const router = renderAt('/team/team-a');
     fireEvent.click(
       await screen.findByRole('button', {
-        name: 'Current team Alpha research team',
+        name: 'Team Alpha research team',
       }),
     );
-    await screen.findByRole('menuitem', { name: 'Team administration' });
 
-    // The teams themselves are `menuitemradio`s that navigate rather than
-    // links (§6.5), so the one link in this menu is the command beneath them.
-    expect(menuDestinations(router)).toEqual(['/team/$teamId/settings']);
+    // Nothing in this menu is a link. The teams are `menuitemradio`s that
+    // navigate (§6.5), and the command beneath them is the switcher's trailing
+    // ACTION, which navigates too — so where it goes is asserted by going
+    // there and asking the router whether that is a route it registers.
+    expect(menuDestinations(router)).toEqual([]);
+    fireEvent.click(
+      await screen.findByRole('menuitem', { name: 'Team administration' }),
+    );
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/team/team-a/settings'),
+    );
+    expect(registeredPathFor(router, '/team/team-a/settings')).toBe(
+      '/team/$teamId/settings',
+    );
   });
 
-  it('names the study and reaches its team from the study chip', async () => {
+  it('names the study and reaches its team from the study switcher', async () => {
     const router = renderAt('/study/study-1');
+    // The team's own studies list names this study, so the switcher names it
+    // too rather than falling back to the identifier it would use for a study
+    // no team of this researcher's answers for.
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Current study study-1' }),
+      await screen.findByRole('button', { name: 'Study Shell proof' }),
     );
-    await screen.findByRole('menuitem', {
-      name: 'All studies in this team',
-    });
+    fireEvent.click(
+      await screen.findByRole('menuitem', { name: 'All studies in this team' }),
+    );
 
-    expect(menuDestinations(router)).toEqual(['/team/$teamId']);
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/team/team-a'),
+    );
+    expect(registeredPathFor(router, '/team/team-a')).toBe('/team/$teamId');
   });
 });
 
