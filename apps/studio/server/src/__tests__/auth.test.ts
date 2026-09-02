@@ -105,6 +105,7 @@ describe('unconfigured auth', () => {
     db: undefined,
     auth: undefined,
     devDefaults: false,
+    deploymentMode: 'self-hosted',
   };
 
   it('refuses /api/auth with 503 problem JSON', async () => {

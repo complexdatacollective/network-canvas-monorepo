@@ -31,6 +31,10 @@ const VARIABLES_WITHOUT_DATABASE_OR_AUTH = [
   'PORT',
   'HOST',
   'CLIENT_DIST',
+  // The Netlify lane is the managed service, and its `status` procedure has
+  // to say so; withholding this would make it report `self-hosted` however
+  // the site is configured.
+  'STUDIO_DEPLOYMENT_MODE',
   'S3_ENDPOINT',
   'S3_REGION',
   'S3_BUCKET',

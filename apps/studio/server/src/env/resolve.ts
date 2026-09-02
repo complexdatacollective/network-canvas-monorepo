@@ -1,3 +1,5 @@
+import type { DeploymentMode } from '@codaco/studio-rpc/surfaces';
+
 import type { RawEnv } from './variables.ts';
 
 export type S3Env = {
@@ -41,10 +43,20 @@ export type StudioEnv = {
   db: DbEnv | undefined;
   auth: AuthEnv | undefined;
   devDefaults: boolean;
+  deploymentMode: DeploymentMode;
 };
 
 const DEFAULT_PORT = 3000;
 const DEFAULT_HOST = '0.0.0.0';
+
+/**
+ * Unset means self-hosted, the fail-closed direction. Its failure mode is
+ * loud — a managed deployment that forgets the variable 404s its own pricing
+ * page on the first smoke request — where defaulting the other way fails
+ * silently, with an institution's own instance publishing a pricing page, a
+ * plan-selection step and a billing screen it has no business showing.
+ */
+const DEFAULT_DEPLOYMENT_MODE: DeploymentMode = 'self-hosted';
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', '[::1]', 'localhost']);
 
@@ -215,5 +227,6 @@ export function resolve(raw: RawEnv): StudioEnv {
     db,
     auth: resolveAuth(raw, db, devDefaults),
     devDefaults,
+    deploymentMode: raw.STUDIO_DEPLOYMENT_MODE ?? DEFAULT_DEPLOYMENT_MODE,
   };
 }

@@ -367,13 +367,14 @@ fails `pnpm typecheck`.
 
 ### Process
 
-| Variable              | What it is                                                                               | Development default | Real deployment                                                                                                       |
-| --------------------- | ---------------------------------------------------------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`            | Runtime mode. Anything other than `production` leaves development affordances available. | `development`       | Set to `production` by the Docker image and by Netlify.                                                               |
-| `STUDIO_DEV_DEFAULTS` | Marks the process as running against the committed development defaults.                 | `1`                 | Never set. It is refused at boot unless `NODE_ENV` is `development` or `test`.                                        |
-| `PORT`                | TCP port the HTTP server listens on.                                                     | —                   | Unset ⇒ 3000.                                                                                                         |
-| `HOST`                | Interface the HTTP server binds to.                                                      | —                   | Unset ⇒ `0.0.0.0`.                                                                                                    |
-| `CLIENT_DIST`         | Directory of built client assets to serve, resolved against the working directory.       | —                   | Unset ⇒ `../client` relative to the server bundle, the Docker image layout. Irrelevant where a CDN serves the client. |
+| Variable                 | What it is                                                                                                                                                                   | Development default | Real deployment                                                                                                                                                                                                                       |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`               | Runtime mode. Anything other than `production` leaves development affordances available.                                                                                     | `development`       | Set to `production` by the Docker image and by Netlify.                                                                                                                                                                               |
+| `STUDIO_DEV_DEFAULTS`    | Marks the process as running against the committed development defaults.                                                                                                     | `1`                 | Never set. It is refused at boot unless `NODE_ENV` is `development` or `test`.                                                                                                                                                        |
+| `PORT`                   | TCP port the HTTP server listens on.                                                                                                                                         | —                   | Unset ⇒ 3000.                                                                                                                                                                                                                         |
+| `HOST`                   | Interface the HTTP server binds to.                                                                                                                                          | —                   | Unset ⇒ `0.0.0.0`.                                                                                                                                                                                                                    |
+| `CLIENT_DIST`            | Directory of built client assets to serve, resolved against the working directory.                                                                                           | —                   | Unset ⇒ `../client` relative to the server bundle, the Docker image layout. Irrelevant where a CDN serves the client.                                                                                                                 |
+| `STUDIO_DEPLOYMENT_MODE` | Which topology this deployment serves: `managed` (marketing, pricing, sign-up, billing) or `self-hosted` (first-run setup). The other topology’s paths are refused with 404. | `managed`           | Unset ⇒ `self-hosted`. The managed deployment sets `managed` in its runtime environment — the container environment, or a Netlify site variable, never a build-time one, because both entrypoints read it inside the running process. |
 
 ### Object storage
 
@@ -476,8 +477,26 @@ them:
 ## Deployment topologies
 
 Decided 2026-08-11 on #1245. Both topologies run the same artifacts and
-present a single origin; they differ only in who serves the static client
-assets.
+present a single origin; they differ in who serves the static client assets,
+and in which paths exist.
+
+`STUDIO_DEPLOYMENT_MODE` picks the topology at runtime, so one image serves
+both. The managed-only surfaces — marketing, pricing, legal, the sign-up
+funnel and `/team/$teamId/billing` — are refused with a real HTTP 404 on a
+self-hosted instance, and first-run `/setup` is refused on the managed
+service, so no tenant can reach instance configuration. The refusal still
+returns the app shell, so the client renders its branded not-found state
+behind an honest status line. `/` is served in both: a self-hoster's origin
+root is the URL they hand their researchers, and 404ing it would make the
+instance dead at the address people type.
+
+The classification is one list, in `@codaco/studio-rpc`'s `surfaces` module —
+the only code both deployables import — read by the server's gate
+(`server/src/client-assets.ts`) and by the client's route tree, so the two
+cannot drift. Unset means `self-hosted`, the fail-closed value: a managed
+deployment that forgets the variable 404s its own pricing page on the first
+smoke request, where the opposite default would have an institution's
+instance quietly publishing one.
 
 ### Managed service
 

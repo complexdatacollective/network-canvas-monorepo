@@ -1,6 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getRouteApi, Link, useBlocker } from '@tanstack/react-router';
-import { ArrowDown, ArrowLeft, ArrowUp, Plus } from 'lucide-react';
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import { getRouteApi, useBlocker } from '@tanstack/react-router';
+import { ArrowDown, ArrowUp, Plus } from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -21,6 +26,7 @@ import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -33,17 +39,41 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { useStudioStageSession } from '../editor/useStudioStageSession.ts';
 import { orpc, rpcClient } from '../lib/api.ts';
+import { authClient } from '../lib/auth.ts';
 import { createUuid } from '../lib/createUuid.ts';
 
-const route = getRouteApi(
-  '/authenticated/teams/$teamId/protocols/$protocolId/drafts/$draftId',
-);
+// The route id carries the area layout it sits under (§5.3), so it moved with
+// the screen onto `/study/$studyId/editor`.
+const route = getRouteApi('/app/study/$studyId/editor/');
+
+/** What `protocols.draft` and every editing procedure are addressed by. */
+type DraftAddress = {
+  teamId: string;
+  protocolId: string;
+  draftId: string;
+};
 
 type Selection =
   | { kind: 'stage'; stageId: string }
   | { kind: 'settings' | 'codebook' | 'assets' | 'translations' };
 
 type Draft = Awaited<ReturnType<typeof rpcClient.protocols.draft>>;
+
+/** One study as its team's list reports it. */
+type Study = Awaited<ReturnType<typeof rpcClient.protocols.list>>[number];
+
+/**
+ * Which team owns the study in the URL, as far as this researcher can see.
+ *
+ * Four answers rather than two, because "not yet" and "not found" and "could
+ * not ask" are different things to put on screen, and collapsing any pair of
+ * them is what leaves a researcher on a spinner that will never resolve.
+ */
+type StudyOwner =
+  | { status: 'pending' }
+  | { status: 'unavailable' }
+  | { status: 'notFound' }
+  | { status: 'found'; teamId: string; study: Study };
 
 type DraftValidation =
   | Readonly<{ status: 'pending'; issues: readonly [] }>
@@ -70,8 +100,165 @@ function stageLabel(document: SectionDoc | undefined, index: number): string {
     : `Screen ${index + 1}`;
 }
 
+/**
+ * Which team owns `studyId`, resolved from the study id itself rather than
+ * from whichever team the researcher was last acting in.
+ *
+ * **`$studyId` is authoritative** (§2.2, §5.6): a study URL is a canonical
+ * link, and it has to open the study whoever follows it and however they got
+ * there. Reading the ACTIVE team instead makes that false in two ways, both
+ * reachable from an ordinary bookmark. A direct visit to team B's study while
+ * the setting still names team A asks A's list, does not find it and reports
+ * the study unavailable; and a session that names no team at all — which is
+ * every first sign-in, since nothing sets `activeOrganizationId` when a
+ * session is created — has nothing to ask, so the screen never resolves at
+ * all. §6.6's reconciler cannot help: a study route names no team, so it
+ * leaves the setting wherever the last team route left it.
+ *
+ * **One question, asked of the teams the researcher has.** `study.shell` (§6.3)
+ * is the procedure that answers "which team owns this study?" in one request,
+ * and it is the one server surface this slice may not add. What the client can
+ * do without it is ask each team it belongs to for its own studies, which is a
+ * procedure that already exists and is already authorized per team. The cost
+ * is kept to the ordinary case's one request: the active team is asked first
+ * and alone, because arriving from a team's studies list has already cached
+ * exactly that answer, and the rest are asked only when it does not have the
+ * study. When `study.shell` lands this whole hook becomes one query, and
+ * nothing above it changes.
+ *
+ * A team list that could not be read, or a studies list that could not be
+ * read, is `unavailable` and never `notFound`: "no team of yours has this
+ * study" is a claim about the researcher's access, and an outage is no basis
+ * for making it.
+ */
+function useStudyOwner(studyId: string): StudyOwner {
+  const teams = authClient.useListOrganizations();
+  const activeTeamId = authClient.useActiveOrganization().data?.id;
+
+  const activeList = useQuery({
+    ...orpc.protocols.list.queryOptions({
+      input: { teamId: activeTeamId ?? '' },
+    }),
+    enabled: activeTeamId !== undefined,
+  });
+  const activeStudy = activeList.data?.find(
+    (candidate) => candidate.id === studyId,
+  );
+  // A disabled query is `pending` for ever, so "has the active team answered?"
+  // cannot be read off the status alone — with no active team there was
+  // nothing to ask and the answer is immediate.
+  const activeAnswered =
+    activeTeamId === undefined || activeList.status !== 'pending';
+
+  const otherTeamIds =
+    activeStudy !== undefined || !activeAnswered
+      ? []
+      : (teams.data ?? [])
+          .map((team) => team.id)
+          .filter((id) => id !== activeTeamId);
+  const otherLists = useQueries({
+    queries: otherTeamIds.map((teamId) =>
+      orpc.protocols.list.queryOptions({ input: { teamId } }),
+    ),
+  });
+
+  if (activeStudy !== undefined && activeTeamId !== undefined) {
+    return { status: 'found', teamId: activeTeamId, study: activeStudy };
+  }
+  if (!activeAnswered || teams.isPending) return { status: 'pending' };
+
+  const ownerIndex = otherLists.findIndex((list) =>
+    list.data?.some((candidate) => candidate.id === studyId),
+  );
+  const owner = otherTeamIds[ownerIndex];
+  const study = otherLists[ownerIndex]?.data?.find(
+    (candidate) => candidate.id === studyId,
+  );
+  if (owner !== undefined && study !== undefined) {
+    return { status: 'found', teamId: owner, study };
+  }
+
+  if (otherLists.some((list) => list.isPending)) return { status: 'pending' };
+  if (
+    activeList.isError ||
+    otherLists.some((list) => list.isError) ||
+    // Better Auth reports a refused list by storing an error and leaving
+    // `data` null, so an unreadable team list is an empty one here — and
+    // concluding "not found" from a list of teams nobody could read is the
+    // same lie in a different place.
+    (teams.error !== null && teams.data === null)
+  ) {
+    return { status: 'unavailable' };
+  }
+  return { status: 'notFound' };
+}
+
+/**
+ * The protocol editor, at `/study/$studyId/editor` (§5.2, #1272).
+ *
+ * **Resolving the draft from the study id.** The editing procedures are
+ * addressed by `{ teamId, protocolId, draftId }` and the URL carries only
+ * `$studyId`, which addresses the protocol until #1262 lands the studies
+ * model. Both missing halves come from procedures that already exist, so no
+ * new server surface was written for the move:
+ *
+ * - the team is the one that owns the study, resolved by `useStudyOwner` above
+ *   from the study id the URL carries.
+ * - the current draft is `protocols.list`'s own `draftId` for this protocol,
+ *   which arrives with the same answer.
+ *
+ * A study no team of this researcher's has, and a study with no editable
+ * draft, are the two answers that leave nothing to open, and each says which
+ * it is.
+ */
 export default function Editor() {
-  const params = route.useParams();
+  const { studyId } = route.useParams();
+  const owner = useStudyOwner(studyId);
+
+  if (owner.status === 'pending') {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Spinner />
+        <span className="sr-only">Opening protocol editor…</span>
+      </div>
+    );
+  }
+
+  if (owner.status === 'unavailable') {
+    return (
+      <div className="p-6">
+        <Alert variant="destructive">
+          This study could not be opened. Reload the page and try again.
+        </Alert>
+      </div>
+    );
+  }
+
+  if (owner.status === 'notFound' || owner.study.draftId === null) {
+    return (
+      <div className="p-6">
+        <Alert variant="destructive">
+          {owner.status === 'notFound'
+            ? 'This study is not in any of your teams. Ask whoever sent you the link to invite you to the team that owns it.'
+            : 'This study has no editable draft.'}
+        </Alert>
+      </div>
+    );
+  }
+
+  return (
+    <ProtocolEditor
+      address={{
+        teamId: owner.teamId,
+        protocolId: studyId,
+        draftId: owner.study.draftId,
+      }}
+    />
+  );
+}
+
+function ProtocolEditor({ address }: { address: DraftAddress }) {
+  const params = address;
   const { confirm } = useDialog();
   const queryClient = useQueryClient();
   const [selection, setSelection] = useState<Selection>({ kind: 'settings' });
@@ -278,23 +465,24 @@ export default function Editor() {
 
   if (draft.isPending) {
     return (
-      <main
-        id="main-content"
-        className="flex h-full items-center justify-center"
-      >
+      // The `<main id="main-content">` is the area layout's (§5.3, §7.1):
+      // `AppFrame` renders the skip link and `AppArea` the landmark it
+      // targets. These three branches are mutually exclusive, but each one
+      // used to declare a second `<main>` with the same id inside the area's.
+      <div className="flex h-full items-center justify-center">
         <Spinner />
         <span className="sr-only">Opening protocol editor…</span>
-      </main>
+      </div>
     );
   }
   if (!draft.data) {
     return (
-      <main id="main-content" className="p-6">
+      <div className="p-6">
         <Alert variant="destructive">
           This protocol draft could not be opened. Return to protocols and try
           again.
         </Alert>
-      </main>
+      </div>
     );
   }
 
@@ -307,22 +495,24 @@ export default function Editor() {
   return (
     <div className="flex min-h-full flex-col">
       <div className="border-surface-1 flex flex-wrap items-center justify-between gap-4 border-y px-4 py-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <Link
-            className="focusable rounded"
-            to="/"
-            aria-label="Back to protocols"
+        {/*
+          No way-out control here: the area's outline owns "Back to study" and
+          the header owns the team and study chips (§5.5). A second back
+          affordance inside `<main>` would be a third answer to the same
+          question, and the two would not even agree on where "back" is.
+        */}
+        <div className="min-w-0">
+          <Heading
+            className="truncate"
+            level="h1"
+            margin="none"
+            {...routeFocusTargetProps}
           >
-            <ArrowLeft aria-hidden="true" />
-          </Link>
-          <div className="min-w-0">
-            <Heading className="truncate" level="h1" margin="none">
-              {draft.data.protocol.name}
-            </Heading>
-            <Paragraph className="text-sm" margin="none">
-              Draft editor
-            </Paragraph>
-          </div>
+            {draft.data.protocol.name}
+          </Heading>
+          <Paragraph className="text-sm" margin="none">
+            Draft editor
+          </Paragraph>
         </div>
         <ValidationStatusButton
           sessionState={session}
@@ -333,8 +523,15 @@ export default function Editor() {
       <div className="laptop:grid-cols-[minmax(15rem,1fr)_minmax(24rem,2.5fr)_minmax(16rem,1fr)] grid min-h-0 flex-1 grid-cols-1 gap-4 p-4">
         <aside aria-labelledby="outline-heading" className="min-h-0">
           <Surface className="flex h-full min-h-0 flex-col" spacing="sm">
+            {/*
+              "Protocol sections", not "Protocol outline": the area's sidebar
+              is the outline (§5.5), and two regions on one screen carrying
+              one name is two things a screen reader cannot tell apart. This
+              one is the editor's own section selector, inside `<main>`, and
+              #1272 is what eventually merges the two.
+            */}
             <Heading id="outline-heading" level="h2">
-              Protocol outline
+              Protocol sections
             </Heading>
             <nav
               aria-label="Protocol sections"
@@ -517,7 +714,7 @@ export default function Editor() {
           </Surface>
         </aside>
 
-        <main id="main-content" tabIndex={-1} className="min-h-[24rem]">
+        <div className="min-h-[24rem]">
           <Surface className="h-full" spacing="lg">
             {selection.kind === 'stage' ? (
               <StageCanvas
@@ -534,7 +731,7 @@ export default function Editor() {
               <SectionPlaceholder kind={selection.kind} />
             )}
           </Surface>
-        </main>
+        </div>
 
         <aside
           id="protocol-problems"

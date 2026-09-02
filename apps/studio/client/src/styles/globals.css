@@ -1,13 +1,28 @@
 /*
- * Tailwind v4 entry, design tokens, fresco theme + components.
+ * Tailwind v4 entry, design tokens, studio theme + components.
+ * The studio theme scopes to [data-theme-studio], which index.html carries.
  * Fonts are imported via JS (see src/main.tsx) so url() refs resolve
  * through the Vite bundler.
  */
-@import '@codaco/tailwind-config/fresco.css';
+@import '@codaco/tailwind-config/studio.css';
 
 @import '@codaco/fresco-ui/styles.css';
 @import '@codaco/protocol-builder/styles.css';
-@import './studio-theme.css';
+
+/*
+ * The page's own ground. Not the theme's job — the theme defines what
+ * `--background` and `--text` are, and this says the document is painted
+ * with them. `publish-colors` is required rather than decorative: the
+ * elevation plugin blends its shadows from the published background, and an
+ * element that paints its own without publishing it breaks every shadow
+ * beneath it.
+ */
+@layer base {
+  html,
+  body {
+    @apply text-text bg-background publish-colors text-base;
+  }
+}
 
 html,
 body,

@@ -27,7 +27,11 @@ import {
 import { AuditStore, clampAuditListLimit } from './audit/store.ts';
 import { runNoAuditTenantTransaction } from './audit/transaction.ts';
 import type { AuthService, Principal } from './auth/service.ts';
-import { type AuthCapabilities, getInstanceStatus } from './domain.ts';
+import {
+  type AuthCapabilities,
+  type DeploymentStatus,
+  getInstanceStatus,
+} from './domain.ts';
 import {
   addAuditedInformationStage,
   commitAuditedProtocolSection,
@@ -296,11 +300,12 @@ export function createRpcRouter(
   caps: AuthCapabilities,
   deps: {
     auth: AuthService;
+    deployment: DeploymentStatus;
     invitationDeliveryAvailable: boolean;
     pool?: pg.Pool;
   },
 ) {
-  const { auth, invitationDeliveryAvailable, pool } = deps;
+  const { auth, deployment, invitationDeliveryAvailable, pool } = deps;
   // Tenancy is checked per request against an explicit teamId in the
   // procedure input — never the session's active team. A non-member and a
   // nonexistent team both read FORBIDDEN, so the check is not an existence
@@ -328,7 +333,7 @@ export function createRpcRouter(
   );
 
   return {
-    status: os.status.handler(() => getInstanceStatus(caps)),
+    status: os.status.handler(() => getInstanceStatus(caps, deployment)),
     me: os.me.use(requireUser).handler(({ context }) => ({
       userId: context.principal.userId,
       email: context.principal.email,

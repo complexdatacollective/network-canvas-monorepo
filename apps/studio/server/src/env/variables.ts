@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { DEPLOYMENT_MODES } from '@codaco/studio-rpc/surfaces';
+
 // Deliberately NO `.default()` calls anywhere in this file. Defaults declared
 // here would be compiled into the production server bundle, which is how the
 // publicly-known development auth secret used to ship inside the built
@@ -21,6 +23,15 @@ export const serverSchemas = {
   PORT: z.coerce.number().int().min(0).max(65535).optional(),
   HOST: z.string().min(1).optional(),
   CLIENT_DIST: z.string().min(1).optional(),
+
+  /**
+   * Which of the two topologies this process is serving. Read at runtime by
+   * both entrypoints, so the managed deployment sets it in the container (or
+   * Netlify site) environment rather than at build time. Unset resolves to
+   * `self-hosted` in `resolve.ts` — the fail-closed direction, and the reason
+   * the default cannot live here.
+   */
+  STUDIO_DEPLOYMENT_MODE: z.enum(DEPLOYMENT_MODES).optional(),
 
   // http(s) only: a bare `host:port` parses as a URL whose scheme is the
   // hostname, which the S3 client would then fail on far from here.

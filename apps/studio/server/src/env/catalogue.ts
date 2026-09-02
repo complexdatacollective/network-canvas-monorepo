@@ -92,6 +92,15 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
       'Unset ⇒ `../client` relative to the server bundle, the Docker image layout. Irrelevant where a CDN serves the client.',
     example: '../client/dist',
   },
+  STUDIO_DEPLOYMENT_MODE: {
+    group: 'Process',
+    summary:
+      'Which topology this deployment serves: `managed` (marketing, pricing, sign-up, billing) or `self-hosted` (first-run setup). The other topology’s paths are refused with 404.',
+    deployment:
+      'Unset ⇒ `self-hosted`. The managed deployment sets `managed` in its runtime environment — the container environment, or a Netlify site variable, never a build-time one, because both entrypoints read it inside the running process.',
+    devDefault: 'managed',
+    example: 'self-hosted',
+  },
 
   S3_ENDPOINT: {
     group: 'Object storage',

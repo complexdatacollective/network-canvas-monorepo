@@ -10,6 +10,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import {
   Table,
@@ -32,7 +33,8 @@ import {
 
 import { orpc } from '../lib/api.ts';
 
-const route = getRouteApi('/authenticated/teams/$teamId/activity');
+// The route id carries the area layout it sits under (§5.3).
+const route = getRouteApi('/app/team/$teamId/activity');
 
 const CATEGORY_LABELS: Record<AuditCategory, string> = {
   team_access: 'Team access',
@@ -271,32 +273,31 @@ export default function TeamActivity() {
 
   if (isForbidden(activity.error)) {
     return (
-      <main
-        id="main-content"
-        className="tablet-portrait:p-8 mx-auto flex w-full max-w-6xl flex-col gap-6 p-4"
-      >
-        <Heading level="h1">Team activity</Heading>
+      // The `<main id="main-content">` is the area layout's (§5.3, §7.1).
+      <div className="tablet-portrait:p-8 mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
+        <Heading level="h1" {...routeFocusTargetProps}>
+          Team activity
+        </Heading>
         <Alert>
           Team activity is only available to team owners and admins. Ask a team
           owner if you need access to this record.
         </Alert>
         <div>
           <Button asChild variant="outline">
-            <Link to="/">Back to your teams</Link>
+            <Link to="/team/$teamId" params={{ teamId }}>
+              Back to this team&rsquo;s studies
+            </Link>
           </Button>
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main
-      id="main-content"
-      className="tablet-portrait:p-8 mx-auto flex w-full max-w-6xl flex-col gap-6 p-4"
-    >
+    <div className="tablet-portrait:p-8 mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <Heading level="h1" margin="none">
+          <Heading level="h1" margin="none" {...routeFocusTargetProps}>
             Team activity
           </Heading>
           <Paragraph margin="none">
@@ -304,7 +305,9 @@ export default function TeamActivity() {
           </Paragraph>
         </div>
         <Button asChild size="sm" variant="outline">
-          <Link to="/">Back to your teams</Link>
+          <Link to="/team/$teamId" params={{ teamId }}>
+            Back to this team&rsquo;s studies
+          </Link>
         </Button>
       </div>
 
@@ -585,7 +588,7 @@ export default function TeamActivity() {
           )}
         </>
       )}
-    </main>
+    </div>
   );
 }
 

@@ -1,14 +1,10 @@
-import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { serve } from '@hono/node-server';
-import { serveStatic } from '@hono/node-server/serve-static';
-import type { Context } from 'hono';
 import { WebSocketServer } from 'ws';
 
 import { createApp } from './app.ts';
 import { flushDeniedAuditSummaries } from './audit/denial-rate-limit.ts';
 import { createMailer } from './auth/email.ts';
+import { mountClient } from './client-assets.ts';
 import {
   createMaintenancePool,
   createPool,
@@ -139,37 +135,7 @@ const app = createApp(env, {
   pool,
 });
 
-// Default matches the Docker image layout: dist/index.js next to a client/
-// directory. `pnpm start` overrides via CLIENT_DIST for the local layout.
-const clientRoot = env.clientDist
-  ? resolve(process.cwd(), env.clientDist)
-  : fileURLToPath(new URL('../client', import.meta.url));
-
-// Hashed build assets are immutable by construction; the app shell must
-// revalidate every load so deploys take effect (and open tabs keep resolving
-// old hashed chunks from the CDN, not from here).
-function setCacheHeader(path: string, c: Context) {
-  c.header(
-    'Cache-Control',
-    path.endsWith('index.html')
-      ? 'no-store'
-      : path.includes('/assets/')
-        ? 'public, max-age=31536000, immutable'
-        : 'public, max-age=3600',
-  );
-}
-
-app.use('*', serveStatic({ root: clientRoot, onFound: setCacheHeader }));
-// SPA fallback: unmatched GET paths serve the app shell so client-side routes
-// deep-link correctly.
-app.get(
-  '*',
-  serveStatic({
-    root: clientRoot,
-    path: 'index.html',
-    onFound: setCacheHeader,
-  }),
-);
+mountClient(app, env);
 
 const wsServer = new WebSocketServer({ noServer: true });
 

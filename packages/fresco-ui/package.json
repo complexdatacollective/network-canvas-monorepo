@@ -56,12 +56,17 @@
     "./Label": "./src/Label.tsx",
     "./layout/Surface": "./src/layout/Surface.tsx",
     "./layout/ResponsiveContainer": "./src/layout/ResponsiveContainer.tsx",
+    "./layout/AppFrame": "./src/layout/AppFrame.tsx",
+    "./layout/AppArea": "./src/layout/AppArea.tsx",
     "./navigation/SiteNavigation": "./src/navigation/SiteNavigation.tsx",
     "./navigation/SiteNavigation.constants": "./src/navigation/SiteNavigation.constants.ts",
     "./navigation/EverythingBar": "./src/navigation/EverythingBar.tsx",
     "./navigation/ThemeSwitcher": "./src/navigation/ThemeSwitcher.tsx",
     "./navigation/SiteFooter": "./src/navigation/SiteFooter.tsx",
     "./navigation/RouteFocus": "./src/navigation/RouteFocus.tsx",
+    "./navigation/NavList": "./src/navigation/NavList.tsx",
+    "./navigation/NavItem": "./src/navigation/NavItem.tsx",
+    "./navigation/NavDrawer": "./src/navigation/NavDrawer.tsx",
     "./typography/Heading": "./src/typography/Heading.tsx",
     "./typography/Paragraph": "./src/typography/Paragraph.tsx",
     "./typography/PageHeader": "./src/typography/PageHeader.tsx",
@@ -338,6 +343,14 @@
         "types": "./dist/layout/ResponsiveContainer.d.ts",
         "default": "./dist/layout/ResponsiveContainer.js"
       },
+      "./layout/AppFrame": {
+        "types": "./dist/layout/AppFrame.d.ts",
+        "default": "./dist/layout/AppFrame.js"
+      },
+      "./layout/AppArea": {
+        "types": "./dist/layout/AppArea.d.ts",
+        "default": "./dist/layout/AppArea.js"
+      },
       "./navigation/SiteNavigation": {
         "types": "./dist/navigation/SiteNavigation.d.ts",
         "default": "./dist/navigation/SiteNavigation.js"
@@ -361,6 +374,18 @@
       "./navigation/RouteFocus": {
         "types": "./dist/navigation/RouteFocus.d.ts",
         "default": "./dist/navigation/RouteFocus.js"
+      },
+      "./navigation/NavList": {
+        "types": "./dist/navigation/NavList.d.ts",
+        "default": "./dist/navigation/NavList.js"
+      },
+      "./navigation/NavItem": {
+        "types": "./dist/navigation/NavItem.d.ts",
+        "default": "./dist/navigation/NavItem.js"
+      },
+      "./navigation/NavDrawer": {
+        "types": "./dist/navigation/NavDrawer.d.ts",
+        "default": "./dist/navigation/NavDrawer.js"
       },
       "./typography/Heading": {
         "types": "./dist/typography/Heading.d.ts",

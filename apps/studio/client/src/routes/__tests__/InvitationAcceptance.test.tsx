@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAppRouter } from '../../router.tsx';
@@ -13,6 +19,9 @@ const mocks = vi.hoisted(() => ({
   setActive: vi.fn(),
   signOut: vi.fn(),
   useSession: vi.fn(),
+  listTeams: vi.fn(),
+  /** What `organization.list` answers with, read at call time. */
+  teams: [] as { id: string; name: string }[],
 }));
 
 vi.mock('../../lib/auth.ts', () => ({
@@ -24,9 +33,24 @@ vi.mock('../../lib/auth.ts', () => ({
       isPending: false,
       error: null,
     }),
+    // `refetch` is not optional decoration: §6.6's reconciler awaits both when
+    // it writes the active team, which is what accepting an invitation and
+    // then entering that team makes it do.
+    useActiveOrganization: vi.fn().mockReturnValue({
+      data: null,
+      isPending: false,
+      error: null,
+      refetch: vi.fn(),
+    }),
+    useActiveMember: vi.fn().mockReturnValue({
+      data: null,
+      isPending: false,
+      error: null,
+      refetch: vi.fn(),
+    }),
     signIn: { magicLink: mocks.magicLink, social: vi.fn() },
     signOut: mocks.signOut,
-    organization: { setActive: mocks.setActive },
+    organization: { setActive: mocks.setActive, list: mocks.listTeams },
   },
 }));
 
@@ -39,6 +63,7 @@ vi.mock('../../lib/api.ts', () => ({
           name: 'Network Canvas Studio',
           version: '0.1.0',
           auth: { enabled: true, magicLink: true, socialProviders: [] },
+          deployment: { mode: 'managed', billing: false },
         }),
       }),
     },
@@ -72,11 +97,15 @@ const SESSION = {
 };
 
 function renderAt(path: string) {
+  // One client behind both the router's guards and the components: the
+  // session guard reads what a component's `queryClient.clear()` removes.
+  const queryClient = new QueryClient();
   const router = createAppRouter(
     createMemoryHistory({ initialEntries: [path] }),
+    queryClient,
   );
   render(
-    <QueryClientProvider client={new QueryClient()}>
+    <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
@@ -85,6 +114,10 @@ function renderAt(path: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.teams = [];
+  mocks.listTeams.mockImplementation(() =>
+    Promise.resolve({ data: mocks.teams, error: null }),
+  );
   mocks.getSession.mockResolvedValue({ data: null, error: null });
   mocks.useSession.mockReturnValue({
     data: null,
@@ -168,9 +201,11 @@ describe('invitation acceptance', () => {
       await screen.findByRole('heading', { name: 'Invitation accepted' }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Alpha research team/)).toBeInTheDocument();
+    // The accepted team's own studies list, not `/`, which is marketing
+    // (§10.2, §10.4).
     expect(screen.getByRole('link', { name: 'Open team' })).toHaveAttribute(
       'href',
-      '/',
+      '/team/team-a',
     );
   });
 
@@ -191,6 +226,57 @@ describe('invitation acceptance', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText('Alpha research team')).not.toBeInTheDocument();
     expect(mocks.setActive).not.toHaveBeenCalled();
+  });
+
+  it('opens the joined team instead of bouncing back to /no-team', async () => {
+    // The whole journey an invited researcher without a team actually makes.
+    // It starts at `/no-team`, and that first screen is what makes the rest of
+    // it dangerous: resolving it caches "this session belongs to no team" for
+    // thirty seconds, and both the app shell's guard and `/no-team`'s own read
+    // that same cache. Accepting the invitation makes it false without
+    // touching it, so unless acceptance says so, "Open team" enters the shell,
+    // is told the researcher has no team, and is sent straight back here —
+    // with `/no-team` agreeing, because it is reading the same stale answer.
+    mocks.getSession.mockResolvedValue({ data: SESSION, error: null });
+    mocks.useSession.mockReturnValue({
+      data: SESSION,
+      isPending: false,
+      error: null,
+    });
+    const router = renderAt('/no-team');
+    await screen.findByRole('heading', { name: 'No team yet' });
+
+    await act(() =>
+      router.navigate({
+        to: '/invitations/$invitationId',
+        params: { invitationId: INVITATION_ID },
+      }),
+    );
+    // The invitation is what changes the answer, so the server starts giving
+    // the new one the moment it is accepted.
+    mocks.acceptInvitation.mockImplementation(() => {
+      mocks.teams = [{ id: 'team-a', name: 'Alpha research team' }];
+      return Promise.resolve({
+        invitationId: INVITATION_ID,
+        teamId: 'team-a',
+        teamName: 'Alpha research team',
+        memberId: 'member-a',
+        role: 'admin',
+        status: 'accepted',
+      });
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Join team' }));
+
+    fireEvent.click(await screen.findByRole('link', { name: 'Open team' }));
+
+    // The team's studies, RENDERED. Not `state.location`, which is set to the
+    // destination before the guard that may refuse it has run: a bounce back
+    // to `/no-team` lands after the pathname already reads `/team/team-a`, so
+    // an assertion on it passes with the bug still there.
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Studies' }),
+    ).toBeInTheDocument();
+    expect(router.state.resolvedLocation?.pathname).toBe('/team/team-a');
   });
 
   it('lets a signed-in visitor switch accounts without losing the invitation', async () => {
