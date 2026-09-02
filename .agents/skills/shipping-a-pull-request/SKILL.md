@@ -126,52 +126,61 @@ for yourself, and let the badge break ties rather than make decisions.
 **Tell the user which threads you resolved _without_ changing code**, so they
 can overrule you. Never let a no-action resolution pass silently.
 
-### Breaking a review spiral
+### Ending the review loop
 
-A spiral is not the reviewer repeating itself. Each push triggers a fresh
-round, and on a large diff each round samples findings the previous rounds
-never mentioned — about code that has not changed. Fixing does not deplete the
-pool, so "keep fixing until the reviewer goes quiet" has no fixed point.
+Every push that triggers the reviewer is a round, and the loop ends only when
+a round run against your current head leaves nothing you must act on. The
+number of rounds is therefore mostly yours to set: by how often you push, and
+by whether each push leaves the reviewer less to find than it had before.
 
-Diagnose by origin, not by round count. For each finding ask which population
-it belongs to:
+- **One push per round.** Fix everything a round raised, verify, push once. A
+  push per finding is a round per finding.
+- **Look for the sibling before pushing.** The reviewer reads your fix and
+  probes around it — "after the X fix, Y still…" is how it opens — so fixing
+  the one guard, screen or call site a finding names reliably draws the same
+  defect in the next one a round later. Check the mechanism across the PR's
+  own diff (`git diff <base>...HEAD`) first. Stay inside that diff: a fix
+  that would reach files this PR never touched is a scope question for the
+  user, not a reviewer response.
+- **Re-read your fixes as a set.** A fix is code the reviewer has not seen,
+  and fixes create findings: in this repo's longest review loops, between a
+  fifth and a half of all findings describe what an earlier fix broke or left
+  open. After changing any guard, re-read every guard on that path together
+  and ask what their combination does.
+- **Prefer the fix that leaves less to review.** A paragraph added to a spec
+  and a parallel guard added to code both give the reviewer more to read next
+  round; one helper replacing several call sites gives it less.
 
-- **Exposed by the last push** — `git diff <previous head>..<current head>`
-  touches the mechanism it names. Ordinary review of new work; always act.
-- **Resampled** — about code that was already in the diff during an earlier
-  round and went unmentioned then. The reviewer is still discovering the
-  original diff.
+**Terminating.** A clean round leaves no review and no thread — the reviewer
+reacts with a thumbs-up on the PR instead — so before concluding anything,
+confirm a verdict exists for your current head:
 
-A round that is mostly resampled means you are nowhere near the end, however
-many rounds you have done. Reacting to it a few findings at a time is the
-spiral.
+```bash
+gh api repos/{owner}/{repo}/issues/<number>/reactions   # dated after your last push
+```
 
-Three moves break it, and all three raise quality rather than trading it away:
+Do not stop at a round count. Shrinking rounds mean you are converging; keep
+going. Flat rounds in which most findings trace back to your own fixes mean
+the fixes are the problem: stop patching, review that mechanism as a whole
+with a failing test per candidate, then push once. Do not end the loop by
+deferring real defects to follow-up issues — this repository's standing rule
+is that what you discover lands in the same PR. When it ends, say so, listing
+what you resolved without code changes.
 
-1. **Sweep once instead of reacting N times.** After the first round, stop
-   reacting and audit the whole diff yourself, in parallel, along the
-   dimensions the reviewer uses. Emptying the pool deliberately is faster than
-   having it sampled back at you six at a time.
-2. **Fix the family, not the instance.** A finding is one sample of a class.
-   Told that one screen is missing a contract, check every screen; told one
-   guard is wrong, check every guard. An instance-level fix guarantees its
-   sibling arrives next round — and reaching for the class is how a fix that
-   merely satisfies a reviewer becomes one that removes the defect.
-3. **One push per round, never one per finding.** Each push starts a round.
-
-**Do not break a spiral by deferring real defects to follow-up issues.** That
-trades quality for speed, and this repository's standing rule is that what you
-discover lands in the same PR. Front-load the thoroughness instead.
-
-**Terminating.** The loop ends when a round produces no finding that both names
-a reachable failure and concerns code this PR introduced — not when the reviewer
-falls silent, and not at a round budget. Say so explicitly, listing what you
-resolved without code changes.
-
-**When the diff is the problem.** If two rounds _after_ your own sweep are still
-surfacing confirmed defects in code the PR introduced, it is too large to
-converge under review. Say that to the user and offer to split it. That is the
-quality-preserving exit; deferral is not.
+**What the history shows.** The reviewer reads the whole diff each round,
+re-raises only what was left unfixed, and returns a handful of findings at a
+time — never more than nine in the PRs checked, whatever the diff's size — so
+one round never shows everything it will eventually find; on the app-shell PR,
+code present when it opened was first flagged four rounds later. Diff size does
+not set the round count. The largest diff in sixty PRs was down to two
+findings by its fifth round (8, 6, 4, 2); a one-file spec ran thirteen rounds,
+every fix growing the document and a third of the findings landing on text
+the previous fix had added; a nine-file CI change took twenty-two rounds of
+one to three findings each, half of them about the previous fix. Auditing the whole
+diff yourself finds real defects but does not shorten the loop — the one
+documented sweep fixed twenty-six and the reviewer's rate was unchanged for
+the eight rounds after — and splitting the PR is not an exit for the same
+reason.
 
 ### Stopping conditions
 
@@ -197,7 +206,8 @@ quality-preserving exit; deferral is not.
 | Force-pushing to satisfy a check                     | Fix root cause and push a normal commit; don't rewrite history reflexively.    |
 | Merging once checks go green                         | Merging is the user's call — report readiness, don't merge automatically.      |
 | Re-guessing the same fix after two failed attempts   | Stop and hand back to the user with the failure history.                       |
-| Fixing only the file a finding names                 | Fix every instance of the class; the sibling arrives next round otherwise.     |
-| Pushing after each individual fix                    | Batch a round's fixes into one push — each push starts a new review round.     |
-| Reacting round after round on a large diff           | Sweep the whole diff yourself once, in parallel, then respond.                 |
-| Deferring real defects to escape a review spiral     | Front-load the sweep; if it still won't converge, offer to split the PR.       |
+| Pushing after each individual fix                    | Fix everything a round raised, then push once — each push is a round.          |
+| Fixing only the instance a finding names             | Check the same mechanism across the PR's diff first; the sibling arrives next. |
+| Treating no new review as a clean round              | Look for the reviewer's thumbs-up on the PR, dated after your last push.       |
+| Patching one mechanism round after round             | Stop; review it as a whole with a failing test per candidate, then push once.  |
+| Deferring real defects to end the loop               | Fix them here; flat rounds mean the fixes need rethinking, not a lower bar.    |
