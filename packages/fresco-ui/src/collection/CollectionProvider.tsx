@@ -3,7 +3,7 @@
 import { type ReactNode, useEffect, useRef } from 'react';
 
 import { CollectionStoreContext } from './contexts';
-import { type CollectionStoreApi, createCollectionStore } from './store';
+import { type CollectionStoreApi, createSeededCollectionStore } from './store';
 import type { KeyExtractor, TextValueExtractor } from './types';
 
 type CollectionProviderProps<T> = {
@@ -42,8 +42,13 @@ export function CollectionProvider<T>({
   keyExtractorRef.current = keyExtractor;
   textValueExtractorRef.current = textValueExtractor;
 
-  // Create store once
-  storeRef.current ??= createCollectionStore<T>();
+  // Create the store once, seeded so the first render — including server and
+  // static output — already contains the items instead of the empty state.
+  storeRef.current ??= createSeededCollectionStore(
+    items,
+    keyExtractor,
+    textValueExtractor,
+  );
 
   // Update items when they change
   useEffect(() => {

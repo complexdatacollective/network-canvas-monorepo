@@ -39,6 +39,7 @@ function StaticRendererComponent<T>({
 }: StaticRendererProps<T>) {
   // Get CSS styles from layout (flexbox for list, CSS grid for grid)
   const containerStyle = layout.getContainerStyles();
+  const layoutItemStyle = layout.getItemStyles();
 
   const scope = useStaggerAnimation(
     shouldAnimate ?? false,
@@ -58,7 +59,7 @@ function StaticRendererComponent<T>({
     return (
       <div ref={scope} style={containerStyle}>
         {Array.from(collection).map((node) => (
-          <div key={node.key} style={layout.getItemStyles(node.key)}>
+          <div key={node.key} style={layoutItemStyle}>
             <div data-stagger-item data-stagger-key={animationKey}>
               <CollectionItem
                 node={node}
@@ -84,7 +85,7 @@ function StaticRendererComponent<T>({
               initial={{ scale: 0.6, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.6, opacity: 0 }}
-              style={layout.getItemStyles(node.key)}
+              style={layoutItemStyle}
             >
               <div data-stagger-item data-stagger-key={animationKey}>
                 <CollectionItem

@@ -115,41 +115,52 @@ function CollectionItemComponent<T>({
     [],
   );
 
-  // Build ItemProps to pass to renderItem
-  const fullItemProps: ItemProps = {
-    'ref': combinedRef,
-    'tabIndex': nativeItemSemantics
-      ? isDisabled
-        ? -1
-        : undefined
-      : itemProps.tabIndex,
-    'role': nativeItemSemantics ? undefined : 'option',
-    'aria-selected': nativeItemSemantics ? undefined : isSelected || undefined,
-    'aria-disabled': isDisabled || undefined,
-    'data-collection-item': true,
-    'data-selected': isSelected || undefined,
-    'data-focused': isFocused || undefined,
-    'data-disabled': isDisabled || undefined,
-    'data-dragging': undefined,
-    'data-drop-target': undefined,
-    'onFocus': nativeItemSemantics ? undefined : itemProps.onFocus,
-    'onClickCapture':
-      nativeItemSemantics && isDisabled ? blockDisabledNativeClick : undefined,
-    'onClick': nativeItemSemantics ? undefined : itemProps.onClick,
-    'onKeyDownCapture':
-      nativeItemSemantics && isDisabled
-        ? blockDisabledNativeKeyDown
-        : undefined,
-    'onKeyDown': nativeItemSemantics ? undefined : composedOnKeyDown,
-    'onPointerDown': dndDragProps.onPointerDown as
-      | React.PointerEventHandler
-      | undefined,
-    'onPointerMove': dndDragProps.onPointerMove as
-      | React.PointerEventHandler
-      | undefined,
-    'id': itemId,
-    ...dndDragProps,
-  };
+  // Build ItemProps to pass to renderItem. In native mode only the keys the
+  // Collection actually owns are present, so a consumer's own handlers survive
+  // `<a onClick={…} {...itemProps}>` in either spread order.
+  const fullItemProps: ItemProps = nativeItemSemantics
+    ? {
+        'ref': combinedRef,
+        'aria-disabled': isDisabled || undefined,
+        'data-collection-item': true,
+        'data-selected': isSelected || undefined,
+        'data-focused': isFocused || undefined,
+        'data-disabled': isDisabled || undefined,
+        'id': itemId,
+        ...(isDisabled
+          ? {
+              tabIndex: -1,
+              onClickCapture: blockDisabledNativeClick,
+              onKeyDownCapture: blockDisabledNativeKeyDown,
+            }
+          : {}),
+        ...(dndOnKeyDown ? { onKeyDown: dndOnKeyDown } : {}),
+        ...dndDragProps,
+      }
+    : {
+        'ref': combinedRef,
+        'tabIndex': itemProps.tabIndex,
+        'role': 'option',
+        'aria-selected': isSelected || undefined,
+        'aria-disabled': isDisabled || undefined,
+        'data-collection-item': true,
+        'data-selected': isSelected || undefined,
+        'data-focused': isFocused || undefined,
+        'data-disabled': isDisabled || undefined,
+        'data-dragging': undefined,
+        'data-drop-target': undefined,
+        'onFocus': itemProps.onFocus,
+        'onClick': itemProps.onClick,
+        'onKeyDown': composedOnKeyDown,
+        'onPointerDown': dndDragProps.onPointerDown as
+          | React.PointerEventHandler
+          | undefined,
+        'onPointerMove': dndDragProps.onPointerMove as
+          | React.PointerEventHandler
+          | undefined,
+        'id': itemId,
+        ...dndDragProps,
+      };
 
   return (
     <CollectionItemContext.Provider value={contextValue}>

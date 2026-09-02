@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { type CSSProperties, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { renderToString } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import { Collection } from '../components/Collection';
@@ -20,12 +21,6 @@ const testItems: Item[] = [
   { id: '4', name: 'Date' },
   { id: '5', name: 'Elderberry' },
 ];
-
-class KeyedItemGridLayout extends GridLayout<Item> {
-  override getItemStyles(key?: Key): CSSProperties {
-    return key === '2' ? { gridColumn: 'span 2 / span 2' } : {};
-  }
-}
 
 // Wrapper component for controlled selection
 function ControlledCollection({
@@ -94,27 +89,27 @@ describe('Collection', () => {
       expect(screen.getByText('Elderberry')).toBeDefined();
     });
 
-    it('applies layout styles for each item key', () => {
-      render(
+    it('renders its items in the initial markup', () => {
+      const markup = renderToString(
         <Collection
           items={testItems}
           keyExtractor={(item) => item.id}
           textValueExtractor={(item) => item.name}
-          layout={new KeyedItemGridLayout({ minItemWidth: 200 })}
+          layout={new ListLayout<Item>({ gap: 2 })}
           animate={false}
+          emptyState={<span>Nothing here</span>}
           renderItem={(item, itemProps) => (
-            <div {...itemProps} data-testid={`styled-item-${item.id}`}>
-              {item.name}
-            </div>
+            <div {...itemProps}>{item.name}</div>
           )}
         >
           {(collectionElements) => collectionElements}
         </Collection>,
       );
 
-      const layoutItem =
-        screen.getByTestId('styled-item-2').parentElement?.parentElement;
-      expect(layoutItem).toHaveStyle({ gridColumn: 'span 2 / span 2' });
+      for (const item of testItems) {
+        expect(markup).toContain(item.name);
+      }
+      expect(markup).not.toContain('Nothing here');
     });
 
     it('preserves native link semantics when requested', () => {
@@ -174,6 +169,12 @@ describe('Collection', () => {
 
       expect(onActivate).not.toHaveBeenCalled();
       expect(window.location.hash).not.toBe('#2');
+
+      // The item props carry no `onClick` of their own in native mode, so the
+      // consumer's handler survives being spread over — enabled links still
+      // activate.
+      await user.click(screen.getByRole('link', { name: 'Apple' }));
+      expect(onActivate).toHaveBeenCalledTimes(1);
     });
 
     it('should render empty state when no items', () => {

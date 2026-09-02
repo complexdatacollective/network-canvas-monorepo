@@ -241,6 +241,8 @@ function VirtualizedRendererComponent<T>({
   // without behavioural benefit. `LayoutGroup` is kept so that nested
   // user-provided motion components (from `renderItem`) still coordinate
   // layout animations with each other.
+  const itemStyle = layout.getItemStyles();
+
   return (
     <>
       {measurementContainer}
@@ -263,11 +265,7 @@ function VirtualizedRendererComponent<T>({
                 if (!node) return null;
 
                 return (
-                  <div
-                    key={key}
-                    ref={getItemRef(key)}
-                    style={layout.getItemStyles(key)}
-                  >
+                  <div key={key} ref={getItemRef(key)} style={itemStyle}>
                     <div data-stagger-item data-stagger-key={animationKey}>
                       <CollectionItem
                         node={node}

@@ -514,6 +514,21 @@ export const createCollectionStore = <T>(
 };
 
 /**
+ * Create a store whose *initial* state already holds `items`. Zustand serves
+ * `getInitialState()` as the server snapshot, so items written after creation
+ * would never appear in server-rendered or static markup.
+ */
+export const createSeededCollectionStore = <T>(
+  items: T[],
+  keyExtractor: KeyExtractor<T>,
+  textValueExtractor: TextValueExtractor<T>,
+) => {
+  const seed = createCollectionStore<T>();
+  seed.getState().setItems(items, keyExtractor, textValueExtractor);
+  return createCollectionStore<T>(seed.getState());
+};
+
+/**
  * Type for the store instance returned by createCollectionStore.
  */
 export type CollectionStoreApi<T> = ReturnType<typeof createCollectionStore<T>>;
