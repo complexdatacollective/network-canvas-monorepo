@@ -160,12 +160,38 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
                     };
               creationAttempt.current = attempt;
               setCreating(true);
-              // Where the researcher was when they asked for this. §6.5's
-              // generation token: the header is on every screen, so a slow
-              // creation can resolve after they have switched teams or left
-              // the team area entirely, and a continuation that assumes it is
-              // still the current one drags them back into stale context.
+              // Where the researcher was when they asked for this. The header
+              // is on every screen, so a slow creation can resolve after they
+              // have switched teams or left the team area entirely, and a
+              // continuation that assumes it is still the current one drags
+              // them back into stale context.
+              //
+              // Both ends read `state.location` deliberately: it is the
+              // PENDING location, so a navigation that has started but not yet
+              // committed already reads as "they have moved" — which is the
+              // answer that keeps this from landing on top of a navigation the
+              // researcher asked for. What matters is that the same source is
+              // read at both ends.
               const startedAt = router.state.location.pathname;
+              // §6.5's generation, and what the comparison above cannot be:
+              // a pathname is a place, not an occasion. Leaving `/team/A` and
+              // coming back to it before the response lands reads as never
+              // having left, and the continuation then pulls the researcher
+              // into an editor from a navigation they made two screens ago.
+              //
+              // Recorded from the router rather than from this component,
+              // because the component is not always there to see it: leaving
+              // the team area unmounts this screen while its continuation goes
+              // on running. `hrefChanged` is what makes an idle reload — the
+              // session revalidation a tab switch triggers is one — not count
+              // as having moved.
+              let navigated = false;
+              const stopWatchingNavigation = router.subscribe(
+                'onResolved',
+                (event) => {
+                  if (event.hrefChanged) navigated = true;
+                },
+              );
               try {
                 // The attempt IS the request: its team, name and identifiers
                 // are exactly what the procedure takes, so a retry cannot
@@ -182,10 +208,14 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
                 // designing its protocol, and an empty overview would be a
                 // screen nobody wants (§10.2 makes the same choice at the end
                 // of the sign-up funnel). Only from where the request was
-                // made, though: the study exists and the list above names it,
-                // so a researcher who has moved on loses nothing by staying
-                // where they chose to be.
-                if (router.state.location.pathname === startedAt) {
+                // made, and only if nothing has committed since: the study
+                // exists and the list above names it, so a researcher who has
+                // moved at all loses nothing by staying where they chose to
+                // be.
+                if (
+                  !navigated &&
+                  router.state.location.pathname === startedAt
+                ) {
                   await navigate({
                     to: '/study/$studyId/editor',
                     params: { studyId: created.protocolId },
@@ -200,6 +230,7 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
                   ],
                 };
               } finally {
+                stopWatchingNavigation();
                 setCreating(false);
               }
             }}

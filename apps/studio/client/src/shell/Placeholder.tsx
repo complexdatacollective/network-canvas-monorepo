@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -13,6 +15,15 @@ export type PlaceholderProps = {
   description: string;
   /** The issue that builds it, so the reader can go and look. */
   issue: `#${number}`;
+  /**
+   * Something the researcher can actually do here, for the rare route that
+   * owes them one before its screen exists — `/no-team`'s sign-out, which is
+   * the only way off a screen the whole app redirects to (§6.4).
+   *
+   * The exception proves the rule below rather than weakening it: this is a
+   * working control the shell owns, not a preview of the unbuilt screen's.
+   */
+  action?: ReactNode;
 };
 
 /**
@@ -37,6 +48,7 @@ export default function Placeholder({
   title,
   description,
   issue,
+  action,
 }: PlaceholderProps) {
   return (
     <div className="mx-auto flex w-full max-w-prose flex-col gap-3 p-6">
@@ -47,6 +59,7 @@ export default function Placeholder({
       <Paragraph className="text-text/60 text-sm">
         This screen has not been built yet. It is specified in {issue}.
       </Paragraph>
+      {action}
     </div>
   );
 }

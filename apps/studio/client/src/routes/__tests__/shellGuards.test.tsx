@@ -46,6 +46,7 @@ const fixtures = vi.hoisted(() => ({
   useListOrganizations: vi.fn(),
   useActiveOrganization: vi.fn(),
   useActiveMember: vi.fn(),
+  signOut: vi.fn(),
 }));
 
 vi.mock('../../lib/auth.ts', () => ({
@@ -82,7 +83,7 @@ vi.mock('../../lib/auth.ts', () => ({
       setActive: fixtures.setActive,
       list: fixtures.listTeams,
     },
-    signOut: vi.fn(),
+    signOut: fixtures.signOut,
   },
 }));
 
@@ -166,6 +167,12 @@ beforeEach(() => {
   fixtures.useActiveMember.mockReturnValue(
     resolved({ id: 'member-1', organizationId: 'team-a', role: 'owner' }),
   );
+  fixtures.signOut.mockImplementation(() => {
+    // The cookie is gone from here on, which is what lets the sign-in page be
+    // the end of the sequence rather than a bounce back to `/no-team`.
+    fixtures.signedIn = false;
+    return Promise.resolve({ data: { success: true }, error: null });
+  });
 });
 
 describe('the header wordmark, before the team list arrives', () => {
@@ -565,6 +572,27 @@ describe('the no-team screen', () => {
       await screen.findByRole('heading', { name: 'No team yet' }),
     ).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/no-team');
+  });
+
+  it('lets a researcher who belongs to no team sign out of it', async () => {
+    fixtures.teams = [];
+    renderAt('/no-team');
+    await screen.findByRole('heading', { name: 'No team yet' });
+
+    // Every app route bounces this session back here (§6.4) and `/sign-in`
+    // resolves the same landing and does the same, so the account menu is on
+    // no screen they can reach. Without a control here, signing in as
+    // somebody else means clearing the cookie by hand.
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+
+    // The sequence RAN, and the sign-in page RENDERED at the end of it. The
+    // first assertion is what fails if the sequence's own navigation cannot
+    // commit — returning through `/account`, which this session's guard
+    // redirects away from, aborts the sign-out silently and signs nobody out.
+    await waitFor(() => expect(fixtures.signOut).toHaveBeenCalledTimes(1));
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Sign in' }),
+    ).toBeInTheDocument();
   });
 
   it('keeps a researcher whose teams could not be read', async () => {

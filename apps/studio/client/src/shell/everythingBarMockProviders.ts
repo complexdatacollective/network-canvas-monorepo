@@ -58,6 +58,13 @@ type MockCommandContext = {
   teamId?: string;
   /** The study the URL names, if any. */
   studyId?: string;
+  /**
+   * Whether the researcher administers that team, read against the team above
+   * (`lib/teamRoles.ts`). The real registry filters by capability (§5.3); the
+   * fixture is filtered by the one capability Studio can express today, so it
+   * cannot advertise an action the screen behind it refuses.
+   */
+  canManageTeam: boolean;
 };
 
 /**
@@ -67,10 +74,17 @@ type MockCommandContext = {
  * owns the action, plus the identifier that screen will register for its own
  * dialog. A command whose owning resource is not in context is absent rather
  * than pointing at a route that cannot be built.
+ *
+ * Inviting is absent for a researcher who does not administer the team, for
+ * the same reason: `TeamMembers` renders no invitation form for them, so the
+ * command would offer an action and then land them on a screen that does not
+ * have it. Creating a study is offered to every member, which is what the
+ * studies screen does.
  */
 function mockCommandItems({
   teamId,
   studyId,
+  canManageTeam,
 }: MockCommandContext): EverythingBarItem[] {
   return [
     ...(studyId === undefined
@@ -103,7 +117,7 @@ function mockCommandItems({
             },
           },
         ]),
-    ...(teamId === undefined
+    ...(teamId === undefined || !canManageTeam
       ? []
       : [
           {
@@ -119,6 +133,10 @@ function mockCommandItems({
               surface: 'members.invite',
             },
           },
+        ]),
+    ...(teamId === undefined
+      ? []
+      : [
           {
             id: `team:${teamId}:studies.create`,
             group: 'commands' as const,

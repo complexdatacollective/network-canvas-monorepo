@@ -458,6 +458,60 @@ describe('the team studies list', () => {
     expect(router.state.location.pathname).toBe(`/team/${TEAM_B.id}`);
   });
 
+  it('leaves a researcher who came back where they came back to', async () => {
+    let finishCreation: ((created: { protocolId: string }) => void) | undefined;
+    fixtures.createProtocol.mockImplementation(
+      () =>
+        new Promise<{ protocolId: string }>((resolve) => {
+          finishCreation = resolve;
+        }),
+    );
+    const { router } = renderTeam(STUDIES);
+
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: 'Study name' }),
+      { target: { value: 'Slow study' } },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Create study' }));
+    await waitFor(() => expect(finishCreation).toBeDefined());
+
+    // Away and back, both before the response lands. The address the request
+    // was made from is the address the researcher is on again — so a
+    // continuation that asks "am I still where I was?" by comparing pathnames
+    // is told yes, and pulls them into an editor from a navigation they made
+    // two screens ago.
+    await act(() =>
+      router.navigate({ to: '/team/$teamId', params: { teamId: TEAM_B.id } }),
+    );
+    expect(
+      await screen.findByRole('link', { name: 'Beta protocol' }),
+    ).toBeInTheDocument();
+    await act(() =>
+      router.navigate({ to: '/team/$teamId', params: { teamId: TEAM_A.id } }),
+    );
+    expect(
+      await screen.findByRole('link', { name: 'Alpha protocol' }),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      finishCreation?.({ protocolId: 'slow-study' });
+    });
+
+    // Waiting for the form to finish submitting is what makes this able to
+    // fail: the navigation the guard suppresses happens BEFORE that.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Create study' }),
+      ).toBeEnabled(),
+    );
+    // The team's studies, still RENDERED — not the editor of a study created
+    // three navigations ago.
+    expect(
+      screen.getByRole('link', { name: 'Alpha protocol' }),
+    ).toBeInTheDocument();
+    expect(router.state.resolvedLocation?.pathname).toBe(STUDIES);
+  });
+
   it('reuses the creation identity after a lost response', async () => {
     fixtures.createProtocol
       .mockRejectedValueOnce(new Error('response lost'))

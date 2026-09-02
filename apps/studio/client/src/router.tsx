@@ -37,6 +37,7 @@ import TeamActivity from './routes/TeamActivity.tsx';
 import TeamMembers from './routes/TeamMembers.tsx';
 import TeamStudies from './routes/TeamStudies.tsx';
 import AccountArea from './shell/AccountArea.tsx';
+import NoTeamSignOut from './shell/NoTeamSignOut.tsx';
 import Placeholder, { type PlaceholderProps } from './shell/Placeholder.tsx';
 import ProtocolOutlineArea from './shell/ProtocolOutlineArea.tsx';
 import ScreenMain from './shell/ScreenMain.tsx';
@@ -370,11 +371,18 @@ const noTeamRoute = createRoute({
     if (destination === undefined || destination.to === '/no-team') return;
     throw landingRedirect(destination);
   },
+  // The sign-out is not part of the unbuilt screen: it is the way OFF a route
+  // that is the terminus of every redirect this session can trigger. The guard
+  // above sends them here from `/sign-in`, the app shell's guard sends them
+  // here from everywhere else, and neither screen they can reach carries the
+  // account menu — so without it, signing in as somebody else means clearing
+  // the cookie by hand.
   component: screenPlaceholder({
     title: 'No team yet',
     description:
       'What a signed-in researcher who belongs to no team sees: how to create one, or what to expect while waiting for an invitation.',
     issue: '#1249',
+    action: <NoTeamSignOut />,
   }),
 });
 

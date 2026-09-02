@@ -13,7 +13,7 @@ import EverythingBar, {
 
 import { authClient } from '../lib/auth.ts';
 import { useSurfaceUnavailable } from '../lib/deployment.ts';
-import { canManageTeam } from '../lib/teamRoles.ts';
+import { canManageTeam, teamRole } from '../lib/teamRoles.ts';
 import { createDestinationsProvider } from './everythingBarDestinations.ts';
 import {
   createMockCommandsProvider,
@@ -106,7 +106,11 @@ export default function StudioEverythingBar() {
   // the active-team setting — the same fallback the header's study chip makes,
   // and what lets "invite" find the team's command from a study screen.
   const teamId = routeTeamId ?? activeTeam.data?.id;
-  const canManage = canManageTeam(activeMember.data?.role);
+  // Against the team the bar is searching FOR, not against whichever team the
+  // active membership currently names: a team URL commits before §6.6's
+  // reconciler has moved the setting, so the two name different teams for the
+  // whole of every switch and permanently after a failed write.
+  const canManage = canManageTeam(teamRole(activeMember.data, teamId));
   const currentArea = currentAreaFor(pathname);
 
   // `⌘K` from anywhere in the app shell. The binding lives here rather than in
@@ -146,9 +150,15 @@ export default function StudioEverythingBar() {
     () => createDestinationsProvider({ entries, currentArea }),
     [entries, currentArea],
   );
+  // The capability goes to the commands provider as well as to the manifest.
+  // A command is a launch into the screen that owns the action (invariant 3),
+  // so a command offered to someone who may not perform it lands them on a
+  // screen that correctly refuses them — which is a worse answer than not
+  // offering it, and the one thing a launcher must never do.
   const commands = useMemo(
-    () => createMockCommandsProvider({ teamId, studyId }),
-    [teamId, studyId],
+    () =>
+      createMockCommandsProvider({ teamId, studyId, canManageTeam: canManage }),
+    [teamId, studyId, canManage],
   );
   const documentation = useMemo(() => createMockDocumentationProvider(), []);
 

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { PortalContainerProvider } from '../PortalContainer';
 import NavDrawer from './NavDrawer';
 import NavItem from './NavItem';
 import NavList from './NavList';
@@ -37,7 +38,16 @@ const DESTINATIONS: Destination[] = [
   { href: '/study/1/settings', label: 'Study settings', commits: false },
 ];
 
-const Harness = () => {
+const Harness = ({
+  /**
+   * Whether this route declares a landing point. A destination whose heading
+   * does not spread `routeFocusTargetProps` is the case the handoff must NOT
+   * suppress the trigger restore for: there would be nowhere to hand off to.
+   */
+  landingPoint = true,
+}: {
+  landingPoint?: boolean;
+}) => {
   const [open, setOpen] = useState(false);
   const [location, setLocation] = useState('/study/1');
 
@@ -45,7 +55,7 @@ const Harness = () => {
     <div>
       {/* The route's own landing point, outside the drawer — where a
           navigation-driven close has to put focus. */}
-      <h1 {...routeFocusTargetProps}>Study overview</h1>
+      {landingPoint && <h1 {...routeFocusTargetProps}>Study overview</h1>}
       <button type="button" id="background">
         Return to start screen
       </button>
@@ -219,6 +229,67 @@ describe('NavDrawer focus handoff', () => {
     await closedDrawer();
 
     expect(document.activeElement).not.toBe(document.body);
+  });
+
+  /**
+   * fresco-ui renders into popped-out windows and iframes — `Modal` takes a
+   * portal container for exactly that — and there the ambient `document` is a
+   * different page altogether, with landing points of its own. The two halves
+   * of the handoff have to ask the same document: deciding from the ambient
+   * one and landing in this one suppresses the trigger restore on the strength
+   * of a heading that is not here, and focus is left on `<body>`.
+   */
+  it("asks the drawer's own document whether there is anywhere to land", async () => {
+    // The ambient page has a landing point. The drawer's document does not.
+    const ambientLanding = document.createElement('h1');
+    ambientLanding.setAttribute('data-route-focus-target', '');
+    document.body.append(ambientLanding);
+
+    const frame = document.createElement('iframe');
+    document.body.append(frame);
+    const frameDocument = frame.contentDocument;
+    if (!frameDocument) throw new Error('the iframe rendered no document');
+    const container = frameDocument.createElement('div');
+    frameDocument.body.append(container);
+
+    try {
+      render(
+        <PortalContainerProvider>
+          <Harness landingPoint={false} />
+        </PortalContainerProvider>,
+        { container, baseElement: frameDocument.body },
+      );
+
+      const trigger = frameDocument.getElementById('trigger');
+      if (!trigger) throw new Error('#trigger not rendered');
+      trigger.focus();
+      // Focus inside a frame also focuses the frame ELEMENT in the page around
+      // it, which is a real browser's behaviour and not one this test is about.
+      // Dropped here so the ambient document has no focus owner of its own and
+      // the return target can only come from the drawer's own document.
+      frame.blur();
+      trigger.click();
+      await waitFor(() =>
+        expect(frameDocument.querySelector('[role="dialog"]')).not.toBeNull(),
+      );
+
+      const destination = frameDocument.querySelector<HTMLAnchorElement>(
+        'a[href="/study/1/participants"]',
+      );
+      if (!destination) throw new Error('the destination did not render');
+      destination.click();
+      await waitFor(() =>
+        expect(frameDocument.querySelector('[role="dialog"]')).toBeNull(),
+      );
+
+      // Nowhere to hand off to in THIS document, so the restore had to run.
+      // Suppressed instead, focus falls to the body of the drawer's own
+      // document and the next Tab restarts at the top of it.
+      expect(frameDocument.activeElement).not.toBe(frameDocument.body);
+    } finally {
+      ambientLanding.remove();
+      frame.remove();
+    }
   });
 
   it('returns focus to the trigger again on a dismissal that follows a navigation', async () => {

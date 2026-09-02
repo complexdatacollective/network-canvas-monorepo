@@ -42,6 +42,22 @@ const focusWasLost = (ownerDocument: Document) =>
   !holdsFocus(ownerDocument.activeElement);
 
 /**
+ * Whether the current route has a landing point at all.
+ *
+ * Exported for callers that must decide whether a handoff to
+ * `focusRouteTarget` is possible BEFORE giving up whatever focus they hold —
+ * `NavDrawer` suppresses Base UI's restore-to-trigger only when this answers
+ * yes, because suppressing it with nowhere to land leaves focus on `<body>`.
+ *
+ * Takes the same `ownerDocument` as `focusRouteTarget`, and for the same
+ * reason: a caller asking "can I hand off?" and then handing off must ask
+ * about ONE document, or it decides from a heading in the ambient page and
+ * lands in a popped-out window that has none.
+ */
+export const hasRouteFocusTarget = (ownerDocument: Document = document) =>
+  ownerDocument.querySelector(ROUTE_FOCUS_TARGET_SELECTOR) !== null;
+
+/**
  * Lands focus on the current route's landing point, and returns it so the
  * caller can say where the researcher has been put.
  *
@@ -63,17 +79,6 @@ const focusWasLost = (ownerDocument: Document) =>
  * ambient `document` is a different document altogether and both the query and
  * the "is anything focused?" question would be answered about the wrong page.
  */
-/**
- * Whether the current route has a landing point at all.
- *
- * Exported for callers that must decide whether a handoff to
- * `focusRouteTarget` is possible BEFORE giving up whatever focus they hold —
- * `NavDrawer` suppresses Base UI's restore-to-trigger only when this answers
- * yes, because suppressing it with nowhere to land leaves focus on `<body>`.
- */
-export const hasRouteFocusTarget = (ownerDocument: Document = document) =>
-  ownerDocument.querySelector(ROUTE_FOCUS_TARGET_SELECTOR) !== null;
-
 export const focusRouteTarget = (ownerDocument: Document = document) => {
   const target = ownerDocument.querySelector<HTMLElement>(
     ROUTE_FOCUS_TARGET_SELECTOR,

@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
 } from 'react';
 
 import CloseButton from '../CloseButton';
@@ -108,12 +109,20 @@ const NavDrawerPanel = ({
   label,
   labelId,
   closeLabel,
+  panelRef,
   wasNavigationClose,
   children,
 }: {
   label: string;
   labelId: string;
   closeLabel: string;
+  /**
+   * Owned by `NavDrawer` rather than declared here, because the two halves of
+   * the handoff have to ask about the SAME document: `finalFocus` decides
+   * whether a landing point exists while the panel is still mounted, and the
+   * cleanup below lands on it after the panel has gone.
+   */
+  panelRef: RefObject<HTMLDivElement | null>;
   /**
    * Whether the close now in progress was driven by a navigation. Asked as a
    * question rather than handed over as a value, because the answer is not
@@ -123,8 +132,6 @@ const NavDrawerPanel = ({
   wasNavigationClose: () => boolean;
   children: ReactNode;
 }) => {
-  const panelRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     // Captured while the panel is still in a document, because the cleanup
     // runs after it has left one. The panel's own document rather than the
@@ -138,7 +145,7 @@ const NavDrawerPanel = ({
 
       focusRouteTarget(ownerDocument);
     };
-  }, [wasNavigationClose]);
+  }, [panelRef, wasNavigationClose]);
 
   return (
     <div
@@ -239,6 +246,11 @@ const NavDrawer = ({
    */
   const closedByNavigation = useRef(false);
   const lastLocation = useRef(location);
+  /**
+   * The panel inside the popup, held here because both halves of the focus
+   * handoff need the document it is in — see `finalFocus` below.
+   */
+  const panelRef = useRef<HTMLDivElement>(null);
 
   // Stable, so the panel's effect is never torn down and re-run by a render of
   // this component — which for that effect would mean an unmount, and an
@@ -288,12 +300,23 @@ const NavDrawer = ({
         // suppressed and focus fell to `<body>` — the next Tab restarting at
         // the skip link, which is the failure this handoff exists to prevent.
         // Answering `null` there lets the trigger restore run instead, which
-        // is never worse. Read against the ambient document: a mismatch is
-        // possible only in a popped-out window, and there it answers `null`
-        // and restores, which is the safe direction.
-        finalFocus={() =>
-          closedByNavigation.current && hasRouteFocusTarget() ? false : null
-        }
+        // is never worse.
+        //
+        // Asked about the PANEL's document, which is the one the handoff will
+        // search: fresco-ui renders into popped-out windows and iframes, where
+        // the ambient `document` is a different page entirely and can carry a
+        // landing point of its own. Reading it there suppresses the restore on
+        // the strength of a heading in another document, and the cleanup then
+        // finds nothing in this one — precisely the `<body>` failure above. No
+        // document to ask about is `null` for the same reason.
+        finalFocus={() => {
+          const ownerDocument = panelRef.current?.ownerDocument;
+          return closedByNavigation.current &&
+            ownerDocument !== undefined &&
+            hasRouteFocusTarget(ownerDocument)
+            ? false
+            : null;
+        }}
         className={cx(
           // No background of its own: `elevation-*` shadows are blended from
           // the PARENT's published background, and an element that paints its
@@ -315,6 +338,7 @@ const NavDrawer = ({
           label={label}
           labelId={labelId}
           closeLabel={closeLabel}
+          panelRef={panelRef}
           wasNavigationClose={wasNavigationClose}
         >
           {children}

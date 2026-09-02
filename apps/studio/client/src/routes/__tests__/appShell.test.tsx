@@ -204,6 +204,48 @@ describe('composed app shell', () => {
 
     expect(screen.queryByRole('link', { name: 'Activity' })).toBeNull();
   });
+
+  /**
+   * Better Auth answers about the ACTIVE team and the URL says which team a
+   * screen is about, and the two disagree for the whole of every switch —
+   * permanently when §6.6's write fails. A sidebar that reads the role without
+   * checking which team it belongs to therefore decides one team's
+   * destinations from another team's membership, in both directions.
+   */
+  describe('a role that belongs to a different team from the URL', () => {
+    it('offers no manage-only destination it cannot vouch for', async () => {
+      // Owner of team A, standing on team B's URL, with the membership still
+      // describing A.
+      fixtures.useActiveMember.mockReturnValue({
+        data: { id: 'member-1', organizationId: 'team-a', role: 'owner' },
+        isPending: false,
+        error: null,
+        refetch: vi.fn(),
+      });
+      renderAt('/team/team-b');
+      await screen.findByRole('link', { name: 'Studies' });
+
+      // Being an owner of A says nothing about B. Offered here, the row leads
+      // to a screen whose procedure refuses them (§11.4).
+      expect(screen.queryByRole('link', { name: 'Activity' })).toBeNull();
+    });
+
+    it('offers it again once the membership names the team on screen', async () => {
+      // The other half, so the guard above is not just "never on team B": the
+      // reconciliation has landed and the researcher owns this team.
+      fixtures.useActiveMember.mockReturnValue({
+        data: { id: 'member-3', organizationId: 'team-b', role: 'owner' },
+        isPending: false,
+        error: null,
+        refetch: vi.fn(),
+      });
+      renderAt('/team/team-b');
+
+      expect(
+        await screen.findByRole('link', { name: 'Activity' }),
+      ).toHaveAttribute('href', '/team/team-b/activity');
+    });
+  });
 });
 
 describe('header team switcher', () => {

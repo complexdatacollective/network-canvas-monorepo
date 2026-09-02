@@ -4,7 +4,7 @@ import AppArea from '@codaco/fresco-ui/layout/AppArea';
 
 import { authClient } from '../lib/auth.ts';
 import { useSurfaceUnavailable } from '../lib/deployment.ts';
-import { canManageTeam } from '../lib/teamRoles.ts';
+import { canManageTeam, teamRole } from '../lib/teamRoles.ts';
 import AreaMain from './AreaMain.tsx';
 import ManifestNav from './ManifestNav.tsx';
 import { teamDestinations } from './navigationManifest.ts';
@@ -30,6 +30,11 @@ import { teamDestinations } from './navigationManifest.ts';
  * the intact shell for anyone who reaches the URL directly. The other five
  * destinations get no such courtesy because there is nothing behind them yet
  * to refuse anyone.
+ *
+ * That role is read against the team in the URL, never against whichever team
+ * the active membership currently names — see `teamRole`. The two disagree for
+ * the whole of every team switch, so the sidebar would otherwise decide this
+ * team's destinations from the last team's role.
  *
  * Billing is the one destination that can be absent rather than unbuilt: a
  * self-hosted instance has no billing at all (§10.4), so the row explains
@@ -61,7 +66,7 @@ export default function TeamArea() {
           <ManifestNav
             entries={teamDestinations({
               teamId,
-              canManageTeam: canManageTeam(activeMember.data?.role),
+              canManageTeam: canManageTeam(teamRole(activeMember.data, teamId)),
               billingUnavailable,
             })}
           />

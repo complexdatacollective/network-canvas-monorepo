@@ -10,6 +10,7 @@ import {
 } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { authClient } from '../../lib/auth.ts';
 import { createAppRouter } from '../../router.tsx';
 import {
   activatableDestinations,
@@ -215,7 +216,18 @@ function registeredPathFor(
   return path in router.routesByPath ? path : undefined;
 }
 
+/** Better Auth's active-membership hook, answering for the team under test. */
+function activeMember(role: string, organizationId = fixtures.TEAM.id) {
+  return {
+    data: { id: 'member-1', organizationId, role },
+    isPending: false,
+    error: null,
+    refetch: vi.fn(),
+  } as unknown as ReturnType<typeof authClient.useActiveMember>;
+}
+
 beforeEach(() => {
+  vi.mocked(authClient.useActiveMember).mockReturnValue(activeMember('owner'));
   fixtures.deployment = { mode: 'managed', billing: false };
   fixtures.getSession.mockResolvedValue({
     data: { user: {}, session: { activeOrganizationId: fixtures.TEAM.id } },
@@ -395,11 +407,76 @@ describe('commands', () => {
     });
   });
 
+  /**
+   * A command is a launch into the screen that owns the action (invariant 3),
+   * so offering one the researcher may not perform is not a harmless extra
+   * row: it advertises an action and then lands them on a screen that
+   * correctly refuses to show it. The bar has to be filtered by the same
+   * capability the destination screen is.
+   */
+  it('does not offer the invitation command to an ordinary member', async () => {
+    vi.mocked(authClient.useActiveMember).mockReturnValue(
+      activeMember('member'),
+    );
+    renderAt('/team/team-a');
+    await screen.findByRole('link', { name: 'Members' });
+
+    const { dialog, input } = await openBar();
+    type(input, 'invite');
+
+    // The bar SETTLED with nothing to offer, rather than an assertion racing
+    // results that had not arrived: `TeamMembers` renders no invitation form
+    // for this researcher, so there is no invitation surface to launch.
+    await within(dialog).findByText(NO_RESULTS);
+    expect(
+      within(dialog).queryByRole('option', { name: /^Invite a team member/ }),
+    ).toBeNull();
+  });
+
+  it('reads the capability against the team it is searching for', async () => {
+    // The bar takes its team from the URL and its role from Better Auth's
+    // ACTIVE membership, and those name different teams for the whole of every
+    // switch (§6.6). An owner of team A gets no manage-only result for team B
+    // out of it.
+    vi.mocked(authClient.useActiveMember).mockReturnValue(
+      activeMember('owner', 'team-a'),
+    );
+    renderAt('/team/team-b');
+    await screen.findByRole('link', { name: 'Members' });
+
+    const { dialog, input } = await openBar();
+    type(input, 'invite');
+
+    await within(dialog).findByText(NO_RESULTS);
+    expect(
+      within(dialog).queryByRole('option', { name: /^Invite a team member/ }),
+    ).toBeNull();
+  });
+
+  it('still offers a member the commands they can perform', async () => {
+    // The other half: the capability filter removes one command, not the
+    // group. Creating a study is something every member of a team may do.
+    vi.mocked(authClient.useActiveMember).mockReturnValue(
+      activeMember('member'),
+    );
+    renderAt('/team/team-a');
+    await screen.findByRole('link', { name: 'Members' });
+
+    const { dialog, input } = await openBar();
+    type(input, 'create a study');
+
+    const option = await within(dialog).findByRole('option', {
+      name: /^Create a study/,
+    });
+    expect(groupOf(option)).toBe('Commands');
+  });
+
   it('expresses every command as a launch, never as an action', () => {
     const router = createAppRouter();
     const provider = createMockCommandsProvider({
       teamId: 'team-a',
       studyId: 'study-1',
+      canManageTeam: true,
     });
     if (!provider.local) throw new Error('the commands provider is local');
 
