@@ -263,6 +263,59 @@ describe.skipIf(!db)('schema application', () => {
     });
   });
 
+  it('backfills account.issuer for rows written before better-auth 1.7', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await applySchema(pool);
+      // The shape an older build left: no issuer column, so no index on it.
+      await pool.query('ALTER TABLE account DROP COLUMN issuer');
+      await pool.query(
+        `INSERT INTO "user" (id, name, email, "emailVerified")
+         VALUES ('u1', 'Legacy', 'legacy@example.org', true)`,
+      );
+      const tenantIssuer = 'https://login.microsoftonline.com/tenant-1/v2.0';
+      const idToken = [
+        Buffer.from('{"alg":"RS256"}').toString('base64url'),
+        Buffer.from(JSON.stringify({ iss: tenantIssuer })).toString(
+          'base64url',
+        ),
+        'signature',
+      ].join('.');
+      await pool.query(
+        `INSERT INTO account (id, "accountId", "providerId", "userId", "idToken", "updatedAt")
+         VALUES ('credential', 'u1', 'credential', 'u1', NULL, now()),
+                ('google', 'sub-google', 'google', 'u1', NULL, now()),
+                ('microsoft', 'oid-1', 'microsoft', 'u1', $1, now()),
+                ('microsoft-no-token', 'oid-2', 'microsoft', 'u1', 'not.a.jwt', now())`,
+        [idToken],
+      );
+
+      await applySchema(pool);
+
+      const issuers = await pool.query<{ id: string; issuer: string }>(
+        `SELECT id, issuer FROM account ORDER BY id`,
+      );
+      expect(issuers.rows).toEqual([
+        { id: 'credential', issuer: 'local:credential' },
+        { id: 'google', issuer: 'https://accounts.google.com' },
+        { id: 'microsoft', issuer: tenantIssuer },
+        { id: 'microsoft-no-token', issuer: 'local:oauth:microsoft' },
+      ]);
+      await expect(
+        pool.query(
+          `INSERT INTO account (id, "accountId", "providerId", "userId", "updatedAt")
+           VALUES ('dup', 'sub-google', 'google', 'u1', now())`,
+        ),
+      ).rejects.toMatchObject({ column: 'issuer' });
+      await expect(
+        pool.query(
+          `INSERT INTO account (id, "accountId", "providerId", issuer, "userId", "updatedAt")
+           VALUES ('dup', 'sub-google', 'google', 'https://accounts.google.com', 'u1', now())`,
+        ),
+      ).rejects.toMatchObject({ constraint: 'account_issuer_accountId_idx' });
+      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+    });
+  });
+
   it('provisions and stamps a fresh database', async () => {
     await withScratch(createScratchDatabase, async (pool) => {
       const outcome = await applySchema(pool);

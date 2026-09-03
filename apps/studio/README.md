@@ -100,10 +100,12 @@ the S3 degradation contract.
 **Every `pnpm dev` boot resets and reseeds the dev database** — `dev-pg`
 drops and recreates the schema, reapplies it, and reruns `seed` (the same
 `resetSchemaAndSeed` sequence `db:reset` runs on demand), rather than only
-provisioning the schema the first time. Nothing in the dev Postgres survives
-a restart of the server process; if you need a protocol draft or other manual
-change to persist across restarts, keep the server running rather than
-cycling `pnpm dev`.
+provisioning the schema the first time. The target is the database the server
+process will use — a `DATABASE_URL` override in `.env` included — as long as
+it is on this machine; a non-local target is left alone. Nothing in the dev
+Postgres survives a restart of the server process; if you need a protocol
+draft or other manual change to persist across restarts, keep the server
+running rather than cycling `pnpm dev`.
 
 ### Signing in during development
 
@@ -119,10 +121,8 @@ server with `SMTP_URL=smtp://localhost:1025`; sent mail appears at
 
 The fastest way in needs no email step at all: every reseed creates a fixed
 admin account, `admin@studio.test` / `studio-admin-not-for-production`,
-that signs in through email/password like any other credential account and
-owns every seeded team. The client's sign-in screen does not yet have a
-password field (#1256 covers real onboarding UI); until then, drive it
-through the API directly —
+that owns every seeded team. Choose "Sign in with a password instead" on the
+sign-in screen, or drive the endpoint directly —
 
 ```bash
 curl -i http://localhost:5173/api/auth/sign-in/email \
@@ -177,7 +177,7 @@ their `USING`/`WITH CHECK` expressions.
 
 Open the image for the full-size diagram. Tables with row-level security or trigger sidecars carry those details as SVG tooltips. The diagram shows physical foreign-key constraints; deliberately unconstrained logical references are not drawn as relationships. The renderer uses `1`/`*` edge endpoints, so optionality remains visible through each column's not-null marker rather than the edge.
 
-Schema fingerprint: `840133f00487b1c5901afff5a143a641bd62bdc119181870e38728c17dafd7b1`.
+Schema fingerprint: `f0356c5fc8df470fc9bd9c70b970bd21ec84de64aa6c327330294b359508f28f`.
 
 Sidecar behavior that cannot be represented as ERD relationships:
 
@@ -419,18 +419,19 @@ fails `pnpm typecheck`.
 
 ### Authentication
 
-| Variable                  | What it is                                                                                                    | Development default                    | Real deployment                                                                                                                                                                                                                                |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `BETTER_AUTH_SECRET`      | Signing secret for sessions and magic-link tokens.                                                            | `studio-dev-secret-not-for-production` | Required whenever `DATABASE_URL` is set. Generate one with `openssl rand -base64 32`.                                                                                                                                                          |
-| `PUBLIC_URL`              | The browser-facing origin. Cookies, magic-link URLs, and team-invitation URLs are minted against it.          | `http://localhost:5173`                | Required whenever `DATABASE_URL` is set.                                                                                                                                                                                                       |
-| `SMTP_URL`                | SMTP transport sign-in and team-invitation email is sent through.                                             | —                                      | Unset ⇒ magic-link sends refuse and team invitations cannot be created. A sign-in or invitation link is never written to the log outside development.                                                                                          |
-| `EMAIL_FROM`              | From address on sign-in and team-invitation email.                                                            | `studio-dev@localhost`                 | Required alongside `SMTP_URL`, and refused without it.                                                                                                                                                                                         |
-| `GOOGLE_CLIENT_ID`        | OAuth client ID for "Continue with Google" sign-in (#1255).                                                   | —                                      | Required with `GOOGLE_CLIENT_SECRET`; unset ⇒ Google sign-in is not offered. Create a Web application OAuth client in the Google Cloud Console with `<PUBLIC_URL>/api/auth/callback/google` as an authorized redirect URI.                     |
-| `GOOGLE_CLIENT_SECRET`    | OAuth client secret paired with `GOOGLE_CLIENT_ID`.                                                           | —                                      | Required with `GOOGLE_CLIENT_ID`, and refused without it.                                                                                                                                                                                      |
-| `MICROSOFT_CLIENT_ID`     | Entra application (client) ID for "Continue with Microsoft" sign-in (#1255).                                  | —                                      | Required with `MICROSOFT_CLIENT_SECRET`; unset ⇒ Microsoft sign-in is not offered. Register an application in Microsoft Entra with `<PUBLIC_URL>/api/auth/callback/microsoft` as a Web redirect URI.                                           |
-| `MICROSOFT_CLIENT_SECRET` | Client secret paired with `MICROSOFT_CLIENT_ID`.                                                              | —                                      | Required with `MICROSOFT_CLIENT_ID`, and refused without it.                                                                                                                                                                                   |
-| `MICROSOFT_TENANT_ID`     | Entra tenant to accept sign-ins from, for single-tenant registrations.                                        | —                                      | Unset ⇒ `common` (any organizational or personal Microsoft account, matching a multitenant registration). Refused without the other two `MICROSOFT_*` variables.                                                                               |
-| `TRUSTED_PROXIES`         | Comma-separated proxy addresses or CIDRs whose `X-Forwarded-For` may be trusted when resolving the client IP. | —                                      | Unset ⇒ forwarded headers are not read at all, which is safe but shares one rate-limit bucket across every client. List only your own proxies, and only where each one overwrites the header rather than appending to a client-supplied value. |
+| Variable                     | What it is                                                                                                    | Development default                    | Real deployment                                                                                                                                                                                                                                               |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BETTER_AUTH_SECRET`         | Signing secret for sessions and magic-link tokens.                                                            | `studio-dev-secret-not-for-production` | Required whenever `DATABASE_URL` is set. Generate one with `openssl rand -base64 32`.                                                                                                                                                                         |
+| `PUBLIC_URL`                 | The browser-facing origin. Cookies, magic-link URLs, and team-invitation URLs are minted against it.          | `http://localhost:5173`                | Required whenever `DATABASE_URL` is set.                                                                                                                                                                                                                      |
+| `SMTP_URL`                   | SMTP transport sign-in and team-invitation email is sent through.                                             | —                                      | Unset ⇒ magic-link sends refuse and team invitations cannot be created. A sign-in or invitation link is never written to the log outside development.                                                                                                         |
+| `EMAIL_FROM`                 | From address on sign-in and team-invitation email.                                                            | `studio-dev@localhost`                 | Required alongside `SMTP_URL`, and refused without it.                                                                                                                                                                                                        |
+| `GOOGLE_CLIENT_ID`           | OAuth client ID for "Continue with Google" sign-in (#1255).                                                   | —                                      | Required with `GOOGLE_CLIENT_SECRET`; unset ⇒ Google sign-in is not offered. Create a Web application OAuth client in the Google Cloud Console with `<PUBLIC_URL>/api/auth/callback/google` as an authorized redirect URI.                                    |
+| `GOOGLE_CLIENT_SECRET`       | OAuth client secret paired with `GOOGLE_CLIENT_ID`.                                                           | —                                      | Required with `GOOGLE_CLIENT_ID`, and refused without it.                                                                                                                                                                                                     |
+| `MICROSOFT_CLIENT_ID`        | Entra application (client) ID for "Continue with Microsoft" sign-in (#1255).                                  | —                                      | Required with `MICROSOFT_CLIENT_SECRET`; unset ⇒ Microsoft sign-in is not offered. Register an application in Microsoft Entra with `<PUBLIC_URL>/api/auth/callback/microsoft` as a Web redirect URI.                                                          |
+| `MICROSOFT_CLIENT_SECRET`    | Client secret paired with `MICROSOFT_CLIENT_ID`.                                                              | —                                      | Required with `MICROSOFT_CLIENT_ID`, and refused without it.                                                                                                                                                                                                  |
+| `MICROSOFT_TENANT_ID`        | Entra tenant to accept sign-ins from, for single-tenant registrations.                                        | —                                      | Unset ⇒ `common` (any organizational or personal Microsoft account, matching a multitenant registration). Refused without the other two `MICROSOFT_*` variables.                                                                                              |
+| `STUDIO_SEED_ADMIN_PASSWORD` | Password of the `admin@studio.test` account the `seed` command creates, which owns every seeded team.         | —                                      | Read only by `seed` and `db:reset`. Required to seed a non-local database: the published development password is refused there, because it is a working credential on any instance that keeps it. Unset ⇒ the development password, for local databases only. |
+| `TRUSTED_PROXIES`            | Comma-separated proxy addresses or CIDRs whose `X-Forwarded-For` may be trusted when resolving the client IP. | —                                      | Unset ⇒ forwarded headers are not read at all, which is safe but shares one rate-limit bucket across every client. List only your own proxies, and only where each one overwrites the header rather than appending to a client-supplied value.                |
 
 <!-- generated:env end -->
 
@@ -501,12 +502,16 @@ them:
   seeded team and signs in through the real email/password endpoint like any
   other credential account. The data is reproducible (`faker.seed()` pins the
   PRNG), so re-running `seed` is a no-op for anyone diffing what changed, not
-  an accumulation of more rows. **Never point it at a database carrying real
-  data** — it deletes everything first, and the admin password is published
-  here. Like `db:reset`, it refuses a non-loopback database unless you pass
-  `--force`. Real onboarding (the first team owner and team invitations)
-  replaces this step on #1256; until then, it is how any fresh instance gets
-  something to sign in to.
+  an accumulation of more rows, and the wipe and the inserts share one
+  transaction, so a failure part-way leaves the previous data in place.
+  **Never point it at a database carrying real data** — it deletes everything
+  first. Like `db:reset`, it refuses a non-loopback database unless you pass
+  `--force`, and it refuses to give a non-loopback database the published
+  admin password: set `STUDIO_SEED_ADMIN_PASSWORD` to a value chosen for that
+  instance, because the published one is a working credential on any
+  reachable instance that keeps it. Real onboarding (the first team owner and
+  team invitations) replaces this step on #1256; until then, it is how any
+  fresh instance gets something to sign in to.
 
 ## Deployment topologies
 

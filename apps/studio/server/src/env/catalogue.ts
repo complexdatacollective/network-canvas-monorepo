@@ -210,6 +210,14 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
       'Unset ⇒ `common` (any organizational or personal Microsoft account, matching a multitenant registration). Refused without the other two `MICROSOFT_*` variables.',
     example: 'contoso.onmicrosoft.com',
   },
+  STUDIO_SEED_ADMIN_PASSWORD: {
+    group: 'Authentication',
+    summary:
+      'Password of the `admin@studio.test` account the `seed` command creates, which owns every seeded team.',
+    deployment:
+      'Read only by `seed` and `db:reset`. Required to seed a non-local database: the published development password is refused there, because it is a working credential on any instance that keeps it. Unset ⇒ the development password, for local databases only.',
+    example: 'a-long-random-value-chosen-for-this-instance',
+  },
   TRUSTED_PROXIES: {
     group: 'Authentication',
     summary:

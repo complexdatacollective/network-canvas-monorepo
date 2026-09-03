@@ -54,15 +54,14 @@ const account = pgTable(
     id: text('id').primaryKey(),
     accountId: text('accountId').notNull(),
     providerId: text('providerId').notNull(),
-    // The synthetic key (`local:credential` for email/password,
-    // `local:oauth:<providerId>` for Google/Microsoft) better-auth's core
-    // account model added to disambiguate a provider id from a real external
-    // issuer. Required by the adapter's own account lookups
-    // (findCredentialAccount, findAccountByKey) since better-auth 1.7 —
-    // omitting it here made every credential and OAuth account unmatchable
-    // while looking otherwise fine, because magic-link (the only path
-    // exercised until #1256's admin account) creates no account row at all
-    // and so never hit this.
+    // Who vouches for `accountId`: `local:credential` for email/password,
+    // `https://accounts.google.com` for Google, the id token's per-tenant
+    // `iss` for Microsoft. better-auth 1.7 keys every account lookup
+    // (findCredentialAccount, findAccountByKey) on (issuer, accountId), so
+    // omitting the column made every credential and OAuth account
+    // unmatchable while looking otherwise fine — magic-link, the only path
+    // exercised until #1256's admin account, creates no account row at all.
+    // Existing rows are backfilled by PRE_PUSH_MIGRATIONS (db/schema.ts).
     issuer: text('issuer').notNull(),
     userId: text('userId')
       .notNull()
@@ -83,7 +82,16 @@ const account = pgTable(
       .defaultNow(),
     updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
   },
-  (table) => [index('account_userId_idx').on(table.userId)],
+  // (issuer, accountId) is the external identity better-auth's own schema
+  // declares unique; without it two concurrent sign-ins for one identity can
+  // each insert a row, after which lookups pick one arbitrarily.
+  (table) => [
+    uniqueIndex('account_issuer_accountId_idx').on(
+      table.issuer,
+      table.accountId,
+    ),
+    index('account_userId_idx').on(table.userId),
+  ],
 );
 
 const verification = pgTable(

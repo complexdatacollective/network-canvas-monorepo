@@ -7,8 +7,10 @@ import process from 'node:process';
 import pg from 'pg';
 
 import { createOwnerPool } from '../src/db/pool.ts';
-import { DEV, DEV_DATABASE_URL } from '../src/env/catalogue.ts';
+import { isLocalDatabase, readEnv } from '../src/env.ts';
+import { DEV } from '../src/env/catalogue.ts';
 import { resetSchemaAndSeed } from './apply.ts';
+import { loadEnvFiles } from './load-env-files.ts';
 
 const IMAGE = 'postgres:18';
 const HOST_PORT = DEV.pgPort;
@@ -149,16 +151,28 @@ async function ensureDatabase(): Promise<void> {
 
 // Every `pnpm dev` boot starts from a clean, freshly seeded database: Studio
 // has no real users yet, so reproducible synthetic data (src/db/seed.ts)
-// beats whatever was left over from the last session. Resetting here — not
-// just applying a schema that was previously absent — is safe specifically
-// because DEV_DATABASE_URL always names this machine; that is the same
-// guard db-reset.ts enforces before a manual, explicit reset touches
-// anything that isn't.
+// beats whatever was left over from the last session. The target is the
+// database the server process will connect to — the same files, in the same
+// order, so a `.env` override of DATABASE_URL is reset and seeded rather
+// than the default it replaced. Resetting without asking is safe only for a
+// database on this machine, the guard db-reset.ts applies before a manual
+// reset touches anything else; a non-local target is left alone.
 async function resetAndSeed(): Promise<void> {
-  const pool = createOwnerPool({ url: DEV_DATABASE_URL });
+  loadEnvFiles();
+  const { db } = readEnv();
+  if (!db) throw new Error('DATABASE_URL is unset; nothing to reset.');
+  const url = new URL(db.url);
+  const target = `${url.hostname}:${url.port || '5432'}${url.pathname}`;
+  if (!isLocalDatabase(db.url)) {
+    console.log(
+      `DATABASE_URL points at ${target}, which is not on this machine; leaving it as it is. Reset it deliberately with: pnpm db:reset --force`,
+    );
+    return;
+  }
+  const pool = createOwnerPool(db);
   try {
     await resetSchemaAndSeed(pool);
-    console.log(`Reset and seeded '${DATABASE}'`);
+    console.log(`Reset and seeded ${target}`);
   } finally {
     await pool.end();
   }

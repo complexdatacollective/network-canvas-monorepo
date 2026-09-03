@@ -4,35 +4,23 @@ import { parseArgs } from 'node:util';
 import { createOwnerPool } from '../src/db/pool.ts';
 import { checkSchema, schemaProblemMessage } from '../src/db/schema.ts';
 import { seed } from '../src/db/seed.ts';
-import { isLocalDatabase, readEnv } from '../src/env.ts';
+import { readEnv } from '../src/env.ts';
+import { confirmDestructiveTarget } from './target-guard.ts';
 
 // The deploy-time seed step, run once per deployment rather than once per
 // replica (see apps/studio/README.md#database-schema-and-seeding). It wipes
 // existing data and repopulates synthetic demo content, so — like
-// db-reset.ts — it refuses a non-local database unless --force makes that an
-// explicit, deliberate choice for this deployment.
+// db-reset.ts — it refuses a non-local database unless --force and a
+// per-instance admin password make that an explicit, deliberate choice.
 
 const { values } = parseArgs({
   options: { force: { type: 'boolean', default: false } },
 });
 
 const env = readEnv();
+const { db } = confirmDestructiveTarget(env, values.force, 'wipe and reseed');
 
-if (!env.db) {
-  console.error('DATABASE_URL is not set; there is no database to seed.');
-  process.exit(1);
-}
-
-if (!isLocalDatabase(env.db.url) && !values.force) {
-  const url = new URL(env.db.url);
-  const target = `${url.hostname}:${url.port || '5432'}${url.pathname}`;
-  console.error(
-    `Refusing to wipe and reseed ${target} with synthetic data: it is not a local database. Pass --force to do it anyway.`,
-  );
-  process.exit(1);
-}
-
-const pool = createOwnerPool(env.db);
+const pool = createOwnerPool(db);
 
 try {
   const state = await checkSchema(pool);
@@ -40,7 +28,7 @@ try {
     console.error(schemaProblemMessage(state));
     process.exit(1);
   }
-  await seed(pool);
+  await seed(pool, { adminPassword: env.seedAdminPassword });
   console.log('Seed complete.');
 } finally {
   await pool.end();

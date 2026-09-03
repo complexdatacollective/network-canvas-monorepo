@@ -44,6 +44,8 @@ export type StudioEnv = {
   auth: AuthEnv | undefined;
   devDefaults: boolean;
   deploymentMode: DeploymentMode;
+  /** Only the seed command reads it; unset means the development password. */
+  seedAdminPassword: string | undefined;
 };
 
 const DEFAULT_PORT = 3000;
@@ -228,5 +230,6 @@ export function resolve(raw: RawEnv): StudioEnv {
     auth: resolveAuth(raw, db, devDefaults),
     devDefaults,
     deploymentMode: raw.STUDIO_DEPLOYMENT_MODE ?? DEFAULT_DEPLOYMENT_MODE,
+    seedAdminPassword: raw.STUDIO_SEED_ADMIN_PASSWORD,
   };
 }

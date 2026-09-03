@@ -9,19 +9,33 @@ import { TEAM_ROLES, type TeamRole } from '@codaco/studio-rpc';
 // The deploy-time and dev-boot seed (#1256 tracks real onboarding — until
 // then, this is how a fresh instance gets something to look at): wipes every
 // table's data, then repopulates reproducible synthetic content. Every call
-// pins the faker PRNG below, so two runs produce byte-identical data.
+// pins the faker PRNG below, so two runs produce byte-identical data. The
+// wipe and every insert share one transaction, so a failure part-way leaves
+// the previous dataset in place rather than an emptied or half-filled one.
 //
 // Never point this at a database carrying real data: it deletes everything
-// first, and SEED_ADMIN_PASSWORD is published here and in the README.
+// first. SEED_ADMIN_PASSWORD is published here and in the README, so it is a
+// working credential on any reachable instance that keeps it; the scripts
+// refuse it for a non-local database and take STUDIO_SEED_ADMIN_PASSWORD
+// instead.
 
 export const SEED_ADMIN_NAME = 'Studio Admin';
 export const SEED_ADMIN_EMAIL = 'admin@studio.test';
 export const SEED_ADMIN_PASSWORD = 'studio-admin-not-for-production';
 
+export type SeedOptions = {
+  /** Defaults to SEED_ADMIN_PASSWORD. */
+  adminPassword?: string;
+};
+
 const TEAM_COUNT = 5;
 const MIN_MEMBERS_PER_TEAM = 2;
 const MAX_MEMBERS_PER_TEAM = 6;
 const FAKER_SEED = 20260902;
+
+// The seeded admin is every team's only owner; the other members exercise
+// the remaining roles.
+const NON_OWNER_ROLES = TEAM_ROLES.filter((role) => role !== 'owner');
 
 // better-auth's own `createLocalAccountIssuer('credential')`
 // (@better-auth/core/db, not a direct dependency here) — the synthetic
@@ -35,8 +49,8 @@ const CREDENTIAL_ISSUER = 'local:credential';
  * the schema later is wiped too instead of silently accumulating stale rows
  * that the rest of this function never touches.
  */
-async function wipe(pool: pg.Pool): Promise<void> {
-  await pool.query(`
+async function wipe(client: pg.ClientBase): Promise<void> {
+  await client.query(`
     do $$
     declare
       r record;
@@ -82,10 +96,10 @@ function uniqueEmail(
 }
 
 async function insertUser(
-  pool: pg.Pool,
+  client: pg.ClientBase,
   user: { id: string; name: string; email: string; emailVerified: boolean },
 ): Promise<void> {
-  await pool.query(
+  await client.query(
     `insert into "user" (id, name, email, "emailVerified")
      values ($1, $2, $3, $4)`,
     [user.id, user.name, user.email, user.emailVerified],
@@ -99,11 +113,11 @@ async function insertUser(
  * endpoint, not just as a stored value.
  */
 async function insertCredentialAccount(
-  pool: pg.Pool,
+  client: pg.ClientBase,
   input: { userId: string; password: string },
 ): Promise<void> {
   const password = await hashPassword(input.password);
-  await pool.query(
+  await client.query(
     `insert into account (id, "accountId", "providerId", issuer, "userId", password, "updatedAt")
      values ($1, $2, 'credential', $3, $2, $4, now())`,
     [randomUUID(), input.userId, CREDENTIAL_ISSUER, password],
@@ -111,10 +125,10 @@ async function insertCredentialAccount(
 }
 
 async function insertTeam(
-  pool: pg.Pool,
+  client: pg.ClientBase,
   team: { id: string; name: string; slug: string },
 ): Promise<void> {
-  await pool.query(`insert into teams (id, name, slug) values ($1, $2, $3)`, [
+  await client.query(`insert into teams (id, name, slug) values ($1, $2, $3)`, [
     team.id,
     team.name,
     team.slug,
@@ -122,30 +136,32 @@ async function insertTeam(
 }
 
 async function insertMember(
-  pool: pg.Pool,
+  client: pg.ClientBase,
   member: { teamId: string; userId: string; role: TeamRole },
 ): Promise<void> {
-  await pool.query(
+  await client.query(
     `insert into team_members (id, team_id, user_id, role)
      values ($1, $2, $3, $4)`,
     [randomUUID(), member.teamId, member.userId, member.role],
   );
 }
 
-export async function seed(pool: pg.Pool): Promise<void> {
-  faker.seed(FAKER_SEED);
-  await wipe(pool);
+async function populate(
+  client: pg.ClientBase,
+  adminPassword: string,
+): Promise<void> {
+  await wipe(client);
 
   const adminId = randomUUID();
-  await insertUser(pool, {
+  await insertUser(client, {
     id: adminId,
     name: SEED_ADMIN_NAME,
     email: SEED_ADMIN_EMAIL,
     emailVerified: true,
   });
-  await insertCredentialAccount(pool, {
+  await insertCredentialAccount(client, {
     userId: adminId,
-    password: SEED_ADMIN_PASSWORD,
+    password: adminPassword,
   });
 
   const takenSlugs = new Set<string>();
@@ -154,7 +170,7 @@ export async function seed(pool: pg.Pool): Promise<void> {
   for (let i = 0; i < TEAM_COUNT; i++) {
     const teamId = randomUUID();
     const teamName = `${faker.company.name()} Lab`;
-    await insertTeam(pool, {
+    await insertTeam(client, {
       id: teamId,
       name: teamName,
       slug: uniqueSlug(teamName, takenSlugs),
@@ -162,7 +178,7 @@ export async function seed(pool: pg.Pool): Promise<void> {
 
     // The admin owns every seeded team, so signing in with the known
     // credentials shows a populated instance rather than one empty team.
-    await insertMember(pool, { teamId, userId: adminId, role: 'owner' });
+    await insertMember(client, { teamId, userId: adminId, role: 'owner' });
 
     const memberCount = faker.number.int({
       min: MIN_MEMBERS_PER_TEAM,
@@ -172,7 +188,7 @@ export async function seed(pool: pg.Pool): Promise<void> {
       const firstName = faker.person.firstName();
       const lastName = faker.person.lastName();
       const userId = randomUUID();
-      await insertUser(pool, {
+      await insertUser(client, {
         id: userId,
         name: `${firstName} ${lastName}`,
         email: uniqueEmail(firstName, lastName, takenEmails),
@@ -181,13 +197,37 @@ export async function seed(pool: pg.Pool): Promise<void> {
       // The first non-admin member manages the team; the rest are a mix of
       // admins and plain members, so every role actually appears somewhere.
       const role: TeamRole =
-        m === 0 ? 'admin' : faker.helpers.arrayElement(TEAM_ROLES);
-      await insertMember(pool, { teamId, userId, role });
+        m === 0 ? 'admin' : faker.helpers.arrayElement(NON_OWNER_ROLES);
+      await insertMember(client, { teamId, userId, role });
     }
   }
+}
 
+export async function seed(
+  pool: pg.Pool,
+  options: SeedOptions = {},
+): Promise<void> {
+  const adminPassword = options.adminPassword ?? SEED_ADMIN_PASSWORD;
+  faker.seed(FAKER_SEED);
+
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    await populate(client, adminPassword);
+    await client.query('commit');
+  } catch (error) {
+    await client.query('rollback');
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  const credentials =
+    adminPassword === SEED_ADMIN_PASSWORD
+      ? `${SEED_ADMIN_EMAIL} / ${SEED_ADMIN_PASSWORD}`
+      : `${SEED_ADMIN_EMAIL} with the password from STUDIO_SEED_ADMIN_PASSWORD`;
   // oxlint-disable-next-line no-console -- the deploy-time and dev-boot seed's own progress output
   console.log(
-    `Seeded ${TEAM_COUNT} teams with synthetic members. Sign in as the admin: ${SEED_ADMIN_EMAIL} / ${SEED_ADMIN_PASSWORD}`,
+    `Seeded ${TEAM_COUNT} teams with synthetic members. Sign in as the admin: ${credentials}`,
   );
 }

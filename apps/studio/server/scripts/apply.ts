@@ -16,7 +16,7 @@ import {
   SIDECARS,
   stampFingerprint,
 } from '../src/db/schema.ts';
-import { seed } from '../src/db/seed.ts';
+import { seed, type SeedOptions } from '../src/db/seed.ts';
 
 // Kept out of src/ so drizzle-kit (and its esbuild binary) can never reach
 // the server or Netlify bundles.
@@ -95,7 +95,10 @@ export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
  * `pnpm dev` boot) so the two sequences cannot drift apart. Callers own the
  * non-local safety check — this function always does the drop.
  */
-export async function resetSchemaAndSeed(pool: pg.Pool): Promise<void> {
+export async function resetSchemaAndSeed(
+  pool: pg.Pool,
+  options: SeedOptions = {},
+): Promise<void> {
   await pool.query('drop schema if exists public cascade');
   await pool.query('create schema public');
 
@@ -126,5 +129,5 @@ export async function resetSchemaAndSeed(pool: pg.Pool): Promise<void> {
   }
 
   await applySchema(pool);
-  await seed(pool);
+  await seed(pool, options);
 }
