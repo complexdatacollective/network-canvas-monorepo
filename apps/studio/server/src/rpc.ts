@@ -41,6 +41,9 @@ import {
 } from './protocol/commands.ts';
 import { ProtocolStore } from './protocol/store.ts';
 import { createProtocolSyncServer } from './protocol/sync.ts';
+import { createAuditedStudy, StudyCommandError } from './study/commands.ts';
+import { StudyStore } from './study/store.ts';
+import { resolveStudy, seesEveryTeamStudy } from './study/tenancy.ts';
 import {
   acceptTeamInvitation,
   cancelTeamInvitation,
@@ -296,6 +299,22 @@ async function handleAuditedProtocolCommand<T>(
   }
 }
 
+async function handleAuditedStudyCommand<T>(
+  work: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (error instanceof AuditCommandTeamNotFoundError) {
+      throw new ORPCError('NOT_FOUND');
+    }
+    if (!(error instanceof StudyCommandError)) throw error;
+    if (error.code === 'OVERLOADED') throw new ORPCError('TOO_MANY_REQUESTS');
+    if (error.code === 'CONFLICT') throw new ORPCError('CONFLICT');
+    throw new ORPCError('FORBIDDEN');
+  }
+}
+
 export function createRpcRouter(
   caps: AuthCapabilities,
   deps: {
@@ -327,6 +346,35 @@ export function createRpcRouter(
           requestId: context.requestId,
           team: { id: input.teamId, role: membership.role },
           tenantDb: createTenantDb(pool, input.teamId),
+        },
+      });
+    },
+  );
+
+  // `requireStudy` (app-shell design §6.3). A study URL names no team, so the
+  // tenant is derived from the caller's own memberships and the pinned
+  // TenantDb comes back with the study the probe found — nothing about the
+  // study is read outside it. Unreachable for any reason — absent, another
+  // team's, or one this caller's team role does not show them — is the same
+  // FORBIDDEN, so this is not an existence oracle.
+  const requireStudy = os.middleware(
+    async ({ context, next }, input: { studyId: string }) => {
+      const { principal } = context;
+      if (!principal) throw new ORPCError('UNAUTHORIZED');
+      if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
+      const resolved = await resolveStudy(pool, {
+        studyId: input.studyId,
+        actorUserId: principal.userId,
+        memberships: await auth.listMemberships(principal.userId),
+      });
+      if (!resolved) throw new ORPCError('FORBIDDEN');
+      return next({
+        context: {
+          principal,
+          requestId: context.requestId,
+          team: { id: resolved.teamId, role: resolved.role },
+          tenantDb: resolved.tenantDb,
+          study: resolved.study,
         },
       });
     },
@@ -401,6 +449,34 @@ export function createRpcRouter(
             ),
           ),
         ),
+    },
+    studies: {
+      // Which studies the caller sees is their TEAM role (#1257): an Admin or
+      // Owner sees the team's studies, a Member sees the ones they hold a
+      // study-role grant on. The predicate is the store's, not this handler's,
+      // so `studies.get` refuses exactly what `studies.list` omits.
+      list: os.studies.list.use(requireTeam).handler(({ context }) =>
+        new StudyStore(context.tenantDb).listStudies({
+          actorUserId: context.principal.userId,
+          seesEveryStudy: seesEveryTeamStudy(context.team.role),
+        }),
+      ),
+      get: os.studies.get.use(requireStudy).handler(({ context }) => {
+        const { protocolDraftId, ...study } = context.study;
+        return { teamId: context.team.id, study, protocolDraftId };
+      }),
+      create: os.studies.create.use(requireTeam).handler(({ context, input }) =>
+        handleAuditedStudyCommand(() =>
+          createAuditedStudy(
+            {
+              tenantDb: context.tenantDb,
+              principal: context.principal,
+              requestId: context.requestId,
+            },
+            input,
+          ),
+        ),
+      ),
     },
     protocols: {
       create: os.protocols.create

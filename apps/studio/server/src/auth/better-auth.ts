@@ -169,5 +169,17 @@ export function createBetterAuthService(
         .limit(1);
       return rows[0] ?? null;
     },
+    listMemberships: async (userId) => {
+      // The same policy-free table `getMembership` reads, and the same index
+      // (`team_members_user_id_team_id_idx`) serves it: this is the whole
+      // search space a study identifier may be resolved over, so it is read
+      // before any tenant is pinned and nothing else is read with it.
+      const members = AUTH_TABLES.team_members;
+      return db
+        .select({ teamId: members.team_id, role: members.role })
+        .from(members)
+        .where(eq(members.user_id, userId))
+        .orderBy(members.team_id);
+    },
   };
 }
