@@ -240,8 +240,12 @@ const SEGMENT_CLASS = cx(
  * rather than Base UI's `data-highlighted`, which only the options get.
  */
 const ROW_CLASS = cx(
-  'flex w-full cursor-pointer items-center gap-3 rounded-xs px-3 py-2',
-  'text-box-trimmed:py-3',
+  // `py-3` rather than `py-2`: the label inside is a trimmed box, so where the
+  // trim applies the row lost the half-leading that used to frame it and read
+  // as squeezed. An engine without the trim keeps its leading on top of this
+  // and sits a few pixels taller, which is roomier rather than wrong — the
+  // direction that matters is the one the value was chosen against.
+  'flex w-full cursor-pointer items-center gap-3 rounded-xs px-3 py-3',
   'text-start transition-colors outline-none',
   'focusable hover:bg-surface-2 hover:text-surface-2-contrast',
   'focus-visible:bg-surface-2 focus-visible:text-surface-2-contrast',
@@ -546,16 +550,11 @@ function Segment({
                       // along with it.
                       label={item.name}
                       className={cx(
-                        /*
-                          `text-box-trimmed:` on the vertical padding: where
-                          the trim applies these rows are cap-height boxes, and
-                          the padding that framed a line box leaves them
-                          squeezed. A browser without `text-box` keeps the
-                          smaller value, which is right for the taller box it
-                          still draws.
-                        */
-                        'group flex cursor-pointer items-center gap-3 rounded-xs px-3 py-2',
-                        'text-box-trimmed:py-3',
+                        // `py-3` for the reason `ROW_CLASS` records: the
+                        // stack inside is trimmed to cap and baseline, so the
+                        // padding that framed a line box leaves the row
+                        // squeezed.
+                        'group flex cursor-pointer items-center gap-3 rounded-xs px-3 py-3',
                         'transition-colors outline-none select-none',
                         'not-data-selected:data-highlighted:bg-surface-2 not-data-selected:data-highlighted:text-surface-2-contrast',
                         'data-selected:bg-selected data-selected:text-selected-contrast',
@@ -615,7 +614,7 @@ function Segment({
                             4.5:1 it needs. The selected row already reads as
                             selected; the chip does not have to carry it too.
                           */
-                          className="text-box-trim text-box-trimmed:py-1 text-2xs shrink-0 rounded-full bg-current/15 px-2 font-semibold uppercase group-data-selected:bg-transparent"
+                          className="text-box-trim-keep-height text-2xs shrink-0 rounded-full bg-current/15 px-2 font-semibold uppercase group-data-selected:bg-transparent"
                         >
                           {item.badge}
                         </span>
