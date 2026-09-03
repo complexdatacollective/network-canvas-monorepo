@@ -61,14 +61,27 @@ const STUDY_COLUMNS = `s.id, s.name, s.state, s.participation_mode,
            WHERE p.team_id = s.team_id AND p.study_id = s.id)::int
            AS participant_count`;
 
-// `$2` is the caller's team role reduced to one predicate, and `$3` their
-// user id; a Member's visibility is the EXISTS, which is also what keeps a
-// study nobody granted them out of `studies.get`.
-const VISIBLE_TO_CALLER = `($2::boolean OR EXISTS (
+/**
+ * #1257's visibility rule as one SQL predicate, so every read that must obey
+ * it is written from this source rather than from a copy: the study tier's own
+ * reads below, and the protocol tier's, which reaches a protocol line only
+ * through a study the caller can see (`protocol/store.ts`).
+ *
+ * Positional by convention — every query embedding it binds the same three
+ * values in the same order: `$1` the team, `$2` the caller's team role reduced
+ * to one boolean (`seesEveryTeamStudy`), `$3` their user id. A Member's
+ * visibility is the EXISTS, which is also what keeps a study nobody granted
+ * them out of `studies.get`. `alias` names the `studies` row being asked about.
+ */
+export function studyVisibleToCallerSql(alias: string): string {
+  return `($2::boolean OR EXISTS (
            SELECT 1 FROM study_role_grants g
-           WHERE g.team_id = s.team_id
-             AND g.study_id = s.id
+           WHERE g.team_id = ${alias}.team_id
+             AND g.study_id = ${alias}.id
              AND g.user_id = $3))`;
+}
+
+const VISIBLE_TO_CALLER = studyVisibleToCallerSql('s');
 
 function toStudyRow(row: StudyResultRow): StudyRow {
   return {

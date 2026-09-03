@@ -98,8 +98,14 @@ describe.skipIf(!storeDb)('team isolation', () => {
     const { protocolId } = await storeA.createProtocol({
       protocol: baseProtocol(),
     });
-    const inA = await storeA.listProtocols();
-    const inB = await storeB.listProtocols();
+    // A team Admin's visibility, so what this asserts is the team boundary
+    // rather than #1257's within-team rule (rpc-protocols.test.ts covers that).
+    const seesEverything = {
+      actorUserId: 'tenancy-user',
+      seesEveryStudy: true,
+    };
+    const inA = await storeA.listProtocols(seesEverything);
+    const inB = await storeB.listProtocols(seesEverything);
     expect(inA.map((p) => p.id)).toContain(protocolId);
     expect(inB.map((p) => p.id)).not.toContain(protocolId);
   });

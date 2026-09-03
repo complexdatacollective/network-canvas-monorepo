@@ -20,6 +20,10 @@ import {
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import { runNoAuditTenantTransaction } from '../audit/transaction.ts';
+import {
+  type StudyVisibility,
+  studyVisibleToCallerSql,
+} from '../study/store.ts';
 import { type ProtocolChange, diffProtocolSections } from './diff.ts';
 import { insertDraftRows } from './draft-rows.ts';
 import { sectionizeProtocol } from './sectionize.ts';
@@ -87,6 +91,23 @@ export type DraftSections = {
   sectionHashes: Record<string, string>;
   sections: Record<string, SectionDoc>;
 };
+
+/**
+ * Which protocol lines the caller may reach, which is #1257's study rule and
+ * not a second one: a team Admin or Owner reaches every line their team owns,
+ * and anyone else reaches a line only through a study they can see. A line no
+ * study references is therefore Admin/Owner-only — no grant exists that could
+ * reach it — and that is why creating one is an Admin/Owner action too.
+ *
+ * The predicate over the study itself comes from the study tier, so the two
+ * cannot drift: what `studies.list` omits, the protocol surface refuses. `p`
+ * is the `protocols` row being asked about, and the bind order is the study
+ * tier's — `$1` the team, `$2` the role as one boolean, `$3` the user id.
+ */
+const REACHABLE_BY_CALLER = `($2::boolean OR EXISTS (
+         SELECT 1 FROM studies s
+         WHERE s.team_id = p.team_id AND s.protocol_id = p.id
+           AND ${studyVisibleToCallerSql('s')}))`;
 
 // A lease-scoped command can rewrite a stage's own id, which neither assembly
 // nor the canonical validator can see is out of step with its section key.
@@ -607,7 +628,31 @@ export class ProtocolStore {
     }));
   }
 
-  async listProtocols(): Promise<ProtocolRow[]> {
+  /**
+   * Whether the caller may open one protocol line at all. A boolean rather
+   * than a row, because callers answer every false the same way: a line in
+   * another team, a line behind a study the caller holds no grant on, and a
+   * line that does not exist are one refusal, so this is no more an existence
+   * oracle than `studies.get` is.
+   */
+  async isReachableByCaller(
+    protocolId: string,
+    visibility: StudyVisibility,
+  ): Promise<boolean> {
+    const res = await this.db.query(
+      `SELECT 1 FROM protocols p
+       WHERE p.team_id = $1 AND p.id = $4 AND ${REACHABLE_BY_CALLER}`,
+      [
+        this.db.teamId,
+        visibility.seesEveryStudy,
+        visibility.actorUserId,
+        protocolId,
+      ],
+    );
+    return res.rowCount === 1;
+  }
+
+  async listProtocols(visibility: StudyVisibility): Promise<ProtocolRow[]> {
     const res = await this.db.query(
       `SELECT p.id, p.name, p.created_at, p.updated_at, d.draft_id
        FROM protocols p
@@ -618,8 +663,9 @@ export class ProtocolStore {
          ORDER BY pd.created_at DESC, pd.draft_id
          LIMIT 1
        ) d ON true
-       WHERE p.team_id = $1 ORDER BY p.created_at DESC, p.id`,
-      [this.db.teamId],
+       WHERE p.team_id = $1 AND ${REACHABLE_BY_CALLER}
+       ORDER BY p.created_at DESC, p.id`,
+      [this.db.teamId, visibility.seesEveryStudy, visibility.actorUserId],
     );
     return (
       res.rows as {

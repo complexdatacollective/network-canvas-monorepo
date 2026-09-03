@@ -52,6 +52,7 @@ import {
   TeamCommandError,
   updateTeamMemberRole,
 } from './team/commands.ts';
+import { roleGrantsTeamAdministration } from './team/roles.ts';
 
 // The SPA's internal surface: unpublished and free-moving within the
 // deploy-compatibility rules on #1245 — its only client is the Studio SPA.
@@ -331,24 +332,74 @@ export function createRpcRouter(
   // nonexistent team both read FORBIDDEN, so the check is not an existence
   // oracle; a router wired without a database is a deployment bug, not an
   // authorization refusal.
+  //
+  // Shared by the three team middlewares below rather than repeated in each,
+  // so what "this caller, in this team" means is settled once.
+  const openTeam = async (
+    context: RpcContext,
+    teamId: string,
+  ): Promise<TeamRpcContext> => {
+    const { principal } = context;
+    if (!principal) throw new ORPCError('UNAUTHORIZED');
+    if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
+    const membership = await auth.getMembership(principal.userId, teamId);
+    if (!membership) throw new ORPCError('FORBIDDEN');
+    return {
+      principal,
+      requestId: context.requestId,
+      team: { id: teamId, role: membership.role },
+      tenantDb: createTenantDb(pool, teamId),
+    };
+  };
+
   const requireTeam = os.middleware(
+    async ({ context, next }, input: { teamId: string }) =>
+      next({ context: await openTeam(context, input.teamId) }),
+  );
+
+  /**
+   * Membership plus the team Admin tier: the rule #1257 gives study creation,
+   * applied to creating a protocol line no study owns. The command re-reads it
+   * from the locked membership row, because this answer is already stale by
+   * the time the transaction opens.
+   */
+  const requireTeamAdministration = os.middleware(
     async ({ context, next }, input: { teamId: string }) => {
-      const { principal } = context;
-      if (!principal) throw new ORPCError('UNAUTHORIZED');
-      if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
-      const membership = await auth.getMembership(
-        principal.userId,
-        input.teamId,
-      );
-      if (!membership) throw new ORPCError('FORBIDDEN');
-      return next({
-        context: {
-          principal,
-          requestId: context.requestId,
-          team: { id: input.teamId, role: membership.role },
-          tenantDb: createTenantDb(pool, input.teamId),
-        },
+      const team = await openTeam(context, input.teamId);
+      if (!roleGrantsTeamAdministration(team.team.role)) {
+        throw new ORPCError('FORBIDDEN');
+      }
+      return next({ context: team });
+    },
+  );
+
+  /**
+   * Membership plus #1257's visibility rule, carried from the study tier to
+   * every procedure addressed by a protocol line (`protocol/store.ts`). A
+   * Member reaches a line only through a study they hold a grant on, so what
+   * `studies.list` omits and `studies.get` refuses cannot be read — or
+   * edited — through the protocol behind it.
+   *
+   * The refusal is `studies.get`'s: unreachable for any reason — absent,
+   * another team's, or one this caller's role does not show them — is the same
+   * FORBIDDEN, so this is not an existence oracle either. Which draft belongs
+   * to which line stays each procedure's own check; this one is about the
+   * line.
+   */
+  const requireProtocol = os.middleware(
+    async (
+      { context, next },
+      input: { teamId: string; protocolId: string },
+    ) => {
+      const team = await openTeam(context, input.teamId);
+      const reachable = await new ProtocolStore(
+        team.tenantDb,
+      ).isReachableByCaller(input.protocolId, {
+        actorUserId: team.principal.userId,
+        seesEveryStudy: seesEveryTeamStudy(team.team.role),
       });
+      if (!reachable) throw new ORPCError('FORBIDDEN');
+      return next({ context: team });
     },
   );
 
@@ -494,9 +545,14 @@ export function createRpcRouter(
         ),
       ),
     },
+    // Every procedure below is addressed by a protocol line, and #1257's rule
+    // decides which lines a caller has: `requireProtocol` refuses the rest,
+    // exactly as `studies.get` refuses the study in front of them. Creating a
+    // line answers to the same rule from the other side — a line no study owns
+    // is reachable only by an Admin or Owner, so only they may make one.
     protocols: {
       create: os.protocols.create
-        .use(requireTeam)
+        .use(requireTeamAdministration)
         .handler(({ context, input }) =>
           handleAuditedProtocolCommand(() =>
             createAuditedProtocol(
@@ -509,13 +565,17 @@ export function createRpcRouter(
             ),
           ),
         ),
-      list: os.protocols.list
-        .use(requireTeam)
-        .handler(({ context }) =>
-          new ProtocolStore(context.tenantDb).listProtocols(),
-        ),
+      // The list names no protocol, so it takes the same predicate as a query
+      // rather than as a refusal: a Member is shown the lines behind the
+      // studies they hold a grant on, and an Admin or Owner every line.
+      list: os.protocols.list.use(requireTeam).handler(({ context }) =>
+        new ProtocolStore(context.tenantDb).listProtocols({
+          actorUserId: context.principal.userId,
+          seesEveryStudy: seesEveryTeamStudy(context.team.role),
+        }),
+      ),
       draft: os.protocols.draft
-        .use(requireTeam)
+        .use(requireProtocol)
         .handler(async ({ context, input }) => {
           const { protocol, draft } = await new ProtocolStore(
             context.tenantDb,
@@ -530,7 +590,7 @@ export function createRpcRouter(
           };
         }),
       acquireSection: os.protocols.acquireSection
-        .use(requireTeam)
+        .use(requireProtocol)
         .handler(async ({ context, input }) => {
           await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
             input.protocolId,
@@ -569,7 +629,7 @@ export function createRpcRouter(
           };
         }),
       commitSection: os.protocols.commitSection
-        .use(requireTeam)
+        .use(requireProtocol)
         .handler(({ context, input }) =>
           handleAuditedProtocolCommand(() =>
             commitAuditedProtocolSection(
@@ -583,7 +643,7 @@ export function createRpcRouter(
           ),
         ),
       renewSection: os.protocols.renewSection
-        .use(requireTeam)
+        .use(requireProtocol)
         .handler(async ({ context, input }) => {
           await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
             input.protocolId,
@@ -601,7 +661,7 @@ export function createRpcRouter(
           };
         }),
       releaseSection: os.protocols.releaseSection
-        .use(requireTeam)
+        .use(requireProtocol)
         .handler(async ({ context, input }) => {
           await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
             input.protocolId,
@@ -615,7 +675,7 @@ export function createRpcRouter(
           );
         }),
       addInformationStage: os.protocols.addInformationStage
-        .use(requireTeam)
+        .use(requireProtocol)
         .handler(({ context, input }) =>
           handleAuditedProtocolCommand(() =>
             addAuditedInformationStage(
@@ -629,7 +689,7 @@ export function createRpcRouter(
           ),
         ),
       moveStage: os.protocols.moveStage
-        .use(requireTeam)
+        .use(requireProtocol)
         .handler(({ context, input }) =>
           handleAuditedProtocolCommand(() =>
             moveAuditedProtocolStage(
