@@ -3,6 +3,21 @@ import { describe, expect, it } from 'vitest';
 
 import { IdentityMark } from './IdentityMark';
 
+/**
+ * The six fills the hash can land on. Asserted against literally rather than
+ * imported: a test that reads the same table the component reads cannot
+ * notice the table changing, and the point of these tests is that an
+ * entity's colour is fixed for the life of its id.
+ */
+const FILLS = [
+  'bg-neon-coral',
+  'bg-mustard',
+  'bg-sea-green',
+  'bg-sea-serpent',
+  'bg-purple-pizazz',
+  'bg-cyber-grape',
+];
+
 function markFor(id: string, name = 'Example Entity'): HTMLElement {
   const { container, unmount } = render(<IdentityMark id={id} name={name} />);
   const mark = container.firstElementChild;
@@ -16,59 +31,63 @@ function markFor(id: string, name = 'Example Entity'): HTMLElement {
   return clone;
 }
 
-/**
- * The artwork a seed produces, as markup.
- *
- * `Pattern` generates its shapes from the seed, so the rendered SVG IS the
- * derivation — comparing it is how a test can tell that two marks got the
- * same artwork without reaching into the generator's internals or reading
- * the same tables the component reads.
- */
-function artworkOf(id: string, name = 'Example Entity'): string {
-  const svg = markFor(id, name).querySelector('svg');
-  if (svg === null) {
-    throw new Error(`IdentityMark for "${id}" rendered no pattern`);
+function fillOf(id: string): string {
+  const classes = [...markFor(id).classList];
+  const fill = classes.find((className) => className.startsWith('bg-'));
+  if (fill === undefined) {
+    throw new Error(
+      `IdentityMark for "${id}" rendered no fill: ${classes.join(' ')}`,
+    );
   }
-  // `useId` puts a render-scoped value in the gradient's id and its
-  // reference, which changes between renders and says nothing about the
-  // seed. Everything else — the variant's shapes and the palette — is the
-  // seed's own.
-  return svg.innerHTML.replaceAll(/pat-bg[^"]*/g, 'gradient');
+  return fill;
 }
 
-describe('IdentityMark artwork', () => {
-  it('gives the same id the same artwork every time', () => {
+describe('IdentityMark colour', () => {
+  it('gives the same id the same fill every time', () => {
     const id = 'org_01JQ2W3T4Y5Z6A7B8C9D0EFGHJ';
-    const first = artworkOf(id);
+    const first = fillOf(id);
 
     for (let attempt = 0; attempt < 20; attempt += 1) {
-      expect(artworkOf(id)).toBe(first);
+      expect(fillOf(id)).toBe(first);
     }
   });
 
-  it('derives the artwork from the id alone, so a rename never changes it', () => {
+  it('derives the fill from the id alone, so a rename never recolours', () => {
     const id = 'team_sonic';
+    const before = [...markFor(id, 'SONIC Lab').classList];
+    const after = [...markFor(id, 'Something Else Entirely').classList];
 
-    expect(artworkOf(id, 'Something Else Entirely')).toBe(
-      artworkOf(id, 'SONIC Lab'),
-    );
+    expect(after).toEqual(before);
   });
 
-  it('tells entities apart, rather than collapsing onto one pattern', () => {
+  it('gives different ids different fills, and only ever palette fills', () => {
     const ids = Array.from({ length: 200 }, (_, index) => `team_${index}`);
-    const distinct = new Set(ids.map((id) => artworkOf(id)));
+    const used = new Set(ids.map(fillOf));
 
-    // Not 200 — two seeds may land on the same variant and base, and the
-    // point is only that the mark is not effectively constant. The real
-    // guarantee is stability per id, above.
-    expect(distinct.size).toBeGreaterThan(100);
+    // Every fill it picks is one of the six.
+    for (const fill of used) expect(FILLS).toContain(fill);
+    // And over 200 ids it reaches all six, rather than collapsing onto one.
+    expect(used.size).toBe(FILLS.length);
   });
 
-  it('renders a plain surface rather than a broken tile for an entity with no id', () => {
-    const mark = markFor('', 'Not Saved Yet');
+  it('pairs the three light fills with the dark foreground', () => {
+    // The pairing is measured, not stylistic: white on mustard is 1.82:1, on
+    // sea green 2.27:1 and on sea serpent 2.23:1, all below the 3:1 floor.
+    const darkForeground = new Set([
+      'bg-mustard',
+      'bg-sea-green',
+      'bg-sea-serpent',
+    ]);
 
-    expect(mark.querySelector('svg')).toBeNull();
-    expect(mark.textContent).toBe('NY');
+    for (let index = 0; index < 200; index += 1) {
+      const id = `entity_${index}`;
+      const classes = [...markFor(id).classList];
+      const fill = classes.find((className) => className.startsWith('bg-'));
+      const expected = darkForeground.has(fill ?? '')
+        ? 'text-charcoal'
+        : 'text-white';
+      expect(classes).toContain(expected);
+    }
   });
 });
 

@@ -1,22 +1,39 @@
-import { Pattern } from '@codaco/art';
-
 import { cva, cx, type VariantProps } from './utils/cva';
 
 /**
- * The coordinate space the pattern is generated in, whatever size the mark is
- * displayed at.
+ * The Network Canvas hues an id can land on, each paired with the foreground
+ * that reads against it.
  *
- * `Pattern`'s variants size their motifs in this space — `dots` lays out a
- * 10–32 unit grid, and the others are comparable — so generating at the
- * mark's own 24–40px would put two or three cells across the tile and read as
- * three stray dots rather than as a pattern. Generating into a larger square
- * and letting the SVG scale down keeps a whole composition inside the tile.
+ * The pairings are measured, not guessed. Against white and against
+ * `--color-charcoal`, the WCAG contrast ratios of the six fills are:
  *
- * Square because the mark is: `PatternSvg` sets
- * `preserveAspectRatio="xMidYMid slice"`, so a non-square space would crop to
- * the tile and throw away part of what makes each seed distinguishable.
+ * | fill            | on white | on charcoal |
+ * | --------------- | -------- | ----------- |
+ * | neon coral      |     4.63 |        2.93 |
+ * | mustard         |     1.82 |        7.43 |
+ * | sea green       |     2.27 |        5.96 |
+ * | sea serpent     |     2.23 |        6.07 |
+ * | purple pizazz   |     4.18 |        3.24 |
+ * | cyber grape     |    13.96 |        1.03 |
+ *
+ * So the three light fills — mustard, sea green AND sea serpent — take the
+ * dark foreground. Sea serpent is the one that surprises: it sits at almost
+ * exactly sea green's lightness (OKLCH L 0.738 against 0.700), so white on it
+ * is 2.23:1, which fails even the 3:1 floor for large text. `Badge`'s colour
+ * table already pairs sea serpent with charcoal for the same reason.
+ *
+ * Token-backed utilities rather than literals: these resolve through
+ * `--color-*` in the Fresco theme, so a themed region repaints the mark with
+ * everything else.
  */
-const PATTERN_SPACE = 96;
+const IDENTITY_MARK_TONES = [
+  'bg-neon-coral text-white',
+  'bg-mustard text-charcoal',
+  'bg-sea-green text-charcoal',
+  'bg-sea-serpent text-charcoal',
+  'bg-purple-pizazz text-white',
+  'bg-cyber-grape text-white',
+] as const;
 
 /**
  * Shown when a name yields no letters or digits at all — an entity called
@@ -27,37 +44,14 @@ const IDENTITY_MARK_FALLBACK = '?';
 
 const identityMarkVariants = cva({
   base: cx(
-    'relative isolate inline-flex shrink-0 items-center justify-center',
-    'overflow-hidden rounded-xs select-none',
+    'font-heading inline-flex shrink-0 items-center justify-center',
+    'rounded-xs leading-none font-bold tracking-wide uppercase select-none',
   ),
   variants: {
     size: {
-      sm: 'size-6',
-      md: 'size-8',
-      lg: 'size-10',
-    },
-  },
-  defaultVariants: {
-    size: 'md',
-  },
-});
-
-const monogramVariants = cva({
-  base: cx(
-    'font-heading leading-none font-bold tracking-wide text-white uppercase',
-    // The pattern is a gradient, and its lighter bases (mustard tops out at
-    // OKLCH L 0.81) put white letters at around 2.3:1 where the gradient is
-    // palest. The mark is decorative, so this is legibility rather than a
-    // WCAG obligation — but a monogram that dissolves into its own background
-    // looks like a bug. A soft shadow in the theme's own black holds the
-    // letterforms over every base without a scrim flattening the art.
-    '[text-shadow:0_1px_2px_oklch(var(--black)/0.55)]',
-  ),
-  variants: {
-    size: {
-      sm: 'text-[0.5625rem]',
-      md: 'text-xs',
-      lg: 'text-sm',
+      sm: 'size-6 text-xs',
+      md: 'size-8 text-sm',
+      lg: 'size-10 text-base',
     },
   },
   defaultVariants: {
@@ -68,6 +62,28 @@ const monogramVariants = cva({
 export type IdentityMarkSize = NonNullable<
   VariantProps<typeof identityMarkVariants>['size']
 >;
+
+/**
+ * A deterministic 32-bit FNV-1a hash of the entity id.
+ *
+ * Determinism is the whole point of the component: the same id has to give
+ * the same hue in every session, on every machine, with nothing persisted
+ * anywhere. Anything that varied — a counter, the entity's position in a
+ * list, a random seed — would recolour an entity between two renders of the
+ * same screen, which is exactly what a stable visual identity cannot do.
+ *
+ * `Math.imul` rather than `*`: the FNV prime overflows the range where a
+ * double multiplies integers exactly, and the wrap has to be the specified
+ * 32-bit one for the hash to stay stable.
+ */
+function hashEntityId(id: string): number {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < id.length; index += 1) {
+    hash ^= id.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
+}
 
 /**
  * The one or two characters that stand for `name`.
@@ -98,9 +114,8 @@ function monogram(name: string): string {
 
 export type IdentityMarkProps = {
   /**
-   * The entity id, and the pattern's seed. The artwork derives from this and
-   * only this, so renaming an entity changes its monogram and never its
-   * pattern.
+   * The entity id. The hue derives from this and only this, so renaming an
+   * entity changes its monogram and never its colour.
    */
   id: string;
   /** The entity name. The monogram derives from it. */
@@ -110,30 +125,20 @@ export type IdentityMarkProps = {
 };
 
 /**
- * A small tile giving an entity a stable visual identity: a monogram over a
- * generated pattern, both derived from the entity itself.
- *
- * The pattern is `@codaco/art`'s `Pattern`, seeded with the entity id. That
- * package already owns this problem — a seeded RNG picking one of seven
- * variants and a base from the Network Canvas palette — so the mark inherits
- * both the artwork and its determinism rather than growing a second, poorer
- * version of them. Two teams are told apart by a texture as well as a hue,
- * which matters most where the identity is smallest and the names are alike:
- * "Wave 2 — pilot" beside "Wave 2 — main fieldwork".
- *
- * Derived, never stored: the same id gives the same artwork in every session
- * and on every machine, with no assignment table to keep in sync and nothing
- * to migrate. An entity with no id yet renders `Pattern`'s own empty-seed
- * surface rather than a broken tile.
+ * A small tile giving an entity a stable visual identity: a monogram on one
+ * of six Network Canvas hues, chosen by hashing the entity's id.
  *
  * **Purely decorative, and it must stay that way.** The mark is `aria-hidden`
- * and is never the entity's accessible name — a monogram on a texture
- * identifies nothing to a reader who cannot see it, and artwork that carries
- * meaning on its own fails WCAG 1.4.1. Every caller renders the entity's real
- * name beside it; `EntitySwitcher` does. Do not later give this an
- * `aria-label`, a `title`, or a `role="img"` to "make it accessible" — that
- * would put the monogram into the accessible name ahead of the name it
- * abbreviates.
+ * and is never the entity's accessible name — a two-letter monogram on a
+ * colour identifies nothing to a reader who cannot see it, and a colour that
+ * carries meaning on its own fails WCAG 1.4.1. Every caller renders the
+ * entity's real name beside it; `EntitySwitcher` does. Do not later give this
+ * an `aria-label`, a `title`, or a `role="img"` to "make it accessible" —
+ * that would put the monogram into the accessible name twice over, ahead of
+ * the name it abbreviates.
+ *
+ * The colour is derived, never stored: the same id gives the same hue
+ * everywhere, with no assignment table to keep in sync and nothing to migrate.
  *
  * ```tsx
  * <span className="flex items-center gap-2">
@@ -148,15 +153,16 @@ export function IdentityMark({
   size = 'md',
   className,
 }: IdentityMarkProps) {
+  const tone =
+    IDENTITY_MARK_TONES[hashEntityId(id) % IDENTITY_MARK_TONES.length] ??
+    IDENTITY_MARK_TONES[0];
+
   return (
-    <span aria-hidden className={cx(identityMarkVariants({ size }), className)}>
-      <Pattern
-        seed={id}
-        width={PATTERN_SPACE}
-        height={PATTERN_SPACE}
-        className="absolute inset-0 -z-10 size-full"
-      />
-      <span className={monogramVariants({ size })}>{monogram(name)}</span>
+    <span
+      aria-hidden
+      className={cx(identityMarkVariants({ size }), tone, className)}
+    >
+      {monogram(name)}
     </span>
   );
 }

@@ -868,7 +868,6 @@
     "sync-exports": "node scripts/generate-publish-exports.mjs"
   },
   "dependencies": {
-    "@codaco/art": "workspace:^",
     "@radix-ui/react-slot": "catalog:",
     "@tiptap/core": "^3.31.0",
     "@tiptap/extension-bullet-list": "^3.31.0",

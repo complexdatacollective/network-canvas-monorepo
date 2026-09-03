@@ -2090,9 +2090,6 @@ importers:
 
   packages/fresco-ui:
     dependencies:
-      '@codaco/art':
-        specifier: workspace:^
-        version: link:../art
       '@codaco/shared-consts':
         specifier: workspace:^
         version: link:../shared-consts
