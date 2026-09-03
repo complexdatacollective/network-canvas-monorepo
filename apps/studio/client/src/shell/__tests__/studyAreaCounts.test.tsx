@@ -90,6 +90,16 @@ vi.mock('../../lib/api.ts', () => ({
       },
     },
     studies: {
+      // The header's study chip asks these on every study route; they are
+      // not under test here, so they answer nothing.
+      get: {
+        queryOptions: () => ({ queryKey: ['study'], queryFn: vi.fn() }),
+        key: () => ['study'],
+      },
+      list: {
+        queryOptions: () => ({ queryKey: ['studies'], queryFn: () => [] }),
+        key: () => ['studies'],
+      },
       counts: {
         // What `@orpc/tanstack-query` itself builds, in the one respect these
         // cases depend on: a `skipToken` input (a symbol) becomes a
@@ -174,7 +184,7 @@ describe('the study sidebar’s counts', () => {
     expect(screen.getByRole('link', { name: 'Export' })).toBeInTheDocument();
   });
 
-  it('asks about the study in the URL, under the team the researcher is in', async () => {
+  it('asks about the study in the URL, and nothing else', async () => {
     fixtures.counts.mockResolvedValue({
       versions: 1,
       participants: 2,
@@ -184,13 +194,10 @@ describe('the study sidebar’s counts', () => {
     renderStudy('/study/study-7/waves');
 
     await screen.findByRole('link', { name: 'Waves 3' });
-    // A study route names no team, so the team comes from the active-team
-    // setting; the study comes from the URL. Asking about the wrong study
-    // would put another study's numbers on this one's sidebar.
-    expect(fixtures.counts).toHaveBeenCalledWith({
-      teamId: 'team-a',
-      studyId: 'study-7',
-    });
+    // A study route names no team, and the procedure needs none: the server
+    // resolves it from the study. Asking about the wrong study would put
+    // another study's numbers on this one's sidebar.
+    expect(fixtures.counts).toHaveBeenCalledWith({ studyId: 'study-7' });
   });
 
   it('shows no number at all while the answer is outstanding', async () => {
@@ -237,16 +244,23 @@ describe('the study sidebar’s counts', () => {
     expect(numberedRows()).toEqual([]);
   });
 
-  it('asks nothing until a team is known', async () => {
-    // The window before the active-team setting has answered. There is no team
-    // to scope the question to, so there is no question — not a question asked
-    // against an empty team, which would spend a refusal to learn nothing.
+  it('asks before the active team is known, because the question needs none', async () => {
+    // The window before the active-team setting has answered — a bookmark
+    // opened on a first sign-in. The study is in the URL, and that is all the
+    // procedure takes, so the numbers arrive as soon as they would anywhere.
     fixtures.activeTeam = undefined;
+    fixtures.counts.mockResolvedValue({
+      versions: 2,
+      participants: 5,
+      waves: 1,
+      sessions: 3,
+    });
     renderStudy();
 
-    await screen.findByRole('link', { name: 'Participants' });
-    expect(fixtures.counts).not.toHaveBeenCalled();
-    expect(numberedRows()).toEqual([]);
+    expect(
+      await screen.findByRole('link', { name: 'Participants 5' }),
+    ).toBeInTheDocument();
+    expect(fixtures.counts).toHaveBeenCalledWith({ studyId: 'study-1' });
   });
 });
 

@@ -153,17 +153,6 @@ vi.mock('../../lib/api.ts', () => ({
         key: () => ['study'],
       },
       create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
-    },
-    protocols: {
-      draft: {
-        queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
-        key: () => ['draft'],
-      },
-    },
-    // The study sidebar's counts. Nothing here asserts a number, so an empty
-    // study is the honest fixture: `NavItem` renders no count for a zero, and
-    // every row's accessible name stays its label alone.
-    studies: {
       counts: {
         queryOptions: () => ({
           queryKey: ['study-counts'],
@@ -176,6 +165,15 @@ vi.mock('../../lib/api.ts', () => ({
         }),
       },
     },
+    protocols: {
+      draft: {
+        queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
+        key: () => ['draft'],
+      },
+    },
+    // The study sidebar's counts. Nothing here asserts a number, so an empty
+    // study is the honest fixture: `NavItem` renders no count for a zero, and
+    // every row's accessible name stays its label alone.
   },
   rpcClient: { protocols: {}, team: {} },
 }));

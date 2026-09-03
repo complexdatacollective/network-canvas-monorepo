@@ -232,16 +232,6 @@ describe.skipIf(!db)('magic-link sign-in', () => {
   });
 });
 
-/**
- * Both cases below populate the WHOLE model to get at one credential account,
- * which the file's default 30s allows only on a quiet database. Vitest runs
- * these files in parallel against one Postgres, and every suite that seeds adds
- * to what the others wait on, so the default turns another suite's arrival into
- * a failure here — the same reason `db/__tests__/seed.test.ts` gives its own
- * seeding cases a budget of this order.
- */
-const SEEDING_TIMEOUT_MS = 180_000;
-
 describe.skipIf(!db)('email/password sign-in', () => {
   // Exercises the seed script's credential account (src/db/seed.ts) against
   // the real better-auth handler end to end — the same path that regressed
