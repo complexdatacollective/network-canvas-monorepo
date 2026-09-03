@@ -1299,13 +1299,24 @@ describe.skipIf(!db)('study spine schema', () => {
         participant_id: participantId,
         link_id: ownLink,
       });
-      // Rebinding a live session to another link is proven the same way.
+      // A live session is never rebound to another link, nor cut loose from
+      // its own: the originating link is part of the session's identity.
       await expect(
         pool.query(`UPDATE interview_sessions SET link_id = $2 WHERE id = $1`, [
           sessionId,
           otherWaveLink,
         ]),
-      ).rejects.toThrow(refused);
+      ).rejects.toThrow(
+        'interview session identity and version pin are immutable',
+      );
+      await expect(
+        pool.query(
+          `UPDATE interview_sessions SET link_id = NULL WHERE id = $1`,
+          [sessionId],
+        ),
+      ).rejects.toThrow(
+        'interview session identity and version pin are immutable',
+      );
       // An anonymous visitor through the open link.
       await expect(
         newSession(studyId, waveId, { link_id: openLink }),

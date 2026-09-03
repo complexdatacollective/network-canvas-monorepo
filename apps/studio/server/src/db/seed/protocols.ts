@@ -190,8 +190,19 @@ export async function seedProtocolLine(
   const edited = structuredClone(target.doc);
   const prompts = edited.prompts as { text: string }[];
   prompts[0]!.text = `${prompts[0]!.text} (revised for wave 2)`;
-  await removeStage(scope, { draftId, stageId: target.stageId });
-  await addStage(scope, { draftId, stage: edited, index: target.index });
+  // The edit that version 2 was published from, dated the day before it —
+  // both halves, since each writes a stage-order section of its own.
+  await removeStage(scope, {
+    draftId,
+    stageId: target.stageId,
+    createdAt: seedTime(-341),
+  });
+  await addStage(scope, {
+    draftId,
+    stage: edited,
+    index: target.index,
+    createdAt: seedTime(-341),
+  });
 
   const secondVersionId = seedUuid();
   const secondPublishedAt = seedTime(-340);

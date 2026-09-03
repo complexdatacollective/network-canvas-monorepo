@@ -540,10 +540,15 @@ async function seedDeliveries(
   }) => {
     const blindIndex = contactBlindIndex(input.participant.contactAddress);
     const optOutAt = optOutAtByIndex.get(blindIndex);
+    const drawn = outcomeFor(ordinal++);
+    // A delivery behind a dispatched occurrence was attempted: the schedule
+    // says the prompt went out, so the outbox cannot still be waiting to try.
     const outcome: DeliveryOutcome =
       optOutAt !== undefined && input.createdAt >= optOutAt
         ? 'suppressed'
-        : outcomeFor(ordinal++);
+        : drawn === 'pending' && input.occurrenceId !== null
+          ? 'sent'
+          : drawn;
     const id = seedUuid();
     const terminalAt = shiftMinutes(
       input.createdAt,

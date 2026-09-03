@@ -879,12 +879,15 @@ BEGIN
     RAISE EXCEPTION 'finalized interview sessions are immutable';
   END IF;
 
+  -- The originating link is identity too: rebound or cleared, redemption
+  -- counts and provenance would land on a token that did not produce it.
   IF NEW.id IS DISTINCT FROM OLD.id
      OR NEW.study_id IS DISTINCT FROM OLD.study_id
      OR NEW.team_id IS DISTINCT FROM OLD.team_id
      OR NEW.wave_id IS DISTINCT FROM OLD.wave_id
      OR NEW.participant_id IS DISTINCT FROM OLD.participant_id
      OR NEW.protocol_version_id IS DISTINCT FROM OLD.protocol_version_id
+     OR NEW.link_id IS DISTINCT FROM OLD.link_id
      OR NEW.started_at IS DISTINCT FROM OLD.started_at THEN
     RAISE EXCEPTION 'interview session identity and version pin are immutable';
   END IF;

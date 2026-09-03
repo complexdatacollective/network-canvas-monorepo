@@ -71,10 +71,8 @@ const MAX_DEMO_ROWS = 80_000;
  */
 const NON_REPRODUCIBLE_COLUMNS: Record<string, readonly string[]> = {
   account: ['password'],
-  audit_events: ['id', 'occurred_at'],
+  audit_events: ['id'],
   session_stats: ['computed_at'],
-  protocol_drafts: ['created_at'],
-  sections: ['created_at'],
 };
 
 /**
@@ -882,6 +880,44 @@ describe.skipIf(!db)('the seeded dataset', () => {
         ),
       ).toBe(row.content_hash);
     }
+  });
+
+  it('hashes every template manifest over the canonical form it stores', async () => {
+    const rows = await pool.query<{ manifest: unknown; manifest_hash: string }>(
+      `select manifest, manifest_hash from template_versions`,
+    );
+    expect(rows.rowCount).toBeGreaterThan(0);
+    for (const row of rows.rows) {
+      expect(sha256Hex(canonicalize(row.manifest))).toBe(row.manifest_hash);
+    }
+  });
+
+  it('keeps the pending deletion pending, and attempts every dispatched prompt', async () => {
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from studies
+         where deletion_requested_at is not null and purge_after <= now()`,
+      ),
+    ).resolves.toBe(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from studies where deletion_requested_at is not null`,
+      ),
+    ).resolves.toBeGreaterThan(0);
+    // A delivery behind a dispatched occurrence was attempted: it has a
+    // provider and a terminal timestamp, never a pending outbox row.
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from message_deliveries d
+         join schedule_occurrences o on o.id = d.occurrence_id
+         where o.state = 'dispatched'
+           and (d.provider is null
+                or coalesce(d.sent_at, d.failed_at, d.suppressed_at, d.uncertain_at) is null)`,
+      ),
+    ).resolves.toBe(0);
   });
 
   it('hashes every snapshot over the canonical form of the payload it stores', async () => {

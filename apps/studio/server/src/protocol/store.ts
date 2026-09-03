@@ -226,11 +226,17 @@ export class ProtocolStore {
           `protocol creation identity ${protocolId} is already in use`,
         );
       }
-      await insertDraftRows(transactionClient, teamId, draftId, sections);
+      await insertDraftRows(
+        transactionClient,
+        teamId,
+        draftId,
+        sections,
+        params.createdAt,
+      );
       await transactionClient.query(
-        `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id)
-         VALUES ($1, $2, $3)`,
-        [draftId, teamId, protocolId],
+        `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id, created_at)
+         VALUES ($1, $2, $3, COALESCE($4, now()))`,
+        [draftId, teamId, protocolId, params.createdAt ?? null],
       );
       return { protocolId, draftId, created: true };
     };

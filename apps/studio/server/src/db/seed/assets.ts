@@ -7,6 +7,8 @@
 import { faker } from '@faker-js/faker';
 import type pg from 'pg';
 
+import { canonicalize } from '@codaco/studio-sync/apply';
+
 import { insertRows, type SeedRowValue } from './insert.ts';
 import type { SeededProtocolLine, SeededVersion } from './protocols.ts';
 import { pickSome, seedTime, seedUuid, sha256Hex, shiftDays } from './rng.ts';
@@ -171,7 +173,8 @@ export async function seedTemplates(
     const pinned = Object.fromEntries(
       pickSome(Object.entries(source.sectionHashes), 4),
     );
-    const manifestHash = sha256Hex(JSON.stringify(pinned));
+    // Canonical, so the hash can be recomputed from the jsonb as read back.
+    const manifestHash = sha256Hex(canonicalize(pinned));
     versionRows.push([
       versionId,
       team.id,

@@ -230,8 +230,10 @@ export async function seedStudies(
     // team's block: every closed guard refuses writes to its children, so its
     // sessions, networks and consents must land first.
     const insertedState = plan.state === 'closed' ? 'live' : plan.state;
-    const deletionRequestedAt =
-      plan.key === 'deleting' ? shiftDays(createdAt, 30) : null;
+    // Requested near the anchor, so the retention window is still open at
+    // every fresh seed: the example is a study awaiting purge, not one the
+    // first maintenance run would sweep away.
+    const deletionRequestedAt = plan.key === 'deleting' ? seedTime(-10) : null;
     const purgeAfter =
       deletionRequestedAt === null ? null : shiftDays(deletionRequestedAt, 30);
     // The last update is the latest transition the row records: a paused

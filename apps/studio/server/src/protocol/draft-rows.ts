@@ -6,21 +6,28 @@ import {
   manifestHash,
 } from '@codaco/studio-sync/apply';
 
+/**
+ * `createdAt` dates the sections (and re-dates a revived one) for a caller
+ * that knows when the draft was made — the synthetic-data seed; a live
+ * command leaves it unset and takes the clock.
+ */
 export async function insertDraftRows(
   client: pg.PoolClient,
   teamId: string,
   draftId: string,
   sections: Record<string, SectionDoc>,
+  createdAt?: Date,
 ): Promise<void> {
   const sectionHashes: Record<string, string> = {};
   for (const [id, doc] of Object.entries(sections)) {
     const hash = contentHash(doc);
     sectionHashes[id] = hash;
     await client.query(
-      `INSERT INTO sections (team_id, hash, doc) VALUES ($1, $2, $3)
+      `INSERT INTO sections (team_id, hash, doc, created_at)
+       VALUES ($1, $2, $3, COALESCE($4, clock_timestamp()))
        ON CONFLICT (team_id, hash) DO UPDATE
-       SET created_at = clock_timestamp(), unreferenced_at = NULL`,
-      [teamId, hash, doc],
+       SET created_at = COALESCE($4, clock_timestamp()), unreferenced_at = NULL`,
+      [teamId, hash, doc, createdAt ?? null],
     );
   }
   const mHash = manifestHash(sectionHashes, null);

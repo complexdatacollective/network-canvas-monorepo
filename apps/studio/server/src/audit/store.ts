@@ -147,9 +147,16 @@ export function clampAuditListLimit(limit?: number): number {
 }
 
 export class AuditStore {
+  /**
+   * `occurredAt` defaults to the statement's own time, which is what a live
+   * command wants. A writer that is recording an operation that happened at
+   * a known moment — the synthetic-data seed, whose whole corpus is dated
+   * from one anchor — passes it, so the log agrees with the rows it describes.
+   */
   async append(
     client: pg.PoolClient,
     unvalidatedEvent: AuditEventInput,
+    options: { occurredAt?: Date } = {},
   ): Promise<AuditEvent> {
     const event = parseAuditEventInput(unvalidatedEvent);
     await lockAuditTeam(client, event.teamId);
@@ -167,10 +174,11 @@ export class AuditStore {
          id, team_id, team_label, sequence, event_type, event_version, category, outcome,
          actor_kind, actor_id, actor_label, subject_type, subject_id,
          subject_label, resource_type, resource_id, resource_label,
-         request_id, details
+         request_id, details, occurred_at
        ) VALUES (
          $1, $2, $3, $4::bigint, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-         $14, $15, $16, $17, $18::uuid, $19::jsonb
+         $14, $15, $16, $17, $18::uuid, $19::jsonb,
+         COALESCE($20, statement_timestamp())
        )
        RETURNING
          id, team_id AS "teamId", team_label AS "teamLabel", sequence::text AS sequence,
@@ -201,6 +209,7 @@ export class AuditStore {
         event.resourceLabel,
         event.requestId,
         JSON.stringify(event.details),
+        options.occurredAt ?? null,
       ],
     );
     const row = inserted.rows[0];
