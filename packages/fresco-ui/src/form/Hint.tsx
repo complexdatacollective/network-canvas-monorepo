@@ -18,7 +18,11 @@ export default function Hint({
   return (
     <div
       id={id}
-      className={paragraphVariants({ intent: 'smallText', emphasis: 'muted' })}
+      className={paragraphVariants({
+        intent: 'smallText',
+        emphasis: 'muted',
+        className: 'mb-[0.5em]!', // Match the label style's bottom margin.
+      })}
     >
       {React.Children.map(children, (child) =>
         typeof child === 'string' ? (
