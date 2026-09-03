@@ -17,12 +17,11 @@ import ResponsiveContainer, {
 export const surfaceSpacingVariants = cva({
   base: '',
   variants: {
-    // `x`: pad the sides only, for a section whose vertical rhythm belongs to
-    // its container — the dialog popup pads its own top and bottom and spaces
-    // its header, content, and footer with a gap.
-    axis: {
-      both: '',
-      x: 'py-0!',
+    section: {
+      header: 'pb-0!',
+      content: 'py-0!',
+      footer: 'pt-0!',
+      container: '',
     },
     spacing: {
       none: '',
@@ -35,7 +34,7 @@ export const surfaceSpacingVariants = cva({
   },
   defaultVariants: {
     spacing: 'md',
-    axis: 'both',
+    section: 'container',
   },
 });
 
@@ -243,7 +242,7 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
       children,
       spacing,
       shadow,
-      axis,
+      section,
       floating,
       series,
       className,
@@ -292,7 +291,7 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
             series: resolvedSeries,
             spacing,
             shadow,
-            axis,
+            section,
           }),
           className,
         )}

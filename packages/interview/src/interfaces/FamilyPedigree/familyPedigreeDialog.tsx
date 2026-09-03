@@ -67,7 +67,7 @@ function bridgeComponent<P extends object>(
  *
  * A falsy node is left exactly as it was, because the dialog chrome tests these
  * slots for truthiness before rendering them (`Dialog.tsx` gates its
- * description, `DialogFooter` renders nothing when empty). Wrapping `''`/`null`/
+ * description, `DialogFooter` gates its own spacing). Wrapping `''`/`null`/
  * `false` in a provider element would make it truthy, and the dialog would grow
  * an empty description or footer it never had. Absent slots stay absent: the
  * caller spreads this into `...dialog`, which already carries the original.

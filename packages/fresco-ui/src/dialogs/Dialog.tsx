@@ -126,35 +126,16 @@ export default function Dialog({
         {...rest}
       >
         <DialogHeader>
-          {/*
-            The title row is exactly the title's cap-trimmed box, so the
-            popup's gap below it is the whole of the space to the content.
-            The close button is taller than that box, so it sits out of flow,
-            centred on the row rather than setting its height; the title keeps
-            the button's width clear on its right.
-          */}
-          <div className="relative">
+          <div className="min-w-0 flex-1">
             <BaseDialog.Title
               id={titleId}
-              render={
-                <Heading
-                  level="h2"
-                  margin="none"
-                  className={dismissible ? 'pr-14' : undefined}
-                />
-              }
+              render={<Heading level="h2" margin="none" />}
             >
               {title}
             </BaseDialog.Title>
-            {dismissible && (
-              <BaseDialog.Close
-                render={
-                  <CloseButton className="absolute top-1/2 right-0 -translate-y-1/2" />
-                }
-              />
-            )}
+            {header && <div className="mt-4">{header}</div>}
           </div>
-          {header && <div className="mt-4">{header}</div>}
+          {dismissible && <BaseDialog.Close render={<CloseButton />} />}
         </DialogHeader>
         <DialogContent labelledBy={title ? titleId : undefined}>
           {description && (
@@ -174,12 +155,14 @@ export default function Dialog({
 
 Dialog.displayName = 'Dialog';
 
-// The sections pad their sides only; the popup pads its top and bottom and
-// spaces the sections with its gap (see DialogPopup), so no seam is spaced
-// twice and nothing carries a margin.
 const DialogHeader = ({ children }: { children: React.ReactNode }) => {
   return (
-    <div className={cx('shrink-0', surfaceSpacingVariants({ axis: 'x' }))}>
+    <div
+      className={cx(
+        'mb-4 flex shrink-0 items-start justify-between gap-2',
+        surfaceSpacingVariants({ section: 'header' }),
+      )}
+    >
       {children}
     </div>
   );
@@ -203,7 +186,10 @@ const DialogContent = ({
     <ScrollArea
       aria-labelledby={labelledBy}
       nameWhenScrollableOnly
-      viewportClassName={surfaceSpacingVariants({ axis: 'x' })}
+      viewportClassName={surfaceSpacingVariants({
+        section: 'content',
+        className: 'py-2!',
+      })}
     >
       {children}
     </ScrollArea>
@@ -213,9 +199,6 @@ const DialogContent = ({
 // Layout convention: place the cancel/dismiss action as the first child to pin it left.
 // Primary and any secondary actions follow and cluster on the right. A single-child footer
 // (e.g. acknowledge dialog) is right-aligned by `justify-end`.
-//
-// A footer with nothing in it renders nothing, or the popup's gap would open
-// above an empty row.
 const DialogFooter = ({
   children,
   className,
@@ -223,7 +206,6 @@ const DialogFooter = ({
   children?: React.ReactNode;
   className?: string;
 }) => {
-  if (!children) return null;
   return (
     <footer
       className={cx(
@@ -231,8 +213,9 @@ const DialogFooter = ({
         // action: without it an over-long label sized the footer, and the flex
         // row pushed the cancel action out past the dialog's clipped edge and
         // off the viewport entirely (#1392).
-        'flex min-w-0 shrink-0 flex-col gap-2 @min-[30rem]:flex-row @min-[30rem]:justify-end @min-[30rem]:[&>*:first-child:not(:only-child)]:mr-auto',
-        surfaceSpacingVariants({ axis: 'x' }),
+        'mt-4 flex min-w-0 shrink-0 flex-col gap-2 @min-[30rem]:flex-row @min-[30rem]:justify-end @min-[30rem]:[&>*:first-child:not(:only-child)]:mr-auto',
+        children && 'mt-6',
+        surfaceSpacingVariants({ section: 'footer' }),
         className,
       )}
     >

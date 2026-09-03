@@ -48,11 +48,7 @@ export default function DialogPopup({
           // The popover border is a stacked-popover affordance; dialogs sit on a
           // backdrop and stay borderless as before.
           'border-0',
-          // The popup owns the vertical rhythm: it pads its top and bottom on
-          // the `md` spacing step (py-6, matching the sections' px-8) and
-          // spaces header, content, and footer with one gap-4. The sections
-          // pad their sides only, so no seam is spaced twice.
-          '@container flex w-full min-w-0 flex-col gap-4 rounded-none py-6 shadow-2xl',
+          '@container flex w-full min-w-0 flex-col rounded-none shadow-2xl',
           '@min-[30rem]:max-h-[calc(100%-var(--spacing-base)*10)] @min-[30rem]:w-[calc(100%-var(--spacing-base)*8)] @min-[30rem]:rounded',
           'max-h-full',
           dialogSizeClasses[size],
