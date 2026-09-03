@@ -11,7 +11,6 @@ import { Header } from '~/components/layout/Header';
 import { ProtocolGallery } from '~/components/protocol-gallery/ProtocolGallery';
 import { SubmitProtocolCard } from '~/components/protocol-gallery/SubmitProtocolCard';
 import { Container } from '~/components/ui/Container';
-import { HomepagePageBackground } from '~/components/ui/HomepagePageBackground';
 import { routing } from '~/lib/i18n/routing';
 import { loadProtocolGallery } from '~/lib/protocolGallery';
 import { protocolGalleryUrl } from '~/lib/siteUrls';
@@ -67,13 +66,11 @@ export default async function ProtocolGalleryPage({
 
   return (
     <main className="relative isolate">
-      <HomepagePageBackground target="[data-protocol-gallery-weave-target]" />
       <Header activeItemId="protocolGallery" host="protocolGallery" />
 
       <Container maxWidth="full" margin="none" className="mt-12">
         <div
           id={SITE_NAVIGATION_SKIP_TARGET_ID}
-          data-protocol-gallery-weave-target
           className="tablet-landscape:grid-cols-[minmax(0,1fr)_minmax(28rem,40rem)] tablet-landscape:items-start grid gap-8"
         >
           <div className="min-w-0">

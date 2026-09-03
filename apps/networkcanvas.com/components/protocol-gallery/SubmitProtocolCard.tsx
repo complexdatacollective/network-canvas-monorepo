@@ -15,7 +15,7 @@ export function SubmitProtocolCard() {
       noContainer
       spacing="md"
       shadow="sm"
-      className="bg-surface/75 flex flex-col gap-3 backdrop-blur-md"
+      className="flex flex-col gap-3"
     >
       <OverlineHeading>{t('heading')}</OverlineHeading>
       <Paragraph margin="none" intent="smallText">

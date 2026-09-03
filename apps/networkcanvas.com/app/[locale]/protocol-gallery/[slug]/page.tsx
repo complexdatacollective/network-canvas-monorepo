@@ -17,7 +17,6 @@ import { ProtocolDetailFacts } from '~/components/protocol-gallery/ProtocolDetai
 import { ProtocolDownloads } from '~/components/protocol-gallery/ProtocolDownloads';
 import { StageSequenceRail } from '~/components/protocol-gallery/StageSequenceRail';
 import { Container } from '~/components/ui/Container';
-import { HomepagePageBackground } from '~/components/ui/HomepagePageBackground';
 import { NativeLink } from '~/components/ui/NativeLink';
 import { Pill } from '~/components/ui/Pill';
 import { routing } from '~/lib/i18n/routing';
@@ -89,7 +88,6 @@ export default async function ProtocolDetailPage({
 
   return (
     <main className="relative isolate">
-      <HomepagePageBackground target="[data-protocol-detail-weave-target]" />
       <Header activeItemId="protocolGallery" host="protocolGallery" />
 
       <Container maxWidth="full" margin="none" className="mt-12">
@@ -113,7 +111,7 @@ export default async function ProtocolDetailPage({
 
         <div className="tablet-landscape:grid-cols-[minmax(0,1.4fr)_minmax(24rem,1fr)] mt-8 grid grid-cols-1 gap-8">
           <div className="min-w-0 space-y-8">
-            <div data-protocol-detail-weave-target>
+            <div>
               {protocol.featured ? (
                 <Eyebrow tone="primary">{t('intro.featured')}</Eyebrow>
               ) : null}

@@ -53,7 +53,7 @@ export function GallerySidebar({
         noContainer
         spacing="md"
         shadow="xs"
-        className="bg-surface/75 flex flex-col gap-6 backdrop-blur-md"
+        className="flex flex-col gap-6"
       >
         <div className="min-w-0">
           <UnconnectedField
