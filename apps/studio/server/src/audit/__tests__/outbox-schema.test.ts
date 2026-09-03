@@ -37,6 +37,18 @@ const hex64 = () => randomBytes(32).toString('hex');
 let nextSequence = 0;
 const sequence = () => String(++nextSequence);
 
+/**
+ * The five columns an outbox row pins through: the link, its team, and the
+ * three the row copies out of the event so the dispatcher can route without
+ * reading it.
+ */
+type EventIdentity = {
+  id: string;
+  sequence: string;
+  event_type: string;
+  event_version: number;
+};
+
 /** The seven columns a ready job must carry, all or none. */
 const READY_COLUMNS = [
   'handle_hash',
@@ -111,21 +123,29 @@ describe.skipIf(!db)('audit outbox schema', () => {
     ...overrides,
   });
 
-  const outboxRow = (auditEventId: string, overrides: Row = {}): Row => ({
+  // The copied columns default to the event's own, because the composite key
+  // binds them to it: an alert that cites one event and describes another is
+  // a foreign-key violation, not an accepted row.
+  const outboxRow = (event: EventIdentity, overrides: Row = {}): Row => ({
     id: randomUUID(),
     team_id: TEAM_A,
-    audit_event_id: auditEventId,
-    audit_event_sequence: '1',
-    event_type: 'audit.export.started',
-    event_version: 1,
+    audit_event_id: event.id,
+    audit_event_sequence: event.sequence,
+    event_type: event.event_type,
+    event_version: event.event_version,
     alert_policy_key: 'bulk_export',
     ...overrides,
   });
 
-  async function newEvent(overrides: Row = {}): Promise<string> {
+  async function newEvent(overrides: Row = {}): Promise<EventIdentity> {
     const row = eventRow(overrides);
     await insert('audit_events', row);
-    return row.id as string;
+    return {
+      id: row.id as string,
+      sequence: row.sequence as string,
+      event_type: row.event_type as string,
+      event_version: row.event_version as number,
+    };
   }
 
   async function newJob(overrides: Row = {}): Promise<string> {
@@ -135,10 +155,10 @@ describe.skipIf(!db)('audit outbox schema', () => {
   }
 
   async function newOutboxRow(overrides: Row = {}): Promise<string> {
-    const eventId = await newEvent({
+    const event = await newEvent({
       team_id: (overrides.team_id as string | undefined) ?? TEAM_A,
     });
-    const row = outboxRow(eventId, overrides);
+    const row = outboxRow(event, overrides);
     await insert('audit_alert_outbox', row);
     return row.id as string;
   }
@@ -472,11 +492,11 @@ describe.skipIf(!db)('audit outbox schema', () => {
     });
 
     it('keeps exactly one durable row per committed event', async () => {
-      const eventId = await newEvent();
-      await insert('audit_alert_outbox', outboxRow(eventId));
+      const event = await newEvent();
+      await insert('audit_alert_outbox', outboxRow(event));
 
       await expect(
-        insert('audit_alert_outbox', outboxRow(eventId)),
+        insert('audit_alert_outbox', outboxRow(event)),
       ).rejects.toMatchObject({
         code: '23505',
         constraint: 'audit_alert_outbox_audit_event_id_idx',
@@ -507,11 +527,54 @@ describe.skipIf(!db)('audit outbox schema', () => {
 
     it('refuses an alert citing no event at all', async () => {
       await expect(
-        insert('audit_alert_outbox', outboxRow(randomUUID())),
+        insert(
+          'audit_alert_outbox',
+          outboxRow({
+            id: randomUUID(),
+            sequence: sequence(),
+            event_type: 'audit.export.started',
+            event_version: 1,
+          }),
+        ),
       ).rejects.toMatchObject({
         code: '23503',
         constraint: 'audit_alert_outbox_audit_event_fk',
       });
+    });
+
+    // The alert policy decides from `event_type` and `event_version`, and the
+    // dispatcher orders and rate-limits on `audit_event_sequence`. A key that
+    // proved only (audit_event_id, team_id) would let a row cite a real event
+    // and describe a different one, routing a real alert under a fabricated
+    // description.
+    it.each([
+      ['another event’s sequence', { audit_event_sequence: '999999' }],
+      ['another event type', { event_type: 'study.deleted' }],
+      ['another event version', { event_version: 2 }],
+    ])('refuses an alert copying %s', async (_label, overrides) => {
+      const event = await newEvent();
+
+      await expect(
+        insert('audit_alert_outbox', outboxRow(event, overrides)),
+      ).rejects.toMatchObject({
+        code: '23503',
+        constraint: 'audit_alert_outbox_audit_event_fk',
+        detail: expect.stringContaining(
+          'is not present in table "audit_events"',
+        ),
+      });
+    });
+
+    it('accepts the copy the key exists to admit', async () => {
+      const event = await newEvent({
+        event_type: 'participant.erased',
+        event_version: 3,
+        category: 'participant_data',
+      });
+
+      await expect(
+        insert('audit_alert_outbox', outboxRow(event)),
+      ).resolves.toMatchObject({ rowCount: 1 });
     });
 
     it.each([
@@ -565,9 +628,9 @@ describe.skipIf(!db)('audit outbox schema', () => {
         'audit_alert_outbox_terminal_state_check',
       ],
     ])('refuses %s', async (_label, overrides, constraint) => {
-      const eventId = await newEvent();
+      const event = await newEvent();
       await expect(
-        insert('audit_alert_outbox', outboxRow(eventId, overrides)),
+        insert('audit_alert_outbox', outboxRow(event, overrides)),
       ).rejects.toMatchObject({ constraint });
     });
   });
@@ -619,6 +682,7 @@ describe.skipIf(!db)('audit outbox schema', () => {
     it('leaves neither row behind when the transaction rolls back', async () => {
       const rolledBackEvent = randomUUID();
       const rolledBackAlert = randomUUID();
+      const rolledBackSequence = sequence();
       const failure = new Error('command failed after enqueueing the alert');
 
       await expect(
@@ -630,13 +694,13 @@ describe.skipIf(!db)('audit outbox schema', () => {
              VALUES ($1, $2, 'Team A', $3, 'audit.export.started', 1,
                'data_egress', 'succeeded', 'user', 'user-1', 'Researcher',
                $4, '{}'::jsonb)`,
-            [rolledBackEvent, TEAM_A, sequence(), randomUUID()],
+            [rolledBackEvent, TEAM_A, rolledBackSequence, randomUUID()],
           );
           await client.query(
             `INSERT INTO audit_alert_outbox (id, team_id, audit_event_id,
                audit_event_sequence, event_type, event_version, alert_policy_key)
-             VALUES ($1, $2, $3, 1, 'audit.export.started', 1, 'bulk_export')`,
-            [rolledBackAlert, TEAM_A, rolledBackEvent],
+             VALUES ($1, $2, $3, $4, 'audit.export.started', 1, 'bulk_export')`,
+            [rolledBackAlert, TEAM_A, rolledBackEvent, rolledBackSequence],
           );
           throw failure;
         }),
@@ -653,6 +717,7 @@ describe.skipIf(!db)('audit outbox schema', () => {
     it('keeps both rows when it commits', async () => {
       const eventId = randomUUID();
       const alertId = randomUUID();
+      const eventSequence = sequence();
 
       await tenantA.transaction(async (client) => {
         await client.query(
@@ -662,13 +727,13 @@ describe.skipIf(!db)('audit outbox schema', () => {
            VALUES ($1, $2, 'Team A', $3, 'audit.export.started', 1,
              'data_egress', 'succeeded', 'user', 'user-1', 'Researcher',
              $4, '{}'::jsonb)`,
-          [eventId, TEAM_A, sequence(), randomUUID()],
+          [eventId, TEAM_A, eventSequence, randomUUID()],
         );
         await client.query(
           `INSERT INTO audit_alert_outbox (id, team_id, audit_event_id,
              audit_event_sequence, event_type, event_version, alert_policy_key)
-           VALUES ($1, $2, $3, 1, 'audit.export.started', 1, 'bulk_export')`,
-          [alertId, TEAM_A, eventId],
+           VALUES ($1, $2, $3, $4, 'audit.export.started', 1, 'bulk_export')`,
+          [alertId, TEAM_A, eventId, eventSequence],
         );
       });
 
@@ -758,14 +823,14 @@ describe.skipIf(!db)('audit outbox schema', () => {
     });
 
     it('may enqueue an alert but never advance or retract one', async () => {
-      const eventId = await newEvent();
+      const event = await newEvent();
       const alertId = randomUUID();
 
       const enqueued = await tenantA.query(
         `INSERT INTO audit_alert_outbox (id, team_id, audit_event_id,
            audit_event_sequence, event_type, event_version, alert_policy_key)
-         VALUES ($1, $2, $3, 1, 'audit.export.started', 1, 'bulk_export')`,
-        [alertId, TEAM_A, eventId],
+         VALUES ($1, $2, $3, $4, 'audit.export.started', 1, 'bulk_export')`,
+        [alertId, TEAM_A, event.id, event.sequence],
       );
       expect(enqueued.rowCount).toBe(1);
 

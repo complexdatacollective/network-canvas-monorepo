@@ -160,6 +160,74 @@ CREATE OR REPLACE TRIGGER asset_references_published_immutable
   WHEN (OLD.referrer_kind IN ('protocol_version', 'template_version', 'consent_document'))
   EXECUTE FUNCTION asset_references_published_pins_are_frozen();
 
+-- Freezing only UPDATE and DELETE freezes the pin set in one direction: a pin
+-- INSERTed after publication also changes what a frozen version resolves to,
+-- and — because the trigger above then refuses to retract it — permanently.
+-- So a pin on a published referrer is admitted only in the transaction that
+-- published that referrer, which is the version_sections argument again, and
+-- proven the same way: \`xmin\` is the transaction that wrote the row this
+-- statement can see.
+--
+-- Per kind, because "published" is not the same fact for each of them, and
+-- because a pin the trigger above never freezes has no frozen set to protect:
+--
+--   protocol_version, template_version  published by the insert that creates
+--                                       them, so xmin alone decides
+--   consent_document                    drafted first, published later, so a
+--                                       pin is free while state is 'draft'
+--                                       and fixed from the transaction that
+--                                       publishes it
+--   section, message_template           retractable pins (the trigger above
+--                                       covers neither kind), so nothing here
+--                                       constrains when they are written
+--
+-- A pin on one of the three frozen kinds that names no such row is refused
+-- outright: it can never be retracted, and admitting it would let a pin be
+-- written before the version it claims to belong to exists.
+--
+-- AFTER the row, so the referrer-kind check and the asset key report first
+-- and this speaks only to a well-formed pin on a real asset of its team. The
+-- comparison is against \`id::text\` rather than a cast of \`referrer_id\`,
+-- because \`referrer_id\` is heterogeneous by design and a uuid cast of a
+-- section hash would raise a syntax error in place of this guard's message.
+CREATE OR REPLACE FUNCTION asset_reference_pin_is_written_at_publication() RETURNS trigger AS $$
+DECLARE
+  -- NULL when no referrer of that kind exists; true when the referrer is
+  -- already published and was published by an earlier transaction.
+  written_late boolean;
+BEGIN
+  CASE NEW.referrer_kind
+    WHEN 'protocol_version' THEN
+      SELECT v.xmin <> pg_current_xact_id()::xid INTO written_late
+      FROM protocol_versions v
+      WHERE v.id::text = NEW.referrer_id AND v.team_id = NEW.team_id;
+    WHEN 'template_version' THEN
+      SELECT v.xmin <> pg_current_xact_id()::xid INTO written_late
+      FROM template_versions v
+      WHERE v.id::text = NEW.referrer_id AND v.team_id = NEW.team_id;
+    WHEN 'consent_document' THEN
+      SELECT d.state <> 'draft' AND d.xmin <> pg_current_xact_id()::xid
+        INTO written_late
+      FROM consent_documents d
+      WHERE d.id::text = NEW.referrer_id AND d.team_id = NEW.team_id;
+    ELSE
+      RETURN NULL;
+  END CASE;
+
+  IF written_late IS NULL THEN
+    RAISE EXCEPTION 'an asset reference must name a % of its own team', NEW.referrer_kind;
+  END IF;
+  IF written_late THEN
+    RAISE EXCEPTION 'an asset reference to a published % may only be written in the transaction that publishes it', NEW.referrer_kind;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER asset_references_insert_frozen
+  AFTER INSERT ON asset_references
+  FOR EACH ROW EXECUTE FUNCTION asset_reference_pin_is_written_at_publication();
+
 -- An asset row's identity and stored representation are canonical and
 -- immutable, matching the first-write-wins contract src/assets.ts already
 -- enforces against the object store. Only the sweep marker may move.

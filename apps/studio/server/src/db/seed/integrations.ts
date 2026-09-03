@@ -135,9 +135,25 @@ const WEBHOOK_EVENT_TYPES = [
   'consent.withdrawn',
 ];
 
+type WebhookDisablement = {
+  id: string;
+  failures: number;
+  lastFailureAt: Date;
+  disabledAt: Date;
+};
+
 /**
  * One or two subscriptions per team, the second of which is disabled after a
  * run of failures — the state the retry policy is meant to reach.
+ *
+ * Every subscription is written active and every delivery draws its event
+ * type from its own subscription's filter, because
+ * `webhook_deliveries_subscription_wants_event` admits a delivery only while
+ * its subscription is active and only for an event type that subscription
+ * asks for. The disablement is applied afterwards, which is also the order it
+ * happens in: the deliveries fail, and the run of failures disables the
+ * endpoint (the same shape as `closeStudy`, which seals an archived study only
+ * once its data is written).
  *
  * The signing secret is stored as ciphertext because Standard Webhooks
  * requires the server to reproduce it on every send. The seed has no key
@@ -151,15 +167,18 @@ export async function seedWebhooks(
 ): Promise<void> {
   const subscriptionRows: SeedRowValue[][] = [];
   const deliveryRows: SeedRowValue[][] = [];
+  const disablements: WebhookDisablement[] = [];
   const createdAt = seedTime(-250 + team.index);
 
-  // Two per team: one active, and one disabled by a run of failures — the
-  // state the retry policy is meant to reach.
+  // Two per team: one that stays active, and one disabled by a run of
+  // failures — the state the retry policy is meant to reach.
   for (let index = 0; index < 2; index++) {
     const id = seedUuid();
     const disabled = index === 1;
-    const failures = disabled ? faker.number.int({ min: 5, max: 20 }) : 0;
-    const lastFailureAt = failures === 0 ? null : shiftDays(createdAt, 60);
+    const eventTypes = faker.helpers.arrayElements(WEBHOOK_EVENT_TYPES, {
+      min: 1,
+      max: 4,
+    });
     subscriptionRows.push([
       id,
       team.id,
@@ -170,17 +189,25 @@ export async function seedWebhooks(
       disabled
         ? 'Retired endpoint, kept for the failure history'
         : faker.lorem.sentence(),
-      faker.helpers.arrayElements(WEBHOOK_EVENT_TYPES, { min: 1, max: 4 }),
+      eventTypes,
       seedBytes(48),
       `dev-integration-key-1`,
-      disabled ? 'disabled' : 'active',
-      failures,
-      lastFailureAt,
-      disabled ? shiftDays(createdAt, 61) : null,
+      'active',
+      0,
+      null,
+      null,
       team.adminUserId,
       createdAt,
-      shiftDays(createdAt, 61),
+      createdAt,
     ]);
+    if (disabled) {
+      disablements.push({
+        id,
+        failures: faker.number.int({ min: 5, max: 20 }),
+        lastFailureAt: shiftDays(createdAt, 60),
+        disabledAt: shiftDays(createdAt, 61),
+      });
+    }
 
     const deliveries = faker.number.int({ min: 5, max: 20 });
     for (let delivery = 0; delivery < deliveries; delivery++) {
@@ -192,7 +219,7 @@ export async function seedWebhooks(
         team.id,
         id,
         `whk_${seedHex(10)}`,
-        faker.helpers.arrayElement(WEBHOOK_EVENT_TYPES),
+        faker.helpers.arrayElement(eventTypes),
         JSON.stringify({
           teamId: team.id,
           resourceId: seedUuid(),
@@ -255,6 +282,22 @@ export async function seedWebhooks(
     ],
     deliveryRows,
   );
+
+  for (const disablement of disablements) {
+    await client.query(
+      `update webhook_subscriptions
+       set state = 'disabled', consecutive_failures = $3,
+           last_failure_at = $4, disabled_at = $5, updated_at = $5
+       where id = $1 and team_id = $2`,
+      [
+        disablement.id,
+        team.id,
+        disablement.failures,
+        disablement.lastFailureAt,
+        disablement.disabledAt,
+      ],
+    );
+  }
 }
 
 /** Two experiments per team: one still running, one already stopped. */

@@ -1,15 +1,16 @@
 // The experiment module's database-enforced promises: the variant list and
-// lifecycle checks on an experiment, one sticky assignment per subject, the
-// composite foreign keys that keep an assignment and its exposures inside one
-// team, and the two sidecar triggers that make an assignment and an exposure
-// unrewritable while leaving the erasure delete path open.
+// lifecycle checks on an experiment, the element-level proof that makes the
+// list a list of arms, one sticky assignment per subject, the composite
+// foreign keys that keep an assignment and its exposures inside one team, and
+// the sidecar triggers that make an assignment and an exposure unrewritable
+// and undeletable while leaving the erasure delete path open.
 //
 // Every case asserts the rejection Postgres actually raises — the constraint
 // name for a CHECK, unique or foreign-key violation, the message for a trigger
 // — so a guard that stopped firing cannot pass as "no error".
 import { randomUUID } from 'node:crypto';
 
-import type pg from 'pg';
+import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
@@ -20,6 +21,7 @@ import {
   reachableDb,
   seedTeam,
 } from '../../__tests__/support/postgres.ts';
+import { ERASURE_GUC } from '../../study/schema.ts';
 
 const db = await reachableDb();
 
@@ -41,6 +43,7 @@ const THREE_VARIANTS = JSON.stringify([
 describe.skipIf(!db)('experiment schema', () => {
   let pool: pg.Pool;
   let app: pg.Pool;
+  let maintenance: pg.Pool;
   let dispose: () => Promise<void>;
   let tenantA: TenantDb;
   /** One experiment per team, so cross-team pins have a target. */
@@ -119,9 +122,34 @@ describe.skipIf(!db)('experiment schema', () => {
     return row.id as string;
   }
 
+  /**
+   * The audited participant-erasure path: the application role, with the
+   * transaction-scoped marker naming the participant whose data is being
+   * removed. Erasure runs as `studio_app`, the same role as any buggy delete,
+   * so the marker is the only thing that distinguishes it.
+   */
+  function erasing(participantId: string, sql: string, values: unknown[]) {
+    return tenantA.transaction(async (client) => {
+      await client.query(
+        `SET LOCAL ${ERASURE_GUC} = ${pg.escapeLiteral(participantId)}`,
+      );
+      return client.query(sql, values);
+    });
+  }
+
+  /** An assignment of a participant subject, which erasure can reach. */
+  async function newParticipantAssignment(
+    participantId: string,
+  ): Promise<string> {
+    return newAssignment(experimentOf[TEAM_A] as string, {
+      subject_kind: 'participant',
+      subject_id: participantId,
+    });
+  }
+
   beforeAll(async () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
-    ({ pool, app, dispose } = await createScratchSchema(db));
+    ({ pool, app, maintenance, dispose } = await createScratchSchema(db));
     await provisionScratchSchema(pool);
     for (const teamId of [TEAM_A, TEAM_B]) {
       await seedTeam(pool, teamId);
@@ -247,6 +275,145 @@ describe.skipIf(!db)('experiment schema', () => {
       ).resolves.toMatchObject({ rowCount: 1 });
     });
 
+    // `experiments_variants_check` sees an array of the right length and
+    // stops. Every shape below satisfies it, and every one of them would
+    // corrupt the randomiser that reads the list as a set of arms.
+    it.each([
+      [
+        'a list of nulls',
+        JSON.stringify([null, null]),
+        'every experiment variant must be an object carrying a key and a weight',
+      ],
+      [
+        'bare strings where the arms belong',
+        JSON.stringify(['control', 'treatment']),
+        'every experiment variant must be an object carrying a key and a weight',
+      ],
+      [
+        'a nested list',
+        JSON.stringify([
+          ['control', 1],
+          ['treatment', 1],
+        ]),
+        'every experiment variant must be an object carrying a key and a weight',
+      ],
+      [
+        'an arm with no key',
+        JSON.stringify([{ weight: 1 }, { key: 'treatment', weight: 1 }]),
+        'the experiment variant key (missing) is not a well-formed key',
+      ],
+      [
+        'a null key',
+        JSON.stringify([
+          { key: null, weight: 1 },
+          { key: 'treatment', weight: 1 },
+        ]),
+        'the experiment variant key (missing) is not a well-formed key',
+      ],
+      [
+        'an upper-case key',
+        JSON.stringify([
+          { key: 'Control', weight: 1 },
+          { key: 'treatment', weight: 1 },
+        ]),
+        'the experiment variant key Control is not a well-formed key',
+      ],
+      [
+        'a key that starts with a digit',
+        JSON.stringify([
+          { key: '1control', weight: 1 },
+          { key: 'treatment', weight: 1 },
+        ]),
+        'the experiment variant key 1control is not a well-formed key',
+      ],
+      [
+        'a key past 64 characters',
+        JSON.stringify([
+          { key: `a${'b'.repeat(64)}`, weight: 1 },
+          { key: 'treatment', weight: 1 },
+        ]),
+        `the experiment variant key a${'b'.repeat(64)} is not a well-formed key`,
+      ],
+      [
+        'two arms under one key',
+        JSON.stringify([
+          { key: 'control', weight: 1 },
+          { key: 'control', weight: 2 },
+        ]),
+        'the experiment variant key control is used twice',
+      ],
+      [
+        'a zero weight',
+        JSON.stringify([
+          { key: 'control', weight: 0 },
+          { key: 'treatment', weight: 1 },
+        ]),
+        'the experiment variant control must carry a positive integer weight',
+      ],
+      [
+        'a negative weight',
+        JSON.stringify([
+          { key: 'control', weight: -1 },
+          { key: 'treatment', weight: 1 },
+        ]),
+        'the experiment variant control must carry a positive integer weight',
+      ],
+      [
+        'a fractional weight',
+        JSON.stringify([
+          { key: 'control', weight: 1.5 },
+          { key: 'treatment', weight: 1 },
+        ]),
+        'the experiment variant control must carry a positive integer weight',
+      ],
+      [
+        'a weight written as a string',
+        JSON.stringify([
+          { key: 'control', weight: '1' },
+          { key: 'treatment', weight: 1 },
+        ]),
+        'the experiment variant control must carry a positive integer weight',
+      ],
+      [
+        'an arm with no weight at all',
+        JSON.stringify([{ key: 'control' }, { key: 'treatment', weight: 1 }]),
+        'the experiment variant control must carry a positive integer weight',
+      ],
+    ])('refuses %s', async (_label, variants, message) => {
+      await expect(
+        insert('experiments', experimentRow({ variants })),
+      ).rejects.toThrow(message);
+    });
+
+    it('accepts the arm shapes the guard exists to admit', async () => {
+      await expect(
+        insert(
+          'experiments',
+          experimentRow({
+            variants: JSON.stringify([
+              { key: 'control', weight: 1 },
+              { key: 'layout.dense-2_b', weight: 7 },
+              { key: 'treatment', weight: 100 },
+            ]),
+          }),
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+    });
+
+    it('proves every arm of a redrafted list too', async () => {
+      const id = await newExperiment();
+
+      await expect(
+        pool.query(`UPDATE experiments SET variants = $2 WHERE id = $1`, [
+          id,
+          JSON.stringify([
+            { key: 'control', weight: 1 },
+            { key: 'control', weight: 1 },
+          ]),
+        ]),
+      ).rejects.toThrow('the experiment variant key control is used twice');
+    });
+
     it('freezes the variants once the experiment has started', async () => {
       const id = await newExperiment();
       const setVariants = (variants: string) =>
@@ -264,6 +431,14 @@ describe.skipIf(!db)('experiment schema', () => {
         [id],
       );
       await expect(setVariants(TWO_VARIANTS)).rejects.toThrow(
+        'the variants of an experiment that has started are immutable',
+      );
+      // Two BEFORE UPDATE triggers watch this column and fire in name order,
+      // so a started experiment is refused as immutable rather than critiqued
+      // for the contents of a list it may not carry anyway.
+      await expect(
+        setVariants(JSON.stringify([{ key: 'control', weight: 0 }])),
+      ).rejects.toThrow(
         'the variants of an experiment that has started are immutable',
       );
       // Everything else about a running experiment still moves.
@@ -419,15 +594,83 @@ describe.skipIf(!db)('experiment schema', () => {
     });
 
     it('leaves the erasure delete path open', async () => {
+      const participantId = randomUUID();
+      const id = await newParticipantAssignment(participantId);
+
+      // Immutability stops at UPDATE on purpose: participant erasure has to be
+      // able to remove a subject's assignment outright. It presents the marker
+      // to say so, and the marker names this assignment's own subject.
+      await expect(
+        erasing(
+          participantId,
+          `DELETE FROM experiment_assignments WHERE id = $1`,
+          [id],
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+    });
+
+    it('lets the maintenance purge delete without a marker', async () => {
       const id = await newAssignment(experimentOf[TEAM_A] as string);
 
-      // The trigger is UPDATE-only on purpose: participant erasure has to be
-      // able to remove a subject's assignment outright.
-      const deleted = await pool.query(
-        `DELETE FROM experiment_assignments WHERE id = $1`,
+      await expect(
+        maintenance.query(`DELETE FROM experiment_assignments WHERE id = $1`, [
+          id,
+        ]),
+      ).resolves.toMatchObject({ rowCount: 1 });
+    });
+
+    it('refuses an unmarked delete, so a variant cannot be re-rolled', async () => {
+      const subjectId = `user-${randomUUID().slice(0, 8)}`;
+      const id = await newAssignment(experimentOf[TEAM_A] as string, {
+        subject_id: subjectId,
+      });
+
+      // Without this, deleting and reinserting is a way round the sticky
+      // assignment the unique key and the immutability trigger exist to keep.
+      await expect(
+        pool.query(`DELETE FROM experiment_assignments WHERE id = $1`, [id]),
+      ).rejects.toThrow(
+        'experiment assignments are deleted only by an audited erasure or the maintenance purge',
+      );
+      const survivor = await pool.query<{ variant_key: string }>(
+        `SELECT variant_key FROM experiment_assignments WHERE id = $1`,
         [id],
       );
-      expect(deleted.rowCount).toBe(1);
+      expect(survivor.rows).toEqual([{ variant_key: 'control' }]);
+    });
+
+    it('proves the marker against the assignment it deletes', async () => {
+      const participantId = randomUUID();
+      const target = await newParticipantAssignment(participantId);
+      const bystander = await newParticipantAssignment(randomUUID());
+
+      await expect(
+        erasing(
+          participantId,
+          `DELETE FROM experiment_assignments WHERE id = ANY($1::uuid[])`,
+          [[target, bystander]],
+        ),
+      ).rejects.toThrow(
+        'experiment assignments are deleted only by an audited erasure or the maintenance purge',
+      );
+    });
+
+    it('refuses a marker that names a subject of another kind', async () => {
+      // A researcher's assignment belongs to no participant, so no erasure
+      // may reach it however the marker is spelled.
+      const subjectId = randomUUID();
+      const id = await newAssignment(experimentOf[TEAM_A] as string, {
+        subject_kind: 'user',
+        subject_id: subjectId,
+      });
+
+      await expect(
+        erasing(subjectId, `DELETE FROM experiment_assignments WHERE id = $1`, [
+          id,
+        ]),
+      ).rejects.toThrow(
+        'experiment assignments are deleted only by an audited erasure or the maintenance purge',
+      );
     });
   });
 
@@ -551,16 +794,75 @@ describe.skipIf(!db)('experiment schema', () => {
     });
 
     it('leaves the erasure delete path open', async () => {
+      const participantId = randomUUID();
+      const assignmentId = await newParticipantAssignment(participantId);
+      await newExposure(experimentOf[TEAM_A] as string, assignmentId);
+
+      // An exposure carries no subject of its own, so the marker is proven
+      // through the assignment it was logged against — and the exposures must
+      // go first, because the composite key holds the assignment in place
+      // while any of them survive.
+      await expect(
+        erasing(
+          participantId,
+          `DELETE FROM experiment_exposures WHERE assignment_id = $1`,
+          [assignmentId],
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+    });
+
+    it('refuses an unmarked delete, so an arm cannot be re-rolled', async () => {
       const id = await newExposure(
         experimentOf[TEAM_A] as string,
         assignmentOf[TEAM_A] as string,
       );
 
-      const deleted = await pool.query(
-        `DELETE FROM experiment_exposures WHERE id = $1`,
-        [id],
+      // Deleting the exposures is the first half of re-rolling an assignment:
+      // the composite key only holds the assignment while they exist.
+      await expect(
+        pool.query(`DELETE FROM experiment_exposures WHERE id = $1`, [id]),
+      ).rejects.toThrow(
+        'experiment exposures are deleted only by an audited erasure or the maintenance purge',
       );
-      expect(deleted.rowCount).toBe(1);
+    });
+
+    it('lets the maintenance purge delete without a marker', async () => {
+      const id = await newExposure(
+        experimentOf[TEAM_A] as string,
+        assignmentOf[TEAM_A] as string,
+      );
+
+      await expect(
+        maintenance.query(`DELETE FROM experiment_exposures WHERE id = $1`, [
+          id,
+        ]),
+      ).resolves.toMatchObject({ rowCount: 1 });
+    });
+
+    it("proves the marker against the exposure's own assignment", async () => {
+      const participantId = randomUUID();
+      const assignmentId = await newParticipantAssignment(participantId);
+      const theirs = await newParticipantAssignment(randomUUID());
+      const id = await newExposure(experimentOf[TEAM_A] as string, theirs);
+
+      await expect(
+        erasing(
+          participantId,
+          `DELETE FROM experiment_exposures WHERE id = $1`,
+          [id],
+        ),
+      ).rejects.toThrow(
+        'experiment exposures are deleted only by an audited erasure or the maintenance purge',
+      );
+      // ...and the same marker reaches its own participant's exposures.
+      await newExposure(experimentOf[TEAM_A] as string, assignmentId);
+      await expect(
+        erasing(
+          participantId,
+          `DELETE FROM experiment_exposures WHERE assignment_id = $1`,
+          [assignmentId],
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
     });
   });
 

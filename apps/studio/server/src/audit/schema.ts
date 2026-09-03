@@ -62,12 +62,29 @@ const auditEvents = pgTable(
     details: jsonb('details').notNull(),
   },
   (table) => [
-    // The composite key children pin through. A single-column FK to `id` would
-    // let one team cite another team's event: referential-integrity checks
-    // bypass row-level security, so it would be a cross-team existence oracle.
-    // Additive on an append-only table: no data change, and the FK's NO ACTION
-    // only adds a reason a delete of an audit event fails.
+    // The team-proving key a child with nothing to copy pins through. A
+    // single-column FK to `id` would let one team cite another team's event:
+    // referential-integrity checks bypass row-level security, so it would be a
+    // cross-team existence oracle. Additive on an append-only table: no data
+    // change, and the FK's NO ACTION only adds a reason a delete of an audit
+    // event fails.
     unique().on(table.id, table.teamId),
+    // The alert outbox denormalizes three more of this row's columns so the
+    // dispatcher can route without reading it, and pins through this key
+    // instead. (id, team_id) alone proves the event exists and is the team's,
+    // and says nothing about whether the copies describe it — an alert could
+    // cite a login denial and carry the sequence, type and version of an
+    // export. Binding all five columns makes the copy provable rather than
+    // merely plausible. `id` is already unique on its own, so this index is a
+    // wider spelling of the primary key rather than a new constraint on what
+    // may be written.
+    unique('audit_events_alert_identity_unique').on(
+      table.id,
+      table.teamId,
+      table.sequence,
+      table.eventType,
+      table.eventVersion,
+    ),
     uniqueIndex('audit_events_team_id_sequence_idx').on(
       table.teamId,
       table.sequence,
@@ -315,10 +332,29 @@ const auditAlertOutbox = pgTable(
   (table) => [
     // "Exactly one durable outbox row per alert-eligible committed event."
     uniqueIndex('audit_alert_outbox_audit_event_id_idx').on(table.auditEventId),
+    // Every denormalized column is bound to the event it was copied from, not
+    // just the link: the alert policy decides from `event_type` and
+    // `event_version`, and the dispatcher orders and rate-limits on
+    // `audit_event_sequence`, so a row that cites one event and describes
+    // another would route a real alert under a fabricated description. All
+    // five columns are NOT NULL on both sides, so the key can carry the whole
+    // proof and no trigger is needed.
     foreignKey({
       name: 'audit_alert_outbox_audit_event_fk',
-      columns: [table.auditEventId, table.teamId],
-      foreignColumns: [auditEvents.id, auditEvents.teamId],
+      columns: [
+        table.auditEventId,
+        table.teamId,
+        table.auditEventSequence,
+        table.eventType,
+        table.eventVersion,
+      ],
+      foreignColumns: [
+        auditEvents.id,
+        auditEvents.teamId,
+        auditEvents.sequence,
+        auditEvents.eventType,
+        auditEvents.eventVersion,
+      ],
     }),
     index('audit_alert_outbox_dispatch_idx')
       .on(table.availableAt, table.leaseExpiresAt)

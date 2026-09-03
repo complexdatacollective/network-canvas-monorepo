@@ -1,12 +1,13 @@
 // The asset metadata tables' database-enforced promises: the defaults, every
 // CHECK, the composite foreign key that keeps a pin inside its own tenant, the
-// two sidecar triggers that freeze asset metadata and published pins, and the
-// unreferenced marker the garbage collector moves.
+// three sidecar triggers that freeze asset metadata, freeze a published pin,
+// and hold a published referrer's pin set to the transaction that published
+// it, and the unreferenced marker the garbage collector moves.
 //
 // Every case asserts the rejection Postgres actually raises — the constraint
 // name for a CHECK or foreign-key violation, the message for a trigger — so a
 // guard that stopped firing cannot pass as "no error".
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -29,23 +30,138 @@ type Row = Record<string, unknown>;
 
 const hex64 = () => randomBytes(32).toString('hex');
 
+/** The three referrer kinds `asset_references_published_immutable` freezes. */
+const PUBLISHED_KINDS = [
+  'protocol_version',
+  'template_version',
+  'consent_document',
+] as const;
+
 describe.skipIf(!db)('asset schema', () => {
   let pool: pg.Pool;
   let app: pg.Pool;
   let dispose: () => Promise<void>;
   let tenantA: TenantDb;
 
+  const insertSql = (table: string, row: Row): [string, unknown[]] => [
+    `INSERT INTO ${table} (${Object.keys(row)
+      .map((name) => `"${name}"`)
+      .join(', ')})
+     VALUES (${Object.keys(row)
+       .map((_, i) => `$${i + 1}`)
+       .join(', ')})`,
+    Object.values(row),
+  ];
+
   // The connecting login is the development superuser, so it bypasses the
   // row-level security policies but not the triggers or constraints: exactly
   // the fixture tool these cases want.
-  const insert = (table: string, row: Row) => {
-    const columns = Object.keys(row);
-    return pool.query(
-      `INSERT INTO ${table} (${columns.map((name) => `"${name}"`).join(', ')})
-       VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')})`,
-      Object.values(row),
+  const insert = (table: string, row: Row) =>
+    pool.query(...insertSql(table, row));
+
+  /**
+   * One transaction on its own connection. The insert guard admits a pin on a
+   * published referrer only inside the transaction that published it, so a
+   * case that needs such a pin has to write both together — and a case that
+   * needs the window closed publishes the referrer here and pins afterwards.
+   */
+  async function inTransaction<T>(
+    run: (client: pg.PoolClient) => Promise<T>,
+  ): Promise<T> {
+    const client = await pool.connect();
+    try {
+      await client.query('begin');
+      const result = await run(client);
+      await client.query('commit');
+      return result;
+    } catch (error) {
+      await client.query('rollback');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * A referrer of `kind`, with whatever parent row it needs, and its id.
+   * A protocol version and a template version are published by the insert
+   * that creates them; a consent document is published only when `published`.
+   */
+  async function createReferrer(
+    client: pg.PoolClient,
+    kind: string,
+    { published = true }: { published?: boolean } = {},
+  ): Promise<string> {
+    const id = randomUUID();
+    if (kind === 'protocol_version') {
+      const protocolId = randomUUID();
+      await client.query(
+        ...insertSql('protocols', {
+          id: protocolId,
+          team_id: TEAM_A,
+          name: 'Pinned protocol',
+        }),
+      );
+      await client.query(
+        ...insertSql('protocol_versions', {
+          id,
+          protocol_id: protocolId,
+          team_id: TEAM_A,
+          version_number: 1,
+          version_hash: hex64(),
+          manifest: JSON.stringify({}),
+          schema_version: 8,
+          source_manifest_hash: hex64(),
+        }),
+      );
+      return id;
+    }
+    if (kind === 'template_version') {
+      const templateId = randomUUID();
+      await client.query(
+        ...insertSql('templates', {
+          id: templateId,
+          team_id: TEAM_A,
+          kind: 'protocol',
+          name: 'Pinned template',
+        }),
+      );
+      await client.query(
+        ...insertSql('template_versions', {
+          id,
+          team_id: TEAM_A,
+          template_id: templateId,
+          version_number: 1,
+          manifest: JSON.stringify({}),
+          manifest_hash: hex64(),
+          schema_version: 8,
+        }),
+      );
+      return id;
+    }
+    const studyId = randomUUID();
+    await client.query(
+      ...insertSql('studies', {
+        id: studyId,
+        team_id: TEAM_A,
+        name: 'Consenting study',
+      }),
     );
-  };
+    await client.query(
+      ...insertSql('consent_documents', {
+        id,
+        team_id: TEAM_A,
+        study_id: studyId,
+        version: 1,
+        state: published ? 'published' : 'draft',
+        published_at: published ? new Date() : null,
+        title: 'Information sheet',
+        body: JSON.stringify({}),
+        content_hash: hex64(),
+      }),
+    );
+    return id;
+  }
 
   const assetRow = (overrides: Row = {}): Row => ({
     team_id: TEAM_A,
@@ -79,6 +195,26 @@ describe.skipIf(!db)('asset schema', () => {
     const row = referenceRow(assetHash, overrides);
     await insert('asset_references', row);
     return row;
+  }
+
+  /** Publishes a referrer of `kind` and pins `assetHash` to it, together. */
+  async function pinAtPublication(
+    kind: string,
+    assetHash: string,
+  ): Promise<string> {
+    return inTransaction(async (client) => {
+      const referrerId = await createReferrer(client, kind);
+      await client.query(
+        ...insertSql(
+          'asset_references',
+          referenceRow(assetHash, {
+            referrer_kind: kind,
+            referrer_id: referrerId,
+          }),
+        ),
+      );
+      return referrerId;
+    });
   }
 
   beforeAll(async () => {
@@ -356,18 +492,18 @@ describe.skipIf(!db)('asset schema', () => {
   });
 
   describe('asset_references_published_immutable', () => {
-    it.each(['protocol_version', 'template_version', 'consent_document'])(
+    it.each(PUBLISHED_KINDS)(
       'freezes a %s pin against update and retraction',
       async (referrerKind) => {
         const hash = await newAsset();
-        const pin = await newReference(hash, { referrer_kind: referrerKind });
+        const referrerId = await pinAtPublication(referrerKind, hash);
 
         await expect(
           pool.query(
             `UPDATE asset_references SET created_at = now()
              WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = $3
                AND referrer_id = $4`,
-            [TEAM_A, hash, referrerKind, pin.referrer_id],
+            [TEAM_A, hash, referrerKind, referrerId],
           ),
         ).rejects.toThrow('published asset references are immutable');
         await expect(
@@ -375,7 +511,7 @@ describe.skipIf(!db)('asset schema', () => {
             `DELETE FROM asset_references
              WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = $3
                AND referrer_id = $4`,
-            [TEAM_A, hash, referrerKind, pin.referrer_id],
+            [TEAM_A, hash, referrerKind, referrerId],
           ),
         ).rejects.toThrow('published asset references are immutable');
       },
@@ -394,6 +530,105 @@ describe.skipIf(!db)('asset schema', () => {
           [TEAM_A, hash, referrerKind, pin.referrer_id],
         );
         expect(deleted.rowCount).toBe(1);
+      },
+    );
+  });
+
+  // The other half of the same promise. Freezing only UPDATE and DELETE would
+  // leave a pin insertable after publication — and then unretractable, because
+  // the trigger above refuses to remove it.
+  describe('asset_references_insert_frozen', () => {
+    it.each(PUBLISHED_KINDS)(
+      'admits a %s pin written in the transaction that publishes it',
+      async (referrerKind) => {
+        const hash = await newAsset();
+        const referrerId = await pinAtPublication(referrerKind, hash);
+
+        const pinned = await pool.query<{ n: number }>(
+          `SELECT count(*)::int AS n FROM asset_references
+           WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = $3
+             AND referrer_id = $4`,
+          [TEAM_A, hash, referrerKind, referrerId],
+        );
+        expect(pinned.rows[0]).toEqual({ n: 1 });
+      },
+    );
+
+    it.each(PUBLISHED_KINDS)(
+      'refuses a %s pin written after that transaction commits',
+      async (referrerKind) => {
+        const hash = await newAsset();
+        const referrerId = await inTransaction((client) =>
+          createReferrer(client, referrerKind),
+        );
+
+        await expect(
+          insert(
+            'asset_references',
+            referenceRow(hash, {
+              referrer_kind: referrerKind,
+              referrer_id: referrerId,
+            }),
+          ),
+        ).rejects.toThrow(
+          `an asset reference to a published ${referrerKind} may only be written in the transaction that publishes it`,
+        );
+      },
+    );
+
+    it.each(PUBLISHED_KINDS)(
+      'refuses a %s pin that names no such referrer',
+      async (referrerKind) => {
+        // Such a pin could never be retracted either, and admitting it would
+        // let a pin be written before the version it claims to belong to.
+        const hash = await newAsset();
+
+        await expect(
+          insert(
+            'asset_references',
+            referenceRow(hash, {
+              referrer_kind: referrerKind,
+              referrer_id: randomUUID(),
+            }),
+          ),
+        ).rejects.toThrow(
+          `an asset reference must name a ${referrerKind} of its own team`,
+        );
+      },
+    );
+
+    it('lets a draft consent document gain a pin at any time', async () => {
+      // A draft is still being written, and its pins are not yet frozen; the
+      // window closes when the document publishes.
+      const hash = await newAsset();
+      const documentId = await inTransaction((client) =>
+        createReferrer(client, 'consent_document', { published: false }),
+      );
+
+      await expect(
+        insert(
+          'asset_references',
+          referenceRow(hash, {
+            referrer_kind: 'consent_document',
+            referrer_id: documentId,
+          }),
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+    });
+
+    it.each(['section', 'message_template'])(
+      'leaves a %s pin free to be written at any time',
+      async (referrerKind) => {
+        // Neither kind's pins are frozen, so there is no frozen set to
+        // protect and nothing for the insert guard to prove.
+        const hash = await newAsset();
+
+        await expect(
+          insert(
+            'asset_references',
+            referenceRow(hash, { referrer_kind: referrerKind }),
+          ),
+        ).resolves.toMatchObject({ rowCount: 1 });
       },
     );
   });

@@ -765,6 +765,36 @@ describe.skipIf(!db)('the seeded dataset', () => {
     ).resolves.toBeGreaterThan(0);
   });
 
+  it('leaves every webhook delivery one its own subscription asked for', async () => {
+    // The corpus still covers both subscription states, and reaches the
+    // disabled one the way the dispatcher does: deliveries first, disablement
+    // afterwards. Written the other way round, none of those deliveries could
+    // exist — webhook_deliveries_subscription_wants_event admits a delivery
+    // only while its subscription is active and only for a type it asks for.
+    const states = await pool.query<{ state: string }>(
+      `select distinct state from webhook_subscriptions order by state`,
+    );
+    expect(states.rows.map((row) => row.state)).toEqual(['active', 'disabled']);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from webhook_deliveries d
+         join webhook_subscriptions s
+           on s.id = d.subscription_id and s.team_id = d.team_id
+         where not (d.event_type = any(s.event_types))`,
+      ),
+    ).resolves.toBe(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from webhook_deliveries d
+         join webhook_subscriptions s
+           on s.id = d.subscription_id and s.team_id = d.team_id
+         where s.state = 'disabled'`,
+      ),
+    ).resolves.toBeGreaterThan(0);
+  });
+
   it('appends a dense audit sequence per team and no unbacked outbox rows', async () => {
     const sequences = await pool.query<{ team_id: string; ok: boolean }>(
       `select team_id,

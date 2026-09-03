@@ -201,6 +201,40 @@ CREATE OR REPLACE TRIGGER webhook_delivery_payload_immutable
   )
   EXECUTE FUNCTION webhook_delivery_payload_is_immutable();
 
+-- The composite key proves the subscription is the team's. It cannot prove
+-- the subscription still wants the delivery, and both halves of that matter:
+-- a disabled endpoint is one the retry policy gave up on, and an event type
+-- outside the subscriber's filter is one they never asked for. A payload is
+-- thin, but it is still a team's resource ids leaving the instance, so
+-- queuing either is an egress the subscriber did not consent to — and the
+-- payload trigger above then freezes it in place.
+--
+-- AFTER the row, so the length and payload checks and the subscription key
+-- report first and this speaks only to a well-formed delivery addressed to a
+-- real subscription of its own team.
+CREATE OR REPLACE FUNCTION webhook_delivery_subscription_wants_event() RETURNS trigger AS $$
+DECLARE
+  subscription_state text;
+  subscribed_types text[];
+BEGIN
+  SELECT s.state, s.event_types INTO subscription_state, subscribed_types
+  FROM webhook_subscriptions s
+  WHERE s.id = NEW.subscription_id AND s.team_id = NEW.team_id;
+
+  IF subscription_state IS DISTINCT FROM 'active' THEN
+    RAISE EXCEPTION 'a webhook delivery may only be queued for an active subscription';
+  END IF;
+  IF NOT (NEW.event_type = ANY(subscribed_types)) THEN
+    RAISE EXCEPTION 'the subscription does not ask for % events', NEW.event_type;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER webhook_deliveries_subscription_wants_event
+  AFTER INSERT ON webhook_deliveries
+  FOR EACH ROW EXECUTE FUNCTION webhook_delivery_subscription_wants_event();
+
 ${tenantTablesSql(['webhook_subscriptions', 'webhook_deliveries'])}
 
 -- Commands enqueue a delivery inside their audited transaction; only the

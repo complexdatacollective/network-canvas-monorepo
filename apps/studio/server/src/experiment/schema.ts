@@ -11,7 +11,13 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-import { teamIsolationPolicy, tenantTablesSql } from '@codaco/studio-sync/rls';
+import {
+  teamIsolationPolicy,
+  tenantTablesSql,
+  TENANT_ROLES,
+} from '@codaco/studio-sync/rls';
+
+import { ERASURE_GUC } from '../study/schema.ts';
 
 // The minimum that makes the grant's usability experiments analysable,
 // explicitly scoped to the team's own evaluation activities rather than a
@@ -46,6 +52,10 @@ const experiments = pgTable(
           AND (${table.state} = 'draft') = (${table.startedAt} IS NULL)
           AND (${table.state} = 'stopped') = (${table.stoppedAt} IS NOT NULL)`,
     ),
+    // The container only. A CHECK cannot call the function that would inspect
+    // the elements, because drizzle creates this table — and its constraints —
+    // before the sidecar runs, so `experiments_variants_well_formed` proves
+    // every element instead.
     check(
       'experiments_variants_check',
       sql`jsonb_typeof(${table.variants}) = 'array'
@@ -183,6 +193,67 @@ CREATE OR REPLACE TRIGGER experiment_exposures_immutable
   BEFORE UPDATE ON experiment_exposures
   FOR EACH ROW EXECUTE FUNCTION experiment_assignments_are_immutable();
 
+-- Immutability that stopped at UPDATE would not be immutability. The blanket
+-- tenant grant includes DELETE, so code running as ${TENANT_ROLES.app} could
+-- delete a subject's exposures, delete the assignment they proved, and insert
+-- a new one on another arm — re-rolling a sticky assignment through the one
+-- verb the triggers above leave open, and invalidating every analysis that
+-- cites it. Two delete paths are exempt, and only two: the maintenance purge,
+-- and the audited participant erasure, which runs as ${TENANT_ROLES.app} too
+-- and so presents the transaction-scoped marker instead. The marker is proven
+-- against the row's own subject, so it authorizes deleting exactly one
+-- participant's assignments and nothing else.
+--
+-- A subject of any other kind is never erasable: a researcher's assignment
+-- (\`user\`) and an anonymous visitor's (\`session\`) belong to no participant,
+-- so no marker can name them.
+CREATE OR REPLACE FUNCTION experiment_assignments_are_deletable() RETURNS trigger AS $$
+DECLARE
+  marker text := NULLIF(current_setting('${ERASURE_GUC}', true), '');
+BEGIN
+  IF current_user = '${TENANT_ROLES.maintenance}' THEN
+    RETURN OLD;
+  END IF;
+  IF marker IS NOT NULL
+     AND OLD.subject_kind = 'participant'
+     AND OLD.subject_id = marker THEN
+    RETURN OLD;
+  END IF;
+  RAISE EXCEPTION 'experiment assignments are deleted only by an audited erasure or the maintenance purge';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER experiment_assignments_deletable
+  BEFORE DELETE ON experiment_assignments
+  FOR EACH ROW EXECUTE FUNCTION experiment_assignments_are_deletable();
+
+-- The same promise for the exposures, proven through the assignment they
+-- were logged against: an exposure carries no subject of its own, and erasure
+-- must remove them before the assignment, because the composite key holds the
+-- assignment in place while any of its exposures survive.
+CREATE OR REPLACE FUNCTION experiment_exposures_are_deletable() RETURNS trigger AS $$
+DECLARE
+  marker text := NULLIF(current_setting('${ERASURE_GUC}', true), '');
+BEGIN
+  IF current_user = '${TENANT_ROLES.maintenance}' THEN
+    RETURN OLD;
+  END IF;
+  IF marker IS NOT NULL AND EXISTS (
+    SELECT 1 FROM experiment_assignments a
+    WHERE a.id = OLD.assignment_id AND a.team_id = OLD.team_id
+      AND a.subject_kind = 'participant'
+      AND a.subject_id = marker
+  ) THEN
+    RETURN OLD;
+  END IF;
+  RAISE EXCEPTION 'experiment exposures are deleted only by an audited erasure or the maintenance purge';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER experiment_exposures_deletable
+  BEFORE DELETE ON experiment_exposures
+  FOR EACH ROW EXECUTE FUNCTION experiment_exposures_are_deletable();
+
 -- An assignment's arm must be one the experiment defines: the variants array
 -- is shape-checked, and nothing else would tie \`variant_key\` to it. AFTER
 -- the row, so the key's own shape check and the experiment key report first
@@ -219,6 +290,67 @@ CREATE OR REPLACE TRIGGER experiments_variants_frozen
   FOR EACH ROW
   WHEN (OLD.state <> 'draft' AND NEW.variants IS DISTINCT FROM OLD.variants)
   EXECUTE FUNCTION experiment_variants_are_frozen();
+
+-- Both of the guards above read the variant list as a list of arms, and
+-- \`experiments_variants_check\` cannot make it one: bounding the array and its
+-- length is all a CHECK can do here, so on its own it admits [null, null], two
+-- arms under one key, and weights of zero or less. Each is a silent corruption
+-- of the randomiser that reads them — a null arm has no key to assign,
+-- duplicate keys make two arms indistinguishable in every analysis, and a
+-- non-positive weight either removes an arm the design says exists or makes
+-- the weighted draw meaningless. The elements are proven in a trigger rather
+-- than the CHECK because drizzle creates the table, and its constraints,
+-- before this sidecar defines any function a CHECK could call.
+--
+-- BEFORE the row, because it decides whether the row may exist at all, and it
+-- returns early on a non-array so \`experiments_variants_check\` still reports
+-- the container's own shape instead of being masked by an element error.
+-- Triggers fire in name order, so on an UPDATE \`experiments_variants_frozen\`
+-- has already refused a started experiment before this one reads anything.
+CREATE OR REPLACE FUNCTION experiment_variants_are_well_formed() RETURNS trigger AS $$
+DECLARE
+  variant jsonb;
+  variant_key text;
+  seen text[] := ARRAY[]::text[];
+  weight numeric;
+BEGIN
+  IF jsonb_typeof(NEW.variants) <> 'array' THEN
+    RETURN NEW;
+  END IF;
+
+  FOR variant IN SELECT jsonb_array_elements(NEW.variants) LOOP
+    IF jsonb_typeof(variant) <> 'object' THEN
+      RAISE EXCEPTION 'every experiment variant must be an object carrying a key and a weight';
+    END IF;
+
+    variant_key := variant->>'key';
+    -- The same shape \`experiment_assignments_lengths_check\` demands of the
+    -- \`variant_key\` that has to match one of these.
+    IF coalesce(variant_key, '') !~ '^[a-z][a-z0-9_.-]{0,63}$' THEN
+      RAISE EXCEPTION 'the experiment variant key % is not a well-formed key', coalesce(variant_key, '(missing)');
+    END IF;
+    IF variant_key = ANY(seen) THEN
+      RAISE EXCEPTION 'the experiment variant key % is used twice', variant_key;
+    END IF;
+    seen := seen || variant_key;
+
+    -- IS DISTINCT FROM, not <>: a missing weight makes jsonb_typeof NULL, and
+    -- plpgsql treats a NULL condition as false, so <> would let it through.
+    IF jsonb_typeof(variant->'weight') IS DISTINCT FROM 'number' THEN
+      RAISE EXCEPTION 'the experiment variant % must carry a positive integer weight', variant_key;
+    END IF;
+    weight := (variant->>'weight')::numeric;
+    IF weight <= 0 OR weight <> trunc(weight) THEN
+      RAISE EXCEPTION 'the experiment variant % must carry a positive integer weight', variant_key;
+    END IF;
+  END LOOP;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER experiments_variants_well_formed
+  BEFORE INSERT OR UPDATE ON experiments
+  FOR EACH ROW EXECUTE FUNCTION experiment_variants_are_well_formed();
 
 ${tenantTablesSql(['experiments', 'experiment_assignments', 'experiment_exposures'])}
 `;

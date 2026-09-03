@@ -335,6 +335,10 @@ describe.skipIf(!db)('api token schema', () => {
     for (const assignment of [
       `revoked_at = now()`,
       `revoked_at = NULL, revoked_by_user_id = NULL`,
+      // The accountable name freezes with the timestamp. Left out, it stays
+      // rewritable on a revoked token, and api_tokens_revocation_check only
+      // keeps the pair non-null — so it could be reassigned to anyone.
+      `revoked_by_user_id = 'user-someone-else'`,
     ]) {
       await expect(
         pool.query(`UPDATE api_tokens SET ${assignment} WHERE id = $1`, [

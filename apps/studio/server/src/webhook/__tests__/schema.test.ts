@@ -1,8 +1,9 @@
 // The webhook module's database-enforced promises: the https-only callback
 // URL, the bounded event filter, the disable/failure bookkeeping, the
 // Standard Webhooks dedup key, the composite foreign keys that keep a
-// subscription and its deliveries inside one team, and the sidecar trigger
-// that freezes a queued delivery's payload and addressing.
+// subscription and its deliveries inside one team, and the two sidecar
+// triggers that freeze a queued delivery's payload and addressing and admit a
+// delivery only for an active subscription that asks for its event type.
 //
 // Every case asserts the rejection Postgres actually raises — the constraint
 // name for a CHECK, unique or foreign-key violation, the message for a trigger
@@ -578,6 +579,60 @@ describe.skipIf(!db)('webhook schema', () => {
           'is not present in table "webhook_subscriptions"',
         ),
       });
+    });
+  });
+
+  // The key proves the subscription is the team's and stops there. These two
+  // are what makes the queued delivery one the subscriber actually asked for,
+  // and the payload trigger above then freezes whatever gets in.
+  describe('webhook_deliveries_subscription_wants_event', () => {
+    it('refuses a delivery queued for a disabled subscription', async () => {
+      const id = await newSubscription();
+      await pool.query(
+        `UPDATE webhook_subscriptions
+         SET state = 'disabled', disabled_at = now() WHERE id = $1`,
+        [id],
+      );
+
+      await expect(newDelivery(id)).rejects.toThrow(
+        'a webhook delivery may only be queued for an active subscription',
+      );
+    });
+
+    it('refuses an event type the subscription does not ask for', async () => {
+      const id = await newSubscription({
+        event_types: ['interview.completed', 'participant.enrolled'],
+      });
+
+      await expect(
+        newDelivery(id, { event_type: 'consent.withdrawn' }),
+      ).rejects.toThrow(
+        'the subscription does not ask for consent.withdrawn events',
+      );
+      // Every type in the filter is admitted, not just the first.
+      await expect(
+        newDelivery(id, { event_type: 'participant.enrolled' }),
+      ).resolves.toMatch(/^[0-9a-f-]{36}$/);
+    });
+
+    it('lets a re-enabled subscription receive deliveries again', async () => {
+      const id = await newSubscription();
+      await pool.query(
+        `UPDATE webhook_subscriptions
+         SET state = 'disabled', disabled_at = now() WHERE id = $1`,
+        [id],
+      );
+      await expect(newDelivery(id)).rejects.toThrow(
+        'a webhook delivery may only be queued for an active subscription',
+      );
+
+      await pool.query(
+        `UPDATE webhook_subscriptions
+         SET state = 'active', disabled_at = NULL, consecutive_failures = 0
+         WHERE id = $1`,
+        [id],
+      );
+      await expect(newDelivery(id)).resolves.toMatch(/^[0-9a-f-]{36}$/);
     });
   });
 });

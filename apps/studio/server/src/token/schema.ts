@@ -140,7 +140,18 @@ CREATE OR REPLACE TRIGGER api_token_authority_immutable
     OR NEW.expires_at IS DISTINCT FROM OLD.expires_at
     OR NEW.created_by_user_id IS DISTINCT FROM OLD.created_by_user_id
     OR NEW.created_at IS DISTINCT FROM OLD.created_at
-    OR (OLD.revoked_at IS NOT NULL AND NEW.revoked_at IS DISTINCT FROM OLD.revoked_at)
+    -- Revocation is evidence of who withdrew the token's authority and when,
+    -- so both columns freeze together. Freezing only the timestamp would leave
+    -- the accountable name rewritable on an already-revoked token, and
+    -- api_tokens_revocation_check keeps the pair non-null, so it could be
+    -- reassigned to anyone.
+    OR (
+      OLD.revoked_at IS NOT NULL
+      AND (
+        NEW.revoked_at IS DISTINCT FROM OLD.revoked_at
+        OR NEW.revoked_by_user_id IS DISTINCT FROM OLD.revoked_by_user_id
+      )
+    )
   )
   EXECUTE FUNCTION api_token_authority_is_immutable();
 ${tenantTablesSql(['api_tokens'])}
