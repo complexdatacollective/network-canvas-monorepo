@@ -71,7 +71,8 @@ function AccordionTrigger({
       )}
       {...props}
     >
-      {children}
+      {/* The trigger is a flex container, so the cap trim needs a box of its own. */}
+      <span className="text-box-trim">{children}</span>
       <ChevronDown className="transition-transform [[data-panel-open]>&]:rotate-180" />
     </BaseAccordion.Trigger>
   );

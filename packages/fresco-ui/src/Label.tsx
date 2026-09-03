@@ -36,9 +36,10 @@ const Label = React.forwardRef<
       ref={ref}
       htmlFor={htmlFor}
       className={cx(
-        // inline-block is a block container, so the trim applies to the label
-        // itself: the gap to the control below starts at its baseline.
-        'text-box-trim inline-block',
+        // inline-block is a block container, so headingVariants' cap trim
+        // applies to the label itself: the gap to the control below starts
+        // at its baseline.
+        'inline-block',
         headingVariants({ level: 'label', margin: 'none' }),
         'peer-disabled:opacity-70',
         className,

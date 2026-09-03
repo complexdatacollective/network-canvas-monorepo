@@ -52,7 +52,7 @@ function AppActions({ app }: { app: WebApp }) {
             app.treatment === 'fresco' ? 'bg-slate-blue' : 'bg-neon-coral',
           )}
         >
-          {t(action.labelKey)}
+          <span className="text-box-trim">{t(action.labelKey)}</span>
           <ExternalLink aria-hidden className="size-4" />
         </ButtonLink>
       ))}
@@ -90,7 +90,7 @@ function PlatformActions({ app }: { app: ClassicApp }) {
               className="bg-surface/70 hover:bg-surface rounded-full"
             >
               <PlatformIcon aria-hidden className="size-4" />
-              {label}
+              <span className="text-box-trim">{label}</span>
               <ExternalLink aria-hidden className="size-3.5" />
             </ButtonLink>
           );

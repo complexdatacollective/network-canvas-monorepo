@@ -9,7 +9,13 @@ export const headingVariants = cva({
   // one unbroken token longer than its container. Without it such a heading
   // overflows its box rather than breaking — inside a dialog, straight past the
   // clipped edge (#1392).
-  base: 'font-heading scroll-m-20 text-pretty wrap-break-word',
+  // `text-box-trim`: the box is the caps and baseline, not the line box, so
+  // spacing around a heading starts at its cap line and a label centres on
+  // its caps beside a control. It takes effect on block containers, inline-
+  // blocks, and flex items; a flex container carrying these classes (an
+  // accordion trigger, a button-styled link) has to trim a span around its
+  // text instead.
+  base: 'font-heading text-box-trim scroll-m-20 text-pretty wrap-break-word',
   variants: {
     level: {
       h1: 'text-3xl font-bold',
@@ -60,13 +66,7 @@ const Heading = React.forwardRef<HTMLHeadingElement, HeadingProps>(
       render,
       ref,
       props: {
-        // Trimmed to its caps and baseline so the margin above starts at the
-        // cap line and the margin below at the baseline, instead of at the
-        // line box's invisible leading.
-        className: cx(
-          'text-box-trim',
-          headingVariants({ variant, level, margin, className }),
-        ),
+        className: cx(headingVariants({ variant, level, margin, className })),
         ...props,
       },
       defaultTagName: levelToTagName[level],

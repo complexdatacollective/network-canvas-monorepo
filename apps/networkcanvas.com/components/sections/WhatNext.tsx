@@ -24,7 +24,7 @@ export function WhatNext() {
           color="default"
           className="bg-neon-coral mt-6 rounded-full text-white"
         >
-          {t('documentation.action')}
+          <span className="text-box-trim">{t('documentation.action')}</span>
         </ButtonLink>
       ),
     },
@@ -40,7 +40,7 @@ export function WhatNext() {
           color="default"
           className="bg-sea-green mt-6 rounded-full text-white"
         >
-          {t('community.action')}
+          <span className="text-box-trim">{t('community.action')}</span>
         </ButtonLink>
       ),
     },
@@ -63,7 +63,7 @@ export function WhatNext() {
           color="default"
           className="bg-mustard mt-6 rounded-full text-white"
         >
-          {t('collaboration.action')}
+          <span className="text-box-trim">{t('collaboration.action')}</span>
         </ButtonLink>
       ),
     },

@@ -814,7 +814,7 @@ export function DeckCardFooterButton({
       )}
     >
       {icon}
-      {children}
+      <span className="text-box-trim">{children}</span>
     </button>
   );
 }

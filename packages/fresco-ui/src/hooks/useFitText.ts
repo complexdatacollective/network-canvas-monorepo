@@ -19,20 +19,6 @@ const overflows = (element: HTMLElement) =>
   element.scrollHeight - element.clientHeight > HEIGHT_TOLERANCE ||
   element.scrollWidth > element.clientWidth;
 
-/**
- * A cap-trimmed label (`text-box-trim`) is measured with the trim switched
- * off. Chromium reports the untrimmed line boxes as the trimmed block's
- * scrollable overflow, so the label would otherwise read as one half-leading
- * "over" on every rung, whether or not a line is actually hidden. The class
- * list is untouched; the override is inline for the read and removed with
- * `restoreTrim` once the ladder has settled, so what ends up painted is
- * still trimmed.
- */
-const suspendTrim = (element: HTMLElement) =>
-  element.style.setProperty('text-box', 'none');
-const restoreTrim = (element: HTMLElement) =>
-  element.style.removeProperty('text-box');
-
 type Fitter = {
   element: HTMLElement;
   steps: readonly string[];
@@ -74,7 +60,6 @@ function flush() {
     // Write phase — no measurements taken, so layout is invalidated once.
     for (const state of searching) {
       state.fitter.element.className = state.fitter.steps[rung]!;
-      suspendTrim(state.fitter.element);
       state.stepIndex = rung;
     }
 
@@ -85,7 +70,6 @@ function flush() {
   }
 
   for (const state of states) {
-    restoreTrim(state.fitter.element);
     state.fitter.commit(state.stepIndex, !state.fits);
   }
 }

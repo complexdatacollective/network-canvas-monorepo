@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   installLabelMetrics,
@@ -126,61 +126,4 @@ describe('Node label fitting', () => {
       );
     },
   );
-});
-
-describe('Node label fitting under the cap trim', () => {
-  // Chromium counts a cap-trimmed label's untrimmed line boxes as scrollable
-  // overflow, so every rung would measure as overflowing. The ladder switches
-  // the trim off inline for its reads and takes the override away again once
-  // it has settled, so the painted label is still trimmed.
-  it('measures with the trim switched off and paints with it on', async () => {
-    const events: string[] = [];
-    const scrollHeight = Object.getOwnPropertyDescriptor(
-      HTMLSpanElement.prototype,
-      'scrollHeight',
-    )!;
-    Object.defineProperty(HTMLSpanElement.prototype, 'scrollHeight', {
-      configurable: true,
-      get(this: HTMLElement) {
-        events.push('read');
-        return (scrollHeight.get as (this: HTMLElement) => number).call(this);
-      },
-    });
-    const setProperty = vi
-      .spyOn(CSSStyleDeclaration.prototype, 'setProperty')
-      .mockImplementation(
-        function (this: CSSStyleDeclaration, property, value) {
-          if (property === 'text-box') events.push(`set:${value}`);
-        },
-      );
-    const removeProperty = vi
-      .spyOn(CSSStyleDeclaration.prototype, 'removeProperty')
-      .mockImplementation(function (this: CSSStyleDeclaration, property) {
-        if (property === 'text-box') events.push('remove');
-        return '';
-      });
-
-    try {
-      render(<Node label="Christophers Wisozk" />);
-      const label = labelOf('Christophers Wisozk');
-      await waitFor(() => expect(label).toHaveClass('text-sm'));
-
-      // The ladder may run more than once (fonts settling, a re-render), so
-      // check each pass: every read happens while the trim is off, and each
-      // pass ends by putting it back.
-      const trace = events.join(' ');
-      expect(events.filter((event) => event === 'read')).not.toHaveLength(0);
-      let suspended = false;
-      for (const event of events) {
-        if (event === 'set:none') suspended = true;
-        else if (event === 'remove') suspended = false;
-        else expect(suspended, `read while trimmed: ${trace}`).toBe(true);
-      }
-      expect(events.at(-1), trace).toBe('remove');
-      expect(label).toHaveClass('text-box-trim');
-    } finally {
-      setProperty.mockRestore();
-      removeProperty.mockRestore();
-    }
-  });
 });

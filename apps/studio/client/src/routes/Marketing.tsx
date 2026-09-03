@@ -59,13 +59,13 @@ export default function Marketing() {
               className={buttonVariants({ color: 'primary' })}
               to="/sign-up"
             >
-              Create an account
+              <span className="text-box-trim">Create an account</span>
             </Link>
             <Link
               className={buttonVariants({ variant: 'outline' })}
               to="/sign-in"
             >
-              Sign in
+              <span className="text-box-trim">Sign in</span>
             </Link>
             <Link className={buttonVariants({ variant: 'link' })} to="/pricing">
               See what a plan includes

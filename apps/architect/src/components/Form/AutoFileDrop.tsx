@@ -62,7 +62,7 @@ const documentationMessage = (
         className={buttonVariants()}
         unstyled
       >
-        View documentation
+        <span className="text-box-trim">View documentation</span>
       </ExternalLink>
     </Paragraph>
   </>

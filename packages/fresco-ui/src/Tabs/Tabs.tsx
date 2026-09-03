@@ -182,10 +182,10 @@ function Tab({
       className={cx(
         'font-heading focusable relative z-10 flex cursor-pointer items-center gap-3',
         'border-0 bg-transparent px-4 py-3 text-sm leading-tight font-extrabold',
-        // The label is cap-trimmed, so it no longer sets the tab's height; this
-        // floor is the height its line box used to give (leading-tight + py-3),
-        // so text-only rails keep their size and icon rails stay icon-sized.
-        'min-h-[calc(1.25em+(--spacing(6)))]',
+        // The label is cap-trimmed, so it no longer sets the tab's height. The
+        // floor is the height a tab with an icon has (size-5 + py-3), so a
+        // text-only rail lines up with an icon rail instead of running short.
+        'min-h-11',
         layout === 'side' && 'w-full text-left',
         layout === 'top' && 'shrink-0 justify-center text-center',
         TAB_RADIUS,
