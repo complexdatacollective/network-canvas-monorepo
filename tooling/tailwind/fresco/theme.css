@@ -41,6 +41,25 @@
 
   --text-*: initial; /* Reset TW theme defaults */
 
+  /*
+   * One step below `xs`, for the small uppercase labels that qualify a value
+   * rather than being one — the kicker over a switcher's entity name, and
+   * anything else that has to read as a label at a glance without competing
+   * with what it labels.
+   *
+   * Its ceiling sits just under `xs`'s floor, so the two never converge at
+   * any viewport: the step is a real one at every size, not only at the
+   * extremes. Tracking is wider than `xs` because the sizes this small are
+   * almost always set in caps, where the default fit is too tight to read.
+   */
+  --text-2xs: clamp(
+    calc(0.512 * var(--theme-root-size)),
+    calc(0.586 * var(--theme-root-size) + calc(0.226 * var(--theme-vw, 1vw))),
+    calc(0.632 * var(--theme-root-size))
+  );
+  --text-2xs--line-height: 1.9;
+  --text-2xs--letter-spacing: 0.06em;
+
   --text-xs: clamp(
     calc(0.64 * var(--theme-root-size)),
     calc(0.733 * var(--theme-root-size) + calc(0.283 * var(--theme-vw, 1vw))),

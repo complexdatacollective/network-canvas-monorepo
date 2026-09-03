@@ -33,14 +33,19 @@ import { TEAM_ROLES, type TeamRole } from '@codaco/studio-rpc';
 import { rpcClient } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
 import { studioEmailPattern } from '../lib/emailValidation.ts';
-import { canManageTeam, teamRoles } from '../lib/teamRoles.ts';
+import {
+  canManageTeam,
+  roleLabel,
+  teamRoles,
+  teamRolesLabel,
+} from '../lib/teamRoles.ts';
 
 /**
  * Membership and invitations, at `/team/$teamId/members` (§5.2, #1256).
  *
- * The other half of §5.4's split of the shipped team workspace. It is the same
+ * The other half of §5.4's split of the shipped team screen. It is the same
  * screen, at the address the team sidebar has always pointed at, with the
- * cross-coordination the workspace needed gone: nothing on this route creates
+ * cross-coordination that screen needed gone: nothing on this route creates
  * studies or switches teams, so a mutation here only has to block the other
  * mutations here.
  *
@@ -158,26 +163,6 @@ const TEAM_ROLE_OPTIONS = TEAM_ROLES.map((role) => ({
 
 function isTeamRole(value: unknown): value is TeamRole {
   return TEAM_ROLES.some((role) => role === value);
-}
-
-function roleLabel(role: string): string {
-  switch (role) {
-    case 'owner':
-      return 'Owner';
-    case 'admin':
-      return 'Admin';
-    case 'member':
-      return 'Member';
-    default:
-      return role;
-  }
-}
-
-function teamRolesLabel(role: string): string {
-  const roles = teamRoles(role);
-  return roles.length === 0
-    ? 'Unassigned'
-    : roles.map((entry) => roleLabel(entry)).join(', ');
 }
 
 export default function TeamMembers({ teamId }: { teamId: string }) {

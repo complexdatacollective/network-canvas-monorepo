@@ -293,7 +293,7 @@ vi.mock('../../lib/api.ts', () => ({
   },
 }));
 
-/** The two halves §5.4 split the shipped team workspace into. */
+/** The two halves §5.4 split the shipped team screen into. */
 const STUDIES = `/team/${fixtures.TEAM_A.id}`;
 const MEMBERS = `/team/${fixtures.TEAM_A.id}/members`;
 
@@ -366,7 +366,7 @@ beforeEach(() => {
   authState.refetchActiveMember.mockResolvedValue(undefined);
 });
 /**
- * §5.4's split of the shipped team workspace, asserted at the two addresses it
+ * §5.4's split of the shipped team screen, asserted at the two addresses it
  * landed on: `/team/$teamId`, the team's studies, and `/team/$teamId/members`,
  * its membership and invitations.
  *
