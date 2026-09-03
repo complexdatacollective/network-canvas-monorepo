@@ -272,14 +272,11 @@ export default function BooleanField(props: BooleanFieldProps) {
               <span
                 className={cx(
                   headingVariants({ level: 'label', margin: 'none' }),
-                  // The card aligns its items to the start, and the label is
-                  // cap-trimmed, so its caps would sit on the indicator's top
-                  // edge. Half of what the h-6 indicator has over the caps
-                  // centres a one-line label on it; a longer label still
-                  // starts beside it. Padding, because `margin: 'none'` above
-                  // is an important `m-0`; only where the trim applies, since
-                  // the line box centres itself.
-                  'text-box-trimmed:pt-1.5',
+                  // The card aligns its items to the start, so the label's
+                  // first line has to stay as tall as the h-6 indicator to
+                  // sit level with it: the label keeps its line box and
+                  // centres its caps in it instead of trimming down to them.
+                  'text-box-trim-keep-height',
                 )}
               >
                 <RenderMarkdown>{option.label}</RenderMarkdown>

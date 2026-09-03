@@ -126,22 +126,16 @@ export default function Dialog({
         {...rest}
       >
         <DialogHeader>
-          {/*
-            The close button shares a row with the title and centres on it.
-            The title is cap-trimmed, so its box is its caps; aligned to the
-            start it would sit high against the button, and aligned across
-            the whole header it would drift whenever `header` adds content.
-          */}
-          <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
             <BaseDialog.Title
               id={titleId}
-              render={<Heading level="h2" margin="none" className="min-w-0" />}
+              render={<Heading level="h2" margin="none" />}
             >
               {title}
             </BaseDialog.Title>
-            {dismissible && <BaseDialog.Close render={<CloseButton />} />}
+            {header && <div className="mt-4">{header}</div>}
           </div>
-          {header && <div className="mt-4">{header}</div>}
+          {dismissible && <BaseDialog.Close render={<CloseButton />} />}
         </DialogHeader>
         <DialogContent labelledBy={title ? titleId : undefined}>
           {description && (
@@ -165,7 +159,7 @@ const DialogHeader = ({ children }: { children: React.ReactNode }) => {
   return (
     <div
       className={cx(
-        'mb-4 shrink-0',
+        'mb-4 flex shrink-0 items-start justify-between gap-2',
         surfaceSpacingVariants({ section: 'header' }),
       )}
     >

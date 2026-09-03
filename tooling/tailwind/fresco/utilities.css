@@ -59,33 +59,60 @@
 
 /**
  * text-box-trim: size a text box by its cap height and baseline instead of its
- * line box, so a label centres on its caps inside a control and a heading's
- * margin starts at its cap line.
+ * line box, so a heading's margin starts at its cap line and a label centres
+ * on its caps inside a control.
  *
- * Only block containers and inline-blocks take it. On a flex or inline-flex
- * control put it on a span around the label — `trimTextContent` in
- * fresco-ui does this — because the property is inert on the flex container
- * itself. Browsers without it (before Chrome 133, Safari 18.2, Firefox 154)
- * keep today's line-box rendering.
+ * Put it on the box that owns the line boxes. In block flow that is the block
+ * itself; in a flex or grid container it is each item, so a bare label in an
+ * inline-flex button needs a span around it — the property is inert on the
+ * flex container. It does not inherit, and Chromium ignores it on an inline
+ * box where WebKit honours it, so never put it on an inline element.
+ *
+ * The edges it trims to (`cap` over, `alphabetic` under) are declared once
+ * for every box in the base layer (theme.css), where the clipping utilities
+ * below override the under edge; this utility only switches the trim on.
+ * Browsers without it (before Chrome 133, Safari 18.2, Firefox 154) keep the
+ * line-box rendering.
  *
  * Chromium reports the untrimmed line boxes as scrollable overflow, so a
  * trimmed block that is the last child of a scroll container adds a few
  * pixels of scroll extent there; give such containers bottom padding.
  */
 @utility text-box-trim {
-  text-box: trim-both cap alphabetic;
+  text-box-trim: trim-both;
 }
 
 /**
- * text-box-trimmed: applies a utility only where `text-box` is supported.
- * Padding tuned for a cap-height box (`text-box-trimmed:py-1.75`) is wrong
- * around a full line box, so a browser without the trim keeps the padding
- * it had.
+ * text-box-trim-keep-height: the cap trim for a box whose height must not
+ * change — a badge or pill sized by its padding, a keyboard key, a label
+ * beside a fixed-height indicator. The leading the trim removes comes back as
+ * padding on the same box, so it stays one line high in every engine with its
+ * caps centred in it. `lh` and `cap` are the element's own, so one utility
+ * serves every size and font. Where the trim is unsupported nothing applies
+ * and the line box stands as it was.
  */
-@custom-variant text-box-trimmed {
-  @supports (text-box: trim-both cap alphabetic) {
-    @slot;
+@utility text-box-trim-keep-height {
+  @supports (text-box-trim: trim-both) {
+    text-box-trim: trim-both;
+    padding-block: calc((1lh - 1cap) / 2);
   }
+}
+
+/**
+ * A trimmed box ends at the baseline, so a clipping utility on it would cut
+ * the descenders off. `truncate` and `line-clamp-*` therefore move the under
+ * edge out to the text edge. `text-box-edge` does nothing until a trim is on,
+ * so a clipped box that is not trimmed is unaffected.
+ */
+@utility truncate {
+  text-box-edge: cap text;
+}
+
+@utility line-clamp-* {
+  /* Restating the clamp is what makes this extension match the numeric
+     values (`line-clamp-2`) and not `line-clamp-none`. */
+  -webkit-line-clamp: --value(integer, [integer]);
+  text-box-edge: cap text;
 }
 
 /**

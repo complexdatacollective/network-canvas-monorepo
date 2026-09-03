@@ -66,8 +66,37 @@ export function BaseField({
   children,
   containerProps,
 }: BaseFieldProps) {
-  const hasVisibleHint = Boolean(hint ?? validationSummary);
   const elementIds = fieldElementIds(id);
+  // The label and the hint carry the type scale's own bottom margins (the
+  // label style's 0.5em, a paragraph's 1em), so whatever follows each of them
+  // is spaced by the typography rather than by this container. Those margins
+  // only apply to an element with a following sibling, so a stacked field
+  // renders label, hint, and control as siblings; an inline field groups the
+  // label and hint into the left column and spaces the column itself when
+  // it stacks.
+  const labelBlock = (
+    <>
+      <FieldLabel
+        id={elementIds.label}
+        htmlFor={id}
+        required={required}
+        className={labelHidden ? 'sr-only' : undefined}
+      >
+        {label}
+      </FieldLabel>
+      {required && (
+        <span id={elementIds.required} className="sr-only">
+          Required
+        </span>
+      )}
+      {(hint ?? validationSummary) && (
+        <Hint id={elementIds.hint}>
+          {hint}
+          {validationSummary}
+        </Hint>
+      )}
+    </>
+  );
   return (
     <div
       {...containerProps}
@@ -88,50 +117,27 @@ export function BaseField({
         quick-add variable picker hit exactly that when picking a variable
         mounted the codebook validation section beside it.
       */}
-      <div className={cx(inline && '@container', 'flex flex-col')}>
-        <div
-          className={cx(
-            // `inline` fields lay out as two columns (label | control) once the
-            // field's own CONTAINER is wide enough, and stack when it's narrow —
-            // a container query, not a viewport breakpoint, so a field adapts to
-            // where it's placed (e.g. a narrow sidebar) rather than the screen.
-            inline && '@min-lg:flex-row @min-lg:justify-between @min-lg:gap-4',
-            'flex flex-col',
-          )}
-        >
-          <div
-            className={cx(
-              inline && 'min-w-0',
-              // Keep the gap below the label block only when something visible
-              // remains there — the label itself, or a hint under a hidden label.
-              !inline && (!labelHidden || hasVisibleHint) && 'mb-2',
-              // inline needs bottom margin too, but must correspond to when it switches to stacked layout
-              inline && '@max-lg:mb-2',
-            )}
-          >
-            <FieldLabel
-              id={elementIds.label}
-              htmlFor={id}
-              required={required}
-              className={labelHidden ? 'sr-only' : undefined}
-            >
-              {label}
-            </FieldLabel>
-            {required && (
-              <span id={elementIds.required} className="sr-only">
-                Required
-              </span>
-            )}
-            {(hint ?? validationSummary) && (
-              <Hint id={elementIds.hint}>
-                {hint}
-                {validationSummary}
-              </Hint>
-            )}
+      {inline ? (
+        <div className="@container flex flex-col">
+          {/*
+            `inline` fields lay out as two columns (label | control) once the
+            field's own CONTAINER is wide enough, and stack when it's narrow —
+            a container query, not a viewport breakpoint, so a field adapts to
+            where it's placed (e.g. a narrow sidebar) rather than the screen.
+          */}
+          <div className="flex flex-col @min-lg:flex-row @min-lg:justify-between @min-lg:gap-4">
+            {/* The column's last child has no following sibling, so the
+                column spaces itself from the control when it stacks. */}
+            <div className="min-w-0 @max-lg:mb-2">{labelBlock}</div>
+            <div className="shrink-0">{children}</div>
           </div>
-          <div className={cx(inline && 'shrink-0')}>{children}</div>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-col">
+          {labelBlock}
+          <div>{children}</div>
+        </div>
+      )}
       <FieldErrors
         id={elementIds.error}
         name={name}
