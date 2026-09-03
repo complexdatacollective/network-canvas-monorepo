@@ -740,6 +740,60 @@ describe.skipIf(!db)('network schema', () => {
       await expect(snapshot({})).resolves.toMatchObject({ rowCount: 1 });
     });
 
+    it('checks the snapshot under the tenant that wrote it, not the transaction’s last', async () => {
+      // The deferred completion check reads `session_snapshots` under row-level
+      // security. A transaction that writes one team's completed session and
+      // snapshot and then re-stamps the team GUC — the seed, which populates
+      // every team in one transaction — commits under the LAST team, where a
+      // policy-bound role sees none of the first team's snapshots. The seed
+      // settles each team's deferred checks before moving on; this proves both
+      // the hazard and that remedy, under the application role the policy
+      // binds (the fixture superuser bypasses it and would prove nothing).
+      const completedSession = async (client: pg.PoolClient) => {
+        const studyId = randomUUID();
+        const waveId = randomUUID();
+        const sessionId = randomUUID();
+        await client.query(
+          `INSERT INTO studies (id, team_id, name, protocol_id)
+           VALUES ($1, $2, 'A study', $3)`,
+          [studyId, TEAM_A, protocolOf[TEAM_A]],
+        );
+        await client.query(
+          `INSERT INTO study_waves (id, study_id, team_id, wave_number, protocol_version_id)
+           VALUES ($1, $2, $3, 1, $4)`,
+          [waveId, studyId, TEAM_A, versionOf[TEAM_A]],
+        );
+        await client.query(
+          `INSERT INTO interview_sessions
+             (id, study_id, team_id, wave_id, protocol_version_id, ego_uid,
+              status, completed_at)
+           VALUES ($1, $2, $3, $4, $5, 'ego_1', 'completed', now())`,
+          [sessionId, studyId, TEAM_A, waveId, versionOf[TEAM_A]],
+        );
+        await client.query(SNAPSHOT_SQL, [sessionId]);
+      };
+      const switchTeam = (client: pg.PoolClient) =>
+        client.query(`SELECT set_config('app.team_id', $1, true)`, [TEAM_B]);
+
+      await expect(
+        tenantA.transaction(async (client) => {
+          await completedSession(client);
+          await switchTeam(client);
+        }),
+      ).rejects.toThrow(
+        'a completed interview session must carry its as-collected snapshot',
+      );
+
+      await expect(
+        tenantA.transaction(async (client) => {
+          await completedSession(client);
+          await client.query('SET CONSTRAINTS ALL IMMEDIATE');
+          await client.query('SET CONSTRAINTS ALL DEFERRED');
+          await switchTeam(client);
+        }),
+      ).resolves.toBeUndefined();
+    });
+
     it('always raises on UPDATE, and deletes only under the marker', async () => {
       const fixture = await newFixture();
       await finalizing(fixture.sessionId, (client) =>

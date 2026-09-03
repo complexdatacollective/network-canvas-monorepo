@@ -142,6 +142,23 @@ async function scopeToTeam(
   await client.query(`select set_config('${TEAM_GUC}', $1, true)`, [teamId]);
 }
 
+/**
+ * Fires every pending deferred constraint check now, under the team GUC that
+ * wrote the rows it reads, then restores deferral for the next team.
+ *
+ * The commit-time checks (a completed session must carry its snapshot, a
+ * consent grant must carry every required affirmation) read child tables
+ * under the same row-level security the seed writes under. Left to commit,
+ * they would run once, under whichever team was stamped LAST, and for an
+ * owner that is not a superuser — every managed Postgres — see none of the
+ * earlier teams' children. The development superuser bypasses the policy,
+ * which is exactly why that failure would surface first in a deployment.
+ */
+async function settleDeferredChecks(client: pg.ClientBase): Promise<void> {
+  await client.query('set constraints all immediate');
+  await client.query('set constraints all deferred');
+}
+
 type SeedTotals = {
   teams: number;
   studies: number;
@@ -221,6 +238,7 @@ async function populate(
     for (const study of studies) {
       if (study.state === 'closed') await closeStudy(client, team.id, study);
     }
+    await settleDeferredChecks(client);
 
     totals.studies += studies.length;
     for (const study of studies) {
