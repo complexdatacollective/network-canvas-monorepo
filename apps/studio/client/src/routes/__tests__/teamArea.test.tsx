@@ -440,6 +440,38 @@ describe('the team studies list', () => {
     expect(within(draft).queryByText('0 waves')).toBeNull();
   });
 
+  it('tells a team member that creating studies is not theirs to do', async () => {
+    // #1257: creating a study is a team Admin or Owner action, and the
+    // procedure refuses everyone else — so a Member is told that once, rather
+    // than offered a form whose submission could only fail.
+    authState.activeMember = COLLABORATOR;
+    renderTeam(STUDIES);
+
+    // The list itself is still theirs — it is how a Member reaches the studies
+    // they hold a grant on — and waiting for it is what makes the absences
+    // below mean something: this screen has finished rendering.
+    expect(
+      await screen.findByRole('link', { name: 'Alpha study' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Only team owners and admins can create studies.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Study name' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Create study' })).toBeNull();
+  });
+
+  it('offers creation to an admin of the team in the URL', async () => {
+    authState.activeMember = { ...COLLABORATOR, role: 'admin' };
+    renderTeam(STUDIES);
+
+    expect(
+      await screen.findByRole('button', { name: 'Create study' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Only team owners and admins can create studies.'),
+    ).toBeNull();
+  });
+
   it('creates a study and opens its editor', async () => {
     const { router } = renderTeam(STUDIES);
 

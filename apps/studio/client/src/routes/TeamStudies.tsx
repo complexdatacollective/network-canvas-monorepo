@@ -16,7 +16,9 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { StudyParticipationMode, StudyState } from '@codaco/studio-rpc';
 
 import { orpc } from '../lib/api.ts';
+import { authClient } from '../lib/auth.ts';
 import { createUuid } from '../lib/createUuid.ts';
+import { canManageTeam, teamRole } from '../lib/teamRoles.ts';
 
 /**
  * The team's studies, at `/team/$teamId` (§5.2, #1262).
@@ -101,6 +103,13 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
   const studies = useQuery(
     orpc.studies.list.queryOptions({ input: { teamId } }),
   );
+  const activeMember = authClient.useActiveMember();
+  // Creating a study is a team Admin or Owner action (#1257), so a Member is
+  // told that rather than offered a form the procedure refuses. The role is
+  // read against the team in the URL, never against whichever team the active
+  // membership currently names — the two disagree for the whole of every team
+  // switch, and `TeamArea` reads it the same way for the same reason.
+  const canCreateStudies = canManageTeam(teamRole(activeMember.data, teamId));
   // No `onSuccess`. A mutation's callbacks are read from the options object
   // the LATEST render supplied — TanStack Query re-points a pending mutation
   // at it on every re-render — so a callback here would run against whichever
@@ -208,106 +217,112 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
           <Heading id="new-study-heading" level="h2" margin="none">
             New study
           </Heading>
-          <Form
-            className="mt-4 max-w-xl"
-            onSubmit={async (values) => {
-              const name = typeof values.name === 'string' ? values.name : '';
-              const previous = creationAttempt.current;
-              const attempt =
-                previous?.name === name && previous.teamId === teamId
-                  ? previous
-                  : {
-                      teamId,
-                      name,
-                      studyId: createUuid(),
-                      protocolId: createUuid(),
-                      draftId: createUuid(),
-                    };
-              creationAttempt.current = attempt;
-              setCreating(true);
-              // Where the researcher was when they asked for this. The header
-              // is on every screen, so a slow creation can resolve after they
-              // have switched teams or left the team area entirely, and a
-              // continuation that assumes it is still the current one drags
-              // them back into stale context.
-              //
-              // Both ends read `state.location` deliberately: it is the
-              // PENDING location, so a navigation that has started but not yet
-              // committed already reads as "they have moved" — which is the
-              // answer that keeps this from landing on top of a navigation the
-              // researcher asked for. What matters is that the same source is
-              // read at both ends.
-              const startedAt = router.state.location.pathname;
-              // §6.5's generation, and what the comparison above cannot be:
-              // a pathname is a place, not an occasion. Leaving `/team/A` and
-              // coming back to it before the response lands reads as never
-              // having left, and the continuation then pulls the researcher
-              // into an editor from a navigation they made two screens ago.
-              //
-              // Recorded from the router rather than from this component,
-              // because the component is not always there to see it: leaving
-              // the team area unmounts this screen while its continuation goes
-              // on running. `hrefChanged` is what makes an idle reload — the
-              // session revalidation a tab switch triggers is one — not count
-              // as having moved.
-              let navigated = false;
-              const stopWatchingNavigation = router.subscribe(
-                'onResolved',
-                (event) => {
-                  if (event.hrefChanged) navigated = true;
-                },
-              );
-              try {
-                // The attempt IS the request: its team, name and identifiers
-                // are exactly what the procedure takes, so a retry cannot
-                // send them against a different team than the one they were
-                // minted for.
-                const created = await createStudy.mutateAsync(attempt);
-                if (creationAttempt.current === attempt) {
-                  creationAttempt.current = undefined;
-                }
-                await queryClient.invalidateQueries({
-                  queryKey: orpc.studies.list.key({ input: { teamId } }),
-                });
-                // Straight into the editor: a new study's first act is
-                // designing its protocol, and an empty overview would be a
-                // screen nobody wants (§10.2 makes the same choice at the end
-                // of the sign-up funnel). Only from where the request was
-                // made, and only if nothing has committed since: the study
-                // exists and the list above names it, so a researcher who has
-                // moved at all loses nothing by staying where they chose to
-                // be.
-                if (
-                  !navigated &&
-                  router.state.location.pathname === startedAt
-                ) {
-                  await navigate({
-                    to: '/study/$studyId/editor',
-                    params: { studyId: created.studyId },
+          {canCreateStudies ? (
+            <Form
+              className="mt-4 max-w-xl"
+              onSubmit={async (values) => {
+                const name = typeof values.name === 'string' ? values.name : '';
+                const previous = creationAttempt.current;
+                const attempt =
+                  previous?.name === name && previous.teamId === teamId
+                    ? previous
+                    : {
+                        teamId,
+                        name,
+                        studyId: createUuid(),
+                        protocolId: createUuid(),
+                        draftId: createUuid(),
+                      };
+                creationAttempt.current = attempt;
+                setCreating(true);
+                // Where the researcher was when they asked for this. The header
+                // is on every screen, so a slow creation can resolve after they
+                // have switched teams or left the team area entirely, and a
+                // continuation that assumes it is still the current one drags
+                // them back into stale context.
+                //
+                // Both ends read `state.location` deliberately: it is the
+                // PENDING location, so a navigation that has started but not yet
+                // committed already reads as "they have moved" — which is the
+                // answer that keeps this from landing on top of a navigation the
+                // researcher asked for. What matters is that the same source is
+                // read at both ends.
+                const startedAt = router.state.location.pathname;
+                // §6.5's generation, and what the comparison above cannot be:
+                // a pathname is a place, not an occasion. Leaving `/team/A` and
+                // coming back to it before the response lands reads as never
+                // having left, and the continuation then pulls the researcher
+                // into an editor from a navigation they made two screens ago.
+                //
+                // Recorded from the router rather than from this component,
+                // because the component is not always there to see it: leaving
+                // the team area unmounts this screen while its continuation goes
+                // on running. `hrefChanged` is what makes an idle reload — the
+                // session revalidation a tab switch triggers is one — not count
+                // as having moved.
+                let navigated = false;
+                const stopWatchingNavigation = router.subscribe(
+                  'onResolved',
+                  (event) => {
+                    if (event.hrefChanged) navigated = true;
+                  },
+                );
+                try {
+                  // The attempt IS the request: its team, name and identifiers
+                  // are exactly what the procedure takes, so a retry cannot
+                  // send them against a different team than the one they were
+                  // minted for.
+                  const created = await createStudy.mutateAsync(attempt);
+                  if (creationAttempt.current === attempt) {
+                    creationAttempt.current = undefined;
+                  }
+                  await queryClient.invalidateQueries({
+                    queryKey: orpc.studies.list.key({ input: { teamId } }),
                   });
+                  // Straight into the editor: a new study's first act is
+                  // designing its protocol, and an empty overview would be a
+                  // screen nobody wants (§10.2 makes the same choice at the end
+                  // of the sign-up funnel). Only from where the request was
+                  // made, and only if nothing has committed since: the study
+                  // exists and the list above names it, so a researcher who has
+                  // moved at all loses nothing by staying where they chose to
+                  // be.
+                  if (
+                    !navigated &&
+                    router.state.location.pathname === startedAt
+                  ) {
+                    await navigate({
+                      to: '/study/$studyId/editor',
+                      params: { studyId: created.studyId },
+                    });
+                  }
+                  return { success: true };
+                } catch {
+                  return {
+                    success: false,
+                    formErrors: [
+                      'The study could not be created. Wait a moment and try again.',
+                    ],
+                  };
+                } finally {
+                  stopWatchingNavigation();
+                  setCreating(false);
                 }
-                return { success: true };
-              } catch {
-                return {
-                  success: false,
-                  formErrors: [
-                    'The study could not be created. Wait a moment and try again.',
-                  ],
-                };
-              } finally {
-                stopWatchingNavigation();
-                setCreating(false);
-              }
-            }}
-          >
-            <Field
-              name="name"
-              label="Study name"
-              component={InputField}
-              required
-            />
-            <SubmitButton disabled={creating}>Create study</SubmitButton>
-          </Form>
+              }}
+            >
+              <Field
+                name="name"
+                label="Study name"
+                component={InputField}
+                required
+              />
+              <SubmitButton disabled={creating}>Create study</SubmitButton>
+            </Form>
+          ) : (
+            <Alert className="mt-4">
+              Only team owners and admins can create studies.
+            </Alert>
+          )}
         </section>
       </Surface>
     </div>
