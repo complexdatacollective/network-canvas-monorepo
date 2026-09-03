@@ -98,18 +98,27 @@ function hashEntityId(id: string): number {
  * `toLocaleUpperCase`, which would make the mark depend on the reader's
  * locale and stop being deterministic.
  */
+/** At most two characters, counted as a reader sees them. */
+function bound(monogram: string): string {
+  return Array.from(monogram).slice(0, 2).join('');
+}
+
 function monogram(name: string): string {
   const words = name.split(/[^\p{L}\p{N}]+/u).filter((word) => word !== '');
   const first = words.at(0);
   if (first === undefined) return IDENTITY_MARK_FALLBACK;
 
+  // Bounded AFTER uppercasing, not before. Some characters get longer in the
+  // process — German ß becomes SS, the ﬃ ligature becomes FFI — so slicing
+  // first lets a two-character monogram come out as three or four and spill
+  // out of a tile that has no room for them.
   const characters = Array.from(first);
   if (words.length === 1) {
-    return characters.slice(0, 2).join('').toUpperCase();
+    return bound(characters.slice(0, 2).join('').toUpperCase());
   }
 
   const last = Array.from(words.at(-1) ?? '');
-  return `${characters.at(0) ?? ''}${last.at(0) ?? ''}`.toUpperCase();
+  return bound(`${characters.at(0) ?? ''}${last.at(0) ?? ''}`.toUpperCase());
 }
 
 export type IdentityMarkProps = {

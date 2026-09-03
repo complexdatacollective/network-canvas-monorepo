@@ -571,7 +571,9 @@ describe('the header switcher lockup', () => {
     // The team's own studies list contains this study, so it is genuinely this
     // team's, and its siblings are genuinely its siblings.
     expect(
-      await screen.findByRole('combobox', { name: 'Study Wave one pilot' }),
+      await screen.findByRole('combobox', {
+        name: 'Study Wave one pilot, Live',
+      }),
     ).toBeInTheDocument();
     expect(lockupSegments()).toBe(2);
   });
@@ -579,7 +581,9 @@ describe('the header switcher lockup', () => {
   it('offers the study its siblings, and the way back to all of them', async () => {
     renderAt('/study/study-1');
     fireEvent.click(
-      await screen.findByRole('combobox', { name: 'Study Wave one pilot' }),
+      await screen.findByRole('combobox', {
+        name: 'Study Wave one pilot, Live',
+      }),
     );
 
     expect(

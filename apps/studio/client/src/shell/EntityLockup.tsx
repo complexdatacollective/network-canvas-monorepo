@@ -11,7 +11,11 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { orpc } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
-import { STUDY_STATE_TONES, studySummaryLine } from '../lib/studyState.ts';
+import {
+  STUDY_STATE_LABELS,
+  STUDY_STATE_TONES,
+  studySummaryLine,
+} from '../lib/studyState.ts';
 import { teamRolesLabel } from '../lib/teamRoles.ts';
 
 /**
@@ -146,14 +150,23 @@ function useStudySegment(
         [{ id: studyId, name: studyId }]
       : // The owning team answered, so these are genuinely this study's
         // siblings, and its own name comes from that same answer.
-        (listed.length > 0 ? listed : [study.data.study]).map((row) => ({
-          id: row.id,
-          name: row.name,
-          // The state, and how much of the study there is — the two things a
-          // researcher picking between studies is choosing on.
-          meta: studySummaryLine(row),
-          leading: <StudyStatusDot tone={STUDY_STATE_TONES[row.state]} />,
-        }));
+        //
+        // MERGED, not used only as a fallback for an empty list. A cached list
+        // that predates this study — a collaborator created it, and the
+        // researcher followed a link straight to it — is nonempty and does not
+        // name it, and then `currentId` matches nothing and the trigger reads
+        // "Study" with no name at all until the background refresh lands, or
+        // for ever if it fails.
+        [study.data.study, ...listed.filter((row) => row.id !== studyId)].map(
+          (row) => ({
+            id: row.id,
+            name: row.name,
+            // The state, and how much of the study there is — the two things a
+            // researcher picking between studies is choosing on.
+            meta: studySummaryLine(row),
+            leading: <StudyStatusDot tone={STUDY_STATE_TONES[row.state]} />,
+          }),
+        );
 
   const status: SwitcherStatus =
     study.isPending || (teamId !== undefined && siblings.isPending)
@@ -165,6 +178,14 @@ function useStudySegment(
     items,
     currentId: studyId,
     status,
+    // The state in words, because on the trigger the dot is the ONLY thing
+    // carrying it: the supporting line is drawn on the options, not on the
+    // face. Colour alone reaches nobody using a screen reader and fails WCAG
+    // 1.4.1 for everyone else, so the name a reader hears carries it.
+    accessibleName: (name) =>
+      study.data === undefined
+        ? `${STUDY_KICKER} ${name}`
+        : `${STUDY_KICKER} ${name}, ${STUDY_STATE_LABELS[study.data.study.state]}`,
     onSelect: (id: string) =>
       // Not awaited, and deliberately: a blocked navigation's promise parks
       // rather than rejecting, and it resolves later on some unrelated commit

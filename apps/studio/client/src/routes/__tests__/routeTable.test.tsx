@@ -768,7 +768,7 @@ describe('navigation', () => {
     // The NAME, which only `studies.get` can supply: the switcher would
     // otherwise fall back to the identifier, as the chip it replaces did.
     fireEvent.click(
-      await screen.findByRole('combobox', { name: 'Study Shell proof' }),
+      await screen.findByRole('combobox', { name: /^Study Shell proof/ }),
     );
     const allStudies = await screen.findByRole('link', {
       name: 'All studies in this team',

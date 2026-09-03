@@ -13,6 +13,7 @@ import { IdentityMark } from '../IdentityMark';
 import Pill from '../Pill';
 import { usePortalContainer } from '../PortalContainer';
 import { Skeleton } from '../Skeleton';
+import { composeEventHandlers } from '../utils/composeEventHandlers';
 import { cx } from '../utils/cva';
 
 export type SwitcherStatus = 'ready' | 'loading';
@@ -255,8 +256,13 @@ function Segment({
   // frame rather than a control.
   const hasList = action !== undefined || items.length > 1;
 
-  // Whether anything stands in for the name when the column collapses.
-  const hasMark = loading || current !== undefined;
+  // What the mark slot will actually draw, computed once and rendered below.
+  // `renderMark` and `item.leading` are both `ReactNode`, so either may be
+  // `null` — and collapsing the name on the strength of a current entity that
+  // renders no mark leaves a bare caret, or an empty frame on an inert
+  // segment. Whether there IS a mark has to come from the node.
+  const mark = current ? markFor(current, renderMark, 'md') : null;
+  const hasMark = loading || (mark !== null && mark !== undefined);
 
   const face = (
     <>
@@ -264,9 +270,9 @@ function Segment({
         // The mark's space is reserved with it, so the header does not shift
         // sideways when the name arrives.
         <Skeleton className="size-8 shrink-0 rounded-xs" />
-      ) : current ? (
-        markFor(current, renderMark, 'md')
-      ) : null}
+      ) : (
+        mark
+      )}
       <span
         className={cx(
           // The column collapses only when the mark can stand in for it.
@@ -375,6 +381,11 @@ function Segment({
           // Base UI's default overlaps the trigger so the selected item lands
           // on the trigger's value text. In a header that covers the header
           // the popup was opened from.
+          // `z-50`, as `form/fields/Select`'s positioner carries. Without a
+          // `PortalContainerProvider` this portals to `document.body`, where
+          // any positioned page content — a sticky table header at `z-10`, say
+          // — would otherwise paint over the options and swallow their clicks.
+          className="z-50"
           alignItemWithTrigger={false}
           side="bottom"
           align="start"
@@ -438,7 +449,7 @@ function Segment({
                       {/* Wraps rather than truncating: this is where a name
                           too long for the frame above can be read in full. */}
                       <Select.ItemText className="flex min-w-0 flex-1 flex-col">
-                        <span className="text-sm leading-tight font-semibold">
+                        <span className="text-sm leading-tight font-semibold break-words">
                           {item.name}
                         </span>
                         {item.meta !== undefined && (
@@ -509,11 +520,18 @@ function Segment({
                     'opacity-70 hover:opacity-100 focus-visible:opacity-100',
                   );
                   // A destination keeps its own element, so it stays a link.
-                  // Closing the popup is still ours to do.
+                  // Closing the popup is still ours to do — composed with the
+                  // element's own handler rather than replacing it, since a
+                  // caller may guard the navigation or record it.
                   return action.render ? (
                     cloneElement(action.render, {
                       className,
-                      onClick: () => setOpen(false),
+                      onClick: composeEventHandlers(
+                        () => setOpen(false),
+                        action.render.props.onClick as
+                          | ((event: unknown) => void)
+                          | undefined,
+                      ),
                       children: body,
                     })
                   ) : (
