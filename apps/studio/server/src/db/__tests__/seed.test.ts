@@ -18,7 +18,9 @@ import {
 
 const db = await reachableDb();
 
-// Seeding the whole model takes seconds, and several cases below seed twice.
+// Seeding the whole model takes seconds on a quiet machine and well over a
+// minute on the CI runner (see SEED_BUDGET_MS), and several cases below seed
+// twice.
 const SEEDING_TIMEOUT_MS = 180_000;
 
 /**
@@ -28,8 +30,24 @@ const SEEDING_TIMEOUT_MS = 180_000;
  * suite on one Postgres: it exists to catch a phase that becomes minutes — a
  * full-cohort schedule resolution, or a network config an order of magnitude
  * wider — not one that becomes a second slower.
+ *
+ * It is not asserted on the CI runner at all. Wall time measures the seed only
+ * where the seed is what the machine is doing; there, two vCPUs are shared by
+ * every affected package's vitest workers and the Postgres service container,
+ * and this same five-second seed measured 117 seconds — a number that says
+ * nothing about a dev boot. `MAX_DEMO_ROWS` is the budget that holds
+ * everywhere, because nothing a neighbour does can change it.
  */
 const SEED_BUDGET_MS = 60_000;
+
+/**
+ * The whole demo corpus, every table counted. The network is most of it
+ * (around 18 000 nodes and 11 000 edges at the current window); the bound sits
+ * far enough above the total to admit another study or a longer prompt run,
+ * and far enough below ten times it to catch the width regression the time
+ * budget was written for.
+ */
+const MAX_DEMO_ROWS = 80_000;
 
 /**
  * Columns no seed run controls, excluded from the reproducibility dump.
@@ -130,8 +148,24 @@ describe.skipIf(!db)('the seeded dataset', () => {
     await scratch?.dispose();
   });
 
-  it('finishes inside the dev-boot budget at demo scale', () => {
-    expect(elapsedMs).toBeLessThan(SEED_BUDGET_MS);
+  it.skipIf(process.env.CI)(
+    'finishes inside the dev-boot budget at demo scale',
+    () => {
+      expect(elapsedMs).toBeLessThan(SEED_BUDGET_MS);
+    },
+  );
+
+  it('stays the size that seeds in seconds', async () => {
+    const tables = await pool.query<{ name: string }>(
+      `select tablename as name from pg_tables
+       where schemaname = current_schema() and tablename <> 'schemaFingerprint'`,
+    );
+    let total = 0;
+    for (const { name } of tables.rows) {
+      total += await count(pool, `select count(*)::int as n from "${name}"`);
+    }
+    expect(total).toBeGreaterThan(10_000);
+    expect(total).toBeLessThan(MAX_DEMO_ROWS);
   });
 
   it('covers every study state and both participation modes', async () => {
@@ -355,6 +389,46 @@ describe.skipIf(!db)('the seeded dataset', () => {
          where timezone in ('Australia/Sydney', 'Pacific/Auckland')`,
       ),
     ).resolves.toBeGreaterThan(0);
+  });
+
+  it('captures consent inside a session only where the participant interviewed, and never before it began', async () => {
+    // Both shapes the column exists for appear: remote onboarding, captured
+    // inside the participant's first session minutes after it started, and
+    // researcher-led onboarding, captured outside any session.
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from participant_consents where session_id is not null`,
+      ),
+    ).resolves.toBeGreaterThan(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from participant_consents where session_id is null`,
+      ),
+    ).resolves.toBeGreaterThan(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from participant_consents c
+         join interview_sessions s on s.id = c.session_id
+         where s.participant_id is distinct from c.participant_id
+            or c.granted_at < s.started_at
+            or exists (
+              select 1 from interview_sessions earlier
+              where earlier.participant_id = c.participant_id
+                and earlier.started_at < s.started_at)`,
+      ),
+    ).resolves.toBe(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from participant_consents c
+         where c.session_id is null
+           and exists (select 1 from interview_sessions s
+                       where s.participant_id = c.participant_id)`,
+      ),
+    ).resolves.toBe(0);
   });
 
   it('records consent for most participants, with withdrawals and declines', async () => {
@@ -595,7 +669,7 @@ describe.skipIf(!db)('the seeded dataset', () => {
                and l.kind = 'participant')`,
       ),
     ).resolves.toBe(0);
-    // Exactly one open link per anonymous study, and it records its redemptions.
+    // Exactly one open link per anonymous study.
     await expect(
       count(
         pool,
@@ -605,6 +679,62 @@ describe.skipIf(!db)('the seeded dataset', () => {
                  where l.study_id = s.id and l.kind = 'anonymous') <> 1`,
       ),
     ).resolves.toBe(0);
+  });
+
+  it('records on every link exactly the redemptions its sessions are', async () => {
+    // A visit through a link is a session, so the link's count is its
+    // session count and its last redemption the newest session's start — for
+    // both kinds, and zero where no session cites the link.
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from interview_links l
+         left join (
+           select link_id, count(*)::int as n, max(started_at) as newest
+           from interview_sessions where link_id is not null group by link_id
+         ) s on s.link_id = l.id
+         where l.redemption_count <> coalesce(s.n, 0)
+            or l.last_redeemed_at is distinct from s.newest`,
+      ),
+    ).resolves.toBe(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from interview_links
+         where kind = 'anonymous' and redemption_count = 0`,
+      ),
+    ).resolves.toBe(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from interview_links
+         where kind = 'participant' and redemption_count > 0`,
+      ),
+    ).resolves.toBeGreaterThan(0);
+  });
+
+  it('parks each in-progress session at a stage and each completed one past the last', async () => {
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from interview_sessions
+         where status = 'in_progress' and current_stage_id is null`,
+      ),
+    ).resolves.toBe(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from interview_sessions
+         where status = 'completed' and current_stage_id is not null`,
+      ),
+    ).resolves.toBe(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from interview_sessions
+         where status = 'in_progress'`,
+      ),
+    ).resolves.toBeGreaterThan(0);
   });
 
   it('writes assets whose recorded size and class match their content, and leaves a sweepable tail', async () => {

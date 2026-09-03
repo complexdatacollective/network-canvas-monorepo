@@ -70,7 +70,10 @@ const sessionSnapshots = pgTable(
       ],
     }),
     // A frozen artifact that cannot say which schema and which protocol
-    // version produced it is not usable as provenance.
+    // version produced it is not usable as provenance. This key proves the
+    // version exists in the team; `session_snapshots_insert_frozen` proves it
+    // is the session's own pin and that `schema_version` is that version's,
+    // because a snapshot cannot be corrected afterwards.
     foreignKey({
       columns: [table.protocolVersionId, table.teamId],
       foreignColumns: [protocolVersions.id, protocolVersions.teamId],
@@ -371,23 +374,44 @@ export const NETWORK_SIDECAR_SQL = `
 -- A snapshot may only be written in the transaction that finalizes its
 -- session, the version_sections_insert_frozen pattern: the document view and
 -- the queryable view can never diverge, not even by one commit.
+--
+-- The same lookup proves the provenance columns. The composite key already
+-- binds the snapshot to its session's study; the version pin is the session's
+-- own, and the schema version is that pin's, or exports and provenance would
+-- attribute the payload to a protocol the session never ran — permanently,
+-- because the row cannot be updated.
+--
+-- AFTER the row, so the payload check and the two keys report first: a
+-- version from another team is a key violation, not a pin mismatch.
 CREATE OR REPLACE FUNCTION session_snapshots_insert_at_finalization() RETURNS trigger AS $$
+DECLARE
+  pinned_version uuid;
+  pinned_schema_version integer;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM interview_sessions s
-    WHERE s.id = NEW.session_id
-      AND s.team_id = NEW.team_id
-      AND s.status = 'completed'
-      AND s.xmin = pg_current_xact_id()::xid
-  ) THEN
+  SELECT s.protocol_version_id INTO pinned_version
+  FROM interview_sessions s
+  WHERE s.id = NEW.session_id
+    AND s.team_id = NEW.team_id
+    AND s.status = 'completed'
+    AND s.xmin = pg_current_xact_id()::xid;
+  IF pinned_version IS NULL THEN
     RAISE EXCEPTION 'a session snapshot may only be written in the transaction that finalizes its session';
   END IF;
-  RETURN NEW;
+  IF pinned_version <> NEW.protocol_version_id THEN
+    RAISE EXCEPTION 'a session snapshot must carry its session''s own protocol version pin';
+  END IF;
+  SELECT v.schema_version INTO pinned_schema_version
+  FROM protocol_versions v
+  WHERE v.id = pinned_version AND v.team_id = NEW.team_id;
+  IF pinned_schema_version IS DISTINCT FROM NEW.schema_version THEN
+    RAISE EXCEPTION 'a session snapshot''s schema version must be its protocol version''s (%)', pinned_schema_version;
+  END IF;
+  RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE TRIGGER session_snapshots_insert_frozen
-  BEFORE INSERT ON session_snapshots
+  AFTER INSERT ON session_snapshots
   FOR EACH ROW EXECUTE FUNCTION session_snapshots_insert_at_finalization();
 
 -- UPDATE always raises. DELETE stays possible, because both the maintenance
@@ -481,6 +505,28 @@ BEGIN
   LIMIT 1;
   IF offender IS NOT NULL THEN
     RAISE EXCEPTION 'network data for a finalized session or a closed study is read-only (session %)', offender;
+  END IF;
+
+  -- session_stats copies its session's study, wave, wave number and
+  -- participant so the wave-over-wave window reads one table. The composite
+  -- keys prove each copy names a real row of the same study; only a join back
+  -- to the session proves they are the session's own. Same statement-level
+  -- price as the check above, paid only by the table that carries copies.
+  IF TG_TABLE_NAME = 'session_stats' THEN
+    SELECT c.session_id INTO offender
+    FROM changed c
+    JOIN interview_sessions s
+      ON s.id = c.session_id AND s.team_id = c.team_id
+    JOIN study_waves w
+      ON w.id = s.wave_id AND w.team_id = s.team_id
+    WHERE c.study_id <> s.study_id
+       OR c.wave_id <> s.wave_id
+       OR c.wave_number <> w.wave_number
+       OR c.participant_id IS DISTINCT FROM s.participant_id
+    LIMIT 1;
+    IF offender IS NOT NULL THEN
+      RAISE EXCEPTION 'a session rollup must copy its own session''s study, wave and participant (session %)', offender;
+    END IF;
   END IF;
   RETURN NULL;
 END;

@@ -892,6 +892,72 @@ describe.skipIf(!db)('study spine schema', () => {
       ).resolves.toMatchObject({ rowCount: 1 });
     });
 
+    it('refuses a link that opens another wave or another participant', async () => {
+      const { studyId, waveId, participantId } = await newTrio();
+      const otherWaveId = await newWave(studyId, { wave_number: 2 });
+      const otherParticipantId = await newParticipant(studyId);
+      const link = async (overrides: Row): Promise<string> => {
+        const row = linkRow(studyId, waveId, overrides);
+        await insert('interview_links', row);
+        return row.id as string;
+      };
+      const ownLink = await link({
+        kind: 'participant',
+        participant_id: participantId,
+      });
+      const otherWaveLink = await link({
+        wave_id: otherWaveId,
+        kind: 'participant',
+        participant_id: participantId,
+      });
+      const otherParticipantLink = await link({
+        kind: 'participant',
+        participant_id: otherParticipantId,
+      });
+      const openLink = await link({});
+      const refused =
+        "an interview session's link must open its own wave for its own participant";
+
+      // All four links are the team's, so the key admits them; the session
+      // must open this wave for this participant, or for any visitor.
+      await expect(
+        newSession(studyId, waveId, {
+          participant_id: participantId,
+          link_id: otherWaveLink,
+        }),
+      ).rejects.toThrow(refused);
+      await expect(
+        newSession(studyId, waveId, {
+          participant_id: participantId,
+          link_id: otherParticipantLink,
+        }),
+      ).rejects.toThrow(refused);
+      await expect(
+        newSession(studyId, waveId, {
+          participant_id: participantId,
+          link_id: openLink,
+        }),
+      ).rejects.toThrow(refused);
+      await expect(
+        newSession(studyId, waveId, { link_id: ownLink }),
+      ).rejects.toThrow(refused);
+      const sessionId = await newSession(studyId, waveId, {
+        participant_id: participantId,
+        link_id: ownLink,
+      });
+      // Rebinding a live session to another link is proven the same way.
+      await expect(
+        pool.query(`UPDATE interview_sessions SET link_id = $2 WHERE id = $1`, [
+          sessionId,
+          otherWaveLink,
+        ]),
+      ).rejects.toThrow(refused);
+      // An anonymous visitor through the open link.
+      await expect(
+        newSession(studyId, waveId, { link_id: openLink }),
+      ).resolves.toMatch(/^[0-9a-f-]{36}$/);
+    });
+
     it('refuses a session whose team disagrees with its wave', async () => {
       const { studyId, waveId } = await newTrio();
       await expect(

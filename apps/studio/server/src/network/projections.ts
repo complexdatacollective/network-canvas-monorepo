@@ -33,19 +33,37 @@ import type pg from 'pg';
  * transaction. Takes a client rather than a pool for exactly that reason: the
  * projections are only correct if they commit with the write that changed the
  * graph.
+ */
+export function refreshSessionProjections(
+  client: pg.ClientBase,
+  ids: { teamId: string; sessionId: string },
+): Promise<void> {
+  return refreshProjectionsForSessions(client, {
+    teamId: ids.teamId,
+    sessionIds: [ids.sessionId],
+  });
+}
+
+/**
+ * The same recompute over a set of sessions of one team, in the same three
+ * statements: the bulk paths (a seed, an import) write hundreds of sessions
+ * per transaction, and three round trips per session was most of what they
+ * spent.
  *
  * The delete and the reinsert must be separate statements — data-modifying
  * CTEs share one snapshot, so a delete-then-reinsert of the same keys cannot
  * be a single statement.
  */
-export async function refreshSessionProjections(
+export async function refreshProjectionsForSessions(
   client: pg.ClientBase,
-  ids: { teamId: string; sessionId: string },
+  ids: { teamId: string; sessionIds: readonly string[] },
 ): Promise<void> {
-  const values = [ids.teamId, ids.sessionId];
+  if (ids.sessionIds.length === 0) return;
+  const values = [ids.teamId, [...ids.sessionIds]];
 
   await client.query(
-    `DELETE FROM session_degree_hist WHERE team_id = $1 AND session_id = $2`,
+    `DELETE FROM session_degree_hist
+     WHERE team_id = $1 AND session_id = ANY($2::uuid[])`,
     values,
   );
 
@@ -68,7 +86,7 @@ export async function refreshSessionProjections(
        ) c ON c.node_id = n.node_id
        WHERE n.session_id = s.id
      ) d
-     WHERE s.team_id = $1 AND s.id = $2
+     WHERE s.team_id = $1 AND s.id = ANY($2::uuid[])
      GROUP BY s.team_id, s.id, d.degree`,
     values,
   );
@@ -82,7 +100,7 @@ export async function refreshSessionProjections(
             statement_timestamp()
      FROM interview_sessions s
      JOIN study_waves w ON w.id = s.wave_id AND w.team_id = s.team_id
-     WHERE s.team_id = $1 AND s.id = $2
+     WHERE s.team_id = $1 AND s.id = ANY($2::uuid[])
      ON CONFLICT (session_id) DO UPDATE
        SET node_count = excluded.node_count,
            edge_count = excluded.edge_count,

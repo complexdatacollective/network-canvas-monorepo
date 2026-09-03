@@ -3,7 +3,7 @@ import type pg from 'pg';
 
 import { TEAM_GUC } from '@codaco/studio-sync/rls';
 
-import { refreshSessionProjections } from '../network/projections.ts';
+import { refreshProjectionsForSessions } from '../network/projections.ts';
 import { seedAssets, seedTemplates } from './seed/assets.ts';
 import { seedAuditEvents } from './seed/audit.ts';
 import {
@@ -15,13 +15,14 @@ import {
 import { seedScheduling } from './seed/messaging.ts';
 import { seedMonitoringRollups } from './seed/monitoring.ts';
 import {
-  newestSessionByParticipant,
+  earliestSessionByParticipant,
   seedSessionsAndNetworks,
 } from './seed/network.ts';
 import { seedProtocolLine, type SeededVersion } from './seed/protocols.ts';
 import { seedTime } from './seed/rng.ts';
 import {
   closeStudy,
+  recordLinkRedemptions,
   seedConsentDocuments,
   seedParticipantConsents,
   seedStudies,
@@ -98,18 +99,29 @@ const SCALES: Record<
  * Driven off `pg_tables` rather than a hardcoded list, so a table added to
  * the schema later is wiped too instead of silently accumulating stale rows
  * that the rest of this function never touches.
+ *
+ * Only tables holding rows are truncated: TRUNCATE rebuilds every relation
+ * file of the table and its indexes whether or not there is anything in them,
+ * around half a second for the whole schema — on the freshly applied schema
+ * every `pnpm dev` boot and every test seed starts from, that is half a second
+ * for nothing.
  */
 async function wipe(client: pg.ClientBase): Promise<void> {
   await client.query(`
     do $$
     declare
       r record;
+      populated boolean;
     begin
       for r in
         select tablename from pg_tables
         where schemaname = current_schema() and tablename <> 'schemaFingerprint'
       loop
-        execute format('truncate table %I restart identity cascade', r.tablename);
+        execute format('select exists (select 1 from %I)', r.tablename)
+          into populated;
+        if populated then
+          execute format('truncate table %I restart identity cascade', r.tablename);
+        end if;
       end loop;
     end $$;
   `);
@@ -183,15 +195,16 @@ async function populate(
       team,
       studies,
       versionsById,
-      refreshSessionProjections,
+      refreshProjectionsForSessions,
       scale,
     );
+    await recordLinkRedemptions(client, team.id);
     await seedParticipantConsents(
       client,
       team,
       studies,
       consentDocuments,
-      newestSessionByParticipant(sessions),
+      earliestSessionByParticipant(sessions),
     );
 
     await seedScheduling(client, team, studies);

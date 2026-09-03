@@ -1151,6 +1151,53 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
       ).resolves.toMatchObject({ rowCount: 1 });
     });
 
+    it('refuses an occurrence resolved for another participant', async () => {
+      const occurrenceId = await newOccurrence(await newSchedule());
+      // A second participant of the same study: the team-scoped key admitted
+      // this before; the four-column key refuses it.
+      const otherId = randomUUID();
+      await insert('participants', {
+        id: otherId,
+        study_id: studyOf[TEAM_A],
+        team_id: TEAM_A,
+        participant_code: `P-${otherId.slice(0, 8)}`,
+      });
+
+      await expect(
+        newDelivery({ occurrence_id: occurrenceId, participant_id: otherId }),
+      ).rejects.toMatchObject({
+        code: '23503',
+        constraint: 'message_deliveries_occurrence_fk',
+      });
+      await expect(
+        newDelivery({ occurrence_id: occurrenceId }),
+      ).resolves.toMatch(/^[0-9a-f-]{36}$/);
+    });
+
+    it('refuses a template of another kind, channel or study', async () => {
+      const deliveryWith = (templateId: string) =>
+        insert('message_deliveries', deliveryRow(templateId));
+      const refused =
+        'must be a prompt template for the email channel, either the team default or its own study';
+
+      await expect(
+        deliveryWith(await newTemplate({ kind: 'reminder' })),
+      ).rejects.toThrow(refused);
+      await expect(
+        deliveryWith(await newTemplate({ channel: 'sms', subject: null })),
+      ).rejects.toThrow(refused);
+      await expect(
+        deliveryWith(await newTemplate({ study_id: otherStudyId })),
+      ).rejects.toThrow(refused);
+      // The team default and the study's own override both apply.
+      await expect(
+        deliveryWith(await newTemplate({ study_id: studyOf[TEAM_A] })),
+      ).resolves.toMatchObject({ rowCount: 1 });
+      await expect(deliveryWith(await newTemplate())).resolves.toMatchObject({
+        rowCount: 1,
+      });
+    });
+
     it('reserves send-state changes for the maintenance dispatcher', async () => {
       const deliveryId = await newDelivery();
 
@@ -1282,6 +1329,26 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
           [row.id],
         ),
       ).rejects.toThrow('message delivery payload is immutable');
+    });
+
+    it('reserves deletion for the maintenance retention path', async () => {
+      const deliveryId = await newDelivery();
+      const row = eventRow(deliveryId);
+      await insert('message_delivery_events', row);
+
+      // Evidence the application role cannot destroy — and, because the
+      // identity key would then admit the same provider event again, cannot
+      // replace either.
+      await expect(
+        tenantA.query(`DELETE FROM message_delivery_events WHERE id = $1`, [
+          row.id,
+        ]),
+      ).rejects.toMatchObject({ code: '42501' });
+      await expect(
+        maintenance.query(`DELETE FROM message_delivery_events WHERE id = $1`, [
+          row.id,
+        ]),
+      ).resolves.toMatchObject({ rowCount: 1 });
     });
   });
 

@@ -1,6 +1,17 @@
 // The port and credentials deliberately match packages/studio-sync's
 // conformance-suite expectations, so one container serves the app and that
 // suite.
+//
+// `pnpm dev` runs this twice. `--prepare` brings Postgres up, resets and
+// seeds it, and exits; only then does `concurrently` start the server, the S3
+// sidecar and this script again as `--follow`, which tails the container's
+// logs for the life of the session and touches nothing. The split is what
+// keeps the reset ahead of the server: started side by side, a server whose
+// last build's schema was still current would verify the fingerprint, start
+// its delivery workers and begin answering requests, and the drop and reseed
+// would then land under it — transient failures for whoever was already
+// signed in, and a worker leasing rows that were about to be truncated. Run
+// with neither flag, it does both in order, for anyone driving it by hand.
 import { spawn, spawnSync } from 'node:child_process';
 import process from 'node:process';
 
@@ -201,7 +212,15 @@ function followLogs(): void {
   });
 }
 
-async function main(): Promise<void> {
+type Mode = 'prepare' | 'follow' | 'both';
+
+function modeFromArgs(argv: readonly string[]): Mode {
+  if (argv.includes('--prepare')) return 'prepare';
+  if (argv.includes('--follow')) return 'follow';
+  return 'both';
+}
+
+async function main(mode: Mode): Promise<void> {
   const alreadyRunning = containerExists() && containerIsRunning();
 
   // A Postgres already answering on the port without our container managing
@@ -211,9 +230,12 @@ async function main(): Promise<void> {
     console.log(
       `Postgres already reachable on port ${HOST_PORT} (externally managed)`,
     );
-    await ensureDatabase();
-    await resetAndSeed();
+    if (mode !== 'follow') {
+      await ensureDatabase();
+      await resetAndSeed();
+    }
     console.log(`Postgres ready — database '${DATABASE}' on port ${HOST_PORT}`);
+    if (mode === 'prepare') return;
     // Stay alive under `concurrently -k` without a container to tail: an
     // unsettled top-level await with an empty event loop makes Node exit 13.
     setInterval(() => {
@@ -237,10 +259,13 @@ async function main(): Promise<void> {
 
   console.log('Waiting for Postgres to become ready...');
   await waitForReady();
-  await ensureDatabase();
-  await resetAndSeed();
+  if (mode !== 'follow') {
+    await ensureDatabase();
+    await resetAndSeed();
+  }
   console.log(`Postgres ready — database '${DATABASE}' on port ${HOST_PORT}`);
+  if (mode === 'prepare') return;
   followLogs();
 }
 
-await main();
+await main(modeFromArgs(process.argv.slice(2)));

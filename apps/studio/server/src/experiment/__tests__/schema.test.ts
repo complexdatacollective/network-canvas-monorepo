@@ -32,6 +32,11 @@ const TWO_VARIANTS = JSON.stringify([
   { key: 'control', weight: 1 },
   { key: 'treatment', weight: 1 },
 ]);
+const THREE_VARIANTS = JSON.stringify([
+  { key: 'control', weight: 1 },
+  { key: 'treatment', weight: 1 },
+  { key: 'treatment_b', weight: 1 },
+]);
 
 describe.skipIf(!db)('experiment schema', () => {
   let pool: pg.Pool;
@@ -242,6 +247,34 @@ describe.skipIf(!db)('experiment schema', () => {
       ).resolves.toMatchObject({ rowCount: 1 });
     });
 
+    it('freezes the variants once the experiment has started', async () => {
+      const id = await newExperiment();
+      const setVariants = (variants: string) =>
+        pool.query(`UPDATE experiments SET variants = $2 WHERE id = $1`, [
+          id,
+          variants,
+        ]);
+
+      // A draft is still being designed.
+      await expect(setVariants(THREE_VARIANTS)).resolves.toMatchObject({
+        rowCount: 1,
+      });
+      await pool.query(
+        `UPDATE experiments SET state = 'running', started_at = now() WHERE id = $1`,
+        [id],
+      );
+      await expect(setVariants(TWO_VARIANTS)).rejects.toThrow(
+        'the variants of an experiment that has started are immutable',
+      );
+      // Everything else about a running experiment still moves.
+      await expect(
+        pool.query(
+          `UPDATE experiments SET state = 'stopped', stopped_at = now() WHERE id = $1`,
+          [id],
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+    });
+
     it('keeps one experiment per key per team', async () => {
       const key = `layout_${randomUUID().slice(0, 8)}`;
       await newExperiment({ key });
@@ -337,6 +370,21 @@ describe.skipIf(!db)('experiment schema', () => {
           assignmentRow(await newExperiment(), { subject_id: subjectId }),
         ),
       ).resolves.toMatchObject({ rowCount: 1 });
+    });
+
+    it('refuses a variant the experiment does not define', async () => {
+      await expect(
+        newAssignment(experimentOf[TEAM_A] as string, {
+          variant_key: 'placebo',
+        }),
+      ).rejects.toThrow(
+        "variant placebo is not one of the experiment's variants",
+      );
+      await expect(
+        newAssignment(experimentOf[TEAM_A] as string, {
+          variant_key: 'treatment',
+        }),
+      ).resolves.toMatch(/^[0-9a-f-]{36}$/);
     });
 
     it('refuses an experiment from another team', async () => {
@@ -435,6 +483,31 @@ describe.skipIf(!db)('experiment schema', () => {
           ),
         ),
       ).rejects.toMatchObject({ constraint });
+    });
+
+    it('binds an exposure to its assignment’s experiment and arm', async () => {
+      const experimentId = experimentOf[TEAM_A] as string;
+      const assignmentId = assignmentOf[TEAM_A] as string;
+      const otherExperimentId = await newExperiment();
+
+      // The assignment is `control` on `experimentId`. Filed under another
+      // experiment of the same team, or under another arm, the exposure would
+      // be counted where its subject was never assigned.
+      await expect(
+        newExposure(otherExperimentId, assignmentId),
+      ).rejects.toMatchObject({
+        code: '23503',
+        constraint: 'experiment_exposures_assignment_fk',
+      });
+      await expect(
+        newExposure(experimentId, assignmentId, { variant_key: 'treatment' }),
+      ).rejects.toMatchObject({
+        code: '23503',
+        constraint: 'experiment_exposures_assignment_fk',
+      });
+      await expect(newExposure(experimentId, assignmentId)).resolves.toMatch(
+        /^[0-9a-f-]{36}$/,
+      );
     });
 
     it('refuses an assignment from another team', async () => {

@@ -48,6 +48,7 @@ describe.skipIf(!db)('network schema', () => {
   let maintenance: pg.Pool;
   let dispose: () => Promise<void>;
   let tenantA: TenantDb;
+  const protocolOf: Record<string, string> = {};
   const versionOf: Record<string, string> = {};
 
   // The connecting login is the development superuser, so it bypasses the
@@ -209,6 +210,7 @@ describe.skipIf(!db)('network schema', () => {
       await seedTeam(pool, teamId);
       const protocolId = randomUUID();
       const versionId = randomUUID();
+      protocolOf[teamId] = protocolId;
       versionOf[teamId] = versionId;
       await insert('protocols', {
         id: protocolId,
@@ -579,6 +581,44 @@ describe.skipIf(!db)('network schema', () => {
       });
     });
 
+    it('refuses a version pin or schema version that is not the session’s', async () => {
+      const fixture = await newFixture();
+      // A second version of the same team's line: the team-scoped key admits
+      // it, and only the session knows it is the wrong one.
+      const otherVersionId = randomUUID();
+      await insert('protocol_versions', {
+        id: otherVersionId,
+        protocol_id: protocolOf[TEAM_A],
+        team_id: TEAM_A,
+        version_number: 2,
+        version_hash: `hash-${otherVersionId}`,
+        manifest: JSON.stringify({ name: 'v2' }),
+        schema_version: 9,
+        source_manifest_hash: `source-${otherVersionId}`,
+      });
+      const snapshot = (overrides: Row) => {
+        const row = snapshotRow(fixture, overrides);
+        const columns = Object.keys(row);
+        return finalizing(fixture.sessionId, (client) =>
+          client.query(
+            `INSERT INTO session_snapshots (${columns.map((n) => `"${n}"`).join(', ')})
+             VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')})`,
+            Object.values(row),
+          ),
+        );
+      };
+
+      await expect(
+        snapshot({ protocol_version_id: otherVersionId, schema_version: 9 }),
+      ).rejects.toThrow(
+        "a session snapshot must carry its session's own protocol version pin",
+      );
+      await expect(snapshot({ schema_version: 9 })).rejects.toThrow(
+        "a session snapshot's schema version must be its protocol version's (8)",
+      );
+      await expect(snapshot({})).resolves.toMatchObject({ rowCount: 1 });
+    });
+
     it('always raises on UPDATE, and deletes only under the marker', async () => {
       const fixture = await newFixture();
       await finalizing(fixture.sessionId, (client) =>
@@ -707,6 +747,48 @@ describe.skipIf(!db)('network schema', () => {
   });
 
   describe('the statement-level parent guard', () => {
+    it('refuses a rollup that copies another wave, wave number or participant', async () => {
+      const fixture = await newFixture();
+      // A second wave and a second participant of the SAME study: the
+      // same-study keys admit both, and only the session says they are not
+      // this session's.
+      const otherWaveId = randomUUID();
+      await insert('study_waves', {
+        id: otherWaveId,
+        study_id: fixture.studyId,
+        team_id: TEAM_A,
+        wave_number: 2,
+      });
+      const otherParticipantId = randomUUID();
+      await insert('participants', {
+        id: otherParticipantId,
+        study_id: fixture.studyId,
+        team_id: TEAM_A,
+        participant_code: 'P-other',
+      });
+      const refused =
+        "a session rollup must copy its own session's study, wave and participant";
+
+      await expect(
+        insert('session_stats', statsRow(fixture, { wave_id: otherWaveId })),
+      ).rejects.toThrow(refused);
+      await expect(
+        insert('session_stats', statsRow(fixture, { wave_number: 2 })),
+      ).rejects.toThrow(refused);
+      await expect(
+        insert(
+          'session_stats',
+          statsRow(fixture, { participant_id: otherParticipantId }),
+        ),
+      ).rejects.toThrow(refused);
+      await expect(
+        insert('session_stats', statsRow(fixture, { participant_id: null })),
+      ).rejects.toThrow(refused);
+      await expect(
+        insert('session_stats', statsRow(fixture)),
+      ).resolves.toMatchObject({ rowCount: 1 });
+    });
+
     it('refuses node and edge writes under a closed study', async () => {
       const { studyId, sessionId } = await newFixture();
       const from = await newNode(sessionId);

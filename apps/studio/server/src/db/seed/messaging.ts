@@ -162,11 +162,9 @@ async function seedOccurrences(
   const rows: SeedRowValue[][] = [];
   const occurrences: SeededOccurrence[] = [];
 
-  // Only the head of the cohort gets a resolved run of prompts.
-  // `schedule_occurrences_time_zone_known` proves every row's zone against
-  // `pg_timezone_names`, which re-enumerates the whole tz database per row and
-  // costs around four milliseconds: resolving the full cohort would add tens of
-  // seconds to every `pnpm dev` boot for rows that show nothing new.
+  // Only the head of the cohort gets a resolved run of prompts: a few
+  // participants' worth already shows every occurrence state, every recurrence
+  // and every zone the corpus has, and keeps the outbox below readable.
   const cohort = study.participants.slice(0, SCHEDULED_PARTICIPANTS);
   for (const participant of cohort) {
     // A one-off schedule resolves to exactly one prompt per participant; a

@@ -219,6 +219,11 @@ const scheduleOccurrences = pgTable(
   },
   (table) => [
     unique().on(table.id, table.teamId),
+    // The identity a delivery proves its occurrence through: the dispatcher
+    // resolves the recipient from the delivery's participant while monitoring
+    // attributes the send through the occurrence's schedule, so the two must
+    // name the same person in the same study.
+    unique().on(table.id, table.participantId, table.studyId, table.teamId),
     unique().on(table.scheduleId, table.participantId, table.occurrenceIndex),
     foreignKey({
       name: 'schedule_occurrences_schedule_fk',
@@ -405,11 +410,29 @@ const messageDeliveries = pgTable(
         participants.teamId,
       ],
     }),
+    // Proven against the occurrence's own participant and study, not only its
+    // team: a schedule-driven delivery addressed to a participant other than
+    // the one the occurrence was resolved for would reach the wrong person
+    // and be counted under the wrong study. MATCH SIMPLE leaves a null
+    // occurrence (an invitation, a manual reminder) unconstrained.
     foreignKey({
       name: 'message_deliveries_occurrence_fk',
-      columns: [table.occurrenceId, table.teamId],
-      foreignColumns: [scheduleOccurrences.id, scheduleOccurrences.teamId],
+      columns: [
+        table.occurrenceId,
+        table.participantId,
+        table.studyId,
+        table.teamId,
+      ],
+      foreignColumns: [
+        scheduleOccurrences.id,
+        scheduleOccurrences.participantId,
+        scheduleOccurrences.studyId,
+        scheduleOccurrences.teamId,
+      ],
     }),
+    // Same team only; the template's kind, channel and study scope are proven
+    // by `message_deliveries_template_applies`, because a template's study is
+    // nullable (a team default) and no foreign key can say "null or mine".
     foreignKey({
       name: 'message_deliveries_template_fk',
       columns: [table.templateId, table.teamId],
@@ -574,35 +597,62 @@ export const SCHEDULE_SIDECAR_SQL = `
 -- The fallback zone must be a zone Postgres knows, or every resolution for
 -- a participant without a recorded zone fails at send time instead of at
 -- configuration time. A CHECK cannot query pg_timezone_names; a trigger can.
+--
+-- Statement-level, with a transition table, rather than per row:
+-- pg_timezone_names enumerates and evaluates the whole tz database on every
+-- call (around four milliseconds), so a per-row probe made a resolver batch
+-- of a thousand occurrences cost seconds. One outer join per statement
+-- proves every row at the price of one enumeration. The converter
+-- (\`AT TIME ZONE\`) would be a dictionary lookup, but it also accepts POSIX
+-- offsets and bare abbreviations that are not IANA names, which is not the
+-- contract.
 CREATE OR REPLACE FUNCTION study_schedules_validate_time_zone() RETURNS trigger AS $$
+DECLARE
+  unknown_zone text;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_timezone_names WHERE name = NEW.fallback_time_zone
-  ) THEN
-    RAISE EXCEPTION 'unknown IANA time zone: %', NEW.fallback_time_zone;
+  SELECT c.fallback_time_zone INTO unknown_zone
+  FROM changed c
+  LEFT JOIN pg_timezone_names n ON n.name = c.fallback_time_zone
+  WHERE n.name IS NULL
+  LIMIT 1;
+  IF unknown_zone IS NOT NULL THEN
+    RAISE EXCEPTION 'unknown IANA time zone: %', unknown_zone;
   END IF;
-  RETURN NEW;
+  RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE TRIGGER study_schedules_time_zone_known
-  BEFORE INSERT OR UPDATE ON study_schedules
-  FOR EACH ROW EXECUTE FUNCTION study_schedules_validate_time_zone();
+-- A trigger may declare only one transition-table clause per event, so each
+-- guarded table takes one per verb.
+CREATE OR REPLACE TRIGGER study_schedules_time_zone_known_insert
+  AFTER INSERT ON study_schedules REFERENCING NEW TABLE AS changed
+  FOR EACH STATEMENT EXECUTE FUNCTION study_schedules_validate_time_zone();
+CREATE OR REPLACE TRIGGER study_schedules_time_zone_known_update
+  AFTER UPDATE ON study_schedules REFERENCING NEW TABLE AS changed
+  FOR EACH STATEMENT EXECUTE FUNCTION study_schedules_validate_time_zone();
 
 CREATE OR REPLACE FUNCTION schedule_occurrences_validate_time_zone() RETURNS trigger AS $$
+DECLARE
+  unknown_zone text;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_timezone_names WHERE name = NEW.resolved_time_zone
-  ) THEN
-    RAISE EXCEPTION 'unknown IANA time zone: %', NEW.resolved_time_zone;
+  SELECT c.resolved_time_zone INTO unknown_zone
+  FROM changed c
+  LEFT JOIN pg_timezone_names n ON n.name = c.resolved_time_zone
+  WHERE n.name IS NULL
+  LIMIT 1;
+  IF unknown_zone IS NOT NULL THEN
+    RAISE EXCEPTION 'unknown IANA time zone: %', unknown_zone;
   END IF;
-  RETURN NEW;
+  RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE TRIGGER schedule_occurrences_time_zone_known
-  BEFORE INSERT OR UPDATE ON schedule_occurrences
-  FOR EACH ROW EXECUTE FUNCTION schedule_occurrences_validate_time_zone();
+CREATE OR REPLACE TRIGGER schedule_occurrences_time_zone_known_insert
+  AFTER INSERT ON schedule_occurrences REFERENCING NEW TABLE AS changed
+  FOR EACH STATEMENT EXECUTE FUNCTION schedule_occurrences_validate_time_zone();
+CREATE OR REPLACE TRIGGER schedule_occurrences_time_zone_known_update
+  AFTER UPDATE ON schedule_occurrences REFERENCING NEW TABLE AS changed
+  FOR EACH STATEMENT EXECUTE FUNCTION schedule_occurrences_validate_time_zone();
 
 -- A published template that has been sent is evidence: message_deliveries
 -- pins it, and rewriting the body would misattribute what a participant
@@ -659,6 +709,31 @@ CREATE OR REPLACE TRIGGER message_delivery_events_immutable
   BEFORE UPDATE ON message_delivery_events
   FOR EACH ROW EXECUTE FUNCTION message_delivery_payload_is_immutable();
 
+-- A delivery copies its template's kind and channel, and may cite a study
+-- override only of its own study. The composite key cannot say "the
+-- template's study is null or mine", so the three are proven here, once, at
+-- enqueue: every one of them is immutable afterwards. AFTER the row, so the
+-- kind and channel checks and the template key report first and this speaks
+-- only to a well-formed delivery citing a real template of its team.
+CREATE OR REPLACE FUNCTION message_delivery_template_applies() RETURNS trigger AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM message_templates t
+    WHERE t.id = NEW.template_id AND t.team_id = NEW.team_id
+      AND t.kind = NEW.kind
+      AND t.channel = NEW.channel
+      AND (t.study_id IS NULL OR t.study_id = NEW.study_id)
+  ) THEN
+    RAISE EXCEPTION 'a delivery''s template must be a % template for the % channel, either the team default or its own study''s override', NEW.kind, NEW.channel;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER message_deliveries_template_applies
+  AFTER INSERT ON message_deliveries
+  FOR EACH ROW EXECUTE FUNCTION message_delivery_template_applies();
+
 ${tenantTablesSql([
   'study_schedules',
   'schedule_occurrences',
@@ -671,4 +746,10 @@ ${tenantTablesSql([
 -- Commands enqueue inside their audited transaction; only the maintenance
 -- dispatcher advances send state, exactly as for invitation delivery.
 REVOKE UPDATE, DELETE ON message_deliveries FROM ${TENANT_ROLES.app};
+-- Provider callbacks are append-only evidence: a bounce or a complaint that
+-- could be deleted, and its provider event id then reinserted, is no
+-- evidence at all. The immutability trigger above refuses UPDATE for every
+-- role; DELETE is reserved for the maintenance retention path, like the
+-- deliveries the events describe.
+REVOKE UPDATE, DELETE ON message_delivery_events FROM ${TENANT_ROLES.app};
 `;

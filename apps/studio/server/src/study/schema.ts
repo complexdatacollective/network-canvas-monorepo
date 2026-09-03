@@ -472,6 +472,9 @@ const interviewSessions = pgTable(
       columns: [table.protocolVersionId, table.teamId],
       foreignColumns: [protocolVersions.id, protocolVersions.teamId],
     }),
+    // Same team only; `interview_sessions_link_own` proves the link opens
+    // this session's wave for this session's participant, which a key could
+    // do only at the price of another unique index on this table.
     foreignKey({
       columns: [table.linkId, table.teamId],
       foreignColumns: [interviewLinks.id, interviewLinks.teamId],
@@ -726,6 +729,33 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE TRIGGER interview_sessions_writable
   BEFORE INSERT OR UPDATE OR DELETE ON interview_sessions
   FOR EACH ROW EXECUTE FUNCTION interview_sessions_are_writable();
+
+-- A link opens one wave for one participant, or for any visitor when
+-- anonymous. A session citing a link of another wave or another participant
+-- would attribute what it collected to whichever of the two disagrees. The
+-- composite key proves the link is the team's; this proves the rest, AFTER
+-- the row so the key reports first, and only when the link is set, because
+-- wave and participant are immutable above.
+CREATE OR REPLACE FUNCTION interview_session_link_is_own() RETURNS trigger AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM interview_links l
+    WHERE l.id = NEW.link_id AND l.team_id = NEW.team_id
+      AND l.study_id = NEW.study_id
+      AND l.wave_id = NEW.wave_id
+      AND l.participant_id IS NOT DISTINCT FROM NEW.participant_id
+  ) THEN
+    RAISE EXCEPTION 'an interview session''s link must open its own wave for its own participant';
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER interview_sessions_link_own
+  AFTER INSERT OR UPDATE OF link_id ON interview_sessions
+  FOR EACH ROW
+  WHEN (NEW.link_id IS NOT NULL)
+  EXECUTE FUNCTION interview_session_link_is_own();
 
 -- The same guard as sessions, minus the finalization clause.
 CREATE OR REPLACE FUNCTION interview_links_are_writable() RETURNS trigger AS $$

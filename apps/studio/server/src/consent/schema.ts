@@ -121,6 +121,8 @@ const consentItems = pgTable(
   },
   (table) => [
     unique().on(table.id, table.teamId),
+    // The identity a response proves its item through, document included.
+    unique().on(table.id, table.consentDocumentId, table.teamId),
     unique().on(table.consentDocumentId, table.position),
     unique().on(table.consentDocumentId, table.key),
     foreignKey({
@@ -174,6 +176,8 @@ const participantConsents = pgTable(
   (table) => [
     unique().on(table.id, table.teamId),
     unique().on(table.id, table.studyId, table.teamId),
+    // The identity a response proves its consent through, document included.
+    unique().on(table.id, table.consentDocumentId, table.teamId),
     // One record per participant per document version. Re-consent to a new
     // version is a new row, so the history is the row set.
     unique().on(table.participantId, table.consentDocumentId),
@@ -243,11 +247,18 @@ const participantConsents = pgTable(
 
 // Which affirmation items the participant actually agreed to. Without this, an
 // optional item's answer is unrecoverable.
+//
+// The document is carried here so that both parents can be proven against it:
+// a response pairs a consent with an item, and only a key both share can
+// establish that the item belongs to the document version the participant
+// actually accepted. Without it, an immutable row could claim a participant
+// affirmed or declined terms that were never in the version they signed.
 const participantConsentItemResponses = pgTable(
   'participant_consent_item_responses',
   {
     teamId: text('team_id').notNull(),
     participantConsentId: uuid('participant_consent_id').notNull(),
+    consentDocumentId: uuid('consent_document_id').notNull(),
     consentItemId: uuid('consent_item_id').notNull(),
     // The item's key at grant time, so an export column survives the item
     // row being superseded by a later document version.
@@ -260,13 +271,25 @@ const participantConsentItemResponses = pgTable(
     }),
     foreignKey({
       name: 'participant_consent_item_responses_consent_fk',
-      columns: [table.participantConsentId, table.teamId],
-      foreignColumns: [participantConsents.id, participantConsents.teamId],
+      columns: [
+        table.participantConsentId,
+        table.consentDocumentId,
+        table.teamId,
+      ],
+      foreignColumns: [
+        participantConsents.id,
+        participantConsents.consentDocumentId,
+        participantConsents.teamId,
+      ],
     }),
     foreignKey({
       name: 'participant_consent_item_responses_item_fk',
-      columns: [table.consentItemId, table.teamId],
-      foreignColumns: [consentItems.id, consentItems.teamId],
+      columns: [table.consentItemId, table.consentDocumentId, table.teamId],
+      foreignColumns: [
+        consentItems.id,
+        consentItems.consentDocumentId,
+        consentItems.teamId,
+      ],
     }),
     index('participant_consent_item_responses_team_id_item_key_idx').on(
       table.teamId,
@@ -367,6 +390,30 @@ CREATE OR REPLACE TRIGGER participant_consent_grant_immutable
 CREATE OR REPLACE TRIGGER participant_consent_item_responses_immutable
   BEFORE UPDATE ON participant_consent_item_responses
   FOR EACH ROW EXECUTE FUNCTION participant_consent_grant_is_immutable();
+
+-- A consent captured inside a session was captured inside one of the
+-- consenting participant's own sessions. The composite key proves the
+-- session's study; only a lookup can prove its participant, and the grant
+-- trigger above makes session_id immutable, so once at insert is enough.
+-- AFTER the row, so the key reports a session of another study or team
+-- first and this speaks only to a session the consent could otherwise cite.
+CREATE OR REPLACE FUNCTION participant_consent_session_is_own() RETURNS trigger AS $$
+BEGIN
+  IF NEW.session_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM interview_sessions s
+    WHERE s.id = NEW.session_id AND s.team_id = NEW.team_id
+      AND s.study_id = NEW.study_id
+      AND s.participant_id = NEW.participant_id
+  ) THEN
+    RAISE EXCEPTION 'a consent captured inside a session must name a session of the consenting participant';
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER participant_consents_session_own
+  AFTER INSERT ON participant_consents
+  FOR EACH ROW EXECUTE FUNCTION participant_consent_session_is_own();
 ${tenantTablesSql([
   'consent_documents',
   'consent_items',

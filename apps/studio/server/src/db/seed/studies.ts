@@ -329,7 +329,8 @@ export async function seedStudies(
         token,
         kind: 'anonymous',
       });
-      const redemptions = plan.sessionCounts[0] ?? 0;
+      // Redemptions are written later, from the sessions the link produced
+      // (`recordLinkRedemptions`), for both link kinds.
       linkRows.push([
         id,
         studyId,
@@ -340,8 +341,8 @@ export async function seedStudies(
         hash,
         shiftDays(createdAt, 200),
         null,
-        redemptions,
-        redemptions === 0 ? null : shiftDays(createdAt, 90),
+        0,
+        null,
         team.adminUserId,
         shiftDays(createdAt, 18),
       ]);
@@ -517,6 +518,32 @@ export async function seedStudies(
   );
 
   return studies;
+}
+
+/**
+ * A link's redemption record is derived from the sessions that cite it, once
+ * they exist: every visit through a link is a session, so the count is the
+ * session count and the last redemption is the newest session's start. Written
+ * as one set-based update rather than carried on the link rows, because the
+ * sessions are planned after the links are inserted.
+ */
+export async function recordLinkRedemptions(
+  client: pg.PoolClient,
+  teamId: string,
+): Promise<void> {
+  await client.query(
+    `update interview_links l
+        set redemption_count = redeemed.n,
+            last_redeemed_at = redeemed.newest
+       from (
+         select link_id, count(*)::int as n, max(started_at) as newest
+           from interview_sessions
+          where team_id = $1 and link_id is not null
+          group by link_id
+       ) redeemed
+      where l.id = redeemed.link_id and l.team_id = $1`,
+    [teamId],
+  );
 }
 
 export type SeedConsentDocument = {
@@ -728,13 +755,19 @@ export async function seedConsentDocuments(
 /**
  * ~90% of a study's participants consent to the current document, ~5% of those
  * later withdraw, and every optional item is answered — some of them declined.
+ *
+ * Where the participant has interviewed, the consent was captured inside their
+ * first session, minutes after it started — fully remote onboarding. Where they
+ * have not, it was captured outside any session, shortly after enrolment — the
+ * researcher-led kind. Both shapes the column exists to hold appear, and
+ * neither claims a session that had not started when the grant was made.
  */
 export async function seedParticipantConsents(
   client: pg.PoolClient,
   team: SeedTeam,
   studies: SeedStudy[],
   documentsByStudy: Map<string, SeedConsentDocument[]>,
-  sessionByParticipant: Map<string, string>,
+  firstSessionByParticipant: Map<string, { id: string; startedAt: Date }>,
 ): Promise<void> {
   const consentRows: SeedRowValue[][] = [];
   const responseRows: SeedRowValue[][] = [];
@@ -751,10 +784,17 @@ export async function seedParticipantConsents(
       .slice(0, consenting)
       .entries()) {
       const id = seedUuid();
-      const grantedAt = shiftMinutes(
-        participant.enrolledAt,
-        faker.number.int({ min: 10, max: 600 }),
-      );
+      const session = firstSessionByParticipant.get(participant.id);
+      const grantedAt =
+        session === undefined
+          ? shiftMinutes(
+              participant.enrolledAt,
+              faker.number.int({ min: 10, max: 600 }),
+            )
+          : shiftMinutes(
+              session.startedAt,
+              faker.number.int({ min: 1, max: 5 }),
+            );
       const withdrawn = index % 20 === 3;
       consentRows.push([
         id,
@@ -763,7 +803,7 @@ export async function seedParticipantConsents(
         participant.id,
         current.id,
         current.contentHash,
-        sessionByParticipant.get(participant.id) ?? null,
+        session?.id ?? null,
         'affirmation',
         grantedAt,
         withdrawn ? shiftDays(grantedAt, 40) : null,
@@ -775,6 +815,7 @@ export async function seedParticipantConsents(
         responseRows.push([
           team.id,
           id,
+          current.id,
           item.id,
           item.key,
           // Required items are always affirmed — a consent record could not
@@ -811,6 +852,7 @@ export async function seedParticipantConsents(
     [
       'team_id',
       'participant_consent_id',
+      'consent_document_id',
       'consent_item_id',
       'item_key',
       'affirmed',

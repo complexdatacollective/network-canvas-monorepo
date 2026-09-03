@@ -701,15 +701,62 @@ describe.skipIf(!db)('consent schema', () => {
         constraint: 'participant_consents_session_fk',
       });
 
-      // A session in the consent's own study is accepted.
+      // The participant's own session in the consent's own study is accepted.
       await expect(
         insert(
           'participant_consents',
           consentRow(studyId, participantId, documentId, {
-            session_id: await newSession(studyId),
+            session_id: await newSession(studyId, {
+              participant_id: participantId,
+            }),
           }),
         ),
       ).resolves.toMatchObject({ rowCount: 1 });
+    });
+
+    it('refuses a session of another participant', async () => {
+      const studyId = await newStudy();
+      const documentId = await newDocument(studyId);
+      await publish(documentId);
+      // One wave, so two participants can each hold a session in it.
+      const waveId = randomUUID();
+      await insert('study_waves', {
+        id: waveId,
+        study_id: studyId,
+        team_id: TEAM_A,
+        wave_number: 1,
+      });
+      const sessionFor = async (participantId: string): Promise<string> => {
+        const id = randomUUID();
+        await insert('interview_sessions', {
+          id,
+          study_id: studyId,
+          team_id: TEAM_A,
+          wave_id: waveId,
+          participant_id: participantId,
+          protocol_version_id: versionOf[TEAM_A],
+          ego_uid: `ego_${id.slice(0, 8)}`,
+        });
+        return id;
+      };
+      const bystanderId = await newParticipant(studyId);
+      const consentingId = await newParticipant(studyId);
+      const bystanderSession = await sessionFor(bystanderId);
+
+      // Same study, so the composite key is satisfied; only the trigger can
+      // tell whose session it is.
+      await expect(
+        newConsent(studyId, consentingId, documentId, {
+          session_id: bystanderSession,
+        }),
+      ).rejects.toThrow(
+        'a consent captured inside a session must name a session of the consenting participant',
+      );
+      await expect(
+        newConsent(studyId, consentingId, documentId, {
+          session_id: await sessionFor(consentingId),
+        }),
+      ).resolves.toMatch(/^[0-9a-f-]{36}$/);
     });
 
     it('holds the grant immutable', async () => {
@@ -800,12 +847,13 @@ describe.skipIf(!db)('consent schema', () => {
 
   describe('participant_consent_item_responses', () => {
     it('rejects an item key that is not a machine key', async () => {
-      const { consentId, itemId } = await grantedConsent();
+      const { documentId, consentId, itemId } = await grantedConsent();
 
       await expect(
         insert('participant_consent_item_responses', {
           team_id: TEAM_A,
           participant_consent_id: consentId,
+          consent_document_id: documentId,
           consent_item_id: itemId,
           item_key: 'Not A Key',
           affirmed: true,
@@ -815,11 +863,43 @@ describe.skipIf(!db)('consent schema', () => {
       });
     });
 
+    it('refuses an item from a document other than the one consented to', async () => {
+      const { studyId, documentId, itemId, consentId } = await grantedConsent();
+      const otherDocumentId = await newDocument(studyId, { version: 2 });
+      const foreignItemId = await newItem(otherDocumentId);
+      const response = (consentItemId: string, consentDocumentId: string) =>
+        insert('participant_consent_item_responses', {
+          team_id: TEAM_A,
+          participant_consent_id: consentId,
+          consent_document_id: consentDocumentId,
+          consent_item_id: consentItemId,
+          item_key: 'may_contact_again',
+          affirmed: true,
+        });
+
+      // Named under the consent's document, the item is not that document's…
+      await expect(response(foreignItemId, documentId)).rejects.toMatchObject({
+        code: '23503',
+        constraint: 'participant_consent_item_responses_item_fk',
+      });
+      // …and named under its own document, the consent is not for it.
+      await expect(
+        response(foreignItemId, otherDocumentId),
+      ).rejects.toMatchObject({
+        code: '23503',
+        constraint: 'participant_consent_item_responses_consent_fk',
+      });
+      await expect(response(itemId, documentId)).resolves.toMatchObject({
+        rowCount: 1,
+      });
+    });
+
     it('records one response per item and holds it immutable', async () => {
-      const { consentId, itemId } = await grantedConsent();
+      const { documentId, consentId, itemId } = await grantedConsent();
       const response = {
         team_id: TEAM_A,
         participant_consent_id: consentId,
+        consent_document_id: documentId,
         consent_item_id: itemId,
         item_key: 'may_contact_again',
         affirmed: false,

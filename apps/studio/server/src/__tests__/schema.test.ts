@@ -105,6 +105,7 @@ describe('generated schema documentation', () => {
     expect(readmeSection).toContain('study_waves_parent_open');
     expect(readmeSection).toContain('participants_writable');
     expect(readmeSection).toContain('interview_sessions_writable');
+    expect(readmeSection).toContain('interview_sessions_link_own');
     expect(readmeSection).toContain('interview_links_writable');
     expect(readmeSection).toContain('api_token_authority_immutable');
     expect(readmeSection).toContain('consent_documents_publication_immutable');
@@ -115,7 +116,11 @@ describe('generated schema documentation', () => {
     );
     expect(readmeSection).toContain('webhook_delivery_payload_immutable');
     expect(readmeSection).toContain('experiment_assignments_immutable');
+    expect(readmeSection).toContain('experiment_assignments_variant_known');
+    expect(readmeSection).toContain('experiments_variants_frozen');
     expect(readmeSection).toContain('experiment_exposures_immutable');
+    expect(readmeSection).toContain('participant_consents_session_own');
+    expect(readmeSection).toContain('message_deliveries_template_applies');
     expect(readmeSection).toContain('study_schedules_time_zone_known');
     expect(readmeSection).toContain('schedule_occurrences_time_zone_known');
     expect(readmeSection).toContain('message_templates_publication_immutable');
@@ -178,6 +183,7 @@ describe('generated schema documentation', () => {
     expect(svg).toContain('sidecar trigger study_waves_parent_open');
     expect(svg).toContain('sidecar trigger participants_writable');
     expect(svg).toContain('sidecar trigger interview_sessions_writable');
+    expect(svg).toContain('sidecar trigger interview_sessions_link_own');
     expect(svg).toContain('sidecar trigger interview_links_writable');
     expect(svg).toContain('sidecar trigger api_token_authority_immutable');
     expect(svg).toContain(
@@ -192,7 +198,15 @@ describe('generated schema documentation', () => {
     );
     expect(svg).toContain('sidecar trigger webhook_delivery_payload_immutable');
     expect(svg).toContain('sidecar trigger experiment_assignments_immutable');
+    expect(svg).toContain(
+      'sidecar trigger experiment_assignments_variant_known',
+    );
+    expect(svg).toContain('sidecar trigger experiments_variants_frozen');
     expect(svg).toContain('sidecar trigger experiment_exposures_immutable');
+    expect(svg).toContain('sidecar trigger participant_consents_session_own');
+    expect(svg).toContain(
+      'sidecar trigger message_deliveries_template_applies',
+    );
     expect(svg).toContain('sidecar trigger study_schedules_time_zone_known');
     expect(svg).toContain(
       'sidecar trigger schedule_occurrences_time_zone_known',

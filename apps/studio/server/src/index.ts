@@ -54,9 +54,10 @@ function startDatabaseWorkers(): void {
 // Outside development a stale or absent schema is a resolved answer, not a
 // transient failure: retrying re-reads the same fingerprint every three
 // seconds. The development lane waits instead, the same way it waits for the
-// container itself: dev-pg drops and reseeds the database on every boot, so
-// the schema this process finds first may be last build's, or none at all,
-// for a few seconds.
+// container itself: `pnpm dev` finishes its reset before this process starts,
+// but a server started on its own against a database another build applied,
+// or a `db:reset` run beside a running server, should recover by themselves
+// once the schema is current.
 function exitIfFatal(state: SchemaState): void {
   if (state.kind !== 'current' && !env.devDefaults) {
     // oxlint-disable-next-line no-console -- boot diagnostics

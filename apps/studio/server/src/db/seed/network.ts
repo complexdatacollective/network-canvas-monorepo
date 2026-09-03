@@ -25,7 +25,7 @@ import type { SeedTeam } from './teams.ts';
 
 export type RefreshProjections = (
   client: pg.ClientBase,
-  ids: { teamId: string; sessionId: string },
+  ids: { teamId: string; sessionIds: readonly string[] },
 ) => Promise<void>;
 
 export type NetworkScale = { nodeCount: { min: number; max: number } };
@@ -186,12 +186,10 @@ export async function seedSessionsAndNetworks(
     // keys into `nodes`.
     await insertRows(client, 'nodes', NODE_COLUMNS, nodeRows);
     await insertRows(client, 'edges', EDGE_COLUMNS, edgeRows);
-    for (const session of pending) {
-      await refreshProjections(client, {
-        teamId: team.id,
-        sessionId: session.id,
-      });
-    }
+    await refreshProjections(client, {
+      teamId: team.id,
+      sessionIds: pending.map((session) => session.id),
+    });
     // After the flip to `completed`, and in the same transaction as it, which
     // is what `session_snapshots_insert_frozen` proves.
     await insertRows(
@@ -250,22 +248,28 @@ export async function seedSessionsAndNetworks(
                   candidate.participantId === participant.id,
               ) ?? null);
 
+        // The stage a paused interview is parked at. The generator clears the
+        // values that stage has not yet collected, but reports the completion
+        // cursor regardless — it only ever moves the cursor back for a
+        // drop-out — so the session's own cursor is taken from here rather
+        // than from what it returns.
+        const inProgressStageIndex =
+          status === 'in_progress'
+            ? Math.max(
+                0,
+                Math.min(
+                  version.stages.length - 1,
+                  faker.number.int({ min: 2, max: 12 }),
+                ),
+              )
+            : undefined;
         const generated = withSeededIds(
           generateNetwork({
             codebook: version.codebook,
             stages: version.stages,
             seed: generatorSeed++,
             simulateDropOut: status === 'abandoned',
-            inProgressStageIndex:
-              status === 'in_progress'
-                ? Math.max(
-                    0,
-                    Math.min(
-                      version.stages.length - 1,
-                      faker.number.int({ min: 2, max: 12 }),
-                    ),
-                  )
-                : undefined,
+            inProgressStageIndex,
             config: { nodeCount: scale.nodeCount },
           }) as GeneratedInterview,
         );
@@ -280,7 +284,11 @@ export async function seedSessionsAndNetworks(
           startedAt,
           faker.number.int({ min: 8, max: 95 }),
         );
-        const stageIndex = Math.max(0, generated.currentStep);
+        // Completed sessions sit past the last stage, with no stage id; an
+        // abandoned one at the stage it dropped out of; a paused one at the
+        // stage chosen above.
+        const stageIndex =
+          inProgressStageIndex ?? Math.max(0, generated.currentStep);
         const stageId = version.stages[stageIndex]?.id ?? null;
 
         sessionRows.push([
@@ -375,22 +383,24 @@ export async function seedSessionsAndNetworks(
   return sessions;
 }
 
-/** The most recent session per participant, for the consent records' back-link. */
-export function newestSessionByParticipant(
+/**
+ * The first session per participant, for the consent records' back-link: a
+ * consent captured inside a session was captured at the start of the first
+ * interview, not inside a later wave that began months after the grant.
+ */
+export function earliestSessionByParticipant(
   sessions: SeededSession[],
-): Map<string, string> {
-  const newest = new Map<string, { id: string; startedAt: Date }>();
+): Map<string, { id: string; startedAt: Date }> {
+  const earliest = new Map<string, { id: string; startedAt: Date }>();
   for (const session of sessions) {
     if (session.participantId === null) continue;
-    const current = newest.get(session.participantId);
-    if (current === undefined || session.startedAt > current.startedAt) {
-      newest.set(session.participantId, {
+    const current = earliest.get(session.participantId);
+    if (current === undefined || session.startedAt < current.startedAt) {
+      earliest.set(session.participantId, {
         id: session.id,
         startedAt: session.startedAt,
       });
     }
   }
-  return new Map(
-    [...newest].map(([participantId, session]) => [participantId, session.id]),
-  );
+  return earliest;
 }
