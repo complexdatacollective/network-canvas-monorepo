@@ -1663,25 +1663,58 @@ export const egoFormScenarios: InterfaceScenarios = {
         // region and covered whatever happened to be there. It now takes its
         // own row below the scroller, so nothing can be underneath it — at the
         // top of the form or part-way down it.
+        // A label that has scrolled part-way out of the form still has a box
+        // where it would be if nothing clipped it, and a box below the
+        // scroller's edge is exactly where the nudge's row is. Only the part
+        // of a label a participant can see can be covered, so each candidate
+        // is cut down to what its clipping ancestors leave visible before it
+        // is tested against the nudge.
         const overlappedText = async () => {
           const box = await nudge.boundingBox();
           if (!box) throw new Error('Scroll guidance has no box to measure');
-          const candidates = await page
-            .locator('main label, main [data-testid$="-field-error"]')
-            .all();
-          const hits: string[] = [];
-          for (const candidate of candidates) {
-            if (!(await candidate.isVisible())) continue;
-            const rect = await candidate.boundingBox();
-            if (!rect) continue;
-            const overlaps =
-              rect.x < box.x + box.width &&
-              rect.x + rect.width > box.x &&
-              rect.y < box.y + box.height &&
-              rect.y + rect.height > box.y;
-            if (overlaps) hits.push((await candidate.textContent()) ?? '');
-          }
-          return hits;
+          return page.evaluate((nudgeBox) => {
+            const clips = (el: Element) => {
+              let rect = el.getBoundingClientRect();
+              for (
+                let ancestor = el.parentElement;
+                ancestor;
+                ancestor = ancestor.parentElement
+              ) {
+                const { overflowX, overflowY } = getComputedStyle(ancestor);
+                if (overflowX === 'visible' && overflowY === 'visible')
+                  continue;
+                const a = ancestor.getBoundingClientRect();
+                rect = new DOMRect(
+                  Math.max(rect.left, a.left),
+                  Math.max(rect.top, a.top),
+                  Math.max(
+                    0,
+                    Math.min(rect.right, a.right) - Math.max(rect.left, a.left),
+                  ),
+                  Math.max(
+                    0,
+                    Math.min(rect.bottom, a.bottom) - Math.max(rect.top, a.top),
+                  ),
+                );
+              }
+              return rect;
+            };
+            const hits: string[] = [];
+            for (const candidate of document.querySelectorAll(
+              'main label, main [data-testid$="-field-error"]',
+            )) {
+              if (!candidate.checkVisibility()) continue;
+              const rect = clips(candidate);
+              if (rect.width === 0 || rect.height === 0) continue;
+              const overlaps =
+                rect.left < nudgeBox.x + nudgeBox.width &&
+                rect.right > nudgeBox.x &&
+                rect.top < nudgeBox.y + nudgeBox.height &&
+                rect.bottom > nudgeBox.y;
+              if (overlaps) hits.push(candidate.textContent ?? '');
+            }
+            return hits;
+          }, box);
         };
 
         expect(await overlappedText()).toEqual([]);

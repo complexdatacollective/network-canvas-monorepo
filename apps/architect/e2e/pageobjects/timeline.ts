@@ -150,8 +150,8 @@ export class Timeline {
     // practice) reliably brings both rows' centers on-screen for any `to`
     // within a couple of rows below `from`.
     await fromCard.evaluate((el) => el.scrollIntoView({ block: 'start' }));
-    const fromBox = await from.boundingBox();
-    const toBox = await to.boundingBox();
+    let fromBox = await from.boundingBox();
+    let toBox = await to.boundingBox();
     if (!fromBox || !toBox) throw new Error('stage row not found');
     // `block: 'start'` keeps the destination row reachable, but Architect's
     // sticky navigation can cover the centre of a short first row. Start near
@@ -159,10 +159,39 @@ export class Timeline {
     // inside the preview, heading, or card under test, while remaining clear
     // of the navigation as those controls change size.
     const fromInset = Math.min(8, fromBox.height / 4);
-    await this.page.mouse.move(
-      fromBox.x + fromBox.width / 2,
-      fromBox.y + fromBox.height - fromInset,
-    );
+    let startY = fromBox.y + fromBox.height - fromInset;
+    // A cap-trimmed stage heading is only as tall as its capitals, so after
+    // `block: 'start'` the whole of it can sit behind the sticky navigation
+    // (and, in CI's Chromium, behind the install banner above it). A press
+    // there lands on the navigation and never starts a drag. Scroll the
+    // origin down until the start point clears the chrome, then re-measure.
+    const chrome = await this.page.locator('header').first().boundingBox();
+    const chromeBottom = chrome ? chrome.y + chrome.height : 0;
+    if (startY < chromeBottom + 8) {
+      // Scroll whatever scrolls the timeline (the nearest scrollable
+      // ancestor, else the document), not the element under an idle pointer.
+      await fromCard.evaluate(
+        (el, dy) => {
+          let scroller: HTMLElement | null = el.parentElement;
+          while (
+            scroller &&
+            !(
+              scroller.scrollHeight > scroller.clientHeight &&
+              /auto|scroll/.test(getComputedStyle(scroller).overflowY)
+            )
+          ) {
+            scroller = scroller.parentElement;
+          }
+          (scroller ?? document.scrollingElement)?.scrollBy(0, dy);
+        },
+        startY - (chromeBottom + 8),
+      );
+      fromBox = await from.boundingBox();
+      toBox = await to.boundingBox();
+      if (!fromBox || !toBox) throw new Error('stage row not found');
+      startY = fromBox.y + fromBox.height - fromInset;
+    }
+    await this.page.mouse.move(fromBox.x + fromBox.width / 2, startY);
     await this.page.mouse.down();
     // Several steps so motion registers a drag (didDrag), not a click.
     await this.page.mouse.move(
