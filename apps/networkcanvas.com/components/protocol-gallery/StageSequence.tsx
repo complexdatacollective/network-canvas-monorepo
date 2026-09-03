@@ -1,11 +1,13 @@
 import { useTranslations } from 'next-intl';
 
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import { StageBar } from '@codaco/fresco-ui/stages/StageBar';
+import {
+  isStageType,
+  stageTypeColorStyle,
+} from '@codaco/fresco-ui/stages/stageTypes';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { StageBar } from '~/components/protocol-gallery/StageBar';
-import { cn } from '~/lib/cn';
 import type { ProtocolStage } from '~/lib/protocolStages';
-import { isStageType, stageColorClass } from '~/lib/stageTypes';
 
 export function StageSequence({ stages }: { stages: ProtocolStage[] }) {
   const t = useTranslations('ProtocolGallery');
@@ -31,10 +33,8 @@ export function StageSequence({ stages }: { stages: ProtocolStage[] }) {
             </span>
             <span
               aria-hidden
-              className={cn(
-                'size-2.5 rounded-full',
-                stageColorClass(stage.type),
-              )}
+              className="size-2.5 rounded-full"
+              style={{ backgroundColor: stageTypeColorStyle(stage.type).color }}
             />
             <span className="min-w-0 truncate" title={stage.label}>
               {stage.label}

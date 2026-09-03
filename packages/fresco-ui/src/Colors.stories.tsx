@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
+import { type PaletteColor, paletteColorStyles } from './styles/palette';
 import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
 
@@ -409,6 +410,41 @@ export const AllColors: Story = {
             />
           ))}
         </div>
+      </div>
+    </div>
+  ),
+};
+
+/**
+ * The named palette is static — the same value in every theme — so reading
+ * its `--color-*` alias is safe here, unlike the semantic tokens above.
+ */
+export const NamedPalette: Story = {
+  render: () => (
+    <div>
+      <Heading level="h1" margin="none" className="mb-2">
+        Named Palette
+      </Heading>
+      <Paragraph margin="none" className="text-text/70 mb-8">
+        Every named color in the Fresco palette
+      </Paragraph>
+      <div className="tablet-landscape:grid-cols-4 grid grid-cols-2 gap-4">
+        {(Object.keys(paletteColorStyles) as PaletteColor[]).map((name) => (
+          <div key={name} className="flex flex-col gap-2">
+            <div
+              className="border-outline flex h-24 w-full items-center justify-center rounded-lg border-2 font-medium"
+              style={{
+                backgroundColor: paletteColorStyles[name].color,
+                color: paletteColorStyles[name].contrast,
+              }}
+            >
+              {name}
+            </div>
+            <div className="text-text/70 text-center text-xs">
+              <div className="font-[monospace]">{name}</div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   ),

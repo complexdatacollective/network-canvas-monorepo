@@ -1,0 +1,132 @@
+import type { Meta, StoryObj } from '@storybook/react-vite';
+
+import type { StageType } from '@codaco/protocol-validation';
+
+import Paragraph from '../typography/Paragraph';
+import { StageBar } from './StageBar';
+import { STAGE_TYPE_COLORS, stageTypeColorStyle } from './stageTypes';
+
+const meta = {
+  title: 'Components/StageBar',
+  component: StageBar,
+  parameters: {
+    layout: 'padded',
+    docs: {
+      description: {
+        component: `
+A stage sequence as a strip of equal segments, one per stage, each in its
+interface's colour from \`STAGE_TYPE_COLORS\`. It reads a protocol's shape at a
+glance: how long it is and where its name generators, censuses and sociograms
+fall.
+
+\`\`\`tsx
+import { StageBar } from '@codaco/fresco-ui/stages/StageBar';
+import { stageTypeColorStyle } from '@codaco/fresco-ui/stages/stageTypes';
+
+<StageBar stages={protocol.stages} />
+<StageBar stages={protocol.stages} label="24 stages: 1 sociogram, 1 dyad census" />
+
+// The same colour for a dot or swatch beside a stage's name:
+<span style={{ backgroundColor: stageTypeColorStyle(stage.type).color }} />
+\`\`\`
+
+Props:
+- \`stages\` — the sequence in interview order; only each stage's \`type\` is read.
+- \`label\` — an accessible summary. With it the bar is an \`img\` with that name; without it the bar is decoration hidden from assistive technology, on the assumption the same information is written out beside it.
+- Any other \`div\` attributes, including \`className\` for width and spacing.
+
+\`STAGE_TYPE_COLORS\` is the single map of stage type to palette colour, keyed by the protocol schema's stage union so a new stage type cannot ship without one. \`getStageTypeColor\` and \`stageTypeColorStyle\` fall back to a neutral for stage types this build does not know.
+        `,
+      },
+    },
+  },
+  tags: ['autodocs'],
+} satisfies Meta<typeof StageBar>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const mixedSequence = [
+  'Information',
+  'Information',
+  'EgoForm',
+  'NameGenerator',
+  'NameGeneratorQuickAdd',
+  'NameGeneratorRoster',
+  'CategoricalBin',
+  'OrdinalBin',
+  'AlterForm',
+  'Sociogram',
+  'Sociogram',
+  'DyadCensus',
+  'AlterEdgeForm',
+  'TieStrengthCensus',
+  'Narrative',
+  'Geospatial',
+  'Anonymisation',
+  'Information',
+].map((type) => ({ type }));
+
+export const Default: Story = {
+  args: {
+    stages: mixedSequence,
+  },
+};
+
+export const WithLabel: Story = {
+  args: {
+    stages: mixedSequence,
+    label: '18 stages: 2 sociograms, 1 dyad census, 1 tie-strength census',
+  },
+};
+
+export const SingleStage: Story = {
+  args: {
+    stages: [{ type: 'Information' }],
+  },
+};
+
+export const UnknownStageType: Story = {
+  args: {
+    stages: [
+      { type: 'Information' },
+      { type: 'FutureInterface' },
+      { type: 'Sociogram' },
+    ],
+  },
+};
+
+export const InNarrowContainer: Story = {
+  args: { stages: mixedSequence },
+  render: () => (
+    <div className="max-w-40">
+      <StageBar stages={mixedSequence} />
+    </div>
+  ),
+};
+
+export const AllStageTypes: Story = {
+  args: { stages: mixedSequence },
+  render: () => (
+    <dl className="grid gap-x-8 gap-y-2 sm:grid-cols-2">
+      {(Object.keys(STAGE_TYPE_COLORS) as StageType[]).map((type) => (
+        <div key={type} className="flex items-center gap-3">
+          <span
+            aria-hidden
+            className="size-4 shrink-0 rounded-full"
+            style={{ backgroundColor: stageTypeColorStyle(type).color }}
+          />
+          <dt className="font-monospace text-sm">{type}</dt>
+          <Paragraph
+            intent="caption"
+            emphasis="muted"
+            margin="none"
+            render={<dd />}
+          >
+            {STAGE_TYPE_COLORS[type]}
+          </Paragraph>
+        </div>
+      ))}
+    </dl>
+  ),
+};

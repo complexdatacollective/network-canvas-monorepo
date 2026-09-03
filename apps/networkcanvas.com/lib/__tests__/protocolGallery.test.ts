@@ -4,8 +4,8 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { isStageType } from '@codaco/fresco-ui/stages/stageTypes';
 import { loadProtocolGallery } from '~/lib/protocolGallery';
-import { isStageType } from '~/lib/stageTypes';
 
 const expectedStageCounts: Record<string, number[]> = {
   'gate': [42],
