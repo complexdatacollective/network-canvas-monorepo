@@ -147,9 +147,20 @@ export const ASSET_TABLES = { assets, assetReferences };
 export const ASSET_SIDECAR_SQL = `
 -- Pins belonging to an immutable published artifact are immutable too:
 -- retracting one would change what a frozen version resolves to while its
--- manifest and hash stayed unchanged (the version_sections argument).
+-- manifest and hash stayed unchanged (the version_sections argument). A
+-- version is published by the insert that creates it, so its pins are frozen
+-- from the start; a consent document is drafted first, and its pins stay
+-- editable — replaceable, removable — until it is published, the same
+-- boundary the insert guard below draws.
 CREATE OR REPLACE FUNCTION asset_references_published_pins_are_frozen() RETURNS trigger AS $$
 BEGIN
+  IF OLD.referrer_kind = 'consent_document' AND EXISTS (
+    SELECT 1 FROM consent_documents d
+    WHERE d.id::text = OLD.referrer_id AND d.team_id = OLD.team_id
+      AND d.state = 'draft'
+  ) THEN
+    RETURN COALESCE(NEW, OLD);
+  END IF;
   RAISE EXCEPTION 'published asset references are immutable';
 END;
 $$ LANGUAGE plpgsql;

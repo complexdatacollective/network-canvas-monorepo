@@ -359,11 +359,17 @@ CREATE OR REPLACE TRIGGER consent_documents_publication_immutable
 
 -- Items belong to their document version. Once that version is published,
 -- adding, removing, or rewording an item would change what an existing
--- consent record means.
+-- consent record means. The one exception is the maintenance purge's DELETE:
+-- a study is purged bottom-up, and the item key onto its document is NO
+-- ACTION, so without this the document — and the study above it — could
+-- never be removed once published.
 CREATE OR REPLACE FUNCTION consent_items_are_frozen_after_publication() RETURNS trigger AS $$
 DECLARE
   document_state text;
 BEGIN
+  IF TG_OP = 'DELETE' AND current_user = 'studio_maintenance' THEN
+    RETURN OLD;
+  END IF;
   SELECT state INTO document_state FROM consent_documents
   WHERE id = COALESCE(NEW.consent_document_id, OLD.consent_document_id);
   IF document_state IS NOT NULL AND document_state <> 'draft' THEN

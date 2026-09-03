@@ -82,20 +82,38 @@ export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
   }
 }
 
+export type ResetOptions = SeedOptions & {
+  /**
+   * Also drop every `studio_test_*` scratch schema and database on the
+   * cluster. Only an explicit `db:reset` asks for this: the sweep is the
+   * remedy for what a crashed test run left behind, but it cannot tell a
+   * leftover from a suite that is running right now, and it force-drops
+   * either. The automatic dev-boot reset therefore leaves them alone.
+   */
+  sweepScratch?: boolean;
+};
+
 /**
- * The full local reset: drop and recreate the schema, sweep any leftover
- * scratch schemas or databases a crashed test run left behind, reapply the
+ * The full local reset: drop and recreate the schema, optionally sweep the
+ * scratch schemas and databases a crashed test run left behind, reapply the
  * schema, and reseed. Shared by db-reset.ts (on demand) and dev-pg.ts (every
  * `pnpm dev` boot) so the two sequences cannot drift apart. Callers own the
  * non-local safety check — this function always does the drop.
  */
 export async function resetSchemaAndSeed(
   pool: pg.Pool,
-  options: SeedOptions = {},
+  options: ResetOptions = {},
 ): Promise<void> {
   await pool.query('drop schema if exists public cascade');
   await pool.query('create schema public');
 
+  if (options.sweepScratch) await sweepScratch(pool);
+
+  await applySchema(pool);
+  await seed(pool, options);
+}
+
+async function sweepScratch(pool: pg.Pool): Promise<void> {
   const leftoverSchemas = await pool.query<{ nspname: string }>(
     `select nspname from pg_namespace where nspname like 'studio\\_test\\_%'`,
   );
@@ -121,7 +139,4 @@ export async function resetSchemaAndSeed(
       `Dropped ${leftoverDatabases.rowCount} leftover test database(s).`,
     );
   }
-
-  await applySchema(pool);
-  await seed(pool, options);
 }

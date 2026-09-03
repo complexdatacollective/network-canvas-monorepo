@@ -231,11 +231,18 @@ export async function createAuditedStudy(
           name: studyName,
           protocolId: protocol.protocolId,
         });
-        await insertCreatorGrant(client, {
-          studyId: input.studyId,
-          teamId,
-          userId: context.principal.userId,
-        });
+        // Only the creation grants: a replay changes nothing, and this is the
+        // one write of the command that would otherwise still happen on one —
+        // for whoever replays it, which the identities alone do not prove is
+        // the creator. A grant written that way would also commit unaudited,
+        // because the replay returns before the creation event.
+        if (study.created) {
+          await insertCreatorGrant(client, {
+            studyId: input.studyId,
+            teamId,
+            userId: context.principal.userId,
+          });
+        }
 
         const response = {
           studyId: input.studyId,

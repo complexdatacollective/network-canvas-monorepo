@@ -641,6 +641,20 @@ describe.skipIf(!db)('consent schema', () => {
         pool.query(`DELETE FROM consent_items WHERE id = $1`, [itemId]),
       ).rejects.toThrow('published consent documents are immutable');
 
+      // The maintenance purge removes a study bottom-up, items before their
+      // document, so its DELETE — and only its DELETE — is admitted; it may
+      // no more add or reword an item under a published document than
+      // anyone else.
+      await expect(
+        maintenance.query(
+          `UPDATE consent_items SET prompt = 'Reworded' WHERE id = $1`,
+          [itemId],
+        ),
+      ).rejects.toThrow('published consent documents are immutable');
+      await expect(
+        maintenance.query(`DELETE FROM consent_items WHERE id = $1`, [itemId]),
+      ).resolves.toMatchObject({ rowCount: 1 });
+
       // A different, still-draft document is untouched by the freeze.
       const draftDocumentId = await newDocument(studyId, { version: 2 });
       await expect(

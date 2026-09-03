@@ -100,8 +100,9 @@ the S3 degradation contract.
 **Every `pnpm dev` boot resets and reseeds the dev database** — before
 anything else starts, `dev-pg --prepare` drops and recreates the schema,
 reapplies it, and reruns `seed` (the same `resetSchemaAndSeed` sequence
-`db:reset` runs on demand), rather than only provisioning the schema the first
-time; the server, the S3 sidecar and the log-tailing `dev-pg --follow` start
+`db:reset` runs on demand, minus `db:reset`'s sweep of leftover `studio_test_*`
+schemas and databases, which cannot tell a leftover from a suite running in
+another checkout), rather than only provisioning the schema the first time; the server, the S3 sidecar and the log-tailing `dev-pg --follow` start
 only once that has finished, so the server never verifies a schema that is
 about to be dropped under it. The target is the database the server process
 will use — a `DATABASE_URL` override in `.env` included — as long as it is on
@@ -203,7 +204,7 @@ is why `drizzle-kit` is pinned to the 1.0 release candidate: the stable line's
 
 Open the image for the full-size diagram. Tables with row-level security or trigger sidecars carry those details as SVG tooltips. The diagram shows physical foreign-key constraints; deliberately unconstrained logical references are not drawn as relationships. The renderer uses `1`/`*` edge endpoints, so optionality remains visible through each column's not-null marker rather than the edge.
 
-Schema fingerprint: `8b36c8ae9ebd4be01c65491f9cf0a2338c0d9e52299270cb77b3feba46c3debb`.
+Schema fingerprint: `09c58e0d3dcf18a210bef9f0fa6d99e37c5f1d9468eb7f80e01603b0d2758cdc`.
 
 Sidecar behavior that cannot be represented as ERD relationships:
 

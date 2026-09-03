@@ -25,7 +25,10 @@ console.log(`Resetting ${target}`);
 const pool = createOwnerPool(db);
 
 try {
-  await resetSchemaAndSeed(pool, { adminPassword: env.seedAdminPassword });
+  await resetSchemaAndSeed(pool, {
+    adminPassword: env.seedAdminPassword,
+    sweepScratch: true,
+  });
   console.log('Database reset.');
 } finally {
   await pool.end();

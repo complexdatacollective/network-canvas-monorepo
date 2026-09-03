@@ -69,7 +69,19 @@ const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', '[::1]', 'localhost']);
  */
 export function isLocalDatabase(url: string): boolean {
   try {
-    return LOOPBACK_HOSTS.has(new URL(url).hostname);
+    const parsed = new URL(url);
+    // node-postgres lets the query string override the authority's host
+    // (`?host=` and `?hostaddr=`), and connects to THAT. Judging the
+    // authority alone would call `…@localhost/db?host=remote.example` local
+    // and let the automatic dev-boot reset drop a remote schema. The
+    // effective host is the override when there is one; a Unix socket path
+    // is this machine by definition.
+    const override =
+      parsed.searchParams.get('hostaddr') ?? parsed.searchParams.get('host');
+    if (override !== null) {
+      return override.startsWith('/') || LOOPBACK_HOSTS.has(override);
+    }
+    return LOOPBACK_HOSTS.has(parsed.hostname);
   } catch {
     return false;
   }

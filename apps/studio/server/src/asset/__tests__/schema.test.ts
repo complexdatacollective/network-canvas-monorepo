@@ -534,6 +534,45 @@ describe.skipIf(!db)('asset schema', () => {
       },
     );
 
+    it('lets a draft consent document retract a pin, and freezes it at publication', async () => {
+      // The same boundary the insert guard draws: while the document is a
+      // draft an author may replace or remove an attached asset; publication
+      // fixes the set in both directions.
+      const hash = await newAsset();
+      const documentId = await inTransaction((client) =>
+        createReferrer(client, 'consent_document', { published: false }),
+      );
+      await newReference(hash, {
+        referrer_kind: 'consent_document',
+        referrer_id: documentId,
+      });
+      const retracted = await pool.query(
+        `DELETE FROM asset_references
+         WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = 'consent_document'
+           AND referrer_id = $3`,
+        [TEAM_A, hash, documentId],
+      );
+      expect(retracted.rowCount).toBe(1);
+
+      await newReference(hash, {
+        referrer_kind: 'consent_document',
+        referrer_id: documentId,
+      });
+      await pool.query(
+        `UPDATE consent_documents SET state = 'published', published_at = now()
+         WHERE id = $1`,
+        [documentId],
+      );
+      await expect(
+        pool.query(
+          `DELETE FROM asset_references
+           WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = 'consent_document'
+             AND referrer_id = $3`,
+          [TEAM_A, hash, documentId],
+        ),
+      ).rejects.toThrow('published asset references are immutable');
+    });
+
     it.each(['section', 'message_template'])(
       'lets a %s pin be retracted, because its referrer is still editable',
       async (referrerKind) => {

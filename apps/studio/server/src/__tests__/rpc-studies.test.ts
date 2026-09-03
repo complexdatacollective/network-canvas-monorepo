@@ -48,6 +48,8 @@ function researcher(slug: string, teamId: string, role: string): Researcher {
  * researcher in another team entirely — the three answers #1257's matrix
  * gives about one study. */
 const ADMIN = researcher('admin', TEAM_ID, 'owner');
+/** A second administrator of the same team, for the replay-by-another case. */
+const SECOND_ADMIN = researcher('second-admin', TEAM_ID, 'admin');
 const MEMBER = researcher('member', TEAM_ID, 'member');
 const OUTSIDER = researcher('outsider', OTHER_TEAM_ID, 'owner');
 
@@ -76,7 +78,7 @@ describe.skipIf(!db)('the studies RPC', () => {
     await seedTeam(pool, OTHER_TEAM_ID);
 
     clients = new Map();
-    for (const who of [ADMIN, MEMBER, OUTSIDER]) {
+    for (const who of [ADMIN, SECOND_ADMIN, MEMBER, OUTSIDER]) {
       await pool.query(
         `INSERT INTO "user" (id, name, email, "emailVerified")
          VALUES ($1, $2, $3, true)`,
@@ -244,6 +246,27 @@ describe.skipIf(!db)('the studies RPC', () => {
         [created.studyId],
       ),
     ).toHaveProperty('rows', [{ count: 1 }]);
+
+    // The identities are readable through the study list, so anyone who may
+    // create can replay someone else's creation. That must change nothing:
+    // no grant for the replayer — the one write that used to slip through,
+    // unaudited — and the creator's grant untouched.
+    await expect(
+      asClient(SECOND_ADMIN).studies.create({ ...created }),
+    ).resolves.toEqual({
+      studyId: created.studyId,
+      protocolId: created.protocolId,
+      draftId: created.draftId,
+    });
+    expect(
+      await pool.query(
+        `SELECT user_id AS "userId", role, pii_access AS "piiAccess"
+         FROM study_role_grants WHERE study_id = $1`,
+        [created.studyId],
+      ),
+    ).toHaveProperty('rows', [
+      { userId: ADMIN.principal.userId, role: 'manager', piiAccess: true },
+    ]);
   });
 
   it('shows a team Admin every study and a Member only their own', async () => {

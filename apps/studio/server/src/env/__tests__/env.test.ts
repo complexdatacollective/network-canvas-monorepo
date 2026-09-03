@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { readEnv } from '../../env.ts';
+import { isLocalDatabase, readEnv } from '../../env.ts';
 import { DEV, DEV_DATABASE_URL, DEV_S3_ENDPOINT } from '../catalogue.ts';
 
 // The suite runs with the committed .env.development loaded (see
@@ -274,5 +274,31 @@ describe('the deployment mode', () => {
     // direction.
     vi.stubEnv('STUDIO_DEPLOYMENT_MODE', 'hosted');
     expect(() => readEnv()).toThrow();
+  });
+});
+
+describe('the local-database judgement', () => {
+  it('names this machine by the effective host, not the authority alone', () => {
+    expect(isLocalDatabase('postgres://u:p@localhost:5432/db')).toBe(true);
+    expect(isLocalDatabase('postgres://u:p@127.0.0.1/db')).toBe(true);
+    expect(isLocalDatabase('postgres://u:p@[::1]/db')).toBe(true);
+    expect(isLocalDatabase('postgres://u:p@db.example.org/db')).toBe(false);
+
+    // node-postgres applies a `host` or `hostaddr` query parameter over the
+    // authority and connects there; the automatic dev-boot reset must judge
+    // the host it will actually reach.
+    expect(
+      isLocalDatabase('postgres://u:p@localhost/db?host=remote.example'),
+    ).toBe(false);
+    expect(
+      isLocalDatabase('postgres://u:p@localhost/db?hostaddr=203.0.113.9'),
+    ).toBe(false);
+    expect(
+      isLocalDatabase('postgres://u:p@remote.example/db?host=localhost'),
+    ).toBe(true);
+    expect(
+      isLocalDatabase('postgres://u:p@localhost/db?host=/var/run/postgresql'),
+    ).toBe(true);
+    expect(isLocalDatabase('not a url')).toBe(false);
   });
 });
