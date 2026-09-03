@@ -27,7 +27,7 @@ const options: SegmentedOption<'protocols' | 'data'>[] = [
 ];
 
 <SegmentedSwitcher
-  aria-label="Workspace view"
+  aria-label="Board view"
   options={options}
   value={value}
   onValueChange={setValue}

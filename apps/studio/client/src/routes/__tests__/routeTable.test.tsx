@@ -437,7 +437,17 @@ function announcements(): string[] {
 function menuDestinations(
   router: ReturnType<typeof createAppRouter>,
 ): (string | undefined)[] {
-  return [...document.querySelectorAll('[role="menu"] a[href]')]
+  // Whichever popup is open: the account `menu`, or a switcher's popup, which
+  // holds its siblings in a `listbox` and its trailing command beside that.
+  // Both are searched, so a link appearing in either is caught.
+  const popups = [
+    ...document.querySelectorAll('[role="menu"]'),
+    ...[...document.querySelectorAll('[role="listbox"]')]
+      .map((list) => list.parentElement)
+      .filter((popup) => popup !== null),
+  ];
+  return popups
+    .flatMap((popup) => [...popup.querySelectorAll('a[href]')])
     .map((link) => link.getAttribute('href') ?? '')
     .map((href) => registeredPathFor(router, href));
 }
@@ -666,27 +676,37 @@ describe('navigation', () => {
   it('reaches only registered routes from the team switcher', async () => {
     const router = renderAt('/team/team-a');
     fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'Current team Alpha research team',
+      await screen.findByRole('combobox', {
+        name: 'Team Alpha research team',
       }),
     );
-    await screen.findByRole('menuitem', { name: 'Team administration' });
 
-    // The teams themselves are `menuitemradio`s that navigate rather than
-    // links (§6.5), so the one link in this menu is the command beneath them.
-    expect(menuDestinations(router)).toEqual(['/team/$teamId/settings']);
+    // The teams are listbox `option`s that navigate (§6.5), so they are not
+    // links; the destination beneath them is. Its address is asserted where it
+    // is written, and then against the route table, so the link both points
+    // somewhere registered and can be opened the way any link can.
+    const admin = await screen.findByRole('link', {
+      name: 'Team administration',
+    });
+    expect(admin).toHaveAttribute('href', '/team/team-a/settings');
+    expect(registeredPathFor(router, '/team/team-a/settings')).toBe(
+      '/team/$teamId/settings',
+    );
   });
 
-  it('names the study and reaches its team from the study chip', async () => {
+  it('names the study and reaches its team from the study switcher', async () => {
     const router = renderAt('/study/study-1');
+    // The team's own studies list names this study, so the switcher names it
+    // too rather than falling back to the identifier it would use for a study
+    // no team of this researcher's answers for.
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Current study study-1' }),
+      await screen.findByRole('combobox', { name: 'Study Shell proof' }),
     );
-    await screen.findByRole('menuitem', {
+    const allStudies = await screen.findByRole('link', {
       name: 'All studies in this team',
     });
-
-    expect(menuDestinations(router)).toEqual(['/team/$teamId']);
+    expect(allStudies).toHaveAttribute('href', '/team/team-a');
+    expect(registeredPathFor(router, '/team/team-a')).toBe('/team/$teamId');
   });
 });
 

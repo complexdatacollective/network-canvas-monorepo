@@ -595,7 +595,7 @@ const templatesRoute = createRoute({
 // ---------------------------------------------------------------------------
 // App, team level (§5.2)
 //
-// §5.4's migration has happened: the team workspace that shipped at `/` is
+// §5.4's migration has happened: the team screen that shipped at `/` is
 // now `/team/$teamId` (its studies) and `/team/$teamId/members` (its
 // membership and invitations), and the audit trail moved off
 // `/teams/$teamId/activity` onto `/team/$teamId/activity`. No public URLs

@@ -24,7 +24,7 @@ import { teamDestinations } from './navigationManifest.ts';
  * the researcher is in this team, and whether this deployment has billing.
  *
  * Activity is offered to owners and admins only — the courtesy §11.4
- * describes, and the rule the team workspace applied to the Activity button
+ * describes, and the rule the team screen applied to the Activity button
  * this replaces. It is a courtesy and not the check: the procedure behind the
  * destination refuses everyone else, and the route renders that refusal inside
  * the intact shell for anyone who reaches the URL directly. The other five

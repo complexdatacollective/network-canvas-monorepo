@@ -1,8 +1,8 @@
 /**
  * Better Auth stores a member's roles as one comma-separated string, so every
  * question about what a member may do starts by splitting it. Shared because
- * the team sidebar and the team workspace now ask the same question: the
- * sidebar decides whether to offer the Activity destination, and the workspace
+ * the team sidebar and the team screen now ask the same question: the
+ * sidebar decides whether to offer the Activity destination, and the screen
  * decides whether to offer member administration.
  */
 export function teamRoles(role: string | undefined): string[] {
@@ -53,4 +53,31 @@ export function teamRole(
   return activeMember?.organizationId === teamId
     ? activeMember.role
     : undefined;
+}
+
+/**
+ * One role, as a researcher reads it.
+ *
+ * An unknown role is shown verbatim rather than hidden: a membership the
+ * client does not recognise is still a membership, and saying nothing about
+ * it would be a worse answer than saying its name.
+ */
+export function roleLabel(role: string): string {
+  switch (role) {
+    case 'owner':
+      return 'Owner';
+    case 'admin':
+      return 'Admin';
+    case 'member':
+      return 'Member';
+    default:
+      return role;
+  }
+}
+
+export function teamRolesLabel(role: string): string {
+  const roles = teamRoles(role);
+  return roles.length === 0
+    ? 'Unassigned'
+    : roles.map((entry) => roleLabel(entry)).join(', ');
 }

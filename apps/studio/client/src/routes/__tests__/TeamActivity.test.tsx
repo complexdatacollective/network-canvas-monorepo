@@ -103,6 +103,18 @@ type RetryOption =
 
 vi.mock('../../lib/api.ts', () => ({
   orpc: {
+    // The header renders on every app route, and its study segment asks for
+    // the team's studies — a real dependency of the shell these tests mount,
+    // not of this screen. It answers nothing here: no study is open, so the
+    // query is disabled and the segment is absent.
+    protocols: {
+      list: {
+        queryOptions: () => ({
+          queryKey: ['protocols', 'list'],
+          queryFn: () => [],
+        }),
+      },
+    },
     // The team area reads the deployment topology from here to decide whether
     // this instance has billing at all (§10.4), so every test that renders a
     // team route needs an answer.
