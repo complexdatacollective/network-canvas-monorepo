@@ -58,6 +58,37 @@
 }
 
 /**
+ * text-box-trim: size a text box by its cap height and baseline instead of its
+ * line box, so a label centres on its caps inside a control and a heading's
+ * margin starts at its cap line.
+ *
+ * Only block containers and inline-blocks take it. On a flex or inline-flex
+ * control put it on a span around the label — `trimTextContent` in
+ * fresco-ui does this — because the property is inert on the flex container
+ * itself. Browsers without it (before Chrome 133, Safari 18.2, Firefox 154)
+ * keep today's line-box rendering.
+ *
+ * Chromium reports the untrimmed line boxes as scrollable overflow, so a
+ * trimmed block that is the last child of a scroll container adds a few
+ * pixels of scroll extent there; give such containers bottom padding.
+ */
+@utility text-box-trim {
+  text-box: trim-both cap alphabetic;
+}
+
+/**
+ * text-box-trimmed: applies a utility only where `text-box` is supported.
+ * Padding tuned for a cap-height box (`text-box-trimmed:py-1.75`) is wrong
+ * around a full line box, so a browser without the trim keeps the padding
+ * it had.
+ */
+@custom-variant text-box-trimmed {
+  @supports (text-box: trim-both cap alphabetic) {
+    @slot;
+  }
+}
+
+/**
  * Gradient scroll fade for ScrollArea viewport.
  * Uses CSS variables set by ScrollArea component to create fade effects at scroll edges.
  */

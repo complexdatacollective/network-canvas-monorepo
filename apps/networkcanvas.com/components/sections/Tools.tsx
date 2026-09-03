@@ -73,7 +73,9 @@ export function Tools() {
                     color="default"
                     className={`rounded-full ${accent.button}`}
                   >
-                    {t(`${tool.id}.action`)}
+                    <span className="text-box-trim">
+                      {t(`${tool.id}.action`)}
+                    </span>
                   </ButtonLink>
                   {tool.id === 'fresco' ? (
                     <ButtonLink
@@ -82,7 +84,9 @@ export function Tools() {
                       color="default"
                       className="text-slate-blue bg-surface rounded-full"
                     >
-                      {t('fresco.deployAction')}
+                      <span className="text-box-trim">
+                        {t('fresco.deployAction')}
+                      </span>
                     </ButtonLink>
                   ) : null}
                 </div>

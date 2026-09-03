@@ -9,7 +9,13 @@ export const headingVariants = cva({
   // one unbroken token longer than its container. Without it such a heading
   // overflows its box rather than breaking — inside a dialog, straight past the
   // clipped edge (#1392).
-  base: 'font-heading scroll-m-20 text-pretty wrap-break-word',
+  // `text-box-trim`: the box is the caps and baseline, not the line box, so
+  // spacing around a heading starts at its cap line and a label centres on
+  // its caps beside a control. It takes effect on block containers, inline-
+  // blocks, and flex items; a flex container carrying these classes (an
+  // accordion trigger, a button-styled link) has to trim a span around its
+  // text instead.
+  base: 'font-heading text-box-trim scroll-m-20 text-pretty wrap-break-word',
   variants: {
     level: {
       h1: 'text-3xl font-bold',

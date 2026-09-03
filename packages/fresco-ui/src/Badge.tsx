@@ -2,8 +2,12 @@ import type * as React from 'react';
 
 import { cva, cx, type VariantProps } from './utils/cva';
 
+// The label sits in a cap-trimmed span, so where the trim is supported the
+// vertical padding is the whole of the space around the caps: py-1.75 keeps
+// the badge's proportions around a box that is cap height rather than a line
+// box. Without the trim the line box is back, and so is the padding it had.
 const BADGE_BASE_CLASSES =
-  'inline-flex shrink items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold';
+  'text-box-trimmed:py-1.75 inline-flex shrink items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold';
 
 type ThemeColorStyle = {
   color: string;
@@ -210,7 +214,14 @@ const themedBadgeVariants = cva({
   },
 });
 
-function Badge({ className, color, variant, style, ...props }: BadgeProps) {
+function Badge({
+  className,
+  color,
+  variant,
+  style,
+  children,
+  ...props
+}: BadgeProps) {
   const colorVariant = variant === 'outline' ? 'outline' : 'filled';
   const colorStyle: ThemeColorStyle | null = color
     ? themeColorStyles[color]
@@ -234,7 +245,10 @@ function Badge({ className, color, variant, style, ...props }: BadgeProps) {
       )}
       style={badgeStyle}
       {...props}
-    />
+    >
+      {/* `text-box-trim` is inert on the inline-flex badge; the span takes it. */}
+      <span className="text-box-trim">{children}</span>
+    </div>
   );
 }
 

@@ -133,7 +133,10 @@ const linkClasses = cx(
 const skipLinkClasses = cx(
   headingVariants({ level: 'h4', variant: 'all-caps', margin: 'none' }),
   'focusable bg-surface text-surface-contrast rounded-full shadow-xl',
-  'sr-only focus:not-sr-only focus:px-5 focus:py-3 focus:whitespace-nowrap',
+  // inline-block once shown: an inline box takes the cap trim in WebKit but
+  // not Chromium, and a block container takes it in both, so the pill's
+  // padding measures from the caps everywhere.
+  'sr-only focus:not-sr-only focus:inline-block focus:px-5 focus:py-3 focus:whitespace-nowrap',
 );
 
 const breakpointClasses = {
@@ -716,7 +719,10 @@ export default function SiteNavigation({
       render: (view) =>
         renderLink({
           'href': getStartedHref,
-          'children': labels.getStarted,
+          // Button-styled, so inline-flex: the cap trim needs a box of its own.
+          'children': (
+            <span className="text-box-trim">{labels.getStarted}</span>
+          ),
           'className': cx(
             buttonVariants({ color: 'primary', size: 'sm' }),
             'rounded-full',

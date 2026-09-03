@@ -9,9 +9,13 @@ export const pillVariants = cva({
   base: 'font-monospace inline-flex items-center rounded-full border border-transparent whitespace-nowrap',
   variants: {
     size: {
-      sm: 'gap-1 px-2 py-0.5 text-xs',
-      md: 'gap-1.5 px-2.5 py-1 text-xs',
-      lg: 'gap-2 px-3 py-1.5 text-sm',
+      // The label sits in a cap-trimmed span, so where the trim is supported
+      // the vertical padding is the whole of the space around the caps rather
+      // than a top-up on a line box; an icon taller than the caps sizes its
+      // pill instead. Without the trim the padding is what it was.
+      sm: 'text-box-trimmed:py-1.5 gap-1 px-2 py-0.5 text-xs',
+      md: 'text-box-trimmed:py-2 gap-1.5 px-2.5 py-1 text-xs',
+      lg: 'text-box-trimmed:py-2.5 gap-2 px-3 py-1.5 text-sm',
     },
     variant: {
       ghost: '',
@@ -65,7 +69,7 @@ const Pill = React.forwardRef<HTMLElement, PillProps>(function Pill(
         {...props}
       >
         {icon}
-        {children}
+        <span className="text-box-trim">{children}</span>
       </button>
     );
   }
@@ -73,7 +77,8 @@ const Pill = React.forwardRef<HTMLElement, PillProps>(function Pill(
   return (
     <span ref={setRef} className={classes} {...props}>
       {icon}
-      {children}
+      {/* `text-box-trim` is inert on the inline-flex pill; the span takes it. */}
+      <span className="text-box-trim">{children}</span>
     </span>
   );
 });

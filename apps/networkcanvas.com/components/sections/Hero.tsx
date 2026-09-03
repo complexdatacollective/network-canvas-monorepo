@@ -105,7 +105,7 @@ export function Hero({
               variant: 'raised',
             })}
           >
-            {t('getStarted')}
+            <span className="text-box-trim">{t('getStarted')}</span>
             <ArrowRight aria-hidden />
           </Link>
           <Paragraph margin="none" className="text-base-sm text-text/60">

@@ -150,7 +150,7 @@ export default function SegmentedSwitcher<T extends string>({
                   className={cx('relative stroke-[3px]', iconSizeClass[size])}
                 />
               ) : null}
-              <span className="relative">{option.label}</span>
+              <span className="text-box-trim relative">{option.label}</span>
             </Toggle>
           );
         })}

@@ -78,7 +78,7 @@ export function DataTableColumnHeader<TData, TValue>({
           className,
         )}
       >
-        {title}
+        <span className="text-box-trim">{title}</span>
       </div>
     );
   }

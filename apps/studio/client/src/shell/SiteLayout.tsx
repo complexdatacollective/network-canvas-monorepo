@@ -152,7 +152,7 @@ function StudioEntry({ closeMenu, view }: SiteNavigationUtilityRenderProps) {
   if (!signedIn || landing === undefined) {
     return (
       <Link className={ENTRY_CLASSES} onClick={onClick} to="/sign-in">
-        Sign in
+        <span className="text-box-trim">Sign in</span>
       </Link>
     );
   }
@@ -173,7 +173,7 @@ function StudioDestinationLink({
   if (destination.to === '/no-team') {
     return (
       <Link className={ENTRY_CLASSES} onClick={onClick} to="/no-team">
-        Go to Studio
+        <span className="text-box-trim">Go to Studio</span>
       </Link>
     );
   }
@@ -184,7 +184,7 @@ function StudioDestinationLink({
       params={destination.params}
       to="/team/$teamId"
     >
-      Go to Studio
+      <span className="text-box-trim">Go to Studio</span>
     </Link>
   );
 }

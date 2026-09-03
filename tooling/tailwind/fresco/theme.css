@@ -657,8 +657,12 @@
     @apply my-6 rounded border-[1.2px] border-current/10;
   }
 
+  /* inline-block rather than inline-flex: the cap is cap-trimmed, and the
+     trim only takes effect on a block container. Where the trim is supported
+     the vertical padding is the whole of the space around the glyph's caps;
+     without it the padding is what it was. */
   kbd {
-    @apply font-monospace inline-flex items-center justify-center rounded-sm border border-current/15 bg-current/5 px-1.5 py-0.5 text-xs leading-none font-medium shadow-[0_1px_0_1px_oklch(from_currentColor_l_c_h/0.1)];
+    @apply font-monospace text-box-trim text-box-trimmed:py-1.25 inline-block rounded-sm border border-current/15 bg-current/5 px-1.5 py-0.5 text-center text-xs leading-none font-medium shadow-[0_1px_0_1px_oklch(from_currentColor_l_c_h/0.1)];
   }
 
   /* Slightly increase default stroke width for better visibility */

@@ -25,7 +25,7 @@ export function ActionButton({
       variant={secondary ? 'outline' : 'raised'}
       target={target}
     >
-      {children}
+      <span className="text-box-trim">{children}</span>
     </ButtonLink>
   );
 }

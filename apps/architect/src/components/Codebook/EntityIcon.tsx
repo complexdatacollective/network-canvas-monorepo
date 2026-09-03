@@ -35,7 +35,9 @@ const graphicVariants = cva({
     size: {
       default: 'mr-5',
       small: 'mr-2.5',
-      tiny: 'mr-1',
+      // The name beside a tiny icon is a cap-trimmed heading with no leading
+      // of its own to soften the join, so it gets the same room as `small`.
+      tiny: 'mr-2.5',
     },
   },
   defaultVariants: { size: 'default' },

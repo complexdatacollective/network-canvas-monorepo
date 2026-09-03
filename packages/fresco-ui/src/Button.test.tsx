@@ -171,7 +171,7 @@ describe('Button', () => {
 
     const button = screen.getByRole('button', { name: 'Continue' });
 
-    expect(button.firstElementChild).toBeNull();
+    expect(button.firstElementChild).not.toHaveClass('bg-[length:0%_2px]');
     expect(button).not.toHaveClass('group/link', 'text-link');
   });
 
@@ -402,4 +402,73 @@ describe('IconButton sizing', () => {
       expect(button).toHaveClass(widthClass);
     },
   );
+});
+
+describe('Button label box', () => {
+  // `text-box-trim` is inert on the inline-flex button itself, so a text label
+  // gets a span of its own; that box, cap height to baseline, is what centres
+  // in the control.
+  it('gives a text label a cap-trimmed box of its own', () => {
+    render(<Button icon={<Check data-testid="icon" />}>Confirm</Button>);
+
+    const button = screen.getByRole('button', { name: 'Confirm' });
+
+    expect(button.children).toHaveLength(2);
+    expect(button.firstElementChild).toBe(screen.getByTestId('icon'));
+    expect(button.lastElementChild).toHaveClass('text-box-trim');
+    expect(button.lastElementChild).toHaveTextContent('Confirm');
+  });
+
+  it('puts a label with its own markup in the same box', () => {
+    render(
+      <Button>
+        <em data-testid="label">Confirm</em>
+      </Button>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Confirm' });
+
+    expect(button.children).toHaveLength(1);
+    expect(button.firstElementChild).toHaveClass('text-box-trim');
+    expect(button.firstElementChild).toContainElement(
+      screen.getByTestId('label'),
+    );
+  });
+
+  // An icon-only button has nothing to label; an empty span would still be a
+  // flex item and open the gap beside the icon.
+  it('adds no label box when there is no label', () => {
+    render(<Button aria-label="Close" icon={<Check data-testid="icon" />} />);
+
+    const button = screen.getByRole('button', { name: 'Close' });
+
+    expect(button.children).toHaveLength(1);
+    expect(button.firstElementChild).toBe(screen.getByTestId('icon'));
+  });
+
+  it('trims the label of a slotted child', () => {
+    render(
+      <Button asChild>
+        <a href="#confirm">Confirm</a>
+      </Button>,
+    );
+
+    const link = screen.getByRole('link', { name: 'Confirm' });
+
+    expect(link.children).toHaveLength(1);
+    expect(link.firstElementChild).toHaveClass('text-box-trim');
+  });
+
+  // The link variant paints its underline along the bottom of the label box;
+  // a cap-trimmed box would run it through the descenders.
+  it('keeps the link variant on its underline box instead', () => {
+    render(<Button variant="link">Confirm</Button>);
+
+    const label = screen.getByRole('button', {
+      name: 'Confirm',
+    }).firstElementChild;
+
+    expect(label).not.toHaveClass('text-box-trim');
+    expect(label).toHaveClass('bg-[length:0%_2px]');
+  });
 });

@@ -182,6 +182,10 @@ function Tab({
       className={cx(
         'font-heading focusable relative z-10 flex cursor-pointer items-center gap-3',
         'border-0 bg-transparent px-4 py-3 text-sm leading-tight font-extrabold',
+        // The label is cap-trimmed, so it no longer sets the tab's height. The
+        // floor is the height a tab with an icon has (size-5 + py-3), so a
+        // text-only rail lines up with an icon rail instead of running short.
+        'min-h-11',
         layout === 'side' && 'w-full text-left',
         layout === 'top' && 'shrink-0 justify-center text-center',
         TAB_RADIUS,
@@ -190,7 +194,7 @@ function Tab({
       )}
     >
       {Icon ? <Icon aria-hidden className="size-5 shrink-0" /> : null}
-      <span className="min-w-0">{children}</span>
+      <span className="text-box-trim min-w-0">{children}</span>
     </BaseTabs.Tab>
   );
 }

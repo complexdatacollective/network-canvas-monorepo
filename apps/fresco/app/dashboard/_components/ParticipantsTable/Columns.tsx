@@ -48,7 +48,11 @@ export function getParticipantColumns(
               height={24}
             />
             <Badge variant={'outline'}>
-              <span className="max-w-56 truncate">
+              {/* Badge puts its children in one cap-trimmed label box, so the
+                  identifier is a block that clips only sideways: `truncate`
+                  would take the descenders with it now that the box is cap
+                  height. */}
+              <span className="block max-w-56 overflow-x-clip text-ellipsis whitespace-nowrap">
                 {row.original.identifier}
               </span>
             </Badge>
