@@ -11,6 +11,7 @@ import {
 } from 'react';
 
 import { IdentityMark } from '../IdentityMark';
+import Pill from '../Pill';
 import { usePortalContainer } from '../PortalContainer';
 import { Skeleton } from '../Skeleton';
 import { cx } from '../utils/cva';
@@ -143,18 +144,22 @@ const COLLAPSE_CLASS = '@max-xl:sr-only';
 const NAME_WIDTH_CLASS = 'min-w-24';
 
 /**
- * The frame's own corners, minus its border, on the edges of a segment that
- * meet it — the nesting rule, so a 14px outer curve with 1px of border has a
- * 13px inner one.
+ * The frame's own radius, on the edges of a segment that meet it.
  *
- * The frame clips, so a segment's SURFACE would come out right with no radius
- * at all. The focus ring is why this exists: an outline traces the element's
+ * The SAME token, not the nesting rule's one-pixel-tighter inner curve. A
+ * filled segment paints right up to the frame's border, so any curve tighter
+ * than the frame's leaves a crescent of the frame's own background showing
+ * between the fill and the border. The frame clips, so a curve that matches
+ * cannot overshoot it either.
+ *
+ * A segment would need no radius at all for its surface alone — the clip would
+ * shape it. The focus ring is why this exists: an outline traces the element's
  * own border-radius, so a square segment rings square inside a rounded frame.
  */
 const OUTER_CORNER = {
-  start: 'rounded-s-[calc(var(--radius-sm)-1px)]',
-  end: 'rounded-e-[calc(var(--radius-sm)-1px)]',
-  both: 'rounded-[calc(var(--radius-sm)-1px)]',
+  start: 'rounded-s-[var(--radius)]',
+  end: 'rounded-e-[var(--radius)]',
+  both: 'rounded-[var(--radius)]',
 } as const;
 
 /**
@@ -385,9 +390,19 @@ function Segment({
         >
           <Select.Popup
             className={cx(
-              'bg-surface-popover text-surface-popover-contrast publish-colors',
-              'border-outline elevation-high w-xs max-w-(--available-width)',
-              'rounded border-2 p-2 outline-none',
+              'bg-surface-popover text-surface-popover-contrast',
+              // Sized to its content, not pinned. `w-xs` was a fixed
+              // `width: 20em`, and `max-w` can only cap a width — never widen
+              // one — so a long team name wrapped over five lines with the
+              // room beside it going unused. The floor keeps a short list from
+              // reading as a tooltip; the ceiling is whichever is smaller of
+              // the room Base UI reports and a width that still reads as a
+              // popup rather than a panel.
+              'border-outline w-max min-w-xs shadow-xl',
+              'max-w-[min(var(--available-width),var(--container-md))]',
+              // A step below the frame's own curve: `--radius` is the shape of
+              // a card, and it reads as a bubble on a list of options.
+              'rounded-sm border-2 p-2 outline-none',
               // Bounded, with the list as the part that scrolls. Base UI
               // publishes `--available-height` but applies nothing itself, so
               // a long list pushed the retry and the trailing destination off
@@ -449,13 +464,17 @@ function Segment({
                         )}
                       </Select.ItemText>
                       {item.badge !== undefined && (
-                        // A filled chip, tinted with the row's OWN text colour
-                        // so it follows whatever row it is on. The tint comes
-                        // off on the selected row, where it would pull the
-                        // chip's label to about 4.2:1.
-                        <span className="text-2xs shrink-0 rounded-full bg-current/15 px-2 py-1 leading-tight font-semibold uppercase group-data-selected:bg-transparent">
+                        <Pill
+                          size="sm"
+                          // `filled` tints with the row's OWN text colour, so
+                          // the pill follows whatever row it is on. The tint
+                          // comes off on the selected row, where it would pull
+                          // the label to about 4.2:1.
+                          variant="filled"
+                          className="shrink-0 uppercase group-data-selected:bg-transparent"
+                        >
                           {item.badge}
-                        </span>
+                        </Pill>
                       )}
                       {/*
                         The tick's column is reserved by this wrapper rather
@@ -614,7 +633,7 @@ export function TeamAndStudySwitcher({
           'border-outline inline-flex max-w-full min-w-0 items-stretch',
           // The frame's whole job: one border, one radius, and the clip that
           // lets the segments inside it stay square.
-          'overflow-hidden rounded-sm border',
+          'overflow-hidden rounded border',
         )}
       >
         {team && (

@@ -192,15 +192,19 @@ export const SegmentsFillTheFrame: Story = {
       await expect(bottom).toBeLessThanOrEqual(1.5);
     }
 
-    // The corners nest. A segment's outer curve is the frame's minus the
-    // frame's border, which is the radius that makes an inset shape follow an
-    // outer one — matching the frame's own 14px would leave a crescent between
-    // the two, and squaring it off would ring the focus outline square inside
-    // a rounded frame.
+    // A segment's outer curve is the frame's OWN, not the frame's minus its
+    // border. The minus-border figure is the rule for an inset box with a gap
+    // around it; a segment is flush against the border, so a curve even one
+    // pixel tighter lets the frame's background show through between the fill
+    // and the border as a crescent. The frame clips, so matching cannot
+    // overshoot it. Squaring it off is wrong too: the focus outline traces the
+    // element's own radius and would ring square inside a rounded frame.
     const frameStyle = getComputedStyle(frame);
-    const outer = parseFloat(frameStyle.borderTopLeftRadius);
-    const border = parseFloat(frameStyle.borderTopWidth);
-    const expected = `${outer - border}px`;
+    const expected = frameStyle.borderTopLeftRadius;
+    // Comparing two computed radii would pass if BOTH were `0px`, which is
+    // what a render with no theme loaded gives. The frame having a curve at
+    // all is what makes the comparison below mean anything.
+    await expect(parseFloat(expected)).toBeGreaterThan(0);
 
     const [first, last] = [segments[0]!, segments[segments.length - 1]!];
     await expect(getComputedStyle(first).borderTopLeftRadius).toBe(expected);
