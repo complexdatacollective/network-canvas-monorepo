@@ -77,6 +77,18 @@
 }
 
 /**
+ * text-box-trimmed: applies a utility only where `text-box` is supported.
+ * Padding tuned for a cap-height box (`text-box-trimmed:py-1.75`) is wrong
+ * around a full line box, so a browser without the trim keeps the padding
+ * it had.
+ */
+@custom-variant text-box-trimmed {
+  @supports (text-box: trim-both cap alphabetic) {
+    @slot;
+  }
+}
+
+/**
  * Gradient scroll fade for ScrollArea viewport.
  * Uses CSS variables set by ScrollArea component to create fade effects at scroll edges.
  */
