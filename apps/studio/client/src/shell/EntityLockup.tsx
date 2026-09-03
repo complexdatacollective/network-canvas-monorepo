@@ -73,9 +73,13 @@ function currentTeam(
 
 /**
  * The study segment, and the only reason it is a component of its own: the
- * studies query must not exist on the routes that show no study segment. The
+ * studies queries must not RUN on the routes that show no study segment. The
  * header is on every app route, and a query built unconditionally would ask
- * for a team's studies from the account area and the gallery.
+ * for a team's studies from the account area and the gallery. Hooks cannot be
+ * skipped, so both are gated on the same absent `studyId` instead — the
+ * siblings query by `enabled`, and `useStudyOwner` by the `undefined` it is
+ * handed, which would otherwise fan out across every team the researcher has
+ * looking for a study that is not on screen.
  *
  * **Real data, with one honest degradation.** `protocols.list` is team-scoped
  * and `$studyId` names no team (§5.6), so the siblings can only be the studies
@@ -113,7 +117,7 @@ function useStudySegment(
     teams only if that one does not have it, so the segment names the study and
     offers the siblings that are genuinely its own.
   */
-  const owner = useStudyOwner(studyId ?? '');
+  const owner = useStudyOwner(studyId);
   const teamId = owner.status === 'found' ? owner.teamId : undefined;
   const siblings = useQuery({
     ...orpc.protocols.list.queryOptions({ input: { teamId: teamId ?? '' } }),
@@ -158,7 +162,15 @@ function useStudySegment(
       // rather than rejecting, and it resolves later on some unrelated commit
       // (§6.5). Nothing after this depends on it.
       void navigate({ to: '/study/$studyId', params: { studyId: id } }),
-    onRetry: () => void siblings.refetch(),
+    // Both halves, because either can be what failed. An `unavailable` owner
+    // leaves `siblings` disabled on an empty team id, so refetching it alone
+    // would re-ask nothing and leave the segment exactly as the researcher
+    // found it; a failed siblings list has an owner that succeeded, so its
+    // retry is the one that has anything to do.
+    onRetry: () => {
+      owner.retry();
+      if (teamId !== undefined) void siblings.refetch();
+    },
     failureMessage: 'The studies in this team could not be loaded.',
     retryLabel: RETRY_LABEL,
     // The way back to all of the team's studies, which §5.5 says the study

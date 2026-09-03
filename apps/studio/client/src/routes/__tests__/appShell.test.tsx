@@ -45,6 +45,14 @@ const fixtures = vi.hoisted(() => ({
     createdAt: Date;
     updatedAt: Date;
   }[],
+  // Every `protocols.list` request the shell made, in order, by the team it
+  // asked. The header asks for a team's studies in two places now — the study
+  // segment's siblings and the owner lookup behind it — and both of them are
+  // supposed to stay silent where no study is on screen, which is a claim
+  // about requests rather than about anything rendered.
+  studyListRequests: [] as string[],
+  /** Whether `protocols.list` refuses, so the owner lookup can be made to fail. */
+  studyListFails: false,
 }));
 
 vi.mock('../../lib/auth.ts', () => ({
@@ -84,9 +92,18 @@ vi.mock('../../lib/api.ts', () => ({
     },
     protocols: {
       list: {
-        queryOptions: () => ({
-          queryKey: ['protocols'],
-          queryFn: () => fixtures.studies,
+        // Keyed by the team, as the real one is: the owner lookup asks several
+        // teams the same question, and a shared key would collapse those into
+        // one cache entry and one request.
+        queryOptions: ({ input }: { input: { teamId: string } }) => ({
+          queryKey: ['protocols', input.teamId],
+          queryFn: () => {
+            fixtures.studyListRequests.push(input.teamId);
+            if (fixtures.studyListFails) {
+              throw new Error('protocols.list refused');
+            }
+            return fixtures.studies;
+          },
         }),
         key: () => ['protocols'],
       },
@@ -192,6 +209,8 @@ beforeEach(() => {
     resolvedTeams([fixtures.TEAM_A, fixtures.TEAM_B]),
   );
   fixtures.studies = [fixtures.STUDY_1, fixtures.STUDY_2];
+  fixtures.studyListRequests = [];
+  fixtures.studyListFails = false;
 });
 
 describe('composed app shell', () => {
@@ -533,9 +552,55 @@ describe('the header switcher lockup', () => {
     expect(lockupSegments()).toBe(1);
   });
 
-  it('names a study no team of this researcher\u2019s owns by its identifier', async () => {
+  it('asks no team for its studies on a route that shows no study', async () => {
+    // The header is on every app route, and the study segment's two queries —
+    // the siblings, and the owner lookup that fans out across every team the
+    // researcher has — must not run where there is no study to be about.
+    renderAt('/account');
+
+    // Settle the header before asking. Every query the shell starts has begun
+    // by the time the team switcher has an answer, so an empty list here is a
+    // list that stays empty rather than one read too early.
+    const team = await screen.findByRole('combobox', { name: /^Team/ });
+    await waitFor(() => expect(team).not.toHaveAttribute('aria-busy'));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(fixtures.studyListRequests).toEqual([]);
+    expect(lockupSegments()).toBe(1);
+  });
+
+  it('re-asks the owner lookup when its retry is pressed', async () => {
+    // The failure is the OWNER lookup's, not the siblings'. With no owner
+    // there is no team to ask for siblings, so that query is disabled — and a
+    // retry that refetched only it would re-ask nothing and leave the segment
+    // exactly as the researcher found it.
+    fixtures.studyListFails = true;
+    renderAt('/study/study-1');
+
+    const study = await screen.findByRole('combobox', { name: /^Study/ });
+    await waitFor(() =>
+      expect(fixtures.studyListRequests).toEqual(['team-a', 'team-b']),
+    );
+
+    fireEvent.click(study);
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+    // Both teams asked again: the active one and the one the fan-out reached.
+    await waitFor(() =>
+      expect(fixtures.studyListRequests).toEqual([
+        'team-a',
+        'team-b',
+        'team-a',
+        'team-b',
+      ]),
+    );
+  });
+
+  it('names a study none of the researcher’s teams owns by its identifier', async () => {
     // A canonical link into a study none of this researcher's teams answers
-    // for \u2014 the case \u00a76.3's `study.shell` is what will actually resolve. Every
+    // for — the case §6.3's `study.shell` is what will actually resolve. Every
     // team is asked and none has it, so nothing here can say what the study is
     // called or which team it belongs to, and the identifier is what the shell
     // honestly knows.
