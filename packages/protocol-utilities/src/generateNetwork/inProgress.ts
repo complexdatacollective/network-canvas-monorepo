@@ -1,9 +1,9 @@
 import type { Stage } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
-import type { GenerationContext, NetworkDraft } from './context';
-import { getStageFilteredNodes } from './filtering';
-import { getSubjectType } from './subject';
+import type { GenerationContext, NetworkDraft } from './context.ts';
+import { getStageFilteredNodes } from './filtering.ts';
+import { getSubjectType } from './subject.ts';
 
 /** Keep only string entries, dropping the `undefined` a half-built prompt yields. */
 function onlyStrings(values: (string | undefined)[]): string[] {

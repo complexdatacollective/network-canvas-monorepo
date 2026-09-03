@@ -41,10 +41,12 @@ type Trigger = {
   functionName: string;
 };
 
-type Revocation = {
+type Privilege = {
   privileges: string;
   table: string;
   roles: string;
+  /** Offset in the assembled sidecar SQL: privileges are order-dependent. */
+  at: number;
 };
 
 type SchemaMetadata = {
@@ -52,7 +54,8 @@ type SchemaMetadata = {
   roles: Role[];
   forcedTables: string[];
   triggers: Trigger[];
-  revocations: Revocation[];
+  grants: Privilege[];
+  revocations: Privilege[];
 };
 
 export type SchemaDocs = {
@@ -84,9 +87,14 @@ function extractMetadata(
     ...sidecarSql.matchAll(/ALTER TABLE\s+(\w+)\s+FORCE ROW LEVEL SECURITY;/g),
   ].map(([, table]) => table!);
 
+  // Both optional groups are for the deferred commit-time constraint trigger,
+  // which Postgres refuses to CREATE OR REPLACE: it is documented beside the
+  // immediate ones, with its DEFERRABLE clause landing in `body`, where the
+  // row-timing detail belongs.
   const triggers = [
     ...sidecarSql.matchAll(
-      /CREATE OR REPLACE TRIGGER\s+(\w+)\s+([\s\S]*?)\s+ON\s+(\w+)\s+([\s\S]*?)EXECUTE FUNCTION\s+(\w+)\(\);/g,
+      // The function may take literal arguments (`fn('exposures', 'occurred_at')`).
+      /CREATE (?:OR REPLACE )?(?:CONSTRAINT )?TRIGGER\s+(\w+)\s+([\s\S]*?)\s+ON\s+(\w+)\s+([\s\S]*?)EXECUTE FUNCTION\s+(\w+)\([^)]*\);/g,
     ),
   ].map(([, name, action, table, body, functionName]) => ({
     name: name!,
@@ -96,15 +104,30 @@ function extractMetadata(
     functionName: functionName!,
   }));
 
-  const revocations = [
-    ...sidecarSql.matchAll(/REVOKE\s+([^;]+?)\s+ON\s+(\w+)\s+FROM\s+([^;]+);/g),
-  ].map(([, privileges, table, revocationRoles]) => ({
-    privileges: compactSql(privileges!),
-    table: table!,
-    roles: compactSql(revocationRoles!),
+  // Narrow grants that re-admit a single column after a table-level
+  // revocation. Without these the README would read as a stricter privilege
+  // set than the database actually has, because the revocation beside them is
+  // documented. Both matchers name exactly one table, so the broad
+  // `ON ALL TABLES IN SCHEMA` and multi-table tenant grants stay out.
+  const grants = [
+    ...sidecarSql.matchAll(/GRANT\s+([^;]+?)\s+ON\s+(\w+)\s+TO\s+([^;]+);/g),
+  ].map((match) => ({
+    privileges: compactSql(match[1]!),
+    table: match[2]!,
+    roles: compactSql(match[3]!),
+    at: match.index,
   }));
 
-  return { policies, roles, forcedTables, triggers, revocations };
+  const revocations = [
+    ...sidecarSql.matchAll(/REVOKE\s+([^;]+?)\s+ON\s+(\w+)\s+FROM\s+([^;]+);/g),
+  ].map((match) => ({
+    privileges: compactSql(match[1]!),
+    table: match[2]!,
+    roles: compactSql(match[3]!),
+    at: match.index,
+  }));
+
+  return { policies, roles, forcedTables, triggers, grants, revocations };
 }
 
 function tableNotes(metadata: SchemaMetadata): Map<string, string> {
@@ -245,10 +268,21 @@ function renderSidecarTable(metadata: SchemaMetadata): string[] {
       `\`${table}\``,
       triggers.map(triggerDescription).join('; '),
     ]),
-    ...metadata.revocations.map(({ privileges, table, roles }) => [
-      `\`${table}\` privileges`,
-      `Revokes ${privileges} from ${roles}.`,
-    ]),
+    // Ordered by position in the assembled sidecar SQL, because a grant that
+    // re-admits one column after a table-level revocation says something
+    // different from one applied before it.
+    ...[
+      ...metadata.grants.map((grant) => ({
+        ...grant,
+        clause: `Grants ${grant.privileges} to ${grant.roles}.`,
+      })),
+      ...metadata.revocations.map((revocation) => ({
+        ...revocation,
+        clause: `Revokes ${revocation.privileges} from ${revocation.roles}.`,
+      })),
+    ]
+      .toSorted((left, right) => left.at - right.at)
+      .map(({ table, clause }) => [`\`${table}\` privileges`, clause]),
   ];
 
   return renderMarkdownTable([['Scope', 'Sidecar-enforced behavior'], ...rows]);

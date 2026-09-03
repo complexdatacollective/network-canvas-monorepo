@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import type { VariableValue } from '@codaco/shared-consts';
 
-import { ValueGenerator } from '../../../ValueGenerator';
-import { buildVariableConstraints } from '../buildConstraints';
-import type { ConstrainedVariable } from '../types';
-import { valueKey } from '../uniqueRegistry';
+import { ValueGenerator } from '../../../ValueGenerator.ts';
+import { buildVariableConstraints } from '../buildConstraints.ts';
+import type { ConstrainedVariable } from '../types.ts';
+import { valueKey } from '../uniqueRegistry.ts';
 import {
   decimalGrid,
   decimalGridStep,
@@ -14,7 +14,7 @@ import {
   selectionSizeRange,
   textDrawLength,
   valueSpaceSize,
-} from '../valueSpace';
+} from '../valueSpace.ts';
 
 const TODAY = '2026-07-27';
 

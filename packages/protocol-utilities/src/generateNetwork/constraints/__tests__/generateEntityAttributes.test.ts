@@ -12,18 +12,18 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import { generateNetwork } from '../../../generateNetwork';
-import { ValueGenerator } from '../../../ValueGenerator';
-import { resolveGenerationConfig } from '../../config';
-import type { GenerationContext } from '../../context';
-import { buildEntityConstraints } from '../buildConstraints';
-import { SyntheticDataConstraintError } from '../error';
+import { generateNetwork } from '../../../generateNetwork.ts';
+import { ValueGenerator } from '../../../ValueGenerator.ts';
+import { resolveGenerationConfig } from '../../config.ts';
+import type { GenerationContext } from '../../context.ts';
+import { buildEntityConstraints } from '../buildConstraints.ts';
+import { SyntheticDataConstraintError } from '../error.ts';
 import {
   completionCheckFor,
   generateEntityAttributes,
-} from '../generateEntityAttributes';
-import type { EntityConstraints } from '../types';
-import { UniqueRegistry } from '../uniqueRegistry';
+} from '../generateEntityAttributes.ts';
+import type { EntityConstraints } from '../types.ts';
+import { UniqueRegistry } from '../uniqueRegistry.ts';
 
 const TODAY = '2026-07-27';
 

@@ -8,11 +8,11 @@ import {
   type NcNetwork,
 } from '@codaco/shared-consts';
 
-import { SyntheticDataConstraintError } from '../generateNetwork/constraints/error';
+import { SyntheticDataConstraintError } from '../generateNetwork/constraints/error.ts';
 import {
   DEFAULT_SYNTHETIC_SEED,
   SyntheticInterview,
-} from '../SyntheticInterview';
+} from '../SyntheticInterview.ts';
 
 describe('SyntheticInterview', () => {
   describe('determinism', () => {

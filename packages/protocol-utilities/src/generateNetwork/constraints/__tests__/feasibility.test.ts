@@ -11,17 +11,17 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { generateNetwork } from '../../../generateNetwork';
-import { ValueGenerator } from '../../../ValueGenerator';
-import { resolveGenerationConfig } from '../../config';
-import { CONTENT_STAGE_TYPES } from '../../contentStages';
-import type { GenerationContext } from '../../context';
-import { buildEntityConstraints } from '../buildConstraints';
-import { SyntheticDataConstraintError } from '../error';
-import { analyseFeasibility } from '../feasibility';
-import { generateEntityAttributes } from '../generateEntityAttributes';
-import { UniqueRegistry } from '../uniqueRegistry';
-import { MAX_TEXT_DRAW_LENGTH } from '../valueSpace';
+import { generateNetwork } from '../../../generateNetwork.ts';
+import { ValueGenerator } from '../../../ValueGenerator.ts';
+import { resolveGenerationConfig } from '../../config.ts';
+import { CONTENT_STAGE_TYPES } from '../../contentStages.ts';
+import type { GenerationContext } from '../../context.ts';
+import { buildEntityConstraints } from '../buildConstraints.ts';
+import { SyntheticDataConstraintError } from '../error.ts';
+import { analyseFeasibility } from '../feasibility.ts';
+import { generateEntityAttributes } from '../generateEntityAttributes.ts';
+import { UniqueRegistry } from '../uniqueRegistry.ts';
+import { MAX_TEXT_DRAW_LENGTH } from '../valueSpace.ts';
 
 const config = resolveGenerationConfig({ today: '2026-07-27' });
 

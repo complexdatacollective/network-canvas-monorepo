@@ -7,6 +7,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -91,27 +92,43 @@ const fixtures = vi.hoisted(() => {
     members: [BETA_MEMBER],
     invitations: [],
   };
-  const protocolsByTeam = {
+  const studiesByTeam = {
     'team-a': [
       {
-        id: 'protocol-a',
-        draftId: 'draft-a',
-        name: 'Alpha protocol',
+        id: 'study-a',
+        name: 'Alpha study',
+        state: 'draft',
+        participationMode: 'managed',
+        protocolId: 'protocol-a',
         createdAt: new Date('2026-08-28T00:00:00Z'),
-        updatedAt: new Date('2026-08-28T00:00:00Z'),
+        waveCount: 0,
+        participantCount: 0,
+      },
+      {
+        id: 'study-a-live',
+        name: 'Alpha fieldwork',
+        state: 'live',
+        participationMode: 'anonymous',
+        protocolId: 'protocol-a-live',
+        createdAt: new Date('2026-08-27T00:00:00Z'),
+        waveCount: 2,
+        participantCount: 1,
       },
     ],
     'team-b': [
       {
-        id: 'protocol-b',
-        draftId: 'draft-b',
-        name: 'Beta protocol',
+        id: 'study-b',
+        name: 'Beta study',
+        state: 'draft',
+        participationMode: 'managed',
+        protocolId: 'protocol-b',
         createdAt: new Date('2026-08-28T00:00:00Z'),
-        updatedAt: new Date('2026-08-28T00:00:00Z'),
+        waveCount: 0,
+        participantCount: 0,
       },
     ],
   };
-  const createProtocol = vi.fn();
+  const createStudy = vi.fn();
   const createInvitation = vi.fn();
   const updateMemberRole = vi.fn();
   const cancelInvitation = vi.fn();
@@ -160,8 +177,8 @@ const fixtures = vi.hoisted(() => {
     ACTIVE_TEAM_A,
     BETA_MEMBER,
     ACTIVE_TEAM_B,
-    protocolsByTeam,
-    createProtocol,
+    studiesByTeam,
+    createStudy,
     createInvitation,
     updateMemberRole,
     cancelInvitation,
@@ -257,26 +274,32 @@ vi.mock('../../lib/api.ts', () => ({
         }),
       }),
     },
-    protocols: {
+    studies: {
       list: {
         queryOptions: ({ input }: { input: { teamId: string } }) => ({
-          queryKey: ['protocols', input.teamId],
+          queryKey: ['studies', input.teamId],
           queryFn: () =>
-            fixtures.protocolsByTeam[
-              input.teamId as keyof typeof fixtures.protocolsByTeam
+            fixtures.studiesByTeam[
+              input.teamId as keyof typeof fixtures.studiesByTeam
             ] ?? [],
         }),
         key: ({ input }: { input: { teamId: string } }) => [
-          'protocols',
+          'studies',
           input.teamId,
         ],
       },
+      get: {
+        queryOptions: () => ({ queryKey: ['study'], queryFn: vi.fn() }),
+        key: () => ['study'],
+      },
       create: {
         mutationOptions: (options: object) => ({
-          mutationFn: fixtures.createProtocol,
+          mutationFn: fixtures.createStudy,
           ...options,
         }),
       },
+    },
+    protocols: {
       draft: {
         queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
         key: () => ['draft'],
@@ -355,9 +378,10 @@ beforeEach(() => {
     invitationId: 'invitation-1',
     status: 'canceled',
   });
-  fixtures.createProtocol.mockImplementation(
-    (input: { protocolId: string; draftId: string }) =>
+  fixtures.createStudy.mockImplementation(
+    (input: { studyId: string; protocolId: string; draftId: string }) =>
       Promise.resolve({
+        studyId: input.studyId,
         protocolId: input.protocolId,
         draftId: input.draftId,
       }),
@@ -384,10 +408,68 @@ describe('the team studies list', () => {
       await screen.findByRole('heading', { level: 1, name: 'Studies' }),
     ).toBeInTheDocument();
     // The team comes from the URL, not from the active-team setting (§2.2).
+    // The link addresses the STUDY, which is no longer the protocol it points
+    // at: a list that named the protocol id would send every study URL to the
+    // wrong object the moment a study retargets its protocol line.
     expect(
-      await screen.findByRole('link', { name: 'Alpha protocol' }),
-    ).toHaveAttribute('href', '/study/protocol-a');
-    expect(screen.queryByText('Beta protocol')).toBeNull();
+      await screen.findByRole('link', { name: 'Alpha study' }),
+    ).toHaveAttribute('href', '/study/study-a');
+    expect(screen.queryByText('Beta study')).toBeNull();
+
+    // Where each study is in its lifecycle, and who takes part, on the row
+    // itself: choosing between a draft and a live study is the decision this
+    // screen exists for.
+    const live = screen
+      .getByRole('link', { name: 'Alpha fieldwork' })
+      .closest('li');
+    if (!live) throw new Error('expected the study row to be a list item');
+    expect(within(live).getByText('Live')).toBeInTheDocument();
+    expect(
+      within(live).getByText('Anonymous participants'),
+    ).toBeInTheDocument();
+    expect(within(live).getByText('2 waves')).toBeInTheDocument();
+    expect(within(live).getByText('1 participant')).toBeInTheDocument();
+
+    // A draft study has no waves and no participants, and says so by leaving
+    // the counts out rather than by reporting two zeroes.
+    const draft = screen
+      .getByRole('link', { name: 'Alpha study' })
+      .closest('li');
+    if (!draft) throw new Error('expected the study row to be a list item');
+    expect(within(draft).getByText('Draft')).toBeInTheDocument();
+    expect(within(draft).queryByText('0 waves')).toBeNull();
+  });
+
+  it('tells a team member that creating studies is not theirs to do', async () => {
+    // #1257: creating a study is a team Admin or Owner action, and the
+    // procedure refuses everyone else — so a Member is told that once, rather
+    // than offered a form whose submission could only fail.
+    authState.activeMember = COLLABORATOR;
+    renderTeam(STUDIES);
+
+    // The list itself is still theirs — it is how a Member reaches the studies
+    // they hold a grant on — and waiting for it is what makes the absences
+    // below mean something: this screen has finished rendering.
+    expect(
+      await screen.findByRole('link', { name: 'Alpha study' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Only team owners and admins can create studies.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Study name' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Create study' })).toBeNull();
+  });
+
+  it('offers creation to an admin of the team in the URL', async () => {
+    authState.activeMember = { ...COLLABORATOR, role: 'admin' };
+    renderTeam(STUDIES);
+
+    expect(
+      await screen.findByRole('button', { name: 'Create study' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Only team owners and admins can create studies.'),
+    ).toBeNull();
   });
 
   it('creates a study and opens its editor', async () => {
@@ -400,7 +482,7 @@ describe('the team studies list', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create study' }));
 
     await waitFor(() =>
-      expect(fixtures.createProtocol.mock.calls[0]?.[0]).toEqual(
+      expect(fixtures.createStudy.mock.calls[0]?.[0]).toEqual(
         expect.objectContaining({ teamId: TEAM_A.id, name: 'New study' }),
       ),
     );
@@ -414,10 +496,10 @@ describe('the team studies list', () => {
   });
 
   it('leaves a researcher who moved on where they went', async () => {
-    let finishCreation: ((created: { protocolId: string }) => void) | undefined;
-    fixtures.createProtocol.mockImplementation(
+    let finishCreation: ((created: { studyId: string }) => void) | undefined;
+    fixtures.createStudy.mockImplementation(
       () =>
-        new Promise<{ protocolId: string }>((resolve) => {
+        new Promise<{ studyId: string }>((resolve) => {
           finishCreation = resolve;
         }),
     );
@@ -440,7 +522,7 @@ describe('the team studies list', () => {
     );
 
     await act(async () => {
-      finishCreation?.({ protocolId: 'slow-study' });
+      finishCreation?.({ studyId: 'slow-study' });
     });
 
     // §6.5: a continuation that resolves after a later navigation has
@@ -459,10 +541,10 @@ describe('the team studies list', () => {
   });
 
   it('leaves a researcher who came back where they came back to', async () => {
-    let finishCreation: ((created: { protocolId: string }) => void) | undefined;
-    fixtures.createProtocol.mockImplementation(
+    let finishCreation: ((created: { studyId: string }) => void) | undefined;
+    fixtures.createStudy.mockImplementation(
       () =>
-        new Promise<{ protocolId: string }>((resolve) => {
+        new Promise<{ studyId: string }>((resolve) => {
           finishCreation = resolve;
         }),
     );
@@ -484,17 +566,17 @@ describe('the team studies list', () => {
       router.navigate({ to: '/team/$teamId', params: { teamId: TEAM_B.id } }),
     );
     expect(
-      await screen.findByRole('link', { name: 'Beta protocol' }),
+      await screen.findByRole('link', { name: 'Beta study' }),
     ).toBeInTheDocument();
     await act(() =>
       router.navigate({ to: '/team/$teamId', params: { teamId: TEAM_A.id } }),
     );
     expect(
-      await screen.findByRole('link', { name: 'Alpha protocol' }),
+      await screen.findByRole('link', { name: 'Alpha study' }),
     ).toBeInTheDocument();
 
     await act(async () => {
-      finishCreation?.({ protocolId: 'slow-study' });
+      finishCreation?.({ studyId: 'slow-study' });
     });
 
     // Waiting for the form to finish submitting is what makes this able to
@@ -507,17 +589,18 @@ describe('the team studies list', () => {
     // The team's studies, still RENDERED — not the editor of a study created
     // three navigations ago.
     expect(
-      screen.getByRole('link', { name: 'Alpha protocol' }),
+      screen.getByRole('link', { name: 'Alpha study' }),
     ).toBeInTheDocument();
     expect(router.state.resolvedLocation?.pathname).toBe(STUDIES);
   });
 
   it('reuses the creation identity after a lost response', async () => {
-    fixtures.createProtocol
+    fixtures.createStudy
       .mockRejectedValueOnce(new Error('response lost'))
       .mockImplementationOnce(
-        (input: { protocolId: string; draftId: string }) =>
+        (input: { studyId: string; protocolId: string; draftId: string }) =>
           Promise.resolve({
+            studyId: input.studyId,
             protocolId: input.protocolId,
             draftId: input.draftId,
           }),
@@ -539,14 +622,14 @@ describe('the team studies list', () => {
       ),
     );
     // Retrying the same name must not leave two studies behind.
-    expect(fixtures.createProtocol).toHaveBeenCalledTimes(2);
-    expect(fixtures.createProtocol.mock.calls[1]?.[0]).toEqual(
-      fixtures.createProtocol.mock.calls[0]?.[0],
+    expect(fixtures.createStudy).toHaveBeenCalledTimes(2);
+    expect(fixtures.createStudy.mock.calls[1]?.[0]).toEqual(
+      fixtures.createStudy.mock.calls[0]?.[0],
     );
   });
 
   it('does not carry a creation identity across a team switch', async () => {
-    fixtures.createProtocol.mockRejectedValueOnce(new Error('response lost'));
+    fixtures.createStudy.mockRejectedValueOnce(new Error('response lost'));
     const { router } = renderTeam(STUDIES);
 
     const nameIn = async (value: string) => {
@@ -571,12 +654,15 @@ describe('the team studies list', () => {
     await nameIn('Shared name');
     fireEvent.click(screen.getByRole('button', { name: 'Create study' }));
 
-    await waitFor(() =>
-      expect(fixtures.createProtocol).toHaveBeenCalledTimes(2),
-    );
-    const [first, second] = fixtures.createProtocol.mock.calls.map(
+    await waitFor(() => expect(fixtures.createStudy).toHaveBeenCalledTimes(2));
+    const [first, second] = fixtures.createStudy.mock.calls.map(
       ([input]) =>
-        input as { teamId: string; protocolId: string; draftId: string },
+        input as {
+          teamId: string;
+          studyId: string;
+          protocolId: string;
+          draftId: string;
+        },
     );
     expect(first?.teamId).toBe(TEAM_A.id);
     expect(second?.teamId).toBe(TEAM_B.id);
@@ -585,6 +671,7 @@ describe('the team studies list', () => {
     // request had actually committed, the id is taken, and the server refuses
     // B's creation outright — the researcher cannot create a study in team B
     // under that name at all.
+    expect(second?.studyId).not.toBe(first?.studyId);
     expect(second?.protocolId).not.toBe(first?.protocolId);
     expect(second?.draftId).not.toBe(first?.draftId);
   });

@@ -5,9 +5,9 @@ import {
   type Variables,
 } from '@codaco/protocol-validation';
 
-import { buildEntityConstraints } from '../buildConstraints';
-import type { DateResolution } from '../dateWindow';
-import { resolveGenerationOrder } from '../dependencyOrder';
+import { buildEntityConstraints } from '../buildConstraints.ts';
+import type { DateResolution } from '../dateWindow.ts';
+import { resolveGenerationOrder } from '../dependencyOrder.ts';
 import {
   comparatorBound,
   type ComparatorDateBound,
@@ -15,8 +15,8 @@ import {
   groupComparatorEdges,
   intersectGroupConstraints,
   propagateComparatorBounds,
-} from '../groupConstraints';
-import type { ConstrainedVariable, EntityConstraints } from '../types';
+} from '../groupConstraints.ts';
+import type { ConstrainedVariable, EntityConstraints } from '../types.ts';
 
 const TODAY = '2026-07-27';
 

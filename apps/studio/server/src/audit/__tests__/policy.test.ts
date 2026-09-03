@@ -275,6 +275,9 @@ describe('audit mutation policy', () => {
       'me',
       'protocols.draft',
       'protocols.list',
+      'studies.counts',
+      'studies.get',
+      'studies.list',
       'audit.list',
       'audit.get',
       'audit.filterOptions',
@@ -298,6 +301,9 @@ describe('audit mutation policy', () => {
       kind: 'required',
     });
     expect(RPC_MUTATION_AUDIT_POLICIES['protocols.create']).toEqual({
+      kind: 'required',
+    });
+    expect(RPC_MUTATION_AUDIT_POLICIES['studies.create']).toEqual({
       kind: 'required',
     });
     expect(RPC_MUTATION_AUDIT_POLICIES['protocols.commitSection']).toEqual({
@@ -405,6 +411,7 @@ describe('audit mutation policy', () => {
     expect(importers.map((file) => relative(REPO_ROOT, file))).toEqual([
       'apps/studio/server/src/audit/read-authorization.ts',
       'apps/studio/server/src/protocol/commands.ts',
+      'apps/studio/server/src/study/commands.ts',
       'apps/studio/server/src/team/commands.ts',
     ]);
   });

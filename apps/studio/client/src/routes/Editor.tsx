@@ -1,9 +1,5 @@
-import {
-  useMutation,
-  useQueries,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { ORPCError } from '@orpc/client';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi, useBlocker } from '@tanstack/react-router';
 import { ArrowDown, ArrowUp, Plus } from 'lucide-react';
 import {
@@ -39,7 +35,6 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { useStudioStageSession } from '../editor/useStudioStageSession.ts';
 import { orpc, rpcClient } from '../lib/api.ts';
-import { authClient } from '../lib/auth.ts';
 import { createUuid } from '../lib/createUuid.ts';
 
 // The route id carries the area layout it sits under (§5.3), so it moved with
@@ -59,21 +54,21 @@ type Selection =
 
 type Draft = Awaited<ReturnType<typeof rpcClient.protocols.draft>>;
 
-/** One study as its team's list reports it. */
-type Study = Awaited<ReturnType<typeof rpcClient.protocols.list>>[number];
-
 /**
- * Which team owns the study in the URL, as far as this researcher can see.
+ * What the study in the URL gives the editor to open, as far as this
+ * researcher can see.
  *
- * Four answers rather than two, because "not yet" and "not found" and "could
- * not ask" are different things to put on screen, and collapsing any pair of
- * them is what leaves a researcher on a spinner that will never resolve.
+ * Five answers rather than two, because "not yet", "not yours", "nothing to
+ * edit" and "could not ask" are different things to put on screen, and
+ * collapsing any pair of them is what leaves a researcher on a spinner that
+ * will never resolve.
  */
-type StudyOwner =
+type EditorTarget =
   | { status: 'pending' }
   | { status: 'unavailable' }
-  | { status: 'notFound' }
-  | { status: 'found'; teamId: string; study: Study };
+  | { status: 'unreachable' }
+  | { status: 'noDraft' }
+  | { status: 'found'; address: DraftAddress };
 
 type DraftValidation =
   | Readonly<{ status: 'pending'; issues: readonly [] }>
@@ -101,8 +96,8 @@ function stageLabel(document: SectionDoc | undefined, index: number): string {
 }
 
 /**
- * Which team owns `studyId`, resolved from the study id itself rather than
- * from whichever team the researcher was last acting in.
+ * What `/study/$studyId/editor` opens, resolved from the study id itself
+ * rather than from whichever team the researcher was last acting in.
  *
  * **`$studyId` is authoritative** (§2.2, §5.6): a study URL is a canonical
  * link, and it has to open the study whoever follows it and however they got
@@ -115,107 +110,54 @@ function stageLabel(document: SectionDoc | undefined, index: number): string {
  * all. §6.6's reconciler cannot help: a study route names no team, so it
  * leaves the setting wherever the last team route left it.
  *
- * **One question, asked of the teams the researcher has.** `study.shell` (§6.3)
- * is the procedure that answers "which team owns this study?" in one request,
- * and it is the one server surface this slice may not add. What the client can
- * do without it is ask each team it belongs to for its own studies, which is a
- * procedure that already exists and is already authorized per team. The cost
- * is kept to the ordinary case's one request: the active team is asked first
- * and alone, because arriving from a team's studies list has already cached
- * exactly that answer, and the rest are asked only when it does not have the
- * study. When `study.shell` lands this whole hook becomes one query, and
- * nothing above it changes.
+ * **One question, answered by the server.** `studies.get` takes the study id
+ * alone and derives the tenant from the caller's own memberships (§6.3), and
+ * it carries both halves the editing procedures need beyond the study: the
+ * owning team, and the current draft of the study's protocol line. This
+ * replaces asking every team the researcher belongs to for its own list, and
+ * with it the assumption that a study id IS a protocol id.
  *
- * A team list that could not be read, or a studies list that could not be
- * read, is `unavailable` and never `notFound`: "no team of yours has this
- * study" is a claim about the researcher's access, and an outage is no basis
- * for making it.
+ * A refusal is `unreachable` and anything else is `unavailable`: FORBIDDEN is
+ * the server's one answer for a study that is absent, in another team, or not
+ * shown to this researcher's role, while an outage is no basis for a claim
+ * about their access.
  */
-function useStudyOwner(studyId: string): StudyOwner {
-  const teams = authClient.useListOrganizations();
-  const activeTeamId = authClient.useActiveOrganization().data?.id;
+function useEditorTarget(studyId: string): EditorTarget {
+  const study = useQuery(orpc.studies.get.queryOptions({ input: { studyId } }));
 
-  const activeList = useQuery({
-    ...orpc.protocols.list.queryOptions({
-      input: { teamId: activeTeamId ?? '' },
-    }),
-    enabled: activeTeamId !== undefined,
-  });
-  const activeStudy = activeList.data?.find(
-    (candidate) => candidate.id === studyId,
-  );
-  // A disabled query is `pending` for ever, so "has the active team answered?"
-  // cannot be read off the status alone — with no active team there was
-  // nothing to ask and the answer is immediate.
-  const activeAnswered =
-    activeTeamId === undefined || activeList.status !== 'pending';
-
-  const otherTeamIds =
-    activeStudy !== undefined || !activeAnswered
-      ? []
-      : (teams.data ?? [])
-          .map((team) => team.id)
-          .filter((id) => id !== activeTeamId);
-  const otherLists = useQueries({
-    queries: otherTeamIds.map((teamId) =>
-      orpc.protocols.list.queryOptions({ input: { teamId } }),
-    ),
-  });
-
-  if (activeStudy !== undefined && activeTeamId !== undefined) {
-    return { status: 'found', teamId: activeTeamId, study: activeStudy };
+  if (study.isPending) return { status: 'pending' };
+  if (study.isError) {
+    return {
+      status:
+        study.error instanceof ORPCError && study.error.code === 'FORBIDDEN'
+          ? 'unreachable'
+          : 'unavailable',
+    };
   }
-  if (!activeAnswered || teams.isPending) return { status: 'pending' };
-
-  const ownerIndex = otherLists.findIndex((list) =>
-    list.data?.some((candidate) => candidate.id === studyId),
-  );
-  const owner = otherTeamIds[ownerIndex];
-  const study = otherLists[ownerIndex]?.data?.find(
-    (candidate) => candidate.id === studyId,
-  );
-  if (owner !== undefined && study !== undefined) {
-    return { status: 'found', teamId: owner, study };
+  const { teamId, study: row, protocolDraftId } = study.data;
+  if (row.protocolId === null || protocolDraftId === null) {
+    return { status: 'noDraft' };
   }
-
-  if (otherLists.some((list) => list.isPending)) return { status: 'pending' };
-  if (
-    activeList.isError ||
-    otherLists.some((list) => list.isError) ||
-    // Better Auth reports a refused list by storing an error and leaving
-    // `data` null, so an unreadable team list is an empty one here — and
-    // concluding "not found" from a list of teams nobody could read is the
-    // same lie in a different place.
-    (teams.error !== null && teams.data === null)
-  ) {
-    return { status: 'unavailable' };
-  }
-  return { status: 'notFound' };
+  return {
+    status: 'found',
+    address: { teamId, protocolId: row.protocolId, draftId: protocolDraftId },
+  };
 }
 
 /**
  * The protocol editor, at `/study/$studyId/editor` (§5.2, #1272).
  *
- * **Resolving the draft from the study id.** The editing procedures are
- * addressed by `{ teamId, protocolId, draftId }` and the URL carries only
- * `$studyId`, which addresses the protocol until #1262 lands the studies
- * model. Both missing halves come from procedures that already exist, so no
- * new server surface was written for the move:
- *
- * - the team is the one that owns the study, resolved by `useStudyOwner` above
- *   from the study id the URL carries.
- * - the current draft is `protocols.list`'s own `draftId` for this protocol,
- *   which arrives with the same answer.
- *
- * A study no team of this researcher's has, and a study with no editable
- * draft, are the two answers that leave nothing to open, and each says which
+ * The editing procedures are addressed by `{ teamId, protocolId, draftId }`
+ * and the URL carries only `$studyId`; `useEditorTarget` above turns one into
+ * the other. A study this researcher cannot reach, and a study with no draft
+ * to edit, are the two answers that leave nothing to open, and each says which
  * it is.
  */
 export default function Editor() {
   const { studyId } = route.useParams();
-  const owner = useStudyOwner(studyId);
+  const target = useEditorTarget(studyId);
 
-  if (owner.status === 'pending') {
+  if (target.status === 'pending') {
     return (
       <div className="flex h-full items-center justify-center">
         <Spinner />
@@ -224,7 +166,7 @@ export default function Editor() {
     );
   }
 
-  if (owner.status === 'unavailable') {
+  if (target.status === 'unavailable') {
     return (
       <div className="p-6">
         <Alert variant="destructive">
@@ -234,27 +176,19 @@ export default function Editor() {
     );
   }
 
-  if (owner.status === 'notFound' || owner.study.draftId === null) {
+  if (target.status !== 'found') {
     return (
       <div className="p-6">
         <Alert variant="destructive">
-          {owner.status === 'notFound'
-            ? 'This study is not in any of your teams. Ask whoever sent you the link to invite you to the team that owns it.'
-            : 'This study has no editable draft.'}
+          {target.status === 'unreachable'
+            ? 'This study is not one of yours. Ask whoever sent you the link to give you access to it.'
+            : 'This study has no protocol draft to edit.'}
         </Alert>
       </div>
     );
   }
 
-  return (
-    <ProtocolEditor
-      address={{
-        teamId: owner.teamId,
-        protocolId: studyId,
-        draftId: owner.study.draftId,
-      }}
-    />
-  );
+  return <ProtocolEditor address={target.address} />;
 }
 
 function ProtocolEditor({ address }: { address: DraftAddress }) {

@@ -95,17 +95,28 @@ vi.mock('../../lib/api.ts', () => ({
         queryFn: () => ({
           name: 'Network Canvas Studio',
           version: '0.1.0',
-          auth: { enabled: true, magicLink: true, socialProviders: [] },
+          auth: {
+            enabled: true,
+            magicLink: true,
+            emailAndPassword: true,
+            socialProviders: [],
+          },
           deployment: fixtures.deployment,
         }),
       }),
     },
-    protocols: {
+    studies: {
       list: {
-        queryOptions: () => ({ queryKey: ['protocols'], queryFn: () => [] }),
-        key: () => ['protocols'],
+        queryOptions: () => ({ queryKey: ['studies'], queryFn: () => [] }),
+        key: () => ['studies'],
+      },
+      get: {
+        queryOptions: () => ({ queryKey: ['study'], queryFn: () => null }),
+        key: () => ['study'],
       },
       create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
+    },
+    protocols: {
       draft: {
         queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
         key: () => ['draft'],
@@ -448,7 +459,7 @@ describe('a session that ends outside this tab', () => {
     const router = renderAt('/team/team-a');
     await screen.findByRole('heading', { level: 1, name: 'Studies' });
     const { queryClient } = router.options.context;
-    expect(queryClient.getQueryData(['protocols'])).toBeDefined();
+    expect(queryClient.getQueryData(['studies'])).toBeDefined();
 
     // Signed out in another tab, or simply expired. Nothing here fails, and
     // the session query is `staleTime: Infinity`, so left alone no guard ever
@@ -463,7 +474,7 @@ describe('a session that ends outside this tab', () => {
     expect(router.state.resolvedLocation?.pathname).toBe('/sign-in');
     // §6.2: what was in the cache belonged to the researcher whose session has
     // ended, and nobody signing in next may be served it.
-    expect(queryClient.getQueryData(['protocols'])).toBeUndefined();
+    expect(queryClient.getQueryData(['studies'])).toBeUndefined();
   });
 });
 

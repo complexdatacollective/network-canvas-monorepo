@@ -108,6 +108,10 @@ async function advanceManifest(
   head: HeadState,
   newSections: Record<string, SectionDoc>,
   removedSectionIds: string[],
+  // Dates the new sections for a caller that knows when the edit was made
+  // (the synthetic-data seed); a live command leaves it unset and takes the
+  // clock. Same contract as insertDraftRows.
+  createdAt?: Date,
 ): Promise<StructuralResult> {
   const sectionHashes = { ...head.sectionHashes };
   for (const id of removedSectionIds) {
@@ -117,10 +121,11 @@ async function advanceManifest(
     const hash = contentHash(doc);
     sectionHashes[id] = hash;
     await client.query(
-      `INSERT INTO sections (team_id, hash, doc) VALUES ($1, $2, $3)
+      `INSERT INTO sections (team_id, hash, doc, created_at)
+       VALUES ($1, $2, $3, COALESCE($4, clock_timestamp()))
        ON CONFLICT (team_id, hash) DO UPDATE
-       SET created_at = clock_timestamp(), unreferenced_at = NULL`,
-      [teamId, hash, doc],
+       SET created_at = COALESCE($4, clock_timestamp()), unreferenced_at = NULL`,
+      [teamId, hash, doc, createdAt ?? null],
     );
   }
   const newSeq = head.headSeq + 1n;
@@ -147,7 +152,13 @@ async function advanceManifest(
 
 export async function addStage(
   db: TenantDb,
-  params: { draftId: string; stage: SectionDoc; index?: number },
+  params: {
+    draftId: string;
+    stage: SectionDoc;
+    index?: number;
+    /** When the stage was added, for a caller that must say so (the seed). */
+    createdAt?: Date;
+  },
   client?: pg.PoolClient,
 ): Promise<StructuralResult> {
   const stageId = params.stage.id;
@@ -185,6 +196,7 @@ export async function addStage(
       head,
       { [id]: params.stage, [orderId]: { stages: newOrder } },
       [],
+      params.createdAt,
     );
   };
   if (client !== undefined) return add(client);
@@ -193,7 +205,12 @@ export async function addStage(
 
 export async function removeStage(
   db: TenantDb,
-  params: { draftId: string; stageId: string },
+  params: {
+    draftId: string;
+    stageId: string;
+    /** When the stage was removed, for a caller that must say so (the seed). */
+    createdAt?: Date;
+  },
 ): Promise<StructuralResult> {
   const id = sectionId({ kind: 'stage', stageId: params.stageId });
   const teamId = db.teamId;
@@ -220,6 +237,7 @@ export async function removeStage(
         head,
         { [orderId]: { stages: newOrder } },
         [id],
+        params.createdAt,
       );
     },
   );

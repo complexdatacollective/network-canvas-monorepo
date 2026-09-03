@@ -12,6 +12,7 @@ import {
 } from './db/pool.ts';
 import {
   checkSchema,
+  type SchemaProblem,
   type SchemaState,
   schemaProblemMessage,
 } from './db/schema.ts';
@@ -50,12 +51,15 @@ function startDatabaseWorkers(): void {
   });
 }
 
-// Stale everywhere and absent-in-production are resolved answers, not
-// transient failures: retrying re-reads the same fingerprint every three
-// seconds. The development lane waits for dev-pg's provision (or a manual
-// db:reset) the same way it waits for the container itself.
+// Outside development a stale or absent schema is a resolved answer, not a
+// transient failure: retrying re-reads the same fingerprint every three
+// seconds. The development lane waits instead, the same way it waits for the
+// container itself: `pnpm dev` finishes its reset before this process starts,
+// but a server started on its own against a database another build applied,
+// or a `db:reset` run beside a running server, should recover by themselves
+// once the schema is current.
 function exitIfFatal(state: SchemaState): void {
-  if (state.kind === 'stale' || (state.kind === 'absent' && !env.devDefaults)) {
+  if (state.kind !== 'current' && !env.devDefaults) {
     // oxlint-disable-next-line no-console -- boot diagnostics
     console.error(schemaProblemMessage(state));
     process.exit(1);
@@ -95,28 +99,29 @@ if (pool) {
     retry.unref();
   };
 
-  const waitForSchema = () => {
-    exitIfFatal({ kind: 'absent' });
+  const waitForSchema = (state: SchemaProblem) => {
+    exitIfFatal(state);
     // oxlint-disable-next-line no-console -- boot diagnostics
     console.warn(
-      'Database has no Studio schema; sign-in will fail until it is created: pnpm --filter @codaco/studio-server db:reset',
+      state.kind === 'absent'
+        ? 'Database has no Studio schema; sign-in will fail until it is created: pnpm --filter @codaco/studio-server db:reset'
+        : 'Database schema is not from this build; waiting for the development reset (pnpm dev runs it on boot; otherwise: pnpm --filter @codaco/studio-server db:reset)',
     );
     waitUntilCurrent();
   };
 
   try {
     const state = await checkSchema(pool);
-    exitIfFatal(state);
-    if (state.kind === 'absent') {
-      waitForSchema();
-    } else {
+    if (state.kind === 'current') {
       startDatabaseWorkers();
+    } else {
+      waitForSchema(state);
     }
   } catch (error) {
     // The pool runs as a role the schema apply creates, so a never-applied
     // database refuses the connection before the fingerprint can be read.
     if (isMissingRoleError(error)) {
-      waitForSchema();
+      waitForSchema({ kind: 'absent' });
     } else {
       if (!env.devDefaults) throw error;
       // oxlint-disable-next-line no-console -- boot diagnostics

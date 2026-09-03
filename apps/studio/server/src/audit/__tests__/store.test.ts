@@ -13,7 +13,11 @@ import {
   seedTeam,
 } from '../../__tests__/support/postgres.ts';
 import type { AuditEventInput } from '../events.ts';
-import { AUDIT_SEQUENCE_LOCK_SEED, AuditStore } from '../store.ts';
+import {
+  AUDIT_SEQUENCE_LOCK_SEED,
+  AUDIT_TEAM_LOCK_KEY_SQL,
+  AuditStore,
+} from '../store.ts';
 
 const db = await reachableDb();
 const store = new AuditStore();
@@ -305,18 +309,18 @@ describe.skipIf(!db)('immutable audit store', () => {
       await holder.query('BEGIN');
       await contender.query('BEGIN');
       await holder.query(
-        `SELECT pg_advisory_xact_lock(hashtextextended($1, $2::bigint))`,
+        `SELECT pg_advisory_xact_lock(${AUDIT_TEAM_LOCK_KEY_SQL})`,
         ['audit-lock-a', AUDIT_SEQUENCE_LOCK_SEED.toString()],
       );
 
       const sameTeam = await contender.query<{ acquired: boolean }>(
-        `SELECT pg_try_advisory_xact_lock(hashtextextended($1, $2::bigint)) AS acquired`,
+        `SELECT pg_try_advisory_xact_lock(${AUDIT_TEAM_LOCK_KEY_SQL}) AS acquired`,
         ['audit-lock-a', AUDIT_SEQUENCE_LOCK_SEED.toString()],
       );
       expect(sameTeam.rows).toEqual([{ acquired: false }]);
 
       const otherTeam = await contender.query<{ acquired: boolean }>(
-        `SELECT pg_try_advisory_xact_lock(hashtextextended($1, $2::bigint)) AS acquired`,
+        `SELECT pg_try_advisory_xact_lock(${AUDIT_TEAM_LOCK_KEY_SQL}) AS acquired`,
         ['audit-lock-b', AUDIT_SEQUENCE_LOCK_SEED.toString()],
       );
       expect(otherTeam.rows).toEqual([{ acquired: true }]);

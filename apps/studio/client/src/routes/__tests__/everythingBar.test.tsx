@@ -45,10 +45,13 @@ const fixtures = vi.hoisted(() => ({
   getSession: vi.fn(),
   STUDY: {
     id: 'study-1',
-    draftId: 'draft-1',
     name: 'Shell proof',
+    state: 'draft',
+    participationMode: 'managed',
+    protocolId: 'protocol-1',
     createdAt: new Date('2026-08-28T00:00:00Z'),
-    updatedAt: new Date('2026-08-28T00:00:00Z'),
+    waveCount: 0,
+    participantCount: 0,
   },
 }));
 
@@ -95,27 +98,59 @@ vi.mock('../../lib/api.ts', () => ({
         queryFn: () => ({
           name: 'Network Canvas Studio',
           version: '0.1.0',
-          auth: { enabled: true, magicLink: true, socialProviders: [] },
+          auth: {
+            enabled: true,
+            magicLink: true,
+            emailAndPassword: true,
+            socialProviders: [],
+          },
           // Read at call time, so a test can put the client on a self-hosted
           // instance before it renders.
           deployment: fixtures.deployment,
         }),
       }),
     },
-    protocols: {
+    studies: {
       list: {
         queryOptions: () => ({
-          queryKey: ['protocols'],
+          queryKey: ['studies'],
           queryFn: () => [fixtures.STUDY],
         }),
-        key: () => ['protocols'],
+        key: () => ['studies'],
+      },
+      get: {
+        queryOptions: () => ({
+          queryKey: ['study'],
+          queryFn: () => ({
+            teamId: fixtures.TEAM.id,
+            study: fixtures.STUDY,
+            protocolDraftId: 'draft-1',
+          }),
+        }),
+        key: () => ['study'],
       },
       create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
+      counts: {
+        queryOptions: () => ({
+          queryKey: ['study-counts'],
+          queryFn: () => ({
+            versions: 0,
+            participants: 0,
+            waves: 0,
+            sessions: 0,
+          }),
+        }),
+      },
+    },
+    protocols: {
       draft: {
         queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
         key: () => ['draft'],
       },
     },
+    // The study sidebar's counts. The bar never renders one, so an empty study
+    // is the honest fixture: a result's label is its destination's name and
+    // nothing else, whatever the sidebar beside it shows.
     audit: {
       list: {
         infiniteOptions: (options: {

@@ -41,6 +41,7 @@ export const StatusSchema = z.object({
   auth: z.object({
     enabled: z.boolean(),
     magicLink: z.boolean(),
+    emailAndPassword: z.boolean(),
     socialProviders: z.array(z.enum(SOCIAL_PROVIDERS)),
   }),
   deployment: DeploymentSchema,
@@ -123,6 +124,90 @@ export const ProtocolNameSchema = z
   .refine((name) => name.trim().length > 0, {
     error: 'Protocol name must contain a non-whitespace character',
   });
+
+// The study tier (#1262). A study is the team-scoped object a researcher
+// works in; the protocol line it points at describes only the interview.
+// Both enums mirror the `studies_state_check` and
+// `studies_participation_mode_check` constraints, so a value the database
+// refuses cannot reach it, and a value it gains needs a migration this
+// boundary is versioned alongside.
+export const STUDY_STATES = ['draft', 'live', 'paused', 'closed'] as const;
+export const StudyStateSchema = z.enum(STUDY_STATES);
+export type StudyState = z.infer<typeof StudyStateSchema>;
+
+export const STUDY_PARTICIPATION_MODES = ['managed', 'anonymous'] as const;
+export const StudyParticipationModeSchema = z.enum(STUDY_PARTICIPATION_MODES);
+export type StudyParticipationMode = z.infer<
+  typeof StudyParticipationModeSchema
+>;
+
+// The same bound as `studies_name_nonblank_check`, refused here so a blank
+// name is a field error rather than a constraint violation.
+export const StudyNameSchema = z
+  .string()
+  .min(1)
+  .max(320)
+  .refine((name) => name.trim().length > 0, {
+    error: 'Study name must contain a non-whitespace character',
+  });
+
+/**
+ * One study as its team's list reports it. `protocolId` is nullable because
+ * the column is: a Draft study may retarget its protocol line, and the
+ * schema keeps the pin optional until go-live (#1262).
+ *
+ * The two counts come from the same row as the study, so the picker can say
+ * how much work a study holds without a request per study. They are
+ * decoration — a study with neither still lists — and they are not the study
+ * sidebar's counts, which are per-destination and answered elsewhere.
+ */
+export const StudySummarySchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  state: StudyStateSchema,
+  participationMode: StudyParticipationModeSchema,
+  protocolId: z.uuid().nullable(),
+  createdAt: z.date(),
+  waveCount: z.number().int().nonnegative(),
+  participantCount: z.number().int().nonnegative(),
+});
+
+// No teamId, deliberately, and the same rule `AcceptTeamInvitationInputSchema`
+// records above: a cold direct navigation to `/study/$studyId` carries no
+// team, so the server resolves the tenant from the caller's own memberships
+// (app-shell design §6.3) rather than trusting one chosen by the browser.
+export const StudyGetInputSchema = z.object({
+  studyId: z.uuid(),
+});
+
+export const StudyDetailSchema = z.object({
+  /** The owning team, which only the server could say (§6.3). */
+  teamId: z.string().min(1).max(255),
+  study: StudySummarySchema,
+  /**
+   * The current editable draft of the study's protocol line, which is what
+   * the protocol editor is addressed by. Null when the study has no protocol
+   * line yet, or its line has no draft — two states the editor reports
+   * differently from a study it cannot reach at all.
+   */
+  protocolDraftId: z.uuid().nullable(),
+});
+
+// Creation mints every identifier client-side for the same reason protocol
+// creation does: a retry after a lost response repeats the same request
+// rather than leaving a second study behind.
+export const CreateStudyInputSchema = TeamScopedSchema.extend({
+  name: StudyNameSchema,
+  studyId: z.uuid(),
+  protocolId: z.uuid(),
+  draftId: z.uuid(),
+});
+
+export const CreateStudyResultSchema = z.object({
+  studyId: z.uuid(),
+  protocolId: z.uuid(),
+  draftId: z.uuid(),
+});
 
 export const CreateProtocolInputSchema = TeamScopedSchema.extend({
   name: ProtocolNameSchema,
@@ -236,6 +321,28 @@ export const MoveStageInputSchema = ProtocolDraftInputSchema.extend({
   toIndex: z.number().int().nonnegative(),
   expectedRevision: DecimalSequenceSchema,
 });
+
+// The four countable study destinations the app shell's sidebar carries
+// (app-shell design §5.5). Deliberately one procedure rather than a count field
+// on each destination's own list query: the sidebar needs all four on every
+// study screen, including the screens that list none of them, and four
+// separately-keyed queries would be four round trips whose answers could
+// disagree with each other.
+// Study id alone, like `StudyGetInputSchema`: the server resolves the team.
+export const StudyCountsInputSchema = z.object({
+  studyId: z.uuid(),
+});
+
+// Plain counts, not a rendered string: `NavItem` formats them in the runtime's
+// locale, and it is the one that decides a zero is left off entirely.
+export const StudyCountsSchema = z.object({
+  /** Published versions of the study's protocol line; 0 while it has none. */
+  versions: z.number().int().nonnegative(),
+  participants: z.number().int().nonnegative(),
+  waves: z.number().int().nonnegative(),
+  sessions: z.number().int().nonnegative(),
+});
+export type StudyCounts = z.infer<typeof StudyCountsSchema>;
 
 // Mirrors the audit_events category/outcome/actor-kind CHECK constraints; a
 // new value requires a schema migration, which the fingerprint pipeline keeps

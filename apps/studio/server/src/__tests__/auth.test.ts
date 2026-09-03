@@ -1,10 +1,11 @@
 import { safe } from '@orpc/client';
 import type pg from 'pg';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createApp } from '../app.ts';
 import { createBetterAuthService } from '../auth/better-auth.ts';
 import type { AuthService, SessionPrincipal } from '../auth/service.ts';
+import { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, seed } from '../db/seed.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
@@ -73,6 +74,7 @@ describe('principal resolution', () => {
     expect(status.auth).toEqual({
       enabled: true,
       magicLink: true,
+      emailAndPassword: true,
       socialProviders: [],
     });
   });
@@ -106,6 +108,7 @@ describe('unconfigured auth', () => {
     auth: undefined,
     devDefaults: false,
     deploymentMode: 'self-hosted',
+    seedAdminPassword: undefined,
   };
 
   it('refuses /api/auth with 503 problem JSON', async () => {
@@ -125,6 +128,7 @@ describe('unconfigured auth', () => {
     expect(status.auth).toEqual({
       enabled: false,
       magicLink: false,
+      emailAndPassword: false,
       socialProviders: [],
     });
   });
@@ -225,6 +229,71 @@ describe.skipIf(!db)('magic-link sign-in', () => {
     } finally {
       await scratch.dispose();
     }
+  });
+});
+
+describe.skipIf(!db)('email/password sign-in', () => {
+  // Exercises the seed script's credential account (src/db/seed.ts) against
+  // the real better-auth handler end to end — the same path that regressed
+  // silently when the account table was missing better-auth's `issuer`
+  // column (auth-schema.ts), because until this account existed nothing in
+  // this suite ever queried that table by provider.
+  //
+  // The whole model is seeded once for both cases. It takes seconds on a
+  // quiet machine and well over a minute on the CI runner, where every
+  // affected package's vitest workers share two vCPUs with the Postgres
+  // service container; neither case writes anything the other can see.
+  const SEEDING_TIMEOUT_MS = 180_000;
+
+  let scratch: Awaited<ReturnType<typeof createScratchSchema>> | undefined;
+  let app: ReturnType<typeof createApp>;
+
+  const signIn = (password: string) => {
+    if (!env.auth) throw new Error('dev env must configure auth');
+    return app.request('/api/auth/sign-in/email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'origin': env.auth.baseUrl,
+      },
+      body: JSON.stringify({ email: SEED_ADMIN_EMAIL, password }),
+    });
+  };
+
+  beforeAll(async () => {
+    if (!db) return;
+    if (!env.auth) throw new Error('dev env must configure auth');
+    scratch = await createScratchSchema(db);
+    await provisionScratchSchema(scratch.pool);
+    await seed(scratch.pool);
+    const auth = createBetterAuthService(env.auth, scratch.pool, {
+      sendMagicLink: () => Promise.resolve(),
+    });
+    app = createApp(env, { auth });
+  }, SEEDING_TIMEOUT_MS);
+
+  afterAll(async () => {
+    await scratch?.dispose();
+  });
+
+  it('signs the seeded admin in with the published password', async () => {
+    const response = await signIn(SEED_ADMIN_PASSWORD);
+    expect(response.status).toBe(200);
+    const setCookie = response.headers.get('set-cookie');
+    expect(setCookie).toBeTruthy();
+    const cookie = (setCookie ?? '').split(';')[0]!;
+
+    const me = await createRpcClient(app, { cookie }).me();
+    expect(me.email).toBe(SEED_ADMIN_EMAIL);
+  });
+
+  it('refuses a wrong password with a generic error', async () => {
+    const response = await signIn('not-the-password');
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({
+      code: 'INVALID_EMAIL_OR_PASSWORD',
+    });
+    expect(response.headers.get('set-cookie')).toBeNull();
   });
 });
 

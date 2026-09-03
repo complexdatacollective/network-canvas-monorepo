@@ -37,10 +37,13 @@ const fixtures = vi.hoisted(() => ({
   failing: undefined as 'area' | 'screen' | undefined,
   STUDY: {
     id: 'study-1',
-    draftId: 'draft-1',
     name: 'Shell proof',
+    state: 'draft',
+    participationMode: 'managed',
+    protocolId: 'protocol-1',
     createdAt: new Date('2026-08-28T00:00:00Z'),
-    updatedAt: new Date('2026-08-28T00:00:00Z'),
+    waveCount: 0,
+    participantCount: 0,
   },
 }));
 
@@ -120,25 +123,57 @@ vi.mock('../../lib/api.ts', () => ({
         queryFn: () => ({
           name: 'Network Canvas Studio',
           version: '0.1.0',
-          auth: { enabled: true, magicLink: true, socialProviders: [] },
+          auth: {
+            enabled: true,
+            magicLink: true,
+            emailAndPassword: true,
+            socialProviders: [],
+          },
           deployment: { mode: 'managed', billing: false },
         }),
       }),
     },
-    protocols: {
+    studies: {
       list: {
         queryOptions: () => ({
-          queryKey: ['protocols'],
+          queryKey: ['studies'],
           queryFn: () => [fixtures.STUDY],
         }),
-        key: () => ['protocols'],
+        key: () => ['studies'],
+      },
+      get: {
+        queryOptions: () => ({
+          queryKey: ['study'],
+          queryFn: () => ({
+            teamId: fixtures.TEAM.id,
+            study: fixtures.STUDY,
+            protocolDraftId: 'draft-1',
+          }),
+        }),
+        key: () => ['study'],
       },
       create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
+      counts: {
+        queryOptions: () => ({
+          queryKey: ['study-counts'],
+          queryFn: () => ({
+            versions: 0,
+            participants: 0,
+            waves: 0,
+            sessions: 0,
+          }),
+        }),
+      },
+    },
+    protocols: {
       draft: {
         queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
         key: () => ['draft'],
       },
     },
+    // The study sidebar's counts. Nothing here asserts a number, so an empty
+    // study is the honest fixture: `NavItem` renders no count for a zero, and
+    // every row's accessible name stays its label alone.
   },
   rpcClient: { protocols: {}, team: {} },
 }));

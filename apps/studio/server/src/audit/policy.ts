@@ -10,6 +10,7 @@ export const RPC_MUTATION_AUDIT_POLICIES = {
   'team.updateMemberRole': { kind: 'required' },
   'team.createInvitation': { kind: 'required' },
   'team.cancelInvitation': { kind: 'required' },
+  'studies.create': { kind: 'required' },
   'protocols.create': { kind: 'required' },
   'protocols.commitSection': { kind: 'required' },
   'protocols.addInformationStage': { kind: 'required' },

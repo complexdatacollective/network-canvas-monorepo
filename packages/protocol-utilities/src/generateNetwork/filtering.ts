@@ -8,8 +8,8 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import type { GenerationContext, NetworkDraft } from './context';
-import { getEdgesOfType, getNodesOfType } from './edges';
+import type { GenerationContext, NetworkDraft } from './context.ts';
+import { getEdgesOfType, getNodesOfType } from './edges.ts';
 
 export function buildCurrentNetwork(draft: NetworkDraft): NcNetwork {
   return {

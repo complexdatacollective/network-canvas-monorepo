@@ -7,39 +7,39 @@ import {
 import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
 import type { NcNetwork, NcNode } from '@codaco/shared-consts';
 
-import { reservePromptFixedValues } from './generateNetwork/attributes';
+import { reservePromptFixedValues } from './generateNetwork/attributes.ts';
 import {
   type GenerationConfig,
   resolveGenerationConfig,
-} from './generateNetwork/config';
-import { collectBinOnlyVariables } from './generateNetwork/constraints/binOnlyVariables';
-import { buildEntityConstraints } from './generateNetwork/constraints/buildConstraints';
+} from './generateNetwork/config.ts';
+import { collectBinOnlyVariables } from './generateNetwork/constraints/binOnlyVariables.ts';
+import { buildEntityConstraints } from './generateNetwork/constraints/buildConstraints.ts';
 import {
   applyComposerRenderings,
   COMPOSER_RENDERING_CONFLICT,
-} from './generateNetwork/constraints/composerRenderings';
-import { SyntheticDataConstraintError } from './generateNetwork/constraints/error';
-import { analyseFeasibility } from './generateNetwork/constraints/feasibility';
-import { reachableStagesForFeasibility } from './generateNetwork/constraints/reachableStages';
-import type { EntityConstraints } from './generateNetwork/constraints/types';
-import { UniqueRegistry } from './generateNetwork/constraints/uniqueRegistry';
-import { isContentStage } from './generateNetwork/contentStages';
+} from './generateNetwork/constraints/composerRenderings.ts';
+import { SyntheticDataConstraintError } from './generateNetwork/constraints/error.ts';
+import { analyseFeasibility } from './generateNetwork/constraints/feasibility.ts';
+import { reachableStagesForFeasibility } from './generateNetwork/constraints/reachableStages.ts';
+import type { EntityConstraints } from './generateNetwork/constraints/types.ts';
+import { UniqueRegistry } from './generateNetwork/constraints/uniqueRegistry.ts';
+import { isContentStage } from './generateNetwork/contentStages.ts';
 import type {
   GenerationContext,
   NetworkDraft,
-} from './generateNetwork/context';
-import { materializeFamilyPedigree } from './generateNetwork/familyPedigree/materializeFamilyPedigree';
-import { resolveFamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/referencePopulation';
-import { reserveFamilyPedigreeFixedValues } from './generateNetwork/familyPedigree/reservations';
-import { familyPedigreeSeed } from './generateNetwork/familyPedigree/seed';
-import type { FamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/types';
-import { buildCurrentNetwork } from './generateNetwork/filtering';
-import { markStageInProgress } from './generateNetwork/inProgress';
+} from './generateNetwork/context.ts';
+import { materializeFamilyPedigree } from './generateNetwork/familyPedigree/materializeFamilyPedigree.ts';
+import { resolveFamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/referencePopulation.ts';
+import { reserveFamilyPedigreeFixedValues } from './generateNetwork/familyPedigree/reservations.ts';
+import { familyPedigreeSeed } from './generateNetwork/familyPedigree/seed.ts';
+import type { FamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/types.ts';
+import { buildCurrentNetwork } from './generateNetwork/filtering.ts';
+import { markStageInProgress } from './generateNetwork/inProgress.ts';
 import {
   countPromptFixedValues,
   releaseExternalRosterValues,
   reserveExternalRosterValues,
-} from './generateNetwork/nodes';
+} from './generateNetwork/nodes.ts';
 import {
   handleAlterEdgeForm,
   handleAlterForm,
@@ -52,8 +52,8 @@ import {
   handleOrdinalBin,
   handleSociogram,
   handleTieStrengthCensus,
-} from './generateNetwork/stageHandlers';
-import { ValueGenerator } from './ValueGenerator';
+} from './generateNetwork/stageHandlers.ts';
+import { ValueGenerator } from './ValueGenerator.ts';
 
 export type GenerateNetworkParams = {
   codebook: StructuralCodebook;

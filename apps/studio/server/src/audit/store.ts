@@ -12,16 +12,31 @@ import { parseAuditEventInput, type AuditEventInput } from './events.ts';
 export const AUDIT_SEQUENCE_LOCK_SEED = 4_021_775_688_147_131n;
 
 /**
+ * The lock key as SQL over `$1` (the team id) and `$2` (the seed), so a test
+ * contending for or holding the lock computes exactly the key the store does.
+ */
+export const AUDIT_TEAM_LOCK_KEY_SQL = `hashtextextended(current_schema() || '/' || $1, $2::bigint)`;
+
+/**
  * Serializes every audited command for one team before it reads or mutates
  * domain state. Append calls this too so direct store callers retain safe
  * sequence allocation; transaction-scoped advisory locks are re-entrant.
+ *
+ * The key names the schema as well as the team. Advisory locks are
+ * database-wide, and the lock guards one `audit_events` table's sequence, so
+ * the schema that table lives in belongs in the key: the integration suites
+ * provision the schema many times over in one database, and the seed writes
+ * the same deterministic team ids into every copy inside one long
+ * transaction — keyed on the team alone, every concurrent seed queued behind
+ * whichever held the lock, for the length of its whole transaction. A
+ * deployment has one schema, where the two keys are the same lock.
  */
 export async function lockAuditTeam(
   client: pg.PoolClient,
   teamId: string,
 ): Promise<void> {
   await client.query(
-    `SELECT pg_advisory_xact_lock(hashtextextended($1, $2::bigint))`,
+    `SELECT pg_advisory_xact_lock(${AUDIT_TEAM_LOCK_KEY_SQL})`,
     [teamId, AUDIT_SEQUENCE_LOCK_SEED.toString()],
   );
 }
@@ -132,9 +147,16 @@ export function clampAuditListLimit(limit?: number): number {
 }
 
 export class AuditStore {
+  /**
+   * `occurredAt` defaults to the statement's own time, which is what a live
+   * command wants. A writer that is recording an operation that happened at
+   * a known moment — the synthetic-data seed, whose whole corpus is dated
+   * from one anchor — passes it, so the log agrees with the rows it describes.
+   */
   async append(
     client: pg.PoolClient,
     unvalidatedEvent: AuditEventInput,
+    options: { occurredAt?: Date } = {},
   ): Promise<AuditEvent> {
     const event = parseAuditEventInput(unvalidatedEvent);
     await lockAuditTeam(client, event.teamId);
@@ -152,10 +174,11 @@ export class AuditStore {
          id, team_id, team_label, sequence, event_type, event_version, category, outcome,
          actor_kind, actor_id, actor_label, subject_type, subject_id,
          subject_label, resource_type, resource_id, resource_label,
-         request_id, details
+         request_id, details, occurred_at
        ) VALUES (
          $1, $2, $3, $4::bigint, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-         $14, $15, $16, $17, $18::uuid, $19::jsonb
+         $14, $15, $16, $17, $18::uuid, $19::jsonb,
+         COALESCE($20, statement_timestamp())
        )
        RETURNING
          id, team_id AS "teamId", team_label AS "teamLabel", sequence::text AS sequence,
@@ -186,6 +209,7 @@ export class AuditStore {
         event.resourceLabel,
         event.requestId,
         JSON.stringify(event.details),
+        options.occurredAt ?? null,
       ],
     );
     const row = inserted.rows[0];

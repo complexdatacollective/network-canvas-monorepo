@@ -1,3 +1,5 @@
+import { createHash, randomUUID } from 'node:crypto';
+
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -7,6 +9,7 @@ import { gcProtocolStore } from '../gc.ts';
 import { ProtocolStore } from '../store.ts';
 import {
   GC_OPTS,
+  TEST_TEAM_ID,
   ageQuarantine,
   baseProtocol,
   expireLease,
@@ -96,6 +99,64 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
     expect(await store.getVersionDocument(published.versionId)).toEqual(
       baseProtocol(),
     );
+  });
+
+  it('keeps a section held only by a published template version', async () => {
+    // A template version pins sections exactly as a protocol version does,
+    // and its pins are immutable too. A section no protocol references but a
+    // template does must therefore count as referenced: swept, it would hit
+    // the pin's foreign key and abort the tenant's whole pass — on every pass
+    // after, since the pin can never be retracted.
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    await commitDescription(tenantDb, draftId, 'held by a template', 1n);
+    const heldHash = (await store.getDraftSections(draftId)).sectionHashes
+      .settings!;
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
+      const templateId = randomUUID();
+      const versionId = randomUUID();
+      await client.query(
+        `INSERT INTO templates (id, team_id, kind, name)
+         VALUES ($1, $2, 'protocol', 'Holds one section')`,
+        [templateId, TEST_TEAM_ID],
+      );
+      await client.query(
+        `INSERT INTO template_versions
+           (id, team_id, template_id, version_number, manifest, manifest_hash,
+            schema_version)
+         VALUES ($1, $2, $3, 1, $4, $5, 8)`,
+        [
+          versionId,
+          TEST_TEAM_ID,
+          templateId,
+          JSON.stringify({ settings: heldHash }),
+          createHash('sha256').update(heldHash).digest('hex'),
+        ],
+      );
+      await client.query(
+        `INSERT INTO template_version_sections
+           (version_id, team_id, section_id, section_hash)
+         VALUES ($1, $2, 'settings', $3)`,
+        [versionId, TEST_TEAM_ID, heldHash],
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    // The draft moves on, so nothing but the template holds the section.
+    await commitDescription(tenantDb, draftId, 'moved on', 2n);
+    await expireLease(tenantDb, draftId, 'settings');
+    await gcProtocolStore(maintenance, GC_OPTS);
+    await ageQuarantine(db);
+    await expect(gcProtocolStore(maintenance, GC_OPTS)).resolves.toBeDefined();
+    expect(await sectionExists(db, heldHash)).toBe(true);
   });
 
   it('a live lease retains idempotency records, and dedup replay still works after GC', async () => {

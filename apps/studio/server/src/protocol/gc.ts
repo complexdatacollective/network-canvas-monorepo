@@ -75,9 +75,18 @@ export async function gcProtocolStore(
     commandLogDeleted: 0,
   };
 
+  // A section is referenced by any published protocol version, any draft
+  // manifest, or any published template version. Template pins are immutable
+  // like version pins, so a section only a template holds would otherwise
+  // be swept into their foreign key and abort the tenant's whole pass — on
+  // every pass thereafter.
   const referenced = `EXISTS (
       SELECT 1 FROM version_sections vs
       WHERE vs.team_id = s.team_id AND vs.section_hash = s.hash
+    )
+    OR EXISTS (
+      SELECT 1 FROM template_version_sections tvs
+      WHERE tvs.team_id = s.team_id AND tvs.section_hash = s.hash
     )
     OR EXISTS (
       SELECT 1 FROM manifests m
