@@ -84,6 +84,13 @@ describe('generated schema documentation', () => {
     expect(readmeSection).toContain('participants_writable');
     expect(readmeSection).toContain('interview_sessions_writable');
     expect(readmeSection).toContain('interview_links_writable');
+    expect(readmeSection).toContain('api_token_authority_immutable');
+    expect(readmeSection).toContain('consent_documents_publication_immutable');
+    expect(readmeSection).toContain('consent_items_frozen');
+    expect(readmeSection).toContain('participant_consent_grant_immutable');
+    expect(readmeSection).toContain(
+      'participant_consent_item_responses_immutable',
+    );
     expect(readmeSection).toContain('invitation_delivery_payload_immutable');
     expect(readmeSection).toContain('audit_events_immutable');
     expect(readmeSection).toContain('audit_team_isolation');
@@ -99,6 +106,17 @@ describe('generated schema documentation', () => {
     expect(svg).toContain('sidecar trigger participants_writable');
     expect(svg).toContain('sidecar trigger interview_sessions_writable');
     expect(svg).toContain('sidecar trigger interview_links_writable');
+    expect(svg).toContain('sidecar trigger api_token_authority_immutable');
+    expect(svg).toContain(
+      'sidecar trigger consent_documents_publication_immutable',
+    );
+    expect(svg).toContain('sidecar trigger consent_items_frozen');
+    expect(svg).toContain(
+      'sidecar trigger participant_consent_grant_immutable',
+    );
+    expect(svg).toContain(
+      'sidecar trigger participant_consent_item_responses_immutable',
+    );
     expect(svg).toContain(
       'sidecar trigger invitation_delivery_payload_immutable',
     );
@@ -147,13 +165,18 @@ describe.skipIf(!db)('schema verification', () => {
       );
       expect(tables.rows.map((r) => r.table_name).toSorted()).toEqual([
         'account',
+        'api_tokens',
         'audit_events',
         'command_log',
+        'consent_documents',
+        'consent_items',
         'drafts',
         'interview_links',
         'interview_sessions',
         'leases',
         'manifests',
+        'participant_consent_item_responses',
+        'participant_consents',
         'participants',
         'protocol_drafts',
         'protocol_versions',
@@ -163,6 +186,7 @@ describe.skipIf(!db)('schema verification', () => {
         'sections',
         'session',
         'studies',
+        'study_role_grants',
         'study_waves',
         'team_invitation_deliveries',
         'team_invitations',
