@@ -10,6 +10,7 @@ import {
   STUDIO_ERD_PATH,
   STUDIO_README_PATH,
 } from '../../scripts/schema-docs.ts';
+import { ACCESS_SIDECAR_SQL } from '../db/access.ts';
 import { SCHEMA_FINGERPRINT } from '../db/fingerprint.generated.ts';
 import {
   checkSchema,
@@ -53,6 +54,19 @@ describe('fingerprint constant', () => {
       sql.lastIndexOf('GRANT SELECT, INSERT, UPDATE, DELETE'),
     );
     expect(SIDECARS.at(-1)).toContain('audit_events_are_immutable');
+  });
+
+  // The broad ALL TABLES grant re-admits whatever an earlier REVOKE took away,
+  // so every sidecar that revokes must run after it. Position is checked here;
+  // the effect is checked against a provisioned schema below.
+  it('runs the broad access grant before every narrow revocation', () => {
+    const access = SIDECARS.indexOf(ACCESS_SIDECAR_SQL);
+    expect(access).toBeGreaterThan(0);
+    const revoking = SIDECARS.flatMap((sidecar, index) =>
+      /\bREVOKE\b/.test(sidecar) ? [index] : [],
+    );
+    expect(revoking.length).toBeGreaterThan(0);
+    expect(revoking.every((index) => index > access)).toBe(true);
   });
 });
 
@@ -251,6 +265,35 @@ describe.skipIf(!db)('schema verification', () => {
 
       const recorded = await pool.query('select * from "schemaFingerprint"');
       expect(recorded.rowCount).toBe(1);
+    });
+  });
+
+  it('leaves every revoked table privilege revoked once provisioned', async () => {
+    await withScratch(createScratchSchema, async (pool) => {
+      await provisionScratchSchema(pool);
+
+      // Table-level revocations only; a column-level GRANT that re-admits one
+      // column after them does not make the table privilege held again.
+      const revocations = [
+        ...SIDECARS.join('\n').matchAll(
+          /REVOKE\s+([A-Z][A-Z, ]*?)\s+ON\s+(\w+)\s+FROM\s+([^;]+);/g,
+        ),
+      ];
+      expect(revocations.length).toBeGreaterThan(0);
+      for (const [, privileges, table, roles] of revocations) {
+        for (const privilege of privileges!.split(',').map((p) => p.trim())) {
+          for (const role of roles!.split(',').map((r) => r.trim())) {
+            const held = await pool.query<{ held: boolean }>(
+              `select has_table_privilege($1, $2, $3) as held`,
+              [role, table, privilege],
+            );
+            expect(
+              held.rows[0]?.held,
+              `${role} still holds ${privilege} on ${table}`,
+            ).toBe(false);
+          }
+        }
+      }
     });
   });
 

@@ -70,13 +70,17 @@ export const SCHEMA = {
   schemaFingerprint,
 };
 
-// Order matters: sync creates the roles, the domain sidecars install their
-// triggers and tenant grants, access grants the general table privileges, then
-// the invitation outbox and immutable audit log apply their narrower
-// role-specific revocations after every broad grant. Every domain sidecar
-// therefore sits before ACCESS_SIDECAR_SQL, and the audit sidecar stays last.
+// Order matters: sync creates the roles, then access grants the general table
+// privileges over every table, and only then do the domain sidecars install
+// their triggers, tenant grants and — where a table is an outbox or history —
+// their narrower role-specific revocations. A revocation that ran before the
+// broad grant would be silently undone by it (the webhook slice found exactly
+// that), so the broad grant goes first and nothing after it grants more than
+// its own tables. The immutable audit log stays last: its revocations are the
+// strictest, and the ordering test pins both properties.
 export const SIDECARS = [
   SYNC_SIDECAR_SQL,
+  ACCESS_SIDECAR_SQL,
   PROTOCOL_SIDECAR_SQL,
   ASSET_SIDECAR_SQL,
   STUDY_SIDECAR_SQL,
@@ -90,7 +94,6 @@ export const SIDECARS = [
   EXPERIMENT_SIDECAR_SQL,
   FEEDBACK_SIDECAR_SQL,
   MONITORING_SIDECAR_SQL,
-  ACCESS_SIDECAR_SQL,
   INVITATION_DELIVERY_SIDECAR_SQL,
   AUDIT_SIDECAR_SQL,
 ];
