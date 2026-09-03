@@ -4,13 +4,33 @@ import type pg from 'pg';
 
 import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '@codaco/studio-sync/schema';
 
+import { ASSET_SIDECAR_SQL, ASSET_TABLES } from '../asset/schema.ts';
 import { AUDIT_SIDECAR_SQL, AUDIT_TABLES } from '../audit/schema.ts';
+import { CONSENT_SIDECAR_SQL, CONSENT_TABLES } from '../consent/schema.ts';
+import {
+  EXPERIMENT_SIDECAR_SQL,
+  EXPERIMENT_TABLES,
+} from '../experiment/schema.ts';
+import { FEEDBACK_SIDECAR_SQL, FEEDBACK_TABLES } from '../feedback/schema.ts';
+import {
+  MONITORING_SIDECAR_SQL,
+  MONITORING_TABLES,
+} from '../monitoring/schema.ts';
+import { NETWORK_SIDECAR_SQL, NETWORK_TABLES } from '../network/schema.ts';
 import { PROTOCOL_SIDECAR_SQL, PROTOCOL_TABLES } from '../protocol/schema.ts';
+import { SCHEDULE_SIDECAR_SQL, SCHEDULE_TABLES } from '../schedule/schema.ts';
+import {
+  STUDY_ROLE_SIDECAR_SQL,
+  STUDY_ROLE_TABLES,
+} from '../study/roles-schema.ts';
 import { STUDY_SIDECAR_SQL, STUDY_TABLES } from '../study/schema.ts';
 import {
   INVITATION_DELIVERY_SIDECAR_SQL,
   INVITATION_DELIVERY_TABLES,
 } from '../team/invitation-delivery-schema.ts';
+import { TEMPLATE_SIDECAR_SQL, TEMPLATE_TABLES } from '../template/schema.ts';
+import { TOKEN_SIDECAR_SQL, TOKEN_TABLES } from '../token/schema.ts';
+import { WEBHOOK_SIDECAR_SQL, WEBHOOK_TABLES } from '../webhook/schema.ts';
 import { ACCESS_SIDECAR_SQL } from './access.ts';
 import { AUTH_TABLES } from './auth-schema.ts';
 import { SCHEMA_FINGERPRINT } from './fingerprint.generated.ts';
@@ -33,7 +53,18 @@ export const SCHEMA = {
   ...AUTH_TABLES,
   ...SYNC_TABLES,
   ...PROTOCOL_TABLES,
+  ...ASSET_TABLES,
   ...STUDY_TABLES,
+  ...NETWORK_TABLES,
+  ...STUDY_ROLE_TABLES,
+  ...CONSENT_TABLES,
+  ...SCHEDULE_TABLES,
+  ...TOKEN_TABLES,
+  ...TEMPLATE_TABLES,
+  ...WEBHOOK_TABLES,
+  ...EXPERIMENT_TABLES,
+  ...FEEDBACK_TABLES,
+  ...MONITORING_TABLES,
   ...AUDIT_TABLES,
   ...INVITATION_DELIVERY_TABLES,
   schemaFingerprint,
@@ -42,11 +73,23 @@ export const SCHEMA = {
 // Order matters: sync creates the roles, the domain sidecars install their
 // triggers and tenant grants, access grants the general table privileges, then
 // the invitation outbox and immutable audit log apply their narrower
-// role-specific revocations after every broad grant.
+// role-specific revocations after every broad grant. Every domain sidecar
+// therefore sits before ACCESS_SIDECAR_SQL, and the audit sidecar stays last.
 export const SIDECARS = [
   SYNC_SIDECAR_SQL,
   PROTOCOL_SIDECAR_SQL,
+  ASSET_SIDECAR_SQL,
   STUDY_SIDECAR_SQL,
+  NETWORK_SIDECAR_SQL,
+  STUDY_ROLE_SIDECAR_SQL,
+  CONSENT_SIDECAR_SQL,
+  SCHEDULE_SIDECAR_SQL,
+  TOKEN_SIDECAR_SQL,
+  TEMPLATE_SIDECAR_SQL,
+  WEBHOOK_SIDECAR_SQL,
+  EXPERIMENT_SIDECAR_SQL,
+  FEEDBACK_SIDECAR_SQL,
+  MONITORING_SIDECAR_SQL,
   ACCESS_SIDECAR_SQL,
   INVITATION_DELIVERY_SIDECAR_SQL,
   AUDIT_SIDECAR_SQL,

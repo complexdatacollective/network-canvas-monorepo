@@ -177,7 +177,7 @@ their `USING`/`WITH CHECK` expressions.
 
 Open the image for the full-size diagram. Tables with row-level security or trigger sidecars carry those details as SVG tooltips. The diagram shows physical foreign-key constraints; deliberately unconstrained logical references are not drawn as relationships. The renderer uses `1`/`*` edge endpoints, so optionality remains visible through each column's not-null marker rather than the edge.
 
-Schema fingerprint: `814c1a9c1ac3cec81e634d26b92fa627c7525e7459c05f1d0dd8aaa44064db8e`.
+Schema fingerprint: `557ca0f35186e323ef3d4a008a1017d6ed8a0e9303c0c2f05b384102f0ad0a7a`.
 
 Sidecar behavior that cannot be represented as ERD relationships:
 
