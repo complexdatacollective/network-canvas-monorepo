@@ -15,19 +15,29 @@ import { createAppRouter } from '../../router.tsx';
 const fixtures = vi.hoisted(() => ({
   TEAM_A: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
   TEAM_B: { id: 'team-b', name: 'Beta research team', slug: 'beta' },
+  // Shaped like `StudySummarySchema`, because the switcher reads the state and
+  // the counts to write each study's supporting line.
   STUDY_1: {
     id: 'study-1',
     draftId: 'draft-1',
     name: 'Wave one pilot',
+    state: 'live' as const,
+    participationMode: 'managed' as const,
+    protocolId: 'protocol-1',
     createdAt: new Date('2026-08-28T00:00:00Z'),
-    updatedAt: new Date('2026-08-28T00:00:00Z'),
+    waveCount: 2,
+    participantCount: 14,
   },
   STUDY_2: {
     id: 'study-2',
     draftId: null,
     name: 'Methods comparison',
+    state: 'draft' as const,
+    participationMode: 'anonymous' as const,
+    protocolId: null,
     createdAt: new Date('2026-08-29T00:00:00Z'),
-    updatedAt: new Date('2026-08-29T00:00:00Z'),
+    waveCount: 0,
+    participantCount: 0,
   },
   setActive: vi.fn(),
   useActiveMember: vi.fn(),
@@ -45,8 +55,12 @@ const fixtures = vi.hoisted(() => ({
     id: string;
     draftId: string | null;
     name: string;
+    state: 'draft' | 'live' | 'paused' | 'closed';
+    participationMode: 'managed' | 'anonymous';
+    protocolId: string | null;
     createdAt: Date;
-    updatedAt: Date;
+    waveCount: number;
+    participantCount: number;
   }[],
   // Every `protocols.list` request the shell made, in order, by the team it
   // asked. The header asks for a team's studies in two places now — the study
@@ -607,6 +621,51 @@ describe('the header switcher lockup', () => {
     expect(
       await screen.findByRole('option', { name: /^Alpha research team/ }),
     ).toBeInTheDocument();
+  });
+
+  it('gives every study its state and its size, and the active team its role', async () => {
+    renderAt('/study/study-1');
+
+    const study = await screen.findByRole('combobox', { name: /^Study/ });
+    await waitFor(() => expect(study).not.toHaveAttribute('aria-busy'));
+    fireEvent.click(study);
+
+    // The state first, then only the counts there are: a study nobody has
+    // joined reads as "Draft", not "Draft · 0 participants".
+    expect(
+      await screen.findByRole('option', { name: /Wave one pilot/ }),
+    ).toHaveTextContent('Live · 2 waves · 14 participants');
+    expect(
+      screen.getByRole('option', { name: /Methods comparison/ }),
+    ).toHaveTextContent('Draft');
+    expect(
+      screen.getByRole('option', { name: /Methods comparison/ }),
+    ).not.toHaveTextContent('participants');
+
+    // The dot is coloured BY the state, not one grey for all of them. It is
+    // decoration — the line above carries the state for a reader — so this
+    // asserts the two differ rather than naming a colour.
+    const toneOf = (name: RegExp) =>
+      screen
+        .getByRole('option', { name })
+        .querySelector('span[aria-hidden="true"].rounded-full')?.className;
+    expect(toneOf(/Wave one pilot/)).toContain('bg-success');
+    expect(toneOf(/Methods comparison/)).not.toContain('bg-success');
+
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: 'Escape',
+    });
+
+    // The role, for the one team Better Auth answers for. The others carry no
+    // badge rather than a guessed one.
+    const team = await screen.findByRole('combobox', { name: /^Team/ });
+    fireEvent.click(team);
+    expect(
+      await screen.findByRole('option', { name: /^Alpha research team/ }),
+    ).toHaveTextContent('Owner');
+    expect(
+      screen.getByRole('option', { name: /^Beta research team/ }),
+    ).not.toHaveTextContent('Owner');
   });
 
   it('asks no team for its studies on a route that shows no study', async () => {

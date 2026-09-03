@@ -18,6 +18,7 @@ import type { StudyParticipationMode, StudyState } from '@codaco/studio-rpc';
 import { orpc } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
 import { createUuid } from '../lib/createUuid.ts';
+import { STUDY_STATE_LABELS } from '../lib/studyState.ts';
 import { canManageTeam, teamRole } from '../lib/teamRoles.ts';
 
 /**
@@ -59,19 +60,6 @@ type StudyCreationAttempt = {
   studyId: string;
   protocolId: string;
   draftId: string;
-};
-
-/**
- * The lifecycle state and the participation mode as a researcher reads them
- * (#1262's lifecycle table). Whole strings in a lookup rather than a
- * capitalised database value: these are display copy, and the wire values are
- * a schema constraint that nothing should be teaching researchers to read.
- */
-const STUDY_STATE_LABELS: Record<StudyState, string> = {
-  draft: 'Draft',
-  live: 'Live',
-  paused: 'Paused',
-  closed: 'Closed',
 };
 
 const PARTICIPATION_MODE_LABELS: Record<StudyParticipationMode, string> = {

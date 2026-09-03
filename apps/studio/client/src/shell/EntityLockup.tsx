@@ -7,9 +7,11 @@ import {
   type SwitcherSegment,
   type SwitcherStatus,
 } from '@codaco/fresco-ui/navigation/TeamAndStudySwitcher';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { orpc } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
+import { STUDY_STATE_TONES, studySummaryLine } from '../lib/studyState.ts';
 import { teamRole, teamRolesLabel } from '../lib/teamRoles.ts';
 
 /**
@@ -45,17 +47,15 @@ type NamedTeam = { id: string; name: string };
  * gets. A monogram of a study's name says nothing the name beside it does not;
  * the state the study is in is what a researcher is scanning for.
  *
- * NEUTRAL, and deliberately so. `ProtocolSummarySchema` carries `id`,
- * `draftId`, `name`, `createdAt` and `updatedAt` — nothing that says whether a
- * study is collecting, draft or closed — so this claims no state until the
- * studies model lands (#1262). It is `aria-hidden`, so it makes no claim to a
- * reader either; the study's name and its team carry the meaning.
+ * `aria-hidden`, because colour is never the only carrier of the state: the
+ * supporting line under every name spells it out (WCAG 1.4.1). The dot is what
+ * makes the list scannable once you know the colours.
  */
-function StudyStatusDot() {
+function StudyStatusDot({ tone }: { tone: string }) {
   return (
     <span
       aria-hidden
-      className="bg-input-contrast/40 inline-block size-2 shrink-0 rounded-full"
+      className={cx('inline-block size-2 shrink-0 rounded-full', tone)}
     />
   );
 }
@@ -150,6 +150,10 @@ function useStudySegment(
         (listed.length > 0 ? listed : [study.data.study]).map((row) => ({
           id: row.id,
           name: row.name,
+          // The state, and how much of the study there is — the two things a
+          // researcher picking between studies is choosing on.
+          meta: studySummaryLine(row),
+          leading: <StudyStatusDot tone={STUDY_STATE_TONES[row.state]} />,
         }));
 
   const status: SwitcherStatus =
@@ -162,7 +166,6 @@ function useStudySegment(
     items,
     currentId: studyId,
     status,
-    renderMark: () => <StudyStatusDot />,
     onSelect: (id: string) =>
       // Not awaited, and deliberately: a blocked navigation's promise parks
       // rather than rejecting, and it resolves later on some unrelated commit
