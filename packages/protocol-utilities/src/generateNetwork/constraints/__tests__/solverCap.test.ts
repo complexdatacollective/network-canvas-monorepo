@@ -7,18 +7,18 @@ import {
   type Variables,
 } from '@codaco/protocol-validation';
 
-import { ValueGenerator } from '../../../ValueGenerator';
-import { resolveGenerationConfig } from '../../config';
-import type { GenerationContext } from '../../context';
-import { buildEntityConstraints } from '../buildConstraints';
-import { analyseFeasibility } from '../feasibility';
-import { generateEntityAttributes } from '../generateEntityAttributes';
-import { UniqueRegistry } from '../uniqueRegistry';
+import { ValueGenerator } from '../../../ValueGenerator.ts';
+import { resolveGenerationConfig } from '../../config.ts';
+import type { GenerationContext } from '../../context.ts';
+import { buildEntityConstraints } from '../buildConstraints.ts';
+import { analyseFeasibility } from '../feasibility.ts';
+import { generateEntityAttributes } from '../generateEntityAttributes.ts';
+import { UniqueRegistry } from '../uniqueRegistry.ts';
 
 // A three-node search budget: any component of five or more variables
 // provably exceeds it, since a solution alone needs one node per variable.
 // Only the search budget shrinks; every other limit keeps its real value.
-vi.mock(import('../solverLimits'), async (importOriginal) => ({
+vi.mock(import('../solverLimits.ts'), async (importOriginal) => ({
   ...(await importOriginal()),
   MAX_SEARCH_NODES: 3,
 }));

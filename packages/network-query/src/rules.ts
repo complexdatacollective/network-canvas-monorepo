@@ -8,7 +8,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import predicate, { operators } from './predicate';
+import predicate, { operators } from './predicate.ts';
 
 const singleEdgeRule =
   (options: FilterRule['options']) => (node: NcNode, edges: NcEdge[]) => {

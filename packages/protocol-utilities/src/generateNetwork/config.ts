@@ -1,4 +1,4 @@
-import { todayYmd } from './constraints/dateWindow';
+import { todayYmd } from './constraints/dateWindow.ts';
 
 /**
  * A closed `[min, max]` numeric range a random draw is sampled from.

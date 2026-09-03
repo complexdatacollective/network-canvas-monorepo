@@ -23,45 +23,45 @@ import {
   EDGE_COLORS,
   NODE_COLORS,
   ORDINAL_COLORS,
-} from './constants';
+} from './constants.ts';
 import {
   claimFixedValues,
   constraintsFor,
   definedAttributesOf,
   generateAttributesForEntity,
-} from './generateNetwork/attributes';
-import { resolveGenerationConfig } from './generateNetwork/config';
-import { buildVariableConstraints } from './generateNetwork/constraints/buildConstraints';
+} from './generateNetwork/attributes.ts';
+import { resolveGenerationConfig } from './generateNetwork/config.ts';
+import { buildVariableConstraints } from './generateNetwork/constraints/buildConstraints.ts';
 import {
   COMPOSER_RENDERING_CONFLICT,
   type ComposerField,
   type ComposerRendering,
   type ComposerRenderings,
   resolveComposerRenderings,
-} from './generateNetwork/constraints/composerRenderings';
-import { todayYmd } from './generateNetwork/constraints/dateWindow';
+} from './generateNetwork/constraints/composerRenderings.ts';
+import { todayYmd } from './generateNetwork/constraints/dateWindow.ts';
 import {
   type ConstraintConflict,
   SyntheticDataConstraintError,
-} from './generateNetwork/constraints/error';
+} from './generateNetwork/constraints/error.ts';
 import {
   type EntityScopeRef,
   scopeKey,
   uniqueSlotMembers,
-} from './generateNetwork/constraints/generateEntityAttributes';
+} from './generateNetwork/constraints/generateEntityAttributes.ts';
 import {
   COMPARISON_RULES,
   type EntityConstraints,
-} from './generateNetwork/constraints/types';
+} from './generateNetwork/constraints/types.ts';
 import {
   UniqueRegistry,
   valueKey,
-} from './generateNetwork/constraints/uniqueRegistry';
-import type { GenerationContext } from './generateNetwork/context';
+} from './generateNetwork/constraints/uniqueRegistry.ts';
+import type { GenerationContext } from './generateNetwork/context.ts';
 import {
   crossRuleBrokenByFixedValues,
   ownRuleBrokenByFixedValues,
-} from './generateNetwork/nodes';
+} from './generateNetwork/nodes.ts';
 import type {
   AddCategoricalBinPromptInput,
   AddDiseaseNominationStepInput,
@@ -100,10 +100,10 @@ import type {
   StageEntry,
   TieStrengthCensusPromptEntry,
   VariableEntry,
-} from './types';
+} from './types.ts';
 
 const omittedAttributeValue = Symbol('omittedAttributeValue');
-import { ValueGenerator } from './ValueGenerator';
+import { ValueGenerator } from './ValueGenerator.ts';
 
 type VariableRef = {
   id: string;

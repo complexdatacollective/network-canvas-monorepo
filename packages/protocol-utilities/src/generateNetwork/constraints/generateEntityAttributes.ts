@@ -1,15 +1,18 @@
 import type { StructuralCodebook } from '@codaco/protocol-validation';
 import type { VariableValue } from '@codaco/shared-consts';
 
-import type { VariableEntry } from '../../types';
-import type { GenerationContext } from '../context';
-import { addSteps } from './dateWindow';
+import type { VariableEntry } from '../../types.ts';
+import type { GenerationContext } from '../context.ts';
+import { addSteps } from './dateWindow.ts';
 import {
   type ComparatorEdge,
   KEY_SEPARATOR,
   resolveGenerationOrder,
-} from './dependencyOrder';
-import { type ConstraintConflict, SyntheticDataConstraintError } from './error';
+} from './dependencyOrder.ts';
+import {
+  type ConstraintConflict,
+  SyntheticDataConstraintError,
+} from './error.ts';
 import {
   comparatorBound,
   comparatorGap,
@@ -19,19 +22,19 @@ import {
   propagateComparatorBounds,
   steppedNumericBound,
   tighten,
-} from './groupConstraints';
+} from './groupConstraints.ts';
 import {
   type SolvableComponent,
   solvableComponents,
   solveComponent,
   type TractableComponent,
-} from './solver';
+} from './solver.ts';
 import type {
   ConstrainedVariable,
   EntityConstraints,
   VariableConstraints,
-} from './types';
-import { valueKey } from './uniqueRegistry';
+} from './types.ts';
+import { valueKey } from './uniqueRegistry.ts';
 
 /**
  * How many redraws a variable forbidden a value gets before the run is given

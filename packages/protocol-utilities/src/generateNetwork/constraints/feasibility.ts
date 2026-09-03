@@ -10,12 +10,12 @@ import {
 } from '@codaco/protocol-validation';
 import type { NcNode, VariableValue } from '@codaco/shared-consts';
 
-import type { ResolvedGenerationConfig } from '../config';
-import { isContentStage } from '../contentStages';
+import type { ResolvedGenerationConfig } from '../config.ts';
+import { isContentStage } from '../contentStages.ts';
 import {
   PEDIGREE_RELATIONSHIP_TO_EGO_VALUES,
   type ResolvedFamilyPedigreeGenerationOptions,
-} from '../familyPedigree/types';
+} from '../familyPedigree/types.ts';
 import {
   collectPromptFixedAssignments,
   countPromptFixedValues,
@@ -23,11 +23,14 @@ import {
   type PromptFixedValues,
   type RosterCarriedValues,
   ruleBrokenByFixedValues,
-} from '../nodes';
-import { getSubjectType } from '../subject';
-import { collectBinOnlyVariables } from './binOnlyVariables';
-import { buildEntityConstraints } from './buildConstraints';
-import { type ComparatorEdge, resolveGenerationOrder } from './dependencyOrder';
+} from '../nodes.ts';
+import { getSubjectType } from '../subject.ts';
+import { collectBinOnlyVariables } from './binOnlyVariables.ts';
+import { buildEntityConstraints } from './buildConstraints.ts';
+import {
+  type ComparatorEdge,
+  resolveGenerationOrder,
+} from './dependencyOrder.ts';
 import {
   edgeCountFor,
   inheritedContributorAncestryCeiling,
@@ -38,29 +41,29 @@ import {
   unwrittenEdgeVariables,
   unwrittenNodeVariables,
   worstCaseEntityCounts,
-} from './entityCounts';
-import type { ConstraintConflict } from './error';
-import { comparatorFoldEmptied } from './generateEntityAttributes';
+} from './entityCounts.ts';
+import type { ConstraintConflict } from './error.ts';
+import { comparatorFoldEmptied } from './generateEntityAttributes.ts';
 import {
   differentFromGroups,
   emptyGroupBounds,
   groupComparatorEdges,
   intersectGroupConstraints,
   propagateComparatorBounds,
-} from './groupConstraints';
-import { solvableComponents, solveComponent } from './solver';
+} from './groupConstraints.ts';
+import { solvableComponents, solveComponent } from './solver.ts';
 import {
   COMPARISON_RULES,
   type ConstrainedVariable,
   type EntityConstraints,
-} from './types';
-import { valueKey } from './uniqueRegistry';
-import { delegatedValidationContradictions } from './validationContradictions';
+} from './types.ts';
+import { valueKey } from './uniqueRegistry.ts';
+import { delegatedValidationContradictions } from './validationContradictions.ts';
 import {
   distinctOptionValues,
   MAX_TEXT_DRAW_LENGTH,
   valueSpaceSize,
-} from './valueSpace';
+} from './valueSpace.ts';
 
 type EntityScope = {
   entity: 'ego' | 'node' | 'edge';

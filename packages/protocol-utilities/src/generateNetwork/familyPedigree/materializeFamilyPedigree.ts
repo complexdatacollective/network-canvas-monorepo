@@ -14,32 +14,36 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import { ValueGenerator } from '../../ValueGenerator';
+import { ValueGenerator } from '../../ValueGenerator.ts';
 import {
   claimFixedValues,
   generateAttributesForEntity,
   replaceFixedValues,
-} from '../attributes';
-import { SyntheticDataConstraintError } from '../constraints/error';
-import type { EntityScopeRef } from '../constraints/generateEntityAttributes';
+} from '../attributes.ts';
+import { SyntheticDataConstraintError } from '../constraints/error.ts';
+import type { EntityScopeRef } from '../constraints/generateEntityAttributes.ts';
 import {
   pedigreeDrawnNodeVariables,
   pedigreeEgoNodeVariables,
   withRuleTiedVariables,
-} from '../constraints/stageWrites';
-import type { GenerationContext, NetworkDraft, StageOfType } from '../context';
-import { ruleBrokenByFixedValues } from '../nodes';
-import { generateFamilyPedigreePlan } from './generateFamilyPedigree';
+} from '../constraints/stageWrites.ts';
+import type {
+  GenerationContext,
+  NetworkDraft,
+  StageOfType,
+} from '../context.ts';
+import { ruleBrokenByFixedValues } from '../nodes.ts';
+import { generateFamilyPedigreePlan } from './generateFamilyPedigree.ts';
 import {
   readPedigreeOptionValue,
   storedPedigreeOptionValue,
-} from './semanticValues';
+} from './semanticValues.ts';
 import type {
   PedigreeDisease,
   PedigreePerson,
   PedigreeRelationship,
   ResolvedFamilyPedigreeGenerationOptions,
-} from './types';
+} from './types.ts';
 
 function diseasesForStage(
   ctx: GenerationContext,

@@ -9,7 +9,7 @@ import {
   stepsBetween,
   todayYmd,
   truncateToResolution,
-} from '../dateWindow';
+} from '../dateWindow.ts';
 
 describe('addDays', () => {
   it('adds days across a month boundary in UTC', () => {
