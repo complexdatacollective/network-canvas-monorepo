@@ -506,6 +506,21 @@ describe.skipIf(!db)('study spine schema', () => {
     });
   });
 
+  describe('deleting a study', () => {
+    it('is the maintenance purge’s alone', async () => {
+      const studyId = await newStudy();
+      await expect(
+        pool.query(`DELETE FROM studies WHERE id = $1`, [studyId]),
+      ).rejects.toThrow('studies are deleted only by the maintenance purge');
+      await expect(
+        tenantA.query(`DELETE FROM studies WHERE id = $1`, [studyId]),
+      ).rejects.toThrow('studies are deleted only by the maintenance purge');
+      await expect(
+        maintenance.query(`DELETE FROM studies WHERE id = $1`, [studyId]),
+      ).resolves.toMatchObject({ rowCount: 1 });
+    });
+  });
+
   describe('closed studies are read-only', () => {
     it('permits only the allowed columns', async () => {
       const studyId = await newStudy();

@@ -21,7 +21,7 @@ import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import { addStage, removeStage } from '../../protocol/draft-structure.ts';
 import { ProtocolStore } from '../../protocol/store.ts';
-import { seedUuid } from './rng.ts';
+import { seedTime, seedUuid } from './rng.ts';
 
 /** The structural half of an assembled protocol document `generateNetwork` reads. */
 export type SeededVersion = {
@@ -152,15 +152,24 @@ export async function seedProtocolLine(
   const store = new ProtocolStore(scope);
   const protocol = loadSampleProtocol();
 
+  // Dated so the line and both versions exist before any study is created
+  // (about 320 days before the anchor) and long before the sessions that pin
+  // them run; after the team itself, which dates from 400 days before.
   const protocolId = seedUuid();
   const draftId = seedUuid();
-  await store.createProtocol({ protocol, protocolId, draftId });
+  await store.createProtocol({
+    protocol,
+    protocolId,
+    draftId,
+    createdAt: seedTime(-380),
+  });
 
   const firstVersionId = seedUuid();
   const first = await store.publishDraft({
     draftId,
     label: 'Baseline',
     versionId: firstVersionId,
+    publishedAt: seedTime(-370),
   });
   if (first.status !== 'published') {
     throw new Error(`seed protocol v1 did not publish: ${first.status}`);
@@ -184,6 +193,7 @@ export async function seedProtocolLine(
     draftId,
     label: 'Revised prompt wording',
     versionId: secondVersionId,
+    publishedAt: seedTime(-340),
   });
   if (second.status !== 'published') {
     throw new Error(`seed protocol v2 did not publish: ${second.status}`);

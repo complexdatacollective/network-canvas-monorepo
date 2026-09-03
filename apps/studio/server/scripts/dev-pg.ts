@@ -111,6 +111,7 @@ function startContainer(): void {
 
 async function query(
   sql: string,
+  values: unknown[] = [],
   database = 'postgres',
 ): Promise<pg.QueryResult> {
   const client = new pg.Client({
@@ -123,7 +124,7 @@ async function query(
   });
   await client.connect();
   try {
-    return await client.query(sql);
+    return await client.query(sql, values);
   } finally {
     await client.end();
   }
@@ -148,16 +149,33 @@ async function waitForReady(): Promise<void> {
   );
 }
 
-async function ensureDatabase(): Promise<void> {
-  const existing = await query(
-    `SELECT 1 FROM pg_database WHERE datname = '${DATABASE}'`,
-  );
+async function ensureDatabase(name: string): Promise<void> {
+  const existing = await query(`SELECT 1 FROM pg_database WHERE datname = $1`, [
+    name,
+  ]);
   if (existing.rowCount) {
-    console.log(`Database '${DATABASE}' already exists`);
+    console.log(`Database '${name}' already exists`);
     return;
   }
-  await query(`CREATE DATABASE ${DATABASE}`);
-  console.log(`Created database '${DATABASE}'`);
+  await query(`CREATE DATABASE ${pg.escapeIdentifier(name)}`);
+  console.log(`Created database '${name}'`);
+}
+
+/**
+ * The database the server will connect to, read from the same resolved
+ * `DATABASE_URL` the reset uses — a `.env` override of the name is created
+ * too, not only the committed default. Undefined when the override names a
+ * server other than the dev container's, which this script does not manage.
+ */
+function databaseToCreate(): string | undefined {
+  loadEnvFiles();
+  const { db } = readEnv();
+  if (!db) return DATABASE;
+  const url = new URL(db.url);
+  if (!isLocalDatabase(db.url)) return undefined;
+  if (url.port !== '' && url.port !== String(HOST_PORT)) return undefined;
+  const name = decodeURIComponent(url.pathname.replace(/^\//, ''));
+  return name === '' ? DATABASE : name;
 }
 
 // Every `pnpm dev` boot starts from a clean, freshly seeded database: Studio
@@ -231,7 +249,8 @@ async function main(mode: Mode): Promise<void> {
       `Postgres already reachable on port ${HOST_PORT} (externally managed)`,
     );
     if (mode !== 'follow') {
-      await ensureDatabase();
+      const name = databaseToCreate();
+      if (name !== undefined) await ensureDatabase(name);
       await resetAndSeed();
     }
     console.log(`Postgres ready — database '${DATABASE}' on port ${HOST_PORT}`);
@@ -260,7 +279,8 @@ async function main(mode: Mode): Promise<void> {
   console.log('Waiting for Postgres to become ready...');
   await waitForReady();
   if (mode !== 'follow') {
-    await ensureDatabase();
+    const name = databaseToCreate();
+    if (name !== undefined) await ensureDatabase(name);
     await resetAndSeed();
   }
   console.log(`Postgres ready — database '${DATABASE}' on port ${HOST_PORT}`);

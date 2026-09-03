@@ -62,15 +62,15 @@ const MAX_DEMO_ROWS = 80_000;
  *    two columns are the price.
  *  - `session_stats.computed_at` — `refreshSessionProjections` writes
  *    `statement_timestamp()`, and the seed must not hand-write the rollups.
- *  - the protocol store's own `created_at` / `updated_at` / `published_at`
- *    columns, which take their database defaults.
+ *  - the protocol store's draft and section `created_at` columns, which take
+ *    their database defaults. (The protocol's own dates and each version's
+ *    `published_at` are seed-controlled, so the line predates the studies
+ *    that pin it, and are compared.)
  */
 const NON_REPRODUCIBLE_COLUMNS: Record<string, readonly string[]> = {
   account: ['password'],
   audit_events: ['id', 'occurred_at'],
   session_stats: ['computed_at'],
-  protocols: ['created_at', 'updated_at'],
-  protocol_versions: ['published_at'],
   protocol_drafts: ['created_at'],
   sections: ['created_at'],
 };
@@ -233,6 +233,25 @@ describe.skipIf(!db)('the seeded dataset', () => {
         `select count(*)::int as n
          from study_waves w join studies s on s.id = w.study_id
          where s.state = 'draft' and w.protocol_version_id is not null`,
+      ),
+    ).resolves.toBe(0);
+  });
+
+  it('publishes every version before the sessions that pin it, and every line before its studies', async () => {
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from interview_sessions s
+         join protocol_versions v on v.id = s.protocol_version_id
+         where v.published_at > s.started_at`,
+      ),
+    ).resolves.toBe(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from studies st
+         join protocols p on p.id = st.protocol_id
+         where p.created_at > st.created_at`,
       ),
     ).resolves.toBe(0);
   });

@@ -649,6 +649,24 @@ CREATE OR REPLACE TRIGGER studies_protocol_line_unpinned
   WHEN (NEW.protocol_id IS DISTINCT FROM OLD.protocol_id)
   EXECUTE FUNCTION studies_protocol_line_is_unpinned();
 
+-- A study leaves the database by exactly one path: the maintenance purge,
+-- after the retention window \`deletion_requested_at\` and \`purge_after\`
+-- describe. The blanket tenant grant includes DELETE, so without this the
+-- application role could remove a study whose children were gone — a draft,
+-- or one marked for deletion — the moment it was asked, skipping the window.
+CREATE OR REPLACE FUNCTION study_delete_is_purge() RETURNS trigger AS $$
+BEGIN
+  IF current_user = 'studio_maintenance' THEN
+    RETURN OLD;
+  END IF;
+  RAISE EXCEPTION 'studies are deleted only by the maintenance purge';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER studies_delete_purge_only
+  BEFORE DELETE ON studies
+  FOR EACH ROW EXECUTE FUNCTION study_delete_is_purge();
+
 -- Shared by every child guard below.
 CREATE OR REPLACE FUNCTION study_is_closed(p_study_id uuid, p_team_id text)
 RETURNS boolean AS $$

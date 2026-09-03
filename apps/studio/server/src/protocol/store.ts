@@ -76,7 +76,12 @@ type CreateProtocolResult = {
 type CreateProtocolParams = {
   protocol: CurrentProtocol;
   protocolId?: string;
-  draftId?: string;
+  draftId?: string /**
+   * When the protocol was created, for a caller that must say so — the
+   * synthetic-data seed, whose whole corpus is dated from one anchor so the
+   * line exists before the studies that pin its versions. Defaults to now.
+   */;
+  createdAt?: Date;
 };
 
 type CreateProtocolTransactionResult = CreateProtocolResult & {
@@ -196,10 +201,11 @@ export class ProtocolStore {
       transactionClient: pg.PoolClient,
     ): Promise<CreateProtocolTransactionResult> => {
       const inserted = await transactionClient.query(
-        `INSERT INTO protocols (id, team_id, name) VALUES ($1, $2, $3)
+        `INSERT INTO protocols (id, team_id, name, created_at, updated_at)
+         VALUES ($1, $2, $3, COALESCE($4, now()), COALESCE($4, now()))
          ON CONFLICT (id) DO NOTHING
          RETURNING id`,
-        [protocolId, teamId, params.protocol.name],
+        [protocolId, teamId, params.protocol.name, params.createdAt ?? null],
       );
       if (inserted.rowCount === 0) {
         const existing = await transactionClient.query(
@@ -407,6 +413,12 @@ export class ProtocolStore {
      * Ignored when the publish resolves to an existing version.
      */
     versionId?: string;
+    /**
+     * When the version was published, for the same caller and reason as
+     * `versionId`: the seed's versions must predate the sessions that pin
+     * them. Defaults to now.
+     */
+    publishedAt?: Date;
   }): Promise<PublishResult> {
     const head = await this.getDraftSections(params.draftId);
     if (
@@ -519,13 +531,13 @@ export class ProtocolStore {
           `INSERT INTO protocol_versions
            (id, protocol_id, team_id, version_number, label, version_hash,
             manifest, schema_version, source_draft_id, source_manifest_hash,
-            migrated_from_version_id)
+            migrated_from_version_id, published_at)
          SELECT $1, $2, $10,
                 COALESCE(MAX(v.version_number), 0) + 1,
                 $3, $4,
                 (SELECT to_jsonb(m) FROM manifests m
                   WHERE m.draft_id = $5 AND m.team_id = $10 AND m.seq = $6),
-                $7, $5, $8, $9
+                $7, $5, $8, $9, COALESCE($11, now())
          FROM protocol_versions v
          WHERE v.protocol_id = $2 AND v.team_id = $10
          RETURNING version_number`,
@@ -540,6 +552,7 @@ export class ProtocolStore {
             head.headManifestHash,
             migratedFrom,
             teamId,
+            params.publishedAt ?? null,
           ],
         );
         const versionNumber = (inserted.rows[0] as { version_number: number })
@@ -553,9 +566,9 @@ export class ProtocolStore {
         }
         if (name !== null) {
           await client.query(
-            `UPDATE protocols SET name = $2, updated_at = now()
+            `UPDATE protocols SET name = $2, updated_at = COALESCE($4, now())
            WHERE id = $1 AND team_id = $3`,
-            [draft.protocol_id, name, teamId],
+            [draft.protocol_id, name, teamId, params.publishedAt ?? null],
           );
         }
         return { status: 'published', versionId, versionNumber, versionHash };

@@ -513,7 +513,7 @@
 <!-- studies -->
 <g id="studies" class="node">
 <title>studies</title>
-<g id="a_studies"><a xlink:title="studies&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger studies_closed_read_only: BEFORE UPDATE calls studies_closed_is_read_only(); sidecar trigger studies_go_live_final: BEFORE UPDATE calls studies_go_live_is_final(); sidecar trigger studies_protocol_line_unpinned: AFTER UPDATE OF protocol_id calls studies_protocol_line_is_unpinned()">
+<g id="a_studies"><a xlink:title="studies&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger studies_closed_read_only: BEFORE UPDATE calls studies_closed_is_read_only(); sidecar trigger studies_go_live_final: BEFORE UPDATE calls studies_go_live_is_final(); sidecar trigger studies_protocol_line_unpinned: AFTER UPDATE OF protocol_id calls studies_protocol_line_is_unpinned(); sidecar trigger studies_delete_purge_only: BEFORE DELETE calls study_delete_is_purge()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="3445.61" cy="-9620.24" rx="371.46" ry="808.86"/>
 <polygon fill="#1d71b8" stroke="transparent" points="3185.61,-10130.24 3185.61,-10190.24 3706.61,-10190.24 3706.61,-10130.24 3185.61,-10130.24"/>
 <polygon fill="none" stroke="#29235c" points="3185.61,-10130.24 3185.61,-10190.24 3706.61,-10190.24 3706.61,-10130.24 3185.61,-10130.24"/>

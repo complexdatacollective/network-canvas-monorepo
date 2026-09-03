@@ -101,6 +101,7 @@ describe('generated schema documentation', () => {
     expect(readmeSection).toContain('audit_export_handle_single_use');
     expect(readmeSection).toContain('audit_alert_link_immutable');
     expect(readmeSection).toContain('studies_closed_read_only');
+    expect(readmeSection).toContain('studies_delete_purge_only');
     expect(readmeSection).toContain('study_waves_identity_immutable');
     expect(readmeSection).toContain('study_waves_parent_open');
     expect(readmeSection).toContain('participants_writable');
@@ -204,6 +205,7 @@ describe('generated schema documentation', () => {
     expect(svg).toContain('sidecar trigger audit_export_handle_single_use');
     expect(svg).toContain('sidecar trigger audit_alert_link_immutable');
     expect(svg).toContain('sidecar trigger studies_closed_read_only');
+    expect(svg).toContain('sidecar trigger studies_delete_purge_only');
     expect(svg).toContain('sidecar trigger study_waves_identity_immutable');
     expect(svg).toContain('sidecar trigger study_waves_parent_open');
     expect(svg).toContain('sidecar trigger participants_writable');

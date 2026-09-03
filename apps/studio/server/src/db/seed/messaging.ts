@@ -81,7 +81,47 @@ type SeededSchedule = {
   waveId: string;
   promptExpiryHours: number;
   recurrenceKind: (typeof RECURRENCE_KINDS)[number];
+  anchorKind: (typeof ANCHOR_KINDS)[number];
+  anchorDate: Date | null;
+  anchorOffsetMinutes: number;
+  intervalDays: number | null;
+  samplesPerPeriod: number | null;
+  periodDays: number | null;
+  occurrenceLimit: number | null;
+  windowStartMinute: number;
+  windowEndMinute: number;
 };
+
+/** How far past its anchor a schedule is resolved for each participant. */
+const RESOLUTION_HORIZON_DAYS = 400;
+
+/** `YYYY-MM-DD` plus `days`, in calendar arithmetic. */
+function shiftLocalDate(date: string, days: number): string {
+  const [y, m, d] = date.split('-').map(Number) as [number, number, number];
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+/**
+ * The instant at which `timeZone` reads `date` at `minute` past midnight —
+ * the inverse of `localParts`. Two corrections converge across a DST change,
+ * where the first guess lands an hour off.
+ */
+function instantFor(date: string, minute: number, timeZone: string): Date {
+  const [y, m, d] = date.split('-').map(Number) as [number, number, number];
+  const wanted = Date.UTC(y, m - 1, d) / 60_000 + minute;
+  let instant = new Date(wanted * 60_000);
+  for (let pass = 0; pass < 2; pass++) {
+    const local = localParts(instant, timeZone);
+    const [ly, lm, ld] = local.date.split('-').map(Number) as [
+      number,
+      number,
+      number,
+    ];
+    const got = Date.UTC(ly, lm - 1, ld) / 60_000 + local.minute;
+    instant = new Date(instant.getTime() + (wanted - got) * 60_000);
+  }
+  return instant;
+}
 
 /**
  * One schedule over each team's live managed study. The recurrence and anchor
@@ -102,6 +142,30 @@ async function seedSchedule(
 
   const fixedInterval = recurrenceKind === 'fixed_interval';
   const randomSample = recurrenceKind === 'random_sample';
+  // The grammar the occurrences below are resolved from, kept beside the row
+  // so the resolution and the stored schedule cannot disagree.
+  const plan: SeededSchedule = {
+    id,
+    studyId: study.id,
+    waveId: wave.id,
+    promptExpiryHours,
+    recurrenceKind,
+    anchorKind,
+    anchorDate:
+      anchorKind === 'fixed_date' ? shiftDays(study.createdAt, 25) : null,
+    anchorOffsetMinutes: faker.number.int({ min: -120, max: 120 }),
+    intervalDays: fixedInterval ? faker.number.int({ min: 1, max: 7 }) : null,
+    samplesPerPeriod: randomSample
+      ? faker.number.int({ min: 2, max: 6 })
+      : null,
+    periodDays: randomSample ? 7 : null,
+    occurrenceLimit:
+      recurrenceKind === 'one_off'
+        ? null
+        : faker.number.int({ min: 20, max: 90 }),
+    windowStartMinute: 480,
+    windowEndMinute: 1_320,
+  };
   await client.query(
     `insert into study_schedules (
        id, team_id, study_id, wave_id, name, state,
@@ -121,21 +185,21 @@ async function seedSchedule(
       wave.id,
       `${study.name} prompts`,
       anchorKind,
-      anchorKind === 'fixed_date' ? shiftDays(study.createdAt, 25) : null,
-      faker.number.int({ min: -120, max: 120 }),
+      plan.anchorDate,
+      plan.anchorOffsetMinutes,
       recurrenceKind,
-      fixedInterval ? faker.number.int({ min: 1, max: 7 }) : null,
-      randomSample ? faker.number.int({ min: 2, max: 6 }) : null,
-      randomSample ? 7 : null,
+      plan.intervalDays,
+      plan.samplesPerPeriod,
+      plan.periodDays,
+      // A day apart at the earliest inside a 08:00–22:00 window is at least
+      // ten hours, so a gap of up to four keeps every drawn pair legal.
       randomSample ? faker.number.int({ min: 60, max: 240 }) : null,
-      recurrenceKind === 'one_off'
-        ? null
-        : faker.number.int({ min: 20, max: 90 }),
-      480,
-      1_320,
+      plan.occurrenceLimit,
+      plan.windowStartMinute,
+      plan.windowEndMinute,
       127,
-      1_320,
-      480,
+      plan.windowEndMinute,
+      plan.windowStartMinute,
       faker.number.int({ min: 1, max: 4 }),
       promptExpiryHours,
       faker.helpers.arrayElement(['skip', 'reschedule_within_period']),
@@ -144,13 +208,70 @@ async function seedSchedule(
       shiftDays(study.createdAt, 16),
     ],
   );
-  return {
-    id,
-    studyId: study.id,
-    waveId: wave.id,
-    promptExpiryHours,
-    recurrenceKind,
-  };
+  return plan;
+}
+
+/**
+ * The local days, counted from the anchor's local date, on which `schedule`
+ * prompts — its recurrence applied over the resolution horizon and capped by
+ * its occurrence limit. A one-off prompts once, the day after its anchor; a
+ * fixed interval every `intervalDays`; a random sample draws
+ * `samplesPerPeriod` distinct days from each period, which keeps every pair
+ * of draws at least a night apart.
+ */
+function promptDays(schedule: SeededSchedule): number[] {
+  const limit = schedule.occurrenceLimit ?? Number.POSITIVE_INFINITY;
+  const days: number[] = [];
+  switch (schedule.recurrenceKind) {
+    case 'one_off':
+      return [1];
+    case 'fixed_interval': {
+      const interval = schedule.intervalDays ?? 1;
+      for (
+        let day = interval;
+        day <= RESOLUTION_HORIZON_DAYS && days.length < limit;
+        day += interval
+      ) {
+        days.push(day);
+      }
+      return days;
+    }
+    case 'random_sample': {
+      const period = schedule.periodDays ?? 7;
+      const samples = schedule.samplesPerPeriod ?? 1;
+      for (
+        let start = 0;
+        start < RESOLUTION_HORIZON_DAYS && days.length < limit;
+        start += period
+      ) {
+        const candidates = Array.from(
+          { length: Math.min(period, RESOLUTION_HORIZON_DAYS - start) },
+          (_, offset) => start + offset + 1,
+        );
+        const drawn = faker.helpers
+          .arrayElements(candidates, Math.min(samples, candidates.length))
+          .toSorted((a, b) => a - b);
+        for (const day of drawn) {
+          if (days.length < limit) days.push(day);
+        }
+      }
+      return days;
+    }
+  }
+}
+
+function anchorInstant(
+  schedule: SeededSchedule,
+  study: SeedStudy,
+  participant: SeedParticipant,
+): Date {
+  const base =
+    schedule.anchorKind === 'fixed_date'
+      ? schedule.anchorDate!
+      : schedule.anchorKind === 'wave_window_start'
+        ? (study.waves[0]?.opensAt ?? study.createdAt)
+        : participant.enrolledAt;
+  return shiftMinutes(base, schedule.anchorOffsetMinutes);
 }
 
 async function seedOccurrences(
@@ -165,24 +286,32 @@ async function seedOccurrences(
   // Only the head of the cohort gets a resolved run of prompts: a few
   // participants' worth already shows every occurrence state, every recurrence
   // and every zone the corpus has, and keeps the outbox below readable.
+  //
+  // Each run is what the resolver's contract says it will be: the schedule's
+  // own recurrence from its own anchor, every prompt inside the participant's
+  // local window on a day the recurrence names, and the absolute instant
+  // computed from that local intent under the participant's zone — so the
+  // stored rows are ones the real resolver (#1304) could have produced.
+  const now = seedTime(0);
   const cohort = study.participants.slice(0, SCHEDULED_PARTICIPANTS);
   for (const participant of cohort) {
-    // A one-off schedule resolves to exactly one prompt per participant; a
-    // recurring one resolves to a run of them.
-    const count =
-      schedule.recurrenceKind === 'one_off'
-        ? 1
-        : faker.number.int({ min: 14, max: 60 });
-    let cursor = shiftDays(participant.enrolledAt, 1);
-    for (let index = 0; index < count; index++) {
-      cursor = shiftMinutes(
-        cursor,
-        faker.number.int({ min: 20 * 60, max: 52 * 60 }),
+    const anchor = anchorInstant(schedule, study, participant);
+    const anchorDate = localParts(anchor, participant.timezone).date;
+    const resolvedAt = shiftMinutes(anchor, 1);
+    for (const [index, day] of promptDays(schedule).entries()) {
+      const localDate = shiftLocalDate(anchorDate, day);
+      const localMinute = faker.number.int({
+        min: schedule.windowStartMinute,
+        max: schedule.windowEndMinute - 1,
+      });
+      const scheduledFor = instantFor(
+        localDate,
+        localMinute,
+        participant.timezone,
       );
-      const local = localParts(cursor, participant.timezone);
-      // Past occurrences were dispatched or lapsed; the tail is still pending.
+      // Past occurrences were dispatched or lapsed; the future is pending.
       const state =
-        index < count - 4
+        scheduledFor < now
           ? faker.helpers.arrayElement([
               'dispatched',
               'dispatched',
@@ -199,19 +328,19 @@ async function seedOccurrences(
         schedule.id,
         participant.id,
         index + 1,
-        cursor,
-        local.date,
-        local.minute,
+        scheduledFor,
+        localDate,
+        localMinute,
         participant.timezone,
-        shiftMinutes(cursor, schedule.promptExpiryHours * 60),
+        shiftMinutes(scheduledFor, schedule.promptExpiryHours * 60),
         state,
-        shiftDays(participant.enrolledAt, 1),
+        resolvedAt,
       ]);
       occurrences.push({
         id,
         studyId: study.id,
         participant,
-        scheduledFor: cursor,
+        scheduledFor,
         state,
       });
     }
@@ -249,7 +378,9 @@ async function seedMessageTemplates(
 ): Promise<SeededTemplate[]> {
   const rows: SeedRowValue[][] = [];
   const templates: SeededTemplate[] = [];
-  const createdAt = seedTime(-290 + team.index);
+  // Before the first participant enrols and is invited (around 305 days
+  // before the anchor), and after the team itself exists (400 days before).
+  const createdAt = seedTime(-380 + team.index);
 
   const push = (kind: string, channel: string, locale: string) => {
     const id = seedUuid();
@@ -464,13 +595,15 @@ async function seedDeliveries(
       createdAt: shiftDays(participant.enrolledAt, 1),
     });
   }
+  // Every dispatched occurrence is a send the outbox records — as a sent,
+  // failed, suppressed or uncertain delivery — so the schedule and the
+  // outbox agree about what went out.
   const dispatched = occurrences.filter(
     (occurrence) => occurrence.state === 'dispatched',
   );
   const byParticipant = new Map<string, number>();
   for (const occurrence of dispatched) {
     const seen = byParticipant.get(occurrence.participant.id) ?? 0;
-    if (seen >= 8) continue;
     byParticipant.set(occurrence.participant.id, seen + 1);
     enqueue({
       participant: occurrence.participant,
