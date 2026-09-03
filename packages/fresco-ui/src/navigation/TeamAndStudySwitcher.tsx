@@ -1,10 +1,9 @@
 'use client';
 
 import { Select } from '@base-ui/react/select';
-import { Check, ChevronDown, Plus, TriangleAlert } from 'lucide-react';
+import { Check, ChevronDown, Plus } from 'lucide-react';
 import {
   cloneElement,
-  useId,
   useState,
   type ReactElement,
   type ReactNode,
@@ -16,7 +15,7 @@ import { usePortalContainer } from '../PortalContainer';
 import { Skeleton } from '../Skeleton';
 import { cx } from '../utils/cva';
 
-export type SwitcherStatus = 'ready' | 'loading' | 'failed';
+export type SwitcherStatus = 'ready' | 'loading';
 
 export type SwitcherItem = {
   /** Stable id. Identifies the item to `onSelect` and colours its mark. */
@@ -89,29 +88,12 @@ type SwitcherSegmentBase = {
 };
 
 /**
- * The retry and the two strings that frame it are required exactly when the
- * status can be `'failed'`. Two members rather than one per status so a caller
- * holding a status it cannot narrow (`status={query.status}`) still
- * type-checks.
+ * A list that could not be read is NOT this component's to report. It shows
+ * what it was given, and the shell above it owns the failure — one switcher
+ * carrying its own error surface would put a second, quieter account of the
+ * same outage next to the one the app already makes.
  */
-type SwitcherRecovery =
-  | {
-      status?: 'ready' | 'loading';
-      onRetry?: undefined;
-      failureMessage?: undefined;
-      retryLabel?: undefined;
-    }
-  | {
-      status?: SwitcherStatus;
-      /** Re-runs whatever failed to produce `items`. */
-      onRetry: () => void;
-      /** Translated, and short: "Your teams could not be loaded." */
-      failureMessage: string;
-      /** Translated label for the retry command: "Try again". */
-      retryLabel: string;
-    };
-
-export type SwitcherSegment = SwitcherSegmentBase & SwitcherRecovery;
+export type SwitcherSegment = SwitcherSegmentBase & { status?: SwitcherStatus };
 
 export type TeamAndStudySwitcherProps = {
   /** The outer segment: the team whose work is on screen. */
@@ -134,14 +116,6 @@ export type TeamAndStudySwitcherProps = {
  * accessible name computes the same way collapsed or not.
  */
 const COLLAPSE_CLASS = '@max-xl:sr-only';
-
-/**
- * A floor, and no ceiling. The shell spec requires the header to size to its
- * content and never clip or truncate a label, because German and Portuguese
- * run about a third longer than English. The floor is what reserves the
- * skeleton's width, so the header does not jump when the name arrives.
- */
-const NAME_WIDTH_CLASS = 'min-w-24';
 
 /**
  * The frame's INNER curve — its radius less its 2px border — on the edges of a
@@ -175,7 +149,14 @@ const OUTER_CORNER = {
  * emission order.
  */
 const SEGMENT_CLASS = cx(
-  'flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-3 py-2',
+  /*
+    `flex-auto`, not `flex-1`. `flex-1` measures from a zero basis, so two
+    segments take an equal share whatever is in them — collapsed, the one
+    holding a 32px mark was squeezed out of its right padding while the one
+    holding an 8px status dot kept 14px of slack. From a content basis each
+    keeps its own padding and the pair still fills the frame.
+  */
+  'flex min-w-0 flex-auto cursor-pointer items-center gap-3 px-3 py-2',
   'bg-input text-input-contrast text-start transition-colors',
   'focusable focus-visible:-outline-offset-3',
   'not-data-popup-open:hover:bg-input-contrast/8',
@@ -188,7 +169,7 @@ const SEGMENT_CLASS = cx(
  * rather than Base UI's `data-highlighted`, which only the options get.
  */
 const ROW_CLASS = cx(
-  'flex w-full cursor-pointer items-center gap-3 rounded-sm px-3 py-2',
+  'flex w-full cursor-pointer items-center gap-4 rounded-sm px-3 py-2',
   'text-start transition-colors outline-none',
   'focusable hover:bg-surface-2 hover:text-surface-2-contrast',
   'focus-visible:bg-surface-2 focus-visible:text-surface-2-contrast',
@@ -226,17 +207,13 @@ function Segment({
     accessibleName,
     action,
     currentId,
-    failureMessage,
     items,
     kicker,
-    onRetry,
     onSelect,
     placeholder,
     renderMark,
-    retryLabel,
     status = 'ready',
   } = segment;
-  const failureId = useId();
   const portalContainer = usePortalContainer();
 
   // Held here rather than left to Base UI because the rows beneath the list
@@ -245,7 +222,6 @@ function Segment({
   const [open, setOpen] = useState(false);
 
   const current = items.find((item) => item.id === currentId);
-  const failed = status === 'failed';
   const loading = status === 'loading';
 
   // While loading there is no name yet, so the label is the kicker alone
@@ -277,7 +253,7 @@ function Segment({
 
   // What the list is for. None of these means the segment is a label in a
   // frame rather than a control.
-  const hasList = failed || action !== undefined || items.length > 1;
+  const hasList = action !== undefined || items.length > 1;
 
   // Whether anything stands in for the name when the column collapses.
   const hasMark = loading || current !== undefined;
@@ -296,7 +272,11 @@ function Segment({
           // The column collapses only when the mark can stand in for it.
           // Collapsing without one leaves a bare chevron that says nothing
           // about what it switches.
-          'flex min-w-0 flex-col items-start',
+          // No `items-start`: that sizes each line to its own content, so the
+          // name kept its full width however narrow the column got and the
+          // ellipsis never engaged. Stretched, the lines take the column's
+          // width and the text stays left-aligned by `text-start` above.
+          'flex min-w-0 flex-col',
           hasMark ? COLLAPSE_CLASS : undefined,
         )}
       >
@@ -306,28 +286,36 @@ function Segment({
         <span
           className={cx(
             'text-sm leading-tight font-semibold',
-            // One line, whole. The lockup grows to hold it.
-            'block whitespace-nowrap',
-            NAME_WIDTH_CLASS,
+            // One line, cut with an ellipsis when the container cannot hold
+            // it. Below the collapse threshold the whole column gives way to
+            // the mark instead — an ellipsis is for the widths in between,
+            // where there is still enough of a name to be worth reading.
+            'truncate',
           )}
         >
-          {/* The skeleton's `em` height is deliberately not a step off the
-              spacing scale: the type scale is fluid, so a fixed height would
-              drift away from the name it stands in for. */}
+          {/* Sized in `em` on purpose, both ways: the type scale is fluid, so
+              a figure off the spacing scale would drift away from the name
+              this stands in for as the container grows. */}
           {loading ? (
-            <Skeleton className="inline-block h-[0.9em] w-full rounded-xs align-middle" />
+            <Skeleton className="inline-block h-[0.9em] w-[7em] rounded-xs align-middle" />
           ) : (
             (current?.name ?? placeholder)
           )}
         </span>
       </span>
       {hasList ? (
-        <ChevronDown aria-hidden data-caret className="shrink-0 opacity-70" />
+        <ChevronDown
+          aria-hidden
+          data-caret
+          className="size-4 shrink-0 opacity-70"
+        />
       ) : null}
     </>
   );
 
-  const divider = divided ? 'border-outline border-s' : undefined;
+  // `border-s-2`, the frame's own weight: a 1px rule between two segments
+  // read as a hairline beside a 2px edge.
+  const divider = divided ? 'border-outline border-s-2' : undefined;
   const corner = OUTER_CORNER[corners];
 
   if (!hasList) {
@@ -338,7 +326,7 @@ function Segment({
       <span
         data-switcher-segment
         className={cx(
-          'bg-input text-input-contrast flex min-w-0 flex-1 items-center gap-2 px-3 py-2',
+          'bg-input text-input-contrast flex min-w-0 flex-auto items-center gap-3 px-3 py-2',
           corner,
           divider,
         )}
@@ -402,9 +390,12 @@ function Segment({
               // reading as a tooltip; the ceiling is whichever is smaller of
               // the room Base UI reports and a width that still reads as a
               // popup rather than a panel.
-              'border-outline w-max min-w-xs shadow-xl',
+              'border-outline w-max shadow-xl',
               'max-w-[min(var(--available-width),var(--container-md))]',
-              'rounded border-2 p-2 outline-none',
+              // The curve fresco-ui's own `Select` dropdown uses, so the two
+              // popups read as the same kind of surface. Its rows match too:
+              // `rounded-sm`, the shared `dropdownItemVariants` figure.
+              'rounded-sm border-2 p-2 outline-none',
               // Bounded, with the list as the part that scrolls. Base UI
               // publishes `--available-height` but applies nothing itself, so
               // a long list pushed the retry and the trailing destination off
@@ -437,13 +428,13 @@ function Segment({
                       // along with it.
                       label={item.name}
                       className={cx(
-                        'group flex cursor-pointer items-center gap-3 rounded-sm px-3 py-2',
+                        'group flex cursor-pointer items-center gap-4 rounded-sm px-3 py-2',
                         'transition-colors outline-none select-none',
                         'not-data-selected:data-highlighted:bg-surface-2 not-data-selected:data-highlighted:text-surface-2-contrast',
                         'data-selected:bg-selected data-selected:text-selected-contrast',
                       )}
                     >
-                      {markFor(item, renderMark, 'sm')}
+                      {markFor(item, renderMark, 'md')}
                       {/* Wraps rather than truncating: this is where a name
                           too long for the frame above can be read in full. */}
                       <Select.ItemText className="flex min-w-0 flex-1 flex-col">
@@ -493,56 +484,20 @@ function Segment({
                 </Select.Group>
               )}
             </Select.List>
-            {failed && onRetry && (
-              <>
-                {items.length > 0 && (
-                  <Select.Separator className={SEPARATOR_CLASS} />
-                )}
-                {/*
-                  `aria-describedby` rather than a group label: outside the
-                  listbox there is no group to label, and a retry announced on
-                  its own does not say what it is a retry for.
-                */}
-                <p
-                  id={failureId}
-                  className="text-destructive flex items-start gap-2 px-3 py-2 text-xs"
-                >
-                  <TriangleAlert
-                    aria-hidden
-                    className="mt-0.5 size-4 shrink-0"
-                  />
-                  <span>{failureMessage}</span>
-                </p>
-                <button
-                  type="button"
-                  aria-describedby={failureId}
-                  // NOT `closeThen`. Closing first hides the only place the
-                  // failure is stated, so a retry that fails again would
-                  // settle back exactly as it was with nothing to say so.
-                  onClick={onRetry}
-                  className={cx(ROW_CLASS, 'text-sm font-semibold')}
-                >
-                  {/* The leading slot, kept empty: every other row opens with
-                      a tile, and a label starting 36px to their left would
-                      read as a stray line of text. */}
-                  <span aria-hidden className="size-6 shrink-0" />
-                  <span>{retryLabel}</span>
-                </button>
-              </>
-            )}
             {action && (
               <>
-                {(items.length > 0 || failed) && (
+                {items.length > 0 && (
                   <Select.Separator className={SEPARATOR_CLASS} />
                 )}
                 {(() => {
                   const body = (
                     <>
                       {/* A dashed tile where a mark would be, at the mark's
-                          own size: the row lines up with the entities above it
-                          and still reads as "make a new one". */}
-                      <span className="border-outline flex size-6 shrink-0 items-center justify-center rounded-xs border-2 border-dashed">
-                        <Plus aria-hidden className="size-3.5" />
+                          own size — `size-8` is `IdentityMark`'s `md` — so the
+                          row lines up with the entities above it and still
+                          reads as "make a new one". */}
+                      <span className="border-outline flex size-8 shrink-0 items-center justify-center rounded-xs border-2 border-dashed">
+                        <Plus aria-hidden className="size-4" />
                       </span>
                       <span className="text-sm font-semibold">
                         {action.label}
@@ -609,10 +564,6 @@ function Segment({
  *
  * **A list of one is a dead end.** With nothing to switch to, no command and
  * no failure to retry, a segment renders inert and out of the tab order.
- *
- * **A failed list is not an empty one.** On `status="failed"` the segment
- * stays where it was — vanishing would strand the researcher — and the popup
- * carries the failure and its retry alongside any items already in hand.
  *
  * The host must give this a width it does not derive from its contents:
  * `container-type: inline-size` applies inline-size containment, so an element

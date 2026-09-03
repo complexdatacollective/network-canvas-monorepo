@@ -39,10 +39,27 @@ import { teamRole, teamRolesLabel } from '../lib/teamRoles.ts';
 const TEAM_KICKER = 'Team';
 const STUDY_KICKER = 'Study';
 
-/** Shared by both segments, because both failures recover the same way. */
-const RETRY_LABEL = 'Try again';
-
 type NamedTeam = { id: string; name: string };
+
+/**
+ * What leads a study in the switcher, in place of the identity mark a team
+ * gets. A monogram of a study's name says nothing the name beside it does not;
+ * the state the study is in is what a researcher is scanning for.
+ *
+ * NEUTRAL, and deliberately so. `ProtocolSummarySchema` carries `id`,
+ * `draftId`, `name`, `createdAt` and `updatedAt` — nothing that says whether a
+ * study is collecting, draft or closed — so this claims no state until the
+ * studies model lands (#1262). It is `aria-hidden`, so it makes no claim to a
+ * reader either; the study's name and its team carry the meaning.
+ */
+function StudyStatusDot() {
+  return (
+    <span
+      aria-hidden
+      className="bg-input-contrast/40 inline-block size-2 shrink-0 rounded-full"
+    />
+  );
+}
 
 /**
  * The team this lockup is about: the one the COMMITTED URL names wherever a
@@ -144,35 +161,25 @@ function useStudySegment(
         // the switcher exists precisely so the researcher can be sure.
         [{ id: studyId, name: studyId }];
 
+  // A lookup that could not be read is not this segment's to report: it says
+  // what it knows, which is the identifier, and the shell's own error surface
+  // owns the outage.
   const status: SwitcherStatus =
-    owner.status === 'unavailable' || siblings.isError
-      ? 'failed'
-      : owner.status === 'pending' ||
-          (teamId !== undefined && siblings.isPending)
-        ? 'loading'
-        : 'ready';
+    owner.status === 'pending' || (teamId !== undefined && siblings.isPending)
+      ? 'loading'
+      : 'ready';
 
   return {
     kicker: STUDY_KICKER,
     items,
     currentId: studyId,
     status,
+    renderMark: () => <StudyStatusDot />,
     onSelect: (id: string) =>
       // Not awaited, and deliberately: a blocked navigation's promise parks
       // rather than rejecting, and it resolves later on some unrelated commit
       // (§6.5). Nothing after this depends on it.
       void navigate({ to: '/study/$studyId', params: { studyId: id } }),
-    // Both halves, because either can be what failed. An `unavailable` owner
-    // leaves `siblings` disabled on an empty team id, so refetching it alone
-    // would re-ask nothing and leave the segment exactly as the researcher
-    // found it; a failed siblings list has an owner that succeeded, so its
-    // retry is the one that has anything to do.
-    onRetry: () => {
-      owner.retry();
-      if (teamId !== undefined) void siblings.refetch();
-    },
-    failureMessage: 'The studies in this team could not be loaded.',
-    retryLabel: RETRY_LABEL,
     // The way back to all of the team's studies, which §5.5 says the study
     // chip always offers. It cannot come from the team segment instead:
     // choosing the team already current is a no-op there, by design. A
@@ -220,30 +227,18 @@ export default function EntityLockup({ className }: { className?: string }) {
   // role the switcher can state rather than guess.
   const activeMember = authClient.useActiveMember();
 
-  const list = teams.data ?? [];
-  // An EMPTY list and a list that could not be read are the same `[]` here,
-  // and they mean opposite things. Better Auth holds `data` at `null` when a
-  // request fails and records the error instead, so a researcher who belongs
-  // to four teams and whose list request failed would silently get the same
-  // treatment as one who belongs to none: no switcher, no explanation, and no
-  // way to change teams short of reloading the page. `failed` is how that
-  // difference is expressed — the trigger stays and the popup carries the
-  // retry.
-  //
   // A list that failed while an EARLIER one is still in hand is not a special
-  // case either: Better Auth leaves that `data` in place, so those teams stay
-  // in `items` and remain the researcher's way to every team they name, with
-  // the failure and its retry beneath them.
-  const teamStatus: SwitcherStatus = teams.error
-    ? 'failed'
-    : teams.isPending
-      ? 'loading'
-      : 'ready';
+  // case: Better Auth leaves that `data` in place, so those teams stay in
+  // `items` and remain the researcher's way to every team they name. A failure
+  // with nothing cached leaves this empty, and reporting THAT belongs to the
+  // shell's own error surface rather than to a second account of it in here.
+  const list = teams.data ?? [];
+  const teamStatus: SwitcherStatus = teams.isPending ? 'loading' : 'ready';
   // No teams: there is no team to name, and a switcher that names nothing
   // tells the researcher less than no switcher at all. §6.4's `/no-team` route
-  // is where a researcher with no team belongs. Only a RESOLVED, unfailed
-  // empty list means that — the other two states keep the segment, one showing
-  // a skeleton and the other a retry.
+  // is where a researcher with no team belongs. Only a RESOLVED empty list
+  // means that; while the list is still loading the segment stays, showing a
+  // skeleton.
   const hasTeamSegment = teamStatus !== 'ready' || list.length > 0;
   const current = currentTeam(list, activeTeam.data, committedTeamId);
 
@@ -276,9 +271,6 @@ export default function EntityLockup({ className }: { className?: string }) {
         onSelect: (id: string) =>
           // Not awaited, for the reason `SwitcherWithStudy` records.
           void navigate({ to: '/team/$teamId', params: { teamId: id } }),
-        onRetry: () => void teams.refetch(),
-        failureMessage: 'Your teams could not be loaded.',
-        retryLabel: RETRY_LABEL,
         // Team administration beneath the list, as §5.5 places it: choosing a
         // team and administering one are different acts, and the separator the
         // switcher draws is what says so. It navigates rather than being a

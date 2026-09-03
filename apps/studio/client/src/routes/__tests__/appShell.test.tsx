@@ -51,8 +51,6 @@ const fixtures = vi.hoisted(() => ({
   // supposed to stay silent where no study is on screen, which is a claim
   // about requests rather than about anything rendered.
   studyListRequests: [] as string[],
-  /** Whether `protocols.list` refuses, so the owner lookup can be made to fail. */
-  studyListFails: false,
 }));
 
 vi.mock('../../lib/auth.ts', () => ({
@@ -99,9 +97,6 @@ vi.mock('../../lib/api.ts', () => ({
           queryKey: ['protocols', input.teamId],
           queryFn: () => {
             fixtures.studyListRequests.push(input.teamId);
-            if (fixtures.studyListFails) {
-              throw new Error('protocols.list refused');
-            }
             return fixtures.studies;
           },
         }),
@@ -210,7 +205,6 @@ beforeEach(() => {
   );
   fixtures.studies = [fixtures.STUDY_1, fixtures.STUDY_2];
   fixtures.studyListRequests = [];
-  fixtures.studyListFails = false;
 });
 
 describe('composed app shell', () => {
@@ -569,33 +563,6 @@ describe('the header switcher lockup', () => {
 
     expect(fixtures.studyListRequests).toEqual([]);
     expect(lockupSegments()).toBe(1);
-  });
-
-  it('re-asks the owner lookup when its retry is pressed', async () => {
-    // The failure is the OWNER lookup's, not the siblings'. With no owner
-    // there is no team to ask for siblings, so that query is disabled — and a
-    // retry that refetched only it would re-ask nothing and leave the segment
-    // exactly as the researcher found it.
-    fixtures.studyListFails = true;
-    renderAt('/study/study-1');
-
-    const study = await screen.findByRole('combobox', { name: /^Study/ });
-    await waitFor(() =>
-      expect(fixtures.studyListRequests).toEqual(['team-a', 'team-b']),
-    );
-
-    fireEvent.click(study);
-    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
-
-    // Both teams asked again: the active one and the one the fan-out reached.
-    await waitFor(() =>
-      expect(fixtures.studyListRequests).toEqual([
-        'team-a',
-        'team-b',
-        'team-a',
-        'team-b',
-      ]),
-    );
   });
 
   it('names a study none of the researcher’s teams owns by its identifier', async () => {

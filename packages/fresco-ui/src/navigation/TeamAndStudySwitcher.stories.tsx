@@ -114,8 +114,7 @@ const meta = {
           '',
           '- **`team` / `study`** — each a segment: `kicker`, `items`,',
           '  `currentId`, `onSelect`, and optionally `placeholder`, `action`,',
-          '  `status` (+ `onRetry`, `failureMessage`, `retryLabel`) and',
-          '  `renderMark`. Omit `study` and the control draws as one',
+          '  `status` and `renderMark`. Omit `study` and the control draws as one',
           '  segment, with no divider and no empty compartment.',
           '- **`items`** — `{ id, name, meta?, badge?, leading? }`. `leading`',
           '  replaces the identity mark for one item; `renderMark` replaces it',
@@ -364,127 +363,20 @@ export const ActionReachableByKeyboard: Story = {
   },
 };
 
-/** A failed list keeps its segment and offers a way out of the failure. */
-export const Failed: Story = {
-  args: {
-    team: {
-      ...teamSegment(),
-      items: [],
-      status: 'failed',
-      onRetry: fn(),
-      failureMessage: 'Your teams could not be loaded.',
-      retryLabel: 'Try again',
-    },
-  },
-  play: async ({ args, canvasElement }) => {
-    // The segment must never silently vanish: that strands the researcher.
-    const trigger = within(canvasElement).getByRole('combobox', {
-      name: /^Team/,
-    });
-    await userEvent.click(trigger);
-
-    const retry = await within(document.body).findByRole('button', {
-      name: 'Try again',
-    });
-    await expect(retry).toHaveAccessibleDescription(
-      'Your teams could not be loaded.',
-    );
-    await userEvent.click(retry);
-    await expect(args.team?.onRetry).toHaveBeenCalledTimes(1);
-  },
-};
-
-/**
- * A failure with NO cached items still keeps its retry out of the listbox.
- *
- * Base UI moves `role="listbox"` onto the popup when no `Select.List` is
- * rendered, which put the message and the retry inside the listbox — a
- * structure a screen reader may skip or misannounce, since a listbox holds
- * options and nothing else. The list is always rendered, empty if need be.
- */
-export const FailedRetryStaysOutsideTheListbox: Story = {
-  args: {
-    team: {
-      ...teamSegment(),
-      items: [],
-      status: 'failed',
-      onRetry: fn(),
-      failureMessage: 'Your teams could not be loaded.',
-      retryLabel: 'Try again',
-    },
-    study: undefined,
-  },
-  play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole('combobox'));
-    const listbox = await within(document.body).findByRole('listbox');
-    const retry = within(document.body).getByRole('button', {
-      name: 'Try again',
-    });
-    await expect(listbox.contains(retry)).toBe(false);
-    // And the role did not fall through to the popup, which is what put the
-    // retry inside it.
-    await expect(listbox).not.toHaveAttribute('data-side');
-  },
-};
-
-/**
- * A retry that fails again is still on screen to say so.
- *
- * Closing the popup first would hide the only place the failure is stated: the
- * trigger would flicker through its loading state and settle back exactly as
- * it was, with nothing to tell a researcher — sighted or not — that the second
- * attempt went the same way as the first.
- */
-export const RetryKeepsTheFailureVisible: Story = {
-  args: {
-    team: {
-      ...teamSegment(),
-      items: [],
-      status: 'failed',
-      onRetry: fn(),
-      failureMessage: 'Your teams could not be loaded.',
-      retryLabel: 'Try again',
-    },
-    study: undefined,
-  },
-  play: async ({ args, canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole('combobox'));
-    const popup = within(document.body);
-    await userEvent.click(
-      await popup.findByRole('button', { name: 'Try again' }),
-    );
-
-    await expect(args.team?.onRetry).toHaveBeenCalled();
-    // The request is still in flight and the popup has not gone anywhere, so
-    // the message the retry answers is still the one being read.
-    await expect(
-      popup.getByText('Your teams could not be loaded.'),
-    ).toBeVisible();
-    await expect(
-      popup.getByRole('button', { name: 'Try again' }),
-    ).toBeVisible();
-  },
-};
-
 /**
  * A segment with no mark keeps its words at every width.
  *
  * The column collapses to the identity mark, which stands in for the name —
- * but a failed list with nothing cached has no current entity and therefore no
- * mark. Collapsing anyway would leave a bare chevron: a control that is still
- * worth opening, because the retry is inside it, with nothing on it to say so.
+ * but a `currentId` naming nothing in `items` has no mark to collapse to.
+ * Collapsing anyway would leave a bare chevron on a control still worth
+ * opening, with nothing on it to say what it switches.
  */
 export const NoMarkStaysVisibleWhenNarrow: Story = {
   args: {
     team: {
       ...teamSegment(),
-      items: [],
       currentId: undefined,
       placeholder: 'Choose a team',
-      status: 'failed',
-      onRetry: fn(),
-      failureMessage: 'Your teams could not be loaded.',
-      retryLabel: 'Try again',
     },
     study: undefined,
   },
@@ -530,33 +422,6 @@ export const SelectedMetadataKeepsItsContrast: Story = {
       const opacity = getComputedStyle(row.meta).opacity;
       await expect(opacity).toBe(row.selected ? '1' : '0.7');
     }
-  },
-};
-
-/** A list that failed while an earlier one is still in hand keeps showing it. */
-export const FailedWithStaleItems: Story = {
-  args: {
-    team: {
-      ...teamSegment(),
-      status: 'failed',
-      onRetry: fn(),
-      failureMessage: 'Your teams could not be loaded.',
-      retryLabel: 'Try again',
-    },
-  },
-  play: async ({ canvasElement }) => {
-    await userEvent.click(
-      within(canvasElement).getByRole('combobox', { name: /^Team/ }),
-    );
-    const listbox = await within(document.body).findByRole('listbox');
-    await expect(within(listbox).getAllByRole('option')).toHaveLength(3);
-    // The retry is in the popup, never among the options.
-    await expect(
-      within(listbox).queryByRole('button', { name: 'Try again' }),
-    ).toBeNull();
-    await expect(
-      within(document.body).getByRole('button', { name: 'Try again' }),
-    ).toBeInTheDocument();
   },
 };
 
@@ -698,14 +563,104 @@ export const LongNames: Story = {
       'Northwestern Social Networks and Health Innovations Laboratory',
     );
 
-    // Nothing is cut off: the box is as wide as the text inside it.
+    // Given room, the whole name is shown: nothing here caps its width, so a
+    // name is only ever cut by a container too small for it.
     await expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth + 1);
+  },
+};
 
-    // And nothing clips it, in either axis.
-    const style = getComputedStyle(name);
-    await expect(['hidden', 'clip']).not.toContain(style.overflowX);
-    await expect(['hidden', 'clip']).not.toContain(style.overflowY);
-    await expect(style.textOverflow).not.toBe('ellipsis');
+/**
+ * Both names give way by the character before either gives way entirely.
+ *
+ * Three widths, and the same two names in each. At `72rem` both are whole. At
+ * `38rem` — still above the container's `xl` collapse threshold, so the words
+ * are still on screen — neither fits, and each is cut with an ellipsis that
+ * keeps the beginning of a name, the part that distinguishes it. At `20rem`
+ * the threshold has passed, the words leave the layout altogether and the
+ * marks stand in for them: an ellipsis over a character or two says less than
+ * a mark does.
+ */
+export const TruncatesAsTheContainerShrinks: Story = {
+  args: {
+    team: {
+      ...teamSegment(),
+      items: [
+        {
+          id: 'team_5',
+          name: 'Northwestern Social Networks and Health Innovations Laboratory',
+          meta: '12 studies',
+          badge: 'Owner',
+        },
+        ...teams.slice(1),
+      ],
+    },
+    study: {
+      ...studySegment(),
+      items: [
+        {
+          id: 'study_1',
+          name: 'Wave 1 pilot, adolescent friendship nominations',
+          meta: 'Collecting',
+          // A study is led by its status, never by an identity mark: the
+          // monogram of a study says nothing the name does not, and the state
+          // it is in is what a researcher is looking for.
+          leading: <StatusPip tone="bg-success" />,
+        },
+        ...studies.slice(1),
+      ],
+      currentId: 'study_1',
+    },
+  },
+  decorators: [
+    (Story) => (
+      <div className="flex flex-col gap-4">
+        {(['72rem', '38rem', '20rem'] as const).map((width) => (
+          <div key={width} data-width={width} style={{ width }}>
+            <Story />
+          </div>
+        ))}
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const at = (width: string) =>
+      canvasElement.querySelector<HTMLElement>(`[data-width="${width}"]`)!;
+
+    const nameIn = (host: HTMLElement, text: string) =>
+      within(host).getByText(text);
+
+    const TEAM =
+      'Northwestern Social Networks and Health Innovations Laboratory';
+    const STUDY = 'Wave 1 pilot, adolescent friendship nominations';
+
+    // Wide: whole, both of them. `scrollWidth` is what the text WANTS; where
+    // it fits inside the box there is nothing to cut.
+    for (const text of [TEAM, STUDY]) {
+      const el = nameIn(at('72rem'), text);
+      await expect(el.scrollWidth).toBeLessThanOrEqual(el.clientWidth + 1);
+    }
+
+    // Mid: both cut, and cut with an ellipsis rather than simply clipped.
+    for (const text of [TEAM, STUDY]) {
+      const el = nameIn(at('38rem'), text);
+      // Above the collapse threshold, so the words are still in the layout —
+      // otherwise this would be asserting truncation of a hidden column.
+      await expect(getComputedStyle(el.parentElement!).position).not.toBe(
+        'absolute',
+      );
+      await expect(el.scrollWidth).toBeGreaterThan(el.clientWidth);
+      await expect(getComputedStyle(el).textOverflow).toBe('ellipsis');
+      // Still on one line: an ellipsis is the answer, not a wrap.
+      await expect(getComputedStyle(el).whiteSpace).toBe('nowrap');
+    }
+
+    // Narrow: the words are out of the layout entirely and the marks carry
+    // the segments. They stay in the accessible name — `NarrowContainer`
+    // asserts that half.
+    for (const text of [TEAM, STUDY]) {
+      const column = nameIn(at('20rem'), text).parentElement!;
+      await expect(getComputedStyle(column).position).toBe('absolute');
+    }
   },
 };
 

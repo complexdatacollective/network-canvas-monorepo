@@ -310,48 +310,36 @@ describe('an active-team write whose refresh does not land', () => {
 });
 
 /**
- * A team list that could not be read is not a researcher with no teams, and
- * `teams.data ?? []` makes the two indistinguishable. The one who belongs to
- * four teams then gets a header with no switcher in it, no word of what went
- * wrong, and no way to a different team but reloading the page.
+ * The switcher reports no failure of its own — it shows what it was given, and
+ * the shell above owns the outage. These two say what that leaves on screen.
  */
 describe('the team list, when it cannot be read', () => {
-  it('says so and offers to ask again', async () => {
-    const refetch = vi.fn();
+  it('draws no team segment when nothing could be read', async () => {
     fixtures.useListOrganizations.mockReturnValue({
       data: null,
       isPending: false,
       error: { status: 500, message: 'unavailable' },
-      refetch,
+      refetch: vi.fn(),
     });
     renderAt('/team/team-a');
+    await screen.findByRole('button', { name: 'Account' });
 
-    // The switcher is still there, and it must be: one that vanished would
-    // leave the researcher with no explanation and no way to another team
-    // short of reloading. It names no team because the list that would have
-    // named the URL's team is the thing that failed.
-    fireEvent.click(
-      await screen.findByRole('combobox', { name: 'Team Choose a team' }),
-    );
-
-    expect(
-      await screen.findByText('Your teams could not be loaded.'),
-    ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-
-    expect(refetch).toHaveBeenCalledTimes(1);
+    // A resolved read with nothing in it, as far as this component can tell.
+    // It draws no segment rather than an empty one, and says nothing about
+    // why — reporting the failure belongs to the layer that made the request.
+    expect(screen.queryByRole('combobox', { name: /^Team/ })).toBeNull();
+    expect(screen.queryByText('Your teams could not be loaded.')).toBeNull();
   });
 
   it('keeps an earlier list usable when a later read fails', async () => {
     // Better Auth leaves the last good `data` in place beside the error, and
-    // those teams are still the researcher's way to every team they name. The
-    // failure is reported alongside them rather than instead of them.
-    const refetch = vi.fn();
+    // those teams are still the researcher's way to every team they name. A
+    // later read failing must not take them away.
     fixtures.useListOrganizations.mockReturnValue({
       data: [fixtures.TEAM_A, fixtures.TEAM_B],
       isPending: false,
       error: { status: 500, message: 'unavailable' },
-      refetch,
+      refetch: vi.fn(),
     });
     renderAt('/team/team-a');
 
@@ -361,12 +349,6 @@ describe('the team list, when it cannot be read', () => {
 
     expect(
       await screen.findByRole('option', { name: /^Beta research team/ }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('Your teams could not be loaded.'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Try again' }),
     ).toBeInTheDocument();
   });
 

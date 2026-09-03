@@ -5,20 +5,11 @@ import { authClient } from './auth.ts';
 
 type Study = Awaited<ReturnType<typeof rpcClient.protocols.list>>[number];
 
-/**
- * `retry` re-asks every question the lookup asked — the team list and the
- * studies lists — because any of them is what an `unavailable` answer came
- * from, and a retry that refetches only one of them can leave the screen in
- * the state the researcher pressed it to get out of. It is on every variant
- * rather than on `unavailable` alone so a caller can wire one handler once,
- * and it is a no-op where nothing was asked.
- */
-export type StudyOwner = { retry: () => void } & (
+export type StudyOwner =
   | { status: 'pending' }
   | { status: 'unavailable' }
   | { status: 'notFound' }
-  | { status: 'found'; teamId: string; study: Study }
-);
+  | { status: 'found'; teamId: string; study: Study };
 
 /**
  * Which team owns `studyId`, resolved from the study id itself rather than
@@ -91,19 +82,11 @@ export function useStudyOwner(studyId: string | undefined): StudyOwner {
     ),
   });
 
-  // Every question this hook asked, asked again. `otherLists` is empty where
-  // the fan-out never happened, so this narrows to whatever actually ran.
-  const retry = () => {
-    void teams.refetch();
-    if (asked && activeTeamId !== undefined) void activeList.refetch();
-    for (const list of otherLists) void list.refetch();
-  };
-
-  if (!asked) return { status: 'pending', retry };
+  if (!asked) return { status: 'pending' };
   if (activeStudy !== undefined && activeTeamId !== undefined) {
-    return { status: 'found', teamId: activeTeamId, study: activeStudy, retry };
+    return { status: 'found', teamId: activeTeamId, study: activeStudy };
   }
-  if (!activeAnswered || teams.isPending) return { status: 'pending', retry };
+  if (!activeAnswered || teams.isPending) return { status: 'pending' };
 
   const ownerIndex = otherLists.findIndex((list) =>
     list.data?.some((candidate) => candidate.id === studyId),
@@ -113,12 +96,10 @@ export function useStudyOwner(studyId: string | undefined): StudyOwner {
     (candidate) => candidate.id === studyId,
   );
   if (owner !== undefined && study !== undefined) {
-    return { status: 'found', teamId: owner, study, retry };
+    return { status: 'found', teamId: owner, study };
   }
 
-  if (otherLists.some((list) => list.isPending)) {
-    return { status: 'pending', retry };
-  }
+  if (otherLists.some((list) => list.isPending)) return { status: 'pending' };
   if (
     activeList.isError ||
     otherLists.some((list) => list.isError) ||
@@ -128,7 +109,7 @@ export function useStudyOwner(studyId: string | undefined): StudyOwner {
     // same lie in a different place.
     (teams.error !== null && teams.data === null)
   ) {
-    return { status: 'unavailable', retry };
+    return { status: 'unavailable' };
   }
-  return { status: 'notFound', retry };
+  return { status: 'notFound' };
 }
