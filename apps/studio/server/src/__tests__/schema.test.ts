@@ -78,6 +78,14 @@ describe('generated schema documentation', () => {
     expect(readmeSection).toContain('studio_maintenance');
     expect(readmeSection).toContain('sections_immutable');
     expect(readmeSection).toContain('version_sections_insert_frozen');
+    expect(readmeSection).toContain('assets_metadata_immutable');
+    expect(readmeSection).toContain('asset_references_published_immutable');
+    expect(readmeSection).toContain('template_versions_immutable');
+    expect(readmeSection).toContain('template_version_sections_immutable');
+    expect(readmeSection).toContain('template_version_sections_insert_frozen');
+    expect(readmeSection).toContain('audit_export_request_immutable');
+    expect(readmeSection).toContain('audit_export_handle_single_use');
+    expect(readmeSection).toContain('audit_alert_link_immutable');
     expect(readmeSection).toContain('studies_closed_read_only');
     expect(readmeSection).toContain('study_waves_identity_immutable');
     expect(readmeSection).toContain('study_waves_parent_open');
@@ -100,9 +108,28 @@ describe('generated schema documentation', () => {
     expect(readmeSection).toContain(
       'Revokes UPDATE, DELETE, TRUNCATE from studio_app, studio_maintenance',
     );
+    // The narrow re-admission after that table's revocation. Without the
+    // matcher for it, the README would read stricter than the database is.
+    expect(readmeSection).toContain(
+      'Grants UPDATE (handle_consumed_at) to studio_app.',
+    );
     expect(svg).toContain('RLS policy team_isolation');
     expect(svg).toContain('RLS policy audit_team_isolation');
     expect(svg).toContain('sidecar trigger sections_immutable');
+    expect(svg).toContain('sidecar trigger assets_metadata_immutable');
+    expect(svg).toContain(
+      'sidecar trigger asset_references_published_immutable',
+    );
+    expect(svg).toContain('sidecar trigger template_versions_immutable');
+    expect(svg).toContain(
+      'sidecar trigger template_version_sections_immutable',
+    );
+    expect(svg).toContain(
+      'sidecar trigger template_version_sections_insert_frozen',
+    );
+    expect(svg).toContain('sidecar trigger audit_export_request_immutable');
+    expect(svg).toContain('sidecar trigger audit_export_handle_single_use');
+    expect(svg).toContain('sidecar trigger audit_alert_link_immutable');
     expect(svg).toContain('sidecar trigger studies_closed_read_only');
     expect(svg).toContain('sidecar trigger study_waves_identity_immutable');
     expect(svg).toContain('sidecar trigger study_waves_parent_open');
@@ -172,7 +199,11 @@ describe.skipIf(!db)('schema verification', () => {
       expect(tables.rows.map((r) => r.table_name).toSorted()).toEqual([
         'account',
         'api_tokens',
+        'asset_references',
+        'assets',
+        'audit_alert_outbox',
         'audit_events',
+        'audit_export_jobs',
         'command_log',
         'consent_documents',
         'consent_items',
@@ -202,6 +233,9 @@ describe.skipIf(!db)('schema verification', () => {
         'team_invitations',
         'team_members',
         'teams',
+        'template_version_sections',
+        'template_versions',
+        'templates',
         'user',
         'verification',
         'version_sections',

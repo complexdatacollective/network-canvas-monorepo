@@ -78,7 +78,11 @@ describe.skipIf(!db)('row-level security', () => {
     // Spelled out so a new tenant table cannot slip in without a policy.
     expect(expected).toEqual([
       'api_tokens',
+      'asset_references',
+      'assets',
+      'audit_alert_outbox',
       'audit_events',
+      'audit_export_jobs',
       'command_log',
       'consent_documents',
       'consent_items',
@@ -102,6 +106,9 @@ describe.skipIf(!db)('row-level security', () => {
       'study_role_grants',
       'study_waves',
       'team_invitation_deliveries',
+      'template_version_sections',
+      'template_versions',
+      'templates',
       'version_sections',
       'webhook_deliveries',
       'webhook_subscriptions',
