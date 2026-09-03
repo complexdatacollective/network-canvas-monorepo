@@ -120,12 +120,27 @@ describe('generated schema documentation', () => {
     expect(readmeSection).toContain('experiments_variants_frozen');
     expect(readmeSection).toContain('experiment_exposures_immutable');
     expect(readmeSection).toContain('participant_consents_session_own');
+    expect(readmeSection).toContain('participant_consents_document_published');
+    expect(readmeSection).toContain(
+      'participant_consent_item_responses_insert_frozen',
+    );
+    expect(readmeSection).toContain(
+      'participant_consents_required_items_affirmed',
+    );
+    expect(readmeSection).toContain('participant_consents_delete_audited');
+    expect(readmeSection).toContain(
+      'participant_consent_item_responses_delete_audited',
+    );
     expect(readmeSection).toContain('message_deliveries_template_applies');
     expect(readmeSection).toContain('study_schedules_time_zone_known');
     expect(readmeSection).toContain('schedule_occurrences_time_zone_known');
     expect(readmeSection).toContain('message_templates_publication_immutable');
     expect(readmeSection).toContain('message_delivery_payload_immutable');
     expect(readmeSection).toContain('message_delivery_events_immutable');
+    expect(readmeSection).toContain('schedule_occurrences_identity_immutable');
+    expect(readmeSection).toContain('message_delivery_events_provider_sent_it');
+    expect(readmeSection).toContain('message_deliveries_deletable');
+    expect(readmeSection).toContain('message_delivery_events_deletable');
     expect(readmeSection).toContain('edges_parent_writable_delete');
     expect(readmeSection).toContain('edges_parent_writable_insert');
     expect(readmeSection).toContain('edges_parent_writable_update');
@@ -205,6 +220,21 @@ describe('generated schema documentation', () => {
     expect(svg).toContain('sidecar trigger experiment_exposures_immutable');
     expect(svg).toContain('sidecar trigger participant_consents_session_own');
     expect(svg).toContain(
+      'sidecar trigger participant_consents_document_published',
+    );
+    expect(svg).toContain(
+      'sidecar trigger participant_consent_item_responses_insert_frozen',
+    );
+    expect(svg).toContain(
+      'sidecar trigger participant_consents_required_items_affirmed',
+    );
+    expect(svg).toContain(
+      'sidecar trigger participant_consents_delete_audited',
+    );
+    expect(svg).toContain(
+      'sidecar trigger participant_consent_item_responses_delete_audited',
+    );
+    expect(svg).toContain(
       'sidecar trigger message_deliveries_template_applies',
     );
     expect(svg).toContain('sidecar trigger study_schedules_time_zone_known');
@@ -216,6 +246,14 @@ describe('generated schema documentation', () => {
     );
     expect(svg).toContain('sidecar trigger message_delivery_payload_immutable');
     expect(svg).toContain('sidecar trigger message_delivery_events_immutable');
+    expect(svg).toContain(
+      'sidecar trigger schedule_occurrences_identity_immutable',
+    );
+    expect(svg).toContain(
+      'sidecar trigger message_delivery_events_provider_sent_it',
+    );
+    expect(svg).toContain('sidecar trigger message_deliveries_deletable');
+    expect(svg).toContain('sidecar trigger message_delivery_events_deletable');
     expect(svg).toContain('sidecar trigger edges_parent_writable_delete');
     expect(svg).toContain('sidecar trigger edges_parent_writable_insert');
     expect(svg).toContain('sidecar trigger edges_parent_writable_update');
