@@ -97,7 +97,7 @@ export function ProtocolGalleryCard({
           noContainer
           spacing="md"
           shadow="none"
-          className="mt-auto flex flex-col gap-4 rounded-t-none"
+          className="bg-platinum [[data-theme=dark]_&]:bg-surface-1 mt-auto flex flex-col gap-4 rounded-t-none"
         >
           <div>
             <StageBar stages={stages} />
