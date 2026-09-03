@@ -525,78 +525,25 @@ describe.skipIf(!db)('schema verification', () => {
 
 // drizzle-kit push introspects `public`, so these run in scratch databases.
 describe.skipIf(!db)('schema application', () => {
-  it('normalizes legacy blank team names before enforcing the current schema', async () => {
+  it('keys accounts on (issuer, accountId), both required', async () => {
     await withScratch(createScratchDatabase, async (pool) => {
       await applySchema(pool);
-      await pool.query(
-        'ALTER TABLE teams DROP CONSTRAINT IF EXISTS teams_name_nonblank_check',
-      );
-      await pool.query(
-        `INSERT INTO teams (id, name, slug) VALUES ('legacy-team', E' \t ', 'legacy-team')`,
-      );
-
-      await applySchema(pool);
-
-      const migrated = await pool.query<{ name: string }>(
-        `SELECT name FROM teams WHERE id = 'legacy-team'`,
-      );
-      expect(migrated.rows[0]?.name).toBe('Team legacy-team');
-
-      await expect(
-        pool.query(
-          `INSERT INTO teams (id, name, slug) VALUES ('new-team', '   ', 'new-team')`,
-        ),
-      ).rejects.toMatchObject({ constraint: 'teams_name_nonblank_check' });
-
-      await applySchema(pool);
-      const remigrated = await pool.query<{ name: string }>(
-        `SELECT name FROM teams WHERE id = 'legacy-team'`,
-      );
-      expect(remigrated.rows[0]?.name).toBe('Team legacy-team');
-    });
-  });
-
-  it('backfills account.issuer for rows written before better-auth 1.7', async () => {
-    await withScratch(createScratchDatabase, async (pool) => {
-      await applySchema(pool);
-      // The shape an older build left: no issuer column, so no index on it.
-      await pool.query('ALTER TABLE account DROP COLUMN issuer');
       await pool.query(
         `INSERT INTO "user" (id, name, email, "emailVerified")
-         VALUES ('u1', 'Legacy', 'legacy@example.org', true)`,
+         VALUES ('u1', 'Researcher', 'researcher@example.org', true)`,
       );
-      const tenantIssuer = 'https://login.microsoftonline.com/tenant-1/v2.0';
-      const idToken = [
-        Buffer.from('{"alg":"RS256"}').toString('base64url'),
-        Buffer.from(JSON.stringify({ iss: tenantIssuer })).toString(
-          'base64url',
-        ),
-        'signature',
-      ].join('.');
       await pool.query(
-        `INSERT INTO account (id, "accountId", "providerId", "userId", "idToken", "updatedAt")
-         VALUES ('credential', 'u1', 'credential', 'u1', NULL, now()),
-                ('google', 'sub-google', 'google', 'u1', NULL, now()),
-                ('microsoft', 'oid-1', 'microsoft', 'u1', $1, now()),
-                ('microsoft-no-token', 'oid-2', 'microsoft', 'u1', 'not.a.jwt', now())`,
-        [idToken],
+        `INSERT INTO account (id, "accountId", "providerId", issuer, "userId", "updatedAt")
+         VALUES ('google', 'sub-google', 'google', 'https://accounts.google.com', 'u1', now())`,
       );
 
-      await applySchema(pool);
-
-      const issuers = await pool.query<{ id: string; issuer: string }>(
-        `SELECT id, issuer FROM account ORDER BY id`,
-      );
-      expect(issuers.rows).toEqual([
-        { id: 'credential', issuer: 'local:credential' },
-        { id: 'google', issuer: 'https://accounts.google.com' },
-        { id: 'microsoft', issuer: tenantIssuer },
-        { id: 'microsoft-no-token', issuer: 'local:oauth:microsoft' },
-      ]);
+      // better-auth 1.7 keys every account lookup on (issuer, accountId): an
+      // account without an issuer is unmatchable, and two accounts under one
+      // key would make the lookup ambiguous.
       await expect(
         pool.query(
           `INSERT INTO account (id, "accountId", "providerId", "userId", "updatedAt")
-           VALUES ('dup', 'sub-google', 'google', 'u1', now())`,
+           VALUES ('no-issuer', 'sub-2', 'google', 'u1', now())`,
         ),
       ).rejects.toMatchObject({ column: 'issuer' });
       await expect(

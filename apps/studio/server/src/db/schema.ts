@@ -106,62 +106,6 @@ export const SCHEMA_TABLES = Object.values(SCHEMA)
 
 export const SCHEMA_LOCK_KEY = 4021775688147129;
 
-// Runs under the schema advisory lock before drizzle-kit reconciles new
-// constraints. Each block repairs rows an older build wrote so the database
-// can begin enforcing the current contract; each is a no-op on a fresh
-// database (the to_regclass guard) and on a current one (the predicates).
-export const PRE_PUSH_MIGRATIONS = [
-  // Better Auth formerly accepted whitespace-only organization names.
-  `DO $$ BEGIN
-    IF to_regclass('"teams"') IS NOT NULL THEN
-      UPDATE teams
-      SET name = 'Team ' || id
-      WHERE name !~ '[^[:space:]]';
-    END IF;
-  END $$;`,
-  // account.issuer arrived with better-auth 1.7 and is required. Postgres
-  // refuses to add a NOT NULL column to a populated table, and better-auth's
-  // own migrator refuses the same, so the column is added nullable here and
-  // filled the way each provider would have: the credential and Google
-  // issuers are fixed strings, Microsoft's is the id token's per-tenant
-  // `iss`, decoded from the stored token. A row whose issuer still cannot be
-  // recovered gets better-auth's synthetic default for an issuer-less
-  // provider; it never matches a real sign-in, which relinks the account.
-  // push then sets NOT NULL and adds the unique index over filled rows.
-  `DO $$
-  DECLARE
-    r record;
-    payload text;
-    iss text;
-  BEGIN
-    IF to_regclass('"account"') IS NULL THEN
-      RETURN;
-    END IF;
-    ALTER TABLE account ADD COLUMN IF NOT EXISTS issuer text;
-    UPDATE account SET issuer = 'local:credential'
-      WHERE issuer IS NULL AND "providerId" = 'credential';
-    UPDATE account SET issuer = 'https://accounts.google.com'
-      WHERE issuer IS NULL AND "providerId" = 'google';
-    FOR r IN
-      SELECT id, "idToken" FROM account
-      WHERE issuer IS NULL AND "idToken" IS NOT NULL
-    LOOP
-      BEGIN
-        payload := translate(split_part(r."idToken", '.', 2), '-_', '+/');
-        payload := rpad(payload, ((length(payload) + 3) / 4) * 4, '=');
-        iss := convert_from(decode(payload, 'base64'), 'UTF8')::jsonb ->> 'iss';
-        IF iss <> '' THEN
-          UPDATE account SET issuer = iss WHERE id = r.id;
-        END IF;
-      EXCEPTION WHEN OTHERS THEN
-        NULL;
-      END;
-    END LOOP;
-    UPDATE account SET issuer = 'local:oauth:' || "providerId"
-      WHERE issuer IS NULL;
-  END $$;`,
-] as const;
-
 export type StaleSchema = {
   kind: 'stale';
   /** `unstamped` is a database carrying the tables but no fingerprint row. */

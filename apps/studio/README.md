@@ -179,18 +179,16 @@ The PL/pgSQL immutability functions and triggers, which Drizzle cannot express,
 ride in raw-SQL sidecar exports beside their tables — as do the parts of
 row-level security that drizzle-kit does not manage: the roles, `FORCE ROW
 LEVEL SECURITY`, and the grants (see [Tenancy](#tenancy)).
-`server/src/db/schema.ts` collects all of it into the `SCHEMA`,
-`PRE_PUSH_MIGRATIONS`, and `SIDECARS` exports that `server/scripts/apply.ts`
-applies. Sidecar order carries a rule the test suite pins: the broad grant over
-every table runs first, right after the roles are created, and every narrower
-revocation (the outboxes, the audit log) runs after it, because a revocation
-placed before the broad grant is silently undone by it. The pre-push list is
-reserved for bounded, idempotent compatibility repairs that must precede a new
-constraint; its entries give legacy whitespace-only team names a deterministic
-`Team <id>` fallback before the nonblank-name check is installed, and backfill
-`account.issuer` for accounts written before better-auth 1.7 required it. It
-runs under the schema advisory lock and is included in the fingerprint, but is
-not a replacement for the versioned migration system required before release.
+`server/src/db/schema.ts` collects all of it into the `SCHEMA` and `SIDECARS`
+exports that `server/scripts/apply.ts` applies. Sidecar order carries a rule
+the test suite pins: the broad grant over every table runs first, right after
+the roles are created, and every narrower revocation (the outboxes, the audit
+log) runs after it, because a revocation placed before the broad grant is
+silently undone by it. There are no migrations: Studio is in active
+development with no live data, so a database whose schema is not this build's
+is reset and reseeded (`db:reset`, and every `pnpm dev` boot) rather than
+migrated. The versioned migration system arrives with the first release that
+has data to keep.
 The policies themselves are `pgPolicy` entries on the table definitions, which
 is why `drizzle-kit` is pinned to the 1.0 release candidate: the stable line's
 `push` silently drops their `USING`/`WITH CHECK` expressions.
@@ -205,7 +203,7 @@ is why `drizzle-kit` is pinned to the 1.0 release candidate: the stable line's
 
 Open the image for the full-size diagram. Tables with row-level security or trigger sidecars carry those details as SVG tooltips. The diagram shows physical foreign-key constraints; deliberately unconstrained logical references are not drawn as relationships. The renderer uses `1`/`*` edge endpoints, so optionality remains visible through each column's not-null marker rather than the edge.
 
-Schema fingerprint: `08ad02e49700aca9f3ae12a8fc7ce96e7865385cb3038009abf1e19bd21dbb59`.
+Schema fingerprint: `ac25eb367843596b4632163d6bd8686e1c4fc635977a5fbcd32ed9cf815b7a46`.
 
 Sidecar behavior that cannot be represented as ERD relationships:
 

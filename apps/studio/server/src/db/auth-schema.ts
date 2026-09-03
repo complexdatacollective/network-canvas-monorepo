@@ -61,7 +61,6 @@ const account = pgTable(
     // omitting the column made every credential and OAuth account
     // unmatchable while looking otherwise fine — magic-link, the only path
     // exercised until #1256's admin account, creates no account row at all.
-    // Existing rows are backfilled by PRE_PUSH_MIGRATIONS (db/schema.ts).
     issuer: text('issuer').notNull(),
     userId: text('userId')
       .notNull()
