@@ -22,9 +22,9 @@ import {
  * in, and — when they are inside one — the study, as a single object that
  * reads as a path.
  *
- * Both segments are `EntitySwitcher` configurations rather than two bespoke
- * chips, so the keyboard behaviour, the selection semantics, the failure
- * handling and the collapse rule live in one component and cannot drift apart.
+ * Both segments are `TeamAndStudySwitcher` segment configurations rather than
+ * two bespoke chips, so the keyboard behaviour, the selection semantics, the
+ * failure handling and the collapse rule live in one component and cannot drift apart.
  *
  * **The study segment is ABSENT, not empty, outside a study.** That decision
  * is made here rather than inside a segment component, because a segment that

@@ -145,16 +145,7 @@ function resolvedTeams(teams: { id: string; name: string }[]) {
   return { data: teams, isPending: false, error: null, refetch: vi.fn() };
 }
 
-/**
- * How many segments the header's lockup is currently drawing, read from the
- * bordered box the switchers share.
- *
- * The count is the point. `SwitcherLockup` draws a box and a divider for every
- * CHILD it is given, and a child that renders `null` is still a child, so a
- * study segment left mounted outside a study would leave an empty compartment
- * beside the team. "Absent" and "empty" are different structures and only a
- * count tells them apart.
- */
+// Helper utilities for interacting with the header switcher in tests.
 /**
  * Presses a listbox option in the header's switcher.
  *
