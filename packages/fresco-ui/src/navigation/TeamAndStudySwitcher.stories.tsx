@@ -403,6 +403,59 @@ export const NoCurrentEntity: Story = {
   },
 };
 
+/**
+ * The accessible name is one interpolated message, so a locale can put the
+ * entity type after the name. English wants "Team SONIC Lab"; Japanese wants
+ * the equivalent of "SONIC Lab team", which two separately translated strings
+ * joined by this component could never produce.
+ */
+export const LocalisedAccessibleName: Story = {
+  args: {
+    team: {
+      ...teamSegment(),
+      kicker: 'チーム',
+      accessibleName: (name) => `${name} チーム`,
+    },
+    study: undefined,
+  },
+  play: async ({ canvasElement }) => {
+    const trigger = within(canvasElement).getByRole('combobox');
+    // Name first, type second — the order the message chose, not the order the
+    // component would have imposed.
+    await expect(trigger).toHaveAccessibleName('SONIC Lab チーム');
+    // And it still contains what is on screen, so speech input can reach it.
+    await expect(trigger.textContent).toContain('SONIC Lab');
+  },
+};
+
+/** With no `accessibleName`, the name is the kicker and the entity, as before. */
+export const DefaultAccessibleName: Story = {
+  args: { study: undefined },
+  play: async ({ canvasElement }) => {
+    await expect(
+      within(canvasElement).getByRole('combobox'),
+    ).toHaveAccessibleName('Team SONIC Lab');
+  },
+};
+
+/** While the name is still loading, the label is the type alone. */
+export const LoadingAccessibleName: Story = {
+  args: {
+    team: {
+      ...teamSegment(),
+      items: [],
+      status: 'loading',
+      accessibleName: (name) => `${name} チーム`,
+    },
+    study: undefined,
+  },
+  play: async ({ canvasElement }) => {
+    const trigger = within(canvasElement).getByRole('combobox');
+    await expect(trigger).toHaveAccessibleName('Team');
+    await expect(trigger).toHaveAttribute('aria-busy', 'true');
+  },
+};
+
 /** Long names truncate in the segment and are readable in full in the list. */
 export const LongNames: Story = {
   args: {

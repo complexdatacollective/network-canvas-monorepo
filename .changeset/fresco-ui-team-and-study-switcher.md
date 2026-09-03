@@ -32,5 +32,13 @@ loading segment reserves the space its name will take, so the header does not
 reflow. Which presentation a segment is in follows a container query, not the
 viewport.
 
+The trigger's accessible name is one interpolated message the host supplies
+through `accessibleName`, rather than two separately translated strings this
+component joins. Word order is a property of the sentence — English wants
+"Team SONIC Lab" and Japanese the equivalent of "SONIC Lab team" — and no
+order the component picks is right everywhere. It defaults to the previous
+output, and warns in development when a supplied label does not contain the
+visible name, which a control's accessible name has to (WCAG 2.5.3).
+
 The type scale gains `text-2xs`, one step below `xs`, for the small uppercase
 labels that qualify a value rather than being one.

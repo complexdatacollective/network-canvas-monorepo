@@ -59,6 +59,35 @@ type SwitcherSegmentBase = {
    * a single item.
    */
   renderMark?: (item: SwitcherItem) => ReactNode;
+  /**
+   * The trigger's whole accessible name, built from the entity name it is
+   * showing.
+   *
+   * **Word order lives here, in the host's translation, because no order this
+   * component could pick is right in every locale.** English wants the type
+   * before the name — "Team SONIC Lab" — and Japanese wants it after, the
+   * equivalent of "SONIC Lab team". Others want a particle or brackets between
+   * them. That is a property of the sentence, not of the control, so it
+   * belongs in one interpolated message the translator owns:
+   *
+   * ```tsx
+   * accessibleName={(name) => t('switcher.teamLabel', { name })}
+   * //  en: "Team {name}"      ja: "{name} チーム"
+   * ```
+   *
+   * Two separately translated strings joined by this component cannot express
+   * that, however they are joined: `aria-labelledby` concatenates in the order
+   * of its IDREFs, so the order is the component's either way.
+   *
+   * Defaults to `${kicker} ${entityName}`, which is what the fixed pair of
+   * references produced before.
+   *
+   * It must CONTAIN the visible name: the accessible name of a control has to
+   * include its visible label (WCAG 2.5.3), so a speech-input user asking for
+   * what they can see reaches the control. Development builds warn when the
+   * returned string does not.
+   */
+  accessibleName?: (entityName: string) => string;
 };
 
 /**
@@ -202,6 +231,7 @@ function Segment({
   segment: SwitcherSegment;
 }) {
   const {
+    accessibleName,
     action,
     currentId,
     failureMessage,
@@ -214,8 +244,6 @@ function Segment({
     retryLabel,
     status = 'ready',
   } = segment;
-  const kickerId = useId();
-  const nameId = useId();
   const failureId = useId();
   const portalContainer = usePortalContainer();
 
@@ -230,6 +258,39 @@ function Segment({
   const current = items.find((item) => item.id === currentId);
   const failed = status === 'failed';
   const loading = status === 'loading';
+
+  /*
+    The name the trigger is showing, and the accessible name built from it.
+
+    While loading there is no name yet, so the label is the kicker alone rather
+    than a sentence with an empty slot in it — "Team" says what the control is,
+    and `aria-busy` says the rest.
+  */
+  const shownName = current?.name ?? placeholder;
+  const triggerLabel =
+    loading || shownName === undefined
+      ? kicker
+      : (accessibleName?.(shownName) ?? `${kicker} ${shownName}`);
+
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    accessibleName &&
+    !loading &&
+    shownName !== undefined &&
+    !triggerLabel.includes(shownName)
+  ) {
+    // Not thrown: a translation that has drifted should not take down a header.
+    // Loud enough to fix, quiet enough to ship around. The convention this
+    // package already uses for a development-time complaint — see
+    // `form/utils/focusFirstError.ts`.
+    // eslint-disable-next-line no-console
+    console.warn(
+      `EntitySwitcher: accessibleName returned ${JSON.stringify(triggerLabel)}, ` +
+        `which does not contain the visible name ${JSON.stringify(shownName)}. ` +
+        'A control\u2019s accessible name has to contain its visible label ' +
+        '(WCAG 2.5.3) so speech input can reach it by what is on screen.',
+    );
+  }
 
   // What the list is for. Any one of these is enough to make opening it worth
   // a tab stop; none of them means the segment is a label in a frame.
@@ -246,14 +307,10 @@ function Segment({
         markFor(current, renderMark, 'md')
       ) : null}
       <span className={cx('flex min-w-0 flex-col items-start', COLLAPSE_CLASS)}>
-        <span
-          id={kickerId}
-          className="text-2xs leading-tight font-semibold uppercase opacity-70"
-        >
+        <span className="text-2xs leading-tight font-semibold uppercase opacity-70">
           {kicker}
         </span>
         <span
-          id={nameId}
           title={current?.name}
           className={cx(
             'truncate text-sm leading-tight font-semibold',
@@ -278,10 +335,11 @@ function Segment({
   if (!hasList) {
     return (
       /*
-        Not a button and not focusable: there is nothing to activate. The two
-        spans are read in document order, so no `aria-labelledby` is needed
-        here — that wiring exists on the interactive segment only because a
-        control's name is COMPUTED rather than read.
+        Not a button and not focusable: there is nothing to activate, so this
+        has no accessible NAME to compute — the two spans are read as ordinary
+        content, in document order. `accessibleName` is about a control's name
+        and does not apply here; the reading order a locale wants for plain
+        content is a matter of how the two spans are laid out, which is CSS.
       */
       <span
         data-switcher-segment
@@ -325,18 +383,24 @@ function Segment({
         className={cx(SEGMENT_CLASS, divider)}
         aria-busy={loading || undefined}
         /*
-          A whole translated word and a datum, joined into "Team SONIC Lab" by
-          the accessible-name algorithm rather than by JavaScript. An
-          `aria-label` would REPLACE the visible name instead of qualifying it,
-          and a template string would bake English word order into the name.
+          One string, because the accessible name is one sentence.
 
-          Referenced by id rather than left to the control's own contents: text
-          concatenation inserts a space only between BLOCK-level children, and
-          these two are inline, so the computed name would read "TeamSONIC
-          Lab". Multiple `aria-labelledby` references are always joined with a
-          space.
+          This used to reference the kicker and the name spans in that order.
+          That was chosen to avoid baking English word order into the name —
+          and did exactly that anyway: `aria-labelledby` concatenates in the
+          order of its IDREFS, not in document order, so "Team SONIC Lab" was
+          the only name it could ever produce. A locale wanting the type after
+          the name, as Japanese does, had no way to say so.
+
+          Word order is a property of the sentence, so it lives in the host's
+          interpolated message via `accessibleName`. The default keeps the old
+          output exactly.
+
+          It still CONTAINS the visible text, which was the reason to avoid
+          `aria-label` before: a name that replaced what is on screen would put
+          a speech-input user out of reach of the control (WCAG 2.5.3).
         */
-        aria-labelledby={`${kickerId} ${nameId}`}
+        aria-label={triggerLabel}
       >
         {face}
       </Select.Trigger>
