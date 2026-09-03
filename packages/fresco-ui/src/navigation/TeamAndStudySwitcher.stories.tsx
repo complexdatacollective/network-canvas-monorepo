@@ -175,6 +175,9 @@ export const SegmentsFillTheFrame: Story = {
     await expect(segments).toHaveLength(2);
 
     const frameBox = frame.getBoundingClientRect();
+    // The frame's OWN border width, not a fixed figure: a segment sits inside
+    // it, so that is exactly how far its edge may be from the frame's.
+    const inset = parseFloat(getComputedStyle(frame).borderTopWidth) + 0.5;
     for (const segment of segments) {
       const box = segment.getBoundingClientRect();
       /*
@@ -188,23 +191,23 @@ export const SegmentsFillTheFrame: Story = {
       const bottom = frameBox.bottom - box.bottom;
       await expect(top).toBeGreaterThanOrEqual(0);
       await expect(bottom).toBeGreaterThanOrEqual(0);
-      await expect(top).toBeLessThanOrEqual(1.5);
-      await expect(bottom).toBeLessThanOrEqual(1.5);
+      await expect(top).toBeLessThanOrEqual(inset);
+      await expect(bottom).toBeLessThanOrEqual(inset);
     }
 
-    // A segment's outer curve is the frame's OWN, not the frame's minus its
-    // border. The minus-border figure is the rule for an inset box with a gap
-    // around it; a segment is flush against the border, so a curve even one
-    // pixel tighter lets the frame's background show through between the fill
-    // and the border as a crescent. The frame clips, so matching cannot
-    // overshoot it. Squaring it off is wrong too: the focus outline traces the
-    // element's own radius and would ring square inside a rounded frame.
+    // A segment's curve is the frame's LESS its border, which is what makes
+    // the two concentric. A larger radius cuts more away at a corner, so a
+    // segment carrying the frame's OWN radius falls short of the frame's inner
+    // curve and lets the page show through between the fill and the border.
+    // Squaring it off is wrong too: the focus outline traces the element's own
+    // radius and would ring square inside a rounded frame.
     const frameStyle = getComputedStyle(frame);
-    const expected = frameStyle.borderTopLeftRadius;
-    // Comparing two computed radii would pass if BOTH were `0px`, which is
+    const outer = parseFloat(frameStyle.borderTopLeftRadius);
+    const expected = `${outer - parseFloat(frameStyle.borderTopWidth)}px`;
+    // Comparing computed radii would pass if everything were `0px`, which is
     // what a render with no theme loaded gives. The frame having a curve at
     // all is what makes the comparison below mean anything.
-    await expect(parseFloat(expected)).toBeGreaterThan(0);
+    await expect(outer).toBeGreaterThan(0);
 
     const [first, last] = [segments[0]!, segments[segments.length - 1]!];
     await expect(getComputedStyle(first).borderTopLeftRadius).toBe(expected);
@@ -248,12 +251,14 @@ export const SegmentsFollowTheThemeRadius: Story = {
     await expect(base).toBe('0.875rem');
     await expect(frameRadius).toBe('14px');
 
+    // 14px less the frame's 2px border. What matters is that it followed the
+    // theme at all: reading `--radius` pinned this at 28px.
     await expect(getComputedStyle(segments[0]!).borderTopLeftRadius).toBe(
-      frameRadius,
+      '12px',
     );
     await expect(
       getComputedStyle(segments[segments.length - 1]!).borderTopRightRadius,
-    ).toBe(frameRadius);
+    ).toBe('12px');
   },
 };
 

@@ -144,25 +144,26 @@ const COLLAPSE_CLASS = '@max-xl:sr-only';
 const NAME_WIDTH_CLASS = 'min-w-24';
 
 /**
- * The frame's own radius, on the edges of a segment that meet it.
+ * The frame's INNER curve — its radius less its 2px border — on the edges of a
+ * segment that meet it.
  *
- * The bare `rounded-*` utilities, NOT `rounded-[var(--radius)]`. The two are
- * not the same thing: `--radius` is declared once at `:root` as
- * `var(--radius-base, …)`, so it is substituted there and inherits as the
- * DEFAULT theme's value. A theme sets `--radius-base`, which only the
- * utilities read — see the note beside `--radius` in `theme.css`. Reading the
- * variable directly froze every segment at 28px while the frame followed its
- * theme to 14px, which showed up as a fill visibly rounder than the frame
- * around it, in Studio and Interview but never in the default theme.
+ * A larger radius cuts more away at a corner, so a segment carrying the
+ * frame's own radius falls short of the frame's inner curve and lets the page
+ * show through between the fill and the border. Subtracting the border is what
+ * makes the two concentric. `overflow-hidden` on the frame keeps this from
+ * being able to overshoot in the other direction.
  *
- * A segment would need no radius at all for its surface alone — the clip would
- * shape it. The focus ring is why this exists: an outline traces the element's
- * own border-radius, so a square segment rings square inside a rounded frame.
+ * `--radius-base`, never `--radius`. Under `@theme inline` a utility inlines
+ * its token's value: `--radius-base` inlines a `var()` that resolves against
+ * the element, so a themed region gets its own radius, while `--radius` is
+ * declared once at `:root` and inherits the default theme's number everywhere.
+ * Reading it froze every segment at 28px while the frame followed Studio to
+ * 14px. The `2px` here is the frame's `border-2`; the two move together.
  */
 const OUTER_CORNER = {
-  start: 'rounded-s',
-  end: 'rounded-e',
-  both: 'rounded',
+  start: 'rounded-s-[calc(var(--radius-base,1.75rem)-2px)]',
+  end: 'rounded-e-[calc(var(--radius-base,1.75rem)-2px)]',
+  both: 'rounded-[calc(var(--radius-base,1.75rem)-2px)]',
 } as const;
 
 /**
@@ -187,7 +188,7 @@ const SEGMENT_CLASS = cx(
  * rather than Base UI's `data-highlighted`, which only the options get.
  */
 const ROW_CLASS = cx(
-  'flex w-full cursor-pointer items-center gap-3 rounded-xs px-3 py-2',
+  'flex w-full cursor-pointer items-center gap-3 rounded-sm px-3 py-2',
   'text-start transition-colors outline-none',
   'focusable hover:bg-surface-2 hover:text-surface-2-contrast',
   'focus-visible:bg-surface-2 focus-visible:text-surface-2-contrast',
@@ -403,9 +404,7 @@ function Segment({
               // popup rather than a panel.
               'border-outline w-max min-w-xs shadow-xl',
               'max-w-[min(var(--available-width),var(--container-md))]',
-              // A step below the frame's own curve: `--radius` is the shape of
-              // a card, and it reads as a bubble on a list of options.
-              'rounded-sm border-2 p-2 outline-none',
+              'rounded border-2 p-2 outline-none',
               // Bounded, with the list as the part that scrolls. Base UI
               // publishes `--available-height` but applies nothing itself, so
               // a long list pushed the retry and the trailing destination off
@@ -438,7 +437,7 @@ function Segment({
                       // along with it.
                       label={item.name}
                       className={cx(
-                        'group flex cursor-pointer items-center gap-3 rounded-xs px-3 py-2',
+                        'group flex cursor-pointer items-center gap-3 rounded-sm px-3 py-2',
                         'transition-colors outline-none select-none',
                         'not-data-selected:data-highlighted:bg-surface-2 not-data-selected:data-highlighted:text-surface-2-contrast',
                         'data-selected:bg-selected data-selected:text-selected-contrast',
@@ -635,22 +634,16 @@ export function TeamAndStudySwitcher({
         className={cx(
           'inline-flex max-w-full min-w-0 items-stretch',
           /*
-            A RING, not a border, and that is the whole reason a filled segment
-            meets the frame cleanly.
+            `border-2`, the weight fresco-ui's own bordered containers use —
+            `form/fields/Boolean` and `RichSelectGroup` are the same shape,
+            an `overflow-hidden rounded` box with segments painted inside it.
 
-            A border puts the segments inside it, leaving a hairline of
-            `--outline` between a fill and the page. `--outline` is derived
-            from the background, so against a pale page it is indistinguishable
-            from the corner a large radius leaves uncovered, and the two read
-            together as a fill with the wrong curve. Nothing a segment paints
-            can cover it either: `overflow-hidden` clips a child's own shadow
-            at the padding edge.
-
-            A ring is the frame's own shadow, so its own overflow does not clip
-            it, and it takes no space — the segments fill the frame's whole box
-            and share its exact curve, with the hairline outside them both.
+            The clip is what makes a segment follow this border. A segment
+            declares the frame's own radius and is trimmed to the frame's
+            INNER curve, so the two are concentric at any border width and any
+            theme, with no arithmetic here to keep in step.
           */
-          'ring-outline overflow-hidden rounded ring-1',
+          'border-outline overflow-hidden rounded border-2',
         )}
       >
         {team && (
