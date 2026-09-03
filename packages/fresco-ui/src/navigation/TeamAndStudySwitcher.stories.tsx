@@ -184,11 +184,22 @@ export const SegmentsFillTheFrame: Story = {
       await expect(frameBox.bottom - box.bottom).toBeLessThanOrEqual(1.5);
     }
 
-    // And the segments carry no radius of their own: the frame decides where
-    // the corners are, which is what keeps a painted surface flush with it.
-    for (const segment of segments) {
-      await expect(getComputedStyle(segment).borderRadius).toBe('0px');
-    }
+    // The corners nest. A segment's outer curve is the frame's minus the
+    // frame's border, which is the radius that makes an inset shape follow an
+    // outer one — matching the frame's own 14px would leave a crescent between
+    // the two, and squaring it off would ring the focus outline square inside
+    // a rounded frame.
+    const frameStyle = getComputedStyle(frame);
+    const outer = parseFloat(frameStyle.borderTopLeftRadius);
+    const border = parseFloat(frameStyle.borderTopWidth);
+    const expected = `${outer - border}px`;
+
+    const [first, last] = [segments[0]!, segments[segments.length - 1]!];
+    await expect(getComputedStyle(first).borderTopLeftRadius).toBe(expected);
+    await expect(getComputedStyle(last).borderTopRightRadius).toBe(expected);
+    // And square where they meet, so the divider is a straight rule.
+    await expect(getComputedStyle(first).borderTopRightRadius).toBe('0px');
+    await expect(getComputedStyle(last).borderTopLeftRadius).toBe('0px');
   },
 };
 

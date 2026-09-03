@@ -166,18 +166,32 @@ const NAME_WIDTH_CLASS = cx(
 );
 
 /**
+ * The frame's own corners, minus its border, on the edges of a segment that
+ * meet it.
+ *
+ * A segment used to carry no radius at all: the frame clips, so its surface
+ * came out the right shape regardless, and matching the frame's 14px curve
+ * inside a 1px border left a crescent where the two did not follow each other.
+ *
+ * The focus ring needs it, though. An outline traces the element's own
+ * border-radius, so a square segment rings square inside a rounded frame, and
+ * the corner of the ring sits outside the frame it is drawn in. Subtracting
+ * the border from the token is the nesting rule — a 14px outer curve with 1px
+ * of border has a 13px inner one — so the surface is exactly the frame's inner
+ * shape, and the ring follows it.
+ */
+const OUTER_CORNER = {
+  start: 'rounded-s-[calc(var(--radius-sm)-1px)]',
+  end: 'rounded-e-[calc(var(--radius-sm)-1px)]',
+  both: 'rounded-[calc(var(--radius-sm)-1px)]',
+} as const;
+
+/**
  * A segment's face.
  *
- * **No radius of its own, deliberately.** The frame around the segments clips,
- * so a segment paints a plain rectangle and the frame decides where the
- * corners are. Giving the segment a radius too is what used to leave a thin
- * crescent between its surface and the border: a 14px curve painted inside the
- * 13px curve of a 1px border does not follow it, and the mismatch showed
- * wherever a segment was hovered or open.
- *
- * The focus ring is drawn INSIDE for the same reason. `focus-styles` offsets
- * the outline 3px outwards, which is precisely what the frame would clip, so
- * the offset is inverted here and the ring hugs the inside of the segment.
+ * The focus ring is drawn INSIDE. `focus-styles` offsets the outline outwards,
+ * which is precisely what the frame's clip would remove, so the offset is
+ * inverted here and the ring hugs the inside of the segment.
  *
  * `not-data-popup-open:` rather than source order on the hover rule. Both are
  * single-class selectors, so which one wins is decided by Tailwind's own
@@ -224,9 +238,12 @@ function markFor(
  * this would invite a second, differently-behaved arrangement of them.
  */
 function Segment({
+  corners,
   divided,
   segment,
 }: {
+  /** Which of this segment's corners are the frame's own. */
+  corners: keyof typeof OUTER_CORNER;
   /** Draws the rule that separates this segment from the one before it. */
   divided: boolean;
   segment: SwitcherSegment;
@@ -360,6 +377,7 @@ function Segment({
   );
 
   const divider = divided ? 'border-outline border-s' : undefined;
+  const corner = OUTER_CORNER[corners];
 
   if (!hasList) {
     return (
@@ -374,6 +392,7 @@ function Segment({
         data-switcher-segment
         className={cx(
           'bg-input text-input-contrast flex min-w-0 flex-1 items-center gap-2 px-3 py-2',
+          corner,
           divider,
         )}
         aria-busy={loading || undefined}
@@ -409,7 +428,7 @@ function Segment({
           are drawn and get the number a reader would see.
         */
         data-switcher-segment
-        className={cx(SEGMENT_CLASS, divider)}
+        className={cx(SEGMENT_CLASS, corner, divider)}
         aria-busy={loading || undefined}
         /*
           One string, because the accessible name is one sentence.
@@ -704,8 +723,20 @@ export function TeamAndStudySwitcher({
           'overflow-hidden rounded-sm border',
         )}
       >
-        {team && <Segment divided={false} segment={team} />}
-        {study && <Segment divided={team !== undefined} segment={study} />}
+        {team && (
+          <Segment
+            corners={study ? 'start' : 'both'}
+            divided={false}
+            segment={team}
+          />
+        )}
+        {study && (
+          <Segment
+            corners={team ? 'end' : 'both'}
+            divided={team !== undefined}
+            segment={study}
+          />
+        )}
       </div>
     </div>
   );
