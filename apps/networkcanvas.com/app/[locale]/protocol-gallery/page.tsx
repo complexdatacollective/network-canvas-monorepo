@@ -72,16 +72,17 @@ export default async function ProtocolGalleryPage({
         <Container maxWidth="full" margin="none" className="mt-12">
           <div
             id={SITE_NAVIGATION_SKIP_TARGET_ID}
-            className="tablet-landscape:grid-cols-[minmax(0,1fr)_minmax(28rem,40rem)] tablet-landscape:items-start grid gap-8"
+            className="tablet-landscape:grid-cols-[minmax(0,1fr)_minmax(32rem,48rem)] tablet-landscape:items-start grid gap-8"
           >
             <div className="min-w-0">
-              <Heading level="h1" margin="none">
+              <Heading level="h1" variant="section-heading" margin="none">
                 {t('intro.heading')}
               </Heading>
               <Paragraph
+                intent="lead"
                 margin="none"
                 emphasis="muted"
-                className="mt-4 max-w-3xl"
+                className="mt-6 max-w-3xl"
               >
                 {t('intro.introduction')}
               </Paragraph>

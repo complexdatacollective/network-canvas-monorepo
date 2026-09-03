@@ -116,7 +116,12 @@ export default async function ProtocolDetailPage({
                 {protocol.featured ? (
                   <Eyebrow tone="primary">{t('intro.featured')}</Eyebrow>
                 ) : null}
-                <Heading level="h1" margin="none" className="mt-2">
+                <Heading
+                  level="h1"
+                  variant="section-heading"
+                  margin="none"
+                  className="mt-2"
+                >
                   {protocol.shortName}
                 </Heading>
                 <Heading

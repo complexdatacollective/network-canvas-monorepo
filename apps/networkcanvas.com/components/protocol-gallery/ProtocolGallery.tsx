@@ -113,7 +113,7 @@ export function ProtocolGallery({
         margin="none"
         className="tablet-landscape:mb-32 mt-10 mb-20"
       >
-        <div className="tablet-landscape:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)] grid grid-cols-1 gap-8">
+        <div className="tablet-landscape:grid-cols-[minmax(18rem,21rem)_minmax(0,1fr)] grid grid-cols-1 gap-8">
           <GallerySidebar
             query={query}
             onQueryChange={setQuery}
