@@ -52,6 +52,28 @@ export const MeSchema = z.object({
   email: z.string(),
   emailVerified: z.boolean(),
   name: z.string(),
+  /**
+   * Every team the caller belongs to, and their role in it.
+   *
+   * Here rather than in a procedure of its own because it answers the same
+   * question `me` does — who is this, and what may they do — and because
+   * nothing else can answer it: Better Auth's `listOrganizations` joins the
+   * member table and then returns only the organization, dropping the role.
+   * The team NAMES still come from that list; this supplies what it drops.
+   */
+  teams: z.array(
+    z.object({
+      teamId: z.string().min(1).max(255),
+      /*
+        A plain string, NOT `TeamRoleSchema`. Better Auth stores a member's
+        roles as one comma-separated value, so a legacy row reads
+        "owner,admin" — and the enum would reject it, failing the whole of
+        `me` for that researcher rather than the one field. The client splits
+        it; that is what `teamRoles` is for.
+      */
+      role: z.string(),
+    }),
+  ),
 });
 
 // Every team-scoped procedure names its team explicitly — the authz input is

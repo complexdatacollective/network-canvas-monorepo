@@ -28,6 +28,15 @@ describe('principal resolution', () => {
   it('resolves the cookie session into the RPC context', async () => {
     const auth = stubAuthService({
       getSession: () => Promise.resolve(PRINCIPAL),
+      // Better Auth's own team list drops the caller's role, so `me` is what
+      // carries it — including a legacy membership stored as one
+      // comma-separated value, which the wire schema takes as a plain string
+      // rather than rejecting the whole response over.
+      listMemberships: () =>
+        Promise.resolve([
+          { teamId: 'team-a', role: 'owner' },
+          { teamId: 'team-b', role: 'admin,member' },
+        ]),
     });
     const client = createRpcClient(createApp(readEnv(), { auth }));
     const me = await client.me();
@@ -36,6 +45,10 @@ describe('principal resolution', () => {
       email: 'researcher@example.com',
       emailVerified: true,
       name: 'Researcher',
+      teams: [
+        { teamId: 'team-a', role: 'owner' },
+        { teamId: 'team-b', role: 'admin,member' },
+      ],
     });
   });
 

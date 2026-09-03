@@ -12,7 +12,7 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import { orpc } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
 import { STUDY_STATE_TONES, studySummaryLine } from '../lib/studyState.ts';
-import { teamRole, teamRolesLabel } from '../lib/teamRoles.ts';
+import { teamRolesLabel } from '../lib/teamRoles.ts';
 
 /**
  * The header's team ▸ study lockup (§5.5): the team the researcher is acting
@@ -64,8 +64,7 @@ function StudyStatusDot({ tone }: { tone: string }) {
  * The team this lockup is about: the one the COMMITTED URL names wherever a
  * route names one, and the active-team setting only where none does.
  *
- * `lib/teamRoles.ts`'s `teamRole` makes exactly this reading for the
- * researcher's role, and for the same reason. The URL is authoritative and the
+ * The URL is authoritative and the
  * setting FOLLOWS it (§2.2, §6.6), so the two disagree for the whole of every
  * switch — B's screen commits and renders before the write lands — and
  * permanently when that write fails. A switcher that names the setting
@@ -214,9 +213,16 @@ export default function EntityLockup({ className }: { className?: string }) {
   const { teamId: committedTeamId, studyId } = useParams({ strict: false });
   const teams = authClient.useListOrganizations();
   const activeTeam = authClient.useActiveOrganization();
-  // The one membership Better Auth answers for, and so the one team whose
-  // role the switcher can state rather than guess.
-  const activeMember = authClient.useActiveMember();
+  // Every membership, from `me`. Better Auth's team list drops the role, so
+  // without this only the ACTIVE team could carry one and every other row
+  // would be silent about what the researcher may do there.
+  const me = useQuery(orpc.me.queryOptions());
+  const roles = new Map(
+    (me.data?.teams ?? []).map((membership) => [
+      membership.teamId,
+      membership.role,
+    ]),
+  );
 
   // A list that failed while an EARLIER one is still in hand is not a special
   // case: Better Auth leaves that `data` in place, so those teams stay in
@@ -244,15 +250,13 @@ export default function EntityLockup({ className }: { className?: string }) {
         items: list.map((team) => ({
           id: team.id,
           name: team.name,
-          // NOT a placeholder, and deliberately absent rather than invented
-          // for the rest: `useActiveMember` answers for the active team only,
-          // so this is the one team whose role is actually known. A made-up
-          // role would be a false claim about what the researcher may do here.
           // `teamRolesLabel`, not the raw stored value: a legacy membership
           // is stored as "owner,admin" and would otherwise be shouted at the
-          // researcher as "OWNER,ADMIN".
+          // researcher as "OWNER,ADMIN". Absent while `me` is still in
+          // flight, and for a team it does not name — a made-up role would be
+          // a false claim about what the researcher may do there.
           badge: (() => {
-            const role = teamRole(activeMember.data, team.id);
+            const role = roles.get(team.id);
             return role === undefined ? undefined : teamRolesLabel(role);
           })(),
         })),

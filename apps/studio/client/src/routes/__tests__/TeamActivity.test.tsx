@@ -103,6 +103,18 @@ type RetryOption =
 
 vi.mock('../../lib/api.ts', () => ({
   orpc: {
+    me: {
+      queryOptions: () => ({
+        queryKey: ['me'],
+        queryFn: () => ({
+          userId: 'user-1',
+          email: 'researcher@example.org',
+          emailVerified: true,
+          name: 'Researcher',
+          teams: [{ teamId: 'team-a', role: 'owner' }],
+        }),
+      }),
+    },
     // The header renders on every app route, and its study segment asks for
     // the team's studies — a real dependency of the shell these tests mount,
     // not of this screen. It answers nothing here: no study is open, so the

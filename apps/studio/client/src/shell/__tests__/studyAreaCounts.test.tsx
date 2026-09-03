@@ -62,6 +62,18 @@ vi.mock('../../lib/auth.ts', () => ({
 
 vi.mock('../../lib/api.ts', () => ({
   orpc: {
+    me: {
+      queryOptions: () => ({
+        queryKey: ['me'],
+        queryFn: () => ({
+          userId: 'user-1',
+          email: 'researcher@example.org',
+          emailVerified: true,
+          name: 'Researcher',
+          teams: [{ teamId: 'team-a', role: 'owner' }],
+        }),
+      }),
+    },
     status: {
       queryOptions: () => ({
         queryKey: ['status'],

@@ -92,6 +92,23 @@ vi.mock('../../lib/auth.ts', () => ({
 
 vi.mock('../../lib/api.ts', () => ({
   orpc: {
+    me: {
+      queryOptions: () => ({
+        queryKey: ['me'],
+        queryFn: () => ({
+          userId: 'user-1',
+          email: 'researcher@example.org',
+          emailVerified: true,
+          name: 'Researcher',
+          teams: [
+            { teamId: 'team-a', role: 'owner' },
+            // Comma-separated, as Better Auth stores a legacy multi-role
+            // membership: the switcher must read it as "Owner, Admin".
+            { teamId: 'team-b', role: 'admin,member' },
+          ],
+        }),
+      }),
+    },
     status: {
       queryOptions: () => ({
         queryKey: ['status'],
@@ -656,8 +673,9 @@ describe('the header switcher lockup', () => {
       key: 'Escape',
     });
 
-    // The role, for the one team Better Auth answers for. The others carry no
-    // badge rather than a guessed one.
+    // A role on EVERY team, which only `me` can supply — Better Auth's team
+    // list drops it. A legacy comma-separated membership reads as a sentence
+    // rather than being shouted as "ADMIN,MEMBER".
     const team = await screen.findByRole('combobox', { name: /^Team/ });
     fireEvent.click(team);
     expect(
@@ -665,7 +683,7 @@ describe('the header switcher lockup', () => {
     ).toHaveTextContent('Owner');
     expect(
       screen.getByRole('option', { name: /^Beta research team/ }),
-    ).not.toHaveTextContent('Owner');
+    ).toHaveTextContent('Admin, Member');
   });
 
   it('asks no team for its studies on a route that shows no study', async () => {
