@@ -348,8 +348,10 @@ function SoftwareCard({
   link: SoftwareLink;
   renderLink: (props: SiteNavigationLinkRenderProps) => ReactElement;
 }) {
+  // No `transition-colors`: the hover tint is a 10% wash on the popup surface,
+  // and easing it in over 150ms reads as the highlight lagging the pointer.
   const className = cx(
-    'focusable flex h-full w-[23rem] items-start gap-4 rounded p-5 transition-colors',
+    'focusable flex h-full w-[23rem] items-start gap-4 rounded p-5',
     hoverAccentClasses[link.id],
   );
   const content = (
