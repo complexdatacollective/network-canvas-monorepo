@@ -87,9 +87,12 @@ const webhookSubscriptions = pgTable(
     // COALESCE because array_length of an empty array is NULL, and a NULL
     // check passes: without it the bound this constraint exists to impose
     // would admit a subscription filtering on nothing.
+    // A null element would make the delivery guard's membership test
+    // three-valued: `x = ANY(...)` yields NULL instead of false when nothing
+    // matches, and NULL is not refused.
     check(
       'webhook_subscriptions_event_types_check',
-      sql`COALESCE(array_length(${table.eventTypes}, 1), 0) BETWEEN 1 AND 50`,
+      sql`COALESCE(array_length(${table.eventTypes}, 1), 0) BETWEEN 1 AND 50 AND array_position(${table.eventTypes}, NULL) IS NULL`,
     ),
     check(
       'webhook_subscriptions_failures_check',
@@ -224,7 +227,9 @@ BEGIN
   IF subscription_state IS DISTINCT FROM 'active' THEN
     RAISE EXCEPTION 'a webhook delivery may only be queued for an active subscription';
   END IF;
-  IF NOT (NEW.event_type = ANY(subscribed_types)) THEN
+  -- IS NOT TRUE, so an unknown (a null element in the filter) is refused
+  -- like a miss rather than slipping past a NOT that never becomes true.
+  IF (NEW.event_type = ANY(subscribed_types)) IS NOT TRUE THEN
     RAISE EXCEPTION 'the subscription does not ask for % events', NEW.event_type;
   END IF;
   RETURN NULL;

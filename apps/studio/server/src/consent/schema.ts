@@ -353,6 +353,15 @@ CREATE OR REPLACE TRIGGER consent_documents_publication_immutable
       OR NEW.body IS DISTINCT FROM OLD.body
       OR NEW.content_hash IS DISTINCT FROM OLD.content_hash
       OR NEW.published_at IS DISTINCT FROM OLD.published_at
+      -- Retirement is one-way: a superseded version does not become current
+      -- again, or new participants could consent to it after its successor.
+      OR (
+        OLD.retired_at IS NOT NULL
+        AND (
+          NEW.retired_at IS DISTINCT FROM OLD.retired_at
+          OR NEW.state IS DISTINCT FROM OLD.state
+        )
+      )
     )
   )
   EXECUTE FUNCTION consent_documents_publication_is_immutable();

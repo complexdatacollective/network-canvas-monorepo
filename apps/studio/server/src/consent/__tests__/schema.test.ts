@@ -555,6 +555,38 @@ describe.skipIf(!db)('consent schema', () => {
         ),
       ).rejects.toThrow('published consent documents are immutable');
     });
+
+    it('never revives a retired document', async () => {
+      // Retirement is one-way. A superseded version that became current
+      // again would be accepted by participant_consents_document_published,
+      // and new participants could consent to it after its replacement.
+      const studyId = await newStudy();
+      const documentId = await newDocument(studyId);
+      await publish(documentId);
+      await pool.query(
+        `UPDATE consent_documents
+         SET state = 'retired', retired_at = now(), updated_at = now()
+         WHERE id = $1`,
+        [documentId],
+      );
+
+      await expect(
+        pool.query(
+          `UPDATE consent_documents
+           SET state = 'published', retired_at = NULL, updated_at = now()
+           WHERE id = $1`,
+          [documentId],
+        ),
+      ).rejects.toThrow('published consent documents are immutable');
+      // The timestamp is part of the record too, not just the state.
+      await expect(
+        pool.query(
+          `UPDATE consent_documents SET retired_at = now() - interval '1 day'
+           WHERE id = $1`,
+          [documentId],
+        ),
+      ).rejects.toThrow('published consent documents are immutable');
+    });
   });
 
   describe('consent_items', () => {

@@ -167,6 +167,11 @@ describe.skipIf(!db)('webhook schema', () => {
         'webhook_subscriptions_event_types_check',
       ],
       [
+        'a null element in the event filter',
+        { event_types: ['interview.completed', null] },
+        'webhook_subscriptions_event_types_check',
+      ],
+      [
         'an unknown state',
         { state: 'paused' },
         'webhook_subscriptions_state_check',

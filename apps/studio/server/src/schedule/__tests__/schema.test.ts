@@ -986,6 +986,20 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
       ).resolves.toMatchObject({ rowCount: 1 });
     });
 
+    it('never revives a retired template', async () => {
+      // Retirement is one-way too: revived, the template would satisfy
+      // message_deliveries_template_applies again after its replacement.
+      const templateId = await newTemplate({ state: 'retired' });
+      for (const state of ['published', 'draft']) {
+        await expect(
+          pool.query(`UPDATE message_templates SET state = $2 WHERE id = $1`, [
+            templateId,
+            state,
+          ]),
+        ).rejects.toThrow('published message templates are immutable');
+      }
+    });
+
     it('leaves a draft template fully editable', async () => {
       const templateId = await newTemplate({ state: 'draft' });
 

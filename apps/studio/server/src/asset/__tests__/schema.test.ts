@@ -43,6 +43,7 @@ const VERSION_KINDS = ['protocol_version', 'template_version'] as const;
 describe.skipIf(!db)('asset schema', () => {
   let pool: pg.Pool;
   let app: pg.Pool;
+  let maintenance: pg.Pool;
   let dispose: () => Promise<void>;
   let tenantA: TenantDb;
 
@@ -236,7 +237,7 @@ describe.skipIf(!db)('asset schema', () => {
 
   beforeAll(async () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
-    ({ pool, app, dispose } = await createScratchSchema(db));
+    ({ pool, app, maintenance, dispose } = await createScratchSchema(db));
     await provisionScratchSchema(pool);
     for (const teamId of [TEAM_A, TEAM_B]) await seedTeam(pool, teamId);
     tenantA = createTenantDb(app, TEAM_A);
@@ -587,6 +588,32 @@ describe.skipIf(!db)('asset schema', () => {
         ),
       ).rejects.toThrow('published asset references are immutable');
     });
+
+    it.each(PUBLISHED_KINDS)(
+      'lets the maintenance purge delete a %s pin, and nobody else',
+      async (referrerKind) => {
+        // A study is purged bottom-up, and asset_references carries no key
+        // onto its heterogeneous referrer: a published document's pins would
+        // otherwise outlive the document, never satisfying the draft test
+        // again, and hold the asset's metadata and bytes against garbage
+        // collection for good.
+        const hash = await newAsset();
+        const referrerId = await pinAtPublication(referrerKind, hash);
+        const where = `WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = $3
+               AND referrer_id = $4`;
+        const params = [TEAM_A, hash, referrerKind, referrerId];
+
+        await expect(
+          maintenance.query(
+            `UPDATE asset_references SET created_at = now() ${where}`,
+            params,
+          ),
+        ).rejects.toThrow('published asset references are immutable');
+        await expect(
+          maintenance.query(`DELETE FROM asset_references ${where}`, params),
+        ).resolves.toMatchObject({ rowCount: 1 });
+      },
+    );
 
     it.each(['section', 'message_template'])(
       'lets a %s pin be retracted, because its referrer is still editable',

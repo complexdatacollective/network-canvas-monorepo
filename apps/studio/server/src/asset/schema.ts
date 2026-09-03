@@ -155,8 +155,18 @@ export const ASSET_SIDECAR_SQL = `
 -- UPDATE that pointed a draft document's pin at a published version would be
 -- a late pin on that version without ever passing the insert guard. Replacing
 -- an asset on a draft is therefore a DELETE and an INSERT.
+--
+-- The maintenance purge is the other exemption, for DELETE alone: a study is
+-- purged bottom-up, and \`asset_references\` carries no key onto its
+-- heterogeneous referrer, so a published consent document's pins would
+-- otherwise outlive the document — never satisfying the draft test again,
+-- and holding their asset's metadata and bytes against garbage collection
+-- for good.
 CREATE OR REPLACE FUNCTION asset_references_published_pins_are_frozen() RETURNS trigger AS $$
 BEGIN
+  IF TG_OP = 'DELETE' AND current_user = 'studio_maintenance' THEN
+    RETURN OLD;
+  END IF;
   IF TG_OP = 'DELETE' AND OLD.referrer_kind = 'consent_document' AND EXISTS (
     SELECT 1 FROM consent_documents d
     WHERE d.id::text = OLD.referrer_id AND d.team_id = OLD.team_id
