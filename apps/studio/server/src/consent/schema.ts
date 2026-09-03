@@ -465,37 +465,18 @@ CREATE OR REPLACE TRIGGER participant_consents_document_published
   AFTER INSERT ON participant_consents
   FOR EACH ROW EXECUTE FUNCTION participant_consent_document_is_published();
 
--- A response is part of the grant, not a later annotation: it may only be
--- written in the transaction that records its consent, the
--- session_snapshots_insert_frozen pattern. Without this, an immutable row
--- claiming a participant affirmed a term could be appended to a years-old
--- grant in any later transaction, and nothing afterwards could tell it apart
--- from what was captured at the time.
---
--- AFTER the row, so the item-key CHECK and the two keys report first.
-CREATE OR REPLACE FUNCTION participant_consent_response_is_written_at_grant() RETURNS trigger AS $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM participant_consents c
-    WHERE c.id = NEW.participant_consent_id AND c.team_id = NEW.team_id
-      AND c.xmin = pg_current_xact_id()::xid
-  ) THEN
-    RAISE EXCEPTION 'a consent response may only be written in the transaction that records its grant';
-  END IF;
-  RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE TRIGGER participant_consent_item_responses_insert_frozen
-  AFTER INSERT ON participant_consent_item_responses
-  FOR EACH ROW EXECUTE FUNCTION participant_consent_response_is_written_at_grant();
-
--- The other half of that pair: a grant with no affirmation of a required item
--- is not consent. The responses are written after their consent inside the one
--- transaction, so this can only be asked at commit — hence a DEFERRABLE
--- INITIALLY DEFERRED constraint trigger, the only form that runs then.
--- Together with the trigger above, the set of responses a grant carries is
--- fixed at the moment it commits and complete from that moment on.
+-- A grant with no affirmation of a required item is not consent, and a grant
+-- that leaves any item unanswered is not the record of what the participant
+-- saw: every item of the document — required affirmed, optional affirmed or
+-- declined — has its response by the time the grant commits. The responses
+-- are written after their consent inside the one transaction, so this can
+-- only be asked at commit — hence a DEFERRABLE INITIALLY DEFERRED constraint
+-- trigger, the only form that runs then. Completeness is also what fixes the
+-- set: with every item answered, a response written later collides with the
+-- primary key, so no later transaction can add an answer the participant
+-- never gave. (Proving "the grant's own transaction" by the consent row's
+-- \`xmin\` would not do it: a withdrawal updates that row, and the new tuple
+-- looks freshly written.)
 --
 -- Deliberately not SECURITY DEFINER, for the reason network_rows_parent_is_writable
 -- records: a definer function needs a pinned search_path, which breaks the
@@ -506,8 +487,22 @@ CREATE OR REPLACE TRIGGER participant_consent_item_responses_insert_frozen
 -- construction.
 CREATE OR REPLACE FUNCTION participant_consent_required_items_are_affirmed() RETURNS trigger AS $$
 DECLARE
+  unanswered text;
   unaffirmed text;
 BEGIN
+  SELECT i.key INTO unanswered
+  FROM consent_items i
+  WHERE i.consent_document_id = NEW.consent_document_id
+    AND i.team_id = NEW.team_id
+    AND NOT EXISTS (
+      SELECT 1 FROM participant_consent_item_responses r
+      WHERE r.participant_consent_id = NEW.id AND r.consent_item_id = i.id
+    )
+  ORDER BY i.position
+  LIMIT 1;
+  IF unanswered IS NOT NULL THEN
+    RAISE EXCEPTION 'a consent grant must answer every item of its document (%)', unanswered;
+  END IF;
   SELECT i.key INTO unaffirmed
   FROM consent_items i
   WHERE i.consent_document_id = NEW.consent_document_id

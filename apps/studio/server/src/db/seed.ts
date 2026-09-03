@@ -22,6 +22,7 @@ import { seedProtocolLine, type SeededVersion } from './seed/protocols.ts';
 import { seedTime } from './seed/rng.ts';
 import {
   closeStudy,
+  publishConsentDocuments,
   recordLinkRedemptions,
   seedConsentDocuments,
   seedParticipantConsents,
@@ -196,7 +197,8 @@ async function populate(
     );
 
     const studies = await seedStudies(client, team, line, scale);
-    const consentDocuments = await seedConsentDocuments(client, team, studies);
+    const consent = await seedConsentDocuments(client, team, studies);
+    const consentDocuments = consent.byStudy;
     const templates = await seedTemplates(client, team, line);
     await seedAssets(
       client,
@@ -206,6 +208,8 @@ async function populate(
       [...consentDocuments.values()].flat(),
       studies,
     );
+    // After the pins: a consent document takes pins only while it is a draft.
+    await publishConsentDocuments(client, team, consent.publications);
 
     const sessions = await seedSessionsAndNetworks(
       client,

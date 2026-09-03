@@ -134,9 +134,6 @@ describe('generated schema documentation', () => {
     expect(readmeSection).toContain('participant_consents_session_own');
     expect(readmeSection).toContain('participant_consents_document_published');
     expect(readmeSection).toContain(
-      'participant_consent_item_responses_insert_frozen',
-    );
-    expect(readmeSection).toContain(
       'participant_consents_required_items_affirmed',
     );
     expect(readmeSection).toContain('participant_consents_delete_audited');
@@ -249,9 +246,6 @@ describe('generated schema documentation', () => {
     expect(svg).toContain('sidecar trigger participant_consents_session_own');
     expect(svg).toContain(
       'sidecar trigger participant_consents_document_published',
-    );
-    expect(svg).toContain(
-      'sidecar trigger participant_consent_item_responses_insert_frozen',
     );
     expect(svg).toContain(
       'sidecar trigger participant_consents_required_items_affirmed',

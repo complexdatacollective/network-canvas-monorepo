@@ -37,6 +37,9 @@ const PUBLISHED_KINDS = [
   'consent_document',
 ] as const;
 
+/** The two of them that are published by the insert that creates them. */
+const VERSION_KINDS = ['protocol_version', 'template_version'] as const;
+
 describe.skipIf(!db)('asset schema', () => {
   let pool: pg.Pool;
   let app: pg.Pool;
@@ -197,13 +200,20 @@ describe.skipIf(!db)('asset schema', () => {
     return row;
   }
 
-  /** Publishes a referrer of `kind` and pins `assetHash` to it, together. */
+  /**
+   * Publishes a referrer of `kind` and pins `assetHash` to it, together, the
+   * way each kind is published: a version by the insert that creates it, a
+   * consent document drafted, pinned, and then moved to `published`.
+   */
   async function pinAtPublication(
     kind: string,
     assetHash: string,
   ): Promise<string> {
     return inTransaction(async (client) => {
-      const referrerId = await createReferrer(client, kind);
+      const drafted = kind === 'consent_document';
+      const referrerId = await createReferrer(client, kind, {
+        published: !drafted,
+      });
       await client.query(
         ...insertSql(
           'asset_references',
@@ -213,6 +223,13 @@ describe.skipIf(!db)('asset schema', () => {
           }),
         ),
       );
+      if (drafted) {
+        await client.query(
+          `UPDATE consent_documents SET state = 'published', published_at = now()
+           WHERE id = $1`,
+          [referrerId],
+        );
+      }
       return referrerId;
     });
   }
@@ -538,7 +555,7 @@ describe.skipIf(!db)('asset schema', () => {
   // leave a pin insertable after publication — and then unretractable, because
   // the trigger above refuses to remove it.
   describe('asset_references_insert_frozen', () => {
-    it.each(PUBLISHED_KINDS)(
+    it.each(VERSION_KINDS)(
       'admits a %s pin written in the transaction that publishes it',
       async (referrerKind) => {
         const hash = await newAsset();
@@ -571,10 +588,66 @@ describe.skipIf(!db)('asset schema', () => {
             }),
           ),
         ).rejects.toThrow(
-          `an asset reference to a published ${referrerKind} may only be written in the transaction that publishes it`,
+          `an asset reference cannot be added to a published ${referrerKind}`,
         );
       },
     );
+
+    it('fixes a consent document’s pins at publication, by state rather than by transaction', async () => {
+      // A published document is still updated afterwards — retired, restamped
+      // — and each update gives its row a fresh xmin, so "the transaction that
+      // published it" is not a stable fact to prove a pin against. What is
+      // stable is the state: pins are free while the document is a draft and
+      // refused from publication on, even inside the publishing transaction.
+      const kept = await newAsset();
+      const late = await newAsset();
+      const documentId = await inTransaction(async (client) => {
+        const id = await createReferrer(client, 'consent_document', {
+          published: false,
+        });
+        await client.query(
+          ...insertSql(
+            'asset_references',
+            referenceRow(kept, {
+              referrer_kind: 'consent_document',
+              referrer_id: id,
+            }),
+          ),
+        );
+        await client.query(
+          `UPDATE consent_documents SET state = 'published', published_at = now()
+           WHERE id = $1`,
+          [id],
+        );
+        // Behind a savepoint, so the refusal leaves the rest of the
+        // publishing transaction — and the pin it legitimately carries — to
+        // commit.
+        await client.query('SAVEPOINT late_pin');
+        await expect(
+          client.query(
+            ...insertSql(
+              'asset_references',
+              referenceRow(late, {
+                referrer_kind: 'consent_document',
+                referrer_id: id,
+              }),
+            ),
+          ),
+        ).rejects.toThrow(
+          'an asset reference cannot be added to a published consent_document',
+        );
+        await client.query('ROLLBACK TO SAVEPOINT late_pin');
+        return id;
+      });
+
+      const pinned = await pool.query<{ n: number }>(
+        `SELECT count(*)::int AS n FROM asset_references
+         WHERE team_id = $1 AND referrer_kind = 'consent_document'
+           AND referrer_id = $2`,
+        [TEAM_A, documentId],
+      );
+      expect(pinned.rows[0]).toEqual({ n: 1 });
+    });
 
     it.each(PUBLISHED_KINDS)(
       'refuses a %s pin that names no such referrer',

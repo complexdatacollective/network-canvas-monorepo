@@ -231,15 +231,15 @@ describe.skipIf(!db)('consent schema', () => {
     ...overrides,
   });
 
-  /** An affirmation of every required item of `documentId`. */
-  async function requiredAffirmations(
+  /** An affirmation of every item of `documentId`, required or not. */
+  async function everyItemAffirmed(
     client: pg.PoolClient,
     consentId: string,
     documentId: string,
   ): Promise<Row[]> {
     const items = await client.query<{ id: string; key: string }>(
       `SELECT id, key FROM consent_items
-       WHERE consent_document_id = $1 AND required ORDER BY position`,
+       WHERE consent_document_id = $1 ORDER BY position`,
       [documentId],
     );
     return items.rows.map((item) =>
@@ -248,11 +248,10 @@ describe.skipIf(!db)('consent schema', () => {
   }
 
   /**
-   * A grant and its responses, in one transaction: a response may only be
-   * written beside its own grant, and the commit-time check refuses a grant
-   * that leaves a required item unaffirmed. `responses` names exactly what the
-   * grant carries; by default it affirms every required item, which is the
-   * only shape most cases need.
+   * A grant and its responses, in one transaction: the commit-time check
+   * refuses a grant that leaves any item unanswered or a required item
+   * unaffirmed. `responses` names exactly what the grant carries; by default
+   * it affirms every item, which is the only shape most cases need.
    */
   async function newConsent(
     studyId: string,
@@ -267,7 +266,7 @@ describe.skipIf(!db)('consent schema', () => {
       await insertOn(client, 'participant_consents', row);
       const rows = responses
         ? responses(consentId)
-        : await requiredAffirmations(client, consentId, documentId);
+        : await everyItemAffirmed(client, consentId, documentId);
       for (const response of rows) {
         await insertOn(client, 'participant_consent_item_responses', response);
       }
@@ -1008,7 +1007,7 @@ describe.skipIf(!db)('consent schema', () => {
         position: 1,
         key: 'consent_to_take_part',
       });
-      await newItem(documentId, {
+      const optionalId = await newItem(documentId, {
         position: 2,
         key: 'may_contact_again',
         required: false,
@@ -1020,7 +1019,7 @@ describe.skipIf(!db)('consent schema', () => {
       await expect(
         newConsent(studyId, participantId, documentId, {}, () => []),
       ).rejects.toThrow(
-        'a consent grant must affirm every required item of its document (consent_to_take_part)',
+        'a consent grant must answer every item of its document (consent_to_take_part)',
       );
 
       // A recorded refusal of a required item is no better than no answer.
@@ -1030,17 +1029,30 @@ describe.skipIf(!db)('consent schema', () => {
             item_key: 'consent_to_take_part',
             affirmed: false,
           }),
+          responseRow(consentId, documentId, optionalId),
         ]),
       ).rejects.toThrow(
         'a consent grant must affirm every required item of its document (consent_to_take_part)',
       );
 
-      // The optional item may be left unanswered entirely.
+      // The optional item must be answered too — declined is an answer, an
+      // absent row is not: an unanswered item is exactly the response a later
+      // transaction could otherwise add.
       await expect(
         newConsent(studyId, participantId, documentId, {}, (consentId) => [
           responseRow(consentId, documentId, requiredId, {
             item_key: 'consent_to_take_part',
           }),
+        ]),
+      ).rejects.toThrow(
+        'a consent grant must answer every item of its document (may_contact_again)',
+      );
+      await expect(
+        newConsent(studyId, participantId, documentId, {}, (consentId) => [
+          responseRow(consentId, documentId, requiredId, {
+            item_key: 'consent_to_take_part',
+          }),
+          responseRow(consentId, documentId, optionalId, { affirmed: false }),
         ]),
       ).resolves.toMatch(/^[0-9a-f-]{36}$/);
     });
@@ -1147,13 +1159,14 @@ describe.skipIf(!db)('consent schema', () => {
     });
 
     it("refuses an item key that is not the named item's own", async () => {
-      const { studyId, participantId, documentId, requiredId } =
+      const { studyId, participantId, documentId, requiredId, optionalId } =
         await twoItemDocument();
       const respond = (itemKey: string) =>
         newConsent(studyId, participantId, documentId, {}, (consentId) => [
           responseRow(consentId, documentId, requiredId, {
             item_key: itemKey,
           }),
+          responseRow(consentId, documentId, optionalId),
         ]);
 
       // Both keys are real keys of the consented document, and both are
@@ -1191,22 +1204,37 @@ describe.skipIf(!db)('consent schema', () => {
       ).rejects.toThrow('participant consent grants are immutable');
     });
 
-    it('refuses a response written after its grant commits', async () => {
+    it('leaves no item for a response written after the grant to answer', async () => {
       const { studyId, participantId, documentId, requiredId, optionalId } =
         await twoItemDocument();
       const consentId = await newConsent(studyId, participantId, documentId);
 
-      // The optional item was left unanswered, which is the one response a
-      // later transaction could plausibly want to add — and the one that
-      // would rewrite what the participant agreed to.
+      // Every item was answered when the grant committed, so the only row a
+      // later transaction could write — the one that would rewrite what the
+      // participant agreed to — collides with the primary key. Proving "the
+      // grant's own transaction" instead would not hold: a withdrawal updates
+      // the consent row and makes it look freshly written.
       await expect(
         insert(
           'participant_consent_item_responses',
-          responseRow(consentId, documentId, optionalId),
+          responseRow(consentId, documentId, optionalId, { affirmed: false }),
         ),
-      ).rejects.toThrow(
-        'a consent response may only be written in the transaction that records its grant',
+      ).rejects.toMatchObject({
+        constraint: 'participant_consent_item_responses_pkey',
+      });
+      await pool.query(
+        `UPDATE participant_consents
+         SET withdrawn_at = now(), withdrawn_by = 'participant' WHERE id = $1`,
+        [consentId],
       );
+      await expect(
+        insert(
+          'participant_consent_item_responses',
+          responseRow(consentId, documentId, optionalId, { affirmed: false }),
+        ),
+      ).rejects.toMatchObject({
+        constraint: 'participant_consent_item_responses_pkey',
+      });
 
       // The same row, written beside its own grant, is what the guard admits.
       await expect(

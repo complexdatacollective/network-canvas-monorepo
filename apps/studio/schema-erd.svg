@@ -3700,7 +3700,7 @@
 <!-- participant_consent_item_responses -->
 <g id="participant_consent_item_responses" class="node">
 <title>participant_consent_item_responses</title>
-<g id="a_participant_consent_item_responses"><a xlink:title="participant_consent_item_responses&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger participant_consent_item_responses_immutable: BEFORE UPDATE calls participant_consent_grant_is_immutable(); sidecar trigger participant_consent_item_responses_insert_frozen: AFTER INSERT calls participant_consent_response_is_written_at_grant(); sidecar trigger participant_consent_item_responses_delete_audited: BEFORE DELETE calls participant_consent_response_delete_is_audited()">
+<g id="a_participant_consent_item_responses"><a xlink:title="participant_consent_item_responses&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger participant_consent_item_responses_immutable: BEFORE UPDATE calls participant_consent_grant_is_immutable(); sidecar trigger participant_consent_item_responses_delete_audited: BEFORE DELETE calls participant_consent_response_delete_is_audited()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="8390.8" cy="-12658.24" rx="663.03" ry="384.83"/>
 <polygon fill="#1d71b8" stroke="transparent" points="7923.8,-12868.24 7923.8,-12928.24 8857.8,-12928.24 8857.8,-12868.24 7923.8,-12868.24"/>
 <polygon fill="none" stroke="#29235c" points="7923.8,-12868.24 7923.8,-12928.24 8857.8,-12928.24 8857.8,-12868.24 7923.8,-12868.24"/>

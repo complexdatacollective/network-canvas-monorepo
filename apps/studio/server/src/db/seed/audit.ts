@@ -86,12 +86,15 @@ export async function seedAuditEvents(
   ];
 
   for (const member of invited) {
+    // One invitation, two events: the creation and the acceptance describe
+    // the same durable subject, which is how a timeline correlates them.
+    const invitationId = seedUuid();
     events.push({
       ...teamAccess,
       eventType: 'team.invitation.created',
       requestId: seedUuid(),
       subjectType: 'team_invitation',
-      subjectId: seedUuid(),
+      subjectId: invitationId,
       subjectLabel: member.email,
       details: { role: member.role },
     });
@@ -100,7 +103,7 @@ export async function seedAuditEvents(
       eventType: 'team.invitation.accepted',
       requestId: seedUuid(),
       subjectType: 'team_invitation',
-      subjectId: seedUuid(),
+      subjectId: invitationId,
       subjectLabel: member.email,
       details: { role: member.role, memberId: member.memberId },
     });

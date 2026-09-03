@@ -586,23 +586,29 @@ const CONSENT_ITEM_KEYS = [
 /**
  * One or two document versions per managed study. Items must be written while
  * the document is still a draft — `consent_items_frozen` refuses an insert
- * under a published or retired document — so every document is inserted as a
- * draft and moved to its final state afterwards.
+ * under a published or retired document — and so must asset pins, so every
+ * document is inserted as a draft here and moved to its final state by
+ * `publishConsentDocuments` once the pins are written.
  */
+export type ConsentPublication = {
+  id: string;
+  state: string;
+  publishedAt: Date | null;
+  retiredAt: Date | null;
+};
+
 export async function seedConsentDocuments(
   client: pg.PoolClient,
   team: SeedTeam,
   studies: SeedStudy[],
-): Promise<Map<string, SeedConsentDocument[]>> {
+): Promise<{
+  byStudy: Map<string, SeedConsentDocument[]>;
+  publications: ConsentPublication[];
+}> {
   const byStudy = new Map<string, SeedConsentDocument[]>();
   const documentRows: SeedRowValue[][] = [];
   const itemRows: SeedRowValue[][] = [];
-  const publications: {
-    id: string;
-    state: string;
-    publishedAt: Date | null;
-    retiredAt: Date | null;
-  }[] = [];
+  const publications: ConsentPublication[] = [];
 
   for (const study of studies) {
     if (study.participationMode === 'anonymous') continue;
@@ -732,6 +738,20 @@ export async function seedConsentDocuments(
     ],
     itemRows,
   );
+  return { byStudy, publications };
+}
+
+/**
+ * Moves each document to its final state. Runs after the asset pins are
+ * written, because a pin may be added to a consent document only while it is
+ * a draft: publication fixes the set, and nothing in this seed gets to add to
+ * a published document what a real author could not.
+ */
+export async function publishConsentDocuments(
+  client: pg.PoolClient,
+  team: SeedTeam,
+  publications: ConsentPublication[],
+): Promise<void> {
   for (const publication of publications) {
     if (publication.state === 'draft') continue;
     await client.query(
@@ -748,8 +768,6 @@ export async function seedConsentDocuments(
       ],
     );
   }
-
-  return byStudy;
 }
 
 /**

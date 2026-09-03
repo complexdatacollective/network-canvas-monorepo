@@ -1,5 +1,6 @@
 import process from 'node:process';
 
+import { SEED_ADMIN_PASSWORD } from '../src/db/seed/teams.ts';
 import { type DbEnv, isLocalDatabase, type StudioEnv } from '../src/env.ts';
 
 /**
@@ -27,7 +28,10 @@ export function confirmDestructiveTarget(
     );
     process.exit(1);
   }
-  if (!env.seedAdminPassword) {
+  // Present is not enough: the variable set to the published value would
+  // hand the known credential ownership of every seeded team on a reachable
+  // instance, which is exactly what the variable exists to prevent.
+  if (!env.seedAdminPassword || env.seedAdminPassword === SEED_ADMIN_PASSWORD) {
     console.error(
       `Refusing to seed ${target} with the published development password. Set STUDIO_SEED_ADMIN_PASSWORD to a value chosen for this instance.`,
     );

@@ -163,10 +163,11 @@ CREATE OR REPLACE TRIGGER asset_references_published_immutable
 -- Freezing only UPDATE and DELETE freezes the pin set in one direction: a pin
 -- INSERTed after publication also changes what a frozen version resolves to,
 -- and — because the trigger above then refuses to retract it — permanently.
--- So a pin on a published referrer is admitted only in the transaction that
--- published that referrer, which is the version_sections argument again, and
--- proven the same way: \`xmin\` is the transaction that wrote the row this
--- statement can see.
+-- So a pin on a published referrer is admitted only while it is being
+-- published, which is the version_sections argument again: for the kinds that
+-- are published by the insert that creates them, \`xmin\` — the transaction
+-- that wrote the row this statement can see — proves that; for the kind that
+-- is drafted first, its state does.
 --
 -- Per kind, because "published" is not the same fact for each of them, and
 -- because a pin the trigger above never freezes has no frozen set to protect:
@@ -175,8 +176,11 @@ CREATE OR REPLACE TRIGGER asset_references_published_immutable
 --                                       them, so xmin alone decides
 --   consent_document                    drafted first, published later, so a
 --                                       pin is free while state is 'draft'
---                                       and fixed from the transaction that
---                                       publishes it
+--                                       and fixed from publication on — by
+--                                       state, not xmin: a published document
+--                                       is still updated (retired, restamped),
+--                                       and every such update would make it
+--                                       look freshly written
 --   section, message_template           retractable pins (the trigger above
 --                                       covers neither kind), so nothing here
 --                                       constrains when they are written
@@ -206,8 +210,7 @@ BEGIN
       FROM template_versions v
       WHERE v.id::text = NEW.referrer_id AND v.team_id = NEW.team_id;
     WHEN 'consent_document' THEN
-      SELECT d.state <> 'draft' AND d.xmin <> pg_current_xact_id()::xid
-        INTO written_late
+      SELECT d.state <> 'draft' INTO written_late
       FROM consent_documents d
       WHERE d.id::text = NEW.referrer_id AND d.team_id = NEW.team_id;
     ELSE
@@ -218,7 +221,7 @@ BEGIN
     RAISE EXCEPTION 'an asset reference must name a % of its own team', NEW.referrer_kind;
   END IF;
   IF written_late THEN
-    RAISE EXCEPTION 'an asset reference to a published % may only be written in the transaction that publishes it', NEW.referrer_kind;
+    RAISE EXCEPTION 'an asset reference cannot be added to a published %', NEW.referrer_kind;
   END IF;
   RETURN NULL;
 END;
