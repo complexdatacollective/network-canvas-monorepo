@@ -104,7 +104,7 @@ describe.skipIf(!db)('study role grants schema', () => {
   it.each([
     ['an unknown role', { role: 'owner' }, 'study_role_grants_role_check'],
     [
-      'a workspace role borrowed from team_members',
+      'a team role borrowed from team_members',
       { role: 'admin' },
       'study_role_grants_role_check',
     ],

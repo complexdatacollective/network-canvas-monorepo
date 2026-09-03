@@ -127,7 +127,7 @@ describe.skipIf(!db)('api token schema', () => {
   it.each([
     [
       'an unknown scope kind',
-      { scope_kind: 'workspace' },
+      { scope_kind: 'organisation' },
       'api_tokens_scope_kind_check',
     ],
     [

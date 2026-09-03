@@ -19,7 +19,7 @@ import { STUDY_TABLES } from '../study/schema.ts';
 const { studies } = STUDY_TABLES;
 
 // A team-owned service token: a scoped, long-lived API key issued to the
-// workspace rather than to a person. The presented secret is never stored, only
+// team rather than to a person. The presented secret is never stored, only
 // its sha256. The principal a token resolves to is defined entirely by its own
 // columns — `scope_kind`, `study_id`, `access_level` and `includes_pii` — and
 // never by intersection with any user's live RBAC, so a token's authority is

@@ -116,7 +116,7 @@ const webhookDeliveries = pgTable(
     // dedup key, and ours for redelivery.
     webhookId: text('webhook_id').notNull(),
     eventType: text('event_type').notNull(),
-    // Thin by policy: event type, resource ids, workspace. Never a body.
+    // Thin by policy: event type, resource ids, team. Never a body.
     payload: jsonb('payload').notNull(),
     attemptCount: integer('attempt_count').notNull().default(0),
     availableAt: timestamp('available_at', { withTimezone: true })

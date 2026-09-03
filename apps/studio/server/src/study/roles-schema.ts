@@ -17,9 +17,9 @@ import { STUDY_TABLES } from './schema.ts';
 
 const { studies } = STUDY_TABLES;
 
-// The study tier of the role model. Workspace roles need no table of their own:
+// The study tier of the role model. Team roles need no table of their own:
 // better-auth's `team_members.role` (owner/admin/member) already carries the
-// Workspace Admin/Member taxonomy, with `owner` as the founding admin.
+// team Admin/Member taxonomy, with `owner` as the founding admin.
 //
 // One live grant of a study role to a user, plus the orthogonal PII flag.
 // History lives in the audit log, not here: changing someone's role is an

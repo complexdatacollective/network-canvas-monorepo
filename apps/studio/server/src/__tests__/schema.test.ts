@@ -121,6 +121,30 @@ describe('generated schema documentation', () => {
     expect(readmeSection).toContain('message_templates_publication_immutable');
     expect(readmeSection).toContain('message_delivery_payload_immutable');
     expect(readmeSection).toContain('message_delivery_events_immutable');
+    expect(readmeSection).toContain('edges_parent_writable_delete');
+    expect(readmeSection).toContain('edges_parent_writable_insert');
+    expect(readmeSection).toContain('edges_parent_writable_update');
+    expect(readmeSection).toContain('edges_session_immutable');
+    expect(readmeSection).toContain('nodes_parent_writable_delete');
+    expect(readmeSection).toContain('nodes_parent_writable_insert');
+    expect(readmeSection).toContain('nodes_parent_writable_update');
+    expect(readmeSection).toContain('nodes_session_immutable');
+    expect(readmeSection).toContain(
+      'session_degree_hist_parent_writable_delete',
+    );
+    expect(readmeSection).toContain(
+      'session_degree_hist_parent_writable_insert',
+    );
+    expect(readmeSection).toContain(
+      'session_degree_hist_parent_writable_update',
+    );
+    expect(readmeSection).toContain('session_degree_hist_session_immutable');
+    expect(readmeSection).toContain('session_snapshots_immutable');
+    expect(readmeSection).toContain('session_snapshots_insert_frozen');
+    expect(readmeSection).toContain('session_stats_parent_writable_delete');
+    expect(readmeSection).toContain('session_stats_parent_writable_insert');
+    expect(readmeSection).toContain('session_stats_parent_writable_update');
+    expect(readmeSection).toContain('session_stats_session_immutable');
     expect(readmeSection).toContain('invitation_delivery_payload_immutable');
     expect(readmeSection).toContain('audit_events_immutable');
     expect(readmeSection).toContain('audit_team_isolation');
@@ -178,6 +202,38 @@ describe('generated schema documentation', () => {
     );
     expect(svg).toContain('sidecar trigger message_delivery_payload_immutable');
     expect(svg).toContain('sidecar trigger message_delivery_events_immutable');
+    expect(svg).toContain('sidecar trigger edges_parent_writable_delete');
+    expect(svg).toContain('sidecar trigger edges_parent_writable_insert');
+    expect(svg).toContain('sidecar trigger edges_parent_writable_update');
+    expect(svg).toContain('sidecar trigger edges_session_immutable');
+    expect(svg).toContain('sidecar trigger nodes_parent_writable_delete');
+    expect(svg).toContain('sidecar trigger nodes_parent_writable_insert');
+    expect(svg).toContain('sidecar trigger nodes_parent_writable_update');
+    expect(svg).toContain('sidecar trigger nodes_session_immutable');
+    expect(svg).toContain(
+      'sidecar trigger session_degree_hist_parent_writable_delete',
+    );
+    expect(svg).toContain(
+      'sidecar trigger session_degree_hist_parent_writable_insert',
+    );
+    expect(svg).toContain(
+      'sidecar trigger session_degree_hist_parent_writable_update',
+    );
+    expect(svg).toContain(
+      'sidecar trigger session_degree_hist_session_immutable',
+    );
+    expect(svg).toContain('sidecar trigger session_snapshots_immutable');
+    expect(svg).toContain('sidecar trigger session_snapshots_insert_frozen');
+    expect(svg).toContain(
+      'sidecar trigger session_stats_parent_writable_delete',
+    );
+    expect(svg).toContain(
+      'sidecar trigger session_stats_parent_writable_insert',
+    );
+    expect(svg).toContain(
+      'sidecar trigger session_stats_parent_writable_update',
+    );
+    expect(svg).toContain('sidecar trigger session_stats_session_immutable');
     expect(svg).toContain(
       'sidecar trigger invitation_delivery_payload_immutable',
     );
@@ -236,6 +292,7 @@ describe.skipIf(!db)('schema verification', () => {
         'consent_documents',
         'consent_items',
         'drafts',
+        'edges',
         'experiment_assignments',
         'experiment_exposures',
         'experiments',
@@ -247,6 +304,7 @@ describe.skipIf(!db)('schema verification', () => {
         'message_deliveries',
         'message_delivery_events',
         'message_templates',
+        'nodes',
         'participant_consent_item_responses',
         'participant_consents',
         'participant_contact_optouts',
@@ -259,6 +317,9 @@ describe.skipIf(!db)('schema verification', () => {
         'schemaFingerprint',
         'sections',
         'session',
+        'session_degree_hist',
+        'session_snapshots',
+        'session_stats',
         'studies',
         'study_role_grants',
         'study_schedules',
