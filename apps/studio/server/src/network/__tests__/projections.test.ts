@@ -33,6 +33,7 @@ describe.skipIf(!db)('session projections', () => {
   let app: pg.Pool;
   let dispose: () => Promise<void>;
   let tenant: TenantDb;
+  let protocolId: string;
   let versionId: string;
 
   const insert = (table: string, row: Row) => {
@@ -50,12 +51,22 @@ describe.skipIf(!db)('session projections', () => {
     const waveId = randomUUID();
     const participantId = randomUUID();
     const sessionId = randomUUID();
-    await insert('studies', { id: studyId, team_id: TEAM, name: 'A study' });
+    // The study names the protocol line and the wave pins its version:
+    // `study_waves_version_own_line` refuses a pin whose study has no line,
+    // and `interview_sessions_version_wave_pin` refuses a session under a wave
+    // that pins nothing.
+    await insert('studies', {
+      id: studyId,
+      team_id: TEAM,
+      name: 'A study',
+      protocol_id: protocolId,
+    });
     await insert('study_waves', {
       id: waveId,
       study_id: studyId,
       team_id: TEAM,
       wave_number: 1,
+      protocol_version_id: versionId,
     });
     await insert('participants', {
       id: participantId,
@@ -138,7 +149,7 @@ describe.skipIf(!db)('session projections', () => {
     ({ pool, app, dispose } = await createScratchSchema(db));
     await provisionScratchSchema(pool);
     await seedTeam(pool, TEAM);
-    const protocolId = randomUUID();
+    protocolId = randomUUID();
     versionId = randomUUID();
     await insert('protocols', {
       id: protocolId,

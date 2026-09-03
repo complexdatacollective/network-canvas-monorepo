@@ -39,7 +39,8 @@ describe.skipIf(!db)('consent schema', () => {
   let maintenance: pg.Pool;
   let dispose: () => Promise<void>;
   let tenantA: TenantDb;
-  /** One published protocol version per team, for the wave and session pins. */
+  /** One protocol line and one published version per team, for the pins. */
+  const protocolOf: Record<string, string> = {};
   const versionOf: Record<string, string> = {};
   /** Each written document's content hash, keyed by document id. */
   const hashOf: Record<string, string> = {};
@@ -97,12 +98,17 @@ describe.skipIf(!db)('consent schema', () => {
     });
   }
 
+  // The study names its team's protocol line and every wave below pins that
+  // line's published version: `study_waves_version_own_line` refuses a pin
+  // whose study has no line, and `interview_sessions_version_wave_pin` refuses
+  // a session under a wave that pins nothing.
   async function newStudy(overrides: Row = {}): Promise<string> {
     const id = randomUUID();
     await insert('studies', {
       id,
       team_id: TEAM_A,
       name: 'A study',
+      protocol_id: protocolOf[TEAM_A],
       ...overrides,
     });
     return id;
@@ -134,6 +140,7 @@ describe.skipIf(!db)('consent schema', () => {
       study_id: studyId,
       team_id: teamId,
       wave_number: 1,
+      protocol_version_id: versionOf[teamId],
     });
     const id = randomUUID();
     await insert('interview_sessions', {
@@ -318,6 +325,7 @@ describe.skipIf(!db)('consent schema', () => {
       await seedTeam(pool, teamId);
       const protocolId = randomUUID();
       const versionId = randomUUID();
+      protocolOf[teamId] = protocolId;
       versionOf[teamId] = versionId;
       await insert('protocols', {
         id: protocolId,
@@ -882,6 +890,7 @@ describe.skipIf(!db)('consent schema', () => {
         study_id: studyId,
         team_id: TEAM_A,
         wave_number: 1,
+        protocol_version_id: versionOf[TEAM_A],
       });
       const sessionFor = async (participantId: string): Promise<string> => {
         const id = randomUUID();

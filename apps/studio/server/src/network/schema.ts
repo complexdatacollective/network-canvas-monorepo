@@ -442,6 +442,46 @@ CREATE OR REPLACE TRIGGER session_snapshots_immutable
   BEFORE UPDATE OR DELETE ON session_snapshots
   FOR EACH ROW EXECUTE FUNCTION session_snapshots_are_immutable();
 
+-- The other half of the write-once rule: a finalized session must HAVE the
+-- snapshot it may only write once. Flipping \`status\` to \`completed\` is what
+-- freezes the session and turns its nodes and edges read-only, and
+-- \`session_snapshots_insert_at_finalization\` shuts the snapshot window the
+-- moment that transaction commits — so a commit that finalizes without
+-- writing one leaves a permanently frozen interview with no exportable
+-- as-collected payload and no way to supply one afterwards.
+--
+-- A CONSTRAINT trigger, deferred to commit, because the order of writes
+-- inside the finalizing transaction is the caller's business: the seed inserts
+-- a whole study's already-completed sessions, then their nodes and edges, then
+-- a projection refresh, and only then the batch of snapshots. Asking at commit
+-- is the only point at which every one of the transaction's snapshot inserts
+-- is in, and it is exactly the point the session becomes visible to anyone
+-- else.
+CREATE OR REPLACE FUNCTION interview_session_completion_has_snapshot() RETURNS trigger AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM session_snapshots s
+    WHERE s.session_id = NEW.id AND s.team_id = NEW.team_id
+  ) THEN
+    RAISE EXCEPTION 'a completed interview session must carry its as-collected snapshot';
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- The one trigger in the schema that is dropped and recreated rather than
+-- replaced: Postgres refuses \`CREATE OR REPLACE CONSTRAINT TRIGGER\` outright.
+-- The whole sidecar is one implicit transaction, so there is no window in
+-- which the guard is missing.
+DROP TRIGGER IF EXISTS interview_sessions_completion_snapshot
+  ON interview_sessions;
+CREATE CONSTRAINT TRIGGER interview_sessions_completion_snapshot
+  AFTER INSERT OR UPDATE OF status ON interview_sessions
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW
+  WHEN (NEW.status = 'completed')
+  EXECUTE FUNCTION interview_session_completion_has_snapshot();
+
 -- \`nodes\`, \`edges\`, \`session_stats\` and \`session_degree_hist\` all need the
 -- same promise: no writes when the owning session is finalized or the owning
 -- study is closed, except the purge's and the marked erasure's deletes. A

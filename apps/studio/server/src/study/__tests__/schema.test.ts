@@ -1,8 +1,10 @@
 // The study spine's database-enforced promises: every CHECK, the composite
-// foreign keys that prove same-study membership, and the five sidecar triggers
-// that make a closed study read-only, a wave's identity fixed, a finalized
-// session immutable, and a participant delete possible only under the audited
-// erasure marker or the maintenance purge.
+// foreign keys that prove same-study membership, and the sidecar triggers that
+// make a closed study read-only, a live study's participation mode and go-live
+// record final, a wave's identity fixed, every version pin a version of the
+// study's own protocol line, a finalized session immutable, and a participant
+// delete possible only under the audited erasure marker or the maintenance
+// purge.
 //
 // Every case asserts the rejection Postgres actually raises — the constraint
 // name for a CHECK, unique or foreign-key violation, the message for a trigger
@@ -52,10 +54,15 @@ describe.skipIf(!db)('study spine schema', () => {
     );
   };
 
+  // Every fixture study names its team's protocol line and every fixture wave
+  // pins that line's published version: `study_waves_version_own_line` refuses
+  // a pin whose study has no line, and `interview_sessions_version_wave_pin`
+  // refuses a session under a wave that pins nothing.
   const studyRow = (overrides: Row = {}): Row => ({
     id: randomUUID(),
     team_id: TEAM_A,
     name: 'A study',
+    protocol_id: protocolOf[TEAM_A],
     ...overrides,
   });
 
@@ -64,6 +71,7 @@ describe.skipIf(!db)('study spine schema', () => {
     study_id: studyId,
     team_id: TEAM_A,
     wave_number: 1,
+    protocol_version_id: versionOf[TEAM_A],
     ...overrides,
   });
 
@@ -137,6 +145,43 @@ describe.skipIf(!db)('study spine schema', () => {
     return row.id as string;
   }
 
+  /** Another published version of `protocolId`, inside TEAM_A. */
+  async function newVersion(
+    protocolId: string,
+    versionNumber: number,
+  ): Promise<string> {
+    const versionId = randomUUID();
+    await insert('protocol_versions', {
+      id: versionId,
+      protocol_id: protocolId,
+      team_id: TEAM_A,
+      version_number: versionNumber,
+      version_hash: `hash-${versionId}`,
+      manifest: JSON.stringify({ name: 'another version' }),
+      schema_version: 8,
+      source_manifest_hash: `source-${versionId}`,
+    });
+    return versionId;
+  }
+
+  /**
+   * A second protocol line in TEAM_A, with one published version. The
+   * team-scoped composite keys admit its version anywhere the team's own does,
+   * so it is the fixture every "same team, wrong line" case needs.
+   */
+  async function newProtocolLine(): Promise<{
+    protocolId: string;
+    versionId: string;
+  }> {
+    const protocolId = randomUUID();
+    await insert('protocols', {
+      id: protocolId,
+      team_id: TEAM_A,
+      name: `Another protocol ${protocolId.slice(0, 8)}`,
+    });
+    return { protocolId, versionId: await newVersion(protocolId, 1) };
+  }
+
   /** A study with one wave and one participant, all open. */
   async function newTrio(): Promise<{
     studyId: string;
@@ -156,6 +201,44 @@ describe.skipIf(!db)('study spine schema', () => {
       `UPDATE studies SET state = 'closed', closed_at = now() WHERE id = $1`,
       [studyId],
     );
+  }
+
+  /**
+   * Finalizes a session the only way the database now admits: the flip to
+   * `completed` and the session's snapshot in one transaction. The deferred
+   * `interview_sessions_completion_snapshot` weighs the pair at commit, and
+   * `session_snapshots_insert_at_finalization` refuses the snapshot in any
+   * other transaction — so a study-module fixture that needs a finalized
+   * session has to write the network module's row too.
+   */
+  async function finalize(sessionId: string): Promise<void> {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `UPDATE interview_sessions
+         SET status = 'completed', completed_at = now() WHERE id = $1`,
+        [sessionId],
+      );
+      await client.query(
+        `INSERT INTO session_snapshots
+           (session_id, team_id, study_id, protocol_version_id,
+            schema_version, payload, payload_hash)
+         SELECT s.id, s.team_id, s.study_id, s.protocol_version_id,
+                v.schema_version, '{}'::jsonb, 'sha256:finalized'
+         FROM interview_sessions s
+         JOIN protocol_versions v
+           ON v.id = s.protocol_version_id AND v.team_id = s.team_id
+         WHERE s.id = $1`,
+        [sessionId],
+      );
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   /**
@@ -326,6 +409,101 @@ describe.skipIf(!db)('study spine schema', () => {
         detail: expect.stringContaining('is not present in table "protocols"'),
       });
     });
+
+    it('refuses a protocol retarget while a wave still pins a version', async () => {
+      const studyId = await newStudy();
+      const waveId = await newWave(studyId);
+      const other = await newProtocolLine();
+
+      await expect(
+        pool.query(`UPDATE studies SET protocol_id = $2 WHERE id = $1`, [
+          studyId,
+          other.protocolId,
+        ]),
+      ).rejects.toThrow(
+        "a study's protocol line cannot change while a wave still pins a version",
+      );
+
+      // The command layer clears every pin before it retargets a Draft; with
+      // the pins gone the same write lands.
+      await pool.query(
+        `UPDATE study_waves SET protocol_version_id = NULL WHERE id = $1`,
+        [waveId],
+      );
+      await expect(
+        pool.query(`UPDATE studies SET protocol_id = $2 WHERE id = $1`, [
+          studyId,
+          other.protocolId,
+        ]),
+      ).resolves.toMatchObject({ rowCount: 1 });
+    });
+
+    it('freezes the participation mode and go-live record of a live study', async () => {
+      const wentLiveAt = new Date('2026-04-01T09:00:00Z');
+      const studyId = await newStudy({
+        state: 'live',
+        went_live_at: wentLiveAt,
+      });
+
+      await expect(
+        pool.query(
+          `UPDATE studies SET participation_mode = 'anonymous' WHERE id = $1`,
+          [studyId],
+        ),
+      ).rejects.toThrow(
+        'a study that has gone live cannot change participation mode',
+      );
+      await expect(
+        pool.query(`UPDATE studies SET went_live_at = NULL WHERE id = $1`, [
+          studyId,
+        ]),
+      ).rejects.toThrow(
+        "a study's first go-live is recorded once and never rewritten",
+      );
+      await expect(
+        pool.query(`UPDATE studies SET went_live_at = now() WHERE id = $1`, [
+          studyId,
+        ]),
+      ).rejects.toThrow(
+        "a study's first go-live is recorded once and never rewritten",
+      );
+
+      // The rest of the lifecycle still moves, and leaves both alone.
+      await expect(
+        pool.query(
+          `UPDATE studies SET state = 'paused', paused_at = now() WHERE id = $1`,
+          [studyId],
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+      const stored = await pool.query<Row>(
+        `SELECT participation_mode, went_live_at FROM studies WHERE id = $1`,
+        [studyId],
+      );
+      expect(stored.rows[0]).toEqual({
+        participation_mode: 'managed',
+        went_live_at: wentLiveAt,
+      });
+    });
+
+    it('leaves a study that has never gone live free to choose its mode', async () => {
+      // The freeze is evidence-driven: without `went_live_at` there is no
+      // collected data for a mode change to reinterpret, and setting the
+      // timestamp for the first time is how a study goes live at all.
+      const studyId = await newStudy();
+
+      await expect(
+        pool.query(
+          `UPDATE studies SET participation_mode = 'anonymous' WHERE id = $1`,
+          [studyId],
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+      await expect(
+        pool.query(
+          `UPDATE studies SET state = 'live', went_live_at = now() WHERE id = $1`,
+          [studyId],
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+    });
   });
 
   describe('closed studies are read-only', () => {
@@ -372,6 +550,34 @@ describe.skipIf(!db)('study spine schema', () => {
       await expect(
         pool.query(`UPDATE studies SET ${assignment} WHERE id = $1`, [studyId]),
       ).rejects.toThrow('closed studies are read-only');
+    });
+
+    it('refuses a rewrite of the close timestamp while the study stays closed', async () => {
+      // `closed_at` is on the allowlist only so the reopen below can clear it.
+      const studyId = await newStudy();
+      await closeStudy(studyId);
+      const closedAt = await pool.query<{ closed_at: Date }>(
+        `SELECT closed_at FROM studies WHERE id = $1`,
+        [studyId],
+      );
+
+      await expect(
+        pool.query(
+          `UPDATE studies SET closed_at = now() - interval '30 days' WHERE id = $1`,
+          [studyId],
+        ),
+      ).rejects.toThrow('closed studies are read-only');
+      await expect(
+        pool.query(`UPDATE studies SET closed_at = NULL WHERE id = $1`, [
+          studyId,
+        ]),
+      ).rejects.toThrow('closed studies are read-only');
+
+      const after = await pool.query<{ closed_at: Date }>(
+        `SELECT closed_at FROM studies WHERE id = $1`,
+        [studyId],
+      );
+      expect(after.rows[0]?.closed_at).toEqual(closedAt.rows[0]?.closed_at);
     });
 
     it('admits the single reopen shape', async () => {
@@ -462,8 +668,14 @@ describe.skipIf(!db)('study spine schema', () => {
 
     it('refuses a wave whose team disagrees with its study', async () => {
       const studyId = await newStudy({ team_id: TEAM_A });
+      // The pin is dropped so the key to `studies` is the only one this row
+      // can violate; with team B's wave carrying team A's version, the key to
+      // `protocol_versions` would fail too and either could report.
       await expect(
-        insert('study_waves', waveRow(studyId, { team_id: TEAM_B })),
+        insert(
+          'study_waves',
+          waveRow(studyId, { team_id: TEAM_B, protocol_version_id: null }),
+        ),
       ).rejects.toMatchObject({
         code: '23503',
         detail: expect.stringContaining('is not present in table "studies"'),
@@ -483,6 +695,41 @@ describe.skipIf(!db)('study spine schema', () => {
           'is not present in table "protocol_versions"',
         ),
       });
+    });
+
+    it('refuses a version pin from another protocol line in the same team', async () => {
+      const studyId = await newStudy();
+      const other = await newProtocolLine();
+      const refused =
+        "a wave's protocol version must belong to its study's protocol line";
+
+      // The team-scoped key admits the version; only the study's own
+      // `protocol_id` says it belongs to a different line.
+      await expect(
+        insert(
+          'study_waves',
+          waveRow(studyId, { protocol_version_id: other.versionId }),
+        ),
+      ).rejects.toThrow(refused);
+
+      // Re-pinning a wave is proven the same way.
+      const waveId = await newWave(studyId);
+      await expect(
+        pool.query(
+          `UPDATE study_waves SET protocol_version_id = $2 WHERE id = $1`,
+          [waveId, other.versionId],
+        ),
+      ).rejects.toThrow(refused);
+
+      // A Draft with no line yet pins nothing at all, and a wave that pins
+      // nothing is the state every Draft wave starts in.
+      const draftId = await newStudy({ protocol_id: null });
+      await expect(insert('study_waves', waveRow(draftId))).rejects.toThrow(
+        refused,
+      );
+      await expect(
+        insert('study_waves', waveRow(draftId, { protocol_version_id: null })),
+      ).resolves.toMatchObject({ rowCount: 1 });
     });
 
     it('holds wave identity immutable', async () => {
@@ -892,6 +1139,49 @@ describe.skipIf(!db)('study spine schema', () => {
       ).resolves.toMatchObject({ rowCount: 1 });
     });
 
+    it('refuses a session pinning a version its wave does not', async () => {
+      const studyId = await newStudy();
+      const waveId = await newWave(studyId);
+      // A second version of the study's OWN line: the team-scoped key admits
+      // it, and only the wave's pin says the session never ran it.
+      const secondVersionId = await newVersion(protocolOf[TEAM_A]!, 2);
+      const refused =
+        'an interview session must pin the protocol version its wave pins';
+
+      await expect(
+        insert(
+          'interview_sessions',
+          sessionRow(studyId, waveId, {
+            protocol_version_id: secondVersionId,
+          }),
+        ),
+      ).rejects.toThrow(refused);
+
+      // A wave that pins nothing takes no sessions at all.
+      const unpinnedWaveId = await newWave(studyId, {
+        wave_number: 2,
+        protocol_version_id: null,
+      });
+      await expect(
+        insert('interview_sessions', sessionRow(studyId, unpinnedWaveId)),
+      ).rejects.toThrow(refused);
+
+      // The session copies the wave's pin, and keeps its copy when the wave
+      // moves on: that is the whole reason it carries one.
+      const sessionId = await newSession(studyId, waveId);
+      await expect(
+        pool.query(
+          `UPDATE study_waves SET protocol_version_id = $2 WHERE id = $1`,
+          [waveId, secondVersionId],
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+      const stored = await pool.query<{ protocol_version_id: string }>(
+        `SELECT protocol_version_id FROM interview_sessions WHERE id = $1`,
+        [sessionId],
+      );
+      expect(stored.rows[0]?.protocol_version_id).toBe(versionOf[TEAM_A]);
+    });
+
     it('refuses a link that opens another wave or another participant', async () => {
       const { studyId, waveId, participantId } = await newTrio();
       const otherWaveId = await newWave(studyId, { wave_number: 2 });
@@ -1005,13 +1295,9 @@ describe.skipIf(!db)('study spine schema', () => {
       });
       const bystander = await newParticipant(studyId);
 
-      // Finalizing is itself an ordinary update.
-      await pool.query(
-        `UPDATE interview_sessions
-         SET status = 'completed', completed_at = now()
-         WHERE id = $1`,
-        [sessionId],
-      );
+      // Finalizing is itself an ordinary update — paired with the snapshot the
+      // deferred completion guard requires of it.
+      await finalize(sessionId);
 
       await expect(
         pool.query(
@@ -1032,6 +1318,13 @@ describe.skipIf(!db)('study spine schema', () => {
         ]),
       ).rejects.toThrow(
         'interview sessions are deleted only by an audited erasure or the maintenance purge',
+      );
+      // Bottom-up, the order every delete path follows: the snapshot the
+      // finalization had to write is the session's child, and no key cascades.
+      await erasing(
+        participantId,
+        `DELETE FROM session_snapshots WHERE session_id = $1`,
+        [sessionId],
       );
       await expect(
         erasing(participantId, `DELETE FROM interview_sessions WHERE id = $1`, [

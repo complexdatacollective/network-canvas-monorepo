@@ -572,6 +572,15 @@ BEGIN
     RAISE EXCEPTION 'closed studies are read-only';
   END IF;
 
+  -- \`closed_at\` rides the allowlist only so the reopen above can clear it.
+  -- While the study stays closed the timestamp is the archive's date of
+  -- record — what the retention clock and every export header are read
+  -- against — so rewriting it in place would move when the study closed with
+  -- no state change to account for the move.
+  IF NEW.state = 'closed' AND NEW.closed_at IS DISTINCT FROM OLD.closed_at THEN
+    RAISE EXCEPTION 'closed studies are read-only';
+  END IF;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -579,6 +588,66 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE TRIGGER studies_closed_read_only
   BEFORE UPDATE ON studies
   FOR EACH ROW EXECUTE FUNCTION studies_closed_is_read_only();
+
+-- Participation mode decides whether a study holds identified participants at
+-- all, and \`went_live_at\` is the evidence that the decision has been acted
+-- on. Once collection has begun under one mode, switching would reinterpret
+-- data already collected — an anonymous run's sessions have no participant to
+-- attribute to — and clearing the timestamp would erase the very evidence
+-- that forbids the switch. Both freeze on the FIRST go-live, so a pause, a
+-- close and a reopen all leave them alone; \`studies_closed_read_only\` catches
+-- a closed study's attempt before this trigger, because neither column is on
+-- its allowlist.
+CREATE OR REPLACE FUNCTION studies_go_live_is_final() RETURNS trigger AS $$
+BEGIN
+  IF NEW.participation_mode IS DISTINCT FROM OLD.participation_mode THEN
+    RAISE EXCEPTION 'a study that has gone live cannot change participation mode';
+  END IF;
+  IF NEW.went_live_at IS DISTINCT FROM OLD.went_live_at THEN
+    RAISE EXCEPTION 'a study''s first go-live is recorded once and never rewritten';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER studies_go_live_final
+  BEFORE UPDATE ON studies
+  FOR EACH ROW
+  WHEN (OLD.went_live_at IS NOT NULL
+        AND (NEW.participation_mode IS DISTINCT FROM OLD.participation_mode
+             OR NEW.went_live_at IS DISTINCT FROM OLD.went_live_at))
+  EXECUTE FUNCTION studies_go_live_is_final();
+
+-- The retarget half of the wave-pin invariant \`study_waves_version_own_line\`
+-- proves below. \`studies.protocol_id\` is nullable so a Draft can be pointed
+-- at a different protocol, and the command layer clears every wave pin before
+-- it does; this refuses the retarget that skipped that step, which would
+-- leave pins the wave trigger admitted naming versions of the line the study
+-- has just walked away from. AFTER the row, so the composite key to
+-- \`protocols\` reports a protocol from another team first.
+--
+-- Alone among these guards this one refuses on a row it FINDS, so it would
+-- fail open if row-level security hid the pinned wave. It cannot: the caller
+-- is updating this study, so its policy has already pinned the study's team,
+-- and every wave of that study carries the same team_id.
+CREATE OR REPLACE FUNCTION studies_protocol_line_is_unpinned() RETURNS trigger AS $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM study_waves w
+    WHERE w.study_id = NEW.id AND w.team_id = NEW.team_id
+      AND w.protocol_version_id IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION 'a study''s protocol line cannot change while a wave still pins a version';
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER studies_protocol_line_unpinned
+  AFTER UPDATE OF protocol_id ON studies
+  FOR EACH ROW
+  WHEN (NEW.protocol_id IS DISTINCT FROM OLD.protocol_id)
+  EXECUTE FUNCTION studies_protocol_line_is_unpinned();
 
 -- Shared by every child guard below.
 CREATE OR REPLACE FUNCTION study_is_closed(p_study_id uuid, p_team_id text)
@@ -635,6 +704,38 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE TRIGGER study_waves_parent_open
   BEFORE INSERT OR UPDATE OR DELETE ON study_waves
   FOR EACH ROW EXECUTE FUNCTION study_waves_parent_is_open();
+
+-- A wave's pin must name a version of the STUDY's own protocol line. The
+-- composite key on (protocol_version_id, team_id) proves only that the version
+-- is the team's, so without this a writer could pin a sibling study's line and
+-- leave a collecting wave running a protocol its study never chose — every
+-- session of that wave then carrying a version pin that \`studies.protocol_id\`
+-- disagrees with. A study with no line yet pins nothing: the comparison
+-- against a null \`protocol_id\` finds no row, which is the intended refusal.
+--
+-- AFTER the row, so the key reports first: a version from another team is a
+-- key violation, not a line mismatch.
+CREATE OR REPLACE FUNCTION study_wave_version_is_own_line() RETURNS trigger AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM studies s
+    JOIN protocol_versions v
+      ON v.id = NEW.protocol_version_id AND v.team_id = NEW.team_id
+    WHERE s.id = NEW.study_id AND s.team_id = NEW.team_id
+      AND v.protocol_id = s.protocol_id
+  ) THEN
+    RAISE EXCEPTION 'a wave''s protocol version must belong to its study''s protocol line';
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER study_waves_version_own_line
+  AFTER INSERT OR UPDATE OF protocol_version_id ON study_waves
+  FOR EACH ROW
+  WHEN (NEW.protocol_version_id IS NOT NULL)
+  EXECUTE FUNCTION study_wave_version_is_own_line();
 
 -- Participants and sessions carry their own parent-state guard: the triggers
 -- above cover only \`studies\` and \`study_waves\`, so without this a buggy
@@ -756,6 +857,36 @@ CREATE OR REPLACE TRIGGER interview_sessions_link_own
   FOR EACH ROW
   WHEN (NEW.link_id IS NOT NULL)
   EXECUTE FUNCTION interview_session_link_is_own();
+
+-- A session's own pin is a COPY of its wave's pin, taken at creation. The
+-- composite key proves only that the version is the team's, so without this a
+-- session could be created against any of the team's versions and its
+-- provenance — including the snapshot's, which is proven against the session
+-- rather than against the wave — would record a protocol the wave never
+-- served. A wave that pins nothing takes no sessions at all: comparing against
+-- a null pin finds no row, and that is the intended refusal.
+--
+-- INSERT only. The pin is already immutable on a session
+-- (\`interview_sessions_writable\`), and re-pinning a wave to a newer version
+-- must stay possible — that the sessions already collected keep running the
+-- version they started under is the whole reason the session carries its own
+-- copy.
+CREATE OR REPLACE FUNCTION interview_session_version_is_wave_pin() RETURNS trigger AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM study_waves w
+    WHERE w.id = NEW.wave_id AND w.team_id = NEW.team_id
+      AND w.protocol_version_id = NEW.protocol_version_id
+  ) THEN
+    RAISE EXCEPTION 'an interview session must pin the protocol version its wave pins';
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER interview_sessions_version_wave_pin
+  AFTER INSERT ON interview_sessions
+  FOR EACH ROW EXECUTE FUNCTION interview_session_version_is_wave_pin();
 
 -- The same guard as sessions, minus the finalization clause.
 CREATE OR REPLACE FUNCTION interview_links_are_writable() RETURNS trigger AS $$

@@ -1,8 +1,9 @@
 // The network module's database-enforced promises: every CHECK, the composite
 // foreign keys that prove same-team membership, the endpoint keys that make a
-// dangling edge impossible, the snapshot's write-once-at-finalization rule,
-// and the statement-level guard that makes a finalized session's and a closed
-// study's collected data read-only.
+// dangling edge impossible, the snapshot's write-once-at-finalization rule and
+// the deferred constraint that makes it compulsory, and the statement-level
+// guard that makes a finalized session's and a closed study's collected data
+// read-only.
 //
 // Every case asserts the rejection Postgres actually raises — the constraint
 // name for a CHECK, unique or foreign-key violation, the message for a trigger,
@@ -69,12 +70,22 @@ describe.skipIf(!db)('network schema', () => {
     const waveId = randomUUID();
     const participantId = randomUUID();
     const sessionId = randomUUID();
-    await insert('studies', { id: studyId, team_id: teamId, name: 'A study' });
+    // The study names its team's protocol line and the wave pins that line's
+    // published version, because `study_waves_version_own_line` refuses a pin
+    // whose study has no line and `interview_sessions_version_wave_pin`
+    // refuses a session under a wave that pins nothing.
+    await insert('studies', {
+      id: studyId,
+      team_id: teamId,
+      name: 'A study',
+      protocol_id: protocolOf[teamId],
+    });
     await insert('study_waves', {
       id: waveId,
       study_id: studyId,
       team_id: teamId,
       wave_number: 1,
+      protocol_version_id: versionOf[teamId],
     });
     await insert('participants', {
       id: participantId,
@@ -162,8 +173,27 @@ describe.skipIf(!db)('network schema', () => {
     );
   }
 
-  /** Finalizes `sessionId` in its own committed transaction. */
-  const finalize = (sessionId: string) => pool.query(FINALIZE_SQL, [sessionId]);
+  /**
+   * The snapshot a finalization has to write, derived from the session so any
+   * fixture can be finalized without naming its study or its version pin.
+   */
+  const SNAPSHOT_SQL = `INSERT INTO session_snapshots
+       (session_id, team_id, study_id, protocol_version_id,
+        schema_version, payload, payload_hash)
+     SELECT s.id, s.team_id, s.study_id, s.protocol_version_id,
+            v.schema_version, '{}'::jsonb, 'sha256:finalized'
+     FROM interview_sessions s
+     JOIN protocol_versions v
+       ON v.id = s.protocol_version_id AND v.team_id = s.team_id
+     WHERE s.id = $1`;
+
+  /**
+   * Finalizes `sessionId` in its own committed transaction, snapshot and all:
+   * `interview_sessions_completion_snapshot` is deferred to commit, so the
+   * flip and the snapshot have to travel together.
+   */
+  const finalize = (sessionId: string) =>
+    finalizing(sessionId, (client) => client.query(SNAPSHOT_SQL, [sessionId]));
 
   /**
    * Runs `work` inside the transaction that flips the session to completed —
@@ -499,12 +529,103 @@ describe.skipIf(!db)('network schema', () => {
       );
 
       // Completed, but in an earlier transaction: the window has closed.
+      // Finalizing now has to write the snapshot, so the audited erasure is
+      // what takes it away again — leaving a completed session whose window
+      // shut with the commit before this one.
       await finalize(fixture.sessionId);
+      await erasing(
+        fixture.participantId,
+        `DELETE FROM session_snapshots WHERE session_id = $1`,
+        [fixture.sessionId],
+      );
       await expect(
         insert('session_snapshots', snapshotRow(fixture)),
       ).rejects.toThrow(
         'a session snapshot may only be written in the transaction that finalizes its session',
       );
+    });
+
+    it('refuses at commit a session finalized with no snapshot', async () => {
+      const fixture = await newFixture();
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        // Deferred: the flip itself is accepted, and only the commit weighs
+        // it. Asserting the update resolves is what proves the deferral —
+        // an immediate check would have raised here instead.
+        await expect(
+          client.query(FINALIZE_SQL, [fixture.sessionId]),
+        ).resolves.toMatchObject({ rowCount: 1 });
+        await expect(client.query('COMMIT')).rejects.toThrow(
+          'a completed interview session must carry its as-collected snapshot',
+        );
+      } finally {
+        await client.query('ROLLBACK').catch(() => undefined);
+        client.release();
+      }
+
+      // The refused commit took the flip with it, so the session is still
+      // collectable rather than frozen with nothing to export.
+      const after = await pool.query<{ status: string }>(
+        `SELECT status FROM interview_sessions WHERE id = $1`,
+        [fixture.sessionId],
+      );
+      expect(after.rows[0]?.status).toBe('in_progress');
+
+      // And the same flip, carrying its snapshot, commits.
+      await expect(finalize(fixture.sessionId)).resolves.toMatchObject({
+        rowCount: 1,
+      });
+    });
+
+    it('requires the snapshot of a session inserted already completed', async () => {
+      // The seed's shape: sessions are inserted `completed` and their
+      // snapshots written later in the same transaction, which is exactly what
+      // deferring the check to commit admits.
+      const { studyId, waveId } = await newFixture();
+      // Anonymous sessions, because the fixture's participant already holds
+      // the wave's one live session.
+      const session = (id: string) => [
+        id,
+        studyId,
+        TEAM_A,
+        waveId,
+        versionOf[TEAM_A],
+        `ego_${id.slice(0, 8)}`,
+      ];
+      const insertCompleted = `INSERT INTO interview_sessions
+           (id, study_id, team_id, wave_id,
+            protocol_version_id, ego_uid, status, completed_at)
+         VALUES ($1, $2, $3, $4, $5, $6, 'completed', now())`;
+
+      const orphan = randomUUID();
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query(insertCompleted, session(orphan));
+        await expect(client.query('COMMIT')).rejects.toThrow(
+          'a completed interview session must carry its as-collected snapshot',
+        );
+      } finally {
+        await client.query('ROLLBACK').catch(() => undefined);
+        client.release();
+      }
+
+      const withSnapshot = randomUUID();
+      const second = await pool.connect();
+      try {
+        await second.query('BEGIN');
+        await second.query(insertCompleted, session(withSnapshot));
+        await second.query(SNAPSHOT_SQL, [withSnapshot]);
+        await second.query('COMMIT');
+      } finally {
+        second.release();
+      }
+      const stored = await pool.query<{ id: string }>(
+        `SELECT id FROM interview_sessions WHERE id = ANY($1)`,
+        [[orphan, withSnapshot]],
+      );
+      expect(stored.rows).toEqual([{ id: withSnapshot }]);
     });
 
     it('accepts a snapshot inside the finalizing transaction', async () => {
