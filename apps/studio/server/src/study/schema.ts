@@ -808,6 +808,47 @@ CREATE OR REPLACE TRIGGER participants_writable
   BEFORE INSERT OR UPDATE OR DELETE ON participants
   FOR EACH ROW EXECUTE FUNCTION participants_are_writable();
 
+-- Anonymous studies hold no participants: the composite key proves only that
+-- the study is the team's, so the mode is proven here. AFTER the row, so a
+-- study that does not exist reports through the key first. The other
+-- direction — a draft switching to anonymous over a cohort it already
+-- holds — is refused on the study below; after go-live the mode is frozen.
+CREATE OR REPLACE FUNCTION participants_study_is_managed() RETURNS trigger AS $$
+DECLARE
+  mode text;
+BEGIN
+  SELECT s.participation_mode INTO mode
+  FROM studies s WHERE s.id = NEW.study_id AND s.team_id = NEW.team_id;
+  IF mode IS DISTINCT FROM 'managed' THEN
+    RAISE EXCEPTION 'anonymous studies hold no participants';
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER participants_study_managed
+  AFTER INSERT ON participants
+  FOR EACH ROW EXECUTE FUNCTION participants_study_is_managed();
+
+CREATE OR REPLACE FUNCTION studies_mode_switch_is_unpeopled() RETURNS trigger AS $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM participants p
+    WHERE p.study_id = NEW.id AND p.team_id = NEW.team_id
+  ) THEN
+    RAISE EXCEPTION 'a study holding participants cannot become anonymous';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER studies_mode_switch_unpeopled
+  BEFORE UPDATE ON studies
+  FOR EACH ROW
+  WHEN (NEW.participation_mode = 'anonymous'
+        AND OLD.participation_mode IS DISTINCT FROM 'anonymous')
+  EXECUTE FUNCTION studies_mode_switch_is_unpeopled();
+
 -- Finalization makes a session immutable, and the immutability MUST be
 -- UPDATE-only: deletes stay possible, because both the maintenance purge and
 -- the participant-erasure command legitimately delete finalized sessions,

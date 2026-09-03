@@ -16,10 +16,11 @@ import type pg from 'pg';
 
 import { generateNetwork } from '@codaco/protocol-utilities';
 import type { NcNetwork } from '@codaco/shared-consts';
+import { canonicalize } from '@codaco/studio-sync/apply';
 
 import { insertRows, type SeedRowValue } from './insert.ts';
 import type { SeededVersion } from './protocols.ts';
-import { seedUuid, sha256Hex, shiftMinutes } from './rng.ts';
+import { seedUuid, sha256Hex, shiftDays, shiftMinutes } from './rng.ts';
 import type { SeedStudy } from './studies.ts';
 import type { SeedTeam } from './teams.ts';
 
@@ -277,10 +278,31 @@ export async function seedSessionsAndNetworks(
         );
 
         const sessionId = seedUuid();
+        // Inside the wave's window, and never before the participant was
+        // enrolled — or, for a visit through their link, before the link
+        // was issued (the day after enrolment, as studies.ts dates it).
         const windowStart = wave.opensAt ?? study.createdAt;
+        const windowEnd = shiftDays(windowStart, 45);
+        const notBefore = new Date(
+          Math.max(
+            windowStart.getTime(),
+            participant === null
+              ? 0
+              : shiftDays(
+                  participant.enrolledAt,
+                  link === null ? 0 : 1,
+                ).getTime(),
+          ),
+        );
         const startedAt = shiftMinutes(
-          windowStart,
-          faker.number.int({ min: 0, max: 45 * 24 * 60 }),
+          notBefore,
+          faker.number.int({
+            min: 1,
+            max: Math.max(
+              1,
+              Math.floor((windowEnd.getTime() - notBefore.getTime()) / 60_000),
+            ),
+          }),
         );
         const lastActivityAt = shiftMinutes(
           startedAt,
@@ -355,7 +377,9 @@ export async function seedSessionsAndNetworks(
             stageMetadata: generated.stageMetadata ?? {},
             currentStep: generated.currentStep,
           };
-          const serialized = JSON.stringify(payload);
+          // Hashed in canonical form: jsonb does not keep key order, so the
+          // evidence must be checkable from the payload as it is read back.
+          const serialized = canonicalize(payload);
           snapshotRows.push([
             sessionId,
             team.id,

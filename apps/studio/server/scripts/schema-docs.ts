@@ -93,7 +93,8 @@ function extractMetadata(
   // row-timing detail belongs.
   const triggers = [
     ...sidecarSql.matchAll(
-      /CREATE (?:OR REPLACE )?(?:CONSTRAINT )?TRIGGER\s+(\w+)\s+([\s\S]*?)\s+ON\s+(\w+)\s+([\s\S]*?)EXECUTE FUNCTION\s+(\w+)\(\);/g,
+      // The function may take literal arguments (`fn('exposures', 'occurred_at')`).
+      /CREATE (?:OR REPLACE )?(?:CONSTRAINT )?TRIGGER\s+(\w+)\s+([\s\S]*?)\s+ON\s+(\w+)\s+([\s\S]*?)EXECUTE FUNCTION\s+(\w+)\([^)]*\);/g,
     ),
   ].map(([, name, action, table, body, functionName]) => ({
     name: name!,

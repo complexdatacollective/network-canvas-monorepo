@@ -155,9 +155,16 @@ describe.skipIf(!db)('experiment schema', () => {
       await seedTeam(pool, teamId);
       const experimentId = randomUUID();
       experimentOf[teamId] = experimentId;
+      // Running, so the fixture assignment and the exposures the cases
+      // below add lie within the experiment's lifetime.
       await insert(
         'experiments',
-        experimentRow({ id: experimentId, team_id: teamId }),
+        experimentRow({
+          id: experimentId,
+          team_id: teamId,
+          state: 'running',
+          started_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        }),
       );
       const assignmentId = randomUUID();
       assignmentOf[teamId] = assignmentId;
@@ -541,7 +548,10 @@ describe.skipIf(!db)('experiment schema', () => {
     });
 
     it('allows one assignment per subject per experiment', async () => {
-      const experimentId = await newExperiment();
+      const experimentId = await newExperiment({
+        state: 'running',
+        started_at: new Date(),
+      });
       const subjectId = `user-${randomUUID().slice(0, 8)}`;
       await newAssignment(experimentId, { subject_id: subjectId });
 
@@ -571,10 +581,14 @@ describe.skipIf(!db)('experiment schema', () => {
         ),
       ).resolves.toMatchObject({ rowCount: 1 });
       // As is the same subject in another experiment.
+      const otherId = await newExperiment({
+        state: 'running',
+        started_at: new Date(),
+      });
       await expect(
         insert(
           'experiment_assignments',
-          assignmentRow(await newExperiment(), { subject_id: subjectId }),
+          assignmentRow(otherId, { subject_id: subjectId }),
         ),
       ).resolves.toMatchObject({ rowCount: 1 });
     });
@@ -703,6 +717,47 @@ describe.skipIf(!db)('experiment schema', () => {
       ).rejects.toThrow(
         'experiment assignments are deleted only by an audited erasure or the maintenance purge',
       );
+    });
+  });
+
+  describe('experiment_rows_within_lifetime', () => {
+    it('refuses an assignment or exposure on an experiment that has not started', async () => {
+      const draftId = await newExperiment();
+      await expect(newAssignment(draftId)).rejects.toThrow(
+        'an experiment that has not started has no assignments',
+      );
+    });
+
+    it('refuses an assignment or exposure dated outside the lifetime', async () => {
+      const startedAt = new Date('2026-03-01T00:00:00Z');
+      const stoppedAt = new Date('2026-04-01T00:00:00Z');
+      const experimentId = await newExperiment({
+        state: 'stopped',
+        started_at: startedAt,
+        stopped_at: stoppedAt,
+      });
+      await expect(
+        newAssignment(experimentId, {
+          assigned_at: new Date('2026-02-28T23:59:59Z'),
+        }),
+      ).rejects.toThrow("an experiment's assignments lie within its lifetime");
+      const assignmentId = await newAssignment(experimentId, {
+        assigned_at: new Date('2026-03-10T00:00:00Z'),
+      });
+      await expect(
+        newExposure(experimentId, assignmentId, {
+          occurred_at: new Date('2026-04-01T00:00:01Z'),
+        }),
+      ).rejects.toThrow("an experiment's exposures lie within its lifetime");
+      await expect(
+        newExposure(experimentId, assignmentId, {
+          occurred_at: new Date('2026-02-28T00:00:00Z'),
+        }),
+      ).rejects.toThrow("an experiment's exposures lie within its lifetime");
+      // Inside the span, both ends inclusive.
+      await expect(
+        newExposure(experimentId, assignmentId, { occurred_at: stoppedAt }),
+      ).resolves.toMatch(/^[0-9a-f-]{36}$/);
     });
   });
 

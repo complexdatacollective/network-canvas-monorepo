@@ -279,6 +279,40 @@ CREATE OR REPLACE TRIGGER experiment_assignments_variant_known
 -- ...and the definition holds still once subjects are being assigned against
 -- it: an arm renamed or removed under a running experiment would orphan the
 -- assignments the check above admitted.
+-- An assignment or exposure belongs to the experiment's lifetime: it needs
+-- an experiment that has started, and a moment between that start and the
+-- stop, if there has been one. Outside that span the row would be immutable
+-- evidence an analysis by experiment and arm could not tell from the real
+-- observations. AFTER the row, so the composite keys report first.
+CREATE OR REPLACE FUNCTION experiment_rows_are_within_lifetime() RETURNS trigger AS $$
+DECLARE
+  started timestamptz;
+  stopped timestamptz;
+  moment timestamptz;
+BEGIN
+  SELECT e.started_at, e.stopped_at INTO started, stopped
+  FROM experiments e WHERE e.id = NEW.experiment_id AND e.team_id = NEW.team_id;
+  -- The row's own moment, named per table by the trigger's second argument:
+  -- a direct NEW.<column> would bind both names against each record.
+  moment := (to_jsonb(NEW) ->> TG_ARGV[1])::timestamptz;
+  IF started IS NULL THEN
+    RAISE EXCEPTION 'an experiment that has not started has no %', TG_ARGV[0];
+  END IF;
+  IF moment < started OR (stopped IS NOT NULL AND moment > stopped) THEN
+    RAISE EXCEPTION 'an experiment''s % lie within its lifetime', TG_ARGV[0];
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER experiment_assignments_within_lifetime
+  AFTER INSERT ON experiment_assignments
+  FOR EACH ROW EXECUTE FUNCTION experiment_rows_are_within_lifetime('assignments', 'assigned_at');
+
+CREATE OR REPLACE TRIGGER experiment_exposures_within_lifetime
+  AFTER INSERT ON experiment_exposures
+  FOR EACH ROW EXECUTE FUNCTION experiment_rows_are_within_lifetime('exposures', 'occurred_at');
+
 CREATE OR REPLACE FUNCTION experiment_variants_are_frozen() RETURNS trigger AS $$
 BEGIN
   RAISE EXCEPTION 'the variants of an experiment that has started are immutable';

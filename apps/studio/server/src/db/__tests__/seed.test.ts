@@ -3,6 +3,7 @@ import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { TEAM_ROLES } from '@codaco/studio-rpc';
+import { canonicalize } from '@codaco/studio-sync/apply';
 
 import {
   createScratchSchema,
@@ -15,6 +16,7 @@ import {
   SEED_ADMIN_PASSWORD,
   seed,
 } from '../seed.ts';
+import { sha256Hex } from '../seed/rng.ts';
 
 const db = await reachableDb();
 
@@ -796,6 +798,75 @@ describe.skipIf(!db)('the seeded dataset', () => {
     await expect(
       count(pool, `select count(*)::int as n from asset_references`),
     ).resolves.toBeGreaterThan(0);
+  });
+
+  it('starts every session after its participant enrolled and its link was issued', async () => {
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from interview_sessions s
+         join participants p on p.id = s.participant_id
+         where p.enrolled_at is not null and s.started_at < p.enrolled_at`,
+      ),
+    ).resolves.toBe(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from interview_sessions s
+         join interview_links l on l.id = s.link_id
+         where s.started_at < l.created_at`,
+      ),
+    ).resolves.toBe(0);
+  });
+
+  it('dates every asset before its pins, and a frozen version’s pin at its publication', async () => {
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from asset_references r
+         join assets a on a.hash = r.asset_hash and a.team_id = r.team_id
+         where a.created_at > r.created_at`,
+      ),
+    ).resolves.toBe(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from asset_references r
+         join protocol_versions v on v.id::text = r.referrer_id
+         where r.referrer_kind = 'protocol_version'
+           and r.created_at <> v.published_at`,
+      ),
+    ).resolves.toBe(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from asset_references r
+         join template_versions v on v.id::text = r.referrer_id
+         where r.referrer_kind = 'template_version'
+           and r.created_at <> v.published_at`,
+      ),
+    ).resolves.toBe(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from asset_references r
+         join consent_documents d on d.id::text = r.referrer_id
+         where r.referrer_kind = 'consent_document'
+           and (r.created_at < d.created_at or r.created_at > d.published_at)`,
+      ),
+    ).resolves.toBe(0);
+  });
+
+  it('hashes every snapshot over the canonical form of the payload it stores', async () => {
+    // jsonb keeps no key order, so the evidence must be checkable from the
+    // payload as it is read back.
+    const rows = await pool.query<{ payload: unknown; payload_hash: string }>(
+      `select payload, payload_hash from session_snapshots limit 25`,
+    );
+    expect(rows.rowCount).toBeGreaterThan(0);
+    for (const row of rows.rows) {
+      expect(sha256Hex(canonicalize(row.payload))).toBe(row.payload_hash);
+    }
   });
 
   it('resolves every occurrence from a schedule that already existed', async () => {

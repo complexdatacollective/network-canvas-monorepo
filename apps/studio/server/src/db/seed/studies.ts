@@ -562,6 +562,8 @@ export type SeedConsentDocument = {
   state: 'draft' | 'published' | 'retired';
   contentHash: string;
   items: { id: string; key: string; required: boolean }[];
+  /** When the draft was created: its asset pins are dated after this. */
+  createdAt: Date;
 };
 
 const CONSENT_ITEM_KEYS = [
@@ -707,6 +709,7 @@ export async function seedConsentDocuments(
           key: item.key,
           required: item.required,
         })),
+        createdAt,
       });
     }
     byStudy.set(study.id, documents);

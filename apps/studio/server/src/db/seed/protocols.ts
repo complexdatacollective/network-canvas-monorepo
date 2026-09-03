@@ -33,6 +33,8 @@ export type SeededVersion = {
   schemaVersion: number;
   /** section id -> section hash, for the asset and template pin sets. */
   sectionHashes: Record<string, string>;
+  /** When the version was frozen: nothing pinned to it is dated after this. */
+  publishedAt: Date;
 };
 
 export type SeededProtocolLine = {
@@ -122,6 +124,7 @@ async function readVersion(
   versionId: string,
   versionNumber: number,
   label: string,
+  publishedAt: Date,
 ): Promise<SeededVersion> {
   const { sectionHashes } = await store.getVersionSections(versionId);
   const document = (await store.getVersionDocument(
@@ -135,6 +138,7 @@ async function readVersion(
     stages: document.stages,
     schemaVersion: document.schemaVersion,
     sectionHashes,
+    publishedAt,
   };
 }
 
@@ -165,11 +169,12 @@ export async function seedProtocolLine(
   });
 
   const firstVersionId = seedUuid();
+  const firstPublishedAt = seedTime(-370);
   const first = await store.publishDraft({
     draftId,
     label: 'Baseline',
     versionId: firstVersionId,
-    publishedAt: seedTime(-370),
+    publishedAt: firstPublishedAt,
   });
   if (first.status !== 'published') {
     throw new Error(`seed protocol v1 did not publish: ${first.status}`);
@@ -189,11 +194,12 @@ export async function seedProtocolLine(
   await addStage(scope, { draftId, stage: edited, index: target.index });
 
   const secondVersionId = seedUuid();
+  const secondPublishedAt = seedTime(-340);
   const second = await store.publishDraft({
     draftId,
     label: 'Revised prompt wording',
     versionId: secondVersionId,
-    publishedAt: seedTime(-340),
+    publishedAt: secondPublishedAt,
   });
   if (second.status !== 'published') {
     throw new Error(`seed protocol v2 did not publish: ${second.status}`);
@@ -209,12 +215,14 @@ export async function seedProtocolLine(
         first.versionId,
         first.versionNumber,
         'Baseline',
+        firstPublishedAt,
       ),
       await readVersion(
         store,
         second.versionId,
         second.versionNumber,
         'Revised prompt wording',
+        secondPublishedAt,
       ),
     ],
   };

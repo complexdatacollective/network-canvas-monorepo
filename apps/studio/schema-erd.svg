@@ -513,7 +513,7 @@
 <!-- studies -->
 <g id="studies" class="node">
 <title>studies</title>
-<g id="a_studies"><a xlink:title="studies&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger studies_closed_read_only: BEFORE UPDATE calls studies_closed_is_read_only(); sidecar trigger studies_go_live_final: BEFORE UPDATE calls studies_go_live_is_final(); sidecar trigger studies_protocol_line_unpinned: AFTER UPDATE OF protocol_id calls studies_protocol_line_is_unpinned(); sidecar trigger studies_delete_purge_only: BEFORE DELETE calls study_delete_is_purge()">
+<g id="a_studies"><a xlink:title="studies&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger studies_closed_read_only: BEFORE UPDATE calls studies_closed_is_read_only(); sidecar trigger studies_go_live_final: BEFORE UPDATE calls studies_go_live_is_final(); sidecar trigger studies_protocol_line_unpinned: AFTER UPDATE OF protocol_id calls studies_protocol_line_is_unpinned(); sidecar trigger studies_delete_purge_only: BEFORE DELETE calls study_delete_is_purge(); sidecar trigger studies_mode_switch_unpeopled: BEFORE UPDATE calls studies_mode_switch_is_unpeopled()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="3445.61" cy="-9620.24" rx="371.46" ry="808.86"/>
 <polygon fill="#1d71b8" stroke="transparent" points="3185.61,-10130.24 3185.61,-10190.24 3706.61,-10190.24 3706.61,-10130.24 3185.61,-10130.24"/>
 <polygon fill="none" stroke="#29235c" points="3185.61,-10130.24 3185.61,-10190.24 3706.61,-10190.24 3706.61,-10130.24 3185.61,-10130.24"/>
@@ -1740,7 +1740,7 @@
 <!-- participants -->
 <g id="participants" class="node">
 <title>participants</title>
-<g id="a_participants"><a xlink:title="participants&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger participants_writable: BEFORE INSERT OR UPDATE OR DELETE calls participants_are_writable()">
+<g id="a_participants"><a xlink:title="participants&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger participants_writable: BEFORE INSERT OR UPDATE OR DELETE calls participants_are_writable(); sidecar trigger participants_study_managed: AFTER INSERT calls participants_study_is_managed()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="4448.22" cy="-7106.24" rx="301.87" ry="893.57"/>
 <polygon fill="#1d71b8" stroke="transparent" points="4237.22,-7676.24 4237.22,-7736.24 4660.22,-7736.24 4660.22,-7676.24 4237.22,-7676.24"/>
 <polygon fill="none" stroke="#29235c" points="4237.22,-7676.24 4237.22,-7736.24 4660.22,-7736.24 4660.22,-7676.24 4237.22,-7676.24"/>
@@ -4249,7 +4249,7 @@
 <!-- experiment_assignments -->
 <g id="experiment_assignments" class="node">
 <title>experiment_assignments</title>
-<g id="a_experiment_assignments"><a xlink:title="experiment_assignments&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger experiment_assignments_immutable: BEFORE UPDATE calls experiment_assignments_are_immutable(); sidecar trigger experiment_assignments_deletable: BEFORE DELETE calls experiment_assignments_are_deletable(); sidecar trigger experiment_assignments_variant_known: AFTER INSERT calls experiment_assignments_variant_is_known()">
+<g id="a_experiment_assignments"><a xlink:title="experiment_assignments&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger experiment_assignments_immutable: BEFORE UPDATE calls experiment_assignments_are_immutable(); sidecar trigger experiment_assignments_deletable: BEFORE DELETE calls experiment_assignments_are_deletable(); sidecar trigger experiment_assignments_variant_known: AFTER INSERT calls experiment_assignments_variant_is_known(); sidecar trigger experiment_assignments_within_lifetime: AFTER INSERT calls experiment_rows_are_within_lifetime()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="1993.98" cy="-16049.24" rx="461.98" ry="427.19"/>
 <polygon fill="#1d71b8" stroke="transparent" points="1669.98,-16289.24 1669.98,-16349.24 2318.98,-16349.24 2318.98,-16289.24 1669.98,-16289.24"/>
 <polygon fill="none" stroke="#29235c" points="1669.98,-16289.24 1669.98,-16349.24 2318.98,-16349.24 2318.98,-16289.24 1669.98,-16289.24"/>
@@ -4317,7 +4317,7 @@
 <!-- experiment_exposures -->
 <g id="experiment_exposures" class="node">
 <title>experiment_exposures</title>
-<g id="a_experiment_exposures"><a xlink:title="experiment_exposures&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger experiment_exposures_immutable: BEFORE UPDATE calls experiment_assignments_are_immutable(); sidecar trigger experiment_exposures_deletable: BEFORE DELETE calls experiment_exposures_are_deletable()">
+<g id="a_experiment_exposures"><a xlink:title="experiment_exposures&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger experiment_exposures_immutable: BEFORE UPDATE calls experiment_assignments_are_immutable(); sidecar trigger experiment_exposures_deletable: BEFORE DELETE calls experiment_exposures_are_deletable(); sidecar trigger experiment_exposures_within_lifetime: AFTER INSERT calls experiment_rows_are_within_lifetime()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="3445.61" cy="-16049.24" rx="590.37" ry="427.19"/>
 <polygon fill="#1d71b8" stroke="transparent" points="3030.61,-16289.24 3030.61,-16349.24 3861.61,-16349.24 3861.61,-16289.24 3030.61,-16289.24"/>
 <polygon fill="none" stroke="#29235c" points="3030.61,-16289.24 3030.61,-16349.24 3861.61,-16349.24 3861.61,-16289.24 3030.61,-16289.24"/>

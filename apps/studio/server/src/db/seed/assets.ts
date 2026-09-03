@@ -112,7 +112,14 @@ function assetShape(index: number): AssetShape {
   };
 }
 
-export type SeededTemplateVersion = { templateId: string; versionId: string };
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export type SeededTemplateVersion = {
+  templateId: string;
+  versionId: string;
+  /** When the version was frozen: nothing pinned to it is dated after this. */
+  publishedAt: Date;
+};
 
 /**
  * Two to five templates per team, each with one published version whose
@@ -159,6 +166,7 @@ export async function seedTemplates(
     ]);
 
     const versionId = seedUuid();
+    const publishedAt = shiftDays(createdAt, index + 1);
     const source = line.versions[index % 2]!;
     const pinned = Object.fromEntries(
       pickSome(Object.entries(source.sectionHashes), 4),
@@ -172,12 +180,12 @@ export async function seedTemplates(
       JSON.stringify(pinned),
       manifestHash,
       source.schemaVersion,
-      shiftDays(createdAt, index + 1),
+      publishedAt,
     ]);
     for (const [sectionId, sectionHash] of Object.entries(pinned)) {
       pinRows.push([versionId, team.id, sectionId, sectionHash]);
     }
-    created.push({ templateId, versionId });
+    created.push({ templateId, versionId, publishedAt });
   }
 
   await insertRows(
@@ -248,6 +256,54 @@ export async function seedAssets(
     const shape = assetShape(index);
     const hash = sha256Hex(shape.bytes);
     const unreferenced = index % 7 === 6;
+
+    // Who pins it, chosen first: the dates below follow from the referrers.
+    // A pin on a frozen version was made in the transaction that published
+    // it (the insert guard admits nothing later), so the pin is dated at that
+    // publication and the asset before it; a consent document takes pins
+    // while it is a draft, so that pin follows the document's creation.
+    type Referrer = { kind: string; id: string; pinnedAt: Date };
+    const candidates: Referrer[] = [];
+    for (const version of versions) {
+      candidates.push({
+        kind: 'protocol_version',
+        id: version.versionId,
+        pinnedAt: version.publishedAt,
+      });
+      const sectionHash = Object.values(version.sectionHashes)[index % 4];
+      if (sectionHash !== undefined) {
+        candidates.push({
+          kind: 'section',
+          id: sectionHash,
+          pinnedAt: shiftDays(createdAt, index + 1),
+        });
+      }
+    }
+    for (const template of templates) {
+      candidates.push({
+        kind: 'template_version',
+        id: template.versionId,
+        pinnedAt: template.publishedAt,
+      });
+    }
+    for (const document of consentDocuments) {
+      candidates.push({
+        kind: 'consent_document',
+        id: document.id,
+        pinnedAt: shiftDays(document.createdAt, 1),
+      });
+    }
+    const referrers = unreferenced
+      ? []
+      : pickSome(candidates, faker.number.int({ min: 1, max: 3 }));
+    const earliestPin = Math.min(
+      shiftDays(createdAt, index + 1).getTime(),
+      ...referrers.map((referrer) => referrer.pinnedAt.getTime()),
+    );
+    const assetCreatedAt = new Date(
+      Math.min(shiftDays(createdAt, index).getTime(), earliestPin - DAY_MS),
+    );
+
     assetRows.push([
       team.id,
       hash,
@@ -260,29 +316,10 @@ export async function seedAssets(
       shape.datasetMetadata === null
         ? null
         : JSON.stringify(shape.datasetMetadata),
-      shiftDays(createdAt, index),
-      unreferenced ? shiftDays(createdAt, index + 30) : null,
+      assetCreatedAt,
+      unreferenced ? shiftDays(assetCreatedAt, 30) : null,
     ]);
-    if (unreferenced) continue;
 
-    const candidates: { kind: string; id: string }[] = [];
-    for (const version of versions) {
-      candidates.push({ kind: 'protocol_version', id: version.versionId });
-      const sectionHash = Object.values(version.sectionHashes)[index % 4];
-      if (sectionHash !== undefined) {
-        candidates.push({ kind: 'section', id: sectionHash });
-      }
-    }
-    for (const template of templates) {
-      candidates.push({ kind: 'template_version', id: template.versionId });
-    }
-    for (const document of consentDocuments) {
-      candidates.push({ kind: 'consent_document', id: document.id });
-    }
-    const referrers = pickSome(
-      candidates,
-      faker.number.int({ min: 1, max: 3 }),
-    );
     const seen = new Set<string>();
     for (const referrer of referrers) {
       const key = `${referrer.kind}:${referrer.id}`;
@@ -293,7 +330,7 @@ export async function seedAssets(
         hash,
         referrer.kind,
         referrer.id,
-        shiftDays(createdAt, index + 1),
+        referrer.pinnedAt,
       ]);
     }
   }

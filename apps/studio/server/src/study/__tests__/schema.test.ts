@@ -831,6 +831,35 @@ describe.skipIf(!db)('study spine schema', () => {
     });
   });
 
+  describe('participants_study_managed', () => {
+    it('refuses a participant in an anonymous study', async () => {
+      const studyId = await newStudy({ participation_mode: 'anonymous' });
+      await expect(newParticipant(studyId)).rejects.toThrow(
+        'anonymous studies hold no participants',
+      );
+    });
+
+    it('refuses a draft becoming anonymous over the participants it holds', async () => {
+      const studyId = await newStudy();
+      await newParticipant(studyId);
+      await expect(
+        pool.query(
+          `UPDATE studies SET participation_mode = 'anonymous' WHERE id = $1`,
+          [studyId],
+        ),
+      ).rejects.toThrow('a study holding participants cannot become anonymous');
+
+      // Without a cohort the draft is still free to choose.
+      const emptyId = await newStudy();
+      await expect(
+        pool.query(
+          `UPDATE studies SET participation_mode = 'anonymous' WHERE id = $1`,
+          [emptyId],
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+    });
+  });
+
   describe('participants', () => {
     it('applies the documented defaults', async () => {
       const studyId = await newStudy();

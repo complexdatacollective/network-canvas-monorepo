@@ -126,6 +126,10 @@ describe('generated schema documentation', () => {
     expect(readmeSection).toContain('experiment_assignments_variant_known');
     expect(readmeSection).toContain('experiments_variants_frozen');
     expect(readmeSection).toContain('experiments_start_final');
+    expect(readmeSection).toContain('experiment_assignments_within_lifetime');
+    expect(readmeSection).toContain('experiment_exposures_within_lifetime');
+    expect(readmeSection).toContain('participants_study_managed');
+    expect(readmeSection).toContain('studies_mode_switch_unpeopled');
     expect(readmeSection).toContain('experiment_exposures_immutable');
     expect(readmeSection).toContain('experiment_assignments_deletable');
     expect(readmeSection).toContain('experiment_exposures_deletable');
@@ -243,6 +247,14 @@ describe('generated schema documentation', () => {
     );
     expect(svg).toContain('sidecar trigger experiments_variants_frozen');
     expect(svg).toContain('sidecar trigger experiments_start_final');
+    expect(svg).toContain(
+      'sidecar trigger experiment_assignments_within_lifetime',
+    );
+    expect(svg).toContain(
+      'sidecar trigger experiment_exposures_within_lifetime',
+    );
+    expect(svg).toContain('sidecar trigger participants_study_managed');
+    expect(svg).toContain('sidecar trigger studies_mode_switch_unpeopled');
     expect(svg).toContain('sidecar trigger experiment_exposures_immutable');
     expect(svg).toContain('sidecar trigger experiment_assignments_deletable');
     expect(svg).toContain('sidecar trigger experiment_exposures_deletable');
