@@ -75,7 +75,17 @@ export function SwitcherLockup({ children, className }: SwitcherLockupProps) {
           <div
             key={isValidElement(segment) ? segment.key : index}
             className={cx(
-              'flex min-w-0 items-center',
+              /*
+                `items-stretch`, not `items-center`. The segments are as tall
+                as the tallest of them, and a switcher's natural height
+                depends on what its trigger holds — an identity mark makes one
+                taller than a status pip makes another. Centred, the shorter
+                trigger floats inside its segment, and the surface it paints
+                when open stops just short of the lockup's border, leaving a
+                sub-pixel gap along the top and bottom edges. Stretched, every
+                trigger fills its segment and its surface meets the border.
+              */
+              'flex min-w-0 items-stretch',
               index > 0 && 'border-outline border-s',
               /*
                 The segment's own corners, pushed onto the control inside it.
