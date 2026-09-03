@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate, useParams } from '@tanstack/react-router';
+import { Link, useNavigate, useParams } from '@tanstack/react-router';
 
 import {
   TeamAndStudySwitcher,
@@ -10,12 +10,8 @@ import {
 
 import { orpc } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
-import { teamRole } from '../lib/teamRoles.ts';
-import {
-  PlaceholderStatusPip,
-  placeholderStudyStatus,
-  placeholderTeamMeta,
-} from './switcherPlaceholders.tsx';
+import { useStudyOwner } from '../lib/studyOwner.ts';
+import { teamRole, teamRolesLabel } from '../lib/teamRoles.ts';
 
 /**
  * The header's team ▸ study lockup (§5.5): the team the researcher is acting
@@ -101,56 +97,60 @@ function currentTeam(
  */
 function useStudySegment(
   studyId: string | undefined,
-  teamId: string | undefined,
 ): SwitcherSegment | undefined {
   const navigate = useNavigate();
-  const studies = useQuery({
+
+  /*
+    The study's OWN team, resolved the way the editor resolves it, rather than
+    whichever team the session last had active.
+
+    A bookmarked `/study/B` opened while the session is still in team A — or in
+    no team at all, which is every session that has never switched, since
+    nothing sets `activeOrganizationId` at creation — carries no team in its
+    URL (§5.6). Asking team A for B's siblings gets an answer that never
+    contains B, and the switcher then names the study by its raw identifier for
+    ever. `useStudyOwner` asks the active team first and the researcher's other
+    teams only if that one does not have it, so the segment names the study and
+    offers the siblings that are genuinely its own.
+  */
+  const owner = useStudyOwner(studyId ?? '');
+  const teamId = owner.status === 'found' ? owner.teamId : undefined;
+  const siblings = useQuery({
     ...orpc.protocols.list.queryOptions({ input: { teamId: teamId ?? '' } }),
-    // Asked only where there is a study to find siblings for, and a team to
-    // ask about. The second is not hypothetical: a study route on a session
-    // that has never switched teams names no team, because nothing sets
-    // `activeOrganizationId` when a session is created.
-    enabled: studyId !== undefined && teamId !== undefined,
+    enabled: teamId !== undefined,
   });
 
   // No study on screen: the segment is absent, not empty. After every hook, so
   // the hook order does not depend on the route.
   if (studyId === undefined) return undefined;
 
-  const listed = studies.data ?? [];
-  const siblings: SwitcherItem[] = listed.some((study) => study.id === studyId)
-    ? listed.map((study) => ({
-        id: study.id,
-        name: study.name,
-        // PLACEHOLDER, both of them — see `switcherPlaceholders`. The word is
-        // rendered as well as the pip, so the colour never carries the status
-        // on its own.
-        meta: placeholderStudyStatus(study.id).label,
-        leading: <PlaceholderStatusPip studyId={study.id} />,
-      }))
-    : // The identifier is what the shell knows about a study it cannot place.
-      // A friendlier placeholder would be a guess about which study the
-      // researcher has open, and the switcher exists precisely so they can be
-      // sure.
-      [
-        {
-          id: studyId,
-          name: studyId,
-          leading: <PlaceholderStatusPip studyId={studyId} />,
-        },
-      ];
+  const listed = siblings.data ?? [];
+  const items: SwitcherItem[] =
+    owner.status === 'found'
+      ? // The owning team answered, so these are genuinely this study's
+        // siblings. Its own name comes from that same answer rather than from
+        // the URL.
+        (listed.length > 0 ? listed : [owner.study]).map((study) => ({
+          id: study.id,
+          name: study.name,
+        }))
+      : // Nothing can be said about siblings until the owner is known, and the
+        // identifier is what the shell knows about a study it cannot place. A
+        // friendlier stand-in would be a guess about which study is open, and
+        // the switcher exists precisely so the researcher can be sure.
+        [{ id: studyId, name: studyId }];
 
-  // A disabled query is `pending` for ever, so the wait has to be read against
-  // whether there was anything to ask.
-  const status: SwitcherStatus = studies.isError
-    ? 'failed'
-    : teamId !== undefined && studies.isPending
-      ? 'loading'
-      : 'ready';
+  const status: SwitcherStatus =
+    owner.status === 'unavailable' || siblings.isError
+      ? 'failed'
+      : owner.status === 'pending' ||
+          (teamId !== undefined && siblings.isPending)
+        ? 'loading'
+        : 'ready';
 
   return {
     kicker: STUDY_KICKER,
-    items: siblings,
+    items,
     currentId: studyId,
     status,
     onSelect: (id: string) =>
@@ -158,19 +158,19 @@ function useStudySegment(
       // rather than rejecting, and it resolves later on some unrelated commit
       // (§6.5). Nothing after this depends on it.
       void navigate({ to: '/study/$studyId', params: { studyId: id } }),
-    onRetry: () => void studies.refetch(),
+    onRetry: () => void siblings.refetch(),
     failureMessage: 'The studies in this team could not be loaded.',
     retryLabel: RETRY_LABEL,
     // The way back to all of the team's studies, which §5.5 says the study
     // chip always offers. It cannot come from the team segment instead:
-    // choosing the team already current is a no-op there, by design.
+    // choosing the team already current is a no-op there, by design. A
+    // destination, so it is a link — see `SwitcherAction`.
     action:
       teamId === undefined
         ? undefined
         : {
             label: 'All studies in this team',
-            onSelect: () =>
-              void navigate({ to: '/team/$teamId', params: { teamId } }),
+            render: <Link to="/team/$teamId" params={{ teamId }} />,
           },
   };
 }
@@ -235,14 +235,10 @@ export default function EntityLockup({ className }: { className?: string }) {
   const hasTeamSegment = teamStatus !== 'ready' || list.length > 0;
   const current = currentTeam(list, activeTeam.data, committedTeamId);
 
-  // Whose team? A study's team is derivable only from the study (§6.3, and
-  // §5.6's reason for keeping the team out of the URL), so on a study route
-  // this is the active-team setting — the same fallback `currentTeam` above
-  // makes for the team segment, and the one the chip this replaces made.
-  const study = useStudySegment(
-    studyId,
-    committedTeamId ?? activeTeam.data?.id,
-  );
+  // The study resolves its own team rather than borrowing the one on screen:
+  // a bookmarked study belongs to whichever team owns it, which is not
+  // necessarily the team the session last had active (§6.3, §5.6).
+  const study = useStudySegment(studyId);
 
   const teamSegment: SwitcherSegment | undefined = hasTeamSegment
     ? {
@@ -250,14 +246,17 @@ export default function EntityLockup({ className }: { className?: string }) {
         items: list.map((team) => ({
           id: team.id,
           name: team.name,
-          // PLACEHOLDER — see `switcherPlaceholders`. Nothing counts a team's
-          // studies yet.
-          meta: placeholderTeamMeta(team.id),
           // NOT a placeholder, and deliberately absent rather than invented
           // for the rest: `useActiveMember` answers for the active team only,
           // so this is the one team whose role is actually known. A made-up
           // role would be a false claim about what the researcher may do here.
-          badge: teamRole(activeMember.data, team.id),
+          // `teamRolesLabel`, not the raw stored value: a legacy membership
+          // is stored as "owner,admin" and would otherwise be shouted at the
+          // researcher as "OWNER,ADMIN".
+          badge: (() => {
+            const role = teamRole(activeMember.data, team.id);
+            return role === undefined ? undefined : teamRolesLabel(role);
+          })(),
         })),
         currentId: current?.id,
         placeholder: 'Choose a team',
@@ -278,13 +277,14 @@ export default function EntityLockup({ className }: { className?: string }) {
         // "Create a team" belongs here too. It is a command rather than a
         // destination — #1249 owns the flow and there is none — and an entry
         // that opened nothing would be worse than its absence.
+        // A destination, not a command, so it renders as a link: openable in
+        // a new tab, copyable, and announced as a link. "Create a team" stays
+        // a command when it exists — there is nowhere to go until it has run.
         action: current && {
           label: 'Team administration',
-          onSelect: () =>
-            void navigate({
-              to: '/team/$teamId/settings',
-              params: { teamId: current.id },
-            }),
+          render: (
+            <Link to="/team/$teamId/settings" params={{ teamId: current.id }} />
+          ),
         },
       }
     : undefined;

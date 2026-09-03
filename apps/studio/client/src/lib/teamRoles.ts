@@ -54,3 +54,30 @@ export function teamRole(
     ? activeMember.role
     : undefined;
 }
+
+/**
+ * One role, as a researcher reads it.
+ *
+ * An unknown role is shown verbatim rather than hidden: a membership the
+ * client does not recognise is still a membership, and saying nothing about
+ * it would be a worse answer than saying its name.
+ */
+export function roleLabel(role: string): string {
+  switch (role) {
+    case 'owner':
+      return 'Owner';
+    case 'admin':
+      return 'Admin';
+    case 'member':
+      return 'Member';
+    default:
+      return role;
+  }
+}
+
+export function teamRolesLabel(role: string): string {
+  const roles = teamRoles(role);
+  return roles.length === 0
+    ? 'Unassigned'
+    : roles.map((entry) => roleLabel(entry)).join(', ');
+}

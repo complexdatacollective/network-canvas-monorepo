@@ -177,11 +177,19 @@ export const SegmentsFillTheFrame: Story = {
     const frameBox = frame.getBoundingClientRect();
     for (const segment of segments) {
       const box = segment.getBoundingClientRect();
-      // Within the frame's own 1px border, top and bottom. A centred segment
-      // used to leave a sub-pixel gap here, which showed as a thin line
-      // between its surface and the border.
-      await expect(box.top - frameBox.top).toBeLessThanOrEqual(1.5);
-      await expect(frameBox.bottom - box.bottom).toBeLessThanOrEqual(1.5);
+      /*
+        Bounded in BOTH directions. An upper bound alone passes for a segment
+        that spills OUT of the frame — a top edge 5px above it gives -5, which
+        is happily "at most 1.5" — so the story would have stayed green
+        through the overflow it exists to catch. Nonnegative says the segment
+        is inside the frame; at most the border width says it reaches it.
+      */
+      const top = box.top - frameBox.top;
+      const bottom = frameBox.bottom - box.bottom;
+      await expect(top).toBeGreaterThanOrEqual(0);
+      await expect(bottom).toBeGreaterThanOrEqual(0);
+      await expect(top).toBeLessThanOrEqual(1.5);
+      await expect(bottom).toBeLessThanOrEqual(1.5);
     }
 
     // The corners nest. A segment's outer curve is the frame's minus the
@@ -287,6 +295,12 @@ export const ActionReachableByKeyboard: Story = {
       within(listbox).queryByRole('button', { name: 'Create a team' }),
     ).toBeNull();
 
+    // The popup being in the document is not the same as focus having moved
+    // into it: Base UI does that in an effect after the mount. Tab in that
+    // window still has the TRIGGER as its origin, so it leaves the switcher
+    // altogether and the assertion below fails for a reason the story is not
+    // about.
+    await waitFor(() => expect(trigger).not.toHaveFocus());
     await userEvent.tab();
     const action = within(document.body).getByRole('button', {
       name: 'Create a team',
@@ -359,6 +373,83 @@ export const FailedRetryStaysOutsideTheListbox: Story = {
     // And the role did not fall through to the popup, which is what put the
     // retry inside it.
     await expect(listbox).not.toHaveAttribute('data-side');
+  },
+};
+
+/**
+ * A retry that fails again is still on screen to say so.
+ *
+ * Closing the popup first would hide the only place the failure is stated: the
+ * trigger would flicker through its loading state and settle back exactly as
+ * it was, with nothing to tell a researcher — sighted or not — that the second
+ * attempt went the same way as the first.
+ */
+export const RetryKeepsTheFailureVisible: Story = {
+  args: {
+    team: {
+      ...teamSegment(),
+      items: [],
+      status: 'failed',
+      onRetry: fn(),
+      failureMessage: 'Your teams could not be loaded.',
+      retryLabel: 'Try again',
+    },
+    study: undefined,
+  },
+  play: async ({ args, canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole('combobox'));
+    const popup = within(document.body);
+    await userEvent.click(
+      await popup.findByRole('button', { name: 'Try again' }),
+    );
+
+    await expect(args.team?.onRetry).toHaveBeenCalled();
+    // The request is still in flight and the popup has not gone anywhere, so
+    // the message the retry answers is still the one being read.
+    await expect(
+      popup.getByText('Your teams could not be loaded.'),
+    ).toBeVisible();
+    await expect(
+      popup.getByRole('button', { name: 'Try again' }),
+    ).toBeVisible();
+  },
+};
+
+/**
+ * A segment with no mark keeps its words at every width.
+ *
+ * The column collapses to the identity mark, which stands in for the name —
+ * but a failed list with nothing cached has no current entity and therefore no
+ * mark. Collapsing anyway would leave a bare chevron: a control that is still
+ * worth opening, because the retry is inside it, with nothing on it to say so.
+ */
+export const NoMarkStaysVisibleWhenNarrow: Story = {
+  args: {
+    team: {
+      ...teamSegment(),
+      items: [],
+      currentId: undefined,
+      placeholder: 'Choose a team',
+      status: 'failed',
+      onRetry: fn(),
+      failureMessage: 'Your teams could not be loaded.',
+      retryLabel: 'Try again',
+    },
+    study: undefined,
+  },
+  decorators: [
+    (Story) => (
+      <div style={{ width: '22rem' }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    // Narrow enough that a segment WITH a mark would have collapsed — see
+    // `NarrowContainer`, which asserts exactly that at this width.
+    const column =
+      within(canvasElement).getByText('Choose a team').parentElement;
+    await expect(getComputedStyle(column!).position).not.toBe('absolute');
   },
 };
 
@@ -529,7 +620,12 @@ export const LoadingAccessibleName: Story = {
   },
 };
 
-/** Long names truncate in the segment and are readable in full in the list. */
+/**
+ * A long name is shown whole. The shell spec is explicit that the header sizes
+ * to its content and must not clip or truncate a label — translated names run
+ * about a third longer, and a truncated name is the thing the researcher came
+ * to the header to read.
+ */
 export const LongNames: Story = {
   args: {
     team: {
@@ -544,22 +640,21 @@ export const LongNames: Story = {
         ...teams.slice(1),
       ],
     },
+    study: undefined,
   },
   play: async ({ canvasElement }) => {
-    const name = within(canvasElement).getByTitle(
+    const name = within(canvasElement).getByText(
       'Northwestern Social Networks and Health Innovations Laboratory',
     );
 
-    // It shortens, and the whole name stays reachable through `title`.
-    await expect(name.scrollWidth).toBeGreaterThan(name.clientWidth);
+    // Nothing is cut off: the box is as wide as the text inside it.
+    await expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth + 1);
 
-    // Sideways only. The box is trimmed to cap height and baseline, so hiding
-    // overflow in BOTH axes — which `truncate` does — would cut the descenders
-    // off every name. Asserted on the computed style rather than the class,
-    // because it is the clipping that matters, not how it was spelled.
+    // And nothing clips it, in either axis.
     const style = getComputedStyle(name);
-    await expect(style.overflowX).toBe('clip');
+    await expect(['hidden', 'clip']).not.toContain(style.overflowX);
     await expect(['hidden', 'clip']).not.toContain(style.overflowY);
+    await expect(style.textOverflow).not.toBe('ellipsis');
   },
 };
 

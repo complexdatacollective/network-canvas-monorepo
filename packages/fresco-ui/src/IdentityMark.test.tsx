@@ -70,6 +70,35 @@ describe('IdentityMark colour', () => {
     expect(used.size).toBe(FILLS.length);
   });
 
+  /**
+   * The mapping itself, for a fixed handful of ids.
+   *
+   * The tests above only say that every fill is a palette fill and that all
+   * six get used — both of which survive reordering the palette, which would
+   * silently recolour every entity that already exists. An entity's colour is
+   * meant to be fixed for the life of its id, and that promise is only
+   * testable by writing down what the colours ARE.
+   *
+   * A failure here is not necessarily a bug: it means the mapping moved, and
+   * whoever moved it has to decide whether every existing entity changing
+   * colour is acceptable. Update the table deliberately, not reflexively.
+   */
+  it('keeps the same ids on the same fills', () => {
+    const FILL_BY_ID: Readonly<Record<string, string>> = {
+      team_sonic: 'bg-mustard',
+      team_rural: 'bg-sea-serpent',
+      team_cegrm: 'bg-cyber-grape',
+      study_1: 'bg-sea-green',
+      study_2: 'bg-sea-serpent',
+      study_3: 'bg-purple-pizazz',
+      org_01JQ2W3T4Y5Z6A7B8C9D0EFGHJ: 'bg-sea-green',
+    };
+
+    for (const [id, fill] of Object.entries(FILL_BY_ID)) {
+      expect(fillOf(id)).toBe(fill);
+    }
+  });
+
   it('pairs the three light fills with the dark foreground', () => {
     // The pairing is measured, not stylistic: white on mustard is 1.82:1, on
     // sea green 2.27:1 and on sea serpent 2.23:1, all below the 3:1 floor.

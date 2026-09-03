@@ -2,7 +2,13 @@
 
 import { Select } from '@base-ui/react/select';
 import { Check, ChevronDown, Plus, TriangleAlert } from 'lucide-react';
-import { useId, useState, type ReactNode } from 'react';
+import {
+  cloneElement,
+  useId,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 
 import { IdentityMark } from '../IdentityMark';
 import { usePortalContainer } from '../PortalContainer';
@@ -51,8 +57,26 @@ type SwitcherSegmentBase = {
    * host's translated "Choose a team".
    */
   placeholder?: string;
-  /** A trailing command under the list — "Create a team". */
-  action?: { label: string; onSelect: () => void };
+  /**
+   * The row under the list. Either a destination or a command, and the
+   * difference is not cosmetic.
+   *
+   * A destination passes `render` — a router link element, which this clones
+   * with the row's own styling and label. It is then a real link: it can be
+   * middle-clicked into a new tab, its address copied, and assistive
+   * technology announces it as a link rather than as a generic command.
+   * "All studies in this team" and "Team administration" are destinations.
+   *
+   * A command passes `onSelect` and gets a button, because there is nowhere to
+   * go until it has run. "Create a team" is one.
+   */
+  action?:
+    | {
+        label: string;
+        render: ReactElement<Record<string, unknown>>;
+        onSelect?: undefined;
+      }
+    | { label: string; onSelect: () => void; render?: undefined };
   /**
    * Replaces the default `IdentityMark` in both the trigger and the list — a
    * status pip, an avatar, or nothing at all. `item.leading` wins over it for
@@ -154,16 +178,20 @@ export type TeamAndStudySwitcherProps = {
 const COLLAPSE_CLASS = '@max-xl:sr-only';
 
 /**
- * A floor and a cap that step up together, so a segment neither collapses onto
- * a two-character name nor eats the header with a long one. The skeleton fills
- * the same floor, which is what keeps the header from reflowing when the name
- * arrives.
+ * A floor, and no ceiling.
+ *
+ * The name used to cap at 10/14/18rem and clip past it. The shell spec is
+ * explicit that the header sizes to its content and must not clip or truncate
+ * a label, because German and Portuguese run about a third longer than English
+ * and a truncated name is exactly the thing a researcher opened the header to
+ * read. A `title` does not answer that: it is a mouse-only affordance, so
+ * touch and keyboard users get nothing.
+ *
+ * The floor stays, so the skeleton reserves the width the name will take and
+ * the header does not jump when it arrives. Narrow containers still collapse
+ * the whole column, which is the deliberate answer to no room at all.
  */
-const NAME_WIDTH_CLASS = cx(
-  'max-w-40 min-w-24',
-  '@min-3xl:max-w-56',
-  '@min-5xl:max-w-72',
-);
+const NAME_WIDTH_CLASS = 'min-w-24';
 
 /**
  * The frame's own corners, minus its border, on the edges of a segment that
@@ -314,6 +342,9 @@ function Segment({
   // a tab stop; none of them means the segment is a label in a frame.
   const hasList = failed || action !== undefined || items.length > 1;
 
+  // Whether anything stands in for the name when the column collapses.
+  const hasMark = loading || current !== undefined;
+
   const face = (
     <>
       {loading ? (
@@ -327,6 +358,12 @@ function Segment({
       <span
         className={cx(
           /*
+            The column collapses only when the mark can stand in for it. With
+            no current entity there is no mark — a failed team list with
+            nothing cached is the ordinary way in — and collapsing anyway
+            leaves a bare chevron that says nothing about what it switches.
+          */
+          /*
             An explicit gap, because the trim took away the one that was there
             by accident. Untrimmed, the half-leading below the kicker and above
             the name held them apart — 2.78px and 3.91px at these sizes, 6.69px
@@ -338,24 +375,21 @@ function Segment({
             by-product of the font's metrics that changes with the typeface.
           */
           'flex min-w-0 flex-col items-start gap-1.5',
-          COLLAPSE_CLASS,
+          hasMark ? COLLAPSE_CLASS : undefined,
         )}
       >
         <span className="text-box-trim text-2xs leading-tight font-semibold uppercase opacity-70">
           {kicker}
         </span>
         <span
-          title={current?.name}
+          /* No `title`: the name is not truncated, so a tooltip here would
+             only repeat what is already on screen — and where a container
+             narrow enough to clip it exists, the popup below is where every
+             name is readable in full, by mouse, touch and keyboard alike. */
           className={cx(
             'text-box-trim text-sm leading-tight font-semibold',
-            /*
-              `overflow-x-clip` rather than `truncate`. Truncation hides
-              overflow in BOTH axes, and a cap-trimmed box ends at the
-              baseline — so the descenders of a name like "Wave 2 pilot" fall
-              outside it and get clipped off. Clipping sideways only shortens
-              the name without cutting the letters that remain.
-            */
-            'block overflow-x-clip text-ellipsis whitespace-nowrap',
+            // One line, whole. The lockup grows to hold it.
+            'block whitespace-nowrap',
             NAME_WIDTH_CLASS,
           )}
         >
@@ -470,6 +504,16 @@ function Segment({
               'bg-surface-popover text-surface-popover-contrast publish-colors',
               'border-outline elevation-high w-xs max-w-(--available-width)',
               'rounded border-2 p-2 outline-none',
+              /*
+                Bounded, and the list is the part that scrolls. Base UI
+                publishes the room it has as `--available-height` but applies
+                nothing itself, so a researcher in enough teams pushed the
+                lower options — and the retry and the trailing destination
+                with them — off the bottom of the screen. The rows below the
+                list stay put while the options move, which is what keeps the
+                way out of a failure reachable however long the list is.
+              */
+              'flex max-h-(--available-height) flex-col',
             )}
           >
             {/*
@@ -482,7 +526,7 @@ function Segment({
               An empty list keeps the role where it belongs and leaves the rows
               below it siblings of the list rather than of its options.
             */}
-            <Select.List className="flex flex-col gap-0.5">
+            <Select.List className="flex min-h-0 flex-col gap-0.5 overflow-y-auto overscroll-contain">
               {/*
                 Named, not headed. The kicker is already on the trigger the
                 reader just operated, so a heading repeating it inside the
@@ -518,8 +562,9 @@ function Segment({
                       )}
                     >
                       {markFor(item, renderMark, 'sm')}
-                      {/* No truncation here, deliberately: the list is where a
-                          name the trigger had to cut off can be read in full. */}
+                      {/* Wraps rather than truncating, deliberately: this is
+                          where a name too long for the frame above it can be
+                          read in full. */}
                       {/* Spaced for the reason the trigger's stack is: trimmed to cap and
    baseline, the name and its supporting line have no leading between
    them and would otherwise touch. Same 6px, so a row in the list and
@@ -560,7 +605,18 @@ function Segment({
                           the chip follows the row it is on instead of being
                           pinned to one surface.
                         */
-                        <span className="text-box-trim text-box-trimmed:py-1 text-2xs shrink-0 rounded-full bg-current/15 px-2 font-semibold uppercase">
+                        <span
+                          /*
+                            The tint comes off on the selected row. `bg-current`
+                            mixes the row's own foreground into its background,
+                            which is what makes the chip follow whatever row it
+                            is on — but against `--selected` that pulls the
+                            chip's own label down to about 4.2:1, under the
+                            4.5:1 it needs. The selected row already reads as
+                            selected; the chip does not have to carry it too.
+                          */
+                          className="text-box-trim text-box-trimmed:py-1 text-2xs shrink-0 rounded-full bg-current/15 px-2 font-semibold uppercase group-data-selected:bg-transparent"
+                        >
                           {item.badge}
                         </span>
                       )}
@@ -605,7 +661,16 @@ function Segment({
                 <button
                   type="button"
                   aria-describedby={failureId}
-                  onClick={closeThen(onRetry)}
+                  /*
+                    NOT `closeThen`. Closing first hides the only place the
+                    failure is stated, so a retry that fails again leaves the
+                    researcher with a trigger that flickers through its loading
+                    state and settles back exactly as it was — no message, no
+                    announcement, nothing to say the second attempt went the
+                    same way as the first. Kept open, a success repopulates the
+                    list in place and a failure leaves the message standing.
+                  */
+                  onClick={onRetry}
                   className={cx(ROW_CLASS, 'text-sm font-semibold')}
                 >
                   {/*
@@ -625,26 +690,50 @@ function Segment({
                 {(items.length > 0 || failed) && (
                   <Select.Separator className={SEPARATOR_CLASS} />
                 )}
-                <button
-                  type="button"
-                  onClick={closeThen(action.onSelect)}
-                  className={cx(
+                {(() => {
+                  const body = (
+                    <>
+                      {/*
+                        A dashed tile where a mark would be, at the mark's own
+                        size: the row lines up with the entities above it and
+                        still reads as "make a new one" rather than "here is
+                        another one".
+                      */}
+                      <span className="border-outline flex size-6 shrink-0 items-center justify-center rounded-xs border-2 border-dashed">
+                        <Plus aria-hidden className="size-3.5" />
+                      </span>
+                      <span className="text-box-trim text-sm font-semibold">
+                        {action.label}
+                      </span>
+                    </>
+                  );
+                  const className = cx(
                     ROW_CLASS,
                     'opacity-70 hover:opacity-100 focus-visible:opacity-100',
-                  )}
-                >
-                  {/*
-                    A dashed tile where a mark would be, at the mark's own size:
-                    the row lines up with the entities above it and still reads
-                    as "make a new one" rather than "here is another one".
-                  */}
-                  <span className="border-outline flex size-6 shrink-0 items-center justify-center rounded-xs border-2 border-dashed">
-                    <Plus aria-hidden className="size-3.5" />
-                  </span>
-                  <span className="text-box-trim text-sm font-semibold">
-                    {action.label}
-                  </span>
-                </button>
+                  );
+                  /*
+                    A destination keeps its own element, so it stays a link:
+                    openable in a new tab, copyable, and announced as a link.
+                    Closing the popup is still ours to do — the host's link
+                    navigates, and a popup left standing over the page it just
+                    moved to is the same bug the retry has.
+                  */
+                  return action.render ? (
+                    cloneElement(action.render, {
+                      className,
+                      onClick: () => setOpen(false),
+                      children: body,
+                    })
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={closeThen(action.onSelect)}
+                      className={className}
+                    >
+                      {body}
+                    </button>
+                  );
+                })()}
               </>
             )}
           </Select.Popup>

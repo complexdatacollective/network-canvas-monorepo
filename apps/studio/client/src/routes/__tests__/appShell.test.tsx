@@ -390,7 +390,7 @@ describe('header team switcher', () => {
       data: null,
       error: { message: 'You are not a member of that team.' },
     });
-    const router = renderAt('/team/team-b');
+    renderAt('/team/team-b');
 
     fireEvent.click(
       await screen.findByRole('combobox', {
@@ -414,14 +414,12 @@ describe('header team switcher', () => {
     ).toBeInTheDocument();
 
     // And "Team administration" administers the team on screen rather than the
-    // one the setting still holds. It is the switcher's trailing COMMAND
-    // rather than a link, so where it goes is asserted by going there.
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Team administration' }),
-    );
-    await waitFor(() =>
-      expect(router.state.location.pathname).toBe('/team/team-b/settings'),
-    );
+    // one the setting still holds. It is a destination, so it is a link, and
+    // its address is assertable without going anywhere — which is also what
+    // lets a researcher open it in a new tab.
+    expect(
+      screen.getByRole('link', { name: 'Team administration' }),
+    ).toHaveAttribute('href', '/team/team-b/settings');
   });
 
   it('leaves the setting alone until a navigation commits', async () => {
@@ -509,7 +507,7 @@ describe('the header switcher lockup', () => {
   });
 
   it('offers the study its siblings, and the way back to all of them', async () => {
-    const router = renderAt('/study/study-1');
+    renderAt('/study/study-1');
     fireEvent.click(
       await screen.findByRole('combobox', { name: 'Study Wave one pilot' }),
     );
@@ -520,13 +518,9 @@ describe('the header switcher lockup', () => {
         selected: true,
       }),
     ).toBeInTheDocument();
-    fireEvent.click(
-      screen.getByRole('button', { name: 'All studies in this team' }),
-    );
-
-    await waitFor(() =>
-      expect(router.state.location.pathname).toBe('/team/team-a'),
-    );
+    expect(
+      screen.getByRole('link', { name: 'All studies in this team' }),
+    ).toHaveAttribute('href', '/team/team-a');
   });
 
   it('leaves the study segment out entirely outside a study', async () => {
@@ -539,31 +533,26 @@ describe('the header switcher lockup', () => {
     expect(lockupSegments()).toBe(1);
   });
 
-  it('names a study its team cannot vouch for by its identifier', async () => {
-    // A canonical link into a study no team of this researcher's answers for —
-    // the case §6.3's `study.shell` is what will actually resolve. The active
-    // team's studies are NOT this study's siblings, so none is offered: the
-    // identifier is what the shell honestly knows.
+  it('names a study no team of this researcher\u2019s owns by its identifier', async () => {
+    // A canonical link into a study none of this researcher's teams answers
+    // for \u2014 the case \u00a76.3's `study.shell` is what will actually resolve. Every
+    // team is asked and none has it, so nothing here can say what the study is
+    // called or which team it belongs to, and the identifier is what the shell
+    // honestly knows.
     fixtures.studies = [fixtures.STUDY_2];
     renderAt('/study/study-1');
 
-    // Gate on the list having SETTLED rather than on the name that proves the
-    // point. The identifier is also what a still-loading switcher would fall
-    // back to, so asserting the name straight away would pass on the
-    // transient — and go on passing if the settled answer were wrong.
-    const study = await screen.findByRole('combobox', { name: /^Study/ });
-    await waitFor(() => expect(study).not.toHaveAttribute('aria-busy'));
+    // Gate on the lookup having SETTLED rather than on the name that proves
+    // the point. While it is still running the name is a skeleton, so the
+    // identifier appearing at all is the settled answer.
+    expect(await screen.findByText('study-1')).toBeInTheDocument();
+    expect(lockupSegments()).toBe(2);
 
-    expect(study).toHaveAccessibleName('Study study-1');
-    fireEvent.click(study);
-    // No sibling is offered, because none of the active team's studies is one:
-    // the switcher would otherwise present another team's studies as this
-    // study's own.
-    expect(
-      await screen.findByRole('option', { name: /^study-1/ }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole('option', { name: /^Methods comparison/ }),
-    ).toBeNull();
+    // A label in the frame, not a control: no sibling can be offered, because
+    // none of any team's studies is one, and \u201call studies in this team\u201d has no
+    // team to name. A combobox here would open onto a list holding only the
+    // study already on screen.
+    expect(screen.queryByRole('combobox', { name: /^Study/ })).toBeNull();
+    expect(screen.getAllByRole('combobox')).toHaveLength(1);
   });
 });

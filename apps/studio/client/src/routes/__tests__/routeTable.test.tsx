@@ -681,18 +681,14 @@ describe('navigation', () => {
       }),
     );
 
-    // Nothing in this popup is a link. The teams are listbox `option`s that
-    // navigate (§6.5), and the command beneath them is the switcher's trailing
-    // ACTION, which navigates too — so where it goes is asserted by going
-    // there and asking the router whether that is a route it registers.
-    expect(menuDestinations(router)).toEqual([]);
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Team administration' }),
-    );
-
-    await waitFor(() =>
-      expect(router.state.location.pathname).toBe('/team/team-a/settings'),
-    );
+    // The teams are listbox `option`s that navigate (§6.5), so they are not
+    // links; the destination beneath them is. Its address is asserted where it
+    // is written, and then against the route table, so the link both points
+    // somewhere registered and can be opened the way any link can.
+    const admin = await screen.findByRole('link', {
+      name: 'Team administration',
+    });
+    expect(admin).toHaveAttribute('href', '/team/team-a/settings');
     expect(registeredPathFor(router, '/team/team-a/settings')).toBe(
       '/team/$teamId/settings',
     );
@@ -706,13 +702,10 @@ describe('navigation', () => {
     fireEvent.click(
       await screen.findByRole('combobox', { name: 'Study Shell proof' }),
     );
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'All studies in this team' }),
-    );
-
-    await waitFor(() =>
-      expect(router.state.location.pathname).toBe('/team/team-a'),
-    );
+    const allStudies = await screen.findByRole('link', {
+      name: 'All studies in this team',
+    });
+    expect(allStudies).toHaveAttribute('href', '/team/team-a');
     expect(registeredPathFor(router, '/team/team-a')).toBe('/team/$teamId');
   });
 });
