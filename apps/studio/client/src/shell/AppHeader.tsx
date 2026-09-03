@@ -91,7 +91,7 @@ export default function AppHeader() {
       <Wordmark home={home} />
       {/*
         A width the lockup does not derive from its contents, which is what
-        `SwitcherLockup` requires of a flex-row host: its outer element carries
+        `EntityLockup` requires of a flex-row host: its outer element carries
         `container-type: inline-size`, so in a flex row with no basis it would
         measure zero and hold both switchers permanently collapsed. The basis
         clears the switchers' own 34rem collapse threshold, so a header with
