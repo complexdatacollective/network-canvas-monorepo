@@ -35,6 +35,9 @@ const fixtures = vi.hoisted(() => ({
   // three states — resolved, still loading, and failed — are what half of the
   // switcher's behaviour is about, and each test says which one it is in.
   useListOrganizations: vi.fn(),
+  // Hoisted for the same reason: the active-team SETTING and the membership
+  // list can disagree, and a test needs to say so.
+  useActiveOrganization: vi.fn(),
   // Read at call time, so a test can put a study in the team's list or leave
   // it out. `protocols.list` is team-scoped, so a study missing from it is a
   // study this team does not own.
@@ -58,12 +61,7 @@ vi.mock('../../lib/auth.ts', () => ({
     getSession: vi.fn().mockResolvedValue({ data: { user: {} }, error: null }),
     useSession: vi.fn(),
     useListOrganizations: fixtures.useListOrganizations,
-    useActiveOrganization: vi.fn().mockReturnValue({
-      data: { ...fixtures.TEAM_A, members: [], invitations: [] },
-      isPending: false,
-      error: null,
-      refetch: vi.fn(),
-    }),
+    useActiveOrganization: fixtures.useActiveOrganization,
     useActiveMember: fixtures.useActiveMember,
     organization: {
       setActive: fixtures.setActive,
@@ -203,6 +201,12 @@ beforeEach(() => {
   fixtures.useListOrganizations.mockReturnValue(
     resolvedTeams([fixtures.TEAM_A, fixtures.TEAM_B]),
   );
+  fixtures.useActiveOrganization.mockReturnValue({
+    data: { ...fixtures.TEAM_A, members: [], invitations: [] },
+    isPending: false,
+    error: null,
+    refetch: vi.fn(),
+  });
   fixtures.studies = [fixtures.STUDY_1, fixtures.STUDY_2];
   fixtures.studyListRequests = [];
 });
@@ -544,6 +548,43 @@ describe('the header switcher lockup', () => {
     // a blank beside it would say the opposite.
     expect(screen.queryByRole('combobox', { name: /^Study/ })).toBeNull();
     expect(lockupSegments()).toBe(1);
+  });
+
+  it('names no team when the active one is no longer a membership', async () => {
+    // `activeOrganizationId` outlives membership: a researcher who leaves the
+    // team they were last acting in keeps it in the setting. On a route that
+    // names no team, that setting is the only candidate — and taking it
+    // unchecked names a team they can no longer open.
+    fixtures.useActiveOrganization.mockReturnValue({
+      data: {
+        id: 'team-gone',
+        name: 'Departed lab',
+        members: [],
+        invitations: [],
+      },
+      isPending: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    renderAt('/account');
+
+    const team = await screen.findByRole('combobox', { name: /^Team/ });
+    await waitFor(() => expect(team).not.toHaveAttribute('aria-busy'));
+
+    // The placeholder, not the departed team.
+    expect(team).toHaveAccessibleName('Team Choose a team');
+    expect(screen.queryByText('Departed lab')).toBeNull();
+
+    // And nothing offers to administer it. The trailing destination is built
+    // from the same resolved team, so an unresolved one leaves it out.
+    fireEvent.click(team);
+    expect(
+      screen.queryByRole('link', { name: 'Team administration' }),
+    ).toBeNull();
+    // The teams they DO have are still there to switch to.
+    expect(
+      await screen.findByRole('option', { name: /^Alpha research team/ }),
+    ).toBeInTheDocument();
   });
 
   it('asks no team for its studies on a route that shows no study', async () => {

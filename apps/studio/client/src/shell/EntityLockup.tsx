@@ -74,18 +74,26 @@ function StudyStatusDot() {
  * beneath it is already listing and creating studies against the team in the
  * URL, which is the one question the switcher exists to answer.
  *
- * `undefined` for a URL team the list does not name, rather than a guess in
- * either direction: nothing here knows what that team is called, the switcher
- * reads "Choose a team", and the teams the researcher does have are still in
- * the list. That is the state the shell's own switch-failure alert is about.
+ * `undefined` for a team the list does not name, rather than a guess in either
+ * direction: nothing here knows what that team is called, the switcher reads
+ * "Choose a team", and the teams the researcher does have are still in the
+ * list. That is the state the shell's own switch-failure alert is about.
+ *
+ * BOTH answers come from the list, including the active-team fallback. The
+ * setting outlives membership — a researcher who leaves the team they were
+ * last acting in keeps it in `activeOrganizationId` — so returning it
+ * unchecked names a team they can no longer open. The switcher would show
+ * "Choose a team", because no item matches it, while the row beneath the list
+ * still offered to administer it.
  */
 function currentTeam(
   teams: readonly NamedTeam[],
   activeTeam: NamedTeam | null | undefined,
   committedTeamId: string | undefined,
 ): NamedTeam | undefined {
-  if (committedTeamId === undefined) return activeTeam ?? undefined;
-  return teams.find((team) => team.id === committedTeamId);
+  const id = committedTeamId ?? activeTeam?.id;
+  if (id === undefined) return undefined;
+  return teams.find((team) => team.id === id);
 }
 
 /**
