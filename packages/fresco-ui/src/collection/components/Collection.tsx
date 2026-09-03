@@ -15,6 +15,7 @@ import {
 import { useCollectionSetup } from '../hooks/useCollectionSetup';
 import { useFilterState } from '../hooks/useFilterState';
 import { useSortState } from '../hooks/useSortState';
+import { getInitialSortRules } from '../sorting/initialSortRules';
 import type { SortState } from '../sorting/types';
 import type { CollectionProps, ItemRenderer, KeyExtractor } from '../types';
 import { StaticRenderer } from './StaticRenderer';
@@ -357,6 +358,15 @@ export function Collection<T extends Record<string, unknown>>({
       items={items}
       keyExtractor={keyExtractor}
       textValueExtractor={textValueExtractor}
+      initialSortRules={getInitialSortRules({
+        sortBy,
+        sortDirection,
+        sortType,
+        defaultSortBy,
+        defaultSortDirection,
+        defaultSortType,
+        sortRules,
+      })}
     >
       <CollectionContent
         items={items}

@@ -66,9 +66,14 @@ function VirtualizedRendererComponent<T>({
   // Track the scroll element in state to trigger effects when ref becomes available
   const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null);
 
-  // Sync ref to state when it changes (runs every render to detect ref population)
+  // Sync ref to state when it changes (runs every render to detect ref
+  // population). A passive effect, not a layout effect: `scrollRef` points at
+  // an ancestor (the ScrollArea viewport), and React attaches ancestor refs
+  // after this component's layout effects have run, so a layout effect on
+  // mount sees `null` and — with the store already seeded with items — nothing
+  // re-renders this component to try again.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (scrollRef.current !== scrollElement) {
       setScrollElement(scrollRef.current);
     }

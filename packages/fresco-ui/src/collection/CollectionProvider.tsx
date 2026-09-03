@@ -3,6 +3,7 @@
 import { type ReactNode, useEffect, useRef } from 'react';
 
 import { CollectionStoreContext } from './contexts';
+import type { SortRule } from './sorting/types';
 import { type CollectionStoreApi, createSeededCollectionStore } from './store';
 import type { KeyExtractor, TextValueExtractor } from './types';
 
@@ -13,6 +14,11 @@ type CollectionProviderProps<T> = {
   keyExtractor: KeyExtractor<T>;
   /** Function to extract text value for type-ahead search and accessibility */
   textValueExtractor: TextValueExtractor<T>;
+  /**
+   * The sort the collection starts with, applied to the seeded items so the
+   * first render (including server output) is already in order.
+   */
+  initialSortRules?: SortRule[];
   /** Child components */
   children: ReactNode;
 };
@@ -32,6 +38,7 @@ export function CollectionProvider<T>({
   items,
   keyExtractor,
   textValueExtractor,
+  initialSortRules,
   children,
 }: CollectionProviderProps<T>) {
   const storeRef = useRef<CollectionStoreApi<T> | null>(null);
@@ -43,11 +50,13 @@ export function CollectionProvider<T>({
   textValueExtractorRef.current = textValueExtractor;
 
   // Create the store once, seeded so the first render — including server and
-  // static output — already contains the items instead of the empty state.
+  // static output — already contains the items, in their initial sort order,
+  // instead of the empty state.
   storeRef.current ??= createSeededCollectionStore(
     items,
     keyExtractor,
     textValueExtractor,
+    initialSortRules,
   );
 
   // Update items when they change

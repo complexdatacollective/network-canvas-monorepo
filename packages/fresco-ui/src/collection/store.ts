@@ -13,6 +13,7 @@ import type {
 import createCollectionSorter, {
   type SortFn,
 } from './sorting/createCollectionSorter';
+import { sortStateForRules } from './sorting/initialSortRules';
 import {
   defaultSortState,
   type SortDirection,
@@ -514,16 +515,19 @@ export const createCollectionStore = <T>(
 };
 
 /**
- * Create a store whose *initial* state already holds `items`. Zustand serves
- * `getInitialState()` as the server snapshot, so items written after creation
+ * Create a store whose *initial* state already holds `items`, sorted by
+ * `sortRules`. Zustand serves `getInitialState()` as the server snapshot, so
+ * anything written after creation — the items, or the sort applied to them —
  * would never appear in server-rendered or static markup.
  */
 export const createSeededCollectionStore = <T>(
   items: T[],
   keyExtractor: KeyExtractor<T>,
   textValueExtractor: TextValueExtractor<T>,
+  sortRules: SortRule[] = [],
 ) => {
   const seed = createCollectionStore<T>();
+  seed.getState().updateSortState(sortStateForRules(sortRules));
   seed.getState().setItems(items, keyExtractor, textValueExtractor);
   return createCollectionStore<T>(seed.getState());
 };

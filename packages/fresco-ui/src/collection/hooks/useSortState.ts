@@ -4,8 +4,9 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/shallow';
 
 import { useCollectionStore, useCollectionStoreApi } from '../contexts';
+import { getInitialSortRules } from '../sorting/initialSortRules';
 import { SortManager } from '../sorting/SortManager';
-import type { SortProps, SortRule, SortState } from '../sorting/types';
+import type { SortProps, SortState } from '../sorting/types';
 
 /**
  * Hook to manage sort state within a collection.
@@ -39,9 +40,7 @@ export function useSortState(props: SortProps = {}): SortManager {
     sortBy: controlledSortBy,
     sortDirection: controlledSortDirection,
     sortType: controlledSortType,
-    defaultSortBy,
     defaultSortDirection = 'asc',
-    defaultSortType = 'string',
     onSortChange,
     sortRules: controlledSortRules,
   } = props;
@@ -54,34 +53,24 @@ export function useSortState(props: SortProps = {}): SortManager {
   onSortChangeRef.current = onSortChange;
 
   // Initialize sort state from default props synchronously (uncontrolled mode).
-  // Runs before the store subscription so the first read picks up defaults,
-  // and before CollectionProvider's setItems effect so items are sorted correctly.
+  // Runs before the store subscription so the first read picks up defaults.
+  // CollectionProvider seeds the store with these same rules, so this is a
+  // no-op for a Collection-created store; it keeps a bare CollectionProvider
+  // (no rules passed) correct, re-sorting the already-seeded items.
   const hasInitialized = useRef(false);
-  // Prefer explicit multi-field `sortRules` for the initial seed, else a single
-  // rule from `defaultSortBy`. `sortRules` supplied without a controlled
-  // `sortBy` is treated as the initial uncontrolled sort (previously a no-op).
-  const initialSortRules: SortRule[] =
-    controlledSortRules && controlledSortRules.length > 0
-      ? controlledSortRules
-      : defaultSortBy
-        ? [
-            {
-              property: defaultSortBy,
-              direction: defaultSortDirection,
-              type: defaultSortType,
-            },
-          ]
-        : [];
+  const initialSortRules = getInitialSortRules(props);
   if (!isControlled && !hasInitialized.current && initialSortRules.length > 0) {
     hasInitialized.current = true;
     const [firstRule] = initialSortRules;
     if (firstRule) {
-      storeApi.getState().updateSortState({
+      const store = storeApi.getState();
+      store.updateSortState({
         sortProperty: firstRule.property,
         sortDirection: firstRule.direction ?? defaultSortDirection,
         sortType: firstRule.type,
         sortRules: initialSortRules,
       });
+      store.resortItems();
     }
   }
 
