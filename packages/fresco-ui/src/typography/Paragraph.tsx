@@ -43,10 +43,26 @@ type ParagraphProps = {
   margin?: VariantProps<typeof paragraphVariants>['margin'];
   emphasis?: VariantProps<typeof paragraphVariants>['emphasis'];
   render?: UseRender.RenderProp;
+  /**
+   * @deprecated Never had an effect. Use `render` to substitute the element.
+   * Kept so existing callers keep type-checking; dropped in the next major.
+   */
+  asChild?: boolean;
 } & React.HTMLAttributes<HTMLParagraphElement>;
 
 const Paragraph = React.forwardRef<HTMLParagraphElement, ParagraphProps>(
-  ({ className, intent, margin, emphasis, render, ...props }, ref) => {
+  (
+    {
+      className,
+      intent,
+      margin,
+      emphasis,
+      render,
+      asChild: _asChild,
+      ...props
+    },
+    ref,
+  ) => {
     return useRender({
       render,
       ref,

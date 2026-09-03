@@ -99,6 +99,17 @@ describe('localized layout navigation', () => {
     cleanup();
 
     renderWithIntl(<Header host="protocolGallery" />, 'es');
+    // The active gallery item now points at the gallery's own origin, which is
+    // this site: it must not keep the shared navigation's new-tab treatment.
+    const activeGallery = screen.getByRole('link', {
+      name: 'Galería de protocolos',
+    });
+    expect(activeGallery).toHaveAttribute(
+      'href',
+      'https://protocolgallery.networkcanvas.com/es/',
+    );
+    expect(activeGallery).not.toHaveAttribute('target');
+    expect(activeGallery).not.toHaveAttribute('rel');
     expect(
       screen.getByRole('link', { name: 'Inicio de Network Canvas' }),
     ).toHaveAttribute('href', 'https://networkcanvas.com/es/');

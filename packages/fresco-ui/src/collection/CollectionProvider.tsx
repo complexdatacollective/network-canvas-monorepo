@@ -5,7 +5,7 @@ import { type ReactNode, useEffect, useRef } from 'react';
 import { CollectionStoreContext } from './contexts';
 import type { SortRule } from './sorting/types';
 import { type CollectionStoreApi, createSeededCollectionStore } from './store';
-import type { KeyExtractor, TextValueExtractor } from './types';
+import type { Key, KeyExtractor, TextValueExtractor } from './types';
 
 type CollectionProviderProps<T> = {
   /** Items to populate the collection with */
@@ -19,6 +19,11 @@ type CollectionProviderProps<T> = {
    * first render (including server output) is already in order.
    */
   initialSortRules?: SortRule[];
+  /**
+   * Keys disabled from the first render, so server output already carries
+   * the disabled semantics rather than waiting for the client effect.
+   */
+  initialDisabledKeys?: Iterable<Key>;
   /** Child components */
   children: ReactNode;
 };
@@ -39,6 +44,7 @@ export function CollectionProvider<T>({
   keyExtractor,
   textValueExtractor,
   initialSortRules,
+  initialDisabledKeys,
   children,
 }: CollectionProviderProps<T>) {
   const storeRef = useRef<CollectionStoreApi<T> | null>(null);
@@ -57,6 +63,7 @@ export function CollectionProvider<T>({
     keyExtractor,
     textValueExtractor,
     initialSortRules,
+    initialDisabledKeys,
   );
 
   // Update items when they change

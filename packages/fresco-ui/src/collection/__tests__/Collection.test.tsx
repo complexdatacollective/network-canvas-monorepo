@@ -112,6 +112,34 @@ describe('Collection', () => {
       expect(markup).not.toContain('Nothing here');
     });
 
+    it('marks disabled native items in the initial markup', () => {
+      const markup = renderToString(
+        <Collection
+          items={testItems}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.name}
+          layout={new ListLayout<Item>({ gap: 2 })}
+          selectionMode="none"
+          nativeItemSemantics
+          disabledKeys={['2']}
+          animate={false}
+          renderItem={(item, itemProps) => (
+            <a {...itemProps} href={`#${item.id}`}>
+              {item.name}
+            </a>
+          )}
+        >
+          {(collectionElements) => collectionElements}
+        </Collection>,
+      );
+
+      const banana = markup.match(/<a[^>]*>Banana<\/a>/)?.[0] ?? '';
+      const apple = markup.match(/<a[^>]*>Apple<\/a>/)?.[0] ?? '';
+      expect(banana).toContain('aria-disabled="true"');
+      expect(banana).toContain('tabindex="-1"');
+      expect(apple).not.toContain('aria-disabled');
+    });
+
     it('renders in page flow without a scroll region when not scrollable', () => {
       const { container } = render(
         <Collection

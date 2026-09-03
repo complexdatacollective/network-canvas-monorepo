@@ -1,12 +1,13 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import type { Context } from '@netlify/edge-functions';
+import { describe, expect, it, vi } from 'vitest';
 
 import { getStaticLocaleParams, locales } from '~/lib/i18n/locales';
 import { routing } from '~/lib/i18n/routing';
 import { loadProtocolGallery } from '~/lib/protocolGallery';
-import {
+import localeRedirect, {
   config,
   detectLocale,
   getGalleryCanonicalRedirect,
@@ -350,5 +351,52 @@ describe('locale routing', () => {
         ),
       ),
     ).toBeUndefined();
+  });
+});
+
+describe('edge handler', () => {
+  // Only the members the handler reaches for; the rest of Netlify's Context
+  // is irrelevant to routing.
+  const makeContext = () => {
+    const next = vi.fn(async () => new Response('next'));
+    const rewrite = vi.fn(
+      async (url: string | URL) =>
+        new Response(null, { headers: { 'x-rewrite': String(url) } }),
+    );
+    const context = {
+      cookies: { get: () => undefined },
+      next,
+      rewrite,
+    };
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    return { context: context as unknown as Context, next, rewrite };
+  };
+
+  it('rewrites localized gallery paths through the platform, not by returning a URL', async () => {
+    const { context, next, rewrite } = makeContext();
+
+    const response = await localeRedirect(
+      new Request(`${galleryOrigin}/en-US/gate/`),
+      context,
+    );
+
+    expect(response).toBeInstanceOf(Response);
+    expect(rewrite).toHaveBeenCalledTimes(1);
+    expect(String(rewrite.mock.calls[0]?.[0])).toBe(
+      `${galleryOrigin}/en-US/protocol-gallery/gate/`,
+    );
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('continues normally off the gallery host', async () => {
+    const { context, next, rewrite } = makeContext();
+
+    await localeRedirect(
+      new Request('https://networkcanvas.com/en-US/get-started/'),
+      context,
+    );
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(rewrite).not.toHaveBeenCalled();
   });
 });

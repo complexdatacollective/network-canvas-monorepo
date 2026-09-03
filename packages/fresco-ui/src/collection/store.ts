@@ -525,9 +525,11 @@ export const createSeededCollectionStore = <T>(
   keyExtractor: KeyExtractor<T>,
   textValueExtractor: TextValueExtractor<T>,
   sortRules: SortRule[] = [],
+  disabledKeys: Iterable<Key> = [],
 ) => {
   const seed = createCollectionStore<T>();
   seed.getState().updateSortState(sortStateForRules(sortRules));
+  seed.getState().setDisabledKeys(new Set(disabledKeys));
   seed.getState().setItems(items, keyExtractor, textValueExtractor);
   return createCollectionStore<T>(seed.getState());
 };

@@ -25,7 +25,13 @@ import {
 } from '~/lib/gallerySort';
 import type { GalleryProtocol } from '~/lib/protocolGallery';
 
-const galleryFuseOptions = { threshold: 0.15, includeScore: false } as const;
+// `minMatchCharLength: 1` so a one-letter query (an initial, an acronym's
+// first letter) still matches rather than hiding everything.
+const galleryFuseOptions = {
+  threshold: 0.15,
+  includeScore: false,
+  minMatchCharLength: 1,
+} as const;
 const galleryFilterKeys = ['searchText'];
 const GRID_MIN_ITEM_WIDTH = 300;
 const GRID_GAP_UNITS = 6;

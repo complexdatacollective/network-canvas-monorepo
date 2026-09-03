@@ -940,6 +940,7 @@
   },
   "peerDependencies": {
     "@base-ui/react": "^1.4.0",
+    "@codaco/protocol-validation": "workspace:^",
     "@codaco/shared-consts": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
     "@tanstack/react-table": "catalog:",
@@ -949,5 +950,10 @@
     "tailwindcss": "catalog:",
     "zod": "catalog:",
     "zustand": "catalog:"
+  },
+  "peerDependenciesMeta": {
+    "@codaco/protocol-validation": {
+      "optional": true
+    }
   }
 }

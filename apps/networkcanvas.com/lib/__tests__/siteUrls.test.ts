@@ -4,6 +4,7 @@ import {
   documentationUrl,
   protocolGalleryHref,
   protocolGalleryUrl,
+  isSameSiteNavigationUrl,
   resolveWebsiteNavigationUrl,
 } from '../siteUrls';
 
@@ -102,6 +103,40 @@ describe('website site URLs', () => {
       expect(resolveWebsiteNavigationUrl(href, 'es')).toBe(
         '/get-started#architect-classic-downloads',
       );
+    });
+
+    it('sends the shared navigation gallery link to the configured origin, not the canonical one', () => {
+      vi.stubEnv(
+        'NEXT_PUBLIC_PROTOCOL_GALLERY_URL',
+        'https://gallery.example.test',
+      );
+
+      expect(resolveWebsiteNavigationUrl(`${galleryOrigin}/`, 'es')).toBe(
+        'https://gallery.example.test/es/',
+      );
+      expect(
+        resolveWebsiteNavigationUrl(
+          `${galleryOrigin}/`,
+          'en-US',
+          'protocolGallery',
+        ),
+      ).toBe('https://gallery.example.test/en-US/');
+    });
+
+    it('treats an absolute link back onto the gallery origin as same-site on the gallery host', () => {
+      expect(
+        isSameSiteNavigationUrl(`${galleryOrigin}/es/`, 'protocolGallery'),
+      ).toBe(true);
+      expect(isSameSiteNavigationUrl(`${galleryOrigin}/es/`, 'website')).toBe(
+        false,
+      );
+      expect(
+        isSameSiteNavigationUrl(
+          'https://networkcanvas.com/es/',
+          'protocolGallery',
+        ),
+      ).toBe(false);
+      expect(isSameSiteNavigationUrl('/es/', 'website')).toBe(true);
     });
 
     it("sends the navigation's site-relative destinations back to the website with the locale", () => {

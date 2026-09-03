@@ -131,10 +131,14 @@ export function resolveWebsiteNavigationUrl(
   }
 
   if (url.origin === protocolGalleryOrigin) {
-    // Without the subdomain the gallery is a route of this site.
-    return isProtocolGalleryHosted()
-      ? crossHostUrl(url, locale)
-      : protocolGalleryPathPrefix;
+    // Without the subdomain the gallery is a route of this site. With it,
+    // the deployment's configured origin wins over the canonical one the
+    // shared navigation was written against.
+    const root = getProtocolGalleryRoot();
+    if (!root) return protocolGalleryPathPrefix;
+    url.protocol = root.protocol;
+    url.host = root.host;
+    return crossHostUrl(url, locale);
   }
 
   if (url.origin === canonicalNetworkCanvasUrl) {
@@ -145,4 +149,27 @@ export function resolveWebsiteNavigationUrl(
   }
 
   return href;
+}
+
+/**
+ * Whether a resolved navigation destination stays on the current deployment.
+ * Site-relative paths always do; on the gallery host, so does an absolute
+ * URL back onto the gallery's own origin, which the shared navigation would
+ * otherwise treat as an external link and open in a new tab.
+ */
+export function isSameSiteNavigationUrl(
+  href: string,
+  host: SiteHost = 'website',
+) {
+  if (href.startsWith('/')) return true;
+  if (host !== 'protocolGallery') return false;
+
+  const root = getProtocolGalleryRoot();
+  if (!root) return false;
+
+  try {
+    return new URL(href).origin === root.origin;
+  } catch {
+    return false;
+  }
 }

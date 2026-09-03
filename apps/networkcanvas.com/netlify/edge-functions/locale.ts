@@ -260,7 +260,8 @@ export default function localeRedirect(request: Request, context: Context) {
   const canonicalRedirect = getGalleryCanonicalRedirect(url);
   if (canonicalRedirect) return Response.redirect(canonicalRedirect, 301);
 
-  return getGalleryRewrite(url) ?? context.next();
+  const rewrite = getGalleryRewrite(url);
+  return rewrite ? context.rewrite(rewrite) : context.next();
 }
 
 export const config: Config = {

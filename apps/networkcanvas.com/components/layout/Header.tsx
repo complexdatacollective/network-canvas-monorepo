@@ -8,7 +8,11 @@ import type { SiteNavigationLinkRenderProps } from '@codaco/fresco-ui/navigation
 import ThemeSwitcher from '~/components/layout/ThemeSwitcher';
 import { isLocale } from '~/lib/i18n/locales';
 import { Link } from '~/lib/i18n/navigation';
-import { resolveWebsiteNavigationUrl, type SiteHost } from '~/lib/siteUrls';
+import {
+  isSameSiteNavigationUrl,
+  resolveWebsiteNavigationUrl,
+  type SiteHost,
+} from '~/lib/siteUrls';
 
 export function Header({
   activeItemId,
@@ -37,7 +41,7 @@ export function Header({
     const href = resolveWebsiteNavigationUrl(props.href, locale, host);
     // A destination rewritten onto this site is an ordinary in-site route and
     // must not keep the new-tab treatment the shared navigation gives it.
-    const sameSite = href.startsWith('/');
+    const sameSite = isSameSiteNavigationUrl(href, host);
 
     return (
       <Link

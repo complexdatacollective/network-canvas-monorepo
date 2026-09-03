@@ -367,6 +367,7 @@ export function Collection<T extends Record<string, unknown>>({
         defaultSortType,
         sortRules,
       })}
+      initialDisabledKeys={disabledKeys}
     >
       <CollectionContent
         items={items}

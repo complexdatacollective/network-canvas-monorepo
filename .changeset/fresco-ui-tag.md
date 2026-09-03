@@ -1,5 +1,7 @@
 ---
 '@codaco/fresco-ui': minor
+'@codaco/architect': patch
+'@codaco/interviewer': patch
 ---
 
 Add `Tag`, a compact uppercase label with an optional palette-coloured dot that becomes an `aria-pressed` toggle button when given `onPressedChange` — the shape used for multi-select facet filters. Architect's New Stage capability filter now uses it.
