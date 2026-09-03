@@ -408,7 +408,9 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
             </motion.div>
             <MotionSurface
               noContainer
-              className="flex size-fit shrink-0 grow-0 flex-col items-center justify-center gap-4"
+              // gap-6: the prompt is a cap-trimmed heading with no leading of its
+              // own below it, so the room between it and the choices is all gap.
+              className="flex size-fit shrink-0 grow-0 flex-col items-center justify-center gap-6"
               variants={choiceVariants}
               initial="initial"
               animate="animate"
