@@ -126,9 +126,18 @@ const NAME_WIDTH_CLASS = cx(
 
 /**
  * The trigger's face, drawn on Base UI's own button rather than on this
- * package's `Button`: transparent at rest so it reads as a label until it is
- * reached for, a raised surface under the pointer, and the accent wash while
- * the list is open.
+ * package's `Button`.
+ *
+ * It takes the field surface — `bg-input`, the field radius and the field's
+ * horizontal padding — because that is what it is: a control holding a value
+ * you can change, sitting in a header beside other controls. Reading as a
+ * field rather than as a button is what tells a researcher it can be changed
+ * at all, without the weight of something that performs an action.
+ *
+ * Open takes `--selected`, the semantic every other "this is the one in
+ * force" surface in the system uses, rather than an accent picked for this
+ * component. The open trigger and the checked row in its list are then the
+ * same colour, which is the point: they are the same fact stated twice.
  *
  * `not-data-popup-open:` rather than source order on the hover rule. Both are
  * single-class selectors, so which one wins is decided by Tailwind's own
@@ -136,11 +145,12 @@ const NAME_WIDTH_CLASS = cx(
  * open state from the hover rule makes the outcome independent of that.
  */
 const TRIGGER_CLASS = cx(
-  'flex min-w-0 cursor-pointer items-center gap-2 rounded-xs px-3 py-1.5',
+  'flex min-w-0 cursor-pointer items-center gap-2 rounded-sm px-3 py-2',
+  'bg-input text-input-contrast',
   'border border-transparent text-start transition-colors',
   'focusable',
-  'not-data-popup-open:hover:bg-surface-2 not-data-popup-open:hover:text-surface-2-contrast',
-  'data-popup-open:bg-surface-accent data-popup-open:text-surface-accent-contrast',
+  'not-data-popup-open:hover:bg-input-contrast/8',
+  'data-popup-open:bg-selected data-popup-open:text-selected-contrast',
 );
 
 /**
@@ -199,7 +209,7 @@ function SwitcherFace({
       <span className={cx('flex min-w-0 flex-col items-start', COLLAPSE_CLASS)}>
         <span
           id={kickerId}
-          className="text-xs leading-tight font-normal tracking-wide uppercase opacity-70"
+          className="text-2xs leading-tight font-semibold uppercase opacity-70"
         >
           {kicker}
         </span>
@@ -426,7 +436,7 @@ export function EntitySwitcher(props: EntitySwitcherProps) {
                         'flex cursor-pointer items-center gap-3 rounded-xs px-2 py-1.5',
                         'transition-colors outline-none select-none',
                         'not-data-selected:data-highlighted:bg-surface-2 not-data-selected:data-highlighted:text-surface-2-contrast',
-                        'data-selected:bg-surface-accent data-selected:text-surface-accent-contrast',
+                        'data-selected:bg-selected data-selected:text-selected-contrast',
                       )}
                     >
                       {markFor(item, renderMark, 'sm')}

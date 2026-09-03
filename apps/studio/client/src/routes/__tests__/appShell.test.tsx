@@ -338,7 +338,7 @@ describe('header team switcher', () => {
       }),
     );
     pressOption(
-      await screen.findByRole('option', { name: 'Beta research team' }),
+      await screen.findByRole('option', { name: /^Beta research team/ }),
     );
 
     // §6.5: the switch is a navigation to the team's landing destination, and
@@ -401,13 +401,13 @@ describe('header team switcher', () => {
     // a list that marks A is a worse answer than either alone.
     expect(
       await screen.findByRole('option', {
-        name: 'Beta research team',
+        name: /^Beta research team/,
         selected: true,
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('option', {
-        name: 'Alpha research team',
+        name: /^Alpha research team/,
         selected: false,
       }),
     ).toBeInTheDocument();
@@ -435,7 +435,7 @@ describe('header team switcher', () => {
     fireEvent.click(
       screen.getByRole('combobox', { name: 'Team Alpha research team' }),
     );
-    await screen.findByRole('option', { name: 'Beta research team' });
+    await screen.findByRole('option', { name: /^Beta research team/ });
 
     expect(fixtures.setActive).not.toHaveBeenCalled();
   });
@@ -455,7 +455,7 @@ describe('header team switcher', () => {
     // router-driven header it is a navigation the editor's dirty-state blocker
     // would have to prompt about.
     pressOption(
-      await screen.findByRole('option', { name: 'Alpha research team' }),
+      await screen.findByRole('option', { name: /^Alpha research team/ }),
     );
 
     await waitFor(() => expect(router.state.status).toBe('idle'));
@@ -515,7 +515,7 @@ describe('the header switcher lockup', () => {
 
     expect(
       await screen.findByRole('option', {
-        name: 'Wave one pilot',
+        name: /^Wave one pilot/,
         selected: true,
       }),
     ).toBeInTheDocument();
@@ -559,10 +559,10 @@ describe('the header switcher lockup', () => {
     // the switcher would otherwise present another team's studies as this
     // study's own.
     expect(
-      await screen.findByRole('option', { name: 'study-1' }),
+      await screen.findByRole('option', { name: /^study-1/ }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('option', { name: 'Methods comparison' }),
+      screen.queryByRole('option', { name: /^Methods comparison/ }),
     ).toBeNull();
   });
 });

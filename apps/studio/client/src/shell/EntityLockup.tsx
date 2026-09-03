@@ -10,6 +10,12 @@ import { SwitcherLockup } from '@codaco/fresco-ui/navigation/SwitcherLockup';
 
 import { orpc } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
+import { teamRole } from '../lib/teamRoles.ts';
+import {
+  PlaceholderStatusPip,
+  placeholderStudyStatus,
+  placeholderTeamMeta,
+} from './switcherPlaceholders.tsx';
 
 /**
  * The header's team ▸ study lockup (§5.5): the team the researcher is acting
@@ -113,12 +119,26 @@ function StudySegment({
   const siblings: EntitySwitcherItem[] = listed.some(
     (study) => study.id === studyId,
   )
-    ? listed.map((study) => ({ id: study.id, name: study.name }))
+    ? listed.map((study) => ({
+        id: study.id,
+        name: study.name,
+        // PLACEHOLDER, both of them — see `switcherPlaceholders`. The word is
+        // rendered as well as the pip, so the colour never carries the status
+        // on its own.
+        meta: placeholderStudyStatus(study.id).label,
+        leading: <PlaceholderStatusPip studyId={study.id} />,
+      }))
     : // The identifier is what the shell knows about a study it cannot place.
       // A friendlier placeholder would be a guess about which study the
       // researcher has open, and the switcher exists precisely so they can be
       // sure.
-      [{ id: studyId, name: studyId }];
+      [
+        {
+          id: studyId,
+          name: studyId,
+          leading: <PlaceholderStatusPip studyId={studyId} />,
+        },
+      ];
 
   // A disabled query is `pending` for ever, so the wait has to be read against
   // whether there was anything to ask.
@@ -188,6 +208,9 @@ export default function EntityLockup({ className }: { className?: string }) {
   const { teamId: committedTeamId, studyId } = useParams({ strict: false });
   const teams = authClient.useListOrganizations();
   const activeTeam = authClient.useActiveOrganization();
+  // The one membership Better Auth answers for, and so the one team whose
+  // role the switcher can state rather than guess.
+  const activeMember = authClient.useActiveMember();
 
   const list = teams.data ?? [];
   // An EMPTY list and a list that could not be read are the same `[]` here,
@@ -223,7 +246,19 @@ export default function EntityLockup({ className }: { className?: string }) {
       {hasTeamSegment && (
         <EntitySwitcher
           kicker={TEAM_KICKER}
-          items={list.map((team) => ({ id: team.id, name: team.name }))}
+          items={list.map((team) => ({
+            id: team.id,
+            name: team.name,
+            // PLACEHOLDER — see `switcherPlaceholders`. Nothing counts a
+            // team's studies yet.
+            meta: placeholderTeamMeta(team.id),
+            // NOT a placeholder, and deliberately absent rather than invented
+            // for the rest: `useActiveMember` answers for the active team
+            // only, so this is the one team whose role is actually known. A
+            // made-up role would be a false claim about what the researcher
+            // may do here.
+            badge: teamRole(activeMember.data, team.id),
+          }))}
           currentId={current?.id}
           placeholder="Choose a team"
           status={teamStatus}

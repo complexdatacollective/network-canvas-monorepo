@@ -77,6 +77,21 @@ export function SwitcherLockup({ children, className }: SwitcherLockupProps) {
             className={cx(
               'flex min-w-0 items-center',
               index > 0 && 'border-outline border-s',
+              /*
+                The segment's own corners, pushed onto the control inside it.
+                A switcher fills its segment and paints a surface when it is
+                open, so its radius has to be the lockup's on the outer edges
+                and square where it meets the divider — otherwise the open
+                surface draws its own rounded rectangle inside a differently
+                rounded box and spills over the border between them.
+
+                Done by styling the child rather than by clipping here:
+                `overflow-hidden` would take the focus ring off whichever
+                trigger is focused, and the ring is drawn outside the element.
+              */
+              '[&>*]:rounded-none',
+              index === 0 && '[&>*]:rounded-s-sm',
+              index === segments.length - 1 && '[&>*]:rounded-e-sm',
             )}
           >
             {segment}

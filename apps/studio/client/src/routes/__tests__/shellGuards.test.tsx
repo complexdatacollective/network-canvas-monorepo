@@ -360,7 +360,7 @@ describe('the team list, when it cannot be read', () => {
     );
 
     expect(
-      await screen.findByRole('option', { name: 'Beta research team' }),
+      await screen.findByRole('option', { name: /^Beta research team/ }),
     ).toBeInTheDocument();
     expect(
       screen.getByText('Your teams could not be loaded.'),
