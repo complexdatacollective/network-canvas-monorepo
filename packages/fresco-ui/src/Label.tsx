@@ -41,8 +41,12 @@ const Label = React.forwardRef<
         // `block w-fit` rather than `inline-block`: an inline-block sits on
         // its parent's line box, whose strut keeps the parent as tall as an
         // untrimmed line and hands the slack straight back.
+        //
+        // The label keeps the label style's own margins, so what follows it
+        // (a hint, a control) is spaced by the type scale rather than by its
+        // container. Pass `m-0!` where a container spaces it itself.
         'block w-fit',
-        headingVariants({ level: 'label', margin: 'none' }),
+        headingVariants({ level: 'label' }),
         'peer-disabled:opacity-70',
         className,
       )}

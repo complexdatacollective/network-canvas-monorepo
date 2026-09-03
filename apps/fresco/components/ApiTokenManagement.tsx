@@ -233,10 +233,7 @@ export default function ApiTokenManagement({
         }
       >
         <div data-field-name="description">
-          {/* The label is a cap-trimmed block, so the space to the input has to be stated. */}
-          <Label htmlFor="description" className="mb-2">
-            Description (optional)
-          </Label>
+          <Label htmlFor="description">Description (optional)</Label>
           <InputField
             id="description"
             placeholder="e.g., Development token"
