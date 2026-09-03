@@ -4,7 +4,9 @@ import { paletteColorStyles } from '../styles/palette';
 import {
   isStageType,
   STAGE_TYPE_COLORS,
+  STAGE_TYPE_ICONS,
   stageTypeColorStyle,
+  stageTypeIcon,
 } from './stageTypes';
 
 describe('STAGE_TYPE_COLORS', () => {
@@ -28,5 +30,20 @@ describe('STAGE_TYPE_COLORS', () => {
     expect(stageTypeColorStyle('Sociogram')).toBe(
       paletteColorStyles[STAGE_TYPE_COLORS.Sociogram],
     );
+  });
+});
+
+describe('STAGE_TYPE_ICONS', () => {
+  it('gives every stage type a distinct icon', () => {
+    const icons = Object.values(STAGE_TYPE_ICONS);
+
+    expect(Object.keys(STAGE_TYPE_ICONS)).toEqual(
+      Object.keys(STAGE_TYPE_COLORS),
+    );
+    expect(new Set(icons).size).toBe(icons.length);
+  });
+
+  it('resolves a stage type to its icon component', () => {
+    expect(stageTypeIcon('Sociogram')).toBe(STAGE_TYPE_ICONS.Sociogram);
   });
 });
