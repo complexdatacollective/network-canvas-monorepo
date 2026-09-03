@@ -19,6 +19,7 @@ import {
   NATIVE_LINK_ROOT_CLASS_NAME,
 } from './styles/nativeLinkStyles';
 import { compose, cva, cx, type VariantProps } from './utils/cva';
+import { trimTextContent } from './utils/textLabel';
 
 const buttonSpecificVariants = cva({
   base: cx(
@@ -332,18 +333,26 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       className,
     });
 
+    // A text label gets a box of its own so that what centres in the control
+    // is its cap height, not its line box (`trimTextContent`). The link
+    // variant keeps its own label box instead: its underline is painted along
+    // the bottom of that box, and a cap-trimmed box would run it through the
+    // descenders.
+    const labelOf = (content: React.ReactNode) =>
+      isLinkVariant ? (
+        <span className={NATIVE_LINK_LABEL_CLASS_NAME}>{content}</span>
+      ) : (
+        trimTextContent(content)
+      );
+
     if (asChild) {
-      const slottedChild =
-        isLinkVariant &&
-        React.isValidElement<{ children?: React.ReactNode }>(children)
-          ? React.cloneElement(
-              children,
-              undefined,
-              <span className={NATIVE_LINK_LABEL_CLASS_NAME}>
-                {children.props.children}
-              </span>,
-            )
-          : children;
+      let slottedChild = children;
+      if (React.isValidElement<{ children?: React.ReactNode }>(children)) {
+        const label = labelOf(children.props.children);
+        if (label !== children.props.children) {
+          slottedChild = React.cloneElement(children, undefined, label);
+        }
+      }
 
       return (
         <Slot className={classes} ref={ref} {...props}>
@@ -356,11 +365,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button type={type} className={classes} ref={ref} {...props}>
         {icon}
-        {isLinkVariant ? (
-          <span className={NATIVE_LINK_LABEL_CLASS_NAME}>{children}</span>
-        ) : (
-          children
-        )}
+        {labelOf(children)}
       </button>
     );
   },

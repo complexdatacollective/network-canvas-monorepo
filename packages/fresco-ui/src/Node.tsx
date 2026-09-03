@@ -134,7 +134,13 @@ export const labelVariants = cva({
   // No word-breaking here: a word that cannot fit its line must overflow, or
   // the fit ladder cannot see it. Breaking is conceded only by the dedicated
   // rungs below the ladder floor, in `buildFitSteps`.
-  base: ['w-[80%] min-w-0 overflow-hidden text-center', 'whitespace-pre-line'],
+  base: [
+    'w-[80%] min-w-0 overflow-hidden text-center',
+    'whitespace-pre-line',
+    // Cap-trimmed so the block centres in the shape on its caps and baseline.
+    // `useFitText` measures with the trim switched off; see there.
+    'text-box-trim',
+  ],
   variants: {
     size: {
       xxs: 'line-clamp-1 text-xs leading-none!',

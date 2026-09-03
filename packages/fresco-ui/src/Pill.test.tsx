@@ -5,10 +5,11 @@ import Pill from './Pill';
 
 describe('Pill', () => {
   it('renders children with the monospace base class', () => {
-    render(<Pill>v1.2.3</Pill>);
-    const el = screen.getByText('v1.2.3');
-    expect(el.className).toContain('font-monospace');
-    expect(el.tagName).toBe('SPAN');
+    const { container } = render(<Pill>v1.2.3</Pill>);
+    const el = container.firstElementChild;
+    expect(el).toHaveTextContent('v1.2.3');
+    expect(el?.className).toContain('font-monospace');
+    expect(el?.tagName).toBe('SPAN');
   });
 
   it('renders the icon before the label', () => {

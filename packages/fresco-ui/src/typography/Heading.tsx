@@ -60,7 +60,13 @@ const Heading = React.forwardRef<HTMLHeadingElement, HeadingProps>(
       render,
       ref,
       props: {
-        className: cx(headingVariants({ variant, level, margin, className })),
+        // Trimmed to its caps and baseline so the margin above starts at the
+        // cap line and the margin below at the baseline, instead of at the
+        // line box's invisible leading.
+        className: cx(
+          'text-box-trim',
+          headingVariants({ variant, level, margin, className }),
+        ),
         ...props,
       },
       defaultTagName: levelToTagName[level],
