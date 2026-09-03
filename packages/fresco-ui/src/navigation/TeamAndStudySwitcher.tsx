@@ -137,7 +137,7 @@ export type TeamAndStudySwitcherProps = {
 };
 
 /**
- * Below this a segment keeps only its mark and its caret.
+ * Below `xl` (36em) a segment keeps only its mark and its caret.
  *
  * A CONTAINER query, not a viewport breakpoint: this control sits in the app
  * header, and could sit in a narrow side panel or a dialog. What decides
@@ -151,7 +151,7 @@ export type TeamAndStudySwitcherProps = {
  * of the layout while leaving it rendered, so the name computes the same way
  * collapsed or not.
  */
-const COLLAPSE_CLASS = '@max-[34rem]:sr-only';
+const COLLAPSE_CLASS = '@max-xl:sr-only';
 
 /**
  * A floor and a cap that step up together, so a segment neither collapses onto
@@ -160,9 +160,9 @@ const COLLAPSE_CLASS = '@max-[34rem]:sr-only';
  * arrives.
  */
 const NAME_WIDTH_CLASS = cx(
-  'max-w-[10rem] min-w-[6rem]',
-  '@min-[48rem]:max-w-[14rem]',
-  '@min-[64rem]:max-w-[18rem]',
+  'max-w-40 min-w-24',
+  '@min-3xl:max-w-56',
+  '@min-5xl:max-w-72',
 );
 
 /**
@@ -187,7 +187,7 @@ const NAME_WIDTH_CLASS = cx(
 const SEGMENT_CLASS = cx(
   'flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-3 py-2',
   'bg-input text-input-contrast text-start transition-colors',
-  'focusable focus-visible:outline-offset-[-3px]',
+  'focusable focus-visible:-outline-offset-3',
   'not-data-popup-open:hover:bg-input-contrast/8',
   'data-popup-open:bg-selected data-popup-open:text-selected-contrast',
 );
@@ -198,14 +198,15 @@ const SEGMENT_CLASS = cx(
  * rather than Base UI's `data-highlighted`, which only the options get.
  */
 const ROW_CLASS = cx(
-  'flex w-full cursor-pointer items-center gap-3 rounded-xs px-2 py-1.5',
+  'flex w-full cursor-pointer items-center gap-3 rounded-xs px-3 py-2',
+  'text-box-trimmed:py-3',
   'text-start transition-colors outline-none',
   'focusable hover:bg-surface-2 hover:text-surface-2-contrast',
   'focus-visible:bg-surface-2 focus-visible:text-surface-2-contrast',
 );
 
 /** A rule between a list and the rows that follow it. */
-const SEPARATOR_CLASS = 'border-outline my-1 border-t';
+const SEPARATOR_CLASS = 'border-outline my-1.5 border-t';
 
 function markFor(
   item: SwitcherItem,
@@ -310,12 +311,16 @@ function Segment({
         className={cx(
           /*
             An explicit gap, because the trim took away the one that was there
-            by accident. Untrimmed, the leading above the name and below the
-            kicker held the two apart; trimmed to cap and baseline, they sit
-            flush and the pair reads as one smudged line. The gap is now a
-            decision rather than a by-product of the font's metrics.
+            by accident. Untrimmed, the half-leading below the kicker and above
+            the name held them apart — 2.78px and 3.91px at these sizes, 6.69px
+            between them. Trimmed to cap and baseline that goes to nothing and
+            the pair reads as one smudged line.
+
+            6px, the nearest step to what the leading was giving, so the rhythm
+            is the one people are used to — but stated now, and no longer a
+            by-product of the font's metrics that changes with the typeface.
           */
-          'flex min-w-0 flex-col items-start gap-0.5',
+          'flex min-w-0 flex-col items-start gap-1.5',
           COLLAPSE_CLASS,
         )}
       >
@@ -337,6 +342,10 @@ function Segment({
             NAME_WIDTH_CLASS,
           )}
         >
+          {/* The skeleton's `em` height is not a step off the spacing scale
+              on purpose: the type scale is fluid, so a fixed height would
+              drift away from the name it stands in for as the container
+              grows. */}
           {loading ? (
             <Skeleton className="inline-block h-[0.9em] w-full rounded-xs align-middle" />
           ) : (
@@ -441,7 +450,7 @@ function Segment({
             className={cx(
               'bg-surface-popover text-surface-popover-contrast publish-colors',
               'border-outline elevation-high w-xs max-w-(--available-width)',
-              'rounded border-2 p-1.5 outline-none',
+              'rounded border-2 p-2 outline-none',
             )}
           >
             {/*
@@ -456,16 +465,15 @@ function Segment({
             */}
             <Select.List className="flex flex-col gap-0.5">
               {/*
-                A group so the kicker LABELS the options rather than floating
-                among them: `Select.GroupLabel` is associated with its group
-                automatically, so the reader is told these are teams, and the
-                heading is not itself announced as something to choose.
+                Named, not headed. The kicker is already on the trigger the
+                reader just operated, so a heading repeating it inside the
+                popup is a line of chrome saying what they were looking at when
+                they opened it. `aria-label` keeps the group named for a reader
+                who arrives in the list without having seen that trigger, which
+                is what the visible heading was carrying.
               */}
               {items.length > 0 && (
-                <Select.Group>
-                  <Select.GroupLabel className="text-box-trim text-2xs px-2 py-1 font-semibold uppercase opacity-70">
-                    {kicker}
-                  </Select.GroupLabel>
+                <Select.Group aria-label={kicker}>
                   {items.map((item) => (
                     <Select.Item
                       key={item.id}
@@ -475,7 +483,16 @@ function Segment({
                       // along with it.
                       label={item.name}
                       className={cx(
-                        'group flex cursor-pointer items-center gap-3 rounded-xs px-2 py-1.5',
+                        /*
+                          `text-box-trimmed:` on the vertical padding: where
+                          the trim applies these rows are cap-height boxes, and
+                          the padding that framed a line box leaves them
+                          squeezed. A browser without `text-box` keeps the
+                          smaller value, which is right for the taller box it
+                          still draws.
+                        */
+                        'group flex cursor-pointer items-center gap-3 rounded-xs px-3 py-2',
+                        'text-box-trimmed:py-3',
                         'transition-colors outline-none select-none',
                         'not-data-selected:data-highlighted:bg-surface-2 not-data-selected:data-highlighted:text-surface-2-contrast',
                         'data-selected:bg-selected data-selected:text-selected-contrast',
@@ -484,10 +501,11 @@ function Segment({
                       {markFor(item, renderMark, 'sm')}
                       {/* No truncation here, deliberately: the list is where a
                           name the trigger had to cut off can be read in full. */}
-                      {/* `gap-0.5` for the reason the trigger's stack has it: trimmed to cap
-   and baseline, the name and its supporting line have no leading
-   between them and would otherwise touch. */}
-                      <Select.ItemText className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      {/* Spaced for the reason the trigger's stack is: trimmed to cap and
+   baseline, the name and its supporting line have no leading between
+   them and would otherwise touch. Same 6px, so a row in the list and
+   the trigger above it keep the same rhythm. */}
+                      <Select.ItemText className="flex min-w-0 flex-1 flex-col gap-1.5">
                         <span className="text-box-trim text-sm leading-tight font-semibold">
                           {item.name}
                         </span>
@@ -555,7 +573,7 @@ function Segment({
                 */}
                 <p
                   id={failureId}
-                  className="text-destructive flex items-start gap-2 px-2 py-1 text-xs"
+                  className="text-destructive flex items-start gap-2 px-3 py-2 text-xs"
                 >
                   <TriangleAlert
                     aria-hidden
