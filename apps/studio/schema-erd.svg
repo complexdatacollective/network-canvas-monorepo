@@ -1929,7 +1929,7 @@
 <!-- consent_documents -->
 <g id="consent_documents" class="node">
 <title>consent_documents</title>
-<g id="a_consent_documents"><a xlink:title="consent_documents&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger consent_documents_publication_immutable: BEFORE UPDATE calls consent_documents_publication_is_immutable()">
+<g id="a_consent_documents"><a xlink:title="consent_documents&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger consent_documents_publication_immutable: BEFORE UPDATE calls consent_documents_publication_is_immutable(); sidecar trigger consent_documents_delete_purge_only: BEFORE DELETE calls consent_document_delete_is_purge()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="6138.08" cy="-13000.24" rx="308.1" ry="724.15"/>
 <polygon fill="#1d71b8" stroke="transparent" points="5922.08,-13450.24 5922.08,-13510.24 6354.08,-13510.24 6354.08,-13450.24 5922.08,-13450.24"/>
 <polygon fill="none" stroke="#29235c" points="5922.08,-13450.24 5922.08,-13510.24 6354.08,-13510.24 6354.08,-13450.24 5922.08,-13450.24"/>

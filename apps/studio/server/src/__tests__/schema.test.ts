@@ -114,6 +114,7 @@ describe('generated schema documentation', () => {
     expect(readmeSection).toContain('interview_links_writable');
     expect(readmeSection).toContain('api_token_authority_immutable');
     expect(readmeSection).toContain('consent_documents_publication_immutable');
+    expect(readmeSection).toContain('consent_documents_delete_purge_only');
     expect(readmeSection).toContain('consent_items_frozen');
     expect(readmeSection).toContain('participant_consent_grant_immutable');
     expect(readmeSection).toContain(
@@ -221,6 +222,9 @@ describe('generated schema documentation', () => {
     expect(svg).toContain('sidecar trigger api_token_authority_immutable');
     expect(svg).toContain(
       'sidecar trigger consent_documents_publication_immutable',
+    );
+    expect(svg).toContain(
+      'sidecar trigger consent_documents_delete_purge_only',
     );
     expect(svg).toContain('sidecar trigger consent_items_frozen');
     expect(svg).toContain(

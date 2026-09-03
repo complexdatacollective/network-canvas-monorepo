@@ -149,17 +149,20 @@ export const ASSET_SIDECAR_SQL = `
 -- retracting one would change what a frozen version resolves to while its
 -- manifest and hash stayed unchanged (the version_sections argument). A
 -- version is published by the insert that creates it, so its pins are frozen
--- from the start; a consent document is drafted first, and its pins stay
--- editable — replaceable, removable — until it is published, the same
--- boundary the insert guard below draws.
+-- from the start; a consent document is drafted first, and its pins may be
+-- retracted until it is published, the same boundary the insert guard below
+-- draws. Retracted, not rewritten: a pin's referrer is its identity, and an
+-- UPDATE that pointed a draft document's pin at a published version would be
+-- a late pin on that version without ever passing the insert guard. Replacing
+-- an asset on a draft is therefore a DELETE and an INSERT.
 CREATE OR REPLACE FUNCTION asset_references_published_pins_are_frozen() RETURNS trigger AS $$
 BEGIN
-  IF OLD.referrer_kind = 'consent_document' AND EXISTS (
+  IF TG_OP = 'DELETE' AND OLD.referrer_kind = 'consent_document' AND EXISTS (
     SELECT 1 FROM consent_documents d
     WHERE d.id::text = OLD.referrer_id AND d.team_id = OLD.team_id
       AND d.state = 'draft'
   ) THEN
-    RETURN COALESCE(NEW, OLD);
+    RETURN OLD;
   END IF;
   RAISE EXCEPTION 'published asset references are immutable';
 END;

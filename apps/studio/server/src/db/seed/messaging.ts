@@ -327,10 +327,16 @@ async function seedDeliveries(
   occurrences: SeededOccurrence[],
 ): Promise<void> {
   const optedOut = study.participants.slice(0, 2);
-  const optOutIndexes = new Set(
-    optedOut.map((participant) =>
+  // When each opted out: a delivery enqueued before that moment went out
+  // normally, and only the ones after it are suppressed, so the outbox and
+  // the suppression list tell one story in time.
+  const optOutMoment = (participant: SeedParticipant) =>
+    shiftDays(participant.enrolledAt, 20);
+  const optOutAtByIndex = new Map(
+    optedOut.map((participant) => [
       contactBlindIndex(participant.contactAddress),
-    ),
+      optOutMoment(participant),
+    ]),
   );
 
   const deliveryRows: SeedRowValue[][] = [];
@@ -348,7 +354,7 @@ async function seedDeliveries(
           'provider',
           'researcher',
         ]),
-        shiftDays(participant.enrolledAt, 20),
+        optOutMoment(participant),
       ]);
     }
   }
@@ -370,9 +376,11 @@ async function seedDeliveries(
     createdAt: Date;
   }) => {
     const blindIndex = contactBlindIndex(input.participant.contactAddress);
-    const outcome: DeliveryOutcome = optOutIndexes.has(blindIndex)
-      ? 'suppressed'
-      : outcomeFor(ordinal++);
+    const optOutAt = optOutAtByIndex.get(blindIndex);
+    const outcome: DeliveryOutcome =
+      optOutAt !== undefined && input.createdAt >= optOutAt
+        ? 'suppressed'
+        : outcomeFor(ordinal++);
     const id = seedUuid();
     const terminalAt = shiftMinutes(
       input.createdAt,

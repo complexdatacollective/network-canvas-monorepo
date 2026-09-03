@@ -558,6 +558,21 @@ describe.skipIf(!db)('asset schema', () => {
         referrer_kind: 'consent_document',
         referrer_id: documentId,
       });
+      // Retracted, never re-pointed: an UPDATE aiming the draft's pin at a
+      // published version would be a late pin on that version that the
+      // insert guard never saw.
+      const versionId = await inTransaction((client) =>
+        createReferrer(client, 'protocol_version'),
+      );
+      await expect(
+        pool.query(
+          `UPDATE asset_references
+           SET referrer_kind = 'protocol_version', referrer_id = $4
+           WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = 'consent_document'
+             AND referrer_id = $3`,
+          [TEAM_A, hash, documentId, versionId],
+        ),
+      ).rejects.toThrow('published asset references are immutable');
       await pool.query(
         `UPDATE consent_documents SET state = 'published', published_at = now()
          WHERE id = $1`,

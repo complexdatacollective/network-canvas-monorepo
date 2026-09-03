@@ -511,6 +511,28 @@ describe.skipIf(!db)('consent schema', () => {
       }
     });
 
+    it('deletes a document only by the maintenance purge', async () => {
+      const studyId = await newStudy();
+      const documentId = await newDocument(studyId);
+      await expect(
+        pool.query(`DELETE FROM consent_documents WHERE id = $1`, [documentId]),
+      ).rejects.toThrow(
+        'consent documents are deleted only by the maintenance purge',
+      );
+      await expect(
+        tenantA.query(`DELETE FROM consent_documents WHERE id = $1`, [
+          documentId,
+        ]),
+      ).rejects.toThrow(
+        'consent documents are deleted only by the maintenance purge',
+      );
+      await expect(
+        maintenance.query(`DELETE FROM consent_documents WHERE id = $1`, [
+          documentId,
+        ]),
+      ).resolves.toMatchObject({ rowCount: 1 });
+    });
+
     it('still lets a published document be retired', async () => {
       const studyId = await newStudy();
       const documentId = await newDocument(studyId);
@@ -639,6 +661,16 @@ describe.skipIf(!db)('consent schema', () => {
       ).rejects.toThrow('published consent documents are immutable');
       await expect(
         pool.query(`DELETE FROM consent_items WHERE id = $1`, [itemId]),
+      ).rejects.toThrow('published consent documents are immutable');
+
+      // Nor may an item leave a published document for a draft, where it
+      // could be rewritten while the published hash still vouches for it.
+      const escapeDocumentId = await newDocument(studyId, { version: 9 });
+      await expect(
+        pool.query(
+          `UPDATE consent_items SET consent_document_id = $2 WHERE id = $1`,
+          [itemId, escapeDocumentId],
+        ),
       ).rejects.toThrow('published consent documents are immutable');
 
       // The maintenance purge removes a study bottom-up, items before their

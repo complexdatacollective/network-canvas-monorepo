@@ -357,6 +357,23 @@ CREATE OR REPLACE TRIGGER consent_documents_publication_immutable
   )
   EXECUTE FUNCTION consent_documents_publication_is_immutable();
 
+-- A numbered document version is evidence of what participants were shown,
+-- published or not once it has a number: deleting one would free
+-- (study_id, version) for different words under the same number. Only the
+-- maintenance purge, removing the whole study bottom-up, may delete it.
+CREATE OR REPLACE FUNCTION consent_document_delete_is_purge() RETURNS trigger AS $$
+BEGIN
+  IF current_user = 'studio_maintenance' THEN
+    RETURN OLD;
+  END IF;
+  RAISE EXCEPTION 'consent documents are deleted only by the maintenance purge';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER consent_documents_delete_purge_only
+  BEFORE DELETE ON consent_documents
+  FOR EACH ROW EXECUTE FUNCTION consent_document_delete_is_purge();
+
 -- Items belong to their document version. Once that version is published,
 -- adding, removing, or rewording an item would change what an existing
 -- consent record means. The one exception is the maintenance purge's DELETE:
@@ -364,15 +381,18 @@ CREATE OR REPLACE TRIGGER consent_documents_publication_immutable
 -- ACTION, so without this the document — and the study above it — could
 -- never be removed once published.
 CREATE OR REPLACE FUNCTION consent_items_are_frozen_after_publication() RETURNS trigger AS $$
-DECLARE
-  document_state text;
 BEGIN
   IF TG_OP = 'DELETE' AND current_user = 'studio_maintenance' THEN
     RETURN OLD;
   END IF;
-  SELECT state INTO document_state FROM consent_documents
-  WHERE id = COALESCE(NEW.consent_document_id, OLD.consent_document_id);
-  IF document_state IS NOT NULL AND document_state <> 'draft' THEN
+  -- Both documents an UPDATE touches: the one the item leaves as much as
+  -- the one it joins, or an item could be moved out of a published document
+  -- into a draft and rewritten there.
+  IF EXISTS (
+    SELECT 1 FROM consent_documents d
+    WHERE d.id IN (NEW.consent_document_id, OLD.consent_document_id)
+      AND d.state <> 'draft'
+  ) THEN
     RAISE EXCEPTION 'published consent documents are immutable';
   END IF;
   RETURN COALESCE(NEW, OLD);

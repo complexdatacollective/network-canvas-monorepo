@@ -472,7 +472,9 @@ describe.skipIf(!db)('the seeded dataset', () => {
     ).resolves.toBeGreaterThan(0);
   });
 
-  it('suppresses exactly the deliveries whose address opted out', async () => {
+  it('suppresses exactly the deliveries enqueued after their address opted out', async () => {
+    // A suppressed delivery names an address that had opted out by the time
+    // it was enqueued …
     await expect(
       count(
         pool,
@@ -481,7 +483,8 @@ describe.skipIf(!db)('the seeded dataset', () => {
            and not exists (
              select 1 from participant_contact_optouts o
              where o.team_id = d.team_id and o.channel = d.channel
-               and o.recipient_blind_index = d.recipient_blind_index)`,
+               and o.recipient_blind_index = d.recipient_blind_index
+               and o.opted_out_at <= d.created_at)`,
       ),
     ).resolves.toBe(0);
     await expect(
@@ -490,7 +493,8 @@ describe.skipIf(!db)('the seeded dataset', () => {
         `select count(*)::int as n from message_deliveries where suppressed_at is not null`,
       ),
     ).resolves.toBeGreaterThan(0);
-    // And nothing was sent to an address that had opted out.
+    // … nothing enqueued after an opt-out went anywhere but the suppression
+    // list, and what was enqueued before it went out as it would have.
     await expect(
       count(
         pool,
@@ -498,9 +502,19 @@ describe.skipIf(!db)('the seeded dataset', () => {
          join participant_contact_optouts o
            on o.team_id = d.team_id and o.channel = d.channel
           and o.recipient_blind_index = d.recipient_blind_index
-         where d.sent_at is not null`,
+         where o.opted_out_at <= d.created_at and d.suppressed_at is null`,
       ),
     ).resolves.toBe(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from message_deliveries d
+         join participant_contact_optouts o
+           on o.team_id = d.team_id and o.channel = d.channel
+          and o.recipient_blind_index = d.recipient_blind_index
+         where o.opted_out_at > d.created_at and d.suppressed_at is null`,
+      ),
+    ).resolves.toBeGreaterThan(0);
     const events = await pool.query<{ kind: string }>(
       `select distinct kind from message_delivery_events order by kind`,
     );

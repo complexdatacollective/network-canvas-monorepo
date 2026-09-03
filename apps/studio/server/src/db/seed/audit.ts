@@ -85,7 +85,12 @@ export async function seedAuditEvents(
     },
   ];
 
+  // The first colleague was invited as a plain member and promoted to the
+  // admin role their membership now records, so the timeline below reads as
+  // one story: invited, accepted, promoted.
+  const promoted = invited[0];
   for (const member of invited) {
+    const invitedAs = member === promoted ? 'member' : member.role;
     // One invitation, two events: the creation and the acceptance describe
     // the same durable subject, which is how a timeline correlates them.
     const invitationId = seedUuid();
@@ -96,7 +101,7 @@ export async function seedAuditEvents(
       subjectType: 'team_invitation',
       subjectId: invitationId,
       subjectLabel: member.email,
-      details: { role: member.role },
+      details: { role: invitedAs },
     });
     events.push({
       ...teamAccess,
@@ -105,11 +110,10 @@ export async function seedAuditEvents(
       subjectType: 'team_invitation',
       subjectId: invitationId,
       subjectLabel: member.email,
-      details: { role: member.role, memberId: member.memberId },
+      details: { role: invitedAs, memberId: member.memberId },
     });
   }
 
-  const promoted = invited[0];
   if (promoted !== undefined) {
     events.push({
       ...teamAccess,
