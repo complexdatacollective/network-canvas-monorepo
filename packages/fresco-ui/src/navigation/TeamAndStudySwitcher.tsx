@@ -306,14 +306,34 @@ function Segment({
       ) : current ? (
         markFor(current, renderMark, 'md')
       ) : null}
-      <span className={cx('flex min-w-0 flex-col items-start', COLLAPSE_CLASS)}>
-        <span className="text-2xs leading-tight font-semibold uppercase opacity-70">
+      <span
+        className={cx(
+          /*
+            An explicit gap, because the trim took away the one that was there
+            by accident. Untrimmed, the leading above the name and below the
+            kicker held the two apart; trimmed to cap and baseline, they sit
+            flush and the pair reads as one smudged line. The gap is now a
+            decision rather than a by-product of the font's metrics.
+          */
+          'flex min-w-0 flex-col items-start gap-0.5',
+          COLLAPSE_CLASS,
+        )}
+      >
+        <span className="text-box-trim text-2xs leading-tight font-semibold uppercase opacity-70">
           {kicker}
         </span>
         <span
           title={current?.name}
           className={cx(
-            'truncate text-sm leading-tight font-semibold',
+            'text-box-trim text-sm leading-tight font-semibold',
+            /*
+              `overflow-x-clip` rather than `truncate`. Truncation hides
+              overflow in BOTH axes, and a cap-trimmed box ends at the
+              baseline — so the descenders of a name like "Wave 2 pilot" fall
+              outside it and get clipped off. Clipping sideways only shortens
+              the name without cutting the letters that remain.
+            */
+            'block overflow-x-clip text-ellipsis whitespace-nowrap',
             NAME_WIDTH_CLASS,
           )}
         >
@@ -443,7 +463,7 @@ function Segment({
               */}
               {items.length > 0 && (
                 <Select.Group>
-                  <Select.GroupLabel className="text-2xs px-2 py-1 font-semibold uppercase opacity-70">
+                  <Select.GroupLabel className="text-box-trim text-2xs px-2 py-1 font-semibold uppercase opacity-70">
                     {kicker}
                   </Select.GroupLabel>
                   {items.map((item) => (
@@ -464,8 +484,11 @@ function Segment({
                       {markFor(item, renderMark, 'sm')}
                       {/* No truncation here, deliberately: the list is where a
                           name the trigger had to cut off can be read in full. */}
-                      <Select.ItemText className="flex min-w-0 flex-1 flex-col">
-                        <span className="text-sm leading-tight font-semibold">
+                      {/* `gap-0.5` for the reason the trigger's stack has it: trimmed to cap
+   and baseline, the name and its supporting line have no leading
+   between them and would otherwise touch. */}
+                      <Select.ItemText className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <span className="text-box-trim text-sm leading-tight font-semibold">
                           {item.name}
                         </span>
                         {item.meta !== undefined && (
@@ -482,7 +505,7 @@ function Segment({
                               clears it. Elsewhere 70% is 5.19:1 and the
                               hierarchy is worth keeping.
                             */
-                            className="text-xs leading-tight opacity-70 group-data-selected:opacity-100"
+                            className="text-box-trim text-xs leading-tight opacity-70 group-data-selected:opacity-100"
                           >
                             {item.meta}
                           </span>
@@ -500,7 +523,7 @@ function Segment({
                           the chip follows the row it is on instead of being
                           pinned to one surface.
                         */
-                        <span className="text-2xs shrink-0 rounded-full bg-current/15 px-2 py-0.5 font-semibold uppercase">
+                        <span className="text-box-trim text-box-trimmed:py-1 text-2xs shrink-0 rounded-full bg-current/15 px-2 font-semibold uppercase">
                           {item.badge}
                         </span>
                       )}
@@ -538,7 +561,9 @@ function Segment({
                     aria-hidden
                     className="mt-0.5 size-4 shrink-0"
                   />
-                  {failureMessage}
+                  {/* The icon and the text are flex children, so the text
+                      takes its own box. */}
+                  <span className="text-box-trim">{failureMessage}</span>
                 </p>
                 <button
                   type="button"
@@ -553,7 +578,8 @@ function Segment({
                     would read as a stray line of text rather than a row.
                   */}
                   <span aria-hidden className="size-6 shrink-0" />
-                  {retryLabel}
+                  {/* Its own box: `text-box-trim` is inert on the flex row. */}
+                  <span className="text-box-trim">{retryLabel}</span>
                 </button>
               </>
             )}
@@ -578,7 +604,9 @@ function Segment({
                   <span className="border-outline flex size-6 shrink-0 items-center justify-center rounded-xs border-2 border-dashed">
                     <Plus aria-hidden className="size-3.5" />
                   </span>
-                  <span className="text-sm font-semibold">{action.label}</span>
+                  <span className="text-box-trim text-sm font-semibold">
+                    {action.label}
+                  </span>
                 </button>
               </>
             )}

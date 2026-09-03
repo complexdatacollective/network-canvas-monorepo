@@ -48,5 +48,11 @@ screen reader may skip or misannounce.
 The supporting line under a name keeps full strength on the selected row.
 Dimmed, it composites toward `--selected` and falls to 2.90:1 against it.
 
+Every text run in the control sits on its caps and baseline rather than on its
+line box, matching the rest of the library. Two spacings that the leading used
+to provide by accident — between the kicker and the name, and between a name
+and its supporting line — are now stated, and a name that has to shorten clips
+sideways only, because a cap-height box would otherwise lose its descenders.
+
 The type scale gains `text-2xs`, one step below `xs`, for the small uppercase
 labels that qualify a value rather than being one.

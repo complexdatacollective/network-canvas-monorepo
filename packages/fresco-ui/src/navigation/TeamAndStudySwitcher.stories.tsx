@@ -538,7 +538,17 @@ export const LongNames: Story = {
     const name = within(canvasElement).getByTitle(
       'Northwestern Social Networks and Health Innovations Laboratory',
     );
-    await expect(name).toHaveClass('truncate');
+
+    // It shortens, and the whole name stays reachable through `title`.
+    await expect(name.scrollWidth).toBeGreaterThan(name.clientWidth);
+
+    // Sideways only. The box is trimmed to cap height and baseline, so hiding
+    // overflow in BOTH axes — which `truncate` does — would cut the descenders
+    // off every name. Asserted on the computed style rather than the class,
+    // because it is the clipping that matters, not how it was spelled.
+    const style = getComputedStyle(name);
+    await expect(style.overflowX).toBe('clip');
+    await expect(['hidden', 'clip']).not.toContain(style.overflowY);
   },
 };
 
