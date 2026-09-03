@@ -127,15 +127,26 @@ export class InterviewFixture {
 
       const hasScrollableContent = await this.page.evaluate(() => {
         const modified = new Map<HTMLElement, string>();
-        const scrollers = Array.from(
-          document.querySelectorAll<HTMLElement>('*'),
-        ).filter((el) => {
-          const overflowY = getComputedStyle(el).overflowY;
-          return (
-            (overflowY === 'auto' || overflowY === 'scroll') &&
-            el.scrollHeight > el.clientHeight
-          );
-        });
+        // Expanding scrollers shows the whole of a stage's content in one
+        // full-page capture. With a modal dialog open the dialog IS the
+        // participant's view, and the expansion produces a state nobody can
+        // see: every ancestor of the dialog's scroll area, the popup
+        // included, gets `height: auto`, so the popup outgrows the viewport
+        // and an image sized to the scroll area reverts to its natural size,
+        // while the stage behind shrinks to its content. Capture such a state
+        // as the viewport shows it.
+        const modalOpen = document.querySelector('[role="dialog"]') !== null;
+        const scrollers = modalOpen
+          ? []
+          : Array.from(document.querySelectorAll<HTMLElement>('*')).filter(
+              (el) => {
+                const overflowY = getComputedStyle(el).overflowY;
+                return (
+                  (overflowY === 'auto' || overflowY === 'scroll') &&
+                  el.scrollHeight > el.clientHeight
+                );
+              },
+            );
         for (const scroller of scrollers) {
           let el: HTMLElement | null = scroller;
           while (el) {
