@@ -12,8 +12,8 @@ colour strip should become a fresco-ui component backed by a shared
 stage-type → colour + icon map that Architect's timeline can later adopt.
 
 Work proceeds one step at a time. Each step ends at a visually verifiable
-state on `localhost:3001/en/protocol-gallery` and one detail page (for
-example `/en/protocol-gallery/sixhumene`, whichever slug has multiple waves),
+state on `localhost:3001/en-US/protocol-gallery` and one detail page (for
+example `/en-US/protocol-gallery/snaaps`, whichever slug has multiple waves),
 and nothing from the next step starts until the current one is approved.
 
 Steps 3 and 6 add to `@codaco/fresco-ui`; everything else is confined to

@@ -74,7 +74,7 @@ export function ProtocolGalleryCard({
           {protocol.featured ? (
             <Eyebrow tone="primary">{t('intro.featured')}</Eyebrow>
           ) : null}
-          <Heading level="h3" variant="subheading" margin="none">
+          <Heading level="h3" margin="none">
             {protocol.shortName}
           </Heading>
           <Paragraph margin="none" intent="smallText" className="font-bold">
