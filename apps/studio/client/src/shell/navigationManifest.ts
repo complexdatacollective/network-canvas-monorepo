@@ -26,6 +26,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
+import type { StudyCounts } from '@codaco/studio-rpc';
+
 /**
  * Studio's navigation, declared once as data (everything-bar design §5.2).
  *
@@ -88,6 +90,20 @@ export type NavManifestEntry = {
    * looks the same in both.
    */
   icon: LucideIcon;
+  /**
+   * How many things are at the destination, where the entry's area knows. Only
+   * the sidebar renders it — `NavItem` puts it inside the link, so it joins the
+   * label in the row's accessible name — and the everything bar ignores it: a
+   * result is a place to go, and a number beside one would go stale in the
+   * recents the bar persists.
+   *
+   * `undefined` is NOT zero, and the difference is the point: an area whose
+   * count has not arrived yet, or whose query failed, leaves this unset and the
+   * row renders without a number. `NavItem` drops a zero of its own accord, so
+   * a real empty destination and an unanswered one look the same — which is
+   * correct, because an invented 0 would be a claim nobody has checked.
+   */
+  count?: number;
   /** The interpolated destination. */
   href: string;
   link: NavManifestLink;
@@ -180,6 +196,13 @@ export function accountDestinations(): NavManifestEntry[] {
       isCurrent: (pathname) => pathname === '/account/sign-in-methods',
     },
     {
+      // No count, unlike the design's own account sidebar. An API token is
+      // owned by a TEAM and answerable to a custodian (the decision on #1288,
+      // and `api_tokens` has no user column to scope by), so "how many are
+      // mine" is a question the data model cannot answer. The account area is
+      // per-researcher and spans every team they belong to, and a number that
+      // silently meant "this team's tokens" would be the wrong answer rather
+      // than a missing one.
       id: 'account:tokens',
       label: 'API tokens',
       icon: KeyRound,
@@ -301,8 +324,16 @@ export function teamDestinations({
  * protocol, collect with it, then take the data out. Overview sits above the
  * groups because it is the study itself, and Study settings below them because
  * configuration is not part of that sequence.
+ *
+ * `counts` carries the four countable destinations' numbers (`studies.counts`),
+ * and is optional because the everything bar builds this list too and has no
+ * business fetching them — see `count` on `NavManifestEntry`. Omit it and every
+ * row renders exactly as it did before the numbers existed.
  */
-export function studyDestinations(studyId: string): NavManifestEntry[] {
+export function studyDestinations(
+  studyId: string,
+  counts?: StudyCounts,
+): NavManifestEntry[] {
   const study = `/study/${studyId}`;
 
   return [
@@ -335,6 +366,9 @@ export function studyDestinations(studyId: string): NavManifestEntry[] {
       id: `study:${studyId}:versions`,
       label: 'Versions',
       icon: GitBranch,
+      // The published versions of this study's protocol line, which is what
+      // the Versions screen lists — not the draft being edited next door.
+      count: counts?.versions,
       href: `${study}/versions`,
       link: { to: '/study/$studyId/versions', params: { studyId } },
       area: 'study',
@@ -346,6 +380,7 @@ export function studyDestinations(studyId: string): NavManifestEntry[] {
       id: `study:${studyId}:participants`,
       label: 'Participants',
       icon: Users,
+      count: counts?.participants,
       href: `${study}/participants`,
       link: { to: '/study/$studyId/participants', params: { studyId } },
       area: 'study',
@@ -357,6 +392,7 @@ export function studyDestinations(studyId: string): NavManifestEntry[] {
       id: `study:${studyId}:waves`,
       label: 'Waves',
       icon: Waves,
+      count: counts?.waves,
       href: `${study}/waves`,
       link: { to: '/study/$studyId/waves', params: { studyId } },
       area: 'study',
@@ -368,6 +404,7 @@ export function studyDestinations(studyId: string): NavManifestEntry[] {
       id: `study:${studyId}:sessions`,
       label: 'Sessions',
       icon: ClipboardList,
+      count: counts?.sessions,
       href: `${study}/sessions`,
       link: { to: '/study/$studyId/sessions', params: { studyId } },
       area: 'study',

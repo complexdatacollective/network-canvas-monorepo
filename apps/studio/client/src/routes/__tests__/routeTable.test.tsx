@@ -158,6 +158,23 @@ vi.mock('../../lib/api.ts', () => ({
         key: () => ['draft'],
       },
     },
+    // The study sidebar's counts. This file asserts where every destination
+    // goes, never how much is at one, so an empty study is the honest fixture:
+    // `NavItem` renders no count for a zero, and each row's accessible name
+    // stays the label these cases look it up by.
+    studies: {
+      counts: {
+        queryOptions: () => ({
+          queryKey: ['study-counts'],
+          queryFn: () => ({
+            versions: 0,
+            participants: 0,
+            waves: 0,
+            sessions: 0,
+          }),
+        }),
+      },
+    },
     audit: {
       list: {
         infiniteOptions: (options: {

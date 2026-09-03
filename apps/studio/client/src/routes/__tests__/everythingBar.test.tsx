@@ -137,6 +137,22 @@ vi.mock('../../lib/api.ts', () => ({
         key: () => ['draft'],
       },
     },
+    // The study sidebar's counts. The bar never renders one, so an empty study
+    // is the honest fixture: a result's label is its destination's name and
+    // nothing else, whatever the sidebar beside it shows.
+    studies: {
+      counts: {
+        queryOptions: () => ({
+          queryKey: ['study-counts'],
+          queryFn: () => ({
+            versions: 0,
+            participants: 0,
+            waves: 0,
+            sessions: 0,
+          }),
+        }),
+      },
+    },
     audit: {
       list: {
         infiniteOptions: (options: {

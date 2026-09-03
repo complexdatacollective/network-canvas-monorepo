@@ -160,6 +160,22 @@ vi.mock('../../lib/api.ts', () => ({
         key: () => ['draft'],
       },
     },
+    // The study sidebar's counts. Nothing here asserts a number, so an empty
+    // study is the honest fixture: `NavItem` renders no count for a zero, and
+    // every row's accessible name stays its label alone.
+    studies: {
+      counts: {
+        queryOptions: () => ({
+          queryKey: ['study-counts'],
+          queryFn: () => ({
+            versions: 0,
+            participants: 0,
+            waves: 0,
+            sessions: 0,
+          }),
+        }),
+      },
+    },
   },
   rpcClient: { protocols: {}, team: {} },
 }));
