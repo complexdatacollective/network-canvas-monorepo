@@ -57,6 +57,16 @@ export function createBetterAuthInstance(
         },
       }),
     },
+    // A third, always-available sign-in method alongside magic-link and
+    // social: the seeded admin account (src/db/seed.ts) needs somewhere to
+    // authenticate with its known password, and open sign-up here matches
+    // the same policy magic-link and social already carry (#1255) — access
+    // control arrives with team invitations (#1256), not a gate here. Uses
+    // better-auth's default scrypt hasher (better-auth/crypto), which is the
+    // same function the seed script hashes SEED_ADMIN_PASSWORD with.
+    emailAndPassword: {
+      enabled: true,
+    },
     account: {
       // A Google or Microsoft sign-in whose verified email matches an
       // existing (verified, e.g. magic-link) user joins that user rather

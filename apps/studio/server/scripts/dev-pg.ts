@@ -7,9 +7,8 @@ import process from 'node:process';
 import pg from 'pg';
 
 import { createOwnerPool } from '../src/db/pool.ts';
-import { checkSchema } from '../src/db/schema.ts';
 import { DEV, DEV_DATABASE_URL } from '../src/env/catalogue.ts';
-import { applySchema } from './apply.ts';
+import { resetSchemaAndSeed } from './apply.ts';
 
 const IMAGE = 'postgres:18';
 const HOST_PORT = DEV.pgPort;
@@ -148,15 +147,18 @@ async function ensureDatabase(): Promise<void> {
   console.log(`Created database '${DATABASE}'`);
 }
 
-// Absent only: a stale schema is a human decision (the boot message names the
-// remedies), and auto-reconciling it here could destroy dev data.
-async function ensureSchemaProvisioned(): Promise<void> {
+// Every `pnpm dev` boot starts from a clean, freshly seeded database: Studio
+// has no real users yet, so reproducible synthetic data (src/db/seed.ts)
+// beats whatever was left over from the last session. Resetting here — not
+// just applying a schema that was previously absent — is safe specifically
+// because DEV_DATABASE_URL always names this machine; that is the same
+// guard db-reset.ts enforces before a manual, explicit reset touches
+// anything that isn't.
+async function resetAndSeed(): Promise<void> {
   const pool = createOwnerPool({ url: DEV_DATABASE_URL });
   try {
-    if ((await checkSchema(pool)).kind === 'absent') {
-      await applySchema(pool);
-      console.log(`Applied the Studio schema to '${DATABASE}'`);
-    }
+    await resetSchemaAndSeed(pool);
+    console.log(`Reset and seeded '${DATABASE}'`);
   } finally {
     await pool.end();
   }
@@ -196,7 +198,7 @@ async function main(): Promise<void> {
       `Postgres already reachable on port ${HOST_PORT} (externally managed)`,
     );
     await ensureDatabase();
-    await ensureSchemaProvisioned();
+    await resetAndSeed();
     console.log(`Postgres ready — database '${DATABASE}' on port ${HOST_PORT}`);
     // Stay alive under `concurrently -k` without a container to tail: an
     // unsettled top-level await with an empty event loop makes Node exit 13.
@@ -222,7 +224,7 @@ async function main(): Promise<void> {
   console.log('Waiting for Postgres to become ready...');
   await waitForReady();
   await ensureDatabase();
-  await ensureSchemaProvisioned();
+  await resetAndSeed();
   console.log(`Postgres ready — database '${DATABASE}' on port ${HOST_PORT}`);
   followLogs();
 }

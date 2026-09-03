@@ -18,8 +18,10 @@ export type InstanceStatus = InferContractRouterOutputs<
 /**
  * What sign-in the instance currently offers. `magicLink` is false when no
  * mail can leave the server even though auth is otherwise enabled;
- * `socialProviders` lists the OAuth providers whose credentials are
- * configured (#1255), empty when none are.
+ * `emailAndPassword` tracks `enabled` exactly, since better-auth.ts offers it
+ * unconditionally wherever auth itself is configured; `socialProviders` lists
+ * the OAuth providers whose credentials are configured (#1255), empty when
+ * none are.
  */
 export type AuthCapabilities = InstanceStatus['auth'];
 

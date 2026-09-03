@@ -54,6 +54,16 @@ const account = pgTable(
     id: text('id').primaryKey(),
     accountId: text('accountId').notNull(),
     providerId: text('providerId').notNull(),
+    // The synthetic key (`local:credential` for email/password,
+    // `local:oauth:<providerId>` for Google/Microsoft) better-auth's core
+    // account model added to disambiguate a provider id from a real external
+    // issuer. Required by the adapter's own account lookups
+    // (findCredentialAccount, findAccountByKey) since better-auth 1.7 —
+    // omitting it here made every credential and OAuth account unmatchable
+    // while looking otherwise fine, because magic-link (the only path
+    // exercised until #1256's admin account) creates no account row at all
+    // and so never hit this.
+    issuer: text('issuer').notNull(),
     userId: text('userId')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),

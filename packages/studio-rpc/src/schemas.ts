@@ -41,6 +41,7 @@ export const StatusSchema = z.object({
   auth: z.object({
     enabled: z.boolean(),
     magicLink: z.boolean(),
+    emailAndPassword: z.boolean(),
     socialProviders: z.array(z.enum(SOCIAL_PROVIDERS)),
   }),
   deployment: DeploymentSchema,

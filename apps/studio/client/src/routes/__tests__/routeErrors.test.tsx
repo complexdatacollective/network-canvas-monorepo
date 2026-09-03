@@ -120,7 +120,12 @@ vi.mock('../../lib/api.ts', () => ({
         queryFn: () => ({
           name: 'Network Canvas Studio',
           version: '0.1.0',
-          auth: { enabled: true, magicLink: true, socialProviders: [] },
+          auth: {
+            enabled: true,
+            magicLink: true,
+            emailAndPassword: true,
+            socialProviders: [],
+          },
           deployment: { mode: 'managed', billing: false },
         }),
       }),

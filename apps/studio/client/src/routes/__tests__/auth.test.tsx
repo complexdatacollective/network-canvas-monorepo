@@ -26,7 +26,7 @@ vi.mock('../../lib/auth.ts', () => ({
     useActiveOrganization: vi.fn(),
     useActiveMember: vi.fn(),
     organization: { setActive: vi.fn(), list: vi.fn() },
-    signIn: { magicLink: vi.fn(), social: vi.fn() },
+    signIn: { magicLink: vi.fn(), social: vi.fn(), email: vi.fn() },
     signOut: vi.fn(),
   },
 }));
@@ -35,7 +35,12 @@ type Status = InferContractRouterOutputs<typeof contract>['status'];
 const STATUS: Status = {
   name: 'Network Canvas Studio',
   version: '0.1.0',
-  auth: { enabled: true, magicLink: true, socialProviders: [] },
+  auth: {
+    enabled: true,
+    magicLink: true,
+    emailAndPassword: true,
+    socialProviders: [],
+  },
   deployment: { mode: 'managed', billing: false },
 };
 let currentStatus: Status = STATUS;
@@ -74,6 +79,7 @@ type GetSessionResult = Awaited<ReturnType<typeof authClient.getSession>>;
 type UseSessionResult = ReturnType<typeof authClient.useSession>;
 type MagicLinkResult = Awaited<ReturnType<typeof authClient.signIn.magicLink>>;
 type SocialResult = Awaited<ReturnType<typeof authClient.signIn.social>>;
+type EmailPasswordResult = Awaited<ReturnType<typeof authClient.signIn.email>>;
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -253,7 +259,12 @@ describe('route guard', () => {
     } as unknown as GetSessionResult);
     currentStatus = {
       ...STATUS,
-      auth: { enabled: false, magicLink: false, socialProviders: [] },
+      auth: {
+        enabled: false,
+        magicLink: false,
+        emailAndPassword: false,
+        socialProviders: [],
+      },
     };
     const router = renderAt(LANDING);
     await waitFor(() =>
@@ -577,10 +588,15 @@ describe('sign-in page', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('offers no email form when the server cannot send mail', async () => {
+  it('offers no email form when neither magic-link nor a password is available', async () => {
     currentStatus = {
       ...STATUS,
-      auth: { ...STATUS.auth, magicLink: false, socialProviders: ['google'] },
+      auth: {
+        ...STATUS.auth,
+        magicLink: false,
+        emailAndPassword: false,
+        socialProviders: ['google'],
+      },
     };
     renderAt('/sign-in');
     expect(
@@ -590,10 +606,36 @@ describe('sign-in page', () => {
     expect(screen.queryByText('or')).not.toBeInTheDocument();
   });
 
+  it('falls back to the password form when the server cannot send mail', async () => {
+    // magicLink is gated on the mailer being configured; emailAndPassword is
+    // not (app.ts), so a broken mailer alone leaves password sign-in intact
+    // — the researcher gets the password form directly, with no toggle back
+    // to a magic link that is not actually offered.
+    currentStatus = {
+      ...STATUS,
+      auth: { ...STATUS.auth, magicLink: false, socialProviders: [] },
+    };
+    renderAt('/sign-in');
+    // Password-only is the RESOLVED state; the optimistic pre-resolution
+    // render shows the magic-link form instead (magicLink defaults true
+    // while `auth` is undefined), so waiting on the email field alone would
+    // resolve against that transient render instead of this one.
+    expect(await screen.findByLabelText(/Password/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Email address/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /magic link instead/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it('says so when no sign-in method is available at all', async () => {
     currentStatus = {
       ...STATUS,
-      auth: { enabled: true, magicLink: false, socialProviders: [] },
+      auth: {
+        enabled: true,
+        magicLink: false,
+        emailAndPassword: false,
+        socialProviders: [],
+      },
     };
     renderAt('/sign-in');
     await waitFor(() =>
@@ -610,6 +652,106 @@ describe('sign-in page', () => {
       expect(
         screen.getByText(/That sign-in link is no longer valid/),
       ).toBeInTheDocument(),
+    );
+  });
+});
+
+describe('password sign-in', () => {
+  it('switches to the password form and back', async () => {
+    renderAt('/sign-in');
+    // Both `magicLink` and `emailAndPassword` default conservatively before
+    // the status query resolves ('Send sign-in link' renders optimistically,
+    // the toggle does not) — findByRole here is what waits for that data.
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Sign in with a password instead',
+      }),
+    );
+    expect(await screen.findByLabelText(/Password/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Send sign-in link' }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Sign in with a magic link instead',
+      }),
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Send sign-in link' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Password/)).not.toBeInTheDocument();
+  });
+
+  it('signs in with a password and lands where the researcher belongs', async () => {
+    mocked.signIn.email.mockResolvedValue({
+      data: { token: 'session-token' },
+      error: null,
+    } as unknown as EmailPasswordResult);
+    const router = renderAt('/sign-in');
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Sign in with a password instead',
+      }),
+    );
+    const email = await screen.findByLabelText(/Email address/);
+    fireEvent.change(email, { target: { value: 'researcher@example.com' } });
+    fireEvent.change(screen.getByLabelText(/Password/), {
+      target: { value: 'correct horse battery staple' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe(LANDING));
+    expect(mocked.signIn.email).toHaveBeenCalledWith({
+      email: 'researcher@example.com',
+      password: 'correct horse battery staple',
+    });
+  });
+
+  it('reports a generic error for a wrong password', async () => {
+    mocked.signIn.email.mockResolvedValue({
+      data: null,
+      error: { status: 401 },
+    } as unknown as EmailPasswordResult);
+    renderAt('/sign-in');
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Sign in with a password instead',
+      }),
+    );
+    fireEvent.change(await screen.findByLabelText(/Email address/), {
+      target: { value: 'researcher@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/Password/), {
+      target: { value: 'wrong' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/That email or password is not correct/),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it('reports a failed sign-in when the request never completes', async () => {
+    mocked.signIn.email.mockRejectedValue(new Error('network down'));
+    renderAt('/sign-in');
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Sign in with a password instead',
+      }),
+    );
+    fireEvent.change(await screen.findByLabelText(/Email address/), {
+      target: { value: 'researcher@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/Password/), {
+      target: { value: 'whatever' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/Sign-in did not complete/)).toBeInTheDocument(),
     );
   });
 });

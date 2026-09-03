@@ -6,7 +6,7 @@ import {
   pushSchema,
 } from 'drizzle-kit/api-postgres';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import type pg from 'pg';
+import pg from 'pg';
 
 import { SCHEMA_FINGERPRINT } from '../src/db/fingerprint.generated.ts';
 import {
@@ -16,6 +16,7 @@ import {
   SIDECARS,
   stampFingerprint,
 } from '../src/db/schema.ts';
+import { seed } from '../src/db/seed.ts';
 
 // Kept out of src/ so drizzle-kit (and its esbuild binary) can never reach
 // the server or Netlify bundles.
@@ -85,4 +86,45 @@ export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
       .catch(() => undefined);
     lock.release();
   }
+}
+
+/**
+ * The full local reset: drop and recreate the schema, sweep any leftover
+ * scratch schemas or databases a crashed test run left behind, reapply the
+ * schema, and reseed. Shared by db-reset.ts (on demand) and dev-pg.ts (every
+ * `pnpm dev` boot) so the two sequences cannot drift apart. Callers own the
+ * non-local safety check — this function always does the drop.
+ */
+export async function resetSchemaAndSeed(pool: pg.Pool): Promise<void> {
+  await pool.query('drop schema if exists public cascade');
+  await pool.query('create schema public');
+
+  const leftoverSchemas = await pool.query<{ nspname: string }>(
+    `select nspname from pg_namespace where nspname like 'studio\\_test\\_%'`,
+  );
+  for (const { nspname } of leftoverSchemas.rows) {
+    await pool.query(
+      `drop schema if exists ${pg.escapeIdentifier(nspname)} cascade`,
+    );
+  }
+  if (leftoverSchemas.rowCount) {
+    console.log(`Dropped ${leftoverSchemas.rowCount} leftover test schema(s).`);
+  }
+
+  const leftoverDatabases = await pool.query<{ datname: string }>(
+    `select datname from pg_database where datname like 'studio\\_test\\_db\\_%'`,
+  );
+  for (const { datname } of leftoverDatabases.rows) {
+    await pool.query(
+      `drop database if exists ${pg.escapeIdentifier(datname)} with (force)`,
+    );
+  }
+  if (leftoverDatabases.rowCount) {
+    console.log(
+      `Dropped ${leftoverDatabases.rowCount} leftover test database(s).`,
+    );
+  }
+
+  await applySchema(pool);
+  await seed(pool);
 }

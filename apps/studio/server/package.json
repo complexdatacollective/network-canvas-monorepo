@@ -32,6 +32,7 @@
     "@codaco/shared-consts": "workspace:^",
     "@codaco/studio-rpc": "workspace:^",
     "@codaco/studio-sync": "workspace:^",
+    "@faker-js/faker": "catalog:",
     "@hono/node-server": "^2.1.0",
     "@noble/hashes": "^2.3.0",
     "@orpc/contract": "2.0.0-beta.26",

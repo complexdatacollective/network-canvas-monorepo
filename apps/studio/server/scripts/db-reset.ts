@@ -3,12 +3,9 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
-import pg from 'pg';
-
 import { createOwnerPool } from '../src/db/pool.ts';
-import { seed } from '../src/db/seed.ts';
 import { isLocalDatabase, readEnv } from '../src/env.ts';
-import { applySchema } from './apply.ts';
+import { resetSchemaAndSeed } from './apply.ts';
 
 // It drops the schema rather than the database — unlike packages/studio-sync's
 // test helper — so it needs no second connection to the maintenance database
@@ -66,37 +63,7 @@ console.log(`Resetting ${target}`);
 const pool = createOwnerPool(env.db);
 
 try {
-  await pool.query('drop schema if exists public cascade');
-  await pool.query('create schema public');
-
-  // A crashed test run leaves its uniquely-named schema behind, and nothing
-  // else would ever collect it.
-  const leftovers = await pool.query<{ nspname: string }>(
-    `select nspname from pg_namespace where nspname like 'studio\\_test\\_%'`,
-  );
-  for (const { nspname } of leftovers.rows) {
-    await pool.query(
-      `drop schema if exists ${pg.escapeIdentifier(nspname)} cascade`,
-    );
-  }
-  if (leftovers.rowCount) {
-    console.log(`Dropped ${leftovers.rowCount} leftover test schema(s).`);
-  }
-
-  const dbLeftovers = await pool.query<{ datname: string }>(
-    `select datname from pg_database where datname like 'studio\\_test\\_db\\_%'`,
-  );
-  for (const { datname } of dbLeftovers.rows) {
-    await pool.query(
-      `drop database if exists ${pg.escapeIdentifier(datname)} with (force)`,
-    );
-  }
-  if (dbLeftovers.rowCount) {
-    console.log(`Dropped ${dbLeftovers.rowCount} leftover test database(s).`);
-  }
-
-  await applySchema(pool);
-  await seed(pool);
+  await resetSchemaAndSeed(pool);
   console.log('Database reset.');
 } finally {
   await pool.end();

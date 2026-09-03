@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { createApp } from '../app.ts';
 import { createBetterAuthService } from '../auth/better-auth.ts';
 import type { AuthService, SessionPrincipal } from '../auth/service.ts';
+import { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, seed } from '../db/seed.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
 import {
@@ -73,6 +74,7 @@ describe('principal resolution', () => {
     expect(status.auth).toEqual({
       enabled: true,
       magicLink: true,
+      emailAndPassword: true,
       socialProviders: [],
     });
   });
@@ -125,6 +127,7 @@ describe('unconfigured auth', () => {
     expect(status.auth).toEqual({
       enabled: false,
       magicLink: false,
+      emailAndPassword: false,
       socialProviders: [],
     });
   });
@@ -222,6 +225,81 @@ describe.skipIf(!db)('magic-link sign-in', () => {
 
       const { error } = await safe(createRpcClient(app).me());
       expect(error).toMatchObject({ code: 'UNAUTHORIZED' });
+    } finally {
+      await scratch.dispose();
+    }
+  });
+});
+
+describe.skipIf(!db)('email/password sign-in', () => {
+  // Exercises the seed script's credential account (src/db/seed.ts) against
+  // the real better-auth handler end to end — the same path that regressed
+  // silently when the account table was missing better-auth's `issuer`
+  // column (auth-schema.ts), because until this account existed nothing in
+  // this suite ever queried that table by provider.
+  it('signs the seeded admin in with the published password', async () => {
+    if (!db) throw new Error('unreachable');
+    if (!env.auth) throw new Error('dev env must configure auth');
+    const scratch = await createScratchSchema(db);
+    try {
+      await provisionScratchSchema(scratch.pool);
+      await seed(scratch.pool);
+      const auth = createBetterAuthService(env.auth, scratch.pool, {
+        sendMagicLink: () => Promise.resolve(),
+      });
+      const app = createApp(env, { auth });
+
+      const signIn = await app.request('/api/auth/sign-in/email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'origin': env.auth.baseUrl,
+        },
+        body: JSON.stringify({
+          email: SEED_ADMIN_EMAIL,
+          password: SEED_ADMIN_PASSWORD,
+        }),
+      });
+      expect(signIn.status).toBe(200);
+      const setCookie = signIn.headers.get('set-cookie');
+      expect(setCookie).toBeTruthy();
+      const cookie = (setCookie ?? '').split(';')[0]!;
+
+      const me = await createRpcClient(app, { cookie }).me();
+      expect(me.email).toBe(SEED_ADMIN_EMAIL);
+    } finally {
+      await scratch.dispose();
+    }
+  });
+
+  it('refuses a wrong password with a generic error', async () => {
+    if (!db) throw new Error('unreachable');
+    if (!env.auth) throw new Error('dev env must configure auth');
+    const scratch = await createScratchSchema(db);
+    try {
+      await provisionScratchSchema(scratch.pool);
+      await seed(scratch.pool);
+      const auth = createBetterAuthService(env.auth, scratch.pool, {
+        sendMagicLink: () => Promise.resolve(),
+      });
+      const app = createApp(env, { auth });
+
+      const signIn = await app.request('/api/auth/sign-in/email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'origin': env.auth.baseUrl,
+        },
+        body: JSON.stringify({
+          email: SEED_ADMIN_EMAIL,
+          password: 'not-the-password',
+        }),
+      });
+      expect(signIn.status).toBe(401);
+      expect(await signIn.json()).toMatchObject({
+        code: 'INVALID_EMAIL_OR_PASSWORD',
+      });
+      expect(signIn.headers.get('set-cookie')).toBeNull();
     } finally {
       await scratch.dispose();
     }

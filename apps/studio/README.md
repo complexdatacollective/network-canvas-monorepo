@@ -97,6 +97,14 @@ reachable. In production the connection comes from `DATABASE_URL`; when it is
 unset the server still boots and database-backed surfaces refuse, mirroring
 the S3 degradation contract.
 
+**Every `pnpm dev` boot resets and reseeds the dev database** — `dev-pg`
+drops and recreates the schema, reapplies it, and reruns `seed` (the same
+`resetSchemaAndSeed` sequence `db:reset` runs on demand), rather than only
+provisioning the schema the first time. Nothing in the dev Postgres survives
+a restart of the server process; if you need a protocol draft or other manual
+change to persist across restarts, keep the server running rather than
+cycling `pnpm dev`.
+
 ### Signing in during development
 
 Authentication (better-auth behind the `src/auth` seam, per #1245/#1255) is
@@ -108,6 +116,23 @@ printed link into the browser. To exercise real email instead, run
 (`docker run -d -p 8025:8025 -p 1025:1025 axllent/mailpit`) and start the
 server with `SMTP_URL=smtp://localhost:1025`; sent mail appears at
 `http://localhost:8025`.
+
+The fastest way in needs no email step at all: every reseed creates a fixed
+admin account, `admin@studio.test` / `studio-admin-not-for-production`,
+that signs in through email/password like any other credential account and
+owns every seeded team. The client's sign-in screen does not yet have a
+password field (#1256 covers real onboarding UI); until then, drive it
+through the API directly —
+
+```bash
+curl -i http://localhost:5173/api/auth/sign-in/email \
+  -H 'Content-Type: application/json' \
+  -H 'Origin: http://localhost:5173' \
+  -d '{"email":"admin@studio.test","password":"studio-admin-not-for-production"}'
+```
+
+— and carry the response's session cookie into the browser, or use it directly
+against `/api/v1` and `/rpc`.
 
 Auth configuration follows the same all-or-nothing, fail-fast shape as S3;
 every variable is catalogued under [Environment](#environment) below.
@@ -152,7 +177,7 @@ their `USING`/`WITH CHECK` expressions.
 
 Open the image for the full-size diagram. Tables with row-level security or trigger sidecars carry those details as SVG tooltips. The diagram shows physical foreign-key constraints; deliberately unconstrained logical references are not drawn as relationships. The renderer uses `1`/`*` edge endpoints, so optionality remains visible through each column's not-null marker rather than the edge.
 
-Schema fingerprint: `d448bfab2685600e07f27f47d8ff0476b95427c5bec2db3841fe26f55c4d11ef`.
+Schema fingerprint: `840133f00487b1c5901afff5a143a641bd62bdc119181870e38728c17dafd7b1`.
 
 Sidecar behavior that cannot be represented as ERD relationships:
 
@@ -469,10 +494,19 @@ them:
   rather than queueing email that cannot be delivered. Use the persistent Node
   server topology for invitation delivery until a scheduled Netlify dispatcher
   is implemented.
-- **`seed` currently writes nothing.** Studio has no domain entities yet; the
-  first team owner and the default team land with team invitations (#1256).
-  The step is documented now so the procedure does not change when it starts
-  doing something.
+- **`seed` wipes every table and repopulates synthetic content** (faker,
+  `src/db/seed.ts`): a handful of teams, a mix of members across every team
+  role, and one fixed admin account —
+  `admin@studio.test` / `studio-admin-not-for-production` — who owns every
+  seeded team and signs in through the real email/password endpoint like any
+  other credential account. The data is reproducible (`faker.seed()` pins the
+  PRNG), so re-running `seed` is a no-op for anyone diffing what changed, not
+  an accumulation of more rows. **Never point it at a database carrying real
+  data** — it deletes everything first, and the admin password is published
+  here. Like `db:reset`, it refuses a non-loopback database unless you pass
+  `--force`. Real onboarding (the first team owner and team invitations)
+  replaces this step on #1256; until then, it is how any fresh instance gets
+  something to sign in to.
 
 ## Deployment topologies
 
