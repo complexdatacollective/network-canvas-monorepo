@@ -29,22 +29,17 @@ export const STAGE_TYPE_COLORS: Record<StageType, PaletteColor> = {
 };
 
 /**
- * Drawn for a stage type this build does not know — a protocol authored
- * against a newer schema can name an interface that has no entry yet.
+ * Narrows a stage `type` read from protocol JSON. A protocol authored against
+ * a newer schema can name an interface this build does not know; readers
+ * should reject it rather than draw it.
  */
-export const UNKNOWN_STAGE_COLOR: PaletteColor = 'platinum';
-
 export function isStageType(type: string): type is StageType {
   return Object.hasOwn(STAGE_TYPE_COLORS, type);
-}
-
-export function getStageTypeColor(type: string): PaletteColor {
-  return isStageType(type) ? STAGE_TYPE_COLORS[type] : UNKNOWN_STAGE_COLOR;
 }
 
 /**
  * The stage type's colour as CSS variable references, for inline styling.
  */
-export function stageTypeColorStyle(type: string): ThemeColorStyle {
-  return paletteColorStyles[getStageTypeColor(type)];
+export function stageTypeColorStyle(type: StageType): ThemeColorStyle {
+  return paletteColorStyles[STAGE_TYPE_COLORS[type]];
 }

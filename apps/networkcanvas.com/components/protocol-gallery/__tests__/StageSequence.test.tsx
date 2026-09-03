@@ -15,7 +15,7 @@ describe('StageSequence', () => {
         stages={[
           { type: 'Information', label: 'Welcome' },
           { type: 'Sociogram', label: 'Support flows - hidden' },
-          { type: 'FutureInterface', label: 'Something new' },
+          { type: 'EgoForm', label: 'About you' },
         ]}
       />,
     );
@@ -29,7 +29,8 @@ describe('StageSequence', () => {
     expect(items[0]).toHaveTextContent('Information');
     expect(items[1]).toHaveTextContent('Support flows - hidden');
     expect(items[1]).toHaveTextContent('Sociogram');
-    expect(items[2]).toHaveTextContent('FutureInterface');
+    expect(items[2]).toHaveTextContent('About you');
+    expect(items[2]).toHaveTextContent('Ego Form');
   });
 
   it('hides the colour bar from assistive technology', () => {

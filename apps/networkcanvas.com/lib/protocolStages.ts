@@ -3,10 +3,14 @@ import { basename } from 'node:path';
 
 import { z } from 'zod';
 
-import { loadNetcanvasArchive } from '@codaco/protocol-validation';
+import { isStageType } from '@codaco/fresco-ui/stages/stageTypes';
+import {
+  loadNetcanvasArchive,
+  type StageType,
+} from '@codaco/protocol-validation';
 
 export type ProtocolStage = {
-  type: string;
+  type: StageType;
   label: string;
 };
 
@@ -14,7 +18,10 @@ const protocolStagesSchema = z.looseObject({
   stages: z
     .array(
       z.looseObject({
-        type: z.string().trim().min(1),
+        type: z.custom<StageType>(
+          (value) => typeof value === 'string' && isStageType(value),
+          'unknown stage type',
+        ),
         label: z.string().trim().min(1),
       }),
     )

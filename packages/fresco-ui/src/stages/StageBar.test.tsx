@@ -4,14 +4,14 @@ import { describe, expect, it } from 'vitest';
 
 import { paletteColorStyles } from '../styles/palette';
 import { StageBar } from './StageBar';
-import { STAGE_TYPE_COLORS, UNKNOWN_STAGE_COLOR } from './stageTypes';
+import { STAGE_TYPE_COLORS } from './stageTypes';
 
 const stages = [
   { type: 'Information' },
   { type: 'NameGenerator' },
   { type: 'Sociogram' },
-  { type: 'FutureInterface' },
-];
+  { type: 'DyadCensus' },
+] as const;
 
 describe('StageBar', () => {
   it('draws one segment per stage in the stage type colour', () => {
@@ -25,15 +25,6 @@ describe('StageBar', () => {
     });
     expect(segments[2]).toHaveStyle({
       backgroundColor: paletteColorStyles[STAGE_TYPE_COLORS.Sociogram].color,
-    });
-  });
-
-  it('falls back to the unknown colour for a stage type it does not know', () => {
-    const { container } = render(<StageBar stages={stages} />);
-
-    const [, , , unknown] = container.querySelectorAll('span');
-    expect(unknown).toHaveStyle({
-      backgroundColor: paletteColorStyles[UNKNOWN_STAGE_COLOR].color,
     });
   });
 

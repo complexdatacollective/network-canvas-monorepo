@@ -2,11 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import { paletteColorStyles } from '../styles/palette';
 import {
-  getStageTypeColor,
   isStageType,
   STAGE_TYPE_COLORS,
   stageTypeColorStyle,
-  UNKNOWN_STAGE_COLOR,
 } from './stageTypes';
 
 describe('STAGE_TYPE_COLORS', () => {
@@ -18,7 +16,6 @@ describe('STAGE_TYPE_COLORS', () => {
     for (const color of colors) {
       expect(paletteColorStyles).toHaveProperty(color);
     }
-    expect(colors).not.toContain(UNKNOWN_STAGE_COLOR);
   });
 
   it('recognises schema stage types and nothing else', () => {
@@ -27,11 +24,9 @@ describe('STAGE_TYPE_COLORS', () => {
     expect(isStageType('toString')).toBe(false);
   });
 
-  it('falls back to the unknown colour for a stage type it does not know', () => {
-    expect(getStageTypeColor('Sociogram')).toBe(STAGE_TYPE_COLORS.Sociogram);
-    expect(getStageTypeColor('FutureInterface')).toBe(UNKNOWN_STAGE_COLOR);
-    expect(stageTypeColorStyle('FutureInterface')).toBe(
-      paletteColorStyles[UNKNOWN_STAGE_COLOR],
+  it('resolves a stage type to its palette colour style', () => {
+    expect(stageTypeColorStyle('Sociogram')).toBe(
+      paletteColorStyles[STAGE_TYPE_COLORS.Sociogram],
     );
   });
 });

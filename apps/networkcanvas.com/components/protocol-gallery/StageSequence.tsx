@@ -2,10 +2,7 @@ import { useTranslations } from 'next-intl';
 
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { StageBar } from '@codaco/fresco-ui/stages/StageBar';
-import {
-  isStageType,
-  stageTypeColorStyle,
-} from '@codaco/fresco-ui/stages/stageTypes';
+import { stageTypeColorStyle } from '@codaco/fresco-ui/stages/stageTypes';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { ProtocolStage } from '~/lib/protocolStages';
 
@@ -40,9 +37,7 @@ export function StageSequence({ stages }: { stages: ProtocolStage[] }) {
               {stage.label}
             </span>
             <span className="font-monospace text-text/60 text-right tracking-widest whitespace-nowrap uppercase">
-              {isStageType(stage.type)
-                ? t(`stageTypes.${stage.type}`)
-                : stage.type}
+              {t(`stageTypes.${stage.type}`)}
             </span>
           </Surface>
         ))}

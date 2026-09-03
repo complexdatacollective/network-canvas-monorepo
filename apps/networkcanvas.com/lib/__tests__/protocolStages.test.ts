@@ -2,6 +2,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import JSZip from 'jszip';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { readProtocolStages } from '~/lib/protocolStages';
@@ -39,6 +40,25 @@ describe('readProtocolStages', () => {
       expect(stage.label).not.toBe('');
       expect(stage.label).not.toMatch(/\s{2,}/);
     }
+  });
+
+  it('rejects a stage type this build does not know', async () => {
+    const zip = new JSZip();
+    zip.file(
+      'protocol.json',
+      JSON.stringify({
+        stages: [
+          { type: 'Information', label: 'Welcome' },
+          { type: 'FutureInterface', label: 'Something new' },
+        ],
+      }),
+    );
+    const file = join(directory, 'future.netcanvas');
+    await writeFile(file, await zip.generateAsync({ type: 'nodebuffer' }));
+
+    await expect(readProtocolStages(file)).rejects.toThrow(
+      /^future\.netcanvas: stages: stages\.1\.type: unknown stage type$/,
+    );
   });
 
   it('names the file when the archive cannot be read', async () => {

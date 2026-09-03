@@ -35,7 +35,7 @@ Props:
 - \`label\` — an accessible summary. With it the bar is an \`img\` with that name; without it the bar is decoration hidden from assistive technology, on the assumption the same information is written out beside it.
 - Any other \`div\` attributes, including \`className\` for width and spacing.
 
-\`STAGE_TYPE_COLORS\` is the single map of stage type to palette colour, keyed by the protocol schema's stage union so a new stage type cannot ship without one. \`getStageTypeColor\` and \`stageTypeColorStyle\` fall back to a neutral for stage types this build does not know.
+\`STAGE_TYPE_COLORS\` is the single map of stage type to palette colour, keyed by the protocol schema's stage union so a new stage type cannot ship without one. \`isStageType\` narrows a type read from protocol JSON; \`stageTypeColorStyle\` gives a stage type's colour as CSS variables.
         `,
       },
     },
@@ -46,26 +46,28 @@ Props:
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const mixedSequence = [
-  'Information',
-  'Information',
-  'EgoForm',
-  'NameGenerator',
-  'NameGeneratorQuickAdd',
-  'NameGeneratorRoster',
-  'CategoricalBin',
-  'OrdinalBin',
-  'AlterForm',
-  'Sociogram',
-  'Sociogram',
-  'DyadCensus',
-  'AlterEdgeForm',
-  'TieStrengthCensus',
-  'Narrative',
-  'Geospatial',
-  'Anonymisation',
-  'Information',
-].map((type) => ({ type }));
+const mixedSequence = (
+  [
+    'Information',
+    'Information',
+    'EgoForm',
+    'NameGenerator',
+    'NameGeneratorQuickAdd',
+    'NameGeneratorRoster',
+    'CategoricalBin',
+    'OrdinalBin',
+    'AlterForm',
+    'Sociogram',
+    'Sociogram',
+    'DyadCensus',
+    'AlterEdgeForm',
+    'TieStrengthCensus',
+    'Narrative',
+    'Geospatial',
+    'Anonymisation',
+    'Information',
+  ] as const satisfies readonly StageType[]
+).map((type) => ({ type }));
 
 export const Default: Story = {
   args: {
@@ -83,16 +85,6 @@ export const WithLabel: Story = {
 export const SingleStage: Story = {
   args: {
     stages: [{ type: 'Information' }],
-  },
-};
-
-export const UnknownStageType: Story = {
-  args: {
-    stages: [
-      { type: 'Information' },
-      { type: 'FutureInterface' },
-      { type: 'Sociogram' },
-    ],
   },
 };
 

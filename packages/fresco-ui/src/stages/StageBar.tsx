@@ -1,10 +1,12 @@
 import type * as React from 'react';
 
+import type { StageType } from '@codaco/protocol-validation';
+
 import { cx } from '../utils/cva';
 import { stageTypeColorStyle } from './stageTypes';
 
 type StageBarStage = {
-  type: string;
+  type: StageType;
 };
 
 type StageBarProps = {
