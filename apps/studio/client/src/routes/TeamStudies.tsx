@@ -19,10 +19,10 @@ import { createUuid } from '../lib/createUuid.ts';
 /**
  * The team's studies, at `/team/$teamId` (§5.2, #1262).
  *
- * This is the half of the shipped team workspace that §5.4 keeps here: the
+ * This is the half of the shipped team screen that §5.4 keeps here: the
  * list a researcher chooses their work from, and where a new study starts.
  * Membership and invitations moved to `/team/$teamId/members`, and the
- * workspace's own "Active team" panel went with the header's team chip, which
+ * screen's own "Active team" panel went with the header's team chip, which
  * says the same thing on every screen instead of only on this one.
  *
  * **A study is a protocol until #1262 lands the model.** `protocols.list` is

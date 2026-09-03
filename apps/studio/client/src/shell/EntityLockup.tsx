@@ -2,11 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from '@tanstack/react-router';
 
 import {
-  WorkspaceAndTeamSwitcher,
+  TeamAndStudySwitcher,
   type SwitcherItem,
   type SwitcherSegment,
   type SwitcherStatus,
-} from '@codaco/fresco-ui/navigation/WorkspaceAndTeamSwitcher';
+} from '@codaco/fresco-ui/navigation/TeamAndStudySwitcher';
 
 import { orpc } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
@@ -99,21 +99,23 @@ function currentTeam(
  * collecting, draft or closed. The dot the design shows is omitted rather than
  * driven from an invented field; it arrives with the studies model (#1262).
  */
-function SwitcherWithWorkspace({
-  className,
-  studyId,
-  team,
-  teamId,
-}: {
-  className: string | undefined;
-  studyId: string;
-  team: SwitcherSegment | undefined;
-  teamId: string | undefined;
-}) {
+function useStudySegment(
+  studyId: string | undefined,
+  teamId: string | undefined,
+): SwitcherSegment | undefined {
   const navigate = useNavigate();
-  const studies = useQuery(
-    orpc.protocols.list.queryOptions({ input: { teamId: teamId ?? '' } }),
-  );
+  const studies = useQuery({
+    ...orpc.protocols.list.queryOptions({ input: { teamId: teamId ?? '' } }),
+    // Asked only where there is a study to find siblings for, and a team to
+    // ask about. The second is not hypothetical: a study route on a session
+    // that has never switched teams names no team, because nothing sets
+    // `activeOrganizationId` when a session is created.
+    enabled: studyId !== undefined && teamId !== undefined,
+  });
+
+  // No study on screen: the segment is absent, not empty. After every hook, so
+  // the hook order does not depend on the route.
+  if (studyId === undefined) return undefined;
 
   const listed = studies.data ?? [];
   const siblings: SwitcherItem[] = listed.some((study) => study.id === studyId)
@@ -146,7 +148,7 @@ function SwitcherWithWorkspace({
       ? 'loading'
       : 'ready';
 
-  const workspace: SwitcherSegment = {
+  return {
     kicker: STUDY_KICKER,
     items: siblings,
     currentId: studyId,
@@ -171,14 +173,6 @@ function SwitcherWithWorkspace({
               void navigate({ to: '/team/$teamId', params: { teamId } }),
           },
   };
-
-  return (
-    <WorkspaceAndTeamSwitcher
-      className={className}
-      team={team}
-      workspace={workspace}
-    />
-  );
 }
 
 /**
@@ -241,6 +235,15 @@ export default function EntityLockup({ className }: { className?: string }) {
   const hasTeamSegment = teamStatus !== 'ready' || list.length > 0;
   const current = currentTeam(list, activeTeam.data, committedTeamId);
 
+  // Whose team? A study's team is derivable only from the study (§6.3, and
+  // §5.6's reason for keeping the team out of the URL), so on a study route
+  // this is the active-team setting — the same fallback `currentTeam` above
+  // makes for the team segment, and the one the chip this replaces made.
+  const study = useStudySegment(
+    studyId,
+    committedTeamId ?? activeTeam.data?.id,
+  );
+
   const teamSegment: SwitcherSegment | undefined = hasTeamSegment
     ? {
         kicker: TEAM_KICKER,
@@ -260,7 +263,7 @@ export default function EntityLockup({ className }: { className?: string }) {
         placeholder: 'Choose a team',
         status: teamStatus,
         onSelect: (id: string) =>
-          // Not awaited, for the reason `SwitcherWithWorkspace` records.
+          // Not awaited, for the reason `SwitcherWithStudy` records.
           void navigate({ to: '/team/$teamId', params: { teamId: id } }),
         onRetry: () => void teams.refetch(),
         failureMessage: 'Your teams could not be loaded.',
@@ -286,7 +289,7 @@ export default function EntityLockup({ className }: { className?: string }) {
       }
     : undefined;
 
-  // The workspace segment is a component of its own for one reason: it asks
+  // The study segment is a component of its own for one reason: it asks
   // `protocols.list`, and mounting it only where a study is open is what keeps
   // the header — which is on every app route — off that procedure everywhere
   // else.
@@ -295,16 +298,11 @@ export default function EntityLockup({ className }: { className?: string }) {
   // §5.6's reason for keeping the team out of the URL), so on a study route
   // this is the active-team setting — the same fallback `currentTeam` above
   // makes for the team segment, and the one the chip this replaces made.
-  if (studyId !== undefined) {
-    return (
-      <SwitcherWithWorkspace
-        className={className}
-        studyId={studyId}
-        team={teamSegment}
-        teamId={committedTeamId ?? activeTeam.data?.id}
-      />
-    );
-  }
-
-  return <WorkspaceAndTeamSwitcher className={className} team={teamSegment} />;
+  return (
+    <TeamAndStudySwitcher
+      className={className}
+      team={teamSegment}
+      study={study}
+    />
+  );
 }

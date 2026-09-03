@@ -38,9 +38,9 @@ import { canManageTeam, teamRoles } from '../lib/teamRoles.ts';
 /**
  * Membership and invitations, at `/team/$teamId/members` (§5.2, #1256).
  *
- * The other half of §5.4's split of the shipped team workspace. It is the same
+ * The other half of §5.4's split of the shipped team screen. It is the same
  * screen, at the address the team sidebar has always pointed at, with the
- * cross-coordination the workspace needed gone: nothing on this route creates
+ * cross-coordination that screen needed gone: nothing on this route creates
  * studies or switches teams, so a mutation here only has to block the other
  * mutations here.
  *

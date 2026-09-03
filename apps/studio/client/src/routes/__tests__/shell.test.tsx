@@ -207,7 +207,7 @@ describe('shell branches', () => {
   it('puts every route on the branch that owns its chrome', () => {
     // The whole of §5.2's route table, by the shell each destination is
     // rendered in — no divergences and no legacy addresses: §5.4's migration
-    // has moved the team workspace, the audit trail and the editor onto the
+    // has moved the team screen, the audit trail and the editor onto the
     // addresses the design gives them, which is what frees `/` for marketing.
     expect(pathsByShell(buildRouter())).toEqual({
       site: ['/', '/legal/$document', '/pricing'],

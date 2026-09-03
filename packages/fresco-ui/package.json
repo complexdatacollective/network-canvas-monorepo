@@ -169,8 +169,8 @@
     "./navigation/SiteFooter": "./src/navigation/SiteFooter.tsx",
     "./navigation/SiteNavigation": "./src/navigation/SiteNavigation.tsx",
     "./navigation/SiteNavigation.constants": "./src/navigation/SiteNavigation.constants.ts",
+    "./navigation/TeamAndStudySwitcher": "./src/navigation/TeamAndStudySwitcher.tsx",
     "./navigation/ThemeSwitcher": "./src/navigation/ThemeSwitcher.tsx",
-    "./navigation/WorkspaceAndTeamSwitcher": "./src/navigation/WorkspaceAndTeamSwitcher.tsx",
     "./styles.css": "./src/styles.css",
     "./styles/controlVariants": "./src/styles/controlVariants.ts",
     "./typography/Heading": "./src/typography/Heading.tsx",
@@ -797,13 +797,13 @@
         "types": "./dist/navigation/SiteNavigation.constants.d.ts",
         "default": "./dist/navigation/SiteNavigation.constants.js"
       },
+      "./navigation/TeamAndStudySwitcher": {
+        "types": "./dist/navigation/TeamAndStudySwitcher.d.ts",
+        "default": "./dist/navigation/TeamAndStudySwitcher.js"
+      },
       "./navigation/ThemeSwitcher": {
         "types": "./dist/navigation/ThemeSwitcher.d.ts",
         "default": "./dist/navigation/ThemeSwitcher.js"
-      },
-      "./navigation/WorkspaceAndTeamSwitcher": {
-        "types": "./dist/navigation/WorkspaceAndTeamSwitcher.d.ts",
-        "default": "./dist/navigation/WorkspaceAndTeamSwitcher.js"
       },
       "./styles.css": "./dist/styles.css",
       "./styles/controlVariants": {

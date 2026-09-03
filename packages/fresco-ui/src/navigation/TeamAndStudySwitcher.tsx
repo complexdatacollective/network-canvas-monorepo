@@ -91,19 +91,19 @@ type SwitcherRecovery =
 
 export type SwitcherSegment = SwitcherSegmentBase & SwitcherRecovery;
 
-export type WorkspaceAndTeamSwitcherProps = {
+export type TeamAndStudySwitcherProps = {
   /**
    * The outer segment: the team whose work is on screen. Omit it where there
-   * is no team to name — a researcher who belongs to none, or a workspace
+   * is no team to name — a researcher who belongs to none, or a study
    * opened before its team is known.
    */
   team?: SwitcherSegment;
   /**
-   * The inner segment: the workspace open inside that team. Omit it entirely
+   * The inner segment: the study open inside that team. Omit it entirely
    * where none is — the control then draws as one segment rather than as two
    * with an empty compartment.
    */
-  workspace?: SwitcherSegment;
+  study?: SwitcherSegment;
   className?: string;
 };
 
@@ -190,7 +190,7 @@ function markFor(
 
 /**
  * One segment of the control. Private on purpose: a team switcher and a
- * workspace switcher are the same control with different words, and exporting
+ * study switcher are the same control with different words, and exporting
  * this would invite a second, differently-behaved arrangement of them.
  */
 function Segment({
@@ -503,12 +503,12 @@ function Segment({
 
 /**
  * Where a researcher is, and how they move: the team whose work is on screen,
- * and the workspace open inside it, as one control.
+ * and the study open inside it, as one control.
  *
  * ```tsx
- * <WorkspaceAndTeamSwitcher
+ * <TeamAndStudySwitcher
  *   team={{ kicker: t('team'), items: teams, currentId: teamId, onSelect: goToTeam }}
- *   workspace={study && { kicker: t('study'), items: studies, currentId: study.id, onSelect: openStudy }}
+ *   study={study && { kicker: t('study'), items: studies, currentId: study.id, onSelect: openStudy }}
  * />
  * ```
  *
@@ -526,7 +526,7 @@ function Segment({
  * so a segment holding a 32px mark and one holding a status pip still meet the
  * frame top and bottom.
  *
- * **The workspace segment is absent, not empty.** Pass no `workspace` and the
+ * **The study segment is absent, not empty.** Pass no `study` and the
  * control draws as one segment: there is no divider and no empty compartment,
  * because there is nothing there.
  *
@@ -551,14 +551,14 @@ function Segment({
  * inline-size containment, so an element that sized itself to its contents
  * would measure zero and hold every segment in its collapsed presentation.
  */
-export function WorkspaceAndTeamSwitcher({
+export function TeamAndStudySwitcher({
   className,
   team,
-  workspace,
-}: WorkspaceAndTeamSwitcherProps) {
+  study,
+}: TeamAndStudySwitcherProps) {
   // Nothing to name is not an empty frame: a bordered box holding no segment
   // reads as a control that failed to load rather than as the absence of one.
-  if (!team && !workspace) return null;
+  if (!team && !study) return null;
 
   return (
     <div className={cx('@container min-w-0', className)}>
@@ -571,9 +571,7 @@ export function WorkspaceAndTeamSwitcher({
         )}
       >
         {team && <Segment divided={false} segment={team} />}
-        {workspace && (
-          <Segment divided={team !== undefined} segment={workspace} />
-        )}
+        {study && <Segment divided={team !== undefined} segment={study} />}
       </div>
     </div>
   );

@@ -2,10 +2,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 
 import {
-  WorkspaceAndTeamSwitcher,
+  TeamAndStudySwitcher,
   type SwitcherItem,
   type SwitcherSegment,
-} from './WorkspaceAndTeamSwitcher';
+} from './TeamAndStudySwitcher';
 
 /**
  * A study's status, as the pip beside its name. Unexported: a non-story export
@@ -68,7 +68,7 @@ const teamSegment = (): SwitcherSegment => ({
   action: { label: 'Create a team', onSelect: fn() },
 });
 
-const workspaceSegment = (): SwitcherSegment => ({
+const studySegment = (): SwitcherSegment => ({
   kicker: 'Study',
   items: studies,
   currentId: 'study_1',
@@ -93,29 +93,29 @@ function segmentCount(canvasElement: HTMLElement): number {
 }
 
 const meta = {
-  title: 'Navigation/WorkspaceAndTeamSwitcher',
-  component: WorkspaceAndTeamSwitcher,
+  title: 'Navigation/TeamAndStudySwitcher',
+  component: TeamAndStudySwitcher,
   tags: ['autodocs'],
   parameters: {
     docs: {
       description: {
         component: [
           'Where a researcher is, and how they move: the team whose work is on',
-          'screen and the workspace open inside it, as one control.',
+          'screen and the study open inside it, as one control.',
           '',
           '```tsx',
-          "import { WorkspaceAndTeamSwitcher } from '@codaco/fresco-ui/navigation/WorkspaceAndTeamSwitcher';",
+          "import { TeamAndStudySwitcher } from '@codaco/fresco-ui/navigation/TeamAndStudySwitcher';",
           '',
-          '<WorkspaceAndTeamSwitcher',
+          '<TeamAndStudySwitcher',
           "  team={{ kicker: t('team'), items: teams, currentId: teamId, onSelect: goToTeam }}",
-          "  workspace={study && { kicker: t('study'), items: studies, currentId: study.id, onSelect: openStudy }}",
+          "  study={study && { kicker: t('study'), items: studies, currentId: study.id, onSelect: openStudy }}",
           '/>',
           '```',
           '',
-          '- **`team` / `workspace`** — each a segment: `kicker`, `items`,',
+          '- **`team` / `study`** — each a segment: `kicker`, `items`,',
           '  `currentId`, `onSelect`, and optionally `placeholder`, `action`,',
           '  `status` (+ `onRetry`, `failureMessage`, `retryLabel`) and',
-          '  `renderMark`. Omit `workspace` and the control draws as one',
+          '  `renderMark`. Omit `study` and the control draws as one',
           '  segment, with no divider and no empty compartment.',
           '- **`items`** — `{ id, name, meta?, badge?, leading? }`. `leading`',
           '  replaces the identity mark for one item; `renderMark` replaces it',
@@ -133,9 +133,9 @@ const meta = {
   },
   args: {
     team: teamSegment(),
-    workspace: workspaceSegment(),
+    study: studySegment(),
   },
-} satisfies Meta<typeof WorkspaceAndTeamSwitcher>;
+} satisfies Meta<typeof TeamAndStudySwitcher>;
 
 export default meta;
 
@@ -148,11 +148,11 @@ export const Default: Story = {
 };
 
 /**
- * No workspace open. The second segment is absent rather than empty, so the
+ * No study open. The second segment is absent rather than empty, so the
  * control shrinks to one and draws no divider.
  */
 export const TeamOnly: Story = {
-  args: { workspace: undefined },
+  args: { study: undefined },
   play: async ({ canvasElement }) => {
     await expect(segmentCount(canvasElement)).toBe(1);
     await expect(
@@ -354,7 +354,7 @@ export const SingleItem: Story = {
       currentId: 'team_5',
       onSelect: fn(),
     },
-    workspace: undefined,
+    study: undefined,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -375,7 +375,7 @@ export const SingleItemWithAction: Story = {
       items: [teams[0]!],
       action: { label: 'Create a team', onSelect: fn() },
     },
-    workspace: undefined,
+    study: undefined,
   },
   play: async ({ canvasElement }) => {
     await expect(
