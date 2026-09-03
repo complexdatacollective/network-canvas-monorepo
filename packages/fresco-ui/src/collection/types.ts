@@ -220,6 +220,21 @@ export type CollectionProps<T> = SortProps &
 
     // Rendering props
     /**
+     * Whether the collection owns scrolling.
+     *
+     * By default the items render inside a ScrollArea, so a collection in a
+     * bounded panel scrolls on its own and can be virtualised. A collection
+     * laid out in the flow of a page that already scrolls should pass
+     * `false`: the items render in a plain container, nothing is clipped at
+     * the collection's edges, and no nested scroll region or tab stop is
+     * created. Virtualisation needs a scroll container to measure against,
+     * so `virtualized` is ignored (with a development warning) and the
+     * ScrollArea options have no effect.
+     * @default true
+     */
+    'scrollable'?: boolean;
+
+    /**
      * Enable virtualization for large collections.
      * When true, only items visible in the viewport are rendered.
      * Note: Layout animations are not supported in virtualized mode.

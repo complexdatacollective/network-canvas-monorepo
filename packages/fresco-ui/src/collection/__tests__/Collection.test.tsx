@@ -112,6 +112,58 @@ describe('Collection', () => {
       expect(markup).not.toContain('Nothing here');
     });
 
+    it('renders in page flow without a scroll region when not scrollable', () => {
+      const { container } = render(
+        <Collection
+          items={testItems}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.name}
+          layout={new ListLayout<Item>({ gap: 2 })}
+          selectionMode="none"
+          nativeItemSemantics
+          scrollable={false}
+          animate={false}
+          renderItem={(item, itemProps) => (
+            <a {...itemProps} href={`#${item.id}`}>
+              {item.name}
+            </a>
+          )}
+        >
+          {(collectionElements) => collectionElements}
+        </Collection>,
+      );
+
+      // No ScrollArea viewport: nothing between the items and the page that
+      // could clip them or become a tab stop.
+      expect(container.querySelector('section')).toBeNull();
+      expect(container.querySelector('[tabindex]')).toBeNull();
+      expect(screen.getAllByRole('link')).toHaveLength(testItems.length);
+    });
+
+    it('keeps the listbox on the plain container when not scrollable', () => {
+      render(
+        <Collection
+          items={testItems}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.name}
+          layout={new ListLayout<Item>({ gap: 2 })}
+          selectionMode="single"
+          scrollable={false}
+          animate={false}
+          aria-label="Fruit"
+          renderItem={(item, itemProps) => (
+            <div {...itemProps}>{item.name}</div>
+          )}
+        >
+          {(collectionElements) => collectionElements}
+        </Collection>,
+      );
+
+      const listbox = screen.getByRole('listbox', { name: 'Fruit' });
+      expect(listbox.tagName).toBe('DIV');
+      expect(listbox.closest('section')).toBeNull();
+    });
+
     it('preserves native link semantics when requested', () => {
       render(
         <Collection

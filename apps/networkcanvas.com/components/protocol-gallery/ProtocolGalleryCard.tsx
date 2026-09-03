@@ -59,14 +59,14 @@ export function ProtocolGalleryCard({
       {...itemProps}
       href={protocolGalleryHref(locale, protocol.slug)}
       aria-label={t('collection.openProtocol', { title: protocol.shortName })}
-      className="focusable group block size-full rounded transition-transform hover:-translate-y-1 focus-visible:-translate-y-1 motion-reduce:transform-none"
+      className="focusable group relative block size-full rounded transition-transform hover:z-10 hover:-translate-y-1 focus-visible:z-10 focus-visible:-translate-y-1 motion-reduce:transform-none"
     >
       <Surface
         noContainer
         spacing="none"
-        shadow="lg"
+        shadow="sm"
         className={cn(
-          'flex size-full flex-col',
+          'flex size-full flex-col transition-shadow group-hover:shadow-xl group-focus-visible:shadow-xl',
           protocol.featured && 'border-primary border-2',
         )}
       >

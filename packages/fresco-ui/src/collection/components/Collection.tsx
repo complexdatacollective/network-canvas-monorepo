@@ -51,6 +51,7 @@ function CollectionContent<T extends Record<string, unknown>>({
   animate,
   animationKey,
   dragAndDropHooks,
+  scrollable = true,
   virtualized,
   overscan,
   viewportClassName,
@@ -169,6 +170,66 @@ function CollectionContent<T extends Record<string, unknown>>({
   void tabIndex;
   const mergedRef = useMergeRefs({ containerRef, dndRef });
 
+  useEffect(() => {
+    // Consumer bundlers replace this flag, so the check is dropped from
+    // production builds.
+    if (import.meta.env.DEV && !scrollable && virtualized) {
+      console.warn(
+        'Collection: `virtualized` needs a scroll container to measure against and is ignored when `scrollable` is false.',
+      );
+    }
+  }, [scrollable, virtualized]);
+
+  const regionProps = {
+    'role': nativeItemSemantics ? undefined : 'listbox',
+    'id': collectionId,
+    'aria-label': nativeItemSemantics ? undefined : ariaLabel,
+    'aria-labelledby': nativeItemSemantics ? undefined : ariaLabelledBy,
+    'aria-multiselectable': nativeItemSemantics
+      ? undefined
+      : selectionMode === 'multiple' || undefined,
+    'aria-activedescendant':
+      !nativeItemSemantics && selectionManager.focusedKey !== null
+        ? `${collectionId}-item-${selectionManager.focusedKey}`
+        : undefined,
+    ...(nativeItemSemantics ? {} : collectionProps),
+    ...restDndProps,
+    'className': 'size-full',
+  };
+
+  const renderedItems = (
+    <>
+      {virtualized && scrollable ? (
+        <VirtualizedRenderer
+          layout={layout}
+          collection={collection}
+          renderItem={renderItem}
+          animate={animate}
+          animationKey={animationKey}
+          collectionId={collectionId}
+          dragAndDropHooks={dragAndDropHooks}
+          scrollRef={containerRef}
+          overscan={overscan}
+          layoutGroupId={layoutGroupId}
+        />
+      ) : (
+        <StaticRenderer
+          layout={layout}
+          collection={collection}
+          renderItem={renderItem}
+          animate={animate}
+          animationKey={animationKey}
+          collectionId={collectionId}
+          dragAndDropHooks={dragAndDropHooks}
+          layoutGroupId={layoutGroupId}
+        />
+      )}
+      {collection.size === 0 && emptyState && (
+        <div className="text-center text-current/70">{emptyState}</div>
+      )}
+    </>
+  );
+
   const collectionElements = (
     <div
       className={cx('min-h-0 w-full flex-1', className)}
@@ -176,59 +237,22 @@ function CollectionContent<T extends Record<string, unknown>>({
       data-drop-target-valid={dropState?.willAccept ?? undefined}
       data-dragging={dropState?.isDragging ?? undefined}
     >
-      <ScrollArea
-        ref={mergedRef}
-        role={nativeItemSemantics ? undefined : 'listbox'}
-        id={collectionId}
-        viewportClassName={viewportClassName}
-        fade={fade}
-        orientation={orientation}
-        tabIndex={nativeItemSemantics ? -1 : undefined}
-        aria-label={nativeItemSemantics ? undefined : ariaLabel}
-        aria-labelledby={nativeItemSemantics ? undefined : ariaLabelledBy}
-        aria-multiselectable={
-          nativeItemSemantics
-            ? undefined
-            : selectionMode === 'multiple' || undefined
-        }
-        aria-activedescendant={
-          !nativeItemSemantics && selectionManager.focusedKey !== null
-            ? `${collectionId}-item-${selectionManager.focusedKey}`
-            : undefined
-        }
-        {...(nativeItemSemantics ? {} : collectionProps)}
-        {...restDndProps}
-        className="size-full"
-      >
-        {virtualized ? (
-          <VirtualizedRenderer
-            layout={layout}
-            collection={collection}
-            renderItem={renderItem}
-            animate={animate}
-            animationKey={animationKey}
-            collectionId={collectionId}
-            dragAndDropHooks={dragAndDropHooks}
-            scrollRef={containerRef}
-            overscan={overscan}
-            layoutGroupId={layoutGroupId}
-          />
-        ) : (
-          <StaticRenderer
-            layout={layout}
-            collection={collection}
-            renderItem={renderItem}
-            animate={animate}
-            animationKey={animationKey}
-            collectionId={collectionId}
-            dragAndDropHooks={dragAndDropHooks}
-            layoutGroupId={layoutGroupId}
-          />
-        )}
-        {collection.size === 0 && emptyState && (
-          <div className="text-center text-current/70">{emptyState}</div>
-        )}
-      </ScrollArea>
+      {scrollable ? (
+        <ScrollArea
+          ref={mergedRef}
+          viewportClassName={viewportClassName}
+          fade={fade}
+          orientation={orientation}
+          tabIndex={nativeItemSemantics ? -1 : undefined}
+          {...regionProps}
+        >
+          {renderedItems}
+        </ScrollArea>
+      ) : (
+        <div ref={mergedRef} {...regionProps}>
+          {renderedItems}
+        </div>
+      )}
     </div>
   );
 
@@ -300,6 +324,7 @@ export function Collection<T extends Record<string, unknown>>({
   animate = true,
   animationKey,
   dragAndDropHooks,
+  scrollable,
   virtualized,
   overscan,
   viewportClassName,
@@ -353,6 +378,7 @@ export function Collection<T extends Record<string, unknown>>({
         animate={animate}
         animationKey={animationKey}
         dragAndDropHooks={dragAndDropHooks}
+        scrollable={scrollable}
         virtualized={virtualized}
         overscan={overscan}
         viewportClassName={viewportClassName}

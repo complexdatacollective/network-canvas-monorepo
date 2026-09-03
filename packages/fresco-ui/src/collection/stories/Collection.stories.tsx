@@ -1341,3 +1341,61 @@ export const DisabledItems = meta.story({
     );
   },
 });
+
+// =========================================
+// Page flow (not scrollable)
+// =========================================
+
+function PageFlowStoryRender() {
+  const items = useMemo(() => generateDemoItems(9), []);
+  const layout = useMemo(
+    () => new GridLayout<DemoItem>({ minItemWidth: 220, gap: 6 }),
+    [],
+  );
+
+  return (
+    <div className="space-y-4">
+      <Paragraph margin="none" emphasis="muted">
+        A collection laid out in the flow of a page that already scrolls. With
+        <code> scrollable=&#123;false&#125; </code>
+        the items render in a plain container: nothing is clipped at the
+        collection's edges (the hover lift and shadow below run past the grid
+        freely) and no nested scroll region or tab stop is created.
+      </Paragraph>
+      <Collection
+        items={items}
+        keyExtractor={(item) => item.id}
+        textValueExtractor={(item) => item.name}
+        layout={layout}
+        selectionMode="none"
+        nativeItemSemantics
+        scrollable={false}
+        animate={false}
+        renderItem={(item, itemProps) => (
+          <a
+            {...itemProps}
+            href={`#${item.id}`}
+            className="focusable bg-surface text-surface-contrast block rounded p-4 shadow-md transition-[transform,box-shadow] hover:-translate-y-1 hover:shadow-xl focus-visible:-translate-y-1 focus-visible:shadow-xl motion-reduce:transform-none"
+          >
+            <Heading level="label">{item.name}</Heading>
+            <Paragraph intent="caption" emphasis="muted" margin="none">
+              {item.department} · {item.role}
+            </Paragraph>
+          </a>
+        )}
+      >
+        {(collectionElements) => collectionElements}
+      </Collection>
+    </div>
+  );
+}
+
+export const InPageFlow = meta.story({
+  name: 'In Page Flow (not scrollable)',
+  render: () => <PageFlowStoryRender />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getAllByRole('link')).toHaveLength(9);
+    await expect(canvasElement.querySelector('section')).toBeNull();
+  },
+});

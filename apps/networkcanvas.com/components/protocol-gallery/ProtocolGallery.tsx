@@ -180,6 +180,7 @@ export function ProtocolGallery({
                 selectedFields.join('|'),
                 selectedEdges.join('|'),
               ].join('::')}
+              scrollable={false}
               className="[&_[data-stagger-item]]:size-full"
               emptyState={
                 hasActiveFilters ? (
