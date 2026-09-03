@@ -1,15 +1,16 @@
 // The consent module's database-enforced promises: every CHECK, the composite
-// foreign keys that prove a consent record's participant and document belong to
-// the same study, and the four sidecar triggers that make a published document
-// immutable, freeze its items, hold a grant to its evidence, and make a
-// withdrawal one-way.
+// foreign keys that prove a consent record's participant, document and item
+// belong together, and the sidecar triggers that make a published document
+// immutable, freeze its items, hold a grant to its evidence, complete that
+// evidence at commit, make a withdrawal one-way, and admit a delete only from
+// an audited erasure or the maintenance purge.
 //
 // Every case asserts the rejection Postgres actually raises — the constraint
 // name for a CHECK, unique or foreign-key violation, the message for a trigger
 // — so a guard that stopped firing cannot pass as "no error".
 import { randomBytes, randomUUID } from 'node:crypto';
 
-import type pg from 'pg';
+import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
@@ -20,6 +21,7 @@ import {
   reachableDb,
   seedTeam,
 } from '../../__tests__/support/postgres.ts';
+import { ERASURE_GUC } from '../../study/schema.ts';
 
 const db = await reachableDb();
 
@@ -34,22 +36,66 @@ const hash = () => randomBytes(32).toString('hex');
 describe.skipIf(!db)('consent schema', () => {
   let pool: pg.Pool;
   let app: pg.Pool;
+  let maintenance: pg.Pool;
   let dispose: () => Promise<void>;
   let tenantA: TenantDb;
   /** One published protocol version per team, for the wave and session pins. */
   const versionOf: Record<string, string> = {};
+  /** Each written document's content hash, keyed by document id. */
+  const hashOf: Record<string, string> = {};
 
   // The connecting login is the development superuser, so it bypasses the
   // row-level security policies but not the triggers: exactly the fixture tool
   // these cases want. Role-sensitive probes use the `app` pool instead.
-  const insert = (table: string, row: Row) => {
+  const insertOn = (
+    client: pg.Pool | pg.PoolClient,
+    table: string,
+    row: Row,
+  ) => {
     const columns = Object.keys(row);
-    return pool.query(
+    return client.query(
       `INSERT INTO ${table} (${columns.map((name) => `"${name}"`).join(', ')})
        VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')})`,
       Object.values(row),
     );
   };
+
+  const insert = (table: string, row: Row) => insertOn(pool, table, row);
+
+  /**
+   * One transaction on the fixture pool. A grant and its responses have to
+   * share one, because the responses may only be written beside their own
+   * grant and the commit-time check reads them together.
+   */
+  async function inTransaction<T>(
+    work: (client: pg.PoolClient) => Promise<T>,
+  ): Promise<T> {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await work(client);
+      await client.query('COMMIT');
+      return result;
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * A tenant transaction that also presents the erasure marker, the way the
+   * audited erasure command will.
+   */
+  function erasing(participantId: string, sql: string, values: unknown[]) {
+    return tenantA.transaction(async (client) => {
+      await client.query(
+        `SET LOCAL ${ERASURE_GUC} = ${pg.escapeLiteral(participantId)}`,
+      );
+      return client.query(sql, values);
+    });
+  }
 
   async function newStudy(overrides: Row = {}): Promise<string> {
     const id = randomUUID();
@@ -119,6 +165,7 @@ describe.skipIf(!db)('consent schema', () => {
   ): Promise<string> {
     const row = documentRow(studyId, overrides);
     await insert('consent_documents', row);
+    hashOf[row.id as string] = row.content_hash as string;
     return row.id as string;
   }
 
@@ -141,6 +188,11 @@ describe.skipIf(!db)('consent schema', () => {
     return row.id as string;
   }
 
+  /**
+   * The consent hash defaults to the document's own, because
+   * `participant_consents_document_published` refuses anything else — a case
+   * that wants a mismatch overrides it.
+   */
   const consentRow = (
     studyId: string,
     participantId: string,
@@ -152,20 +204,68 @@ describe.skipIf(!db)('consent schema', () => {
     study_id: studyId,
     participant_id: participantId,
     consent_document_id: documentId,
-    consent_content_hash: hash(),
+    consent_content_hash: hashOf[documentId] ?? hash(),
     granted_at: new Date('2026-03-01T10:00:00Z'),
     ...overrides,
   });
 
+  const responseRow = (
+    consentId: string,
+    documentId: string,
+    itemId: string,
+    overrides: Row = {},
+  ): Row => ({
+    team_id: TEAM_A,
+    participant_consent_id: consentId,
+    consent_document_id: documentId,
+    consent_item_id: itemId,
+    item_key: 'may_contact_again',
+    affirmed: true,
+    ...overrides,
+  });
+
+  /** An affirmation of every required item of `documentId`. */
+  async function requiredAffirmations(
+    client: pg.PoolClient,
+    consentId: string,
+    documentId: string,
+  ): Promise<Row[]> {
+    const items = await client.query<{ id: string; key: string }>(
+      `SELECT id, key FROM consent_items
+       WHERE consent_document_id = $1 AND required ORDER BY position`,
+      [documentId],
+    );
+    return items.rows.map((item) =>
+      responseRow(consentId, documentId, item.id, { item_key: item.key }),
+    );
+  }
+
+  /**
+   * A grant and its responses, in one transaction: a response may only be
+   * written beside its own grant, and the commit-time check refuses a grant
+   * that leaves a required item unaffirmed. `responses` names exactly what the
+   * grant carries; by default it affirms every required item, which is the
+   * only shape most cases need.
+   */
   async function newConsent(
     studyId: string,
     participantId: string,
     documentId: string,
     overrides: Row = {},
+    responses?: (consentId: string) => Row[],
   ): Promise<string> {
     const row = consentRow(studyId, participantId, documentId, overrides);
-    await insert('participant_consents', row);
-    return row.id as string;
+    const consentId = row.id as string;
+    await inTransaction(async (client) => {
+      await insertOn(client, 'participant_consents', row);
+      const rows = responses
+        ? responses(consentId)
+        : await requiredAffirmations(client, consentId, documentId);
+      for (const response of rows) {
+        await insertOn(client, 'participant_consent_item_responses', response);
+      }
+    });
+    return consentId;
   }
 
   /** Moves a draft document to `published`, the state the triggers turn on. */
@@ -178,7 +278,22 @@ describe.skipIf(!db)('consent schema', () => {
     );
   }
 
-  /** A published document with one item, one participant, and one grant. */
+  /** A published document with one required item, and a participant for it. */
+  async function publishedDocument(): Promise<{
+    studyId: string;
+    participantId: string;
+    documentId: string;
+    itemId: string;
+  }> {
+    const studyId = await newStudy();
+    const participantId = await newParticipant(studyId);
+    const documentId = await newDocument(studyId);
+    const itemId = await newItem(documentId);
+    await publish(documentId);
+    return { studyId, participantId, documentId, itemId };
+  }
+
+  /** That document, consented to, with its one required item affirmed. */
   async function grantedConsent(): Promise<{
     studyId: string;
     participantId: string;
@@ -186,18 +301,18 @@ describe.skipIf(!db)('consent schema', () => {
     itemId: string;
     consentId: string;
   }> {
-    const studyId = await newStudy();
-    const participantId = await newParticipant(studyId);
-    const documentId = await newDocument(studyId);
-    const itemId = await newItem(documentId);
-    await publish(documentId);
-    const consentId = await newConsent(studyId, participantId, documentId);
-    return { studyId, participantId, documentId, itemId, consentId };
+    const fixture = await publishedDocument();
+    const consentId = await newConsent(
+      fixture.studyId,
+      fixture.participantId,
+      fixture.documentId,
+    );
+    return { ...fixture, consentId };
   }
 
   beforeAll(async () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
-    ({ pool, app, dispose } = await createScratchSchema(db));
+    ({ pool, app, maintenance, dispose } = await createScratchSchema(db));
     await provisionScratchSchema(pool);
     for (const teamId of [TEAM_A, TEAM_B]) {
       await seedTeam(pool, teamId);
@@ -620,6 +735,8 @@ describe.skipIf(!db)('consent schema', () => {
       const participantId = await newParticipant(studyId);
       const documentId = await newDocument(studyId);
       const laterDocumentId = await newDocument(studyId, { version: 2 });
+      await publish(documentId);
+      await publish(laterDocumentId);
       await newConsent(studyId, participantId, documentId);
 
       await expect(
@@ -634,11 +751,8 @@ describe.skipIf(!db)('consent schema', () => {
 
       // Re-consent to a new version is a new row, so the history is the set.
       await expect(
-        insert(
-          'participant_consents',
-          consentRow(studyId, participantId, laterDocumentId),
-        ),
-      ).resolves.toMatchObject({ rowCount: 1 });
+        newConsent(studyId, participantId, laterDocumentId),
+      ).resolves.toMatch(/^[0-9a-f-]{36}$/);
     });
 
     it('refuses a consent whose participant and document are in different studies', async () => {
@@ -646,6 +760,7 @@ describe.skipIf(!db)('consent schema', () => {
       const otherStudyId = await newStudy();
       const participantId = await newParticipant(studyId);
       const otherDocumentId = await newDocument(otherStudyId);
+      await publish(otherDocumentId);
 
       // The participant belongs to `studyId`, the document to `otherStudyId`.
       // Whichever study the record claims, one of the three-column foreign
@@ -671,15 +786,12 @@ describe.skipIf(!db)('consent schema', () => {
 
       // The same-study pairing the checks exist to admit.
       await expect(
-        insert(
-          'participant_consents',
-          consentRow(
-            otherStudyId,
-            await newParticipant(otherStudyId),
-            otherDocumentId,
-          ),
+        newConsent(
+          otherStudyId,
+          await newParticipant(otherStudyId),
+          otherDocumentId,
         ),
-      ).resolves.toMatchObject({ rowCount: 1 });
+      ).resolves.toMatch(/^[0-9a-f-]{36}$/);
     });
 
     it('refuses a session from another study', async () => {
@@ -687,6 +799,7 @@ describe.skipIf(!db)('consent schema', () => {
       const otherStudyId = await newStudy();
       const participantId = await newParticipant(studyId);
       const documentId = await newDocument(studyId);
+      await publish(documentId);
       const foreignSessionId = await newSession(otherStudyId);
 
       await expect(
@@ -703,15 +816,59 @@ describe.skipIf(!db)('consent schema', () => {
 
       // The participant's own session in the consent's own study is accepted.
       await expect(
-        insert(
-          'participant_consents',
-          consentRow(studyId, participantId, documentId, {
-            session_id: await newSession(studyId, {
-              participant_id: participantId,
-            }),
+        newConsent(studyId, participantId, documentId, {
+          session_id: await newSession(studyId, {
+            participant_id: participantId,
           }),
-        ),
-      ).resolves.toMatchObject({ rowCount: 1 });
+        }),
+      ).resolves.toMatch(/^[0-9a-f-]{36}$/);
+    });
+
+    it('refuses a consent to a document that is not published', async () => {
+      const studyId = await newStudy();
+      const participantId = await newParticipant(studyId);
+      const draftId = await newDocument(studyId);
+
+      await expect(newConsent(studyId, participantId, draftId)).rejects.toThrow(
+        'a participant may only consent to a published document (draft)',
+      );
+
+      // A retired version is superseded, not current: a new grant against it
+      // would record agreement to terms the study has withdrawn.
+      const retiredId = await newDocument(studyId, { version: 2 });
+      await publish(retiredId);
+      await pool.query(
+        `UPDATE consent_documents SET state = 'retired', retired_at = now()
+         WHERE id = $1`,
+        [retiredId],
+      );
+      await expect(
+        newConsent(studyId, participantId, retiredId),
+      ).rejects.toThrow(
+        'a participant may only consent to a published document (retired)',
+      );
+
+      await publish(draftId);
+      await expect(
+        newConsent(studyId, participantId, draftId),
+      ).resolves.toMatch(/^[0-9a-f-]{36}$/);
+    });
+
+    it("refuses a content hash that is not the document's own", async () => {
+      const { studyId, participantId, documentId } = await publishedDocument();
+
+      // Well-formed and wrong: the CHECK admits any sha256 digest, so only
+      // the trigger can tie the copy back to the words it was taken against.
+      await expect(
+        newConsent(studyId, participantId, documentId, {
+          consent_content_hash: hash(),
+        }),
+      ).rejects.toThrow(
+        "a consent record must copy its own document's content hash",
+      );
+      await expect(
+        newConsent(studyId, participantId, documentId),
+      ).resolves.toMatch(/^[0-9a-f-]{36}$/);
     });
 
     it('refuses a session of another participant', async () => {
@@ -834,99 +991,253 @@ describe.skipIf(!db)('consent schema', () => {
       });
     });
 
-    it('leaves the grant deletable for participant erasure', async () => {
-      const { consentId } = await grantedConsent();
+    it('refuses a grant that leaves a required item unaffirmed', async () => {
+      const studyId = await newStudy();
+      const participantId = await newParticipant(studyId);
+      const documentId = await newDocument(studyId);
+      const requiredId = await newItem(documentId, {
+        position: 1,
+        key: 'consent_to_take_part',
+      });
+      await newItem(documentId, {
+        position: 2,
+        key: 'may_contact_again',
+        required: false,
+      });
+      await publish(documentId);
 
+      // The grant row itself is accepted; the check runs at commit, which is
+      // the only moment the responses beside it are all written.
       await expect(
-        pool.query(`DELETE FROM participant_consents WHERE id = $1`, [
-          consentId,
+        newConsent(studyId, participantId, documentId, {}, () => []),
+      ).rejects.toThrow(
+        'a consent grant must affirm every required item of its document (consent_to_take_part)',
+      );
+
+      // A recorded refusal of a required item is no better than no answer.
+      await expect(
+        newConsent(studyId, participantId, documentId, {}, (consentId) => [
+          responseRow(consentId, documentId, requiredId, {
+            item_key: 'consent_to_take_part',
+            affirmed: false,
+          }),
         ]),
+      ).rejects.toThrow(
+        'a consent grant must affirm every required item of its document (consent_to_take_part)',
+      );
+
+      // The optional item may be left unanswered entirely.
+      await expect(
+        newConsent(studyId, participantId, documentId, {}, (consentId) => [
+          responseRow(consentId, documentId, requiredId, {
+            item_key: 'consent_to_take_part',
+          }),
+        ]),
+      ).resolves.toMatch(/^[0-9a-f-]{36}$/);
+    });
+
+    it('deletes a grant only under the erasure marker or the purge', async () => {
+      const { consentId, participantId } = await grantedConsent();
+      const bystander = await grantedConsent();
+      const remove = `DELETE FROM participant_consents WHERE id = $1`;
+      const removeResponses = `DELETE FROM participant_consent_item_responses
+                               WHERE participant_consent_id = $1`;
+
+      // The responses go first: the grant is their parent and nothing
+      // cascades.
+      await erasing(participantId, removeResponses, [consentId]);
+
+      await expect(tenantA.query(remove, [consentId])).rejects.toThrow(
+        'participant consent grants are deleted only by an audited erasure or the maintenance purge',
+      );
+      // The marker authorizes exactly one participant's consent.
+      await expect(
+        erasing(bystander.participantId, remove, [consentId]),
+      ).rejects.toThrow(
+        'participant consent grants are deleted only by an audited erasure or the maintenance purge',
+      );
+      await expect(
+        erasing(participantId, remove, [consentId]),
+      ).resolves.toMatchObject({ rowCount: 1 });
+
+      // The purge deletes without a marker, as it does everywhere else.
+      await maintenance.query(removeResponses, [bystander.consentId]);
+      await expect(
+        maintenance.query(remove, [bystander.consentId]),
       ).resolves.toMatchObject({ rowCount: 1 });
     });
   });
 
   describe('participant_consent_item_responses', () => {
+    /**
+     * A document carrying one required and one optional item, published, with
+     * a participant to consent to it. Two items, because the interesting
+     * failures pit one item's key against another's.
+     */
+    async function twoItemDocument(): Promise<{
+      studyId: string;
+      participantId: string;
+      documentId: string;
+      requiredId: string;
+      optionalId: string;
+    }> {
+      const studyId = await newStudy();
+      const participantId = await newParticipant(studyId);
+      const documentId = await newDocument(studyId);
+      const requiredId = await newItem(documentId, {
+        position: 1,
+        key: 'consent_to_take_part',
+      });
+      const optionalId = await newItem(documentId, {
+        position: 2,
+        key: 'may_contact_again',
+        required: false,
+      });
+      await publish(documentId);
+      return { studyId, participantId, documentId, requiredId, optionalId };
+    }
+
     it('rejects an item key that is not a machine key', async () => {
-      const { documentId, consentId, itemId } = await grantedConsent();
+      const { studyId, participantId, documentId, itemId } =
+        await publishedDocument();
 
       await expect(
-        insert('participant_consent_item_responses', {
-          team_id: TEAM_A,
-          participant_consent_id: consentId,
-          consent_document_id: documentId,
-          consent_item_id: itemId,
-          item_key: 'Not A Key',
-          affirmed: true,
-        }),
+        newConsent(studyId, participantId, documentId, {}, (consentId) => [
+          responseRow(consentId, documentId, itemId, { item_key: 'Not A Key' }),
+        ]),
       ).rejects.toMatchObject({
         constraint: 'participant_consent_item_responses_item_key_check',
       });
     });
 
     it('refuses an item from a document other than the one consented to', async () => {
-      const { studyId, documentId, itemId, consentId } = await grantedConsent();
+      const { studyId, participantId, documentId, itemId } =
+        await publishedDocument();
       const otherDocumentId = await newDocument(studyId, { version: 2 });
       const foreignItemId = await newItem(otherDocumentId);
-      const response = (consentItemId: string, consentDocumentId: string) =>
-        insert('participant_consent_item_responses', {
-          team_id: TEAM_A,
-          participant_consent_id: consentId,
-          consent_document_id: consentDocumentId,
-          consent_item_id: consentItemId,
-          item_key: 'may_contact_again',
-          affirmed: true,
-        });
+      const respond = (consentItemId: string, consentDocumentId: string) =>
+        newConsent(studyId, participantId, documentId, {}, (consentId) => [
+          responseRow(consentId, consentDocumentId, consentItemId),
+        ]);
 
       // Named under the consent's document, the item is not that document's…
-      await expect(response(foreignItemId, documentId)).rejects.toMatchObject({
+      await expect(respond(foreignItemId, documentId)).rejects.toMatchObject({
         code: '23503',
         constraint: 'participant_consent_item_responses_item_fk',
       });
       // …and named under its own document, the consent is not for it.
       await expect(
-        response(foreignItemId, otherDocumentId),
+        respond(foreignItemId, otherDocumentId),
       ).rejects.toMatchObject({
         code: '23503',
         constraint: 'participant_consent_item_responses_consent_fk',
       });
-      await expect(response(itemId, documentId)).resolves.toMatchObject({
-        rowCount: 1,
+      await expect(respond(itemId, documentId)).resolves.toMatch(
+        /^[0-9a-f-]{36}$/,
+      );
+    });
+
+    it("refuses an item key that is not the named item's own", async () => {
+      const { studyId, participantId, documentId, requiredId } =
+        await twoItemDocument();
+      const respond = (itemKey: string) =>
+        newConsent(studyId, participantId, documentId, {}, (consentId) => [
+          responseRow(consentId, documentId, requiredId, {
+            item_key: itemKey,
+          }),
+        ]);
+
+      // Both keys are real keys of the consented document, and both are
+      // syntactically valid, so only the item's own key can say which terms
+      // the exported answer belongs to.
+      await expect(respond('may_contact_again')).rejects.toMatchObject({
+        code: '23503',
+        constraint: 'participant_consent_item_responses_item_fk',
       });
+      await expect(respond('consent_to_take_part')).resolves.toMatch(
+        /^[0-9a-f-]{36}$/,
+      );
     });
 
     it('records one response per item and holds it immutable', async () => {
-      const { documentId, consentId, itemId } = await grantedConsent();
-      const response = {
-        team_id: TEAM_A,
-        participant_consent_id: consentId,
-        consent_document_id: documentId,
-        consent_item_id: itemId,
-        item_key: 'may_contact_again',
-        affirmed: false,
-      };
-      await insert('participant_consent_item_responses', response);
+      const { studyId, participantId, documentId, itemId } =
+        await publishedDocument();
 
       await expect(
-        insert('participant_consent_item_responses', response),
+        newConsent(studyId, participantId, documentId, {}, (consentId) => [
+          responseRow(consentId, documentId, itemId),
+          responseRow(consentId, documentId, itemId, { affirmed: false }),
+        ]),
       ).rejects.toMatchObject({
         constraint: 'participant_consent_item_responses_pkey',
       });
 
+      const consentId = await newConsent(studyId, participantId, documentId);
       await expect(
         pool.query(
-          `UPDATE participant_consent_item_responses SET affirmed = true
+          `UPDATE participant_consent_item_responses SET affirmed = false
            WHERE participant_consent_id = $1`,
           [consentId],
         ),
       ).rejects.toThrow('participant consent grants are immutable');
+    });
 
-      // DELETE stays open: participant erasure removes these rows.
+    it('refuses a response written after its grant commits', async () => {
+      const { studyId, participantId, documentId, requiredId, optionalId } =
+        await twoItemDocument();
+      const consentId = await newConsent(studyId, participantId, documentId);
+
+      // The optional item was left unanswered, which is the one response a
+      // later transaction could plausibly want to add — and the one that
+      // would rewrite what the participant agreed to.
       await expect(
-        pool.query(
-          `DELETE FROM participant_consent_item_responses
-           WHERE participant_consent_id = $1`,
-          [consentId],
+        insert(
+          'participant_consent_item_responses',
+          responseRow(consentId, documentId, optionalId),
         ),
+      ).rejects.toThrow(
+        'a consent response may only be written in the transaction that records its grant',
+      );
+
+      // The same row, written beside its own grant, is what the guard admits.
+      await expect(
+        newConsent(
+          studyId,
+          await newParticipant(studyId),
+          documentId,
+          {},
+          (id) => [
+            responseRow(id, documentId, requiredId, {
+              item_key: 'consent_to_take_part',
+            }),
+            responseRow(id, documentId, optionalId),
+          ],
+        ),
+      ).resolves.toMatch(/^[0-9a-f-]{36}$/);
+    });
+
+    it('deletes a response only under the erasure marker or the purge', async () => {
+      const { consentId, participantId } = await grantedConsent();
+      const bystander = await grantedConsent();
+      const remove = `DELETE FROM participant_consent_item_responses
+                      WHERE participant_consent_id = $1`;
+
+      await expect(tenantA.query(remove, [consentId])).rejects.toThrow(
+        'participant consent responses are deleted only by an audited erasure or the maintenance purge',
+      );
+      // The marker is proven through the response's own consent, so another
+      // participant's erasure cannot reach these rows.
+      await expect(
+        erasing(bystander.participantId, remove, [consentId]),
+      ).rejects.toThrow(
+        'participant consent responses are deleted only by an audited erasure or the maintenance purge',
+      );
+      await expect(
+        erasing(participantId, remove, [consentId]),
+      ).resolves.toMatchObject({ rowCount: 1 });
+
+      await expect(
+        maintenance.query(remove, [bystander.consentId]),
       ).resolves.toMatchObject({ rowCount: 1 });
     });
   });

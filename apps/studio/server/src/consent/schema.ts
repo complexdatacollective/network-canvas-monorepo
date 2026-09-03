@@ -16,7 +16,7 @@ import {
 
 import { teamIsolationPolicy, tenantTablesSql } from '@codaco/studio-sync/rls';
 
-import { STUDY_TABLES } from '../study/schema.ts';
+import { ERASURE_GUC, STUDY_TABLES } from '../study/schema.ts';
 
 const { studies, participants, interviewSessions } = STUDY_TABLES;
 
@@ -121,8 +121,11 @@ const consentItems = pgTable(
   },
   (table) => [
     unique().on(table.id, table.teamId),
-    // The identity a response proves its item through, document included.
-    unique().on(table.id, table.consentDocumentId, table.teamId),
+    // The identity a response proves its item through: the document AND the
+    // key. Without the key in the target, a response could name this item and
+    // carry a sibling item's key, and both of its foreign keys would still be
+    // satisfied — the copied key would then prove nothing about the terms.
+    unique().on(table.id, table.consentDocumentId, table.key, table.teamId),
     unique().on(table.consentDocumentId, table.position),
     unique().on(table.consentDocumentId, table.key),
     foreignKey({
@@ -160,6 +163,8 @@ const participantConsents = pgTable(
     consentDocumentId: uuid('consent_document_id').notNull(),
     // Copied at grant time: the document may later be retired, and the
     // record must still say what was agreed to without a join.
+    // `participant_consents_document_published` proves the copy is the
+    // document's own, so a well-formed digest cannot stand in for it.
     consentContentHash: text('consent_content_hash').notNull(),
     // Nullable: consent may be captured outside a session (researcher-led
     // onboarding) or inside one (fully remote onboarding).
@@ -248,11 +253,13 @@ const participantConsents = pgTable(
 // Which affirmation items the participant actually agreed to. Without this, an
 // optional item's answer is unrecoverable.
 //
-// The document is carried here so that both parents can be proven against it:
-// a response pairs a consent with an item, and only a key both share can
-// establish that the item belongs to the document version the participant
-// actually accepted. Without it, an immutable row could claim a participant
-// affirmed or declined terms that were never in the version they signed.
+// The document and the item's key are both carried here so that both parents
+// can be proven against them: a response pairs a consent with an item, and only
+// a key both share can establish that the item belongs to the document version
+// the participant actually accepted, and that the key exported beside the
+// answer is that item's own. Without them, an immutable row could claim a
+// participant affirmed or declined terms that were never in the version they
+// signed, or file a real answer under another term's name.
 const participantConsentItemResponses = pgTable(
   'participant_consent_item_responses',
   {
@@ -282,12 +289,21 @@ const participantConsentItemResponses = pgTable(
         participantConsents.teamId,
       ],
     }),
+    // The copied key rides in the key, so the item's identity includes it: a
+    // response that names a real item of the consented document but another
+    // item's key is refused declaratively, before any trigger runs.
     foreignKey({
       name: 'participant_consent_item_responses_item_fk',
-      columns: [table.consentItemId, table.consentDocumentId, table.teamId],
+      columns: [
+        table.consentItemId,
+        table.consentDocumentId,
+        table.itemKey,
+        table.teamId,
+      ],
       foreignColumns: [
         consentItems.id,
         consentItems.consentDocumentId,
+        consentItems.key,
         consentItems.teamId,
       ],
     }),
@@ -361,8 +377,9 @@ CREATE OR REPLACE TRIGGER consent_items_frozen
   BEFORE INSERT OR UPDATE OR DELETE ON consent_items
   FOR EACH ROW EXECUTE FUNCTION consent_items_are_frozen_after_publication();
 
--- The grant is evidence; only the withdrawal columns move. DELETE stays
--- open: participant erasure (#1270) removes these rows.
+-- The grant is evidence; only the withdrawal columns move. DELETE is guarded
+-- separately below, because participant erasure (#1270) legitimately removes
+-- these rows and ordinary application code never may.
 CREATE OR REPLACE FUNCTION participant_consent_grant_is_immutable() RETURNS trigger AS $$
 BEGIN
   RAISE EXCEPTION 'participant consent grants are immutable';
@@ -414,6 +431,160 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE TRIGGER participant_consents_session_own
   AFTER INSERT ON participant_consents
   FOR EACH ROW EXECUTE FUNCTION participant_consent_session_is_own();
+
+-- A grant records what the participant was actually shown. The composite key
+-- proves the document belongs to the consent's own study; only a lookup can
+-- prove the two things that make the record evidence rather than an assertion:
+-- that the document was published — a draft is still being edited, and its
+-- items are still moving — and that the copied hash is that document's own.
+-- Without the second, the column accepts any well-formed digest, and a record
+-- that cannot be tied back to the words it was taken against says nothing.
+--
+-- Once at insert is enough, because participant_consent_grant_immutable makes
+-- both columns immutable afterwards. AFTER the row, so the hash CHECK and the
+-- three keys report first.
+CREATE OR REPLACE FUNCTION participant_consent_document_is_published() RETURNS trigger AS $$
+DECLARE
+  document_state text;
+  document_hash text;
+BEGIN
+  SELECT d.state, d.content_hash INTO document_state, document_hash
+  FROM consent_documents d
+  WHERE d.id = NEW.consent_document_id AND d.team_id = NEW.team_id;
+  IF document_state IS DISTINCT FROM 'published' THEN
+    RAISE EXCEPTION 'a participant may only consent to a published document (%)', document_state;
+  END IF;
+  IF document_hash IS DISTINCT FROM NEW.consent_content_hash THEN
+    RAISE EXCEPTION 'a consent record must copy its own document''s content hash';
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER participant_consents_document_published
+  AFTER INSERT ON participant_consents
+  FOR EACH ROW EXECUTE FUNCTION participant_consent_document_is_published();
+
+-- A response is part of the grant, not a later annotation: it may only be
+-- written in the transaction that records its consent, the
+-- session_snapshots_insert_frozen pattern. Without this, an immutable row
+-- claiming a participant affirmed a term could be appended to a years-old
+-- grant in any later transaction, and nothing afterwards could tell it apart
+-- from what was captured at the time.
+--
+-- AFTER the row, so the item-key CHECK and the two keys report first.
+CREATE OR REPLACE FUNCTION participant_consent_response_is_written_at_grant() RETURNS trigger AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM participant_consents c
+    WHERE c.id = NEW.participant_consent_id AND c.team_id = NEW.team_id
+      AND c.xmin = pg_current_xact_id()::xid
+  ) THEN
+    RAISE EXCEPTION 'a consent response may only be written in the transaction that records its grant';
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER participant_consent_item_responses_insert_frozen
+  AFTER INSERT ON participant_consent_item_responses
+  FOR EACH ROW EXECUTE FUNCTION participant_consent_response_is_written_at_grant();
+
+-- The other half of that pair: a grant with no affirmation of a required item
+-- is not consent. The responses are written after their consent inside the one
+-- transaction, so this can only be asked at commit — hence a DEFERRABLE
+-- INITIALLY DEFERRED constraint trigger, the only form that runs then.
+-- Together with the trigger above, the set of responses a grant carries is
+-- fixed at the moment it commits and complete from that moment on.
+--
+-- Deliberately not SECURITY DEFINER, for the reason network_rows_parent_is_writable
+-- records: a definer function needs a pinned search_path, which breaks the
+-- scratch-schema isolation the suites rely on. It therefore reads under the
+-- committing transaction's own row visibility, which is the transaction that
+-- wrote the grant everywhere except the seed — the one caller that re-stamps
+-- the team GUC mid-transaction, and whose consents are written complete by
+-- construction.
+CREATE OR REPLACE FUNCTION participant_consent_required_items_are_affirmed() RETURNS trigger AS $$
+DECLARE
+  unaffirmed text;
+BEGIN
+  SELECT i.key INTO unaffirmed
+  FROM consent_items i
+  WHERE i.consent_document_id = NEW.consent_document_id
+    AND i.team_id = NEW.team_id
+    AND i.required
+    AND NOT EXISTS (
+      SELECT 1 FROM participant_consent_item_responses r
+      WHERE r.participant_consent_id = NEW.id
+        AND r.consent_item_id = i.id
+        AND r.affirmed
+    )
+  ORDER BY i.position
+  LIMIT 1;
+  IF unaffirmed IS NOT NULL THEN
+    RAISE EXCEPTION 'a consent grant must affirm every required item of its document (%)', unaffirmed;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- The one trigger here that cannot be CREATE OR REPLACEd: Postgres refuses
+-- that form for a constraint trigger outright. DROP IF EXISTS first buys the
+-- same idempotence, and a trigger cannot outlive the table it hangs off, so
+-- there is nothing for the drop to leave behind either.
+DROP TRIGGER IF EXISTS participant_consents_required_items_affirmed ON participant_consents;
+CREATE CONSTRAINT TRIGGER participant_consents_required_items_affirmed
+  AFTER INSERT ON participant_consents
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION participant_consent_required_items_are_affirmed();
+
+-- Deleting a consent record destroys the evidence that a participant agreed,
+-- so the same two paths that may delete a session or a snapshot may delete
+-- this, and nothing else may. The maintenance purge runs as
+-- \`studio_maintenance\`; participant erasure runs as \`studio_app\`, the same role
+-- as any buggy delete, and presents the transaction-scoped marker instead —
+-- proven here against the row's own participant, so it authorizes erasing
+-- exactly that participant's consent and no one else's.
+CREATE OR REPLACE FUNCTION participant_consent_delete_is_audited() RETURNS trigger AS $$
+DECLARE
+  marker text := NULLIF(current_setting('${ERASURE_GUC}', true), '');
+BEGIN
+  IF current_user = 'studio_maintenance'
+     OR (marker IS NOT NULL AND marker = OLD.participant_id::text) THEN
+    RETURN OLD;
+  END IF;
+  RAISE EXCEPTION 'participant consent grants are deleted only by an audited erasure or the maintenance purge';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER participant_consents_delete_audited
+  BEFORE DELETE ON participant_consents
+  FOR EACH ROW EXECUTE FUNCTION participant_consent_delete_is_audited();
+
+-- The same rule for the responses, whose participant is their consent's. The
+-- erasure deletes them before the grant they hang off, so the lookup still
+-- finds it.
+CREATE OR REPLACE FUNCTION participant_consent_response_delete_is_audited() RETURNS trigger AS $$
+DECLARE
+  marker text := NULLIF(current_setting('${ERASURE_GUC}', true), '');
+BEGIN
+  IF current_user = 'studio_maintenance' THEN
+    RETURN OLD;
+  END IF;
+  IF marker IS NOT NULL AND EXISTS (
+    SELECT 1 FROM participant_consents c
+    WHERE c.id = OLD.participant_consent_id AND c.team_id = OLD.team_id
+      AND c.participant_id::text = marker
+  ) THEN
+    RETURN OLD;
+  END IF;
+  RAISE EXCEPTION 'participant consent responses are deleted only by an audited erasure or the maintenance purge';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER participant_consent_item_responses_delete_audited
+  BEFORE DELETE ON participant_consent_item_responses
+  FOR EACH ROW EXECUTE FUNCTION participant_consent_response_delete_is_audited();
 ${tenantTablesSql([
   'consent_documents',
   'consent_items',

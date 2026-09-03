@@ -87,9 +87,13 @@ function extractMetadata(
     ...sidecarSql.matchAll(/ALTER TABLE\s+(\w+)\s+FORCE ROW LEVEL SECURITY;/g),
   ].map(([, table]) => table!);
 
+  // Both optional groups are for the deferred commit-time constraint trigger,
+  // which Postgres refuses to CREATE OR REPLACE: it is documented beside the
+  // immediate ones, with its DEFERRABLE clause landing in `body`, where the
+  // row-timing detail belongs.
   const triggers = [
     ...sidecarSql.matchAll(
-      /CREATE OR REPLACE TRIGGER\s+(\w+)\s+([\s\S]*?)\s+ON\s+(\w+)\s+([\s\S]*?)EXECUTE FUNCTION\s+(\w+)\(\);/g,
+      /CREATE (?:OR REPLACE )?(?:CONSTRAINT )?TRIGGER\s+(\w+)\s+([\s\S]*?)\s+ON\s+(\w+)\s+([\s\S]*?)EXECUTE FUNCTION\s+(\w+)\(\);/g,
     ),
   ].map(([, name, action, table, body, functionName]) => ({
     name: name!,
