@@ -275,6 +275,7 @@ vi.mock('../../lib/api.ts', () => ({
           teams: [{ teamId: 'team-a', role: 'owner' }],
         }),
       }),
+      key: () => ['me'],
     },
     status: {
       queryOptions: () => ({

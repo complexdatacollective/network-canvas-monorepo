@@ -114,6 +114,7 @@ vi.mock('../../lib/api.ts', () => ({
           teams: [{ teamId: 'team-a', role: 'owner' }],
         }),
       }),
+      key: () => ['me'],
     },
     // The header renders on every app route, and its study segment asks for
     // the team's studies — a real dependency of the shell these tests mount,

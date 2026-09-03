@@ -1,5 +1,7 @@
 ---
 '@codaco/studio-client': minor
+'@codaco/studio-rpc': minor
+'@codaco/studio-server': minor
 ---
 
 The header's two bespoke switchers are replaced by the shared
@@ -26,3 +28,12 @@ nothing can answer them yet: a team's study count, and a study's status. A
 team's role is not among them — it is shown for the team whose membership is
 actually known and omitted elsewhere, because a made-up role would be a false
 claim about what a researcher may do.
+
+`me` carries the caller's memberships now — every team they belong to, and
+their role in it — which is why `@codaco/studio-rpc` and
+`@codaco/studio-server` are versioned alongside the client. Better Auth's own
+team list joins the member table and then returns only the organization, so
+nothing else could tell the switcher what a researcher is in each of their
+teams. The role travels as a plain string rather than the role enum, because
+a legacy membership is stored as one comma-separated value and an enum would
+fail the whole response over it.

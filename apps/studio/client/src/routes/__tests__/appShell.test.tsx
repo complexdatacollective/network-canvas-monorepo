@@ -108,6 +108,7 @@ vi.mock('../../lib/api.ts', () => ({
           ],
         }),
       }),
+      key: () => ['me'],
     },
     status: {
       queryOptions: () => ({

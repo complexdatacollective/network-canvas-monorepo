@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import {
   useCallback,
   useEffect,
@@ -30,7 +31,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { TEAM_ROLES, type TeamRole } from '@codaco/studio-rpc';
 
-import { rpcClient } from '../lib/api.ts';
+import { orpc, rpcClient } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
 import { studioEmailPattern } from '../lib/emailValidation.ts';
 import {
@@ -93,6 +94,7 @@ function useTeamStateRefresh(
   activeTeam: TeamRefreshState['activeTeam'],
   activeMember: TeamRefreshState['activeMember'],
 ) {
+  const queryClient = useQueryClient();
   const latestState = useRef<TeamRefreshState>({
     activeMember,
     activeTeam,
@@ -130,6 +132,14 @@ function useTeamStateRefresh(
       const results = await Promise.allSettled([
         Promise.resolve().then(() => state.activeTeam.refetch()),
         Promise.resolve().then(() => state.activeMember.refetch()),
+        // `me` carries the caller's role in EVERY team, and the header's
+        // switcher badges every row from it. An owner may demote themselves
+        // while another owner remains, and the header outlives this screen —
+        // without this it would go on calling them Owner until something
+        // unrelated remounted it.
+        Promise.resolve().then(() =>
+          queryClient.invalidateQueries({ queryKey: orpc.me.key() }),
+        ),
       ]);
       if (
         !mounted.current ||
@@ -153,7 +163,7 @@ function useTeamStateRefresh(
       () => undefined,
     );
     return outcome;
-  }, []);
+  }, [queryClient]);
 }
 
 const TEAM_ROLE_OPTIONS = TEAM_ROLES.map((role) => ({
