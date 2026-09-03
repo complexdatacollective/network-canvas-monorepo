@@ -2,11 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from '@tanstack/react-router';
 
 import {
-  EntitySwitcher,
-  type EntitySwitcherItem,
-  type EntitySwitcherStatus,
-} from '@codaco/fresco-ui/navigation/EntitySwitcher';
-import { SwitcherLockup } from '@codaco/fresco-ui/navigation/SwitcherLockup';
+  WorkspaceAndTeamSwitcher,
+  type SwitcherItem,
+  type SwitcherSegment,
+  type SwitcherStatus,
+} from '@codaco/fresco-ui/navigation/WorkspaceAndTeamSwitcher';
 
 import { orpc } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
@@ -99,26 +99,24 @@ function currentTeam(
  * collecting, draft or closed. The dot the design shows is omitted rather than
  * driven from an invented field; it arrives with the studies model (#1262).
  */
-function StudySegment({
+function SwitcherWithWorkspace({
+  className,
   studyId,
+  team,
   teamId,
 }: {
+  className: string | undefined;
   studyId: string;
+  team: SwitcherSegment | undefined;
   teamId: string | undefined;
 }) {
   const navigate = useNavigate();
-  const studies = useQuery({
-    ...orpc.protocols.list.queryOptions({ input: { teamId: teamId ?? '' } }),
-    // No team to ask about — a study route on a session that has never
-    // switched teams names none, since nothing sets `activeOrganizationId`
-    // when a session is created.
-    enabled: teamId !== undefined,
-  });
+  const studies = useQuery(
+    orpc.protocols.list.queryOptions({ input: { teamId: teamId ?? '' } }),
+  );
 
   const listed = studies.data ?? [];
-  const siblings: EntitySwitcherItem[] = listed.some(
-    (study) => study.id === studyId,
-  )
+  const siblings: SwitcherItem[] = listed.some((study) => study.id === studyId)
     ? listed.map((study) => ({
         id: study.id,
         name: study.name,
@@ -142,39 +140,43 @@ function StudySegment({
 
   // A disabled query is `pending` for ever, so the wait has to be read against
   // whether there was anything to ask.
-  const status: EntitySwitcherStatus = studies.isError
+  const status: SwitcherStatus = studies.isError
     ? 'failed'
     : teamId !== undefined && studies.isPending
       ? 'loading'
       : 'ready';
 
+  const workspace: SwitcherSegment = {
+    kicker: STUDY_KICKER,
+    items: siblings,
+    currentId: studyId,
+    status,
+    onSelect: (id: string) =>
+      // Not awaited, and deliberately: a blocked navigation's promise parks
+      // rather than rejecting, and it resolves later on some unrelated commit
+      // (§6.5). Nothing after this depends on it.
+      void navigate({ to: '/study/$studyId', params: { studyId: id } }),
+    onRetry: () => void studies.refetch(),
+    failureMessage: 'The studies in this team could not be loaded.',
+    retryLabel: RETRY_LABEL,
+    // The way back to all of the team's studies, which §5.5 says the study
+    // chip always offers. It cannot come from the team segment instead:
+    // choosing the team already current is a no-op there, by design.
+    action:
+      teamId === undefined
+        ? undefined
+        : {
+            label: 'All studies in this team',
+            onSelect: () =>
+              void navigate({ to: '/team/$teamId', params: { teamId } }),
+          },
+  };
+
   return (
-    <EntitySwitcher
-      kicker={STUDY_KICKER}
-      items={siblings}
-      currentId={studyId}
-      status={status}
-      onSelect={(id) =>
-        // Not awaited, and deliberately: a blocked navigation's promise parks
-        // rather than rejecting, and it resolves later on some unrelated
-        // commit (§6.5). Nothing after this depends on it.
-        void navigate({ to: '/study/$studyId', params: { studyId: id } })
-      }
-      onRetry={() => void studies.refetch()}
-      failureMessage="The studies in this team could not be loaded."
-      retryLabel={RETRY_LABEL}
-      // The way back to all of the team's studies, which §5.5 says the study
-      // chip always offers. It cannot come from the team segment instead:
-      // choosing the team already current is a no-op there, by design.
-      action={
-        teamId === undefined
-          ? undefined
-          : {
-              label: 'All studies in this team',
-              onSelect: () =>
-                void navigate({ to: '/team/$teamId', params: { teamId } }),
-            }
-      }
+    <WorkspaceAndTeamSwitcher
+      className={className}
+      team={team}
+      workspace={workspace}
     />
   );
 }
@@ -226,7 +228,7 @@ export default function EntityLockup({ className }: { className?: string }) {
   // case either: Better Auth leaves that `data` in place, so those teams stay
   // in `items` and remain the researcher's way to every team they name, with
   // the failure and its retry beneath them.
-  const teamStatus: EntitySwitcherStatus = teams.error
+  const teamStatus: SwitcherStatus = teams.error
     ? 'failed'
     : teams.isPending
       ? 'loading'
@@ -239,69 +241,70 @@ export default function EntityLockup({ className }: { className?: string }) {
   const hasTeamSegment = teamStatus !== 'ready' || list.length > 0;
   const current = currentTeam(list, activeTeam.data, committedTeamId);
 
-  if (!hasTeamSegment && studyId === undefined) return null;
+  const teamSegment: SwitcherSegment | undefined = hasTeamSegment
+    ? {
+        kicker: TEAM_KICKER,
+        items: list.map((team) => ({
+          id: team.id,
+          name: team.name,
+          // PLACEHOLDER — see `switcherPlaceholders`. Nothing counts a team's
+          // studies yet.
+          meta: placeholderTeamMeta(team.id),
+          // NOT a placeholder, and deliberately absent rather than invented
+          // for the rest: `useActiveMember` answers for the active team only,
+          // so this is the one team whose role is actually known. A made-up
+          // role would be a false claim about what the researcher may do here.
+          badge: teamRole(activeMember.data, team.id),
+        })),
+        currentId: current?.id,
+        placeholder: 'Choose a team',
+        status: teamStatus,
+        onSelect: (id: string) =>
+          // Not awaited, for the reason `SwitcherWithWorkspace` records.
+          void navigate({ to: '/team/$teamId', params: { teamId: id } }),
+        onRetry: () => void teams.refetch(),
+        failureMessage: 'Your teams could not be loaded.',
+        retryLabel: RETRY_LABEL,
+        // Team administration beneath the list, as §5.5 places it: choosing a
+        // team and administering one are different acts, and the separator the
+        // switcher draws is what says so. It navigates rather than being a
+        // link because that is the shape the switcher's trailing command
+        // takes; the destination is a registered route either way, which is
+        // what `routeTable.test.tsx` asserts.
+        //
+        // "Create a team" belongs here too. It is a command rather than a
+        // destination — #1249 owns the flow and there is none — and an entry
+        // that opened nothing would be worse than its absence.
+        action: current && {
+          label: 'Team administration',
+          onSelect: () =>
+            void navigate({
+              to: '/team/$teamId/settings',
+              params: { teamId: current.id },
+            }),
+        },
+      }
+    : undefined;
 
-  return (
-    <SwitcherLockup className={className}>
-      {hasTeamSegment && (
-        <EntitySwitcher
-          kicker={TEAM_KICKER}
-          items={list.map((team) => ({
-            id: team.id,
-            name: team.name,
-            // PLACEHOLDER — see `switcherPlaceholders`. Nothing counts a
-            // team's studies yet.
-            meta: placeholderTeamMeta(team.id),
-            // NOT a placeholder, and deliberately absent rather than invented
-            // for the rest: `useActiveMember` answers for the active team
-            // only, so this is the one team whose role is actually known. A
-            // made-up role would be a false claim about what the researcher
-            // may do here.
-            badge: teamRole(activeMember.data, team.id),
-          }))}
-          currentId={current?.id}
-          placeholder="Choose a team"
-          status={teamStatus}
-          onSelect={(id) =>
-            // Not awaited, for the reason `StudySegment` records.
-            void navigate({ to: '/team/$teamId', params: { teamId: id } })
-          }
-          onRetry={() => void teams.refetch()}
-          failureMessage="Your teams could not be loaded."
-          retryLabel={RETRY_LABEL}
-          // Team administration beneath the list, as §5.5 places it: choosing
-          // a team and administering one are different acts, and the separator
-          // the switcher draws is what says so. It navigates rather than being
-          // a link because that is the shape the switcher's trailing command
-          // takes; the destination is a registered route either way, which is
-          // what `routeTable.test.tsx` asserts.
-          //
-          // "Create a team" belongs here too. It is a command rather than a
-          // destination — #1249 owns the flow and there is none — and an entry
-          // that opened nothing would be worse than its absence.
-          action={
-            current && {
-              label: 'Team administration',
-              onSelect: () =>
-                void navigate({
-                  to: '/team/$teamId/settings',
-                  params: { teamId: current.id },
-                }),
-            }
-          }
-        />
-      )}
-      {studyId !== undefined && (
-        <StudySegment
-          studyId={studyId}
-          // Whose team? A study's team is derivable only from the study (§6.3,
-          // and §5.6's reason for keeping the team out of the URL), so on a
-          // study route this is the active-team setting — the same fallback
-          // `currentTeam` above makes for the team segment, and the one the
-          // chip this replaces made.
-          teamId={committedTeamId ?? activeTeam.data?.id}
-        />
-      )}
-    </SwitcherLockup>
-  );
+  // The workspace segment is a component of its own for one reason: it asks
+  // `protocols.list`, and mounting it only where a study is open is what keeps
+  // the header — which is on every app route — off that procedure everywhere
+  // else.
+  //
+  // Whose team? A study's team is derivable only from the study (§6.3, and
+  // §5.6's reason for keeping the team out of the URL), so on a study route
+  // this is the active-team setting — the same fallback `currentTeam` above
+  // makes for the team segment, and the one the chip this replaces made.
+  if (studyId !== undefined) {
+    return (
+      <SwitcherWithWorkspace
+        className={className}
+        studyId={studyId}
+        team={teamSegment}
+        teamId={committedTeamId ?? activeTeam.data?.id}
+      />
+    );
+  }
+
+  return <WorkspaceAndTeamSwitcher className={className} team={teamSegment} />;
 }

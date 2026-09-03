@@ -169,13 +169,23 @@ function pressOption(option: HTMLElement): void {
   fireEvent.click(option);
 }
 
+/**
+ * How many segments the switcher is drawing.
+ *
+ * The segments are direct children of the frame that borders them — there is
+ * no wrapper element between — so the frame is the trigger's own parent. This
+ * is the oracle that separates "the study segment is absent" from "the study
+ * segment is present but empty", which is the distinction the control makes.
+ */
 function lockupSegments(): number {
   const trigger = screen.getByRole('combobox', { name: /^Team/ });
-  const box = trigger.parentElement?.parentElement;
-  if (box === null || box === undefined) {
+  const frame = trigger.parentElement;
+  if (frame === null) {
     throw new Error('the team switcher is not inside a lockup');
   }
-  return box.children.length;
+  // Marked segments rather than child elements: Base UI renders a hidden form
+  // control beside each trigger, so the frame has two children per segment.
+  return frame.querySelectorAll('[data-switcher-segment]').length;
 }
 
 beforeEach(() => {

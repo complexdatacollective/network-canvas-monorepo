@@ -9,25 +9,25 @@ import { usePortalContainer } from '../PortalContainer';
 import { Skeleton } from '../Skeleton';
 import { cx } from '../utils/cva';
 
-export type EntitySwitcherStatus = 'ready' | 'loading' | 'failed';
+export type SwitcherStatus = 'ready' | 'loading' | 'failed';
 
-export type EntitySwitcherItem = {
+export type SwitcherItem = {
   /** Stable id. Identifies the item to `onSelect` and colours its mark. */
   id: string;
   /** The entity's name, shown whole in the list and truncated in the trigger. */
   name: string;
-  /** A secondary line under the name — a role, an owner, a count. */
+  /** A secondary line under the name — a role, an owner, a count, a status. */
   meta?: string;
-  /** A short status word shown as a chip — "Draft", "Archived". */
+  /** A short status word shown as a chip — "Owner", "Draft". */
   badge?: string;
   /**
-   * Replaces this one item's mark. A status dot for a study whose state
+   * Replaces this one item's mark. A status pip for a study whose state
    * matters more than its identity, say. Takes precedence over `renderMark`.
    */
   leading?: ReactNode;
 };
 
-type EntitySwitcherBaseProps = {
+type SwitcherSegmentBase = {
   /**
    * The whole translated word above the name — "Team", "Study".
    *
@@ -38,7 +38,7 @@ type EntitySwitcherBaseProps = {
    */
   kicker: string;
   /** The entity being acted in, and its siblings. */
-  items: ReadonlyArray<EntitySwitcherItem>;
+  items: ReadonlyArray<SwitcherItem>;
   /**
    * The entity being acted in. `undefined` — or an id no item names — leaves
    * the trigger showing `placeholder`, and leaves every option unselected.
@@ -48,19 +48,17 @@ type EntitySwitcherBaseProps = {
   onSelect: (id: string) => void;
   /**
    * Stands in for the name when `currentId` names nothing in `items` — the
-   * host's translated "Choose a team". Without it the trigger shows the
-   * kicker alone.
+   * host's translated "Choose a team".
    */
   placeholder?: string;
   /** A trailing command under the list — "Create a team". */
   action?: { label: string; onSelect: () => void };
   /**
    * Replaces the default `IdentityMark` in both the trigger and the list — a
-   * status dot, an avatar, or nothing at all. `item.leading` wins over it for
+   * status pip, an avatar, or nothing at all. `item.leading` wins over it for
    * a single item.
    */
-  renderMark?: (item: EntitySwitcherItem) => ReactNode;
-  className?: string;
+  renderMark?: (item: SwitcherItem) => ReactNode;
 };
 
 /**
@@ -74,7 +72,7 @@ type EntitySwitcherBaseProps = {
  * retry admits every status, and omitting it admits only the two that do not
  * need one.
  */
-type EntitySwitcherRecoveryProps =
+type SwitcherRecovery =
   | {
       status?: 'ready' | 'loading';
       onRetry?: undefined;
@@ -82,7 +80,7 @@ type EntitySwitcherRecoveryProps =
       retryLabel?: undefined;
     }
   | {
-      status?: EntitySwitcherStatus;
+      status?: SwitcherStatus;
       /** Re-runs whatever failed to produce `items`. */
       onRetry: () => void;
       /** Translated, and short: "Your teams could not be loaded." */
@@ -91,32 +89,46 @@ type EntitySwitcherRecoveryProps =
       retryLabel: string;
     };
 
-export type EntitySwitcherProps = EntitySwitcherBaseProps &
-  EntitySwitcherRecoveryProps;
+export type SwitcherSegment = SwitcherSegmentBase & SwitcherRecovery;
+
+export type WorkspaceAndTeamSwitcherProps = {
+  /**
+   * The outer segment: the team whose work is on screen. Omit it where there
+   * is no team to name — a researcher who belongs to none, or a workspace
+   * opened before its team is known.
+   */
+  team?: SwitcherSegment;
+  /**
+   * The inner segment: the workspace open inside that team. Omit it entirely
+   * where none is — the control then draws as one segment rather than as two
+   * with an empty compartment.
+   */
+  workspace?: SwitcherSegment;
+  className?: string;
+};
 
 /**
- * Below this the trigger keeps only its mark and its caret.
+ * Below this a segment keeps only its mark and its caret.
  *
- * A CONTAINER query, not a viewport breakpoint: a switcher can sit in the app
- * header, in a narrow side panel, or in a dialog, and what decides whether
- * the name fits is the width it was given, not the width of the window.
- * Unnamed, so it resolves against the nearest container — `SwitcherLockup`
- * provides one; standalone, wrap the switcher in `@container`.
+ * A CONTAINER query, not a viewport breakpoint: this control sits in the app
+ * header, and could sit in a narrow side panel or a dialog. What decides
+ * whether the names fit is the width it was given, not the width of the
+ * window.
  *
  * `sr-only` rather than `hidden`. The accessible-name algorithm skips hidden
  * nodes unless `aria-labelledby` references them directly, and while these
- * two spans ARE referenced directly, relying on that exception across
- * engines to keep a control named is not worth the risk. `sr-only` clips the
- * text out of the layout while leaving it rendered, so the name computes the
- * same way collapsed or not.
+ * two spans ARE referenced directly, relying on that exception across engines
+ * to keep a control named is not worth the risk. `sr-only` clips the text out
+ * of the layout while leaving it rendered, so the name computes the same way
+ * collapsed or not.
  */
 const COLLAPSE_CLASS = '@max-[34rem]:sr-only';
 
 /**
- * A floor and a cap that step up together, so the trigger neither collapses
- * onto a two-character name nor eats a header with a long one. The skeleton
- * fills the same floor, which is what keeps the header from reflowing when
- * the name arrives.
+ * A floor and a cap that step up together, so a segment neither collapses onto
+ * a two-character name nor eats the header with a long one. The skeleton fills
+ * the same floor, which is what keeps the header from reflowing when the name
+ * arrives.
  */
 const NAME_WIDTH_CLASS = cx(
   'max-w-[10rem] min-w-[6rem]',
@@ -125,36 +137,34 @@ const NAME_WIDTH_CLASS = cx(
 );
 
 /**
- * The trigger's face, drawn on Base UI's own button rather than on this
- * package's `Button`.
+ * A segment's face.
  *
- * It takes the field surface — `bg-input`, the field radius and the field's
- * horizontal padding — because that is what it is: a control holding a value
- * you can change, sitting in a header beside other controls. Reading as a
- * field rather than as a button is what tells a researcher it can be changed
- * at all, without the weight of something that performs an action.
+ * **No radius of its own, deliberately.** The frame around the segments clips,
+ * so a segment paints a plain rectangle and the frame decides where the
+ * corners are. Giving the segment a radius too is what used to leave a thin
+ * crescent between its surface and the border: a 14px curve painted inside the
+ * 13px curve of a 1px border does not follow it, and the mismatch showed
+ * wherever a segment was hovered or open.
  *
- * Open takes `--selected`, the semantic every other "this is the one in
- * force" surface in the system uses, rather than an accent picked for this
- * component. The open trigger and the checked row in its list are then the
- * same colour, which is the point: they are the same fact stated twice.
+ * The focus ring is drawn INSIDE for the same reason. `focus-styles` offsets
+ * the outline 3px outwards, which is precisely what the frame would clip, so
+ * the offset is inverted here and the ring hugs the inside of the segment.
  *
  * `not-data-popup-open:` rather than source order on the hover rule. Both are
  * single-class selectors, so which one wins is decided by Tailwind's own
  * emission order and not by the order they are written in here; excluding the
  * open state from the hover rule makes the outcome independent of that.
  */
-const TRIGGER_CLASS = cx(
-  'flex min-w-0 cursor-pointer items-center gap-2 rounded-sm px-3 py-2',
-  'bg-input text-input-contrast',
-  'border border-transparent text-start transition-colors',
-  'focusable',
+const SEGMENT_CLASS = cx(
+  'flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-3 py-2',
+  'bg-input text-input-contrast text-start transition-colors',
+  'focusable focus-visible:outline-offset-[-3px]',
   'not-data-popup-open:hover:bg-input-contrast/8',
   'data-popup-open:bg-selected data-popup-open:text-selected-contrast',
 );
 
 /**
- * The rows under the list — the retry and the action. They are plain buttons
+ * The rows under a list — the retry and the action. They are plain buttons
  * outside `Select.List`, so they carry their own hover and focus treatment
  * rather than Base UI's `data-highlighted`, which only the options get.
  */
@@ -165,12 +175,12 @@ const ROW_CLASS = cx(
   'focus-visible:bg-surface-2 focus-visible:text-surface-2-contrast',
 );
 
-/** A rule between the list and the rows that follow it. */
+/** A rule between a list and the rows that follow it. */
 const SEPARATOR_CLASS = 'border-outline my-1 border-t';
 
 function markFor(
-  item: EntitySwitcherItem,
-  renderMark: EntitySwitcherProps['renderMark'],
+  item: SwitcherItem,
+  renderMark: SwitcherSegment['renderMark'],
   size: 'sm' | 'md',
 ): ReactNode {
   if (item.leading !== undefined) return item.leading;
@@ -179,111 +189,20 @@ function markFor(
 }
 
 /**
- * The trigger's face: mark, the kicker-over-name column, and — where the
- * list can be opened — the caret.
- *
- * Shared by the interactive and the inert trigger so the two occupy the same
- * space and read the same way. The caret is the only difference the reader
- * sees, and it is exactly what tells them whether there is a list.
+ * One segment of the control. Private on purpose: a team switcher and a
+ * workspace switcher are the same control with different words, and exporting
+ * this would invite a second, differently-behaved arrangement of them.
  */
-function SwitcherFace({
-  caret,
-  kicker,
-  kickerId,
-  loading,
-  mark,
-  name,
-  nameId,
+function Segment({
+  divided,
+  segment,
 }: {
-  caret: boolean;
-  kicker: string;
-  kickerId: string;
-  loading: boolean;
-  mark: ReactNode;
-  name: string | undefined;
-  nameId: string;
+  /** Draws the rule that separates this segment from the one before it. */
+  divided: boolean;
+  segment: SwitcherSegment;
 }) {
-  return (
-    <>
-      {mark}
-      <span className={cx('flex min-w-0 flex-col items-start', COLLAPSE_CLASS)}>
-        <span
-          id={kickerId}
-          className="text-2xs leading-tight font-semibold uppercase opacity-70"
-        >
-          {kicker}
-        </span>
-        <span
-          id={nameId}
-          title={name}
-          className={cx(
-            'truncate text-sm leading-tight font-semibold',
-            NAME_WIDTH_CLASS,
-          )}
-        >
-          {loading ? (
-            <Skeleton className="inline-block h-[0.9em] w-full rounded-xs align-middle" />
-          ) : (
-            name
-          )}
-        </span>
-      </span>
-      {caret ? (
-        <ChevronDown aria-hidden data-caret className="shrink-0 opacity-70" />
-      ) : null}
-    </>
-  );
-}
-
-/**
- * The control a researcher uses to see which entity they are acting in, and
- * to move to a sibling of it.
- *
- * One component, configured — a team switcher and a study switcher differ
- * only in their `kicker` and their `items`, and two components would be two
- * places for the same keyboard behaviour, the same failure handling and the
- * same collapse rule to drift apart.
- *
- * ```tsx
- * <EntitySwitcher
- *   kicker={t('team')}
- *   items={teams}
- *   currentId={teamId}
- *   onSelect={(id) => void navigate({ to: '/team/$teamId', params: { teamId: id } })}
- *   action={{ label: t('createTeam'), onSelect: openCreateTeam }}
- * />
- * ```
- *
- * **A listbox, not a menu.** Choosing which of several siblings you are
- * acting in is a selection, not a command, and Base UI's `Select` is the part
- * built for it: the options are `option`s inside a `listbox`, the current one
- * is `aria-selected`, and — the reason for using it here — opening the list
- * lands the reader ON the current entity rather than at the top. `Menu` has
- * no `selectedIndex` and no `initialFocus`, so with it the reader always
- * started on the first sibling and had to walk to where they already were.
- *
- * **The list stays a pure listbox.** The retry and the action are children of
- * the popup but NOT of `Select.List`, because a `listbox` may only contain
- * options — a command sitting among them would be announced as one more
- * entity to switch to.
- *
- * **A list of one is a dead end.** With nothing to switch to, no command and
- * no failure to retry, the trigger renders inert: no caret, no list, and not
- * in the tab order, because a control that opens a list naming only where you
- * already are wastes a tab stop and tells the reader nothing.
- *
- * **A failed list is not an empty one.** On `status="failed"` the trigger
- * stays exactly where it was — it must never silently vanish, which strands
- * the researcher with no way back — and the popup carries the failure and its
- * retry, alongside any items that were already in hand.
- *
- * **Loading reserves its space.** The skeleton fills the same name width the
- * name will, so the header does not jump when the query settles.
- */
-export function EntitySwitcher(props: EntitySwitcherProps) {
   const {
     action,
-    className,
     currentId,
     failureMessage,
     items,
@@ -294,7 +213,7 @@ export function EntitySwitcher(props: EntitySwitcherProps) {
     renderMark,
     retryLabel,
     status = 'ready',
-  } = props;
+  } = segment;
   const kickerId = useId();
   const nameId = useId();
   const failureId = useId();
@@ -313,40 +232,63 @@ export function EntitySwitcher(props: EntitySwitcherProps) {
   const loading = status === 'loading';
 
   // What the list is for. Any one of these is enough to make opening it worth
-  // a tab stop; none of them means the trigger is a label with a border.
-  const hasMenu = failed || action !== undefined || items.length > 1;
+  // a tab stop; none of them means the segment is a label in a frame.
+  const hasList = failed || action !== undefined || items.length > 1;
 
   const face = (
-    <SwitcherFace
-      caret={hasMenu}
-      kicker={kicker}
-      kickerId={kickerId}
-      loading={loading}
-      mark={
-        loading ? (
-          // The mark's own space, reserved with it: a trigger that gains a
-          // tile when the name arrives shifts the whole header sideways,
-          // which is the reflow the skeleton exists to prevent.
-          <Skeleton className="size-8 shrink-0 rounded-xs" />
-        ) : current ? (
-          markFor(current, renderMark, 'md')
-        ) : null
-      }
-      name={current?.name ?? (loading ? undefined : placeholder)}
-      nameId={nameId}
-    />
+    <>
+      {loading ? (
+        // The mark's own space, reserved with it: a segment that gains a tile
+        // when the name arrives shifts the whole header sideways, which is the
+        // reflow the skeleton exists to prevent.
+        <Skeleton className="size-8 shrink-0 rounded-xs" />
+      ) : current ? (
+        markFor(current, renderMark, 'md')
+      ) : null}
+      <span className={cx('flex min-w-0 flex-col items-start', COLLAPSE_CLASS)}>
+        <span
+          id={kickerId}
+          className="text-2xs leading-tight font-semibold uppercase opacity-70"
+        >
+          {kicker}
+        </span>
+        <span
+          id={nameId}
+          title={current?.name}
+          className={cx(
+            'truncate text-sm leading-tight font-semibold',
+            NAME_WIDTH_CLASS,
+          )}
+        >
+          {loading ? (
+            <Skeleton className="inline-block h-[0.9em] w-full rounded-xs align-middle" />
+          ) : (
+            (current?.name ?? placeholder)
+          )}
+        </span>
+      </span>
+      {hasList ? (
+        <ChevronDown aria-hidden data-caret className="shrink-0 opacity-70" />
+      ) : null}
+    </>
   );
 
-  if (!hasMenu) {
+  const divider = divided ? 'border-outline border-s' : undefined;
+
+  if (!hasList) {
     return (
       /*
         Not a button and not focusable: there is nothing to activate. The two
         spans are read in document order, so no `aria-labelledby` is needed
-        here — that wiring exists on the interactive trigger only because a
+        here — that wiring exists on the interactive segment only because a
         control's name is COMPUTED rather than read.
       */
       <span
-        className={cx('flex min-w-0 items-center gap-2 px-3 py-1.5', className)}
+        data-switcher-segment
+        className={cx(
+          'bg-input text-input-contrast flex min-w-0 flex-1 items-center gap-2 px-3 py-2',
+          divider,
+        )}
         aria-busy={loading || undefined}
       >
         {face}
@@ -373,20 +315,26 @@ export function EntitySwitcher(props: EntitySwitcherProps) {
       }}
     >
       <Select.Trigger
-        className={cx(TRIGGER_CLASS, className)}
+        /*
+          Marks what IS a segment. `Select` renders a hidden form control
+          beside its trigger, so counting the frame's children counts those
+          too — this is what lets a caller (or a test) ask how many segments
+          are drawn and get the number a reader would see.
+        */
+        data-switcher-segment
+        className={cx(SEGMENT_CLASS, divider)}
         aria-busy={loading || undefined}
         /*
           A whole translated word and a datum, joined into "Team SONIC Lab" by
           the accessible-name algorithm rather than by JavaScript. An
-          `aria-label` would REPLACE the visible name instead of qualifying
-          it, and a template string would bake English word order into the
-          name.
+          `aria-label` would REPLACE the visible name instead of qualifying it,
+          and a template string would bake English word order into the name.
 
-          Referenced by id rather than left to the control's own contents:
-          text concatenation inserts a space only between BLOCK-level
-          children, and these two are inline, so the computed name would read
-          "TeamSONIC Lab". Multiple `aria-labelledby` references are always
-          joined with a space.
+          Referenced by id rather than left to the control's own contents: text
+          concatenation inserts a space only between BLOCK-level children, and
+          these two are inline, so the computed name would read "TeamSONIC
+          Lab". Multiple `aria-labelledby` references are always joined with a
+          space.
         */
         aria-labelledby={`${kickerId} ${nameId}`}
       >
@@ -421,7 +369,7 @@ export function EntitySwitcher(props: EntitySwitcherProps) {
                   heading is not itself announced as something to choose.
                 */}
                 <Select.Group>
-                  <Select.GroupLabel className="px-2 py-1 text-xs font-semibold tracking-wide uppercase opacity-70">
+                  <Select.GroupLabel className="text-2xs px-2 py-1 font-semibold uppercase opacity-70">
                     {kicker}
                   </Select.GroupLabel>
                   {items.map((item) => (
@@ -454,18 +402,15 @@ export function EntitySwitcher(props: EntitySwitcherProps) {
                       </Select.ItemText>
                       {item.badge !== undefined && (
                         /*
-                          A filled chip rather than an outlined one, and at
-                          full strength rather than dimmed: it has to read on
-                          two different grounds — the popup surface, and
+                          A filled chip rather than an outlined one, and at full
+                          strength rather than dimmed: it has to read on two
+                          different grounds — the popup surface, and
                           `--selected` on whichever row is current — and an
                           outline at 70% was faint on both.
 
                           `bg-current` tints with the row's OWN text colour, so
                           the chip follows the row it is on instead of being
-                          pinned to one surface: on the selected row that is
-                          `--selected-contrast`, everywhere else the popup's
-                          foreground. One rule, correct on both, and it cannot
-                          drift when either surface is re-themed.
+                          pinned to one surface.
                         */
                         <span className="text-2xs shrink-0 rounded-full bg-current/15 px-2 py-0.5 font-semibold uppercase">
                           {item.badge}
@@ -493,10 +438,9 @@ export function EntitySwitcher(props: EntitySwitcherProps) {
                   <Select.Separator className={SEPARATOR_CLASS} />
                 )}
                 {/*
-                  `aria-describedby` rather than the group-label wiring a menu
-                  allowed: outside the listbox there is no group to label, and
-                  a retry announced on its own does not say what it is a retry
-                  FOR.
+                  `aria-describedby` rather than a group label: outside the
+                  listbox there is no group to label, and a retry announced on
+                  its own does not say what it is a retry FOR.
                 */}
                 <p
                   id={failureId}
@@ -539,10 +483,9 @@ export function EntitySwitcher(props: EntitySwitcherProps) {
                   )}
                 >
                   {/*
-                    A dashed tile where a mark would be, at the mark's own
-                    size: the row lines up with the entities above it and
-                    still reads as "make a new one" rather than "here is
-                    another one".
+                    A dashed tile where a mark would be, at the mark's own size:
+                    the row lines up with the entities above it and still reads
+                    as "make a new one" rather than "here is another one".
                   */}
                   <span className="border-outline flex size-6 shrink-0 items-center justify-center rounded-xs border-2 border-dashed">
                     <Plus aria-hidden className="size-3.5" />
@@ -555,5 +498,83 @@ export function EntitySwitcher(props: EntitySwitcherProps) {
         </Select.Positioner>
       </Select.Portal>
     </Select.Root>
+  );
+}
+
+/**
+ * Where a researcher is, and how they move: the team whose work is on screen,
+ * and the workspace open inside it, as one control.
+ *
+ * ```tsx
+ * <WorkspaceAndTeamSwitcher
+ *   team={{ kicker: t('team'), items: teams, currentId: teamId, onSelect: goToTeam }}
+ *   workspace={study && { kicker: t('study'), items: studies, currentId: study.id, onSelect: openStudy }}
+ * />
+ * ```
+ *
+ * **One component, not two composed ones.** The segments share a frame, and a
+ * frame drawn by one component around controls drawn by another has to agree
+ * with them about radius, height and where a painted surface stops — three
+ * things that went wrong separately while this was a lockup wrapping generic
+ * switchers. Here the frame and the segments are the same component's markup,
+ * so they cannot disagree.
+ *
+ * **The frame clips; the segments have no corners.** The frame owns the border
+ * and the radius and hides its overflow, so each segment paints a plain
+ * rectangle into it and the corners come out right by construction rather than
+ * by two radii being kept in step. The segments stretch rather than centring,
+ * so a segment holding a 32px mark and one holding a status pip still meet the
+ * frame top and bottom.
+ *
+ * **The workspace segment is absent, not empty.** Pass no `workspace` and the
+ * control draws as one segment: there is no divider and no empty compartment,
+ * because there is nothing there.
+ *
+ * **A listbox, not a menu.** Choosing which of several siblings you are acting
+ * in is a selection, not a command, and Base UI's `Select` is the part built
+ * for it: options inside a `listbox`, the current one `aria-selected`, and —
+ * the reason for using it — opening lands the reader ON the current entity
+ * rather than at the top.
+ *
+ * **A list of one is a dead end.** With nothing to switch to, no command and
+ * no failure to retry, a segment renders inert: no caret, no list, and not in
+ * the tab order.
+ *
+ * **A failed list is not an empty one.** On `status="failed"` the segment stays
+ * exactly where it was — it must never silently vanish, which strands the
+ * researcher with no way back — and the popup carries the failure and its
+ * retry, alongside any items already in hand.
+ *
+ * The host must give this a width it does not derive from its contents: as a
+ * block-level child that is automatic, and in a flex or grid row it means
+ * `flex-1`, `w-full`, or a sized track. `container-type: inline-size` applies
+ * inline-size containment, so an element that sized itself to its contents
+ * would measure zero and hold every segment in its collapsed presentation.
+ */
+export function WorkspaceAndTeamSwitcher({
+  className,
+  team,
+  workspace,
+}: WorkspaceAndTeamSwitcherProps) {
+  // Nothing to name is not an empty frame: a bordered box holding no segment
+  // reads as a control that failed to load rather than as the absence of one.
+  if (!team && !workspace) return null;
+
+  return (
+    <div className={cx('@container min-w-0', className)}>
+      <div
+        className={cx(
+          'border-outline inline-flex max-w-full min-w-0 items-stretch',
+          // The frame's whole job: one border, one radius, and the clip that
+          // lets the segments inside it stay square.
+          'overflow-hidden rounded-sm border',
+        )}
+      >
+        {team && <Segment divided={false} segment={team} />}
+        {workspace && (
+          <Segment divided={team !== undefined} segment={workspace} />
+        )}
+      </div>
+    </div>
   );
 }

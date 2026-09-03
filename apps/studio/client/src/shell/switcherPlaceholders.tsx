@@ -46,14 +46,9 @@ function hash(value: string): number {
   return result >>> 0;
 }
 
-/** PLACEHOLDER. How many studies a team holds. */
-export function placeholderStudyCount(teamId: string): number {
-  return 1 + (hash(`${teamId}::studies`) % 14);
-}
-
 /** PLACEHOLDER. A team's study count, as the switcher's supporting line. */
 export function placeholderTeamMeta(teamId: string): string {
-  const count = placeholderStudyCount(teamId);
+  const count = 1 + (hash(`${teamId}::studies`) % 14);
   // Whole strings rather than a stitched-together plural: the two readings
   // differ by more than an "s" in most languages this will be translated into.
   return count === 1 ? '1 study' : `${count} studies`;
