@@ -126,21 +126,29 @@ export async function seedAuditEvents(
     });
   }
 
-  events.push({
-    ...actor,
-    eventVersion: 1,
-    eventType: 'audit.read_denied',
-    category: 'audit',
-    outcome: 'denied',
-    requestId: seedUuid(),
-    subjectType: null,
-    subjectId: null,
-    subjectLabel: null,
-    resourceType: null,
-    resourceId: null,
-    resourceLabel: null,
-    details: { procedure: 'audit.list', reason: 'insufficient_permission' },
-  });
+  // A denial the real audit-read rule could produce: owners and admins hold
+  // audit.read, so the actor is a plain member — and a team without one
+  // records no denial rather than an impossible one.
+  const denied = team.members.find((member) => member.role === 'member');
+  if (denied !== undefined) {
+    events.push({
+      ...actor,
+      actorId: denied.userId,
+      actorLabel: denied.name,
+      eventVersion: 1,
+      eventType: 'audit.read_denied',
+      category: 'audit',
+      outcome: 'denied',
+      requestId: seedUuid(),
+      subjectType: null,
+      subjectId: null,
+      subjectLabel: null,
+      resourceType: null,
+      resourceId: null,
+      resourceLabel: null,
+      details: { procedure: 'audit.list', reason: 'insufficient_permission' },
+    });
+  }
 
   for (const event of events) {
     await auditStore.append(client, event);

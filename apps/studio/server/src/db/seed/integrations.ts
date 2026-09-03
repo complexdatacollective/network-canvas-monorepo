@@ -200,20 +200,16 @@ export async function seedWebhooks(
       createdAt,
       createdAt,
     ]);
-    if (disabled) {
-      disablements.push({
-        id,
-        failures: faker.number.int({ min: 5, max: 20 }),
-        lastFailureAt: shiftDays(createdAt, 60),
-        disabledAt: shiftDays(createdAt, 61),
-      });
-    }
-
     const deliveries = faker.number.int({ min: 5, max: 20 });
+    // What the disablement is derived from: the failures the deliveries
+    // below actually record, so the counter, the last failure and the
+    // moment the endpoint was disabled all point at rows in its history.
+    const failedAt: Date[] = [];
     for (let delivery = 0; delivery < deliveries; delivery++) {
       const enqueuedAt = shiftMinutes(createdAt, delivery * 173);
       const failed = disabled || delivery % 7 === 6;
       const pending = !failed && delivery % 11 === 10;
+      if (failed) failedAt.push(shiftMinutes(enqueuedAt, 30));
       deliveryRows.push([
         seedUuid(),
         team.id,
@@ -235,6 +231,15 @@ export async function seedWebhooks(
         failed ? 'endpoint returned 502' : null,
         enqueuedAt,
       ]);
+    }
+    if (disabled) {
+      const lastFailureAt = failedAt.at(-1)!;
+      disablements.push({
+        id,
+        failures: failedAt.length,
+        lastFailureAt,
+        disabledAt: shiftMinutes(lastFailureAt, 1),
+      });
     }
   }
 

@@ -73,15 +73,23 @@ export function isLocalDatabase(url: string): boolean {
     // node-postgres lets the query string override the authority's host
     // (`?host=` and `?hostaddr=`), and connects to THAT. Judging the
     // authority alone would call `…@localhost/db?host=remote.example` local
-    // and let the automatic dev-boot reset drop a remote schema. The
-    // effective host is the override when there is one; a Unix socket path
-    // is this machine by definition.
-    const override =
-      parsed.searchParams.get('hostaddr') ?? parsed.searchParams.get('host');
-    if (override !== null) {
-      return override.startsWith('/') || LOOPBACK_HOSTS.has(override);
-    }
-    return LOOPBACK_HOSTS.has(parsed.hostname);
+    // and let the automatic dev-boot reset drop a remote schema. Which value
+    // wins when a parameter repeats is the parser's business (its last
+    // occurrence today); this check does not try to agree with it, and
+    // instead calls the string local only when the authority AND every
+    // override name this machine — a Unix socket path is this machine by
+    // definition. A string that names any other host anywhere is not local,
+    // whichever of them the parser would pick.
+    const overrides = [
+      ...parsed.searchParams.getAll('host'),
+      ...parsed.searchParams.getAll('hostaddr'),
+    ];
+    return (
+      LOOPBACK_HOSTS.has(parsed.hostname) &&
+      overrides.every(
+        (host) => host.startsWith('/') || LOOPBACK_HOSTS.has(host),
+      )
+    );
   } catch {
     return false;
   }

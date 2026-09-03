@@ -294,11 +294,24 @@ describe('the local-database judgement', () => {
       isLocalDatabase('postgres://u:p@localhost/db?hostaddr=203.0.113.9'),
     ).toBe(false);
     expect(
-      isLocalDatabase('postgres://u:p@remote.example/db?host=localhost'),
-    ).toBe(true);
-    expect(
       isLocalDatabase('postgres://u:p@localhost/db?host=/var/run/postgresql'),
     ).toBe(true);
+    // Every host the string names must be this machine, whichever one the
+    // parser would let win: a repeated parameter cannot smuggle a remote in
+    // behind a local first value, and a remote authority stays remote.
+    expect(
+      isLocalDatabase(
+        'postgres://u:p@localhost/db?host=localhost&host=remote.example',
+      ),
+    ).toBe(false);
+    expect(
+      isLocalDatabase(
+        'postgres://u:p@localhost/db?host=remote.example&host=localhost',
+      ),
+    ).toBe(false);
+    expect(
+      isLocalDatabase('postgres://u:p@remote.example/db?host=localhost'),
+    ).toBe(false);
     expect(isLocalDatabase('not a url')).toBe(false);
   });
 });
