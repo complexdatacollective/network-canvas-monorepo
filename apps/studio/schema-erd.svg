@@ -3125,7 +3125,7 @@
 <!-- schedule_occurrences -->
 <g id="schedule_occurrences" class="node">
 <title>schedule_occurrences</title>
-<g id="a_schedule_occurrences"><a xlink:title="schedule_occurrences&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger schedule_occurrences_time_zone_known_insert: AFTER INSERT calls schedule_occurrences_validate_time_zone(); sidecar trigger schedule_occurrences_time_zone_known_update: AFTER UPDATE calls schedule_occurrences_validate_time_zone()">
+<g id="a_schedule_occurrences"><a xlink:title="schedule_occurrences&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger schedule_occurrences_time_zone_known_insert: AFTER INSERT calls schedule_occurrences_validate_time_zone(); sidecar trigger schedule_occurrences_time_zone_known_update: AFTER UPDATE calls schedule_occurrences_validate_time_zone(); sidecar trigger schedule_occurrences_identity_immutable: BEFORE UPDATE calls schedule_occurrence_identity_is_immutable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="5043.48" cy="-9757.24" rx="422.7" ry="724.15"/>
 <polygon fill="#1d71b8" stroke="transparent" points="4746.48,-10207.24 4746.48,-10267.24 5340.48,-10267.24 5340.48,-10207.24 4746.48,-10207.24"/>
 <polygon fill="none" stroke="#29235c" points="4746.48,-10207.24 4746.48,-10267.24 5340.48,-10267.24 5340.48,-10207.24 4746.48,-10207.24"/>
@@ -3232,7 +3232,7 @@
 <!-- message_deliveries -->
 <g id="message_deliveries" class="node">
 <title>message_deliveries</title>
-<g id="a_message_deliveries"><a xlink:title="message_deliveries&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger message_delivery_payload_immutable: BEFORE UPDATE calls message_delivery_payload_is_immutable(); sidecar trigger message_deliveries_template_applies: AFTER INSERT calls message_delivery_template_applies()">
+<g id="a_message_deliveries"><a xlink:title="message_deliveries&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger message_delivery_payload_immutable: BEFORE UPDATE calls message_delivery_payload_is_immutable(); sidecar trigger message_deliveries_template_applies: AFTER INSERT calls message_delivery_template_applies(); sidecar trigger message_deliveries_deletable: BEFORE DELETE calls message_deliveries_are_deletable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="6049.63" cy="-9993.24" rx="547.1" ry="1148.18"/>
 <polygon fill="#1d71b8" stroke="transparent" points="5664.63,-10743.24 5664.63,-10803.24 6434.63,-10803.24 6434.63,-10743.24 5664.63,-10743.24"/>
 <polygon fill="none" stroke="#29235c" points="5664.63,-10743.24 5664.63,-10803.24 6434.63,-10803.24 6434.63,-10743.24 5664.63,-10743.24"/>
@@ -3797,7 +3797,7 @@
 <!-- message_delivery_events -->
 <g id="message_delivery_events" class="node">
 <title>message_delivery_events</title>
-<g id="a_message_delivery_events"><a xlink:title="message_delivery_events&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger message_delivery_events_immutable: BEFORE UPDATE calls message_delivery_payload_is_immutable()">
+<g id="a_message_delivery_events"><a xlink:title="message_delivery_events&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger message_delivery_events_immutable: BEFORE UPDATE calls message_delivery_payload_is_immutable(); sidecar trigger message_delivery_events_provider_sent_it: AFTER INSERT calls message_delivery_event_provider_sent_it(); sidecar trigger message_delivery_events_deletable: BEFORE DELETE calls message_delivery_events_are_deletable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="7254.48" cy="-10473.24" rx="367.89" ry="469.54"/>
 <polygon fill="#1d71b8" stroke="transparent" points="6996.48,-10743.24 6996.48,-10803.24 7512.48,-10803.24 7512.48,-10743.24 6996.48,-10743.24"/>
 <polygon fill="none" stroke="#29235c" points="6996.48,-10743.24 6996.48,-10803.24 7512.48,-10803.24 7512.48,-10743.24 6996.48,-10743.24"/>

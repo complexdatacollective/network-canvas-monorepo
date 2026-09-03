@@ -10,7 +10,7 @@
 // — so a guard that stopped firing cannot pass as "no error".
 import { createHash, randomUUID } from 'node:crypto';
 
-import type pg from 'pg';
+import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
@@ -21,6 +21,7 @@ import {
   reachableDb,
   seedTeam,
 } from '../../__tests__/support/postgres.ts';
+import { ERASURE_GUC } from '../../study/schema.ts';
 
 const db = await reachableDb();
 
@@ -102,6 +103,10 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
   // the key itself pass an explicit one.
   let nextTemplateVersion = 1000;
 
+  // Published by default, because an enqueue may only cite a published
+  // template: a draft fixture would make every accepting delivery case fail
+  // for a reason it was not written to test. The cases about the draft
+  // lifecycle ask for `state: 'draft'` explicitly.
   const templateRow = (overrides: Row = {}): Row => ({
     id: randomUUID(),
     team_id: TEAM_A,
@@ -109,6 +114,7 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
     channel: 'email',
     locale: 'en-GB',
     version: (nextTemplateVersion += 1),
+    state: 'published',
     subject: 'Time for your check-in',
     body: 'Please follow the link.',
     ...overrides,
@@ -171,6 +177,28 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
     const row = deliveryRow(await newTemplate(), overrides);
     await insert('message_deliveries', row);
     return row.id as string;
+  }
+
+  /**
+   * A delivery the dispatcher has already handed to a provider. Every callback
+   * fixture sits on one, because an event must name the provider that sent its
+   * delivery and a delivery with no provider has been sent by nobody.
+   */
+  const newAttemptedDelivery = (overrides: Row = {}) =>
+    newDelivery({ provider: 'postmark', ...overrides });
+
+  /**
+   * The application role inside an audited participant erasure: the same
+   * connection, plus the transaction-scoped marker naming the participant
+   * being erased.
+   */
+  function erasing(participantId: string, sql: string, values: unknown[]) {
+    return tenantA.transaction(async (client) => {
+      await client.query(
+        `SET LOCAL ${ERASURE_GUC} = ${pg.escapeLiteral(participantId)}`,
+      );
+      return client.query(sql, values);
+    });
   }
 
   beforeAll(async () => {
@@ -284,6 +312,18 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
       [
         'more channels than exist',
         { channels: ['email', 'sms', 'email'] },
+        'study_schedules_channels_check',
+      ],
+      // Two elements, both allowed, within the length bound — and still one
+      // channel, sent to twice.
+      [
+        'the same channel twice',
+        { channels: ['email', 'email'] },
+        'study_schedules_channels_check',
+      ],
+      [
+        'the other channel twice',
+        { channels: ['sms', 'sms'] },
         'study_schedules_channels_check',
       ],
 
@@ -539,6 +579,7 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
         { quiet_hours_start_minute: 1320, quiet_hours_end_minute: 420 },
       ],
       ['both channels at once', { channels: ['email', 'sms'] }],
+      ['the second channel on its own', { channels: ['sms'] }],
     ])('accepts %s', async (_label, overrides) => {
       await expect(
         insert('study_schedules', scheduleRow(overrides)),
@@ -695,6 +736,66 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
         insert(
           'schedule_occurrences',
           occurrenceRow(scheduleId, { occurrence_index: 2 }),
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+    });
+
+    it('holds the draw immutable', async () => {
+      const scheduleId = await newSchedule();
+      const occurrenceId = await newOccurrence(scheduleId);
+      const otherScheduleId = await newSchedule();
+      const siblingId = randomUUID();
+      await insert('participants', {
+        id: siblingId,
+        study_id: studyOf[TEAM_A],
+        team_id: TEAM_A,
+        participant_code: `P-${siblingId.slice(0, 8)}`,
+      });
+
+      for (const assignment of [
+        `id = '${randomUUID()}'`,
+        `team_id = '${TEAM_B}'`,
+        `study_id = '${otherStudyId}'`,
+        `schedule_id = '${otherScheduleId}'`,
+        `participant_id = '${siblingId}'`,
+        `occurrence_index = 9`,
+        `scheduled_local_date = '2026-09-12'`,
+        `scheduled_local_minute = 600`,
+        `created_at = now() - interval '1 day'`,
+      ]) {
+        await expect(
+          pool.query(
+            `UPDATE schedule_occurrences SET ${assignment} WHERE id = $1`,
+            [occurrenceId],
+          ),
+        ).rejects.toThrow('schedule occurrence identity is immutable');
+      }
+    });
+
+    it('lets re-resolution and the lifecycle move', async () => {
+      const occurrenceId = await newOccurrence(await newSchedule());
+
+      // A zone change or a DST transition re-resolves the same local intent
+      // to another instant …
+      await expect(
+        pool.query(
+          `UPDATE schedule_occurrences
+           SET resolved_time_zone = 'Pacific/Auckland',
+               scheduled_for = $2, expires_at = $3
+           WHERE id = $1`,
+          [
+            occurrenceId,
+            new Date('2026-09-10T05:00:00Z'),
+            new Date('2026-09-11T05:00:00Z'),
+          ],
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+
+      // … and the occurrence still runs through its own lifecycle.
+      await expect(
+        pool.query(
+          `UPDATE schedule_occurrences SET state = 'dispatched' WHERE id = $1`,
+          [occurrenceId],
         ),
       ).resolves.toMatchObject({ rowCount: 1 });
     });
@@ -868,7 +969,7 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
     });
 
     it('leaves a draft template fully editable', async () => {
-      const templateId = await newTemplate();
+      const templateId = await newTemplate({ state: 'draft' });
 
       await expect(
         pool.query(
@@ -1174,11 +1275,11 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
       ).resolves.toMatch(/^[0-9a-f-]{36}$/);
     });
 
-    it('refuses a template of another kind, channel or study', async () => {
+    it('refuses a template of another kind, channel, study or state', async () => {
       const deliveryWith = (templateId: string) =>
         insert('message_deliveries', deliveryRow(templateId));
       const refused =
-        'must be a prompt template for the email channel, either the team default or its own study';
+        'must be a published prompt template for the email channel, either the team default or its own study';
 
       await expect(
         deliveryWith(await newTemplate({ kind: 'reminder' })),
@@ -1188,6 +1289,14 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
       ).rejects.toThrow(refused);
       await expect(
         deliveryWith(await newTemplate({ study_id: otherStudyId })),
+      ).rejects.toThrow(refused);
+      // Unreviewed wording, and withdrawn wording: neither is what a
+      // participant may be sent, however well the rest of the key matches.
+      await expect(
+        deliveryWith(await newTemplate({ state: 'draft' })),
+      ).rejects.toThrow(refused);
+      await expect(
+        deliveryWith(await newTemplate({ state: 'retired' })),
       ).rejects.toThrow(refused);
       // The team default and the study's own override both apply.
       await expect(
@@ -1221,11 +1330,6 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
           [deliveryId],
         ),
       ).rejects.toMatchObject({ code: '42501' });
-      await expect(
-        tenantA.query(`DELETE FROM message_deliveries WHERE id = $1`, [
-          deliveryId,
-        ]),
-      ).rejects.toMatchObject({ code: '42501' });
 
       // The dispatcher is exactly the role that may.
       await expect(
@@ -1233,6 +1337,47 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
           `UPDATE message_deliveries SET attempt_count = 1 WHERE id = $1`,
           [deliveryId],
         ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+    });
+
+    it('reserves deletion for an audited erasure or the retention path', async () => {
+      const deliveryId = await newDelivery();
+      const refused =
+        'message deliveries are deleted only by an audited erasure or the maintenance retention path';
+
+      // DELETE is a privilege the application role holds — participant
+      // erasure runs as that role and the participant key does not cascade —
+      // so the guard is a trigger, and an unmarked delete is refused by it.
+      await expect(
+        tenantA.query(`DELETE FROM message_deliveries WHERE id = $1`, [
+          deliveryId,
+        ]),
+      ).rejects.toThrow(refused);
+
+      // A marker naming somebody else authorizes nothing: it is proven
+      // against the delivery's own participant.
+      await expect(
+        erasing(
+          otherParticipantId,
+          `DELETE FROM message_deliveries WHERE id = $1`,
+          [deliveryId],
+        ),
+      ).rejects.toThrow(refused);
+
+      await expect(
+        erasing(
+          participantOf[TEAM_A]!,
+          `DELETE FROM message_deliveries WHERE id = $1`,
+          [deliveryId],
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+
+      // And the retention path needs no marker at all.
+      const purgeable = await newDelivery();
+      await expect(
+        maintenance.query(`DELETE FROM message_deliveries WHERE id = $1`, [
+          purgeable,
+        ]),
       ).resolves.toMatchObject({ rowCount: 1 });
     });
   });
@@ -1260,14 +1405,14 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
         'message_delivery_events_provider_event_id_check',
       ],
     ])('rejects %s', async (_label, overrides, constraint) => {
-      const deliveryId = await newDelivery();
+      const deliveryId = await newAttemptedDelivery();
       await expect(
         insert('message_delivery_events', eventRow(deliveryId, overrides)),
       ).rejects.toMatchObject({ constraint });
     });
 
     it('deduplicates a redelivered provider callback', async () => {
-      const deliveryId = await newDelivery();
+      const deliveryId = await newAttemptedDelivery();
       const providerEventId = `evt-${randomUUID()}`;
 
       await insert(
@@ -1294,7 +1439,7 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
     });
 
     it('refuses a delivery from another team', async () => {
-      const deliveryId = await newDelivery();
+      const deliveryId = await newAttemptedDelivery();
       await expect(
         insert(
           'message_delivery_events',
@@ -1309,8 +1454,47 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
       });
     });
 
+    it('refuses a provider that did not send the delivery', async () => {
+      const refused =
+        'a delivery event must name the provider that sent its delivery';
+
+      // An allowed provider name, a real delivery of the event's own team —
+      // and still not the provider that made the send.
+      const deliveryId = await newAttemptedDelivery();
+      await expect(
+        insert(
+          'message_delivery_events',
+          eventRow(deliveryId, { provider: 'twilio' }),
+        ),
+      ).rejects.toThrow(refused);
+
+      // A delivery still waiting in the outbox has been sent by nobody, so no
+      // callback about it can be genuine.
+      const pendingId = await newDelivery();
+      await expect(
+        insert('message_delivery_events', eventRow(pendingId)),
+      ).rejects.toThrow(refused);
+
+      // The provider that did send it is admitted.
+      const smsTemplateId = await newTemplate({
+        channel: 'sms',
+        subject: null,
+      });
+      const smsDelivery = deliveryRow(smsTemplateId, {
+        channel: 'sms',
+        provider: 'twilio',
+      });
+      await insert('message_deliveries', smsDelivery);
+      await expect(
+        insert(
+          'message_delivery_events',
+          eventRow(smsDelivery.id as string, { provider: 'twilio' }),
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+    });
+
     it('is append-only', async () => {
-      const deliveryId = await newDelivery();
+      const deliveryId = await newAttemptedDelivery();
       const row = eventRow(deliveryId);
       await insert('message_delivery_events', row);
 
@@ -1331,22 +1515,44 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
       ).rejects.toThrow('message delivery payload is immutable');
     });
 
-    it('reserves deletion for the maintenance retention path', async () => {
-      const deliveryId = await newDelivery();
+    it('reserves deletion for an audited erasure or the retention path', async () => {
+      const deliveryId = await newAttemptedDelivery();
       const row = eventRow(deliveryId);
       await insert('message_delivery_events', row);
+      const refused =
+        'message delivery events are deleted only by an audited erasure or the maintenance retention path';
 
-      // Evidence the application role cannot destroy — and, because the
-      // identity key would then admit the same provider event again, cannot
-      // replace either.
+      // Evidence an ordinary application-role write cannot destroy — and,
+      // because the identity key would then admit the same provider event
+      // again, cannot replace either.
       await expect(
         tenantA.query(`DELETE FROM message_delivery_events WHERE id = $1`, [
           row.id,
         ]),
-      ).rejects.toMatchObject({ code: '42501' });
+      ).rejects.toThrow(refused);
+
+      // An event carries no participant, so the marker is proven through the
+      // delivery it describes — and one naming somebody else proves nothing.
+      await expect(
+        erasing(
+          otherParticipantId,
+          `DELETE FROM message_delivery_events WHERE id = $1`,
+          [row.id],
+        ),
+      ).rejects.toThrow(refused);
+      await expect(
+        erasing(
+          participantOf[TEAM_A]!,
+          `DELETE FROM message_delivery_events WHERE id = $1`,
+          [row.id],
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+
+      const purgeable = eventRow(deliveryId);
+      await insert('message_delivery_events', purgeable);
       await expect(
         maintenance.query(`DELETE FROM message_delivery_events WHERE id = $1`, [
-          row.id,
+          purgeable.id,
         ]),
       ).resolves.toMatchObject({ rowCount: 1 });
     });

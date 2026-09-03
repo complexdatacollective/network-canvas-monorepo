@@ -38,7 +38,7 @@ import {
   tenantTablesSql,
 } from '@codaco/studio-sync/rls';
 
-import { STUDY_TABLES } from '../study/schema.ts';
+import { ERASURE_GUC, STUDY_TABLES } from '../study/schema.ts';
 
 const { studies, studyWaves, participants } = STUDY_TABLES;
 
@@ -173,10 +173,18 @@ const studySchedules = pgTable(
     // it the whole check evaluates to NULL and a schedule with no channel at
     // all is admitted. The same property days_of_week_mask gets from its
     // `>= 1` bound — "nothing to send on" is unrepresentable.
+    //
+    // The last clause refuses a repeat: containment and a length bound of two
+    // together still admit ['email', 'email'], which would send the same
+    // prompt twice down one channel and count as two deliveries. Only two
+    // channels exist, so a two-element array is a duplicate exactly when its
+    // two elements are equal — no cardinality(DISTINCT) machinery needed.
     check(
       'study_schedules_channels_check',
       sql`coalesce(array_length(${table.channels}, 1), 0) BETWEEN 1 AND 2
-          AND ${table.channels} <@ ARRAY['email', 'sms']::text[]`,
+          AND ${table.channels} <@ ARRAY['email', 'sms']::text[]
+          AND (array_length(${table.channels}, 1) = 1
+               OR ${table.channels}[1] <> ${table.channels}[2])`,
     ),
     check(
       'study_schedules_settings_object_check',
@@ -654,6 +662,40 @@ CREATE OR REPLACE TRIGGER schedule_occurrences_time_zone_known_update
   AFTER UPDATE ON schedule_occurrences REFERENCING NEW TABLE AS changed
   FOR EACH STATEMENT EXECUTE FUNCTION schedule_occurrences_validate_time_zone();
 
+-- A resolved occurrence IS the draw: which schedule drew it, for whom, which
+-- index of the run it is, and the participant-local date and minute it stands
+-- for. Constrained random sampling is only meaningful if the draw stays drawn,
+-- and a delivery pins its occurrence, so moving any of those afterwards would
+-- reattribute a prompt the participant may already have been sent — silently,
+-- because the row keeps its id. Only re-resolution and the lifecycle may write:
+-- \`scheduled_for\`, \`expires_at\` and \`resolved_time_zone\` move when a
+-- participant's zone changes or a DST transition shifts the same local intent
+-- to another instant, and \`state\` moves as the occurrence is dispatched,
+-- expires, is cancelled or is superseded. Same WHEN-clause shape as
+-- message_delivery_payload_immutable: the trigger costs nothing on the updates
+-- the dispatcher actually makes.
+CREATE OR REPLACE FUNCTION schedule_occurrence_identity_is_immutable() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'schedule occurrence identity is immutable';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER schedule_occurrences_identity_immutable
+  BEFORE UPDATE ON schedule_occurrences
+  FOR EACH ROW
+  WHEN (
+    NEW.id IS DISTINCT FROM OLD.id
+    OR NEW.team_id IS DISTINCT FROM OLD.team_id
+    OR NEW.study_id IS DISTINCT FROM OLD.study_id
+    OR NEW.schedule_id IS DISTINCT FROM OLD.schedule_id
+    OR NEW.participant_id IS DISTINCT FROM OLD.participant_id
+    OR NEW.occurrence_index IS DISTINCT FROM OLD.occurrence_index
+    OR NEW.scheduled_local_date IS DISTINCT FROM OLD.scheduled_local_date
+    OR NEW.scheduled_local_minute IS DISTINCT FROM OLD.scheduled_local_minute
+    OR NEW.created_at IS DISTINCT FROM OLD.created_at
+  )
+  EXECUTE FUNCTION schedule_occurrence_identity_is_immutable();
+
 -- A published template that has been sent is evidence: message_deliveries
 -- pins it, and rewriting the body would misattribute what a participant
 -- received.
@@ -715,6 +757,12 @@ CREATE OR REPLACE TRIGGER message_delivery_events_immutable
 -- enqueue: every one of them is immutable afterwards. AFTER the row, so the
 -- kind and channel checks and the template key report first and this speaks
 -- only to a well-formed delivery citing a real template of its team.
+--
+-- The state is proven with them. A draft is unreviewed wording and a retired
+-- one has been withdrawn, so neither may be what a participant receives — and
+-- without this clause a delivery could pin either, because the immutability
+-- trigger above governs only what a published template may become, never which
+-- template an enqueue is allowed to cite.
 CREATE OR REPLACE FUNCTION message_delivery_template_applies() RETURNS trigger AS $$
 BEGIN
   IF NOT EXISTS (
@@ -722,9 +770,10 @@ BEGIN
     WHERE t.id = NEW.template_id AND t.team_id = NEW.team_id
       AND t.kind = NEW.kind
       AND t.channel = NEW.channel
+      AND t.state = 'published'
       AND (t.study_id IS NULL OR t.study_id = NEW.study_id)
   ) THEN
-    RAISE EXCEPTION 'a delivery''s template must be a % template for the % channel, either the team default or its own study''s override', NEW.kind, NEW.channel;
+    RAISE EXCEPTION 'a delivery''s template must be a published % template for the % channel, either the team default or its own study''s override', NEW.kind, NEW.channel;
   END IF;
   RETURN NULL;
 END;
@@ -733,6 +782,32 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE TRIGGER message_deliveries_template_applies
   AFTER INSERT ON message_deliveries
   FOR EACH ROW EXECUTE FUNCTION message_delivery_template_applies();
+
+-- A callback is evidence about one send, and the provider that made that send
+-- is the only party that can have observed it. The delivery key proves the
+-- event names a real delivery of its own team, and the provider CHECK proves
+-- the name is one of the providers Studio uses; neither says the two agree, so
+-- a bounce from a provider the delivery never went through would be recorded
+-- against it and suppress a perfectly good address. A delivery with no
+-- provider has not been attempted yet, so it can take no callbacks at all —
+-- the equality is NULL there, and the row is refused. AFTER the row, so the
+-- provider check, the identity key and the delivery key all report first.
+CREATE OR REPLACE FUNCTION message_delivery_event_provider_sent_it() RETURNS trigger AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM message_deliveries d
+    WHERE d.id = NEW.delivery_id AND d.team_id = NEW.team_id
+      AND d.provider = NEW.provider
+  ) THEN
+    RAISE EXCEPTION 'a delivery event must name the provider that sent its delivery';
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER message_delivery_events_provider_sent_it
+  AFTER INSERT ON message_delivery_events
+  FOR EACH ROW EXECUTE FUNCTION message_delivery_event_provider_sent_it();
 
 ${tenantTablesSql([
   'study_schedules',
@@ -745,11 +820,69 @@ ${tenantTablesSql([
 
 -- Commands enqueue inside their audited transaction; only the maintenance
 -- dispatcher advances send state, exactly as for invitation delivery.
-REVOKE UPDATE, DELETE ON message_deliveries FROM ${TENANT_ROLES.app};
+--
+-- DELETE is NOT revoked, and must not be: the participant foreign key is NO
+-- ACTION, so an erasure that cannot delete a participant's deliveries cannot
+-- delete the participant either, and a participant who was ever messaged would
+-- be unerasable. The privilege stays; the trigger below decides who may use
+-- it, which is the finer instrument the erasure path needs — erasure runs as
+-- \`studio_app\`, the same role as any buggy delete, so a role test alone
+-- cannot tell the two apart.
+REVOKE UPDATE ON message_deliveries FROM ${TENANT_ROLES.app};
 -- Provider callbacks are append-only evidence: a bounce or a complaint that
 -- could be deleted, and its provider event id then reinserted, is no
 -- evidence at all. The immutability trigger above refuses UPDATE for every
--- role; DELETE is reserved for the maintenance retention path, like the
--- deliveries the events describe.
-REVOKE UPDATE, DELETE ON message_delivery_events FROM ${TENANT_ROLES.app};
+-- role; DELETE is left to the same two audited paths as the deliveries the
+-- events describe, for the same reason.
+REVOKE UPDATE ON message_delivery_events FROM ${TENANT_ROLES.app};
+
+-- Erasure deletes bottom-up, children first, because nothing here cascades:
+--   message_delivery_events -> message_deliveries -> schedule_occurrences
+-- so an event's delivery is still present when the event's marker is proven
+-- through it.
+--
+-- The maintenance retention path runs as \`studio_maintenance\` and needs no
+-- marker. Participant erasure presents the transaction-scoped marker instead,
+-- and the marker is proven against the row's own participant, so it authorizes
+-- deleting exactly that participant's outbox and nothing else — the same shape
+-- \`interview_sessions_are_writable\` uses.
+CREATE OR REPLACE FUNCTION message_deliveries_are_deletable() RETURNS trigger AS $$
+DECLARE
+  marker text := NULLIF(current_setting('${ERASURE_GUC}', true), '');
+BEGIN
+  IF current_user = 'studio_maintenance'
+     OR (marker IS NOT NULL AND marker = OLD.participant_id::text) THEN
+    RETURN OLD;
+  END IF;
+  RAISE EXCEPTION 'message deliveries are deleted only by an audited erasure or the maintenance retention path';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER message_deliveries_deletable
+  BEFORE DELETE ON message_deliveries
+  FOR EACH ROW EXECUTE FUNCTION message_deliveries_are_deletable();
+
+-- An event carries no participant of its own, so the marker is proven through
+-- the delivery it describes.
+CREATE OR REPLACE FUNCTION message_delivery_events_are_deletable() RETURNS trigger AS $$
+DECLARE
+  marker text := NULLIF(current_setting('${ERASURE_GUC}', true), '');
+BEGIN
+  IF current_user = 'studio_maintenance' THEN
+    RETURN OLD;
+  END IF;
+  IF marker IS NOT NULL AND EXISTS (
+    SELECT 1 FROM message_deliveries d
+    WHERE d.id = OLD.delivery_id AND d.team_id = OLD.team_id
+      AND d.participant_id::text = marker
+  ) THEN
+    RETURN OLD;
+  END IF;
+  RAISE EXCEPTION 'message delivery events are deleted only by an audited erasure or the maintenance retention path';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER message_delivery_events_deletable
+  BEFORE DELETE ON message_delivery_events
+  FOR EACH ROW EXECUTE FUNCTION message_delivery_events_are_deletable();
 `;
