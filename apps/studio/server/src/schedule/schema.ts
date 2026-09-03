@@ -717,6 +717,9 @@ CREATE OR REPLACE TRIGGER message_templates_publication_immutable
       -- to accept again.
       NEW.state = 'draft'
       OR (OLD.state = 'retired' AND NEW.state IS DISTINCT FROM 'retired')
+      -- The scope is part of what a delivery cites: moved to another study,
+      -- the template would no longer apply where its deliveries went.
+      OR NEW.study_id IS DISTINCT FROM OLD.study_id
       OR NEW.subject IS DISTINCT FROM OLD.subject
       OR NEW.body IS DISTINCT FROM OLD.body
       OR NEW.kind IS DISTINCT FROM OLD.kind

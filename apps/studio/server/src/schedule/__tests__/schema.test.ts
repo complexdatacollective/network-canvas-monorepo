@@ -949,6 +949,9 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
         `kind = 'reminder'`,
         `locale = 'fr-FR'`,
         `version = 2`,
+        // The scope is cited too: moved between the team default and a
+        // study, the template would no longer apply where its deliveries went.
+        `study_id = '${studyOf[TEAM_A]}'`,
       ]) {
         await expect(
           pool.query(

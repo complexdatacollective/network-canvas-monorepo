@@ -90,6 +90,7 @@ type SeededSchedule = {
   occurrenceLimit: number | null;
   windowStartMinute: number;
   windowEndMinute: number;
+  createdAt: Date;
 };
 
 /** How far past its anchor a schedule is resolved for each participant. */
@@ -165,6 +166,9 @@ async function seedSchedule(
         : faker.number.int({ min: 20, max: 90 }),
     windowStartMinute: 480,
     windowEndMinute: 1_320,
+    // At go-live, before the first participant enrols (day 15): an
+    // enrolment-anchored run is resolved against an existing schedule.
+    createdAt: shiftDays(study.createdAt, 14),
   };
   await client.query(
     `insert into study_schedules (
@@ -205,7 +209,7 @@ async function seedSchedule(
       faker.helpers.arrayElement(['skip', 'reschedule_within_period']),
       team.index % 2 === 0 ? ['email'] : ['email', 'sms'],
       JSON.stringify({ quietHoursRespectLocalHolidays: false }),
-      shiftDays(study.createdAt, 16),
+      plan.createdAt,
     ],
   );
   return plan;
@@ -297,7 +301,11 @@ async function seedOccurrences(
   for (const participant of cohort) {
     const anchor = anchorInstant(schedule, study, participant);
     const anchorDate = localParts(anchor, participant.timezone).date;
-    const resolvedAt = shiftMinutes(anchor, 1);
+    // Resolved once the anchor is known, and never before the schedule
+    // itself existed.
+    const resolvedAt = new Date(
+      Math.max(shiftMinutes(anchor, 1).getTime(), schedule.createdAt.getTime()),
+    );
     for (const [index, day] of promptDays(schedule).entries()) {
       const localDate = shiftLocalDate(anchorDate, day);
       const localMinute = faker.number.int({
@@ -369,7 +377,13 @@ async function seedOccurrences(
   return occurrences;
 }
 
-type SeededTemplate = { id: string; kind: string; channel: string };
+type SeededTemplate = {
+  id: string;
+  kind: string;
+  channel: string;
+  subject: string | null;
+  body: string;
+};
 
 /** Every kind on every channel at team level, plus one Spanish override. */
 async function seedMessageTemplates(
@@ -384,6 +398,11 @@ async function seedMessageTemplates(
 
   const push = (kind: string, channel: string, locale: string) => {
     const id = seedUuid();
+    const subject =
+      channel === 'email'
+        ? `${kind === 'invitation' ? 'You are invited' : 'A short check-in'} — {{studyName}}`
+        : null;
+    const body = `${faker.lorem.sentence()} {{interviewLink}}`;
     rows.push([
       id,
       team.id,
@@ -393,14 +412,12 @@ async function seedMessageTemplates(
       locale,
       1,
       'published',
-      channel === 'email'
-        ? `${kind === 'invitation' ? 'You are invited' : 'A short check-in'} — {{studyName}}`
-        : null,
-      `${faker.lorem.sentence()} {{interviewLink}}`,
+      subject,
+      body,
       createdAt,
       createdAt,
     ]);
-    templates.push({ id, kind, channel });
+    templates.push({ id, kind, channel, subject, body });
   };
 
   for (const kind of MESSAGE_KINDS) {
@@ -494,6 +511,21 @@ async function seedDeliveries(
     templates.find(
       (template) => template.kind === kind && template.channel === channel,
     )!;
+  // What the participant would have received: the cited template's body with
+  // its placeholders filled from the seeded study and the participant's own
+  // interview link. The hash is the schema's evidence of the exact message,
+  // so it is taken over that rendering and nothing else.
+  const render = (template: SeededTemplate, participant: SeedParticipant) => {
+    const link =
+      study.links.find(
+        (candidate) => candidate.participantId === participant.id,
+      )?.token ??
+      study.links.find((candidate) => candidate.kind === 'anonymous')?.token ??
+      '';
+    return template.body
+      .replaceAll('{{interviewLink}}', link)
+      .replaceAll('{{studyName}}', study.name);
+  };
 
   let ordinal = 0;
   let bounces = 0;
@@ -523,6 +555,7 @@ async function seedDeliveries(
         : input.channel === 'email'
           ? 'postmark'
           : 'twilio';
+    const template = templateFor(input.kind, input.channel);
 
     deliveryRows.push([
       id,
@@ -530,11 +563,11 @@ async function seedDeliveries(
       study.id,
       input.participant.id,
       input.occurrenceId,
-      templateFor(input.kind, input.channel).id,
+      template.id,
       input.kind,
       input.channel,
       blindIndex,
-      sha256Hex(`${id}:${input.kind}:${input.channel}`),
+      sha256Hex(render(template, input.participant)),
       provider,
       outcome === 'sent' ? `msg_${seedHex(8)}` : null,
       outcome === 'pending' ? 0 : faker.number.int({ min: 1, max: 3 }),

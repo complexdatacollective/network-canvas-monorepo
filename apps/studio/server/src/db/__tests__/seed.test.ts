@@ -798,6 +798,73 @@ describe.skipIf(!db)('the seeded dataset', () => {
     ).resolves.toBeGreaterThan(0);
   });
 
+  it('resolves every occurrence from a schedule that already existed', async () => {
+    // An occurrence's created_at is when the resolver produced it, which
+    // cannot precede the schedule it was resolved from.
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from schedule_occurrences o
+         join study_schedules s on s.id = o.schedule_id and s.team_id = o.team_id
+         where o.created_at < s.created_at`,
+      ),
+    ).resolves.toBe(0);
+  });
+
+  it('stamps every study’s last update no earlier than its latest transition', async () => {
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from studies
+         where updated_at < greatest(
+           created_at,
+           coalesce(went_live_at, created_at),
+           coalesce(paused_at, created_at),
+           coalesce(closed_at, created_at),
+           coalesce(deletion_requested_at, created_at)
+         )`,
+      ),
+    ).resolves.toBe(0);
+  });
+
+  it('backs every webhook event with a row of the kind it names, enqueued after it', async () => {
+    // A payload is thin, but the resource it names exists — in the study
+    // the payload cites, of the subscription's own team — and the event was
+    // enqueued no earlier than the moment that row records.
+    const cases: [string, string, string][] = [
+      ['session.completed', 'interview_sessions', 'completed_at'],
+      ['session.abandoned', 'interview_sessions', 'abandoned_at'],
+      ['participant.enrolled', 'participants', 'enrolled_at'],
+      ['wave.opened', 'study_waves', 'opens_at'],
+      ['consent.withdrawn', 'participant_consents', 'withdrawn_at'],
+    ];
+    for (const [eventType, table, occurredAt] of cases) {
+      await expect(
+        count(
+          pool,
+          `select count(*)::int as n from webhook_deliveries d
+           left join ${table} r
+             on r.id = (d.payload->>'resourceId')::uuid
+            and r.team_id = d.team_id
+            and r.study_id = (d.payload->>'studyId')::uuid
+            and r.${occurredAt} is not null
+            and r.${occurredAt} <= d.created_at
+           where d.event_type = $1 and r.id is null`,
+          [eventType],
+        ),
+      ).resolves.toBe(0);
+    }
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from webhook_deliveries d
+         join webhook_subscriptions s on s.id = d.subscription_id
+         where s.study_id is not null
+           and (d.payload->>'studyId')::uuid <> s.study_id`,
+      ),
+    ).resolves.toBe(0);
+  });
+
   it('leaves every webhook delivery one its own subscription asked for', async () => {
     // The corpus still covers both subscription states, and reaches the
     // disabled one the way the dispatcher does: deliveries first, disablement

@@ -174,11 +174,14 @@ function databaseToCreate(): string | undefined {
   const url = new URL(db.url);
   if (!isLocalDatabase(db.url)) return undefined;
   // node-postgres lets `?port=` override the authority's port (the last one
-  // wins when it repeats), and connects there; the reset will too, so that
-  // is the port this script must compare with the container's.
-  const port =
-    url.searchParams.getAll('port').at(-1) ?? (url.port || String(5432));
-  if (port !== String(HOST_PORT)) return undefined;
+  // wins when it repeats), reads it with parseInt, and connects there; the
+  // reset will too, so that is the port this script must compare with the
+  // container's — as a number, so `054318` is the container's port as well.
+  const port = Number.parseInt(
+    url.searchParams.getAll('port').at(-1) ?? (url.port || '5432'),
+    10,
+  );
+  if (port !== HOST_PORT) return undefined;
   const name = decodeURIComponent(url.pathname.replace(/^\//, ''));
   return name === '' ? DATABASE : name;
 }

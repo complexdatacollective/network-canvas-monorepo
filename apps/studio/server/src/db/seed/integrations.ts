@@ -15,7 +15,7 @@ import {
   shiftDays,
   shiftMinutes,
 } from './rng.ts';
-import type { SeedStudy } from './studies.ts';
+import type { SeedStudy, SeedWithdrawal } from './studies.ts';
 import { custodians, type SeedTeam } from './teams.ts';
 
 type TokenPlan = {
@@ -135,6 +135,64 @@ const WEBHOOK_EVENT_TYPES = [
   'consent.withdrawn',
 ];
 
+/** A row the seeded event is about, and when it came to be. */
+type WebhookResource = { id: string; studyId: string; occurredAt: Date };
+
+/**
+ * The resources each event type can cite, drawn from what this seed has
+ * already written: a completed or abandoned session, an enrolled participant,
+ * an opened wave, a withdrawn consent. A payload names a row that exists, and
+ * is enqueued no earlier than the moment that row records.
+ */
+function webhookResources(
+  studies: SeedStudy[],
+  sessions: SeededSession[],
+  withdrawals: SeedWithdrawal[],
+): Map<string, WebhookResource[]> {
+  const sessionsWith = (status: SeededSession['status']) =>
+    sessions
+      .filter((session) => session.status === status)
+      .map((session) => ({
+        id: session.id,
+        studyId: session.studyId,
+        occurredAt: session.endedAt ?? session.startedAt,
+      }));
+  return new Map<string, WebhookResource[]>([
+    ['session.completed', sessionsWith('completed')],
+    ['session.abandoned', sessionsWith('abandoned')],
+    [
+      'participant.enrolled',
+      studies.flatMap((study) =>
+        study.participants.map((participant) => ({
+          id: participant.id,
+          studyId: study.id,
+          occurredAt: participant.enrolledAt,
+        })),
+      ),
+    ],
+    [
+      'wave.opened',
+      studies.flatMap((study) =>
+        study.waves
+          .filter((wave) => wave.opensAt !== null)
+          .map((wave) => ({
+            id: wave.id,
+            studyId: study.id,
+            occurredAt: wave.opensAt!,
+          })),
+      ),
+    ],
+    [
+      'consent.withdrawn',
+      withdrawals.map((withdrawal) => ({
+        id: withdrawal.consentId,
+        studyId: withdrawal.studyId,
+        occurredAt: withdrawal.withdrawnAt,
+      })),
+    ],
+  ]);
+}
+
 type WebhookDisablement = {
   id: string;
   failures: number;
@@ -164,27 +222,39 @@ export async function seedWebhooks(
   client: pg.PoolClient,
   team: SeedTeam,
   studies: SeedStudy[],
+  sessions: SeededSession[],
+  withdrawals: SeedWithdrawal[],
 ): Promise<void> {
   const subscriptionRows: SeedRowValue[][] = [];
   const deliveryRows: SeedRowValue[][] = [];
   const disablements: WebhookDisablement[] = [];
   const createdAt = seedTime(-250 + team.index);
+  const resources = webhookResources(studies, sessions, withdrawals);
 
   // Two per team: one that stays active, and one disabled by a run of
   // failures — the state the retry policy is meant to reach.
   for (let index = 0; index < 2; index++) {
     const id = seedUuid();
     const disabled = index === 1;
-    const eventTypes = faker.helpers.arrayElements(WEBHOOK_EVENT_TYPES, {
-      min: 1,
-      max: 4,
-    });
+    // The second is scoped to the live study; the first hears the whole team.
+    const studyId =
+      index === 1
+        ? (studies.find((study) => study.key === 'live')?.id ?? null)
+        : null;
+    const inScope = (resource: WebhookResource) =>
+      studyId === null || resource.studyId === studyId;
+    // Subscribe only to events this scope has something to say about, so
+    // every delivery below can cite a real row.
+    const eventTypes = faker.helpers.arrayElements(
+      WEBHOOK_EVENT_TYPES.filter((eventType) =>
+        (resources.get(eventType) ?? []).some(inScope),
+      ),
+      { min: 1, max: 4 },
+    );
     subscriptionRows.push([
       id,
       team.id,
-      index === 1
-        ? (studies.find((study) => study.key === 'live')?.id ?? null)
-        : null,
+      studyId,
       `https://hooks.${team.slug}.example.org/studio/${seedHex(6)}`,
       disabled
         ? 'Retired endpoint, kept for the failure history'
@@ -206,7 +276,18 @@ export async function seedWebhooks(
     // moment the endpoint was disabled all point at rows in its history.
     const failedAt: Date[] = [];
     for (let delivery = 0; delivery < deliveries; delivery++) {
-      const enqueuedAt = shiftMinutes(createdAt, delivery * 173);
+      const eventType = faker.helpers.arrayElement(eventTypes);
+      const resource = faker.helpers.arrayElement(
+        (resources.get(eventType) ?? []).filter(inScope),
+      );
+      // Enqueued on the endpoint's own cadence, and never before the row it
+      // reports came to be.
+      const enqueuedAt = new Date(
+        Math.max(
+          shiftMinutes(createdAt, delivery * 173).getTime(),
+          shiftMinutes(resource.occurredAt, 1).getTime(),
+        ),
+      );
       const failed = disabled || delivery % 7 === 6;
       const pending = !failed && delivery % 11 === 10;
       if (failed) failedAt.push(shiftMinutes(enqueuedAt, 30));
@@ -215,10 +296,11 @@ export async function seedWebhooks(
         team.id,
         id,
         `whk_${seedHex(10)}`,
-        faker.helpers.arrayElement(eventTypes),
+        eventType,
         JSON.stringify({
           teamId: team.id,
-          resourceId: seedUuid(),
+          studyId: resource.studyId,
+          resourceId: resource.id,
           sequence: delivery + 1,
         }),
         pending ? 0 : faker.number.int({ min: 1, max: 4 }),
@@ -233,7 +315,9 @@ export async function seedWebhooks(
       ]);
     }
     if (disabled) {
-      const lastFailureAt = failedAt.at(-1)!;
+      const lastFailureAt = new Date(
+        Math.max(...failedAt.map((moment) => moment.getTime())),
+      );
       disablements.push({
         id,
         failures: failedAt.length,

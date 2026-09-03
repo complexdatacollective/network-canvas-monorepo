@@ -232,6 +232,15 @@ export async function seedStudies(
       plan.key === 'deleting' ? shiftDays(createdAt, 30) : null;
     const purgeAfter =
       deletionRequestedAt === null ? null : shiftDays(deletionRequestedAt, 30);
+    // The last update is the latest transition the row records: a paused
+    // study was touched when it paused, not a month after it was created.
+    const updatedAt = new Date(
+      Math.max(
+        ...[shiftDays(createdAt, 30), wentLiveAt, pausedAt, deletionRequestedAt]
+          .filter((moment): moment is Date => moment !== null)
+          .map((moment) => moment.getTime()),
+      ),
+    );
 
     studyRows.push([
       studyId,
@@ -252,7 +261,7 @@ export async function seedStudies(
       pausedAt,
       null,
       createdAt,
-      shiftDays(createdAt, 30),
+      updatedAt,
     ]);
 
     const waves: SeedWave[] = [];
@@ -780,15 +789,24 @@ export async function publishConsentDocuments(
  * researcher-led kind. Both shapes the column exists to hold appear, and
  * neither claims a session that had not started when the grant was made.
  */
+export type SeedWithdrawal = {
+  consentId: string;
+  studyId: string;
+  participantId: string;
+  withdrawnAt: Date;
+};
+
+/** Returns the consents that were withdrawn, for the events that cite them. */
 export async function seedParticipantConsents(
   client: pg.PoolClient,
   team: SeedTeam,
   studies: SeedStudy[],
   documentsByStudy: Map<string, SeedConsentDocument[]>,
   firstSessionByParticipant: Map<string, { id: string; startedAt: Date }>,
-): Promise<void> {
+): Promise<SeedWithdrawal[]> {
   const consentRows: SeedRowValue[][] = [];
   const responseRows: SeedRowValue[][] = [];
+  const withdrawals: SeedWithdrawal[] = [];
 
   for (const study of studies) {
     const documents = documentsByStudy.get(study.id) ?? [];
@@ -814,6 +832,15 @@ export async function seedParticipantConsents(
               faker.number.int({ min: 1, max: 5 }),
             );
       const withdrawn = index % 20 === 3;
+      const withdrawnAt = withdrawn ? shiftDays(grantedAt, 40) : null;
+      if (withdrawnAt !== null) {
+        withdrawals.push({
+          consentId: id,
+          studyId: study.id,
+          participantId: participant.id,
+          withdrawnAt,
+        });
+      }
       consentRows.push([
         id,
         team.id,
@@ -824,7 +851,7 @@ export async function seedParticipantConsents(
         session?.id ?? null,
         'affirmation',
         grantedAt,
-        withdrawn ? shiftDays(grantedAt, 40) : null,
+        withdrawnAt,
         withdrawn ? 'participant' : null,
         withdrawn ? 'Withdrew after the first wave.' : null,
         grantedAt,
@@ -877,6 +904,7 @@ export async function seedParticipantConsents(
     ],
     responseRows,
   );
+  return withdrawals;
 }
 
 /** Closes the archived study, last, once every child row it owns is written. */

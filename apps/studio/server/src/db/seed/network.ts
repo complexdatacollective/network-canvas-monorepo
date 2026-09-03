@@ -140,6 +140,8 @@ export type SeededSession = {
   participantId: string | null;
   status: SessionStatus;
   startedAt: Date;
+  /** When a completed or abandoned session ended; null while in progress. */
+  endedAt: Date | null;
 };
 
 /**
@@ -374,6 +376,7 @@ export async function seedSessionsAndNetworks(
           participantId: participant?.id ?? null,
           status,
           startedAt,
+          endedAt: status === 'in_progress' ? null : lastActivityAt,
         });
       }
     }
