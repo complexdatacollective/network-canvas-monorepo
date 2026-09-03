@@ -358,16 +358,20 @@ export function Collection<T extends Record<string, unknown>>({
       items={items}
       keyExtractor={keyExtractor}
       textValueExtractor={textValueExtractor}
-      initialSortRules={getInitialSortRules({
-        sortBy,
-        sortDirection,
-        sortType,
-        defaultSortBy,
-        defaultSortDirection,
-        defaultSortType,
-        sortRules,
-      })}
-      initialDisabledKeys={disabledKeys}
+      seed={{
+        sortRules: getInitialSortRules({
+          sortBy,
+          sortDirection,
+          sortType,
+          defaultSortBy,
+          defaultSortDirection,
+          defaultSortType,
+          sortRules,
+        }),
+        disabledKeys,
+        selectionMode,
+        selectedKeys: selectedKeys ?? defaultSelectedKeys,
+      }}
     >
       <CollectionContent
         items={items}

@@ -140,6 +140,30 @@ describe('Collection', () => {
       expect(apple).not.toContain('aria-disabled');
     });
 
+    it('marks the initial selection in the initial markup', () => {
+      const markup = renderToString(
+        <Collection
+          items={testItems}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.name}
+          layout={new ListLayout<Item>({ gap: 2 })}
+          selectionMode="single"
+          defaultSelectedKeys={['3']}
+          animate={false}
+          renderItem={(item, itemProps) => (
+            <div {...itemProps}>{item.name}</div>
+          )}
+        >
+          {(collectionElements) => collectionElements}
+        </Collection>,
+      );
+
+      const cherry = markup.match(/<div[^>]*>Cherry<\/div>/)?.[0] ?? '';
+      const apple = markup.match(/<div[^>]*>Apple<\/div>/)?.[0] ?? '';
+      expect(cherry).toContain('aria-selected="true"');
+      expect(apple).not.toContain('aria-selected');
+    });
+
     it('renders in page flow without a scroll region when not scrollable', () => {
       const { container } = render(
         <Collection
