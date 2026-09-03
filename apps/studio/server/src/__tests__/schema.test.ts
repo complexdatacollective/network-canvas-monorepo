@@ -91,6 +91,9 @@ describe('generated schema documentation', () => {
     expect(readmeSection).toContain(
       'participant_consent_item_responses_immutable',
     );
+    expect(readmeSection).toContain('webhook_delivery_payload_immutable');
+    expect(readmeSection).toContain('experiment_assignments_immutable');
+    expect(readmeSection).toContain('experiment_exposures_immutable');
     expect(readmeSection).toContain('invitation_delivery_payload_immutable');
     expect(readmeSection).toContain('audit_events_immutable');
     expect(readmeSection).toContain('audit_team_isolation');
@@ -117,6 +120,9 @@ describe('generated schema documentation', () => {
     expect(svg).toContain(
       'sidecar trigger participant_consent_item_responses_immutable',
     );
+    expect(svg).toContain('sidecar trigger webhook_delivery_payload_immutable');
+    expect(svg).toContain('sidecar trigger experiment_assignments_immutable');
+    expect(svg).toContain('sidecar trigger experiment_exposures_immutable');
     expect(svg).toContain(
       'sidecar trigger invitation_delivery_payload_immutable',
     );
@@ -171,6 +177,10 @@ describe.skipIf(!db)('schema verification', () => {
         'consent_documents',
         'consent_items',
         'drafts',
+        'experiment_assignments',
+        'experiment_exposures',
+        'experiments',
+        'feedback_reports',
         'interview_links',
         'interview_sessions',
         'leases',
@@ -195,6 +205,8 @@ describe.skipIf(!db)('schema verification', () => {
         'user',
         'verification',
         'version_sections',
+        'webhook_deliveries',
+        'webhook_subscriptions',
       ]);
       expect([...SCHEMA_TABLES].toSorted()).toEqual(
         tables.rows

@@ -83,6 +83,10 @@ describe.skipIf(!db)('row-level security', () => {
       'consent_documents',
       'consent_items',
       'drafts',
+      'experiment_assignments',
+      'experiment_exposures',
+      'experiments',
+      'feedback_reports',
       'interview_links',
       'interview_sessions',
       'leases',
@@ -99,6 +103,8 @@ describe.skipIf(!db)('row-level security', () => {
       'study_waves',
       'team_invitation_deliveries',
       'version_sections',
+      'webhook_deliveries',
+      'webhook_subscriptions',
     ]);
 
     const rows = await pool.query<{
