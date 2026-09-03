@@ -116,6 +116,11 @@ describe('generated schema documentation', () => {
     expect(readmeSection).toContain('webhook_delivery_payload_immutable');
     expect(readmeSection).toContain('experiment_assignments_immutable');
     expect(readmeSection).toContain('experiment_exposures_immutable');
+    expect(readmeSection).toContain('study_schedules_time_zone_known');
+    expect(readmeSection).toContain('schedule_occurrences_time_zone_known');
+    expect(readmeSection).toContain('message_templates_publication_immutable');
+    expect(readmeSection).toContain('message_delivery_payload_immutable');
+    expect(readmeSection).toContain('message_delivery_events_immutable');
     expect(readmeSection).toContain('invitation_delivery_payload_immutable');
     expect(readmeSection).toContain('audit_events_immutable');
     expect(readmeSection).toContain('audit_team_isolation');
@@ -164,6 +169,15 @@ describe('generated schema documentation', () => {
     expect(svg).toContain('sidecar trigger webhook_delivery_payload_immutable');
     expect(svg).toContain('sidecar trigger experiment_assignments_immutable');
     expect(svg).toContain('sidecar trigger experiment_exposures_immutable');
+    expect(svg).toContain('sidecar trigger study_schedules_time_zone_known');
+    expect(svg).toContain(
+      'sidecar trigger schedule_occurrences_time_zone_known',
+    );
+    expect(svg).toContain(
+      'sidecar trigger message_templates_publication_immutable',
+    );
+    expect(svg).toContain('sidecar trigger message_delivery_payload_immutable');
+    expect(svg).toContain('sidecar trigger message_delivery_events_immutable');
     expect(svg).toContain(
       'sidecar trigger invitation_delivery_payload_immutable',
     );
@@ -230,18 +244,26 @@ describe.skipIf(!db)('schema verification', () => {
         'interview_sessions',
         'leases',
         'manifests',
+        'message_deliveries',
+        'message_delivery_events',
+        'message_templates',
         'participant_consent_item_responses',
         'participant_consents',
+        'participant_contact_optouts',
         'participants',
         'protocol_drafts',
         'protocol_versions',
         'protocols',
         'rateLimit',
+        'schedule_occurrences',
         'schemaFingerprint',
         'sections',
         'session',
         'studies',
         'study_role_grants',
+        'study_schedules',
+        'study_stage_rollups',
+        'study_wave_rollups',
         'study_waves',
         'team_invitation_deliveries',
         'team_invitations',
