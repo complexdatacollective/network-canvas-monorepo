@@ -19,7 +19,6 @@ import {
   NATIVE_LINK_ROOT_CLASS_NAME,
 } from './styles/nativeLinkStyles';
 import { compose, cva, cx, type VariantProps } from './utils/cva';
-import { trimTextContent } from './utils/textLabel';
 
 const buttonSpecificVariants = cva({
   base: cx(
@@ -333,26 +332,30 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       className,
     });
 
-    // A text label gets a box of its own so that what centres in the control
-    // is its cap height, not its line box (`trimTextContent`). The link
-    // variant keeps its own label box instead: its underline is painted along
-    // the bottom of that box, and a cap-trimmed box would run it through the
-    // descenders.
-    const labelOf = (content: React.ReactNode) =>
-      isLinkVariant ? (
-        <span className={NATIVE_LINK_LABEL_CLASS_NAME}>{content}</span>
-      ) : (
-        trimTextContent(content)
-      );
+    // The label gets a box of its own so that what centres in the control is
+    // its cap height, not its line box: `text-box-trim` is inert on the
+    // inline-flex button itself. The link variant keeps its own label box
+    // instead — its underline is painted along the bottom of that box, and a
+    // cap-trimmed box would run it through the descenders. Nothing to label
+    // (an icon-only button) gets no span, or the gap would open beside it.
+    const labelOf = (content: React.ReactNode) => {
+      if (isLinkVariant) {
+        return <span className={NATIVE_LINK_LABEL_CLASS_NAME}>{content}</span>;
+      }
+      if (content == null || content === false) return null;
+      return <span className="text-box-trim">{content}</span>;
+    };
 
     if (asChild) {
-      let slottedChild = children;
-      if (React.isValidElement<{ children?: React.ReactNode }>(children)) {
-        const label = labelOf(children.props.children);
-        if (label !== children.props.children) {
-          slottedChild = React.cloneElement(children, undefined, label);
-        }
-      }
+      const slottedChild = React.isValidElement<{
+        children?: React.ReactNode;
+      }>(children)
+        ? React.cloneElement(
+            children,
+            undefined,
+            labelOf(children.props.children),
+          )
+        : children;
 
       return (
         <Slot className={classes} ref={ref} {...props}>

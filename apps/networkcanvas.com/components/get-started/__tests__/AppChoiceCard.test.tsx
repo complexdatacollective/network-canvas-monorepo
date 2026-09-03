@@ -49,7 +49,10 @@ describe('AppChoiceCard', () => {
       name: architect.name,
     });
     const description = screen.getByRole('article').querySelector('p');
-    const status = screen.getByText('Recommended for new studies');
+    // Badge puts its text in a cap-trimmed span; the badge is its parent.
+    const status = screen.getByText(
+      'Recommended for new studies',
+    ).parentElement;
 
     expect(heading).toHaveClass(
       'scroll-m-20',
@@ -60,7 +63,7 @@ describe('AppChoiceCard', () => {
     expect(description).not.toBeNull();
     expect(description).toHaveClass('font-body');
     expect(description).not.toHaveClass('not-last:mb-[1em]');
-    expect(status.tagName).toBe('DIV');
+    expect(status?.tagName).toBe('DIV');
     expect(status).toHaveClass(
       'inline-flex',
       'border-0',
@@ -90,7 +93,8 @@ describe('AppChoiceCard', () => {
     );
 
     expect(
-      screen.getByText('Large Teams · Remote Administration · Recommended'),
+      screen.getByText('Large Teams · Remote Administration · Recommended')
+        .parentElement,
     ).toHaveClass('bg-cyber-grape/10', 'text-text');
   });
 

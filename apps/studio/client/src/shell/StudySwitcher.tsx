@@ -74,14 +74,24 @@ export default function StudySwitcher() {
               no space between them.
             */
             aria-labelledby={`${qualifierId} ${nameId}`}
+            icon={<ChevronDown aria-hidden />}
+            iconPosition="right"
           >
+            {/*
+              Button puts its children in one cap-trimmed label box, so the
+              chevron rides the icon slot rather than that box, and the name
+              is a block that clips only sideways: `overflow-hidden` would
+              take the descenders with it now that the box is cap height.
+            */}
             <span id={qualifierId} className="sr-only">
               Current study
             </span>
-            <span id={nameId} className="max-w-48 truncate">
+            <span
+              id={nameId}
+              className="block max-w-48 overflow-x-clip text-ellipsis whitespace-nowrap"
+            >
               {studyId}
             </span>
-            <ChevronDown aria-hidden className="size-4 shrink-0" />
           </Button>
         }
       />

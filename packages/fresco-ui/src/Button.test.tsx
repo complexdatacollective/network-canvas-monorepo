@@ -419,7 +419,7 @@ describe('Button label box', () => {
     expect(button.lastElementChild).toHaveTextContent('Confirm');
   });
 
-  it('leaves a label that carries its own markup untouched', () => {
+  it('puts a label with its own markup in the same box', () => {
     render(
       <Button>
         <em data-testid="label">Confirm</em>
@@ -429,7 +429,21 @@ describe('Button label box', () => {
     const button = screen.getByRole('button', { name: 'Confirm' });
 
     expect(button.children).toHaveLength(1);
-    expect(button.firstElementChild).toBe(screen.getByTestId('label'));
+    expect(button.firstElementChild).toHaveClass('text-box-trim');
+    expect(button.firstElementChild).toContainElement(
+      screen.getByTestId('label'),
+    );
+  });
+
+  // An icon-only button has nothing to label; an empty span would still be a
+  // flex item and open the gap beside the icon.
+  it('adds no label box when there is no label', () => {
+    render(<Button aria-label="Close" icon={<Check data-testid="icon" />} />);
+
+    const button = screen.getByRole('button', { name: 'Close' });
+
+    expect(button.children).toHaveLength(1);
+    expect(button.firstElementChild).toBe(screen.getByTestId('icon'));
   });
 
   it('trims the label of a slotted child', () => {

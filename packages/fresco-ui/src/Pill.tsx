@@ -1,7 +1,6 @@
 import * as React from 'react';
 
 import { cva, type VariantProps } from './utils/cva';
-import { trimTextContent } from './utils/textLabel';
 
 export const pillVariants = cva({
   // border is ALWAYS present (transparent by default) so the border-box is
@@ -10,9 +9,9 @@ export const pillVariants = cva({
   base: 'font-monospace inline-flex items-center rounded-full border border-transparent whitespace-nowrap',
   variants: {
     size: {
-      // The label is cap-trimmed (`trimTextContent`), so the vertical padding
-      // is the whole of the space around the caps rather than a top-up on a
-      // line box; an icon taller than the caps sizes its pill instead.
+      // The label sits in a cap-trimmed span, so the vertical padding is the
+      // whole of the space around the caps rather than a top-up on a line
+      // box; an icon taller than the caps sizes its pill instead.
       sm: 'gap-1 px-2 py-1.5 text-xs',
       md: 'gap-1.5 px-2.5 py-2 text-xs',
       lg: 'gap-2 px-3 py-2.5 text-sm',
@@ -69,7 +68,7 @@ const Pill = React.forwardRef<HTMLElement, PillProps>(function Pill(
         {...props}
       >
         {icon}
-        {trimTextContent(children)}
+        <span className="text-box-trim">{children}</span>
       </button>
     );
   }
@@ -77,7 +76,8 @@ const Pill = React.forwardRef<HTMLElement, PillProps>(function Pill(
   return (
     <span ref={setRef} className={classes} {...props}>
       {icon}
-      {trimTextContent(children)}
+      {/* `text-box-trim` is inert on the inline-flex pill; the span takes it. */}
+      <span className="text-box-trim">{children}</span>
     </span>
   );
 });
