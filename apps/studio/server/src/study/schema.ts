@@ -138,6 +138,13 @@ const studies = pgTable(
       'studies_paused_at_check',
       sql`(${table.state} = 'paused') = (${table.pausedAt} IS NOT NULL)`,
     ),
+    // Every state past draft has gone live, so the freeze evidence
+    // `studies_go_live_final` guards can never be absent from a study that
+    // is collecting.
+    check(
+      'studies_went_live_at_check',
+      sql`${table.state} = 'draft' OR ${table.wentLiveAt} IS NOT NULL`,
+    ),
     teamIsolationPolicy(),
   ],
 );

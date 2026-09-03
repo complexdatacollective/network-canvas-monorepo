@@ -291,6 +291,27 @@ CREATE OR REPLACE TRIGGER experiments_variants_frozen
   WHEN (OLD.state <> 'draft' AND NEW.variants IS DISTINCT FROM OLD.variants)
   EXECUTE FUNCTION experiment_variants_are_frozen();
 
+-- ...which only holds if "started" cannot be undone. The state check ties a
+-- draft to a null \`started_at\`, so a row could be walked back to draft with
+-- its start cleared and its variants then rewritten under the assignments
+-- and exposures that cite the old arms. The first start is therefore final:
+-- once recorded it neither clears nor moves, and the state never returns to
+-- draft.
+CREATE OR REPLACE FUNCTION experiment_start_is_final() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'an experiment that has started cannot return to draft or move its start';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER experiments_start_final
+  BEFORE UPDATE ON experiments
+  FOR EACH ROW
+  WHEN (
+    OLD.started_at IS NOT NULL
+    AND (NEW.started_at IS DISTINCT FROM OLD.started_at OR NEW.state = 'draft')
+  )
+  EXECUTE FUNCTION experiment_start_is_final();
+
 -- Both of the guards above read the variant list as a list of arms, and
 -- \`experiments_variants_check\` cannot make it one: bounding the array and its
 -- length is all a CHECK can do here, so on its own it admits [null, null], two

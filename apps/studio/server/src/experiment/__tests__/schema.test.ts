@@ -450,6 +450,38 @@ describe.skipIf(!db)('experiment schema', () => {
       ).resolves.toMatchObject({ rowCount: 1 });
     });
 
+    it('never lets a started experiment return to draft or move its start', async () => {
+      const id = await newExperiment();
+      await pool.query(
+        `UPDATE experiments SET state = 'running', started_at = now() WHERE id = $1`,
+        [id],
+      );
+      const refused =
+        'an experiment that has started cannot return to draft or move its start';
+
+      // Back to draft, start cleared: the walk-back that would let the
+      // variants be rewritten under existing assignments.
+      await expect(
+        pool.query(
+          `UPDATE experiments SET state = 'draft', started_at = NULL WHERE id = $1`,
+          [id],
+        ),
+      ).rejects.toThrow(refused);
+      await expect(
+        pool.query(
+          `UPDATE experiments SET started_at = now() + interval '1 day' WHERE id = $1`,
+          [id],
+        ),
+      ).rejects.toThrow(refused);
+      // Stopping is the one transition left.
+      await expect(
+        pool.query(
+          `UPDATE experiments SET state = 'stopped', stopped_at = now() WHERE id = $1`,
+          [id],
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+    });
+
     it('keeps one experiment per key per team', async () => {
       const key = `layout_${randomUUID().slice(0, 8)}`;
       await newExperiment({ key });

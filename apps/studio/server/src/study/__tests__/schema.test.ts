@@ -198,7 +198,8 @@ describe.skipIf(!db)('study spine schema', () => {
 
   async function closeStudy(studyId: string): Promise<void> {
     await pool.query(
-      `UPDATE studies SET state = 'closed', closed_at = now() WHERE id = $1`,
+      `UPDATE studies SET state = 'closed', closed_at = now(),
+           went_live_at = COALESCE(went_live_at, now()) WHERE id = $1`,
       [studyId],
     );
   }
@@ -356,7 +357,7 @@ describe.skipIf(!db)('study spine schema', () => {
       ],
       [
         'a closed state with no close timestamp',
-        { state: 'closed' },
+        { state: 'closed', went_live_at: new Date() },
         'studies_closed_at_check',
       ],
       [
@@ -366,7 +367,7 @@ describe.skipIf(!db)('study spine schema', () => {
       ],
       [
         'a paused state with no pause timestamp',
-        { state: 'paused' },
+        { state: 'paused', went_live_at: new Date() },
         'studies_paused_at_check',
       ],
       [
@@ -382,11 +383,30 @@ describe.skipIf(!db)('study spine schema', () => {
 
     it('accepts the states the checks exist to admit', async () => {
       await expect(
-        insert('studies', studyRow({ state: 'closed', closed_at: new Date() })),
+        insert(
+          'studies',
+          studyRow({
+            state: 'closed',
+            went_live_at: new Date(),
+            closed_at: new Date(),
+          }),
+        ),
       ).resolves.toMatchObject({ rowCount: 1 });
       await expect(
-        insert('studies', studyRow({ state: 'paused', paused_at: new Date() })),
+        insert(
+          'studies',
+          studyRow({
+            state: 'paused',
+            went_live_at: new Date(),
+            paused_at: new Date(),
+          }),
+        ),
       ).resolves.toMatchObject({ rowCount: 1 });
+      // Past draft without the go-live record that the mode freeze guards:
+      // the evidence cannot be omitted by the transition that creates it.
+      await expect(
+        insert('studies', studyRow({ state: 'live' })),
+      ).rejects.toMatchObject({ constraint: 'studies_went_live_at_check' });
       await expect(
         insert(
           'studies',

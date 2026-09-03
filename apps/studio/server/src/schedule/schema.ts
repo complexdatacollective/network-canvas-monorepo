@@ -711,7 +711,10 @@ CREATE OR REPLACE TRIGGER message_templates_publication_immutable
   WHEN (
     OLD.state <> 'draft'
     AND (
-      NEW.subject IS DISTINCT FROM OLD.subject
+      -- Publication is one-way: a published template retires, it does not
+      -- go back to draft to be reworded and republished under the same id.
+      NEW.state = 'draft'
+      OR NEW.subject IS DISTINCT FROM OLD.subject
       OR NEW.body IS DISTINCT FROM OLD.body
       OR NEW.kind IS DISTINCT FROM OLD.kind
       OR NEW.channel IS DISTINCT FROM OLD.channel

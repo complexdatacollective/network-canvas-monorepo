@@ -125,6 +125,7 @@ describe('generated schema documentation', () => {
     expect(readmeSection).toContain('experiment_assignments_immutable');
     expect(readmeSection).toContain('experiment_assignments_variant_known');
     expect(readmeSection).toContain('experiments_variants_frozen');
+    expect(readmeSection).toContain('experiments_start_final');
     expect(readmeSection).toContain('experiment_exposures_immutable');
     expect(readmeSection).toContain('experiment_assignments_deletable');
     expect(readmeSection).toContain('experiment_exposures_deletable');
@@ -241,6 +242,7 @@ describe('generated schema documentation', () => {
       'sidecar trigger experiment_assignments_variant_known',
     );
     expect(svg).toContain('sidecar trigger experiments_variants_frozen');
+    expect(svg).toContain('sidecar trigger experiments_start_final');
     expect(svg).toContain('sidecar trigger experiment_exposures_immutable');
     expect(svg).toContain('sidecar trigger experiment_assignments_deletable');
     expect(svg).toContain('sidecar trigger experiment_exposures_deletable');

@@ -968,6 +968,24 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
       ).resolves.toMatchObject({ rowCount: 1 });
     });
 
+    it('never returns a published template to draft', async () => {
+      const templateId = await newTemplate();
+      // Back to draft would reopen the body for rewording under the same id
+      // and version, which existing deliveries cite as evidence.
+      await expect(
+        pool.query(
+          `UPDATE message_templates SET state = 'draft' WHERE id = $1`,
+          [templateId],
+        ),
+      ).rejects.toThrow('published message templates are immutable');
+      await expect(
+        pool.query(
+          `UPDATE message_templates SET state = 'retired' WHERE id = $1`,
+          [templateId],
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+    });
+
     it('leaves a draft template fully editable', async () => {
       const templateId = await newTemplate({ state: 'draft' });
 

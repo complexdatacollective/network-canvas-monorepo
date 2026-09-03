@@ -168,7 +168,8 @@ describe.skipIf(!db)('network schema', () => {
 
   async function closeStudy(studyId: string): Promise<void> {
     await pool.query(
-      `UPDATE studies SET state = 'closed', closed_at = now() WHERE id = $1`,
+      `UPDATE studies SET state = 'closed', closed_at = now(),
+           went_live_at = COALESCE(went_live_at, now()) WHERE id = $1`,
       [studyId],
     );
   }
