@@ -12,7 +12,13 @@ type ButtonLinkProps = {
   href: string;
   children: ReactNode;
   className?: string;
+  /** Opens in a new tab with `rel="noreferrer"`. */
   external?: boolean;
+  /**
+   * Renders a plain anchor without the localised router link — for
+   * downloads, `mailto:` and other non-route destinations.
+   */
+  native?: boolean;
   color?: NonNullable<Variants>['color'];
   size?: NonNullable<Variants>['size'];
   textStyle?: NonNullable<Variants>['textStyle'];
@@ -29,6 +35,7 @@ export function ButtonLink({
   children,
   className,
   external,
+  native,
   color = 'primary',
   size,
   textStyle,
@@ -49,6 +56,14 @@ export function ButtonLink({
         className={classes}
         {...props}
       >
+        {children}
+      </a>
+    );
+  }
+
+  if (native) {
+    return (
+      <a href={href} className={classes} {...props}>
         {children}
       </a>
     );

@@ -6,6 +6,7 @@ describe('isProductionHost', () => {
   it('accepts the live site', () => {
     expect(isProductionHost('networkcanvas.com')).toBe(true);
     expect(isProductionHost('www.networkcanvas.com')).toBe(true);
+    expect(isProductionHost('protocolgallery.networkcanvas.com')).toBe(true);
   });
 
   it('rejects deploy previews, the dev site, and local development', () => {

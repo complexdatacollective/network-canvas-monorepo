@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useMemo, useState } from 'react';
+import { renderToString } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import { Collection } from '../components/Collection';
@@ -86,6 +87,198 @@ describe('Collection', () => {
       expect(screen.getByText('Cherry')).toBeDefined();
       expect(screen.getByText('Date')).toBeDefined();
       expect(screen.getByText('Elderberry')).toBeDefined();
+    });
+
+    it('renders its items in the initial markup', () => {
+      const markup = renderToString(
+        <Collection
+          items={testItems}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.name}
+          layout={new ListLayout<Item>({ gap: 2 })}
+          animate={false}
+          emptyState={<span>Nothing here</span>}
+          renderItem={(item, itemProps) => (
+            <div {...itemProps}>{item.name}</div>
+          )}
+        >
+          {(collectionElements) => collectionElements}
+        </Collection>,
+      );
+
+      for (const item of testItems) {
+        expect(markup).toContain(item.name);
+      }
+      expect(markup).not.toContain('Nothing here');
+    });
+
+    it('marks disabled native items in the initial markup', () => {
+      const markup = renderToString(
+        <Collection
+          items={testItems}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.name}
+          layout={new ListLayout<Item>({ gap: 2 })}
+          selectionMode="none"
+          nativeItemSemantics
+          disabledKeys={['2']}
+          animate={false}
+          renderItem={(item, itemProps) => (
+            <a {...itemProps} href={`#${item.id}`}>
+              {item.name}
+            </a>
+          )}
+        >
+          {(collectionElements) => collectionElements}
+        </Collection>,
+      );
+
+      const banana = markup.match(/<a[^>]*>Banana<\/a>/)?.[0] ?? '';
+      const apple = markup.match(/<a[^>]*>Apple<\/a>/)?.[0] ?? '';
+      expect(banana).toContain('aria-disabled="true"');
+      expect(banana).toContain('tabindex="-1"');
+      expect(apple).not.toContain('aria-disabled');
+    });
+
+    it('marks the initial selection in the initial markup', () => {
+      const markup = renderToString(
+        <Collection
+          items={testItems}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.name}
+          layout={new ListLayout<Item>({ gap: 2 })}
+          selectionMode="single"
+          defaultSelectedKeys={['3']}
+          animate={false}
+          renderItem={(item, itemProps) => (
+            <div {...itemProps}>{item.name}</div>
+          )}
+        >
+          {(collectionElements) => collectionElements}
+        </Collection>,
+      );
+
+      const cherry = markup.match(/<div[^>]*>Cherry<\/div>/)?.[0] ?? '';
+      const apple = markup.match(/<div[^>]*>Apple<\/div>/)?.[0] ?? '';
+      expect(cherry).toContain('aria-selected="true"');
+      expect(apple).not.toContain('aria-selected');
+    });
+
+    it('renders in page flow without a scroll region when not scrollable', () => {
+      const { container } = render(
+        <Collection
+          items={testItems}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.name}
+          layout={new ListLayout<Item>({ gap: 2 })}
+          selectionMode="none"
+          nativeItemSemantics
+          scrollable={false}
+          animate={false}
+          renderItem={(item, itemProps) => (
+            <a {...itemProps} href={`#${item.id}`}>
+              {item.name}
+            </a>
+          )}
+        >
+          {(collectionElements) => collectionElements}
+        </Collection>,
+      );
+
+      // No ScrollArea viewport: nothing between the items and the page that
+      // could clip them or become a tab stop.
+      expect(container.querySelector('section')).toBeNull();
+      expect(container.querySelector('[tabindex]')).toBeNull();
+      expect(screen.getAllByRole('link')).toHaveLength(testItems.length);
+    });
+
+    it('keeps the listbox on the plain container when not scrollable', () => {
+      render(
+        <Collection
+          items={testItems}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.name}
+          layout={new ListLayout<Item>({ gap: 2 })}
+          selectionMode="single"
+          scrollable={false}
+          animate={false}
+          aria-label="Fruit"
+          renderItem={(item, itemProps) => (
+            <div {...itemProps}>{item.name}</div>
+          )}
+        >
+          {(collectionElements) => collectionElements}
+        </Collection>,
+      );
+
+      const listbox = screen.getByRole('listbox', { name: 'Fruit' });
+      expect(listbox.tagName).toBe('DIV');
+      expect(listbox.closest('section')).toBeNull();
+    });
+
+    it('preserves native link semantics when requested', () => {
+      render(
+        <Collection
+          items={testItems}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.name}
+          layout={new ListLayout<Item>({ gap: 2 })}
+          selectionMode="none"
+          nativeItemSemantics
+          renderItem={(item, itemProps) => (
+            <a {...itemProps} href={`#${item.id}`}>
+              {item.name}
+            </a>
+          )}
+        >
+          {(CollectionElements) => CollectionElements}
+        </Collection>,
+      );
+
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+      expect(screen.getAllByRole('link')).toHaveLength(testItems.length);
+      const firstLink = screen.getByRole('link', { name: 'Apple' });
+      expect(firstLink).not.toHaveAttribute('tabindex');
+      expect(firstLink.closest('section')).toHaveAttribute('tabindex', '-1');
+    });
+
+    it('blocks activation of disabled native links', async () => {
+      const user = userEvent.setup();
+      const onActivate = vi.fn();
+
+      render(
+        <Collection
+          items={testItems}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.name}
+          layout={new ListLayout<Item>({ gap: 2 })}
+          selectionMode="none"
+          nativeItemSemantics
+          disabledKeys={['2']}
+          renderItem={(item, itemProps) => (
+            <a href={`#${item.id}`} onClick={onActivate} {...itemProps}>
+              {item.name}
+            </a>
+          )}
+        >
+          {(CollectionElements) => CollectionElements}
+        </Collection>,
+      );
+
+      const disabledLink = screen.getByRole('link', { name: 'Banana' });
+      expect(disabledLink).toHaveAttribute('aria-disabled', 'true');
+      expect(disabledLink).toHaveAttribute('tabindex', '-1');
+
+      await user.click(disabledLink);
+
+      expect(onActivate).not.toHaveBeenCalled();
+      expect(window.location.hash).not.toBe('#2');
+
+      // The item props carry no `onClick` of their own in native mode, so the
+      // consumer's handler survives being spread over — enabled links still
+      // activate.
+      await user.click(screen.getByRole('link', { name: 'Apple' }));
+      expect(onActivate).toHaveBeenCalledTimes(1);
     });
 
     it('should render empty state when no items', () => {

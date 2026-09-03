@@ -21,6 +21,19 @@ const MAX_STAGGER_DELAY = 0.1;
  * @param animationKey - When this value changes, the stagger entrance re-runs
  * @returns A ref to attach to the animation scope container
  */
+/**
+ * The selector the stagger animates. When `animationKey` is defined it is
+ * scoped to items carrying the current key, so exiting items still in the DOM
+ * (AnimatePresence `popLayout`) are left alone. The key is consumer data — a
+ * search query, say — so quotes and backslashes are escaped rather than
+ * breaking the attribute selector.
+ */
+export function staggerSelector(animationKey?: string | number): string {
+  if (animationKey === undefined) return '[data-stagger-item]';
+  const escaped = String(animationKey).replace(/["\\]/g, '\\$&');
+  return `[data-stagger-item][data-stagger-key="${escaped}"]`;
+}
+
 export function useStaggerAnimation(
   enabled: boolean,
   itemCount: number,
@@ -51,13 +64,7 @@ export function useStaggerAnimation(
       MAX_STAGGER_DELAY,
     );
 
-    // When animationKey is defined, scope the selector to only target items
-    // with the current key. This prevents the stagger from accidentally
-    // animating exiting items still in the DOM (from AnimatePresence popLayout).
-    const selector =
-      animationKey !== undefined
-        ? `[data-stagger-item][data-stagger-key="${animationKey}"]`
-        : '[data-stagger-item]';
+    const selector = staggerSelector(animationKey);
 
     const runAnimation = async () => {
       await animate(

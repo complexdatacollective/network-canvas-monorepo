@@ -7,6 +7,8 @@ import { renderWithIntl } from '~/test/renderWithIntl';
 
 import GetStartedPage from '../get-started/page';
 import HomePage from '../page';
+import ProtocolDetailPage from '../protocol-gallery/[slug]/page';
+import ProtocolGalleryPage from '../protocol-gallery/page';
 import PublicationsPage from '../publications/page';
 import SummerUpdateRoute from '../summer-2026-update/page';
 
@@ -98,6 +100,14 @@ const pages: ReadonlyArray<{
   { name: 'publications', render: () => PublicationsPage({ params }) },
   { name: 'get started', render: () => GetStartedPage({ params }) },
   { name: 'summer 2026 update', render: () => SummerUpdateRoute({ params }) },
+  { name: 'protocol gallery', render: () => ProtocolGalleryPage({ params }) },
+  {
+    name: 'protocol detail',
+    render: () =>
+      ProtocolDetailPage({
+        params: Promise.resolve({ locale: 'en-US', slug: 'test-to-prep' }),
+      }),
+  },
 ];
 
 afterEach(() => {

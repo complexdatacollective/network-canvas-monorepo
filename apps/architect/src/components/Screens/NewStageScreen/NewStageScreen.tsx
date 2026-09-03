@@ -8,8 +8,8 @@ import { useLocation } from 'wouter';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import Tag from '@codaco/fresco-ui/Tag';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import Tag from '~/components/Tag';
 import type { RootState } from '~/ducks/modules/root';
 import { getExperiments, getTimelineLocus } from '~/selectors/protocol';
 
@@ -289,9 +289,8 @@ const NewStageScreen = ({
               {tags.map(({ value, selected, disabled }) => (
                 <Tag
                   key={value}
-                  id={value}
-                  selected={selected}
-                  onClick={handleTagClick}
+                  pressed={selected}
+                  onPressedChange={() => handleTagClick(value)}
                   color={get(TAG_COLORS, value)}
                   disabled={disabled}
                 >

@@ -7,6 +7,7 @@ import { CollectionProvider } from '../CollectionProvider';
 import {
   CollectionIdContext,
   FilterManagerContext,
+  NativeItemSemanticsContext,
   SelectionManagerContext,
   SortManagerContext,
   useCollectionStore,
@@ -14,6 +15,7 @@ import {
 import { useCollectionSetup } from '../hooks/useCollectionSetup';
 import { useFilterState } from '../hooks/useFilterState';
 import { useSortState } from '../hooks/useSortState';
+import { getInitialSortRules } from '../sorting/initialSortRules';
 import type { SortState } from '../sorting/types';
 import type { CollectionProps, ItemRenderer, KeyExtractor } from '../types';
 import { StaticRenderer } from './StaticRenderer';
@@ -46,9 +48,11 @@ function CollectionContent<T extends Record<string, unknown>>({
   onSelectionChange,
   disabledKeys,
   disallowEmptySelection,
+  nativeItemSemantics = false,
   animate,
   animationKey,
   dragAndDropHooks,
+  scrollable = true,
   virtualized,
   overscan,
   viewportClassName,
@@ -66,6 +70,7 @@ function CollectionContent<T extends Record<string, unknown>>({
   sortRules,
   // Filter props
   filterQuery,
+  filterExecution,
   defaultFilterQuery,
   onFilterChange,
   onFilterResultsChange,
@@ -120,6 +125,7 @@ function CollectionContent<T extends Record<string, unknown>>({
   // Use filter state hook for filtering (only if filterKeys is provided)
   const filterManager = useFilterState({
     filterQuery,
+    filterExecution,
     defaultFilterQuery,
     onFilterChange,
     onFilterResultsChange,
@@ -165,6 +171,66 @@ function CollectionContent<T extends Record<string, unknown>>({
   void tabIndex;
   const mergedRef = useMergeRefs({ containerRef, dndRef });
 
+  useEffect(() => {
+    // Consumer bundlers replace this flag, so the check is dropped from
+    // production builds.
+    if (import.meta.env.DEV && !scrollable && virtualized) {
+      console.warn(
+        'Collection: `virtualized` needs a scroll container to measure against and is ignored when `scrollable` is false.',
+      );
+    }
+  }, [scrollable, virtualized]);
+
+  const regionProps = {
+    'role': nativeItemSemantics ? undefined : 'listbox',
+    'id': collectionId,
+    'aria-label': nativeItemSemantics ? undefined : ariaLabel,
+    'aria-labelledby': nativeItemSemantics ? undefined : ariaLabelledBy,
+    'aria-multiselectable': nativeItemSemantics
+      ? undefined
+      : selectionMode === 'multiple' || undefined,
+    'aria-activedescendant':
+      !nativeItemSemantics && selectionManager.focusedKey !== null
+        ? `${collectionId}-item-${selectionManager.focusedKey}`
+        : undefined,
+    ...(nativeItemSemantics ? {} : collectionProps),
+    ...restDndProps,
+    'className': 'size-full',
+  };
+
+  const renderedItems = (
+    <>
+      {virtualized && scrollable ? (
+        <VirtualizedRenderer
+          layout={layout}
+          collection={collection}
+          renderItem={renderItem}
+          animate={animate}
+          animationKey={animationKey}
+          collectionId={collectionId}
+          dragAndDropHooks={dragAndDropHooks}
+          scrollRef={containerRef}
+          overscan={overscan}
+          layoutGroupId={layoutGroupId}
+        />
+      ) : (
+        <StaticRenderer
+          layout={layout}
+          collection={collection}
+          renderItem={renderItem}
+          animate={animate}
+          animationKey={animationKey}
+          collectionId={collectionId}
+          dragAndDropHooks={dragAndDropHooks}
+          layoutGroupId={layoutGroupId}
+        />
+      )}
+      {collection.size === 0 && emptyState && (
+        <div className="text-center text-current/70">{emptyState}</div>
+      )}
+    </>
+  );
+
   const collectionElements = (
     <div
       className={cx('min-h-0 w-full flex-1', className)}
@@ -172,54 +238,22 @@ function CollectionContent<T extends Record<string, unknown>>({
       data-drop-target-valid={dropState?.willAccept ?? undefined}
       data-dragging={dropState?.isDragging ?? undefined}
     >
-      <ScrollArea
-        ref={mergedRef}
-        role="listbox"
-        id={collectionId}
-        viewportClassName={viewportClassName}
-        fade={fade}
-        orientation={orientation}
-        aria-label={ariaLabel}
-        aria-labelledby={ariaLabelledBy}
-        aria-multiselectable={selectionMode === 'multiple' || undefined}
-        aria-activedescendant={
-          selectionManager.focusedKey !== null
-            ? `${collectionId}-item-${selectionManager.focusedKey}`
-            : undefined
-        }
-        {...collectionProps}
-        {...restDndProps}
-        className="size-full"
-      >
-        {virtualized ? (
-          <VirtualizedRenderer
-            layout={layout}
-            collection={collection}
-            renderItem={renderItem}
-            animate={animate}
-            animationKey={animationKey}
-            collectionId={collectionId}
-            dragAndDropHooks={dragAndDropHooks}
-            scrollRef={containerRef}
-            overscan={overscan}
-            layoutGroupId={layoutGroupId}
-          />
-        ) : (
-          <StaticRenderer
-            layout={layout}
-            collection={collection}
-            renderItem={renderItem}
-            animate={animate}
-            animationKey={animationKey}
-            collectionId={collectionId}
-            dragAndDropHooks={dragAndDropHooks}
-            layoutGroupId={layoutGroupId}
-          />
-        )}
-        {collection.size === 0 && emptyState && (
-          <div className="text-center text-current/70">{emptyState}</div>
-        )}
-      </ScrollArea>
+      {scrollable ? (
+        <ScrollArea
+          ref={mergedRef}
+          viewportClassName={viewportClassName}
+          fade={fade}
+          orientation={orientation}
+          tabIndex={nativeItemSemantics ? -1 : undefined}
+          {...regionProps}
+        >
+          {renderedItems}
+        </ScrollArea>
+      ) : (
+        <div ref={mergedRef} {...regionProps}>
+          {renderedItems}
+        </div>
+      )}
     </div>
   );
 
@@ -227,9 +261,11 @@ function CollectionContent<T extends Record<string, unknown>>({
     <SelectionManagerContext.Provider value={selectionManager}>
       <SortManagerContext.Provider value={sortManager}>
         <FilterManagerContext.Provider value={filterManager}>
-          <CollectionIdContext.Provider value={collectionId}>
-            {children(collectionElements)}
-          </CollectionIdContext.Provider>
+          <NativeItemSemanticsContext.Provider value={nativeItemSemantics}>
+            <CollectionIdContext.Provider value={collectionId}>
+              {children(collectionElements)}
+            </CollectionIdContext.Provider>
+          </NativeItemSemanticsContext.Provider>
         </FilterManagerContext.Provider>
       </SortManagerContext.Provider>
     </SelectionManagerContext.Provider>
@@ -285,9 +321,11 @@ export function Collection<T extends Record<string, unknown>>({
   onSelectionChange,
   disabledKeys,
   disallowEmptySelection,
+  nativeItemSemantics,
   animate = true,
   animationKey,
   dragAndDropHooks,
+  scrollable,
   virtualized,
   overscan,
   viewportClassName,
@@ -305,6 +343,7 @@ export function Collection<T extends Record<string, unknown>>({
   sortRules,
   // Filter props
   filterQuery,
+  filterExecution,
   defaultFilterQuery,
   onFilterChange,
   onFilterResultsChange,
@@ -319,6 +358,20 @@ export function Collection<T extends Record<string, unknown>>({
       items={items}
       keyExtractor={keyExtractor}
       textValueExtractor={textValueExtractor}
+      seed={{
+        sortRules: getInitialSortRules({
+          sortBy,
+          sortDirection,
+          sortType,
+          defaultSortBy,
+          defaultSortDirection,
+          defaultSortType,
+          sortRules,
+        }),
+        disabledKeys,
+        selectionMode,
+        selectedKeys: selectedKeys ?? defaultSelectedKeys,
+      }}
     >
       <CollectionContent
         items={items}
@@ -336,9 +389,11 @@ export function Collection<T extends Record<string, unknown>>({
         onSelectionChange={onSelectionChange}
         disabledKeys={disabledKeys}
         disallowEmptySelection={disallowEmptySelection}
+        nativeItemSemantics={nativeItemSemantics}
         animate={animate}
         animationKey={animationKey}
         dragAndDropHooks={dragAndDropHooks}
+        scrollable={scrollable}
         virtualized={virtualized}
         overscan={overscan}
         viewportClassName={viewportClassName}
@@ -356,6 +411,7 @@ export function Collection<T extends Record<string, unknown>>({
         sortRules={sortRules}
         // Filter props
         filterQuery={filterQuery}
+        filterExecution={filterExecution}
         defaultFilterQuery={defaultFilterQuery}
         onFilterChange={onFilterChange}
         onFilterResultsChange={onFilterResultsChange}

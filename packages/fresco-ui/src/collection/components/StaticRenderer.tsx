@@ -39,15 +39,13 @@ function StaticRendererComponent<T>({
 }: StaticRendererProps<T>) {
   // Get CSS styles from layout (flexbox for list, CSS grid for grid)
   const containerStyle = layout.getContainerStyles();
+  const layoutItemStyle = layout.getItemStyles();
 
   const scope = useStaggerAnimation(
     shouldAnimate ?? false,
     collection.size,
     animationKey,
   );
-
-  // Get layout item styles (e.g., fixed width for InlineGridLayout)
-  const layoutItemStyle = layout.getItemStyles();
 
   const effectiveLayoutGroupId =
     layoutGroupId === undefined ? collectionId : (layoutGroupId ?? undefined);

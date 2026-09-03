@@ -1710,6 +1710,9 @@ importers:
       '@codaco/interface-images':
         specifier: workspace:^
         version: link:../../packages/interface-images
+      '@codaco/protocol-validation':
+        specifier: workspace:^
+        version: link:../../packages/protocol-validation
       '@codaco/shared-consts':
         specifier: workspace:^
         version: link:../../packages/shared-consts
@@ -1798,6 +1801,9 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 30.0.0(@noble/hashes@2.3.0)
+      jszip:
+        specifier: 'catalog:'
+        version: 3.10.1
       postcss:
         specifier: ^8.5.26
         version: 8.5.26

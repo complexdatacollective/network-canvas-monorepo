@@ -1,7 +1,8 @@
-import { memo, useCallback, useRef } from 'react';
+import { memo, useCallback, useContext, useRef } from 'react';
 
 import {
   CollectionItemContext,
+  NativeItemSemanticsContext,
   useCollectionId,
   useSelectionManager,
 } from '../contexts';
@@ -24,6 +25,7 @@ function CollectionItemComponent<T>({
 }: CollectionItemProps<T>) {
   const selectionManager = useSelectionManager();
   const collectionId = useCollectionId() ?? 'collection';
+  const nativeItemSemantics = useContext(NativeItemSemanticsContext);
   const localRef = useRef<HTMLElement>(null);
 
   const { itemProps, isSelected, isFocused, isDisabled } = useSelectableItem({
@@ -97,31 +99,68 @@ function CollectionItemComponent<T>({
   const itemId = `${collectionId}-item-${node.key}`;
   const contextValue = { key: node.key };
 
-  // Build ItemProps to pass to renderItem
-  const fullItemProps: ItemProps = {
-    'ref': combinedRef,
-    'tabIndex': itemProps.tabIndex,
-    'role': 'option',
-    'aria-selected': isSelected || undefined,
-    'aria-disabled': isDisabled || undefined,
-    'data-collection-item': true,
-    'data-selected': isSelected || undefined,
-    'data-focused': isFocused || undefined,
-    'data-disabled': isDisabled || undefined,
-    'data-dragging': undefined,
-    'data-drop-target': undefined,
-    'onFocus': itemProps.onFocus,
-    'onClick': itemProps.onClick,
-    'onKeyDown': composedOnKeyDown,
-    'onPointerDown': dndDragProps.onPointerDown as
-      | React.PointerEventHandler
-      | undefined,
-    'onPointerMove': dndDragProps.onPointerMove as
-      | React.PointerEventHandler
-      | undefined,
-    'id': itemId,
-    ...dndDragProps,
-  };
+  // Native links and buttons do not honor aria-disabled by themselves. Use
+  // capture handlers so consumers can keep their own activation handlers
+  // without accidentally bypassing Collection's disabled state.
+  const blockDisabledNativeClick = useCallback((event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+  }, []);
+  const blockDisabledNativeKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    [],
+  );
+
+  // Build ItemProps to pass to renderItem. In native mode only the keys the
+  // Collection actually owns are present, so a consumer's own handlers survive
+  // `<a onClick={…} {...itemProps}>` in either spread order.
+  const fullItemProps: ItemProps = nativeItemSemantics
+    ? {
+        'ref': combinedRef,
+        'aria-disabled': isDisabled || undefined,
+        'data-collection-item': true,
+        'data-selected': isSelected || undefined,
+        'data-focused': isFocused || undefined,
+        'data-disabled': isDisabled || undefined,
+        'id': itemId,
+        ...(isDisabled
+          ? {
+              tabIndex: -1,
+              onClickCapture: blockDisabledNativeClick,
+              onKeyDownCapture: blockDisabledNativeKeyDown,
+            }
+          : {}),
+        ...(dndOnKeyDown ? { onKeyDown: dndOnKeyDown } : {}),
+        ...dndDragProps,
+      }
+    : {
+        'ref': combinedRef,
+        'tabIndex': itemProps.tabIndex,
+        'role': 'option',
+        'aria-selected': isSelected || undefined,
+        'aria-disabled': isDisabled || undefined,
+        'data-collection-item': true,
+        'data-selected': isSelected || undefined,
+        'data-focused': isFocused || undefined,
+        'data-disabled': isDisabled || undefined,
+        'data-dragging': undefined,
+        'data-drop-target': undefined,
+        'onFocus': itemProps.onFocus,
+        'onClick': itemProps.onClick,
+        'onKeyDown': composedOnKeyDown,
+        'onPointerDown': dndDragProps.onPointerDown as
+          | React.PointerEventHandler
+          | undefined,
+        'onPointerMove': dndDragProps.onPointerMove as
+          | React.PointerEventHandler
+          | undefined,
+        'id': itemId,
+        ...dndDragProps,
+      };
 
   return (
     <CollectionItemContext.Provider value={contextValue}>

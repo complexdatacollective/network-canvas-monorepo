@@ -24,6 +24,7 @@
     "./NativeLink": "./src/NativeLink.tsx",
     "./Pips": "./src/Pips.tsx",
     "./ProgressBar": "./src/ProgressBar.tsx",
+    "./ProtocolCard": "./src/ProtocolCard.tsx",
     "./RenderMarkdown": "./src/RenderMarkdown.tsx",
     "./ResizableFlexPanel": "./src/ResizableFlexPanel.tsx",
     "./RichTextRenderer": "./src/RichTextRenderer.tsx",
@@ -52,6 +53,7 @@
     "./PortalContainer": "./src/PortalContainer.tsx",
     "./ThemedRegion": "./src/ThemedRegion.tsx",
     "./Table": "./src/Table.tsx",
+    "./Tag": "./src/Tag.tsx",
     "./Tabs": "./src/Tabs/Tabs.tsx",
     "./Label": "./src/Label.tsx",
     "./layout/Surface": "./src/layout/Surface.tsx",
@@ -67,6 +69,7 @@
     "./navigation/NavList": "./src/navigation/NavList.tsx",
     "./navigation/NavItem": "./src/navigation/NavItem.tsx",
     "./navigation/NavDrawer": "./src/navigation/NavDrawer.tsx",
+    "./typography/Eyebrow": "./src/typography/Eyebrow.tsx",
     "./typography/Heading": "./src/typography/Heading.tsx",
     "./typography/Paragraph": "./src/typography/Paragraph.tsx",
     "./typography/PageHeader": "./src/typography/PageHeader.tsx",
@@ -81,6 +84,8 @@
     "./hooks/usePrevious": "./src/hooks/usePrevious.ts",
     "./hooks/useResizablePanel": "./src/hooks/useResizablePanel.ts",
     "./hooks/useSafeLocalStorage": "./src/hooks/useSafeLocalStorage.tsx",
+    "./stages/StageBar": "./src/stages/StageBar.tsx",
+    "./stages/stageTypes": "./src/stages/stageTypes.ts",
     "./styles/controlVariants": "./src/styles/controlVariants.ts",
     "./dialogs/Dialog": "./src/dialogs/Dialog.tsx",
     "./dialogs/DialogProvider": "./src/dialogs/DialogProvider.tsx",
@@ -215,6 +220,10 @@
         "types": "./dist/ProgressBar.d.ts",
         "default": "./dist/ProgressBar.js"
       },
+      "./ProtocolCard": {
+        "types": "./dist/ProtocolCard.d.ts",
+        "default": "./dist/ProtocolCard.js"
+      },
       "./RenderMarkdown": {
         "types": "./dist/RenderMarkdown.d.ts",
         "default": "./dist/RenderMarkdown.js"
@@ -327,6 +336,10 @@
         "types": "./dist/Table.d.ts",
         "default": "./dist/Table.js"
       },
+      "./Tag": {
+        "types": "./dist/Tag.d.ts",
+        "default": "./dist/Tag.js"
+      },
       "./Tabs": {
         "types": "./dist/Tabs/Tabs.d.ts",
         "default": "./dist/Tabs/Tabs.js"
@@ -387,6 +400,10 @@
         "types": "./dist/navigation/NavDrawer.d.ts",
         "default": "./dist/navigation/NavDrawer.js"
       },
+      "./typography/Eyebrow": {
+        "types": "./dist/typography/Eyebrow.d.ts",
+        "default": "./dist/typography/Eyebrow.js"
+      },
       "./typography/Heading": {
         "types": "./dist/typography/Heading.d.ts",
         "default": "./dist/typography/Heading.js"
@@ -442,6 +459,14 @@
       "./hooks/useSafeLocalStorage": {
         "types": "./dist/hooks/useSafeLocalStorage.d.ts",
         "default": "./dist/hooks/useSafeLocalStorage.js"
+      },
+      "./stages/StageBar": {
+        "types": "./dist/stages/StageBar.d.ts",
+        "default": "./dist/stages/StageBar.js"
+      },
+      "./stages/stageTypes": {
+        "types": "./dist/stages/stageTypes.d.ts",
+        "default": "./dist/stages/stageTypes.js"
       },
       "./styles/controlVariants": {
         "types": "./dist/styles/controlVariants.d.ts",
@@ -915,6 +940,7 @@
   },
   "peerDependencies": {
     "@base-ui/react": "^1.4.0",
+    "@codaco/protocol-validation": "workspace:^",
     "@codaco/shared-consts": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
     "@tanstack/react-table": "catalog:",
@@ -924,5 +950,10 @@
     "tailwindcss": "catalog:",
     "zod": "catalog:",
     "zustand": "catalog:"
+  },
+  "peerDependenciesMeta": {
+    "@codaco/protocol-validation": {
+      "optional": true
+    }
   }
 }

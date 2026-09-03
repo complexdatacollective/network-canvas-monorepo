@@ -104,6 +104,7 @@ export default defineConfig({
             '@codaco/fresco-ui > cva',
             '@codaco/fresco-ui > es-toolkit',
             '@codaco/fresco-ui > es-toolkit/compat',
+            '@codaco/fresco-ui > fuse.js',
             '@codaco/fresco-ui > immer',
             '@codaco/fresco-ui > nanoid',
             '@codaco/fresco-ui > react-best-merge-refs',

@@ -804,8 +804,7 @@ const LibraryPanel = ({
                 selectionMode="none"
                 animate={false}
                 aria-label="Protocol templates"
-                viewportClassName="overflow-visible"
-                className="overflow-visible"
+                scrollable={false}
               >
                 {(CollectionElements) => CollectionElements}
               </Collection>
