@@ -34,6 +34,28 @@ const fixtures = vi.hoisted(() => ({
   teams: [] as { id: string; name: string }[],
   STUDY: {
     id: 'study-1',
+    name: 'Shell proof',
+    state: 'draft',
+    participationMode: 'managed',
+    protocolId: 'protocol-1',
+    createdAt: new Date('2026-08-28T00:00:00Z'),
+    waveCount: 0,
+    participantCount: 0,
+  },
+  /** A second study in the same team, so the chip has a sibling to offer. */
+  SIBLING_STUDY: {
+    id: 'study-2',
+    name: 'Second study',
+    state: 'live',
+    participationMode: 'managed',
+    protocolId: 'protocol-2',
+    createdAt: new Date('2026-08-27T00:00:00Z'),
+    waveCount: 1,
+    participantCount: 3,
+  },
+  /** The protocol line the study points at, as `protocols.draft` reports it. */
+  PROTOCOL: {
+    id: 'protocol-1',
     draftId: 'draft-1',
     name: 'Shell proof',
     createdAt: new Date('2026-08-28T00:00:00Z'),
@@ -94,26 +116,41 @@ vi.mock('../../lib/api.ts', () => ({
         }),
       }),
     },
-    protocols: {
+    studies: {
       list: {
         queryOptions: () => ({
-          queryKey: ['protocols'],
-          queryFn: () => [fixtures.STUDY],
+          queryKey: ['studies'],
+          queryFn: () => [fixtures.STUDY, fixtures.SIBLING_STUDY],
         }),
-        key: () => ['protocols'],
+        key: () => ['studies'],
+      },
+      // The study chip and the editor are both addressed by the study id and
+      // resolve everything else from here (§6.3).
+      get: {
+        queryOptions: () => ({
+          queryKey: ['study'],
+          queryFn: () => ({
+            teamId: fixtures.TEAM.id,
+            study: fixtures.STUDY,
+            protocolDraftId: fixtures.PROTOCOL.draftId,
+          }),
+        }),
+        key: () => ['study'],
       },
       create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
+    },
+    protocols: {
       draft: {
         queryOptions: () => ({
           queryKey: ['draft'],
           queryFn: () => ({
-            protocol: fixtures.STUDY,
+            protocol: fixtures.PROTOCOL,
             revision: { sequence: '1', hash: 'revision-1' },
             // No stages, so the editor selects none and acquires no editing
             // session: this file renders every route, and the editor's leased
             // session belongs to `Editor.test.tsx`.
             sections: {
-              settings: { name: fixtures.STUDY.name, schemaVersion: 8 },
+              settings: { name: fixtures.PROTOCOL.name, schemaVersion: 8 },
               stageOrder: { stages: [] },
             },
           }),
@@ -682,16 +719,27 @@ describe('navigation', () => {
     expect(menuDestinations(router)).toEqual(['/team/$teamId/settings']);
   });
 
-  it('names the study and reaches its team from the study chip', async () => {
+  it('names the study, offers its siblings, and reaches its team from the study chip', async () => {
     const router = renderAt('/study/study-1');
+    // The NAME, which only `studies.get` can supply: the chip used to show the
+    // identifier because nothing here fetched anything.
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Current study study-1' }),
+      await screen.findByRole('button', { name: 'Current study Shell proof' }),
     );
     await screen.findByRole('menuitem', {
       name: 'All studies in this team',
     });
 
-    expect(menuDestinations(router)).toEqual(['/team/$teamId']);
+    // The team's other studies, and never this one: an entry that navigated
+    // to the study already open is a dead command.
+    expect(
+      screen.getByRole('menuitem', { name: 'Second study' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: 'Shell proof' })).toBeNull();
+    expect(menuDestinations(router)).toEqual([
+      '/study/$studyId',
+      '/team/$teamId',
+    ]);
   });
 });
 

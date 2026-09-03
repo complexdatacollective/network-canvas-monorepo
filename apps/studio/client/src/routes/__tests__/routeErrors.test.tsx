@@ -37,10 +37,13 @@ const fixtures = vi.hoisted(() => ({
   failing: undefined as 'area' | 'screen' | undefined,
   STUDY: {
     id: 'study-1',
-    draftId: 'draft-1',
     name: 'Shell proof',
+    state: 'draft',
+    participationMode: 'managed',
+    protocolId: 'protocol-1',
     createdAt: new Date('2026-08-28T00:00:00Z'),
-    updatedAt: new Date('2026-08-28T00:00:00Z'),
+    waveCount: 0,
+    participantCount: 0,
   },
 }));
 
@@ -130,15 +133,28 @@ vi.mock('../../lib/api.ts', () => ({
         }),
       }),
     },
-    protocols: {
+    studies: {
       list: {
         queryOptions: () => ({
-          queryKey: ['protocols'],
+          queryKey: ['studies'],
           queryFn: () => [fixtures.STUDY],
         }),
-        key: () => ['protocols'],
+        key: () => ['studies'],
+      },
+      get: {
+        queryOptions: () => ({
+          queryKey: ['study'],
+          queryFn: () => ({
+            teamId: fixtures.TEAM.id,
+            study: fixtures.STUDY,
+            protocolDraftId: 'draft-1',
+          }),
+        }),
+        key: () => ['study'],
       },
       create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
+    },
+    protocols: {
       draft: {
         queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
         key: () => ['draft'],

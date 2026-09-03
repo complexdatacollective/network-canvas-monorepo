@@ -53,17 +53,18 @@ vi.mock('../../lib/api.ts', () => ({
         queryFn: () => currentStatus,
       }),
     },
-    protocols: {
+    studies: {
       list: {
-        queryOptions: () => ({
-          queryKey: ['protocols'],
-          queryFn: () => [],
-        }),
-        key: () => ['protocols'],
+        queryOptions: () => ({ queryKey: ['studies'], queryFn: () => [] }),
+        key: () => ['studies'],
       },
-      create: {
-        mutationOptions: () => ({ mutationFn: vi.fn() }),
+      get: {
+        queryOptions: () => ({ queryKey: ['study'], queryFn: () => null }),
+        key: () => ['study'],
       },
+      create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
+    },
+    protocols: {
       draft: {
         queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
         key: () => ['draft'],
