@@ -145,27 +145,51 @@ means reconciling or recreating the database rather than migrating it —
 the same table definitions) must land before a release carries data worth
 keeping.
 
-Studio has one schema, defined as Drizzle tables in five modules that live with
-their owners: better-auth's tables in `server/src/db/auth-schema.ts`; the sync
-engine's drafts, sections, manifests, leases and command log in
-`packages/studio-sync/src/schema.ts`; the protocol store's versioning tables
-in `server/src/protocol/schema.ts`; immutable audit history in
-`server/src/audit/schema.ts`; and durable invitation delivery in
-`server/src/team/invitation-delivery-schema.ts`. The PL/pgSQL immutability
-functions and triggers, which Drizzle cannot express, ride in raw-SQL sidecar
-exports beside their tables — as do the parts of row-level security that
-drizzle-kit does not manage: the roles, `FORCE ROW LEVEL SECURITY`, and the
-grants (see [Tenancy](#tenancy)). `server/src/db/schema.ts` collects all of it
-into the `SCHEMA`, `PRE_PUSH_MIGRATIONS`, and `SIDECARS` exports that
-`server/scripts/apply.ts` applies. The pre-push list is reserved for bounded,
-idempotent compatibility repairs that must precede a new constraint; its first
-entry gives legacy whitespace-only team names a deterministic `Team <id>`
-fallback before the nonblank-name check is installed. It runs under the schema
-advisory lock and is included in the fingerprint, but is not a replacement for
-the versioned migration system required before release. The policies themselves
-are `pgPolicy` entries on the table definitions, which is why `drizzle-kit` is
-pinned to the 1.0 release candidate: the stable line's `push` silently drops
-their `USING`/`WITH CHECK` expressions.
+Studio has one schema, defined as Drizzle tables in seventeen modules that live
+with their owners:
+
+- better-auth's tables — `server/src/db/auth-schema.ts`
+- the sync engine's drafts, sections, manifests, leases and command log —
+  `packages/studio-sync/src/schema.ts`
+- the protocol store's versioning tables — `server/src/protocol/schema.ts`
+- protocol asset metadata — `server/src/asset/schema.ts`
+- the study spine: studies, waves, participants, interview sessions and
+  interview links — `server/src/study/schema.ts`; study roles —
+  `server/src/study/roles-schema.ts`
+- the collected network: snapshots, nodes, edges and the per-session rollups —
+  `server/src/network/schema.ts`
+- consent documents and records — `server/src/consent/schema.ts`
+- schedules, prompts, message templates, deliveries and opt-outs —
+  `server/src/schedule/schema.ts`
+- team-owned API tokens — `server/src/token/schema.ts`
+- templates and the gallery — `server/src/template/schema.ts`
+- webhooks — `server/src/webhook/schema.ts`
+- experiments — `server/src/experiment/schema.ts`
+- feedback reports — `server/src/feedback/schema.ts`
+- monitoring rollups — `server/src/monitoring/schema.ts`
+- immutable audit history, its staged exports and its alert outbox —
+  `server/src/audit/schema.ts`
+- durable invitation delivery — `server/src/team/invitation-delivery-schema.ts`
+
+The PL/pgSQL immutability functions and triggers, which Drizzle cannot express,
+ride in raw-SQL sidecar exports beside their tables — as do the parts of
+row-level security that drizzle-kit does not manage: the roles, `FORCE ROW
+LEVEL SECURITY`, and the grants (see [Tenancy](#tenancy)).
+`server/src/db/schema.ts` collects all of it into the `SCHEMA`,
+`PRE_PUSH_MIGRATIONS`, and `SIDECARS` exports that `server/scripts/apply.ts`
+applies. Sidecar order carries a rule the test suite pins: the broad grant over
+every table runs first, right after the roles are created, and every narrower
+revocation (the outboxes, the audit log) runs after it, because a revocation
+placed before the broad grant is silently undone by it. The pre-push list is
+reserved for bounded, idempotent compatibility repairs that must precede a new
+constraint; its entries give legacy whitespace-only team names a deterministic
+`Team <id>` fallback before the nonblank-name check is installed, and backfill
+`account.issuer` for accounts written before better-auth 1.7 required it. It
+runs under the schema advisory lock and is included in the fingerprint, but is
+not a replacement for the versioned migration system required before release.
+The policies themselves are `pgPolicy` entries on the table definitions, which
+is why `drizzle-kit` is pinned to the 1.0 release candidate: the stable line's
+`push` silently drops their `USING`/`WITH CHECK` expressions.
 
 <!-- generated:schema-docs start -->
 
@@ -295,9 +319,12 @@ is Studio-internal storage topology, not a protocol-schema change.
 
 ### Tenancy
 
-Teams (#1249) are the tenant boundary. Every domain row — protocols, versions,
-drafts, sections, manifests, leases, the command log — carries a denormalized
-`team_id`, pinned to its parent through composite foreign keys, and section
+Teams (#1249) are the tenant boundary. Every domain row — from protocols,
+sections and drafts to studies, participants, interview sessions and the
+collected network — carries a denormalized `team_id`, pinned to its parent
+through composite foreign keys (`(study_id, team_id)`, and
+`(wave_id, study_id, team_id)` where a child must also prove it belongs to the
+same study as its siblings), and section
 documents deduplicate **per team**: identical content in two teams is two rows,
 because a shared row would leak content across the boundary. The data layer
 only speaks through a `TenantDb` (`@codaco/studio-sync/tenant`), a pool handle
@@ -327,7 +354,17 @@ team, a policy clause rather than a `BYPASSRLS` role because only a superuser
 can create one of those and managed Postgres offers none — enumerates tenants
 from the swept tables, sweeps each under that team's `TenantDb`, and refuses
 any other role, under which it would report a clean sweep without having
-visited anyone. The better-auth tables carry no policy: better-auth and
+visited anyone. The study purge job and the outbox dispatchers will run the
+same way. Two tables beside the audit log — `audit_export_jobs` and
+`audit_alert_outbox` — carry the ordinary policy rather than the audit log's
+stricter `audit_team_isolation` (which admits no maintenance role at all),
+because their workers claim work across teams; they hold ids, event types and
+counters, never event content. A second transaction-scoped marker,
+`app.erasing_participant_id`, authorizes participant erasure: the guards on
+participant data accept an application-role delete only when the marker names
+the row's own participant, so a bug cannot delete anyone else's data and a
+finalized session can be deleted only by that path or by the maintenance
+purge. The better-auth tables carry no policy: better-auth and
 `AuthService.getMembership` run on the application pool without team context.
 Two consequences are worth knowing. `COPY FROM` is refused for any role
 subject to row-level security, so a bulk import must batch `INSERT`s or run as
@@ -534,14 +571,28 @@ them:
   server topology for invitation delivery until a scheduled Netlify dispatcher
   is implemented.
 - **`seed` wipes every table and repopulates synthetic content** (faker,
-  `src/db/seed.ts`): a handful of teams, a mix of members across every team
-  role, and one fixed admin account —
+  `src/db/seed.ts` and `src/db/seed/`): five teams with a mix of members
+  across every team role, and one fixed admin account —
   `admin@studio.test` / `studio-admin-not-for-production` — who owns every
   seeded team and signs in through the real email/password endpoint like any
-  other credential account. The data is reproducible (`faker.seed()` pins the
-  PRNG), so re-running `seed` is a no-op for anyone diffing what changed, not
-  an accumulation of more rows, and the wipe and the inserts share one
-  transaction, so a failure part-way leaves the previous data in place.
+  other credential account. Each team gets a protocol line published twice
+  through `ProtocolStore`, five studies spanning every lifecycle state and
+  both participation modes, their waves, participants, tokenized interview
+  links, interview sessions carrying real networks generated from the version
+  each session pins, consent documents and records, scheduling and messaging,
+  service tokens, gallery templates, assets, webhooks, experiments, feedback,
+  monitoring rollups computed from the seeded sessions, and audit history
+  appended through the real audit writer. Seeded assets are metadata only —
+  no bytes are uploaded, so `/storage/:hash` honestly 404s in development —
+  and the plaintext of the anonymous interview links is printed at the end
+  beside the admin credentials. `--scale=large` raises the volumes to the
+  #1246 load shape and takes minutes; the default `demo` scale runs in a few
+  seconds, which is what makes it affordable on every `pnpm dev` boot. The
+  data is reproducible (`faker.seed()` pins the PRNG and every id and
+  timestamp is drawn from it), so re-running `seed` is a no-op for anyone
+  diffing what changed, not an accumulation of more rows, and the wipe and
+  the inserts share one transaction, so a failure part-way leaves the
+  previous data in place.
   **Never point it at a database carrying real data** — it deletes everything
   first. Like `db:reset`, it refuses a non-loopback database unless you pass
   `--force`, and it refuses to give a non-loopback database the published

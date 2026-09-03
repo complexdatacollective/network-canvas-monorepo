@@ -180,10 +180,7 @@
         // by an import — it is the Netlify Function entry.
         "src/netlify.ts!"
       ],
-      "project": ["src/**/*.ts", "scripts/**/*.ts"],
-      // Resolved with import.meta.resolve, so the specifier is a runtime string
-      // knip cannot follow.
-      "ignoreDependencies": ["@codaco/protocols"]
+      "project": ["src/**/*.ts", "scripts/**/*.ts"]
     },
     "apps/interviewer": {
       "entry": [

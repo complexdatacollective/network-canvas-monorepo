@@ -379,6 +379,13 @@ export class ProtocolStore {
     draftId: string;
     label?: string;
     expectedManifestHash?: string;
+    /**
+     * The id to mint the new version under, for a caller that must know it in
+     * advance — the synthetic-data seed, whose ids all come from its own
+     * seeded PRNG. Same role as `createProtocol`'s `protocolId`/`draftId`.
+     * Ignored when the publish resolves to an existing version.
+     */
+    versionId?: string;
   }): Promise<PublishResult> {
     const head = await this.getDraftSections(params.draftId);
     if (
@@ -486,7 +493,7 @@ export class ProtocolStore {
           }
         }
 
-        const versionId = randomUUID();
+        const versionId = params.versionId ?? randomUUID();
         const inserted = await client.query(
           `INSERT INTO protocol_versions
            (id, protocol_id, team_id, version_number, label, version_hash,

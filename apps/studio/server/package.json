@@ -28,7 +28,9 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1101.0",
+    "@codaco/protocol-utilities": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",
+    "@codaco/protocols": "workspace:^",
     "@codaco/shared-consts": "workspace:^",
     "@codaco/studio-rpc": "workspace:^",
     "@codaco/studio-sync": "workspace:^",
@@ -49,7 +51,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@codaco/protocols": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@dbml/core": "10.1.1",
     "@orpc/client": "2.0.0-beta.26",
