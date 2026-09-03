@@ -119,6 +119,13 @@ describe('generated schema documentation', () => {
     expect(readmeSection).toContain('experiment_assignments_variant_known');
     expect(readmeSection).toContain('experiments_variants_frozen');
     expect(readmeSection).toContain('experiment_exposures_immutable');
+    expect(readmeSection).toContain('experiment_assignments_deletable');
+    expect(readmeSection).toContain('experiment_exposures_deletable');
+    expect(readmeSection).toContain('experiments_variants_well_formed');
+    expect(readmeSection).toContain('asset_references_insert_frozen');
+    expect(readmeSection).toContain(
+      'webhook_deliveries_subscription_wants_event',
+    );
     expect(readmeSection).toContain('participant_consents_session_own');
     expect(readmeSection).toContain('participant_consents_document_published');
     expect(readmeSection).toContain(
@@ -218,6 +225,13 @@ describe('generated schema documentation', () => {
     );
     expect(svg).toContain('sidecar trigger experiments_variants_frozen');
     expect(svg).toContain('sidecar trigger experiment_exposures_immutable');
+    expect(svg).toContain('sidecar trigger experiment_assignments_deletable');
+    expect(svg).toContain('sidecar trigger experiment_exposures_deletable');
+    expect(svg).toContain('sidecar trigger experiments_variants_well_formed');
+    expect(svg).toContain('sidecar trigger asset_references_insert_frozen');
+    expect(svg).toContain(
+      'sidecar trigger webhook_deliveries_subscription_wants_event',
+    );
     expect(svg).toContain('sidecar trigger participant_consents_session_own');
     expect(svg).toContain(
       'sidecar trigger participant_consents_document_published',
