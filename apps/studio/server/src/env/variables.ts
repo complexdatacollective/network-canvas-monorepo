@@ -68,6 +68,12 @@ export const serverSchemas = {
   MICROSOFT_CLIENT_SECRET: z.string().min(1).optional(),
   MICROSOFT_TENANT_ID: z.string().min(1).optional(),
 
+  /**
+   * Read only by the seed command. The floor refuses a placeholder: this is
+   * the one credential that opens every seeded team.
+   */
+  STUDIO_SEED_ADMIN_PASSWORD: z.string().min(12).optional(),
+
   TRUSTED_PROXIES: z
     .string()
     .transform((value) =>

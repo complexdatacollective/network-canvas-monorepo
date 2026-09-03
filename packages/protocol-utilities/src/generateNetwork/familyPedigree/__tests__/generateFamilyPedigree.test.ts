@@ -2,21 +2,21 @@ import { describe, expect, it } from 'vitest';
 
 import type { InheritancePattern } from '@codaco/protocol-validation';
 
-import { ValueGenerator } from '../../../ValueGenerator';
+import { ValueGenerator } from '../../../ValueGenerator.ts';
 import {
   attainableFamilyPedigreeNodeCeiling,
   generateFamilyPedigreePlan,
   sampleFamilyPedigreeScenario,
-} from '../generateFamilyPedigree';
+} from '../generateFamilyPedigree.ts';
 import {
   resolveFamilyPedigreeGenerationOptions,
   US_FAMILY_PEDIGREE_POPULATION,
-} from '../referencePopulation';
+} from '../referencePopulation.ts';
 import type {
   FamilyPedigreePlan,
   FamilyPedigreeScenario,
   PedigreeDisease,
-} from '../types';
+} from '../types.ts';
 
 function plan(
   seed: number,

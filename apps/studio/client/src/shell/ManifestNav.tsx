@@ -93,7 +93,9 @@ function ManifestNavItem({
   if (entry.unavailableReason !== undefined) {
     // A destination this deployment does not have is shown and explained, never
     // linked: the researcher can see it exists as a Studio feature and that it
-    // is not here, and cannot be sent to a URL this deployment 404s.
+    // is not here, and cannot be sent to a URL this deployment 404s. No count
+    // either — `NavItem` ignores one on an unavailable row, and a place that is
+    // not here has nothing to count.
     return (
       <NavItem
         className={entry.className}
@@ -112,6 +114,9 @@ function ManifestNavItem({
       href={entry.href}
       label={entry.label}
       icon={entry.icon}
+      // Undefined until the area has the number, which is what keeps a row
+      // that is still loading — or whose query failed — free of an invented 0.
+      count={entry.count}
       current={entry.isCurrent(pathname)}
       renderLink={(props) => (
         <Link

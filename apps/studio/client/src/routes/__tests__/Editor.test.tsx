@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { ORPCError } from '@orpc/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import {
@@ -53,28 +54,35 @@ const TEAM_B = { id: 'team-b', name: 'Beta research team' };
 
 /**
  * The tenancy the editor has to resolve, read at call time so a test can move
- * it before it renders. `owner` is the team whose `protocols.list` reports the
- * study; every other team's list is empty, which is what the URL of a study in
- * somebody else's team really looks like from here.
+ * it before it renders. `owner` is the team `studies.get` answers with; `null`
+ * is the server refusing the study altogether, which is what the URL of a
+ * study in somebody else's team looks like from here — one FORBIDDEN, with no
+ * way to tell "not yours" from "no such study" (§6.3).
  */
 const tenancy = {
   teams: [TEAM_A, TEAM_B] as { id: string; name: string }[],
   activeTeam: TEAM_A as { id: string; name: string } | null,
-  owner: TEAM_A.id as string,
+  owner: TEAM_A.id as string | null,
 };
 
-function studiesIn(teamId: string) {
-  return teamId === tenancy.owner
-    ? [
-        {
-          id: DRAFT.protocol.id,
-          draftId: DRAFT.protocol.draftId,
-          name: DRAFT.protocol.name,
-          createdAt: DRAFT.protocol.createdAt,
-          updatedAt: DRAFT.protocol.updatedAt,
-        },
-      ]
-    : [];
+const STUDY_ID = DRAFT.protocol.id;
+
+function studyDetail() {
+  if (tenancy.owner === null) throw new ORPCError('FORBIDDEN');
+  return {
+    teamId: tenancy.owner,
+    study: {
+      id: STUDY_ID,
+      name: DRAFT.protocol.name,
+      state: 'draft' as const,
+      participationMode: 'managed' as const,
+      protocolId: DRAFT.protocol.id,
+      createdAt: DRAFT.protocol.createdAt,
+      waveCount: 0,
+      participantCount: 0,
+    },
+    protocolDraftId: DRAFT.protocol.draftId,
+  };
 }
 
 function deferred<T>() {
@@ -132,22 +140,33 @@ vi.mock('../../lib/api.ts', () => ({
         }),
       }),
     },
-    protocols: {
-      // The editor's owning team and draft id both come from here (§6.3's
-      // `study.shell` does not exist): `protocols.list` is team-scoped and
-      // already reports each protocol's current draft, so it answers both
-      // questions — one team at a time, which is why the key carries the team.
+    studies: {
+      // The editor's owning team and draft id both come from here: one
+      // procedure, addressed by the study id the URL carries, which resolves
+      // the tenant server-side (§6.3).
+      get: {
+        queryOptions: ({ input }: { input: { studyId: string } }) => ({
+          queryKey: ['study', input.studyId],
+          queryFn: () => Promise.resolve(studyDetail()),
+        }),
+        key: ({ input }: { input: { studyId: string } }) => [
+          'study',
+          input.studyId,
+        ],
+      },
       list: {
         queryOptions: ({ input }: { input: { teamId: string } }) => ({
-          queryKey: ['protocols', input.teamId],
-          queryFn: async () => studiesIn(input.teamId),
+          queryKey: ['studies', input.teamId],
+          queryFn: () => Promise.resolve([studyDetail().study]),
         }),
         key: ({ input }: { input: { teamId: string } }) => [
-          'protocols',
+          'studies',
           input.teamId,
         ],
       },
       create: { mutationOptions: vi.fn() },
+    },
+    protocols: {
       draft: {
         queryOptions: () => ({
           queryKey: ['draft'],
@@ -302,19 +321,18 @@ describe('opening a study by its URL', () => {
     );
   });
 
-  it('says so, rather than spinning, when no team of theirs has it', async () => {
-    // With no active team AND no team that has the study, every read the
-    // screen can make has come back — so an unresolved spinner here is not
-    // "still working", it is the screen having nothing left to wait for.
-    tenancy.owner = 'team-somebody-else';
+  it('says so, rather than spinning, when the study is refused', async () => {
+    // The server refuses a study this researcher cannot reach, whatever the
+    // reason, so the one read the screen makes has come back — an unresolved
+    // spinner here is not "still working", it is the screen having nothing
+    // left to wait for.
+    tenancy.owner = null;
     tenancy.activeTeam = null;
     renderEditor();
 
-    // The one thing the researcher can act on: it is not a team they are in,
-    // so the way forward is an invitation rather than a team switch.
-    expect(
-      await screen.findByText(/not in any of your teams/i),
-    ).toBeInTheDocument();
+    // The one thing the researcher can act on: the study is not theirs, so
+    // the way forward is being given access rather than a team switch.
+    expect(await screen.findByText(/not one of yours/i)).toBeInTheDocument();
     expect(screen.queryByText('Opening protocol editor…')).toBeNull();
   });
 });

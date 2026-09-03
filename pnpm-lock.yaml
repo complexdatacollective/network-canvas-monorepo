@@ -1912,9 +1912,15 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.1101.0
         version: 3.1102.0
+      '@codaco/protocol-utilities':
+        specifier: workspace:^
+        version: link:../../../packages/protocol-utilities
       '@codaco/protocol-validation':
         specifier: workspace:^
         version: link:../../../packages/protocol-validation
+      '@codaco/protocols':
+        specifier: workspace:^
+        version: link:../../../packages/protocols
       '@codaco/shared-consts':
         specifier: workspace:^
         version: link:../../../packages/shared-consts
@@ -1924,6 +1930,9 @@ importers:
       '@codaco/studio-sync':
         specifier: workspace:^
         version: link:../../../packages/studio-sync
+      '@faker-js/faker':
+        specifier: 'catalog:'
+        version: 10.5.0
       '@hono/node-server':
         specifier: ^2.1.0
         version: 2.1.0(hono@4.13.0)
@@ -1967,9 +1976,6 @@ importers:
         specifier: 'catalog:'
         version: 4.4.3
     devDependencies:
-      '@codaco/protocols':
-        specifier: workspace:^
-        version: link:../../../packages/protocols
       '@codaco/tsconfig':
         specifier: workspace:^
         version: link:../../../tooling/typescript

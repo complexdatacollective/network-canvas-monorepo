@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { TeamRoleSchema } from '@codaco/studio-rpc';
+import { STUDY_PARTICIPATION_MODES, TeamRoleSchema } from '@codaco/studio-rpc';
 
 const LabelSchema = z.string().min(1).max(320);
 const IdentifierSchema = z.string().min(1).max(255);
@@ -186,6 +186,7 @@ const TeamMemberRoleChangeFailedV1EventSchema =
 
 export const DENIED_AUDIT_OPERATIONS = [
   'audit.read',
+  'studies.create',
   'team.acceptInvitation',
   'team.cancelInvitation',
   'team.createInvitation',
@@ -269,6 +270,45 @@ const ProtocolDraftCommittedV1EventSchema =
     }),
   }).strict();
 
+// The study tier (#1262). Creating a study is a role-gated action (#1257), so
+// both outcomes are recorded: the creation itself, and a refusal, which is
+// what tells a team Admin that somebody without the role tried.
+const CommonStudyV1EventSchema = CommonUserEventSchema.extend({
+  eventVersion: z.literal(1),
+  category: z.literal('study'),
+  subjectType: z.null(),
+  subjectId: z.null(),
+  subjectLabel: z.null(),
+}).strict();
+
+const StudyCreatedV1EventSchema = CommonStudyV1EventSchema.extend({
+  eventType: z.literal('study.created'),
+  outcome: z.literal('succeeded'),
+  resourceType: z.literal('study'),
+  resourceId: IdentifierSchema,
+  resourceLabel: LabelSchema,
+  details: z.strictObject({
+    protocolId: IdentifierSchema,
+    draftId: IdentifierSchema,
+    participationMode: z.enum(STUDY_PARTICIPATION_MODES),
+    // The grant the creator receives with the study, named so the role
+    // history in this log is complete without reading the grants table.
+    creatorRole: z.literal('manager'),
+  }),
+}).strict();
+
+const StudyCreationDeniedV1EventSchema = CommonStudyV1EventSchema.extend({
+  eventType: z.literal('study.creation_denied'),
+  outcome: z.literal('denied'),
+  // No resource: the study was never created, so there is nothing to name.
+  resourceType: z.null(),
+  resourceId: z.null(),
+  resourceLabel: z.null(),
+  details: z.strictObject({
+    reason: z.literal('insufficient_permission'),
+  }),
+}).strict();
+
 // A plain union is intentional: eventType alone cannot remain the
 // discriminator once two retained versions of the same immutable event exist.
 export const AuditEventInputSchema = z.union([
@@ -288,6 +328,8 @@ export const AuditEventInputSchema = z.union([
   TeamInvitationAcceptanceFailedV1EventSchema,
   ProtocolCreatedV1EventSchema,
   ProtocolDraftCommittedV1EventSchema,
+  StudyCreatedV1EventSchema,
+  StudyCreationDeniedV1EventSchema,
 ]);
 
 export type AuditEventInput = z.infer<typeof AuditEventInputSchema>;
@@ -346,6 +388,15 @@ const FIXTURE_PROTOCOL_V1_COMMON = {
   resourceType: 'protocol',
   resourceId: 'fixture-protocol',
   resourceLabel: 'Fixture protocol',
+} as const;
+
+const FIXTURE_STUDY_V1_COMMON = {
+  ...FIXTURE_USER_COMMON,
+  eventVersion: 1,
+  category: 'study',
+  subjectType: null,
+  subjectId: null,
+  subjectLabel: null,
 } as const;
 
 export const AUDIT_EVENT_REGISTRY = {
@@ -628,6 +679,43 @@ export const AUDIT_EVENT_REGISTRY = {
         operationTypes: ['set'],
         operationCount: 1,
       },
+    },
+  },
+  'study.created@1': {
+    inputSchema: StudyCreatedV1EventSchema,
+    title: 'Study created',
+    detailFields: ['protocolId', 'draftId', 'participationMode', 'creatorRole'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_STUDY_V1_COMMON,
+      eventType: 'study.created',
+      outcome: 'succeeded',
+      resourceType: 'study',
+      resourceId: 'fixture-study',
+      resourceLabel: 'Fixture study',
+      details: {
+        protocolId: 'fixture-protocol',
+        draftId: 'fixture-draft',
+        participationMode: 'managed',
+        creatorRole: 'manager',
+      },
+    },
+  },
+  'study.creation_denied@1': {
+    inputSchema: StudyCreationDeniedV1EventSchema,
+    title: 'Study creation denied',
+    detailFields: ['reason'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_STUDY_V1_COMMON,
+      eventType: 'study.creation_denied',
+      outcome: 'denied',
+      resourceType: null,
+      resourceId: null,
+      resourceLabel: null,
+      details: { reason: 'insufficient_permission' },
     },
   },
 } as const satisfies Record<AuditEventKey, AuditEventDefinition>;

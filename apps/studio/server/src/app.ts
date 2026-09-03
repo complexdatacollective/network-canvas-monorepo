@@ -67,6 +67,9 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   const authCaps: AuthCapabilities = {
     enabled,
     magicLink: Boolean(env.db && env.auth && env.auth.mailer.kind !== 'refuse'),
+    // Unlike magicLink, not gated on the mailer: better-auth.ts enables
+    // emailAndPassword unconditionally whenever auth itself is configured.
+    emailAndPassword: enabled,
     socialProviders: enabled
       ? SOCIAL_PROVIDERS.filter(
           (provider) => env.auth?.socialProviders[provider],

@@ -20,6 +20,10 @@ import {
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import { runNoAuditTenantTransaction } from '../audit/transaction.ts';
+import {
+  type StudyVisibility,
+  studyVisibleToCallerSql,
+} from '../study/store.ts';
 import { type ProtocolChange, diffProtocolSections } from './diff.ts';
 import { insertDraftRows } from './draft-rows.ts';
 import { sectionizeProtocol } from './sectionize.ts';
@@ -72,7 +76,12 @@ type CreateProtocolResult = {
 type CreateProtocolParams = {
   protocol: CurrentProtocol;
   protocolId?: string;
-  draftId?: string;
+  draftId?: string /**
+   * When the protocol was created, for a caller that must say so — the
+   * synthetic-data seed, whose whole corpus is dated from one anchor so the
+   * line exists before the studies that pin its versions. Defaults to now.
+   */;
+  createdAt?: Date;
 };
 
 type CreateProtocolTransactionResult = CreateProtocolResult & {
@@ -87,6 +96,23 @@ export type DraftSections = {
   sectionHashes: Record<string, string>;
   sections: Record<string, SectionDoc>;
 };
+
+/**
+ * Which protocol lines the caller may reach, which is #1257's study rule and
+ * not a second one: a team Admin or Owner reaches every line their team owns,
+ * and anyone else reaches a line only through a study they can see. A line no
+ * study references is therefore Admin/Owner-only — no grant exists that could
+ * reach it — and that is why creating one is an Admin/Owner action too.
+ *
+ * The predicate over the study itself comes from the study tier, so the two
+ * cannot drift: what `studies.list` omits, the protocol surface refuses. `p`
+ * is the `protocols` row being asked about, and the bind order is the study
+ * tier's — `$1` the team, `$2` the role as one boolean, `$3` the user id.
+ */
+const REACHABLE_BY_CALLER = `($2::boolean OR EXISTS (
+         SELECT 1 FROM studies s
+         WHERE s.team_id = p.team_id AND s.protocol_id = p.id
+           AND ${studyVisibleToCallerSql('s')}))`;
 
 // A lease-scoped command can rewrite a stage's own id, which neither assembly
 // nor the canonical validator can see is out of step with its section key.
@@ -175,10 +201,11 @@ export class ProtocolStore {
       transactionClient: pg.PoolClient,
     ): Promise<CreateProtocolTransactionResult> => {
       const inserted = await transactionClient.query(
-        `INSERT INTO protocols (id, team_id, name) VALUES ($1, $2, $3)
+        `INSERT INTO protocols (id, team_id, name, created_at, updated_at)
+         VALUES ($1, $2, $3, COALESCE($4, now()), COALESCE($4, now()))
          ON CONFLICT (id) DO NOTHING
          RETURNING id`,
-        [protocolId, teamId, params.protocol.name],
+        [protocolId, teamId, params.protocol.name, params.createdAt ?? null],
       );
       if (inserted.rowCount === 0) {
         const existing = await transactionClient.query(
@@ -199,11 +226,17 @@ export class ProtocolStore {
           `protocol creation identity ${protocolId} is already in use`,
         );
       }
-      await insertDraftRows(transactionClient, teamId, draftId, sections);
+      await insertDraftRows(
+        transactionClient,
+        teamId,
+        draftId,
+        sections,
+        params.createdAt,
+      );
       await transactionClient.query(
-        `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id)
-         VALUES ($1, $2, $3)`,
-        [draftId, teamId, protocolId],
+        `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id, created_at)
+         VALUES ($1, $2, $3, COALESCE($4, now()))`,
+        [draftId, teamId, protocolId, params.createdAt ?? null],
       );
       return { protocolId, draftId, created: true };
     };
@@ -379,6 +412,19 @@ export class ProtocolStore {
     draftId: string;
     label?: string;
     expectedManifestHash?: string;
+    /**
+     * The id to mint the new version under, for a caller that must know it in
+     * advance — the synthetic-data seed, whose ids all come from its own
+     * seeded PRNG. Same role as `createProtocol`'s `protocolId`/`draftId`.
+     * Ignored when the publish resolves to an existing version.
+     */
+    versionId?: string;
+    /**
+     * When the version was published, for the same caller and reason as
+     * `versionId`: the seed's versions must predate the sessions that pin
+     * them. Defaults to now.
+     */
+    publishedAt?: Date;
   }): Promise<PublishResult> {
     const head = await this.getDraftSections(params.draftId);
     if (
@@ -486,18 +532,18 @@ export class ProtocolStore {
           }
         }
 
-        const versionId = randomUUID();
+        const versionId = params.versionId ?? randomUUID();
         const inserted = await client.query(
           `INSERT INTO protocol_versions
            (id, protocol_id, team_id, version_number, label, version_hash,
             manifest, schema_version, source_draft_id, source_manifest_hash,
-            migrated_from_version_id)
+            migrated_from_version_id, published_at)
          SELECT $1, $2, $10,
                 COALESCE(MAX(v.version_number), 0) + 1,
                 $3, $4,
                 (SELECT to_jsonb(m) FROM manifests m
                   WHERE m.draft_id = $5 AND m.team_id = $10 AND m.seq = $6),
-                $7, $5, $8, $9
+                $7, $5, $8, $9, COALESCE($11, now())
          FROM protocol_versions v
          WHERE v.protocol_id = $2 AND v.team_id = $10
          RETURNING version_number`,
@@ -512,6 +558,7 @@ export class ProtocolStore {
             head.headManifestHash,
             migratedFrom,
             teamId,
+            params.publishedAt ?? null,
           ],
         );
         const versionNumber = (inserted.rows[0] as { version_number: number })
@@ -525,9 +572,9 @@ export class ProtocolStore {
         }
         if (name !== null) {
           await client.query(
-            `UPDATE protocols SET name = $2, updated_at = now()
+            `UPDATE protocols SET name = $2, updated_at = COALESCE($4, now())
            WHERE id = $1 AND team_id = $3`,
-            [draft.protocol_id, name, teamId],
+            [draft.protocol_id, name, teamId, params.publishedAt ?? null],
           );
         }
         return { status: 'published', versionId, versionNumber, versionHash };
@@ -600,7 +647,31 @@ export class ProtocolStore {
     }));
   }
 
-  async listProtocols(): Promise<ProtocolRow[]> {
+  /**
+   * Whether the caller may open one protocol line at all. A boolean rather
+   * than a row, because callers answer every false the same way: a line in
+   * another team, a line behind a study the caller holds no grant on, and a
+   * line that does not exist are one refusal, so this is no more an existence
+   * oracle than `studies.get` is.
+   */
+  async isReachableByCaller(
+    protocolId: string,
+    visibility: StudyVisibility,
+  ): Promise<boolean> {
+    const res = await this.db.query(
+      `SELECT 1 FROM protocols p
+       WHERE p.team_id = $1 AND p.id = $4 AND ${REACHABLE_BY_CALLER}`,
+      [
+        this.db.teamId,
+        visibility.seesEveryStudy,
+        visibility.actorUserId,
+        protocolId,
+      ],
+    );
+    return res.rowCount === 1;
+  }
+
+  async listProtocols(visibility: StudyVisibility): Promise<ProtocolRow[]> {
     const res = await this.db.query(
       `SELECT p.id, p.name, p.created_at, p.updated_at, d.draft_id
        FROM protocols p
@@ -611,8 +682,9 @@ export class ProtocolStore {
          ORDER BY pd.created_at DESC, pd.draft_id
          LIMIT 1
        ) d ON true
-       WHERE p.team_id = $1 ORDER BY p.created_at DESC, p.id`,
-      [this.db.teamId],
+       WHERE p.team_id = $1 AND ${REACHABLE_BY_CALLER}
+       ORDER BY p.created_at DESC, p.id`,
+      [this.db.teamId, visibility.seesEveryStudy, visibility.actorUserId],
     );
     return (
       res.rows as {

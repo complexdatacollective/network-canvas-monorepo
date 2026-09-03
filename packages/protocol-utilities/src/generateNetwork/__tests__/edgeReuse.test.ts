@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Stage } from '@codaco/protocol-validation';
 import { entityAttributesProperty, type NcEdge } from '@codaco/shared-consts';
 
-import { generateNetwork } from '../../generateNetwork';
+import { generateNetwork } from '../../generateNetwork.ts';
 
 /**
  * The generator draws at most one edge of a type between one pair, because the

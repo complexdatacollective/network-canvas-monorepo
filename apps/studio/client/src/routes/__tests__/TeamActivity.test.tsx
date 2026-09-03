@@ -128,6 +128,19 @@ vi.mock('../../lib/api.ts', () => ({
         }),
       }),
     },
+    // The header's study chip asks for the study on every app route, and
+    // answers nothing on one that names no study.
+    studies: {
+      list: {
+        queryOptions: () => ({ queryKey: ['studies'], queryFn: () => [] }),
+        key: () => ['studies'],
+      },
+      get: {
+        queryOptions: () => ({ queryKey: ['study'], queryFn: () => null }),
+        key: () => ['study'],
+      },
+      create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
+    },
     audit: {
       list: {
         infiniteOptions: (options: {

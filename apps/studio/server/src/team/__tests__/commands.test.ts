@@ -24,7 +24,10 @@ import {
   runAuditedMutation,
 } from '../../audit/command.ts';
 import type { AuditEventInput } from '../../audit/events.ts';
-import { AUDIT_SEQUENCE_LOCK_SEED } from '../../audit/store.ts';
+import {
+  AUDIT_SEQUENCE_LOCK_SEED,
+  AUDIT_TEAM_LOCK_KEY_SQL,
+} from '../../audit/store.ts';
 import type { SessionPrincipal } from '../../auth/service.ts';
 import {
   acceptTeamInvitation,
@@ -744,7 +747,7 @@ describe.skipIf(!db)('audited team commands', () => {
     await workStarted.promise;
     try {
       const contender = await app.query<{ acquired: boolean }>(
-        `SELECT pg_try_advisory_xact_lock(hashtextextended($1, $2::bigint)) AS acquired`,
+        `SELECT pg_try_advisory_xact_lock(${AUDIT_TEAM_LOCK_KEY_SQL}) AS acquired`,
         [teamId, AUDIT_SEQUENCE_LOCK_SEED.toString()],
       );
       expect(contender.rows).toEqual([{ acquired: false }]);
@@ -766,7 +769,7 @@ describe.skipIf(!db)('audited team commands', () => {
     try {
       await holder.query('BEGIN');
       await holder.query(
-        `SELECT pg_advisory_xact_lock(hashtextextended($1, $2::bigint))`,
+        `SELECT pg_advisory_xact_lock(${AUDIT_TEAM_LOCK_KEY_SQL})`,
         [teamId, AUDIT_SEQUENCE_LOCK_SEED.toString()],
       );
       await holder.query(

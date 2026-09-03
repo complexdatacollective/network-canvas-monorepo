@@ -1,5 +1,13 @@
 # @codaco/documentation
 
+## 0.4.2
+
+### Patch Changes
+
+- The documentation layout now marks its `<main>` as the target of the site
+  header's new skip link, so keyboard and screen-reader visitors can bypass the
+  navigation on every page.
+
 ## 0.4.1
 
 ### Patch Changes

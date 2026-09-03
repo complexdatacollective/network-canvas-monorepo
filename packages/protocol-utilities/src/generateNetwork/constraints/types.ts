@@ -1,7 +1,7 @@
 import type { VARIABLE_REFERENCE_VALIDATIONS } from '@codaco/protocol-validation';
 
-import type { VariableEntry } from '../../types';
-import type { DateWindow } from './dateWindow';
+import type { VariableEntry } from '../../types.ts';
+import type { DateWindow } from './dateWindow.ts';
 
 export type VariableConstraints = {
   required: boolean;

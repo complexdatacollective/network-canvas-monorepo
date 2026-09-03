@@ -13,10 +13,10 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import { generateNetwork } from '../../../generateNetwork';
-import { resolveGenerationConfig } from '../../config';
-import { resolveFamilyPedigreeGenerationOptions } from '../../familyPedigree/referencePopulation';
-import { buildEntityConstraints } from '../buildConstraints';
+import { generateNetwork } from '../../../generateNetwork.ts';
+import { resolveGenerationConfig } from '../../config.ts';
+import { resolveFamilyPedigreeGenerationOptions } from '../../familyPedigree/referencePopulation.ts';
+import { buildEntityConstraints } from '../buildConstraints.ts';
 import {
   edgeCountFor,
   inheritedContributorAncestryCeiling,
@@ -25,8 +25,8 @@ import {
   pedigreeNodeCeiling,
   type NodeConstraintsFor,
   worstCaseEntityCounts,
-} from '../entityCounts';
-import { SyntheticDataConstraintError } from '../error';
+} from '../entityCounts.ts';
+import { SyntheticDataConstraintError } from '../error.ts';
 
 const config = resolveGenerationConfig({ today: '2026-07-27' });
 

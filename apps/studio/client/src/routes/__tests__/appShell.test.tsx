@@ -54,6 +54,8 @@ const fixtures = vi.hoisted(() => ({
   // supposed to stay silent where no study is on screen, which is a claim
   // about requests rather than about anything rendered.
   studyListRequests: [] as string[],
+  /** Every `studies.get` the shell made, by study id. */
+  studyGetRequests: [] as string[],
 }));
 
 vi.mock('../../lib/auth.ts', () => ({
@@ -86,21 +88,40 @@ vi.mock('../../lib/api.ts', () => ({
         }),
       }),
     },
-    protocols: {
+    studies: {
       list: {
-        // Keyed by the team, as the real one is: the owner lookup asks several
-        // teams the same question, and a shared key would collapse those into
-        // one cache entry and one request.
+        // Keyed by the team, as the real one is.
         queryOptions: ({ input }: { input: { teamId: string } }) => ({
-          queryKey: ['protocols', input.teamId],
+          queryKey: ['studies', input.teamId],
           queryFn: () => {
             fixtures.studyListRequests.push(input.teamId);
             return fixtures.studies;
           },
         }),
-        key: () => ['protocols'],
+        key: () => ['studies'],
+      },
+      get: {
+        // The server resolves a study's team from the id alone. `null` for a
+        // study no team of this researcher's owns, which is what the real
+        // procedure refuses.
+        queryOptions: ({ input }: { input: { studyId: string } }) => ({
+          queryKey: ['study', input.studyId],
+          queryFn: () => {
+            fixtures.studyGetRequests.push(input.studyId);
+            const study = fixtures.studies.find((s) => s.id === input.studyId);
+            if (!study) throw new Error('FORBIDDEN');
+            return {
+              teamId: fixtures.TEAM_A.id,
+              study,
+              protocolDraftId: study.draftId,
+            };
+          },
+        }),
+        key: () => ['study'],
       },
       create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
+    },
+    protocols: {
       draft: {
         queryOptions: () => ({ queryKey: ['draft'], queryFn: vi.fn() }),
         key: () => ['draft'],
@@ -209,6 +230,7 @@ beforeEach(() => {
   });
   fixtures.studies = [fixtures.STUDY_1, fixtures.STUDY_2];
   fixtures.studyListRequests = [];
+  fixtures.studyGetRequests = [];
 });
 
 describe('composed app shell', () => {

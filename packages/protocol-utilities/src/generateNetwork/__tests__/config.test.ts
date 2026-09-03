@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { GenerationConfig } from '../config';
-import { resolveGenerationConfig } from '../config';
+import type { GenerationConfig } from '../config.ts';
+import { resolveGenerationConfig } from '../config.ts';
 
 describe('resolveGenerationConfig', () => {
   // `GenerationConfig` is exported from the package entry, so a required field

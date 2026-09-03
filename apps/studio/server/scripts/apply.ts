@@ -6,16 +6,16 @@ import {
   pushSchema,
 } from 'drizzle-kit/api-postgres';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import type pg from 'pg';
+import pg from 'pg';
 
 import { SCHEMA_FINGERPRINT } from '../src/db/fingerprint.generated.ts';
 import {
-  PRE_PUSH_MIGRATIONS,
   SCHEMA,
   SCHEMA_LOCK_KEY,
   SIDECARS,
   stampFingerprint,
 } from '../src/db/schema.ts';
+import { seed, type SeedOptions } from '../src/db/seed.ts';
 
 // Kept out of src/ so drizzle-kit (and its esbuild binary) can never reach
 // the server or Netlify bundles.
@@ -32,11 +32,7 @@ export function renderDrizzleSchemaStatements(): Promise<string[]> {
 }
 
 export async function renderSchemaStatements(): Promise<string[]> {
-  return [
-    ...PRE_PUSH_MIGRATIONS,
-    ...(await renderDrizzleSchemaStatements()),
-    ...SIDECARS,
-  ];
+  return [...(await renderDrizzleSchemaStatements()), ...SIDECARS];
 }
 
 export async function computeSchemaFingerprint(): Promise<string> {
@@ -73,7 +69,6 @@ export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
     if (stamped.rows[0]?.present) {
       await lock.query('delete from "schemaFingerprint"');
     }
-    await lock.query(PRE_PUSH_MIGRATIONS.join('\n'));
     const push = await pushSchema(SCHEMA, drizzle({ client: pool }));
     await push.apply();
     await lock.query(SIDECARS.join('\n'));
@@ -84,5 +79,64 @@ export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
       .query(`select pg_advisory_unlock(${SCHEMA_LOCK_KEY})`)
       .catch(() => undefined);
     lock.release();
+  }
+}
+
+export type ResetOptions = SeedOptions & {
+  /**
+   * Also drop every `studio_test_*` scratch schema and database on the
+   * cluster. Only an explicit `db:reset` asks for this: the sweep is the
+   * remedy for what a crashed test run left behind, but it cannot tell a
+   * leftover from a suite that is running right now, and it force-drops
+   * either. The automatic dev-boot reset therefore leaves them alone.
+   */
+  sweepScratch?: boolean;
+};
+
+/**
+ * The full local reset: drop and recreate the schema, optionally sweep the
+ * scratch schemas and databases a crashed test run left behind, reapply the
+ * schema, and reseed. Shared by db-reset.ts (on demand) and dev-pg.ts (every
+ * `pnpm dev` boot) so the two sequences cannot drift apart. Callers own the
+ * non-local safety check — this function always does the drop.
+ */
+export async function resetSchemaAndSeed(
+  pool: pg.Pool,
+  options: ResetOptions = {},
+): Promise<void> {
+  await pool.query('drop schema if exists public cascade');
+  await pool.query('create schema public');
+
+  if (options.sweepScratch) await sweepScratch(pool);
+
+  await applySchema(pool);
+  await seed(pool, options);
+}
+
+async function sweepScratch(pool: pg.Pool): Promise<void> {
+  const leftoverSchemas = await pool.query<{ nspname: string }>(
+    `select nspname from pg_namespace where nspname like 'studio\\_test\\_%'`,
+  );
+  for (const { nspname } of leftoverSchemas.rows) {
+    await pool.query(
+      `drop schema if exists ${pg.escapeIdentifier(nspname)} cascade`,
+    );
+  }
+  if (leftoverSchemas.rowCount) {
+    console.log(`Dropped ${leftoverSchemas.rowCount} leftover test schema(s).`);
+  }
+
+  const leftoverDatabases = await pool.query<{ datname: string }>(
+    `select datname from pg_database where datname like 'studio\\_test\\_db\\_%'`,
+  );
+  for (const { datname } of leftoverDatabases.rows) {
+    await pool.query(
+      `drop database if exists ${pg.escapeIdentifier(datname)} with (force)`,
+    );
+  }
+  if (leftoverDatabases.rowCount) {
+    console.log(
+      `Dropped ${leftoverDatabases.rowCount} leftover test database(s).`,
+    );
   }
 }

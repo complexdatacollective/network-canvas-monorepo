@@ -1,11 +1,12 @@
-import { useQuery } from '@tanstack/react-query';
-import { getRouteApi } from '@tanstack/react-router';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getRouteApi, useRouter } from '@tanstack/react-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 import { Alert } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import PasswordField from '@codaco/fresco-ui/form/fields/PasswordField';
 import Form from '@codaco/fresco-ui/form/Form';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -18,6 +19,7 @@ import type { SocialProvider } from '@codaco/studio-rpc';
 import { orpc } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
 import { studioEmailPattern } from '../lib/emailValidation.ts';
+import { sessionQueryOptions } from '../lib/session.ts';
 import { GoogleIcon, MicrosoftIcon } from './ProviderIcons.tsx';
 
 const route = getRouteApi('/focused/sign-in');
@@ -32,7 +34,10 @@ const MAGIC_LINK_ERRORS = new Set(['EXPIRED_TOKEN', 'INVALID_TOKEN']);
 export default function SignIn() {
   const { error, invitationId } = route.useSearch();
   const status = useQuery(orpc.status.queryOptions());
+  const queryClient = useQueryClient();
+  const router = useRouter();
   const [sentTo, setSentTo] = useState<string | null>(null);
+  const [mode, setMode] = useState<'magic-link' | 'password'>('magic-link');
   const [socialPending, setSocialPending] = useState<SocialProvider | null>(
     null,
   );
@@ -48,12 +53,24 @@ export default function SignIn() {
   // Only definitive status data closes anything off; not knowing (the status
   // query failing) must not lock the door.
   const auth = status.isSuccess ? status.data.auth : undefined;
+  const emailAndPassword = auth ? auth.emailAndPassword : false;
   const unavailable = auth
-    ? !auth.enabled || (!auth.magicLink && auth.socialProviders.length === 0)
+    ? !auth.enabled ||
+      (!auth.magicLink &&
+        !auth.emailAndPassword &&
+        auth.socialProviders.length === 0)
     : false;
 
   const magicLink = auth ? auth.magicLink : true;
   const socialProviders = auth?.socialProviders ?? [];
+  // A researcher toggles between the two only when both are actually
+  // offered; otherwise whichever one is configured is simply what renders.
+  // If magic-link is off, password is the only email-based method left, so
+  // it shows regardless of `mode` — there is nothing to toggle away from.
+  const canTogglePasswordMode = magicLink && emailAndPassword;
+  const showPasswordForm =
+    emailAndPassword && (mode === 'password' || !magicLink);
+  const showMagicLinkForm = magicLink && !showPasswordForm;
   // Where both routes into a session come back to. Each is a full document
   // load — the magic link's verify redirect and the provider's callback — so
   // the URL has to be one that reads the session that has just been
@@ -133,7 +150,7 @@ export default function SignIn() {
         )}
         {!unavailable && sentTo === null && (
           <>
-            {magicLink && (
+            {showMagicLinkForm && (
               <>
                 <Paragraph>
                   Enter your email address and we will send you a sign-in link.
@@ -180,9 +197,91 @@ export default function SignIn() {
                 </Form>
               </>
             )}
+            {showPasswordForm && (
+              <>
+                <Paragraph>Enter your email address and password.</Paragraph>
+                <Form
+                  onSubmit={async (values) => {
+                    const email =
+                      typeof values.email === 'string' ? values.email : '';
+                    const password =
+                      typeof values.password === 'string'
+                        ? values.password
+                        : '';
+                    const failed = {
+                      success: false,
+                      formErrors: ['That email or password is not correct.'],
+                    };
+                    let result;
+                    try {
+                      result = await authClient.signIn.email({
+                        email,
+                        password,
+                      });
+                    } catch {
+                      // Unhandled, a rejection would leave the form stuck
+                      // submitting.
+                      return {
+                        success: false,
+                        formErrors: ['Sign-in did not complete. Try again.'],
+                      };
+                    }
+                    if (result.error) return failed;
+                    // Unlike magic-link and social, this completes inside the
+                    // SPA with the session in the response — no document
+                    // load is coming to read it. Recording the answer here
+                    // is correct on the next guard with no round trip and no
+                    // race (see the comment on sessionQueryOptions).
+                    // Invalidating instead of navigating directly lets this
+                    // route's own guard resolve where a signed-in visitor
+                    // belongs, including the invitation destination, exactly
+                    // as it already does for every other arrival.
+                    queryClient.setQueryData(
+                      sessionQueryOptions.queryKey,
+                      'signedIn',
+                    );
+                    await router.invalidate();
+                    return { success: true };
+                  }}
+                >
+                  <Field
+                    name="email"
+                    label="Email address"
+                    component={InputField}
+                    type="email"
+                    required
+                    pattern={studioEmailPattern(
+                      'The address you use for Studio.',
+                    )}
+                    autoComplete="email"
+                  />
+                  <Field
+                    name="password"
+                    label="Password"
+                    component={PasswordField}
+                    required
+                    autoComplete="current-password"
+                  />
+                  <SubmitButton>Sign in</SubmitButton>
+                </Form>
+              </>
+            )}
+            {canTogglePasswordMode && (
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() =>
+                  setMode(showPasswordForm ? 'magic-link' : 'password')
+                }
+              >
+                {showPasswordForm
+                  ? 'Sign in with a magic link instead'
+                  : 'Sign in with a password instead'}
+              </Button>
+            )}
             {socialProviders.length > 0 && (
               <>
-                {magicLink && (
+                {(showMagicLinkForm || showPasswordForm) && (
                   <div
                     aria-hidden="true"
                     className="my-4 flex items-center gap-3 before:h-px before:flex-1 before:bg-current/20 after:h-px after:flex-1 after:bg-current/20"

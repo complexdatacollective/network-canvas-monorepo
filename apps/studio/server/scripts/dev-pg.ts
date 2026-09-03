@@ -1,15 +1,27 @@
 // The port and credentials deliberately match packages/studio-sync's
 // conformance-suite expectations, so one container serves the app and that
 // suite.
+//
+// `pnpm dev` runs this twice. `--prepare` brings Postgres up, resets and
+// seeds it, and exits; only then does `concurrently` start the server, the S3
+// sidecar and this script again as `--follow`, which tails the container's
+// logs for the life of the session and touches nothing. The split is what
+// keeps the reset ahead of the server: started side by side, a server whose
+// last build's schema was still current would verify the fingerprint, start
+// its delivery workers and begin answering requests, and the drop and reseed
+// would then land under it — transient failures for whoever was already
+// signed in, and a worker leasing rows that were about to be truncated. Run
+// with neither flag, it does both in order, for anyone driving it by hand.
 import { spawn, spawnSync } from 'node:child_process';
 import process from 'node:process';
 
 import pg from 'pg';
 
 import { createOwnerPool } from '../src/db/pool.ts';
-import { checkSchema } from '../src/db/schema.ts';
-import { DEV, DEV_DATABASE_URL } from '../src/env/catalogue.ts';
-import { applySchema } from './apply.ts';
+import { isLocalDatabase, readEnv } from '../src/env.ts';
+import { DEV } from '../src/env/catalogue.ts';
+import { resetSchemaAndSeed } from './apply.ts';
+import { loadEnvFiles } from './load-env-files.ts';
 
 const IMAGE = 'postgres:18';
 const HOST_PORT = DEV.pgPort;
@@ -99,6 +111,7 @@ function startContainer(): void {
 
 async function query(
   sql: string,
+  values: unknown[] = [],
   database = 'postgres',
 ): Promise<pg.QueryResult> {
   const client = new pg.Client({
@@ -111,7 +124,7 @@ async function query(
   });
   await client.connect();
   try {
-    return await client.query(sql);
+    return await client.query(sql, values);
   } finally {
     await client.end();
   }
@@ -136,27 +149,67 @@ async function waitForReady(): Promise<void> {
   );
 }
 
-async function ensureDatabase(): Promise<void> {
-  const existing = await query(
-    `SELECT 1 FROM pg_database WHERE datname = '${DATABASE}'`,
-  );
+async function ensureDatabase(name: string): Promise<void> {
+  const existing = await query(`SELECT 1 FROM pg_database WHERE datname = $1`, [
+    name,
+  ]);
   if (existing.rowCount) {
-    console.log(`Database '${DATABASE}' already exists`);
+    console.log(`Database '${name}' already exists`);
     return;
   }
-  await query(`CREATE DATABASE ${DATABASE}`);
-  console.log(`Created database '${DATABASE}'`);
+  await query(`CREATE DATABASE ${pg.escapeIdentifier(name)}`);
+  console.log(`Created database '${name}'`);
 }
 
-// Absent only: a stale schema is a human decision (the boot message names the
-// remedies), and auto-reconciling it here could destroy dev data.
-async function ensureSchemaProvisioned(): Promise<void> {
-  const pool = createOwnerPool({ url: DEV_DATABASE_URL });
+/**
+ * The database the server will connect to, read from the same resolved
+ * `DATABASE_URL` the reset uses — a `.env` override of the name is created
+ * too, not only the committed default. Undefined when the override names a
+ * server other than the dev container's, which this script does not manage.
+ */
+function databaseToCreate(): string | undefined {
+  loadEnvFiles();
+  const { db } = readEnv();
+  if (!db) return DATABASE;
+  const url = new URL(db.url);
+  if (!isLocalDatabase(db.url)) return undefined;
+  // node-postgres lets `?port=` override the authority's port (the last one
+  // wins when it repeats), reads it with parseInt, and connects there; the
+  // reset will too, so that is the port this script must compare with the
+  // container's — as a number, so `054318` is the container's port as well.
+  const port = Number.parseInt(
+    url.searchParams.getAll('port').at(-1) ?? (url.port || '5432'),
+    10,
+  );
+  if (port !== HOST_PORT) return undefined;
+  const name = decodeURIComponent(url.pathname.replace(/^\//, ''));
+  return name === '' ? DATABASE : name;
+}
+
+// Every `pnpm dev` boot starts from a clean, freshly seeded database: Studio
+// has no real users yet, so reproducible synthetic data (src/db/seed.ts)
+// beats whatever was left over from the last session. The target is the
+// database the server process will connect to — the same files, in the same
+// order, so a `.env` override of DATABASE_URL is reset and seeded rather
+// than the default it replaced. Resetting without asking is safe only for a
+// database on this machine, the guard db-reset.ts applies before a manual
+// reset touches anything else; a non-local target is left alone.
+async function resetAndSeed(): Promise<void> {
+  loadEnvFiles();
+  const { db } = readEnv();
+  if (!db) throw new Error('DATABASE_URL is unset; nothing to reset.');
+  const url = new URL(db.url);
+  const target = `${url.hostname}:${url.port || '5432'}${url.pathname}`;
+  if (!isLocalDatabase(db.url)) {
+    console.log(
+      `DATABASE_URL points at ${target}, which is not on this machine; leaving it as it is. Reset it deliberately with: pnpm db:reset --force`,
+    );
+    return;
+  }
+  const pool = createOwnerPool(db);
   try {
-    if ((await checkSchema(pool)).kind === 'absent') {
-      await applySchema(pool);
-      console.log(`Applied the Studio schema to '${DATABASE}'`);
-    }
+    await resetSchemaAndSeed(pool);
+    console.log(`Reset and seeded ${target}`);
   } finally {
     await pool.end();
   }
@@ -185,7 +238,15 @@ function followLogs(): void {
   });
 }
 
-async function main(): Promise<void> {
+type Mode = 'prepare' | 'follow' | 'both';
+
+function modeFromArgs(argv: readonly string[]): Mode {
+  if (argv.includes('--prepare')) return 'prepare';
+  if (argv.includes('--follow')) return 'follow';
+  return 'both';
+}
+
+async function main(mode: Mode): Promise<void> {
   const alreadyRunning = containerExists() && containerIsRunning();
 
   // A Postgres already answering on the port without our container managing
@@ -195,9 +256,13 @@ async function main(): Promise<void> {
     console.log(
       `Postgres already reachable on port ${HOST_PORT} (externally managed)`,
     );
-    await ensureDatabase();
-    await ensureSchemaProvisioned();
+    if (mode !== 'follow') {
+      const name = databaseToCreate();
+      if (name !== undefined) await ensureDatabase(name);
+      await resetAndSeed();
+    }
     console.log(`Postgres ready — database '${DATABASE}' on port ${HOST_PORT}`);
+    if (mode === 'prepare') return;
     // Stay alive under `concurrently -k` without a container to tail: an
     // unsettled top-level await with an empty event loop makes Node exit 13.
     setInterval(() => {
@@ -221,10 +286,14 @@ async function main(): Promise<void> {
 
   console.log('Waiting for Postgres to become ready...');
   await waitForReady();
-  await ensureDatabase();
-  await ensureSchemaProvisioned();
+  if (mode !== 'follow') {
+    const name = databaseToCreate();
+    if (name !== undefined) await ensureDatabase(name);
+    await resetAndSeed();
+  }
   console.log(`Postgres ready — database '${DATABASE}' on port ${HOST_PORT}`);
+  if (mode === 'prepare') return;
   followLogs();
 }
 
-await main();
+await main(modeFromArgs(process.argv.slice(2)));

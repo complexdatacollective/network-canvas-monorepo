@@ -22,6 +22,8 @@ describe('audit event registry', () => {
       'protocol.created@1',
       'protocol.draft.committed@1',
       'security.denied_attempts.rate_limited@1',
+      'study.created@1',
+      'study.creation_denied@1',
       'team.invitation.acceptance_denied@1',
       'team.invitation.acceptance_failed@1',
       'team.invitation.accepted@1',

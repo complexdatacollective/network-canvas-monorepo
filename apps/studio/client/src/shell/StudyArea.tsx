@@ -1,7 +1,9 @@
+import { useQuery } from '@tanstack/react-query';
 import { Outlet, useRouterState } from '@tanstack/react-router';
 
 import AppArea from '@codaco/fresco-ui/layout/AppArea';
 
+import { orpc } from '../lib/api.ts';
 import AreaMain from './AreaMain.tsx';
 import ManifestNav from './ManifestNav.tsx';
 import { studyDestinations } from './navigationManifest.ts';
@@ -20,9 +22,12 @@ import { studyDestinations } from './navigationManifest.ts';
  * rendering beside it, which is only true while the two areas are siblings.
  *
  * Counts belong on the countable destinations — participants, waves, sessions,
- * versions (§5.5) — and are absent because they come from `study.shell`, which
- * this slice does not fetch. A count is decoration for a number nobody has;
- * inventing one would be worse than the empty row.
+ * versions (§5.5) — and this is the one place that fetches them, because it is
+ * the one place that renders them. Until `studies.counts` answers, and if it
+ * never does, `useQuery` holds `undefined` and every row renders without a
+ * number: a count is decoration for a number nobody has, and inventing one —
+ * a 0 for a study with forty participants in it — would be worse than the
+ * plain row.
  */
 export default function StudyArea({ studyId }: { studyId: string }) {
   const pathname = useRouterState({
@@ -30,6 +35,21 @@ export default function StudyArea({ studyId }: { studyId: string }) {
     // (§6.5, §7.3).
     select: (state) => (state.resolvedLocation ?? state.location).pathname,
   });
+  // A study route names no team (§6.3), and the question does not need one:
+  // like `studies.get`, the procedure is addressed by the study alone and the
+  // server resolves the team from the researcher's memberships, so the numbers
+  // exist for exactly the studies they can open.
+  const counts = useQuery(
+    orpc.studies.counts.queryOptions({
+      input: { studyId },
+      // The client's own freshness applies, which for numbers that move while
+      // a researcher works is what is wanted: the sidebar stays mounted for
+      // the whole of a study visit, so nothing else would ever refresh them.
+      // A failure is not retried — the row simply has no number, which is a
+      // complete answer, and a retry loop behind a sidebar is not worth one.
+      retry: false,
+    }),
+  );
 
   return (
     <AppArea
@@ -38,7 +58,9 @@ export default function StudyArea({ studyId }: { studyId: string }) {
         label: 'Study',
         openLabel: 'Open study navigation',
         closeLabel: 'Close study navigation',
-        content: <ManifestNav entries={studyDestinations(studyId)} />,
+        content: (
+          <ManifestNav entries={studyDestinations(studyId, counts.data)} />
+        ),
       }}
     >
       <AreaMain>

@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildVariableConstraints } from '../generateNetwork/constraints/buildConstraints';
-import type { ConstrainedVariable } from '../generateNetwork/constraints/types';
-import { valueKey } from '../generateNetwork/constraints/uniqueRegistry';
+import { buildVariableConstraints } from '../generateNetwork/constraints/buildConstraints.ts';
+import type { ConstrainedVariable } from '../generateNetwork/constraints/types.ts';
+import { valueKey } from '../generateNetwork/constraints/uniqueRegistry.ts';
 import {
   MAX_TEXT_DRAW_LENGTH,
   valueSpaceSize,
-} from '../generateNetwork/constraints/valueSpace';
-import type { VariableEntry } from '../types';
-import { ValueGenerator } from '../ValueGenerator';
+} from '../generateNetwork/constraints/valueSpace.ts';
+import type { VariableEntry } from '../types.ts';
+import { ValueGenerator } from '../ValueGenerator.ts';
 
 const TODAY = '2026-07-27';
 

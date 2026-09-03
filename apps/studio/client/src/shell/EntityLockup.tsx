@@ -10,7 +10,6 @@ import {
 
 import { orpc } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
-import { useStudyOwner } from '../lib/studyOwner.ts';
 import { teamRole, teamRolesLabel } from '../lib/teamRoles.ts';
 
 /**
@@ -97,55 +96,40 @@ function currentTeam(
 }
 
 /**
- * The study segment, and the only reason it is a component of its own: the
- * studies queries must not RUN on the routes that show no study segment. The
- * header is on every app route, and a query built unconditionally would ask
- * for a team's studies from the account area and the gallery. Hooks cannot be
- * skipped, so both are gated on the same absent `studyId` instead — the
- * siblings query by `enabled`, and `useStudyOwner` by the `undefined` it is
- * handed, which would otherwise fan out across every team the researcher has
- * looking for a study that is not on screen.
+ * The study segment, and the only reason it is a component of its own: its
+ * queries must not RUN on the routes that show no study. The header is on
+ * every app route, and a query built unconditionally would ask about a study
+ * from the account area and the gallery. Hooks cannot be skipped, so both are
+ * gated on the same absent `studyId`.
  *
- * **Real data, with one honest degradation.** `protocols.list` is team-scoped
- * and `$studyId` names no team (§5.6), so the siblings can only be the studies
- * of the team the shell can name — the URL's on a team route, the active-team
- * setting's on a study route, which is the same fallback the chip this
- * replaces made. That list is this study's siblings ONLY IF it contains this
- * study: the procedure is authorized per team, so a study in the answer
- * belongs to the team that answered. Where it is not in the answer — a
- * canonical link into another team's study, which §6.3's `study.shell` is what
- * will actually resolve — there is nothing that can honestly be called a
- * sibling, and the switcher falls back to naming the study by its identifier
- * alone, exactly as the chip it replaces did. Offering the active team's
- * studies there would present studies from a different team as this one's.
+ * **The server resolves the owner.** `studies.get` takes the study id alone
+ * and derives the tenant from the caller's own memberships (§6.3), which is
+ * what makes a study URL a canonical link: it opens the study whoever follows
+ * it and however they got there. Reading the ACTIVE team instead would be
+ * wrong from an ordinary bookmark — a visit to team B's study while the
+ * setting still names team A finds nothing, and a session that names no team,
+ * which is every first sign-in, has nothing to ask at all.
  *
- * **No status dot.** `ProtocolSummarySchema` carries `id`, `draftId`, `name`,
- * `createdAt` and `updatedAt` and nothing that says whether a study is
- * collecting, draft or closed. The dot the design shows is omitted rather than
- * driven from an invented field; it arrives with the studies model (#1262).
+ * A study the server will not resolve leaves the identifier on screen and no
+ * siblings. That is not this segment's failure to report: it says what it
+ * knows, and the shell's own error surface owns the outage.
+ *
+ * **No status colour.** The studies model carries nothing that says whether a
+ * study is collecting, draft or closed, so `StudyStatusDot` is neutral until
+ * that lands (#1262).
  */
 function useStudySegment(
   studyId: string | undefined,
 ): SwitcherSegment | undefined {
   const navigate = useNavigate();
 
-  /*
-    The study's OWN team, resolved the way the editor resolves it, rather than
-    whichever team the session last had active.
-
-    A bookmarked `/study/B` opened while the session is still in team A — or in
-    no team at all, which is every session that has never switched, since
-    nothing sets `activeOrganizationId` at creation — carries no team in its
-    URL (§5.6). Asking team A for B's siblings gets an answer that never
-    contains B, and the switcher then names the study by its raw identifier for
-    ever. `useStudyOwner` asks the active team first and the researcher's other
-    teams only if that one does not have it, so the segment names the study and
-    offers the siblings that are genuinely its own.
-  */
-  const owner = useStudyOwner(studyId);
-  const teamId = owner.status === 'found' ? owner.teamId : undefined;
+  const study = useQuery({
+    ...orpc.studies.get.queryOptions({ input: { studyId: studyId ?? '' } }),
+    enabled: studyId !== undefined,
+  });
+  const teamId = study.data?.teamId;
   const siblings = useQuery({
-    ...orpc.protocols.list.queryOptions({ input: { teamId: teamId ?? '' } }),
+    ...orpc.studies.list.queryOptions({ input: { teamId: teamId ?? '' } }),
     enabled: teamId !== undefined,
   });
 
@@ -155,25 +139,21 @@ function useStudySegment(
 
   const listed = siblings.data ?? [];
   const items: SwitcherItem[] =
-    owner.status === 'found'
-      ? // The owning team answered, so these are genuinely this study's
-        // siblings. Its own name comes from that same answer rather than from
-        // the URL.
-        (listed.length > 0 ? listed : [owner.study]).map((study) => ({
-          id: study.id,
-          name: study.name,
-        }))
-      : // Nothing can be said about siblings until the owner is known, and the
-        // identifier is what the shell knows about a study it cannot place. A
-        // friendlier stand-in would be a guess about which study is open, and
-        // the switcher exists precisely so the researcher can be sure.
-        [{ id: studyId, name: studyId }];
+    study.data === undefined
+      ? // The identifier is what the shell knows about a study it cannot
+        // place. A friendlier stand-in would be a guess about which study is
+        // open, and the switcher exists precisely so the researcher can be
+        // sure.
+        [{ id: studyId, name: studyId }]
+      : // The owning team answered, so these are genuinely this study's
+        // siblings, and its own name comes from that same answer.
+        (listed.length > 0 ? listed : [study.data.study]).map((row) => ({
+          id: row.id,
+          name: row.name,
+        }));
 
-  // A lookup that could not be read is not this segment's to report: it says
-  // what it knows, which is the identifier, and the shell's own error surface
-  // owns the outage.
   const status: SwitcherStatus =
-    owner.status === 'pending' || (teamId !== undefined && siblings.isPending)
+    study.isPending || (teamId !== undefined && siblings.isPending)
       ? 'loading'
       : 'ready';
 
@@ -301,15 +281,6 @@ export default function EntityLockup({ className }: { className?: string }) {
       }
     : undefined;
 
-  // The study segment is a component of its own for one reason: it asks
-  // `protocols.list`, and mounting it only where a study is open is what keeps
-  // the header — which is on every app route — off that procedure everywhere
-  // else.
-  //
-  // Whose team? A study's team is derivable only from the study (§6.3, and
-  // §5.6's reason for keeping the team out of the URL), so on a study route
-  // this is the active-team setting — the same fallback `currentTeam` above
-  // makes for the team segment, and the one the chip this replaces made.
   return (
     <TeamAndStudySwitcher
       className={className}

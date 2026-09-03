@@ -25,12 +25,24 @@ export type TeamMembership = {
   role: string;
 };
 
+/** A membership that names its team: what a study's tenant is resolved over. */
+export type IdentifiedTeamMembership = TeamMembership & {
+  teamId: string;
+};
+
 export type AuthService = {
   handler(request: Request): Promise<Response>;
   /** Cookie-session lookup; null when absent, expired, or auth is disabled. */
   getSession(headers: Headers): Promise<SessionPrincipal | null>;
   /** Null when the user is not a member of the team (or auth is disabled). */
   getMembership(userId: string, teamId: string): Promise<TeamMembership | null>;
+  /**
+   * Every team the user belongs to. The search space a study identifier is
+   * resolved over (app-shell design §6.3): a `/study/$studyId` URL names no
+   * team, so the server derives it rather than trusting one from the browser.
+   * Empty when the user belongs to nothing, or auth is disabled.
+   */
+  listMemberships(userId: string): Promise<IdentifiedTeamMembership[]>;
 };
 
 export function createDisabledAuthService(): AuthService {
@@ -47,5 +59,6 @@ export function createDisabledAuthService(): AuthService {
       ),
     getSession: () => Promise.resolve(null),
     getMembership: () => Promise.resolve(null),
+    listMemberships: () => Promise.resolve([]),
   };
 }

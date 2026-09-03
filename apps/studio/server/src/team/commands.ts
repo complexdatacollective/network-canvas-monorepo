@@ -22,7 +22,7 @@ import {
 import { createDeniedAuditSummaryWriter } from '../audit/denial-summary.ts';
 import type { AuditEventInput, DeniedAuditOperation } from '../audit/events.ts';
 import { enqueueInvitationDelivery } from './invitation-delivery-store.ts';
-import { tryParseRoles } from './roles.ts';
+import { isTeamAdministrator, tryParseRoles } from './roles.ts';
 import { TeamStore, type LockedMember } from './store.ts';
 
 const EmailSchema = z.email().max(320);
@@ -58,8 +58,7 @@ function parseRoles(value: string): TeamRole[] {
 }
 
 function canManage(member: LockedMember): boolean {
-  const roles = parseRoles(member.role);
-  return roles.includes('owner') || roles.includes('admin');
+  return isTeamAdministrator(parseRoles(member.role));
 }
 
 function isOwner(member: LockedMember): boolean {
