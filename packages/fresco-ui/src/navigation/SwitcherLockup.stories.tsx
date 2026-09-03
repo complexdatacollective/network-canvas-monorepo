@@ -5,16 +5,62 @@ import { awaitPassiveEffects } from '../storybook-support/awaitPassiveEffects';
 import { EntitySwitcher, type EntitySwitcherItem } from './EntitySwitcher';
 import { SwitcherLockup } from './SwitcherLockup';
 
+/**
+ * A study's status, as the pip beside its name. Unexported: a non-story export
+ * in a stories file becomes an invalid auto-story.
+ *
+ * `aria-hidden`, and every row that carries one also carries the status word
+ * in its supporting line, so the colour never carries the meaning alone.
+ */
+function StatusPip({ tone }: { tone: string }) {
+  return (
+    <span
+      aria-hidden
+      className={`inline-block size-2 shrink-0 rounded-full ${tone}`}
+    />
+  );
+}
+
 const teams: EntitySwitcherItem[] = [
-  { id: 'team_5', name: 'SONIC Lab' },
-  { id: 'team_2', name: 'Complex Data Collective' },
-  { id: 'team_3', name: 'Adolescent Health Study Group' },
+  { id: 'team_5', name: 'SONIC Lab', meta: '12 studies', badge: 'Owner' },
+  {
+    id: 'team_2',
+    name: 'Complex Data Collective',
+    meta: '4 studies',
+    badge: 'Admin',
+  },
+  {
+    id: 'team_3',
+    name: 'Adolescent Health Study Group',
+    meta: '1 study',
+    badge: 'Member',
+  },
 ];
 
 const studies: EntitySwitcherItem[] = [
-  { id: 'study_1', name: 'Wave 1 pilot', meta: '12 interviews' },
-  { id: 'study_2', name: 'Wave 2', meta: '0 interviews', badge: 'Draft' },
+  {
+    id: 'study_1',
+    name: 'Wave 1 pilot',
+    meta: 'Collecting · 12 interviews',
+    leading: <StatusPip tone="bg-success" />,
+  },
+  {
+    id: 'study_2',
+    name: 'Wave 2',
+    meta: 'Draft · no interviews yet',
+    leading: <StatusPip tone="bg-input-contrast/40" />,
+  },
+  {
+    id: 'study_3',
+    name: 'Baseline survey',
+    meta: 'Closed · 302 interviews',
+    leading: <StatusPip tone="bg-warning" />,
+  },
 ];
+
+/** The trailing command each switcher offers beneath its siblings. */
+const createTeam = { label: 'Create a team', onSelect: fn() };
+const newStudy = { label: 'New study in this team', onSelect: fn() };
 
 /**
  * The kicker-over-name column of one segment, which `sr-only` takes out of
@@ -98,12 +144,14 @@ const meta = {
         items={teams}
         currentId="team_5"
         onSelect={fn()}
+        action={createTeam}
       />
       <EntitySwitcher
         kicker="Study"
         items={studies}
         currentId="study_1"
         onSelect={fn()}
+        action={newStudy}
       />
     </SwitcherLockup>
   ),
