@@ -453,7 +453,21 @@ export function EntitySwitcher(props: EntitySwitcherProps) {
                         )}
                       </Select.ItemText>
                       {item.badge !== undefined && (
-                        <span className="border-outline shrink-0 rounded-full border px-2 text-xs opacity-70">
+                        /*
+                          A filled chip rather than an outlined one, and at
+                          full strength rather than dimmed: it has to read on
+                          two different grounds — the popup surface, and
+                          `--selected` on whichever row is current — and an
+                          outline at 70% was faint on both.
+
+                          `bg-current` tints with the row's OWN text colour, so
+                          the chip follows the row it is on instead of being
+                          pinned to one surface: on the selected row that is
+                          `--selected-contrast`, everywhere else the popup's
+                          foreground. One rule, correct on both, and it cannot
+                          drift when either surface is re-themed.
+                        */
+                        <span className="text-2xs shrink-0 rounded-full bg-current/15 px-2 py-0.5 font-semibold uppercase">
                           {item.badge}
                         </span>
                       )}
