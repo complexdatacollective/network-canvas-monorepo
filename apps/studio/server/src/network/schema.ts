@@ -461,16 +461,13 @@ BEGIN
       END IF;
       RETURN NULL;
     END IF;
-    -- session_degree_hist is derived data the projection maintenance rewrites
-    -- on every refresh (delete-then-reinsert; data-modifying CTEs share a
-    -- snapshot, so the two halves cannot be one statement). Its unmarked
-    -- deletes are therefore governed by the parent-writable rule below, the
-    -- same rule as its inserts, rather than by the erasure marker — a rewrite
-    -- of a projection loses nothing. nodes, edges and session_stats hold data
-    -- no refresh reproduces, so an unmarked delete of those is refused here.
-    IF TG_TABLE_NAME <> 'session_degree_hist' THEN
-      RAISE EXCEPTION 'network rows are deleted only by an audited erasure or the maintenance purge';
-    END IF;
+    -- An unmarked application-role delete is an ordinary edit of a live
+    -- interview: the runtime removes a node and its edges whenever a
+    -- participant changes their mind, and the projection refresh rewrites
+    -- session_degree_hist on every call. It is therefore governed by the
+    -- parent-writable rule below exactly like an insert or an update — refused
+    -- once the session is finalized or the study closed, where only the marked
+    -- erasure and the maintenance purge above may delete.
   END IF;
 
   SELECT c.session_id INTO offender

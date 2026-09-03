@@ -63,6 +63,12 @@ const apiTokens = pgTable(
       table.teamId,
       table.createdAt.desc(),
     ),
+    // "Which tokens is this person answerable for" — asked whenever a member
+    // leaves a team and their custodianships must be reassigned.
+    index('api_tokens_team_id_custodian_user_id_idx').on(
+      table.teamId,
+      table.custodianUserId,
+    ),
     foreignKey({
       name: 'api_tokens_study_fk',
       columns: [table.studyId, table.teamId],

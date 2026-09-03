@@ -828,37 +828,39 @@ describe.skipIf(!db)('network schema', () => {
   });
 
   describe('deleting network rows', () => {
-    it('refuses an unmarked delete and admits the marked one', async () => {
+    it('treats an unmarked delete on a live session as an ordinary edit', async () => {
       const fixture = await newFixture();
       const from = await newNode(fixture.sessionId);
       const to = await newNode(fixture.sessionId);
       await insert('edges', edgeRow(fixture.sessionId, from, to));
 
-      // Bottom-up, the order both destructive paths follow: edges before the
-      // nodes they prove. A node delete attempted first is stopped by the
-      // endpoint key — an AFTER ROW constraint trigger, which fires before
-      // this statement-level guard — so each step is probed at its own turn.
+      // The runtime removes a node and its edges whenever a participant
+      // changes their mind. Bottom-up, the order every delete path follows:
+      // edges before the nodes they prove — the endpoint key is an AFTER ROW
+      // constraint trigger, which fires before this statement-level guard.
       await expect(
         tenantA.query(`DELETE FROM edges WHERE session_id = $1`, [
           fixture.sessionId,
         ]),
-      ).rejects.toThrow(
-        'network rows are deleted only by an audited erasure or the maintenance purge',
-      );
-      await expect(
-        erasing(
-          fixture.participantId,
-          `DELETE FROM edges WHERE session_id = $1`,
-          [fixture.sessionId],
-        ),
       ).resolves.toMatchObject({ rowCount: 1 });
+      await expect(
+        tenantA.query(`DELETE FROM nodes WHERE session_id = $1`, [
+          fixture.sessionId,
+        ]),
+      ).resolves.toMatchObject({ rowCount: 2 });
+    });
+
+    it('refuses an unmarked delete under a finalized session and admits the marked one', async () => {
+      const fixture = await newFixture();
+      await newNode(fixture.sessionId);
+      await finalize(fixture.sessionId);
 
       await expect(
         tenantA.query(`DELETE FROM nodes WHERE session_id = $1`, [
           fixture.sessionId,
         ]),
       ).rejects.toThrow(
-        'network rows are deleted only by an audited erasure or the maintenance purge',
+        'network data for a finalized session or a closed study is read-only',
       );
       await expect(
         erasing(
@@ -866,7 +868,7 @@ describe.skipIf(!db)('network schema', () => {
           `DELETE FROM nodes WHERE session_id = $1`,
           [fixture.sessionId],
         ),
-      ).resolves.toMatchObject({ rowCount: 2 });
+      ).resolves.toMatchObject({ rowCount: 1 });
     });
 
     it('proves the marker against the session it deletes', async () => {
@@ -923,10 +925,9 @@ describe.skipIf(!db)('network schema', () => {
     });
 
     it('lets the projection refresh rewrite its own histogram', async () => {
-      // session_degree_hist is derived data the refresh deletes and reinserts,
-      // so its unmarked delete is governed by the parent-writable rule rather
-      // than by the erasure marker — while session_stats, which the refresh
-      // upserts, keeps the marker rule.
+      // The refresh deletes and reinserts session_degree_hist on every call;
+      // on a live session that is an ordinary edit under the parent-writable
+      // rule, like every other unmarked application-role delete.
       const fixture = await newFixture();
       await newNode(fixture.sessionId);
       const refresh = () =>
@@ -943,13 +944,6 @@ describe.skipIf(!db)('network schema', () => {
           fixture.sessionId,
         ]),
       ).resolves.toMatchObject({ rowCount: 1 });
-      await expect(
-        tenantA.query(`DELETE FROM session_stats WHERE session_id = $1`, [
-          fixture.sessionId,
-        ]),
-      ).rejects.toThrow(
-        'network rows are deleted only by an audited erasure or the maintenance purge',
-      );
 
       // And the relaxation stops at the parent: a finalized session's
       // histogram is still off limits without the marker. The refresh puts the
