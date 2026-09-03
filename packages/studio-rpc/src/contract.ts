@@ -31,6 +31,8 @@ import {
   RenewSectionInputSchema,
   RenewSectionResultSchema,
   StatusSchema,
+  StudyCountsInputSchema,
+  StudyCountsSchema,
   StudyDetailSchema,
   StudyGetInputSchema,
   StudySummarySchema,
@@ -63,6 +65,7 @@ export {
   type AuditFilterOptions,
   type AuditOutcome,
   type SocialProvider,
+  type StudyCounts,
   type StudyParticipationMode,
   type StudyState,
   type TeamRole,
@@ -121,6 +124,13 @@ export const contract = {
      * them — is FORBIDDEN in every case, so this is not an existence oracle.
      */
     get: oc.input(StudyGetInputSchema).output(StudyDetailSchema),
+    /**
+     * How many things are at each countable destination of one study's
+     * sidebar. Addressed and refused exactly like `get`: the sidebar renders
+     * for whoever can open the study, and a count must not say anything about
+     * a study its reader could not open.
+     */
+    counts: oc.input(StudyCountsInputSchema).output(StudyCountsSchema),
     /**
      * Creates the study and its protocol line in one transaction, so every
      * study has something to edit and the editor's address is derivable from

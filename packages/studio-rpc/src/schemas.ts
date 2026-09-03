@@ -322,6 +322,28 @@ export const MoveStageInputSchema = ProtocolDraftInputSchema.extend({
   expectedRevision: DecimalSequenceSchema,
 });
 
+// The four countable study destinations the app shell's sidebar carries
+// (app-shell design §5.5). Deliberately one procedure rather than a count field
+// on each destination's own list query: the sidebar needs all four on every
+// study screen, including the screens that list none of them, and four
+// separately-keyed queries would be four round trips whose answers could
+// disagree with each other.
+// Study id alone, like `StudyGetInputSchema`: the server resolves the team.
+export const StudyCountsInputSchema = z.object({
+  studyId: z.uuid(),
+});
+
+// Plain counts, not a rendered string: `NavItem` formats them in the runtime's
+// locale, and it is the one that decides a zero is left off entirely.
+export const StudyCountsSchema = z.object({
+  /** Published versions of the study's protocol line; 0 while it has none. */
+  versions: z.number().int().nonnegative(),
+  participants: z.number().int().nonnegative(),
+  waves: z.number().int().nonnegative(),
+  sessions: z.number().int().nonnegative(),
+});
+export type StudyCounts = z.infer<typeof StudyCountsSchema>;
+
 // Mirrors the audit_events category/outcome/actor-kind CHECK constraints; a
 // new value requires a schema migration, which the fingerprint pipeline keeps
 // in lockstep with deployed code.

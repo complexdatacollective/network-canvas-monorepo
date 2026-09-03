@@ -42,6 +42,7 @@ import {
 import { ProtocolStore } from './protocol/store.ts';
 import { createProtocolSyncServer } from './protocol/sync.ts';
 import { createAuditedStudy, StudyCommandError } from './study/commands.ts';
+import { readStudyCounts } from './study/counts.ts';
 import { StudyStore } from './study/store.ts';
 import { resolveStudy, seesEveryTeamStudy } from './study/tenancy.ts';
 import {
@@ -465,6 +466,21 @@ export function createRpcRouter(
         const { protocolDraftId, ...study } = context.study;
         return { teamId: context.team.id, study, protocolDraftId };
       }),
+      // Resolved like `get`, so the numbers beside the sidebar's destinations
+      // exist for exactly the studies their reader can open, and a study the
+      // caller cannot reach is refused the same way for both.
+      counts: os.studies.counts
+        .use(requireStudy)
+        .handler(async ({ context }) => {
+          const counts = await readStudyCounts(
+            context.tenantDb,
+            context.study.id,
+          );
+          // `requireStudy` found the row inside this tenant a moment ago; a
+          // row missing now is a purge racing the read, not an oracle.
+          if (!counts) throw new ORPCError('NOT_FOUND');
+          return counts;
+        }),
       create: os.studies.create.use(requireTeam).handler(({ context, input }) =>
         handleAuditedStudyCommand(() =>
           createAuditedStudy(
