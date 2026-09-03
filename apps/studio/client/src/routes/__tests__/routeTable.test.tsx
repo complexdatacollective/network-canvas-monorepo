@@ -437,7 +437,17 @@ function announcements(): string[] {
 function menuDestinations(
   router: ReturnType<typeof createAppRouter>,
 ): (string | undefined)[] {
-  return [...document.querySelectorAll('[role="menu"] a[href]')]
+  // Whichever popup is open: the account `menu`, or a switcher's popup, which
+  // holds its siblings in a `listbox` and its trailing command beside that.
+  // Both are searched, so a link appearing in either is caught.
+  const popups = [
+    ...document.querySelectorAll('[role="menu"]'),
+    ...[...document.querySelectorAll('[role="listbox"]')]
+      .map((list) => list.parentElement)
+      .filter((popup) => popup !== null),
+  ];
+  return popups
+    .flatMap((popup) => [...popup.querySelectorAll('a[href]')])
     .map((link) => link.getAttribute('href') ?? '')
     .map((href) => registeredPathFor(router, href));
 }
@@ -666,18 +676,18 @@ describe('navigation', () => {
   it('reaches only registered routes from the team switcher', async () => {
     const router = renderAt('/team/team-a');
     fireEvent.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('combobox', {
         name: 'Team Alpha research team',
       }),
     );
 
-    // Nothing in this menu is a link. The teams are `menuitemradio`s that
+    // Nothing in this popup is a link. The teams are listbox `option`s that
     // navigate (§6.5), and the command beneath them is the switcher's trailing
     // ACTION, which navigates too — so where it goes is asserted by going
     // there and asking the router whether that is a route it registers.
     expect(menuDestinations(router)).toEqual([]);
     fireEvent.click(
-      await screen.findByRole('menuitem', { name: 'Team administration' }),
+      await screen.findByRole('button', { name: 'Team administration' }),
     );
 
     await waitFor(() =>
@@ -694,10 +704,10 @@ describe('navigation', () => {
     // too rather than falling back to the identifier it would use for a study
     // no team of this researcher's answers for.
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Study Shell proof' }),
+      await screen.findByRole('combobox', { name: 'Study Shell proof' }),
     );
     fireEvent.click(
-      await screen.findByRole('menuitem', { name: 'All studies in this team' }),
+      await screen.findByRole('button', { name: 'All studies in this team' }),
     );
 
     await waitFor(() =>

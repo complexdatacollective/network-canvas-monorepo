@@ -68,20 +68,29 @@ import { EntitySwitcher } from '@codaco/fresco-ui/navigation/EntitySwitcher';
 
 | Prop | Purpose |
 | --- | --- |
-| \`kicker\` | The whole translated word above the name — "Team", "Study". A whole string, never assembled from fragments: it is half of the trigger's accessible name, and a template would bake English word order into every translation. |
+| \`kicker\` | The whole translated word above the name — "Team", "Study". A whole string, never assembled from fragments: it is half of the trigger's accessible name, and a template would bake English word order into every translation. It also labels the list's group. |
 | \`items\` | The entity being acted in and its siblings. Each is \`{ id, name, meta?, badge?, leading? }\`. |
-| \`currentId\` | The entity being acted in. \`undefined\`, or an id no item names, leaves the trigger showing \`placeholder\` and every menu item unchecked. |
+| \`currentId\` | The entity being acted in. \`undefined\`, or an id no item names, leaves the trigger showing \`placeholder\` and every option unselected. |
 | \`onSelect\` | Called with the chosen id. Never called for the id already current. |
 | \`placeholder\` | Stands in for the name when \`currentId\` names nothing — the host's translated "Choose a team". |
 | \`status\` | \`ready\` (default), \`loading\` or \`failed\`. |
 | \`onRetry\`, \`failureMessage\`, \`retryLabel\` | Required together, and required to make \`failed\` expressible at all: without a retry, the type rejects \`status="failed"\`. |
 | \`action\` | A trailing command under the list — \`{ label, onSelect }\`. |
-| \`renderMark\` | Replaces the default \`IdentityMark\` in both trigger and menu — a status dot, an avatar, nothing. \`item.leading\` wins over it for a single item. |
+| \`renderMark\` | Replaces the default \`IdentityMark\` in both trigger and list — a status dot, an avatar, nothing. \`item.leading\` wins over it for a single item. |
 | \`className\` | Merged onto the trigger. |
 
-**Radio semantics.** Menu items are \`menuitemradio\`: exactly one sibling is
-the one being acted in, and that reaches a screen reader without depending on
-seeing a tick. Selecting the entity already current is a no-op.
+**A listbox, not a menu.** Choosing which sibling you are acting in is a
+selection, not a command, so the popup is Base UI's \`Select\`: the trigger is a
+\`combobox\`, the siblings are \`option\`s inside a \`listbox\`, and the current one
+is \`aria-selected\`. That is also what makes **opening the switcher land on the
+current entity** — \`Select\` opens with its selected item highlighted, which
+\`Menu\` cannot do (it has no \`selectedIndex\`, and \`initialFocus\` is not one of
+its props).
+
+**The list stays a pure listbox.** The retry and the action are children of the
+popup but NOT of the list, because a \`listbox\` may only contain options — a
+command sitting among them would be announced as one more entity to switch to.
+They are reachable from the list with a single Tab.
 
 **The trigger's accessible name is the kicker qualifying the name** — "Team
 SONIC Lab" — joined by the accessible-name algorithm over two \`aria-labelledby\`
@@ -90,12 +99,12 @@ name instead of qualifying it, and a template would bake English word order in.
 The two spans are inline, and text concatenation inserts a space only between
 block-level children, which is why they are referenced by id.
 
-**A menu of one is a dead end.** With nothing to switch to, no command and no
-failure to retry, the trigger renders inert: no caret, no menu, and not in the
+**A list of one is a dead end.** With nothing to switch to, no command and no
+failure to retry, the trigger renders inert: no caret, no list, and not in the
 tab order.
 
 **A failed list is not an empty one.** On \`failed\` the trigger stays exactly
-where it was — it must never silently vanish — and the menu carries the failure
+where it was — it must never silently vanish — and the popup carries the failure
 and its retry alongside any items already in hand.
 
 **Loading reserves its space**, so the header does not reflow when the name
@@ -151,10 +160,10 @@ export const WithMetaAndBadges: Story = {
   },
   play: async ({ canvasElement }) => {
     await awaitPassiveEffects();
-    await userEvent.click(within(canvasElement).getByRole('button'));
-    const menu = within(await within(document.body).findByRole('menu'));
+    await userEvent.click(within(canvasElement).getByRole('combobox'));
+    const list = within(await within(document.body).findByRole('listbox'));
     await expect(
-      menu.getByRole('menuitemradio', { name: /Wave 1 pilot/ }),
+      list.getByRole('option', { name: /Wave 1 pilot/ }),
     ).toHaveTextContent('12 interviews');
   },
 };
@@ -184,7 +193,7 @@ export const WithoutMarks: Story = {
 
 /**
  * Long names truncate in the trigger and nowhere else. The full name stays
- * readable in the menu, and is on the trigger's `title`.
+ * readable in the list, and is on the trigger's `title`.
  */
 export const LongNames: Story = {
   args: {
@@ -199,7 +208,7 @@ export const LongNames: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByRole('button');
+    const trigger = canvas.getByRole('combobox');
     await expect(
       canvas.getByTitle(
         'Adolescent Health and Social Connectedness Longitudinal Study Group',
@@ -208,11 +217,11 @@ export const LongNames: Story = {
 
     await awaitPassiveEffects();
     await userEvent.click(trigger);
-    const menu = await within(document.body).findByRole('menu');
-    const item = within(menu).getByRole('menuitemradio', {
+    const list = await within(document.body).findByRole('listbox');
+    const item = within(list).getByRole('option', {
       name: /Adolescent Health and Social Connectedness/,
     });
-    // Nothing in the menu clips: no ellipsis, so the name is readable in full.
+    // Nothing in the list clips: no ellipsis, so the name is readable in full.
     await expect(item).not.toHaveClass('truncate');
     await expect(item.scrollWidth).toBeLessThanOrEqual(item.clientWidth + 1);
   },
@@ -236,7 +245,7 @@ export const NarrowContainer: Story = {
     // … and still named, which is the whole reason for clipping rather than
     // hiding it.
     await expect(
-      within(canvasElement).getByRole('button'),
+      within(canvasElement).getByRole('combobox'),
     ).toHaveAccessibleName('Team SONIC Lab');
   },
 };
@@ -251,7 +260,7 @@ export const WideContainer: Story = {
       ),
     );
     await expect(
-      within(canvasElement).getByRole('button'),
+      within(canvasElement).getByRole('combobox'),
     ).toHaveAccessibleName('Team SONIC Lab');
   },
 };
@@ -287,8 +296,8 @@ export const CollapseIsAContainerQuery: Story = {
     );
     await expect(getComputedStyle(textColumn(wideBox)).position).toBe('static');
 
-    const narrow = within(narrowBox).getByRole('button');
-    const wide = within(wideBox).getByRole('button');
+    const narrow = within(narrowBox).getByRole('combobox');
+    const wide = within(wideBox).getByRole('combobox');
     await expect(narrow.getBoundingClientRect().width).toBeLessThan(
       wide.getBoundingClientRect().width,
     );
@@ -313,7 +322,7 @@ export const Loading: Story = {
 
 /**
  * The list could not be read. The trigger REMAINS — a switcher that vanishes
- * on failure strands the researcher with no way back — and the menu carries
+ * on failure strands the researcher with no way back — and the popup carries
  * the failure and its retry.
  */
 export const Failed: Story = {
@@ -329,23 +338,29 @@ export const Failed: Story = {
   },
   play: async ({ args, canvasElement }) => {
     await awaitPassiveEffects();
-    const trigger = within(canvasElement).getByRole('button');
+    const trigger = within(canvasElement).getByRole('combobox');
     await expect(trigger).toBeInTheDocument();
 
     await userEvent.click(trigger);
-    const menu = within(await within(document.body).findByRole('menu'));
+    const body = within(document.body);
+    const retry = await body.findByRole('button', { name: 'Try again' });
     await expect(
-      menu.getByText('Your teams could not be loaded.'),
+      body.getByText('Your teams could not be loaded.'),
     ).toBeInTheDocument();
+    // Reaching the retry says what it is a retry FOR.
+    await expect(retry).toHaveAccessibleDescription(
+      'Your teams could not be loaded.',
+    );
 
-    await userEvent.click(menu.getByRole('menuitem', { name: 'Try again' }));
+    await userEvent.click(retry);
     await waitFor(() => expect(args.onRetry).toHaveBeenCalledTimes(1));
   },
 };
 
 /**
  * A failure over a list already in hand. An errored list is not an empty one:
- * the teams that were read stay selectable while the retry sits under them.
+ * the teams that were read stay selectable while the retry sits under them —
+ * and under, not among: the retry is not an option in the listbox.
  */
 export const FailedWithStaleItems: Story = {
   args: {
@@ -356,18 +371,20 @@ export const FailedWithStaleItems: Story = {
   },
   play: async ({ canvasElement }) => {
     await awaitPassiveEffects();
-    await userEvent.click(within(canvasElement).getByRole('button'));
-    const menu = within(await within(document.body).findByRole('menu'));
-    await expect(menu.getAllByRole('menuitemradio')).toHaveLength(teams.length);
+    await userEvent.click(within(canvasElement).getByRole('combobox'));
+    const list = within(await within(document.body).findByRole('listbox'));
+    await expect(list.getAllByRole('option')).toHaveLength(teams.length);
+    // The retry is in the popup but outside the list, so it is not an option.
+    await expect(list.queryByRole('button', { name: 'Try again' })).toBeNull();
     await expect(
-      menu.getByRole('menuitem', { name: 'Try again' }),
+      within(document.body).getByRole('button', { name: 'Try again' }),
     ).toBeInTheDocument();
   },
 };
 
 /**
  * One team, nothing to do with it: the trigger is a label, not a control. No
- * caret, no menu, and no tab stop spent on a menu that names only where the
+ * caret, no list, and no tab stop spent on a list that names only where the
  * researcher already is.
  */
 export const SingleItem: Story = {
@@ -378,6 +395,7 @@ export const SingleItem: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    await expect(canvas.queryByRole('combobox')).toBeNull();
     await expect(canvas.queryByRole('button')).toBeNull();
     // The CARET specifically, not "any svg": the identity mark draws a
     // generated pattern, which is also an `<svg>`, so a bare tag query would
@@ -393,7 +411,7 @@ export const SingleItem: Story = {
 };
 
 /**
- * One team, but a command to run: the menu is no longer a dead end, so the
+ * One team, but a command to run: the list is no longer a dead end, so the
  * trigger stays a control. Dropping the action here would be the worse bug —
  * a researcher in their only team could never make a second one.
  */
@@ -401,88 +419,165 @@ export const SingleItemWithAction: Story = {
   args: { items: [teams[0]!], currentId: 'team_5' },
   play: async ({ args, canvasElement }) => {
     await awaitPassiveEffects();
-    await userEvent.click(within(canvasElement).getByRole('button'));
-    const menu = within(await within(document.body).findByRole('menu'));
+    await userEvent.click(within(canvasElement).getByRole('combobox'));
+    const body = within(document.body);
     await userEvent.click(
-      menu.getByRole('menuitem', { name: 'Create a team' }),
+      await body.findByRole('button', { name: 'Create a team' }),
     );
     await waitFor(() => expect(args.action?.onSelect).toHaveBeenCalledTimes(1));
   },
 };
 
-/** No current entity: the placeholder names the gap, and nothing is checked. */
+/** No current entity: the placeholder names the gap, and nothing is selected. */
 export const NoCurrentEntity: Story = {
   args: { currentId: undefined, placeholder: 'Choose a team' },
   play: async ({ canvasElement }) => {
     await awaitPassiveEffects();
-    const trigger = within(canvasElement).getByRole('button');
+    const trigger = within(canvasElement).getByRole('combobox');
     await expect(trigger).toHaveAccessibleName('Team Choose a team');
 
     await userEvent.click(trigger);
-    const menu = within(await within(document.body).findByRole('menu'));
-    for (const item of menu.getAllByRole('menuitemradio')) {
-      await expect(item).toHaveAttribute('aria-checked', 'false');
+    const list = within(await within(document.body).findByRole('listbox'));
+    for (const item of list.getAllByRole('option')) {
+      await expect(item).toHaveAttribute('aria-selected', 'false');
     }
   },
 };
 
 /**
- * Exactly one item is checked, and it is the current one. This is the state a
- * screen reader reads; the tick beside it is the same fact drawn.
+ * Exactly one option is selected, and it is the current one. This is the state
+ * a screen reader reads; the tick beside it is the same fact drawn.
+ *
+ * `aria-selected`, not `aria-checked`: these are listbox options, and the
+ * kicker labels the group they sit in, so a reader arriving in the list is
+ * told what is being chosen between.
  */
-export const RadioSemantics: Story = {
+export const SelectionSemantics: Story = {
+  /*
+    Room above the trigger, because the popup's placement is what this story
+    also checks. Base UI abandons the overlapping `alignItemWithTrigger` mode
+    on its own when the trigger is within 20px of the top of the viewport, so
+    a switcher jammed against the top edge lands under its trigger either way
+    and could not tell the two modes apart.
+  */
+  decorators: [
+    (Story) => (
+      <div style={{ paddingTop: '12rem' }}>
+        <Story />
+      </div>
+    ),
+  ],
   play: async ({ canvasElement }) => {
     await awaitPassiveEffects();
-    await userEvent.click(within(canvasElement).getByRole('button'));
-    const menu = within(await within(document.body).findByRole('menu'));
+    const trigger = within(canvasElement).getByRole('combobox');
+    await userEvent.click(trigger);
+    const listbox = await within(document.body).findByRole('listbox');
+    const list = within(listbox);
 
-    const checked = menu.getAllByRole('menuitemradio', { checked: true });
-    await expect(checked).toHaveLength(1);
-    await expect(checked[0]).toHaveTextContent('SONIC Lab');
-    await expect(menu.getAllByRole('menuitemradio')).toHaveLength(teams.length);
+    /*
+      The popup sits UNDER the trigger rather than over it. Base UI's default
+      for a select overlaps the trigger so the selected item's text lands on
+      the trigger's value text — right for a form field in a column of
+      fields, wrong for a switcher that would then cover its own header.
+    */
+    const popup = listbox.parentElement!;
+    await waitFor(() =>
+      expect(popup.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+        trigger.getBoundingClientRect().bottom,
+      ),
+    );
+
+    const selected = list.getAllByRole('option', { selected: true });
+    await expect(selected).toHaveLength(1);
+    await expect(selected[0]).toHaveTextContent('SONIC Lab');
+    await expect(selected[0]).toHaveAttribute('aria-selected', 'true');
+    await expect(list.getAllByRole('option')).toHaveLength(teams.length);
+
+    // The group carries the kicker, so the options are announced as teams.
+    await expect(list.getByRole('group')).toHaveAccessibleName('Team');
   },
 };
 
 /**
- * Opening with the keyboard puts focus inside the menu, the arrow keys move
- * between siblings, and Escape closes it and hands focus back to the trigger.
+ * Opening with the keyboard lands on the entity being acted in — the whole
+ * reason this is a `Select` and not a `Menu`. The arrow keys move between
+ * siblings from there, and Escape closes the list and hands focus back to the
+ * trigger.
  *
- * The current entity is deliberately the SECOND item here, because that is
- * the only arrangement in which the two candidate landing spots differ.
- * Base UI's `Menu` highlights the first item on open: unlike `Select`, it
- * takes no `selectedIndex`, and there is no way to ask its list navigation to
- * start on the checked radio item. Moving focus by hand after open would mean
- * running our own focus management alongside Base UI's, which is how the two
- * come to disagree. So this pins the behaviour that exists — the checked item
- * is still announced as checked when the reader arrives at it.
+ * The current entity is deliberately the SECOND item, because that is the only
+ * arrangement in which "opens on the current one" and "opens on the first one"
+ * can be told apart. The previous `Menu` implementation did the latter: it has
+ * no `selectedIndex` and no `initialFocus`, so the reader always started at
+ * the top of the list and had to walk down to where they already were.
  */
 export const KeyboardNavigation: Story = {
   args: { currentId: 'team_2' },
   play: async ({ canvasElement }) => {
-    const trigger = within(canvasElement).getByRole('button');
+    const trigger = within(canvasElement).getByRole('combobox');
     await awaitPassiveEffects();
 
     trigger.focus();
     await userEvent.keyboard('{ArrowDown}');
 
-    const menu = await within(document.body).findByRole('menu');
-    const items = within(menu).getAllByRole('menuitemradio');
-    await waitFor(() => expect(items[0]).toHaveFocus());
-    await expect(items[0]).toHaveAttribute('aria-checked', 'false');
+    const listbox = await within(document.body).findByRole('listbox');
+    const items = within(listbox).getAllByRole('option');
 
-    // Down to the entity actually being acted in, which announces as checked.
-    await userEvent.keyboard('{ArrowDown}');
+    // The current entity, not the first one.
     await waitFor(() => expect(items[1]).toHaveFocus());
-    await expect(items[1]).toHaveAttribute('aria-checked', 'true');
+    await expect(items[1]).toHaveAttribute('aria-selected', 'true');
+    await expect(items[0]).not.toHaveFocus();
+
+    await userEvent.keyboard('{ArrowDown}');
+    await waitFor(() => expect(items[2]).toHaveFocus());
+    await expect(items[2]).toHaveAttribute('aria-selected', 'false');
 
     await userEvent.keyboard('{ArrowUp}');
-    await waitFor(() => expect(items[0]).toHaveFocus());
+    await waitFor(() => expect(items[1]).toHaveFocus());
 
     await userEvent.keyboard('{Escape}');
     await waitFor(() =>
-      expect(within(document.body).queryByRole('menu')).toBeNull(),
+      expect(within(document.body).queryByRole('listbox')).toBeNull(),
     );
     await waitFor(() => expect(trigger).toHaveFocus());
+  },
+};
+
+/**
+ * The action lives in the popup but OUTSIDE the listbox, which is the only
+ * place a command can go without being announced as one more entity to switch
+ * to. That only works if a keyboard can still reach it: Base UI manages focus
+ * inside the list, and a Tab that escaped the popup instead of landing on the
+ * action would leave the command mouse-only.
+ *
+ * So this operates it entirely by keyboard — open, Tab out of the list, Enter
+ * — and checks that the popup closes and focus comes back to the trigger, the
+ * same way it does after choosing a sibling.
+ */
+export const ActionReachableByKeyboard: Story = {
+  play: async ({ args, canvasElement }) => {
+    const trigger = within(canvasElement).getByRole('combobox');
+    await awaitPassiveEffects();
+
+    trigger.focus();
+    await userEvent.keyboard('{ArrowDown}');
+    await within(document.body).findByRole('listbox');
+
+    // One Tab out of the list: the roving tabindex leaves exactly one tabbable
+    // option, so the next tab stop is the action itself.
+    await userEvent.tab();
+    const create = within(document.body).getByRole('button', {
+      name: 'Create a team',
+    });
+    await waitFor(() => expect(create).toHaveFocus());
+
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(args.action?.onSelect).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(within(document.body).queryByRole('listbox')).toBeNull(),
+    );
+    await waitFor(() => expect(trigger).toHaveFocus());
+    // Running a command is not switching entity.
+    await expect(args.onSelect).not.toHaveBeenCalled();
   },
 };
 
@@ -496,20 +591,18 @@ export const SelectingSiblings: Story = {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
-    await userEvent.click(canvas.getByRole('button'));
-    let menu = within(await within(document.body).findByRole('menu'));
-    await userEvent.click(
-      menu.getByRole('menuitemradio', { name: /SONIC Lab/ }),
-    );
+    await userEvent.click(canvas.getByRole('combobox'));
+    let list = within(await within(document.body).findByRole('listbox'));
+    await userEvent.click(list.getByRole('option', { name: /SONIC Lab/ }));
     await waitFor(() =>
-      expect(within(document.body).queryByRole('menu')).toBeNull(),
+      expect(within(document.body).queryByRole('listbox')).toBeNull(),
     );
     await expect(args.onSelect).not.toHaveBeenCalled();
 
-    await userEvent.click(canvas.getByRole('button'));
-    menu = within(await within(document.body).findByRole('menu'));
+    await userEvent.click(canvas.getByRole('combobox'));
+    list = within(await within(document.body).findByRole('listbox'));
     await userEvent.click(
-      menu.getByRole('menuitemradio', { name: /Complex Data Collective/ }),
+      list.getByRole('option', { name: /Complex Data Collective/ }),
     );
     await waitFor(() => expect(args.onSelect).toHaveBeenCalledWith('team_2'));
     await expect(args.onSelect).toHaveBeenCalledTimes(1);

@@ -17,8 +17,8 @@ import { authClient } from '../lib/auth.ts';
  * reads as a path.
  *
  * Both segments are `EntitySwitcher` configurations rather than two bespoke
- * chips, so the keyboard behaviour, the radio semantics, the failure handling
- * and the collapse rule live in one component and cannot drift apart.
+ * chips, so the keyboard behaviour, the selection semantics, the failure
+ * handling and the collapse rule live in one component and cannot drift apart.
  *
  * **The study segment is ABSENT, not empty, outside a study.** That decision
  * is made here rather than inside a segment component, because a segment that
@@ -58,7 +58,7 @@ type NamedTeam = { id: string; name: string };
  * `undefined` for a URL team the list does not name, rather than a guess in
  * either direction: nothing here knows what that team is called, the switcher
  * reads "Choose a team", and the teams the researcher does have are still in
- * the menu. That is the state the shell's own switch-failure alert is about.
+ * the list. That is the state the shell's own switch-failure alert is about.
  */
 function currentTeam(
   teams: readonly NamedTeam[],
@@ -196,7 +196,7 @@ export default function EntityLockup({ className }: { className?: string }) {
   // to four teams and whose list request failed would silently get the same
   // treatment as one who belongs to none: no switcher, no explanation, and no
   // way to change teams short of reloading the page. `failed` is how that
-  // difference is expressed — the trigger stays and the menu carries the
+  // difference is expressed — the trigger stays and the popup carries the
   // retry.
   //
   // A list that failed while an EARLIER one is still in hand is not a special

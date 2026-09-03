@@ -8,8 +8,8 @@ object rather than as two controls that happen to sit next to each other, and
 outside a study the second segment is absent rather than blank.
 
 Both segments are configurations of the shared `EntitySwitcher`, so the
-keyboard behaviour, the radio semantics, the failure handling and the collapse
-rule live in one place. Every distinction the chips had is kept: the team named
+keyboard behaviour, the selection semantics, the failure handling and the
+collapse rule live in one place. Every distinction the chips had is kept: the team named
 is the one the committed URL names, falling back to the active-team setting
 only where no route names a team; a team list that could not be read keeps its
 switcher and offers a retry instead of vanishing or reading as "no teams"; a

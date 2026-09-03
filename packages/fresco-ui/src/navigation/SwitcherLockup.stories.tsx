@@ -31,7 +31,7 @@ function textColumn(root: HTMLElement, name: string): HTMLElement {
 
 /** The lockup's two segment triggers, or a failure that says which is missing. */
 function segments(root: HTMLElement): [HTMLElement, HTMLElement] {
-  const [team, study] = within(root).getAllByRole('button');
+  const [team, study] = within(root).getAllByRole('combobox');
   if (team === undefined || study === undefined) {
     throw new Error('SwitcherLockup rendered fewer than two segment triggers');
   }
@@ -152,7 +152,9 @@ export const TeamOnly: Story = {
     </SwitcherLockup>
   ),
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getAllByRole('button')).toHaveLength(1);
+    await expect(within(canvasElement).getAllByRole('combobox')).toHaveLength(
+      1,
+    );
     // One segment, so nothing carries the divider.
     await expect(canvasElement.querySelectorAll('.border-s')).toHaveLength(0);
   },
@@ -185,7 +187,9 @@ export const ConditionalSecondSegment: Story = {
     );
   },
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getAllByRole('button')).toHaveLength(1);
+    await expect(within(canvasElement).getAllByRole('combobox')).toHaveLength(
+      1,
+    );
     await expect(canvasElement.querySelectorAll('.border-s')).toHaveLength(0);
   },
 };
@@ -213,9 +217,9 @@ export const OneTeamManyStudies: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const buttons = canvas.getAllByRole('button');
-    await expect(buttons).toHaveLength(1);
-    await expect(buttons[0]).toHaveAccessibleName('Study Wave 1 pilot');
+    const triggers = canvas.getAllByRole('combobox');
+    await expect(triggers).toHaveLength(1);
+    await expect(triggers[0]).toHaveAccessibleName('Study Wave 1 pilot');
     // The team is still named, just not as a control.
     await expect(canvasElement.textContent).toContain('SONIC Lab');
   },
@@ -297,24 +301,24 @@ export const LongNames: Story = {
 };
 
 /**
- * Each segment owns its own menu. Opening one and dismissing it hands focus
+ * Each segment owns its own list. Opening one and dismissing it hands focus
  * back to the trigger it came from, not to the lockup's first child.
  */
-export const EachSegmentOpensItsOwnMenu: Story = {
+export const EachSegmentOpensItsOwnList: Story = {
   play: async ({ canvasElement }) => {
     const [, study] = segments(canvasElement);
 
     await awaitPassiveEffects();
     await userEvent.click(study);
 
-    const menu = await within(document.body).findByRole('menu');
+    const list = await within(document.body).findByRole('listbox');
     await expect(
-      within(menu).getAllByRole('menuitemradio', { checked: true })[0],
+      within(list).getAllByRole('option', { selected: true })[0],
     ).toHaveTextContent('Wave 1 pilot');
 
     await userEvent.keyboard('{Escape}');
     await waitFor(() =>
-      expect(within(document.body).queryByRole('menu')).toBeNull(),
+      expect(within(document.body).queryByRole('listbox')).toBeNull(),
     );
     await waitFor(() => expect(study).toHaveFocus());
   },

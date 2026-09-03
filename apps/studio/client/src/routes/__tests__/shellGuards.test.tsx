@@ -331,13 +331,13 @@ describe('the team list, when it cannot be read', () => {
     // short of reloading. It names no team because the list that would have
     // named the URL's team is the thing that failed.
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Team Choose a team' }),
+      await screen.findByRole('combobox', { name: 'Team Choose a team' }),
     );
 
     expect(
       await screen.findByText('Your teams could not be loaded.'),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Try again' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
     expect(refetch).toHaveBeenCalledTimes(1);
   });
@@ -356,17 +356,17 @@ describe('the team list, when it cannot be read', () => {
     renderAt('/team/team-a');
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Team Alpha research team' }),
+      await screen.findByRole('combobox', { name: 'Team Alpha research team' }),
     );
 
     expect(
-      await screen.findByRole('menuitemradio', { name: 'Beta research team' }),
+      await screen.findByRole('option', { name: 'Beta research team' }),
     ).toBeInTheDocument();
     expect(
       screen.getByText('Your teams could not be loaded.'),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('menuitem', { name: 'Try again' }),
+      screen.getByRole('button', { name: 'Try again' }),
     ).toBeInTheDocument();
   });
 
@@ -379,7 +379,7 @@ describe('the team list, when it cannot be read', () => {
 
     await screen.findByRole('link', { name: 'Studio' });
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(screen.queryByRole('button', { name: /^Team/ })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: /^Team/ })).toBeNull();
   });
 });
 

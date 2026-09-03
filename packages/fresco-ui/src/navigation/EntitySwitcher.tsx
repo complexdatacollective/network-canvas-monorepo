@@ -1,22 +1,11 @@
 'use client';
 
-import { ChevronDown, TriangleAlert } from 'lucide-react';
-import { useId, type ReactNode } from 'react';
+import { Select } from '@base-ui/react/select';
+import { Check, ChevronDown, Plus, TriangleAlert } from 'lucide-react';
+import { useId, useState, type ReactNode } from 'react';
 
-import { Badge } from '../Badge';
-import { Button } from '../Button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '../DropdownMenu';
 import { IdentityMark } from '../IdentityMark';
+import { usePortalContainer } from '../PortalContainer';
 import { Skeleton } from '../Skeleton';
 import { cx } from '../utils/cva';
 
@@ -25,11 +14,11 @@ export type EntitySwitcherStatus = 'ready' | 'loading' | 'failed';
 export type EntitySwitcherItem = {
   /** Stable id. Identifies the item to `onSelect` and colours its mark. */
   id: string;
-  /** The entity's name, shown whole in the menu and truncated in the trigger. */
+  /** The entity's name, shown whole in the list and truncated in the trigger. */
   name: string;
   /** A secondary line under the name — a role, an owner, a count. */
   meta?: string;
-  /** A short status word shown as a `Badge` — "Draft", "Archived". */
+  /** A short status word shown as a chip — "Draft", "Archived". */
   badge?: string;
   /**
    * Replaces this one item's mark. A status dot for a study whose state
@@ -44,14 +33,15 @@ type EntitySwitcherBaseProps = {
    *
    * A whole string, never assembled from fragments: it is half of the
    * trigger's accessible name, and a template would bake English word order
-   * into every translation.
+   * into every translation. It also labels the list's own group, so a reader
+   * arriving in the list is told what the options ARE.
    */
   kicker: string;
   /** The entity being acted in, and its siblings. */
   items: ReadonlyArray<EntitySwitcherItem>;
   /**
    * The entity being acted in. `undefined` — or an id no item names — leaves
-   * the trigger showing `placeholder`, and leaves every menu item unchecked.
+   * the trigger showing `placeholder`, and leaves every option unselected.
    */
   currentId: string | undefined;
   /** Called with the chosen id. Never called for the id already current. */
@@ -65,7 +55,7 @@ type EntitySwitcherBaseProps = {
   /** A trailing command under the list — "Create a team". */
   action?: { label: string; onSelect: () => void };
   /**
-   * Replaces the default `IdentityMark` in both the trigger and the menu — a
+   * Replaces the default `IdentityMark` in both the trigger and the list — a
    * status dot, an avatar, or nothing at all. `item.leading` wins over it for
    * a single item.
    */
@@ -134,6 +124,40 @@ const NAME_WIDTH_CLASS = cx(
   '@min-[64rem]:max-w-[18rem]',
 );
 
+/**
+ * The trigger's face, drawn on Base UI's own button rather than on this
+ * package's `Button`: transparent at rest so it reads as a label until it is
+ * reached for, a raised surface under the pointer, and the accent wash while
+ * the list is open.
+ *
+ * `not-data-popup-open:` rather than source order on the hover rule. Both are
+ * single-class selectors, so which one wins is decided by Tailwind's own
+ * emission order and not by the order they are written in here; excluding the
+ * open state from the hover rule makes the outcome independent of that.
+ */
+const TRIGGER_CLASS = cx(
+  'flex min-w-0 cursor-pointer items-center gap-2 rounded-xs px-3 py-1.5',
+  'border border-transparent text-start transition-colors',
+  'focusable',
+  'not-data-popup-open:hover:bg-surface-2 not-data-popup-open:hover:text-surface-2-contrast',
+  'data-popup-open:bg-surface-accent data-popup-open:text-surface-accent-contrast',
+);
+
+/**
+ * The rows under the list — the retry and the action. They are plain buttons
+ * outside `Select.List`, so they carry their own hover and focus treatment
+ * rather than Base UI's `data-highlighted`, which only the options get.
+ */
+const ROW_CLASS = cx(
+  'flex w-full cursor-pointer items-center gap-3 rounded-xs px-2 py-1.5',
+  'text-start transition-colors outline-none',
+  'focusable hover:bg-surface-2 hover:text-surface-2-contrast',
+  'focus-visible:bg-surface-2 focus-visible:text-surface-2-contrast',
+);
+
+/** A rule between the list and the rows that follow it. */
+const SEPARATOR_CLASS = 'border-outline my-1 border-t';
+
 function markFor(
   item: EntitySwitcherItem,
   renderMark: EntitySwitcherProps['renderMark'],
@@ -146,11 +170,11 @@ function markFor(
 
 /**
  * The trigger's face: mark, the kicker-over-name column, and — where the
- * menu can be opened — the caret.
+ * list can be opened — the caret.
  *
  * Shared by the interactive and the inert trigger so the two occupy the same
  * space and read the same way. The caret is the only difference the reader
- * sees, and it is exactly what tells them whether there is a menu.
+ * sees, and it is exactly what tells them whether there is a list.
  */
 function SwitcherFace({
   caret,
@@ -220,19 +244,27 @@ function SwitcherFace({
  * />
  * ```
  *
- * **Radio semantics.** Exactly one sibling is the one being acted in, and
- * `menuitemradio` is how that reaches a screen reader without depending on
- * seeing a tick. Choosing the entity already current is a no-op rather than a
- * re-navigation.
+ * **A listbox, not a menu.** Choosing which of several siblings you are
+ * acting in is a selection, not a command, and Base UI's `Select` is the part
+ * built for it: the options are `option`s inside a `listbox`, the current one
+ * is `aria-selected`, and — the reason for using it here — opening the list
+ * lands the reader ON the current entity rather than at the top. `Menu` has
+ * no `selectedIndex` and no `initialFocus`, so with it the reader always
+ * started on the first sibling and had to walk to where they already were.
  *
- * **A menu of one is a dead end.** With nothing to switch to, no command and
- * no failure to retry, the trigger renders inert: no caret, no menu, and not
- * in the tab order, because a button that opens a menu naming only where you
+ * **The list stays a pure listbox.** The retry and the action are children of
+ * the popup but NOT of `Select.List`, because a `listbox` may only contain
+ * options — a command sitting among them would be announced as one more
+ * entity to switch to.
+ *
+ * **A list of one is a dead end.** With nothing to switch to, no command and
+ * no failure to retry, the trigger renders inert: no caret, no list, and not
+ * in the tab order, because a control that opens a list naming only where you
  * already are wastes a tab stop and tells the reader nothing.
  *
  * **A failed list is not an empty one.** On `status="failed"` the trigger
  * stays exactly where it was — it must never silently vanish, which strands
- * the researcher with no way back — and the menu carries the failure and its
+ * the researcher with no way back — and the popup carries the failure and its
  * retry, alongside any items that were already in hand.
  *
  * **Loading reserves its space.** The skeleton fills the same name width the
@@ -255,12 +287,22 @@ export function EntitySwitcher(props: EntitySwitcherProps) {
   } = props;
   const kickerId = useId();
   const nameId = useId();
+  const failureId = useId();
+  const portalContainer = usePortalContainer();
+
+  /*
+    Open state is held here rather than left to Base UI because the rows
+    beneath the list are ours: a plain button does not close the popup the way
+    a `Select.Item` does, and a retry that leaves the popup standing over the
+    list it is refreshing is worse than no retry.
+  */
+  const [open, setOpen] = useState(false);
 
   const current = items.find((item) => item.id === currentId);
   const failed = status === 'failed';
   const loading = status === 'loading';
 
-  // What the menu is for. Any one of these is enough to make opening it worth
+  // What the list is for. Any one of these is enough to make opening it worth
   // a tab stop; none of them means the trigger is a label with a border.
   const hasMenu = failed || action !== undefined || items.length > 1;
 
@@ -288,10 +330,10 @@ export function EntitySwitcher(props: EntitySwitcherProps) {
   if (!hasMenu) {
     return (
       /*
-        Not a `Button` and not focusable: there is nothing to activate. The
-        two spans are read in document order, so no `aria-labelledby` is
-        needed here — that wiring exists on the interactive trigger only
-        because a button's name is COMPUTED rather than read.
+        Not a button and not focusable: there is nothing to activate. The two
+        spans are read in document order, so no `aria-labelledby` is needed
+        here — that wiring exists on the interactive trigger only because a
+        control's name is COMPUTED rather than read.
       */
       <span
         className={cx('flex min-w-0 items-center gap-2 px-3 py-1.5', className)}
@@ -302,125 +344,192 @@ export function EntitySwitcher(props: EntitySwitcherProps) {
     );
   }
 
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            size="sm"
-            variant="text"
-            color="dynamic"
-            className={cx(
-              'h-auto min-w-0 gap-2 rounded-sm border-transparent px-3 py-1.5',
-              className,
-            )}
-            aria-busy={loading || undefined}
-            /*
-              A whole translated word and a datum, joined into "Team SONIC
-              Lab" by the accessible-name algorithm rather than by JavaScript.
-              An `aria-label` would REPLACE the visible name instead of
-              qualifying it, and a template string would bake English word
-              order into the name.
+  const closeThen = (run: () => void) => () => {
+    setOpen(false);
+    run();
+  };
 
-              Referenced by id rather than left to the button's own contents:
-              text concatenation inserts a space only between BLOCK-level
-              children, and these two are inline, so the computed name would
-              read "TeamSONIC Lab". Multiple `aria-labelledby` references are
-              always joined with a space.
-            */
-            aria-labelledby={`${kickerId} ${nameId}`}
-          />
-        }
+  return (
+    <Select.Root
+      value={currentId ?? null}
+      open={open}
+      onOpenChange={setOpen}
+      onValueChange={(value: unknown) => {
+        // Base UI reports every press, the already-selected one included.
+        // Re-selecting where you already are is not a switch, and in a
+        // router-driven host it would be a redundant navigation.
+        if (typeof value !== 'string' || value === currentId) return;
+        onSelect(value);
+      }}
+    >
+      <Select.Trigger
+        className={cx(TRIGGER_CLASS, className)}
+        aria-busy={loading || undefined}
+        /*
+          A whole translated word and a datum, joined into "Team SONIC Lab" by
+          the accessible-name algorithm rather than by JavaScript. An
+          `aria-label` would REPLACE the visible name instead of qualifying
+          it, and a template string would bake English word order into the
+          name.
+
+          Referenced by id rather than left to the control's own contents:
+          text concatenation inserts a space only between BLOCK-level
+          children, and these two are inline, so the computed name would read
+          "TeamSONIC Lab". Multiple `aria-labelledby` references are always
+          joined with a space.
+        */
+        aria-labelledby={`${kickerId} ${nameId}`}
       >
         {face}
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="start"
-        className="max-w-[24rem] min-w-[15rem]"
-      >
-        {items.length > 0 && (
-          <DropdownMenuRadioGroup
-            aria-label={kicker}
-            value={currentId ?? ''}
-            onValueChange={(value: unknown) => {
-              // Base UI reports every press, the already-checked one
-              // included. Re-selecting where you already are is not a switch,
-              // and in a router-driven host it would be a redundant
-              // navigation.
-              if (typeof value !== 'string' || value === currentId) return;
-              onSelect(value);
-            }}
-            className="flex flex-col gap-1"
+      </Select.Trigger>
+      <Select.Portal container={portalContainer ?? undefined}>
+        <Select.Positioner
+          /*
+            Base UI's default overlaps the trigger so the selected item's text
+            lands on the trigger's value text. That is right for a form field
+            sitting in a column of fields, and wrong for a switcher in a
+            header: the popup would cover the header it was opened from.
+          */
+          alignItemWithTrigger={false}
+          side="bottom"
+          align="start"
+          sideOffset={8}
+        >
+          <Select.Popup
+            className={cx(
+              'bg-surface-popover text-surface-popover-contrast publish-colors',
+              'border-outline elevation-high w-xs max-w-(--available-width)',
+              'rounded border-2 p-1.5 outline-none',
+            )}
           >
-            {items.map((item) => (
-              <DropdownMenuRadioItem
-                key={item.id}
-                value={item.id}
-                closeOnClick
-                // The name the menu is matched on when the reader types,
-                // rather than the mark's monogram and the badge coming along
-                // with it.
-                label={item.name}
-                /*
-                  `DropdownMenuRadioItem` keeps its check indicator mounted for
-                  every item, which is what reserves one tick column so the
-                  names line up whichever item is checked — but it ships no
-                  rule for the unchecked ones, and Base UI only marks them with
-                  `data-unchecked`. Left alone, every team wears a tick.
-                  `invisible` rather than `hidden`: the column has to survive.
-
-                  ThemeSwitcher relies on that indicator staying visible (its
-                  "icon" is a sun or a moon, shown on every row), so this
-                  belongs here rather than in the shared wrapper.
-                */
-                className="gap-3 [&>[data-unchecked]]:invisible"
-              >
-                {markFor(item, renderMark, 'sm')}
-                {/* No truncation here, deliberately: the menu is where a
-                    name the trigger had to cut off can be read in full. */}
-                <span className="flex min-w-0 flex-col">
-                  <span className="font-semibold">{item.name}</span>
-                  {item.meta !== undefined && (
-                    <span className="text-xs opacity-70">{item.meta}</span>
-                  )}
-                </span>
-                {item.badge !== undefined && (
-                  <Badge variant="outline" className="ms-auto shrink-0">
-                    {item.badge}
-                  </Badge>
+            {items.length > 0 && (
+              <Select.List className="flex flex-col gap-0.5">
+                {/*
+                  A group so the kicker LABELS the options rather than floating
+                  among them: `Select.GroupLabel` is associated with its group
+                  automatically, so the reader is told these are teams, and the
+                  heading is not itself announced as something to choose.
+                */}
+                <Select.Group>
+                  <Select.GroupLabel className="px-2 py-1 text-xs font-semibold tracking-wide uppercase opacity-70">
+                    {kicker}
+                  </Select.GroupLabel>
+                  {items.map((item) => (
+                    <Select.Item
+                      key={item.id}
+                      value={item.id}
+                      // The name the list is matched on when the reader types,
+                      // rather than the mark's monogram and the chip coming
+                      // along with it.
+                      label={item.name}
+                      className={cx(
+                        'flex cursor-pointer items-center gap-3 rounded-xs px-2 py-1.5',
+                        'transition-colors outline-none select-none',
+                        'not-data-selected:data-highlighted:bg-surface-2 not-data-selected:data-highlighted:text-surface-2-contrast',
+                        'data-selected:bg-surface-accent data-selected:text-surface-accent-contrast',
+                      )}
+                    >
+                      {markFor(item, renderMark, 'sm')}
+                      {/* No truncation here, deliberately: the list is where a
+                          name the trigger had to cut off can be read in full. */}
+                      <Select.ItemText className="flex min-w-0 flex-1 flex-col">
+                        <span className="text-sm leading-tight font-semibold">
+                          {item.name}
+                        </span>
+                        {item.meta !== undefined && (
+                          <span className="text-xs leading-tight opacity-70">
+                            {item.meta}
+                          </span>
+                        )}
+                      </Select.ItemText>
+                      {item.badge !== undefined && (
+                        <span className="border-outline shrink-0 rounded-full border px-2 text-xs opacity-70">
+                          {item.badge}
+                        </span>
+                      )}
+                      {/*
+                        The tick's column is reserved by this wrapper rather
+                        than by the indicator, which Base UI unmounts when the
+                        item is not selected. Without it every name would shift
+                        sideways as the selection moved.
+                      */}
+                      <span className="flex size-4 shrink-0 items-center justify-center">
+                        <Select.ItemIndicator>
+                          <Check aria-hidden className="size-4" />
+                        </Select.ItemIndicator>
+                      </span>
+                    </Select.Item>
+                  ))}
+                </Select.Group>
+              </Select.List>
+            )}
+            {failed && onRetry && (
+              <>
+                {items.length > 0 && (
+                  <Select.Separator className={SEPARATOR_CLASS} />
                 )}
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
-        )}
-        {failed && onRetry && (
-          <>
-            {items.length > 0 && <DropdownMenuSeparator />}
-            {/*
-              A group, so the message is the retry's `aria-labelledby` target
-              rather than a stray non-item child of a `role="menu"`: reaching
-              the retry announces what it is a retry FOR.
-            */}
-            <DropdownMenuGroup>
-              <DropdownMenuLabel className="text-destructive flex items-start gap-2 font-normal text-wrap">
-                <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
-                {failureMessage}
-              </DropdownMenuLabel>
-              <DropdownMenuItem onClick={onRetry}>
-                {retryLabel}
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-          </>
-        )}
-        {action && (
-          <>
-            {(items.length > 0 || failed) && <DropdownMenuSeparator />}
-            <DropdownMenuItem onClick={action.onSelect}>
-              {action.label}
-            </DropdownMenuItem>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+                {/*
+                  `aria-describedby` rather than the group-label wiring a menu
+                  allowed: outside the listbox there is no group to label, and
+                  a retry announced on its own does not say what it is a retry
+                  FOR.
+                */}
+                <p
+                  id={failureId}
+                  className="text-destructive flex items-start gap-2 px-2 py-1 text-xs"
+                >
+                  <TriangleAlert
+                    aria-hidden
+                    className="mt-0.5 size-4 shrink-0"
+                  />
+                  {failureMessage}
+                </p>
+                <button
+                  type="button"
+                  aria-describedby={failureId}
+                  onClick={closeThen(onRetry)}
+                  className={cx(ROW_CLASS, 'text-sm font-semibold')}
+                >
+                  {/*
+                    The leading slot, kept empty. Every other row in the popup
+                    opens with a tile — a mark, or the action's dashed square —
+                    and a label that started 36px to the left of all of them
+                    would read as a stray line of text rather than a row.
+                  */}
+                  <span aria-hidden className="size-6 shrink-0" />
+                  {retryLabel}
+                </button>
+              </>
+            )}
+            {action && (
+              <>
+                {(items.length > 0 || failed) && (
+                  <Select.Separator className={SEPARATOR_CLASS} />
+                )}
+                <button
+                  type="button"
+                  onClick={closeThen(action.onSelect)}
+                  className={cx(
+                    ROW_CLASS,
+                    'opacity-70 hover:opacity-100 focus-visible:opacity-100',
+                  )}
+                >
+                  {/*
+                    A dashed tile where a mark would be, at the mark's own
+                    size: the row lines up with the entities above it and
+                    still reads as "make a new one" rather than "here is
+                    another one".
+                  */}
+                  <span className="border-outline flex size-6 shrink-0 items-center justify-center rounded-xs border-2 border-dashed">
+                    <Plus aria-hidden className="size-3.5" />
+                  </span>
+                  <span className="text-sm font-semibold">{action.label}</span>
+                </button>
+              </>
+            )}
+          </Select.Popup>
+        </Select.Positioner>
+      </Select.Portal>
+    </Select.Root>
   );
 }

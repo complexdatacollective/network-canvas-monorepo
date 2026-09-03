@@ -155,8 +155,22 @@ function resolvedTeams(teams: { id: string; name: string }[]) {
  * beside the team. "Absent" and "empty" are different structures and only a
  * count tells them apart.
  */
+/**
+ * Presses a listbox option in the header's switcher.
+ *
+ * A bare `click` is not enough: Base UI's `Select` ignores a click on an
+ * option it has not highlighted unless a pointer press began on that option,
+ * because opening the list can drop an option under a stationary cursor. The
+ * `pointerdown` is what a real mouse sends first, and what marks the click as
+ * one the reader aimed.
+ */
+function pressOption(option: HTMLElement): void {
+  fireEvent.pointerDown(option);
+  fireEvent.click(option);
+}
+
 function lockupSegments(): number {
-  const trigger = screen.getByRole('button', { name: /^Team/ });
+  const trigger = screen.getByRole('combobox', { name: /^Team/ });
   const box = trigger.parentElement?.parentElement;
   if (box === null || box === undefined) {
     throw new Error('the team switcher is not inside a lockup');
@@ -310,7 +324,7 @@ describe('header team switcher', () => {
     // rather than by JavaScript — "Team" is a whole translated word and the
     // team name is a datum, and neither is a fragment of the other.
     expect(
-      await screen.findByRole('button', {
+      await screen.findByRole('combobox', {
         name: 'Team Alpha research team',
       }),
     ).toBeInTheDocument();
@@ -319,12 +333,12 @@ describe('header team switcher', () => {
   it('navigates to the chosen team, and the reconciler follows the URL', async () => {
     const router = renderAt('/team/team-a');
     fireEvent.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('combobox', {
         name: 'Team Alpha research team',
       }),
     );
-    fireEvent.click(
-      await screen.findByRole('menuitemradio', { name: 'Beta research team' }),
+    pressOption(
+      await screen.findByRole('option', { name: 'Beta research team' }),
     );
 
     // §6.5: the switch is a navigation to the team's landing destination, and
@@ -359,12 +373,12 @@ describe('header team switcher', () => {
     // answer to the one question the switcher exists to answer — and the URL
     // is what settles it (§2.2), exactly as `teamRole` settles the role.
     expect(
-      await screen.findByRole('button', {
+      await screen.findByRole('combobox', {
         name: 'Team Beta research team',
       }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('button', {
+      screen.queryByRole('combobox', {
         name: 'Team Alpha research team',
       }),
     ).toBeNull();
@@ -378,7 +392,7 @@ describe('header team switcher', () => {
     const router = renderAt('/team/team-b');
 
     fireEvent.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('combobox', {
         name: 'Team Beta research team',
       }),
     );
@@ -386,15 +400,15 @@ describe('header team switcher', () => {
     // The trigger and the open menu have to agree: a switcher that says B over
     // a list that marks A is a worse answer than either alone.
     expect(
-      await screen.findByRole('menuitemradio', {
+      await screen.findByRole('option', {
         name: 'Beta research team',
-        checked: true,
+        selected: true,
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('menuitemradio', {
+      screen.getByRole('option', {
         name: 'Alpha research team',
-        checked: false,
+        selected: false,
       }),
     ).toBeInTheDocument();
 
@@ -402,7 +416,7 @@ describe('header team switcher', () => {
     // one the setting still holds. It is the switcher's trailing COMMAND
     // rather than a link, so where it goes is asserted by going there.
     fireEvent.click(
-      screen.getByRole('menuitem', { name: 'Team administration' }),
+      screen.getByRole('button', { name: 'Team administration' }),
     );
     await waitFor(() =>
       expect(router.state.location.pathname).toBe('/team/team-b/settings'),
@@ -411,7 +425,7 @@ describe('header team switcher', () => {
 
   it('leaves the setting alone until a navigation commits', async () => {
     renderAt('/team/team-a');
-    await screen.findByRole('button', {
+    await screen.findByRole('combobox', {
       name: 'Team Alpha research team',
     });
 
@@ -419,9 +433,9 @@ describe('header team switcher', () => {
     // nothing to write. Opening the menu is not a switch either: the write
     // follows the URL, and nothing has changed it.
     fireEvent.click(
-      screen.getByRole('button', { name: 'Team Alpha research team' }),
+      screen.getByRole('combobox', { name: 'Team Alpha research team' }),
     );
-    await screen.findByRole('menuitemradio', { name: 'Beta research team' });
+    await screen.findByRole('option', { name: 'Beta research team' });
 
     expect(fixtures.setActive).not.toHaveBeenCalled();
   });
@@ -433,15 +447,15 @@ describe('header team switcher', () => {
     // the researcher off the settings screen they were reading.
     const router = renderAt('/team/team-a/settings');
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Team Alpha research team' }),
+      await screen.findByRole('combobox', { name: 'Team Alpha research team' }),
     );
 
-    // Base UI reports every press of a radio item, the checked one included.
+    // Base UI reports every press of an option, the selected one included.
     // Re-selecting where you already are is not a switch, and in a
     // router-driven header it is a navigation the editor's dirty-state blocker
     // would have to prompt about.
-    fireEvent.click(
-      await screen.findByRole('menuitemradio', { name: 'Alpha research team' }),
+    pressOption(
+      await screen.findByRole('option', { name: 'Alpha research team' }),
     );
 
     await waitFor(() => expect(router.state.status).toBe('idle'));
@@ -483,12 +497,12 @@ describe('the header switcher lockup', () => {
     renderAt('/study/study-1');
 
     expect(
-      await screen.findByRole('button', { name: 'Team Alpha research team' }),
+      await screen.findByRole('combobox', { name: 'Team Alpha research team' }),
     ).toBeInTheDocument();
     // The team's own studies list contains this study, so it is genuinely this
     // team's, and its siblings are genuinely its siblings.
     expect(
-      await screen.findByRole('button', { name: 'Study Wave one pilot' }),
+      await screen.findByRole('combobox', { name: 'Study Wave one pilot' }),
     ).toBeInTheDocument();
     expect(lockupSegments()).toBe(2);
   });
@@ -496,17 +510,17 @@ describe('the header switcher lockup', () => {
   it('offers the study its siblings, and the way back to all of them', async () => {
     const router = renderAt('/study/study-1');
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Study Wave one pilot' }),
+      await screen.findByRole('combobox', { name: 'Study Wave one pilot' }),
     );
 
     expect(
-      await screen.findByRole('menuitemradio', {
+      await screen.findByRole('option', {
         name: 'Wave one pilot',
-        checked: true,
+        selected: true,
       }),
     ).toBeInTheDocument();
     fireEvent.click(
-      screen.getByRole('menuitem', { name: 'All studies in this team' }),
+      screen.getByRole('button', { name: 'All studies in this team' }),
     );
 
     await waitFor(() =>
@@ -516,11 +530,11 @@ describe('the header switcher lockup', () => {
 
   it('leaves the study segment out entirely outside a study', async () => {
     renderAt('/team/team-a');
-    await screen.findByRole('button', { name: 'Team Alpha research team' });
+    await screen.findByRole('combobox', { name: 'Team Alpha research team' });
 
     // Absent, not empty. Outside a study there is no study, and a divider with
     // a blank beside it would say the opposite.
-    expect(screen.queryByRole('button', { name: /^Study/ })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: /^Study/ })).toBeNull();
     expect(lockupSegments()).toBe(1);
   });
 
@@ -536,7 +550,7 @@ describe('the header switcher lockup', () => {
     // point. The identifier is also what a still-loading switcher would fall
     // back to, so asserting the name straight away would pass on the
     // transient — and go on passing if the settled answer were wrong.
-    const study = await screen.findByRole('button', { name: /^Study/ });
+    const study = await screen.findByRole('combobox', { name: /^Study/ });
     await waitFor(() => expect(study).not.toHaveAttribute('aria-busy'));
 
     expect(study).toHaveAccessibleName('Study study-1');
@@ -545,10 +559,10 @@ describe('the header switcher lockup', () => {
     // the switcher would otherwise present another team's studies as this
     // study's own.
     expect(
-      await screen.findByRole('menuitemradio', { name: 'study-1' }),
+      await screen.findByRole('option', { name: 'study-1' }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('menuitemradio', { name: 'Methods comparison' }),
+      screen.queryByRole('option', { name: 'Methods comparison' }),
     ).toBeNull();
   });
 });
