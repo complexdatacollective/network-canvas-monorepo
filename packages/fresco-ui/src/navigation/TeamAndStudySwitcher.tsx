@@ -146,11 +146,10 @@ const NAME_WIDTH_CLASS = 'min-w-24';
 /**
  * The frame's own radius, on the edges of a segment that meet it.
  *
- * The SAME token, not the nesting rule's one-pixel-tighter inner curve. A
- * filled segment paints right up to the frame's border, so any curve tighter
- * than the frame's leaves a crescent of the frame's own background showing
- * between the fill and the border. The frame clips, so a curve that matches
- * cannot overshoot it either.
+ * The SAME token, and it resolves to the same PIXELS because the frame has no
+ * border for a segment to sit inside — see the frame's ring. Both boxes are
+ * the same height, so where `--radius` exceeds half of it and the browser
+ * scales the corners down, it scales both by the same factor.
  *
  * A segment would need no radius at all for its surface alone — the clip would
  * shape it. The focus ring is why this exists: an outline traces the element's
@@ -630,10 +629,24 @@ export function TeamAndStudySwitcher({
     <div className={cx('@container min-w-0', className)}>
       <div
         className={cx(
-          'border-outline inline-flex max-w-full min-w-0 items-stretch',
-          // The frame's whole job: one border, one radius, and the clip that
-          // lets the segments inside it stay square.
-          'overflow-hidden rounded border',
+          'inline-flex max-w-full min-w-0 items-stretch',
+          /*
+            A RING, not a border, and that is the whole reason a filled segment
+            meets the frame cleanly.
+
+            A border puts the segments inside it, leaving a hairline of
+            `--outline` between a fill and the page. `--outline` is derived
+            from the background, so against a pale page it is indistinguishable
+            from the corner a large radius leaves uncovered, and the two read
+            together as a fill with the wrong curve. Nothing a segment paints
+            can cover it either: `overflow-hidden` clips a child's own shadow
+            at the padding edge.
+
+            A ring is the frame's own shadow, so its own overflow does not clip
+            it, and it takes no space — the segments fill the frame's whole box
+            and share its exact curve, with the hairline outside them both.
+          */
+          'ring-outline overflow-hidden rounded ring-1',
         )}
       >
         {team && (
