@@ -9,6 +9,8 @@
 import { faker } from '@faker-js/faker';
 import type pg from 'pg';
 
+import { canonicalize } from '@codaco/studio-sync/apply';
+
 import { insertRows, type SeedRowValue } from './insert.ts';
 import type { SeededProtocolLine } from './protocols.ts';
 import {
@@ -657,12 +659,20 @@ export async function seedConsentDocuments(
           { heading: 'What we collect', text: faker.lorem.paragraph() },
         ],
       };
+      // The digest of the canonical serialization of (title, body, items),
+      // items by key, so it can be recomputed from the retained document.
       const contentHash = sha256Hex(
-        JSON.stringify([
+        canonicalize({
           title,
           body,
-          items.map((item) => [item.key, item.prompt, item.required]),
-        ]),
+          items: items
+            .map((item) => ({
+              key: item.key,
+              prompt: item.prompt,
+              required: item.required,
+            }))
+            .toSorted((a, b) => a.key.localeCompare(b.key)),
+        }),
       );
       const createdAt = shiftDays(study.createdAt, version * 3);
       documentRows.push([

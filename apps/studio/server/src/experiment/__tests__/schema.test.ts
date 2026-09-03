@@ -720,6 +720,72 @@ describe.skipIf(!db)('experiment schema', () => {
     });
   });
 
+  describe('experiments_stop_closes_lifetime', () => {
+    it('refuses a stop before the start', async () => {
+      const experimentId = await newExperiment({
+        state: 'running',
+        started_at: new Date('2026-03-01T00:00:00Z'),
+      });
+      await expect(
+        pool.query(
+          `UPDATE experiments SET state = 'stopped', stopped_at = $2 WHERE id = $1`,
+          [experimentId, new Date('2026-02-28T00:00:00Z')],
+        ),
+      ).rejects.toMatchObject({ constraint: 'experiments_state_check' });
+    });
+
+    it('refuses a stop that would leave observations outside the lifetime', async () => {
+      const experimentId = await newExperiment({
+        state: 'running',
+        started_at: new Date('2026-03-01T00:00:00Z'),
+      });
+      const assignmentId = await newAssignment(experimentId, {
+        assigned_at: new Date('2026-03-05T00:00:00Z'),
+      });
+      await newExposure(experimentId, assignmentId, {
+        occurred_at: new Date('2026-03-20T00:00:00Z'),
+      });
+      const stop = (at: string) =>
+        pool.query(
+          `UPDATE experiments SET state = 'stopped', stopped_at = $2 WHERE id = $1`,
+          [experimentId, new Date(at)],
+        );
+      await expect(stop('2026-03-10T00:00:00Z')).rejects.toThrow(
+        'an experiment cannot stop before its assignments and exposures',
+      );
+      await expect(stop('2026-03-03T00:00:00Z')).rejects.toThrow(
+        'an experiment cannot stop before its assignments and exposures',
+      );
+      await expect(stop('2026-03-20T00:00:00Z')).resolves.toMatchObject({
+        rowCount: 1,
+      });
+    });
+
+    it('holds the stop final once recorded', async () => {
+      const experimentId = await newExperiment({
+        state: 'stopped',
+        started_at: new Date('2026-03-01T00:00:00Z'),
+        stopped_at: new Date('2026-04-01T00:00:00Z'),
+      });
+      await expect(
+        pool.query(`UPDATE experiments SET stopped_at = $2 WHERE id = $1`, [
+          experimentId,
+          new Date('2026-05-01T00:00:00Z'),
+        ]),
+      ).rejects.toThrow(
+        'an experiment that has stopped cannot resume or move its stop',
+      );
+      await expect(
+        pool.query(
+          `UPDATE experiments SET state = 'running', stopped_at = NULL WHERE id = $1`,
+          [experimentId],
+        ),
+      ).rejects.toThrow(
+        'an experiment that has stopped cannot resume or move its stop',
+      );
+    });
+  });
+
   describe('experiment_rows_within_lifetime', () => {
     it('refuses an assignment or exposure on an experiment that has not started', async () => {
       const draftId = await newExperiment();

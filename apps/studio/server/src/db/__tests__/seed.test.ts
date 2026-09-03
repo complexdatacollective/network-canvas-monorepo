@@ -857,6 +857,33 @@ describe.skipIf(!db)('the seeded dataset', () => {
     ).resolves.toBe(0);
   });
 
+  it('hashes every consent document over the canonical form of what it retains', async () => {
+    // content_hash is the digest of the canonical (title, body, items), items
+    // by key, so a document's evidence can be recomputed from the row.
+    const rows = await pool.query<{
+      title: string;
+      body: unknown;
+      content_hash: string;
+      items: { key: string; prompt: string; required: boolean }[];
+    }>(
+      `select d.title, d.body, d.content_hash,
+              (select json_agg(json_build_object(
+                        'key', i.key, 'prompt', i.prompt, 'required', i.required)
+                      order by i.key)
+               from consent_items i
+               where i.consent_document_id = d.id and i.team_id = d.team_id) as items
+       from consent_documents d`,
+    );
+    expect(rows.rowCount).toBeGreaterThan(0);
+    for (const row of rows.rows) {
+      expect(
+        sha256Hex(
+          canonicalize({ title: row.title, body: row.body, items: row.items }),
+        ),
+      ).toBe(row.content_hash);
+    }
+  });
+
   it('hashes every snapshot over the canonical form of the payload it stores', async () => {
     // jsonb keeps no key order, so the evidence must be checkable from the
     // payload as it is read back.

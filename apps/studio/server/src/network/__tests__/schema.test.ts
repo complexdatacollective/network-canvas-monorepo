@@ -1058,6 +1058,53 @@ describe.skipIf(!db)('network schema', () => {
       );
     });
 
+    it('freezes the as-collected rows once the finalizing transaction has taken its snapshot', async () => {
+      // The window closes at the snapshot: a node or edge written after it
+      // would disagree with the payload that claims to be their copy, while
+      // the projections stay writable for the rest of the transaction.
+      const fixture = await newFixture();
+      await newNode(fixture.sessionId);
+      const insertNode = (client: pg.PoolClient) => {
+        const row = nodeRow(fixture.sessionId);
+        const columns = Object.keys(row);
+        return client.query(
+          `INSERT INTO nodes (${columns.map((n) => `"${n}"`).join(', ')})
+           VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')})`,
+          Object.values(row),
+        );
+      };
+
+      await expect(
+        tenantA.transaction(async (client) => {
+          await client.query(FINALIZE_SQL, [fixture.sessionId]);
+          await insertNode(client);
+          await client.query(
+            `INSERT INTO session_snapshots
+               (session_id, team_id, study_id, protocol_version_id,
+                schema_version, payload, payload_hash)
+             VALUES ($1, $2, $3, $4, 8, '{}'::jsonb, 'sha256:cafe')`,
+            [fixture.sessionId, TEAM_A, fixture.studyId, versionOf[TEAM_A]],
+          );
+          await refreshSessionProjections(client, {
+            teamId: TEAM_A,
+            sessionId: fixture.sessionId,
+          });
+          await client.query('SAVEPOINT after_snapshot');
+          await expect(insertNode(client)).rejects.toThrow(
+            'network data for a finalized session or a closed study is read-only',
+          );
+          await client.query('ROLLBACK TO SAVEPOINT after_snapshot');
+          return 'finalized';
+        }),
+      ).resolves.toBe('finalized');
+
+      const stats = await pool.query<{ node_count: number }>(
+        `SELECT node_count FROM session_stats WHERE session_id = $1`,
+        [fixture.sessionId],
+      );
+      expect(stats.rows[0]?.node_count).toBe(2);
+    });
+
     it('holds a network row on its session and team', async () => {
       const mine = await newFixture();
       const theirs = await newFixture();

@@ -534,13 +534,25 @@ BEGIN
     -- erasure and the maintenance purge above may delete.
   END IF;
 
+  -- The finalizing transaction may still write under the session it has
+  -- just completed (its own xmin) — but the as-collected rows only until it
+  -- has taken the snapshot of them: a node or edge written after that would
+  -- disagree with the immutable payload that claims to be their copy. The
+  -- projections stay writable for the rest of the transaction, since they
+  -- are derived from the rows and not part of the snapshot.
   SELECT c.session_id INTO offender
   FROM changed c
   JOIN interview_sessions s
     ON s.id = c.session_id AND s.team_id = c.team_id
   JOIN studies st
     ON st.id = s.study_id AND st.team_id = s.team_id
-  WHERE (s.status = 'completed' AND s.xmin <> pg_current_xact_id()::xid)
+  WHERE (s.status = 'completed'
+         AND (s.xmin <> pg_current_xact_id()::xid
+              OR (TG_TABLE_NAME IN ('nodes', 'edges')
+                  AND EXISTS (
+                    SELECT 1 FROM session_snapshots sn
+                    WHERE sn.session_id = s.id AND sn.team_id = s.team_id
+                  ))))
      OR st.state = 'closed'
   LIMIT 1;
   IF offender IS NOT NULL THEN

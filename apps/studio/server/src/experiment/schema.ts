@@ -50,7 +50,8 @@ const experiments = pgTable(
       'experiments_state_check',
       sql`${table.state} IN ('draft', 'running', 'stopped')
           AND (${table.state} = 'draft') = (${table.startedAt} IS NULL)
-          AND (${table.state} = 'stopped') = (${table.stoppedAt} IS NOT NULL)`,
+          AND (${table.state} = 'stopped') = (${table.stoppedAt} IS NOT NULL)
+          AND (${table.stoppedAt} IS NULL OR ${table.stoppedAt} >= ${table.startedAt})`,
     ),
     // The container only. A CHECK cannot call the function that would inspect
     // the elements, because drizzle creates this table — and its constraints —
@@ -345,6 +346,38 @@ CREATE OR REPLACE TRIGGER experiments_start_final
     AND (NEW.started_at IS DISTINCT FROM OLD.started_at OR NEW.state = 'draft')
   )
   EXECUTE FUNCTION experiment_start_is_final();
+
+-- The stop closes the lifetime the rows above were admitted into, so it
+-- cannot land before any of them: the lifetime triggers run only when an
+-- assignment or exposure is inserted, and would not notice a stop that
+-- moved underneath rows they had already accepted. And like the start, the
+-- stop is final — moved or lifted, it would reopen a lifetime whose
+-- observations an analysis has already read as complete.
+CREATE OR REPLACE FUNCTION experiment_stop_closes_the_lifetime() RETURNS trigger AS $$
+BEGIN
+  IF OLD.stopped_at IS NOT NULL THEN
+    RAISE EXCEPTION 'an experiment that has stopped cannot resume or move its stop';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM experiment_assignments a
+    WHERE a.experiment_id = NEW.id AND a.team_id = NEW.team_id
+      AND a.assigned_at > NEW.stopped_at
+  ) OR EXISTS (
+    SELECT 1 FROM experiment_exposures x
+    WHERE x.experiment_id = NEW.id AND x.team_id = NEW.team_id
+      AND x.occurred_at > NEW.stopped_at
+  ) THEN
+    RAISE EXCEPTION 'an experiment cannot stop before its assignments and exposures';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER experiments_stop_closes_lifetime
+  BEFORE UPDATE ON experiments
+  FOR EACH ROW
+  WHEN (NEW.stopped_at IS DISTINCT FROM OLD.stopped_at)
+  EXECUTE FUNCTION experiment_stop_closes_the_lifetime();
 
 -- Both of the guards above read the variant list as a list of arms, and
 -- \`experiments_variants_check\` cannot make it one: bounding the array and its

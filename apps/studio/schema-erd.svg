@@ -4179,7 +4179,7 @@
 <!-- experiments -->
 <g id="experiments" class="node">
 <title>experiments</title>
-<g id="a_experiments"><a xlink:title="experiments&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger experiments_variants_frozen: BEFORE UPDATE calls experiment_variants_are_frozen(); sidecar trigger experiments_start_final: BEFORE UPDATE calls experiment_start_is_final(); sidecar trigger experiments_variants_well_formed: BEFORE INSERT OR UPDATE calls experiment_variants_are_well_formed()">
+<g id="a_experiments"><a xlink:title="experiments&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger experiments_variants_frozen: BEFORE UPDATE calls experiment_variants_are_frozen(); sidecar trigger experiments_start_final: BEFORE UPDATE calls experiment_start_is_final(); sidecar trigger experiments_stop_closes_lifetime: BEFORE UPDATE calls experiment_stop_closes_the_lifetime(); sidecar trigger experiments_variants_well_formed: BEFORE INSERT OR UPDATE calls experiment_variants_are_well_formed()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="566.39" cy="-15989.24" rx="281.36" ry="511.89"/>
 <polygon fill="#1d71b8" stroke="transparent" points="369.39,-16289.24 369.39,-16349.24 763.39,-16349.24 763.39,-16289.24 369.39,-16289.24"/>
 <polygon fill="none" stroke="#29235c" points="369.39,-16289.24 369.39,-16349.24 763.39,-16349.24 763.39,-16289.24 369.39,-16289.24"/>
