@@ -2,7 +2,7 @@ import { BookOpenText, Download, ExternalLink, Images } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useId } from 'react';
 
-import { Eyebrow } from '~/components/protocol-gallery/Eyebrow';
+import Eyebrow from '@codaco/fresco-ui/typography/Eyebrow';
 import { ButtonLink } from '~/components/ui/ButtonLink';
 import type {
   ProtocolDownload,

@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Surface from '@codaco/fresco-ui/layout/Surface';
-import { Eyebrow } from '~/components/protocol-gallery/Eyebrow';
+import Eyebrow from '@codaco/fresco-ui/typography/Eyebrow';
 import { OverlineHeading } from '~/components/protocol-gallery/OverlineHeading';
 import { NativeLink } from '~/components/ui/NativeLink';
 import type { GalleryProtocol } from '~/lib/protocolGallery';
@@ -18,7 +18,7 @@ function DetailItem({
 }) {
   return (
     <div className="border-outline min-w-0 border-b pb-4">
-      <Eyebrow as="dt">{label}</Eyebrow>
+      <Eyebrow render={<dt />}>{label}</Eyebrow>
       <dd className="mt-1.5">{children}</dd>
     </div>
   );

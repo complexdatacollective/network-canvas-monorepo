@@ -6,11 +6,11 @@ import { notFound } from 'next/navigation';
 
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/SiteNavigation.constants';
+import Eyebrow from '@codaco/fresco-ui/typography/Eyebrow';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Footer } from '~/components/layout/Footer';
 import { Header } from '~/components/layout/Header';
-import { Eyebrow } from '~/components/protocol-gallery/Eyebrow';
 import { OverlineHeading } from '~/components/protocol-gallery/OverlineHeading';
 import { ProtocolCitation } from '~/components/protocol-gallery/ProtocolCitation';
 import { ProtocolDetailFacts } from '~/components/protocol-gallery/ProtocolDetailFacts';
@@ -119,14 +119,20 @@ export default async function ProtocolDetailPage({
                 <Heading level="h1" margin="none" className="mt-2">
                   {protocol.shortName}
                 </Heading>
-                <Paragraph intent="lead" margin="none" className="mt-4">
+                <Heading
+                  level="h4"
+                  variant="subtitle"
+                  margin="none"
+                  render={<p />}
+                  className="mt-3"
+                >
                   {protocol.title}
-                </Paragraph>
+                </Heading>
                 <Paragraph
                   margin="none"
-                  intent="smallText"
+                  intent="meta"
                   emphasis="muted"
-                  className="font-monospace mt-3"
+                  className="mt-3"
                 >
                   {protocol.authors}
                 </Paragraph>

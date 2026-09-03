@@ -8,7 +8,7 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import Surface from '@codaco/fresco-ui/layout/Surface';
-import { MonoCaption } from '~/components/protocol-gallery/Eyebrow';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { FacetGroup } from '~/components/protocol-gallery/FacetGroup';
 import type { FacetOption } from '~/lib/galleryFacets';
 import { parseSortId, type SortId, sortIds } from '~/lib/gallerySort';
@@ -81,9 +81,14 @@ export function GallerySidebar({
             size="md"
           />
           <div className="mt-3 flex items-center justify-between gap-3">
-            <MonoCaption aria-live="polite">
+            <Paragraph
+              margin="none"
+              intent="meta"
+              emphasis="muted"
+              aria-live="polite"
+            >
               {t('resultsOfTotal', { count: resultCount, total })}
-            </MonoCaption>
+            </Paragraph>
             {hasActiveFilters ? (
               <Button variant="link" size="sm" onClick={onClearFilters}>
                 {t('clearFilters')}

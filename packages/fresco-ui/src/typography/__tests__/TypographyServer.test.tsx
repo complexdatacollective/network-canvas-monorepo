@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
+import Eyebrow from '../Eyebrow';
 import Heading from '../Heading';
 import Paragraph from '../Paragraph';
 
@@ -25,7 +26,7 @@ const headingLevels = [
 }>;
 
 describe('server-safe typography', () => {
-  it.each(['../Heading.tsx', '../Paragraph.tsx'])(
+  it.each(['../Eyebrow.tsx', '../Heading.tsx', '../Paragraph.tsx'])(
     'does not mark %s as a client module',
     (sourceFile) => {
       expect(sourceHasUseClientDirective(sourceFile)).toBe(false);
@@ -78,5 +79,31 @@ describe('server-safe typography', () => {
     expect(paragraph).toContain('leading-relaxed');
     expect(code).toMatch(/^<code[^>]*>const value = true;<\/code>$/);
     expect(code).toContain('font-monospace');
+  });
+
+  it('preserves the Paragraph element render override in static markup', () => {
+    const markup = renderToStaticMarkup(
+      <Paragraph intent="meta" render={<span data-meta="override" />}>
+        protocol.netcanvas
+      </Paragraph>,
+    );
+
+    expect(markup).toMatch(
+      /^<span[^>]*data-meta="override"[^>]*>protocol.netcanvas<\/span>$/,
+    );
+    expect(markup).toContain('font-monospace');
+    expect(markup).toContain('leading-snug');
+  });
+
+  it('renders Eyebrow as a static <p> with an element render override', () => {
+    const paragraph = renderToStaticMarkup(
+      <Eyebrow tone="primary">Featured</Eyebrow>,
+    );
+    const term = renderToStaticMarkup(<Eyebrow render={<dt />}>Field</Eyebrow>);
+
+    expect(paragraph).toMatch(/^<p[^>]*>Featured<\/p>$/);
+    expect(paragraph).toContain('uppercase');
+    expect(paragraph).toContain('text-primary');
+    expect(term).toMatch(/^<dt[^>]*>Field<\/dt>$/);
   });
 });

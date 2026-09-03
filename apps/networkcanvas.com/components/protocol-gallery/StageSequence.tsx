@@ -1,7 +1,7 @@
 import { useTranslations } from 'next-intl';
 
 import Surface from '@codaco/fresco-ui/layout/Surface';
-import { MonoCaption } from '~/components/protocol-gallery/Eyebrow';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { StageBar } from '~/components/protocol-gallery/StageBar';
 import { cn } from '~/lib/cn';
 import type { ProtocolStage } from '~/lib/protocolStages';
@@ -12,7 +12,9 @@ export function StageSequence({ stages }: { stages: ProtocolStage[] }) {
 
   return (
     <div>
-      <MonoCaption>{t('stages.count', { count: stages.length })}</MonoCaption>
+      <Paragraph margin="none" intent="meta" emphasis="muted">
+        {t('stages.count', { count: stages.length })}
+      </Paragraph>
       <StageBar stages={stages} className="mt-2" />
       <ol className="mt-4 space-y-2">
         {stages.map((stage, index) => (

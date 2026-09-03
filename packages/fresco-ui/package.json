@@ -69,6 +69,7 @@
     "./navigation/NavList": "./src/navigation/NavList.tsx",
     "./navigation/NavItem": "./src/navigation/NavItem.tsx",
     "./navigation/NavDrawer": "./src/navigation/NavDrawer.tsx",
+    "./typography/Eyebrow": "./src/typography/Eyebrow.tsx",
     "./typography/Heading": "./src/typography/Heading.tsx",
     "./typography/Paragraph": "./src/typography/Paragraph.tsx",
     "./typography/PageHeader": "./src/typography/PageHeader.tsx",
@@ -396,6 +397,10 @@
       "./navigation/NavDrawer": {
         "types": "./dist/navigation/NavDrawer.d.ts",
         "default": "./dist/navigation/NavDrawer.js"
+      },
+      "./typography/Eyebrow": {
+        "types": "./dist/typography/Eyebrow.d.ts",
+        "default": "./dist/typography/Eyebrow.js"
       },
       "./typography/Heading": {
         "types": "./dist/typography/Heading.d.ts",
