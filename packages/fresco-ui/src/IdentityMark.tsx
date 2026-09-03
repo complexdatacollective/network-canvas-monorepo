@@ -99,8 +99,8 @@ function hashEntityId(id: string): number {
  * locale and stop being deterministic.
  */
 /** At most two characters, counted as a reader sees them. */
-function bound(monogram: string): string {
-  return Array.from(monogram).slice(0, 2).join('');
+function bound(letters: string): string {
+  return Array.from(letters).slice(0, 2).join('');
 }
 
 function monogram(name: string): string {
