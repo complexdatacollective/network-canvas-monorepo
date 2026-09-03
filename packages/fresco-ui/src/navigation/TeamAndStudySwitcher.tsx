@@ -146,19 +146,23 @@ const NAME_WIDTH_CLASS = 'min-w-24';
 /**
  * The frame's own radius, on the edges of a segment that meet it.
  *
- * The SAME token, and it resolves to the same PIXELS because the frame has no
- * border for a segment to sit inside — see the frame's ring. Both boxes are
- * the same height, so where `--radius` exceeds half of it and the browser
- * scales the corners down, it scales both by the same factor.
+ * The bare `rounded-*` utilities, NOT `rounded-[var(--radius)]`. The two are
+ * not the same thing: `--radius` is declared once at `:root` as
+ * `var(--radius-base, …)`, so it is substituted there and inherits as the
+ * DEFAULT theme's value. A theme sets `--radius-base`, which only the
+ * utilities read — see the note beside `--radius` in `theme.css`. Reading the
+ * variable directly froze every segment at 28px while the frame followed its
+ * theme to 14px, which showed up as a fill visibly rounder than the frame
+ * around it, in Studio and Interview but never in the default theme.
  *
  * A segment would need no radius at all for its surface alone — the clip would
  * shape it. The focus ring is why this exists: an outline traces the element's
  * own border-radius, so a square segment rings square inside a rounded frame.
  */
 const OUTER_CORNER = {
-  start: 'rounded-s-[var(--radius)]',
-  end: 'rounded-e-[var(--radius)]',
-  both: 'rounded-[var(--radius)]',
+  start: 'rounded-s',
+  end: 'rounded-e',
+  both: 'rounded',
 } as const;
 
 /**

@@ -215,6 +215,48 @@ export const SegmentsFillTheFrame: Story = {
   },
 };
 
+/**
+ * The segments follow the THEME's radius, not the default theme's.
+ *
+ * `--radius` is declared once at `:root` as `var(--radius-base, …)`, so it is
+ * substituted there and inherits as the default theme's value everywhere. Only
+ * the bare `rounded-*` utilities read `--radius-base`, which is what a theme
+ * actually sets. Reading the variable directly — `rounded-[var(--radius)]` —
+ * therefore pins a segment to 28px while the frame around it follows its theme
+ * to 14px, and the fill reads as visibly rounder than the frame.
+ *
+ * Pinned to the studio theme because the default theme cannot show it: there
+ * the frozen value and the theme's value are the same number, so a story
+ * running in it passes either way.
+ */
+export const SegmentsFollowTheThemeRadius: Story = {
+  globals: { theme: 'studio' },
+  play: async ({ canvasElement }) => {
+    const frame = frameOf(canvasElement);
+    const segments = [
+      ...frame.querySelectorAll<HTMLElement>('[data-switcher-segment]'),
+    ];
+    const frameRadius = getComputedStyle(frame).borderTopLeftRadius;
+
+    // The theme is what makes this story meaningful. `--radius-base` is set on
+    // the body by the theme switcher, and if it had not applied, the value
+    // below would be the default theme's and the comparison would prove
+    // nothing.
+    const base = getComputedStyle(document.body)
+      .getPropertyValue('--radius-base')
+      .trim();
+    await expect(base).toBe('0.875rem');
+    await expect(frameRadius).toBe('14px');
+
+    await expect(getComputedStyle(segments[0]!).borderTopLeftRadius).toBe(
+      frameRadius,
+    );
+    await expect(
+      getComputedStyle(segments[segments.length - 1]!).borderTopRightRadius,
+    ).toBe(frameRadius);
+  },
+};
+
 /** Opening lands on the entity you are already in, not on the first. */
 export const OpensOnTheCurrentEntity: Story = {
   args: { team: { ...teamSegment(), currentId: 'team_2' } },
