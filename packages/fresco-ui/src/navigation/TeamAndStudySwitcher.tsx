@@ -424,14 +424,24 @@ function Segment({
               'rounded border-2 p-1.5 outline-none',
             )}
           >
-            {items.length > 0 && (
-              <Select.List className="flex flex-col gap-0.5">
-                {/*
-                  A group so the kicker LABELS the options rather than floating
-                  among them: `Select.GroupLabel` is associated with its group
-                  automatically, so the reader is told these are teams, and the
-                  heading is not itself announced as something to choose.
-                */}
+            {/*
+              ALWAYS rendered, even with nothing in it. Base UI puts
+              `role="listbox"` on `Select.Popup` when there is no `Select.List`
+              to carry it — so on a failure with no cached items, which is the
+              ordinary whole-list failure, the message and the retry became
+              children of the listbox itself. A `listbox` may only contain
+              options, and a button inside one is skipped or misannounced.
+              An empty list keeps the role where it belongs and leaves the rows
+              below it siblings of the list rather than of its options.
+            */}
+            <Select.List className="flex flex-col gap-0.5">
+              {/*
+                A group so the kicker LABELS the options rather than floating
+                among them: `Select.GroupLabel` is associated with its group
+                automatically, so the reader is told these are teams, and the
+                heading is not itself announced as something to choose.
+              */}
+              {items.length > 0 && (
                 <Select.Group>
                   <Select.GroupLabel className="text-2xs px-2 py-1 font-semibold uppercase opacity-70">
                     {kicker}
@@ -445,7 +455,7 @@ function Segment({
                       // along with it.
                       label={item.name}
                       className={cx(
-                        'flex cursor-pointer items-center gap-3 rounded-xs px-2 py-1.5',
+                        'group flex cursor-pointer items-center gap-3 rounded-xs px-2 py-1.5',
                         'transition-colors outline-none select-none',
                         'not-data-selected:data-highlighted:bg-surface-2 not-data-selected:data-highlighted:text-surface-2-contrast',
                         'data-selected:bg-selected data-selected:text-selected-contrast',
@@ -459,7 +469,21 @@ function Segment({
                           {item.name}
                         </span>
                         {item.meta !== undefined && (
-                          <span className="text-xs leading-tight opacity-70">
+                          <span
+                            /* Names the supporting line. The identity mark is
+                               also `text-xs`, so a class query cannot tell the
+                               two apart — see `data-caret`. */
+                            data-meta
+                            /*
+                              Full strength on the selected row. Dimmed, this
+                              text composites toward `--selected` and drops to
+                              2.90:1 against it — below 4.5:1, and 90% only
+                              reaches 4.19:1, so nothing short of full opacity
+                              clears it. Elsewhere 70% is 5.19:1 and the
+                              hierarchy is worth keeping.
+                            */
+                            className="text-xs leading-tight opacity-70 group-data-selected:opacity-100"
+                          >
                             {item.meta}
                           </span>
                         )}
@@ -494,8 +518,8 @@ function Segment({
                     </Select.Item>
                   ))}
                 </Select.Group>
-              </Select.List>
-            )}
+              )}
+            </Select.List>
             {failed && onRetry && (
               <>
                 {items.length > 0 && (

@@ -40,5 +40,13 @@ order the component picks is right everywhere. It defaults to the previous
 output, and warns in development when a supplied label does not contain the
 visible name, which a control's accessible name has to (WCAG 2.5.3).
 
+A failed list renders its listbox even when empty. Without one, Base UI moves
+`role="listbox"` onto the popup, which put the failure message and its retry
+inside the listbox — a structure that holds options and nothing else, and one a
+screen reader may skip or misannounce.
+
+The supporting line under a name keeps full strength on the selected row.
+Dimmed, it composites toward `--selected` and falls to 2.90:1 against it.
+
 The type scale gains `text-2xs`, one step below `xs`, for the small uppercase
 labels that qualify a value rather than being one.

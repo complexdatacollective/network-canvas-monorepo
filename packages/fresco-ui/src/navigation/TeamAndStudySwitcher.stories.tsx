@@ -318,6 +318,68 @@ export const Failed: Story = {
   },
 };
 
+/**
+ * A failure with NO cached items still keeps its retry out of the listbox.
+ *
+ * Base UI moves `role="listbox"` onto the popup when no `Select.List` is
+ * rendered, which put the message and the retry inside the listbox — a
+ * structure a screen reader may skip or misannounce, since a listbox holds
+ * options and nothing else. The list is always rendered, empty if need be.
+ */
+export const FailedRetryStaysOutsideTheListbox: Story = {
+  args: {
+    team: {
+      ...teamSegment(),
+      items: [],
+      status: 'failed',
+      onRetry: fn(),
+      failureMessage: 'Your teams could not be loaded.',
+      retryLabel: 'Try again',
+    },
+    study: undefined,
+  },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole('combobox'));
+    const listbox = await within(document.body).findByRole('listbox');
+    const retry = within(document.body).getByRole('button', {
+      name: 'Try again',
+    });
+    await expect(listbox.contains(retry)).toBe(false);
+    // And the role did not fall through to the popup, which is what put the
+    // retry inside it.
+    await expect(listbox).not.toHaveAttribute('data-side');
+  },
+};
+
+/**
+ * The supporting line keeps full strength on the selected row.
+ *
+ * Dimmed, it composites toward `--selected` and falls to 2.90:1 against it —
+ * below 4.5:1, and 90% opacity only reaches 4.19:1. Elsewhere 70% is 5.19:1,
+ * which is worth keeping for the hierarchy.
+ */
+export const SelectedMetadataKeepsItsContrast: Story = {
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      within(canvasElement).getByRole('combobox', { name: /^Team/ }),
+    );
+    const listbox = await within(document.body).findByRole('listbox');
+    const rows = within(listbox)
+      .getAllByRole('option')
+      .map((option) => ({
+        selected: option.getAttribute('aria-selected') === 'true',
+        // `[data-meta]`, not a class query: the identity mark is `text-xs` too.
+        meta: option.querySelector('[data-meta]'),
+      }));
+
+    for (const row of rows) {
+      if (!row.meta) continue;
+      const opacity = getComputedStyle(row.meta).opacity;
+      await expect(opacity).toBe(row.selected ? '1' : '0.7');
+    }
+  },
+};
+
 /** A list that failed while an earlier one is still in hand keeps showing it. */
 export const FailedWithStaleItems: Story = {
   args: {
