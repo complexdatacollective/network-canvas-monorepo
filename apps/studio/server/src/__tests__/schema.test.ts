@@ -78,6 +78,12 @@ describe('generated schema documentation', () => {
     expect(readmeSection).toContain('studio_maintenance');
     expect(readmeSection).toContain('sections_immutable');
     expect(readmeSection).toContain('version_sections_insert_frozen');
+    expect(readmeSection).toContain('studies_closed_read_only');
+    expect(readmeSection).toContain('study_waves_identity_immutable');
+    expect(readmeSection).toContain('study_waves_parent_open');
+    expect(readmeSection).toContain('participants_writable');
+    expect(readmeSection).toContain('interview_sessions_writable');
+    expect(readmeSection).toContain('interview_links_writable');
     expect(readmeSection).toContain('invitation_delivery_payload_immutable');
     expect(readmeSection).toContain('audit_events_immutable');
     expect(readmeSection).toContain('audit_team_isolation');
@@ -87,6 +93,12 @@ describe('generated schema documentation', () => {
     expect(svg).toContain('RLS policy team_isolation');
     expect(svg).toContain('RLS policy audit_team_isolation');
     expect(svg).toContain('sidecar trigger sections_immutable');
+    expect(svg).toContain('sidecar trigger studies_closed_read_only');
+    expect(svg).toContain('sidecar trigger study_waves_identity_immutable');
+    expect(svg).toContain('sidecar trigger study_waves_parent_open');
+    expect(svg).toContain('sidecar trigger participants_writable');
+    expect(svg).toContain('sidecar trigger interview_sessions_writable');
+    expect(svg).toContain('sidecar trigger interview_links_writable');
     expect(svg).toContain(
       'sidecar trigger invitation_delivery_payload_immutable',
     );
@@ -138,8 +150,11 @@ describe.skipIf(!db)('schema verification', () => {
         'audit_events',
         'command_log',
         'drafts',
+        'interview_links',
+        'interview_sessions',
         'leases',
         'manifests',
+        'participants',
         'protocol_drafts',
         'protocol_versions',
         'protocols',
@@ -147,6 +162,8 @@ describe.skipIf(!db)('schema verification', () => {
         'schemaFingerprint',
         'sections',
         'session',
+        'studies',
+        'study_waves',
         'team_invitation_deliveries',
         'team_invitations',
         'team_members',
