@@ -106,6 +106,11 @@ describe('generated schema documentation', () => {
     expect(readmeSection).toContain('participants_writable');
     expect(readmeSection).toContain('interview_sessions_writable');
     expect(readmeSection).toContain('interview_sessions_link_own');
+    expect(readmeSection).toContain('studies_go_live_final');
+    expect(readmeSection).toContain('studies_protocol_line_unpinned');
+    expect(readmeSection).toContain('study_waves_version_own_line');
+    expect(readmeSection).toContain('interview_sessions_version_wave_pin');
+    expect(readmeSection).toContain('interview_sessions_completion_snapshot');
     expect(readmeSection).toContain('interview_links_writable');
     expect(readmeSection).toContain('api_token_authority_immutable');
     expect(readmeSection).toContain('consent_documents_publication_immutable');
@@ -206,6 +211,15 @@ describe('generated schema documentation', () => {
     expect(svg).toContain('sidecar trigger participants_writable');
     expect(svg).toContain('sidecar trigger interview_sessions_writable');
     expect(svg).toContain('sidecar trigger interview_sessions_link_own');
+    expect(svg).toContain('sidecar trigger studies_go_live_final');
+    expect(svg).toContain('sidecar trigger studies_protocol_line_unpinned');
+    expect(svg).toContain('sidecar trigger study_waves_version_own_line');
+    expect(svg).toContain(
+      'sidecar trigger interview_sessions_version_wave_pin',
+    );
+    expect(svg).toContain(
+      'sidecar trigger interview_sessions_completion_snapshot',
+    );
     expect(svg).toContain('sidecar trigger interview_links_writable');
     expect(svg).toContain('sidecar trigger api_token_authority_immutable');
     expect(svg).toContain(
