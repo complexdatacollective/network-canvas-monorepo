@@ -1,5 +1,8 @@
 ---
 '@codaco/interview': patch
+'@codaco/architect': patch
+'@codaco/interviewer': patch
+'fresco': patch
 ---
 
 Analytics now reports a session-scoped pseudonym for every entity id, rather
