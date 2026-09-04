@@ -449,7 +449,7 @@ function Segment({
                       {/* Wraps rather than truncating: this is where a name
                           too long for the frame above can be read in full. */}
                       <Select.ItemText className="flex min-w-0 flex-1 flex-col">
-                        <span className="text-sm leading-tight font-semibold break-words">
+                        <span className="text-sm leading-tight font-semibold wrap-break-word">
                           {item.name}
                         </span>
                         {item.meta !== undefined && (
@@ -475,7 +475,11 @@ function Segment({
                           // comes off on the selected row, where it would pull
                           // the label to about 4.2:1.
                           variant="filled"
-                          className="shrink-0 uppercase group-data-selected:bg-transparent"
+                          // `text-2xs` asked for here, not taken from
+                          // `Pill`'s `sm` variant: that variant is public, and
+                          // shrinking it shrinks every small pill in every app
+                          // — Interviewer's version status among them.
+                          className="text-2xs shrink-0 uppercase group-data-selected:bg-transparent"
                         >
                           {item.badge}
                         </Pill>
