@@ -1,6 +1,15 @@
 import { debounce } from 'es-toolkit';
-import { type ReactNode, useCallback, useEffect, useId, useMemo } from 'react';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+} from 'react';
 import { useShallow } from 'zustand/react/shallow';
+
+import { useAppIntl } from '@codaco/app-i18n/react';
 
 import {
   type FieldElements,
@@ -203,6 +212,12 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     ...validationProps
   } = config;
 
+  // The field layer is where validation copy becomes text: the rules build
+  // message descriptors, and this formatter (the host's when a provider is
+  // mounted, an English one otherwise) renders them, so what reaches the form
+  // store, `onSubmitInvalid`, and Zod issues stays a plain string.
+  const intl = useAppIntl();
+
   const namespace = useFieldNamespacePath();
   const namespaceName = useFieldNamespace();
   const resolvedPath = useMemo(
@@ -243,8 +258,20 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     validationContext: resolvedValidationContext,
   };
 
+  // `useAppIntl` hands back a new formatter every time the active locale
+  // changes. Rebuilding the REGISTERED validation function from it would make
+  // a language switch re-register the field, and unregistering deletes the
+  // field's stored errors along with the blurred flag that lets them show —
+  // so a person switching language with a validation error on screen would
+  // watch it vanish while the form stayed invalid. The registered function
+  // reads the formatter through a ref instead: rule messages are formatted
+  // when validation runs, so the next run picks up the new language without
+  // the function the store holds ever changing identity.
+  const intlRef = useRef(intl);
+
   const validation = useMemo(
-    () => makeValidationFunction(propsWithContext),
+    () => (formValues: Record<string, FieldValue>) =>
+      makeValidationFunction(propsWithContext, intlRef.current)(formValues),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [validationPropsJson, resolvedValidationContext],
   );
@@ -252,9 +279,11 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   // Memoize the validation summary (only compute if showValidationHints is true)
   const validationSummary = useMemo(
     () =>
-      showValidationHints ? makeValidationHints(propsWithContext) : undefined,
+      showValidationHints
+        ? makeValidationHints(propsWithContext, intl)
+        : undefined,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [showValidationHints, validationPropsJson, resolvedValidationContext],
+    [showValidationHints, validationPropsJson, resolvedValidationContext, intl],
   );
 
   const fieldState = useFormStore((state) =>
@@ -299,6 +328,30 @@ export function useField(config: UseFieldConfig): UseFieldResult {
       : validateField(publicResolvedName);
     void request;
   }, [pathOperations, publicResolvedName, resolvedPath, validateField]);
+
+  // Errors reach the store as plain strings, formatted when validation last
+  // ran, so a message already on screen stays in the language it was written
+  // in. Re-run validation once the locale has actually changed to put it into
+  // the new one. Only a field that is already showing something is
+  // revalidated: validating a field nobody has touched yet would write errors
+  // the person has not earned, and a language switch is no reason to accuse
+  // them of anything.
+  //
+  // The ref records the locale the errors ON SCREEN were written in, not the
+  // last locale this effect saw — which is why it only advances when there is
+  // something to re-run. Advancing it on every change made a validation that
+  // was in flight across the switch permanently stale: the effect ran while
+  // `fieldErrors` was still empty, marked the new locale as seen, and then had
+  // nothing left to compare against when the old-language result committed a
+  // moment later. The field kept the previous language until some unrelated
+  // edit revalidated it.
+  useEffect(() => {
+    if (intlRef.current === intl) return;
+    if (fieldErrors && fieldErrors.length > 0) {
+      intlRef.current = intl;
+      validateResolvedField();
+    }
+  }, [intl, fieldErrors, validateResolvedField]);
 
   const setResolvedFieldValue = useCallback(
     (value: FieldValue) => {

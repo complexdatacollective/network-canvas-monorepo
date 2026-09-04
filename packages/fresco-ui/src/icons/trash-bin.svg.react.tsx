@@ -1,9 +1,23 @@
+'use client';
+
 import type { SVGProps } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
+const messages = defineMessages({
+  title: {
+    id: 'frescoUi.icon.trashBin',
+    defaultMessage: 'Trash bin',
+    description: 'Accessible name (SVG title) of the trash-bin icon.',
+  },
+});
+
 export default function Icon(props: SVGProps<SVGSVGElement>) {
+  const intl = useAppIntl();
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140" {...props}>
-      <title>Trash bin</title>
+      <title>{intl.formatMessage(messages.title)}</title>
       <rect
         className="fill-platinum"
         x="64.33"

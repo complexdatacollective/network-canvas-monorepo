@@ -7,6 +7,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { useMemo, useState } from 'react';
+import { expect, within } from 'storybook/test';
 
 import { DataTableColumnHeader } from './DataTable/ColumnHeader';
 import { DataTable } from './DataTable/DataTable';
@@ -360,4 +361,67 @@ export const Responsive: Story = {
       </Table>
     </div>
   ),
+};
+
+function RightToLeftDataTableExample() {
+  const columns = useMemo<ColumnDef<(typeof rtlData)[number]>[]>(
+    () => [
+      { accessorKey: 'name', header: 'الاسم' },
+      { accessorKey: 'role', header: 'الدور' },
+    ],
+    [],
+  );
+
+  const table = useReactTable({
+    data: rtlData,
+    columns,
+    manualPagination: true,
+    pageCount: 12,
+    state: { pagination: { pageIndex: 3, pageSize: 25 } },
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  return <DataTable table={table} />;
+}
+
+const rtlData = [
+  { id: 1, name: 'ليلى منصور', role: 'مشرفة' },
+  { id: 2, name: 'كريم حداد', role: 'محرر' },
+];
+
+/**
+ * The table and its pagination bar in a right-to-left region. The controls
+ * move to the other side on their own, being a flex row — what does not is
+ * the arrows, which point along the reading order rather than at a fixed edge:
+ * "previous" is back towards the start of the table, and that is the right
+ * here.
+ */
+export const RightToLeft: Story = {
+  globals: { appDirection: 'rtl' },
+  // The toolbar global rather than a `dir` of this story's own, so the story
+  // sits in the same configuration a real RTL app does — the document's
+  // direction and Base UI's context together, not just the CSS.
+  render: () => <RightToLeftDataTableExample />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Assert the global landed, so a story that silently lost it fails here
+    // rather than passing on an LTR layout.
+    await expect(document.documentElement.dir).toBe('rtl');
+    const previous = canvas.getByRole('button', {
+      name: 'Go to previous page',
+    });
+    const next = canvas.getByRole('button', { name: 'Go to next page' });
+
+    for (const button of [previous, next]) {
+      const glyph = button.querySelector('svg');
+      await expect(glyph).not.toBeNull();
+      await expect(getComputedStyle(glyph!).rotate).toBe('180deg');
+    }
+
+    // Reading order first: "previous" sits to the right of "next".
+    await expect(previous.getBoundingClientRect().left).toBeGreaterThan(
+      next.getBoundingClientRect().left,
+    );
+  },
 };

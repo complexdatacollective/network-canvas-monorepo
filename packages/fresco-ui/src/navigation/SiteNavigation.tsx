@@ -530,7 +530,7 @@ function MobileLinkGroup({
             'children': link.label,
             'className': cx(
               linkClasses,
-              'pl-3',
+              'ps-3',
               link.active && 'text-neon-coral',
             ),
             'onClick': closeMenu,
@@ -766,7 +766,7 @@ export default function SiteNavigation({
       className={cx('@container relative z-50', className)}
       style={style}
     >
-      <div className="absolute top-2 left-2 z-50">
+      <div className="absolute inset-s-2 top-2 z-50">
         <a
           href={`#${skipToId}`}
           onClick={handleSkipLinkClick}
@@ -806,7 +806,7 @@ export default function SiteNavigation({
         <div
           className={cx(
             'flex items-center gap-1',
-            mobileAccessory ? 'ml-4 min-w-0 flex-1' : undefined,
+            mobileAccessory ? 'ms-4 min-w-0 flex-1' : undefined,
             breakpointClasses.mobile,
           )}
         >

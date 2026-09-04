@@ -1,8 +1,10 @@
 import { invariant } from 'es-toolkit';
 import { z } from 'zod/mini';
 
+import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import type { Variable } from '@codaco/protocol-validation';
 
+import { resolveIntl } from '../../utils/resolveIntl';
 import type { FieldValue, ValidationContext } from '../store/types';
 import collectNetworkValues from './utils/collectNetworkValues';
 import compareVariables from './utils/compareVariables';
@@ -29,7 +31,279 @@ export type ValidationFunction<T extends ValidationParameter> = (
   // unique = string etc.
   parameter: T,
   context?: ValidationContext,
+  // THE LOCALIZATION SEAM. Every participant-facing string below is a message
+  // descriptor formatted at schema-construction time with this formatter —
+  // the field layer (useField) threads its ambient `useAppIntl()` instance
+  // through `makeValidationFunction`/`makeValidationHints`, so a localized
+  // host gets localized copy while the strings that then flow through the
+  // form store, `onSubmitInvalid`, and Zod issues stay plain strings and the
+  // rule signature stays callable without it. Absent (external callers, the
+  // provider-less default), messages render their English defaultMessage —
+  // byte-identical to the pre-conversion literals.
+  intl?: IntlShape,
 ) => (formValues: Record<string, FieldValue>) => z.ZodMiniType;
+
+// A number written as `{x, number}` is formatted in the locale of the message
+// it sits in; a bare `{x}` is interpolated with `String(value)`, so its digits
+// and grouping stay as the source language wrote them however the sentence
+// around it reads. Character counts are quantities and take the typed form.
+// The value bounds below deliberately do not: `min`/`max` echo a number the
+// protocol author supplied, which need not be a quantity at all — a year, a
+// score, an identifier — and is the literal the participant has to type back.
+// "greater than or equal to 1,990" would be a rule about a different number.
+const messages = defineMessages({
+  required: {
+    id: 'frescoUi.validation.required',
+    defaultMessage: 'You must answer this question before continuing.',
+    description: 'Error shown when a required form field is left unanswered.',
+  },
+  maxLengthHint: {
+    id: 'frescoUi.validation.maxLengthHint',
+    defaultMessage: 'Enter at most {max, number} characters.',
+    description: 'Hint summarising a maximum text length rule.',
+  },
+  maxLengthError: {
+    id: 'frescoUi.validation.maxLengthError',
+    defaultMessage: 'Too long. Enter fewer than {max, number} characters.',
+    description: 'Error shown when text exceeds its maximum length.',
+  },
+  minLengthHint: {
+    id: 'frescoUi.validation.minLengthHint',
+    defaultMessage: 'Enter at least {min, number} characters.',
+    description: 'Hint summarising a minimum text length rule.',
+  },
+  minLengthError: {
+    id: 'frescoUi.validation.minLengthError',
+    defaultMessage: 'Too short. Enter at least {min, number} characters.',
+    description: 'Error shown when text is shorter than its minimum length.',
+  },
+  minValueHint: {
+    id: 'frescoUi.validation.minValueHint',
+    defaultMessage: 'Enter a value greater than or equal to {min}.',
+    description: 'Hint summarising a numeric minimum rule.',
+  },
+  minValueError: {
+    id: 'frescoUi.validation.minValueError',
+    defaultMessage: 'Too small. Value must be at least {min}.',
+    description: 'Error shown when a number is below its minimum.',
+  },
+  maxValueHint: {
+    id: 'frescoUi.validation.maxValueHint',
+    defaultMessage: 'Enter a value less than or equal to {max}.',
+    description: 'Hint summarising a numeric maximum rule.',
+  },
+  maxValueError: {
+    id: 'frescoUi.validation.maxValueError',
+    defaultMessage: 'Too large. Value must be at most {max}.',
+    description: 'Error shown when a number is above its maximum.',
+  },
+  minDate: {
+    id: 'frescoUi.validation.minDate',
+    defaultMessage: 'Must be on or after {min}.',
+    description:
+      'Hint and error for a date/time minimum; {min} is the formatted bound.',
+  },
+  maxDate: {
+    id: 'frescoUi.validation.maxDate',
+    defaultMessage: 'Must be on or before {max}.',
+    description:
+      'Hint and error for a date/time maximum; {max} is the formatted bound.',
+  },
+  minSelectedHint: {
+    id: 'frescoUi.validation.minSelectedHint',
+    defaultMessage:
+      '{count, plural, one {Select at least # value.} other {Select at least # values.}}',
+    description: 'Hint summarising a minimum selection-count rule.',
+  },
+  minSelectedError: {
+    id: 'frescoUi.validation.minSelectedError',
+    defaultMessage:
+      '{count, plural, one {Too few selected. Select at least # value.} other {Too few selected. Select at least # values.}}',
+    description: 'Error shown when too few options are selected.',
+  },
+  maxSelectedHint: {
+    id: 'frescoUi.validation.maxSelectedHint',
+    defaultMessage:
+      '{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}',
+    description: 'Hint summarising a maximum selection-count rule.',
+  },
+  maxSelectedError: {
+    id: 'frescoUi.validation.maxSelectedError',
+    defaultMessage:
+      '{count, plural, one {Too many items selected. Select a maximum of # value.} other {Too many items selected. Select a maximum of # values.}}',
+    description: 'Error shown when too many options are selected.',
+  },
+  uniqueHint: {
+    id: 'frescoUi.validation.uniqueHint',
+    defaultMessage: 'Must be unique.',
+    description: 'Hint summarising a uniqueness rule.',
+  },
+  uniqueError: {
+    id: 'frescoUi.validation.uniqueError',
+    defaultMessage: 'This value is used elsewhere. It must be unique.',
+    description: 'Error shown when a value duplicates one used elsewhere.',
+  },
+  differentFromError: {
+    id: 'frescoUi.validation.differentFromError',
+    defaultMessage: 'Your answer must be different from your earlier answer.',
+    description:
+      'Error for a must-differ comparison when the other answer has no visible label.',
+  },
+  differentFromLabelledError: {
+    id: 'frescoUi.validation.differentFromLabelledError',
+    defaultMessage:
+      "Your answer must be different from your answer to ''{label}''.",
+    description:
+      'Error for a must-differ comparison naming the other question.',
+  },
+  differentFromHint: {
+    id: 'frescoUi.validation.differentFromHint',
+    defaultMessage: 'Must be different from your earlier answer.',
+    description:
+      'Hint for a must-differ comparison when the other answer has no visible label.',
+  },
+  differentFromLabelledHint: {
+    id: 'frescoUi.validation.differentFromLabelledHint',
+    defaultMessage: "Must be different from your answer to ''{label}''.",
+    description: 'Hint for a must-differ comparison naming the other question.',
+  },
+  sameAsError: {
+    id: 'frescoUi.validation.sameAsError',
+    defaultMessage: 'Your answer must be the same as your earlier answer.',
+    description:
+      'Error for a must-match comparison when the other answer has no visible label.',
+  },
+  sameAsLabelledError: {
+    id: 'frescoUi.validation.sameAsLabelledError',
+    defaultMessage:
+      "Your answer must be the same as your answer to ''{label}''.",
+    description: 'Error for a must-match comparison naming the other question.',
+  },
+  sameAsHint: {
+    id: 'frescoUi.validation.sameAsHint',
+    defaultMessage: 'Must be the same as your earlier answer.',
+    description:
+      'Hint for a must-match comparison when the other answer has no visible label.',
+  },
+  sameAsLabelledHint: {
+    id: 'frescoUi.validation.sameAsLabelledHint',
+    defaultMessage: "Must be the same as your answer to ''{label}''.",
+    description: 'Hint for a must-match comparison naming the other question.',
+  },
+  greaterThanError: {
+    id: 'frescoUi.validation.greaterThanError',
+    defaultMessage: 'Your answer must be greater than your earlier answer.',
+    description:
+      'Error for a must-be-greater comparison when the other answer has no visible label.',
+  },
+  greaterThanLabelledError: {
+    id: 'frescoUi.validation.greaterThanLabelledError',
+    defaultMessage:
+      "Your answer must be greater than your answer to ''{label}''.",
+    description:
+      'Error for a must-be-greater comparison naming the other question.',
+  },
+  greaterThanHint: {
+    id: 'frescoUi.validation.greaterThanHint',
+    defaultMessage: 'Must be greater than your earlier answer.',
+    description:
+      'Hint for a must-be-greater comparison when the other answer has no visible label.',
+  },
+  greaterThanLabelledHint: {
+    id: 'frescoUi.validation.greaterThanLabelledHint',
+    defaultMessage: "Must be greater than your answer to ''{label}''.",
+    description:
+      'Hint for a must-be-greater comparison naming the other question.',
+  },
+  lessThanError: {
+    id: 'frescoUi.validation.lessThanError',
+    defaultMessage: 'Your answer must be less than your earlier answer.',
+    description:
+      'Error for a must-be-less comparison when the other answer has no visible label.',
+  },
+  lessThanLabelledError: {
+    id: 'frescoUi.validation.lessThanLabelledError',
+    defaultMessage: "Your answer must be less than your answer to ''{label}''.",
+    description:
+      'Error for a must-be-less comparison naming the other question.',
+  },
+  lessThanHint: {
+    id: 'frescoUi.validation.lessThanHint',
+    defaultMessage: 'Must be less than your earlier answer.',
+    description:
+      'Hint for a must-be-less comparison when the other answer has no visible label.',
+  },
+  lessThanLabelledHint: {
+    id: 'frescoUi.validation.lessThanLabelledHint',
+    defaultMessage: "Must be less than your answer to ''{label}''.",
+    description:
+      'Hint for a must-be-less comparison naming the other question.',
+  },
+  greaterThanOrEqualError: {
+    id: 'frescoUi.validation.greaterThanOrEqualError',
+    defaultMessage:
+      'Your answer must be the same as or greater than your earlier answer.',
+    description:
+      'Error for a must-be-at-least comparison when the other answer has no visible label.',
+  },
+  greaterThanOrEqualLabelledError: {
+    id: 'frescoUi.validation.greaterThanOrEqualLabelledError',
+    defaultMessage:
+      "Your answer must be the same as or greater than your answer to ''{label}''.",
+    description:
+      'Error for a must-be-at-least comparison naming the other question.',
+  },
+  greaterThanOrEqualHint: {
+    id: 'frescoUi.validation.greaterThanOrEqualHint',
+    defaultMessage: 'Must be the same as or greater than your earlier answer.',
+    description:
+      'Hint for a must-be-at-least comparison when the other answer has no visible label.',
+  },
+  greaterThanOrEqualLabelledHint: {
+    id: 'frescoUi.validation.greaterThanOrEqualLabelledHint',
+    defaultMessage:
+      "Must be the same as or greater than your answer to ''{label}''.",
+    description:
+      'Hint for a must-be-at-least comparison naming the other question.',
+  },
+  lessThanOrEqualError: {
+    id: 'frescoUi.validation.lessThanOrEqualError',
+    defaultMessage:
+      'Your answer must be the same as or less than your earlier answer.',
+    description:
+      'Error for a must-be-at-most comparison when the other answer has no visible label.',
+  },
+  lessThanOrEqualLabelledError: {
+    id: 'frescoUi.validation.lessThanOrEqualLabelledError',
+    defaultMessage:
+      "Your answer must be the same as or less than your answer to ''{label}''.",
+    description:
+      'Error for a must-be-at-most comparison naming the other question.',
+  },
+  lessThanOrEqualHint: {
+    id: 'frescoUi.validation.lessThanOrEqualHint',
+    defaultMessage: 'Must be the same as or less than your earlier answer.',
+    description:
+      'Hint for a must-be-at-most comparison when the other answer has no visible label.',
+  },
+  lessThanOrEqualLabelledHint: {
+    id: 'frescoUi.validation.lessThanOrEqualLabelledHint',
+    defaultMessage:
+      "Must be the same as or less than your answer to ''{label}''.",
+    description:
+      'Hint for a must-be-at-most comparison naming the other question.',
+  },
+  emailHint: {
+    id: 'frescoUi.validation.emailHint',
+    defaultMessage: 'Must be a valid email address.',
+    description: 'Hint summarising an email-format rule.',
+  },
+  emailError: {
+    id: 'frescoUi.validation.emailError',
+    defaultMessage: 'Enter a valid email address.',
+    description: 'Error shown when a value is not a valid email address.',
+  },
+});
 
 /**
  * Make a field required
@@ -43,33 +317,39 @@ export type ValidationFunction<T extends ValidationParameter> = (
  * - boolean: not null
  * - categorical: not null, empty array is not permitted
  */
-export const required = (parameter?: boolean | string) => () => {
-  if (parameter === false) {
-    return z.unknown();
-  }
+export const required =
+  (
+    parameter?: boolean | string,
+    _context?: ValidationContext,
+    intl?: IntlShape,
+  ) =>
+  () => {
+    if (parameter === false) {
+      return z.unknown();
+    }
 
-  const message =
-    typeof parameter === 'string'
-      ? parameter
-      : 'You must answer this question before continuing.';
+    const message =
+      typeof parameter === 'string'
+        ? parameter
+        : resolveIntl(intl).formatMessage(messages.required);
 
-  return z.unknown().check(
-    z.superRefine((value, ctx) => {
-      // `isUnanswered` is the shared definition of emptiness: nullish,
-      // whitespace-only text, `NaN`, or an empty multi-select array. Every
-      // optional rule short-circuits on the same predicate, so `required` and
-      // the rules it fronts can never disagree about what "empty" means.
-      if (isUnanswered(value)) {
-        ctx.addIssue({
-          code: 'custom',
-          input: value,
-          message: message,
-          path: [],
-        });
-      }
-    }),
-  ); // No hint for required because we use the asterisk in the UI
-};
+    return z.unknown().check(
+      z.superRefine((value, ctx) => {
+        // `isUnanswered` is the shared definition of emptiness: nullish,
+        // whitespace-only text, `NaN`, or an empty multi-select array. Every
+        // optional rule short-circuits on the same predicate, so `required` and
+        // the rules it fronts can never disagree about what "empty" means.
+        if (isUnanswered(value)) {
+          ctx.addIssue({
+            code: 'custom',
+            input: value,
+            message: message,
+            path: [],
+          });
+        }
+      }),
+    ); // No hint for required because we use the asterisk in the UI
+  };
 
 /**
  * Require that a string be shorter than a maximum length.
@@ -82,13 +362,15 @@ export const required = (parameter?: boolean | string) => () => {
  * guarded on defined-ness rather than truthiness so a maxLength of 0 is
  * honoured.
  */
-const maxLength: ValidationFunction<number> = (max) => () => {
+const maxLength: ValidationFunction<number> = (max, _context, intl) => () => {
   invariant(
     typeof max === 'number' && !Number.isNaN(max),
     'Max length must be specified',
   );
 
-  const hint = `Enter at most ${max} characters.`;
+  const hint = resolveIntl(intl).formatMessage(messages.maxLengthHint, {
+    max,
+  });
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
@@ -100,7 +382,9 @@ const maxLength: ValidationFunction<number> = (max) => () => {
         ctx.addIssue({
           code: 'custom',
           input: value,
-          message: `Too long. Enter fewer than ${max} characters.`,
+          message: resolveIntl(intl).formatMessage(messages.maxLengthError, {
+            max,
+          }),
           path: [],
         });
       }
@@ -118,13 +402,15 @@ const maxLength: ValidationFunction<number> = (max) => () => {
  * be unanswered here too, or a blank field is told both to answer the question
  * and to write more.
  */
-const minLength: ValidationFunction<number> = (min) => () => {
+const minLength: ValidationFunction<number> = (min, _context, intl) => () => {
   invariant(
     typeof min === 'number' && !Number.isNaN(min),
     'Min length must be specified',
   );
 
-  const hint = `Enter at least ${min} characters.`;
+  const hint = resolveIntl(intl).formatMessage(messages.minLengthHint, {
+    min,
+  });
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
@@ -136,7 +422,9 @@ const minLength: ValidationFunction<number> = (min) => () => {
         ctx.addIssue({
           code: 'custom',
           input: value,
-          message: `Too short. Enter at least ${min} characters.`,
+          message: resolveIntl(intl).formatMessage(messages.minLengthError, {
+            min,
+          }),
           path: [],
         });
       }
@@ -154,13 +442,15 @@ const minLength: ValidationFunction<number> = (min) => () => {
  * `0` — an unanswered field would otherwise be reported as "too small".
  * Coerces string inputs from HTML number inputs.
  */
-const minValue: ValidationFunction<number> = (min) => () => {
+const minValue: ValidationFunction<number> = (min, _context, intl) => () => {
   invariant(
     typeof min === 'number' && !Number.isNaN(min),
     'Min value must be specified',
   );
 
-  const hint = `Enter a value greater than or equal to ${min}.`;
+  const hint = resolveIntl(intl).formatMessage(messages.minValueHint, {
+    min,
+  });
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
@@ -173,7 +463,9 @@ const minValue: ValidationFunction<number> = (min) => () => {
         ctx.addIssue({
           code: 'custom',
           input: value,
-          message: `Too small. Value must be at least ${min}.`,
+          message: resolveIntl(intl).formatMessage(messages.minValueError, {
+            min,
+          }),
           path: [],
         });
       }
@@ -192,13 +484,15 @@ const minValue: ValidationFunction<number> = (min) => () => {
  * large". The bound is guarded on defined-ness rather than truthiness so a
  * maxValue of 0 is honoured. Coerces string inputs from HTML number inputs.
  */
-const maxValue: ValidationFunction<number> = (max) => () => {
+const maxValue: ValidationFunction<number> = (max, _context, intl) => () => {
   invariant(
     typeof max === 'number' && !Number.isNaN(max),
     'Max value must be specified',
   );
 
-  const hint = `Enter a value less than or equal to ${max}.`;
+  const hint = resolveIntl(intl).formatMessage(messages.maxValueHint, {
+    max,
+  });
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
@@ -211,7 +505,9 @@ const maxValue: ValidationFunction<number> = (max) => () => {
         ctx.addIssue({
           code: 'custom',
           input: value,
-          message: `Too large. Value must be at most ${max}.`,
+          message: resolveIntl(intl).formatMessage(messages.maxValueError, {
+            max,
+          }),
           path: [],
         });
       }
@@ -262,6 +558,17 @@ const DATE_TIME_RE =
   /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2}))?)?$/;
 const TIME_RE = /^(\d{2}):(\d{2})(?::(\d{2}))?$/;
 
+/**
+ * How precisely to write a bound's time-of-day: to the second when the
+ * authored bound named seconds, otherwise to the minute.
+ *
+ * Comparison is against the authored string, so a bound of `12:34:56`
+ * displayed as `12:34` would name a boundary the rule rejects — the
+ * participant enters the time the hint gave them and is told it is too early.
+ */
+const boundTimeStyle = (seconds: string | undefined) =>
+  seconds === undefined ? ('short' as const) : ('medium' as const);
+
 function utcDateFromParts(
   year: number,
   month: number,
@@ -279,23 +586,37 @@ function utcDateFromParts(
 
 /**
  * Format a min/max bound for human-readable display in validation hints.
- * Uses the runtime's locale via Intl.DateTimeFormat with timeZone: 'UTC' so
- * the formatted date matches the literal YYYY-MM-DD bound regardless of the
- * viewer's timezone. Returns the raw string for values we don't recognise
- * as date/time literals.
+ *
+ * Formats through the same `intl` that renders the message the bound is
+ * substituted into, rather than through the runtime's own default locale:
+ * the two are not the same thing once a host mounts a provider, and a bound
+ * formatted by the browser's default lands inside a sentence written in the
+ * app's locale — an en-GB interface on an en-US machine would say "Must be on
+ * or after June 15, 2000." in US date order.
+ *
+ * `timeZone: 'UTC'` keeps the formatted date equal to the literal YYYY-MM-DD
+ * bound regardless of the viewer's timezone, and `calendar: 'gregory'` keeps
+ * it equal to the same literal under a locale that defaults to another
+ * calendar: the bound describes a rule about a Gregorian ISO value the
+ * DatePicker offers in Gregorian years, so a hint reading "on or after 15
+ * June 2543" would be about a date the field cannot hold. The bare-year
+ * branch above already returns its four digits verbatim for the same reason.
+ *
+ * Returns the raw string for values we don't recognise as date/time literals.
  */
-function formatBoundForDisplay(bound: string): string {
+function formatBoundForDisplay(bound: string, intl: IntlShape): string {
   if (YEAR_RE.test(bound)) return bound;
 
   const yearMonth = YEAR_MONTH_RE.exec(bound);
   if (yearMonth) {
     const year = Number(yearMonth[1]);
     const month = Number(yearMonth[2]);
-    return new Intl.DateTimeFormat(undefined, {
+    return intl.formatDate(utcDateFromParts(year, month, 1), {
       year: 'numeric',
       month: 'long',
       timeZone: 'UTC',
-    }).format(utcDateFromParts(year, month, 1));
+      calendar: 'gregory',
+    });
   }
 
   const dateTime = DATE_TIME_RE.exec(bound);
@@ -305,39 +626,43 @@ function formatBoundForDisplay(bound: string): string {
     const day = Number(dateTime[3]);
     const hour = dateTime[4];
     if (hour !== undefined) {
+      const seconds = dateTime[6];
       const date = utcDateFromParts(
         year,
         month,
         day,
         Number(hour),
         Number(dateTime[5]),
-        dateTime[6] !== undefined ? Number(dateTime[6]) : 0,
+        seconds !== undefined ? Number(seconds) : 0,
       );
-      return new Intl.DateTimeFormat(undefined, {
+      return intl.formatDate(date, {
         dateStyle: 'long',
-        timeStyle: 'short',
+        timeStyle: boundTimeStyle(seconds),
         timeZone: 'UTC',
-      }).format(date);
+        calendar: 'gregory',
+      });
     }
-    return new Intl.DateTimeFormat(undefined, {
+    return intl.formatDate(utcDateFromParts(year, month, day), {
       dateStyle: 'long',
       timeZone: 'UTC',
-    }).format(utcDateFromParts(year, month, day));
+      calendar: 'gregory',
+    });
   }
 
   const time = TIME_RE.exec(bound);
   if (time) {
+    const seconds = time[3];
     const anchor = new Date(Date.UTC(1970, 0, 1));
     anchor.setUTCHours(
       Number(time[1]),
       Number(time[2]),
-      time[3] !== undefined ? Number(time[3]) : 0,
+      seconds !== undefined ? Number(seconds) : 0,
       0,
     );
-    return new Intl.DateTimeFormat(undefined, {
-      timeStyle: 'short',
+    return intl.formatTime(anchor, {
+      timeStyle: boundTimeStyle(seconds),
       timeZone: 'UTC',
-    }).format(anchor);
+    });
   }
 
   return bound;
@@ -354,115 +679,133 @@ function formatBoundForDisplay(bound: string): string {
  * `compareDateStrings('   ', '2000-01-01')` truncates to three characters and
  * sorts the spaces before the year.
  */
-const min: ValidationFunction<number | string> = (minParam) => () => {
-  invariant(
-    minParam !== undefined && minParam !== null && minParam !== '',
-    'Min must be specified',
-  );
+const min: ValidationFunction<number | string> =
+  (minParam, _context, intl) => () => {
+    invariant(
+      minParam !== undefined && minParam !== null && minParam !== '',
+      'Min must be specified',
+    );
 
-  const paramIsDateShaped =
-    typeof minParam === 'string' && matchesDatePattern(minParam);
-  const displayMin = paramIsDateShaped
-    ? formatBoundForDisplay(minParam)
-    : String(minParam);
-  const hint = paramIsDateShaped
-    ? `Must be on or after ${displayMin}.`
-    : `Enter a value greater than or equal to ${displayMin}.`;
+    const paramIsDateShaped =
+      typeof minParam === 'string' && matchesDatePattern(minParam);
+    const displayMin = paramIsDateShaped
+      ? formatBoundForDisplay(minParam, resolveIntl(intl))
+      : String(minParam);
+    const hint = paramIsDateShaped
+      ? resolveIntl(intl).formatMessage(messages.minDate, {
+          min: displayMin,
+        })
+      : resolveIntl(intl).formatMessage(messages.minValueHint, {
+          min: displayMin,
+        });
 
-  return z.unknown().check(
-    z.superRefine((value, ctx) => {
-      if (isUnanswered(value)) {
-        return;
-      }
+    return z.unknown().check(
+      z.superRefine((value, ctx) => {
+        if (isUnanswered(value)) {
+          return;
+        }
 
-      const valueIsDateShaped =
-        typeof value === 'string' && matchesDatePattern(value);
+        const valueIsDateShaped =
+          typeof value === 'string' && matchesDatePattern(value);
 
-      if (paramIsDateShaped || valueIsDateShaped) {
-        if (typeof value !== 'string' || typeof minParam !== 'string') return;
-        if (compareDateStrings(value, minParam) < 0) {
+        if (paramIsDateShaped || valueIsDateShaped) {
+          if (typeof value !== 'string' || typeof minParam !== 'string') return;
+          if (compareDateStrings(value, minParam) < 0) {
+            ctx.addIssue({
+              code: 'custom',
+              input: value,
+              message: resolveIntl(intl).formatMessage(messages.minDate, {
+                min: displayMin,
+              }),
+              path: [],
+            });
+          }
+          return;
+        }
+
+        const numValue = Number(value);
+        const numMin = Number(minParam);
+        if (Number.isNaN(numValue) || Number.isNaN(numMin)) return;
+        if (numValue < numMin) {
           ctx.addIssue({
             code: 'custom',
             input: value,
-            message: `Must be on or after ${displayMin}.`,
+            message: resolveIntl(intl).formatMessage(messages.minValueError, {
+              min: displayMin,
+            }),
             path: [],
           });
         }
-        return;
-      }
-
-      const numValue = Number(value);
-      const numMin = Number(minParam);
-      if (Number.isNaN(numValue) || Number.isNaN(numMin)) return;
-      if (numValue < numMin) {
-        ctx.addIssue({
-          code: 'custom',
-          input: value,
-          message: `Too small. Value must be at least ${displayMin}.`,
-          path: [],
-        });
-      }
-    }),
-    z.meta({ hint }),
-  );
-};
+      }),
+      z.meta({ hint }),
+    );
+  };
 
 /**
  * HTML-aligned maximum bound. See `min` for dispatch rules, and for why the
  * shared `isUnanswered` short-circuit has to come before either branch.
  */
-const max: ValidationFunction<number | string> = (maxParam) => () => {
-  invariant(
-    maxParam !== undefined && maxParam !== null && maxParam !== '',
-    'Max must be specified',
-  );
+const max: ValidationFunction<number | string> =
+  (maxParam, _context, intl) => () => {
+    invariant(
+      maxParam !== undefined && maxParam !== null && maxParam !== '',
+      'Max must be specified',
+    );
 
-  const paramIsDateShaped =
-    typeof maxParam === 'string' && matchesDatePattern(maxParam);
-  const displayMax = paramIsDateShaped
-    ? formatBoundForDisplay(maxParam)
-    : String(maxParam);
-  const hint = paramIsDateShaped
-    ? `Must be on or before ${displayMax}.`
-    : `Enter a value less than or equal to ${displayMax}.`;
+    const paramIsDateShaped =
+      typeof maxParam === 'string' && matchesDatePattern(maxParam);
+    const displayMax = paramIsDateShaped
+      ? formatBoundForDisplay(maxParam, resolveIntl(intl))
+      : String(maxParam);
+    const hint = paramIsDateShaped
+      ? resolveIntl(intl).formatMessage(messages.maxDate, {
+          max: displayMax,
+        })
+      : resolveIntl(intl).formatMessage(messages.maxValueHint, {
+          max: displayMax,
+        });
 
-  return z.unknown().check(
-    z.superRefine((value, ctx) => {
-      if (isUnanswered(value)) {
-        return;
-      }
+    return z.unknown().check(
+      z.superRefine((value, ctx) => {
+        if (isUnanswered(value)) {
+          return;
+        }
 
-      const valueIsDateShaped =
-        typeof value === 'string' && matchesDatePattern(value);
+        const valueIsDateShaped =
+          typeof value === 'string' && matchesDatePattern(value);
 
-      if (paramIsDateShaped || valueIsDateShaped) {
-        if (typeof value !== 'string' || typeof maxParam !== 'string') return;
-        if (compareDateStrings(value, maxParam) > 0) {
+        if (paramIsDateShaped || valueIsDateShaped) {
+          if (typeof value !== 'string' || typeof maxParam !== 'string') return;
+          if (compareDateStrings(value, maxParam) > 0) {
+            ctx.addIssue({
+              code: 'custom',
+              input: value,
+              message: resolveIntl(intl).formatMessage(messages.maxDate, {
+                max: displayMax,
+              }),
+              path: [],
+            });
+          }
+          return;
+        }
+
+        const numValue = Number(value);
+        const numMax = Number(maxParam);
+        if (Number.isNaN(numValue) || Number.isNaN(numMax)) return;
+        if (numValue > numMax) {
           ctx.addIssue({
             code: 'custom',
             input: value,
-            message: `Must be on or before ${displayMax}.`,
+            message: resolveIntl(intl).formatMessage(messages.maxValueError, {
+              max: displayMax,
+            }),
             path: [],
           });
         }
-        return;
-      }
-
-      const numValue = Number(value);
-      const numMax = Number(maxParam);
-      if (Number.isNaN(numValue) || Number.isNaN(numMax)) return;
-      if (numValue > numMax) {
-        ctx.addIssue({
-          code: 'custom',
-          input: value,
-          message: `Too large. Value must be at most ${displayMax}.`,
-          path: [],
-        });
-      }
-    }),
-    z.meta({ hint }),
-  );
-};
+      }),
+      z.meta({ hint }),
+    );
+  };
 
 /**
  * Require that an array have a minimum number of elements.
@@ -482,29 +825,35 @@ const max: ValidationFunction<number | string> = (maxParam) => () => {
  * codebook pick `minSelected` without `required`. Pair `minSelected` with
  * `required: true` on the variable to also reject an empty selection.
  */
-const minSelected: ValidationFunction<number> = (minParam) => () => {
-  invariant(typeof minParam === 'number', 'Min items must be specified');
+const minSelected: ValidationFunction<number> =
+  (minParam, _context, intl) => () => {
+    invariant(typeof minParam === 'number', 'Min items must be specified');
 
-  const hint = `Select at least ${minParam} value${minParam === 1 ? '' : 's'}.`;
+    const hint = resolveIntl(intl).formatMessage(messages.minSelectedHint, {
+      count: minParam,
+    });
 
-  return z.unknown().check(
-    z.superRefine((value, ctx) => {
-      if (isUnanswered(value)) {
-        return;
-      }
-      if (!Array.isArray(value)) return;
-      if (value.length < minParam) {
-        ctx.addIssue({
-          code: 'custom',
-          input: value,
-          message: `Too few selected. Select at least ${minParam} value${minParam === 1 ? '' : 's'}.`,
-          path: [],
-        });
-      }
-    }),
-    z.meta({ hint }),
-  );
-};
+    return z.unknown().check(
+      z.superRefine((value, ctx) => {
+        if (isUnanswered(value)) {
+          return;
+        }
+        if (!Array.isArray(value)) return;
+        if (value.length < minParam) {
+          ctx.addIssue({
+            code: 'custom',
+            input: value,
+            message: resolveIntl(intl).formatMessage(
+              messages.minSelectedError,
+              { count: minParam },
+            ),
+            path: [],
+          });
+        }
+      }),
+      z.meta({ hint }),
+    );
+  };
 
 /**
  * Require that an array have a maximum number of elements.
@@ -518,42 +867,48 @@ const minSelected: ValidationFunction<number> = (minParam) => () => {
  * "Invalid input: expected array, received null", which was shown to the
  * participant verbatim.
  */
-const maxSelected: ValidationFunction<number> = (maxParam) => () => {
-  invariant(typeof maxParam === 'number', 'Max items must be specified');
+const maxSelected: ValidationFunction<number> =
+  (maxParam, _context, intl) => () => {
+    invariant(typeof maxParam === 'number', 'Max items must be specified');
 
-  const hint = `Select a maximum of ${maxParam} value${maxParam === 1 ? '' : 's'}.`;
+    const hint = resolveIntl(intl).formatMessage(messages.maxSelectedHint, {
+      count: maxParam,
+    });
 
-  return z.unknown().check(
-    z.superRefine((value, ctx) => {
-      if (isUnanswered(value)) {
-        return;
-      }
-      if (!Array.isArray(value)) return;
-      if (value.length > maxParam) {
-        ctx.addIssue({
-          code: 'custom',
-          input: value,
-          message: `Too many items selected. Select a maximum of ${maxParam} value${maxParam === 1 ? '' : 's'}.`,
-          path: [],
-        });
-      }
-    }),
-    z.meta({ hint }),
-  );
-};
+    return z.unknown().check(
+      z.superRefine((value, ctx) => {
+        if (isUnanswered(value)) {
+          return;
+        }
+        if (!Array.isArray(value)) return;
+        if (value.length > maxParam) {
+          ctx.addIssue({
+            code: 'custom',
+            input: value,
+            message: resolveIntl(intl).formatMessage(
+              messages.maxSelectedError,
+              { count: maxParam },
+            ),
+            path: [],
+          });
+        }
+      }),
+      z.meta({ hint }),
+    );
+  };
 
 /**
  * Require that a value is unique among all entities of the same type in the
  * current network
  */
-const unique: ValidationFunction<string> = (attribute, context) => () => {
+const unique: ValidationFunction<string> = (attribute, context, intl) => () => {
   invariant(
     context,
     'Validation context must be provided when using unique validation',
   );
   const { stageSubject, network, currentEntityId } = context;
 
-  const hint = 'Must be unique.';
+  const hint = resolveIntl(intl).formatMessage(messages.uniqueHint);
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
@@ -585,7 +940,7 @@ const unique: ValidationFunction<string> = (attribute, context) => () => {
       if (existingValues.some((v) => isMatchingValue(value, v))) {
         ctx.addIssue({
           code: 'custom',
-          message: 'This value is used elsewhere. It must be unique.',
+          message: resolveIntl(intl).formatMessage(messages.uniqueError),
           path: [],
         });
       }
@@ -629,27 +984,49 @@ const comparisonLabel = (
 };
 
 /**
+ * Message + hint for one comparison rule: the label-free sentences when the
+ * target has no participant-facing label, the labelled ones otherwise.
+ */
+const comparisonCopy = (
+  intl: IntlShape,
+  label: string | undefined,
+  copy: {
+    error: (typeof messages)[keyof typeof messages];
+    hint: (typeof messages)[keyof typeof messages];
+    labelledError: (typeof messages)[keyof typeof messages];
+    labelledHint: (typeof messages)[keyof typeof messages];
+  },
+): { message: string; hint: string } =>
+  label === undefined
+    ? {
+        message: intl.formatMessage(copy.error),
+        hint: intl.formatMessage(copy.hint),
+      }
+    : {
+        message: intl.formatMessage(copy.labelledError, { label }),
+        hint: intl.formatMessage(copy.labelledHint, { label }),
+      };
+
+/**
  * Require that a value is different from another variable in the same form
  *
  * Short-circuits when either side is unanswered: `required` owns emptiness,
  * and two blanks are not a participant's answers being "the same".
  */
 const differentFrom: ValidationFunction<string> =
-  (attribute, context) => (formValues) => {
+  (attribute, context, intl) => (formValues) => {
     invariant(
       typeof attribute === 'string',
       'Attribute must be specified for differentFrom validation',
     );
 
     const label = comparisonLabel(attribute, context);
-    const message =
-      label === undefined
-        ? 'Your answer must be different from your earlier answer.'
-        : `Your answer must be different from your answer to '${label}'.`;
-    const hint =
-      label === undefined
-        ? 'Must be different from your earlier answer.'
-        : `Must be different from your answer to '${label}'.`;
+    const { message, hint } = comparisonCopy(resolveIntl(intl), label, {
+      error: messages.differentFromError,
+      hint: messages.differentFromHint,
+      labelledError: messages.differentFromLabelledError,
+      labelledHint: messages.differentFromLabelledHint,
+    });
 
     return z.unknown().check(
       z.superRefine((value, ctx) => {
@@ -681,21 +1058,19 @@ const differentFrom: ValidationFunction<string> =
  * See note about comparison variables in the `differentFrom` validation.
  */
 const sameAs: ValidationFunction<string> =
-  (attribute, context) => (formValues) => {
+  (attribute, context, intl) => (formValues) => {
     invariant(
       typeof attribute === 'string',
       'Attribute must be specified for sameAs validation',
     );
 
     const label = comparisonLabel(attribute, context);
-    const message =
-      label === undefined
-        ? 'Your answer must be the same as your earlier answer.'
-        : `Your answer must be the same as your answer to '${label}'.`;
-    const hint =
-      label === undefined
-        ? 'Must be the same as your earlier answer.'
-        : `Must be the same as your answer to '${label}'.`;
+    const { message, hint } = comparisonCopy(resolveIntl(intl), label, {
+      error: messages.sameAsError,
+      hint: messages.sameAsHint,
+      labelledError: messages.sameAsLabelledError,
+      labelledHint: messages.sameAsLabelledHint,
+    });
 
     return z.unknown().check(
       z.superRefine((value, ctx) => {
@@ -727,7 +1102,7 @@ const sameAs: ValidationFunction<string> =
 const greaterThanVariable: ValidationFunction<{
   attribute: string;
   type: Variable['type'];
-}> = (parameter, context) => (formValues) => {
+}> = (parameter, context, intl) => (formValues) => {
   const { attribute, type } = parameter;
 
   invariant(
@@ -741,14 +1116,12 @@ const greaterThanVariable: ValidationFunction<{
   );
 
   const label = comparisonLabel(attribute, context);
-  const message =
-    label === undefined
-      ? 'Your answer must be greater than your earlier answer.'
-      : `Your answer must be greater than your answer to '${label}'.`;
-  const hint =
-    label === undefined
-      ? 'Must be greater than your earlier answer.'
-      : `Must be greater than your answer to '${label}'.`;
+  const { message, hint } = comparisonCopy(resolveIntl(intl), label, {
+    error: messages.greaterThanError,
+    hint: messages.greaterThanHint,
+    labelledError: messages.greaterThanLabelledError,
+    labelledHint: messages.greaterThanLabelledHint,
+  });
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
@@ -827,7 +1200,7 @@ const pattern: ValidationFunction<{
 const lessThanVariable: ValidationFunction<{
   attribute: string;
   type: Variable['type'];
-}> = (parameter, context) => (formValues) => {
+}> = (parameter, context, intl) => (formValues) => {
   const { attribute, type } = parameter;
 
   invariant(
@@ -841,14 +1214,12 @@ const lessThanVariable: ValidationFunction<{
   );
 
   const label = comparisonLabel(attribute, context);
-  const message =
-    label === undefined
-      ? 'Your answer must be less than your earlier answer.'
-      : `Your answer must be less than your answer to '${label}'.`;
-  const hint =
-    label === undefined
-      ? 'Must be less than your earlier answer.'
-      : `Must be less than your answer to '${label}'.`;
+  const { message, hint } = comparisonCopy(resolveIntl(intl), label, {
+    error: messages.lessThanError,
+    hint: messages.lessThanHint,
+    labelledError: messages.lessThanLabelledError,
+    labelledHint: messages.lessThanLabelledHint,
+  });
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
@@ -885,7 +1256,7 @@ const lessThanVariable: ValidationFunction<{
 const greaterThanOrEqualToVariable: ValidationFunction<{
   attribute: string;
   type: Variable['type'];
-}> = (parameter, context) => (formValues) => {
+}> = (parameter, context, intl) => (formValues) => {
   const { attribute, type } = parameter;
 
   invariant(
@@ -899,14 +1270,12 @@ const greaterThanOrEqualToVariable: ValidationFunction<{
   );
 
   const label = comparisonLabel(attribute, context);
-  const message =
-    label === undefined
-      ? 'Your answer must be the same as or greater than your earlier answer.'
-      : `Your answer must be the same as or greater than your answer to '${label}'.`;
-  const hint =
-    label === undefined
-      ? 'Must be the same as or greater than your earlier answer.'
-      : `Must be the same as or greater than your answer to '${label}'.`;
+  const { message, hint } = comparisonCopy(resolveIntl(intl), label, {
+    error: messages.greaterThanOrEqualError,
+    hint: messages.greaterThanOrEqualHint,
+    labelledError: messages.greaterThanOrEqualLabelledError,
+    labelledHint: messages.greaterThanOrEqualLabelledHint,
+  });
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
@@ -941,7 +1310,7 @@ const greaterThanOrEqualToVariable: ValidationFunction<{
 const lessThanOrEqualToVariable: ValidationFunction<{
   attribute: string;
   type: Variable['type'];
-}> = (parameter, context) => (formValues) => {
+}> = (parameter, context, intl) => (formValues) => {
   const { attribute, type } = parameter;
 
   invariant(
@@ -955,14 +1324,12 @@ const lessThanOrEqualToVariable: ValidationFunction<{
   );
 
   const label = comparisonLabel(attribute, context);
-  const message =
-    label === undefined
-      ? 'Your answer must be the same as or less than your earlier answer.'
-      : `Your answer must be the same as or less than your answer to '${label}'.`;
-  const hint =
-    label === undefined
-      ? 'Must be the same as or less than your earlier answer.'
-      : `Must be the same as or less than your answer to '${label}'.`;
+  const { message, hint } = comparisonCopy(resolveIntl(intl), label, {
+    error: messages.lessThanOrEqualError,
+    hint: messages.lessThanOrEqualHint,
+    labelledError: messages.lessThanOrEqualLabelledError,
+    labelledHint: messages.lessThanOrEqualLabelledHint,
+  });
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
@@ -1003,27 +1370,33 @@ const lessThanOrEqualToVariable: ValidationFunction<{
  * alongside "You must answer this question before continuing.". A value that
  * is not a string is left alone rather than surfacing Zod's own type error.
  */
-const email = () => () => {
-  const hint = 'Must be a valid email address.';
-  const message = 'Enter a valid email address.';
-  const address = z.email(message);
+const email =
+  (
+    _parameter?: ValidationParameter,
+    _context?: ValidationContext,
+    intl?: IntlShape,
+  ) =>
+  () => {
+    const hint = resolveIntl(intl).formatMessage(messages.emailHint);
+    const message = resolveIntl(intl).formatMessage(messages.emailError);
+    const address = z.email(message);
 
-  return z.unknown().check(
-    z.superRefine((value, ctx) => {
-      if (isUnanswered(value)) return;
-      if (typeof value !== 'string') return;
-      if (!address.safeParse(value).success) {
-        ctx.addIssue({
-          code: 'custom',
-          input: value,
-          message,
-          path: [],
-        });
-      }
-    }),
-    z.meta({ hint }),
-  );
-};
+    return z.unknown().check(
+      z.superRefine((value, ctx) => {
+        if (isUnanswered(value)) return;
+        if (typeof value !== 'string') return;
+        if (!address.safeParse(value).success) {
+          ctx.addIssue({
+            code: 'custom',
+            input: value,
+            message,
+            path: [],
+          });
+        }
+      }),
+      z.meta({ hint }),
+    );
+  };
 
 const custom = () => () => void 0; // Placeholder for custom validation handled elsewhere
 

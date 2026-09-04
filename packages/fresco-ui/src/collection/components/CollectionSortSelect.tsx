@@ -3,6 +3,9 @@
 import { ArrowDownIcon, ArrowUpIcon, ChevronsUpDownIcon } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { Button, type ButtonProps } from '../../Button';
 import {
   DropdownMenu,
@@ -18,6 +21,27 @@ import type {
   SortDirection,
   SortProperty,
 } from '../sorting/types';
+
+const messages = defineMessages({
+  sortByPlaceholder: {
+    id: 'frescoUi.collectionSortSelect.placeholder',
+    defaultMessage: 'Sort by...',
+    description:
+      'Default label of the sort dropdown trigger when no sort is active.',
+  },
+  clearSorting: {
+    id: 'frescoUi.collectionSortSelect.clearSorting',
+    defaultMessage: 'Clear sorting',
+    description: 'Menu action removing the active collection sort.',
+  },
+  toggleDirection: {
+    id: 'frescoUi.collectionSortSelect.toggleDirection',
+    defaultMessage:
+      '{direction, select, asc {Sort ascending, click to toggle} other {Sort descending, click to toggle}}',
+    description:
+      'Accessible name of the sort-direction toggle button; announces the current direction.',
+  },
+});
 
 type CollectionSortSelectProps = {
   /** Array of sortable properties to display in the dropdown */
@@ -67,13 +91,14 @@ function propertiesEqual(a: SortProperty, b: SortProperty): boolean {
  */
 export function CollectionSortSelect({
   options,
-  placeholder = 'Sort by...',
+  placeholder,
   showClearOption = true,
   showDirectionToggle = true,
   className,
   variant = 'outline',
   size = 'sm',
 }: CollectionSortSelectProps) {
+  const intl = useAppIntl();
   const sortManager = useOptionalSortManager();
 
   // Subscribe directly to the slice of sort state that we render. SortManager
@@ -129,8 +154,11 @@ export function CollectionSortSelect({
         <DropdownMenuTrigger
           render={
             <Button variant={variant} size={size}>
-              {currentOption ? currentOption.label : placeholder}
-              <ChevronsUpDownIcon className="ml-1 size-3.5 opacity-50" />
+              {currentOption
+                ? currentOption.label
+                : (placeholder ??
+                  intl.formatMessage(messages.sortByPlaceholder))}
+              <ChevronsUpDownIcon className="ms-1 size-3.5 opacity-50" />
             </Button>
           }
         />
@@ -157,7 +185,7 @@ export function CollectionSortSelect({
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleClear}>
-                Clear sorting
+                {intl.formatMessage(messages.clearSorting)}
               </DropdownMenuItem>
             </>
           )}
@@ -169,7 +197,9 @@ export function CollectionSortSelect({
           variant={variant}
           size={size}
           onClick={handleToggleDirection}
-          aria-label={`Sort ${currentDirection === 'asc' ? 'ascending' : 'descending'}, click to toggle`}
+          aria-label={intl.formatMessage(messages.toggleDirection, {
+            direction: currentDirection,
+          })}
         >
           {currentDirection === 'asc' ? (
             <ArrowUpIcon className="size-3.5" />

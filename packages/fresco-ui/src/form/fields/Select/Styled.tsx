@@ -105,7 +105,7 @@ function SelectField(props: SelectProps) {
           state: getInputState(props),
         })}
       >
-        <Select.Value className="min-w-0 flex-1 truncate text-left">
+        <Select.Value className="min-w-0 flex-1 truncate text-start">
           {(currentValue: string | number | null) => {
             if (
               currentValue === null ||

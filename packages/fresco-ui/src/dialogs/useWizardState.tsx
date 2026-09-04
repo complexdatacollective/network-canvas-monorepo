@@ -3,6 +3,10 @@
 import { Loader2 } from 'lucide-react';
 import { type ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { Button } from '../Button';
 import Pips from '../Pips';
 import type { GetFieldValue, WizardDialog } from './DialogProvider';
@@ -11,6 +15,14 @@ import {
   WizardContext,
   type WizardContextType,
 } from './useWizard';
+
+const messages = defineMessages({
+  finish: {
+    id: 'frescoUi.wizard.finish',
+    defaultMessage: 'Finish',
+    description: 'Default label of the wizard advance button on its last step.',
+  },
+});
 
 type UseWizardStateArgs = {
   dialog: WizardDialog;
@@ -85,6 +97,7 @@ export default function useWizardState({
   getFieldErrors,
   getFormValues,
 }: UseWizardStateArgs): WizardDialogProps | null {
+  const intl = useAppIntl();
   const [stepIndex, setStepIndex] = useState(0);
   const [data, setData] = useState<Record<string, unknown>>({});
   const [completedStepValues, setCompletedStepValues] = useState<
@@ -296,7 +309,9 @@ export default function useWizardState({
   const nextLabel =
     nextLabelOverride ??
     currentStep.nextLabel ??
-    (isLastActive ? 'Finish' : 'Continue');
+    (isLastActive
+      ? intl.formatMessage(messages.finish)
+      : intl.formatMessage(commonMessages.continue));
 
   const showBackButton = !isFirstActive;
 
@@ -331,7 +346,7 @@ export default function useWizardState({
         )}
         <div className="phone-landscape:flex-row phone-landscape:justify-between flex flex-col gap-8">
           <Button onClick={handleCancel} data-testid="wizard-cancel">
-            {dialog.cancelLabel ?? 'Cancel'}
+            {dialog.cancelLabel ?? intl.formatMessage(commonMessages.cancel)}
           </Button>
 
           <div className="phone-landscape:flex-row phone-landscape:justify-between flex flex-col gap-2">
@@ -341,7 +356,8 @@ export default function useWizardState({
                 disabled={isFirstActive || !backEnabled}
                 data-testid="wizard-back"
               >
-                {currentStep.backLabel ?? 'Back'}
+                {currentStep.backLabel ??
+                  intl.formatMessage(commonMessages.back)}
               </Button>
             )}
             <Button

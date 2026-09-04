@@ -8,7 +8,7 @@ export function UnorderedList({
   className?: string;
 }) {
   return (
-    <ul className={cx('ml-8 list-disc not-last:mb-[1em]', className)}>
+    <ul className={cx('ms-8 list-disc not-last:mb-[1em]', className)}>
       {children}
     </ul>
   );
@@ -22,7 +22,7 @@ export function OrderedList({
   className?: string;
 }) {
   return (
-    <ol className={cx('ml-8 list-decimal not-last:mb-[1em]', className)}>
+    <ol className={cx('ms-8 list-decimal not-last:mb-[1em]', className)}>
       {children}
     </ol>
   );

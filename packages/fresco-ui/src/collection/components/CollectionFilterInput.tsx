@@ -4,10 +4,50 @@ import { Loader2, Search, X } from 'lucide-react';
 import { type ReactNode, useCallback } from 'react';
 import { useShallow } from 'zustand/shallow';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { IconButton } from '../../Button';
 import InputField from '../../form/fields/InputField';
 import { cx } from '../../utils/cva';
 import { useCollectionStore, useOptionalFilterManager } from '../contexts';
+
+const messages = defineMessages({
+  searchPlaceholder: {
+    id: 'frescoUi.collectionFilterInput.searchPlaceholder',
+    defaultMessage: 'Search...',
+    description: 'Default placeholder for the collection filter input.',
+  },
+  searching: {
+    id: 'frescoUi.collectionFilterInput.searching',
+    defaultMessage: 'Searching...',
+    description:
+      'Status text shown while the collection filter is running a search.',
+  },
+  indexing: {
+    id: 'frescoUi.collectionFilterInput.indexing',
+    defaultMessage: 'Indexing...',
+    description:
+      'Status text shown while the collection filter builds its search index.',
+  },
+  resultCount: {
+    id: 'frescoUi.collectionFilterInput.resultCount',
+    defaultMessage: '{count, plural, one {# result} other {# results}}',
+    description:
+      'Match total shown inside the filter input while a filter is active.',
+  },
+  clearSearch: {
+    id: 'frescoUi.collectionFilterInput.clearSearch',
+    defaultMessage: 'Clear search',
+    description:
+      'Accessible name of the button that clears the collection filter query.',
+  },
+  filter: {
+    id: 'frescoUi.collectionFilterInput.filter',
+    defaultMessage: 'Filter',
+    description: 'Accessible name of the collection filter input.',
+  },
+});
 
 type CollectionFilterInputProps = {
   /** Placeholder text for the input. Default: "Search..." */
@@ -48,16 +88,17 @@ type CollectionFilterInputProps = {
  * ```
  */
 export function CollectionFilterInput({
-  placeholder = 'Search...',
+  placeholder,
   showClearButton = true,
   loadingIndicator,
-  loadingText = 'Searching...',
-  indexingText = 'Indexing...',
+  loadingText,
+  indexingText,
   showLoadingIndicator = true,
   showResultCount = true,
   size = 'md',
   className,
 }: CollectionFilterInputProps) {
+  const intl = useAppIntl();
   const filterManager = useOptionalFilterManager();
 
   // Subscribe directly to the slice of filter state this component renders.
@@ -107,7 +148,9 @@ export function CollectionFilterInput({
 
   const isLoading = isFiltering || isIndexing;
   const hasQuery = query.length > 0;
-  const statusText = isIndexing ? indexingText : loadingText;
+  const statusText = isIndexing
+    ? (indexingText ?? intl.formatMessage(messages.indexing))
+    : (loadingText ?? intl.formatMessage(messages.searching));
 
   const defaultLoadingIndicator = (
     <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -127,15 +170,16 @@ export function CollectionFilterInput({
     <div className="flex items-center gap-2">
       {showResultCount && hasActiveFilter && (
         <span className="text-sm text-current/70">
-          {matchCount} result
-          {matchCount !== 1 ? 's' : ''}
+          {intl.formatMessage(messages.resultCount, {
+            count: matchCount ?? 0,
+          })}
         </span>
       )}
       {showClearButton && hasQuery && (
         <IconButton
           variant="text"
           onClick={handleClear}
-          aria-label="Clear search"
+          aria-label={intl.formatMessage(messages.clearSearch)}
           icon={<X className="size-3.5" />}
         />
       )}
@@ -146,14 +190,16 @@ export function CollectionFilterInput({
     <InputField
       type="search"
       name="collection-filter"
-      placeholder={placeholder}
+      placeholder={
+        placeholder ?? intl.formatMessage(messages.searchPlaceholder)
+      }
       value={query}
       onChange={handleChange}
       prefixComponent={prefixContent}
       suffixComponent={suffixContent}
       size={size}
       className={cx('w-full', className)}
-      aria-label="Filter"
+      aria-label={intl.formatMessage(messages.filter)}
     />
   );
 }

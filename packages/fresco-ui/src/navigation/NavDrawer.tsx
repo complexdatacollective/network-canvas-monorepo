@@ -40,8 +40,8 @@ const DRAWER_TRANSITION = {
  * How far off-screen the closed panel sits, as a share of its own width.
  *
  * A transform has no logical form — `x` is the physical axis in every writing
- * direction — while the panel's PLACEMENT is logical (`inset-s-0` puts it on
- * the inline-start edge, which is the right-hand edge in RTL). Left as a plain
+ * direction — while the panel's PLACEMENT is logical (`inset-s-0` below sets
+ * `inset-inline-start`, which is the right-hand edge in RTL). Left as a plain
  * `-100%` the panel would settle on the correct edge but arrive from the wrong
  * side of the screen.
  *

@@ -2,8 +2,27 @@
 
 import { useCallback } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import Button from '../../Button';
+import { formatFilterNumber } from './formatFilterNumber';
 import { type RangeFilterConfig, type RangeFilterValue } from './types';
+
+const messages = defineMessages({
+  minimum: {
+    id: 'frescoUi.rangeFilter.minimum',
+    defaultMessage: 'Minimum',
+    description:
+      'Accessible name of the lower-bound slider in a numeric range filter.',
+  },
+  maximum: {
+    id: 'frescoUi.rangeFilter.maximum',
+    defaultMessage: 'Maximum',
+    description:
+      'Accessible name of the upper-bound slider in a numeric range filter.',
+  },
+});
 
 type RangeFilterProps = {
   value: RangeFilterValue | undefined;
@@ -16,10 +35,17 @@ export default function RangeFilter({
   onChange,
   config,
 }: RangeFilterProps) {
+  const intl = useAppIntl();
   const currentMin = value?.min ?? config.min;
   const currentMax = value?.max ?? config.max;
   const step = config.step ?? 1;
-  const formatLabel = config.formatLabel ?? String;
+  // A host that supplies `formatLabel` is naming its own units (currency, a
+  // duration, a category) and owns the whole string; with none, the endpoints
+  // are bare quantities and belong in the reader's digits and grouping rather
+  // than the source language's.
+  const formatLabel =
+    config.formatLabel ??
+    ((endpoint: number) => formatFilterNumber(intl, endpoint));
 
   const isPresetActive = useCallback(
     (presetMin: number, presetMax: number) =>
@@ -87,7 +113,7 @@ export default function RangeFilter({
         />
         <input
           type="range"
-          aria-label="Minimum"
+          aria-label={intl.formatMessage(messages.minimum)}
           min={config.min}
           max={config.max}
           step={step}
@@ -97,7 +123,7 @@ export default function RangeFilter({
         />
         <input
           type="range"
-          aria-label="Maximum"
+          aria-label={intl.formatMessage(messages.maximum)}
           min={config.min}
           max={config.max}
           step={step}

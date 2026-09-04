@@ -124,6 +124,7 @@
     "./form/fields/DatePicker": "./src/form/fields/DatePicker.tsx",
     "./form/fields/InputField": "./src/form/fields/InputField.tsx",
     "./form/fields/LikertScale": "./src/form/fields/LikertScale.tsx",
+    "./form/fields/LocaleSelect": "./src/form/fields/LocaleSelect.tsx",
     "./form/fields/PasswordField": "./src/form/fields/PasswordField.tsx",
     "./form/fields/RadioGroup": "./src/form/fields/RadioGroup.tsx",
     "./form/fields/RadioMatrixField": "./src/form/fields/RadioMatrixField.tsx",
@@ -161,6 +162,7 @@
     "./layout/AppFrame": "./src/layout/AppFrame.tsx",
     "./layout/ResponsiveContainer": "./src/layout/ResponsiveContainer.tsx",
     "./layout/Surface": "./src/layout/Surface.tsx",
+    "./locales": "./src/locales/catalogs.ts",
     "./navigation/EverythingBar": "./src/navigation/EverythingBar.tsx",
     "./navigation/NavDrawer": "./src/navigation/NavDrawer.tsx",
     "./navigation/NavItem": "./src/navigation/NavItem.tsx",
@@ -617,6 +619,10 @@
         "types": "./dist/form/fields/LikertScale.d.ts",
         "default": "./dist/form/fields/LikertScale.js"
       },
+      "./form/fields/LocaleSelect": {
+        "types": "./dist/form/fields/LocaleSelect.d.ts",
+        "default": "./dist/form/fields/LocaleSelect.js"
+      },
       "./form/fields/PasswordField": {
         "types": "./dist/form/fields/PasswordField.d.ts",
         "default": "./dist/form/fields/PasswordField.js"
@@ -765,6 +771,10 @@
         "types": "./dist/layout/Surface.d.ts",
         "default": "./dist/layout/Surface.js"
       },
+      "./locales": {
+        "types": "./dist/locales/catalogs.d.ts",
+        "default": "./dist/locales/catalogs.js"
+      },
       "./navigation/EverythingBar": {
         "types": "./dist/navigation/EverythingBar.d.ts",
         "default": "./dist/navigation/EverythingBar.js"
@@ -860,6 +870,7 @@
     "chromatic": "chromatic --only-changed --exit-zero-on-changes --storybook-build-dir=storybook-static --storybook-base-dir=packages/fresco-ui --storybook-config-dir=.storybook --untraced 'apps/architect/package.json' --untraced 'apps/architect-classic/package.json' --untraced 'apps/interviewer/package.json' --untraced 'apps/interviewer-classic/package.json' --untraced 'packages/interview/package.json' --untraced 'packages/site-navigation-element/package.json'",
     "prepublishOnly": "pnpm build",
     "clean": "rm -rf .turbo node_modules dist",
+    "i18n:extract": "node scripts/extract-i18n.mjs",
     "sync-exports": "node scripts/generate-publish-exports.mjs"
   },
   "dependencies": {
@@ -893,7 +904,9 @@
   "devDependencies": {
     "@base-ui/react": "catalog:",
     "@chromatic-com/storybook": "catalog:",
+    "@codaco/app-i18n": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",
+    "@codaco/storybook-config": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@codaco/vitest-config": "workspace:^",
     "@faker-js/faker": "catalog:",
@@ -925,6 +938,7 @@
   },
   "peerDependencies": {
     "@base-ui/react": "^1.4.0",
+    "@codaco/app-i18n": "workspace:^",
     "@codaco/shared-consts": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
     "@tanstack/react-table": "catalog:",

@@ -1,5 +1,11 @@
 import { z } from 'zod/mini';
 
+import {
+  createAppIntl,
+  defineMessages,
+  type IntlShape,
+} from '@codaco/app-i18n/messages';
+
 import { UnorderedList } from '../../typography/UnorderedList';
 import type {
   CustomFieldValidation,
@@ -14,6 +20,25 @@ import {
   validationPropKeys,
   validations,
 } from './functions';
+
+const messages = defineMessages({
+  unexpectedError: {
+    id: 'frescoUi.validation.unexpectedError',
+    defaultMessage: 'An error occurred while validating.',
+    description:
+      'Error shown when a validation rule itself throws unexpectedly.',
+  },
+});
+
+let defaultHelperIntl: IntlShape | undefined;
+
+// English fallback for callers that thread no intl — see the seam note on
+// `ValidationFunction` in ./functions.ts.
+const helperIntl = (intl?: IntlShape): IntlShape => {
+  if (intl) return intl;
+  defaultHelperIntl ??= createAppIntl({ locale: 'en' });
+  return defaultHelperIntl;
+};
 
 /**
  * Validates a field value against a validation schema.
@@ -53,7 +78,10 @@ export async function validateFieldValue<T extends z.ZodMiniType>(
  *
  * Exported for use by UnconnectedField.
  */
-export function makeValidationFunction(props: Record<string, unknown>) {
+export function makeValidationFunction(
+  props: Record<string, unknown>,
+  intl?: IntlShape,
+) {
   const validationContext = props.validationContext as
     | ValidationContext
     | undefined;
@@ -78,6 +106,7 @@ export function makeValidationFunction(props: Record<string, unknown>) {
             const validationFn = validationFnFactory(
               parameter as ValidationParameter,
               validationContext,
+              intl,
             )(formValues);
 
             const result = await validationFn.safeParseAsync(fieldValue);
@@ -96,7 +125,7 @@ export function makeValidationFunction(props: Record<string, unknown>) {
             console.error('Error while validating:', error);
             ctx.addIssue({
               code: 'custom',
-              message: 'An error occurred while validating.',
+              message: helperIntl(intl).formatMessage(messages.unexpectedError),
             });
           }
         }
@@ -131,7 +160,9 @@ export function makeValidationFunction(props: Record<string, unknown>) {
               console.log('custom validation error', error);
               ctx.addIssue({
                 code: 'custom',
-                message: 'An error occurred while validating.',
+                message: helperIntl(intl).formatMessage(
+                  messages.unexpectedError,
+                ),
               });
             }
           }
@@ -146,7 +177,10 @@ export function makeValidationFunction(props: Record<string, unknown>) {
  *
  * Exported for use by UnconnectedField.
  */
-export function makeValidationHints(props: Record<string, unknown>) {
+export function makeValidationHints(
+  props: Record<string, unknown>,
+  intl?: IntlShape,
+) {
   const validationContext = props.validationContext as
     | ValidationContext
     | undefined;
@@ -180,6 +214,7 @@ export function makeValidationHints(props: Record<string, unknown>) {
           | boolean
           | { regex: string; hint: string },
         validationContext,
+        intl,
       )({});
 
       // Extract hint from the schema's metadata via global registry
