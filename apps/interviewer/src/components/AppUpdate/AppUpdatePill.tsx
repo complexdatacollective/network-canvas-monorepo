@@ -20,7 +20,6 @@ export default function AppUpdatePill() {
       releaseNotes={releaseNotes}
       onInstall={install}
       unsavedWorkCaveat={UPDATE_CAVEAT}
-      size="sm"
     />
   );
 }

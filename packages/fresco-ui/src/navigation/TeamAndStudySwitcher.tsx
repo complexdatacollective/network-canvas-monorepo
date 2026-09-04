@@ -475,11 +475,7 @@ function Segment({
                           // comes off on the selected row, where it would pull
                           // the label to about 4.2:1.
                           variant="filled"
-                          // `text-2xs` asked for here, not taken from
-                          // `Pill`'s `sm` variant: that variant is public, and
-                          // shrinking it shrinks every small pill in every app
-                          // — Interviewer's version status among them.
-                          className="text-2xs shrink-0 uppercase group-data-selected:bg-transparent"
+                          className="shrink-0 uppercase group-data-selected:bg-transparent"
                         >
                           {item.badge}
                         </Pill>
