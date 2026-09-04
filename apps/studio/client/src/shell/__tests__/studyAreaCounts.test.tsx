@@ -147,18 +147,91 @@ function renderStudy(path = '/study/study-1') {
 }
 
 /**
+ * The study sidebar, once the shell has put it on screen.
+ *
+ * Rendering `RouterProvider` boots the whole app: the session guard resolves,
+ * the header and its switchers render, the study area mounts, and only then
+ * does the counts query start. Awaiting the sidebar here gives that boot and
+ * the count that arrives after it one Testing Library budget each, rather than
+ * asking a single `findBy` to cover both in series.
+ *
+ * The 5s budget in `disable-animations.js` is calibrated for a single wait
+ * under load, and raising it is not the lever here: on a four-core CI runner
+ * the two latencies together spent 5068ms of that budget in one run and ran
+ * past it in another, while the same file's boot-only waits finished inside
+ * 2s. Each still gets 5s and no more.
+ *
+ * It also scopes every query below to the region that is supposed to carry the
+ * numbers, so the header's own links cannot answer for the sidebar, and so
+ * whatever DOM a failure does print is the nav rather than the whole document.
+ * The CI failure this helper exists to stop printed an unscoped `findBy`,
+ * which hit Testing Library's 7000-character limit inside the header and never
+ * reached a sidebar row at all.
+ */
+async function studySidebar() {
+  return within(await screen.findByRole('navigation', { name: 'Study' }));
+}
+
+type StudySidebar = Awaited<ReturnType<typeof studySidebar>>;
+
+/**
  * The sidebar rows that render a number, by their text.
  *
- * Read off the navigation region rather than the whole document so the
- * header's own links cannot answer for the sidebar, and by text rather than by
- * accessible name because the negative cases assert that NO row carries a
- * digit — a query by name can only ask about a name someone predicted.
+ * By text rather than by accessible name because the negative cases assert
+ * that NO row carries a digit — a query by name can only ask about a name
+ * someone predicted.
  */
-function numberedRows(): string[] {
-  return within(screen.getByRole('navigation'))
+function numberedRows(sidebar: StudySidebar): string[] {
+  return sidebar
     .getAllByRole('link')
     .map((link) => link.textContent ?? '')
     .filter((text) => /\d/.test(text));
+}
+
+/**
+ * The row for `destination`, with or without a number.
+ *
+ * A count is rendered inside the link, so the row's accessible name is either
+ * the destination alone or the destination and its number, and a prefix finds
+ * it in both states. Every wait below needs that. A query for an exact name
+ * can only report that it found nothing, and it can only do so after spending
+ * the whole wait budget — which is the wrong answer twice over here, because
+ * both the number failing to arrive and a number arriving that should not have
+ * leave the row on screen under the other name.
+ */
+function rowNamed(destination: string): RegExp {
+  return new RegExp(`^${destination}\\b`);
+}
+
+/**
+ * The countable row named `destination`, once its count has arrived.
+ *
+ * The count is rendered INSIDE the link, so it is part of the row's accessible
+ * name — which is the whole reason it is placed there, and so the name is the
+ * assertion: a number rendered beside the link rather than within it fails
+ * here.
+ *
+ * Waiting on the NAME of a row that is already on screen, rather than
+ * searching for a name that may never appear, is what makes a failure legible.
+ * `findByRole` can only report that it found nothing, over a DOM dump that
+ * Testing Library truncates at 7000 characters — in CI that ran out inside the
+ * header and never reached a sidebar row, so the failure said nothing about
+ * whether the row was there without its number or missing altogether. This
+ * reports the name the row does carry.
+ *
+ * The row is re-queried on each poll rather than held, so it does not matter
+ * whether React reuses the element when the number arrives.
+ */
+async function countedRow(
+  sidebar: StudySidebar,
+  destination: string,
+  name: string,
+): Promise<HTMLElement> {
+  return waitFor(() => {
+    const row = sidebar.getByRole('link', { name: rowNamed(destination) });
+    expect(row).toHaveAccessibleName(name);
+    return row;
+  });
 }
 
 beforeEach(() => {
@@ -175,26 +248,23 @@ describe('the study sidebar’s counts', () => {
       sessions: 212,
     });
     renderStudy();
+    const sidebar = await studySidebar();
 
-    // The count is rendered INSIDE the link, so it is part of the row's
-    // accessible name — which is the whole reason it is placed there. Finding
-    // the row by that name is therefore the assertion: a number rendered
-    // beside the link instead of within it would fail here.
     expect(
-      await screen.findByRole('link', { name: 'Participants 84' }),
+      await countedRow(sidebar, 'Participants', 'Participants 84'),
     ).toHaveAttribute('href', '/study/study-1/participants');
     expect(
-      screen.getByRole('link', { name: 'Versions 6' }),
+      sidebar.getByRole('link', { name: 'Versions 6' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Waves 3' })).toBeInTheDocument();
+    expect(sidebar.getByRole('link', { name: 'Waves 3' })).toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: 'Sessions 212' }),
+      sidebar.getByRole('link', { name: 'Sessions 212' }),
     ).toBeInTheDocument();
 
     // And nowhere else: the counts go to the four destinations §5.5 makes
     // countable, not to every row that happens to be in the sidebar.
-    expect(numberedRows()).toHaveLength(4);
-    expect(screen.getByRole('link', { name: 'Export' })).toBeInTheDocument();
+    expect(numberedRows(sidebar)).toHaveLength(4);
+    expect(sidebar.getByRole('link', { name: 'Export' })).toBeInTheDocument();
   });
 
   it('asks about the study in the URL, and nothing else', async () => {
@@ -205,8 +275,9 @@ describe('the study sidebar’s counts', () => {
       sessions: 4,
     });
     renderStudy('/study/study-7/waves');
+    const sidebar = await studySidebar();
 
-    await screen.findByRole('link', { name: 'Waves 3' });
+    await countedRow(sidebar, 'Waves', 'Waves 3');
     // A study route names no team, and the procedure needs none: the server
     // resolves it from the study. Asking about the wrong study would put
     // another study's numbers on this one's sidebar.
@@ -218,25 +289,27 @@ describe('the study sidebar’s counts', () => {
     // first paint, and the one a `?? 0` would render as an empty study.
     fixtures.counts.mockReturnValue(new Promise(() => undefined));
     renderStudy();
+    const sidebar = await studySidebar();
 
-    const participants = await screen.findByRole('link', {
-      name: 'Participants',
+    const participants = await sidebar.findByRole('link', {
+      name: rowNamed('Participants'),
     });
-    expect(participants).toBeInTheDocument();
-    expect(numberedRows()).toEqual([]);
+    expect(participants).toHaveAccessibleName('Participants');
+    expect(numberedRows(sidebar)).toEqual([]);
   });
 
   it('shows no number when the procedure refuses', async () => {
     fixtures.counts.mockRejectedValue(new Error('FORBIDDEN'));
     renderStudy();
+    const sidebar = await studySidebar();
 
-    await screen.findByRole('link', { name: 'Participants' });
+    await sidebar.findByRole('link', { name: rowNamed('Participants') });
     await waitFor(() => expect(fixtures.counts).toHaveBeenCalled());
     // The sidebar is not the place to report a failed read: the researcher
     // gets the destinations, without numbers, and the screen behind each row
     // reports its own trouble.
-    expect(numberedRows()).toEqual([]);
-    expect(screen.getByRole('link', { name: 'Sessions' })).toBeInTheDocument();
+    expect(numberedRows(sidebar)).toEqual([]);
+    expect(sidebar.getByRole('link', { name: 'Sessions' })).toBeInTheDocument();
   });
 
   it('leaves an empty study’s rows unnumbered rather than showing zeroes', async () => {
@@ -247,14 +320,15 @@ describe('the study sidebar’s counts', () => {
       sessions: 0,
     });
     renderStudy();
+    const sidebar = await studySidebar();
 
-    await screen.findByRole('link', { name: 'Participants' });
+    await sidebar.findByRole('link', { name: rowNamed('Participants') });
     await waitFor(() => expect(fixtures.counts).toHaveBeenCalled());
     // "Participants" reads better than "Participants 0", and a study with
     // nothing in it has nothing to count — `NavItem`'s rule, asserted here
     // because it is what makes the loading and failed cases above indistinct
     // from an honest empty study rather than a lie about a full one.
-    expect(numberedRows()).toEqual([]);
+    expect(numberedRows(sidebar)).toEqual([]);
   });
 
   it('asks before the active team is known, because the question needs none', async () => {
@@ -269,9 +343,10 @@ describe('the study sidebar’s counts', () => {
       sessions: 3,
     });
     renderStudy();
+    const sidebar = await studySidebar();
 
     expect(
-      await screen.findByRole('link', { name: 'Participants 5' }),
+      await countedRow(sidebar, 'Participants', 'Participants 5'),
     ).toBeInTheDocument();
     expect(fixtures.counts).toHaveBeenCalledWith({ studyId: 'study-1' });
   });
