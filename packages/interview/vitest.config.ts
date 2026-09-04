@@ -70,7 +70,11 @@ export default defineConfig({
         // `pnpm test:storybook`, and add every specifier the
         // "dependencies optimized:" / "dependency optimized:" lines report.
         // Deps owned by a workspace package are not resolvable from this
-        // root, so they need Vite's `<owner> > <dep>` form.
+        // root, so they need Vite's `<owner> > <dep>` form — and the owner
+        // has to be named the whole way down. `react-intl` arrives here as
+        // interview → fresco-ui → app-i18n, so neither `react-intl` nor
+        // `@codaco/app-i18n > react-intl` resolves: this package depends on
+        // neither, and an entry Vite cannot resolve is ignored in silence.
         optimizeDeps: {
           include: [
             '@base-ui/react/accordion',
@@ -83,6 +87,8 @@ export default defineConfig({
             '@base-ui/react/slider',
             '@base-ui/react/switch',
             '@base-ui/react/toolbar',
+            '@codaco/fresco-ui > @codaco/app-i18n > @formatjs/icu-messageformat-parser',
+            '@codaco/fresco-ui > @codaco/app-i18n > react-intl',
             '@codaco/fresco-ui > @radix-ui/react-slot',
             '@codaco/fresco-ui > comlink',
             '@codaco/fresco-ui > cva',
