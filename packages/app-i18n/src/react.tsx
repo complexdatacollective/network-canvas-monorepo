@@ -79,7 +79,18 @@ const wrapIntlForPseudo = (intl: IntlShape): IntlShape => {
 };
 
 export type AppI18nProviderProps = Readonly<{
-  /** Active locale tag; must be one of `locales` (or the pseudo-locale). */
+  /**
+   * Active locale tag: one of `locales`, or the pseudo-locale.
+   *
+   * A tag the registry does not declare renders as `locales[0]` rather than
+   * throwing. A provider wraps the whole application, so a bad tag — a stored
+   * preference from a build that offered more locales, a hand-edited
+   * `localStorage`, a host passing something through — must degrade to a
+   * readable screen instead of a blank one. The negotiation in `./negotiate`
+   * is what is supposed to guarantee the tag, and it only ever returns a
+   * declared locale; this is the backstop for everything that does not go
+   * through it.
+   */
   locale: string;
   /** The app's declared registry. */
   locales: readonly AppLocale[];
