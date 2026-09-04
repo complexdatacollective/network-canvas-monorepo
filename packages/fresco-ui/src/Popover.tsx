@@ -1,3 +1,5 @@
+'use client';
+
 import { Popover as BasePopover } from '@base-ui/react/popover';
 import { AnimatePresence } from 'motion/react';
 import {

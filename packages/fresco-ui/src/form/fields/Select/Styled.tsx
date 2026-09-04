@@ -1,3 +1,5 @@
+'use client';
+
 import { Select } from '@base-ui/react/select';
 import { Check, ChevronDown } from 'lucide-react';
 import type { ComponentPropsWithoutRef } from 'react';
