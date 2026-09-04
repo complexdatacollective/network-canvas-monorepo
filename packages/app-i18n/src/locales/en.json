@@ -1,0 +1,50 @@
+{
+  "common.back": {
+    "defaultMessage": "Back",
+    "description": "Generic action that returns to the previous step."
+  },
+  "common.cancel": {
+    "defaultMessage": "Cancel",
+    "description": "Generic action that abandons the current operation."
+  },
+  "common.close": {
+    "defaultMessage": "Close",
+    "description": "Generic action or accessible name that dismisses a panel or dialog."
+  },
+  "common.confirm": {
+    "defaultMessage": "Confirm",
+    "description": "Generic action that accepts a confirmation prompt."
+  },
+  "common.continue": {
+    "defaultMessage": "Continue",
+    "description": "Generic action that advances to the next step."
+  },
+  "common.delete": {
+    "defaultMessage": "Delete",
+    "description": "Generic action that removes the selected item."
+  },
+  "common.done": {
+    "defaultMessage": "Done",
+    "description": "Generic action that finishes the current flow."
+  },
+  "common.genericError": {
+    "defaultMessage": "Something went wrong.",
+    "description": "Generic failure sentence shown when no more specific error applies."
+  },
+  "common.loading": {
+    "defaultMessage": "Loading…",
+    "description": "Generic indicator shown while content is being fetched."
+  },
+  "common.retry": {
+    "defaultMessage": "Try again",
+    "description": "Generic action that retries a failed operation."
+  },
+  "common.save": {
+    "defaultMessage": "Save",
+    "description": "Generic action that persists the current changes."
+  },
+  "common.search": {
+    "defaultMessage": "Search",
+    "description": "Generic label or accessible name for a search input."
+  }
+}

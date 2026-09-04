@@ -44,6 +44,14 @@ catalog:
   '@faker-js/faker': ^10.5.0
   '@fontsource-variable/inclusive-sans': ^5.2.8
   '@fontsource-variable/nunito': ^5.2.7
+  # App-i18n tooling: programmatic message extraction (guards + extract
+  # scripts) and build-time ICU-to-AST compilation for catalog JSON.
+  '@formatjs/cli-lib': ^9.0.9
+  '@formatjs/icu-messageformat-parser': ^3.5.17
+  # BCP 47 best-fit matching for app locale negotiation (@codaco/app-i18n);
+  # the protocol localization design (§7.1) adopts this same entry when
+  # protocol-validation's locale helpers land.
+  '@formatjs/intl-localematcher': ^0.8.13
   '@microsoft/api-extractor': ^7.58.12
   '@next/bundle-analyzer': ^16.3.4
   '@next/third-parties': ^16.3.4
@@ -84,6 +92,10 @@ catalog:
   '@vitest/browser': ^4.1.11
   '@vitest/browser-playwright': ^4.1.11
   '@vitest/coverage-v8': ^4.1.11
+  # Compiles defineMessages defaultMessage strings to pre-parsed AST in app
+  # production builds (@codaco/app-i18n/vite), keeping the ICU parser out of
+  # client bundles.
+  babel-plugin-formatjs: ^13.0.3
   # Pinned: 1.7.1 is the first release whose peer range admits the pinned
   # drizzle-orm 1.0.0 RC (1.6.x pins ^0.45.2).
   better-auth: 1.7.1
@@ -115,6 +127,9 @@ catalog:
   react: ^19.2.8
   react-dom: ^19.2.8
   react-dropzone: ^15.0.0
+  # ICU MessageFormat runtime for app UI catalogs; consumed only through
+  # @codaco/app-i18n's curated API, never imported directly.
+  react-intl: ^10.1.26
   react-redux: ^9.3.0
   redux-form: ^8.3.10
   redux-logger: ^3.0.6
@@ -211,3 +226,12 @@ minimumReleaseAgeExclude:
   - '@changesets/should-skip-package@1.0.0'
   - '@changesets/types@7.0.0'
   - '@changesets/write@1.0.0'
+  - '@formatjs/cli-lib@9.0.9'
+  - '@formatjs/cli-native-darwin-arm64@1.1.17'
+  - '@formatjs/cli-native-linux-arm64-musl@1.0.15'
+  - '@formatjs/cli-native-linux-arm64@1.2.17'
+  - '@formatjs/cli-native-linux-x64-musl@1.0.15'
+  - '@formatjs/cli-native-linux-x64@1.1.17'
+  - '@formatjs/cli-native-win32-x64@1.1.18'
+  - babel-plugin-formatjs@13.0.3
+  - react-intl@10.1.26
