@@ -37,9 +37,16 @@ import {
   StudyGetInputSchema,
   StudySummarySchema,
   TeamScopedSchema,
+  UpdateAccountLocaleInputSchema,
+  UpdateAccountLocaleResultSchema,
   UpdateTeamMemberRoleInputSchema,
   UpdateTeamMemberRoleResultSchema,
 } from './schemas.ts';
+
+export {
+  SUPPORTED_STUDIO_LOCALES,
+  type SupportedStudioLocale,
+} from './locales.ts';
 
 export {
   AUDIT_CATEGORIES,
@@ -90,6 +97,22 @@ export const contract = {
   status: oc.output(StatusSchema),
   /** The signed-in researcher; refuses UNAUTHORIZED without a session. */
   me: oc.output(MeSchema),
+  /**
+   * The caller's own account: personal, not team-scoped, so these take no
+   * teamId and need only a signed-in user. Deliberately unaudited (2026-09-04
+   * localization design §5.2, decision 7): the audit log is study/team-scoped
+   * by design, and a personal presentation preference has no tenant and no
+   * research-data significance.
+   */
+  account: {
+    /**
+     * Stores the caller's UI-language preference; null reverts to browser
+     * negotiation ("Automatic"). `me` reports the stored value.
+     */
+    updateLocale: oc
+      .input(UpdateAccountLocaleInputSchema)
+      .output(UpdateAccountLocaleResultSchema),
+  },
   team: {
     acceptInvitation: oc
       .input(AcceptTeamInvitationInputSchema)

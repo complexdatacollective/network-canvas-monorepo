@@ -510,6 +510,7 @@ describe.skipIf(!db)('invitation delivery outbox', () => {
             email: 'inviter@example.com',
             emailVerified: true,
             name: 'Inviting Researcher',
+            locale: null,
             sessionId: 'invitation-delivery-session',
           },
           requestId: randomUUID(),

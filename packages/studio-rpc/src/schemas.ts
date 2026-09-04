@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { SUPPORTED_STUDIO_LOCALES } from './locales.ts';
 import { DEPLOYMENT_MODES } from './surfaces.ts';
 
 // Schemas for the internal RPC boundary, shared source-first between server
@@ -52,6 +53,14 @@ export const MeSchema = z.object({
   email: z.string(),
   emailVerified: z.boolean(),
   name: z.string(),
+  /*
+    The stored UI-language preference (2026-09-04 localization design §5.2);
+    null until the researcher chooses one. A plain string, NOT the
+    supported-locale enum, for the same reason `role` below is: the supported
+    list can narrow between releases, and a stored tag this build no longer
+    offers must fall back on the client rather than fail the whole of `me`.
+  */
+  locale: z.string().nullable(),
   /**
    * Every team the caller belongs to, and their role in it.
    *
@@ -74,6 +83,41 @@ export const MeSchema = z.object({
       role: z.string(),
     }),
   ),
+});
+
+/**
+ * A non-null preference must be a tag this build supports — unknown tags are
+ * a validation error, not a silent store (client and server ship together, so
+ * the list is always current). Null clears the preference back to browser
+ * negotiation ("Automatic").
+ *
+ * The enum, and not a canonicalising transform that would accept spellings
+ * like `EN-gb`: BCP 47 tags are case-insensitive, but this is not a public
+ * API. It is a contract typed end to end whose only caller is the generated
+ * client, which sends tags from its own registry — so the narrow
+ * `SupportedStudioLocale | null` input type is worth more than tolerating a
+ * spelling no real caller produces. Widening the input to `string` to admit
+ * one would give the client back the ability to send anything, and it is the
+ * compile-time refusal that keeps the supported list and what can be stored
+ * the same question.
+ *
+ * Where a tag genuinely is uncontrolled the repository is lenient about
+ * exactly this: `@codaco/app-i18n`'s `resolveAppLocale` runs
+ * `canonicalizeAppLocale` over the browser's requested list, and over the
+ * stored preference on its way back out, so a case variant that reached the
+ * column some other way still resolves. Lenient where the input is
+ * uncontrolled, strict where it is typed — and the design's requirement that
+ * this command canonicalise is satisfied for the tags it declares,
+ * canonicalisation being the identity on every one of them.
+ */
+export const UpdateAccountLocaleInputSchema = z.object({
+  locale: z.enum(SUPPORTED_STUDIO_LOCALES).nullable(),
+});
+
+// A plain string on the way out, like `MeSchema.locale`: what came back from
+// the row, not what this build's registry admits.
+export const UpdateAccountLocaleResultSchema = z.object({
+  locale: z.string().nullable(),
 });
 
 // Every team-scoped procedure names its team explicitly — the authz input is

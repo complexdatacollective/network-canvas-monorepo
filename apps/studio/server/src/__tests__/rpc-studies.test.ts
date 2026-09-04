@@ -36,6 +36,7 @@ function researcher(slug: string, teamId: string, role: string): Researcher {
       email: `rpc-studies-${slug}@example.com`,
       emailVerified: true,
       name: `RPC Studies ${slug}`,
+      locale: null,
       sessionId: `rpc-studies-${slug}-session`,
     },
     memberId: `rpc-studies-${slug}-member`,

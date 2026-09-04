@@ -1,5 +1,4 @@
 import { safe } from '@orpc/client';
-import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createApp } from '../app.ts';
@@ -7,7 +6,7 @@ import { createBetterAuthService } from '../auth/better-auth.ts';
 import type { AuthService, SessionPrincipal } from '../auth/service.ts';
 import { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, seed } from '../db/seed.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
-import { stubAuthService } from './support/auth.ts';
+import { signInWithMagicLink, stubAuthService } from './support/auth.ts';
 import {
   createScratchSchema,
   provisionScratchSchema,
@@ -21,6 +20,8 @@ const PRINCIPAL: SessionPrincipal = {
   email: 'researcher@example.com',
   emailVerified: true,
   name: 'Researcher',
+  // Non-null so `me` passing the preference through is observable below.
+  locale: 'en-GB',
   sessionId: 'session-1',
 };
 
@@ -45,6 +46,7 @@ describe('principal resolution', () => {
       email: 'researcher@example.com',
       emailVerified: true,
       name: 'Researcher',
+      locale: 'en-GB',
       teams: [
         { teamId: 'team-a', role: 'owner' },
         { teamId: 'team-b', role: 'admin,member' },
@@ -162,46 +164,6 @@ const env = readEnv();
 
 const db = await reachableDb();
 
-/**
- * Signs a fresh user in end to end against a provisioned scratch schema,
- * asserting each step of the flow. The schema must be freshly provisioned:
- * the magic-link limit (5/60s per IP) is durable in Postgres and vitest
- * always resolves to the same localhost key, so counters left by an earlier
- * run in a shared table would 429 the send.
- */
-async function signInWithMagicLink(pool: pg.Pool, prefix: string) {
-  if (!env.auth) throw new Error('dev env must configure auth');
-  const sent: { email: string; url: string }[] = [];
-  const auth = createBetterAuthService(env.auth, pool, {
-    sendMagicLink: (input) => {
-      sent.push(input);
-      return Promise.resolve();
-    },
-  });
-  const app = createApp(env, { auth });
-  const email = `${prefix}-${Date.now()}@example.com`;
-
-  const send = await app.request('/api/auth/sign-in/magic-link', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'origin': 'http://localhost:5173',
-    },
-    body: JSON.stringify({ email, callbackURL: '/' }),
-  });
-  expect(send.status).toBe(200);
-  expect(sent).toHaveLength(1);
-  expect(sent[0]?.email).toBe(email);
-
-  const verify = await app.request(sent[0]!.url);
-  expect([302, 200]).toContain(verify.status);
-  const setCookie = verify.headers.get('set-cookie');
-  expect(setCookie).toBeTruthy();
-  const cookie = (setCookie ?? '').split(';')[0]!;
-
-  return { app, auth, email, cookie };
-}
-
 function callBetterAuthOrganizationRoute(
   auth: AuthService,
   path: `/api/auth/organization/${string}`,
@@ -229,6 +191,7 @@ describe.skipIf(!db)('magic-link sign-in', () => {
     try {
       await provisionScratchSchema(scratch.pool);
       const { app, email, cookie } = await signInWithMagicLink(
+        env,
         scratch.app,
         'researcher',
       );
@@ -320,6 +283,7 @@ describe.skipIf(!db)('teams (organization plugin)', () => {
     try {
       await provisionScratchSchema(scratch.pool);
       const { app, auth, cookie } = await signInWithMagicLink(
+        env,
         scratch.app,
         'owner',
       );
@@ -365,7 +329,11 @@ describe.skipIf(!db)('teams (organization plugin)', () => {
     const scratch = await createScratchSchema(db);
     try {
       await provisionScratchSchema(scratch.pool);
-      const { auth, cookie } = await signInWithMagicLink(scratch.app, 'owner');
+      const { auth, cookie } = await signInWithMagicLink(
+        env,
+        scratch.app,
+        'owner',
+      );
       const create = await callBetterAuthOrganizationRoute(
         auth,
         '/api/auth/organization/create',

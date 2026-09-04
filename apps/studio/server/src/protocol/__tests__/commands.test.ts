@@ -13,6 +13,7 @@ const PRINCIPAL: SessionPrincipal = {
   email: 'protocol-command-owner@example.com',
   emailVerified: true,
   name: 'Protocol Command Owner',
+  locale: null,
   sessionId: 'protocol-command-owner-session',
 };
 
