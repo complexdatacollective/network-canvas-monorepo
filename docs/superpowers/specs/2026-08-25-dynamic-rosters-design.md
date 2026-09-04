@@ -43,8 +43,11 @@ URL. All of that must change deliberately, not incidentally.
 ## 3. Out of scope
 
 - **Longitudinal identity linking.** Dynamic rosters are transport; matching
-  entities across waves is Studio's concern (issue #1242 tree). Nothing here
-  creates or depends on cross-wave identifiers.
+  entities across waves is Studio's concern (issue #1242 tree). **Amended
+  2026-09-04:** the transport now _carries_ an identifier that a source such
+  as Studio mints (Decision 3 amendment), and nothing here mints, interprets,
+  or reconciles one — deciding which real person two records describe remains
+  entirely out of scope.
 - **Geospatial `dataSourceAssetId`.** The map-layer path renders via
   `useAssetUrl`, not the roster pipeline; extending it is real separate work
   and no use case asked for it.
@@ -75,7 +78,9 @@ Each decision records the alternative it displaced and why.
    participant reaches the stage.
 3. **Content-hash node identity, without the index salt.** Rejected requiring
    a stable external ID in the response (kept the pipeline identical to
-   static files instead; cross-wave identity is out of scope). Because the
+   static files instead; cross-wave identity was out of scope — see the
+   2026-09-04 amendment below, which admits an optional id without
+   _requiring_ one). Because the
    asset is refetched and servers may reorder rows, the existing
    content-plus-index hash would change every row's identity on reorder, so
    dynamic rosters hash row content only. Consequences, accepted: two
@@ -615,9 +620,10 @@ deterministic and offline reads the stored sample.**
   deterministic, offline-capable, and incapable of hammering the endpoint.
   The adapters extend their `type !== 'network'` guard to also accept
   `dynamicnetwork` and resolve the sample file exactly as a static file —
-  parsed with the **same content-only key strategy as the live path**
-  (§5.4): the collector's current index-salted keys would never match a
-  live `_uid`, so a sampled node could be offered again by the live roster.
+  parsed with the **same key strategy as the live path** (§5.4 step 5 — the
+  element's `id` when it carries one, else the content-only hash): the
+  collector's current index-salted keys would never match a live `_uid`, so
+  a sampled node could be offered again by the live roster.
   With matching keys, a synthetic node drawn from the sample that still
   matches a live row dedupes naturally; a changed row appears as both —
   acceptable in a test surface.
