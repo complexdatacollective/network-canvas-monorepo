@@ -6,7 +6,10 @@
 import { safe } from '@orpc/client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { SUPPORTED_STUDIO_LOCALES } from '@codaco/studio-rpc';
+import {
+  SUPPORTED_STUDIO_LOCALES,
+  type SupportedStudioLocale,
+} from '@codaco/studio-rpc';
 
 import type { createApp } from '../app.ts';
 import { readEnv } from '../env.ts';
@@ -78,34 +81,49 @@ describe.skipIf(!db)('account.updateLocale', () => {
 
   it('refuses an unknown tag as a validation error, storing nothing', async () => {
     await client.account.updateLocale({ locale: 'en' });
-    // Unknown tags are a validation error, never a silent store (§5.2).
-    const rejected = await safe(client.account.updateLocale({ locale: 'fr' }));
-    expect(rejected.error).toMatchObject({ code: 'BAD_REQUEST' });
-    expect(await storedLocale()).toBe('en');
-  });
-
-  it('refuses a malformed tag the same way it refuses an unknown one', async () => {
-    // Canonicalisation must not turn "not a tag" into a different failure
-    // mode: both are BAD_REQUEST, and neither writes.
-    await client.account.updateLocale({ locale: 'en' });
+    // The contract type refuses this at compile time; the server must refuse
+    // it at runtime too — unknown tags are a validation error, never a
+    // silent store (§5.2). The cast exists precisely to defeat that
+    // narrowing, which is the point of the schema.
     const rejected = await safe(
-      client.account.updateLocale({ locale: 'not a tag' }),
+      client.account.updateLocale({
+        locale: 'fr' as unknown as SupportedStudioLocale,
+      }),
     );
     expect(rejected.error).toMatchObject({ code: 'BAD_REQUEST' });
     expect(await storedLocale()).toBe('en');
   });
 
-  it('accepts a supported tag spelled with different case, and stores it canonically', async () => {
-    // BCP 47 tags are case-insensitive, so `EN-gb` names the locale `en-GB`.
-    // Refusing it would make acceptance depend on how the registry happens to
-    // be spelled rather than on which locale the caller meant, and the row
-    // must end up holding the canonical form either way — `me` hands that
-    // value straight to the client's registry lookup.
-    await client.account.updateLocale({ locale: null });
-    expect(await client.account.updateLocale({ locale: 'EN-gb' })).toEqual({
-      locale: 'en-GB',
-    });
-    expect(await storedLocale()).toBe('en-GB');
+  it('refuses a malformed tag the same way it refuses an unknown one', async () => {
+    // "Not a tag at all" and "a tag we do not offer" must fail identically:
+    // one BAD_REQUEST, no write. Same cast, same reason.
+    await client.account.updateLocale({ locale: 'en' });
+    const rejected = await safe(
+      client.account.updateLocale({
+        locale: 'not a tag' as unknown as SupportedStudioLocale,
+      }),
+    );
+    expect(rejected.error).toMatchObject({ code: 'BAD_REQUEST' });
+    expect(await storedLocale()).toBe('en');
+  });
+
+  it('refuses a supported tag spelled with different case', async () => {
+    // BCP 47 tags are case-insensitive, so `EN-gb` does name `en-GB` — and
+    // this endpoint still refuses it, deliberately. Accepting case variants
+    // would mean widening the contract's input from the supported-locale
+    // union to `string`, and the compile-time narrowing is worth more than a
+    // spelling the only caller — the typed client, sending tags from its own
+    // registry — cannot produce. Leniency belongs where tags are actually
+    // uncontrolled: `resolveAppLocale` canonicalises what the browser asks
+    // for, and canonicalises the stored value on the way back out.
+    await client.account.updateLocale({ locale: 'en' });
+    const rejected = await safe(
+      client.account.updateLocale({
+        locale: 'EN-gb' as unknown as SupportedStudioLocale,
+      }),
+    );
+    expect(rejected.error).toMatchObject({ code: 'BAD_REQUEST' });
+    expect(await storedLocale()).toBe('en');
   });
 
   it('requires a signed-in user', async () => {

@@ -86,44 +86,32 @@ export const MeSchema = z.object({
 });
 
 /**
- * BCP 47 tags are case-insensitive, so `EN-gb` and `en-GB` name one locale.
- * Canonicalising before the allowlist is what makes the endpoint agree with
- * that: matching the registry's exact spelling is a property of how the list
- * happens to be written, not of the tag the caller meant.
- *
- * `Intl.getCanonicalLocales` rather than app-i18n's `canonicalizeAppLocale`,
- * which is the same call: this package is the contract both planes import,
- * and it carries no workspace dependencies so that staying cheap to import is
- * not something a future edit has to remember. A tag that cannot be
- * canonicalised is passed through unchanged and refused by the allowlist
- * below, so malformed and unsupported fail identically.
- */
-function canonicalLocaleTag(value: string): string {
-  try {
-    return Intl.getCanonicalLocales(value.trim())[0] ?? value;
-  } catch {
-    return value;
-  }
-}
-
-/**
  * A non-null preference must be a tag this build supports — unknown tags are
  * a validation error, not a silent store (client and server ship together, so
  * the list is always current). Null clears the preference back to browser
  * negotiation ("Automatic").
  *
- * The input type is `string | null` rather than the supported-locale union,
- * which is the cost of accepting case variants. It is the same trade
- * `MeSchema.locale` above already makes, and the client does not lean on the
- * narrowing: it only ever sends tags from its own registry, having checked
- * them with `isSupportedStudioLocale` first.
+ * The enum, and not a canonicalising transform that would accept spellings
+ * like `EN-gb`: BCP 47 tags are case-insensitive, but this is not a public
+ * API. It is a contract typed end to end whose only caller is the generated
+ * client, which sends tags from its own registry — so the narrow
+ * `SupportedStudioLocale | null` input type is worth more than tolerating a
+ * spelling no real caller produces. Widening the input to `string` to admit
+ * one would give the client back the ability to send anything, and it is the
+ * compile-time refusal that keeps the supported list and what can be stored
+ * the same question.
+ *
+ * Where a tag genuinely is uncontrolled the repository is lenient about
+ * exactly this: `@codaco/app-i18n`'s `resolveAppLocale` runs
+ * `canonicalizeAppLocale` over the browser's requested list, and over the
+ * stored preference on its way back out, so a case variant that reached the
+ * column some other way still resolves. Lenient where the input is
+ * uncontrolled, strict where it is typed — and the design's requirement that
+ * this command canonicalise is satisfied for the tags it declares,
+ * canonicalisation being the identity on every one of them.
  */
 export const UpdateAccountLocaleInputSchema = z.object({
-  locale: z
-    .string()
-    .nullable()
-    .transform((value) => (value === null ? null : canonicalLocaleTag(value)))
-    .pipe(z.enum(SUPPORTED_STUDIO_LOCALES).nullable()),
+  locale: z.enum(SUPPORTED_STUDIO_LOCALES).nullable(),
 });
 
 // A plain string on the way out, like `MeSchema.locale`: what came back from
