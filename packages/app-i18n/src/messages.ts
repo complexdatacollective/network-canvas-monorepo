@@ -50,7 +50,19 @@ export function createAppIntl(options: {
   return createIntl(
     {
       locale: options.locale,
-      defaultLocale: 'en',
+      // The reader's locale, NOT 'en'. react-intl formats a message through
+      // `defaultLocale` whenever it falls back to the descriptor's
+      // `defaultMessage` — which, with the sparse override catalogs this
+      // design is built on, is nearly every message an en-GB reader sees.
+      // Pinned to 'en' it made `{when, date, short}` render as `1/2/20`
+      // rather than `02/01/20` for exactly the messages en-GB does not
+      // override, so a locale's dates and numbers came out right only where
+      // somebody had happened to translate the words around them.
+      //
+      // It also stops react-intl reporting MISSING_TRANSLATION, which is what
+      // we want and already the case: a sparse override catalog is missing
+      // most ids by design, so that error carries no signal here.
+      defaultLocale: options.locale,
       // Catalog values are ICU strings in dev/tests and pre-parsed AST in
       // production builds; react-intl accepts both, but its option type only
       // names the string form.
