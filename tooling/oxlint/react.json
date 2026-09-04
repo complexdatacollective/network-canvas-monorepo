@@ -8,6 +8,27 @@
     "react/exhaustive-deps": "error",
     "react/no-unsafe": "warn",
     "react/no-find-dom-node": "warn",
+
+    // The React Compiler rules, which oxlint 1.81 promoted into `correctness`
+    // — where the root config makes every rule an error. They report ~440
+    // sites across every app and package, all of it code that predates the
+    // upgrade, so adopting them is its own piece of work (#1643) rather than
+    // a condition of taking oxlint releases. Held at "warn" until then, the
+    // same way `no-unsafe` above is: visible and greppable, not blocking.
+    // `error-boundaries` and `set-state-in-render` report nothing today; they
+    // are listed so that the next file to trip one does not fail the build.
+    "react/error-boundaries": "warn",
+    "react/globals": "warn",
+    "react/immutability": "warn",
+    "react/incompatible-library": "warn",
+    "react/preserve-manual-memoization": "warn",
+    "react/purity": "warn",
+    "react/refs": "warn",
+    "react/set-state-in-effect": "warn",
+    "react/set-state-in-render": "warn",
+    "react/static-components": "warn",
+    "react/use-memo": "warn",
+    "react/void-use-memo": "warn",
     "jsx-a11y/alt-text": ["warn", { "elements": ["img"], "img": ["Image"] }],
     "jsx-a11y/aria-props": "warn",
     "jsx-a11y/aria-proptypes": "warn",

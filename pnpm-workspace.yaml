@@ -107,6 +107,13 @@ catalog:
   lucide-react: ^1.27.0
   motion: ^13.1.0
   next: ^16.3.4
+  # Catalogued so the root's formatter and Architect's cannot drift apart.
+  # Architect's E2E helper formats stage snapshots in-process (see
+  # `apps/architect/e2e/helpers/normalize-stage.ts`) and depends on producing
+  # bytes identical to what the pre-commit hook writes with the root's copy;
+  # two versions means the hook can rewrite a generated baseline that the
+  # subsequent comparison then rejects.
+  oxfmt: ^0.66.0
   # Keep in lock-step with `@playwright/test` above (grouped in dependabot); a
   # mismatch crashes interview-e2e with "two different versions of @playwright/test".
   playwright: ^1.62.1
