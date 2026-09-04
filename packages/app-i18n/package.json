@@ -71,6 +71,7 @@
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",
+    "@codaco/vitest-config": "workspace:^",
     "@testing-library/react": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
