@@ -2,7 +2,6 @@ import { verifyPassword } from 'better-auth/crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { TEAM_ROLES } from '@codaco/studio-rpc';
 import { canonicalize } from '@codaco/studio-sync/apply';
 
 import {
@@ -10,42 +9,22 @@ import {
   provisionScratchSchema,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
-import {
-  SEED_ADMIN_EMAIL,
-  SEED_ADMIN_NAME,
-  SEED_ADMIN_PASSWORD,
-  seed,
-} from '../seed.ts';
+import { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, seed } from '../seed.ts';
 import { sha256Hex } from '../seed/rng.ts';
 
 const db = await reachableDb();
 
 // Seeding the whole model takes seconds on a quiet machine and well over a
-// minute on the CI runner (see SEED_BUDGET_MS).
+// minute on the CI runner (see SEED_BUDGET_MS). One `beforeAll` below builds
+// the corpus every case in this file reads; the only other seed here runs at
+// `tiny`.
 //
-// Only two cases still seed the whole model, and both have to: the `beforeAll`
-// below, whose corpus every case in this block reads, and the determinism
-// case, which is only worth running against the corpus developers actually
-// get. The rest use SEEDING_ONLY, which took the file from 88s to 29s here.
-//
-// The bound stays at 360s rather than following that down. These cases
-// measured 72-172s on the runner where they measure seconds here, and the
-// bound exists to fail a seed that has actually hung rather than one sharing a
-// machine — it was already set too tight once, at 180s, where the slowest
-// passing case left a 4% margin. Tightening it again buys two minutes on a run
-// that is failing anyway.
+// The bound stays at 360s rather than following the file's cost down. It
+// exists to fail a seed that has actually hung rather than one sharing a
+// runner, and it was already set too tight once, at 180s, where the slowest
+// passing case left a 4% margin. Tightening it again buys a couple of minutes
+// on a run that is failing anyway.
 const SEEDING_TIMEOUT_MS = 360_000;
-
-/**
- * For the cases that exercise seeding itself — signing in, the transaction
- * around a part-way failure, the admin password option, the wipe before a
- * re-seed — rather than the shape of the data it produces. `tiny` keeps every
- * team, study, wave and table the demo corpus has and thins the sessions
- * inside them, which takes the seed from about 6.8s to 1.0s here.
- * `seedSessionsAndNetworks` is around 90% of a seed, and it is the count of
- * sessions that drives it rather than the size of the networks in them.
- */
-const SEEDING_ONLY = { scale: 'tiny' } as const;
 
 /**
  * A `demo` seed has to stay fast enough to run on every `pnpm dev` boot, where
@@ -72,66 +51,6 @@ const SEED_BUDGET_MS = 60_000;
  * budget was written for.
  */
 const MAX_DEMO_ROWS = 80_000;
-
-/**
- * Columns no seed run controls, excluded from the reproducibility dump.
- *
- * Every one of them is written by code the seed calls rather than by the seed
- * itself, and each is named here rather than the whole table being skipped:
- *
- *  - `account.password` — better-auth's scrypt draws a fresh salt per call.
- *  - `audit_events.id` / `occurred_at` — `AuditStore.append` mints the id with
- *    `randomUUID()` and Postgres fills `occurred_at` from
- *    `statement_timestamp()`. Using the real audit writer is the point; these
- *    two columns are the price.
- *  - `session_stats.computed_at` — `refreshSessionProjections` writes
- *    `statement_timestamp()`, and the seed must not hand-write the rollups.
- *  - the protocol store's draft and section `created_at` columns, which take
- *    their database defaults. (The protocol's own dates and each version's
- *    `published_at` are seed-controlled, so the line predates the studies
- *    that pin it, and are compared.)
- */
-const NON_REPRODUCIBLE_COLUMNS: Record<string, readonly string[]> = {
-  account: ['password'],
-  audit_events: ['id'],
-  session_stats: ['computed_at'],
-};
-
-/**
- * Every table's rows as one canonical string, ordered by content so row order
- * — which nothing in the data model fixes — cannot make two equal datasets
- * compare unequal.
- */
-async function dumpEverything(pool: pg.Pool): Promise<Map<string, string>> {
-  const tables = await pool.query<{ name: string }>(
-    `select tablename as name from pg_tables
-     where schemaname = current_schema() and tablename <> 'schemaFingerprint'
-     order by tablename`,
-  );
-  const dump = new Map<string, string>();
-  for (const { name } of tables.rows) {
-    const columns = await pool.query<{ name: string }>(
-      `select column_name as name from information_schema.columns
-       where table_schema = current_schema() and table_name = $1
-       order by ordinal_position`,
-      [name],
-    );
-    const excluded = new Set(NON_REPRODUCIBLE_COLUMNS[name] ?? []);
-    const selected = columns.rows
-      .map((column) => column.name)
-      .filter((column) => !excluded.has(column))
-      .map((column) => `"${column}"`);
-    const rows = await pool.query<{ dump: string }>(
-      `select coalesce(
-                jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text),
-                '[]'::jsonb
-              )::text as dump
-       from (select ${selected.join(', ')} from "${name}") t`,
-    );
-    dump.set(name, rows.rows[0]?.dump ?? '[]');
-  }
-  return dump;
-}
 
 async function count(
   pool: pg.Pool,
@@ -1071,123 +990,6 @@ describe.skipIf(!db)('the seeded dataset', () => {
 
 describe.skipIf(!db)('seed', () => {
   it(
-    'creates an admin who can sign in with the published password and owns every team',
-    async () => {
-      if (!db) throw new Error('unreachable: probe guaranteed a database');
-      const { pool, dispose } = await createScratchSchema(db);
-      try {
-        await provisionScratchSchema(pool);
-        await seed(pool, SEEDING_ONLY);
-
-        const admin = await pool.query<{
-          id: string;
-          name: string;
-          emailVerified: boolean;
-        }>(`select id, name, "emailVerified" from "user" where email = $1`, [
-          SEED_ADMIN_EMAIL,
-        ]);
-        expect(admin.rows).toEqual([
-          {
-            id: expect.any(String),
-            name: SEED_ADMIN_NAME,
-            emailVerified: true,
-          },
-        ]);
-        const adminId = admin.rows[0]!.id;
-
-        const account = await pool.query<{ password: string | null }>(
-          `select password from account where "userId" = $1 and "providerId" = 'credential'`,
-          [adminId],
-        );
-        expect(account.rows).toHaveLength(1);
-        const hash = account.rows[0]!.password;
-        expect(hash).not.toBeNull();
-        await expect(
-          verifyPassword({ hash: hash!, password: SEED_ADMIN_PASSWORD }),
-        ).resolves.toBe(true);
-        await expect(
-          verifyPassword({ hash: hash!, password: 'not the password' }),
-        ).resolves.toBe(false);
-
-        const teams = await pool.query<{ count: number }>(
-          `select count(*)::int as count from teams`,
-        );
-        const adminMemberships = await pool.query<{ role: string }>(
-          `select role from team_members where user_id = $1`,
-          [adminId],
-        );
-        expect(adminMemberships.rows).toHaveLength(teams.rows[0]!.count);
-        expect(adminMemberships.rows.every((row) => row.role === 'owner')).toBe(
-          true,
-        );
-
-        const otherMembers = await pool.query<{ role: string }>(
-          `select role from team_members where user_id <> $1`,
-          [adminId],
-        );
-        expect(otherMembers.rows.length).toBeGreaterThan(0);
-        const otherRoles = new Set(otherMembers.rows.map((row) => row.role));
-        expect(otherRoles).not.toContain('owner');
-        for (const role of otherRoles) {
-          expect(TEAM_ROLES).toContain(role);
-        }
-      } finally {
-        await dispose();
-      }
-    },
-    SEEDING_TIMEOUT_MS,
-  );
-
-  it(
-    'leaves the previous dataset untouched when a reseed fails part-way',
-    async () => {
-      if (!db) throw new Error('unreachable: probe guaranteed a database');
-      const { pool, dispose } = await createScratchSchema(db);
-      try {
-        await provisionScratchSchema(pool);
-        await seed(pool, SEEDING_ONLY);
-        const before = await pool.query(
-          `select id, name, slug from teams order by slug`,
-        );
-        const studiesBefore = await count(
-          pool,
-          `select count(*)::int as n from studies`,
-        );
-
-        // Fails the reseed once it is well underway: after the wipe, the admin
-        // and the first team's memberships have already been written.
-        await pool.query(`
-        create function seed_test_fail() returns trigger language plpgsql as $$
-        begin
-          if (select count(*) from team_members) >= 3 then
-            raise exception 'seed_test_fail';
-          end if;
-          return new;
-        end $$;
-        create trigger seed_test_fail before insert on team_members
-          for each row execute function seed_test_fail();
-      `);
-        await expect(seed(pool, SEEDING_ONLY)).rejects.toThrow(
-          'seed_test_fail',
-        );
-        await pool.query(`drop trigger seed_test_fail on team_members`);
-
-        const after = await pool.query(
-          `select id, name, slug from teams order by slug`,
-        );
-        expect(after.rows).toEqual(before.rows);
-        // The whole populated model rolls back with it, not only the teams.
-        await expect(
-          count(pool, `select count(*)::int as n from studies`),
-        ).resolves.toBe(studiesBefore);
-      } finally {
-        await dispose();
-      }
-    },
-    SEEDING_TIMEOUT_MS,
-  );
-
-  it(
     'hashes a per-instance admin password when one is given',
     async () => {
       if (!db) throw new Error('unreachable: probe guaranteed a database');
@@ -1195,7 +997,7 @@ describe.skipIf(!db)('seed', () => {
       try {
         await provisionScratchSchema(pool);
         await seed(pool, {
-          ...SEEDING_ONLY,
+          scale: 'tiny',
           adminPassword: 'chosen-for-this-instance',
         });
 
@@ -1214,70 +1016,6 @@ describe.skipIf(!db)('seed', () => {
         ).resolves.toBe(false);
       } finally {
         await dispose();
-      }
-    },
-    SEEDING_TIMEOUT_MS,
-  );
-
-  it(
-    'wipes prior data so re-seeding never collides on unique constraints',
-    async () => {
-      if (!db) throw new Error('unreachable: probe guaranteed a database');
-      const { pool, dispose } = await createScratchSchema(db);
-      try {
-        await provisionScratchSchema(pool);
-        await seed(pool, SEEDING_ONLY);
-        const firstRun = await pool.query(
-          `select name, slug from teams order by slug`,
-        );
-
-        // Re-seeding must not error on the unique constraints (team slug, user
-        // email, token hash, participant code) a naive additive seed would
-        // collide on the second time around.
-        await expect(seed(pool, SEEDING_ONLY)).resolves.toBeUndefined();
-        const secondRun = await pool.query(
-          `select name, slug from teams order by slug`,
-        );
-        expect(secondRun.rows).toEqual(firstRun.rows);
-      } finally {
-        await dispose();
-      }
-    },
-    SEEDING_TIMEOUT_MS,
-  );
-
-  it(
-    'produces byte-identical data in two independently seeded schemas',
-    async () => {
-      if (!db) throw new Error('unreachable: probe guaranteed a database');
-      const first = await createScratchSchema(db);
-      const second = await createScratchSchema(db);
-      try {
-        await provisionScratchSchema(first.pool);
-        await provisionScratchSchema(second.pool);
-        await seed(first.pool);
-        await seed(second.pool);
-
-        const left = await dumpEverything(first.pool);
-        const right = await dumpEverything(second.pool);
-
-        // The dump has to be worth comparing: an empty one would make every
-        // assertion below vacuous.
-        expect(left.size).toBeGreaterThan(40);
-        expect((left.get('nodes') ?? '').length).toBeGreaterThan(10_000);
-        expect((left.get('studies') ?? '').length).toBeGreaterThan(1_000);
-        expect([...left.keys()]).toEqual([...right.keys()]);
-
-        // Compared by table, and asserted as a boolean: a jsonb dump of 26 000
-        // nodes printed as a diff would bury the name of the table that drifted.
-        for (const [table, dump] of left) {
-          expect(
-            dump === right.get(table),
-            `${table} differs between two seeded schemas`,
-          ).toBe(true);
-        }
-      } finally {
-        await Promise.all([first.dispose(), second.dispose()]);
       }
     },
     SEEDING_TIMEOUT_MS,

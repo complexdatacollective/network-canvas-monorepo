@@ -30,7 +30,6 @@ import {
 } from './seed/studies.ts';
 import {
   SEED_ADMIN_EMAIL,
-  SEED_ADMIN_NAME,
   SEED_ADMIN_PASSWORD,
   seedTeams,
 } from './seed/teams.ts';
@@ -55,7 +54,7 @@ import {
 
 // Defined beside the auth-tier seeding that writes them, and re-exported here
 // because this module is the seed's documented surface.
-export { SEED_ADMIN_EMAIL, SEED_ADMIN_NAME, SEED_ADMIN_PASSWORD };
+export { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD };
 
 /**
  * `demo` is what dev boot and most suites run; `large` is the load shape;
