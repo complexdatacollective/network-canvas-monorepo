@@ -935,7 +935,10 @@ export default function TeamActivity() {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell>{target?.label ?? target?.id ?? '—'}</TableCell>
+                    <TableCell>
+                      {/* eslint-disable-next-line formatjs/no-literal-string-in-jsx -- the em dash is locale-neutral typography, not copy */}
+                      {target?.label ?? target?.id ?? '—'}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={OUTCOME_BADGE_VARIANTS[event.outcome]}>
                         {intl.formatMessage(OUTCOME_LABELS[event.outcome])}

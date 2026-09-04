@@ -51,6 +51,9 @@ function homeDestination(
     : { to: '/team/$teamId', params: { teamId: activeTeamId } };
 }
 
+// The wordmark is the product name — locale-neutral by design, never in a
+// catalog.
+/* eslint-disable formatjs/no-literal-string-in-jsx */
 function Wordmark({ home }: { home: LandingDestination | undefined }) {
   if (home === undefined) {
     return <span className={WORDMARK_TEXT_CLASSES}>Studio</span>;
@@ -76,6 +79,7 @@ function Wordmark({ home }: { home: LandingDestination | undefined }) {
     </Link>
   );
 }
+/* eslint-enable formatjs/no-literal-string-in-jsx */
 
 export default function AppHeader() {
   const intl = useAppIntl();

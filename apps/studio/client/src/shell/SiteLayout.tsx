@@ -280,6 +280,7 @@ export default function SiteLayout() {
       <SiteFooter
         brand={
           <span className="font-heading text-lg font-bold tracking-[0.18em] uppercase">
+            {/* eslint-disable-next-line formatjs/no-literal-string-in-jsx -- brand name */}
             Network Canvas Studio
           </span>
         }

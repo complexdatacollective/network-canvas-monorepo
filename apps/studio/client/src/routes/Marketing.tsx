@@ -118,6 +118,7 @@ export default function Marketing() {
           {/* The product's name is a brand, not copy — it stays as it is in
               every locale. */}
           <Heading level="h1" margin="none" {...routeFocusTargetProps}>
+            {/* eslint-disable-next-line formatjs/no-literal-string-in-jsx -- brand name */}
             Network Canvas Studio
           </Heading>
           <Paragraph className="max-w-prose text-lg" margin="none">

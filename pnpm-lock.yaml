@@ -1837,6 +1837,9 @@ importers:
 
   apps/studio/client:
     devDependencies:
+      '@codaco/app-i18n':
+        specifier: workspace:^
+        version: link:../../../packages/app-i18n
       '@codaco/fresco-ui':
         specifier: workspace:^
         version: link:../../../packages/fresco-ui
@@ -1846,6 +1849,9 @@ importers:
       '@codaco/protocol-validation':
         specifier: workspace:^
         version: link:../../../packages/protocol-validation
+      '@codaco/shared-consts':
+        specifier: workspace:^
+        version: link:../../../packages/shared-consts
       '@codaco/studio-rpc':
         specifier: workspace:^
         version: link:../../../packages/studio-rpc
