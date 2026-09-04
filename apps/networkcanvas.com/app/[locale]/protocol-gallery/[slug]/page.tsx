@@ -18,7 +18,6 @@ import { ProtocolDownloads } from '~/components/protocol-gallery/ProtocolDownloa
 import { StageSequenceRail } from '~/components/protocol-gallery/StageSequenceRail';
 import { Container } from '~/components/ui/Container';
 import { NativeLink } from '~/components/ui/NativeLink';
-import { Pill } from '~/components/ui/Pill';
 import { routing } from '~/lib/i18n/routing';
 import { getProtocolBySlug, loadProtocolGallery } from '~/lib/protocolGallery';
 import { protocolGalleryHref, protocolGalleryUrl } from '~/lib/siteUrls';
@@ -84,7 +83,6 @@ export default async function ProtocolDetailPage({
   if (!protocol) notFound();
 
   const t = await getTranslations({ locale, namespace: 'ProtocolGallery' });
-  const [firstWave] = protocol.downloads;
 
   return (
     <main className="relative isolate">
@@ -92,22 +90,13 @@ export default async function ProtocolDetailPage({
 
       <div className="type-scale-product">
         <Container maxWidth="full" margin="none" className="mt-12">
-          <div
-            id={SITE_NAVIGATION_SKIP_TARGET_ID}
-            className="flex flex-wrap items-center justify-between gap-4"
-          >
+          <div id={SITE_NAVIGATION_SKIP_TARGET_ID}>
             <span className="inline-flex items-center gap-2">
               <ArrowLeft aria-hidden className="text-link size-5" />
               <NativeLink href={protocolGalleryHref(locale)}>
                 {t('detail.back')}
               </NativeLink>
             </span>
-            {firstWave ? (
-              <Pill variant="filled">
-                <span className="sr-only">{t('detail.protocolFile')} </span>
-                {firstWave.protocolFilename}
-              </Pill>
-            ) : null}
           </div>
 
           <div className="tablet-landscape:grid-cols-[minmax(0,1.4fr)_minmax(24rem,1fr)] mt-8 grid grid-cols-1 gap-8">
