@@ -90,6 +90,12 @@ export default defineConfig({
         // root, so they need Vite's `<owner> > <dep>` form.
         optimizeDeps: {
           include: [
+            // Reached as this app → fresco-ui → app-i18n. Vite's
+            // `<owner> > <dep>` form has to name the owner the whole way
+            // down: a shorter specifier does not resolve from this root,
+            // and an entry Vite cannot resolve is ignored in silence.
+            '@codaco/fresco-ui > @codaco/app-i18n > @formatjs/icu-messageformat-parser',
+            '@codaco/fresco-ui > @codaco/app-i18n > react-intl',
             '@base-ui/react',
             '@base-ui/react/checkbox',
             '@base-ui/react/collapsible',

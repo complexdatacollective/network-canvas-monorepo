@@ -1,12 +1,21 @@
 import { defineMessages } from 'react-intl';
 
 import type { CatalogMessages } from './locales.ts';
-// The import attribute is what lets Node's own ESM loader read this entry.
-// Bundlers do not need it; `./common` is documented as universal, and without
-// it a Node-loaded script or server importing this module fails outright with
-// ERR_IMPORT_ATTRIBUTE_MISSING — the same class of source-first breakage as
-// the explicit `.ts` extensions CLAUDE.md requires of Node-loaded packages.
-import enGbOverrides from './locales/en-GB.json' with { type: 'json' };
+// Deliberately imported WITHOUT a `with { type: 'json' }` attribute, for the
+// reason `apps/fresco/fresco.config.ts` records against the same trap:
+// Storybook's Next.js Vite builder transforms this file with Next's SWC, and
+// `vite-plugin-storybook-nextjs` hardcodes `emitAssertForImportAttributes`,
+// rewriting the attribute to the legacy `assert` keyword Chromium removed.
+// Fresco's Storybook reaches this module through fresco-ui, so the attribute
+// broke every story that renders a localized component.
+//
+// The cost is that Node's own ESM loader cannot import this entry — it wants
+// the attribute — so `./common` is universal across bundlers rather than
+// literally every loader. Every consumer here bundles; a genuine Node-loaded
+// caller would need the catalog re-expressed as a module rather than JSON,
+// which is a change to the translator-facing format and not worth making for
+// a caller that does not exist.
+import enGbOverrides from './locales/en-GB.json';
 
 /**
  * Universal chrome verbs and boilerplate, translated exactly once for every
