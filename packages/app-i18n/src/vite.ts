@@ -12,12 +12,19 @@ type TransformResult =
  * Compiles imported locale catalogs (`…/locales/<tag>.json` modules of
  * id → ICU string) to pre-parsed AST. `en.json` is excluded: it is the
  * extraction artifact read by the catalog guards, never imported at runtime.
+ *
+ * Ids are matched on a separator-normalised copy, the way this repo's other
+ * id-matching Vite plugins do (`packages/interview/vite.config.ts`). A
+ * Windows id can carry `\` separators, and the silent failure — no match, so
+ * no compilation — would not surface until someone noticed the ICU parser
+ * back in a production bundle.
  */
 const catalogsPlugin = () => ({
   name: 'app-i18n-catalogs',
   enforce: 'pre' as const,
   transform(code: string, id: string): TransformResult {
-    if (!CATALOG_PATTERN.test(id) || id.endsWith('/en.json')) {
+    const path = id.replace(/\\/g, '/');
+    if (!CATALOG_PATTERN.test(path) || path.endsWith('/en.json')) {
       return undefined;
     }
     const catalog = JSON.parse(code) as Record<string, string>;
