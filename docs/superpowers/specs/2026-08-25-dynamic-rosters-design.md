@@ -399,8 +399,8 @@ credentials: 'omit', cache: 'no-store', redirect: 'error' })`. POST bodies
    invalid response is a fetch failure, never partially ingested.**
 5. Hand the nodes to the existing parse pipeline
    (`parseExternalNetworkAsset`), with one difference: primary keys are
-   `` `${subjectType}_${hash({ externalId: id })}` `` for an element carrying
-   a stable `id`, and `` `${subjectType}_${hash({ node })}` `` for one that
+   `` `${subjectType}_${externalIdDigest(id)}` `` for an element carrying a
+   stable `id`, and `` `${subjectType}_${hash({ node })}` `` for one that
    does not — content only, no index salt (Decision 3 and its 2026-09-04
    amendment). The branch is evaluated per element, so one response may mix
    the two. The subject-type prefix keeps its existing job of scoping a row's
@@ -408,35 +408,65 @@ credentials: 'omit', cache: 'no-store', redirect: 'error' })`. POST bodies
    Static-file rosters keep their existing salted hash; nothing changes for
    them.
 
-   **A supplied id is hashed into the key, never concatenated into it.**
-   `hash` returns a fixed-length 43-character digest, and four properties
-   follow that verbatim embedding cannot give:
+   **A supplied id is digested into the key, never concatenated into it**,
+   and the digest is defined **here, in bytes**, rather than delegated to a
+   library:
 
-   - The two strategies cannot collide, because they hash structurally
-     different inputs (`{ externalId }` versus `{ node }`) rather than
-     sharing one string space that an id could be spelled into.
+   ```ts
+   // packages/interview/src/contract/dynamicRoster.ts
+   const externalIdDigest = (id: string) =>
+     base64url(sha256(utf8(`dynamicroster:v1:${id}`))); // 43 chars, unpadded
+   ```
+
+   - **Frozen by version, not by dependency.** Cross-wave identity must hold
+     across app releases years apart, so it cannot ride on a hashing
+     library's serialization: `@codaco/interview` depends on ohash at
+     `^2.0.11`, and a minor release that changed its encoding would silently
+     fork every longitudinal alter and break the export join below. The
+     content-hash branch may keep using `ohash` — its stability requirement
+     is only within a session — but the id branch is pinned in this spec. A
+     test asserts the digest of a known id against a literal, so any
+     refactor or dependency bump that moves it fails loudly rather than
+     quietly re-identifying people.
+   - The `dynamicroster:v1:` tag keeps the two strategies apart — it can
+     never be the encoding of a `{ node }` structure — and is what a future
+     revision bumps.
    - `` `${subjectType}_${digest}` `` is injective even though **both**
      subject-type keys and endpoint ids may contain `_` (`person_node_type`
      is a real codebook key): a fixed-length suffix determines the split.
-   - The key's length no longer depends on the id, so it cannot outgrow the
-     128-character node-identifier limit a host enforces when it persists
-     the network (Studio's `nodes_identifier_lengths_check`,
-     `apps/studio/server/src/network/schema.ts:151-157`). Nor can a
-     pathological id byte — a NUL, say — reach a `text` column.
-   - No byte of the id reaches the `_uid`, and the `_uid` is what the
-     analytics listener reports as `node_id`
-     (`analyticsListener.ts:36-51`). An endpoint may therefore mint
-     participant-linked ids — the longitudinal case does exactly that —
-     without those ids leaving the device, which is what Interviewer
-     promises when it says network data and case IDs never do
-     (`Step5Analytics.tsx:54-62`). An id-bearing node's `node_id` is a
-     digest, indistinguishable in kind from the content digest analytics
-     already carries for a static roster node.
+   - **The id's length stops mattering.** A supplied id contributes exactly
+     43 characters, the same as a content digest. What remains is the
+     subject-type key's own length, which the pre-amendment formula already
+     carried: `VariableNameSchema` is an unbounded NMTOKEN, so a subject key
+     of 85 characters or more overruns a host's 128-character
+     node-identifier limit (Studio's `nodes_identifier_lengths_check`,
+     `apps/studio/server/src/network/schema.ts:151-157`) with or without
+     this amendment. Bounding that is a pre-existing question about the
+     protocol's own keys, not one the amendment creates or settles.
+   - No byte of the id reaches the `_uid`, so no id byte can reach a
+     persisted `text` column or an analytics event — a NUL or any other
+     unstorable byte in an id is inert.
+
+   **What the digest does and does not buy, in analytics.** The `_uid` is
+   what the analytics listener reports as `node_id`
+   (`analyticsListener.ts:36-51`), so digesting is what lets an endpoint mint
+   participant-linked ids — the longitudinal case does exactly that — without
+   the id itself leaving the device, as Interviewer promises
+   (`Step5Analytics.tsx:54-62`). It is **pseudonymisation, not
+   anonymisation**: the digest is unkeyed and deterministic, so a small id
+   space (this spec's own `"1"` example) is enumerable, and by construction
+   the value is stable across waves. That is the property the content digest
+   already has for every roster node today — `hash({ node })` over a known
+   roster is equally enumerable — so the amendment does not widen what
+   analytics can link. Whether roster-derived `node_id`s belong in analytics
+   at all is a live question about `analyticsListener`, older than this
+   amendment and unresolved by it; it is named here so hashing is not
+   mistaken for having answered it.
 
    Consequence, accepted: the endpoint's own id is not readable back out of
    an exported `_uid`. A consumer linking an export to its own records
-   recomputes `hash({ externalId: id })` — it minted the id, so it can — and
-   the amendment's cross-wave requirement is unaffected, since identity only
+   recomputes `externalIdDigest(id)` — it minted the id, so it can — and the
+   amendment's cross-wave requirement is unaffected, since identity only
    needs the same id to keep mapping to the same node.
 
 Behavioural requirements on the endpoint, enforced socially (documented) not
@@ -498,11 +528,20 @@ test request and the interview runtime share it:
   - The **64-character ceiling** is contract hygiene, not a storage
     workaround: an identifier longer than that is a payload, not an id (a
     UUID is 36). Nothing downstream depends on the bound, because §5.4
-    step 5 hashes the id into a fixed-length key instead of concatenating
+    step 5 digests the id into a fixed-length key instead of concatenating
     it — which is also why this contract needs no character allowlist. No
     byte of the id reaches a `_uid`, an analytics event, or a persisted
     identifier, so an id containing a NUL or any other byte a host cannot
     store is harmless here.
+  - The id must be **well-formed Unicode** (`id.isWellFormed()`, refined on
+    top of the string rule). This is the one character restriction that _is_
+    load-bearing, and digesting does not remove it: `JSON.parse` happily
+    produces lone surrogates from `"\uD800"`, and an encoder that replaces
+    them with U+FFFD maps distinct ids onto one digest — `ohash` 2.0.11 does
+    exactly this, hashing `"\uD800"` and `"\uD801"` identically — which
+    would collapse two people into one node. The UTF-8 encoding §5.4 step 5
+    specifies is only well defined for input that satisfies this rule, so
+    the schema enforces it rather than leaving it to the encoder.
   - When present the parse pipeline honors the `id` as the node's identity
     (§5.4 step 5); when absent, content-hash identity applies. Either way
     the key is `` `${subjectType}_${digest}` ``, so a roster `_uid` is
@@ -989,15 +1028,17 @@ and fixtures re-saved at schema 9.
 **`@codaco/interview`**
 
 - `src/contract/dynamicRoster.ts` (new) — template substitution, request
-  builder, executor, `serializeNetworkForRequest`; exported from
+  builder, executor, `serializeNetworkForRequest`, `externalIdDigest`
+  (the frozen id digest, §5.4 step 5); exported from
   `src/contract/index.ts`.
 - `src/contract/types.ts` — `ResolvedAsset.request`,
   `InterviewRequestContext`, Shell prop.
 - `src/hooks/useExternalData.tsx` — type branch, `retry()`, offline-aware
   error state, dynamic identity path.
 - `src/utils/loadExternalData.ts` — accept an injected primary-key strategy
-  (index-salted for files; for dynamic, a digest of the element's `id` when
-  it carries one, else of its content — §5.4 step 5, decided per element).
+  (index-salted for files; for dynamic, `externalIdDigest` of the element's
+  `id` when it carries one, else the content hash — §5.4 step 5, decided per
+  element).
 - `src/interfaces/NameGeneratorRoster/*`, `src/interfaces/NameGenerator/
 components/NodePanel.tsx` — retry UI + failure copy; the roster stage
   suspends its `useNodeLimits` minNodes gate in the error state (§5.6).
@@ -1055,8 +1096,9 @@ only stages preceding the start stage (§5.9); `PreviewHost` passes it.
   roster and panel data sources
   (including the newly closed panel gap); response-schema tests (empty
   nodes valid, bad names rejected, a non-empty `id` accepted, `id: ""`, a
-  65-character `id`, and a non-string `id` all rejected, an element with no
-  `id` still valid); `protocolRequiresInternet` cases;
+  65-character `id`, an `id` carrying a lone surrogate, and a non-string
+  `id` all rejected, an element with no `id` still valid);
+  `protocolRequiresInternet` cases;
   `collectAssetReferences` picks up `valueAssetId`, plus the canary that it
   returns nested hits at all (§5.12 — the walker's direct current-schema
   import must never silently bind to a frozen stub).
@@ -1086,14 +1128,15 @@ only stages preceding the start stage (§5.9); `PreviewHost` passes it.
   between fetches keeps one `_uid` and is not re-offered (the cross-wave
   case, which must fail if the pipeline falls back to the content hash), a
   response mixing id-bearing and id-less elements keys each by its own
-  strategy, an id-bearing node's `_uid` contains no substring of the
-  supplied id (the property that keeps a participant-linked id out of
-  `analyticsListener`'s `node_id` and out of every persisted identifier —
-  asserted against an id chosen to be findable), keys stay distinct across
-  subject types whose names differ only by an underscore boundary, and two
-  dynamic assets of the same subject type returning the same id yield one
-  node (the documented namespacing consequence, asserted so it cannot
-  regress silently); serialization
+  strategy, `externalIdDigest` of a known id equals a literal committed in
+  the test (the frozen-algorithm guard — a dependency bump or refactor that
+  moves the digest must fail here, not silently fork every longitudinal
+  alter), an id-bearing node's `_uid` contains no substring of the supplied
+  id (asserted against an id chosen to be findable), keys stay distinct
+  across subject types whose names differ only by an underscore boundary,
+  and two dynamic assets of the same subject type returning the same id
+  yield one node (the documented namespacing consequence, asserted so it
+  cannot regress silently); serialization
   omits encrypted attributes (tested against an encrypted network) and
   response parsing strips nullish values exactly as the static parser does;
   `useExternalData` retry and auto-retry-on-reconnect; the minNodes gate is
