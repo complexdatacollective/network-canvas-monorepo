@@ -447,21 +447,26 @@ credentials: 'omit', cache: 'no-store', redirect: 'error' })`. POST bodies
      persisted `text` column or an analytics event — a NUL or any other
      unstorable byte in an id is inert.
 
-   **What the digest does and does not buy, in analytics.** The `_uid` is
-   what the analytics listener reports as `node_id`
-   (`analyticsListener.ts:36-51`), so digesting is what lets an endpoint mint
-   participant-linked ids — the longitudinal case does exactly that — without
-   the id itself leaving the device, as Interviewer promises
+   **What the digest does and does not buy.** Digesting is what lets an
+   endpoint mint participant-linked ids — the longitudinal case does exactly
+   that — without the id itself leaving the device, as Interviewer promises
    (`Step5Analytics.tsx:54-62`). It is **pseudonymisation, not
    anonymisation**: the digest is unkeyed and deterministic, so a small id
    space (this spec's own `"1"` example) is enumerable, and by construction
    the value is stable across waves. That is the property the content digest
    already has for every roster node today — `hash({ node })` over a known
    roster is equally enumerable — so the amendment does not widen what
-   analytics can link. Whether roster-derived `node_id`s belong in analytics
-   at all is a live question about `analyticsListener`, older than this
-   amendment and unresolved by it; it is named here so hashing is not
-   mistaken for having answered it.
+   analytics can link.
+
+   **Resolved 2026-09-04 (PR #1642).** Whether roster-derived `node_id`s
+   belong in analytics at all was a live question about `analyticsListener`,
+   older than this amendment and left open by it. They do not, and none are
+   sent: every entity id in an event is now replaced, at the tracker
+   boundary, with a random pseudonym minted per session and held in memory
+   (`analytics/entityIds.ts`). No roster digest — content-derived or
+   id-derived — reaches analytics, so a digest's enumerability no longer has
+   an analytics consequence. It remains what identity within a session and
+   across waves is built on, which is what this decision needs of it.
 
    Consequence, accepted: the endpoint's own id is not readable back out of
    an exported `_uid`. A consumer linking an export to its own records
