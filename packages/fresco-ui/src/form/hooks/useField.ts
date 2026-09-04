@@ -1,5 +1,12 @@
 import { debounce } from 'es-toolkit';
-import { type ReactNode, useCallback, useEffect, useId, useMemo } from 'react';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+} from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -251,10 +258,22 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     validationContext: resolvedValidationContext,
   };
 
+  // `useAppIntl` hands back a new formatter every time the active locale
+  // changes. Rebuilding the REGISTERED validation function from it would make
+  // a language switch re-register the field, and unregistering deletes the
+  // field's stored errors along with the blurred flag that lets them show —
+  // so a person switching language with a validation error on screen would
+  // watch it vanish while the form stayed invalid. The registered function
+  // reads the formatter through a ref instead: rule messages are formatted
+  // when validation runs, so the next run picks up the new language without
+  // the function the store holds ever changing identity.
+  const intlRef = useRef(intl);
+
   const validation = useMemo(
-    () => makeValidationFunction(propsWithContext, intl),
+    () => (formValues: Record<string, FieldValue>) =>
+      makeValidationFunction(propsWithContext, intlRef.current)(formValues),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [validationPropsJson, resolvedValidationContext, intl],
+    [validationPropsJson, resolvedValidationContext],
   );
 
   // Memoize the validation summary (only compute if showValidationHints is true)
@@ -309,6 +328,21 @@ export function useField(config: UseFieldConfig): UseFieldResult {
       : validateField(publicResolvedName);
     void request;
   }, [pathOperations, publicResolvedName, resolvedPath, validateField]);
+
+  // Errors reach the store as plain strings, formatted when validation last
+  // ran, so a message already on screen stays in the language it was written
+  // in. Re-run validation once the locale has actually changed to put it into
+  // the new one. Only a field that is already showing something is
+  // revalidated: validating a field nobody has touched yet would write errors
+  // the person has not earned, and a language switch is no reason to accuse
+  // them of anything.
+  useEffect(() => {
+    if (intlRef.current === intl) return;
+    intlRef.current = intl;
+    if (fieldErrors && fieldErrors.length > 0) {
+      validateResolvedField();
+    }
+  }, [intl, fieldErrors, validateResolvedField]);
 
   const setResolvedFieldValue = useCallback(
     (value: FieldValue) => {
