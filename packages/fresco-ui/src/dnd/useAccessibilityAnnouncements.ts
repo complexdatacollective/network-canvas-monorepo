@@ -1,3 +1,5 @@
+'use client';
+
 import { useCallback, useEffect, useRef } from 'react';
 
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
