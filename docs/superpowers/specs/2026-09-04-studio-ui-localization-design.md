@@ -277,6 +277,15 @@ dependencies used only by the Node-side modules (never in client bundles);
 `react` as a peer (`catalog:`). Internal consumers reference the package with
 `workspace:^`.
 
+No `engines` field, matching the repo's other published libraries
+(`fresco-ui`, `interview`, `protocol-validation`, `network-exporters`). The
+real Node floor here comes from transitives of `@formatjs/cli-lib` — today
+`@babel/types@8` at `^22.18.0 || >=24.11.0`, a disjoint range excluding Node
+23 and 24.0–24.10 — and those packages declare it themselves, so
+`engine-strict` enforces the true constraint whatever this manifest says.
+Restating it here could only be a copy that rots into a false claim on the
+next transitive bump.
+
 Registration mechanics (all confirmed against current tooling): nothing to
 add in `pnpm-workspace.yaml`, `.changeset/config.json`, `turbo.json`, or
 `knip.json` for the package itself; a first-publication approval entry in
