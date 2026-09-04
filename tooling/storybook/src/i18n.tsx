@@ -1,6 +1,6 @@
 import { DirectionProvider } from '@base-ui/react/direction-provider';
 import type { Decorator } from '@storybook/react-vite';
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect } from 'react';
 
 import {
   type AppLocale,
@@ -155,17 +155,22 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
     // It has to be the document rather than the wrapper alone. Dialogs,
     // popovers, menus and toasts portal to `document.body`, which is outside
     // any wrapper a decorator can render, so a scoped `dir` leaves exactly the
-    // components whose RTL behaviour is worth checking rendering left-to-right.
-    useEffect(() => {
+    // components whose RTL behaviour is worth checking rendering
+    // left-to-right.
+    //
+    // Set on mount and never restored, deliberately. Restoring a remembered
+    // value is what made this leak between stories: a story that forces RTL
+    // (`globals: { appDirection: 'rtl' }`) would hand the document back at a
+    // moment the next story had already claimed it, and an unrelated story
+    // then ran mirrored — arrow keys moving the wrong way and a click at
+    // `rect.right` landing at the visual start. Every story sets what it
+    // wants, so there is nothing to hand back. Layout effect rather than
+    // effect so it lands before the story paints, and before a play function
+    // measures anything.
+    useLayoutEffect(() => {
       const root = document.documentElement;
-      const previousLang = root.lang;
-      const previousDir = root.dir;
       root.lang = locale;
       root.dir = direction;
-      return () => {
-        root.lang = previousLang;
-        root.dir = previousDir;
-      };
     }, [locale, direction]);
 
     return (
