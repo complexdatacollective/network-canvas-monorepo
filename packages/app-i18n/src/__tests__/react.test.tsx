@@ -96,6 +96,22 @@ describe('AppI18nProvider', () => {
     expect(document.documentElement.dir).toBe('rtl');
   });
 
+  it('renders an undeclared locale as the registry default rather than failing', () => {
+    // The provider wraps the whole application, so a tag the registry does not
+    // declare — a preference stored by a build that offered more locales, a
+    // hand-edited mirror — has to degrade to a readable screen. Negotiation is
+    // what guarantees a declared tag; this is the backstop for what bypasses
+    // it, and `<html lang>` must describe what is actually on screen.
+    document.documentElement.lang = 'xx';
+    const view = render(
+      <AppI18nProvider locale="fr-CA" locales={registry}>
+        <Greeting name="Ada" />
+      </AppI18nProvider>,
+    );
+    expect(view.container.textContent).toContain('Hello Ada');
+    expect(document.documentElement.lang).toBe('en');
+  });
+
   it('leaves the document alone when manageDocument is false', () => {
     document.documentElement.lang = 'xx';
     render(
