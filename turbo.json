@@ -252,6 +252,7 @@
         "lib/**",
         "messages/**",
         "netlify/**",
+        "public/protocols/**",
         "test/**",
         "vitest.config.*",
         "vitest.setup.*",

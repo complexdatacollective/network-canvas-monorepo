@@ -4,7 +4,22 @@ import { basename, join } from 'node:path';
 import csv from 'csvtojson';
 import { z } from 'zod';
 
-import { type ProtocolStage, readProtocolStages } from '~/lib/protocolStages';
+import { isStageType } from '@codaco/fresco-ui/stages/stageTypes';
+import type { StageType } from '@codaco/protocol-validation';
+import {
+  codebookAssetColumn,
+  discoverWaves,
+  edgeStagesColumn,
+  protocolAssetColumn,
+  schemaVersionColumn,
+  serializeEdgeStages,
+  stageCountColumn,
+  stagesColumn,
+  SYNC_COMMAND,
+  WAVES_COLUMN,
+} from '~/lib/protocolGalleryColumns';
+import type { ProtocolStage } from '~/lib/protocolStages';
+import { summarizeStages } from '~/lib/stageTypes';
 
 export type { ProtocolStage } from '~/lib/protocolStages';
 
@@ -16,8 +31,6 @@ export type ProtocolDownload = {
   codebookPath: string;
   stages: ProtocolStage[];
 };
-
-type PendingDownload = Omit<ProtocolDownload, 'stages'>;
 
 export type ProtocolSupplementaryMaterial = {
   filename: string;
@@ -83,45 +96,98 @@ const optionalCodebookFilename = z.union([codebookFilename, z.literal('')]);
 const optionalText = z.string().trim().optional().default('');
 const optionalHttpsUrl = z.union([httpsUrl, z.literal('')]);
 const yesNo = z.enum(['yes', 'no']);
+const integer = z.string().trim().regex(/^\d+$/, 'must be a whole number');
+const optionalInteger = z.union([integer, z.literal('')]);
+const derivedText = z.string().trim();
 
-const protocolRowSchema = z
-  .object({
-    'Slug': slug,
-    'Protocol Authors': requiredText,
-    'Study Title': requiredText,
-    'Study PI': requiredText,
-    'Protocol Contact': requiredText,
-    'Protocol Title [StudyAcronym_DatePublishedtoPG]': requiredText,
-    'Cite Publication': requiredText,
-    'Cite Publication (HTML)': requiredText,
-    'Publication URL': httpsUrl,
-    'Grant Number': requiredText,
-    'Clinical Trials Registration': requiredText,
-    'Field(s)': requiredText,
-    'Population': requiredText,
-    'Edge Generation Methodology': requiredText,
-    'Uses Rosters': yesNo,
-    'Qualitative Summary': requiredText,
-    'Descriptive Sentence': requiredText,
-    'Protocol File (original)': requiredText,
-    'Codebook Summary (original)': requiredText,
-    'Protocol File (asset)': protocolFilename,
-    'Codebook Summary (asset)': codebookFilename,
-    'Fresco': optionalHttpsUrl,
-    'Featured': yesNo,
-    'Protocol File (asset) Wave 2': optionalProtocolFilename,
-    'Codebook Summary (asset) Wave 2': optionalCodebookFilename,
-    'Protocol File (asset) Wave 3': optionalProtocolFilename,
-    'Codebook Summary (asset) Wave 3': optionalCodebookFilename,
-    'Supplementary Material Label': optionalText,
-    'Supplementary Material (asset)': optionalCodebookFilename
-      .optional()
-      .default(''),
-    'Date Added': requiredText,
-  })
-  .strict();
+const authoredRowShape = {
+  'Slug': slug,
+  'Protocol Authors': requiredText,
+  'Study Title': requiredText,
+  'Study PI': requiredText,
+  'Protocol Contact': requiredText,
+  'Protocol Title [StudyAcronym_DatePublishedtoPG]': requiredText,
+  'Cite Publication': requiredText,
+  'Cite Publication (HTML)': requiredText,
+  'Publication URL': httpsUrl,
+  'Grant Number': requiredText,
+  'Clinical Trials Registration': requiredText,
+  'Field(s)': requiredText,
+  'Population': requiredText,
+  'Edge Generation Methodology': requiredText,
+  'Uses Rosters': yesNo,
+  'Qualitative Summary': requiredText,
+  'Descriptive Sentence': requiredText,
+  'Protocol File (original)': requiredText,
+  'Codebook Summary (original)': requiredText,
+  'Protocol File (asset)': protocolFilename,
+  'Codebook Summary (asset)': codebookFilename,
+  'Fresco': optionalHttpsUrl,
+  'Featured': yesNo,
+  'Supplementary Material Label': optionalText,
+  'Supplementary Material (asset)': optionalCodebookFilename
+    .optional()
+    .default(''),
+  'Date Added': requiredText,
+};
 
-type ProtocolRow = z.infer<typeof protocolRowSchema>;
+const authoredRowSchema = z.object(authoredRowShape);
+
+type AuthoredRow = z.infer<typeof authoredRowSchema>;
+type ProtocolRow = AuthoredRow & Record<string, string>;
+
+function waveColumnSchema(waves: readonly number[]) {
+  const shape: Record<string, z.ZodType<string>> = {
+    [WAVES_COLUMN]: integer,
+  };
+  for (const wave of waves) {
+    if (wave !== 1) {
+      shape[protocolAssetColumn(wave)] = optionalProtocolFilename;
+      shape[codebookAssetColumn(wave)] = optionalCodebookFilename;
+    }
+    shape[schemaVersionColumn(wave)] = optionalInteger;
+    shape[stageCountColumn(wave)] = optionalInteger;
+    shape[edgeStagesColumn(wave)] = derivedText;
+    shape[stagesColumn(wave)] = derivedText;
+  }
+  return z.object(shape);
+}
+
+function firstIssueMessage(error: z.ZodError): string {
+  const issue = error.issues[0];
+  return issue ? `${issueField(issue)}: ${issue.message}` : 'invalid row';
+}
+
+function parseRow(
+  record: Record<string, string>,
+  waveSchema: ReturnType<typeof waveColumnSchema>,
+): ProtocolRow {
+  const unknownColumn = Object.keys(record).find(
+    (column) => !(column in authoredRowShape) && !(column in waveSchema.shape),
+  );
+  if (unknownColumn) throw new Error(`${unknownColumn}: unrecognized column`);
+
+  const authored = authoredRowSchema.safeParse(record);
+  if (!authored.success) throw new Error(firstIssueMessage(authored.error));
+  const waveColumns = waveSchema.safeParse(record);
+  if (!waveColumns.success) {
+    throw new Error(firstIssueMessage(waveColumns.error));
+  }
+
+  return { ...waveColumns.data, ...authored.data };
+}
+
+const stagesCellSchema = z
+  .array(
+    z.object({
+      type: z.custom<StageType>(
+        (value) => typeof value === 'string' && isStageType(value),
+        'unknown stage type',
+      ),
+      label: z.string().trim().min(1),
+    }),
+  )
+  .min(1);
 
 const csvRowsSchema = z.array(z.record(z.string(), z.string()));
 const publicAssetRoot = '/protocols/protocol-gallery';
@@ -186,22 +252,72 @@ function assetPath(assetFilename: string): string {
   return `${publicAssetRoot}/${encodeURIComponent(assetFilename)}`;
 }
 
-function buildDownloads(row: ProtocolRow): PendingDownload[] {
-  const downloads: PendingDownload[] = [
-    {
-      wave: 1,
-      protocolFilename: row['Protocol File (asset)'],
-      protocolPath: assetPath(row['Protocol File (asset)']),
-      codebookFilename: row['Codebook Summary (asset)'],
-      codebookPath: assetPath(row['Codebook Summary (asset)']),
-    },
-  ];
+function staleError(column: string, detail: string): Error {
+  return new Error(`${column}: ${detail}; run ${SYNC_COMMAND}`);
+}
 
-  const additionalWaves = [2, 3] as const;
-  for (const wave of additionalWaves) {
-    const protocol = row[`Protocol File (asset) Wave ${wave}`];
-    const codebook = row[`Codebook Summary (asset) Wave ${wave}`];
-    if (!protocol && !codebook) continue;
+function parseStagesCell(row: ProtocolRow, wave: number): ProtocolStage[] {
+  const column = stagesColumn(wave);
+  const raw = row[column];
+  if (!raw) throw staleError(column, 'missing');
+
+  let json: unknown;
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    throw staleError(column, 'not valid JSON');
+  }
+
+  const parsed = stagesCellSchema.safeParse(json);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    throw new Error(
+      `${column}: ${issue ? `${issue.path.join('.')}: ${issue.message}` : 'invalid'}`,
+    );
+  }
+
+  const stages = parsed.data;
+  if (row[stageCountColumn(wave)] !== String(stages.length)) {
+    throw staleError(stageCountColumn(wave), 'does not match the stage list');
+  }
+  if (
+    row[edgeStagesColumn(wave)] !== serializeEdgeStages(summarizeStages(stages))
+  ) {
+    throw staleError(edgeStagesColumn(wave), 'does not match the stage list');
+  }
+  if (!row[schemaVersionColumn(wave)]) {
+    throw staleError(schemaVersionColumn(wave), 'missing');
+  }
+
+  return stages;
+}
+
+function assertWaveUnused(row: ProtocolRow, wave: number): void {
+  for (const column of [
+    schemaVersionColumn(wave),
+    stageCountColumn(wave),
+    edgeStagesColumn(wave),
+    stagesColumn(wave),
+  ]) {
+    if (row[column]) {
+      throw staleError(column, `set although wave ${wave} has no protocol`);
+    }
+  }
+}
+
+function buildDownloads(
+  row: ProtocolRow,
+  waves: readonly number[],
+): ProtocolDownload[] {
+  const downloads: ProtocolDownload[] = [];
+
+  for (const wave of waves) {
+    const protocol = row[protocolAssetColumn(wave)] ?? '';
+    const codebook = row[codebookAssetColumn(wave)] ?? '';
+    if (!protocol && !codebook) {
+      assertWaveUnused(row, wave);
+      continue;
+    }
     if (!protocol || !codebook) {
       throw new Error(`Wave ${wave}: protocol and codebook must be paired`);
     }
@@ -211,7 +327,12 @@ function buildDownloads(row: ProtocolRow): PendingDownload[] {
       protocolPath: assetPath(protocol),
       codebookFilename: codebook,
       codebookPath: assetPath(codebook),
+      stages: parseStagesCell(row, wave),
     });
+  }
+
+  if (row[WAVES_COLUMN] !== String(downloads.length)) {
+    throw staleError(WAVES_COLUMN, `expected ${downloads.length}`);
   }
 
   return downloads;
@@ -256,20 +377,6 @@ async function assertAssetsExist(
   );
 }
 
-async function attachStages(
-  downloads: PendingDownload[],
-  assetDirectory: string,
-): Promise<ProtocolDownload[]> {
-  return Promise.all(
-    downloads.map(async (download) => ({
-      ...download,
-      stages: await readProtocolStages(
-        join(assetDirectory, download.protocolFilename),
-      ),
-    })),
-  );
-}
-
 const galleryCache = new Map<string, Promise<GalleryProtocol[]>>();
 
 export function loadProtocolGallery(
@@ -295,6 +402,13 @@ export function loadProtocolGallery(
   return pending;
 }
 
+function rowError(index: number, error: unknown): Error {
+  const message = error instanceof Error ? error.message : 'invalid row';
+  return new Error(`protocol-gallery.csv: row ${index + 2}: ${message}`, {
+    cause: error,
+  });
+}
+
 async function readProtocolGallery(
   contentFile: string,
   assetDirectory: string,
@@ -317,39 +431,43 @@ async function readProtocolGallery(
   }
 
   const records = csvRowsSchema.safeParse(parsed);
-  if (!records.success || records.data.length === 0) {
+  const firstRecord = records.success ? records.data[0] : undefined;
+  if (!records.success || !firstRecord) {
     throw new Error(
       'protocol-gallery.csv: dataset must contain at least one row',
     );
   }
 
-  const rows = records.data.map((record, index) => {
-    const result = protocolRowSchema.safeParse(record);
-    if (result.success) return result.data;
-
-    const issue = result.error.issues[0];
-    if (!issue) {
-      throw new Error(`protocol-gallery.csv: row ${index + 2}: invalid row`);
-    }
+  if (!(WAVES_COLUMN in firstRecord)) {
     throw new Error(
-      `protocol-gallery.csv: row ${index + 2}: ${issueField(issue)}: ${issue.message}`,
+      `protocol-gallery.csv: ${WAVES_COLUMN} column missing; run ${SYNC_COMMAND}`,
     );
+  }
+  const waves = discoverWaves(Object.keys(firstRecord));
+  const waveSchema = waveColumnSchema(waves);
+
+  const rows = records.data.map((record, index) => {
+    try {
+      return parseRow(record, waveSchema);
+    } catch (error) {
+      throw rowError(index, error);
+    }
   });
 
   const seenSlugs = new Set<string>();
   const pendingRows = rows.map((row, index) => {
-    if (seenSlugs.has(row.Slug)) {
-      throw new Error(
-        `protocol-gallery.csv: row ${index + 2}: Slug: duplicate slug`,
-      );
-    }
-    seenSlugs.add(row.Slug);
+    try {
+      if (seenSlugs.has(row.Slug)) throw new Error('Slug: duplicate slug');
+      seenSlugs.add(row.Slug);
 
-    return {
-      row,
-      downloads: buildDownloads(row),
-      supplementaryMaterials: buildSupplementaryMaterials(row),
-    };
+      return {
+        row,
+        downloads: buildDownloads(row, waves),
+        supplementaryMaterials: buildSupplementaryMaterials(row),
+      };
+    } catch (error) {
+      throw rowError(index, error);
+    }
   });
 
   await assertAssetsExist(
@@ -365,57 +483,55 @@ async function readProtocolGallery(
     assetDirectory,
   );
 
-  return Promise.all(
-    pendingRows.map<Promise<GalleryProtocol>>(
-      async ({ row, downloads, supplementaryMaterials }) => {
-        const title = normalizeText(row['Study Title']);
-        const shortName = protocolShortName(
-          row['Protocol Title [StudyAcronym_DatePublishedtoPG]'],
-        );
-        const authors = normalizeText(row['Protocol Authors']);
-        const fields = splitList(row['Field(s)']);
-        const population = normalizeText(row.Population);
-        const edgeGeneration = splitList(row['Edge Generation Methodology']);
-        const description = normalizeText(row['Descriptive Sentence']);
+  return pendingRows.map<GalleryProtocol>(
+    ({ row, downloads, supplementaryMaterials }) => {
+      const title = normalizeText(row['Study Title']);
+      const shortName = protocolShortName(
+        row['Protocol Title [StudyAcronym_DatePublishedtoPG]'],
+      );
+      const authors = normalizeText(row['Protocol Authors']);
+      const fields = splitList(row['Field(s)']);
+      const population = normalizeText(row.Population);
+      const edgeGeneration = splitList(row['Edge Generation Methodology']);
+      const description = normalizeText(row['Descriptive Sentence']);
 
-        return {
-          slug: row.Slug,
-          title,
+      return {
+        slug: row.Slug,
+        title,
+        shortName,
+        authors,
+        studyPi: normalizeText(row['Study PI']),
+        contact: normalizeText(row['Protocol Contact']),
+        citation: row['Cite Publication'].trim(),
+        publicationUrl: row['Publication URL'],
+        grantNumber: normalizeText(row['Grant Number']),
+        clinicalTrialsRegistration: normalizeText(
+          row['Clinical Trials Registration'],
+        ),
+        fields,
+        population,
+        edgeGeneration,
+        usesRosters: row['Uses Rosters'] === 'yes',
+        summary: normalizeText(row['Qualitative Summary']),
+        description,
+        sandboxUrl: row.Fresco || undefined,
+        featured: row.Featured === 'yes',
+        dateAdded: parseDateAdded(row['Date Added']),
+        searchText: [
           shortName,
+          title,
           authors,
-          studyPi: normalizeText(row['Study PI']),
-          contact: normalizeText(row['Protocol Contact']),
-          citation: row['Cite Publication'].trim(),
-          publicationUrl: row['Publication URL'],
-          grantNumber: normalizeText(row['Grant Number']),
-          clinicalTrialsRegistration: normalizeText(
-            row['Clinical Trials Registration'],
-          ),
-          fields,
+          ...fields,
           population,
-          edgeGeneration,
-          usesRosters: row['Uses Rosters'] === 'yes',
-          summary: normalizeText(row['Qualitative Summary']),
+          ...edgeGeneration,
           description,
-          sandboxUrl: row.Fresco || undefined,
-          featured: row.Featured === 'yes',
-          dateAdded: parseDateAdded(row['Date Added']),
-          searchText: [
-            shortName,
-            title,
-            authors,
-            ...fields,
-            population,
-            ...edgeGeneration,
-            description,
-          ]
-            .join(' ')
-            .toLocaleLowerCase('en'),
-          downloads: await attachStages(downloads, assetDirectory),
-          supplementaryMaterials,
-        };
-      },
-    ),
+        ]
+          .join(' ')
+          .toLocaleLowerCase('en'),
+        downloads,
+        supplementaryMaterials,
+      };
+    },
   );
 }
 

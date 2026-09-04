@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { isStageType } from '@codaco/fresco-ui/stages/stageTypes';
 import { loadProtocolGallery } from '~/lib/protocolGallery';
+import { SYNC_COMMAND } from '~/lib/protocolGalleryColumns';
 
 const expectedStageCounts: Record<string, number[]> = {
   'gate': [42],
@@ -19,6 +20,20 @@ const expectedStageCounts: Record<string, number[]> = {
 
 describe('loadProtocolGallery', () => {
   let directory: string;
+
+  async function patchedDataset(
+    search: string,
+    replacement: string,
+  ): Promise<string> {
+    const source = await readFile(
+      join(process.cwd(), 'content', 'protocol-gallery.csv'),
+      'utf8',
+    );
+    expect(source).toContain(search);
+    const contentFile = join(directory, 'protocol-gallery.csv');
+    await writeFile(contentFile, source.replace(search, replacement));
+    return contentFile;
+  }
 
   beforeEach(async () => {
     directory = await mkdtemp(join(tmpdir(), 'networkcanvas-gallery-'));
@@ -76,7 +91,7 @@ describe('loadProtocolGallery', () => {
     }
   });
 
-  it("reads every wave's stage sequence out of its .netcanvas file", async () => {
+  it("reads every wave's stage sequence from the derived CSV columns", async () => {
     const protocols = await loadProtocolGallery();
 
     for (const protocol of protocols) {
@@ -137,6 +152,57 @@ describe('loadProtocolGallery', () => {
 
     await expect(loadProtocolGallery(contentFile)).rejects.toThrow(
       'Date Added: invalid date: Feb. 31,2026',
+    );
+  });
+
+  it('rejects a stale wave count and names the sync command', async () => {
+    await expect(
+      loadProtocolGallery(
+        await patchedDataset('"3","7","7","7"', '"2","7","7","7"'),
+      ),
+    ).rejects.toThrow(
+      `protocol-gallery.csv: row 4: Waves: expected 3; run ${SYNC_COMMAND}`,
+    );
+  });
+
+  it('rejects derived counts that disagree with the stage list', async () => {
+    await expect(
+      loadProtocolGallery(
+        await patchedDataset('"Sociogram=1;DyadCensus=1"', '"Sociogram=1"'),
+      ),
+    ).rejects.toThrow(
+      `protocol-gallery.csv: row 5: Edge Stages Wave 1: does not match the stage list; run ${SYNC_COMMAND}`,
+    );
+  });
+
+  it('rejects a stage type this build does not know', async () => {
+    await expect(
+      loadProtocolGallery(
+        await patchedDataset(
+          '{""type"":""Sociogram"",',
+          '{""type"":""FutureInterface"",',
+        ),
+      ),
+    ).rejects.toThrow(
+      /^protocol-gallery\.csv: row 2: Stages Wave 1: \d+\.type: unknown stage type$/,
+    );
+  });
+
+  it('rejects a column it does not recognise', async () => {
+    await expect(
+      loadProtocolGallery(
+        await patchedDataset('"Stage Count Wave 3"', '"Stage Total Wave 3"'),
+      ),
+    ).rejects.toThrow(
+      'protocol-gallery.csv: row 2: Stage Total Wave 3: unrecognized column',
+    );
+  });
+
+  it('tells an author who has not run the sync script what to do', async () => {
+    await expect(
+      loadProtocolGallery(await patchedDataset(',"Waves"', ',"Wave Count"')),
+    ).rejects.toThrow(
+      'protocol-gallery.csv: Waves column missing; run ' + SYNC_COMMAND,
     );
   });
 
