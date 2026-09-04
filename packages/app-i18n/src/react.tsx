@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
 } from 'react';
 import type { ReactNode } from 'react';
@@ -22,6 +23,19 @@ type AppI18nContextValue = Readonly<{
 }>;
 
 const AppI18nContext = createContext<AppI18nContextValue | null>(null);
+
+/**
+ * `<html lang>`/`<html dir>` have to be written in the layout phase, not after
+ * paint. A passive effect lands one frame late, so an app booting into a
+ * stored or negotiated locale paints its first frame under the static HTML's
+ * direction — an RTL interface flashing LTR, which is exactly the flash the
+ * synchronous negotiation upstream exists to prevent.
+ *
+ * Server renders have no layout phase and no document to write to, so they
+ * fall back to the passive effect, which never runs there either.
+ */
+const useDocumentEffect =
+  typeof document === 'undefined' ? useEffect : useLayoutEffect;
 
 let sharedDefaultIntl: IntlShape | undefined;
 
@@ -94,7 +108,7 @@ export function AppI18nProvider(props: AppI18nProviderProps) {
     [onLocaleChange],
   );
 
-  useEffect(() => {
+  useDocumentEffect(() => {
     if (!manageDocument) return;
     const root = document.documentElement;
     root.lang = active.locale;

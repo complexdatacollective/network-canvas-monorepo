@@ -7,6 +7,8 @@ import type {
   DateTimeSkeleton,
   MessageFormatElement,
   NumberSkeleton,
+  PluralElement,
+  SelectElement,
 } from '@formatjs/icu-messageformat-parser';
 
 /** One extracted message: English source text plus translator context. */
@@ -116,6 +118,25 @@ const formatToken = (
     : `{${value}, ${kind}, ${written}}`;
 };
 
+/**
+ * The arms of a select or plural a translation is obliged to keep.
+ *
+ * A select's arms are named by the author and matched against a runtime value,
+ * so dropping `male` and `female` does not fail — ICU falls through to `other`
+ * and both render the generic wording. Exact `=0`-style plural arms behave the
+ * same way: without one, zero renders through `other` as "0 items". CLDR
+ * plural categories are the exception this list exists to make, because `few`
+ * and `many` belong to the target language rather than to the message.
+ */
+const requiredArms = (element: SelectElement | PluralElement): string[] => {
+  const arms = Object.keys(element.options);
+  return (
+    element.type === TYPE.select
+      ? arms
+      : arms.filter((arm) => arm.startsWith('='))
+  ).toSorted();
+};
+
 const collectTokens = (
   elements: readonly MessageFormatElement[],
   into: Set<string>,
@@ -135,21 +156,25 @@ const collectTokens = (
         into.add(formatToken(element.value, 'time', element.style));
         break;
       case TYPE.select:
-        into.add(`{${element.value}, select}`);
-        for (const option of Object.values(element.options)) {
-          collectTokens(option.value, into);
-        }
-        break;
-      case TYPE.plural:
         into.add(
-          `{${element.value}, ${
-            element.pluralType === 'ordinal' ? 'selectordinal' : 'plural'
-          }, offset:${element.offset}}`,
+          `{${element.value}, select, ${requiredArms(element).join('|')}}`,
         );
         for (const option of Object.values(element.options)) {
           collectTokens(option.value, into);
         }
         break;
+      case TYPE.plural: {
+        const exact = requiredArms(element);
+        into.add(
+          `{${element.value}, ${
+            element.pluralType === 'ordinal' ? 'selectordinal' : 'plural'
+          }, offset:${element.offset}${exact.length === 0 ? '' : `, ${exact.join('|')}`}}`,
+        );
+        for (const option of Object.values(element.options)) {
+          collectTokens(option.value, into);
+        }
+        break;
+      }
       case TYPE.tag:
         into.add(`<${element.value}>`);
         collectTokens(element.children, into);
@@ -171,11 +196,11 @@ const collectTokens = (
  * rendering — just as an unlocalized bare value, which is exactly the silent
  * regression this guard exists to catch.
  *
- * What a token deliberately does not carry is arm structure. Plural categories
- * are a property of the target language (a locale that needs `few` and `many`
- * is translating correctly, not diverging), so arms are flattened into one set
- * and `#` is not required to survive — a translation may legitimately word an
- * arm without repeating the number.
+ * Arms are pinned only where losing one is silent: a select's arms and a
+ * plural's exact `=0`-style arms, both of which fall through to `other` rather
+ * than failing. CLDR plural categories are free — a locale that needs `few`
+ * and `many` is translating correctly — and `#` is not required to survive,
+ * since an arm may legitimately be worded without repeating the number.
  */
 export function messageTokens(message: string): readonly string[] {
   const tokens = new Set<string>();

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { render, screen } from '@testing-library/react';
+import { useEffect } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { commonMessages } from '../common.ts';
@@ -99,6 +100,30 @@ describe('AppI18nProvider', () => {
     );
     expect(document.documentElement.lang).toBe('ar');
     expect(document.documentElement.dir).toBe('rtl');
+  });
+
+  it('writes lang and dir in the layout phase, before anything can paint', () => {
+    // The oracle is the ordering, not the final value: a child's passive
+    // effect runs after every layout effect and before the provider's own
+    // passive effect. So what it observes is what the browser would have
+    // painted — under a passive write it is still the document's old, LTR
+    // state, which is the RTL flash this guards.
+    document.documentElement.lang = 'xx';
+    document.documentElement.dir = 'ltr';
+    const painted: string[] = [];
+    function Probe() {
+      useEffect(() => {
+        const root = document.documentElement;
+        painted.push(`${root.lang}/${root.dir}`);
+      }, []);
+      return null;
+    }
+    render(
+      <AppI18nProvider locale="ar" locales={registry}>
+        <Probe />
+      </AppI18nProvider>,
+    );
+    expect(painted).toEqual(['ar/rtl']);
   });
 
   it('renders an undeclared locale as the registry default rather than failing', () => {

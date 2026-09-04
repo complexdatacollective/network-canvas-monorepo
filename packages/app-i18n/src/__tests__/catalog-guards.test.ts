@@ -66,6 +66,24 @@ describe('messageTokens', () => {
     );
   });
 
+  it('pins the arms whose loss would be silent, and frees the rest', () => {
+    // Both of these fall through to `other` at runtime rather than failing:
+    // `{g, select, other {they}}` renders "they" for g="male", and a plural
+    // without `=0` renders "0 items" for n=0.
+    expect(messageTokens('{g, select, male {he} other {they}}')).not.toEqual(
+      messageTokens('{g, select, other {they}}'),
+    );
+    expect(messageTokens('{n, plural, =0 {none} other {#}}')).not.toEqual(
+      messageTokens('{n, plural, other {#}}'),
+    );
+
+    // Plural categories belong to the target language, so differing there is
+    // a correct translation, not a divergence.
+    expect(messageTokens('{n, plural, one {# item} other {# items}}')).toEqual(
+      messageTokens('{n, plural, few {#} many {#} other {#}}'),
+    );
+  });
+
   it('reads a skeleton by its options, not the order they were written in', () => {
     expect(messageTokens('{price, number, ::currency/GBP group-off}')).toEqual(
       messageTokens('{price, number, ::group-off currency/GBP}'),
@@ -135,6 +153,21 @@ describe('checkOverrideLocale', () => {
     expect(
       checkOverrideLocale(source, { 'app.price': 'Costs {price}' }),
     ).toEqual(['token mismatch: app.price']);
+  });
+
+  it('rejects a translation that drops a select arm', () => {
+    const withSelect: ExtractedCatalog = {
+      'app.gender': {
+        defaultMessage:
+          '{g, select, male {He} female {She} other {They}} replied',
+        description: 'd',
+      },
+    };
+    expect(
+      checkOverrideLocale(withSelect, {
+        'app.gender': '{g, select, other {They}} answered',
+      }),
+    ).toEqual(['token mismatch: app.gender']);
   });
 });
 
