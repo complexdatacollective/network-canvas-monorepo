@@ -112,6 +112,9 @@ catalog:
   electron: ^43.0.0
   electron-builder: ^26.15.2
   electron-vite: ^6.0.0-beta.1
+  # ICU/localisation linting, run under oxlint's jsPlugins (descriptor
+  # hygiene, ICU validity, call-site placeholder checking).
+  eslint-plugin-formatjs: ^6.6.1
   es-toolkit: ^1.50.0
   fuse.js: ^7.5.0
   jsdom: ^30.0.0

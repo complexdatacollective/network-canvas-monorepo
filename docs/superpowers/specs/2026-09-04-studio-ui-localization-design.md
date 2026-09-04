@@ -784,11 +784,11 @@ workspace catalog updates only where the dependency version is declared.
   negotiated non-default locale.
 - Catalog guards: freshness for `studio.*`; en-GB subset + token parity +
   non-blank.
-- The full sweep is proven by extraction: any user-visible literal that
-  remains is invisible to extraction, so the review checklist (the §5.4
-  inventory) plus pseudo-locale inspection of every route is the
-  completeness check; no automated literal-detector is added (deliberate —
-  see §11).
+- The full sweep is proven by extraction plus the lint in §9.5: a literal
+  that was never turned into a descriptor is invisible to extraction, and
+  `no-literal-string-in-jsx` is what sees it. Pseudo-locale inspection of
+  every route and the §5.4 inventory remain the check for what lint cannot
+  see — a string assembled outside JSX, or one that is localized but wrong.
 
 ### 9.4 Repo gates
 
@@ -799,6 +799,44 @@ lanes: one normal-lane changeset (`@codaco/app-i18n` added,
 `@codaco/fresco-ui` minor), one Studio-lane changeset
 (`@codaco/studio-client`, `@codaco/studio-server`, `@codaco/studio-rpc`).
 `pnpm check:changesets` enforces the split.
+
+### 9.5 Lint
+
+`eslint-plugin-formatjs` runs inside the repo's existing `oxlint` invocation
+through `jsPlugins`, the same mechanism `oxlint-tailwindcss` already uses.
+Nothing new runs in CI: `pnpm lint` is unchanged.
+
+Five rules enforce descriptor hygiene wherever descriptors are authored —
+`enforce-description`, `enforce-default-message`, `no-invalid-icu`,
+`enforce-placeholders`, `no-multiple-whitespaces`. A sixth,
+`no-literal-string-in-jsx`, is scoped to the Studio client, which is the only
+surface converted end to end and so the only one where a literal is a defect
+rather than unfinished work; it is off in tests, stories, mocks and
+`__tests__`. Extending it to fresco-ui and to the other apps is what each of
+those conversions turns on as it completes.
+
+Two properties of this setup are worth stating because neither is obvious and
+both have already caused a silent failure here:
+
+- **A root override cannot reach into a package that owns an `.oxlintrc.json`.**
+  An override's `files` are matched against the config that declares them, so
+  `packages/fresco-ui/src/**` in the root config matched nothing at all, and
+  the rules appeared to be configured while enforcing nothing. fresco-ui
+  therefore repeats the five descriptor rules in its own config, and the root
+  list names only packages that have no config of their own. The same applies
+  to `jsPlugins`, which a nested config **replaces** rather than extends.
+- **`enforce-placeholders` only sees descriptors written inline at the call
+  site.** It cannot check `formatMessage(messages.x, values)` against a
+  descriptor defined elsewhere in the file, which is the shape essentially all
+  of this code uses. Placeholder/tag parity across locales is therefore still
+  the catalog guards' job (§9.3), and the lint rule is a second net for the
+  inline case, not a replacement.
+
+This lint required `oxlint` ≥ 1.81: earlier versions intermittently
+`SIGSEGV`ed with `jsPlugins` configured. That upgrade also promoted the React
+Compiler rules into `correctness`, reporting ~440 pre-existing sites across
+the repo; they are held at `"warn"` in `tooling/oxlint/react.json` with
+adoption tracked in #1643.
 
 ## 10. Alternatives considered
 
@@ -832,11 +870,15 @@ lanes: one normal-lane changeset (`@codaco/app-i18n` added,
 7. **Auditing locale changes** — rejected: the audit log is tenant-scoped by
    design; inventing a userless audit plane for a presentation preference is
    cost without an investigative use case.
-8. **CI literal-detection lint for unlocalized strings** — rejected for now:
-   oxlint has no formatjs plugin, and a bespoke JSX-literal grep produces
-   noise (class names, test ids, developer errors). Extraction freshness,
-   pseudo-locale inspection, and review carry enforcement; revisit if drift
-   is observed in practice.
+8. **CI literal-detection lint for unlocalized strings** — first rejected on
+   the belief that oxlint had no formatjs plugin and that a bespoke
+   JSX-literal grep would produce too much noise (class names, test ids,
+   developer errors). **Adopted instead, on evidence** (see §9.5): oxlint
+   runs ESLint-compatible plugins through `jsPlugins`, which this repo
+   already relies on for `oxlint-tailwindcss`, so `eslint-plugin-formatjs`
+   runs as-is — no bespoke grep, and its `no-literal-string-in-jsx`
+   understands JSX well enough that across the whole converted Studio client
+   it reported six literals, every one of them a real deliberate exception.
 
 ## 11. Delivery plan
 
