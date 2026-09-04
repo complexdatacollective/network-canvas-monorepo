@@ -558,6 +558,17 @@ const DATE_TIME_RE =
   /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2}))?)?$/;
 const TIME_RE = /^(\d{2}):(\d{2})(?::(\d{2}))?$/;
 
+/**
+ * How precisely to write a bound's time-of-day: to the second when the
+ * authored bound named seconds, otherwise to the minute.
+ *
+ * Comparison is against the authored string, so a bound of `12:34:56`
+ * displayed as `12:34` would name a boundary the rule rejects — the
+ * participant enters the time the hint gave them and is told it is too early.
+ */
+const boundTimeStyle = (seconds: string | undefined) =>
+  seconds === undefined ? ('short' as const) : ('medium' as const);
+
 function utcDateFromParts(
   year: number,
   month: number,
@@ -615,17 +626,18 @@ function formatBoundForDisplay(bound: string, intl: IntlShape): string {
     const day = Number(dateTime[3]);
     const hour = dateTime[4];
     if (hour !== undefined) {
+      const seconds = dateTime[6];
       const date = utcDateFromParts(
         year,
         month,
         day,
         Number(hour),
         Number(dateTime[5]),
-        dateTime[6] !== undefined ? Number(dateTime[6]) : 0,
+        seconds !== undefined ? Number(seconds) : 0,
       );
       return intl.formatDate(date, {
         dateStyle: 'long',
-        timeStyle: 'short',
+        timeStyle: boundTimeStyle(seconds),
         timeZone: 'UTC',
         calendar: 'gregory',
       });
@@ -639,15 +651,16 @@ function formatBoundForDisplay(bound: string, intl: IntlShape): string {
 
   const time = TIME_RE.exec(bound);
   if (time) {
+    const seconds = time[3];
     const anchor = new Date(Date.UTC(1970, 0, 1));
     anchor.setUTCHours(
       Number(time[1]),
       Number(time[2]),
-      time[3] !== undefined ? Number(time[3]) : 0,
+      seconds !== undefined ? Number(seconds) : 0,
       0,
     );
     return intl.formatTime(anchor, {
-      timeStyle: 'short',
+      timeStyle: boundTimeStyle(seconds),
       timeZone: 'UTC',
     });
   }

@@ -2,7 +2,7 @@
 // package's source — it never imports fresco-ui components, so it stays
 // runnable while sibling workspace packages are mid-edit (the same rule
 // src/__tests__/exportsMap.test.ts follows).
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   checkCatalogFreshness,
+  checkFullLocale,
   checkOverrideLocale,
   collectSourceFiles,
   extractMessages,
@@ -26,10 +27,13 @@ const committedEn = JSON.parse(
   readFileSync(join(localesDir, 'en.json'), 'utf8'),
 ) as ExtractedCatalog;
 
+/** The locale the descriptors are written in, so it has no catalog. */
+const SOURCE_LOCALE = 'en';
+
 /** The locales a shared package must ship, minus the source language. */
 const overrideLocales = ecosystemLocales
   .map((entry) => entry.locale)
-  .filter((locale) => locale !== 'en');
+  .filter((locale) => locale !== SOURCE_LOCALE);
 
 describe('the package’s own frescoUi.* catalogs', () => {
   it('keeps src/locales/en.json fresh (regenerate with pnpm i18n:extract)', async () => {
@@ -65,10 +69,31 @@ describe('the package’s own frescoUi.* catalogs', () => {
     );
   });
 
-  it('keeps the en-GB override catalog a valid subset', () => {
-    const overrides = JSON.parse(
-      readFileSync(join(localesDir, 'en-GB.json'), 'utf8'),
-    ) as Record<string, string>;
-    expect(checkOverrideLocale(committedEn, overrides)).toEqual([]);
+  it('ships a valid catalog for every non-source ecosystem locale', () => {
+    // Driven off the registry rather than off the one locale that exists
+    // today: the point of the guard is that adding a language anywhere in the
+    // ecosystem fails here until this package's copy exists for it, and a
+    // key-only check would pass an empty file while every component silently
+    // fell back to English.
+    for (const locale of overrideLocales) {
+      const path = join(localesDir, `${locale}.json`);
+      expect(existsSync(path), `no frescoUi catalog file for ${locale}`).toBe(
+        true,
+      );
+      const catalog = JSON.parse(readFileSync(path, 'utf8')) as Record<
+        string,
+        string
+      >;
+
+      // A regional variant of the source language overrides it and may carry
+      // only its divergences; any other language has to translate everything,
+      // because there is no base underneath it to fall through to. Same rule
+      // as the shared common.* guard in @codaco/app-i18n.
+      const issues =
+        locale.split('-')[0] === SOURCE_LOCALE
+          ? checkOverrideLocale(committedEn, catalog)
+          : checkFullLocale(committedEn, catalog);
+      expect(issues, `frescoUi catalog issues for ${locale}`).toEqual([]);
+    }
   });
 });
