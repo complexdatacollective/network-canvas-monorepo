@@ -66,7 +66,7 @@
     "@formatjs/cli-lib": "catalog:",
     "@formatjs/icu-messageformat-parser": "catalog:",
     "@formatjs/intl-localematcher": "catalog:",
-    "babel-plugin-formatjs": "catalog:",
+    "@formatjs/unplugin": "catalog:",
     "react-intl": "catalog:"
   },
   "devDependencies": {

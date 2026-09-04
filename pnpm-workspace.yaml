@@ -48,6 +48,10 @@ catalog:
   # scripts) and build-time ICU-to-AST compilation for catalog JSON.
   '@formatjs/cli-lib': ^9.0.9
   '@formatjs/icu-messageformat-parser': ^3.5.17
+  # oxc-based build transform (no babel) compiling defineMessages
+  # defaultMessage strings to pre-parsed AST in @codaco/app-i18n's vite
+  # integration, keeping the ICU parser out of production bundles.
+  '@formatjs/unplugin': ^1.2.7
   # BCP 47 best-fit matching for app locale negotiation (@codaco/app-i18n);
   # the protocol localization design (§7.1) adopts this same entry when
   # protocol-validation's locale helpers land.
@@ -92,10 +96,6 @@ catalog:
   '@vitest/browser': ^4.1.11
   '@vitest/browser-playwright': ^4.1.11
   '@vitest/coverage-v8': ^4.1.11
-  # Compiles defineMessages defaultMessage strings to pre-parsed AST in app
-  # production builds (@codaco/app-i18n/vite), keeping the ICU parser out of
-  # client bundles.
-  babel-plugin-formatjs: ^13.0.3
   # Pinned: 1.7.1 is the first release whose peer range admits the pinned
   # drizzle-orm 1.0.0 RC (1.6.x pins ^0.45.2).
   better-auth: 1.7.1

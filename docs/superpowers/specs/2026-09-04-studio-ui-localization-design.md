@@ -63,9 +63,11 @@ Taken 2026-09-04 in specification review:
    (per the accepted 2026-08-27 design). Application chrome is message
    catalogs owned by each app and rendered through `@codaco/app-i18n`. The
    shared conventions are the locale-metadata shape
-   (`{ locale, label, direction }`), FormatJS best-fit matching, and the rule
+   (`{ locale, label, direction }`), FormatJS best-fit matching, the rule
    that the host owns document-level `lang`/`dir` while nested content regions
-   may override their own.
+   may override their own, and one message syntax: protocol-authored
+   formatted strings are ICU MessageFormat-compatible so a single runtime
+   renders both systems' messages (recorded 2026-09-04 on #1477).
 2. **The shared infrastructure package is `@codaco/app-i18n`, built on
    `react-intl`, published to npm in the normal changeset lane.** The grant
    names ECMAScript Intl, Unicode CLDR, and ICU Message syntax; FormatJS is
@@ -261,7 +263,7 @@ constraint). No barrel file; explicit subpath exports:
 | `./negotiate`      | `resolveAppLocale`, `canonicalizeAppLocale`                                                                         | universal         |
 | `./locales`        | `AppLocale` type, `defineAppLocales`, `mergeCatalogs`, `ecosystemLocales`, `pseudoLocale` helpers                   | universal         |
 | `./common`         | `common.*` descriptors for universal chrome + their catalogs (decision 11)                                          | universal         |
-| `./vite`           | build integration: babel plugin config + catalog compile plugin                                                     | Node (build-time) |
+| `./vite`           | `appI18n()`: oxc-based formatjs source transform + catalog compile + production no-parser alias                     | Node (build-time) |
 | `./catalog-guards` | extraction wrapper and the reusable catalog guards (freshness, completeness, subset, token parity)                  | Node (test-time)  |
 
 The `./vite` and `./catalog-guards` modules and anything they import use
@@ -464,18 +466,27 @@ Catalogs live under `src/` so the default Turbo task inputs and knip project
 globs cover them without per-package overrides; they are imported statically
 from a small `src/locales/catalogs.ts` manifest (data wiring, not a barrel).
 
-**Compilation.** The `./vite` integration compiles all ICU at build time
-(decision recorded to avoid the runtime-parser end state ambiguity):
+**Compilation.** The `./vite` integration is one call, `appI18n()`, placed
+ahead of the framework plugin. It composes three pieces:
 
-- `appI18nBabel` — a configured `babel-plugin-formatjs` entry for
-  `@vitejs/plugin-react`, compiling every `defaultMessage` in source to
-  pre-parsed AST and stripping `description` from production bundles.
-- `appI18nCatalogs()` — a Vite plugin that compiles imported
-  `src/locales/*.json` catalogs to AST modules.
+- the `@formatjs/unplugin` transform (`ast: true`) — oxc-based, no babel —
+  compiling every `defineMessages` `defaultMessage` in source to pre-parsed
+  AST and stripping translator descriptions from bundles;
+- a catalog plugin compiling imported `src/locales/*.json` catalogs to AST
+  modules (stamping `moduleType: 'js'` so rolldown's JSON plugin does not
+  re-parse the emitted JavaScript); and
+- a build-only exact-match alias swapping
+  `@formatjs/icu-messageformat-parser` for FormatJS's `no-parser` build.
 
-Production bundles therefore contain no ICU parser. Development builds and
-the provider-less default path keep full fidelity either way, because AST
-and string messages are both accepted by the runtime.
+Production bundles therefore carry no ICU parser (verified by asserting the
+parser's error identifiers are absent from built assets while react-intl's
+are present). The dev server and vitest keep the real parser, so string
+messages still work there and parse errors stay readable; AST and string
+messages are both accepted by the runtime, so behavior is identical in
+every mode. (`babel-plugin-formatjs` was the original design here; it was
+replaced before landing because `@vitejs/plugin-react` v6 on the
+Vite 8/rolldown toolchain removed its `babel` hosting option, and
+`@formatjs/unplugin` provides the same transformation without babel.)
 
 **Pseudo-locale.** Development builds expose `en-XA` (accented, expanded
 pseudo-English generated from the extracted AST — the standard FormatJS
