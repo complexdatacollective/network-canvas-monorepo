@@ -56,6 +56,23 @@ describe('resolveAppLocale', () => {
     expect(result).toEqual({ locale: 'en-GB', source: 'stored' });
   });
 
+  it('keeps a stored regional variant on the sibling variant the app ships', () => {
+    // Nobody who asked for American English wants Arabic because the app now
+    // ships British English instead. The two tags share no declared ancestor
+    // — plain 'en' is not in this registry — so nothing short of best fit
+    // keeps the explicit choice in English.
+    const result = resolveAppLocale({
+      stored: 'en-US',
+      requested: ['ar'],
+      locales: defineAppLocales([
+        { locale: 'en-GB', label: 'English (UK)', direction: 'ltr' },
+        { locale: 'ar', label: 'العربية', direction: 'rtl' },
+      ]),
+      defaultLocale: 'ar',
+    });
+    expect(result).toEqual({ locale: 'en-GB', source: 'stored' });
+  });
+
   it('ignores a stored locale that matches nothing and falls through to negotiation', () => {
     expect(resolve({ stored: 'fr', requested: ['ar'] })).toEqual({
       locale: 'ar',

@@ -39,6 +39,27 @@ function catalogTransform(): TransformFn {
 
 const CATALOG = JSON.stringify({ 'demo.hello': 'Hello {name}' });
 
+const pluginNames = (plugins: ReturnType<typeof appI18n>): string[] =>
+  plugins.flatMap((entry) =>
+    typeof entry === 'object' && entry !== null && 'name' in entry
+      ? [entry.name]
+      : [],
+  );
+
+describe('the build kind', () => {
+  it('drops the ICU parser from an app bundle', () => {
+    expect(pluginNames(appI18n())).toContain('app-i18n-no-parser');
+  });
+
+  it('compiles a library’s messages but leaves it the parser', () => {
+    // A package cannot know whether its consumer's bundle keeps the parser,
+    // so it compiles its own messages and takes no view on the alias.
+    const names = pluginNames(appI18n({ build: 'library' }));
+    expect(names).toContain('app-i18n-catalogs');
+    expect(names).not.toContain('app-i18n-no-parser');
+  });
+});
+
 describe('the catalog transform', () => {
   it('compiles a catalog to AST', () => {
     const result = catalogTransform()(CATALOG, '/app/src/locales/en-GB.json');
@@ -76,6 +97,40 @@ describe('the catalog transform', () => {
   it('ignores JSON that is not a catalog', () => {
     expect(catalogTransform()('{}', '/app/package.json')).toBe(undefined);
     expect(catalogTransform()('{}', 'C:\\app\\src\\data\\fixtures.json')).toBe(
+      undefined,
+    );
+  });
+
+  it('leaves a dependency’s own locale files alone', () => {
+    // Rewriting a library's catalog to AST hands it a shape its own runtime
+    // does not understand, and nothing about the id says it was ours.
+    expect(
+      catalogTransform()(
+        CATALOG,
+        '/app/node_modules/other-lib/src/locales/fr.json',
+      ),
+    ).toBe(undefined);
+  });
+
+  it('claims only catalogs under a src/locales directory', () => {
+    expect(catalogTransform()(CATALOG, '/app/config/locales/fr.json')).toBe(
+      undefined,
+    );
+  });
+
+  it('ignores a file under src/locales whose name is not a locale tag', () => {
+    const countries = JSON.stringify({ FR: 'France', GB: 'United Kingdom' });
+    expect(
+      catalogTransform()(countries, '/app/src/locales/countries.json'),
+    ).toBe(undefined);
+  });
+
+  it('ignores JSON under src/locales that is not a flat map of strings', () => {
+    // A nested catalog belongs to some other i18n runtime. Parsing its values
+    // as ICU fails the build outright, which is a worse answer than declining
+    // a file this plugin has no claim on.
+    const nested = JSON.stringify({ form: { submit: 'Envoyer' } });
+    expect(catalogTransform()(nested, '/app/src/locales/fr.json')).toBe(
       undefined,
     );
   });
