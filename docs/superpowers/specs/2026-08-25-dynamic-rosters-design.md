@@ -81,8 +81,8 @@ Each decision records the alternative it displaced and why.
    static files instead; cross-wave identity was out of scope — see the
    2026-09-04 amendment below, which admits an optional id without
    _requiring_ one). Because the asset is refetched and servers may reorder
-   rows, the existing
-   content-plus-index hash would change every row's identity on reorder, so
+   rows, the existing content-plus-index hash would change every row's
+   identity on reorder, so
    dynamic rosters hash row content only. Consequences, accepted: two
    byte-identical rows in one response collapse into one roster entry, and a
    row whose attributes change between fetches becomes a _different_ node —
@@ -118,7 +118,7 @@ Each decision records the alternative it displaced and why.
      that keeps already-present people out of the roster.
 
    Uniqueness is scoped to the interview network, per subject type: the parse
-   pipeline keys an id-bearing node as `` `${subjectType}_${id}` ``, so two
+   pipeline keys an id-bearing node as `` `${subjectType}_id_${id}` ``, so two
    dynamic assets in one protocol that both return `"1"` for _different_
    people of the same type collapse into one node, and the second person is
    filtered out of every panel that compares against the current network. An
@@ -398,12 +398,17 @@ credentials: 'omit', cache: 'no-store', redirect: 'error' })`. POST bodies
    invalid response is a fetch failure, never partially ingested.**
 5. Hand the nodes to the existing parse pipeline
    (`parseExternalNetworkAsset`), with one difference: primary keys are
-   `` `${subjectType}_${id}` `` for an element carrying a stable `id`, and
-   `` `${subjectType}_${hash({ node })}` `` for one that does not — content
-   only, no index salt (Decision 3 and its 2026-09-04 amendment). The branch
-   is evaluated per element, so a response may mix id-bearing and id-less
-   nodes. Static-file rosters keep their existing salted hash; nothing
-   changes for them.
+   `` `${subjectType}_id_${id}` `` for an element carrying a stable `id`,
+   and `` `${subjectType}_hash_${hash({ node })}` `` for one that does not —
+   content only, no index salt (Decision 3 and its 2026-09-04 amendment).
+   The branch is evaluated per element, so one response may mix the two, and
+   the `id_`/`hash_` segment keeps the two key spaces **disjoint**: a
+   supplied id is an arbitrary string, so without it an id that happened to
+   equal another row's digest would collapse two different people into one
+   node. The subject-type prefix keeps its existing job of scoping a row's
+   identity to the subject it was parsed for (`loadExternalData.ts`).
+   Static-file rosters keep their existing salted hash; nothing changes for
+   them.
 
 Behavioural requirements on the endpoint, enforced socially (documented) not
 mechanically: requests must be read-only/idempotent regardless of method —
@@ -457,20 +462,31 @@ test request and the interview runtime share it:
 - Unknown top-level keys (including `edges`) are ignored, matching the static
   JSON roster behaviour.
 - **Amendment (2026-09-04):** each element MAY additionally carry a stable
-  `id` — a **non-empty** string (`z.string().min(1)`, the rule `sampleOf`
-  already uses). `""` is a schema error, not an identity: every empty-id
-  element would otherwise key to the same node, silently collapsing distinct
-  people into one roster entry — the exact failure the amendment exists to
-  prevent. When present the parse pipeline honors the `id` as the node's
-  identity (§5.4 step 5); when absent, content-hash identity applies. Keys
-  stay composite (`` `${subjectType}_${id}` ``, never the bare id), so a
-  roster `_uid` is always non-empty and the roster's truthiness-guarded
-  removal handler (`NameGeneratorRoster.tsx:249-257`) keeps working
-  unchanged. This response `id` is **not** the `id` of §5.3's embedded
-  request payload: there it is the interview-internal `_uid` of a node
-  already in the network, here it is the endpoint's own stable identifier
-  for a roster row. See the Decision 3 amendment for the stability and
-  uniqueness obligations an id-sending endpoint takes on.
+  `id` — a string of 1 to 64 characters (`z.string().min(1).max(64)`).
+  - `""` is a schema error, not an identity: every empty-id element would
+    otherwise key to the same node, silently collapsing distinct people into
+    one roster entry — the exact failure the amendment exists to prevent.
+  - The **64-character ceiling** exists because the id ends up inside a
+    persisted node identifier. Studio bounds a stored `nodeId` to 128
+    characters (`nodes_identifier_lengths_check`,
+    `apps/studio/server/src/network/schema.ts:149-157`), and the roster's
+    longitudinal case (#1300, #1302) is precisely the one whose network
+    Studio persists — an unbounded id would run the whole interview and then
+    fail at write time. With codebook subject-type keys being UUIDs, the
+    composite key tops out at 36 + `_id_` + 64 = 104 characters, inside that
+    limit with room to spare. 64 is generous for real identifiers: a UUID is 36.
+  - When present the parse pipeline honors the `id` as the node's identity
+    (§5.4 step 5); when absent, content-hash identity applies. Keys stay
+    composite and strategy-tagged (`` `${subjectType}_id_${id}` ``, never
+    the bare id), so a roster `_uid` is always non-empty, the roster's
+    truthiness-guarded removal handler
+    (`NameGeneratorRoster.tsx:249-257`) keeps working unchanged, and an id
+    can never collide with an id-less row's digest.
+  - This response `id` is **not** the `id` of §5.3's embedded request
+    payload: there it is the interview-internal `_uid` of a node already in
+    the network, here it is the endpoint's own stable identifier for a
+    roster row. See the Decision 3 amendment for the stability and
+    uniqueness obligations an id-sending endpoint takes on.
 
 The same schema also validates **stored sample bytes at every import
 boundary** — Architect opening a `.netcanvas`, Interviewer import, Fresco
@@ -928,7 +944,7 @@ rationale applies identically to sample columns).
 - `src/migration/migrate-protocol.ts` — register the v8→v9 migration;
   post-validation keyed to `targetVersion` (§5.12).
 - `src/utils/dynamicNetworkResponse.ts` (new) — canonical response schema,
-  including the optional non-empty per-node `id` (§5.5).
+  including the optional per-node `id` and its 1–64 character bound (§5.5).
 - `src/utils/protocolRequiresInternet.ts` (new) — shared derivation (§5.7).
 - `src/utils/collectEntityAttributeReferences.ts`,
   `findVariableRoleConflicts.ts`, `findExclusiveVariableConflicts.ts`,
@@ -1012,9 +1028,9 @@ only stages preceding the start stage (§5.9); `PreviewHost` passes it.
   including via a changed referenced key value); refinement tests for both
   roster and panel data sources
   (including the newly closed panel gap); response-schema tests (empty
-  nodes valid, bad names rejected, a non-empty `id` accepted, `id: ""` and a
-  non-string `id` rejected, an element with no `id` still valid);
-  `protocolRequiresInternet` cases;
+  nodes valid, bad names rejected, a non-empty `id` accepted, `id: ""`, a
+  65-character `id`, and a non-string `id` all rejected, an element with no
+  `id` still valid); `protocolRequiresInternet` cases;
   `collectAssetReferences` picks up `valueAssetId`, plus the canary that it
   returns nested hits at all (§5.12 — the walker's direct current-schema
   import must never silently bind to a frozen stub).
@@ -1044,9 +1060,11 @@ only stages preceding the start stage (§5.9); `PreviewHost` passes it.
   between fetches keeps one `_uid` and is not re-offered (the cross-wave
   case, which must fail if the pipeline falls back to the content hash), a
   response mixing id-bearing and id-less elements keys each by its own
-  strategy, and two dynamic assets of the same subject type returning the
-  same id yield one node (the documented namespacing consequence, asserted
-  so it cannot regress silently); serialization
+  strategy, an id-bearing element whose `id` is spelled exactly like another
+  element's content digest stays a separate node (the `id_`/`hash_` key
+  spaces are disjoint), and two dynamic assets of the same subject type
+  returning the same id yield one node (the documented namespacing
+  consequence, asserted so it cannot regress silently); serialization
   omits encrypted attributes (tested against an encrypted network) and
   response parsing strips nullish values exactly as the static parser does;
   `useExternalData` retry and auto-retry-on-reconnect; the minNodes gate is
@@ -1104,11 +1122,11 @@ only stages preceding the start stage (§5.9); `PreviewHost` passes it.
 
 - New page: _Building a dynamic roster endpoint_ — request anatomy,
   placeholder table, canonical response shape (including the optional
-  per-node `id`, when to send one, and the stability and namespacing
-  obligations it carries — Decision 3 amendment), CORS/preflight
-  obligations, no-redirect requirement (§5.4), idempotency requirement,
-  key-visibility warning (§6.6), and the sample-content privacy guidance
-  (§6.11).
+  per-node `id`, when to send one, its 64-character limit, and the stability
+  and namespacing obligations it carries — Decision 3 amendment),
+  CORS/preflight obligations, no-redirect requirement (§5.4), idempotency
+  requirement, key-visibility warning (§6.6), and the sample-content privacy
+  guidance (§6.11).
 - `working-with-rosters.en.md`, `name-generator-roster.en.mdx`,
   `key-concepts/resources.en.mdx` — the new resource type and test-request
   flow.
