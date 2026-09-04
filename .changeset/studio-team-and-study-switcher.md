@@ -23,11 +23,12 @@ to the switcher, which shows what it was given and nothing about why.
 
 The study segment is absent, not empty, on routes that open no study.
 
-Two things it shows are placeholders, in one module that says so, because
-nothing can answer them yet: a team's study count, and a study's status. A
-team's role is not among them — it is shown for the team whose membership is
-actually known and omitted elsewhere, because a made-up role would be a false
-claim about what a researcher may do.
+Everything it shows is real. Each study carries its lifecycle state and how
+much of it there is — "Live · 2 waves · 14 participants" — with a dot coloured
+by that state, and the state is in the trigger's accessible name too, so it
+never rests on colour alone. Each team carries the researcher's role in it.
+A study whose team cannot be resolved is named by its identifier and offered
+no siblings, which is what the shell honestly knows about it.
 
 `me` carries the caller's memberships now — every team they belong to, and
 their role in it — which is why `@codaco/studio-rpc` and
