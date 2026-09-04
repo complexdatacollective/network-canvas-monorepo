@@ -1,10 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { useEffect, useState } from 'react';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 
 import {
   TeamAndStudySwitcher,
   type SwitcherItem,
   type SwitcherSegment,
+  type TeamAndStudySwitcherProps,
 } from './TeamAndStudySwitcher';
 
 /**
@@ -161,6 +163,68 @@ export const TeamOnly: Story = {
     await expect(
       within(canvasElement).queryByRole('combobox', { name: /^Study/ }),
     ).toBeNull();
+  },
+};
+
+/**
+ * The story's cue that the team membership list has resolved.
+ *
+ * An event rather than a control on the page: pressing anything outside an
+ * open popup would dismiss it, and the story below would then be watching a
+ * popup close for the ordinary reason.
+ */
+const TEAM_ARRIVED = 'story:team-arrived';
+
+/**
+ * A switcher whose team segment arrives after the mount, on that cue.
+ * Unexported: a non-story export in a stories file becomes an invalid
+ * auto-story.
+ */
+function LateTeam({ team, ...rest }: TeamAndStudySwitcherProps) {
+  const [arrived, setArrived] = useState(false);
+  useEffect(() => {
+    const onArrived = () => setArrived(true);
+    window.addEventListener(TEAM_ARRIVED, onArrived);
+    return () => window.removeEventListener(TEAM_ARRIVED, onArrived);
+  }, []);
+  return <TeamAndStudySwitcher {...rest} team={arrived ? team : undefined} />;
+}
+
+/**
+ * The team arriving does not disturb the study's open popup.
+ *
+ * A study route can paint before the team membership list resolves, so the
+ * control mounts as one segment and gains a second in FRONT of it — while a
+ * researcher may already have a popup open. A segment's popup belongs to the
+ * segment it was opened from, whatever arrives beside it: the two are keyed
+ * by which segment they are rather than by where they sit.
+ */
+export const TeamArrivesWhileTheStudyIsOpen: Story = {
+  render: (args) => <LateTeam {...args} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(segmentCount(canvasElement)).toBe(1);
+
+    await userEvent.click(canvas.getByRole('combobox', { name: /^Study/ }));
+    await within(document.body).findByRole('listbox');
+
+    window.dispatchEvent(new Event(TEAM_ARRIVED));
+    await waitFor(() =>
+      expect(canvas.getByRole('combobox', { name: /^Team/ })).toBeVisible(),
+    );
+    await expect(segmentCount(canvasElement)).toBe(2);
+
+    // Re-queried by name rather than held from before the arrival: the point
+    // at issue is WHICH segment is open, and a stale reference would report
+    // the state of whichever segment inherited that element.
+    await expect(
+      canvas.getByRole('combobox', { name: /^Study/ }),
+    ).toHaveAttribute('aria-expanded', 'true');
+    await expect(
+      canvas.getByRole('combobox', { name: /^Team/ }),
+    ).toHaveAttribute('aria-expanded', 'false');
+    // And one popup, not two: the study's, still the only one open.
+    await expect(within(document.body).getAllByRole('listbox')).toHaveLength(1);
   },
 };
 
@@ -413,17 +477,35 @@ export const SelectedMetadataKeepsItsContrast: Story = {
       within(canvasElement).getByRole('combobox', { name: /^Team/ }),
     );
     const listbox = await within(document.body).findByRole('listbox');
-    const rows = within(listbox)
-      .getAllByRole('option')
-      .map((option) => ({
+    const options = within(listbox).getAllByRole('option');
+
+    // Counted before anything is measured. Every team in this story carries a
+    // supporting line, so a row without one is the regression — and a loop
+    // that skipped a missing `[data-meta]` would make no assertions at all in
+    // exactly the case this story exists to catch, and still report green.
+    await expect(options).toHaveLength(teams.length);
+
+    const rows = options.map((option) => {
+      // `[data-meta]`, not a class query: the identity mark is `text-xs` too.
+      const supportingLine = option.querySelector<HTMLElement>('[data-meta]');
+      if (!supportingLine) {
+        throw new Error(
+          `the option ${JSON.stringify(option.textContent)} rendered no supporting line`,
+        );
+      }
+      return {
         selected: option.getAttribute('aria-selected') === 'true',
-        // `[data-meta]`, not a class query: the identity mark is `text-xs` too.
-        meta: option.querySelector('[data-meta]'),
-      }));
+        supportingLine,
+      };
+    });
+
+    // One row is selected and the rest are not, so both branches below are
+    // actually taken — with none selected the story would only ever prove the
+    // dimmed case, which is not the one it is about.
+    await expect(rows.filter((row) => row.selected)).toHaveLength(1);
 
     for (const row of rows) {
-      if (!row.meta) continue;
-      const opacity = getComputedStyle(row.meta).opacity;
+      const opacity = getComputedStyle(row.supportingLine).opacity;
       await expect(opacity).toBe(row.selected ? '1' : '0.7');
     }
   },

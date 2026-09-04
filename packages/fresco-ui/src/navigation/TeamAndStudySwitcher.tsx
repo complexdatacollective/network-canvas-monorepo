@@ -615,8 +615,18 @@ export function TeamAndStudySwitcher({
           'border-outline overflow-hidden rounded border-2',
         )}
       >
+        {/*
+          Keyed by WHICH segment each one is, rather than by where it sits.
+          A segment holds its own popup state, and the pair goes from one
+          element to two mid-session: a study route can paint before the team
+          membership list resolves, inserting a segment in front of one whose
+          popup is open. React's index tracking already keeps the two apart
+          while they are two literal slots — the keys are what keep it true if
+          they ever become a computed list.
+        */}
         {team && (
           <Segment
+            key="team"
             corners={study ? 'start' : 'both'}
             divided={false}
             segment={team}
@@ -624,6 +634,7 @@ export function TeamAndStudySwitcher({
         )}
         {study && (
           <Segment
+            key="study"
             corners={team ? 'end' : 'both'}
             divided={team !== undefined}
             segment={study}
