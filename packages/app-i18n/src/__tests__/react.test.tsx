@@ -226,6 +226,50 @@ describe('AppI18nProvider', () => {
     expect(padding.length).toBeLessThanOrEqual(4);
   });
 
+  it('sizes a short arm to itself, not to its longest sibling', () => {
+    // The point of the padding is that the expansion on screen matches what a
+    // translation of what is on screen would bring. Sizing every arm to the
+    // longest one put about thirty dots after a one-word arm, so a layout
+    // check failed on a string no translation of that arm could produce.
+    const lopsidedMessages = defineMessages({
+      lopsided: {
+        id: 'demo.lopsided',
+        defaultMessage:
+          '{n, select, one {Yes} other {This one runs on considerably longer than the other arm does}}',
+        description: 'Test select with arms of very different lengths.',
+      },
+    });
+    function Lopsided(props: { n: string }) {
+      const intl = useAppIntl();
+      return (
+        <p>{intl.formatMessage(lopsidedMessages.lopsided, { n: props.n })}</p>
+      );
+    }
+    const short = render(
+      <AppI18nProvider
+        locale={pseudoAppLocale.locale}
+        locales={[...registry, pseudoAppLocale]}
+      >
+        <Lopsided n="one" />
+      </AppI18nProvider>,
+    );
+    // 'Yes' is 3 characters, so a third of it is one dot.
+    const shortPad = /·+/.exec(short.container.textContent ?? '')?.[0] ?? '';
+    expect(shortPad).toHaveLength(1);
+
+    const long = render(
+      <AppI18nProvider
+        locale={pseudoAppLocale.locale}
+        locales={[...registry, pseudoAppLocale]}
+      >
+        <Lopsided n="other" />
+      </AppI18nProvider>,
+    );
+    // The long arm still expands by its own third, so nothing is lost.
+    const longPad = /·+/.exec(long.container.textContent ?? '')?.[0] ?? '';
+    expect(longPad.length).toBeGreaterThan(10);
+  });
+
   it('leaves interpolated runtime values alone under the pseudo-locale', () => {
     // The pseudo-locale exists to show which text is translatable. Accenting
     // a participant's name proves nothing about the copy and makes the screen
