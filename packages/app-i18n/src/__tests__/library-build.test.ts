@@ -71,6 +71,22 @@ describe('the published library build', () => {
     expect(result?.code).toContain('"type"');
   });
 
+  it('compiles descriptors written against the documented wrapper', async () => {
+    // Everything in this repo imports `defineMessages` from
+    // `@codaco/app-i18n/messages`, never from react-intl. The transform
+    // matches on the called name rather than on where it was imported from,
+    // so the wrapper is compiled identically — pinned here because a change
+    // to that upstream matching would otherwise leave every real call site
+    // shipping ICU strings into a bundle with no parser.
+    const transform = transformOf(pluginNamed('formatjs'));
+    const result = await transform(
+      DESCRIPTOR_SOURCE.replace("'react-intl'", "'@codaco/app-i18n/messages'"),
+      '/app/src/demo.ts',
+    );
+    expect(result?.code).not.toContain('Hello {name}');
+    expect(result?.code).toContain('"type"');
+  });
+
   it('compiles the catalogs it ships to AST', async () => {
     const transform = transformOf(pluginNamed('app-i18n-catalogs'));
     const result = await transform(

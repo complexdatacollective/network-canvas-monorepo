@@ -65,6 +65,16 @@ const accentElements = (
     }
   });
 
+/**
+ * How much source copy a rendering of this message can contain. A select or
+ * plural renders exactly one arm, so its arms are a maximum rather than a sum
+ * — adding them up made a three-arm select expand by roughly the arm count
+ * instead of by a third, which clips layouts that a real translation would fit.
+ *
+ * The longest arm is the honest static answer: the pseudo message is built
+ * once per id and cached before any value exists, so which arm renders is not
+ * knowable here, and the worst case is the one a layout check wants anyway.
+ */
 const literalLength = (elements: readonly MessageFormatElement[]): number =>
   elements.reduce((total, element) => {
     switch (element.type) {
@@ -74,9 +84,11 @@ const literalLength = (elements: readonly MessageFormatElement[]): number =>
       case TYPE.plural:
         return (
           total +
-          Object.values(element.options).reduce(
-            (inner, option) => inner + literalLength(option.value),
+          Math.max(
             0,
+            ...Object.values(element.options).map((option) =>
+              literalLength(option.value),
+            ),
           )
         );
       case TYPE.tag:

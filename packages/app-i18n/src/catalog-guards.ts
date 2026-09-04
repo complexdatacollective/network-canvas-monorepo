@@ -42,23 +42,53 @@ export function collectSourceFiles(dir: string): string[] {
 
 /**
  * Programmatic FormatJS extraction with the package's conventions enforced:
- * explicit dot-namespaced ids and a mandatory description on every message.
- * Throws on duplicate ids (extractor) and on convention violations, so both
- * the regenerating script and the freshness guard fail loudly.
+ * explicit dot-namespaced ids, a mandatory prose description on every message,
+ * and an id declared in only one place. Throws on any of those, so both the
+ * regenerating script and the freshness guard fail loudly.
+ *
+ * Extraction runs per file rather than over the whole list, because the
+ * extractor coalesces: two files declaring the same id with the same text and
+ * description merge into one entry and nothing reports it, leaving separate
+ * call sites sharing a translation identity. Only a *conflicting* pair throws,
+ * which is one copy edit too late — by then the id has already been translated
+ * once for two places that turned out to mean different things.
  */
 export async function extractMessages(
   files: readonly string[],
 ): Promise<ExtractedCatalog> {
-  const raw = await extract([...files], {
-    extractSourceLocation: false,
-    throws: true,
-  });
   // Typed as JSON rather than as ExtractedMessage: the extractor writes back
   // whatever shape the descriptor used, so the narrowing below is what makes
   // the declared types true rather than merely asserted.
-  const parsed = JSON.parse(raw) as Record<string, Record<string, unknown>>;
+  const perFile = await Promise.all(
+    files.map(async (file) => {
+      const raw = await extract([file], {
+        extractSourceLocation: false,
+        throws: true,
+      });
+      return [
+        file,
+        JSON.parse(raw) as Record<string, Record<string, unknown>>,
+      ] as const;
+    }),
+  );
+
+  const declaredIn = new Map<string, string>();
+  const merged: Record<string, Record<string, unknown>> = {};
+  for (const [file, extracted] of perFile) {
+    for (const [id, entry] of Object.entries(extracted)) {
+      const first = declaredIn.get(id);
+      if (first !== undefined) {
+        throw new Error(
+          `extractMessages: "${id}" is declared in both ${first} and ${file}`,
+        );
+      }
+      declaredIn.set(id, file);
+      merged[id] = entry;
+    }
+  }
+
   const catalog: Record<string, ExtractedMessage> = {};
-  for (const [id, entry] of Object.entries(parsed).toSorted(([a], [b]) =>
+  for (const [id, entry] of Object.entries(merged).toSorted(([a], [b]) =>
     a < b ? -1 : 1,
   )) {
     if (!MESSAGE_ID_PATTERN.test(id)) {

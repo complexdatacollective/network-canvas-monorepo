@@ -218,6 +218,23 @@ export const messages = defineMessages({
     );
   });
 
+  it('rejects an id declared in two files, even with identical text', async () => {
+    // The extractor coalesces this pair silently — only a conflicting one
+    // throws — so two call sites would share a translation identity until
+    // somebody changed one of them.
+    const dir = mkdtempSync(join(tmpdir(), 'app-i18n-dup-'));
+    const declaration = `import { defineMessages } from 'react-intl';
+export const messages = defineMessages({
+  save: { id: 'demo.actions.save', defaultMessage: 'Save', description: 'Saves.' },
+});
+`;
+    writeFileSync(join(dir, 'one.ts'), declaration);
+    writeFileSync(join(dir, 'two.ts'), declaration);
+    await expect(extractMessages(collectSourceFiles(dir))).rejects.toThrow(
+      /"demo\.actions\.save" is declared in both .*one\.ts and .*two\.ts/,
+    );
+  });
+
   it('rejects FormatJS’s structured description form', async () => {
     // The extractor writes the object straight through, and en.json would then
     // fail its own freshness check on every run: two parses of the same object

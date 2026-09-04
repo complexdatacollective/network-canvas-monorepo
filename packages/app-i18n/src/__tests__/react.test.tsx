@@ -192,6 +192,40 @@ describe('AppI18nProvider', () => {
     );
   });
 
+  it('expands a choice by one arm, not by the number of arms', () => {
+    // Arms are mutually exclusive, so summing them made a three-arm select
+    // expand by roughly three times the intended third and clip layouts a
+    // real translation would fit.
+    function Choice(props: { g: string }) {
+      const intl = useAppIntl();
+      return (
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'demo.choice',
+              defaultMessage:
+                '{g, select, male {He replied} female {She replied} other {They replied}}',
+              description: 'Test select.',
+            },
+            { g: props.g },
+          )}
+        </p>
+      );
+    }
+    const view = render(
+      <AppI18nProvider
+        locale={pseudoAppLocale.locale}
+        locales={[...registry, pseudoAppLocale]}
+      >
+        <Choice g="male" />
+      </AppI18nProvider>,
+    );
+    // The longest arm is 'They replied' (12), so at most ⌈12/3⌉ = 4 dots.
+    const padding = /·+/.exec(view.container.textContent ?? '')?.[0] ?? '';
+    expect(padding.length).toBeGreaterThan(0);
+    expect(padding.length).toBeLessThanOrEqual(4);
+  });
+
   it('leaves interpolated runtime values alone under the pseudo-locale', () => {
     // The pseudo-locale exists to show which text is translatable. Accenting
     // a participant's name proves nothing about the copy and makes the screen
