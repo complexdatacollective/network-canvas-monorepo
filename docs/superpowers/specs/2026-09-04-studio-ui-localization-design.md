@@ -73,6 +73,11 @@ Taken 2026-09-04 in specification review:
    already uses its locale matcher. Consumers import only from
    `@codaco/app-i18n`, never from `react-intl` directly, so the wrapper can
    enforce house rules (provider-optional rendering, curated API surface).
+   The choice is validated against every host type in the end state: the
+   Vite SPAs (Studio, Architect, Interviewer) mount the provider directly,
+   and Next.js (Fresco) uses the same bindings in client components with
+   `createAppIntl` on the server — which is what rules out next-intl
+   (Next-only) as the shared runtime.
 3. **Messages are source-of-record in code**: `defineMessages` beside the
    rendering component, with an explicit dot-namespaced id, an inline English
    `defaultMessage`, and a `description` for translators. The committed
@@ -124,6 +129,22 @@ Taken 2026-09-04 in specification review:
     fresco-ui components keep receiving host-supplied strings for
     host-specific copy (`EverythingBarLabels`, `accessibleName` callbacks);
     the catalog conversion applies to copy fresco-ui itself owns.
+11. **Copy lives with the package that owns the string, and universal chrome
+    is translated exactly once.** Shared packages ship their own descriptors
+    and catalogs (`frescoUi.*` now; `interview.*` when #1313 converts that
+    package by the same mechanism), and `@codaco/app-i18n` itself ships a
+    `common` module — descriptors and catalogs for genuinely universal
+    chrome verbs and boilerplate (`common.*`: cancel, save, close, retry,
+    generic failure copy) that shared packages and every app import instead
+    of redefining. Hosts merge app + shared-package + common catalogs;
+    dot-namespaced ids make collisions structurally impossible.
+12. **Locale coverage policy differs for apps and shared packages.** Each
+    app declares its own supported registry (Studio ships `en`/`en-GB`);
+    a shared package's catalogs must cover every locale any in-repo app
+    ships, so shared-package completeness guards run against a central
+    ecosystem locale set (data exported by `@codaco/app-i18n`, updated in
+    the PR that adds a locale to any app), while app registries are
+    subsets of it.
 
 ## 2. Requirements
 
@@ -182,11 +203,12 @@ This design deliberately does not cover, and must not creep into:
   and `@codaco/app-i18n` takes no dependency on protocol packages.
 - **Participant-facing runtime chrome** (#1313): the interview package's 61
   hardcoded labels, session-start locale selection, and onboarding copy.
-  #1313 adopts the pattern established here (`@codaco/app-i18n` descriptors
-  in `@codaco/interview`), but its conversion, its interaction with protocol
-  locale, and its release coupling (`BUNDLED_RUNTIME_DEPENDENTS` ties
-  interview changesets to Architect, Fresco, and Interviewer) are its own
-  work.
+  The _mechanism_ is decided here (decision 11: `interview.*` descriptors
+  and catalogs shipped with `@codaco/interview`, rendered provider-optional
+  through `@codaco/app-i18n`, common verbs imported from `common.*`), but
+  the conversion, its interaction with protocol locale, and its release
+  coupling (`BUNDLED_RUNTIME_DEPENDENTS` ties interview changesets to
+  Architect, Fresco, and Interviewer) are #1313's work.
 - **Translation interchange and commissioning** (#1312): XLIFF or equivalent
   export/import, outstanding-translation tracking, vendor integration. This
   design's committed-JSON catalogs are the substrate #1312 will read and
@@ -195,9 +217,13 @@ This design deliberately does not cover, and must not creep into:
   messages to researchers or participants. The `user.locale` column this
   design adds is the value such features will read; nothing else is provided
   for them here.
-- **Localizing Architect, Interviewer, Fresco, docs, or the website's app
-  chrome**: they adopt `@codaco/app-i18n` on their own schedules. The
-  website's existing next-intl setup is untouched.
+- **Localizing Architect, Interviewer, and Fresco's researcher chrome**:
+  each is a tracked adoption issue under #1308 (created with this design —
+  see §13) using the same package, provider, negotiation chain, and
+  catalog layering; Fresco's covers the Next.js server boundary (stored
+  preference plus `Accept-Language` via protocol-validation's parser, with
+  `createAppIntl` on the server). Docs and the website's existing
+  next-intl setup are untouched.
 
 ## 4. The `@codaco/app-i18n` package
 
@@ -228,22 +254,24 @@ and the shared-consts build conventions (vite lib build, per-module `.d.ts`
 via `vite-plugin-dts` — not `bundleTypes`, per the recorded API Extractor
 constraint). No barrel file; explicit subpath exports:
 
-| Subpath       | Contents                                                                      | Environment       |
-| ------------- | ----------------------------------------------------------------------------- | ----------------- |
-| `./messages`  | `defineMessages`, `defineMessage`, `MessageDescriptor`                        | universal         |
-| `./react`     | `AppI18nProvider`, `useAppIntl`, `useAppLocale`                               | React (client)    |
-| `./negotiate` | `resolveAppLocale`, `canonicalizeAppLocale`                                   | universal         |
-| `./locales`   | `AppLocale` type, `defineAppLocales`, `mergeCatalogs`, `pseudoLocale` helpers | universal         |
-| `./vite`      | build integration: babel plugin config + catalog compile plugin               | Node (build-time) |
+| Subpath            | Contents                                                                                                            | Environment       |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| `./messages`       | `defineMessages`, `defineMessage`, `MessageDescriptor`, `createAppIntl` (non-React formatter for servers and tests) | universal         |
+| `./react`          | `AppI18nProvider`, `useAppIntl`, `useAppLocale`                                                                     | React (client)    |
+| `./negotiate`      | `resolveAppLocale`, `canonicalizeAppLocale`                                                                         | universal         |
+| `./locales`        | `AppLocale` type, `defineAppLocales`, `mergeCatalogs`, `ecosystemLocales`, `pseudoLocale` helpers                   | universal         |
+| `./common`         | `common.*` descriptors for universal chrome + their catalogs (decision 11)                                          | universal         |
+| `./vite`           | build integration: babel plugin config + catalog compile plugin                                                     | Node (build-time) |
+| `./catalog-guards` | extraction wrapper and the reusable catalog guards (freshness, completeness, subset, token parity)                  | Node (test-time)  |
 
-The `./vite` module and anything it imports use explicit `.ts` extensions on
-relative specifiers, because it is loaded by Node's own ESM loader from a
-consumer's `vite.config.ts` chain — the same rule protocol-validation and
-shared-consts already follow.
+The `./vite` and `./catalog-guards` modules and anything they import use
+explicit `.ts` extensions on relative specifiers, because they are loaded by
+Node's own ESM loader from a consumer's `vite.config.ts` chain or a script —
+the same rule protocol-validation and shared-consts already follow.
 
 Dependencies: `react-intl` and `@formatjs/intl-localematcher` as regular
-dependencies (`catalog:`); `@formatjs/cli-lib` as a regular dependency used
-only by `./vite` and the extraction CLI (node-side, never in client bundles);
+dependencies (`catalog:`); `@formatjs/cli-lib` and the ICU parser as regular
+dependencies used only by the Node-side modules (never in client bundles);
 `react` as a peer (`catalog:`). Internal consumers reference the package with
 `workspace:^`.
 
@@ -358,6 +386,26 @@ identical to the protocol design's `LocaleMetadata`
 
 `labels` are autonyms and are rendered with `lang={option.locale}` in
 selectors so screen readers pronounce them correctly.
+
+**The ecosystem locale set** (decision 12) is exported from `./locales` as
+`ecosystemLocales`: the ordered list of every locale any in-repo app ships a
+UI in, `['en', 'en-GB']` at launch. An app's registry must be a subset
+(guarded by a test in the app); a shared package's catalogs (`common.*`,
+`frescoUi.*`, later `interview.*`) must satisfy the completeness guard for
+every entry in the set. Adding a locale to any app therefore means, in the
+same PR: extend `ecosystemLocales`, add the shared packages' catalogs for
+it, then add the app's own — the guards enforce the order by failing until
+all three exist. This is what makes "share common translations between all
+apps" a checked property rather than an aspiration.
+
+**Shared copy layering** (decision 11): `./common` ships descriptors for
+universal chrome verbs and boilerplate under `common.*`, plus their
+catalogs. Shared packages and apps import these descriptors rather than
+defining near-duplicates; extraction only collects `defineMessages` calls in
+a workspace's own source, so an imported descriptor is never re-extracted,
+and each string exists in exactly one catalog. Merge order at a host is
+common → shared packages → app (later wins, though namespacing means
+overlap does not occur in practice).
 
 ### 4.6 Negotiation
 
@@ -698,7 +746,9 @@ workspace catalog updates only where the dependency version is declared.
 
 ### 9.2 fresco-ui
 
-- Extraction freshness guard over `frescoUi.*` descriptors.
+- Extraction freshness guard over `frescoUi.*` descriptors, and
+  completeness of its catalogs against `ecosystemLocales` (the same guard
+  `@codaco/app-i18n` runs over `common.*`).
 - Existing stories for converted components keep passing without any
   provider (proving invariant 2 mechanically — the Storybook harness mounts
   none by default).
@@ -814,8 +864,18 @@ This design serves #1309 and #1310 under epic #1308. Both issues receive
 dated decision entries (sub-issue convention) pointing here; #1242's decision
 log gains a 2026-09-04 group per the tree's convention. On the board, #1310
 moves from Needs spec to In progress and #1309 to In progress for the
-single-PR implementation; both close when it merges, with #1308 remaining
-open for #1312/#1313 and the other-app adoptions.
+single-PR implementation; both close when it merges.
+
+Three adoption issues are created under #1308 with this design, one per
+remaining app, each consuming the same package, negotiation chain, and
+catalog layering: Architect (Vite SPA; researcher chrome), Interviewer
+(Vite SPA; administration chrome — participant chrome stays with #1313),
+and Fresco (Next.js; researcher chrome plus the server boundary: stored
+preference and `Accept-Language` via protocol-validation's parser, with
+`createAppIntl` server-side). #1313 additionally receives a decision entry
+recording that `@codaco/interview`'s system strings use `interview.*`
+descriptors and catalogs shipped with that package, per decision 11. #1308
+remains open for #1312, #1313, and the adoption issues.
 
 ## 14. Definition of done
 
