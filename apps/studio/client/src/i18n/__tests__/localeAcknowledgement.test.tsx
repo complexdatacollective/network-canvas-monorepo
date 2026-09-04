@@ -1,0 +1,205 @@
+// @vitest-environment jsdom
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, render, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
+
+import { sessionQueryOptions } from '../../lib/session.ts';
+import { StudioI18nProvider, useStudioLocale } from '../StudioI18nProvider.tsx';
+
+/**
+ * What the unacknowledged-write marker is allowed to suppress.
+ *
+ * `setLocale` applies a choice locally and then, when it can, writes it to the
+ * account. Between those two moments a stale `me` payload must not drag the
+ * researcher back to the old language — that is what the marker is for. But a
+ * marker that outlives its write suppresses the account's OWN preference, and
+ * every case below is one where that used to happen and the researcher was
+ * left in the wrong language for the rest of the visit.
+ *
+ * These drive the provider directly rather than through the router, because
+ * each case turns on a transition the route tests cannot stage: no session at
+ * the moment of choosing, a different researcher signing in afterwards, and
+ * two replies racing.
+ */
+
+const updateLocale = vi.fn();
+
+vi.mock('../../lib/api.ts', () => ({
+  orpc: {
+    me: {
+      queryOptions: () => ({ queryKey: ['me'], queryFn: vi.fn() }),
+      key: () => ['me'],
+    },
+  },
+  rpcClient: {
+    account: { updateLocale: (...args: unknown[]) => updateLocale(...args) },
+  },
+}));
+
+const MIRROR_KEY = 'studio.locale';
+
+type Harness = {
+  preference: string | null;
+  saveState: string;
+  setLocale: (locale: string | null) => void;
+  applyServerPreference: (locale: string | null, userId: string) => void;
+};
+
+let harness: Harness;
+
+function Probe() {
+  harness = useStudioLocale();
+  return null;
+}
+
+/**
+ * @param signedIn seeds the session the way the real app's guards do, so
+ *   `setLocale` sees the same answer it would in the browser.
+ * @param userId who `me` reports; `undefined` stands for identity that has not
+ *   resolved.
+ */
+function renderProvider({
+  signedIn,
+  userId,
+}: {
+  signedIn: boolean;
+  userId: string | undefined;
+}) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  queryClient.setQueryData(
+    sessionQueryOptions.queryKey,
+    signedIn ? 'signedIn' : 'signedOut',
+  );
+  if (userId !== undefined) {
+    queryClient.setQueryData(['me'], { userId, locale: null });
+  }
+  render(
+    <QueryClientProvider client={queryClient}>
+      <StudioI18nProvider>
+        <Probe />
+      </StudioI18nProvider>
+    </QueryClientProvider>,
+  );
+  return queryClient;
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  window.localStorage.clear();
+  document.documentElement.lang = 'en';
+  Object.defineProperty(window.navigator, 'languages', {
+    value: ['en-US', 'en'],
+    configurable: true,
+  });
+  updateLocale.mockResolvedValue({ locale: null });
+});
+
+describe('a choice that never reached the account', () => {
+  it('does not suppress the account preference once the researcher signs in', () => {
+    // Signed out, the mirror is the only place a choice can live. Marking it
+    // as awaiting acknowledgement leaves a marker nothing can ever clear,
+    // because no write was sent — and the account's own preference is then
+    // ignored for the whole session that follows sign-in.
+    renderProvider({ signedIn: false, userId: undefined });
+
+    act(() => harness.setLocale('en-GB'));
+    expect(updateLocale).not.toHaveBeenCalled();
+
+    act(() => harness.applyServerPreference('en', 'user-1'));
+
+    expect(harness.preference).toBe('en');
+    expect(window.localStorage.getItem(MIRROR_KEY)).toBe('en');
+  });
+
+  it('does not suppress it when identity has not resolved yet', () => {
+    // Signed in, but nobody to attribute the write to. Sending it anyway
+    // would produce a marker that answers for whichever account resolves.
+    renderProvider({ signedIn: true, userId: undefined });
+
+    act(() => harness.setLocale('en-GB'));
+    expect(updateLocale).not.toHaveBeenCalled();
+
+    act(() => harness.applyServerPreference('en', 'user-1'));
+
+    expect(harness.preference).toBe('en');
+  });
+});
+
+describe('the pseudo-locale', () => {
+  it('is not clobbered by the account preference', () => {
+    // A development aid is never stored, so the server can only ever disagree
+    // with it. Letting that disagreement win would end the session it was
+    // turned on for.
+    renderProvider({ signedIn: true, userId: 'user-1' });
+
+    act(() => harness.setLocale(PSEUDO_LOCALE));
+    expect(updateLocale).not.toHaveBeenCalled();
+
+    act(() => harness.applyServerPreference('en-GB', 'user-1'));
+
+    expect(harness.preference).toBe(PSEUDO_LOCALE);
+  });
+});
+
+describe('an unacknowledged write', () => {
+  it('holds against a stale payload for the account that made it', async () => {
+    // The marker's actual job, kept as a guard on the cases below: this must
+    // still work after all the narrowing.
+    renderProvider({ signedIn: true, userId: 'user-1' });
+
+    act(() => harness.setLocale('en-GB'));
+    await waitFor(() => expect(updateLocale).toHaveBeenCalledTimes(1));
+
+    act(() => harness.applyServerPreference('en', 'user-1'));
+
+    expect(harness.preference).toBe('en-GB');
+  });
+
+  it('has no standing once a different researcher signs in', async () => {
+    // A failed write deliberately keeps its marker. The provider is mounted at
+    // the root and survives sign-out, so without an owner that marker answers
+    // for the next account and locks them out of their own preference.
+    updateLocale.mockRejectedValue(new Error('offline'));
+    renderProvider({ signedIn: true, userId: 'user-1' });
+
+    act(() => harness.setLocale('en-GB'));
+    await waitFor(() => expect(harness.saveState).toBe('error'));
+
+    act(() => harness.applyServerPreference('en', 'user-2'));
+
+    expect(harness.preference).toBe('en');
+  });
+});
+
+describe('two choices in quick succession', () => {
+  it('lets only the newest write report its result', async () => {
+    // Independent requests can settle out of order. An older reply must not
+    // revive its own save state, nor acknowledge the newer locale as though
+    // the server had stored it.
+    const settle: ((value: { locale: string | null }) => void)[] = [];
+    updateLocale.mockImplementation(
+      () => new Promise((resolve) => settle.push(resolve)),
+    );
+    renderProvider({ signedIn: true, userId: 'user-1' });
+
+    act(() => harness.setLocale('en-GB'));
+    act(() => harness.setLocale('en'));
+    await waitFor(() => expect(settle).toHaveLength(2));
+
+    // The FIRST request answers last, which is the whole hazard.
+    await act(async () => {
+      settle[0]?.({ locale: 'en-GB' });
+      await Promise.resolve();
+    });
+
+    expect(harness.saveState).toBe('saving');
+    // The stale reply must not have acknowledged the newer choice; the newer
+    // one is still outstanding, so a stale payload is still refused.
+    act(() => harness.applyServerPreference('en-GB', 'user-1'));
+    expect(harness.preference).toBe('en');
+  });
+});

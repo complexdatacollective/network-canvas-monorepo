@@ -15,6 +15,7 @@ import AppArea from '@codaco/fresco-ui/layout/AppArea';
 import RouteFocus from '@codaco/fresco-ui/navigation/RouteFocus';
 import { TeamInvitationIdSchema } from '@codaco/studio-rpc';
 
+import LocaleSync from './i18n/LocaleSync.tsx';
 import { StudioI18nProvider } from './i18n/StudioI18nProvider.tsx';
 import { fetchDeploymentMode } from './lib/deployment.ts';
 import {
@@ -79,6 +80,11 @@ type ShellContext = {
  * screen speaks is not a property of which product it belongs to. Above
  * `DialogProvider` too: a dialog's own chrome is translated by the same
  * provider as the screen that opened it.
+ *
+ * `LocaleSync` is here rather than in `AppLayout` for the second of those
+ * reasons. It applies the account's stored preference, and a signed-in
+ * researcher is not only ever inside the app shell — `/no-team` is a focused
+ * route, and somebody with no team can spend their whole visit on it.
  */
 function RootLayout() {
   const location = useRouterState({
@@ -87,6 +93,7 @@ function RootLayout() {
 
   return (
     <StudioI18nProvider>
+      <LocaleSync />
       <DialogProvider>
         <RouteFocus location={location} />
         <Outlet />

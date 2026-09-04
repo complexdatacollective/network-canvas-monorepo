@@ -252,6 +252,32 @@ describe('LocaleSync, once identity answers', () => {
     });
     expect(window.localStorage.getItem(MIRROR_KEY)).toBe('en-GB');
   });
+
+  it('applies it on a focused route outside the app shell', async () => {
+    // `/no-team` is in the focused branch, a sibling of `AppLayout`, and a
+    // researcher who belongs to no team can spend their entire visit on it.
+    // While the synchroniser was mounted inside the app shell it never ran
+    // here, so a preference set on another device was silently ignored for
+    // that whole visit.
+    fixtures.useListOrganizations.mockReturnValue({
+      data: [],
+      isPending: false,
+      error: null,
+    });
+    fixtures.listTeams.mockResolvedValue({ data: [], error: null });
+    setBrowserLanguages(['en-US', 'en']);
+    fixtures.meLocale = 'en-GB';
+
+    renderAt('/no-team');
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'No team yet' }),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.documentElement.lang).toBe('en-GB');
+    });
+    expect(window.localStorage.getItem(MIRROR_KEY)).toBe('en-GB');
+  });
 });
 
 describe('a signed-out screen', () => {

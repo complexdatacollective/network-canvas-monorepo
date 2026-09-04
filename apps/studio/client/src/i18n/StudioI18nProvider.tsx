@@ -55,10 +55,11 @@ type StudioLocaleContextValue = Readonly<{
    */
   setLocale: (locale: string | null) => void;
   /**
-   * `LocaleSync`'s entry point: the server-stored preference, applied unless
-   * a fresher local change is still unacknowledged.
+   * `LocaleSync`'s entry point: the server-stored preference for `userId`,
+   * applied unless a fresher local change by that same account is still
+   * unacknowledged.
    */
-  applyServerPreference: (locale: string | null) => void;
+  applyServerPreference: (locale: string | null, userId: string) => void;
 }>;
 
 const StudioLocaleContext = createContext<StudioLocaleContextValue | null>(
@@ -107,7 +108,24 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
   // A local choice the server has not yet reflected back through `me`. While
   // one is outstanding — in flight, or kept after a failed write — a stale
   // `me` payload must not clobber it (`LocaleSync` reads cached data first).
-  const pendingServerAck = useRef<{ locale: string | null } | null>(null);
+  //
+  // It is stamped with BOTH the account that issued the write and the write's
+  // generation, because a bare `{ locale }` marker suppresses the server's own
+  // preference in three ways that all end with a researcher stuck in the wrong
+  // language until they reload:
+  //
+  //   - set for a device-only choice (signed out, or the pseudo-locale), it
+  //     can never be acknowledged, because no write was ever sent;
+  //   - kept across sign-out and a sign-in as somebody else, it answers for an
+  //     account that did not make it;
+  //   - overwritten by a second choice, it lets the first write's late reply
+  //     acknowledge the second.
+  const pendingServerAck = useRef<{
+    locale: string | null;
+    userId: string;
+    generation: number;
+  } | null>(null);
+  const writeGeneration = useRef(0);
 
   const setLocale = useCallback(
     (locale: string | null) => {
@@ -118,28 +136,47 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
       } else {
         writeLocaleMirror(locale);
       }
-      pendingServerAck.current = { locale };
+
+      // Every call supersedes any write still in flight, so a reply that
+      // arrives after a newer choice cannot revive its own save state or
+      // acknowledge somebody else's locale.
+      const generation = ++writeGeneration.current;
 
       // The pseudo-locale is a development aid, never a stored preference
       // (design §4.7); and with no session there is no account to store to —
-      // the mirror alone carries a signed-out device's choice.
-      if (locale === PSEUDO_LOCALE) return;
-      if (locale !== null && !isSupportedStudioLocale(locale)) return;
-      if (
-        queryClient.getQueryData(sessionQueryOptions.queryKey) !== 'signedIn'
-      ) {
+      // the mirror alone carries a signed-out device's choice. Neither leaves
+      // a pending marker: nothing will ever acknowledge one, and a permanent
+      // marker means the account's own preference never applies at sign-in.
+      const storable =
+        locale !== PSEUDO_LOCALE &&
+        (locale === null || isSupportedStudioLocale(locale));
+      const signedIn =
+        queryClient.getQueryData(sessionQueryOptions.queryKey) === 'signedIn';
+      // Identity comes from the cache `LocaleSync` already populates. Without
+      // it there is nobody to attribute the write to, so it is not sent —
+      // rather than sent unattributably, which is what would let it answer for
+      // the next account.
+      const userId = queryClient.getQueryData(
+        orpc.me.queryOptions().queryKey,
+      )?.userId;
+
+      if (!storable || !signedIn || userId === undefined) {
+        pendingServerAck.current = null;
         return;
       }
 
+      pendingServerAck.current = { locale, userId, generation };
       setSaveState('saving');
       void (async () => {
         try {
           await rpcClient.account.updateLocale({ locale });
+          if (writeGeneration.current !== generation) return;
           setSaveState('saved');
           // `me` now reports the new value; refetch so LocaleSync's
           // acknowledgment comparison sees it rather than a stale payload.
           await queryClient.invalidateQueries({ queryKey: orpc.me.key() });
         } catch {
+          if (writeGeneration.current !== generation) return;
           // The local change stands — the device honours it via the mirror —
           // and the language page surfaces that the account write failed.
           // The pending marker stays, so a refetch of the old server value
@@ -151,22 +188,37 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
     [queryClient],
   );
 
-  const applyServerPreference = useCallback((locale: string | null) => {
-    const pending = pendingServerAck.current;
-    if (pending !== null) {
-      // Server wins over the mirror, but not over a fresher local change the
-      // server has not acknowledged yet.
-      if (locale === pending.locale) pendingServerAck.current = null;
-      return;
-    }
-    if (locale === preferenceRef.current) return;
-    if (locale === null) {
-      clearLocaleMirror();
-    } else {
-      writeLocaleMirror(locale);
-    }
-    setPreference(locale);
-  }, []);
+  const applyServerPreference = useCallback(
+    (locale: string | null, userId: string) => {
+      // A development aid outranks the account: the pseudo-locale is never
+      // stored, so the server can only ever disagree with it, and letting that
+      // disagreement win would end the session it was turned on for.
+      if (preferenceRef.current === PSEUDO_LOCALE) return;
+
+      const pending = pendingServerAck.current;
+      if (pending !== null) {
+        if (pending.userId !== userId) {
+          // Another account's unacknowledged write. It has no standing here,
+          // and keeping it would lock this researcher out of their own
+          // preference for the rest of the session.
+          pendingServerAck.current = null;
+        } else {
+          // Server wins over the mirror, but not over a fresher local change
+          // the server has not acknowledged yet.
+          if (locale === pending.locale) pendingServerAck.current = null;
+          return;
+        }
+      }
+      if (locale === preferenceRef.current) return;
+      if (locale === null) {
+        clearLocaleMirror();
+      } else {
+        writeLocaleMirror(locale);
+      }
+      setPreference(locale);
+    },
+    [],
+  );
 
   const activeLocale = useMemo(
     () => resolveActiveLocale(preference),

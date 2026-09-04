@@ -7,7 +7,6 @@ import { Alert } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import AppFrame from '@codaco/fresco-ui/layout/AppFrame';
 
-import LocaleSync from '../i18n/LocaleSync.tsx';
 import { useSessionRevalidation } from '../lib/session.ts';
 import AppHeader from '../shell/AppHeader.tsx';
 import {
@@ -94,9 +93,11 @@ function TeamSwitchFailure({ failure }: { failure: ActiveTeamFailure }) {
  * cannot be left behind by an area transition. When that write fails it says
  * so here, above every area, for the reason `TeamSwitchFailure` records.
  *
- * `LocaleSync` sits here for the same mounted-everywhere reason, and like
- * `AppHeader`'s lockup it is a leaf subscriber: the layout itself still reads
- * no identity.
+ * `LocaleSync` deliberately does NOT sit here. "Mounted for every app route"
+ * is not the same as "mounted wherever a signed-in researcher can be":
+ * `/no-team` is in the focused branch, a sibling of this layout, and a
+ * researcher with no team can spend a whole visit there. It is at the root
+ * instead, above all four shells.
  */
 export default function AppLayout() {
   const intl = useAppIntl();
@@ -118,7 +119,6 @@ export default function AppLayout() {
       }
       skipLinkLabel={intl.formatMessage(messages.skipToMainContent)}
     >
-      <LocaleSync />
       <Outlet />
     </AppFrame>
   );
