@@ -64,7 +64,7 @@
     "description": "Default label of the button that adds a list item."
   },
   "frescoUi.arrayField.addedItem": {
-    "defaultMessage": "Added item at position {position} of {count}.",
+    "defaultMessage": "Added item at position {position, number} of {count, number}.",
     "description": "Screen-reader announcement after a new list item is added."
   },
   "frescoUi.arrayField.emptyState": {
@@ -72,15 +72,15 @@
     "description": "Default empty state of the list field; mention the add button by its default label."
   },
   "frescoUi.arrayField.movedItem": {
-    "defaultMessage": "Moved item {from} to position {to} of {count}.",
+    "defaultMessage": "Moved item {from, number} to position {to, number} of {count, number}.",
     "description": "Screen-reader announcement after a list item is reordered."
   },
   "frescoUi.arrayField.removedItem": {
-    "defaultMessage": "Removed item {position}. {count, plural, one {# item remaining} other {# items remaining}}.",
+    "defaultMessage": "Removed item {position, number}. {count, plural, one {# item remaining} other {# items remaining}}.",
     "description": "Screen-reader announcement after a list item is deleted."
   },
   "frescoUi.arrayField.reorderHandle": {
-    "defaultMessage": "Reorder item {index} of {count}",
+    "defaultMessage": "Reorder item {index, number} of {count, number}",
     "description": "Default accessible name of the drag handle on one list item."
   },
   "frescoUi.arrayField.reorderInstructions": {
@@ -168,7 +168,7 @@
     "description": "Column menu action sorting the table in descending order."
   },
   "frescoUi.combobox.allSelected": {
-    "defaultMessage": "All {plural} selected ({count})",
+    "defaultMessage": "All {plural} selected ({count, number})",
     "description": "Trigger label when every option is selected; {plural} is the host-supplied plural noun (e.g. \"items\")."
   },
   "frescoUi.combobox.defaultPlural": {
@@ -240,7 +240,7 @@
     "description": "Accessible name of the next-page pagination button."
   },
   "frescoUi.dataTablePagination.pageOf": {
-    "defaultMessage": "Page {page} of {pageCount}",
+    "defaultMessage": "Page {page, number} of {pageCount, number}",
     "description": "Current page position indicator shown between the table pagination controls."
   },
   "frescoUi.dataTablePagination.previousPage": {
@@ -260,7 +260,7 @@
     "description": "Placeholder of a column search box in the table toolbar; {title} is the host-supplied column heading."
   },
   "frescoUi.dateFilter.presetLastDays": {
-    "defaultMessage": "Last {days} days",
+    "defaultMessage": "Last {days, number} days",
     "description": "Relative date-range preset covering the last {days} days up to today."
   },
   "frescoUi.dateFilter.presetToday": {
@@ -616,7 +616,7 @@
     "description": "Default accessible name of the toolbar drag handle."
   },
   "frescoUi.segmentedToolbar.toolbarMoved": {
-    "defaultMessage": "Toolbar moved to {x}, {y}",
+    "defaultMessage": "Toolbar moved to {x, number}, {y, number}",
     "description": "Screen-reader announcement after the toolbar is nudged with the keyboard; {x} and {y} are pixel coordinates."
   },
   "frescoUi.selectAllHeader.deselectAll": {
@@ -624,7 +624,7 @@
     "description": "Menu action clearing the table row selection."
   },
   "frescoUi.selectAllHeader.selectAll": {
-    "defaultMessage": "Select all ({count})",
+    "defaultMessage": "Select all ({count, number})",
     "description": "Menu action selecting every row in the table; {count} is the total number of rows."
   },
   "frescoUi.selectAllHeader.selectAllOnPage": {
@@ -632,7 +632,7 @@
     "description": "Accessible name of the header checkbox that selects every row on the current table page."
   },
   "frescoUi.selectAllHeader.selectPage": {
-    "defaultMessage": "Select page ({count})",
+    "defaultMessage": "Select page ({count, number})",
     "description": "Menu action selecting every row on the current page; {count} is the number of rows on the page."
   },
   "frescoUi.selectAllHeader.selectionOptions": {
@@ -756,11 +756,11 @@
     "description": "Hint and error for a date/time maximum; {max} is the formatted bound."
   },
   "frescoUi.validation.maxLengthError": {
-    "defaultMessage": "Too long. Enter fewer than {max} characters.",
+    "defaultMessage": "Too long. Enter fewer than {max, number} characters.",
     "description": "Error shown when text exceeds its maximum length."
   },
   "frescoUi.validation.maxLengthHint": {
-    "defaultMessage": "Enter at most {max} characters.",
+    "defaultMessage": "Enter at most {max, number} characters.",
     "description": "Hint summarising a maximum text length rule."
   },
   "frescoUi.validation.maxSelectedError": {
@@ -784,11 +784,11 @@
     "description": "Hint and error for a date/time minimum; {min} is the formatted bound."
   },
   "frescoUi.validation.minLengthError": {
-    "defaultMessage": "Too short. Enter at least {min} characters.",
+    "defaultMessage": "Too short. Enter at least {min, number} characters.",
     "description": "Error shown when text is shorter than its minimum length."
   },
   "frescoUi.validation.minLengthHint": {
-    "defaultMessage": "Enter at least {min} characters.",
+    "defaultMessage": "Enter at least {min, number} characters.",
     "description": "Hint summarising a minimum text length rule."
   },
   "frescoUi.validation.minSelectedError": {

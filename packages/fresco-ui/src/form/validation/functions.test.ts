@@ -457,6 +457,40 @@ describe('Validation Functions', () => {
         );
       }
     });
+
+    // One per shape the bound formatter recognises, because each builds its
+    // own options object: a year-month bound, a full date, and a date-time.
+    it.each([
+      ['2000-06', '2000-05'],
+      ['2000-06-15', '2000-06-14'],
+      ['2000-06-15T09:00', '2000-06-15T08:59'],
+    ])(
+      'keeps the bound %s on the calendar the field stores',
+      (bound, below) => {
+        // th-TH defaults to the Buddhist calendar, which numbers this year
+        // 2543. Fixture guard, so the assertion below can tell the two apart.
+        const buddhist = new Intl.DateTimeFormat('th-TH', {
+          dateStyle: 'long',
+          timeZone: 'UTC',
+        }).format(new Date(Date.UTC(2000, 5, 15)));
+        expect(buddhist).toContain('2543');
+
+        const validator = validations.min(
+          bound,
+          createMockContext(),
+          createAppIntl({ locale: 'th-TH' }),
+        )({});
+        const result = validator.safeParse(below);
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          // The rule constrains a Gregorian ISO value, and the picker offers
+          // Gregorian years, so a hint naming another calendar's year would
+          // describe a date the field cannot hold.
+          expect(result.error.issues[0]?.message).toContain('2000');
+          expect(result.error.issues[0]?.message).not.toContain('2543');
+        }
+      },
+    );
   });
 
   describe('max (numeric)', () => {

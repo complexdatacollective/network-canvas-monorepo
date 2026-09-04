@@ -57,7 +57,7 @@ export { stripManagedProperties } from './useArrayFieldItems';
 const messages = defineMessages({
   reorderHandle: {
     id: 'frescoUi.arrayField.reorderHandle',
-    defaultMessage: 'Reorder item {index} of {count}',
+    defaultMessage: 'Reorder item {index, number} of {count, number}',
     description: 'Default accessible name of the drag handle on one list item.',
   },
   reorderInstructions: {
@@ -68,18 +68,20 @@ const messages = defineMessages({
   },
   movedItem: {
     id: 'frescoUi.arrayField.movedItem',
-    defaultMessage: 'Moved item {from} to position {to} of {count}.',
+    defaultMessage:
+      'Moved item {from, number} to position {to, number} of {count, number}.',
     description: 'Screen-reader announcement after a list item is reordered.',
   },
   addedItem: {
     id: 'frescoUi.arrayField.addedItem',
-    defaultMessage: 'Added item at position {position} of {count}.',
+    defaultMessage:
+      'Added item at position {position, number} of {count, number}.',
     description: 'Screen-reader announcement after a new list item is added.',
   },
   removedItem: {
     id: 'frescoUi.arrayField.removedItem',
     defaultMessage:
-      'Removed item {position}. {count, plural, one {# item remaining} other {# items remaining}}.',
+      'Removed item {position, number}. {count, plural, one {# item remaining} other {# items remaining}}.',
     description: 'Screen-reader announcement after a list item is deleted.',
   },
   addItem: {

@@ -55,6 +55,14 @@ const validationIntl = (intl?: IntlShape): IntlShape => {
   return defaultValidationIntl;
 };
 
+// A number written as `{x, number}` is formatted in the locale of the message
+// it sits in; a bare `{x}` is interpolated with `String(value)`, so its digits
+// and grouping stay as the source language wrote them however the sentence
+// around it reads. Character counts are quantities and take the typed form.
+// The value bounds below deliberately do not: `min`/`max` echo a number the
+// protocol author supplied, which need not be a quantity at all — a year, a
+// score, an identifier — and is the literal the participant has to type back.
+// "greater than or equal to 1,990" would be a rule about a different number.
 const messages = defineMessages({
   required: {
     id: 'frescoUi.validation.required',
@@ -63,22 +71,22 @@ const messages = defineMessages({
   },
   maxLengthHint: {
     id: 'frescoUi.validation.maxLengthHint',
-    defaultMessage: 'Enter at most {max} characters.',
+    defaultMessage: 'Enter at most {max, number} characters.',
     description: 'Hint summarising a maximum text length rule.',
   },
   maxLengthError: {
     id: 'frescoUi.validation.maxLengthError',
-    defaultMessage: 'Too long. Enter fewer than {max} characters.',
+    defaultMessage: 'Too long. Enter fewer than {max, number} characters.',
     description: 'Error shown when text exceeds its maximum length.',
   },
   minLengthHint: {
     id: 'frescoUi.validation.minLengthHint',
-    defaultMessage: 'Enter at least {min} characters.',
+    defaultMessage: 'Enter at least {min, number} characters.',
     description: 'Hint summarising a minimum text length rule.',
   },
   minLengthError: {
     id: 'frescoUi.validation.minLengthError',
-    defaultMessage: 'Too short. Enter at least {min} characters.',
+    defaultMessage: 'Too short. Enter at least {min, number} characters.',
     description: 'Error shown when text is shorter than its minimum length.',
   },
   minValueHint: {
@@ -588,8 +596,14 @@ function utcDateFromParts(
  * or after June 15, 2000." in US date order.
  *
  * `timeZone: 'UTC'` keeps the formatted date equal to the literal YYYY-MM-DD
- * bound regardless of the viewer's timezone. Returns the raw string for
- * values we don't recognise as date/time literals.
+ * bound regardless of the viewer's timezone, and `calendar: 'gregory'` keeps
+ * it equal to the same literal under a locale that defaults to another
+ * calendar: the bound describes a rule about a Gregorian ISO value the
+ * DatePicker offers in Gregorian years, so a hint reading "on or after 15
+ * June 2543" would be about a date the field cannot hold. The bare-year
+ * branch above already returns its four digits verbatim for the same reason.
+ *
+ * Returns the raw string for values we don't recognise as date/time literals.
  */
 function formatBoundForDisplay(bound: string, intl: IntlShape): string {
   if (YEAR_RE.test(bound)) return bound;
@@ -602,6 +616,7 @@ function formatBoundForDisplay(bound: string, intl: IntlShape): string {
       year: 'numeric',
       month: 'long',
       timeZone: 'UTC',
+      calendar: 'gregory',
     });
   }
 
@@ -624,11 +639,13 @@ function formatBoundForDisplay(bound: string, intl: IntlShape): string {
         dateStyle: 'long',
         timeStyle: 'short',
         timeZone: 'UTC',
+        calendar: 'gregory',
       });
     }
     return intl.formatDate(utcDateFromParts(year, month, day), {
       dateStyle: 'long',
       timeZone: 'UTC',
+      calendar: 'gregory',
     });
   }
 

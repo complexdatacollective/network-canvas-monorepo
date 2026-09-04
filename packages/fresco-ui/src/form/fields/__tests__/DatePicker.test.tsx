@@ -2,6 +2,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import type { AppLocale } from '@codaco/app-i18n/locales';
+import { AppI18nProvider } from '@codaco/app-i18n/react';
+
 import Field from '../../Field/Field';
 import UnconnectedField from '../../Field/UnconnectedField';
 import Form from '../../Form';
@@ -911,5 +914,53 @@ describe('DatePickerField ceiling with no max', () => {
 
     expect(input).not.toHaveAttribute('max');
     expect(input).toHaveValue('2030-01-01');
+  });
+});
+
+describe('DatePickerField month mode under a non-Gregorian locale', () => {
+  // A locale whose default calendar is not the one the field stores. Its
+  // registry is local to this test: the shipped ecosystem list is
+  // English-only, and what is under test is the component, not the set of
+  // languages the apps currently offer.
+  const PERSIAN: AppLocale = {
+    locale: 'fa-IR',
+    label: 'فارسی',
+    direction: 'rtl',
+  };
+
+  const JUNE_ANCHOR = new Date(Date.UTC(2000, 5, 1));
+
+  const persianMonthName = (options: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat('fa-IR', {
+      month: 'long',
+      timeZone: 'UTC',
+      ...options,
+    }).format(JUNE_ANCHOR);
+
+  it('names each month by the calendar the option values belong to', () => {
+    const gregorian = persianMonthName({ calendar: 'gregory' });
+    // Fixture guard: fa-IR really does name this anchor differently under its
+    // own default calendar, so the assertion below can tell the two apart.
+    expect(persianMonthName({})).not.toBe(gregorian);
+
+    render(
+      <AppI18nProvider
+        locale="fa-IR"
+        locales={[PERSIAN]}
+        manageDocument={false}
+      >
+        <DatePickerField type="month" name="date" value="2000-06" />
+      </AppI18nProvider>,
+    );
+
+    const [, monthSelect] = screen.getAllByRole('combobox');
+    const selected = Array.from(monthSelect!.querySelectorAll('option')).find(
+      (option) => option.value === '06',
+    );
+
+    // The value is `06` of a Gregorian ISO date, and the year beside it is
+    // printed verbatim. A label from another calendar would have the person
+    // choose one month and store a different one.
+    expect(selected?.textContent).toBe(gregorian);
   });
 });

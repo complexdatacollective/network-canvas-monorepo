@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+import { expect } from 'storybook/test';
 
 import Heading from '../../../typography/Heading';
 import Paragraph from '../../../typography/Paragraph';
@@ -602,5 +603,64 @@ export const NumericValues: Story = {
           'Both components support numeric values (number type) in addition to string values',
       },
     },
+  },
+};
+
+/**
+ * The native select in a right-to-left region. Its chevron is a background
+ * image, and `background-position` has no logical keywords, so the arrow and
+ * the padding that reserves room for it have to be flipped together — the
+ * value is right-aligned here, and an arrow left behind on the right would
+ * sit on top of it.
+ */
+export const RightToLeft: Story = {
+  render: () => (
+    <div className="flex flex-col gap-8">
+      <div dir="ltr" className="w-72 space-y-3">
+        <Heading level="h3" margin="none" className="text-lg">
+          Left to right
+        </Heading>
+        <NativeSelectField
+          name="direction-ltr"
+          options={sampleOptions}
+          value="option2"
+        />
+      </div>
+      <div dir="rtl" className="w-72 space-y-3">
+        <Heading level="h3" margin="none" className="text-lg">
+          من اليمين إلى اليسار
+        </Heading>
+        <NativeSelectField
+          name="direction-rtl"
+          options={[
+            { value: 'overview', label: 'نظرة عامة' },
+            { value: 'participants', label: 'المشاركون' },
+            { value: 'sessions', label: 'الجلسات' },
+          ]}
+          value="participants"
+        />
+      </div>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const ltr = canvasElement.querySelector('select[name="direction-ltr"]');
+    const rtl = canvasElement.querySelector('select[name="direction-rtl"]');
+    await expect(ltr).not.toBeNull();
+    await expect(rtl).not.toBeNull();
+
+    const ltrStyles = getComputedStyle(ltr!);
+    const rtlStyles = getComputedStyle(rtl!);
+    await expect(rtlStyles.direction).toBe('rtl');
+
+    // The reserved space follows the direction, because it is written as
+    // inline-end padding.
+    await expect(ltrStyles.paddingRight).not.toBe('0px');
+    await expect(ltrStyles.paddingLeft).toBe('0px');
+    await expect(rtlStyles.paddingLeft).toBe(ltrStyles.paddingRight);
+    await expect(rtlStyles.paddingRight).toBe('0px');
+
+    // And so does the chevron, which is what has to be said twice.
+    await expect(ltrStyles.backgroundPositionX).toBe('100%');
+    await expect(rtlStyles.backgroundPositionX).toBe('0%');
   },
 };
