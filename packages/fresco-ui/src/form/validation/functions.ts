@@ -579,23 +579,30 @@ function utcDateFromParts(
 
 /**
  * Format a min/max bound for human-readable display in validation hints.
- * Uses the runtime's locale via Intl.DateTimeFormat with timeZone: 'UTC' so
- * the formatted date matches the literal YYYY-MM-DD bound regardless of the
- * viewer's timezone. Returns the raw string for values we don't recognise
- * as date/time literals.
+ *
+ * Formats through the same `intl` that renders the message the bound is
+ * substituted into, rather than through the runtime's own default locale:
+ * the two are not the same thing once a host mounts a provider, and a bound
+ * formatted by the browser's default lands inside a sentence written in the
+ * app's locale — an en-GB interface on an en-US machine would say "Must be on
+ * or after June 15, 2000." in US date order.
+ *
+ * `timeZone: 'UTC'` keeps the formatted date equal to the literal YYYY-MM-DD
+ * bound regardless of the viewer's timezone. Returns the raw string for
+ * values we don't recognise as date/time literals.
  */
-function formatBoundForDisplay(bound: string): string {
+function formatBoundForDisplay(bound: string, intl: IntlShape): string {
   if (YEAR_RE.test(bound)) return bound;
 
   const yearMonth = YEAR_MONTH_RE.exec(bound);
   if (yearMonth) {
     const year = Number(yearMonth[1]);
     const month = Number(yearMonth[2]);
-    return new Intl.DateTimeFormat(undefined, {
+    return intl.formatDate(utcDateFromParts(year, month, 1), {
       year: 'numeric',
       month: 'long',
       timeZone: 'UTC',
-    }).format(utcDateFromParts(year, month, 1));
+    });
   }
 
   const dateTime = DATE_TIME_RE.exec(bound);
@@ -613,16 +620,16 @@ function formatBoundForDisplay(bound: string): string {
         Number(dateTime[5]),
         dateTime[6] !== undefined ? Number(dateTime[6]) : 0,
       );
-      return new Intl.DateTimeFormat(undefined, {
+      return intl.formatDate(date, {
         dateStyle: 'long',
         timeStyle: 'short',
         timeZone: 'UTC',
-      }).format(date);
+      });
     }
-    return new Intl.DateTimeFormat(undefined, {
+    return intl.formatDate(utcDateFromParts(year, month, day), {
       dateStyle: 'long',
       timeZone: 'UTC',
-    }).format(utcDateFromParts(year, month, day));
+    });
   }
 
   const time = TIME_RE.exec(bound);
@@ -634,10 +641,10 @@ function formatBoundForDisplay(bound: string): string {
       time[3] !== undefined ? Number(time[3]) : 0,
       0,
     );
-    return new Intl.DateTimeFormat(undefined, {
+    return intl.formatTime(anchor, {
       timeStyle: 'short',
       timeZone: 'UTC',
-    }).format(anchor);
+    });
   }
 
   return bound;
@@ -664,7 +671,7 @@ const min: ValidationFunction<number | string> =
     const paramIsDateShaped =
       typeof minParam === 'string' && matchesDatePattern(minParam);
     const displayMin = paramIsDateShaped
-      ? formatBoundForDisplay(minParam)
+      ? formatBoundForDisplay(minParam, validationIntl(intl))
       : String(minParam);
     const hint = paramIsDateShaped
       ? validationIntl(intl).formatMessage(messages.minDate, {
@@ -733,7 +740,7 @@ const max: ValidationFunction<number | string> =
     const paramIsDateShaped =
       typeof maxParam === 'string' && matchesDatePattern(maxParam);
     const displayMax = paramIsDateShaped
-      ? formatBoundForDisplay(maxParam)
+      ? formatBoundForDisplay(maxParam, validationIntl(intl))
       : String(maxParam);
     const hint = paramIsDateShaped
       ? validationIntl(intl).formatMessage(messages.maxDate, {

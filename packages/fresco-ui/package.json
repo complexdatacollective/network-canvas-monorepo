@@ -906,6 +906,7 @@
     "@chromatic-com/storybook": "catalog:",
     "@codaco/app-i18n": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",
+    "@codaco/storybook-config": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@codaco/vitest-config": "workspace:^",
     "@faker-js/faker": "catalog:",

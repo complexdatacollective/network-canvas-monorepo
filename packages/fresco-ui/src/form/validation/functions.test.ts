@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod/mini';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
 import type { StageSubject } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -437,6 +438,25 @@ describe('Validation Functions', () => {
       expect(validator.safeParse('2000-06-15T09:00').success).toBe(true);
       expect(validator.safeParse('2000-06-15T08:59').success).toBe(false);
     });
+
+    it('formats the bound in the supplied formatter’s locale', () => {
+      // The bound is substituted into a sentence written in the app's locale,
+      // so it has to be formatted in that locale too — not in whatever the
+      // runtime happens to default to. Pinned to en-US by vitest.setup.ts, so
+      // a bound formatted from the default reads "June 15, 2000".
+      const validator = validations.min(
+        '2000-06-15',
+        createMockContext(),
+        createAppIntl({ locale: 'en-GB' }),
+      )({});
+      const result = validator.safeParse('2000-06-14');
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toBe(
+          'Must be on or after 15 June 2000.',
+        );
+      }
+    });
   });
 
   describe('max (numeric)', () => {
@@ -498,6 +518,23 @@ describe('Validation Functions', () => {
       expect(validator.safeParse('2020-05').success).toBe(true);
       // "2020-06" is strictly later month → reject
       expect(validator.safeParse('2020-06').success).toBe(false);
+    });
+
+    it('formats the bound in the supplied formatter’s locale', () => {
+      // Its own call to the shared bound formatter, so it gets its own guard;
+      // see the matching case under "min (date)".
+      const validator = validations.max(
+        '2020-05-15',
+        createMockContext(),
+        createAppIntl({ locale: 'en-GB' }),
+      )({});
+      const result = validator.safeParse('2020-05-16');
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toBe(
+          'Must be on or before 15 May 2020.',
+        );
+      }
     });
   });
 
