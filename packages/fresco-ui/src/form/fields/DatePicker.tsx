@@ -331,10 +331,18 @@ export default function DatePickerField(props: DatePickerFieldProps) {
   const years = useMemo(() => {
     const arr: SelectOption[] = [];
     for (let y = coarseMaxYmd.year; y >= coarseMinYmd.year; y--) {
-      arr.push({ value: y.toString(), label: y.toString() });
+      // The value is the ASCII year the stored ISO date is built from and
+      // must stay that whatever the language; the label is a number on its
+      // own in a menu of translated months, so it is written in the reader's
+      // digits. Ungrouped, because a year is not a quantity — "2,000" would
+      // be a different thing entirely.
+      arr.push({
+        value: y.toString(),
+        label: intl.formatNumber(y, { useGrouping: false }),
+      });
     }
     return arr;
-  }, [coarseMinYmd.year, coarseMaxYmd.year]);
+  }, [coarseMinYmd.year, coarseMaxYmd.year, intl]);
 
   const months = useMemo(
     () => buildMonthOptions((date, options) => intl.formatDate(date, options)),

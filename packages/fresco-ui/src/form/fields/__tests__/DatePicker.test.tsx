@@ -959,8 +959,37 @@ describe('DatePickerField month mode under a non-Gregorian locale', () => {
     );
 
     // The value is `06` of a Gregorian ISO date, and the year beside it is
-    // printed verbatim. A label from another calendar would have the person
-    // choose one month and store a different one.
+    // the same Gregorian year. A label from another calendar would have the
+    // person choose one month and store a different one.
     expect(selected?.textContent).toBe(gregorian);
+  });
+
+  it('writes the years in the reader’s digits while storing ASCII', () => {
+    const persianDigits = new Intl.NumberFormat('fa-IR', {
+      useGrouping: false,
+    }).format(2000);
+    // Fixture guard: fa-IR really does write this year differently, so the
+    // label assertion can tell a localized one from a `toString()`.
+    expect(persianDigits).not.toBe('2000');
+
+    render(
+      <AppI18nProvider
+        locale="fa-IR"
+        locales={[PERSIAN]}
+        manageDocument={false}
+      >
+        <DatePickerField type="month" name="date" value="2000-06" />
+      </AppI18nProvider>,
+    );
+
+    const [yearSelect] = screen.getAllByRole('combobox');
+    const selected = Array.from(yearSelect!.querySelectorAll('option')).find(
+      (option) => option.value === '2000',
+    );
+
+    // The stored value stays the ASCII year the ISO date is built from…
+    expect(selected).toBeDefined();
+    // …while the label reads in the language everything around it is in.
+    expect(selected?.textContent).toBe(persianDigits);
   });
 });
