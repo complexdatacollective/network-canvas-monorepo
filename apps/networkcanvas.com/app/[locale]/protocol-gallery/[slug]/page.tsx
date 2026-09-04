@@ -137,14 +137,14 @@ export default async function ProtocolDetailPage({
                     sandboxUrl={protocol.sandboxUrl}
                   />
                 </div>
-                <Paragraph margin="none" className="mt-8">
+                <Paragraph margin="none" className="mt-8 max-w-prose">
                   {protocol.summary}
                 </Paragraph>
               </div>
 
               <Surface noContainer spacing="lg" shadow="md">
                 <OverlineHeading>{t('detail.demonstrates')}</OverlineHeading>
-                <Paragraph margin="none" className="mt-3">
+                <Paragraph margin="none" className="mt-3 max-w-prose">
                   {protocol.description}
                 </Paragraph>
               </Surface>
