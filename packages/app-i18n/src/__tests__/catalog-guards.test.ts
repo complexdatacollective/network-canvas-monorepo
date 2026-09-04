@@ -235,6 +235,61 @@ export const messages = defineMessages({
     );
   });
 
+  it('rejects an id declared twice in one file, whatever the second says', async () => {
+    // Neither shape survives extraction: an identical pair merges without a
+    // word, and a conflicting pair is not an error either — the extractor
+    // logs a warning nothing reads and lets the later one win, so a call site
+    // silently renders copy written for somewhere else.
+    for (const [name, second] of [
+      ['identical', `'Save', description: 'Saves.'`],
+      ['conflicting', `'Store', description: 'Stores.'`],
+    ] as const) {
+      const dir = mkdtempSync(join(tmpdir(), `app-i18n-dup-${name}-`));
+      writeFileSync(
+        join(dir, 'both.ts'),
+        `import { defineMessages } from 'react-intl';
+export const first = defineMessages({
+  save: { id: 'demo.actions.save', defaultMessage: 'Save', description: 'Saves.' },
+});
+export const second = defineMessages({
+  store: { id: 'demo.actions.save', defaultMessage: ${second} },
+});
+`,
+      );
+      await expect(extractMessages(collectSourceFiles(dir))).rejects.toThrow(
+        /"demo\.actions\.save" is declared twice in .*both\.ts/,
+      );
+    }
+  });
+
+  it('rejects copy that is only whitespace', async () => {
+    // A lone space is not a message and not a description, but it is not the
+    // empty string either — so an exact-equality check let it through, and
+    // both the generated catalog and the freshness guard stayed green with a
+    // blank string on its way to a reader.
+    for (const [name, descriptor] of [
+      [
+        'message',
+        `id: 'demo.blank', defaultMessage: ' ', description: 'Real.'`,
+      ],
+      [
+        'description',
+        `id: 'demo.blank', defaultMessage: 'Real', description: '  '`,
+      ],
+    ] as const) {
+      const dir = mkdtempSync(join(tmpdir(), `app-i18n-blank-${name}-`));
+      writeFileSync(
+        join(dir, 'blank.ts'),
+        `import { defineMessages } from 'react-intl';
+export const messages = defineMessages({ blank: { ${descriptor} } });
+`,
+      );
+      await expect(extractMessages(collectSourceFiles(dir))).rejects.toThrow(
+        /has no (defaultMessage|description for translators)/,
+      );
+    }
+  });
+
   it('rejects FormatJS’s structured description form', async () => {
     // The extractor writes the object straight through, and en.json would then
     // fail its own freshness check on every run: two parses of the same object

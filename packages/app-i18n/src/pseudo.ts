@@ -66,31 +66,15 @@ const accentElements = (
   });
 
 /**
- * How much source copy a rendering of this message can contain. A select or
- * plural renders exactly one arm, so its arms are a maximum rather than a sum
- * — adding them up made a three-arm select expand by roughly the arm count
- * instead of by a third, which clips layouts that a real translation would fit.
- *
- * The longest arm is the honest static answer: the pseudo message is built
- * once per id and cached before any value exists, so which arm renders is not
- * knowable here, and the worst case is the one a layout check wants anyway.
+ * How much source copy renders at this level, whichever arm a select or plural
+ * chooses. Arms are excluded because each one carries its own padding (see
+ * `padArms`); tag children are included because a tag's text always renders.
  */
 const literalLength = (elements: readonly MessageFormatElement[]): number =>
   elements.reduce((total, element) => {
     switch (element.type) {
       case TYPE.literal:
         return total + element.value.length;
-      case TYPE.select:
-      case TYPE.plural:
-        return (
-          total +
-          Math.max(
-            0,
-            ...Object.values(element.options).map((option) =>
-              literalLength(option.value),
-            ),
-          )
-        );
       case TYPE.tag:
         return total + literalLength(element.children);
       default:
@@ -99,9 +83,63 @@ const literalLength = (elements: readonly MessageFormatElement[]): number =>
   }, 0);
 
 /**
- * Accented, bracketed and padded by roughly a third — the expansion European
- * translations of English copy typically bring, so a layout that cannot take
- * it clips here rather than after a translation lands.
+ * Roughly a third: the expansion European translations of English bring.
+ *
+ * A level with no copy of its own gets none. A message that is nothing but a
+ * select has all its copy inside the arms, and each of those is padded already
+ * — a dot out here would be added to whichever arm rendered, on top of that
+ * arm's own.
+ */
+const paddingFor = (elements: readonly MessageFormatElement[]): string => {
+  const length = literalLength(elements);
+  return length === 0 ? '' : '·'.repeat(Math.max(1, Math.ceil(length / 3)));
+};
+
+/**
+ * Pads each arm by its own length rather than the message by its longest.
+ *
+ * A select renders exactly one arm, so a single trailing pad sized to the
+ * longest one is wrong for every other arm: beside a 90-character arm, a
+ * one-character arm rendered with about thirty dots after it — a layout check
+ * that then fails on a string no translation of that arm could produce.
+ * Sizing each arm to itself keeps the expansion proportional to what is
+ * actually on screen, and stays static: which arm renders is still not known
+ * here, and does not need to be.
+ */
+const padArms = (
+  elements: readonly MessageFormatElement[],
+): MessageFormatElement[] =>
+  elements.map((element) => {
+    switch (element.type) {
+      case TYPE.select:
+      case TYPE.plural:
+        return {
+          ...element,
+          options: Object.fromEntries(
+            Object.entries(element.options).map(([key, option]) => [
+              key,
+              { ...option, value: padded(option.value) },
+            ]),
+          ),
+        };
+      case TYPE.tag:
+        return { ...element, children: padArms(element.children) };
+      default:
+        return element;
+    }
+  });
+
+/** One level, with its arms padded and its own copy padded after them. */
+const padded = (
+  elements: readonly MessageFormatElement[],
+): MessageFormatElement[] => [
+  ...padArms(elements),
+  literal(paddingFor(elements)),
+];
+
+/**
+ * Accented, bracketed and padded, so a layout that cannot take a translation's
+ * expansion clips here rather than after one lands.
  */
 const pseudoMessage = (
   source: string | MessageFormatElement[],
@@ -109,10 +147,7 @@ const pseudoMessage = (
   const accented = accentElements(
     typeof source === 'string' ? parse(source) : source,
   );
-  const padding = '·'.repeat(
-    Math.max(1, Math.ceil(literalLength(accented) / 3)),
-  );
-  return [literal('['), ...accented, literal(`${padding}]`)];
+  return [literal('['), ...padded(accented), literal(']')];
 };
 
 /**
@@ -128,10 +163,12 @@ const pseudoMessage = (
 export function createPseudoIntl(options: {
   messages?: CatalogMessages;
   onError?: AppIntlErrorHandler;
+  timeZone?: string;
 }): IntlShape {
   const intl = createAppIntl({
     locale: PSEUDO_LOCALE,
     onError: options.onError,
+    timeZone: options.timeZone,
   });
   const cache = new Map<string, MessageFormatElement[]>();
 

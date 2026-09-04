@@ -1,3 +1,10 @@
+'use client';
+
+// The directive leads the file because a Next App Router Server Component may
+// import this module directly — Fresco's root layout is exactly that shape —
+// and without it Next treats the module as server code and rejects
+// `createContext` and the hooks below.
+
 import {
   createContext,
   useCallback,
@@ -73,6 +80,13 @@ export type AppI18nProviderProps = Readonly<{
   /** Write `<html lang>`/`<html dir>` for the active locale. Default true. */
   manageDocument?: boolean;
   onError?: AppIntlErrorHandler;
+  /**
+   * IANA zone for date and time arguments; see `createAppIntl`. A Next host
+   * must pass the same value here that its server formatter uses, or a
+   * timestamp near midnight renders one date on the server and another after
+   * hydration.
+   */
+  timeZone?: string;
   children: ReactNode;
 }>;
 
@@ -84,21 +98,32 @@ export function AppI18nProvider(props: AppI18nProviderProps) {
     onLocaleChange,
     manageDocument = true,
     onError,
+    timeZone,
     children,
   } = props;
 
   if (locales.length === 0) {
     throw new Error('AppI18nProvider: the locale registry is empty');
   }
-  const active =
-    locales.find((entry) => entry.locale === locale) ?? locales[0]!;
+  const declared = locales.find((entry) => entry.locale === locale);
+  const active = declared ?? locales[0]!;
+  // The catalog was chosen for the locale that was asked for. When that tag
+  // is not declared and the registry default stands in for it, keeping the
+  // catalog would render one language's words under another's `lang` — so the
+  // fallback falls back completely, to the default's own descriptors.
+  const activeMessages = declared === undefined ? undefined : messages;
 
   const intl = useMemo(
     () =>
       active.locale === PSEUDO_LOCALE
-        ? createPseudoIntl({ messages, onError })
-        : createAppIntl({ locale: active.locale, messages, onError }),
-    [active.locale, messages, onError],
+        ? createPseudoIntl({ messages: activeMessages, onError, timeZone })
+        : createAppIntl({
+            locale: active.locale,
+            messages: activeMessages,
+            onError,
+            timeZone,
+          }),
+    [active.locale, activeMessages, onError, timeZone],
   );
 
   const setLocale = useCallback(
