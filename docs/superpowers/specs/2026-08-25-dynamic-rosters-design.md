@@ -521,13 +521,18 @@ test request and the interview runtime share it:
 - Unknown top-level keys (including `edges`) are ignored, matching the static
   JSON roster behaviour.
 - **Amendment (2026-09-04):** each element MAY additionally carry a stable
-  `id` — a string of 1 to 64 characters (`z.string().min(1).max(64)`).
+  `id` — a string of 1 to 64 UTF-16 code units
+  (`z.string().min(1).max(64)`).
   - `""` is a schema error, not an identity: every empty-id element would
     otherwise key to the same node, silently collapsing distinct people into
     one roster entry — the exact failure the amendment exists to prevent.
-  - The **64-character ceiling** is contract hygiene, not a storage
+  - The **64-code-unit ceiling** is contract hygiene, not a storage
     workaround: an identifier longer than that is a payload, not an id (a
-    UUID is 36). Nothing downstream depends on the bound, because §5.4
+    UUID is 36). `z.string().max(64)` counts UTF-16 code units, so a
+    supplementary character — an emoji, say — spends two of the 64; the
+    limit is stated in code units rather than refined into code points
+    because it is a sanity bound, not a boundary anything depends on.
+    Nothing downstream does depend on it, because §5.4
     step 5 digests the id into a fixed-length key instead of concatenating
     it — which is also why this contract needs no character allowlist. No
     byte of the id reaches a `_uid`, an analytics event, or a persisted
@@ -1096,8 +1101,10 @@ only stages preceding the start stage (§5.9); `PreviewHost` passes it.
   roster and panel data sources
   (including the newly closed panel gap); response-schema tests (empty
   nodes valid, bad names rejected, a non-empty `id` accepted, `id: ""`, a
-  65-character `id`, an `id` carrying a lone surrogate, and a non-string
-  `id` all rejected, an element with no `id` still valid);
+  65-code-unit `id`, an `id` carrying a lone surrogate, and a non-string
+  `id` all rejected, a 33-emoji `id` rejected too (66 code units — the
+  documented consequence of counting in code units), an element with no `id`
+  still valid);
   `protocolRequiresInternet` cases;
   `collectAssetReferences` picks up `valueAssetId`, plus the canary that it
   returns nested hits at all (§5.12 — the walker's direct current-schema
@@ -1194,7 +1201,7 @@ only stages preceding the start stage (§5.9); `PreviewHost` passes it.
 
 - New page: _Building a dynamic roster endpoint_ — request anatomy,
   placeholder table, canonical response shape (including the optional
-  per-node `id`, when to send one, its 64-character limit, the stability and
+  per-node `id`, when to send one, its 64-code-unit limit, the stability and
   namespacing obligations it carries, and the fact that the id is hashed
   into the node key rather than exposed in it — Decision 3 amendment),
   CORS/preflight obligations, no-redirect requirement (§5.4), idempotency
