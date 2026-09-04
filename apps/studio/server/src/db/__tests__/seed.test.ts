@@ -23,7 +23,13 @@ const db = await reachableDb();
 // Seeding the whole model takes seconds on a quiet machine and well over a
 // minute on the CI runner (see SEED_BUDGET_MS), and several cases below seed
 // twice.
-const SEEDING_TIMEOUT_MS = 180_000;
+//
+// 360s, not 180s. Measured on the runner, the cases that PASS here take up to
+// 172s each — a 4% margin against the old bound, which is not a budget but a
+// coin flip, and it landed tails on a busy runner. Doubling it leaves the
+// bound doing its real job, which is failing a seed that has actually hung
+// rather than one that is merely sharing a machine.
+const SEEDING_TIMEOUT_MS = 360_000;
 
 /**
  * A `demo` seed has to stay fast enough to run on every `pnpm dev` boot, where
@@ -144,9 +150,13 @@ describe.skipIf(!db)('the seeded dataset', () => {
     adminId = admin.rows[0]!.id;
   }, SEEDING_TIMEOUT_MS);
 
+  // Its own bound rather than the 30s global. This disposes a pool that a
+  // timed-out `beforeAll` may have left mid-flight, so holding cleanup to a
+  // bound shorter than the seeding it cleans up after turns one failure into
+  // two and loses the schema.
   afterAll(async () => {
     await scratch?.dispose();
-  });
+  }, 60_000);
 
   it.skipIf(process.env.CI)(
     'finishes inside the dev-boot budget at demo scale',

@@ -2,8 +2,11 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-// The server the dev proxy targets — @codaco/studio-server's default port.
-const SERVER_ORIGIN = 'http://localhost:3000';
+// The server the dev proxy targets — @codaco/studio-server's default port,
+// overridable so a second checkout can run its own pair. Both halves have to
+// agree: give the server the same port through `PORT`.
+const SERVER_ORIGIN =
+  process.env.STUDIO_SERVER_ORIGIN ?? 'http://localhost:3000';
 
 // Client SPA. In development the Vite dev server plays the role the CDN plays
 // in the managed topology (#1245): it serves the SPA and routes the server's

@@ -9,23 +9,12 @@ import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { TeamInvitationIdSchema, type TeamRole } from '@codaco/studio-rpc';
+import { TeamInvitationIdSchema } from '@codaco/studio-rpc';
 
 import { rpcClient } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
 import { invalidateMemberships } from '../lib/landing.ts';
-
-function roleLabel(role: TeamRole): string {
-  switch (role) {
-    case 'owner':
-      return 'Owner';
-    case 'admin':
-      return 'Admin';
-    case 'member':
-      return 'Member';
-  }
-  return role;
-}
+import { roleLabel } from '../lib/teamRoles.ts';
 
 /**
  * This screen's `<h1>`, in whichever of its five states is showing.

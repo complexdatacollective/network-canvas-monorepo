@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import {
   useCallback,
   useEffect,
@@ -30,17 +31,22 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { TEAM_ROLES, type TeamRole } from '@codaco/studio-rpc';
 
-import { rpcClient } from '../lib/api.ts';
+import { orpc, rpcClient } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
 import { studioEmailPattern } from '../lib/emailValidation.ts';
-import { canManageTeam, teamRoles } from '../lib/teamRoles.ts';
+import {
+  canManageTeam,
+  roleLabel,
+  teamRoles,
+  teamRolesLabel,
+} from '../lib/teamRoles.ts';
 
 /**
  * Membership and invitations, at `/team/$teamId/members` (§5.2, #1256).
  *
- * The other half of §5.4's split of the shipped team workspace. It is the same
+ * The other half of §5.4's split of the shipped team screen. It is the same
  * screen, at the address the team sidebar has always pointed at, with the
- * cross-coordination the workspace needed gone: nothing on this route creates
+ * cross-coordination that screen needed gone: nothing on this route creates
  * studies or switches teams, so a mutation here only has to block the other
  * mutations here.
  *
@@ -88,6 +94,7 @@ function useTeamStateRefresh(
   activeTeam: TeamRefreshState['activeTeam'],
   activeMember: TeamRefreshState['activeMember'],
 ) {
+  const queryClient = useQueryClient();
   const latestState = useRef<TeamRefreshState>({
     activeMember,
     activeTeam,
@@ -125,6 +132,14 @@ function useTeamStateRefresh(
       const results = await Promise.allSettled([
         Promise.resolve().then(() => state.activeTeam.refetch()),
         Promise.resolve().then(() => state.activeMember.refetch()),
+        // `me` carries the caller's role in EVERY team, and the header's
+        // switcher badges every row from it. An owner may demote themselves
+        // while another owner remains, and the header outlives this screen —
+        // without this it would go on calling them Owner until something
+        // unrelated remounted it.
+        Promise.resolve().then(() =>
+          queryClient.invalidateQueries({ queryKey: orpc.me.key() }),
+        ),
       ]);
       if (
         !mounted.current ||
@@ -148,7 +163,7 @@ function useTeamStateRefresh(
       () => undefined,
     );
     return outcome;
-  }, []);
+  }, [queryClient]);
 }
 
 const TEAM_ROLE_OPTIONS = TEAM_ROLES.map((role) => ({
@@ -158,26 +173,6 @@ const TEAM_ROLE_OPTIONS = TEAM_ROLES.map((role) => ({
 
 function isTeamRole(value: unknown): value is TeamRole {
   return TEAM_ROLES.some((role) => role === value);
-}
-
-function roleLabel(role: string): string {
-  switch (role) {
-    case 'owner':
-      return 'Owner';
-    case 'admin':
-      return 'Admin';
-    case 'member':
-      return 'Member';
-    default:
-      return role;
-  }
-}
-
-function teamRolesLabel(role: string): string {
-  const roles = teamRoles(role);
-  return roles.length === 0
-    ? 'Unassigned'
-    : roles.map((entry) => roleLabel(entry)).join(', ');
 }
 
 export default function TeamMembers({ teamId }: { teamId: string }) {

@@ -270,7 +270,7 @@ export const WithLongWrappingHeader: Story = {
         <TableRow>
           <TableHead>Name</TableHead>
           <TableHead className="w-48 whitespace-normal">
-            Current role and access level for this workspace
+            Current role and access level for this team
           </TableHead>
           <TableHead>Status</TableHead>
         </TableRow>

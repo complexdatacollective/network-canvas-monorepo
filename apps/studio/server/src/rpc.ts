@@ -434,11 +434,16 @@ export function createRpcRouter(
 
   return {
     status: os.status.handler(() => getInstanceStatus(caps, deployment)),
-    me: os.me.use(requireUser).handler(({ context }) => ({
+    me: os.me.use(requireUser).handler(async ({ context }) => ({
       userId: context.principal.userId,
       email: context.principal.email,
       emailVerified: context.principal.emailVerified,
       name: context.principal.name,
+      // The same read `requireStudy` resolves a tenant over, and the same
+      // index serves it. Better Auth's own team list drops the role, so this
+      // is the only thing that can tell a researcher what they are in each of
+      // their teams.
+      teams: await auth.listMemberships(context.principal.userId),
     })),
     team: {
       acceptInvitation: os.team.acceptInvitation

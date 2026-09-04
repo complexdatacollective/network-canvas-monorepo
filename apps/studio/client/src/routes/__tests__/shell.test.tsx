@@ -38,6 +38,19 @@ vi.mock('../../lib/auth.ts', () => ({
 
 vi.mock('../../lib/api.ts', () => ({
   orpc: {
+    me: {
+      queryOptions: () => ({
+        queryKey: ['me'],
+        queryFn: () => ({
+          userId: 'user-1',
+          email: 'researcher@example.org',
+          emailVerified: true,
+          name: 'Researcher',
+          teams: [{ teamId: 'team-a', role: 'owner' }],
+        }),
+      }),
+      key: () => ['me'],
+    },
     status: {
       queryOptions: () => ({
         queryKey: ['status'],
@@ -218,7 +231,7 @@ describe('shell branches', () => {
   it('puts every route on the branch that owns its chrome', () => {
     // The whole of §5.2's route table, by the shell each destination is
     // rendered in — no divergences and no legacy addresses: §5.4's migration
-    // has moved the team workspace, the audit trail and the editor onto the
+    // has moved the team screen, the audit trail and the editor onto the
     // addresses the design gives them, which is what frees `/` for marketing.
     expect(pathsByShell(buildRouter())).toEqual({
       site: ['/', '/legal/$document', '/pricing'],
