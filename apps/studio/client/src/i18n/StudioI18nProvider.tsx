@@ -230,6 +230,24 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
           // `me` now reports the new value; refetch so LocaleSync's
           // acknowledgment comparison sees it rather than a stale payload.
           await queryClient.invalidateQueries({ queryKey: orpc.me.key() });
+          // `LocaleSync` acknowledges the write when that refetch reports
+          // something new, and it often reports nothing new: a researcher who
+          // tries a language and goes back to the one they had ends on the
+          // value `me` already carried, so an effect keyed on the account and
+          // the locale never runs. Read the answer here as well, because what
+          // acknowledges a write is the server being SEEN to hold the value,
+          // not an observer happening to change. A marker left standing after
+          // that refuses every later payload as stale — including the
+          // preference this researcher sets on their other device.
+          const stored = queryClient.getQueryData(
+            orpc.me.queryOptions().queryKey,
+          )?.locale;
+          if (
+            stored === locale &&
+            pendingServerAck.current?.generation === generation
+          ) {
+            pendingServerAck.current = null;
+          }
         } catch {
           if (writeGeneration.current !== generation) return;
           // The local change stands — the device honours it via the mirror —

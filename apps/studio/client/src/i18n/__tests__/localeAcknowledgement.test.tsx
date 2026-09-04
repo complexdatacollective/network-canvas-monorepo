@@ -245,6 +245,23 @@ describe('two choices in quick succession', () => {
     expect(harness.preference).toBe('en');
   });
 
+  it('stops holding once the write lands, even when nothing about `me` changes', async () => {
+    // A researcher who tries a language and goes back to the one they had ends
+    // on the value the account already reported. `LocaleSync`'s effect is keyed
+    // on the account and the locale, so nothing about that refetch is new and
+    // it never runs — leaving a marker that refuses every later payload as
+    // stale, including the preference this researcher sets on another device.
+    renderProvider({ signedIn: true, userId: 'user-1' });
+
+    act(() => harness.setLocale('en-GB'));
+    act(() => harness.setLocale(null));
+    await waitFor(() => expect(harness.saveState).toBe('saved'));
+
+    act(() => harness.applyServerPreference('en-GB', 'user-1'));
+
+    expect(harness.preference).toBe('en-GB');
+  });
+
   it('does not send a choice the researcher has already replaced', async () => {
     // The queued write is a request the server would have to process and then
     // immediately overwrite, and while it is in flight the account holds a
