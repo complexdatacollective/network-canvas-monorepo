@@ -1,5 +1,10 @@
 import type { PostHog } from 'posthog-js';
 
+import {
+  createEntityIdPseudonymiser,
+  type EntityIdPseudonymiser,
+  pseudonymiseEntityIds,
+} from './entityIds';
 import type { SuperProperties } from './PROPERTY_KEYS';
 
 export type EventProps = {
@@ -16,6 +21,14 @@ type CreateTrackerArgs = {
   superProperties: SuperProperties;
   distinctId: string;
   ownsInstance: boolean;
+  /**
+   * Session-scoped entity-id pseudonymiser (see `./entityIds`). Supplied by
+   * `AnalyticsProvider` so a node keeps one pseudonym even when the tracker is
+   * rebuilt mid-session. Defaults to a fresh one — a tracker without a session
+   * mapping still pseudonymises, it just cannot correlate with another
+   * tracker's events.
+   */
+  pseudonymiseEntityId?: EntityIdPseudonymiser;
 };
 
 export function createTracker({
@@ -23,10 +36,13 @@ export function createTracker({
   superProperties,
   distinctId,
   ownsInstance,
+  pseudonymiseEntityId = createEntityIdPseudonymiser(),
 }: CreateTrackerArgs): Tracker {
   const merge = (props: EventProps | undefined): EventProps => ({
     ...(ownsInstance ? {} : superProperties),
-    ...props,
+    // Entity ids are pseudonymised here, at the one boundary every emitter
+    // passes through, rather than at each call site.
+    ...pseudonymiseEntityIds(props, pseudonymiseEntityId),
     distinct_id: distinctId,
   });
 
