@@ -1,6 +1,8 @@
 import { Link, useRouterState } from '@tanstack/react-router';
 import { Fragment } from 'react';
 
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import NavItem from '@codaco/fresco-ui/navigation/NavItem';
 import NavList, { NavListGroup } from '@codaco/fresco-ui/navigation/NavList';
 
@@ -18,13 +20,16 @@ import type { NavManifestEntry } from './navigationManifest.ts';
  *
  * Consecutive entries carrying the same `group` become one `NavListGroup`;
  * entries without one are ordinary rows, which `NavList` collects into lists of
- * their own. Order is exactly manifest order.
+ * their own. Order is exactly manifest order. Labels and headings arrive as
+ * message descriptors and are resolved here, at render, so the sidebar follows
+ * a locale change live.
  */
 export default function ManifestNav({
   entries,
 }: {
   entries: NavManifestEntry[];
 }) {
+  const intl = useAppIntl();
   const pathname = useRouterState({
     // The COMMITTED location. Active state and the drawer's close both derive
     // from it — never from a pending navigation, which a blocker may still
@@ -46,7 +51,7 @@ export default function ManifestNav({
             ))}
           </Fragment>
         ) : (
-          <NavListGroup key={run.key} heading={run.heading}>
+          <NavListGroup key={run.key} heading={intl.formatMessage(run.heading)}>
             {run.entries.map((entry) => (
               <ManifestNavItem
                 key={entry.id}
@@ -63,17 +68,20 @@ export default function ManifestNav({
 
 type GroupRun = {
   key: string;
-  heading: string | undefined;
+  heading: MessageDescriptor | undefined;
   entries: NavManifestEntry[];
 };
 
-/** Adjacent entries sharing a `group`, in manifest order. */
+/**
+ * Adjacent entries sharing a `group`, in manifest order. Sameness is the
+ * descriptor's id — the stable identity a heading keeps across locales.
+ */
 function groupRuns(entries: NavManifestEntry[]): GroupRun[] {
   const runs: GroupRun[] = [];
 
   for (const entry of entries) {
     const last = runs.at(-1);
-    if (last && last.heading === entry.group) {
+    if (last && last.heading?.id === entry.group?.id) {
       last.entries.push(entry);
       continue;
     }
@@ -90,6 +98,8 @@ function ManifestNavItem({
   entry: NavManifestEntry;
   pathname: string;
 }) {
+  const intl = useAppIntl();
+
   if (entry.unavailableReason !== undefined) {
     // A destination this deployment does not have is shown and explained, never
     // linked: the researcher can see it exists as a Studio feature and that it
@@ -100,10 +110,10 @@ function ManifestNavItem({
       <NavItem
         className={entry.className}
         href={entry.href}
-        label={entry.label}
+        label={intl.formatMessage(entry.label)}
         icon={entry.icon}
         disabled
-        unavailableReason={entry.unavailableReason}
+        unavailableReason={intl.formatMessage(entry.unavailableReason)}
       />
     );
   }
@@ -112,7 +122,7 @@ function ManifestNavItem({
     <NavItem
       className={entry.className}
       href={entry.href}
-      label={entry.label}
+      label={intl.formatMessage(entry.label)}
       icon={entry.icon}
       // Undefined until the area has the number, which is what keeps a row
       // that is still loading — or whose query failed — free of an invented 0.

@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   TeamAndStudySwitcher,
   type SwitcherItem,
@@ -12,7 +14,7 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import { orpc } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
 import {
-  STUDY_STATE_LABELS,
+  STUDY_STATE_MESSAGES,
   STUDY_STATE_TONES,
   studySummaryLine,
 } from '../lib/studyState.ts';
@@ -36,13 +38,55 @@ import { teamRolesLabel } from '../lib/teamRoles.ts';
  */
 
 /**
- * The whole translated words above each name. Whole strings, never assembled
- * from fragments: each is half of its trigger's accessible name — "Team Alpha
- * research team" — and a template would bake English word order into every
- * translation.
+ * The whole translated words above each name, and the accessible names built
+ * over them. The accessible names are single ICU messages with the name (and
+ * state) as values — never a kicker glued to a name in code, which would bake
+ * English word order into every translation.
  */
-const TEAM_KICKER = 'Team';
-const STUDY_KICKER = 'Study';
+const messages = defineMessages({
+  teamKicker: {
+    id: 'studio.lockup.teamKicker',
+    defaultMessage: 'Team',
+    description:
+      "The word above the team's name in the header's team ▸ study switcher.",
+  },
+  studyKicker: {
+    id: 'studio.lockup.studyKicker',
+    defaultMessage: 'Study',
+    description:
+      "The word above the study's name in the header's team ▸ study switcher.",
+  },
+  studyAccessibleName: {
+    id: 'studio.lockup.studyAccessibleName',
+    defaultMessage: 'Study {name}',
+    description:
+      "Accessible name of the study switcher's trigger while the study's state is unknown.",
+  },
+  studyAccessibleNameWithState: {
+    id: 'studio.lockup.studyAccessibleNameWithState',
+    defaultMessage: 'Study {name}, {state}',
+    description:
+      "Accessible name of the study switcher's trigger: the study's name and its lifecycle state (Draft, Live, Paused or Closed).",
+  },
+  chooseTeam: {
+    id: 'studio.lockup.chooseTeam',
+    defaultMessage: 'Choose a team',
+    description:
+      'Shown on the team switcher when no listed team matches the current one.',
+  },
+  teamAdministration: {
+    id: 'studio.lockup.teamAdministration',
+    defaultMessage: 'Team administration',
+    description:
+      "Link beneath the team switcher's list to the current team's settings.",
+  },
+  allStudies: {
+    id: 'studio.lockup.allStudies',
+    defaultMessage: 'All studies in this team',
+    description:
+      "Link beneath the study switcher's list back to the owning team's study list.",
+  },
+});
 
 type NamedTeam = { id: string; name: string };
 
@@ -124,6 +168,7 @@ function currentTeam(
 function useStudySegment(
   studyId: string | undefined,
 ): SwitcherSegment | undefined {
+  const intl = useAppIntl();
   const navigate = useNavigate();
 
   const study = useQuery({
@@ -163,7 +208,7 @@ function useStudySegment(
             name: row.name,
             // The state, and how much of the study there is — the two things a
             // researcher picking between studies is choosing on.
-            meta: studySummaryLine(row),
+            meta: studySummaryLine(intl, row),
             leading: <StudyStatusDot tone={STUDY_STATE_TONES[row.state]} />,
           }),
         );
@@ -174,7 +219,7 @@ function useStudySegment(
       : 'ready';
 
   return {
-    kicker: STUDY_KICKER,
+    kicker: intl.formatMessage(messages.studyKicker),
     items,
     currentId: studyId,
     status,
@@ -184,8 +229,13 @@ function useStudySegment(
     // 1.4.1 for everyone else, so the name a reader hears carries it.
     accessibleName: (name) =>
       study.data === undefined
-        ? `${STUDY_KICKER} ${name}`
-        : `${STUDY_KICKER} ${name}, ${STUDY_STATE_LABELS[study.data.study.state]}`,
+        ? intl.formatMessage(messages.studyAccessibleName, { name })
+        : intl.formatMessage(messages.studyAccessibleNameWithState, {
+            name,
+            state: intl.formatMessage(
+              STUDY_STATE_MESSAGES[study.data.study.state],
+            ),
+          }),
     onSelect: (id: string) =>
       // Not awaited, and deliberately: a blocked navigation's promise parks
       // rather than rejecting, and it resolves later on some unrelated commit
@@ -199,7 +249,7 @@ function useStudySegment(
       teamId === undefined
         ? undefined
         : {
-            label: 'All studies in this team',
+            label: intl.formatMessage(messages.allStudies),
             render: <Link to="/team/$teamId" params={{ teamId }} />,
           },
   };
@@ -226,6 +276,7 @@ function useStudySegment(
  * bounce.
  */
 export default function EntityLockup({ className }: { className?: string }) {
+  const intl = useAppIntl();
   const navigate = useNavigate();
   // `strict: false` because the header is on every app route and most of them
   // name neither a team nor a study; the absence is the answer for them rather
@@ -267,7 +318,7 @@ export default function EntityLockup({ className }: { className?: string }) {
 
   const teamSegment: SwitcherSegment | undefined = hasTeamSegment
     ? {
-        kicker: TEAM_KICKER,
+        kicker: intl.formatMessage(messages.teamKicker),
         items: list.map((team) => ({
           id: team.id,
           name: team.name,
@@ -278,11 +329,11 @@ export default function EntityLockup({ className }: { className?: string }) {
           // a false claim about what the researcher may do there.
           badge: (() => {
             const role = roles.get(team.id);
-            return role === undefined ? undefined : teamRolesLabel(role);
+            return role === undefined ? undefined : teamRolesLabel(intl, role);
           })(),
         })),
         currentId: current?.id,
-        placeholder: 'Choose a team',
+        placeholder: intl.formatMessage(messages.chooseTeam),
         status: teamStatus,
         onSelect: (id: string) =>
           // Not awaited, for the reason `SwitcherWithStudy` records.
@@ -301,7 +352,7 @@ export default function EntityLockup({ className }: { className?: string }) {
         // a new tab, copyable, and announced as a link. "Create a team" stays
         // a command when it exists — there is nowhere to go until it has run.
         action: current && {
-          label: 'Team administration',
+          label: intl.formatMessage(messages.teamAdministration),
           render: (
             <Link to="/team/$teamId/settings" params={{ teamId: current.id }} />
           ),

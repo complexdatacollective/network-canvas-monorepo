@@ -1,5 +1,7 @@
 import { Outlet, useRouterState } from '@tanstack/react-router';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import AppArea from '@codaco/fresco-ui/layout/AppArea';
 
 import AreaMain from './AreaMain.tsx';
@@ -16,7 +18,30 @@ import { accountDestinations } from './navigationManifest.ts';
  * signed in. Its destinations come from `navigationManifest.ts`, the same list
  * the everything bar searches.
  */
+
+const messages = defineMessages({
+  navLabel: {
+    id: 'studio.shell.accountNavLabel',
+    defaultMessage: 'Account',
+    description:
+      "Accessible name of the account area's sidebar navigation region.",
+  },
+  navOpen: {
+    id: 'studio.shell.accountNavOpen',
+    defaultMessage: 'Open account navigation',
+    description:
+      'Accessible name of the control that opens the account sidebar drawer on narrow viewports.',
+  },
+  navClose: {
+    id: 'studio.shell.accountNavClose',
+    defaultMessage: 'Close account navigation',
+    description:
+      'Accessible name of the control that closes the account sidebar drawer on narrow viewports.',
+  },
+});
+
 export default function AccountArea() {
+  const intl = useAppIntl();
   const pathname = useRouterState({
     // The COMMITTED location, which is `resolvedLocation`: `location` is the
     // PENDING one, set to the destination before the transaction runs.
@@ -27,9 +52,9 @@ export default function AccountArea() {
     <AppArea
       location={pathname}
       navigation={{
-        label: 'Account',
-        openLabel: 'Open account navigation',
-        closeLabel: 'Close account navigation',
+        label: intl.formatMessage(messages.navLabel),
+        openLabel: intl.formatMessage(messages.navOpen),
+        closeLabel: intl.formatMessage(messages.navClose),
         content: <ManifestNav entries={accountDestinations()} />,
       }}
     >

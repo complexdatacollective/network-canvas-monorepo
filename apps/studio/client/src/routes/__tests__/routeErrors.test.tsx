@@ -125,6 +125,9 @@ vi.mock('../../lib/api.ts', () => ({
           email: 'researcher@example.org',
           emailVerified: true,
           name: 'Researcher',
+          // `me` carries the account's UI-language preference; null means
+          // "follow the browser" (2026-09-04 localization design §5.2).
+          locale: null,
           teams: [{ teamId: 'team-a', role: 'owner' }],
         }),
       }),
@@ -207,9 +210,14 @@ function renderAt(path: string) {
   return router;
 }
 
-/** One route inside each of the four areas, all of them placeholders. */
+/**
+ * One route inside each of the four areas, all of them placeholders — which is
+ * what the `Placeholder` mock above needs to reach them. `/account/language`
+ * was the account area's entry until #1310 built it; any unbuilt route in the
+ * area serves, and each of these leaves as its own screen arrives.
+ */
 const AREA_ROUTES = [
-  ['the account area', '/account/language'],
+  ['the account area', '/account/tokens'],
   ['the team area', '/team/team-a/roles'],
   ['the study area', '/study/study-1/versions'],
   ['the protocol outline', '/study/study-1/editor/codebook'],

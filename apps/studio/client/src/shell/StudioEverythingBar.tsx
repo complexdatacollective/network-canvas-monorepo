@@ -6,6 +6,8 @@ import {
 } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import EverythingBar, {
   type EverythingBarLabels,
   type EverythingBarLinkRenderProps,
@@ -36,39 +38,139 @@ import { recordSurfaceRequest } from './surfaceRequests.ts';
  */
 
 /**
- * Every string the bar renders, as whole sentences rather than fragments.
- *
- * They are literals here because Studio has no message catalogue yet; #1310
- * turns this object into catalogue lookups, and the shape is already the one it
- * needs — `resultCount` and `chordHint` are functions of their data, which is a
- * translator's placeholder, not a sentence assembled in JavaScript.
+ * Every string the bar renders, as whole messages rather than fragments
+ * (#1310). `resultCount` is an ICU plural and `chordHint` a message over an
+ * intl-formatted list, because both are functions of their data — a
+ * translator's placeholder, not a sentence assembled in JavaScript. The
+ * shared component keeps receiving resolved strings (`EverythingBarLabels`),
+ * which is the host-supplied-copy contract of design decision 10.
  */
-const LABELS: EverythingBarLabels = {
-  triggerPlaceholder: 'Search Studio',
-  triggerMac: 'Search and commands (Command K)',
-  triggerOther: 'Search and commands (Control K)',
-  dialog: 'Search and commands',
-  searchLabel: 'Search destinations, commands and documentation',
-  searchPlaceholder: 'Find a place, a thing, an action, or an answer',
-  results: 'Results',
-  recents: 'Recent',
-  groups: {
-    'go-to': 'Go to',
-    'commands': 'Commands',
-    'documentation': 'Documentation',
+const barMessages = defineMessages({
+  triggerPlaceholder: {
+    id: 'studio.everythingBar.triggerPlaceholder',
+    defaultMessage: 'Search Studio',
+    description: "Placeholder shown in the header's everything-bar trigger.",
   },
-  showMore: 'Show more',
-  pending: 'Searching…',
-  error: 'These results could not be loaded. Press Enter to try again.',
-  noResults: 'Nothing matches that search.',
-  resultCount: (count) => (count === 1 ? '1 result' : `${count} results`),
-  chordHint: (keys) => `Shortcut: ${keys.join(' then ')}`,
-  footerNavigate: 'Navigate',
-  footerSelect: 'Select',
-  footerClose: 'Close',
-  footerNavigateKeys: 'Up and down arrow keys',
-  footerSelectKeys: 'Enter key',
-};
+  triggerMac: {
+    id: 'studio.everythingBar.triggerMac',
+    defaultMessage: 'Search and commands (Command K)',
+    description:
+      'Accessible name of the everything-bar trigger on macOS, naming the Command K shortcut.',
+  },
+  triggerOther: {
+    id: 'studio.everythingBar.triggerOther',
+    defaultMessage: 'Search and commands (Control K)',
+    description:
+      'Accessible name of the everything-bar trigger outside macOS, naming the Control K shortcut.',
+  },
+  dialog: {
+    id: 'studio.everythingBar.dialog',
+    defaultMessage: 'Search and commands',
+    description: 'Accessible name of the everything-bar dialog.',
+  },
+  searchLabel: {
+    id: 'studio.everythingBar.searchLabel',
+    defaultMessage: 'Search destinations, commands and documentation',
+    description: "Accessible name of the everything bar's search input.",
+  },
+  searchPlaceholder: {
+    id: 'studio.everythingBar.searchPlaceholder',
+    defaultMessage: 'Find a place, a thing, an action, or an answer',
+    description: "Placeholder shown in the everything bar's search input.",
+  },
+  results: {
+    id: 'studio.everythingBar.results',
+    defaultMessage: 'Results',
+    description: "Accessible name of the everything bar's results listbox.",
+  },
+  recents: {
+    id: 'studio.everythingBar.recents',
+    defaultMessage: 'Recent',
+    description: "Heading of the everything bar's recent-activations section.",
+  },
+  groupGoTo: {
+    id: 'studio.everythingBar.groupGoTo',
+    defaultMessage: 'Go to',
+    description:
+      'Heading of the everything-bar result group listing destinations.',
+  },
+  groupCommands: {
+    id: 'studio.everythingBar.groupCommands',
+    defaultMessage: 'Commands',
+    description: 'Heading of the everything-bar result group listing commands.',
+  },
+  groupDocumentation: {
+    id: 'studio.everythingBar.groupDocumentation',
+    defaultMessage: 'Documentation',
+    description:
+      'Heading of the everything-bar result group listing documentation.',
+  },
+  showMore: {
+    id: 'studio.everythingBar.showMore',
+    defaultMessage: 'Show more',
+    description:
+      "Row that reveals a result group's next slice in the everything bar.",
+  },
+  pending: {
+    id: 'studio.everythingBar.pending',
+    defaultMessage: 'Searching…',
+    description:
+      "Shown while an everything-bar provider's search is still running.",
+  },
+  error: {
+    id: 'studio.everythingBar.error',
+    defaultMessage:
+      'These results could not be loaded. Press Enter to try again.',
+    description:
+      'Shown, and retried on activation, when an everything-bar search failed.',
+  },
+  noResults: {
+    id: 'studio.everythingBar.noResults',
+    defaultMessage: 'Nothing matches that search.',
+    description: 'Shown when a settled everything-bar query matched nothing.',
+  },
+  resultCount: {
+    id: 'studio.everythingBar.resultCount',
+    defaultMessage: '{count, plural, one {# result} other {# results}}',
+    description:
+      'Politely announced result total under the everything-bar search input.',
+  },
+  chordHint: {
+    id: 'studio.everythingBar.chordHint',
+    defaultMessage: 'Shortcut: {keys}',
+    description:
+      "What a result's keyboard chord means; {keys} is the formatted list of keys to press in order.",
+  },
+  footerNavigate: {
+    id: 'studio.everythingBar.footerNavigate',
+    defaultMessage: 'Navigate',
+    description: "Footer label naming what the everything bar's arrow keys do.",
+  },
+  footerSelect: {
+    id: 'studio.everythingBar.footerSelect',
+    defaultMessage: 'Select',
+    description:
+      "Footer label naming what the everything bar's Enter key does.",
+  },
+  footerClose: {
+    id: 'studio.everythingBar.footerClose',
+    defaultMessage: 'Close',
+    description:
+      "Footer label naming what the everything bar's Escape key does.",
+  },
+  footerNavigateKeys: {
+    id: 'studio.everythingBar.footerNavigateKeys',
+    defaultMessage: 'Up and down arrow keys',
+    description:
+      'Names the arrow-key caps in the everything-bar footer for assistive technology.',
+  },
+  footerSelectKeys: {
+    id: 'studio.everythingBar.footerSelectKeys',
+    defaultMessage: 'Enter key',
+    description:
+      'Names the Enter cap in the everything-bar footer for assistive technology.',
+  },
+});
 
 /**
  * Recents are per browser and per researcher (§5.6). The researcher half of
@@ -89,6 +191,43 @@ function isExternalHref(href: string): boolean {
 export default function StudioEverythingBar() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
+  const intl = useAppIntl();
+
+  const labels = useMemo<EverythingBarLabels>(
+    () => ({
+      triggerPlaceholder: intl.formatMessage(barMessages.triggerPlaceholder),
+      triggerMac: intl.formatMessage(barMessages.triggerMac),
+      triggerOther: intl.formatMessage(barMessages.triggerOther),
+      dialog: intl.formatMessage(barMessages.dialog),
+      searchLabel: intl.formatMessage(barMessages.searchLabel),
+      searchPlaceholder: intl.formatMessage(barMessages.searchPlaceholder),
+      results: intl.formatMessage(barMessages.results),
+      recents: intl.formatMessage(barMessages.recents),
+      groups: {
+        'go-to': intl.formatMessage(barMessages.groupGoTo),
+        'commands': intl.formatMessage(barMessages.groupCommands),
+        'documentation': intl.formatMessage(barMessages.groupDocumentation),
+      },
+      showMore: intl.formatMessage(barMessages.showMore),
+      pending: intl.formatMessage(barMessages.pending),
+      error: intl.formatMessage(barMessages.error),
+      noResults: intl.formatMessage(barMessages.noResults),
+      resultCount: (count) =>
+        intl.formatMessage(barMessages.resultCount, { count }),
+      // The keys are data; the list joins them in locale order and the
+      // message wraps the whole thing — never a sentence built by hand.
+      chordHint: (keys) =>
+        intl.formatMessage(barMessages.chordHint, {
+          keys: intl.formatList(keys, { type: 'unit' }),
+        }),
+      footerNavigate: intl.formatMessage(barMessages.footerNavigate),
+      footerSelect: intl.formatMessage(barMessages.footerSelect),
+      footerClose: intl.formatMessage(barMessages.footerClose),
+      footerNavigateKeys: intl.formatMessage(barMessages.footerNavigateKeys),
+      footerSelectKeys: intl.formatMessage(barMessages.footerSelectKeys),
+    }),
+    [intl],
+  );
 
   const pathname = useRouterState({
     // The COMMITTED location, so the current-context ranking follows what is on
@@ -147,8 +286,8 @@ export default function StudioEverythingBar() {
   );
 
   const destinations = useMemo(
-    () => createDestinationsProvider({ entries, currentArea }),
-    [entries, currentArea],
+    () => createDestinationsProvider({ entries, currentArea, intl }),
+    [entries, currentArea, intl],
   );
   // The capability goes to the commands provider as well as to the manifest.
   // A command is a launch into the screen that owns the action (invariant 3),
@@ -157,8 +296,13 @@ export default function StudioEverythingBar() {
   // offering it, and the one thing a launcher must never do.
   const commands = useMemo(
     () =>
-      createMockCommandsProvider({ teamId, studyId, canManageTeam: canManage }),
-    [teamId, studyId, canManage],
+      createMockCommandsProvider({
+        teamId,
+        studyId,
+        canManageTeam: canManage,
+        intl,
+      }),
+    [teamId, studyId, canManage, intl],
   );
   const documentation = useMemo(() => createMockDocumentationProvider(), []);
 
@@ -190,7 +334,7 @@ export default function StudioEverythingBar() {
   return (
     <EverythingBar
       providers={[destinations, commands, documentation]}
-      labels={LABELS}
+      labels={labels}
       renderLink={renderLink}
       onOpenSurface={({ href, surface }) => {
         // ONE navigation, carrying the surface with it. The bar has already

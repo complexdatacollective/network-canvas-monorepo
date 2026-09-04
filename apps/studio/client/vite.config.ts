@@ -2,6 +2,8 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
+import { appI18n } from '@codaco/app-i18n/vite';
+
 // The server the dev proxy targets — @codaco/studio-server's default port,
 // overridable so a second checkout can run its own pair. Both halves have to
 // agree: give the server the same port through `PORT`.
@@ -16,7 +18,14 @@ const SERVER_ORIGIN =
 //   pnpm --filter @codaco/studio-server dev
 //   pnpm --filter @codaco/studio-client dev
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    // Pre-parses every message at build time — defineMessages defaults via
+    // the oxc-based formatjs transform, imported locale catalogs likewise —
+    // and drops the ICU parser from production bundles.
+    ...appI18n(),
+    react(),
+    tailwindcss(),
+  ],
   resolve: {
     // pnpm can hand prebundled deps a different React copy than the host app
     // uses, which produces "Invalid hook call". Dedupe to keep a single React

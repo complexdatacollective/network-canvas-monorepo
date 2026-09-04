@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { Outlet, useRouterState } from '@tanstack/react-router';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import AppArea from '@codaco/fresco-ui/layout/AppArea';
 
 import { orpc } from '../lib/api.ts';
@@ -29,7 +31,29 @@ import { studyDestinations } from './navigationManifest.ts';
  * a 0 for a study with forty participants in it — would be worse than the
  * plain row.
  */
+const messages = defineMessages({
+  navLabel: {
+    id: 'studio.shell.studyNavLabel',
+    defaultMessage: 'Study',
+    description:
+      "Accessible name of the study area's sidebar navigation region.",
+  },
+  navOpen: {
+    id: 'studio.shell.studyNavOpen',
+    defaultMessage: 'Open study navigation',
+    description:
+      'Accessible name of the control that opens the study sidebar drawer on narrow viewports.',
+  },
+  navClose: {
+    id: 'studio.shell.studyNavClose',
+    defaultMessage: 'Close study navigation',
+    description:
+      'Accessible name of the control that closes the study sidebar drawer on narrow viewports.',
+  },
+});
+
 export default function StudyArea({ studyId }: { studyId: string }) {
+  const intl = useAppIntl();
   const pathname = useRouterState({
     // The COMMITTED location: a blocker may still cancel a pending one
     // (§6.5, §7.3).
@@ -55,9 +79,9 @@ export default function StudyArea({ studyId }: { studyId: string }) {
     <AppArea
       location={pathname}
       navigation={{
-        label: 'Study',
-        openLabel: 'Open study navigation',
-        closeLabel: 'Close study navigation',
+        label: intl.formatMessage(messages.navLabel),
+        openLabel: intl.formatMessage(messages.navOpen),
+        closeLabel: intl.formatMessage(messages.navClose),
         content: (
           <ManifestNav entries={studyDestinations(studyId, counts.data)} />
         ),

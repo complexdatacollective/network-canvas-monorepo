@@ -4,6 +4,8 @@ import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
+
 import { createAppRouter } from '../../router.tsx';
 import { destinationItems } from '../everythingBarDestinations.ts';
 import { studyDestinations } from '../navigationManifest.ts';
@@ -70,6 +72,9 @@ vi.mock('../../lib/api.ts', () => ({
           email: 'researcher@example.org',
           emailVerified: true,
           name: 'Researcher',
+          // `me` carries the account's UI-language preference; null means
+          // "follow the browser" (2026-09-04 localization design §5.2).
+          locale: null,
           teams: [{ teamId: 'team-a', role: 'owner' }],
         }),
       }),
@@ -360,7 +365,13 @@ describe('the everything bar reading the same manifest', () => {
       waves: 3,
       sessions: 212,
     });
-    const items = destinationItems({ entries, currentArea: 'study' });
+    // The English formatter the app renders with when no catalog applies, so
+    // the labels asserted below are the source strings themselves.
+    const items = destinationItems({
+      entries,
+      currentArea: 'study',
+      intl: createAppIntl({ locale: 'en' }),
+    });
 
     // Invariant 1 is that the bar and the sidebar list the same destinations;
     // it is not that they render them the same way. A result is a place to go,

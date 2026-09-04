@@ -10,6 +10,8 @@ import {
 } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
+
 import { authClient } from '../../lib/auth.ts';
 import { createAppRouter } from '../../router.tsx';
 import {
@@ -100,6 +102,9 @@ vi.mock('../../lib/api.ts', () => ({
           email: 'researcher@example.org',
           emailVerified: true,
           name: 'Researcher',
+          // `me` carries the account's UI-language preference; null means
+          // "follow the browser" (2026-09-04 localization design §5.2).
+          locale: null,
           teams: [{ teamId: 'team-a', role: 'owner' }],
         }),
       }),
@@ -384,6 +389,8 @@ describe('go to', () => {
     const items = destinationItems({
       entries,
       currentArea: currentAreaFor('/study/study-1'),
+      // The English formatter the app renders with when no catalog applies.
+      intl: createAppIntl({ locale: 'en' }),
     });
 
     // Not a vacuous pass: every area contributes, so a manifest that silently
@@ -525,6 +532,7 @@ describe('commands', () => {
       teamId: 'team-a',
       studyId: 'study-1',
       canManageTeam: true,
+      intl: createAppIntl({ locale: 'en' }),
     });
     if (!provider.local) throw new Error('the commands provider is local');
 
@@ -537,6 +545,32 @@ describe('commands', () => {
       expect(item.activate.kind).toBe('open');
       expect(registeredPathFor(router, item.activate.href)).toBeDefined();
     }
+  });
+
+  it('reads its rows out of the catalog, like every other string on screen', () => {
+    // The commands are invented, but they are copy a researcher reads, in the
+    // shipped bar. Left as literals they would stay English while the bar
+    // around them changed language — the destinations beside them resolve
+    // through the same formatter.
+    const provider = createMockCommandsProvider({
+      teamId: 'team-a',
+      studyId: 'study-1',
+      canManageTeam: true,
+      intl: createAppIntl({
+        locale: 'en',
+        messages: {
+          'studio.everythingBar.command.inviteMember': 'Ask somebody to join',
+          'studio.nav.context.team': 'Research team',
+        },
+      }),
+    });
+    if (!provider.local) throw new Error('the commands provider is local');
+
+    const invite = provider
+      .items()
+      .find((item) => item.id === 'team:team-a:members.invite');
+    expect(invite?.label).toBe('Ask somebody to join');
+    expect(invite?.context).toBe('Research team');
   });
 });
 

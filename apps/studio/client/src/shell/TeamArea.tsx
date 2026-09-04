@@ -1,5 +1,7 @@
 import { Outlet, useParams, useRouterState } from '@tanstack/react-router';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import AppArea from '@codaco/fresco-ui/layout/AppArea';
 
 import { authClient } from '../lib/auth.ts';
@@ -43,7 +45,29 @@ import { teamDestinations } from './navigationManifest.ts';
  * instead of linking somewhere that would 404 or land on a placeholder, and
  * the bar drops it entirely rather than offering a result nobody can use.
  */
+const messages = defineMessages({
+  navLabel: {
+    id: 'studio.shell.teamNavLabel',
+    defaultMessage: 'Team',
+    description:
+      "Accessible name of the team area's sidebar navigation region.",
+  },
+  navOpen: {
+    id: 'studio.shell.teamNavOpen',
+    defaultMessage: 'Open team navigation',
+    description:
+      'Accessible name of the control that opens the team sidebar drawer on narrow viewports.',
+  },
+  navClose: {
+    id: 'studio.shell.teamNavClose',
+    defaultMessage: 'Close team navigation',
+    description:
+      'Accessible name of the control that closes the team sidebar drawer on narrow viewports.',
+  },
+});
+
 export default function TeamArea() {
+  const intl = useAppIntl();
   const pathname = useRouterState({
     // The COMMITTED location. Active state and the drawer's close both derive
     // from it — never from a pending navigation, which a blocker may still
@@ -61,9 +85,9 @@ export default function TeamArea() {
     <AppArea
       location={pathname}
       navigation={{
-        label: 'Team',
-        openLabel: 'Open team navigation',
-        closeLabel: 'Close team navigation',
+        label: intl.formatMessage(messages.navLabel),
+        openLabel: intl.formatMessage(messages.navOpen),
+        closeLabel: intl.formatMessage(messages.navClose),
         content: (
           <ManifestNav
             entries={teamDestinations({

@@ -16,12 +16,15 @@
     "preview": "vite preview",
     "typecheck": "tsc --build --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "i18n:extract": "node scripts/extract-i18n.mjs"
   },
   "devDependencies": {
+    "@codaco/app-i18n": "workspace:^",
     "@codaco/fresco-ui": "workspace:^",
     "@codaco/protocol-builder": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",
+    "@codaco/shared-consts": "workspace:^",
     "@codaco/studio-rpc": "workspace:^",
     "@codaco/studio-sync": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",

@@ -2,6 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useRouter } from '@tanstack/react-router';
 import { useRef, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -18,7 +21,7 @@ import type { StudyParticipationMode, StudyState } from '@codaco/studio-rpc';
 import { orpc } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
 import { createUuid } from '../lib/createUuid.ts';
-import { STUDY_STATE_LABELS } from '../lib/studyState.ts';
+import { STUDY_STATE_MESSAGES, studyCountMessages } from '../lib/studyState.ts';
 import { canManageTeam, teamRole } from '../lib/teamRoles.ts';
 
 /**
@@ -62,9 +65,95 @@ type StudyCreationAttempt = {
   draftId: string;
 };
 
-const PARTICIPATION_MODE_LABELS: Record<StudyParticipationMode, string> = {
-  managed: 'Managed participants',
-  anonymous: 'Anonymous participants',
+const messages = defineMessages({
+  heading: {
+    id: 'studio.teamStudies.heading',
+    defaultMessage: 'Studies',
+    description: "Heading of a team's studies screen.",
+  },
+  intro: {
+    id: 'studio.teamStudies.intro',
+    defaultMessage: 'Every study this team owns, and where a new one starts.',
+    description: "Introduction under the studies screen's heading.",
+  },
+  listHeading: {
+    id: 'studio.teamStudies.listHeading',
+    defaultMessage: 'This team\u2019s studies',
+    description: 'Heading of the study list section.',
+  },
+  loadFailed: {
+    id: 'studio.teamStudies.loadFailed',
+    defaultMessage: 'Studies could not be loaded. Try again.',
+    description: "Shown when the team's study list could not be fetched.",
+  },
+  empty: {
+    id: 'studio.teamStudies.empty',
+    defaultMessage: 'No studies have been created for this team.',
+    description: 'Shown when the team has no studies at all.',
+  },
+  managedParticipants: {
+    id: 'studio.teamStudies.managedParticipants',
+    defaultMessage: 'Managed participants',
+    description:
+      'Participation mode of a study whose participants are individually known and invited.',
+  },
+  anonymousParticipants: {
+    id: 'studio.teamStudies.anonymousParticipants',
+    defaultMessage: 'Anonymous participants',
+    description:
+      'Participation mode of a study whose participants arrive through an anonymous link.',
+  },
+  created: {
+    id: 'studio.teamStudies.created',
+    defaultMessage: 'Created {date}',
+    description:
+      'When a study was created; {date} is a formatted calendar date.',
+  },
+  noProtocol: {
+    id: 'studio.teamStudies.noProtocol',
+    defaultMessage: 'No protocol to edit',
+    description: 'Shown on a study card whose study has no protocol yet.',
+  },
+  openEditor: {
+    id: 'studio.teamStudies.openEditor',
+    defaultMessage: 'Open the protocol editor',
+    description: "Link on a study card into the study's protocol editor.",
+  },
+  newStudyHeading: {
+    id: 'studio.teamStudies.newStudyHeading',
+    defaultMessage: 'New study',
+    description: 'Heading of the study creation section.',
+  },
+  createFailed: {
+    id: 'studio.teamStudies.createFailed',
+    defaultMessage:
+      'The study could not be created. Wait a moment and try again.',
+    description: 'Form error when creating a study failed.',
+  },
+  nameLabel: {
+    id: 'studio.teamStudies.nameLabel',
+    defaultMessage: 'Study name',
+    description: "Label of the creation form's study name field.",
+  },
+  create: {
+    id: 'studio.teamStudies.create',
+    defaultMessage: 'Create study',
+    description: 'Submit button of the study creation form.',
+  },
+  onlyAdminsCreate: {
+    id: 'studio.teamStudies.onlyAdminsCreate',
+    defaultMessage: 'Only team owners and admins can create studies.',
+    description:
+      'Shown in place of the creation form to a member who may not create studies.',
+  },
+});
+
+const PARTICIPATION_MODE_LABELS: Record<
+  StudyParticipationMode,
+  MessageDescriptor
+> = {
+  managed: messages.managedParticipants,
+  anonymous: messages.anonymousParticipants,
 };
 
 /**
@@ -81,6 +170,7 @@ function stateVariant(state: StudyState): 'default' | 'secondary' | 'outline' {
 }
 
 export default function TeamStudies({ teamId }: { teamId: string }) {
+  const intl = useAppIntl();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const router = useRouter();
@@ -110,10 +200,10 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
     <div className="tablet-portrait:p-8 mx-auto flex w-full max-w-5xl flex-col gap-6 p-4">
       <div>
         <Heading level="h1" margin="none" {...routeFocusTargetProps}>
-          Studies
+          {intl.formatMessage(messages.heading)}
         </Heading>
         <Paragraph margin="none">
-          Every study this team owns, and where a new one starts.
+          {intl.formatMessage(messages.intro)}
         </Paragraph>
       </div>
 
@@ -121,17 +211,17 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
         <section aria-labelledby="studies-heading">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Heading id="studies-heading" level="h2" margin="none">
-              This team&rsquo;s studies
+              {intl.formatMessage(messages.listHeading)}
             </Heading>
             {studies.isPending && <Spinner size="sm" />}
           </div>
           {studies.isError && (
             <Alert className="mt-4" variant="destructive">
-              Studies could not be loaded. Try again.
+              {intl.formatMessage(messages.loadFailed)}
             </Alert>
           )}
           {studies.data?.length === 0 && (
-            <Paragraph>No studies have been created for this team.</Paragraph>
+            <Paragraph>{intl.formatMessage(messages.empty)}</Paragraph>
           )}
           {studies.data && studies.data.length > 0 && (
             <ul className="tablet-portrait:grid-cols-2 mt-4 grid list-none gap-3 p-0">
@@ -149,14 +239,18 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
                   </Link>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant={stateVariant(study.state)}>
-                      {STUDY_STATE_LABELS[study.state]}
+                      {intl.formatMessage(STUDY_STATE_MESSAGES[study.state])}
                     </Badge>
                     <span className="text-sm">
-                      {PARTICIPATION_MODE_LABELS[study.participationMode]}
+                      {intl.formatMessage(
+                        PARTICIPATION_MODE_LABELS[study.participationMode],
+                      )}
                     </span>
                   </div>
                   <span className="text-sm">
-                    Created {study.createdAt.toLocaleDateString()}
+                    {intl.formatMessage(messages.created, {
+                      date: intl.formatDate(study.createdAt),
+                    })}
                   </span>
                   {/*
                     Counts only where there are any: a Draft study has neither,
@@ -169,20 +263,20 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
                       {/* Two whole phrases side by side rather than one
                           sentence assembled from fragments and a separator. */}
                       <span>
-                        {study.waveCount === 1
-                          ? '1 wave'
-                          : `${study.waveCount} waves`}
+                        {intl.formatMessage(studyCountMessages.waves, {
+                          count: study.waveCount,
+                        })}
                       </span>
                       <span>
-                        {study.participantCount === 1
-                          ? '1 participant'
-                          : `${study.participantCount} participants`}
+                        {intl.formatMessage(studyCountMessages.participants, {
+                          count: study.participantCount,
+                        })}
                       </span>
                     </div>
                   )}
                   {study.protocolId === null ? (
                     <span className="text-sm opacity-70">
-                      No protocol to edit
+                      {intl.formatMessage(messages.noProtocol)}
                     </span>
                   ) : (
                     <Link
@@ -190,7 +284,7 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
                       to="/study/$studyId/editor"
                       params={{ studyId: study.id }}
                     >
-                      Open the protocol editor
+                      {intl.formatMessage(messages.openEditor)}
                     </Link>
                   )}
                 </li>
@@ -203,7 +297,7 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
       <Surface spacing="lg">
         <section aria-labelledby="new-study-heading">
           <Heading id="new-study-heading" level="h2" margin="none">
-            New study
+            {intl.formatMessage(messages.newStudyHeading)}
           </Heading>
           {canCreateStudies ? (
             <Form
@@ -288,9 +382,7 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
                 } catch {
                   return {
                     success: false,
-                    formErrors: [
-                      'The study could not be created. Wait a moment and try again.',
-                    ],
+                    formErrors: [intl.formatMessage(messages.createFailed)],
                   };
                 } finally {
                   stopWatchingNavigation();
@@ -300,15 +392,17 @@ export default function TeamStudies({ teamId }: { teamId: string }) {
             >
               <Field
                 name="name"
-                label="Study name"
+                label={intl.formatMessage(messages.nameLabel)}
                 component={InputField}
                 required
               />
-              <SubmitButton disabled={creating}>Create study</SubmitButton>
+              <SubmitButton disabled={creating}>
+                {intl.formatMessage(messages.create)}
+              </SubmitButton>
             </Form>
           ) : (
             <Alert className="mt-4">
-              Only team owners and admins can create studies.
+              {intl.formatMessage(messages.onlyAdminsCreate)}
             </Alert>
           )}
         </section>
