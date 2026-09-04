@@ -102,7 +102,7 @@ export default async function ProtocolDetailPage({
             </ButtonLink>
           </div>
 
-          <div className="tablet-landscape:grid-cols-[minmax(0,1.4fr)_minmax(24rem,1fr)] mt-8 grid grid-cols-1 gap-8">
+          <div className="tablet-landscape:grid-cols-[minmax(0,1fr)_minmax(24rem,1fr)] mt-8 grid grid-cols-1 gap-8">
             <div className="min-w-0 space-y-8">
               <div>
                 {protocol.featured ? (
@@ -140,14 +140,14 @@ export default async function ProtocolDetailPage({
                     sandboxUrl={protocol.sandboxUrl}
                   />
                 </div>
-                <Paragraph margin="none" className="mt-8 max-w-prose">
+                <Paragraph margin="none" className="mt-8 max-w-[80ch]">
                   {protocol.summary}
                 </Paragraph>
               </div>
 
               <Surface noContainer spacing="lg" shadow="md">
                 <OverlineHeading>{t('detail.demonstrates')}</OverlineHeading>
-                <Paragraph margin="none" className="mt-3 max-w-prose">
+                <Paragraph margin="none" className="mt-3 max-w-[80ch]">
                   {protocol.description}
                 </Paragraph>
               </Surface>
