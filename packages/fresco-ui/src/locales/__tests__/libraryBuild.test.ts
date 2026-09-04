@@ -137,4 +137,18 @@ describe('what the library build emits for this package’s messages', () => {
       expect(Array.isArray(message)).toBe(true);
     }
   });
+
+  it('leaves the ICU parser resolvable for whoever consumes this package', async () => {
+    // A library compiles its own messages but must not decide whether the ICU
+    // parser reaches a bundle — that belongs to the application it lands in,
+    // and this one lands in several, including their dev servers and test
+    // runs, where string messages have to keep working. The alias is inert
+    // here today only because react-intl arrives through the external
+    // `@codaco/app-i18n`; without this assertion, dropping back to
+    // `appI18n()` would be invisible until some consumer's arrangement made
+    // it bite.
+    const names = (await libraryBuildPlugins()).map((plugin) => plugin.name);
+    expect(names).toContain('app-i18n-catalogs');
+    expect(names).not.toContain('app-i18n-no-parser');
+  });
 });

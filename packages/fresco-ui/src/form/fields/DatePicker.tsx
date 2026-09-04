@@ -129,6 +129,13 @@ const MONTH_VALUES = [
 
 // Month names come from the intl object's own locale data rather than a baked
 // English table; UTC anchors keep the label independent of the viewer's zone.
+//
+// The calendar is pinned because the option VALUES are not localized: `01`
+// through `12`, stored as part of a Gregorian ISO date and shown beside a
+// year the dropdown above prints verbatim. A locale that defaults to another
+// calendar — fa-IR, or any tag carrying `u-ca-islamic` — would name these
+// Gregorian anchors in that calendar's months, so picking the option labelled
+// for one month would store a different one.
 const buildMonthOptions = (
   formatDate: (date: Date, options: Intl.DateTimeFormatOptions) => string,
 ): SelectOption[] =>
@@ -137,6 +144,7 @@ const buildMonthOptions = (
     label: formatDate(new Date(Date.UTC(2000, Number(value) - 1, 1)), {
       month: 'long',
       timeZone: 'UTC',
+      calendar: 'gregory',
     }),
   }));
 
@@ -323,10 +331,18 @@ export default function DatePickerField(props: DatePickerFieldProps) {
   const years = useMemo(() => {
     const arr: SelectOption[] = [];
     for (let y = coarseMaxYmd.year; y >= coarseMinYmd.year; y--) {
-      arr.push({ value: y.toString(), label: y.toString() });
+      // The value is the ASCII year the stored ISO date is built from and
+      // must stay that whatever the language; the label is a number on its
+      // own in a menu of translated months, so it is written in the reader's
+      // digits. Ungrouped, because a year is not a quantity — "2,000" would
+      // be a different thing entirely.
+      arr.push({
+        value: y.toString(),
+        label: intl.formatNumber(y, { useGrouping: false }),
+      });
     }
     return arr;
-  }, [coarseMinYmd.year, coarseMaxYmd.year]);
+  }, [coarseMinYmd.year, coarseMaxYmd.year, intl]);
 
   const months = useMemo(
     () => buildMonthOptions((date, options) => intl.formatDate(date, options)),

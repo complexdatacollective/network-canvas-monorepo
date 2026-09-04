@@ -439,6 +439,36 @@ describe('Validation Functions', () => {
       expect(validator.safeParse('2000-06-15T08:59').success).toBe(false);
     });
 
+    // Comparison is against the authored bound, so a message that rounds the
+    // bound off names a boundary the rule does not have: the participant
+    // enters the time the message gave them and is told it is too early.
+    it.each([
+      ['12:34:56', '12:34:30', '12:34:56'],
+      ['2000-06-15T09:00:30', '2000-06-15T09:00:10', '9:00:30'],
+    ])(
+      'names every part of the bound %s it actually compares',
+      (bound, below, named) => {
+        const validator = validations.min(bound, createMockContext())({});
+        const result = validator.safeParse(below);
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.error.issues[0]?.message).toContain(named);
+        }
+      },
+    );
+
+    it('leaves a bound authored without seconds written to the minute', () => {
+      const validator = validations.min('09:00', createMockContext())({});
+      const result = validator.safeParse('08:59');
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        // Nothing in the bound distinguishes 09:00:00 from 09:00, so a
+        // trailing ":00" would be precision the author never asked for.
+        expect(result.error.issues[0]?.message).toContain('9:00');
+        expect(result.error.issues[0]?.message).not.toMatch(/\d:\d{2}:\d{2}/);
+      }
+    });
+
     it('formats the bound in the supplied formatter’s locale', () => {
       // The bound is substituted into a sentence written in the app's locale,
       // so it has to be formatted in that locale too — not in whatever the
@@ -457,6 +487,40 @@ describe('Validation Functions', () => {
         );
       }
     });
+
+    // One per shape the bound formatter recognises, because each builds its
+    // own options object: a year-month bound, a full date, and a date-time.
+    it.each([
+      ['2000-06', '2000-05'],
+      ['2000-06-15', '2000-06-14'],
+      ['2000-06-15T09:00', '2000-06-15T08:59'],
+    ])(
+      'keeps the bound %s on the calendar the field stores',
+      (bound, below) => {
+        // th-TH defaults to the Buddhist calendar, which numbers this year
+        // 2543. Fixture guard, so the assertion below can tell the two apart.
+        const buddhist = new Intl.DateTimeFormat('th-TH', {
+          dateStyle: 'long',
+          timeZone: 'UTC',
+        }).format(new Date(Date.UTC(2000, 5, 15)));
+        expect(buddhist).toContain('2543');
+
+        const validator = validations.min(
+          bound,
+          createMockContext(),
+          createAppIntl({ locale: 'th-TH' }),
+        )({});
+        const result = validator.safeParse(below);
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          // The rule constrains a Gregorian ISO value, and the picker offers
+          // Gregorian years, so a hint naming another calendar's year would
+          // describe a date the field cannot hold.
+          expect(result.error.issues[0]?.message).toContain('2000');
+          expect(result.error.issues[0]?.message).not.toContain('2543');
+        }
+      },
+    );
   });
 
   describe('max (numeric)', () => {

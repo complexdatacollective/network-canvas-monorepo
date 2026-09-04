@@ -77,7 +77,7 @@
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
     "jsdom": "catalog:",
-    "oxfmt": "^0.63.0",
+    "oxfmt": "catalog:",
     "playwright": "catalog:",
     "storybook": "catalog:",
     "tailwindcss": "catalog:",

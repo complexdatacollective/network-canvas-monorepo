@@ -30,13 +30,13 @@ const messages = defineMessages({
   },
   selectPage: {
     id: 'frescoUi.selectAllHeader.selectPage',
-    defaultMessage: 'Select page ({count})',
+    defaultMessage: 'Select page ({count, number})',
     description:
       'Menu action selecting every row on the current page; {count} is the number of rows on the page.',
   },
   selectAll: {
     id: 'frescoUi.selectAllHeader.selectAll',
-    defaultMessage: 'Select all ({count})',
+    defaultMessage: 'Select all ({count, number})',
     description:
       'Menu action selecting every row in the table; {count} is the total number of rows.',
   },

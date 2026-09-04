@@ -253,7 +253,7 @@ const messages = defineMessages({
   },
   toolbarMoved: {
     id: 'frescoUi.segmentedToolbar.toolbarMoved',
-    defaultMessage: 'Toolbar moved to {x}, {y}',
+    defaultMessage: 'Toolbar moved to {x, number}, {y, number}',
     description:
       'Screen-reader announcement after the toolbar is nudged with the keyboard; {x} and {y} are pixel coordinates.',
   },

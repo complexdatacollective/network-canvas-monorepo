@@ -128,14 +128,21 @@ export default defineConfig({
     // a placeholder message renders as "Enter at most {max} characters." and
     // a plural one as its entire `{count, plural, …}` body.
     //
-    // The no-parser alias `appI18n()` also installs is inert here: react-intl
-    // arrives through the external `@codaco/app-i18n`, so this build resolves
-    // no parser to replace.
+    // `build: 'library'` compiles the messages without aliasing the ICU
+    // parser away. Whether a bundle carries the parser is the consuming
+    // application's decision, and this package lands in several — including
+    // their dev servers and test runs, where string messages have to keep
+    // working. The alias happened to be inert here, because react-intl
+    // arrives through the external `@codaco/app-i18n` and this build resolves
+    // no parser to replace, but relying on that would make a package's build
+    // correct only by accident of who its dependencies are.
     //
     // Gated the way dts is, because only the published artifact needs it:
     // Storybook and Vitest load this config too and resolve this package from
     // source, where readable ICU strings and parse errors are the point.
-    !process.env.STORYBOOK && !process.env.VITEST && appI18n(),
+    !process.env.STORYBOOK &&
+      !process.env.VITEST &&
+      appI18n({ build: 'library' }),
     // Skip dts emission when this config is loaded by Storybook (preview
     // build) or Vitest. Storybook's CLI sets STORYBOOK=true; Vitest sets
     // VITEST=true.

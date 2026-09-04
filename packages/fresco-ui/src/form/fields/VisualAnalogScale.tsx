@@ -4,6 +4,9 @@ import { Slider } from '@base-ui/react/slider';
 import { motion } from 'motion/react';
 import { useRef, useState } from 'react';
 
+import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlLabelVariants,
@@ -34,29 +37,60 @@ type VisualAnalogScaleFieldProps = CreateFormFieldProps<
 // Formats the transient drag value. The default normalised 0–1 scale is shown as
 // a percentage; custom ranges show the value in their own units. The bubble is
 // only visible mid-drag, so no persistent number anchors the participant.
-function formatVasValue(value: number, min: number, max: number) {
-  if (min === 0 && max === 1) return `${Math.round(value * 100)}%`;
+//
+// Both forms go through the reader's formatter rather than `Math.round`/
+// `toFixed`, which write the digits, decimal mark and percent sign of the
+// source language whatever language the scale's labels are in.
+function formatVasValue(
+  intl: IntlShape,
+  value: number,
+  min: number,
+  max: number,
+) {
+  if (min === 0 && max === 1) {
+    return intl.formatNumber(value, {
+      style: 'percent',
+      maximumFractionDigits: 0,
+    });
+  }
   const range = max - min;
   const decimals = range >= 10 ? 0 : range >= 1 ? 1 : 2;
-  return value.toFixed(decimals);
+  return intl.formatNumber(value, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
 }
 
-/**
- * What the scale announces before anything has been chosen.
- *
- * A native `input[type=range]` always carries an `aria-valuenow`, and the
- * thumb has to rest somewhere, so an unanswered scale would otherwise announce
- * its resting midpoint as though the participant had chosen it — leaving a
- * required scale sounding answered while validation still blocks the
- * participant. Assistive technology announces `aria-valuetext` in preference
- * to `aria-valuenow`, so this is what actually reaches a screen reader, and it
- * matches the muted resting thumb a sighted participant sees.
- */
-const UNANSWERED_VALUE_TEXT = 'No value chosen yet';
+const messages = defineMessages({
+  sliderLabel: {
+    id: 'frescoUi.visualAnalogScale.sliderLabel',
+    defaultMessage: 'Visual analog scale value',
+    description:
+      'Accessible name of the scale’s slider thumb, when the caller named neither the field nor the control.',
+  },
+  /**
+   * What the scale announces before anything has been chosen.
+   *
+   * A native `input[type=range]` always carries an `aria-valuenow`, and the
+   * thumb has to rest somewhere, so an unanswered scale would otherwise
+   * announce its resting midpoint as though the participant had chosen it —
+   * leaving a required scale sounding answered while validation still blocks
+   * the participant. Assistive technology announces `aria-valuetext` in
+   * preference to `aria-valuenow`, so this is what actually reaches a screen
+   * reader, and it matches the muted resting thumb a sighted participant sees.
+   */
+  unansweredValue: {
+    id: 'frescoUi.visualAnalogScale.unansweredValue',
+    defaultMessage: 'No value chosen yet',
+    description:
+      'Announced in place of a number while the participant has not yet chosen a position on the scale.',
+  },
+});
 
 export default function VisualAnalogScaleField(
   props: VisualAnalogScaleFieldProps,
 ) {
+  const intl = useAppIntl();
   const {
     className,
     value,
@@ -192,14 +226,14 @@ export default function VisualAnalogScaleField(
                 aria-label={
                   ariaLabelledBy
                     ? undefined
-                    : (ariaLabel ?? 'Visual analog scale value')
+                    : (ariaLabel ?? intl.formatMessage(messages.sliderLabel))
                 }
                 aria-labelledby={ariaLabelledBy}
                 aria-describedby={ariaDescribedBy}
                 getAriaValueText={(_, currentValue) =>
                   hasValue
-                    ? formatVasValue(currentValue, min, max)
-                    : UNANSWERED_VALUE_TEXT
+                    ? formatVasValue(intl, currentValue, min, max)
+                    : intl.formatMessage(messages.unansweredValue)
                 }
               >
                 <motion.div
@@ -222,7 +256,7 @@ export default function VisualAnalogScaleField(
         </Slider.Root>
 
         <ScaleValuePopover visible={active.active && hasValue} anchor={thumbEl}>
-          {formatVasValue(sliderValue, min, max)}
+          {formatVasValue(intl, sliderValue, min, max)}
         </ScaleValuePopover>
 
         {(minLabel ?? maxLabel) && (

@@ -2,11 +2,23 @@
 
 import type { ReactNode } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { cx } from '../../utils/cva';
 import FieldErrors from '../FieldErrors';
 import { FieldLabel } from '../FieldLabel';
 import Hint from '../Hint';
 import { fieldElementIds } from './fieldElements';
+
+const messages = defineMessages({
+  required: {
+    id: 'frescoUi.field.required',
+    defaultMessage: 'Required',
+    description:
+      'Visually hidden marker announced alongside the label of a field that must be answered.',
+  },
+});
 
 // Exclude event handlers that conflict with Framer Motion
 type ExcludeMotionConflicts<T> = Omit<
@@ -66,6 +78,7 @@ export function BaseField({
   children,
   containerProps,
 }: BaseFieldProps) {
+  const intl = useAppIntl();
   const hasVisibleHint = Boolean(hint ?? validationSummary);
   const elementIds = fieldElementIds(id);
   return (
@@ -119,7 +132,7 @@ export function BaseField({
             </FieldLabel>
             {required && (
               <span id={elementIds.required} className="sr-only">
-                Required
+                {intl.formatMessage(messages.required)}
               </span>
             )}
             {(hint ?? validationSummary) && (

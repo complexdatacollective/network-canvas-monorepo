@@ -1,7 +1,12 @@
 import { defineMessages } from 'react-intl';
 
 import type { CatalogMessages } from './locales.ts';
-import enGbOverrides from './locales/en-GB.json';
+// The import attribute is what lets Node's own ESM loader read this entry.
+// Bundlers do not need it; `./common` is documented as universal, and without
+// it a Node-loaded script or server importing this module fails outright with
+// ERR_IMPORT_ATTRIBUTE_MISSING — the same class of source-first breakage as
+// the explicit `.ts` extensions CLAUDE.md requires of Node-loaded packages.
+import enGbOverrides from './locales/en-GB.json' with { type: 'json' };
 
 /**
  * Universal chrome verbs and boilerplate, translated exactly once for every

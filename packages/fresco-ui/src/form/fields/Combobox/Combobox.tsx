@@ -46,7 +46,7 @@ const messages = defineMessages({
   },
   allSelected: {
     id: 'frescoUi.combobox.allSelected',
-    defaultMessage: 'All {plural} selected ({count})',
+    defaultMessage: 'All {plural} selected ({count, number})',
     description:
       'Trigger label when every option is selected; {plural} is the host-supplied plural noun (e.g. "items").',
   },

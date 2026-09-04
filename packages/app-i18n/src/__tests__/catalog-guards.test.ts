@@ -24,6 +24,10 @@ const source: ExtractedCatalog = {
     defaultMessage: '{count, plural, one {# item} other {# items}}',
     description: 'd',
   },
+  'app.price': {
+    defaultMessage: 'Costs {price, number, ::currency/GBP}',
+    description: 'd',
+  },
 };
 
 describe('messageTokens', () => {
@@ -33,7 +37,57 @@ describe('messageTokens', () => {
     ).toEqual(['<docs>', '{kind}', '{name}']);
     expect(
       messageTokens('{count, plural, one {# {thing}} other {# things}}'),
-    ).toEqual(['{count}', '{thing}']);
+    ).toEqual(['{count, plural, offset:0}', '{thing}']);
+  });
+
+  it('distinguishes how an argument is formatted, not only its name', () => {
+    // Each pair renders differently, so a translation swapping one for the
+    // other has lost locale-aware formatting while still looking translated.
+    expect(messageTokens('{price}')).not.toEqual(
+      messageTokens('{price, number}'),
+    );
+    expect(messageTokens('{price, number}')).not.toEqual(
+      messageTokens('{price, number, ::currency/GBP}'),
+    );
+    expect(messageTokens('{when, date, short}')).not.toEqual(
+      messageTokens('{when, date, full}'),
+    );
+    expect(messageTokens('{when, date}')).not.toEqual(
+      messageTokens('{when, time}'),
+    );
+    expect(messageTokens('{n, plural, other {#}}')).not.toEqual(
+      messageTokens('{n, selectordinal, other {#}}'),
+    );
+    expect(messageTokens('{n, plural, other {#}}')).not.toEqual(
+      messageTokens('{n, plural, offset:1 other {#}}'),
+    );
+    expect(messageTokens('{kind, select, other {x}}')).not.toEqual(
+      messageTokens('{kind, plural, other {x}}'),
+    );
+  });
+
+  it('pins the arms whose loss would be silent, and frees the rest', () => {
+    // Both of these fall through to `other` at runtime rather than failing:
+    // `{g, select, other {they}}` renders "they" for g="male", and a plural
+    // without `=0` renders "0 items" for n=0.
+    expect(messageTokens('{g, select, male {he} other {they}}')).not.toEqual(
+      messageTokens('{g, select, other {they}}'),
+    );
+    expect(messageTokens('{n, plural, =0 {none} other {#}}')).not.toEqual(
+      messageTokens('{n, plural, other {#}}'),
+    );
+
+    // Plural categories belong to the target language, so differing there is
+    // a correct translation, not a divergence.
+    expect(messageTokens('{n, plural, one {# item} other {# items}}')).toEqual(
+      messageTokens('{n, plural, few {#} many {#} other {#}}'),
+    );
+  });
+
+  it('reads a skeleton by its options, not the order they were written in', () => {
+    expect(messageTokens('{price, number, ::currency/GBP group-off}')).toEqual(
+      messageTokens('{price, number, ::group-off currency/GBP}'),
+    );
   });
 
   it('throws on invalid ICU', () => {
@@ -47,7 +101,10 @@ describe('checkFullLocale', () => {
       checkFullLocale(source, {
         'app.plain': 'Guardar',
         'app.rich': 'Lee <docs>la guía</docs> de {name}',
-        'app.count': '{count, plural, one {# elemento} other {# elementos}}',
+        // Spanish needs no `one` arm of its own here, and adding `many` would
+        // be equally fine: arm structure belongs to the target language.
+        'app.count': '{count, plural, other {# elementos}}',
+        'app.price': 'Cuesta {price, number, ::currency/GBP}',
       }),
     ).toEqual([]);
   });
@@ -67,8 +124,20 @@ describe('checkFullLocale', () => {
         'app.plain': 'ok',
         'app.rich': '{broken',
         'app.count': '{count, plural, one {#} other {#}}',
+        'app.price': 'x {price, number, ::currency/GBP}',
       }),
     ).toContain('invalid ICU syntax: app.rich');
+  });
+
+  it('fails a translation that keeps the argument but drops its formatting', () => {
+    expect(
+      checkFullLocale(source, {
+        'app.plain': 'Guardar',
+        'app.rich': 'Lee <docs>la guía</docs> de {name}',
+        'app.count': '{count, plural, other {# elementos}}',
+        'app.price': 'Cuesta {price}',
+      }),
+    ).toEqual(['token mismatch: app.price']);
   });
 });
 
@@ -81,6 +150,24 @@ describe('checkOverrideLocale', () => {
     expect(checkOverrideLocale(source, { 'app.rich': 'no tokens' })).toEqual([
       'token mismatch: app.rich',
     ]);
+    expect(
+      checkOverrideLocale(source, { 'app.price': 'Costs {price}' }),
+    ).toEqual(['token mismatch: app.price']);
+  });
+
+  it('rejects a translation that drops a select arm', () => {
+    const withSelect: ExtractedCatalog = {
+      'app.gender': {
+        defaultMessage:
+          '{g, select, male {He} female {She} other {They}} replied',
+        description: 'd',
+      },
+    };
+    expect(
+      checkOverrideLocale(withSelect, {
+        'app.gender': '{g, select, other {They}} answered',
+      }),
+    ).toEqual(['token mismatch: app.gender']);
   });
 });
 
@@ -128,6 +215,100 @@ export const messages = defineMessages({
     );
     await expect(extractMessages(collectSourceFiles(dir))).rejects.toThrow(
       /no description/,
+    );
+  });
+
+  it('rejects an id declared in two files, even with identical text', async () => {
+    // The extractor coalesces this pair silently — only a conflicting one
+    // throws — so two call sites would share a translation identity until
+    // somebody changed one of them.
+    const dir = mkdtempSync(join(tmpdir(), 'app-i18n-dup-'));
+    const declaration = `import { defineMessages } from 'react-intl';
+export const messages = defineMessages({
+  save: { id: 'demo.actions.save', defaultMessage: 'Save', description: 'Saves.' },
+});
+`;
+    writeFileSync(join(dir, 'one.ts'), declaration);
+    writeFileSync(join(dir, 'two.ts'), declaration);
+    await expect(extractMessages(collectSourceFiles(dir))).rejects.toThrow(
+      /"demo\.actions\.save" is declared in both .*one\.ts and .*two\.ts/,
+    );
+  });
+
+  it('rejects an id declared twice in one file, whatever the second says', async () => {
+    // Neither shape survives extraction: an identical pair merges without a
+    // word, and a conflicting pair is not an error either — the extractor
+    // logs a warning nothing reads and lets the later one win, so a call site
+    // silently renders copy written for somewhere else.
+    for (const [name, second] of [
+      ['identical', `'Save', description: 'Saves.'`],
+      ['conflicting', `'Store', description: 'Stores.'`],
+    ] as const) {
+      const dir = mkdtempSync(join(tmpdir(), `app-i18n-dup-${name}-`));
+      writeFileSync(
+        join(dir, 'both.ts'),
+        `import { defineMessages } from 'react-intl';
+export const first = defineMessages({
+  save: { id: 'demo.actions.save', defaultMessage: 'Save', description: 'Saves.' },
+});
+export const second = defineMessages({
+  store: { id: 'demo.actions.save', defaultMessage: ${second} },
+});
+`,
+      );
+      await expect(extractMessages(collectSourceFiles(dir))).rejects.toThrow(
+        /"demo\.actions\.save" is declared twice in .*both\.ts/,
+      );
+    }
+  });
+
+  it('rejects copy that is only whitespace', async () => {
+    // A lone space is not a message and not a description, but it is not the
+    // empty string either — so an exact-equality check let it through, and
+    // both the generated catalog and the freshness guard stayed green with a
+    // blank string on its way to a reader.
+    for (const [name, descriptor] of [
+      [
+        'message',
+        `id: 'demo.blank', defaultMessage: ' ', description: 'Real.'`,
+      ],
+      [
+        'description',
+        `id: 'demo.blank', defaultMessage: 'Real', description: '  '`,
+      ],
+    ] as const) {
+      const dir = mkdtempSync(join(tmpdir(), `app-i18n-blank-${name}-`));
+      writeFileSync(
+        join(dir, 'blank.ts'),
+        `import { defineMessages } from 'react-intl';
+export const messages = defineMessages({ blank: { ${descriptor} } });
+`,
+      );
+      await expect(extractMessages(collectSourceFiles(dir))).rejects.toThrow(
+        /has no (defaultMessage|description for translators)/,
+      );
+    }
+  });
+
+  it('rejects FormatJS’s structured description form', async () => {
+    // The extractor writes the object straight through, and en.json would then
+    // fail its own freshness check on every run: two parses of the same object
+    // are never the same reference.
+    const dir = mkdtempSync(join(tmpdir(), 'app-i18n-objdesc-'));
+    writeFileSync(
+      join(dir, 'structured.ts'),
+      `import { defineMessages } from 'react-intl';
+export const messages = defineMessages({
+  save: {
+    id: 'demo.actions.save',
+    defaultMessage: 'Save',
+    description: { text: 'Saves.', context: 'toolbar' },
+  },
+});
+`,
+    );
+    await expect(extractMessages(collectSourceFiles(dir))).rejects.toThrow(
+      /non-string description/,
     );
   });
 

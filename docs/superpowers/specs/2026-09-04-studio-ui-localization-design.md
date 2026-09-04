@@ -277,6 +277,15 @@ dependencies used only by the Node-side modules (never in client bundles);
 `react` as a peer (`catalog:`). Internal consumers reference the package with
 `workspace:^`.
 
+No `engines` field, matching the repo's other published libraries
+(`fresco-ui`, `interview`, `protocol-validation`, `network-exporters`). The
+real Node floor here comes from transitives of `@formatjs/cli-lib` — today
+`@babel/types@8` at `^22.18.0 || >=24.11.0`, a disjoint range excluding Node
+23 and 24.0–24.10 — and those packages declare it themselves, so
+`engine-strict` enforces the true constraint whatever this manifest says.
+Restating it here could only be a copy that rots into a false claim on the
+next transitive bump.
+
 Registration mechanics (all confirmed against current tooling): nothing to
 add in `pnpm-workspace.yaml`, `.changeset/config.json`, `turbo.json`, or
 `knip.json` for the package itself; a first-publication approval entry in
@@ -478,6 +487,16 @@ ahead of the framework plugin. It composes three pieces:
 - a build-only exact-match alias swapping
   `@formatjs/icu-messageformat-parser` for FormatJS's `no-parser` build.
 
+A workspace package that publishes messages of its own — `@codaco/app-i18n`
+with `common.*`, `@codaco/fresco-ui` with `frescoUi.*` — runs the same call in
+its library build as `appI18n({ build: 'library' })`: the two compiling
+plugins, without the alias. Its `dist` therefore carries pre-parsed messages,
+while whether a bundle keeps the parser stays the consuming application's
+decision. Publishing ICU source instead fails quietly, because a message the
+runtime cannot parse falls back to rendering its source verbatim, and source
+text with no placeholders is indistinguishable from the formatted result — so
+each package guards its own build configuration rather than its output text.
+
 Production bundles therefore carry no ICU parser (verified by asserting the
 parser's error identifiers are absent from built assets while react-intl's
 are present). The dev server and vitest keep the real parser, so string
@@ -568,8 +587,19 @@ account.updateLocale({ locale: string | null }) -> { locale: string | null }
 Server handler uses `requireUser` only (no tenant), validates a non-null
 value against Studio's supported registry (client and server ship together,
 so the server list is always current; unknown tags are a validation error,
-not a silent store), canonicalizes, and writes through the plain pool — the
-same plane as `team.acceptInvitation`. **Not an audited command** (decision
+not a silent store), and writes through the plain pool — the same plane as
+`team.acceptInvitation`.
+
+The registry holds canonical tags, so what reaches the row is canonical
+without the handler doing anything: this contract accepts declared tags
+only, and a case variant such as `EN-gb` is refused like any other unknown
+spelling. That is deliberate. Widening the input to canonicalize it would
+cost the contract its compile-time narrowing — the client could then be
+typed to send any string — and buy nothing, because the only caller is the
+generated client sending tags from its own registry. **Leniency belongs
+where tags are uncontrolled**, which is negotiation: `resolveAppLocale`
+canonicalizes both the browser's requested list and the stored preference on
+the way back out. **Not an audited command** (decision
 7): the audit log is study/team-scoped by design and a personal presentation
 preference has no tenant and no research-data significance; this is recorded
 here so the exception is deliberate, not an omission.
@@ -773,9 +803,9 @@ workspace catalog updates only where the dependency version is declared.
 ### 9.3 Studio
 
 - Server: schema test for the `locale` column and constraint;
-  `account.updateLocale` accepts declared tags and `null`, canonicalizes,
-  rejects unknown/malformed tags, requires a user; `me` returns the stored
-  value.
+  `account.updateLocale` accepts declared tags and `null`, rejects unknown,
+  malformed and non-canonically-spelled tags alike, requires a user; `me`
+  returns the stored value.
 - Client integration (vitest route tests): negotiation applied before first
   paint from mirror/browser; `LocaleSync` applies a differing server
   preference and updates the mirror; the language page renders current
