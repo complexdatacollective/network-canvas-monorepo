@@ -46,12 +46,14 @@ export function collectSourceFiles(dir: string): string[] {
  * and an id declared in only one place. Throws on any of those, so both the
  * regenerating script and the freshness guard fail loudly.
  *
- * Extraction runs per file rather than over the whole list, because the
- * extractor coalesces: two files declaring the same id with the same text and
- * description merge into one entry and nothing reports it, leaving separate
- * call sites sharing a translation identity. Only a *conflicting* pair throws,
- * which is one copy edit too late — by then the id has already been translated
- * once for two places that turned out to mean different things.
+ * Duplicate ids are counted as the extractor walks the source, not read back
+ * off its output, because its output cannot show them. Two descriptors
+ * sharing an id are coalesced into one entry: an identical pair merges
+ * silently, and a *conflicting* pair does not throw either — the extractor
+ * logs `[WARN] Duplicate message id` and the later one wins, so one call site
+ * renders the other's copy and the catalog carries no trace of the message it
+ * replaced. `onMsgExtracted` fires per occurrence, before that coalescing, so
+ * it sees the pair the returned map has already lost.
  */
 export async function extractMessages(
   files: readonly string[],
@@ -59,11 +61,27 @@ export async function extractMessages(
   // Typed as JSON rather than as ExtractedMessage: the extractor writes back
   // whatever shape the descriptor used, so the narrowing below is what makes
   // the declared types true rather than merely asserted.
+  //
+  // Each file counts its own occurrences, so this stays deterministic while
+  // the files extract concurrently; the cross-file check below runs after,
+  // over the settled results, and names the two files in input order.
   const perFile = await Promise.all(
     files.map(async (file) => {
+      const seen = new Set<string>();
       const raw = await extract([file], {
         extractSourceLocation: false,
         throws: true,
+        onMsgExtracted: (_path, messages) => {
+          for (const { id } of messages) {
+            if (id === undefined) continue;
+            if (seen.has(id)) {
+              throw new Error(
+                `extractMessages: "${id}" is declared twice in ${file}`,
+              );
+            }
+            seen.add(id);
+          }
+        },
       });
       return [
         file,
