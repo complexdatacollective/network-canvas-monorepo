@@ -16,6 +16,7 @@ import {
   Users,
 } from 'lucide-react';
 import * as React from 'react';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import { Button } from './Button';
 import {
@@ -477,6 +478,77 @@ export const Complex: Story = {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+    );
+  },
+};
+
+/**
+ * The menu in a right-to-left region. Base UI opens a nested menu on the
+ * `inline-end` side, which is the left here, so the disclosure chevron has to
+ * turn around with it — otherwise it points away from the submenu it opens.
+ *
+ * The direction comes from the toolbar global rather than a `dir` attribute
+ * of this story's own. Base UI reads direction from React context, not from
+ * the DOM, so a wrapper that only sets `dir` mirrors the CSS while leaving
+ * every popup placing itself as if the page were LTR — which is the half of
+ * this that a chevron assertion alone cannot see.
+ */
+export const RightToLeft: Story = {
+  globals: { appDirection: 'rtl' },
+  render: () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<Button variant="outline" />}>
+        ملف
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56">
+        <DropdownMenuItem>علامة تبويب جديدة</DropdownMenuItem>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <span>دعوة المستخدمين</span>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            <DropdownMenuItem>بريد إلكتروني</DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // The global is what puts both halves of the direction in place — the
+    // document's `dir`, which the CSS reads, and Base UI's own context, which
+    // the placement reads. Assert it landed, so a story that silently lost it
+    // fails here rather than passing on an LTR layout.
+    await expect(document.documentElement.dir).toBe('rtl');
+
+    await userEvent.click(canvas.getByRole('button', { name: 'ملف' }));
+
+    const subTrigger = await screen.findByRole('menuitem', {
+      name: 'دعوة المستخدمين',
+    });
+    const chevron = subTrigger.querySelector('svg.lucide-chevron-right');
+    await expect(chevron).not.toBeNull();
+    await expect(getComputedStyle(chevron!).rotate).toBe('180deg');
+
+    // And the submenu really does arrive on that side. Two assertions,
+    // because either alone can be satisfied by the wrong thing: `data-side`
+    // is LOGICAL, so it says only that collision handling did not push the
+    // menu off the inline end, and a physical rect on its own would be
+    // satisfied by an LTR menu that happened to flip. Together they say the
+    // menu is at the inline end AND the inline end is the left — which is
+    // only true when Base UI's direction context is really RTL.
+    await userEvent.click(subTrigger);
+    const submenuItem = await screen.findByRole('menuitem', {
+      name: 'بريد إلكتروني',
+    });
+    const popup = submenuItem.closest('[data-side]');
+    await expect(popup).not.toBeNull();
+    await waitFor(() =>
+      expect(popup!.getAttribute('data-side')).toBe('inline-end'),
+    );
+    await expect(popup!.getBoundingClientRect().left).toBeLessThan(
+      subTrigger.getBoundingClientRect().left,
     );
   },
 };

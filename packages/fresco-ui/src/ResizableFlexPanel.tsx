@@ -3,8 +3,20 @@
 import { Children, forwardRef, type ReactNode, useId } from 'react';
 import { useMergeRefs } from 'react-best-merge-refs';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import useResizablePanel from './hooks/useResizablePanel';
 import { cx } from './utils/cva';
+
+const messages = defineMessages({
+  resizeHandle: {
+    id: 'frescoUi.resizableFlexPanel.handleLabel',
+    defaultMessage: 'Resize panels',
+    description:
+      'Accessible name of the separator between two resizable panels, when the caller supplied none.',
+  },
+});
 
 type Breakpoint = {
   /** Position of the breakpoint as a percentage (0–100) of the container's main axis. */
@@ -152,6 +164,7 @@ const ResizableFlexPanel = forwardRef<HTMLDivElement, ResizableFlexPanelProps>(
     },
     forwardedRef,
   ) => {
+    const intl = useAppIntl();
     const { basis, isDragging, containerRef, handleProps } = useResizablePanel({
       storageKey,
       defaultBasis,
@@ -234,7 +247,7 @@ const ResizableFlexPanel = forwardRef<HTMLDivElement, ResizableFlexPanelProps>(
           aria-valuemin={min}
           aria-valuemax={max}
           aria-controls={`${firstPanelId} ${secondPanelId}`}
-          aria-label={ariaLabel ?? 'Resize panels'}
+          aria-label={ariaLabel ?? intl.formatMessage(messages.resizeHandle)}
           className={cx(
             'group',
             'focusable z-10 flex shrink-0 items-center justify-center',

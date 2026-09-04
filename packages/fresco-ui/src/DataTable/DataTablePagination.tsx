@@ -1,3 +1,5 @@
+'use client';
+
 import { type Table } from '@tanstack/react-table';
 import {
   ChevronLeft,
@@ -22,7 +24,12 @@ const messages = defineMessages({
   },
   pageOf: {
     id: 'frescoUi.dataTablePagination.pageOf',
-    defaultMessage: 'Page {page} of {pageCount}',
+    // Typed as ICU numbers rather than bare arguments, because this string
+    // is the template a translator copies: a bare `{page}` is interpolated
+    // with `String(value)` and would carry Western digits and grouping into
+    // every catalog derived from it, however that catalog's own sentence
+    // writes its numbers.
+    defaultMessage: 'Page {page, number} of {pageCount, number}',
     description:
       'Current page position indicator shown between the table pagination controls.',
   },
@@ -78,11 +85,15 @@ export function DataTablePagination<TData>({
           onChange={(value) => {
             table.setPageSize(Number(value));
           }}
+          // These are numbers on their own rather than arguments inside a
+          // sentence, so they follow the reader's locale outright — through
+          // the app's formatter, not `toLocaleString()`, which would read the
+          // runtime's locale instead of the one the chrome is written in.
           options={pageSizes.map((size) => ({
-            label: size.toLocaleString(),
+            label: intl.formatNumber(size),
             value: size,
           }))}
-          placeholder={table.getState().pagination.pageSize.toLocaleString()}
+          placeholder={intl.formatNumber(table.getState().pagination.pageSize)}
         />
       </div>
       {showPageCount && (
@@ -93,6 +104,10 @@ export function DataTablePagination<TData>({
           })}
         </div>
       )}
+      {/* These arrows point along the reading order, not at a fixed edge:
+          "previous" is back towards the start of the table, which is the
+          right-hand side in an RTL locale. The row itself reverses on its
+          own, being a flex row. */}
       <div className="flex items-center space-x-2">
         <IconButton
           aria-label={intl.formatMessage(messages.firstPage)}
@@ -100,7 +115,7 @@ export function DataTablePagination<TData>({
           size="sm"
           onClick={() => table.setPageIndex(0)}
           disabled={!table.getCanPreviousPage()}
-          icon={<ChevronsLeft />}
+          icon={<ChevronsLeft className="rtl:rotate-180" />}
         />
         <IconButton
           aria-label={intl.formatMessage(messages.previousPage)}
@@ -108,7 +123,7 @@ export function DataTablePagination<TData>({
           size="sm"
           onClick={() => table.previousPage()}
           disabled={!table.getCanPreviousPage()}
-          icon={<ChevronLeft />}
+          icon={<ChevronLeft className="rtl:rotate-180" />}
         />
         <IconButton
           aria-label={intl.formatMessage(messages.nextPage)}
@@ -116,7 +131,7 @@ export function DataTablePagination<TData>({
           size="sm"
           onClick={() => table.nextPage()}
           disabled={!table.getCanNextPage()}
-          icon={<ChevronRight />}
+          icon={<ChevronRight className="rtl:rotate-180" />}
         />
         <IconButton
           aria-label={intl.formatMessage(messages.lastPage)}
@@ -124,7 +139,7 @@ export function DataTablePagination<TData>({
           size="sm"
           onClick={() => table.setPageIndex(table.getPageCount() - 1)}
           disabled={!table.getCanNextPage()}
-          icon={<ChevronsRight />}
+          icon={<ChevronsRight className="rtl:rotate-180" />}
         />
       </div>
     </div>

@@ -1,3 +1,5 @@
+'use client';
+
 import type { CSSProperties, SVGProps } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';

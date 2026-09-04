@@ -336,10 +336,19 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   // revalidated: validating a field nobody has touched yet would write errors
   // the person has not earned, and a language switch is no reason to accuse
   // them of anything.
+  //
+  // The ref records the locale the errors ON SCREEN were written in, not the
+  // last locale this effect saw — which is why it only advances when there is
+  // something to re-run. Advancing it on every change made a validation that
+  // was in flight across the switch permanently stale: the effect ran while
+  // `fieldErrors` was still empty, marked the new locale as seen, and then had
+  // nothing left to compare against when the old-language result committed a
+  // moment later. The field kept the previous language until some unrelated
+  // edit revalidated it.
   useEffect(() => {
     if (intlRef.current === intl) return;
-    intlRef.current = intl;
     if (fieldErrors && fieldErrors.length > 0) {
+      intlRef.current = intl;
       validateResolvedField();
     }
   }, [intl, fieldErrors, validateResolvedField]);

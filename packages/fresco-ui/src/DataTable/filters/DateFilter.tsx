@@ -24,7 +24,7 @@ const messages = defineMessages({
   },
   presetLastDays: {
     id: 'frescoUi.dateFilter.presetLastDays',
-    defaultMessage: 'Last {days} days',
+    defaultMessage: 'Last {days, number} days',
     description:
       'Relative date-range preset covering the last {days} days up to today.',
   },

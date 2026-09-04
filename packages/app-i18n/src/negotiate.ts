@@ -13,26 +13,24 @@ export function canonicalizeAppLocale(value: string): string | undefined {
   }
 }
 
-/** 'en-GB-oxendict' → ['en-GB-oxendict', 'en-GB', 'en'] */
-const truncationChain = (tag: string): string[] => {
-  const chain = [tag];
-  let current = tag;
-  for (;;) {
-    const cut = current.lastIndexOf('-');
-    if (cut === -1) break;
-    current = current.slice(0, cut);
-    chain.push(current);
-  }
-  return chain;
-};
+/**
+ * A default `match` can hand back that no registry could ever contain:
+ * `defineAppLocales` admits only canonical BCP 47 tags, and this is not one.
+ */
+const NO_FIT = 'no fit';
 
 /**
- * A stored preference matches a declared locale when one is a subtag
- * truncation of the other ('es-MX' matches declared 'es'; stored 'es'
- * matches declared 'es-MX'). This is deliberately structural rather than
- * best-fit: the matcher cannot distinguish "best-fits the default" from "no
- * match", and a stored tag that matches nothing must fall through to browser
- * negotiation rather than silently winning as the default.
+ * A stored preference is matched the same way browser preferences are, with
+ * best fit — so an explicit choice survives the app dropping the exact tag it
+ * was made in ('en-US' lands on a declared 'en-GB', which shares nothing with
+ * it by truncation).
+ *
+ * The sentinel default is what keeps that from swallowing the other case.
+ * `match` signals "nothing fitted" by returning the default it was given, so
+ * passing the app default here would make a real fit indistinguishable from a
+ * fallback — and a stored tag for a locale that has since been withdrawn has
+ * to fall through to browser negotiation rather than silently winning as the
+ * default.
  */
 const matchStored = (
   stored: string,
@@ -40,11 +38,10 @@ const matchStored = (
 ): string | undefined => {
   const canonical = canonicalizeAppLocale(stored);
   if (canonical === undefined) return undefined;
-  const declaredSet = new Set(declared);
-  for (const candidate of truncationChain(canonical)) {
-    if (declaredSet.has(candidate)) return candidate;
-  }
-  return declared.find((tag) => truncationChain(tag).includes(canonical));
+  const fitted = match([canonical], [...declared], NO_FIT, {
+    algorithm: 'best fit',
+  });
+  return declared.includes(fitted) ? fitted : undefined;
 };
 
 export type ResolvedAppLocale = Readonly<{

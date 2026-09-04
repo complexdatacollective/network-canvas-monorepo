@@ -93,3 +93,37 @@ describe('a field whose form is open when the locale changes', () => {
     );
   });
 });
+
+describe('a field being validated at the moment the locale changes', () => {
+  it('does not keep the old language once the in-flight result lands', async () => {
+    // The switch can land between a validation starting and its result
+    // committing. While it is in flight there is no error on screen, so
+    // nothing to re-run — and if that counted as "this locale has been dealt
+    // with", the result arriving a moment later stayed in the old language
+    // with no further trigger to correct it.
+    //
+    // Blur and the language switch are dispatched in the same tick, so the
+    // validation is outstanding when the locale changes. The assertion waits
+    // for the settled state and touches nothing else: any further interaction
+    // would revalidate and paper over the defect.
+    const { container } = render(<LocaleHarness />);
+    const input = container.querySelector('input[name="name"]');
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error('name input not rendered');
+    }
+
+    fireEvent.change(input, { target: { value: 'x' } });
+    fireEvent.change(input, { target: { value: '' } });
+    fireEvent.blur(input, {
+      relatedTarget: screen.getByRole('button', { name: 'switch language' }),
+    });
+    switchLanguage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('name-field-error')).toHaveTextContent(
+        REQUIRED_TRANSLATED,
+      );
+    });
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+  });
+});
