@@ -76,10 +76,34 @@ export type StorybookI18n = Readonly<{
   withAppI18n: Decorator;
 }>;
 
+/**
+ * Whether the controls' remembered selections apply.
+ *
+ * They are a convenience for somebody clicking around Storybook, and actively
+ * harmful to a test run: a story that pins a global — `DropdownMenu` and
+ * `Table` both set `appDirection: 'rtl'` — writes that choice to storage, and
+ * every later story in the run then opens in it. Stories that never mention
+ * direction start rendering mirrored, which is invisible until an assertion
+ * about arrow keys or a click position happens to disagree.
+ *
+ * Same detection the animation provider uses to stand down for automated
+ * hosts, and the same reasoning: a run has to start from the declared default
+ * every time, or it is not testing what it says it is.
+ */
+function isAutomatedHost(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (
+    window.navigator.webdriver ||
+    /Chromatic/.test(window.navigator.userAgent) ||
+    /(?:[?&])chromatic=true(?:[&#]|$)/.test(window.location.href)
+  );
+}
+
 function readStored<T extends string>(
   key: string,
   valid: (value: string) => value is T,
 ): T | null {
+  if (isAutomatedHost()) return null;
   try {
     const stored = localStorage.getItem(key);
     return stored !== null && valid(stored) ? stored : null;
@@ -92,6 +116,7 @@ function readStored<T extends string>(
 }
 
 function writeStored(key: string, value: string) {
+  if (isAutomatedHost()) return;
   try {
     localStorage.setItem(key, value);
   } catch {
