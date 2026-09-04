@@ -568,8 +568,19 @@ account.updateLocale({ locale: string | null }) -> { locale: string | null }
 Server handler uses `requireUser` only (no tenant), validates a non-null
 value against Studio's supported registry (client and server ship together,
 so the server list is always current; unknown tags are a validation error,
-not a silent store), canonicalizes, and writes through the plain pool — the
-same plane as `team.acceptInvitation`. **Not an audited command** (decision
+not a silent store), and writes through the plain pool — the same plane as
+`team.acceptInvitation`.
+
+The registry holds canonical tags, so what reaches the row is canonical
+without the handler doing anything: this contract accepts declared tags
+only, and a case variant such as `EN-gb` is refused like any other unknown
+spelling. That is deliberate. Widening the input to canonicalize it would
+cost the contract its compile-time narrowing — the client could then be
+typed to send any string — and buy nothing, because the only caller is the
+generated client sending tags from its own registry. **Leniency belongs
+where tags are uncontrolled**, which is negotiation: `resolveAppLocale`
+canonicalizes both the browser's requested list and the stored preference on
+the way back out. **Not an audited command** (decision
 7): the audit log is study/team-scoped by design and a personal presentation
 preference has no tenant and no research-data significance; this is recorded
 here so the exception is deliberate, not an omission.
@@ -773,9 +784,9 @@ workspace catalog updates only where the dependency version is declared.
 ### 9.3 Studio
 
 - Server: schema test for the `locale` column and constraint;
-  `account.updateLocale` accepts declared tags and `null`, canonicalizes,
-  rejects unknown/malformed tags, requires a user; `me` returns the stored
-  value.
+  `account.updateLocale` accepts declared tags and `null`, rejects unknown,
+  malformed and non-canonically-spelled tags alike, requires a user; `me`
+  returns the stored value.
 - Client integration (vitest route tests): negotiation applied before first
   paint from mirror/browser; `LocaleSync` applies a differing server
   preference and updates the mirror; the language page renders current
