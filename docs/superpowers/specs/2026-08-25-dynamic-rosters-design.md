@@ -118,13 +118,14 @@ Each decision records the alternative it displaced and why.
      that keeps already-present people out of the roster.
 
    Uniqueness is scoped to the interview network, per subject type: the parse
-   pipeline keys an id-bearing node as `` `${subjectType}_id_${id}` ``, so two
-   dynamic assets in one protocol that both return `"1"` for _different_
-   people of the same type collapse into one node, and the second person is
-   filtered out of every panel that compares against the current network. An
-   author serving a protocol from more than one endpoint must therefore
-   namespace ids (prefix by source); two sources sharing an id is correct
-   only when they genuinely name the same person.
+   pipeline keys an id-bearing node from a digest of the id (§5.4 step 5), so
+   two dynamic assets in one protocol that both return `"1"` for _different_
+   people of the same type produce one key — the second person is filtered
+   out of every panel that compares against the current network, and adding
+   them anyway trips the reducer's duplicate-`_uid` invariant
+   (`session.ts:618-624`). An author serving a protocol from more than one
+   endpoint must therefore namespace ids (prefix by source); two sources
+   sharing an id is correct only when they genuinely name the same person.
 
    Amended by product-owner ruling before implementation of #1451–#1456
    began (epic #1457, tracker #1514).
@@ -398,17 +399,45 @@ credentials: 'omit', cache: 'no-store', redirect: 'error' })`. POST bodies
    invalid response is a fetch failure, never partially ingested.**
 5. Hand the nodes to the existing parse pipeline
    (`parseExternalNetworkAsset`), with one difference: primary keys are
-   `` `${subjectType}_id_${id}` `` for an element carrying a stable `id`,
-   and `` `${subjectType}_hash_${hash({ node })}` `` for one that does not —
-   content only, no index salt (Decision 3 and its 2026-09-04 amendment).
-   The branch is evaluated per element, so one response may mix the two, and
-   the `id_`/`hash_` segment keeps the two key spaces **disjoint**: a
-   supplied id is an arbitrary string, so without it an id that happened to
-   equal another row's digest would collapse two different people into one
-   node. The subject-type prefix keeps its existing job of scoping a row's
+   `` `${subjectType}_${hash({ externalId: id })}` `` for an element carrying
+   a stable `id`, and `` `${subjectType}_${hash({ node })}` `` for one that
+   does not — content only, no index salt (Decision 3 and its 2026-09-04
+   amendment). The branch is evaluated per element, so one response may mix
+   the two. The subject-type prefix keeps its existing job of scoping a row's
    identity to the subject it was parsed for (`loadExternalData.ts`).
    Static-file rosters keep their existing salted hash; nothing changes for
    them.
+
+   **A supplied id is hashed into the key, never concatenated into it.**
+   `hash` returns a fixed-length 43-character digest, and four properties
+   follow that verbatim embedding cannot give:
+
+   - The two strategies cannot collide, because they hash structurally
+     different inputs (`{ externalId }` versus `{ node }`) rather than
+     sharing one string space that an id could be spelled into.
+   - `` `${subjectType}_${digest}` `` is injective even though **both**
+     subject-type keys and endpoint ids may contain `_` (`person_node_type`
+     is a real codebook key): a fixed-length suffix determines the split.
+   - The key's length no longer depends on the id, so it cannot outgrow the
+     128-character node-identifier limit a host enforces when it persists
+     the network (Studio's `nodes_identifier_lengths_check`,
+     `apps/studio/server/src/network/schema.ts:151-157`). Nor can a
+     pathological id byte — a NUL, say — reach a `text` column.
+   - No byte of the id reaches the `_uid`, and the `_uid` is what the
+     analytics listener reports as `node_id`
+     (`analyticsListener.ts:36-51`). An endpoint may therefore mint
+     participant-linked ids — the longitudinal case does exactly that —
+     without those ids leaving the device, which is what Interviewer
+     promises when it says network data and case IDs never do
+     (`Step5Analytics.tsx:54-62`). An id-bearing node's `node_id` is a
+     digest, indistinguishable in kind from the content digest analytics
+     already carries for a static roster node.
+
+   Consequence, accepted: the endpoint's own id is not readable back out of
+   an exported `_uid`. A consumer linking an export to its own records
+   recomputes `hash({ externalId: id })` — it minted the id, so it can — and
+   the amendment's cross-wave requirement is unaffected, since identity only
+   needs the same id to keep mapping to the same node.
 
 Behavioural requirements on the endpoint, enforced socially (documented) not
 mechanically: requests must be read-only/idempotent regardless of method —
@@ -466,22 +495,19 @@ test request and the interview runtime share it:
   - `""` is a schema error, not an identity: every empty-id element would
     otherwise key to the same node, silently collapsing distinct people into
     one roster entry — the exact failure the amendment exists to prevent.
-  - The **64-character ceiling** exists because the id ends up inside a
-    persisted node identifier. Studio bounds a stored `nodeId` to 128
-    characters (`nodes_identifier_lengths_check`,
-    `apps/studio/server/src/network/schema.ts:149-157`), and the roster's
-    longitudinal case (#1300, #1302) is precisely the one whose network
-    Studio persists — an unbounded id would run the whole interview and then
-    fail at write time. With codebook subject-type keys being UUIDs, the
-    composite key tops out at 36 + `_id_` + 64 = 104 characters, inside that
-    limit with room to spare. 64 is generous for real identifiers: a UUID is 36.
+  - The **64-character ceiling** is contract hygiene, not a storage
+    workaround: an identifier longer than that is a payload, not an id (a
+    UUID is 36). Nothing downstream depends on the bound, because §5.4
+    step 5 hashes the id into a fixed-length key instead of concatenating
+    it — which is also why this contract needs no character allowlist. No
+    byte of the id reaches a `_uid`, an analytics event, or a persisted
+    identifier, so an id containing a NUL or any other byte a host cannot
+    store is harmless here.
   - When present the parse pipeline honors the `id` as the node's identity
-    (§5.4 step 5); when absent, content-hash identity applies. Keys stay
-    composite and strategy-tagged (`` `${subjectType}_id_${id}` ``, never
-    the bare id), so a roster `_uid` is always non-empty, the roster's
-    truthiness-guarded removal handler
-    (`NameGeneratorRoster.tsx:249-257`) keeps working unchanged, and an id
-    can never collide with an id-less row's digest.
+    (§5.4 step 5); when absent, content-hash identity applies. Either way
+    the key is `` `${subjectType}_${digest}` ``, so a roster `_uid` is
+    always non-empty and the roster's truthiness-guarded removal handler
+    (`NameGeneratorRoster.tsx:249-257`) keeps working unchanged.
   - This response `id` is **not** the `id` of §5.3's embedded request
     payload: there it is the interview-internal `_uid` of a node already in
     the network, here it is the endpoint's own stable identifier for a
@@ -970,8 +996,8 @@ and fixtures re-saved at schema 9.
 - `src/hooks/useExternalData.tsx` — type branch, `retry()`, offline-aware
   error state, dynamic identity path.
 - `src/utils/loadExternalData.ts` — accept an injected primary-key strategy
-  (index-salted for files; for dynamic, the element's `id` when it carries
-  one, else content-only — §5.4 step 5, decided per element).
+  (index-salted for files; for dynamic, a digest of the element's `id` when
+  it carries one, else of its content — §5.4 step 5, decided per element).
 - `src/interfaces/NameGeneratorRoster/*`, `src/interfaces/NameGenerator/
 components/NodePanel.tsx` — retry UI + failure copy; the roster stage
   suspends its `useNodeLimits` minNodes gate in the error state (§5.6).
@@ -1060,11 +1086,14 @@ only stages preceding the start stage (§5.9); `PreviewHost` passes it.
   between fetches keeps one `_uid` and is not re-offered (the cross-wave
   case, which must fail if the pipeline falls back to the content hash), a
   response mixing id-bearing and id-less elements keys each by its own
-  strategy, an id-bearing element whose `id` is spelled exactly like another
-  element's content digest stays a separate node (the `id_`/`hash_` key
-  spaces are disjoint), and two dynamic assets of the same subject type
-  returning the same id yield one node (the documented namespacing
-  consequence, asserted so it cannot regress silently); serialization
+  strategy, an id-bearing node's `_uid` contains no substring of the
+  supplied id (the property that keeps a participant-linked id out of
+  `analyticsListener`'s `node_id` and out of every persisted identifier —
+  asserted against an id chosen to be findable), keys stay distinct across
+  subject types whose names differ only by an underscore boundary, and two
+  dynamic assets of the same subject type returning the same id yield one
+  node (the documented namespacing consequence, asserted so it cannot
+  regress silently); serialization
   omits encrypted attributes (tested against an encrypted network) and
   response parsing strips nullish values exactly as the static parser does;
   `useExternalData` retry and auto-retry-on-reconnect; the minNodes gate is
@@ -1122,8 +1151,9 @@ only stages preceding the start stage (§5.9); `PreviewHost` passes it.
 
 - New page: _Building a dynamic roster endpoint_ — request anatomy,
   placeholder table, canonical response shape (including the optional
-  per-node `id`, when to send one, its 64-character limit, and the stability
-  and namespacing obligations it carries — Decision 3 amendment),
+  per-node `id`, when to send one, its 64-character limit, the stability and
+  namespacing obligations it carries, and the fact that the id is hashed
+  into the node key rather than exposed in it — Decision 3 amendment),
   CORS/preflight obligations, no-redirect requirement (§5.4), idempotency
   requirement, key-visibility warning (§6.6), and the sample-content privacy
   guidance (§6.11).
