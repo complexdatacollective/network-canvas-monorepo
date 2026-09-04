@@ -483,7 +483,7 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
-      # oxlint-tsgolint's type-aware rules resolve workspace types directly from
+      # oxlint's type-aware rules resolve workspace types directly from
       # each package's `src` (exports point at source), so no built `.d.ts` is
       # needed and the job runs without a prior package build. Fresco is the one
       # exception: its Prisma client and Next type declarations are generated
