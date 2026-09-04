@@ -1,6 +1,18 @@
 import { Progress } from '@base-ui/react/progress';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { cx } from './utils/cva';
+
+const messages = defineMessages({
+  progressIndicator: {
+    id: 'frescoUi.progressBar.label',
+    defaultMessage: 'Progress indicator',
+    description:
+      'Accessible name of a progress bar whose caller supplied no label.',
+  },
+});
 
 type ProgressBarProps = {
   indeterminate?: boolean;
@@ -21,13 +33,14 @@ const ProgressBar = ({
   label,
   className,
 }: ProgressBarProps) => {
+  const intl = useAppIntl();
   const isIndeterminate = indeterminate || percentProgress === null;
   const value = isIndeterminate ? null : percentProgress;
 
   return (
     <Progress.Root
       value={value}
-      aria-label={label ?? 'Progress indicator'}
+      aria-label={label ?? intl.formatMessage(messages.progressIndicator)}
       onClick={onClick}
       className={cx(
         // Base styles

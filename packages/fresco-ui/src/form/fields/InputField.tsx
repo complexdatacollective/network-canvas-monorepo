@@ -1,6 +1,9 @@
 import { Minus, Plus } from 'lucide-react';
 import { forwardRef, type ReactNode, useCallback, useRef } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { IconButton } from '../../Button';
 import {
   controlVariants,
@@ -32,6 +35,21 @@ type InputFieldSlot = ReactNode | ((field: FieldSlotController) => ReactNode);
  * retain different semantics while presenting as a field (for example, a
  * search-dialog trigger).
  */
+const messages = defineMessages({
+  decrease: {
+    id: 'frescoUi.inputField.decrease',
+    defaultMessage: 'Decrease value',
+    description:
+      'Accessible name of a number field’s decrement stepper, when the caller supplied none.',
+  },
+  increase: {
+    id: 'frescoUi.inputField.increase',
+    defaultMessage: 'Increase value',
+    description:
+      'Accessible name of a number field’s increment stepper, when the caller supplied none.',
+  },
+});
+
 export const inputFieldControlVariants = compose(
   heightVariants,
   textSizeVariants,
@@ -190,6 +208,7 @@ type InputFieldProps = CreateFormFieldProps<
 
 const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
   function InputField(props, ref) {
+    const intl = useAppIntl();
     const {
       prefixComponent,
       suffixComponent,
@@ -316,7 +335,9 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
           color="default"
           disabled={!canStep || stepperDisabled?.decrease}
           onClick={() => handleStep('down')}
-          aria-label={stepperLabels?.decrease ?? 'Decrease value'}
+          aria-label={
+            stepperLabels?.decrease ?? intl.formatMessage(messages.decrease)
+          }
           tabIndex={-1}
           icon={<Minus />}
           className={cx(stepperButtonVariants, stepperWidthBySize[size])}
@@ -339,7 +360,9 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
           color="default"
           disabled={!canStep || stepperDisabled?.increase}
           onClick={() => handleStep('up')}
-          aria-label={stepperLabels?.increase ?? 'Increase value'}
+          aria-label={
+            stepperLabels?.increase ?? intl.formatMessage(messages.increase)
+          }
           tabIndex={-1}
           icon={<Plus />}
           className={cx(stepperButtonVariants, stepperWidthBySize[size])}

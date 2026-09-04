@@ -4,6 +4,9 @@ import { Slider } from '@base-ui/react/slider';
 import { motion } from 'motion/react';
 import { useRef, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlLabelVariants,
@@ -54,9 +57,19 @@ function formatVasValue(value: number, min: number, max: number) {
  */
 const UNANSWERED_VALUE_TEXT = 'No value chosen yet';
 
+const messages = defineMessages({
+  sliderLabel: {
+    id: 'frescoUi.visualAnalogScale.sliderLabel',
+    defaultMessage: 'Visual analog scale value',
+    description:
+      'Accessible name of the scale’s slider thumb, when the caller named neither the field nor the control.',
+  },
+});
+
 export default function VisualAnalogScaleField(
   props: VisualAnalogScaleFieldProps,
 ) {
+  const intl = useAppIntl();
   const {
     className,
     value,
@@ -192,7 +205,7 @@ export default function VisualAnalogScaleField(
                 aria-label={
                   ariaLabelledBy
                     ? undefined
-                    : (ariaLabel ?? 'Visual analog scale value')
+                    : (ariaLabel ?? intl.formatMessage(messages.sliderLabel))
                 }
                 aria-labelledby={ariaLabelledBy}
                 aria-describedby={ariaDescribedBy}

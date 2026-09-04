@@ -307,6 +307,46 @@
     "defaultMessage": "Submit",
     "description": "Default submit action of a form dialog."
   },
+  "frescoUi.dragAndDrop.cancelled": {
+    "defaultMessage": "Drag cancelled",
+    "description": "Live-region announcement when a keyboard drag is abandoned."
+  },
+  "frescoUi.dragAndDrop.dropTarget": {
+    "defaultMessage": "Drop target {position, number} of {total, number}",
+    "description": "Live-region description of the drop target keyboard focus has reached, when the target has no name of its own."
+  },
+  "frescoUi.dragAndDrop.dropped": {
+    "defaultMessage": "Dropped item. {details}",
+    "description": "Live-region announcement after a keyboard drop; {details} names where it landed."
+  },
+  "frescoUi.dragAndDrop.grabbed": {
+    "defaultMessage": "{name} grabbed, use arrow keys to navigate to drop targets, press Escape to cancel",
+    "description": "Live-region announcement when a keyboard drag picks something up."
+  },
+  "frescoUi.dragAndDrop.instructions": {
+    "defaultMessage": "Use arrow keys to navigate between drop targets. Press Space or Enter to drop. Press Escape to cancel.",
+    "description": "Live-region instructions announced once when a keyboard drag begins."
+  },
+  "frescoUi.dragAndDrop.namedDropTarget": {
+    "defaultMessage": "Drop target {position, number} of {total, number}: {name}",
+    "description": "Live-region description of the drop target keyboard focus has reached; {name} is the target’s own name."
+  },
+  "frescoUi.dragAndDrop.navigated": {
+    "defaultMessage": "Navigated to drop target",
+    "description": "Live-region announcement after keyboard navigation reaches a drop target that supplied no description."
+  },
+  "frescoUi.dragAndDrop.returnedToPosition": {
+    "defaultMessage": "Drop cancelled, {name} returned to original position",
+    "description": "Live-region announcement after a keyboard drag ends without a drop."
+  },
+  "frescoUi.dragAndDrop.started": {
+    "defaultMessage": "Started dragging. {details}",
+    "description": "Live-region announcement when a keyboard drag begins; {details} names what is being dragged."
+  },
+  "frescoUi.dragAndDrop.unnamedItem": {
+    "defaultMessage": "Item",
+    "description": "Stands in for the name of the thing being dragged in live-region announcements, when the drag source supplied none."
+  },
   "frescoUi.facetedFilter.deselectAll": {
     "defaultMessage": "Deselect All",
     "description": "Button clearing every selected option in a faceted filter."
@@ -322,6 +362,14 @@
   "frescoUi.facetedFilter.selectAll": {
     "defaultMessage": "Select All",
     "description": "Button selecting every option in a faceted filter."
+  },
+  "frescoUi.form.submitFailed": {
+    "defaultMessage": "An error occurred while submitting the form.",
+    "description": "Form-level error shown when the submit handler itself throws, so it produced no message of its own."
+  },
+  "frescoUi.formStore.validationFailed": {
+    "defaultMessage": "Something went wrong during validation",
+    "description": "Error attached to a field whose own validation rule threw, so the rule produced no message of its own."
   },
   "frescoUi.icon.addAContextSingle": {
     "defaultMessage": "Add a context",
@@ -455,6 +503,22 @@
     "defaultMessage": "Warning",
     "description": "Accessible name (SVG title) of the warning icon."
   },
+  "frescoUi.inputField.decrease": {
+    "defaultMessage": "Decrease value",
+    "description": "Accessible name of a number field’s decrement stepper, when the caller supplied none."
+  },
+  "frescoUi.inputField.increase": {
+    "defaultMessage": "Increase value",
+    "description": "Accessible name of a number field’s increment stepper, when the caller supplied none."
+  },
+  "frescoUi.likertScale.noSelection": {
+    "defaultMessage": "No selection",
+    "description": "Announced value of the scale’s slider before anything has been chosen."
+  },
+  "frescoUi.likertScale.sliderLabel": {
+    "defaultMessage": "Select value on scale",
+    "description": "Accessible name of the scale’s slider thumb, when the caller named neither the field nor the control."
+  },
   "frescoUi.node.defaultLabel": {
     "defaultMessage": "Node",
     "description": "Default label rendered inside a network node when the host supplies none."
@@ -531,6 +595,10 @@
     "defaultMessage": "{visible, select, true {Hide password} other {Show password}}",
     "description": "Accessible name of the visibility toggle; says what pressing it will do."
   },
+  "frescoUi.progressBar.label": {
+    "defaultMessage": "Progress indicator",
+    "description": "Accessible name of a progress bar whose caller supplied no label."
+  },
   "frescoUi.rangeFilter.maximum": {
     "defaultMessage": "Maximum",
     "description": "Accessible name of the upper-bound slider in a numeric range filter."
@@ -538,6 +606,10 @@
   "frescoUi.rangeFilter.minimum": {
     "defaultMessage": "Minimum",
     "description": "Accessible name of the lower-bound slider in a numeric range filter."
+  },
+  "frescoUi.resizableFlexPanel.handleLabel": {
+    "defaultMessage": "Resize panels",
+    "description": "Accessible name of the separator between two resizable panels, when the caller supplied none."
   },
   "frescoUi.richTextEditor.applyLink": {
     "defaultMessage": "Apply link",
@@ -838,6 +910,10 @@
   "frescoUi.validation.uniqueHint": {
     "defaultMessage": "Must be unique.",
     "description": "Hint summarising a uniqueness rule."
+  },
+  "frescoUi.visualAnalogScale.sliderLabel": {
+    "defaultMessage": "Visual analog scale value",
+    "description": "Accessible name of the scale’s slider thumb, when the caller named neither the field nor the control."
   },
   "frescoUi.wizard.finish": {
     "defaultMessage": "Finish",

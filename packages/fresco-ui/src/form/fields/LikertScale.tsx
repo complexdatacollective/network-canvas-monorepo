@@ -4,6 +4,9 @@ import { Slider } from '@base-ui/react/slider';
 import { motion } from 'motion/react';
 import { useMemo, useRef, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlLabelVariants,
@@ -39,7 +42,23 @@ type LikertScaleFieldProps = CreateFormFieldProps<
   }
 >;
 
+const messages = defineMessages({
+  sliderLabel: {
+    id: 'frescoUi.likertScale.sliderLabel',
+    defaultMessage: 'Select value on scale',
+    description:
+      'Accessible name of the scale’s slider thumb, when the caller named neither the field nor the control.',
+  },
+  noSelection: {
+    id: 'frescoUi.likertScale.noSelection',
+    defaultMessage: 'No selection',
+    description:
+      'Announced value of the scale’s slider before anything has been chosen.',
+  },
+});
+
 export default function LikertScaleField(props: LikertScaleFieldProps) {
+  const intl = useAppIntl();
   const {
     className,
     value,
@@ -217,11 +236,14 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                 aria-label={
                   ariaLabelledBy
                     ? undefined
-                    : (ariaLabel ?? 'Select value on scale')
+                    : (ariaLabel ?? intl.formatMessage(messages.sliderLabel))
                 }
                 aria-labelledby={ariaLabelledBy}
                 aria-describedby={ariaDescribedBy}
-                getAriaValueText={() => currentOption?.label ?? 'No selection'}
+                getAriaValueText={() =>
+                  currentOption?.label ??
+                  intl.formatMessage(messages.noSelection)
+                }
               >
                 <motion.div
                   // base-ui's nested <input type="range"> is the focusable

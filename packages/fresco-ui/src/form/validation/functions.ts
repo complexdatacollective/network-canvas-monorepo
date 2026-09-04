@@ -1,13 +1,10 @@
 import { invariant } from 'es-toolkit';
 import { z } from 'zod/mini';
 
-import {
-  createAppIntl,
-  defineMessages,
-  type IntlShape,
-} from '@codaco/app-i18n/messages';
+import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import type { Variable } from '@codaco/protocol-validation';
 
+import { resolveIntl } from '../../utils/resolveIntl';
 import type { FieldValue, ValidationContext } from '../store/types';
 import collectNetworkValues from './utils/collectNetworkValues';
 import compareVariables from './utils/compareVariables';
@@ -45,15 +42,6 @@ export type ValidationFunction<T extends ValidationParameter> = (
   // byte-identical to the pre-conversion literals.
   intl?: IntlShape,
 ) => (formValues: Record<string, FieldValue>) => z.ZodMiniType;
-
-let defaultValidationIntl: IntlShape | undefined;
-
-/** English formatter for callers that thread no intl (see the seam note). */
-const validationIntl = (intl?: IntlShape): IntlShape => {
-  if (intl) return intl;
-  defaultValidationIntl ??= createAppIntl({ locale: 'en' });
-  return defaultValidationIntl;
-};
 
 // A number written as `{x, number}` is formatted in the locale of the message
 // it sits in; a bare `{x}` is interpolated with `String(value)`, so its digits
@@ -343,7 +331,7 @@ export const required =
     const message =
       typeof parameter === 'string'
         ? parameter
-        : validationIntl(intl).formatMessage(messages.required);
+        : resolveIntl(intl).formatMessage(messages.required);
 
     return z.unknown().check(
       z.superRefine((value, ctx) => {
@@ -380,7 +368,7 @@ const maxLength: ValidationFunction<number> = (max, _context, intl) => () => {
     'Max length must be specified',
   );
 
-  const hint = validationIntl(intl).formatMessage(messages.maxLengthHint, {
+  const hint = resolveIntl(intl).formatMessage(messages.maxLengthHint, {
     max,
   });
 
@@ -394,7 +382,7 @@ const maxLength: ValidationFunction<number> = (max, _context, intl) => () => {
         ctx.addIssue({
           code: 'custom',
           input: value,
-          message: validationIntl(intl).formatMessage(messages.maxLengthError, {
+          message: resolveIntl(intl).formatMessage(messages.maxLengthError, {
             max,
           }),
           path: [],
@@ -420,7 +408,7 @@ const minLength: ValidationFunction<number> = (min, _context, intl) => () => {
     'Min length must be specified',
   );
 
-  const hint = validationIntl(intl).formatMessage(messages.minLengthHint, {
+  const hint = resolveIntl(intl).formatMessage(messages.minLengthHint, {
     min,
   });
 
@@ -434,7 +422,7 @@ const minLength: ValidationFunction<number> = (min, _context, intl) => () => {
         ctx.addIssue({
           code: 'custom',
           input: value,
-          message: validationIntl(intl).formatMessage(messages.minLengthError, {
+          message: resolveIntl(intl).formatMessage(messages.minLengthError, {
             min,
           }),
           path: [],
@@ -460,7 +448,7 @@ const minValue: ValidationFunction<number> = (min, _context, intl) => () => {
     'Min value must be specified',
   );
 
-  const hint = validationIntl(intl).formatMessage(messages.minValueHint, {
+  const hint = resolveIntl(intl).formatMessage(messages.minValueHint, {
     min,
   });
 
@@ -475,7 +463,7 @@ const minValue: ValidationFunction<number> = (min, _context, intl) => () => {
         ctx.addIssue({
           code: 'custom',
           input: value,
-          message: validationIntl(intl).formatMessage(messages.minValueError, {
+          message: resolveIntl(intl).formatMessage(messages.minValueError, {
             min,
           }),
           path: [],
@@ -502,7 +490,7 @@ const maxValue: ValidationFunction<number> = (max, _context, intl) => () => {
     'Max value must be specified',
   );
 
-  const hint = validationIntl(intl).formatMessage(messages.maxValueHint, {
+  const hint = resolveIntl(intl).formatMessage(messages.maxValueHint, {
     max,
   });
 
@@ -517,7 +505,7 @@ const maxValue: ValidationFunction<number> = (max, _context, intl) => () => {
         ctx.addIssue({
           code: 'custom',
           input: value,
-          message: validationIntl(intl).formatMessage(messages.maxValueError, {
+          message: resolveIntl(intl).formatMessage(messages.maxValueError, {
             max,
           }),
           path: [],
@@ -688,13 +676,13 @@ const min: ValidationFunction<number | string> =
     const paramIsDateShaped =
       typeof minParam === 'string' && matchesDatePattern(minParam);
     const displayMin = paramIsDateShaped
-      ? formatBoundForDisplay(minParam, validationIntl(intl))
+      ? formatBoundForDisplay(minParam, resolveIntl(intl))
       : String(minParam);
     const hint = paramIsDateShaped
-      ? validationIntl(intl).formatMessage(messages.minDate, {
+      ? resolveIntl(intl).formatMessage(messages.minDate, {
           min: displayMin,
         })
-      : validationIntl(intl).formatMessage(messages.minValueHint, {
+      : resolveIntl(intl).formatMessage(messages.minValueHint, {
           min: displayMin,
         });
 
@@ -713,7 +701,7 @@ const min: ValidationFunction<number | string> =
             ctx.addIssue({
               code: 'custom',
               input: value,
-              message: validationIntl(intl).formatMessage(messages.minDate, {
+              message: resolveIntl(intl).formatMessage(messages.minDate, {
                 min: displayMin,
               }),
               path: [],
@@ -729,12 +717,9 @@ const min: ValidationFunction<number | string> =
           ctx.addIssue({
             code: 'custom',
             input: value,
-            message: validationIntl(intl).formatMessage(
-              messages.minValueError,
-              {
-                min: displayMin,
-              },
-            ),
+            message: resolveIntl(intl).formatMessage(messages.minValueError, {
+              min: displayMin,
+            }),
             path: [],
           });
         }
@@ -757,13 +742,13 @@ const max: ValidationFunction<number | string> =
     const paramIsDateShaped =
       typeof maxParam === 'string' && matchesDatePattern(maxParam);
     const displayMax = paramIsDateShaped
-      ? formatBoundForDisplay(maxParam, validationIntl(intl))
+      ? formatBoundForDisplay(maxParam, resolveIntl(intl))
       : String(maxParam);
     const hint = paramIsDateShaped
-      ? validationIntl(intl).formatMessage(messages.maxDate, {
+      ? resolveIntl(intl).formatMessage(messages.maxDate, {
           max: displayMax,
         })
-      : validationIntl(intl).formatMessage(messages.maxValueHint, {
+      : resolveIntl(intl).formatMessage(messages.maxValueHint, {
           max: displayMax,
         });
 
@@ -782,7 +767,7 @@ const max: ValidationFunction<number | string> =
             ctx.addIssue({
               code: 'custom',
               input: value,
-              message: validationIntl(intl).formatMessage(messages.maxDate, {
+              message: resolveIntl(intl).formatMessage(messages.maxDate, {
                 max: displayMax,
               }),
               path: [],
@@ -798,12 +783,9 @@ const max: ValidationFunction<number | string> =
           ctx.addIssue({
             code: 'custom',
             input: value,
-            message: validationIntl(intl).formatMessage(
-              messages.maxValueError,
-              {
-                max: displayMax,
-              },
-            ),
+            message: resolveIntl(intl).formatMessage(messages.maxValueError, {
+              max: displayMax,
+            }),
             path: [],
           });
         }
@@ -834,7 +816,7 @@ const minSelected: ValidationFunction<number> =
   (minParam, _context, intl) => () => {
     invariant(typeof minParam === 'number', 'Min items must be specified');
 
-    const hint = validationIntl(intl).formatMessage(messages.minSelectedHint, {
+    const hint = resolveIntl(intl).formatMessage(messages.minSelectedHint, {
       count: minParam,
     });
 
@@ -848,7 +830,7 @@ const minSelected: ValidationFunction<number> =
           ctx.addIssue({
             code: 'custom',
             input: value,
-            message: validationIntl(intl).formatMessage(
+            message: resolveIntl(intl).formatMessage(
               messages.minSelectedError,
               { count: minParam },
             ),
@@ -876,7 +858,7 @@ const maxSelected: ValidationFunction<number> =
   (maxParam, _context, intl) => () => {
     invariant(typeof maxParam === 'number', 'Max items must be specified');
 
-    const hint = validationIntl(intl).formatMessage(messages.maxSelectedHint, {
+    const hint = resolveIntl(intl).formatMessage(messages.maxSelectedHint, {
       count: maxParam,
     });
 
@@ -890,7 +872,7 @@ const maxSelected: ValidationFunction<number> =
           ctx.addIssue({
             code: 'custom',
             input: value,
-            message: validationIntl(intl).formatMessage(
+            message: resolveIntl(intl).formatMessage(
               messages.maxSelectedError,
               { count: maxParam },
             ),
@@ -913,7 +895,7 @@ const unique: ValidationFunction<string> = (attribute, context, intl) => () => {
   );
   const { stageSubject, network, currentEntityId } = context;
 
-  const hint = validationIntl(intl).formatMessage(messages.uniqueHint);
+  const hint = resolveIntl(intl).formatMessage(messages.uniqueHint);
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
@@ -945,7 +927,7 @@ const unique: ValidationFunction<string> = (attribute, context, intl) => () => {
       if (existingValues.some((v) => isMatchingValue(value, v))) {
         ctx.addIssue({
           code: 'custom',
-          message: validationIntl(intl).formatMessage(messages.uniqueError),
+          message: resolveIntl(intl).formatMessage(messages.uniqueError),
           path: [],
         });
       }
@@ -1026,7 +1008,7 @@ const differentFrom: ValidationFunction<string> =
     );
 
     const label = comparisonLabel(attribute, context);
-    const { message, hint } = comparisonCopy(validationIntl(intl), label, {
+    const { message, hint } = comparisonCopy(resolveIntl(intl), label, {
       error: messages.differentFromError,
       hint: messages.differentFromHint,
       labelledError: messages.differentFromLabelledError,
@@ -1070,7 +1052,7 @@ const sameAs: ValidationFunction<string> =
     );
 
     const label = comparisonLabel(attribute, context);
-    const { message, hint } = comparisonCopy(validationIntl(intl), label, {
+    const { message, hint } = comparisonCopy(resolveIntl(intl), label, {
       error: messages.sameAsError,
       hint: messages.sameAsHint,
       labelledError: messages.sameAsLabelledError,
@@ -1121,7 +1103,7 @@ const greaterThanVariable: ValidationFunction<{
   );
 
   const label = comparisonLabel(attribute, context);
-  const { message, hint } = comparisonCopy(validationIntl(intl), label, {
+  const { message, hint } = comparisonCopy(resolveIntl(intl), label, {
     error: messages.greaterThanError,
     hint: messages.greaterThanHint,
     labelledError: messages.greaterThanLabelledError,
@@ -1219,7 +1201,7 @@ const lessThanVariable: ValidationFunction<{
   );
 
   const label = comparisonLabel(attribute, context);
-  const { message, hint } = comparisonCopy(validationIntl(intl), label, {
+  const { message, hint } = comparisonCopy(resolveIntl(intl), label, {
     error: messages.lessThanError,
     hint: messages.lessThanHint,
     labelledError: messages.lessThanLabelledError,
@@ -1275,7 +1257,7 @@ const greaterThanOrEqualToVariable: ValidationFunction<{
   );
 
   const label = comparisonLabel(attribute, context);
-  const { message, hint } = comparisonCopy(validationIntl(intl), label, {
+  const { message, hint } = comparisonCopy(resolveIntl(intl), label, {
     error: messages.greaterThanOrEqualError,
     hint: messages.greaterThanOrEqualHint,
     labelledError: messages.greaterThanOrEqualLabelledError,
@@ -1329,7 +1311,7 @@ const lessThanOrEqualToVariable: ValidationFunction<{
   );
 
   const label = comparisonLabel(attribute, context);
-  const { message, hint } = comparisonCopy(validationIntl(intl), label, {
+  const { message, hint } = comparisonCopy(resolveIntl(intl), label, {
     error: messages.lessThanOrEqualError,
     hint: messages.lessThanOrEqualHint,
     labelledError: messages.lessThanOrEqualLabelledError,
@@ -1382,8 +1364,8 @@ const email =
     intl?: IntlShape,
   ) =>
   () => {
-    const hint = validationIntl(intl).formatMessage(messages.emailHint);
-    const message = validationIntl(intl).formatMessage(messages.emailError);
+    const hint = resolveIntl(intl).formatMessage(messages.emailHint);
+    const message = resolveIntl(intl).formatMessage(messages.emailError);
     const address = z.email(message);
 
     return z.unknown().check(

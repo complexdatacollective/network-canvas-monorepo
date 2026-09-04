@@ -5,6 +5,11 @@
 Every piece of copy the components supply themselves — icon labels, dialog
 buttons, empty states, validation messages, pagination and sort announcements
 — now renders through `@codaco/app-i18n` instead of being hardcoded English.
+That includes the copy with no visible home: the accessible names a control
+falls back to when the caller supplies none (progress bars, panel handles,
+number steppers, the Likert and analog scales), the drag-and-drop live-region
+announcements, and the two messages a person only sees once something has
+already failed — a submit handler that threw, and a validation rule that did.
 
 Existing hosts need no change: a component used without a locale provider
 renders exactly the English it rendered before.

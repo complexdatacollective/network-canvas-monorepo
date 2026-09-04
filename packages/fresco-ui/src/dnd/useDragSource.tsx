@@ -10,6 +10,9 @@ import {
   useState,
 } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import type { Prettify } from '../utils/prettify';
 import { useDndStore, useDndStoreApi } from './DndStoreProvider';
 import type { DragMetadata } from './types';
@@ -19,6 +22,28 @@ import {
   useAccessibilityAnnouncements,
 } from './useAccessibilityAnnouncements';
 import { findSourceZone, rafThrottle } from './utils';
+
+const messages = defineMessages({
+  unnamedItem: {
+    id: 'frescoUi.dragAndDrop.unnamedItem',
+    defaultMessage: 'Item',
+    description:
+      'Stands in for the name of the thing being dragged in live-region announcements, when the drag source supplied none.',
+  },
+  returnedToPosition: {
+    id: 'frescoUi.dragAndDrop.returnedToPosition',
+    defaultMessage: 'Drop cancelled, {name} returned to original position',
+    description:
+      'Live-region announcement after a keyboard drag ends without a drop.',
+  },
+  grabbed: {
+    id: 'frescoUi.dragAndDrop.grabbed',
+    defaultMessage:
+      '{name} grabbed, use arrow keys to navigate to drop targets, press Escape to cancel',
+    description:
+      'Live-region announcement when a keyboard drag picks something up.',
+  },
+});
 
 // Default threshold in pixels - drag won't start until cursor moves this far
 const DEFAULT_DRAG_THRESHOLD = 5;
@@ -68,6 +93,7 @@ export function useDragSource(
   const previewComponent = preview;
 
   const { announce } = useAccessibilityAnnouncements();
+  const intl = useAppIntl();
 
   const [dragMode, setDragMode] = useState<'none' | 'pointer' | 'keyboard'>(
     'none',
@@ -194,11 +220,14 @@ export function useDragSource(
       // Announce keyboard drag result for failed drops only
       // Successful drops are announced by the drop target
       if (dragMode === 'keyboard' && !isSuccessfulDrop) {
-        const itemName = announcedName ?? 'Item';
-        announce(`Drop cancelled, ${itemName} returned to original position`);
+        announce(
+          intl.formatMessage(messages.returnedToPosition, {
+            name: announcedName ?? intl.formatMessage(messages.unnamedItem),
+          }),
+        );
       }
     },
-    [endDrag, dragMode, announce, announcedName, storeApi],
+    [endDrag, dragMode, announce, announcedName, storeApi, intl],
   );
 
   const handlePointerMove = useCallback(
@@ -309,12 +338,13 @@ export function useDragSource(
       );
 
       // Announce the enhanced grab message
-      const itemName = announcedName ?? 'Item';
       announce(
-        `${itemName} grabbed, use arrow keys to navigate to drop targets, press Escape to cancel`,
+        intl.formatMessage(messages.grabbed, {
+          name: announcedName ?? intl.formatMessage(messages.unnamedItem),
+        }),
       );
     },
-    [initializeDrag, announcedName, announce],
+    [initializeDrag, announcedName, announce, intl],
   );
 
   useEffect(() => () => updatePosition.cancel(), [updatePosition]);
@@ -356,8 +386,9 @@ export function useDragSource(
           nextIndex,
           compatibleTargets.length,
           target.announcedName,
+          intl,
         );
-        announce(getKeyboardDragAnnouncement('navigate', description));
+        announce(getKeyboardDragAnnouncement('navigate', description, intl));
       }
     },
     [
@@ -366,6 +397,7 @@ export function useDragSource(
       setActiveDropTarget,
       announce,
       compatibleTargets,
+      intl,
     ],
   );
 
