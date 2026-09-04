@@ -110,7 +110,7 @@ const TableHead = React.forwardRef<
     ref={ref}
     className={cx(
       'w-0 px-6 whitespace-nowrap',
-      'text-left font-medium last:w-auto',
+      'text-start font-medium last:w-auto',
       className,
     )}
     {...props}

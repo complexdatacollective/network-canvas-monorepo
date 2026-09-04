@@ -4,6 +4,9 @@ import { Combobox } from '@base-ui/react/combobox';
 import { Check, SearchIcon } from 'lucide-react';
 import { useMemo } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import Button from '../../Button';
 import { type ComboboxOption } from '../../form/fields/Combobox/shared';
 import InputField from '../../form/fields/InputField';
@@ -11,6 +14,30 @@ import { ScrollArea } from '../../ScrollArea';
 import { dropdownItemVariants } from '../../styles/controlVariants';
 import { cx } from '../../utils/cva';
 import { type FacetedFilterConfig } from './types';
+
+const messages = defineMessages({
+  searchPlaceholder: {
+    id: 'frescoUi.facetedFilter.searchPlaceholder',
+    defaultMessage: 'Search...',
+    description: 'Placeholder for the option search input in a faceted filter.',
+  },
+  noOptions: {
+    id: 'frescoUi.facetedFilter.noOptions',
+    defaultMessage: 'No options found.',
+    description:
+      'Empty state shown when the faceted filter search matches no options.',
+  },
+  selectAll: {
+    id: 'frescoUi.facetedFilter.selectAll',
+    defaultMessage: 'Select All',
+    description: 'Button selecting every option in a faceted filter.',
+  },
+  deselectAll: {
+    id: 'frescoUi.facetedFilter.deselectAll',
+    defaultMessage: 'Deselect All',
+    description: 'Button clearing every selected option in a faceted filter.',
+  },
+});
 
 type FacetedFilterProps = {
   value: string[] | undefined;
@@ -25,6 +52,7 @@ export default function FacetedFilter({
   config,
   data,
 }: FacetedFilterProps) {
+  const intl = useAppIntl();
   const resolvedOptions =
     typeof config.options === 'function'
       ? config.options(data)
@@ -79,7 +107,7 @@ export default function FacetedFilter({
     >
       <div className="flex flex-col gap-3">
         <Combobox.Input
-          placeholder="Search..."
+          placeholder={intl.formatMessage(messages.searchPlaceholder)}
           render={({ onChange: renderOnChange, ...rest }) => {
             const inputFieldProps =
               rest as unknown as React.ComponentPropsWithRef<typeof InputField>;
@@ -95,7 +123,7 @@ export default function FacetedFilter({
           }}
         />
         <Combobox.Empty className="text-center text-sm text-current/50 italic empty:hidden">
-          No options found.
+          {intl.formatMessage(messages.noOptions)}
         </Combobox.Empty>
         <Combobox.List
           className="inset-surface max-h-64 overflow-hidden rounded-sm has-data-empty:hidden"
@@ -114,7 +142,7 @@ export default function FacetedFilter({
               <span
                 className={cx(
                   'flex-1',
-                  !selectedValues.includes(String(option.value)) && 'ml-4',
+                  !selectedValues.includes(String(option.value)) && 'ms-4',
                 )}
               >
                 {option.label}
@@ -124,10 +152,10 @@ export default function FacetedFilter({
         </Combobox.List>
         <div className="flex gap-2">
           <Button size="sm" onClick={handleSelectAll}>
-            Select All
+            {intl.formatMessage(messages.selectAll)}
           </Button>
           <Button size="sm" onClick={handleDeselectAll}>
-            Deselect All
+            {intl.formatMessage(messages.deselectAll)}
           </Button>
         </div>
       </div>

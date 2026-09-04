@@ -1,6 +1,9 @@
 import { useEffect, useId, useMemo, useRef } from 'react';
 import { useMergeRefs } from 'react-best-merge-refs';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { ScrollArea } from '../../ScrollArea';
 import { cx } from '../../utils/cva';
 import { CollectionProvider } from '../CollectionProvider';
@@ -18,6 +21,14 @@ import type { SortState } from '../sorting/types';
 import type { CollectionProps, ItemRenderer, KeyExtractor } from '../types';
 import { StaticRenderer } from './StaticRenderer';
 import { VirtualizedRenderer } from './VirtualizedRenderer';
+
+const messages = defineMessages({
+  noItems: {
+    id: 'frescoUi.collection.noItems',
+    defaultMessage: 'No items to display.',
+    description: 'Default empty state shown when a collection has no items.',
+  },
+});
 
 type CollectionContentProps<T> = Omit<
   CollectionProps<T>,
@@ -274,7 +285,7 @@ export function Collection<T extends Record<string, unknown>>({
   textValueExtractor,
   layout,
   renderItem,
-  emptyState = <>No items to display.</>,
+  emptyState,
   className,
   id,
   'aria-label': ariaLabel,
@@ -314,6 +325,8 @@ export function Collection<T extends Record<string, unknown>>({
   filterMinQueryLength,
   children,
 }: CollectionProps<T>) {
+  const intl = useAppIntl();
+
   return (
     <CollectionProvider
       items={items}
@@ -325,7 +338,7 @@ export function Collection<T extends Record<string, unknown>>({
         keyExtractor={keyExtractor}
         layout={layout}
         renderItem={renderItem as ItemRenderer<Record<string, unknown>>}
-        emptyState={emptyState}
+        emptyState={emptyState ?? intl.formatMessage(messages.noItems)}
         className={className}
         id={id}
         aria-label={ariaLabel}

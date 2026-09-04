@@ -239,8 +239,10 @@ describe('ArrayField', () => {
       type: 'remove',
       index: 0,
     });
+    // Singular: the announcement is an ICU `plural`, where the template
+    // literal it replaced said "1 items remaining".
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Removed item 1. 1 items remaining.',
+      'Removed item 1. 1 item remaining.',
     );
   });
 

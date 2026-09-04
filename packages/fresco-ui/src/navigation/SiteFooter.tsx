@@ -84,7 +84,7 @@ export default function SiteFooter({
       >
         <div className="flex justify-center pb-10">{brand}</div>
         <div className="border-outline/60 border-t pt-8">
-          <div className="flex flex-col items-center gap-6 text-center @min-[64rem]:flex-row @min-[64rem]:justify-between @min-[64rem]:text-left">
+          <div className="flex flex-col items-center gap-6 text-center @min-[64rem]:flex-row @min-[64rem]:justify-between @min-[64rem]:text-start">
             <div className="flex flex-wrap justify-center gap-x-8 gap-y-3">
               {links.map((link) => (
                 <NativeLink

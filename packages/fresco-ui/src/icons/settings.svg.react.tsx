@@ -1,9 +1,21 @@
 import type { SVGProps } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
+const messages = defineMessages({
+  title: {
+    id: 'frescoUi.icon.settings',
+    defaultMessage: 'Settings',
+    description: 'Accessible name (SVG title) of the settings icon.',
+  },
+});
+
 export default function Icon(props: SVGProps<SVGSVGElement>) {
+  const intl = useAppIntl();
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 100" {...props}>
-      <title>Settings</title>
+      <title>{intl.formatMessage(messages.title)}</title>
       <path
         className="fill-platinum-dark"
         d="M31.14 27.19h11v15h-11zM13.64 34.7l9.526-5.5 7.5 12.99-9.527 5.5zM2.408 49.929l5.5-9.57 13.05 7.5-5.5 9.57zM0 68.86v-11h15v11zM7.515 86.357l-5.5-9.527 12.99-7.5 5.5 9.527z"

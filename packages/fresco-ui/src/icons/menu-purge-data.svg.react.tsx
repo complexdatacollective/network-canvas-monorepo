@@ -1,9 +1,21 @@
 import type { SVGProps } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
+const messages = defineMessages({
+  title: {
+    id: 'frescoUi.icon.menuPurgeData',
+    defaultMessage: 'Menu - Purge Data',
+    description: 'Accessible name (SVG title) of the menu-purge-data icon.',
+  },
+});
+
 export default function Icon(props: SVGProps<SVGSVGElement>) {
+  const intl = useAppIntl();
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 70" {...props}>
-      <title>Menu - Purge Data</title>
+      <title>{intl.formatMessage(messages.title)}</title>
       <rect
         className="fill-platinum-dark"
         x="32.16"

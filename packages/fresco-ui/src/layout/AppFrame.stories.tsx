@@ -158,6 +158,84 @@ export const LongLabels: Story = {
       />
     ),
   },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const link = canvas.getByRole('link', {
+      name: 'Zum Hauptinhalt der Seite springen',
+    });
+
+    // The expanded skip-link label is rendered whole, inside its own box: a
+    // fixed width that cut the German label off would put the text outside it.
+    const range = document.createRange();
+    range.selectNodeContents(link);
+    const textBox = range.getBoundingClientRect();
+    const linkBox = link.getBoundingClientRect();
+
+    await expect(textBox.width).toBeGreaterThan(0);
+    await expect(textBox.left).toBeGreaterThanOrEqual(linkBox.left - 1);
+    await expect(textBox.right).toBeLessThanOrEqual(linkBox.right + 1);
+
+    // And the frame did not grow a horizontal scrollbar to hold the longer
+    // header and destination labels.
+    const frame = canvasElement.querySelector('header')?.parentElement;
+    await expect(frame).toBeTruthy();
+    await expect(frame!.scrollWidth).toBeLessThanOrEqual(
+      frame!.clientWidth + 1,
+    );
+  },
+};
+
+/**
+ * The frame in a right-to-left locale. Direction is inherited, not switched
+ * on: the skip link, the header row and the area all read from the other
+ * side, and the sidebar sits at the inline start — the right-hand edge.
+ */
+export const RightToLeft: Story = {
+  args: {
+    header: <DemoHeader study="رسم شبكات الدعم الاجتماعي" />,
+    skipLinkLabel: 'انتقل إلى المحتوى الرئيسي',
+    children: (
+      <DemoArea
+        areaName="إدارة الدراسة"
+        destinations={['نظرة عامة', 'المحرر', 'المشاركون', 'الجلسات']}
+      />
+    ),
+  },
+  decorators: [
+    (Story) => (
+      <div dir="rtl" className="w-[64rem]">
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const main = canvas.getByRole('main');
+    const nav = canvas.getByRole('navigation', { name: 'إدارة الدراسة' });
+
+    await expect(getComputedStyle(main).direction).toBe('rtl');
+
+    // The area is a flex row, and a flex row in RTL runs right to left: the
+    // sidebar is to the RIGHT of the main region, which is the assertion that
+    // fails the moment something in the frame forces a physical direction.
+    await expect(nav.getBoundingClientRect().left).toBeGreaterThan(
+      main.getBoundingClientRect().left,
+    );
+
+    // The skip link is still the first thing Tab reaches, and it comes into
+    // view rather than only being announced.
+    const link = canvas.getByRole('link', {
+      name: 'انتقل إلى المحتوى الرئيسي',
+    });
+    await userEvent.tab();
+    await expect(link).toHaveFocus();
+    await waitFor(() =>
+      expect(link.getBoundingClientRect().top).toBeGreaterThanOrEqual(0),
+    );
+
+    await userEvent.click(link);
+    await expect(main).toHaveFocus();
+  },
 };
 
 /**

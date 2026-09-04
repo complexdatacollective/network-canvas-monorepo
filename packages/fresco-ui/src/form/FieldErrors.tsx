@@ -122,7 +122,7 @@ export default function FieldErrors({
         >
           {messages.length === 1 && <Paragraph>{messages[0]}</Paragraph>}
           {messages.length > 1 && (
-            <ul className="list-disc space-y-1 pl-5">
+            <ul className="list-disc space-y-1 ps-5">
               {messages.map((error, index) => (
                 <li key={`${error}-${index}`}>{error}</li>
               ))}

@@ -17,6 +17,9 @@ import {
 } from 'motion/react';
 import * as React from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { Button, type ButtonProps, IconButton } from '../Button';
 import {
   DropdownMenu,
@@ -241,6 +244,20 @@ type ToolbarContextValue = {
   size: SegmentSize;
   reduceMotion: boolean;
 };
+
+const messages = defineMessages({
+  moveToolbar: {
+    id: 'frescoUi.segmentedToolbar.moveToolbar',
+    defaultMessage: 'Move toolbar',
+    description: 'Default accessible name of the toolbar drag handle.',
+  },
+  toolbarMoved: {
+    id: 'frescoUi.segmentedToolbar.toolbarMoved',
+    defaultMessage: 'Toolbar moved to {x}, {y}',
+    description:
+      'Screen-reader announcement after the toolbar is nudged with the keyboard; {x} and {y} are pixel coordinates.',
+  },
+});
 
 const ToolbarContext = React.createContext<ToolbarContextValue | null>(null);
 const GroupDisabledContext = React.createContext(false);
@@ -857,11 +874,12 @@ export function SegmentedToolbar({
   position,
   onPositionChange,
   dragConstraints,
-  dragHandleLabel = 'Move toolbar',
+  dragHandleLabel,
   className,
   disabled = false,
   ...props
 }: SegmentedToolbarProps) {
+  const intl = useAppIntl();
   const reduceMotion = useReducedMotion() ?? false;
   const layoutGroupId = React.useId();
   const dragControls = useDragControls();
@@ -914,7 +932,10 @@ export function SegmentedToolbar({
     y.set(next.y);
     onPositionChange?.(next);
     setAnnouncement(
-      `Toolbar moved to ${Math.round(next.x)}, ${Math.round(next.y)}`,
+      intl.formatMessage(messages.toolbarMoved, {
+        x: Math.round(next.x),
+        y: Math.round(next.y),
+      }),
     );
   };
 
@@ -1003,7 +1024,7 @@ export function SegmentedToolbar({
         className={cx(rootLayoutVariants({ orientation }), className)}
       >
         <DragHandle
-          label={dragHandleLabel}
+          label={dragHandleLabel ?? intl.formatMessage(messages.moveToolbar)}
           orientation={orientation}
           size={size}
           onPointerDown={(event) => dragControls.start(event)}

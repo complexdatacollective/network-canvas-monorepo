@@ -2,6 +2,8 @@ import { debounce } from 'es-toolkit';
 import { type ReactNode, useCallback, useEffect, useId, useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import {
   type FieldElements,
   fieldDescribedBy,
@@ -203,6 +205,12 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     ...validationProps
   } = config;
 
+  // The field layer is where validation copy becomes text: the rules build
+  // message descriptors, and this formatter (the host's when a provider is
+  // mounted, an English one otherwise) renders them, so what reaches the form
+  // store, `onSubmitInvalid`, and Zod issues stays a plain string.
+  const intl = useAppIntl();
+
   const namespace = useFieldNamespacePath();
   const namespaceName = useFieldNamespace();
   const resolvedPath = useMemo(
@@ -244,17 +252,19 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   };
 
   const validation = useMemo(
-    () => makeValidationFunction(propsWithContext),
+    () => makeValidationFunction(propsWithContext, intl),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [validationPropsJson, resolvedValidationContext],
+    [validationPropsJson, resolvedValidationContext, intl],
   );
 
   // Memoize the validation summary (only compute if showValidationHints is true)
   const validationSummary = useMemo(
     () =>
-      showValidationHints ? makeValidationHints(propsWithContext) : undefined,
+      showValidationHints
+        ? makeValidationHints(propsWithContext, intl)
+        : undefined,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [showValidationHints, validationPropsJson, resolvedValidationContext],
+    [showValidationHints, validationPropsJson, resolvedValidationContext, intl],
   );
 
   const fieldState = useFormStore((state) =>

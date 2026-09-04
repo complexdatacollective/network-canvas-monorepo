@@ -1,11 +1,23 @@
 import type { CSSProperties, SVGProps } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 type IconStyle = CSSProperties & {
   '--icon-tone-primary'?: string;
   '--icon-tone-secondary'?: string;
 };
 
+const messages = defineMessages({
+  title: {
+    id: 'frescoUi.icon.links',
+    defaultMessage: 'Links',
+    description: 'Accessible name (SVG title) of the links icon.',
+  },
+});
+
 export default function Icon({ style, ...props }: SVGProps<SVGSVGElement>) {
+  const intl = useAppIntl();
   const iconStyle: IconStyle = {
     '--icon-tone-primary': 'oklch(var(--platinum--dark))',
     '--icon-tone-secondary': 'oklch(var(--platinum))',
@@ -19,7 +31,7 @@ export default function Icon({ style, ...props }: SVGProps<SVGSVGElement>) {
       style={iconStyle}
       {...props}
     >
-      <title>Links</title>
+      <title>{intl.formatMessage(messages.title)}</title>
       <circle fill="var(--icon-tone-primary)" cx="49" cy="11" r="11" />
       <circle fill="var(--icon-tone-primary)" cx="49" cy="49" r="11" />
       <circle fill="var(--icon-tone-primary)" cx="11" cy="30" r="11" />

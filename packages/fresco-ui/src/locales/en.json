@@ -1,0 +1,846 @@
+{
+  "frescoUi.appUpdateIndicator.availableSummaryKnownVersion": {
+    "defaultMessage": "You are currently using version {currentVersion}. This update will install version {availableVersion}.",
+    "description": "Update dialog summary when the incoming version number is known."
+  },
+  "frescoUi.appUpdateIndicator.availableSummaryLatest": {
+    "defaultMessage": "You are currently using version {currentVersion}. This update will install the latest available version.",
+    "description": "Update dialog summary when the incoming version number is not known."
+  },
+  "frescoUi.appUpdateIndicator.changelogLabel": {
+    "defaultMessage": "{appName} changelog",
+    "description": "Accessible name of the scrollable release-notes region in the update dialog."
+  },
+  "frescoUi.appUpdateIndicator.installAndReload": {
+    "defaultMessage": "Install and reload",
+    "description": "Install button label that applies the update and reloads the app."
+  },
+  "frescoUi.appUpdateIndicator.installFailed": {
+    "defaultMessage": "The update could not be applied. Try again, or close and reopen the app.",
+    "description": "Error feedback when applying the update failed."
+  },
+  "frescoUi.appUpdateIndicator.installing": {
+    "defaultMessage": "Installing the update…",
+    "description": "Progress feedback while the update is being applied."
+  },
+  "frescoUi.appUpdateIndicator.installingButton": {
+    "defaultMessage": "Installing…",
+    "description": "Install button label while the update is being applied."
+  },
+  "frescoUi.appUpdateIndicator.loadingReleaseNotes": {
+    "defaultMessage": "Loading release notes…",
+    "description": "Shown in the update dialog while release notes load."
+  },
+  "frescoUi.appUpdateIndicator.recentlyUpdatedBody": {
+    "defaultMessage": "Your app was recently updated. Find details of the changes below.",
+    "description": "Update dialog description after an update has already been applied."
+  },
+  "frescoUi.appUpdateIndicator.recentlyUpdatedTitle": {
+    "defaultMessage": "App Recently Updated",
+    "description": "Title of the update dialog after an update was already applied."
+  },
+  "frescoUi.appUpdateIndicator.releaseNotesUnavailable": {
+    "defaultMessage": "Release notes are unavailable right now.",
+    "description": "Shown in the update dialog when release notes could not be loaded."
+  },
+  "frescoUi.appUpdateIndicator.updateAvailablePill": {
+    "defaultMessage": "An update is available. View what's new in {appName}.",
+    "description": "Accessible name of the indicator pill while an update is waiting to install."
+  },
+  "frescoUi.appUpdateIndicator.updateAvailableTitle": {
+    "defaultMessage": "Update available",
+    "description": "Title of the update dialog while an update is waiting to install."
+  },
+  "frescoUi.appUpdateIndicator.updatedPill": {
+    "defaultMessage": "{appName} was updated. View what's new.",
+    "description": "Accessible name of the indicator pill after an update was applied."
+  },
+  "frescoUi.appUpdateIndicator.updatedTooltip": {
+    "defaultMessage": "{appName} was updated!",
+    "description": "Tooltip on the indicator pill after an update was applied."
+  },
+  "frescoUi.arrayField.addItem": {
+    "defaultMessage": "Add Item",
+    "description": "Default label of the button that adds a list item."
+  },
+  "frescoUi.arrayField.addedItem": {
+    "defaultMessage": "Added item at position {position} of {count}.",
+    "description": "Screen-reader announcement after a new list item is added."
+  },
+  "frescoUi.arrayField.emptyState": {
+    "defaultMessage": "No items added yet. Click \"Add Item\" to get started.",
+    "description": "Default empty state of the list field; mention the add button by its default label."
+  },
+  "frescoUi.arrayField.movedItem": {
+    "defaultMessage": "Moved item {from} to position {to} of {count}.",
+    "description": "Screen-reader announcement after a list item is reordered."
+  },
+  "frescoUi.arrayField.removedItem": {
+    "defaultMessage": "Removed item {position}. {count, plural, one {# item remaining} other {# items remaining}}.",
+    "description": "Screen-reader announcement after a list item is deleted."
+  },
+  "frescoUi.arrayField.reorderHandle": {
+    "defaultMessage": "Reorder item {index} of {count}",
+    "description": "Default accessible name of the drag handle on one list item."
+  },
+  "frescoUi.arrayField.reorderInstructions": {
+    "defaultMessage": "Drag to reorder. Use the up and down arrow keys with the handle focused.",
+    "description": "Tooltip explaining how to operate the reorder drag handle."
+  },
+  "frescoUi.booleanField.no": {
+    "defaultMessage": "No",
+    "description": "Default negative option of a yes/no field."
+  },
+  "frescoUi.booleanField.resetAnswer": {
+    "defaultMessage": "Reset answer",
+    "description": "Action that clears the answer to a yes/no field."
+  },
+  "frescoUi.booleanField.yes": {
+    "defaultMessage": "Yes",
+    "description": "Default affirmative option of a yes/no field."
+  },
+  "frescoUi.collection.noItems": {
+    "defaultMessage": "No items to display.",
+    "description": "Default empty state shown when a collection has no items."
+  },
+  "frescoUi.collectionFilterInput.clearSearch": {
+    "defaultMessage": "Clear search",
+    "description": "Accessible name of the button that clears the collection filter query."
+  },
+  "frescoUi.collectionFilterInput.filter": {
+    "defaultMessage": "Filter",
+    "description": "Accessible name of the collection filter input."
+  },
+  "frescoUi.collectionFilterInput.indexing": {
+    "defaultMessage": "Indexing...",
+    "description": "Status text shown while the collection filter builds its search index."
+  },
+  "frescoUi.collectionFilterInput.resultCount": {
+    "defaultMessage": "{count, plural, one {# result} other {# results}}",
+    "description": "Match total shown inside the filter input while a filter is active."
+  },
+  "frescoUi.collectionFilterInput.searchPlaceholder": {
+    "defaultMessage": "Search...",
+    "description": "Default placeholder for the collection filter input."
+  },
+  "frescoUi.collectionFilterInput.searching": {
+    "defaultMessage": "Searching...",
+    "description": "Status text shown while the collection filter is running a search."
+  },
+  "frescoUi.collectionSortButton.accessibleName": {
+    "defaultMessage": "{state, select, ascending {Sort by {label} (ascending)} descending {Sort by {label} (descending)} other {Sort by {label}}}",
+    "description": "Accessible name of a sort button; {state} is \"ascending\" or \"descending\" while this sort is active, and \"inactive\" otherwise. {label} is the host-supplied field name."
+  },
+  "frescoUi.collectionSortSelect.clearSorting": {
+    "defaultMessage": "Clear sorting",
+    "description": "Menu action removing the active collection sort."
+  },
+  "frescoUi.collectionSortSelect.placeholder": {
+    "defaultMessage": "Sort by...",
+    "description": "Default label of the sort dropdown trigger when no sort is active."
+  },
+  "frescoUi.collectionSortSelect.toggleDirection": {
+    "defaultMessage": "{direction, select, asc {Sort ascending, click to toggle} other {Sort descending, click to toggle}}",
+    "description": "Accessible name of the sort-direction toggle button; announces the current direction."
+  },
+  "frescoUi.columnHeader.applyFilter": {
+    "defaultMessage": "Apply",
+    "description": "Button applying the filter being edited for a column."
+  },
+  "frescoUi.columnHeader.clearFilter": {
+    "defaultMessage": "Clear",
+    "description": "Button discarding the filter being edited for a column."
+  },
+  "frescoUi.columnHeader.clearSort": {
+    "defaultMessage": "Clear sort",
+    "description": "Column menu action removing the sort on this column."
+  },
+  "frescoUi.columnHeader.filterAction": {
+    "defaultMessage": "{isFiltered, select, true {Edit filter} other {Filter}}",
+    "description": "Column menu action opening the filter editor; says whether a filter already exists on the column."
+  },
+  "frescoUi.columnHeader.sortAscending": {
+    "defaultMessage": "Sort ascending",
+    "description": "Column menu action sorting the table in ascending order."
+  },
+  "frescoUi.columnHeader.sortDescending": {
+    "defaultMessage": "Sort descending",
+    "description": "Column menu action sorting the table in descending order."
+  },
+  "frescoUi.combobox.allSelected": {
+    "defaultMessage": "All {plural} selected ({count})",
+    "description": "Trigger label when every option is selected; {plural} is the host-supplied plural noun (e.g. \"items\")."
+  },
+  "frescoUi.combobox.defaultPlural": {
+    "defaultMessage": "items",
+    "description": "Default plural noun interpolated into the combobox selection summary."
+  },
+  "frescoUi.combobox.defaultSingular": {
+    "defaultMessage": "item",
+    "description": "Default singular noun interpolated into the combobox selection summary."
+  },
+  "frescoUi.combobox.deselectAll": {
+    "defaultMessage": "Deselect All",
+    "description": "Button clearing the combobox selection."
+  },
+  "frescoUi.combobox.noItems": {
+    "defaultMessage": "No items found.",
+    "description": "Default empty state shown when the combobox search matches nothing."
+  },
+  "frescoUi.combobox.placeholder": {
+    "defaultMessage": "Select items...",
+    "description": "Default placeholder of the multi-select combobox trigger."
+  },
+  "frescoUi.combobox.searchPlaceholder": {
+    "defaultMessage": "Search...",
+    "description": "Default placeholder of the search input inside the combobox popup."
+  },
+  "frescoUi.combobox.selectAll": {
+    "defaultMessage": "Select All",
+    "description": "Button selecting every enabled combobox option."
+  },
+  "frescoUi.combobox.someSelected": {
+    "defaultMessage": "{count, plural, one {# {singular} selected} other {# {plural} selected}}",
+    "description": "Trigger label summarising the selection; {singular} and {plural} are host-supplied noun forms (e.g. \"item\"/\"items\")."
+  },
+  "frescoUi.dataTable.noResults": {
+    "defaultMessage": "No results.",
+    "description": "Default empty state shown when a table has no rows."
+  },
+  "frescoUi.dataTableFacetedFilter.noOptions": {
+    "defaultMessage": "No {title} found.",
+    "description": "Empty state of the faceted column filter; {title} is the host-supplied column heading."
+  },
+  "frescoUi.dataTableFacetedFilter.placeholder": {
+    "defaultMessage": "Filter {title}...",
+    "description": "Placeholder of the faceted column filter; {title} is the host-supplied column heading."
+  },
+  "frescoUi.dataTableFacetedFilter.searchPlaceholder": {
+    "defaultMessage": "Search {title}...",
+    "description": "Placeholder of the search box inside the faceted column filter; {title} is the host-supplied column heading."
+  },
+  "frescoUi.dataTableFloatingBar.close": {
+    "defaultMessage": "Close selection bar",
+    "description": "Accessible name of the button that clears the selection and dismisses the floating action bar."
+  },
+  "frescoUi.dataTableFloatingBar.rowsSelected": {
+    "defaultMessage": "{count, plural, one {# row selected} other {# rows selected}}",
+    "description": "Selection summary shown in the floating action bar above a table."
+  },
+  "frescoUi.dataTablePagination.firstPage": {
+    "defaultMessage": "Go to first page",
+    "description": "Accessible name of the first-page pagination button."
+  },
+  "frescoUi.dataTablePagination.lastPage": {
+    "defaultMessage": "Go to last page",
+    "description": "Accessible name of the last-page pagination button."
+  },
+  "frescoUi.dataTablePagination.nextPage": {
+    "defaultMessage": "Go to next page",
+    "description": "Accessible name of the next-page pagination button."
+  },
+  "frescoUi.dataTablePagination.pageOf": {
+    "defaultMessage": "Page {page} of {pageCount}",
+    "description": "Current page position indicator shown between the table pagination controls."
+  },
+  "frescoUi.dataTablePagination.previousPage": {
+    "defaultMessage": "Go to previous page",
+    "description": "Accessible name of the previous-page pagination button."
+  },
+  "frescoUi.dataTablePagination.rowsPerPage": {
+    "defaultMessage": "Rows per page",
+    "description": "Label for the table page-size selector."
+  },
+  "frescoUi.dataTableToolbar.clearFilters": {
+    "defaultMessage": "Clear Filters",
+    "description": "Button that removes every active table filter."
+  },
+  "frescoUi.dataTableToolbar.searchPlaceholder": {
+    "defaultMessage": "Filter {title}...",
+    "description": "Placeholder of a column search box in the table toolbar; {title} is the host-supplied column heading."
+  },
+  "frescoUi.dateFilter.presetLastDays": {
+    "defaultMessage": "Last {days} days",
+    "description": "Relative date-range preset covering the last {days} days up to today."
+  },
+  "frescoUi.dateFilter.presetToday": {
+    "defaultMessage": "Today",
+    "description": "Relative date-range preset covering the current day."
+  },
+  "frescoUi.dateFilter.rangeSeparator": {
+    "defaultMessage": "to",
+    "description": "Word shown between the start and end date inputs of a date-range filter."
+  },
+  "frescoUi.datePicker.month": {
+    "defaultMessage": "Month",
+    "description": "Label and placeholder of the month dropdown."
+  },
+  "frescoUi.datePicker.year": {
+    "defaultMessage": "Year",
+    "description": "Label and placeholder of the year dropdown."
+  },
+  "frescoUi.dialogProvider.areYouSure": {
+    "defaultMessage": "Are you sure?",
+    "description": "Default title of a confirmation dialog."
+  },
+  "frescoUi.dialogProvider.cannotBeUndone": {
+    "defaultMessage": "This action cannot be undone.",
+    "description": "Default description of a confirmation dialog."
+  },
+  "frescoUi.dialogProvider.continueEditing": {
+    "defaultMessage": "Continue editing",
+    "description": "Default cancel action of the dialog asking whether to abandon a wizard mid-way."
+  },
+  "frescoUi.dialogProvider.errorOccurred": {
+    "defaultMessage": "An error occurred",
+    "description": "Fallback error shown in a confirmation dialog when the failing action carries no message of its own."
+  },
+  "frescoUi.dialogProvider.exitAndLoseProgress": {
+    "defaultMessage": "Exit and lose progress",
+    "description": "Default confirm action of the dialog asking whether to abandon a wizard mid-way."
+  },
+  "frescoUi.dialogProvider.pleaseWait": {
+    "defaultMessage": "Please wait...",
+    "description": "Label shown on a confirm button while its action is still running."
+  },
+  "frescoUi.dialogProvider.submit": {
+    "defaultMessage": "Submit",
+    "description": "Default submit action of a form dialog."
+  },
+  "frescoUi.facetedFilter.deselectAll": {
+    "defaultMessage": "Deselect All",
+    "description": "Button clearing every selected option in a faceted filter."
+  },
+  "frescoUi.facetedFilter.noOptions": {
+    "defaultMessage": "No options found.",
+    "description": "Empty state shown when the faceted filter search matches no options."
+  },
+  "frescoUi.facetedFilter.searchPlaceholder": {
+    "defaultMessage": "Search...",
+    "description": "Placeholder for the option search input in a faceted filter."
+  },
+  "frescoUi.facetedFilter.selectAll": {
+    "defaultMessage": "Select All",
+    "description": "Button selecting every option in a faceted filter."
+  },
+  "frescoUi.icon.addAContextSingle": {
+    "defaultMessage": "Add a context",
+    "description": "Accessible name (SVG title) of the add-a-context-single icon."
+  },
+  "frescoUi.icon.addAPersonSingle": {
+    "defaultMessage": "Add a person",
+    "description": "Accessible name (SVG title) of the add-a-person-single icon."
+  },
+  "frescoUi.icon.addAPlaceSingle": {
+    "defaultMessage": "Add a place",
+    "description": "Accessible name (SVG title) of the add-a-place-single icon."
+  },
+  "frescoUi.icon.addAProtocolSingle": {
+    "defaultMessage": "Add a protocol",
+    "description": "Accessible name (SVG title) of the add-a-protocol-single icon."
+  },
+  "frescoUi.icon.addARelationshipSingle": {
+    "defaultMessage": "Add a relationship",
+    "description": "Accessible name (SVG title) of the add-a-relationship-single icon."
+  },
+  "frescoUi.icon.addAScreen": {
+    "defaultMessage": "Add A Screen",
+    "description": "Accessible name (SVG title) of the add-a-screen icon."
+  },
+  "frescoUi.icon.contexts": {
+    "defaultMessage": "Contexts",
+    "description": "Accessible name (SVG title) of the contexts icon."
+  },
+  "frescoUi.icon.delete": {
+    "defaultMessage": "Delete",
+    "description": "Accessible name (SVG title) of the delete icon."
+  },
+  "frescoUi.icon.edit": {
+    "defaultMessage": "Edit",
+    "description": "Accessible name (SVG title) of the edit icon."
+  },
+  "frescoUi.icon.error": {
+    "defaultMessage": "Error",
+    "description": "Accessible name (SVG title) of the error icon."
+  },
+  "frescoUi.icon.highlighted": {
+    "defaultMessage": "Highlighted",
+    "description": "Accessible name (SVG title) of the highlighted icon."
+  },
+  "frescoUi.icon.info": {
+    "defaultMessage": "Info",
+    "description": "Accessible name (SVG title) of the info icon."
+  },
+  "frescoUi.icon.links": {
+    "defaultMessage": "Links",
+    "description": "Accessible name (SVG title) of the links icon."
+  },
+  "frescoUi.icon.menu": {
+    "defaultMessage": "Menu",
+    "description": "Accessible name (SVG title) of the menu icon."
+  },
+  "frescoUi.icon.menuCategory": {
+    "defaultMessage": "Menu - CAT",
+    "description": "Accessible name (SVG title) of the menu-category icon."
+  },
+  "frescoUi.icon.menuCustomInterface": {
+    "defaultMessage": "Menu - Custom Interface",
+    "description": "Accessible name (SVG title) of the menu-custom-interface icon."
+  },
+  "frescoUi.icon.menuDefaultInterface": {
+    "defaultMessage": "Menu - Default Interface",
+    "description": "Accessible name (SVG title) of the menu-default-interface icon."
+  },
+  "frescoUi.icon.menuDownloadData": {
+    "defaultMessage": "Menu - Download Data",
+    "description": "Accessible name (SVG title) of the menu-download-data icon."
+  },
+  "frescoUi.icon.menuMap": {
+    "defaultMessage": "Menu - Map",
+    "description": "Accessible name (SVG title) of the menu-map icon."
+  },
+  "frescoUi.icon.menuNameGenerator": {
+    "defaultMessage": "Menu - NG",
+    "description": "Accessible name (SVG title) of the menu-name-generator icon."
+  },
+  "frescoUi.icon.menuNewSession": {
+    "defaultMessage": "Menu - New Session",
+    "description": "Accessible name (SVG title) of the menu-new-session icon."
+  },
+  "frescoUi.icon.menuOrdinal": {
+    "defaultMessage": "Menu - ORD",
+    "description": "Accessible name (SVG title) of the menu-ordinal icon."
+  },
+  "frescoUi.icon.menuPurgeData": {
+    "defaultMessage": "Menu - Purge Data",
+    "description": "Accessible name (SVG title) of the menu-purge-data icon."
+  },
+  "frescoUi.icon.menuQuit": {
+    "defaultMessage": "Menu - Quit",
+    "description": "Accessible name (SVG title) of the menu-quit icon."
+  },
+  "frescoUi.icon.menuSociogram": {
+    "defaultMessage": "Menu - Sociogram",
+    "description": "Accessible name (SVG title) of the menu-sociogram icon."
+  },
+  "frescoUi.icon.move": {
+    "defaultMessage": "Move",
+    "description": "Accessible name (SVG title) of the move icon."
+  },
+  "frescoUi.icon.protocolCard": {
+    "defaultMessage": "Protocol card",
+    "description": "Accessible name (SVG title) of the protocol-card icon."
+  },
+  "frescoUi.icon.reset": {
+    "defaultMessage": "Reset",
+    "description": "Accessible name (SVG title) of the reset icon."
+  },
+  "frescoUi.icon.settings": {
+    "defaultMessage": "Settings",
+    "description": "Accessible name (SVG title) of the settings icon."
+  },
+  "frescoUi.icon.success": {
+    "defaultMessage": "Success",
+    "description": "Accessible name (SVG title) of the success icon."
+  },
+  "frescoUi.icon.tick": {
+    "defaultMessage": "Tick",
+    "description": "Accessible name (SVG title) of the tick icon."
+  },
+  "frescoUi.icon.trashBin": {
+    "defaultMessage": "Trash bin",
+    "description": "Accessible name (SVG title) of the trash-bin icon."
+  },
+  "frescoUi.icon.warning": {
+    "defaultMessage": "Warning",
+    "description": "Accessible name (SVG title) of the warning icon."
+  },
+  "frescoUi.node.defaultLabel": {
+    "defaultMessage": "Node",
+    "description": "Default label rendered inside a network node when the host supplies none."
+  },
+  "frescoUi.operatorFilter.add": {
+    "defaultMessage": "Add",
+    "description": "Button that adds the composed condition to the network-data filter."
+  },
+  "frescoUi.operatorFilter.and": {
+    "defaultMessage": "and",
+    "description": "Conjunction displayed on its own line between two filter conditions that both apply."
+  },
+  "frescoUi.operatorFilter.emptyHint": {
+    "defaultMessage": "Add a condition to filter by network data",
+    "description": "Hint shown in the network-data filter before any condition exists."
+  },
+  "frescoUi.operatorFilter.operatorEq": {
+    "defaultMessage": "is equal to (=)",
+    "description": "Comparison operator option in the network-data filter."
+  },
+  "frescoUi.operatorFilter.operatorGt": {
+    "defaultMessage": "is greater than (>)",
+    "description": "Comparison operator option in the network-data filter."
+  },
+  "frescoUi.operatorFilter.operatorGte": {
+    "defaultMessage": "is at least (≥)",
+    "description": "Comparison operator option in the network-data filter."
+  },
+  "frescoUi.operatorFilter.operatorLt": {
+    "defaultMessage": "is less than (<)",
+    "description": "Comparison operator option in the network-data filter."
+  },
+  "frescoUi.operatorFilter.operatorLte": {
+    "defaultMessage": "is at most (≤)",
+    "description": "Comparison operator option in the network-data filter."
+  },
+  "frescoUi.operatorFilter.removeCondition": {
+    "defaultMessage": "Remove condition",
+    "description": "Accessible name of the button that deletes one filter condition."
+  },
+  "frescoUi.operatorFilter.selectType": {
+    "defaultMessage": "Select type...",
+    "description": "Placeholder for the entity-type selector in the network-data filter."
+  },
+  "frescoUi.operatorFilter.showInterviewsWhere": {
+    "defaultMessage": "Show interviews where:",
+    "description": "Heading above the list of network-data filter conditions on the interviews table."
+  },
+  "frescoUi.passwordField.placeholder": {
+    "defaultMessage": "Enter password",
+    "description": "Default placeholder of a password input."
+  },
+  "frescoUi.passwordField.strengthFair": {
+    "defaultMessage": "Fair",
+    "description": "Password strength rating shown beside the meter."
+  },
+  "frescoUi.passwordField.strengthGood": {
+    "defaultMessage": "Good",
+    "description": "Password strength rating shown beside the meter."
+  },
+  "frescoUi.passwordField.strengthMeterLabel": {
+    "defaultMessage": "Password strength",
+    "description": "Accessible name of the password strength meter."
+  },
+  "frescoUi.passwordField.strengthStrong": {
+    "defaultMessage": "Strong",
+    "description": "Password strength rating shown beside the meter."
+  },
+  "frescoUi.passwordField.strengthWeak": {
+    "defaultMessage": "Weak",
+    "description": "Password strength rating shown beside the meter."
+  },
+  "frescoUi.passwordField.toggleVisibility": {
+    "defaultMessage": "{visible, select, true {Hide password} other {Show password}}",
+    "description": "Accessible name of the visibility toggle; says what pressing it will do."
+  },
+  "frescoUi.rangeFilter.maximum": {
+    "defaultMessage": "Maximum",
+    "description": "Accessible name of the upper-bound slider in a numeric range filter."
+  },
+  "frescoUi.rangeFilter.minimum": {
+    "defaultMessage": "Minimum",
+    "description": "Accessible name of the lower-bound slider in a numeric range filter."
+  },
+  "frescoUi.richTextEditor.applyLink": {
+    "defaultMessage": "Apply link",
+    "description": "Accessible name of the link popover button that applies the link."
+  },
+  "frescoUi.richTextEditor.applyLinkShort": {
+    "defaultMessage": "Apply",
+    "description": "Visible label of the link popover button applying the link."
+  },
+  "frescoUi.richTextEditor.bold": {
+    "defaultMessage": "Bold",
+    "description": "Accessible name of the bold toggle in the editor toolbar."
+  },
+  "frescoUi.richTextEditor.bulletList": {
+    "defaultMessage": "Bullet list",
+    "description": "Accessible name of the bullet-list toggle in the editor toolbar."
+  },
+  "frescoUi.richTextEditor.heading1": {
+    "defaultMessage": "Heading 1",
+    "description": "Accessible name of the level-1 heading toggle in the editor toolbar."
+  },
+  "frescoUi.richTextEditor.heading2": {
+    "defaultMessage": "Heading 2",
+    "description": "Accessible name of the level-2 heading toggle in the editor toolbar."
+  },
+  "frescoUi.richTextEditor.heading3": {
+    "defaultMessage": "Heading 3",
+    "description": "Accessible name of the level-3 heading toggle in the editor toolbar."
+  },
+  "frescoUi.richTextEditor.heading4": {
+    "defaultMessage": "Heading 4",
+    "description": "Accessible name of the level-4 heading toggle in the editor toolbar."
+  },
+  "frescoUi.richTextEditor.italic": {
+    "defaultMessage": "Italic",
+    "description": "Accessible name of the italic toggle in the editor toolbar."
+  },
+  "frescoUi.richTextEditor.linkButton": {
+    "defaultMessage": "{hasLink, select, true {Edit link} other {Add link}}",
+    "description": "Accessible name of the toolbar link button; says whether it will edit the existing link or add one."
+  },
+  "frescoUi.richTextEditor.linkUrlLabel": {
+    "defaultMessage": "Link URL",
+    "description": "Label of the URL input in the link popover."
+  },
+  "frescoUi.richTextEditor.linkUrlPlaceholder": {
+    "defaultMessage": "https://example.com",
+    "description": "Example URL shown as the placeholder of the link popover input."
+  },
+  "frescoUi.richTextEditor.numberedList": {
+    "defaultMessage": "Numbered list",
+    "description": "Accessible name of the ordered-list toggle in the editor toolbar."
+  },
+  "frescoUi.richTextEditor.redo": {
+    "defaultMessage": "Redo",
+    "description": "Accessible name of the redo button in the editor toolbar."
+  },
+  "frescoUi.richTextEditor.removeLink": {
+    "defaultMessage": "Remove link",
+    "description": "Accessible name of the link popover button that removes the link."
+  },
+  "frescoUi.richTextEditor.removeLinkShort": {
+    "defaultMessage": "Remove",
+    "description": "Visible label of the link popover button removing the link."
+  },
+  "frescoUi.richTextEditor.thematicBreak": {
+    "defaultMessage": "Thematic break",
+    "description": "Accessible name of the toolbar button inserting a horizontal rule."
+  },
+  "frescoUi.richTextEditor.undo": {
+    "defaultMessage": "Undo",
+    "description": "Accessible name of the undo button in the editor toolbar."
+  },
+  "frescoUi.segmentedToolbar.moveToolbar": {
+    "defaultMessage": "Move toolbar",
+    "description": "Default accessible name of the toolbar drag handle."
+  },
+  "frescoUi.segmentedToolbar.toolbarMoved": {
+    "defaultMessage": "Toolbar moved to {x}, {y}",
+    "description": "Screen-reader announcement after the toolbar is nudged with the keyboard; {x} and {y} are pixel coordinates."
+  },
+  "frescoUi.selectAllHeader.deselectAll": {
+    "defaultMessage": "Deselect all",
+    "description": "Menu action clearing the table row selection."
+  },
+  "frescoUi.selectAllHeader.selectAll": {
+    "defaultMessage": "Select all ({count})",
+    "description": "Menu action selecting every row in the table; {count} is the total number of rows."
+  },
+  "frescoUi.selectAllHeader.selectAllOnPage": {
+    "defaultMessage": "Select all on page",
+    "description": "Accessible name of the header checkbox that selects every row on the current table page."
+  },
+  "frescoUi.selectAllHeader.selectPage": {
+    "defaultMessage": "Select page ({count})",
+    "description": "Menu action selecting every row on the current page; {count} is the number of rows on the page."
+  },
+  "frescoUi.selectAllHeader.selectionOptions": {
+    "defaultMessage": "Selection options",
+    "description": "Accessible name of the dropdown offering page-wide and table-wide selection actions."
+  },
+  "frescoUi.selectField.placeholder": {
+    "defaultMessage": "Select an option…",
+    "description": "Default placeholder option of a native select."
+  },
+  "frescoUi.storageRiskBanner.dismiss": {
+    "defaultMessage": "Dismiss",
+    "description": "Accessible name of the banner dismiss button."
+  },
+  "frescoUi.storageRiskBanner.highRisk": {
+    "defaultMessage": "High data-loss risk",
+    "description": "Context label announced before a high-risk browser-storage warning."
+  },
+  "frescoUi.storageRiskBanner.install": {
+    "defaultMessage": "Install",
+    "description": "Default label of the banner action that installs the app to reduce data-loss risk."
+  },
+  "frescoUi.storageRiskBanner.lowRisk": {
+    "defaultMessage": "Low data-loss risk",
+    "description": "Context label announced before a low-risk browser-storage warning."
+  },
+  "frescoUi.storageRiskBanner.mediumRisk": {
+    "defaultMessage": "Medium data-loss risk",
+    "description": "Context label announced before a medium-risk browser-storage warning."
+  },
+  "frescoUi.validation.differentFromError": {
+    "defaultMessage": "Your answer must be different from your earlier answer.",
+    "description": "Error for a must-differ comparison when the other answer has no visible label."
+  },
+  "frescoUi.validation.differentFromHint": {
+    "defaultMessage": "Must be different from your earlier answer.",
+    "description": "Hint for a must-differ comparison when the other answer has no visible label."
+  },
+  "frescoUi.validation.differentFromLabelledError": {
+    "defaultMessage": "Your answer must be different from your answer to ''{label}''.",
+    "description": "Error for a must-differ comparison naming the other question."
+  },
+  "frescoUi.validation.differentFromLabelledHint": {
+    "defaultMessage": "Must be different from your answer to ''{label}''.",
+    "description": "Hint for a must-differ comparison naming the other question."
+  },
+  "frescoUi.validation.emailError": {
+    "defaultMessage": "Enter a valid email address.",
+    "description": "Error shown when a value is not a valid email address."
+  },
+  "frescoUi.validation.emailHint": {
+    "defaultMessage": "Must be a valid email address.",
+    "description": "Hint summarising an email-format rule."
+  },
+  "frescoUi.validation.greaterThanError": {
+    "defaultMessage": "Your answer must be greater than your earlier answer.",
+    "description": "Error for a must-be-greater comparison when the other answer has no visible label."
+  },
+  "frescoUi.validation.greaterThanHint": {
+    "defaultMessage": "Must be greater than your earlier answer.",
+    "description": "Hint for a must-be-greater comparison when the other answer has no visible label."
+  },
+  "frescoUi.validation.greaterThanLabelledError": {
+    "defaultMessage": "Your answer must be greater than your answer to ''{label}''.",
+    "description": "Error for a must-be-greater comparison naming the other question."
+  },
+  "frescoUi.validation.greaterThanLabelledHint": {
+    "defaultMessage": "Must be greater than your answer to ''{label}''.",
+    "description": "Hint for a must-be-greater comparison naming the other question."
+  },
+  "frescoUi.validation.greaterThanOrEqualError": {
+    "defaultMessage": "Your answer must be the same as or greater than your earlier answer.",
+    "description": "Error for a must-be-at-least comparison when the other answer has no visible label."
+  },
+  "frescoUi.validation.greaterThanOrEqualHint": {
+    "defaultMessage": "Must be the same as or greater than your earlier answer.",
+    "description": "Hint for a must-be-at-least comparison when the other answer has no visible label."
+  },
+  "frescoUi.validation.greaterThanOrEqualLabelledError": {
+    "defaultMessage": "Your answer must be the same as or greater than your answer to ''{label}''.",
+    "description": "Error for a must-be-at-least comparison naming the other question."
+  },
+  "frescoUi.validation.greaterThanOrEqualLabelledHint": {
+    "defaultMessage": "Must be the same as or greater than your answer to ''{label}''.",
+    "description": "Hint for a must-be-at-least comparison naming the other question."
+  },
+  "frescoUi.validation.lessThanError": {
+    "defaultMessage": "Your answer must be less than your earlier answer.",
+    "description": "Error for a must-be-less comparison when the other answer has no visible label."
+  },
+  "frescoUi.validation.lessThanHint": {
+    "defaultMessage": "Must be less than your earlier answer.",
+    "description": "Hint for a must-be-less comparison when the other answer has no visible label."
+  },
+  "frescoUi.validation.lessThanLabelledError": {
+    "defaultMessage": "Your answer must be less than your answer to ''{label}''.",
+    "description": "Error for a must-be-less comparison naming the other question."
+  },
+  "frescoUi.validation.lessThanLabelledHint": {
+    "defaultMessage": "Must be less than your answer to ''{label}''.",
+    "description": "Hint for a must-be-less comparison naming the other question."
+  },
+  "frescoUi.validation.lessThanOrEqualError": {
+    "defaultMessage": "Your answer must be the same as or less than your earlier answer.",
+    "description": "Error for a must-be-at-most comparison when the other answer has no visible label."
+  },
+  "frescoUi.validation.lessThanOrEqualHint": {
+    "defaultMessage": "Must be the same as or less than your earlier answer.",
+    "description": "Hint for a must-be-at-most comparison when the other answer has no visible label."
+  },
+  "frescoUi.validation.lessThanOrEqualLabelledError": {
+    "defaultMessage": "Your answer must be the same as or less than your answer to ''{label}''.",
+    "description": "Error for a must-be-at-most comparison naming the other question."
+  },
+  "frescoUi.validation.lessThanOrEqualLabelledHint": {
+    "defaultMessage": "Must be the same as or less than your answer to ''{label}''.",
+    "description": "Hint for a must-be-at-most comparison naming the other question."
+  },
+  "frescoUi.validation.maxDate": {
+    "defaultMessage": "Must be on or before {max}.",
+    "description": "Hint and error for a date/time maximum; {max} is the formatted bound."
+  },
+  "frescoUi.validation.maxLengthError": {
+    "defaultMessage": "Too long. Enter fewer than {max} characters.",
+    "description": "Error shown when text exceeds its maximum length."
+  },
+  "frescoUi.validation.maxLengthHint": {
+    "defaultMessage": "Enter at most {max} characters.",
+    "description": "Hint summarising a maximum text length rule."
+  },
+  "frescoUi.validation.maxSelectedError": {
+    "defaultMessage": "{count, plural, one {Too many items selected. Select a maximum of # value.} other {Too many items selected. Select a maximum of # values.}}",
+    "description": "Error shown when too many options are selected."
+  },
+  "frescoUi.validation.maxSelectedHint": {
+    "defaultMessage": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}",
+    "description": "Hint summarising a maximum selection-count rule."
+  },
+  "frescoUi.validation.maxValueError": {
+    "defaultMessage": "Too large. Value must be at most {max}.",
+    "description": "Error shown when a number is above its maximum."
+  },
+  "frescoUi.validation.maxValueHint": {
+    "defaultMessage": "Enter a value less than or equal to {max}.",
+    "description": "Hint summarising a numeric maximum rule."
+  },
+  "frescoUi.validation.minDate": {
+    "defaultMessage": "Must be on or after {min}.",
+    "description": "Hint and error for a date/time minimum; {min} is the formatted bound."
+  },
+  "frescoUi.validation.minLengthError": {
+    "defaultMessage": "Too short. Enter at least {min} characters.",
+    "description": "Error shown when text is shorter than its minimum length."
+  },
+  "frescoUi.validation.minLengthHint": {
+    "defaultMessage": "Enter at least {min} characters.",
+    "description": "Hint summarising a minimum text length rule."
+  },
+  "frescoUi.validation.minSelectedError": {
+    "defaultMessage": "{count, plural, one {Too few selected. Select at least # value.} other {Too few selected. Select at least # values.}}",
+    "description": "Error shown when too few options are selected."
+  },
+  "frescoUi.validation.minSelectedHint": {
+    "defaultMessage": "{count, plural, one {Select at least # value.} other {Select at least # values.}}",
+    "description": "Hint summarising a minimum selection-count rule."
+  },
+  "frescoUi.validation.minValueError": {
+    "defaultMessage": "Too small. Value must be at least {min}.",
+    "description": "Error shown when a number is below its minimum."
+  },
+  "frescoUi.validation.minValueHint": {
+    "defaultMessage": "Enter a value greater than or equal to {min}.",
+    "description": "Hint summarising a numeric minimum rule."
+  },
+  "frescoUi.validation.required": {
+    "defaultMessage": "You must answer this question before continuing.",
+    "description": "Error shown when a required form field is left unanswered."
+  },
+  "frescoUi.validation.sameAsError": {
+    "defaultMessage": "Your answer must be the same as your earlier answer.",
+    "description": "Error for a must-match comparison when the other answer has no visible label."
+  },
+  "frescoUi.validation.sameAsHint": {
+    "defaultMessage": "Must be the same as your earlier answer.",
+    "description": "Hint for a must-match comparison when the other answer has no visible label."
+  },
+  "frescoUi.validation.sameAsLabelledError": {
+    "defaultMessage": "Your answer must be the same as your answer to ''{label}''.",
+    "description": "Error for a must-match comparison naming the other question."
+  },
+  "frescoUi.validation.sameAsLabelledHint": {
+    "defaultMessage": "Must be the same as your answer to ''{label}''.",
+    "description": "Hint for a must-match comparison naming the other question."
+  },
+  "frescoUi.validation.unexpectedError": {
+    "defaultMessage": "An error occurred while validating.",
+    "description": "Error shown when a validation rule itself throws unexpectedly."
+  },
+  "frescoUi.validation.uniqueError": {
+    "defaultMessage": "This value is used elsewhere. It must be unique.",
+    "description": "Error shown when a value duplicates one used elsewhere."
+  },
+  "frescoUi.validation.uniqueHint": {
+    "defaultMessage": "Must be unique.",
+    "description": "Hint summarising a uniqueness rule."
+  },
+  "frescoUi.wizard.finish": {
+    "defaultMessage": "Finish",
+    "description": "Default label of the wizard advance button on its last step."
+  }
+}

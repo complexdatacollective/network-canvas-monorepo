@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   DATE_PICKER_DEFAULT_MIN,
   DATE_PICKER_EARLIEST_DATE,
@@ -97,20 +99,46 @@ const COARSE_MAX_YEAR = Number(DATE_PICKER_LATEST_DATE.slice(0, 4));
 const NATIVE_MIN_YEAR = Number(DATE_PICKER_EARLIEST_DATE.slice(0, 4));
 const NATIVE_MAX_YEAR = Number(DATE_PICKER_LATEST_DATE.slice(0, 4));
 
-const months: SelectOption[] = [
-  { value: '01', label: 'January' },
-  { value: '02', label: 'February' },
-  { value: '03', label: 'March' },
-  { value: '04', label: 'April' },
-  { value: '05', label: 'May' },
-  { value: '06', label: 'June' },
-  { value: '07', label: 'July' },
-  { value: '08', label: 'August' },
-  { value: '09', label: 'September' },
-  { value: '10', label: 'October' },
-  { value: '11', label: 'November' },
-  { value: '12', label: 'December' },
-];
+const messages = defineMessages({
+  year: {
+    id: 'frescoUi.datePicker.year',
+    defaultMessage: 'Year',
+    description: 'Label and placeholder of the year dropdown.',
+  },
+  month: {
+    id: 'frescoUi.datePicker.month',
+    defaultMessage: 'Month',
+    description: 'Label and placeholder of the month dropdown.',
+  },
+});
+
+const MONTH_VALUES = [
+  '01',
+  '02',
+  '03',
+  '04',
+  '05',
+  '06',
+  '07',
+  '08',
+  '09',
+  '10',
+  '11',
+  '12',
+] as const;
+
+// Month names come from the intl object's own locale data rather than a baked
+// English table; UTC anchors keep the label independent of the viewer's zone.
+const buildMonthOptions = (
+  formatDate: (date: Date, options: Intl.DateTimeFormatOptions) => string,
+): SelectOption[] =>
+  MONTH_VALUES.map((value) => ({
+    value,
+    label: formatDate(new Date(Date.UTC(2000, Number(value) - 1, 1)), {
+      month: 'long',
+      timeZone: 'UTC',
+    }),
+  }));
 
 const getMonthParts = (value: unknown) => {
   if (typeof value !== 'string') {
@@ -125,6 +153,7 @@ const getMonthParts = (value: unknown) => {
 };
 
 export default function DatePickerField(props: DatePickerFieldProps) {
+  const intl = useAppIntl();
   const {
     type: resolutionType = 'full',
     min,
@@ -299,6 +328,11 @@ export default function DatePickerField(props: DatePickerFieldProps) {
     return arr;
   }, [coarseMinYmd.year, coarseMaxYmd.year]);
 
+  const months = useMemo(
+    () => buildMonthOptions((date, options) => intl.formatDate(date, options)),
+    [intl],
+  );
+
   const getAvailableMonths = (yearValue?: string) => {
     if (!yearValue) return months;
     const year = Number.parseInt(yearValue, 10);
@@ -316,7 +350,7 @@ export default function DatePickerField(props: DatePickerFieldProps) {
     return getAvailableMonths(selectedYear);
     // getAvailableMonths is a pure calculation over the listed date bounds.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedYear, coarseMinYmd, coarseMaxYmd]);
+  }, [selectedYear, coarseMinYmd, coarseMaxYmd, months]);
 
   const handleChange = (year?: string, month?: string) => {
     const newYear = year === '' ? undefined : (year ?? selectedYear);
@@ -371,12 +405,12 @@ export default function DatePickerField(props: DatePickerFieldProps) {
       <div className={cx('flex gap-2', className)}>
         {yearPartLabelId && (
           <span id={yearPartLabelId} className="sr-only">
-            Year
+            {intl.formatMessage(messages.year)}
           </span>
         )}
         {monthPartLabelId && (
           <span id={monthPartLabelId} className="sr-only">
-            Month
+            {intl.formatMessage(messages.month)}
           </span>
         )}
         <SelectField
@@ -384,7 +418,7 @@ export default function DatePickerField(props: DatePickerFieldProps) {
           size={size}
           name={name ? `${name}-year` : undefined}
           options={years}
-          placeholder="Year"
+          placeholder={intl.formatMessage(messages.year)}
           value={selectedYear}
           onChange={(selectValue) =>
             handleChange(String(selectValue), undefined)
@@ -401,7 +435,7 @@ export default function DatePickerField(props: DatePickerFieldProps) {
           size={size}
           name={name ? `${name}-month` : undefined}
           options={availableMonths}
-          placeholder="Month"
+          placeholder={intl.formatMessage(messages.month)}
           value={selectedMonth}
           onChange={(selectValue) =>
             handleChange(undefined, String(selectValue))
@@ -423,7 +457,7 @@ export default function DatePickerField(props: DatePickerFieldProps) {
         id={id}
         size={size}
         options={years}
-        placeholder="Year"
+        placeholder={intl.formatMessage(messages.year)}
         value={value}
         onChange={(v) =>
           onChange?.(v === undefined || v === '' ? undefined : String(v))

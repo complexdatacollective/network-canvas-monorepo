@@ -12,6 +12,10 @@ import {
 } from 'react';
 import { flushSync } from 'react-dom';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { Button } from '../Button';
 import type { FieldValue } from '../form/Field/types';
 import { FormWithoutProvider } from '../form/Form';
@@ -29,6 +33,48 @@ import { generatePublicId } from '../utils/generatePublicId';
 import Dialog from './Dialog';
 import type { DialogSize } from './DialogPopup';
 import useWizardState from './useWizardState';
+
+const messages = defineMessages({
+  exitAndLoseProgress: {
+    id: 'frescoUi.dialogProvider.exitAndLoseProgress',
+    defaultMessage: 'Exit and lose progress',
+    description:
+      'Default confirm action of the dialog asking whether to abandon a wizard mid-way.',
+  },
+  continueEditing: {
+    id: 'frescoUi.dialogProvider.continueEditing',
+    defaultMessage: 'Continue editing',
+    description:
+      'Default cancel action of the dialog asking whether to abandon a wizard mid-way.',
+  },
+  pleaseWait: {
+    id: 'frescoUi.dialogProvider.pleaseWait',
+    defaultMessage: 'Please wait...',
+    description:
+      'Label shown on a confirm button while its action is still running.',
+  },
+  areYouSure: {
+    id: 'frescoUi.dialogProvider.areYouSure',
+    defaultMessage: 'Are you sure?',
+    description: 'Default title of a confirmation dialog.',
+  },
+  cannotBeUndone: {
+    id: 'frescoUi.dialogProvider.cannotBeUndone',
+    defaultMessage: 'This action cannot be undone.',
+    description: 'Default description of a confirmation dialog.',
+  },
+  submit: {
+    id: 'frescoUi.dialogProvider.submit',
+    defaultMessage: 'Submit',
+    description: 'Default submit action of a form dialog.',
+  },
+  errorOccurred: {
+    id: 'frescoUi.dialogProvider.errorOccurred',
+    defaultMessage: 'An error occurred',
+    description:
+      'Fallback error shown in a confirmation dialog when the failing action carries no message of its own.',
+  },
+});
 
 type BaseDialog = {
   id?: string;
@@ -282,6 +328,7 @@ function WizardDialogRenderer({
   closeDialog: DialogContextType['closeDialog'];
   openDialog: DialogContextType['openDialog'];
 }) {
+  const intl = useAppIntl();
   const guardedCloseDialog = useCallback(
     async <T,>(id: string, value: T | null) => {
       if (value !== null || !dialog.confirmCancel) {
@@ -297,11 +344,14 @@ function WizardDialogRenderer({
         actions: {
           primary: {
             label:
-              dialog.confirmCancel.primaryLabel ?? 'Exit and lose progress',
+              dialog.confirmCancel.primaryLabel ??
+              intl.formatMessage(messages.exitAndLoseProgress),
             value: true,
           },
           cancel: {
-            label: dialog.confirmCancel.cancelLabel ?? 'Continue editing',
+            label:
+              dialog.confirmCancel.cancelLabel ??
+              intl.formatMessage(messages.continueEditing),
             value: false,
           },
         },
@@ -311,7 +361,7 @@ function WizardDialogRenderer({
         await closeDialog(id, null);
       }
     },
-    [closeDialog, openDialog, dialog.confirmCancel],
+    [closeDialog, openDialog, dialog.confirmCancel, intl],
   );
 
   return (
@@ -328,6 +378,7 @@ function WizardDialogRenderer({
 const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const intl = useAppIntl();
   const [dialogs, setDialogs] = useState<DialogState[]>([]);
   const dialogsRef = useRef<DialogState[]>([]);
   const isMounted = useRef(true);
@@ -499,7 +550,9 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
         } catch (e) {
           setDialogError(
             dialogId,
-            e instanceof Error ? e.message : 'An error occurred',
+            e instanceof Error
+              ? e.message
+              : intl.formatMessage(messages.errorOccurred),
           );
           return;
         }
@@ -522,7 +575,9 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
           setDialogAbortController(dialogId, null);
           setDialogError(
             dialogId,
-            e instanceof Error ? e.message : 'An error occurred',
+            e instanceof Error
+              ? e.message
+              : intl.formatMessage(messages.errorOccurred),
           );
         }
       };
@@ -530,15 +585,17 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
       const result = await openDialog({
         id: dialogId,
         type: 'choice',
-        title: options.title ?? 'Are you sure?',
-        description: options.description ?? 'This action cannot be undone.',
+        title: options.title ?? intl.formatMessage(messages.areYouSure),
+        description:
+          options.description ?? intl.formatMessage(messages.cannotBeUndone),
         intent: options.intent ?? 'destructive',
         size: options.size,
         finalFocus: options.finalFocus,
         actions: {
           primary: { label: options.confirmLabel, value: true },
           cancel: {
-            label: options.cancelLabel ?? 'Cancel',
+            label:
+              options.cancelLabel ?? intl.formatMessage(commonMessages.cancel),
             value: false,
           },
         },
@@ -550,7 +607,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
 
       return result ?? null;
     },
-    [openDialog, closeDialog, setDialogAbortController, setDialogError],
+    [openDialog, closeDialog, setDialogAbortController, setDialogError, intl],
   );
 
   const contextValue: DialogContextType = {
@@ -635,7 +692,9 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
             icon={isLoading ? <Loader2 className="animate-spin" /> : undefined}
             data-testid="dialog-primary"
           >
-            {isLoading ? 'Please wait...' : dialog.actions.primary.label}
+            {isLoading
+              ? intl.formatMessage(messages.pleaseWait)
+              : dialog.actions.primary.label}
           </Button>
         </>
       );
@@ -673,10 +732,11 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
                   onClick={() => closeDialog(dialog.id, null)}
                   data-testid="dialog-cancel"
                 >
-                  {dialog.cancelLabel ?? 'Cancel'}
+                  {dialog.cancelLabel ??
+                    intl.formatMessage(commonMessages.cancel)}
                 </Button>
                 <SubmitButton form={formId} data-testid="dialog-submit">
-                  {dialog.submitLabel ?? 'Submit'}
+                  {dialog.submitLabel ?? intl.formatMessage(messages.submit)}
                 </SubmitButton>
               </>
             }

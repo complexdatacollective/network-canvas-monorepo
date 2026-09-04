@@ -1,9 +1,21 @@
 import type { SVGProps } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
+const messages = defineMessages({
+  title: {
+    id: 'frescoUi.icon.menuDownloadData',
+    defaultMessage: 'Menu - Download Data',
+    description: 'Accessible name (SVG title) of the menu-download-data icon.',
+  },
+});
+
 export default function Icon(props: SVGProps<SVGSVGElement>) {
+  const intl = useAppIntl();
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 70" {...props}>
-      <title>Menu - Download Data</title>
+      <title>{intl.formatMessage(messages.title)}</title>
       <path className="fill-platinum-dark" d="M3.5 70v-7h53v7z" />
       <path className="fill-platinum" d="M56.5 63v7H24.32l6.99-7H56.5z" />
       <circle className="fill-platinum-dark" cx="3.5" cy="66.5" r="3.5" />

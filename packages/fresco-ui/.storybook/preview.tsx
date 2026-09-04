@@ -12,6 +12,7 @@ import { type PropsWithChildren, StrictMode } from 'react';
 import { configure } from 'storybook/test';
 
 import './preview.css';
+import { directionGlobalTypes, withDirection } from './direction-switcher';
 import Providers from './Providers';
 import {
   getInitialColorScheme,
@@ -121,6 +122,7 @@ export default definePreview({
 
   decorators: [
     withTheme,
+    withDirection,
     (Story) => (
       <StrictMode>
         {/**
@@ -135,10 +137,11 @@ export default definePreview({
     ),
   ],
 
-  globalTypes,
+  globalTypes: { ...globalTypes, ...directionGlobalTypes },
 
   initialGlobals: {
     theme: getInitialTheme(),
     colorScheme: getInitialColorScheme(),
+    direction: 'ltr',
   },
 });

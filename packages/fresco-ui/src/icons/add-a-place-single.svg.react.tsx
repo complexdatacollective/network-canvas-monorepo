@@ -1,6 +1,18 @@
 import type { SVGProps } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
+const messages = defineMessages({
+  title: {
+    id: 'frescoUi.icon.addAPlaceSingle',
+    defaultMessage: 'Add a place',
+    description: 'Accessible name (SVG title) of the add-a-place-single icon.',
+  },
+});
+
 export default function Icon(props: SVGProps<SVGSVGElement>) {
+  const intl = useAppIntl();
   return (
     <svg
       version="1.1"
@@ -8,7 +20,7 @@ export default function Icon(props: SVGProps<SVGSVGElement>) {
       viewBox="-21.4 -24.2 153.9 174.4"
       {...props}
     >
-      <title>Add a place</title>
+      <title>{intl.formatMessage(messages.title)}</title>
       <polygon
         className="fill-neon-coral"
         points="16.6,68 0,126 26.5,126 84.6,68 "

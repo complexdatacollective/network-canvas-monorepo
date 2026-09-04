@@ -3,6 +3,12 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
 
+import {
+  defineMessages,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import Button, { IconButton } from '../../Button';
 import InputField from '../../form/fields/InputField';
 import SelectField from '../../form/fields/Select/Native';
@@ -20,13 +26,77 @@ type OperatorFilterProps = {
   data: unknown[];
 };
 
-const operatorLabels: Record<OperatorCondition['operator'], string> = {
-  eq: 'is equal to (=)',
-  gt: 'is greater than (>)',
-  lt: 'is less than (<)',
-  gte: 'is at least (≥)',
-  lte: 'is at most (≤)',
-};
+const messages = defineMessages({
+  operatorEq: {
+    id: 'frescoUi.operatorFilter.operatorEq',
+    defaultMessage: 'is equal to (=)',
+    description: 'Comparison operator option in the network-data filter.',
+  },
+  operatorGt: {
+    id: 'frescoUi.operatorFilter.operatorGt',
+    defaultMessage: 'is greater than (>)',
+    description: 'Comparison operator option in the network-data filter.',
+  },
+  operatorLt: {
+    id: 'frescoUi.operatorFilter.operatorLt',
+    defaultMessage: 'is less than (<)',
+    description: 'Comparison operator option in the network-data filter.',
+  },
+  operatorGte: {
+    id: 'frescoUi.operatorFilter.operatorGte',
+    defaultMessage: 'is at least (≥)',
+    description: 'Comparison operator option in the network-data filter.',
+  },
+  operatorLte: {
+    id: 'frescoUi.operatorFilter.operatorLte',
+    defaultMessage: 'is at most (≤)',
+    description: 'Comparison operator option in the network-data filter.',
+  },
+  showInterviewsWhere: {
+    id: 'frescoUi.operatorFilter.showInterviewsWhere',
+    defaultMessage: 'Show interviews where:',
+    description:
+      'Heading above the list of network-data filter conditions on the interviews table.',
+  },
+  and: {
+    id: 'frescoUi.operatorFilter.and',
+    defaultMessage: 'and',
+    description:
+      'Conjunction displayed on its own line between two filter conditions that both apply.',
+  },
+  removeCondition: {
+    id: 'frescoUi.operatorFilter.removeCondition',
+    defaultMessage: 'Remove condition',
+    description:
+      'Accessible name of the button that deletes one filter condition.',
+  },
+  selectType: {
+    id: 'frescoUi.operatorFilter.selectType',
+    defaultMessage: 'Select type...',
+    description:
+      'Placeholder for the entity-type selector in the network-data filter.',
+  },
+  add: {
+    id: 'frescoUi.operatorFilter.add',
+    defaultMessage: 'Add',
+    description:
+      'Button that adds the composed condition to the network-data filter.',
+  },
+  emptyHint: {
+    id: 'frescoUi.operatorFilter.emptyHint',
+    defaultMessage: 'Add a condition to filter by network data',
+    description:
+      'Hint shown in the network-data filter before any condition exists.',
+  },
+});
+
+const operatorMessages = {
+  eq: messages.operatorEq,
+  gt: messages.operatorGt,
+  lt: messages.operatorLt,
+  gte: messages.operatorGte,
+  lte: messages.operatorLte,
+} satisfies Record<OperatorCondition['operator'], MessageDescriptor>;
 
 const operatorSymbols: Record<OperatorCondition['operator'], string> = {
   eq: '=',
@@ -37,7 +107,7 @@ const operatorSymbols: Record<OperatorCondition['operator'], string> = {
 };
 
 function isOperator(value: string): value is OperatorCondition['operator'] {
-  return value in operatorLabels;
+  return value in operatorMessages;
 }
 
 export default function OperatorFilter({
@@ -46,6 +116,7 @@ export default function OperatorFilter({
   config,
   data,
 }: OperatorFilterProps) {
+  const intl = useAppIntl();
   const [selectedEntity, setSelectedEntity] = useState<string>('');
   const [selectedOperator, setSelectedOperator] = useState<
     OperatorCondition['operator']
@@ -97,13 +168,13 @@ export default function OperatorFilter({
 
   const operatorOptions = config.operators.map((op) => ({
     value: op,
-    label: operatorLabels[op],
+    label: intl.formatMessage(operatorMessages[op]),
   }));
 
   return (
     <div className="flex w-72 flex-col gap-3">
       <Paragraph intent="smallText" emphasis="muted" margin="none">
-        Show interviews where:
+        {intl.formatMessage(messages.showInterviewsWhere)}
       </Paragraph>
 
       {conditions.length > 0 && (
@@ -119,7 +190,7 @@ export default function OperatorFilter({
                   margin="none"
                   className="py-0.5 text-center text-xs"
                 >
-                  and
+                  {intl.formatMessage(messages.and)}
                 </Paragraph>
               )}
               <div className="bg-surface-1 flex items-center justify-between gap-3 rounded-sm px-3 py-1.5">
@@ -130,7 +201,7 @@ export default function OperatorFilter({
                 <IconButton
                   size="sm"
                   variant="text"
-                  aria-label="Remove condition"
+                  aria-label={intl.formatMessage(messages.removeCondition)}
                   onClick={() => handleRemoveCondition(index)}
                   icon={<X />}
                   className="size-5! shrink-0"
@@ -147,7 +218,7 @@ export default function OperatorFilter({
           size="sm"
           options={entityOptions}
           value={selectedEntity}
-          placeholder="Select type..."
+          placeholder={intl.formatMessage(messages.selectType)}
           onChange={(val) => {
             if (typeof val === 'string' || typeof val === 'number') {
               setSelectedEntity(String(val));
@@ -181,7 +252,7 @@ export default function OperatorFilter({
           />
 
           <Button size="sm" className="shrink-0" onClick={handleAddCondition}>
-            Add
+            {intl.formatMessage(messages.add)}
           </Button>
         </div>
       </div>
@@ -193,7 +264,7 @@ export default function OperatorFilter({
           margin="none"
           className="text-center"
         >
-          Add a condition to filter by network data
+          {intl.formatMessage(messages.emptyHint)}
         </Paragraph>
       )}
     </div>

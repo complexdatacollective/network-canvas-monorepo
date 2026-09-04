@@ -33,6 +33,9 @@ import {
 } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import Button, { iconButtonVariants } from '../../Button';
 import { Popover, PopoverContent, PopoverTrigger } from '../../Popover';
 import {
@@ -48,6 +51,110 @@ import { compose, cva, cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 import InputField from './InputField';
+
+const messages = defineMessages({
+  bold: {
+    id: 'frescoUi.richTextEditor.bold',
+    defaultMessage: 'Bold',
+    description: 'Accessible name of the bold toggle in the editor toolbar.',
+  },
+  italic: {
+    id: 'frescoUi.richTextEditor.italic',
+    defaultMessage: 'Italic',
+    description: 'Accessible name of the italic toggle in the editor toolbar.',
+  },
+  linkButton: {
+    id: 'frescoUi.richTextEditor.linkButton',
+    defaultMessage: '{hasLink, select, true {Edit link} other {Add link}}',
+    description:
+      'Accessible name of the toolbar link button; says whether it will edit the existing link or add one.',
+  },
+  heading1: {
+    id: 'frescoUi.richTextEditor.heading1',
+    defaultMessage: 'Heading 1',
+    description:
+      'Accessible name of the level-1 heading toggle in the editor toolbar.',
+  },
+  heading2: {
+    id: 'frescoUi.richTextEditor.heading2',
+    defaultMessage: 'Heading 2',
+    description:
+      'Accessible name of the level-2 heading toggle in the editor toolbar.',
+  },
+  heading3: {
+    id: 'frescoUi.richTextEditor.heading3',
+    defaultMessage: 'Heading 3',
+    description:
+      'Accessible name of the level-3 heading toggle in the editor toolbar.',
+  },
+  heading4: {
+    id: 'frescoUi.richTextEditor.heading4',
+    defaultMessage: 'Heading 4',
+    description:
+      'Accessible name of the level-4 heading toggle in the editor toolbar.',
+  },
+  numberedList: {
+    id: 'frescoUi.richTextEditor.numberedList',
+    defaultMessage: 'Numbered list',
+    description:
+      'Accessible name of the ordered-list toggle in the editor toolbar.',
+  },
+  bulletList: {
+    id: 'frescoUi.richTextEditor.bulletList',
+    defaultMessage: 'Bullet list',
+    description:
+      'Accessible name of the bullet-list toggle in the editor toolbar.',
+  },
+  thematicBreak: {
+    id: 'frescoUi.richTextEditor.thematicBreak',
+    defaultMessage: 'Thematic break',
+    description:
+      'Accessible name of the toolbar button inserting a horizontal rule.',
+  },
+  undo: {
+    id: 'frescoUi.richTextEditor.undo',
+    defaultMessage: 'Undo',
+    description: 'Accessible name of the undo button in the editor toolbar.',
+  },
+  redo: {
+    id: 'frescoUi.richTextEditor.redo',
+    defaultMessage: 'Redo',
+    description: 'Accessible name of the redo button in the editor toolbar.',
+  },
+  linkUrlLabel: {
+    id: 'frescoUi.richTextEditor.linkUrlLabel',
+    defaultMessage: 'Link URL',
+    description: 'Label of the URL input in the link popover.',
+  },
+  linkUrlPlaceholder: {
+    id: 'frescoUi.richTextEditor.linkUrlPlaceholder',
+    defaultMessage: 'https://example.com',
+    description:
+      'Example URL shown as the placeholder of the link popover input.',
+  },
+  removeLink: {
+    id: 'frescoUi.richTextEditor.removeLink',
+    defaultMessage: 'Remove link',
+    description:
+      'Accessible name of the link popover button that removes the link.',
+  },
+  removeLinkShort: {
+    id: 'frescoUi.richTextEditor.removeLinkShort',
+    defaultMessage: 'Remove',
+    description: 'Visible label of the link popover button removing the link.',
+  },
+  applyLink: {
+    id: 'frescoUi.richTextEditor.applyLink',
+    defaultMessage: 'Apply link',
+    description:
+      'Accessible name of the link popover button that applies the link.',
+  },
+  applyLinkShort: {
+    id: 'frescoUi.richTextEditor.applyLinkShort',
+    defaultMessage: 'Apply',
+    description: 'Visible label of the link popover button applying the link.',
+  },
+});
 
 const ToolbarToggleButton = (props: Toolbar.Button.Props) => {
   return <Toolbar.Button {...props} render={<Toggle />} />;
@@ -109,7 +216,7 @@ function createCustomExtensions({
     renderHTML({ HTMLAttributes }): DOMOutputSpec {
       return [
         'ul',
-        { ...HTMLAttributes, class: 'ml-8 list-disc [&>li]:not-last:mb-2' },
+        { ...HTMLAttributes, class: 'ms-8 list-disc [&>li]:not-last:mb-2' },
         0,
       ];
     },
@@ -119,7 +226,7 @@ function createCustomExtensions({
     renderHTML({ HTMLAttributes }): DOMOutputSpec {
       return [
         'ol',
-        { ...HTMLAttributes, class: 'ml-8 list-decimal [&>li]:not-last:mb-2' },
+        { ...HTMLAttributes, class: 'ms-8 list-decimal [&>li]:not-last:mb-2' },
         0,
       ];
     },
@@ -310,6 +417,7 @@ export default function RichTextEditorField({
   onBlur,
   ...props
 }: RichTextEditorFieldProps) {
+  const intl = useAppIntl();
   const onChangeRef = useRef(onChange);
   const changeModeRef = useRef(changeMode);
   const linkSelectionRef = useRef<EditorSelectionRange | null>(null);
@@ -698,7 +806,7 @@ export default function RichTextEditorField({
                   className={toolbarButtonStyles}
                   disabled={isDisabled}
                   value="bold"
-                  aria-label="Bold"
+                  aria-label={intl.formatMessage(messages.bold)}
                 >
                   <Bold />
                 </ToolbarToggleButton>
@@ -708,7 +816,7 @@ export default function RichTextEditorField({
                   className={toolbarButtonStyles}
                   disabled={isDisabled}
                   value="italic"
-                  aria-label="Italic"
+                  aria-label={intl.formatMessage(messages.italic)}
                 >
                   <Italic />
                 </ToolbarToggleButton>
@@ -723,7 +831,9 @@ export default function RichTextEditorField({
                 <ToolbarButton
                   className={toolbarButtonStyles}
                   disabled={isDisabled}
-                  aria-label={editorState.isLink ? 'Edit link' : 'Add link'}
+                  aria-label={intl.formatMessage(messages.linkButton, {
+                    hasLink: String(editorState.isLink),
+                  })}
                   // No `aria-pressed`: PopoverTrigger makes this a
                   // disclosure, and a disclosure must not also claim to be
                   // a toggle. Whether a link is present is already carried
@@ -750,7 +860,7 @@ export default function RichTextEditorField({
                     className="font-heading text-sm font-bold"
                     htmlFor={linkInputId}
                   >
-                    Link URL
+                    {intl.formatMessage(messages.linkUrlLabel)}
                   </label>
                   <InputField
                     ref={linkInputRef}
@@ -768,7 +878,9 @@ export default function RichTextEditorField({
                         event.currentTarget.validationMessage,
                       );
                     }}
-                    placeholder="https://example.com"
+                    placeholder={intl.formatMessage(
+                      messages.linkUrlPlaceholder,
+                    )}
                     size="sm"
                     autoFocus
                     aria-invalid={Boolean(linkValidationMessage)}
@@ -790,24 +902,24 @@ export default function RichTextEditorField({
                       variant="text"
                       color="destructive"
                       icon={<Trash2 />}
-                      aria-label="Remove link"
+                      aria-label={intl.formatMessage(messages.removeLink)}
                       disabled={!isEditingExistingLink}
                       onClick={removeLink}
                     >
-                      Remove
+                      {intl.formatMessage(messages.removeLinkShort)}
                     </Button>
                     <Button
                       type="submit"
                       size="sm"
                       color="primary"
                       icon={<Check />}
-                      aria-label="Apply link"
+                      aria-label={intl.formatMessage(messages.applyLink)}
                       onClick={(event) => {
                         event.preventDefault();
                         applyLink();
                       }}
                     >
-                      Apply
+                      {intl.formatMessage(messages.applyLinkShort)}
                     </Button>
                   </div>
                 </form>
@@ -871,7 +983,7 @@ export default function RichTextEditorField({
                   className={toolbarButtonStyles}
                   disabled={isDisabled}
                   value="h1"
-                  aria-label="Heading 1"
+                  aria-label={intl.formatMessage(messages.heading1)}
                 >
                   <Heading1 />
                 </ToolbarToggleButton>
@@ -881,7 +993,7 @@ export default function RichTextEditorField({
                   className={toolbarButtonStyles}
                   disabled={isDisabled}
                   value="h2"
-                  aria-label="Heading 2"
+                  aria-label={intl.formatMessage(messages.heading2)}
                 >
                   <Heading2 />
                 </ToolbarToggleButton>
@@ -891,7 +1003,7 @@ export default function RichTextEditorField({
                   className={toolbarButtonStyles}
                   disabled={isDisabled}
                   value="h3"
-                  aria-label="Heading 3"
+                  aria-label={intl.formatMessage(messages.heading3)}
                 >
                   <Heading3 />
                 </ToolbarToggleButton>
@@ -901,7 +1013,7 @@ export default function RichTextEditorField({
                   className={toolbarButtonStyles}
                   disabled={isDisabled}
                   value="h4"
-                  aria-label="Heading 4"
+                  aria-label={intl.formatMessage(messages.heading4)}
                 >
                   <Heading4 />
                 </ToolbarToggleButton>
@@ -945,7 +1057,7 @@ export default function RichTextEditorField({
                   className={toolbarButtonStyles}
                   disabled={isDisabled}
                   value="ordered"
-                  aria-label="Numbered list"
+                  aria-label={intl.formatMessage(messages.numberedList)}
                 >
                   <ListOrdered />
                 </ToolbarToggleButton>
@@ -955,7 +1067,7 @@ export default function RichTextEditorField({
                   className={toolbarButtonStyles}
                   disabled={isDisabled}
                   value="bullet"
-                  aria-label="Bullet list"
+                  aria-label={intl.formatMessage(messages.bulletList)}
                 >
                   <List />
                 </ToolbarToggleButton>
@@ -973,7 +1085,7 @@ export default function RichTextEditorField({
               <ToolbarButton
                 className={toolbarButtonStyles}
                 disabled={isDisabled}
-                aria-label="Thematic break"
+                aria-label={intl.formatMessage(messages.thematicBreak)}
                 onClick={() => editor.chain().focus().setHorizontalRule().run()}
               >
                 <Minus />
@@ -994,7 +1106,7 @@ export default function RichTextEditorField({
               <ToolbarButton
                 className={toolbarButtonStyles}
                 disabled={isDisabled || !editorState.canUndo}
-                aria-label="Undo"
+                aria-label={intl.formatMessage(messages.undo)}
                 onClick={() => editor.chain().focus().undo().run()}
               >
                 <Undo />
@@ -1002,7 +1114,7 @@ export default function RichTextEditorField({
               <ToolbarButton
                 className={toolbarButtonStyles}
                 disabled={isDisabled || !editorState.canRedo}
-                aria-label="Redo"
+                aria-label={intl.formatMessage(messages.redo)}
                 onClick={() => editor.chain().focus().redo().run()}
               >
                 <Redo />
