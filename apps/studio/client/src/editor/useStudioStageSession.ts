@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import {
   ProtocolBuilderSessionStore,
   stageDocument,
@@ -16,13 +18,79 @@ import { registerStudioEditorSession } from './sessionLifecycle.ts';
 
 type Draft = Awaited<ReturnType<typeof rpcClient.protocols.draft>>;
 
+const messages = defineMessages({
+  selectScreen: {
+    id: 'studio.editorSession.selectScreen',
+    defaultMessage: 'Select a screen to edit.',
+    description:
+      'Shown on the editing canvas while no interview screen has been chosen.',
+  },
+  screenRemoved: {
+    id: 'studio.editorSession.screenRemoved',
+    defaultMessage: 'The selected screen is no longer in this draft.',
+    description:
+      'Shown when the chosen interview screen has been deleted from the protocol draft.',
+  },
+  openFailed: {
+    id: 'studio.editorSession.openFailed',
+    defaultMessage: 'This screen could not be opened. Studio is trying again.',
+    description:
+      'Shown when opening the chosen interview screen failed and Studio is retrying by itself.',
+  },
+  readyToEdit: {
+    id: 'studio.editorSession.readyToEdit',
+    defaultMessage: 'This screen is ready to edit.',
+    description:
+      'Shown when the researcher holds the screen lock and may change the screen.',
+  },
+  openedReadOnly: {
+    id: 'studio.editorSession.openedReadOnly',
+    defaultMessage:
+      'This screen is open read-only because someone else is editing it.',
+    description:
+      'Shown when somebody else holds the screen lock, so the screen opened read-only.',
+  },
+  lockNowAvailable: {
+    id: 'studio.editorSession.lockNowAvailable',
+    defaultMessage: 'The screen lock is available. You can edit this screen.',
+    description:
+      'Shown when a screen that opened read-only has since become editable.',
+  },
+  changesSaved: {
+    id: 'studio.editorSession.changesSaved',
+    defaultMessage: 'Changes saved.',
+    description: 'Shown when a change to the screen has been saved.',
+  },
+  lockLost: {
+    id: 'studio.editorSession.lockLost',
+    defaultMessage: 'Editing stopped because the screen lock was lost.',
+    description:
+      'Shown when editing stopped because the screen lock could no longer be held.',
+  },
+  saveStopped: {
+    id: 'studio.editorSession.saveStopped',
+    defaultMessage:
+      'Editing stopped because Studio could not save this screen.',
+    description:
+      'Shown when editing stopped because a change to the screen could not be saved.',
+  },
+});
+
+/**
+ * Copy travels out of here as a descriptor and is formatted where it renders.
+ *
+ * The messages are set from callbacks that outlive the render they started in
+ * — a lease renewal, a commit, a retry — so a string formatted here would
+ * carry whichever locale was current when that callback was created, and the
+ * screen would go on saying it after the researcher changed languages.
+ */
 export type StudioStageSessionState =
   | { status: 'loading' }
-  | { status: 'failed'; message: string }
+  | { status: 'failed'; message: MessageDescriptor }
   | {
       status: 'ready';
       session: ProtocolBuilderSession;
-      message: string;
+      message: MessageDescriptor;
       save: () => Promise<void>;
     };
 
@@ -86,7 +154,7 @@ export function useStudioStageSession(params: {
 
   useEffect(() => {
     if (params.stageId === null) {
-      setState({ status: 'failed', message: 'Select a screen to edit.' });
+      setState({ status: 'failed', message: messages.selectScreen });
       return () => undefined;
     }
 
@@ -99,7 +167,7 @@ export function useStudioStageSession(params: {
     if (document === undefined) {
       setState({
         status: 'failed',
-        message: 'The selected screen is no longer in this draft.',
+        message: messages.screenRemoved,
       });
       return () => undefined;
     }
@@ -213,7 +281,7 @@ export function useStudioStageSession(params: {
       }, 5_000);
     };
 
-    const showReady = (message: string) => {
+    const showReady = (message: MessageDescriptor) => {
       if (active) setState({ status: 'ready', session: store, message, save });
     };
 
@@ -226,7 +294,7 @@ export function useStudioStageSession(params: {
       }
     };
 
-    const loseAccess = (error: unknown, message: string) => {
+    const loseAccess = (error: unknown, message: MessageDescriptor) => {
       const lease = currentLease;
       currentLease = null;
       commitFailure = asError(error);
@@ -258,19 +326,13 @@ export function useStudioStageSession(params: {
               currentLease?.leaseEpoch === lease.leaseEpoch &&
               !result.renewed
             ) {
-              loseAccess(
-                new Error('screen lock expired'),
-                'Editing stopped because the screen lock was lost.',
-              );
+              loseAccess(new Error('screen lock expired'), messages.lockLost);
             }
             return undefined;
           })
           .catch((error: unknown) => {
             if (active && currentLease?.leaseEpoch === lease.leaseEpoch) {
-              loseAccess(
-                error,
-                'Editing stopped because the screen lock was lost.',
-              );
+              loseAccess(error, messages.lockLost);
             }
           });
         renewalInFlight = attempt;
@@ -313,7 +375,7 @@ export function useStudioStageSession(params: {
             stopRetry();
             setState({
               status: 'failed',
-              message: 'The selected screen is no longer in this draft.',
+              message: messages.screenRemoved,
             });
             return;
           }
@@ -357,7 +419,7 @@ export function useStudioStageSession(params: {
           acquiredLease = null;
           setState({
             status: 'failed',
-            message: 'The selected screen is no longer in this draft.',
+            message: messages.screenRemoved,
           });
           return;
         }
@@ -391,7 +453,7 @@ export function useStudioStageSession(params: {
         });
         stopRetry();
         startRenewal();
-        showReady('The screen lock is available. You can edit this screen.');
+        showReady(messages.lockNowAvailable);
         void Promise.resolve(onCommitted.current()).catch(() => undefined);
       } catch {
         if (acquiredLease !== null) {
@@ -443,7 +505,7 @@ export function useStudioStageSession(params: {
           }
           setState({
             status: 'failed',
-            message: 'The selected screen is no longer in this draft.',
+            message: messages.screenRemoved,
           });
           return;
         }
@@ -522,17 +584,14 @@ export function useStudioStageSession(params: {
                     hash: revision.hash,
                   },
                 });
-                showReady('Changes saved.');
+                showReady(messages.changesSaved);
                 void Promise.resolve(onCommitted.current()).catch(
                   () => undefined,
                 );
                 return undefined;
               })
               .catch((error: unknown) => {
-                loseAccess(
-                  error,
-                  'Editing stopped because Studio could not save this screen.',
-                );
+                loseAccess(error, messages.saveStopped);
               });
           },
           onFinish: async () => save(),
@@ -548,12 +607,10 @@ export function useStudioStageSession(params: {
           acquiredLease = null;
           clientSequence = BigInt(access.nextClientSequence);
           startRenewal();
-          showReady('This screen is ready to edit.');
+          showReady(messages.readyToEdit);
           void Promise.resolve(onCommitted.current()).catch(() => undefined);
         } else {
-          showReady(
-            'This screen is open read-only because someone else is editing it.',
-          );
+          showReady(messages.openedReadOnly);
           retryAcquisition();
         }
       } catch {
@@ -563,7 +620,7 @@ export function useStudioStageSession(params: {
         if (active) {
           setState({
             status: 'failed',
-            message: 'This screen could not be opened. Studio is trying again.',
+            message: messages.openFailed,
           });
           scheduleInitializationRetry();
         }

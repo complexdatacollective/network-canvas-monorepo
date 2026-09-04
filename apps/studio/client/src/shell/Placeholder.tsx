@@ -1,18 +1,34 @@
 import type { ReactNode } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
+const messages = defineMessages({
+  unbuilt: {
+    id: 'studio.placeholder.unbuilt',
+    defaultMessage:
+      'This screen has not been built yet. It is specified in {issue}.',
+    description:
+      'Shown on every not-yet-built screen; {issue} is a GitHub issue reference like #1253.',
+  },
+});
+
 export type PlaceholderProps = {
-  /** The screen's name, as it appears in the navigation that reached it. */
-  title: string;
+  /**
+   * The screen's name, as it appears in the navigation that reached it.
+   * A message descriptor, resolved at render through `useAppIntl`.
+   */
+  title: MessageDescriptor;
   /**
    * What this screen will do, in a sentence a researcher would understand —
    * not an implementation note. It is the only thing on the page, so it has to
    * be worth reading.
    */
-  description: string;
+  description: MessageDescriptor;
   /** The issue that builds it, so the reader can go and look. */
   issue: `#${number}`;
   /**
@@ -50,14 +66,16 @@ export default function Placeholder({
   issue,
   action,
 }: PlaceholderProps) {
+  const intl = useAppIntl();
+
   return (
     <div className="mx-auto flex w-full max-w-prose flex-col gap-3 p-6">
       <Heading level="h1" {...routeFocusTargetProps}>
-        {title}
+        {intl.formatMessage(title)}
       </Heading>
-      <Paragraph>{description}</Paragraph>
+      <Paragraph>{intl.formatMessage(description)}</Paragraph>
       <Paragraph className="text-text/60 text-sm">
-        This screen has not been built yet. It is specified in {issue}.
+        {intl.formatMessage(messages.unbuilt, { issue })}
       </Paragraph>
       {action}
     </div>

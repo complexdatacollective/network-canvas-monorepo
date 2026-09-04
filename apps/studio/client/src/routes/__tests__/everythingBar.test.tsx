@@ -10,6 +10,8 @@ import {
 } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
+
 import { authClient } from '../../lib/auth.ts';
 import { createAppRouter } from '../../router.tsx';
 import {
@@ -100,6 +102,9 @@ vi.mock('../../lib/api.ts', () => ({
           email: 'researcher@example.org',
           emailVerified: true,
           name: 'Researcher',
+          // `me` carries the account's UI-language preference; null means
+          // "follow the browser" (2026-09-04 localization design §5.2).
+          locale: null,
           teams: [{ teamId: 'team-a', role: 'owner' }],
         }),
       }),
@@ -384,6 +389,8 @@ describe('go to', () => {
     const items = destinationItems({
       entries,
       currentArea: currentAreaFor('/study/study-1'),
+      // The English formatter the app renders with when no catalog applies.
+      intl: createAppIntl({ locale: 'en' }),
     });
 
     // Not a vacuous pass: every area contributes, so a manifest that silently

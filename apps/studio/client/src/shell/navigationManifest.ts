@@ -26,6 +26,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import type { StudyCounts } from '@codaco/studio-rpc';
 
 /**
@@ -56,6 +58,224 @@ export type NavManifestArea =
   | 'team';
 
 /**
+ * Every destination name, as a message descriptor (#1310). The manifest is
+ * data read by two renderers — the sidebars and the everything bar — so the
+ * catalog entry lives here with the entry it names, and each consumer
+ * resolves it through `useAppIntl` at render.
+ */
+export const navLabelMessages = defineMessages({
+  gallery: {
+    id: 'studio.nav.gallery',
+    defaultMessage: 'Gallery',
+    description:
+      'Navigation label for the gallery of published protocols, in the header and everything bar.',
+  },
+  templates: {
+    id: 'studio.nav.templates',
+    defaultMessage: 'Templates',
+    description:
+      'Navigation label for the protocol template library, in the header and everything bar.',
+  },
+  profile: {
+    id: 'studio.nav.profile',
+    defaultMessage: 'Profile',
+    description:
+      "Navigation label for the researcher's own profile screen in the account area.",
+  },
+  language: {
+    id: 'studio.nav.language',
+    defaultMessage: 'Language',
+    description:
+      'Navigation label for the account screen where the researcher chooses the language Studio speaks.',
+  },
+  signInMethods: {
+    id: 'studio.nav.signInMethods',
+    defaultMessage: 'Sign-in methods',
+    description:
+      'Navigation label for the account screen listing sign-in providers and sessions.',
+  },
+  apiTokens: {
+    id: 'studio.nav.apiTokens',
+    defaultMessage: 'API tokens',
+    description:
+      'Navigation label for the account screen managing personal API tokens.',
+  },
+  teamStudies: {
+    id: 'studio.nav.teamStudies',
+    defaultMessage: 'Studies',
+    description: "Navigation label for a team's list of studies.",
+  },
+  teamMembers: {
+    id: 'studio.nav.teamMembers',
+    defaultMessage: 'Members',
+    description:
+      "Navigation label for a team's membership and invitations screen.",
+  },
+  teamRoles: {
+    id: 'studio.nav.teamRoles',
+    defaultMessage: 'Roles',
+    description: "Navigation label for a team's role configuration screen.",
+  },
+  teamActivity: {
+    id: 'studio.nav.teamActivity',
+    defaultMessage: 'Activity',
+    description: "Navigation label for a team's audit activity log.",
+  },
+  teamBilling: {
+    id: 'studio.nav.teamBilling',
+    defaultMessage: 'Billing',
+    description: "Navigation label for a team's plan and invoices screen.",
+  },
+  teamSettings: {
+    id: 'studio.nav.teamSettings',
+    defaultMessage: 'Settings',
+    description: "Navigation label for a team's settings screen.",
+  },
+  studyOverview: {
+    id: 'studio.nav.studyOverview',
+    defaultMessage: 'Overview',
+    description: "Navigation label for a study's overview dashboard.",
+  },
+  studyEditor: {
+    id: 'studio.nav.studyEditor',
+    defaultMessage: 'Editor',
+    description: "Navigation label for a study's protocol editor.",
+  },
+  studyVersions: {
+    id: 'studio.nav.studyVersions',
+    defaultMessage: 'Versions',
+    description:
+      "Navigation label for a study's published protocol versions screen.",
+  },
+  studyParticipants: {
+    id: 'studio.nav.studyParticipants',
+    defaultMessage: 'Participants',
+    description: "Navigation label for a study's participants screen.",
+  },
+  studyWaves: {
+    id: 'studio.nav.studyWaves',
+    defaultMessage: 'Waves',
+    description:
+      "Navigation label for a study's collection timepoints (waves) screen.",
+  },
+  studySessions: {
+    id: 'studio.nav.studySessions',
+    defaultMessage: 'Sessions',
+    description: "Navigation label for a study's interview sessions screen.",
+  },
+  studySchedule: {
+    id: 'studio.nav.studySchedule',
+    defaultMessage: 'Schedule',
+    description: "Navigation label for a study's schedule screen.",
+  },
+  studyRecruitment: {
+    id: 'studio.nav.studyRecruitment',
+    defaultMessage: 'Recruitment',
+    description: "Navigation label for a study's recruitment screen.",
+  },
+  studyExport: {
+    id: 'studio.nav.studyExport',
+    defaultMessage: 'Export',
+    description: "Navigation label for a study's data export screen.",
+  },
+  studySettings: {
+    id: 'studio.nav.studySettings',
+    defaultMessage: 'Study settings',
+    description: "Navigation label for a study's settings screen.",
+  },
+  backToStudy: {
+    id: 'studio.nav.backToStudy',
+    defaultMessage: 'Back to study',
+    description:
+      "First row of the protocol editor's outline: the way back out of the editor to the study.",
+  },
+  editorCodebook: {
+    id: 'studio.nav.editorCodebook',
+    defaultMessage: 'Codebook',
+    description: "Navigation label for the protocol editor's codebook screen.",
+  },
+  editorStages: {
+    id: 'studio.nav.editorStages',
+    defaultMessage: 'Stages',
+    description:
+      "Navigation label for the protocol editor's stage list screen.",
+  },
+  editorAssets: {
+    id: 'studio.nav.editorAssets',
+    defaultMessage: 'Assets',
+    description:
+      "Navigation label for the protocol editor's media assets screen.",
+  },
+  editorTranslations: {
+    id: 'studio.nav.editorTranslations',
+    defaultMessage: 'Translations',
+    description:
+      "Navigation label for the protocol editor's translations screen.",
+  },
+  editorPreview: {
+    id: 'studio.nav.editorPreview',
+    defaultMessage: 'Preview',
+    description:
+      "Navigation label for the protocol editor's draft preview screen.",
+  },
+});
+
+/**
+ * The bar's secondary line: which area a destination belongs to.
+ */
+const navContextMessages = defineMessages({
+  platform: {
+    id: 'studio.nav.context.platform',
+    defaultMessage: 'Platform',
+    description:
+      'Everything-bar context line for platform-level destinations (gallery, templates).',
+  },
+  account: {
+    id: 'studio.nav.context.account',
+    defaultMessage: 'Account',
+    description:
+      "Everything-bar context line for the researcher's own account destinations.",
+  },
+  team: {
+    id: 'studio.nav.context.team',
+    defaultMessage: 'Team',
+    description: 'Everything-bar context line for team destinations.',
+  },
+  study: {
+    id: 'studio.nav.context.study',
+    defaultMessage: 'Study',
+    description: 'Everything-bar context line for study destinations.',
+  },
+  protocol: {
+    id: 'studio.nav.context.protocol',
+    defaultMessage: 'Protocol',
+    description:
+      'Everything-bar context line for protocol editor destinations.',
+  },
+});
+
+/** The study sidebar's lifecycle group headings. */
+const navGroupMessages = defineMessages({
+  design: {
+    id: 'studio.nav.group.design',
+    defaultMessage: 'Design',
+    description:
+      'Study sidebar group heading for protocol design destinations.',
+  },
+  collect: {
+    id: 'studio.nav.group.collect',
+    defaultMessage: 'Collect',
+    description:
+      'Study sidebar group heading for data collection destinations.',
+  },
+  data: {
+    id: 'studio.nav.group.data',
+    defaultMessage: 'Data',
+    description: 'Study sidebar group heading for collected-data destinations.',
+  },
+});
+
+/**
  * A destination's router link, as data.
  *
  * `to` carries the route pattern and `params` its values, exactly as each
@@ -83,8 +303,11 @@ export type NavManifestEntry = {
    * resolved.
    */
   id: string;
-  /** The destination's name, as one whole translated string. */
-  label: string;
+  /**
+   * The destination's name, as one whole translated message — never a
+   * fragment. Consumers resolve it through `useAppIntl` at render.
+   */
+  label: MessageDescriptor;
   /**
    * The glyph, shared by the sidebar row and the bar result, so a destination
    * looks the same in both.
@@ -109,11 +332,11 @@ export type NavManifestEntry = {
   link: NavManifestLink;
   area: NavManifestArea;
   /** The bar's secondary line: which area this destination belongs to. */
-  context: string;
+  context: MessageDescriptor;
   /** Whether a committed pathname is inside this destination. */
   isCurrent: (pathname: string) => boolean;
   /** The sidebar group heading this row sits under, where its area groups rows. */
-  group?: string;
+  group?: MessageDescriptor;
   /** Extra classes for the sidebar row — the rules the study area draws. */
   className?: string;
   /**
@@ -122,7 +345,7 @@ export type NavManifestEntry = {
    * rather than a link, and the everything bar omits it entirely: a result the
    * researcher cannot activate is worse than no result.
    */
-  unavailableReason?: string;
+  unavailableReason?: MessageDescriptor;
   /**
    * A way BACK to a destination another area already declares, rather than a
    * destination of its own — the editor outline's "Back to study". The sidebar
@@ -139,24 +362,24 @@ export function platformDestinations(): NavManifestEntry[] {
   return [
     {
       id: 'platform:gallery',
-      label: 'Gallery',
+      label: navLabelMessages.gallery,
       icon: LibraryBig,
       href: '/gallery',
       // A template's own route sits beneath this path, and it is a destination
       // of the gallery rather than the gallery itself.
       link: { to: '/gallery', activeOptions: { exact: true } },
       area: 'platform',
-      context: 'Platform',
+      context: navContextMessages.platform,
       isCurrent: (pathname) => pathname === '/gallery',
     },
     {
       id: 'platform:templates',
-      label: 'Templates',
+      label: navLabelMessages.templates,
       icon: LayoutTemplate,
       href: '/templates',
       link: { to: '/templates', activeOptions: { exact: true } },
       area: 'platform',
-      context: 'Platform',
+      context: navContextMessages.platform,
       isCurrent: (pathname) => pathname === '/templates',
     },
   ];
@@ -167,32 +390,32 @@ export function accountDestinations(): NavManifestEntry[] {
   return [
     {
       id: 'account:profile',
-      label: 'Profile',
+      label: navLabelMessages.profile,
       icon: UserRound,
       href: '/account',
       link: { to: '/account', activeOptions: { exact: true } },
       area: 'account',
-      context: 'Account',
+      context: navContextMessages.account,
       isCurrent: (pathname) => pathname === '/account',
     },
     {
       id: 'account:language',
-      label: 'Language',
+      label: navLabelMessages.language,
       icon: Languages,
       href: '/account/language',
       link: { to: '/account/language' },
       area: 'account',
-      context: 'Account',
+      context: navContextMessages.account,
       isCurrent: (pathname) => pathname === '/account/language',
     },
     {
       id: 'account:sign-in-methods',
-      label: 'Sign-in methods',
+      label: navLabelMessages.signInMethods,
       icon: ShieldCheck,
       href: '/account/sign-in-methods',
       link: { to: '/account/sign-in-methods' },
       area: 'account',
-      context: 'Account',
+      context: navContextMessages.account,
       isCurrent: (pathname) => pathname === '/account/sign-in-methods',
     },
     {
@@ -204,12 +427,12 @@ export function accountDestinations(): NavManifestEntry[] {
       // silently meant "this team's tokens" would be the wrong answer rather
       // than a missing one.
       id: 'account:tokens',
-      label: 'API tokens',
+      label: navLabelMessages.apiTokens,
       icon: KeyRound,
       href: '/account/tokens',
       link: { to: '/account/tokens' },
       area: 'account',
-      context: 'Account',
+      context: navContextMessages.account,
       isCurrent: (pathname) => pathname === '/account/tokens',
     },
   ];
@@ -230,7 +453,7 @@ export type TeamManifestContext = {
    * and a self-hosted instance's absence and a managed deployment's
    * unconfigured one are different things to say (§10.3, §10.4).
    */
-  billingUnavailableReason: string | undefined;
+  billingUnavailableReason: MessageDescriptor | undefined;
 };
 
 /** The team area's sidebar (§5.5): the six destinations, in order. */
@@ -244,7 +467,7 @@ export function teamDestinations({
   return [
     {
       id: `team:${teamId}:studies`,
-      label: 'Studies',
+      label: navLabelMessages.teamStudies,
       icon: Library,
       href: team,
       link: {
@@ -253,51 +476,51 @@ export function teamDestinations({
         activeOptions: { exact: true },
       },
       area: 'team',
-      context: 'Team',
+      context: navContextMessages.team,
       isCurrent: (pathname) => pathname === team,
     },
     {
       id: `team:${teamId}:members`,
-      label: 'Members',
+      label: navLabelMessages.teamMembers,
       icon: Users,
       href: `${team}/members`,
       link: { to: '/team/$teamId/members', params: { teamId } },
       area: 'team',
-      context: 'Team',
+      context: navContextMessages.team,
       isCurrent: (pathname) => pathname === `${team}/members`,
     },
     {
       id: `team:${teamId}:roles`,
-      label: 'Roles',
+      label: navLabelMessages.teamRoles,
       icon: ShieldCheck,
       href: `${team}/roles`,
       link: { to: '/team/$teamId/roles', params: { teamId } },
       area: 'team',
-      context: 'Team',
+      context: navContextMessages.team,
       isCurrent: (pathname) => pathname === `${team}/roles`,
     },
     ...(canManageTeam
       ? [
           {
             id: `team:${teamId}:activity`,
-            label: 'Activity',
+            label: navLabelMessages.teamActivity,
             icon: ScrollText,
             href: `${team}/activity`,
             link: { to: '/team/$teamId/activity', params: { teamId } },
             area: 'team' as const,
-            context: 'Team',
+            context: navContextMessages.team,
             isCurrent: (pathname: string) => pathname === `${team}/activity`,
           },
         ]
       : []),
     {
       id: `team:${teamId}:billing`,
-      label: 'Billing',
+      label: navLabelMessages.teamBilling,
       icon: CreditCard,
       href: `${team}/billing`,
       link: { to: '/team/$teamId/billing', params: { teamId } },
       area: 'team',
-      context: 'Team',
+      context: navContextMessages.team,
       isCurrent: (pathname) => pathname === `${team}/billing`,
       ...(billingUnavailableReason === undefined
         ? {}
@@ -305,12 +528,12 @@ export function teamDestinations({
     },
     {
       id: `team:${teamId}:settings`,
-      label: 'Settings',
+      label: navLabelMessages.teamSettings,
       icon: Settings,
       href: `${team}/settings`,
       link: { to: '/team/$teamId/settings', params: { teamId } },
       area: 'team',
-      context: 'Team',
+      context: navContextMessages.team,
       // The integration screens — API, webhooks, messaging — are settings pages
       // rather than sidebar destinations of their own (§5.5), so this row stays
       // current inside them.
@@ -339,7 +562,7 @@ export function studyDestinations(
   return [
     {
       id: `study:${studyId}:overview`,
-      label: 'Overview',
+      label: navLabelMessages.studyOverview,
       icon: LayoutDashboard,
       href: study,
       link: {
@@ -348,23 +571,23 @@ export function studyDestinations(
         activeOptions: { exact: true },
       },
       area: 'study',
-      context: 'Study',
+      context: navContextMessages.study,
       isCurrent: (pathname) => pathname === study,
     },
     {
       id: `study:${studyId}:editor`,
-      label: 'Editor',
+      label: navLabelMessages.studyEditor,
       icon: FilePen,
       href: `${study}/editor`,
       link: { to: '/study/$studyId/editor', params: { studyId } },
       area: 'study',
-      context: 'Study',
-      group: 'Design',
+      context: navContextMessages.study,
+      group: navGroupMessages.design,
       isCurrent: (pathname) => pathname === `${study}/editor`,
     },
     {
       id: `study:${studyId}:versions`,
-      label: 'Versions',
+      label: navLabelMessages.studyVersions,
       icon: GitBranch,
       // The published versions of this study's protocol line, which is what
       // the Versions screen lists — not the draft being edited next door.
@@ -372,68 +595,68 @@ export function studyDestinations(
       href: `${study}/versions`,
       link: { to: '/study/$studyId/versions', params: { studyId } },
       area: 'study',
-      context: 'Study',
-      group: 'Design',
+      context: navContextMessages.study,
+      group: navGroupMessages.design,
       isCurrent: (pathname) => pathname === `${study}/versions`,
     },
     {
       id: `study:${studyId}:participants`,
-      label: 'Participants',
+      label: navLabelMessages.studyParticipants,
       icon: Users,
       count: counts?.participants,
       href: `${study}/participants`,
       link: { to: '/study/$studyId/participants', params: { studyId } },
       area: 'study',
-      context: 'Study',
-      group: 'Collect',
+      context: navContextMessages.study,
+      group: navGroupMessages.collect,
       isCurrent: (pathname) => pathname === `${study}/participants`,
     },
     {
       id: `study:${studyId}:waves`,
-      label: 'Waves',
+      label: navLabelMessages.studyWaves,
       icon: Waves,
       count: counts?.waves,
       href: `${study}/waves`,
       link: { to: '/study/$studyId/waves', params: { studyId } },
       area: 'study',
-      context: 'Study',
-      group: 'Collect',
+      context: navContextMessages.study,
+      group: navGroupMessages.collect,
       isCurrent: (pathname) => pathname === `${study}/waves`,
     },
     {
       id: `study:${studyId}:sessions`,
-      label: 'Sessions',
+      label: navLabelMessages.studySessions,
       icon: ClipboardList,
       count: counts?.sessions,
       href: `${study}/sessions`,
       link: { to: '/study/$studyId/sessions', params: { studyId } },
       area: 'study',
-      context: 'Study',
-      group: 'Collect',
+      context: navContextMessages.study,
+      group: navGroupMessages.collect,
       // The session detail route is a destination of this one, so the row stays
       // current while a researcher is inside a session.
       isCurrent: (pathname) => pathname.startsWith(`${study}/sessions`),
     },
     {
       id: `study:${studyId}:schedule`,
-      label: 'Schedule',
+      label: navLabelMessages.studySchedule,
       icon: CalendarClock,
       href: `${study}/schedule`,
       link: { to: '/study/$studyId/schedule', params: { studyId } },
       area: 'study',
-      context: 'Study',
-      group: 'Collect',
+      context: navContextMessages.study,
+      group: navGroupMessages.collect,
       isCurrent: (pathname) => pathname === `${study}/schedule`,
     },
     {
       id: `study:${studyId}:recruitment`,
-      label: 'Recruitment',
+      label: navLabelMessages.studyRecruitment,
       icon: Megaphone,
       href: `${study}/recruitment`,
       link: { to: '/study/$studyId/recruitment', params: { studyId } },
       area: 'study',
-      context: 'Study',
-      group: 'Collect',
+      context: navContextMessages.study,
+      group: navGroupMessages.collect,
       isCurrent: (pathname) => pathname === `${study}/recruitment`,
     },
     {
@@ -441,23 +664,23 @@ export function studyDestinations(
       // #1324's siblings — archive, deposit — join this group rather than
       // forcing a regrouping later.
       id: `study:${studyId}:export`,
-      label: 'Export',
+      label: navLabelMessages.studyExport,
       icon: Download,
       href: `${study}/export`,
       link: { to: '/study/$studyId/export', params: { studyId } },
       area: 'study',
-      context: 'Study',
-      group: 'Data',
+      context: navContextMessages.study,
+      group: navGroupMessages.data,
       isCurrent: (pathname) => pathname === `${study}/export`,
     },
     {
       id: `study:${studyId}:settings`,
-      label: 'Study settings',
+      label: navLabelMessages.studySettings,
       icon: Settings,
       href: `${study}/settings`,
       link: { to: '/study/$studyId/settings', params: { studyId } },
       area: 'study',
-      context: 'Study',
+      context: navContextMessages.study,
       // The rule §5.5 draws above this row: configuration, below the work.
       className: 'border-surface-2 border-t pt-4',
       isCurrent: (pathname) => pathname === `${study}/settings`,
@@ -485,7 +708,7 @@ export function editorDestinations(studyId: string): NavManifestEntry[] {
       // researcher can be inside for hours with nothing else on it (§5.5); the
       // way out has to be where they will look for it.
       id: `study:${studyId}:editor:back`,
-      label: 'Back to study',
+      label: navLabelMessages.backToStudy,
       icon: ArrowLeft,
       href: study,
       link: {
@@ -494,24 +717,24 @@ export function editorDestinations(studyId: string): NavManifestEntry[] {
         activeOptions: { exact: true },
       },
       area: 'editor',
-      context: 'Protocol',
+      context: navContextMessages.protocol,
       className: 'border-surface-2 mb-1 border-b pb-1',
       isCurrent: () => false,
       reentry: true,
     },
     {
       id: `study:${studyId}:editor:codebook`,
-      label: 'Codebook',
+      label: navLabelMessages.editorCodebook,
       icon: BookMarked,
       href: `${editor}/codebook`,
       link: { to: '/study/$studyId/editor/codebook', params: { studyId } },
       area: 'editor',
-      context: 'Protocol',
+      context: navContextMessages.protocol,
       isCurrent: (pathname) => pathname === `${editor}/codebook`,
     },
     {
       id: `study:${studyId}:editor:stages`,
-      label: 'Stages',
+      label: navLabelMessages.editorStages,
       icon: FileStack,
       href: editor,
       link: {
@@ -520,7 +743,7 @@ export function editorDestinations(studyId: string): NavManifestEntry[] {
         activeOptions: { exact: true },
       },
       area: 'editor',
-      context: 'Protocol',
+      context: navContextMessages.protocol,
       // A stage's own route is a destination of this one, so the row stays
       // current while a stage is being edited.
       isCurrent: (pathname) =>
@@ -528,32 +751,32 @@ export function editorDestinations(studyId: string): NavManifestEntry[] {
     },
     {
       id: `study:${studyId}:editor:assets`,
-      label: 'Assets',
+      label: navLabelMessages.editorAssets,
       icon: Image,
       href: `${editor}/assets`,
       link: { to: '/study/$studyId/editor/assets', params: { studyId } },
       area: 'editor',
-      context: 'Protocol',
+      context: navContextMessages.protocol,
       isCurrent: (pathname) => pathname === `${editor}/assets`,
     },
     {
       id: `study:${studyId}:editor:translations`,
-      label: 'Translations',
+      label: navLabelMessages.editorTranslations,
       icon: Languages,
       href: `${editor}/translations`,
       link: { to: '/study/$studyId/editor/translations', params: { studyId } },
       area: 'editor',
-      context: 'Protocol',
+      context: navContextMessages.protocol,
       isCurrent: (pathname) => pathname === `${editor}/translations`,
     },
     {
       id: `study:${studyId}:editor:preview`,
-      label: 'Preview',
+      label: navLabelMessages.editorPreview,
       icon: Play,
       href: `${editor}/preview`,
       link: { to: '/study/$studyId/editor/preview', params: { studyId } },
       area: 'editor',
-      context: 'Protocol',
+      context: navContextMessages.protocol,
       isCurrent: (pathname) => pathname === `${editor}/preview`,
     },
   ];
@@ -569,7 +792,7 @@ export type NavManifestContext = {
   /** The study the URL names, if any. */
   studyId?: string;
   canManageTeam: boolean;
-  billingUnavailableReason: string | undefined;
+  billingUnavailableReason: MessageDescriptor | undefined;
 };
 
 /**

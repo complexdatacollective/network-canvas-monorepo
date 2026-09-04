@@ -2,6 +2,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi, useRouter } from '@tanstack/react-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -24,14 +27,142 @@ import { GoogleIcon, MicrosoftIcon } from './ProviderIcons.tsx';
 
 const route = getRouteApi('/focused/sign-in');
 
-const PROVIDERS: Record<SocialProvider, { label: string; icon: ReactNode }> = {
-  google: { label: 'Continue with Google', icon: <GoogleIcon /> },
-  microsoft: { label: 'Continue with Microsoft', icon: <MicrosoftIcon /> },
+const messages = defineMessages({
+  heading: {
+    id: 'studio.signIn.heading',
+    defaultMessage: 'Sign in',
+    description: 'Heading of the sign-in screen.',
+  },
+  linkInvalid: {
+    id: 'studio.signIn.linkInvalid',
+    defaultMessage:
+      'That sign-in link is no longer valid. Enter your email address to request a new one.',
+    description:
+      'Shown when a magic sign-in link the researcher followed has expired or was already used.',
+  },
+  didNotComplete: {
+    id: 'studio.signIn.didNotComplete',
+    defaultMessage: 'Sign-in did not complete. Try again.',
+    description:
+      'Shown when a sign-in attempt failed for an unspecified reason.',
+  },
+  unavailable: {
+    id: 'studio.signIn.unavailable',
+    defaultMessage:
+      'Sign-in is not available on this server. Contact the person who runs it.',
+    description:
+      'Shown on a self-hosted instance whose administrator has configured no sign-in method.',
+  },
+  magicLinkIntro: {
+    id: 'studio.signIn.magicLinkIntro',
+    defaultMessage:
+      'Enter your email address and we will send you a sign-in link.',
+    description: 'Introduction above the magic-link sign-in form.',
+  },
+  magicLinkSendFailed: {
+    id: 'studio.signIn.magicLinkSendFailed',
+    defaultMessage:
+      'The sign-in email could not be sent. Wait a moment and try again.',
+    description: 'Form error when requesting a magic sign-in link failed.',
+  },
+  emailLabel: {
+    id: 'studio.signIn.emailLabel',
+    defaultMessage: 'Email address',
+    description: "Label of the sign-in form's email field.",
+  },
+  emailHint: {
+    id: 'studio.signIn.emailHint',
+    defaultMessage: 'The address you use for Studio.',
+    description:
+      "Hint under the sign-in form's email field when the value is not a valid address.",
+  },
+  sendLink: {
+    id: 'studio.signIn.sendLink',
+    defaultMessage: 'Send sign-in link',
+    description: 'Submit button of the magic-link sign-in form.',
+  },
+  passwordIntro: {
+    id: 'studio.signIn.passwordIntro',
+    defaultMessage: 'Enter your email address and password.',
+    description: 'Introduction above the password sign-in form.',
+  },
+  wrongCredentials: {
+    id: 'studio.signIn.wrongCredentials',
+    defaultMessage: 'That email or password is not correct.',
+    description: 'Form error when the email and password did not match.',
+  },
+  passwordLabel: {
+    id: 'studio.signIn.passwordLabel',
+    defaultMessage: 'Password',
+    description: "Label of the sign-in form's password field.",
+  },
+  submit: {
+    id: 'studio.signIn.submit',
+    defaultMessage: 'Sign in',
+    description: 'Submit button of the password sign-in form.',
+  },
+  useMagicLink: {
+    id: 'studio.signIn.useMagicLink',
+    defaultMessage: 'Sign in with a magic link instead',
+    description: 'Toggle from the password form to the magic-link form.',
+  },
+  usePassword: {
+    id: 'studio.signIn.usePassword',
+    defaultMessage: 'Sign in with a password instead',
+    description: 'Toggle from the magic-link form to the password form.',
+  },
+  orDivider: {
+    id: 'studio.signIn.orDivider',
+    defaultMessage: 'or',
+    description:
+      'Visual divider between the email sign-in form and the social sign-in buttons.',
+  },
+  socialFailed: {
+    id: 'studio.signIn.socialFailed',
+    defaultMessage:
+      'Sign-in could not be started. Wait a moment and try again.',
+    description: 'Shown when handing off to a social sign-in provider failed.',
+  },
+  continueWithGoogle: {
+    id: 'studio.signIn.continueWithGoogle',
+    defaultMessage: 'Continue with Google',
+    description: 'Button starting sign-in through Google.',
+  },
+  continueWithMicrosoft: {
+    id: 'studio.signIn.continueWithMicrosoft',
+    defaultMessage: 'Continue with Microsoft',
+    description: 'Button starting sign-in through Microsoft.',
+  },
+  sentTo: {
+    id: 'studio.signIn.sentTo',
+    defaultMessage:
+      'We sent a sign-in link to {email}. Open it on this device to continue. The link expires in 5 minutes.',
+    description:
+      'Confirmation after a magic sign-in link was sent; {email} is the address it went to.',
+  },
+  useDifferentEmail: {
+    id: 'studio.signIn.useDifferentEmail',
+    defaultMessage: 'Use a different email address',
+    description:
+      'Button returning from the sent-link confirmation to the email form.',
+  },
+});
+
+const PROVIDERS: Record<
+  SocialProvider,
+  { label: MessageDescriptor; icon: ReactNode }
+> = {
+  google: { label: messages.continueWithGoogle, icon: <GoogleIcon /> },
+  microsoft: {
+    label: messages.continueWithMicrosoft,
+    icon: <MicrosoftIcon />,
+  },
 };
 
 const MAGIC_LINK_ERRORS = new Set(['EXPIRED_TOKEN', 'INVALID_TOKEN']);
 
 export default function SignIn() {
+  const intl = useAppIntl();
   const { error, invitationId } = route.useSearch();
   const status = useQuery(orpc.status.queryOptions());
   const queryClient = useQueryClient();
@@ -133,19 +264,20 @@ export default function SignIn() {
           and there is nothing else to catch it.
         */}
         <Heading level="h1" {...routeFocusTargetProps}>
-          Sign in
+          {intl.formatMessage(messages.heading)}
         </Heading>
         {error !== undefined && sentTo === null && (
           <Alert variant="destructive">
-            {MAGIC_LINK_ERRORS.has(error)
-              ? 'That sign-in link is no longer valid. Enter your email address to request a new one.'
-              : 'Sign-in did not complete. Try again.'}
+            {intl.formatMessage(
+              MAGIC_LINK_ERRORS.has(error)
+                ? messages.linkInvalid
+                : messages.didNotComplete,
+            )}
           </Alert>
         )}
         {unavailable && (
           <Paragraph role="alert">
-            Sign-in is not available on this server. Contact the person who runs
-            it.
+            {intl.formatMessage(messages.unavailable)}
           </Paragraph>
         )}
         {!unavailable && sentTo === null && (
@@ -153,7 +285,7 @@ export default function SignIn() {
             {showMagicLinkForm && (
               <>
                 <Paragraph>
-                  Enter your email address and we will send you a sign-in link.
+                  {intl.formatMessage(messages.magicLinkIntro)}
                 </Paragraph>
                 <Form
                   onSubmit={async (values) => {
@@ -162,7 +294,7 @@ export default function SignIn() {
                     const failed = {
                       success: false,
                       formErrors: [
-                        'The sign-in email could not be sent. Wait a moment and try again.',
+                        intl.formatMessage(messages.magicLinkSendFailed),
                       ],
                     };
                     let result;
@@ -184,22 +316,27 @@ export default function SignIn() {
                 >
                   <Field
                     name="email"
-                    label="Email address"
+                    label={intl.formatMessage(messages.emailLabel)}
                     component={InputField}
                     type="email"
                     required
                     pattern={studioEmailPattern(
-                      'The address you use for Studio.',
+                      intl,
+                      intl.formatMessage(messages.emailHint),
                     )}
                     autoComplete="email"
                   />
-                  <SubmitButton>Send sign-in link</SubmitButton>
+                  <SubmitButton>
+                    {intl.formatMessage(messages.sendLink)}
+                  </SubmitButton>
                 </Form>
               </>
             )}
             {showPasswordForm && (
               <>
-                <Paragraph>Enter your email address and password.</Paragraph>
+                <Paragraph>
+                  {intl.formatMessage(messages.passwordIntro)}
+                </Paragraph>
                 <Form
                   onSubmit={async (values) => {
                     const email =
@@ -210,7 +347,9 @@ export default function SignIn() {
                         : '';
                     const failed = {
                       success: false,
-                      formErrors: ['That email or password is not correct.'],
+                      formErrors: [
+                        intl.formatMessage(messages.wrongCredentials),
+                      ],
                     };
                     let result;
                     try {
@@ -223,7 +362,9 @@ export default function SignIn() {
                       // submitting.
                       return {
                         success: false,
-                        formErrors: ['Sign-in did not complete. Try again.'],
+                        formErrors: [
+                          intl.formatMessage(messages.didNotComplete),
+                        ],
                       };
                     }
                     if (result.error) return failed;
@@ -246,23 +387,26 @@ export default function SignIn() {
                 >
                   <Field
                     name="email"
-                    label="Email address"
+                    label={intl.formatMessage(messages.emailLabel)}
                     component={InputField}
                     type="email"
                     required
                     pattern={studioEmailPattern(
-                      'The address you use for Studio.',
+                      intl,
+                      intl.formatMessage(messages.emailHint),
                     )}
                     autoComplete="email"
                   />
                   <Field
                     name="password"
-                    label="Password"
+                    label={intl.formatMessage(messages.passwordLabel)}
                     component={PasswordField}
                     required
                     autoComplete="current-password"
                   />
-                  <SubmitButton>Sign in</SubmitButton>
+                  <SubmitButton>
+                    {intl.formatMessage(messages.submit)}
+                  </SubmitButton>
                 </Form>
               </>
             )}
@@ -274,9 +418,11 @@ export default function SignIn() {
                   setMode(showPasswordForm ? 'magic-link' : 'password')
                 }
               >
-                {showPasswordForm
-                  ? 'Sign in with a magic link instead'
-                  : 'Sign in with a password instead'}
+                {intl.formatMessage(
+                  showPasswordForm
+                    ? messages.useMagicLink
+                    : messages.usePassword,
+                )}
               </Button>
             )}
             {socialProviders.length > 0 && (
@@ -286,12 +432,12 @@ export default function SignIn() {
                     aria-hidden="true"
                     className="my-4 flex items-center gap-3 before:h-px before:flex-1 before:bg-current/20 after:h-px after:flex-1 after:bg-current/20"
                   >
-                    or
+                    {intl.formatMessage(messages.orDivider)}
                   </div>
                 )}
                 {socialFailed && (
                   <Alert variant="destructive">
-                    Sign-in could not be started. Wait a moment and try again.
+                    {intl.formatMessage(messages.socialFailed)}
                   </Alert>
                 )}
                 <div className="flex flex-col items-stretch gap-4">
@@ -310,7 +456,7 @@ export default function SignIn() {
                       }
                       onClick={() => void signInWith(provider)}
                     >
-                      {PROVIDERS[provider].label}
+                      {intl.formatMessage(PROVIDERS[provider].label)}
                     </Button>
                   ))}
                 </div>
@@ -319,16 +465,12 @@ export default function SignIn() {
           </>
         )}
         <Paragraph role="status" ref={sentRef} tabIndex={-1}>
-          {sentTo !== null && (
-            <>
-              We sent a sign-in link to {sentTo}. Open it on this device to
-              continue. The link expires in 5 minutes.
-            </>
-          )}
+          {sentTo !== null &&
+            intl.formatMessage(messages.sentTo, { email: sentTo })}
         </Paragraph>
         {sentTo !== null && (
           <Button size="sm" onClick={() => setSentTo(null)}>
-            Use a different email address
+            {intl.formatMessage(messages.useDifferentEmail)}
           </Button>
         )}
       </Surface>

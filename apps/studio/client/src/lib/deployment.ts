@@ -1,5 +1,7 @@
 import { useQuery, type QueryClient } from '@tanstack/react-query';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import {
   isSurfaceServed,
   type DeploymentMode,
@@ -36,6 +38,21 @@ export async function fetchDeploymentMode(
 
 const BILLING_PATH = '/team/$teamId/billing';
 
+const billingUnavailableMessages = defineMessages({
+  managedOnly: {
+    id: 'studio.deployment.billingManagedOnly',
+    defaultMessage: 'Managed deployments only',
+    description:
+      'Shown on the disabled Billing sidebar row of a self-hosted instance, which does not serve billing at all.',
+  },
+  notEnabled: {
+    id: 'studio.deployment.billingNotEnabled',
+    defaultMessage: 'Not enabled on this deployment',
+    description:
+      'Shown on the disabled Billing sidebar row of a deployment whose billing capability is not configured.',
+  },
+});
+
 /**
  * Why this deployment does not have Billing, or `undefined` when it has.
  *
@@ -63,11 +80,11 @@ const BILLING_PATH = '/team/$teamId/billing';
  * not have that" is a stronger claim than linking to it, and an unanswered
  * question is no basis for making it.
  */
-export function useBillingUnavailableReason(): string | undefined {
+export function useBillingUnavailableReason(): MessageDescriptor | undefined {
   const deployment = useQuery(statusQueryOptions).data?.deployment;
   if (deployment === undefined) return undefined;
   if (!isSurfaceServed(BILLING_PATH, deployment.mode)) {
-    return 'Managed deployments only';
+    return billingUnavailableMessages.managedOnly;
   }
-  return deployment.billing ? undefined : 'Not enabled on this deployment';
+  return deployment.billing ? undefined : billingUnavailableMessages.notEnabled;
 }

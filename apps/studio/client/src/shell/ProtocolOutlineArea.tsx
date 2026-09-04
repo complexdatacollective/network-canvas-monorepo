@@ -1,5 +1,7 @@
 import { Outlet, useRouterState } from '@tanstack/react-router';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import AppArea from '@codaco/fresco-ui/layout/AppArea';
 
 import AreaMain from './AreaMain.tsx';
@@ -20,7 +22,29 @@ import { editorDestinations } from './navigationManifest.ts';
  * are declared in `navigationManifest.ts`, which is also what the everything
  * bar's `go-to` provider searches.
  */
+const messages = defineMessages({
+  navLabel: {
+    id: 'studio.shell.protocolOutlineNavLabel',
+    defaultMessage: 'Protocol outline',
+    description:
+      "Accessible name of the protocol editor's outline navigation region.",
+  },
+  navOpen: {
+    id: 'studio.shell.protocolOutlineNavOpen',
+    defaultMessage: 'Open protocol outline',
+    description:
+      'Accessible name of the control that opens the protocol outline drawer on narrow viewports.',
+  },
+  navClose: {
+    id: 'studio.shell.protocolOutlineNavClose',
+    defaultMessage: 'Close protocol outline',
+    description:
+      'Accessible name of the control that closes the protocol outline drawer on narrow viewports.',
+  },
+});
+
 export default function ProtocolOutlineArea({ studyId }: { studyId: string }) {
+  const intl = useAppIntl();
   const pathname = useRouterState({
     // The COMMITTED location, which is `resolvedLocation`: `location` is the
     // PENDING one, set to the destination before the transaction runs.
@@ -31,9 +55,9 @@ export default function ProtocolOutlineArea({ studyId }: { studyId: string }) {
     <AppArea
       location={pathname}
       navigation={{
-        label: 'Protocol outline',
-        openLabel: 'Open protocol outline',
-        closeLabel: 'Close protocol outline',
+        label: intl.formatMessage(messages.navLabel),
+        openLabel: intl.formatMessage(messages.navOpen),
+        closeLabel: intl.formatMessage(messages.navClose),
         content: <ManifestNav entries={editorDestinations(studyId)} />,
       }}
     >

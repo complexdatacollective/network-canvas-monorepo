@@ -1,5 +1,7 @@
 import { Link } from '@tanstack/react-router';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { authClient } from '../lib/auth.ts';
 import { landingDestination, type LandingDestination } from '../lib/landing.ts';
 import AccountMenu from './AccountMenu.tsx';
@@ -76,6 +78,7 @@ function Wordmark({ home }: { home: LandingDestination | undefined }) {
 }
 
 export default function AppHeader() {
+  const intl = useAppIntl();
   // The wordmark goes to the researcher's landing destination (§5.5), not to
   // `/`: inside the application `/` is marketing, or a redirect on a
   // self-hosted instance (§10.4). The same resolution `/` and the sign-in
@@ -115,7 +118,7 @@ export default function AppHeader() {
             params={entry.link.params}
             activeOptions={entry.link.activeOptions}
           >
-            {entry.label}
+            {intl.formatMessage(entry.label)}
           </Link>
         ))}
         <AccountMenu />

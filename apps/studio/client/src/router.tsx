@@ -9,11 +9,13 @@ import {
   type RouterHistory,
 } from '@tanstack/react-router';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import AppArea from '@codaco/fresco-ui/layout/AppArea';
 import RouteFocus from '@codaco/fresco-ui/navigation/RouteFocus';
 import { TeamInvitationIdSchema } from '@codaco/studio-rpc';
 
+import { StudioI18nProvider } from './i18n/StudioI18nProvider.tsx';
 import { fetchDeploymentMode } from './lib/deployment.ts';
 import {
   landingRedirect,
@@ -29,6 +31,7 @@ import {
   setUnauthorizedResponseHandler,
 } from './lib/session.ts';
 import AcceptInvitation from './routes/AcceptInvitation.tsx';
+import AccountLanguage from './routes/AccountLanguage.tsx';
 import AppLayout from './routes/AppLayout.tsx';
 import Editor from './routes/Editor.tsx';
 import ErrorScreen from './routes/ErrorScreen.tsx';
@@ -67,6 +70,15 @@ type ShellContext = {
  * the destination has rendered, so the effect would land on and announce the
  * heading of the screen the researcher is leaving, and nothing would change
  * again once the real one arrived.
+ *
+ * The locale provider is here, above everything, for two reasons (2026-09-04
+ * localization design §5.1). The root route is what `createAppRouter` builds,
+ * so the app and every route test get the same wiring rather than the app
+ * getting it in `main.tsx` and the tests going without. And it sits above all
+ * four shells — site, focused, app and participant — because the language a
+ * screen speaks is not a property of which product it belongs to. Above
+ * `DialogProvider` too: a dialog's own chrome is translated by the same
+ * provider as the screen that opened it.
  */
 function RootLayout() {
   const location = useRouterState({
@@ -74,10 +86,12 @@ function RootLayout() {
   });
 
   return (
-    <DialogProvider>
-      <RouteFocus location={location} />
-      <Outlet />
-    </DialogProvider>
+    <StudioI18nProvider>
+      <DialogProvider>
+        <RouteFocus location={location} />
+        <Outlet />
+      </DialogProvider>
+    </StudioI18nProvider>
   );
 }
 
@@ -139,6 +153,528 @@ function libraryPlaceholder(props: PlaceholderProps) {
     );
   };
 }
+
+/**
+ * The copy every not-yet-built screen shows: its name, and the sentence saying
+ * what it will do. Declared here because the route tree is what says which
+ * screen is where — a placeholder's title is the destination's name, and the
+ * navigation manifest names the same destinations from its own catalog.
+ *
+ * Each entry leaves with the screen that replaces it.
+ */
+const screens = defineMessages({
+  pricingTitle: {
+    id: 'studio.screens.pricingTitle',
+    defaultMessage: 'Pricing',
+    description: 'Name of the Pricing screen at /pricing, used as its heading.',
+  },
+  pricingDescription: {
+    id: 'studio.screens.pricingDescription',
+    defaultMessage:
+      'What each Studio plan includes and what it costs, so a research group can decide before they sign up.',
+    description:
+      'What the Pricing screen at /pricing will do, shown on it while it is not yet built.',
+  },
+  legalTitle: {
+    id: 'studio.screens.legalTitle',
+    defaultMessage: 'Legal',
+    description:
+      'Name of the Legal screen at /legal/$document, used as its heading.',
+  },
+  legalDescription: {
+    id: 'studio.screens.legalDescription',
+    defaultMessage:
+      "Studio's terms of service, privacy notice and data processing agreement, each addressed by name.",
+    description:
+      'What the Legal screen at /legal/$document will do, shown on it while it is not yet built.',
+  },
+  signUpTitle: {
+    id: 'studio.screens.signUpTitle',
+    defaultMessage: 'Create an account',
+    description:
+      'Name of the Create an account screen at /sign-up, used as its heading.',
+  },
+  signUpDescription: {
+    id: 'studio.screens.signUpDescription',
+    defaultMessage:
+      'Where a researcher creates their Studio account, and the first step of the funnel that ends with a team and a first study.',
+    description:
+      'What the Create an account screen at /sign-up will do, shown on it while it is not yet built.',
+  },
+  signUpTeamTitle: {
+    id: 'studio.screens.signUpTeamTitle',
+    defaultMessage: 'Name your team',
+    description:
+      'Name of the Name your team screen at /sign-up/team, used as its heading.',
+  },
+  signUpTeamDescription: {
+    id: 'studio.screens.signUpTeamDescription',
+    defaultMessage:
+      'Names the team the new account will own — the boundary every study, member and invoice belongs to.',
+    description:
+      'What the Name your team screen at /sign-up/team will do, shown on it while it is not yet built.',
+  },
+  signUpPlanTitle: {
+    id: 'studio.screens.signUpPlanTitle',
+    defaultMessage: 'Choose a plan',
+    description:
+      'Name of the Choose a plan screen at /sign-up/plan, used as its heading.',
+  },
+  signUpPlanDescription: {
+    id: 'studio.screens.signUpPlanDescription',
+    defaultMessage:
+      'Which plan the new team starts on, and what that settles about seats and limits.',
+    description:
+      'What the Choose a plan screen at /sign-up/plan will do, shown on it while it is not yet built.',
+  },
+  signUpCheckoutTitle: {
+    id: 'studio.screens.signUpCheckoutTitle',
+    defaultMessage: 'Checkout',
+    description:
+      'Name of the Checkout screen at /sign-up/checkout, used as its heading.',
+  },
+  signUpCheckoutDescription: {
+    id: 'studio.screens.signUpCheckoutDescription',
+    defaultMessage:
+      "Hands off to the payment provider's own checkout, so card details never reach Studio.",
+    description:
+      'What the Checkout screen at /sign-up/checkout will do, shown on it while it is not yet built.',
+  },
+  signUpCompleteTitle: {
+    id: 'studio.screens.signUpCompleteTitle',
+    defaultMessage: 'Account ready',
+    description:
+      'Name of the Account ready screen at /sign-up/complete, used as its heading.',
+  },
+  signUpCompleteDescription: {
+    id: 'studio.screens.signUpCompleteDescription',
+    defaultMessage:
+      'Where checkout returns: the subscription is confirmed, the team exists, and its first study is created.',
+    description:
+      'What the Account ready screen at /sign-up/complete will do, shown on it while it is not yet built.',
+  },
+  setupTitle: {
+    id: 'studio.screens.setupTitle',
+    defaultMessage: 'First-run setup',
+    description:
+      'Name of the First-run setup screen at /setup, used as its heading.',
+  },
+  setupDescription: {
+    id: 'studio.screens.setupDescription',
+    defaultMessage:
+      'Configures a freshly installed self-hosted instance: its first owner, its name, and how it sends mail and stores files.',
+    description:
+      'What the First-run setup screen at /setup will do, shown on it while it is not yet built.',
+  },
+  noTeamTitle: {
+    id: 'studio.screens.noTeamTitle',
+    defaultMessage: 'No team yet',
+    description:
+      'Name of the No team yet screen at /no-team, used as its heading.',
+  },
+  noTeamDescription: {
+    id: 'studio.screens.noTeamDescription',
+    defaultMessage:
+      'What a signed-in researcher who belongs to no team sees: how to create one, or what to expect while waiting for an invitation.',
+    description:
+      'What the No team yet screen at /no-team will do, shown on it while it is not yet built.',
+  },
+  enterTitle: {
+    id: 'studio.screens.enterTitle',
+    defaultMessage: 'Welcome',
+    description:
+      'Name of the Welcome screen at /enter/$token, used as its heading.',
+  },
+  enterDescription: {
+    id: 'studio.screens.enterDescription',
+    defaultMessage:
+      "Where a participant's invitation link lands: the study's welcome, the language they will answer in, and anything they should read first.",
+    description:
+      'What the Welcome screen at /enter/$token will do, shown on it while it is not yet built.',
+  },
+  enterConsentTitle: {
+    id: 'studio.screens.enterConsentTitle',
+    defaultMessage: 'Consent',
+    description:
+      'Name of the Consent screen at /enter/$token/consent, used as its heading.',
+  },
+  enterConsentDescription: {
+    id: 'studio.screens.enterConsentDescription',
+    defaultMessage:
+      "The study's consent text, and the participant's recorded decision about taking part in it.",
+    description:
+      'What the Consent screen at /enter/$token/consent will do, shown on it while it is not yet built.',
+  },
+  enterInterviewTitle: {
+    id: 'studio.screens.enterInterviewTitle',
+    defaultMessage: 'Interview',
+    description:
+      'Name of the Interview screen at /enter/$token/interview, used as its heading.',
+  },
+  enterInterviewDescription: {
+    id: 'studio.screens.enterInterviewDescription',
+    defaultMessage:
+      'The interview itself, run by the Network Canvas interview runtime and owning the whole viewport.',
+    description:
+      'What the Interview screen at /enter/$token/interview will do, shown on it while it is not yet built.',
+  },
+  enterCompleteTitle: {
+    id: 'studio.screens.enterCompleteTitle',
+    defaultMessage: 'Interview complete',
+    description:
+      'Name of the Interview complete screen at /enter/$token/complete, used as its heading.',
+  },
+  enterCompleteDescription: {
+    id: 'studio.screens.enterCompleteDescription',
+    defaultMessage:
+      'Confirms the interview is finished and sends the participant wherever the study asked to return them.',
+    description:
+      'What the Interview complete screen at /enter/$token/complete will do, shown on it while it is not yet built.',
+  },
+  accountIndexTitle: {
+    id: 'studio.screens.accountIndexTitle',
+    defaultMessage: 'Profile',
+    description: 'Name of the Profile screen at /account, used as its heading.',
+  },
+  accountIndexDescription: {
+    id: 'studio.screens.accountIndexDescription',
+    defaultMessage:
+      "The researcher's own name, email address and everything else Studio holds about them as a person rather than as a member of a team.",
+    description:
+      'What the Profile screen at /account will do, shown on it while it is not yet built.',
+  },
+  accountSignInMethodsTitle: {
+    id: 'studio.screens.accountSignInMethodsTitle',
+    defaultMessage: 'Sign-in methods',
+    description:
+      'Name of the Sign-in methods screen at /sign-in-methods, used as its heading.',
+  },
+  accountSignInMethodsDescription: {
+    id: 'studio.screens.accountSignInMethodsDescription',
+    defaultMessage:
+      'Which providers can sign this account in, and which sessions are signed in on it right now.',
+    description:
+      'What the Sign-in methods screen at /sign-in-methods will do, shown on it while it is not yet built.',
+  },
+  accountTokensTitle: {
+    id: 'studio.screens.accountTokensTitle',
+    defaultMessage: 'API tokens',
+    description:
+      'Name of the API tokens screen at /tokens, used as its heading.',
+  },
+  accountTokensDescription: {
+    id: 'studio.screens.accountTokensDescription',
+    defaultMessage:
+      "Personal tokens for reaching Studio's API as this researcher, and revoking one that should no longer work.",
+    description:
+      'What the API tokens screen at /tokens will do, shown on it while it is not yet built.',
+  },
+  galleryTitle: {
+    id: 'studio.screens.galleryTitle',
+    defaultMessage: 'Gallery',
+    description: 'Name of the Gallery screen at /gallery, used as its heading.',
+  },
+  galleryDescription: {
+    id: 'studio.screens.galleryDescription',
+    defaultMessage:
+      'Protocols other researchers have published, to read, cite and copy into a team as the starting point for a study.',
+    description:
+      'What the Gallery screen at /gallery will do, shown on it while it is not yet built.',
+  },
+  galleryTemplateTitle: {
+    id: 'studio.screens.galleryTemplateTitle',
+    defaultMessage: 'Gallery protocol',
+    description:
+      'Name of the Gallery protocol screen at /gallery/$templateId, used as its heading.',
+  },
+  galleryTemplateDescription: {
+    id: 'studio.screens.galleryTemplateDescription',
+    defaultMessage:
+      'One published protocol in full: what it collects, who made it, and where it came from.',
+    description:
+      'What the Gallery protocol screen at /gallery/$templateId will do, shown on it while it is not yet built.',
+  },
+  templatesTitle: {
+    id: 'studio.screens.templatesTitle',
+    defaultMessage: 'Templates',
+    description:
+      'Name of the Templates screen at /templates, used as its heading.',
+  },
+  templatesDescription: {
+    id: 'studio.screens.templatesDescription',
+    defaultMessage:
+      'The protocol templates this instance offers as starting points, and what each one is for.',
+    description:
+      'What the Templates screen at /templates will do, shown on it while it is not yet built.',
+  },
+  teamRolesTitle: {
+    id: 'studio.screens.teamRolesTitle',
+    defaultMessage: 'Roles',
+    description: 'Name of the Roles screen at /roles, used as its heading.',
+  },
+  teamRolesDescription: {
+    id: 'studio.screens.teamRolesDescription',
+    defaultMessage:
+      'What each member is allowed to do, and who among them may see participant identifiers.',
+    description:
+      'What the Roles screen at /roles will do, shown on it while it is not yet built.',
+  },
+  teamBillingTitle: {
+    id: 'studio.screens.teamBillingTitle',
+    defaultMessage: 'Billing',
+    description: 'Name of the Billing screen at /billing, used as its heading.',
+  },
+  teamBillingDescription: {
+    id: 'studio.screens.teamBillingDescription',
+    defaultMessage:
+      "The team's plan, the seats it is paying for, and its invoices.",
+    description:
+      'What the Billing screen at /billing will do, shown on it while it is not yet built.',
+  },
+  teamSettingsTitle: {
+    id: 'studio.screens.teamSettingsTitle',
+    defaultMessage: 'Team settings',
+    description:
+      'Name of the Team settings screen at /settings, used as its heading.',
+  },
+  teamSettingsDescription: {
+    id: 'studio.screens.teamSettingsDescription',
+    defaultMessage:
+      "The team's name, the defaults every new study inherits from it, and deleting the team.",
+    description:
+      'What the Team settings screen at /settings will do, shown on it while it is not yet built.',
+  },
+  teamSettingsApiTitle: {
+    id: 'studio.screens.teamSettingsApiTitle',
+    defaultMessage: 'API access',
+    description:
+      'Name of the API access screen at /settings/api, used as its heading.',
+  },
+  teamSettingsApiDescription: {
+    id: 'studio.screens.teamSettingsApiDescription',
+    defaultMessage:
+      "The team's API credentials, what each one may reach, and when it was last used.",
+    description:
+      'What the API access screen at /settings/api will do, shown on it while it is not yet built.',
+  },
+  teamSettingsWebhooksTitle: {
+    id: 'studio.screens.teamSettingsWebhooksTitle',
+    defaultMessage: 'Webhooks',
+    description:
+      'Name of the Webhooks screen at /settings/webhooks, used as its heading.',
+  },
+  teamSettingsWebhooksDescription: {
+    id: 'studio.screens.teamSettingsWebhooksDescription',
+    defaultMessage:
+      'Where Studio should tell another system that something happened in this team, and whether those messages are arriving.',
+    description:
+      'What the Webhooks screen at /settings/webhooks will do, shown on it while it is not yet built.',
+  },
+  teamSettingsMessagingTitle: {
+    id: 'studio.screens.teamSettingsMessagingTitle',
+    defaultMessage: 'Messaging',
+    description:
+      'Name of the Messaging screen at /settings/messaging, used as its heading.',
+  },
+  teamSettingsMessagingDescription: {
+    id: 'studio.screens.teamSettingsMessagingDescription',
+    defaultMessage:
+      'How this team reaches participants by email and SMS, and the sender they will see it come from.',
+    description:
+      'What the Messaging screen at /settings/messaging will do, shown on it while it is not yet built.',
+  },
+  studyIndexTitle: {
+    id: 'studio.screens.studyIndexTitle',
+    defaultMessage: 'Overview',
+    description:
+      'Name of the Overview screen at /study/$studyId, used as its heading.',
+  },
+  studyIndexDescription: {
+    id: 'studio.screens.studyIndexDescription',
+    defaultMessage:
+      'How collection on this study is going: what has come in, what is outstanding, and what needs attention.',
+    description:
+      'What the Overview screen at /study/$studyId will do, shown on it while it is not yet built.',
+  },
+  studyVersionsTitle: {
+    id: 'studio.screens.studyVersionsTitle',
+    defaultMessage: 'Versions',
+    description:
+      'Name of the Versions screen at /versions, used as its heading.',
+  },
+  studyVersionsDescription: {
+    id: 'studio.screens.studyVersionsDescription',
+    defaultMessage:
+      'The protocol versions this study has published, and what changed between one and the next.',
+    description:
+      'What the Versions screen at /versions will do, shown on it while it is not yet built.',
+  },
+  studyParticipantsTitle: {
+    id: 'studio.screens.studyParticipantsTitle',
+    defaultMessage: 'Participants',
+    description:
+      'Name of the Participants screen at /participants, used as its heading.',
+  },
+  studyParticipantsDescription: {
+    id: 'studio.screens.studyParticipantsDescription',
+    defaultMessage:
+      'The people taking part in this study, and the identifiers and attributes the study holds about them.',
+    description:
+      'What the Participants screen at /participants will do, shown on it while it is not yet built.',
+  },
+  studyWavesTitle: {
+    id: 'studio.screens.studyWavesTitle',
+    defaultMessage: 'Waves',
+    description: 'Name of the Waves screen at /waves, used as its heading.',
+  },
+  studyWavesDescription: {
+    id: 'studio.screens.studyWavesDescription',
+    defaultMessage:
+      'The timepoints this study collects at, and how far each participant has progressed through them.',
+    description:
+      'What the Waves screen at /waves will do, shown on it while it is not yet built.',
+  },
+  studySessionsTitle: {
+    id: 'studio.screens.studySessionsTitle',
+    defaultMessage: 'Sessions',
+    description:
+      'Name of the Sessions screen at /sessions, used as its heading.',
+  },
+  studySessionsDescription: {
+    id: 'studio.screens.studySessionsDescription',
+    defaultMessage:
+      'Every interview session this study has collected, finished or otherwise.',
+    description:
+      'What the Sessions screen at /sessions will do, shown on it while it is not yet built.',
+  },
+  studySessionTitle: {
+    id: 'studio.screens.studySessionTitle',
+    defaultMessage: 'Session',
+    description:
+      'Name of the Session screen at /sessions/$sessionId, used as its heading.',
+  },
+  studySessionDescription: {
+    id: 'studio.screens.studySessionDescription',
+    defaultMessage:
+      'One session in detail: the network it collected, the answers it recorded, and how it was captured.',
+    description:
+      'What the Session screen at /sessions/$sessionId will do, shown on it while it is not yet built.',
+  },
+  studyScheduleTitle: {
+    id: 'studio.screens.studyScheduleTitle',
+    defaultMessage: 'Schedule',
+    description:
+      'Name of the Schedule screen at /schedule, used as its heading.',
+  },
+  studyScheduleDescription: {
+    id: 'studio.screens.studyScheduleDescription',
+    defaultMessage:
+      'When this study contacts participants and runs its waves, and whether it is keeping to that.',
+    description:
+      'What the Schedule screen at /schedule will do, shown on it while it is not yet built.',
+  },
+  studyRecruitmentTitle: {
+    id: 'studio.screens.studyRecruitmentTitle',
+    defaultMessage: 'Recruitment',
+    description:
+      'Name of the Recruitment screen at /recruitment, used as its heading.',
+  },
+  studyRecruitmentDescription: {
+    id: 'studio.screens.studyRecruitmentDescription',
+    defaultMessage:
+      'How participants arrive: the links that let them in, the consent they are asked for, and what they meet on the way.',
+    description:
+      'What the Recruitment screen at /recruitment will do, shown on it while it is not yet built.',
+  },
+  studySettingsTitle: {
+    id: 'studio.screens.studySettingsTitle',
+    defaultMessage: 'Study settings',
+    description:
+      'Name of the Study settings screen at /settings, used as its heading.',
+  },
+  studySettingsDescription: {
+    id: 'studio.screens.studySettingsDescription',
+    defaultMessage:
+      "The study's name, where it is in its lifecycle, how it is delivered, and how it is closed.",
+    description:
+      'What the Study settings screen at /settings will do, shown on it while it is not yet built.',
+  },
+  studyExportTitle: {
+    id: 'studio.screens.studyExportTitle',
+    defaultMessage: 'Export',
+    description: 'Name of the Export screen at /export, used as its heading.',
+  },
+  studyExportDescription: {
+    id: 'studio.screens.studyExportDescription',
+    defaultMessage:
+      'Collected data out of Studio: the interchange formats analysis needs, and the archives a repository will take.',
+    description:
+      'What the Export screen at /export will do, shown on it while it is not yet built.',
+  },
+  editorCodebookTitle: {
+    id: 'studio.screens.editorCodebookTitle',
+    defaultMessage: 'Codebook',
+    description:
+      'Name of the Codebook screen at /codebook, used as its heading.',
+  },
+  editorCodebookDescription: {
+    id: 'studio.screens.editorCodebookDescription',
+    defaultMessage:
+      'The entities and variables this protocol collects, and the rules each of them follows.',
+    description:
+      'What the Codebook screen at /codebook will do, shown on it while it is not yet built.',
+  },
+  editorStageTitle: {
+    id: 'studio.screens.editorStageTitle',
+    defaultMessage: 'Stage',
+    description:
+      'Name of the Stage screen at /stages/$stageId, used as its heading.',
+  },
+  editorStageDescription: {
+    id: 'studio.screens.editorStageDescription',
+    defaultMessage:
+      'One stage in detail: the interface it uses, the prompts it asks, and how a participant answers it.',
+    description:
+      'What the Stage screen at /stages/$stageId will do, shown on it while it is not yet built.',
+  },
+  editorAssetsTitle: {
+    id: 'studio.screens.editorAssetsTitle',
+    defaultMessage: 'Assets',
+    description: 'Name of the Assets screen at /assets, used as its heading.',
+  },
+  editorAssetsDescription: {
+    id: 'studio.screens.editorAssetsDescription',
+    defaultMessage:
+      'The images, videos, audio and network files this protocol shows participants.',
+    description:
+      'What the Assets screen at /assets will do, shown on it while it is not yet built.',
+  },
+  editorTranslationsTitle: {
+    id: 'studio.screens.editorTranslationsTitle',
+    defaultMessage: 'Translations',
+    description:
+      'Name of the Translations screen at /translations, used as its heading.',
+  },
+  editorTranslationsDescription: {
+    id: 'studio.screens.editorTranslationsDescription',
+    defaultMessage:
+      'Every piece of text a participant will read, in each language this study offers them.',
+    description:
+      'What the Translations screen at /translations will do, shown on it while it is not yet built.',
+  },
+  editorPreviewTitle: {
+    id: 'studio.screens.editorPreviewTitle',
+    defaultMessage: 'Preview',
+    description: 'Name of the Preview screen at /preview, used as its heading.',
+  },
+  editorPreviewDescription: {
+    id: 'studio.screens.editorPreviewDescription',
+    defaultMessage:
+      'The draft run exactly as a participant would meet it, recording nothing.',
+    description:
+      'What the Preview screen at /preview will do, shown on it while it is not yet built.',
+  },
+});
 
 // One deployable serves four products, and the first thing the tree encodes is
 // which of the four a route belongs to (§3, §5.3). Chrome is a property of
@@ -202,9 +738,8 @@ const pricingRoute = createRoute({
   getParentRoute: () => siteLayoutRoute,
   path: '/pricing',
   component: screenPlaceholder({
-    title: 'Pricing',
-    description:
-      'What each Studio plan includes and what it costs, so a research group can decide before they sign up.',
+    title: screens.pricingTitle,
+    description: screens.pricingDescription,
     issue: '#1253',
   }),
 });
@@ -213,9 +748,8 @@ const legalRoute = createRoute({
   getParentRoute: () => siteLayoutRoute,
   path: '/legal/$document',
   component: screenPlaceholder({
-    title: 'Legal',
-    description:
-      "Studio's terms of service, privacy notice and data processing agreement, each addressed by name.",
+    title: screens.legalTitle,
+    description: screens.legalDescription,
     issue: '#1253',
   }),
 });
@@ -268,9 +802,8 @@ const signUpRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/sign-up',
   component: screenPlaceholder({
-    title: 'Create an account',
-    description:
-      'Where a researcher creates their Studio account, and the first step of the funnel that ends with a team and a first study.',
+    title: screens.signUpTitle,
+    description: screens.signUpDescription,
     issue: '#1255',
   }),
 });
@@ -279,9 +812,8 @@ const signUpTeamRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/sign-up/team',
   component: screenPlaceholder({
-    title: 'Name your team',
-    description:
-      'Names the team the new account will own — the boundary every study, member and invoice belongs to.',
+    title: screens.signUpTeamTitle,
+    description: screens.signUpTeamDescription,
     issue: '#1249',
   }),
 });
@@ -290,9 +822,8 @@ const signUpPlanRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/sign-up/plan',
   component: screenPlaceholder({
-    title: 'Choose a plan',
-    description:
-      'Which plan the new team starts on, and what that settles about seats and limits.',
+    title: screens.signUpPlanTitle,
+    description: screens.signUpPlanDescription,
     issue: '#1253',
   }),
 });
@@ -301,9 +832,8 @@ const signUpCheckoutRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/sign-up/checkout',
   component: screenPlaceholder({
-    title: 'Checkout',
-    description:
-      "Hands off to the payment provider's own checkout, so card details never reach Studio.",
+    title: screens.signUpCheckoutTitle,
+    description: screens.signUpCheckoutDescription,
     issue: '#1253',
   }),
 });
@@ -312,9 +842,8 @@ const signUpCompleteRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/sign-up/complete',
   component: screenPlaceholder({
-    title: 'Account ready',
-    description:
-      'Where checkout returns: the subscription is confirmed, the team exists, and its first study is created.',
+    title: screens.signUpCompleteTitle,
+    description: screens.signUpCompleteDescription,
     issue: '#1253',
   }),
 });
@@ -332,9 +861,8 @@ const setupRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/setup',
   component: screenPlaceholder({
-    title: 'First-run setup',
-    description:
-      'Configures a freshly installed self-hosted instance: its first owner, its name, and how it sends mail and stores files.',
+    title: screens.setupTitle,
+    description: screens.setupDescription,
     issue: '#1250',
   }),
 });
@@ -379,9 +907,8 @@ const noTeamRoute = createRoute({
   // account menu — so without it, signing in as somebody else means clearing
   // the cookie by hand.
   component: screenPlaceholder({
-    title: 'No team yet',
-    description:
-      'What a signed-in researcher who belongs to no team sees: how to create one, or what to expect while waiting for an invitation.',
+    title: screens.noTeamTitle,
+    description: screens.noTeamDescription,
     issue: '#1249',
     action: <NoTeamSignOut />,
   }),
@@ -395,9 +922,8 @@ const enterRoute = createRoute({
   getParentRoute: () => participantLayoutRoute,
   path: '/enter/$token',
   component: screenPlaceholder({
-    title: 'Welcome',
-    description:
-      "Where a participant's invitation link lands: the study's welcome, the language they will answer in, and anything they should read first.",
+    title: screens.enterTitle,
+    description: screens.enterDescription,
     issue: '#1265',
   }),
 });
@@ -406,9 +932,8 @@ const enterConsentRoute = createRoute({
   getParentRoute: () => participantLayoutRoute,
   path: '/enter/$token/consent',
   component: screenPlaceholder({
-    title: 'Consent',
-    description:
-      "The study's consent text, and the participant's recorded decision about taking part in it.",
+    title: screens.enterConsentTitle,
+    description: screens.enterConsentDescription,
     issue: '#1266',
   }),
 });
@@ -417,9 +942,8 @@ const enterInterviewRoute = createRoute({
   getParentRoute: () => participantLayoutRoute,
   path: '/enter/$token/interview',
   component: screenPlaceholder({
-    title: 'Interview',
-    description:
-      'The interview itself, run by the Network Canvas interview runtime and owning the whole viewport.',
+    title: screens.enterInterviewTitle,
+    description: screens.enterInterviewDescription,
     issue: '#1293',
   }),
 });
@@ -428,9 +952,8 @@ const enterCompleteRoute = createRoute({
   getParentRoute: () => participantLayoutRoute,
   path: '/enter/$token/complete',
   component: screenPlaceholder({
-    title: 'Interview complete',
-    description:
-      'Confirms the interview is finished and sends the participant wherever the study asked to return them.',
+    title: screens.enterCompleteTitle,
+    description: screens.enterCompleteDescription,
     issue: '#1292',
   }),
 });
@@ -519,31 +1042,30 @@ const accountIndexRoute = createRoute({
   getParentRoute: () => accountLayoutRoute,
   path: '/',
   component: areaPlaceholder({
-    title: 'Profile',
-    description:
-      "The researcher's own name, email address and everything else Studio holds about them as a person rather than as a member of a team.",
+    title: screens.accountIndexTitle,
+    description: screens.accountIndexDescription,
     issue: '#1255',
   }),
 });
 
+/**
+ * Built (#1310, 2026-09-04 localization design §5.3): the researcher chooses
+ * the language Studio speaks to them here. The destination was already in the
+ * account sidebar, the account menu and the everything bar — only the fill
+ * changed.
+ */
 const accountLanguageRoute = createRoute({
   getParentRoute: () => accountLayoutRoute,
   path: '/language',
-  component: areaPlaceholder({
-    title: 'Language',
-    description:
-      'The language Studio itself speaks to this researcher, which is a separate choice from the languages a protocol offers its participants.',
-    issue: '#1310',
-  }),
+  component: AccountLanguage,
 });
 
 const accountSignInMethodsRoute = createRoute({
   getParentRoute: () => accountLayoutRoute,
   path: '/sign-in-methods',
   component: areaPlaceholder({
-    title: 'Sign-in methods',
-    description:
-      'Which providers can sign this account in, and which sessions are signed in on it right now.',
+    title: screens.accountSignInMethodsTitle,
+    description: screens.accountSignInMethodsDescription,
     issue: '#1255',
   }),
 });
@@ -552,9 +1074,8 @@ const accountTokensRoute = createRoute({
   getParentRoute: () => accountLayoutRoute,
   path: '/tokens',
   component: areaPlaceholder({
-    title: 'API tokens',
-    description:
-      "Personal tokens for reaching Studio's API as this researcher, and revoking one that should no longer work.",
+    title: screens.accountTokensTitle,
+    description: screens.accountTokensDescription,
     issue: '#1288',
   }),
 });
@@ -563,9 +1084,8 @@ const galleryRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/gallery',
   component: libraryPlaceholder({
-    title: 'Gallery',
-    description:
-      'Protocols other researchers have published, to read, cite and copy into a team as the starting point for a study.',
+    title: screens.galleryTitle,
+    description: screens.galleryDescription,
     issue: '#1285',
   }),
 });
@@ -574,9 +1094,8 @@ const galleryTemplateRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/gallery/$templateId',
   component: libraryPlaceholder({
-    title: 'Gallery protocol',
-    description:
-      'One published protocol in full: what it collects, who made it, and where it came from.',
+    title: screens.galleryTemplateTitle,
+    description: screens.galleryTemplateDescription,
     issue: '#1283',
   }),
 });
@@ -585,9 +1104,8 @@ const templatesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/templates',
   component: libraryPlaceholder({
-    title: 'Templates',
-    description:
-      'The protocol templates this instance offers as starting points, and what each one is for.',
+    title: screens.templatesTitle,
+    description: screens.templatesDescription,
     issue: '#1282',
   }),
 });
@@ -632,9 +1150,8 @@ const teamRolesRoute = createRoute({
   getParentRoute: () => teamLayoutRoute,
   path: '/roles',
   component: areaPlaceholder({
-    title: 'Roles',
-    description:
-      'What each member is allowed to do, and who among them may see participant identifiers.',
+    title: screens.teamRolesTitle,
+    description: screens.teamRolesDescription,
     issue: '#1257',
   }),
 });
@@ -649,9 +1166,8 @@ const teamBillingRoute = createRoute({
   getParentRoute: () => teamLayoutRoute,
   path: '/billing',
   component: areaPlaceholder({
-    title: 'Billing',
-    description:
-      "The team's plan, the seats it is paying for, and its invoices.",
+    title: screens.teamBillingTitle,
+    description: screens.teamBillingDescription,
     issue: '#1253',
   }),
 });
@@ -660,9 +1176,8 @@ const teamSettingsRoute = createRoute({
   getParentRoute: () => teamLayoutRoute,
   path: '/settings',
   component: areaPlaceholder({
-    title: 'Team settings',
-    description:
-      "The team's name, the defaults every new study inherits from it, and deleting the team.",
+    title: screens.teamSettingsTitle,
+    description: screens.teamSettingsDescription,
     issue: '#1249',
   }),
 });
@@ -671,9 +1186,8 @@ const teamSettingsApiRoute = createRoute({
   getParentRoute: () => teamLayoutRoute,
   path: '/settings/api',
   component: areaPlaceholder({
-    title: 'API access',
-    description:
-      "The team's API credentials, what each one may reach, and when it was last used.",
+    title: screens.teamSettingsApiTitle,
+    description: screens.teamSettingsApiDescription,
     issue: '#1288',
   }),
 });
@@ -682,9 +1196,8 @@ const teamSettingsWebhooksRoute = createRoute({
   getParentRoute: () => teamLayoutRoute,
   path: '/settings/webhooks',
   component: areaPlaceholder({
-    title: 'Webhooks',
-    description:
-      'Where Studio should tell another system that something happened in this team, and whether those messages are arriving.',
+    title: screens.teamSettingsWebhooksTitle,
+    description: screens.teamSettingsWebhooksDescription,
     issue: '#1291',
   }),
 });
@@ -693,9 +1206,8 @@ const teamSettingsMessagingRoute = createRoute({
   getParentRoute: () => teamLayoutRoute,
   path: '/settings/messaging',
   component: areaPlaceholder({
-    title: 'Messaging',
-    description:
-      'How this team reaches participants by email and SMS, and the sender they will see it come from.',
+    title: screens.teamSettingsMessagingTitle,
+    description: screens.teamSettingsMessagingDescription,
     issue: '#1305',
   }),
 });
@@ -739,9 +1251,8 @@ const studyIndexRoute = createRoute({
   getParentRoute: () => studyAreaLayoutRoute,
   path: '/',
   component: areaPlaceholder({
-    title: 'Overview',
-    description:
-      'How collection on this study is going: what has come in, what is outstanding, and what needs attention.',
+    title: screens.studyIndexTitle,
+    description: screens.studyIndexDescription,
     issue: '#1268',
   }),
 });
@@ -750,9 +1261,8 @@ const studyVersionsRoute = createRoute({
   getParentRoute: () => studyAreaLayoutRoute,
   path: '/versions',
   component: areaPlaceholder({
-    title: 'Versions',
-    description:
-      'The protocol versions this study has published, and what changed between one and the next.',
+    title: screens.studyVersionsTitle,
+    description: screens.studyVersionsDescription,
     issue: '#1276',
   }),
 });
@@ -761,9 +1271,8 @@ const studyParticipantsRoute = createRoute({
   getParentRoute: () => studyAreaLayoutRoute,
   path: '/participants',
   component: areaPlaceholder({
-    title: 'Participants',
-    description:
-      'The people taking part in this study, and the identifiers and attributes the study holds about them.',
+    title: screens.studyParticipantsTitle,
+    description: screens.studyParticipantsDescription,
     issue: '#1263',
   }),
 });
@@ -772,9 +1281,8 @@ const studyWavesRoute = createRoute({
   getParentRoute: () => studyAreaLayoutRoute,
   path: '/waves',
   component: areaPlaceholder({
-    title: 'Waves',
-    description:
-      'The timepoints this study collects at, and how far each participant has progressed through them.',
+    title: screens.studyWavesTitle,
+    description: screens.studyWavesDescription,
     issue: '#1267',
   }),
 });
@@ -783,9 +1291,8 @@ const studySessionsRoute = createRoute({
   getParentRoute: () => studyAreaLayoutRoute,
   path: '/sessions',
   component: areaPlaceholder({
-    title: 'Sessions',
-    description:
-      'Every interview session this study has collected, finished or otherwise.',
+    title: screens.studySessionsTitle,
+    description: screens.studySessionsDescription,
     issue: '#1269',
   }),
 });
@@ -794,9 +1301,8 @@ const studySessionRoute = createRoute({
   getParentRoute: () => studyAreaLayoutRoute,
   path: '/sessions/$sessionId',
   component: areaPlaceholder({
-    title: 'Session',
-    description:
-      'One session in detail: the network it collected, the answers it recorded, and how it was captured.',
+    title: screens.studySessionTitle,
+    description: screens.studySessionDescription,
     issue: '#1269',
   }),
 });
@@ -805,9 +1311,8 @@ const studyScheduleRoute = createRoute({
   getParentRoute: () => studyAreaLayoutRoute,
   path: '/schedule',
   component: areaPlaceholder({
-    title: 'Schedule',
-    description:
-      'When this study contacts participants and runs its waves, and whether it is keeping to that.',
+    title: screens.studyScheduleTitle,
+    description: screens.studyScheduleDescription,
     issue: '#1304',
   }),
 });
@@ -816,9 +1321,8 @@ const studyRecruitmentRoute = createRoute({
   getParentRoute: () => studyAreaLayoutRoute,
   path: '/recruitment',
   component: areaPlaceholder({
-    title: 'Recruitment',
-    description:
-      'How participants arrive: the links that let them in, the consent they are asked for, and what they meet on the way.',
+    title: screens.studyRecruitmentTitle,
+    description: screens.studyRecruitmentDescription,
     issue: '#1265',
   }),
 });
@@ -827,9 +1331,8 @@ const studySettingsRoute = createRoute({
   getParentRoute: () => studyAreaLayoutRoute,
   path: '/settings',
   component: areaPlaceholder({
-    title: 'Study settings',
-    description:
-      "The study's name, where it is in its lifecycle, how it is delivered, and how it is closed.",
+    title: screens.studySettingsTitle,
+    description: screens.studySettingsDescription,
     issue: '#1262',
   }),
 });
@@ -838,9 +1341,8 @@ const studyExportRoute = createRoute({
   getParentRoute: () => studyAreaLayoutRoute,
   path: '/export',
   component: areaPlaceholder({
-    title: 'Export',
-    description:
-      'Collected data out of Studio: the interchange formats analysis needs, and the archives a repository will take.',
+    title: screens.studyExportTitle,
+    description: screens.studyExportDescription,
     issue: '#1324',
   }),
 });
@@ -865,9 +1367,8 @@ const editorCodebookRoute = createRoute({
   getParentRoute: () => editorLayoutRoute,
   path: '/codebook',
   component: areaPlaceholder({
-    title: 'Codebook',
-    description:
-      'The entities and variables this protocol collects, and the rules each of them follows.',
+    title: screens.editorCodebookTitle,
+    description: screens.editorCodebookDescription,
     issue: '#1273',
   }),
 });
@@ -876,9 +1377,8 @@ const editorStageRoute = createRoute({
   getParentRoute: () => editorLayoutRoute,
   path: '/stages/$stageId',
   component: areaPlaceholder({
-    title: 'Stage',
-    description:
-      'One stage in detail: the interface it uses, the prompts it asks, and how a participant answers it.',
+    title: screens.editorStageTitle,
+    description: screens.editorStageDescription,
     issue: '#1274',
   }),
 });
@@ -887,9 +1387,8 @@ const editorAssetsRoute = createRoute({
   getParentRoute: () => editorLayoutRoute,
   path: '/assets',
   component: areaPlaceholder({
-    title: 'Assets',
-    description:
-      'The images, videos, audio and network files this protocol shows participants.',
+    title: screens.editorAssetsTitle,
+    description: screens.editorAssetsDescription,
     issue: '#1278',
   }),
 });
@@ -898,9 +1397,8 @@ const editorTranslationsRoute = createRoute({
   getParentRoute: () => editorLayoutRoute,
   path: '/translations',
   component: areaPlaceholder({
-    title: 'Translations',
-    description:
-      'Every piece of text a participant will read, in each language this study offers them.',
+    title: screens.editorTranslationsTitle,
+    description: screens.editorTranslationsDescription,
     issue: '#1311',
   }),
 });
@@ -909,9 +1407,8 @@ const editorPreviewRoute = createRoute({
   getParentRoute: () => editorLayoutRoute,
   path: '/preview',
   component: areaPlaceholder({
-    title: 'Preview',
-    description:
-      'The draft run exactly as a participant would meet it, recording nothing.',
+    title: screens.editorPreviewTitle,
+    description: screens.editorPreviewDescription,
     issue: '#1279',
   }),
 });

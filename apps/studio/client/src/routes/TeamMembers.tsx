@@ -8,6 +8,9 @@ import {
   useState,
 } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Button from '@codaco/fresco-ui/Button';
@@ -166,16 +169,295 @@ function useTeamStateRefresh(
   }, [queryClient]);
 }
 
-const TEAM_ROLE_OPTIONS = TEAM_ROLES.map((role) => ({
-  value: role,
-  label: roleLabel(role),
-}));
+const messages = defineMessages({
+  heading: {
+    id: 'studio.teamMembers.heading',
+    defaultMessage: 'Members',
+    description: "Heading of a team's members screen.",
+  },
+  intro: {
+    id: 'studio.teamMembers.intro',
+    defaultMessage:
+      'Who belongs to this team, and which invitations are still outstanding.',
+    description: "Introduction under the members screen's heading.",
+  },
+  accessUnavailable: {
+    id: 'studio.teamMembers.accessUnavailable',
+    defaultMessage: 'Studio could not load this team and your access to it.',
+    description:
+      "Shown when neither the team nor the researcher's membership in it could be read.",
+  },
+  retryAccess: {
+    id: 'studio.teamMembers.retryAccess',
+    defaultMessage: 'Retry team access',
+    description: 'Button retrying the team and membership reads.',
+  },
+  loadingAccess: {
+    id: 'studio.teamMembers.loadingAccess',
+    defaultMessage: 'Loading team access…',
+    description:
+      "Shown while the members screen waits for the URL's team to become the active one.",
+  },
+  membersHeading: {
+    id: 'studio.teamMembers.membersHeading',
+    defaultMessage: 'Team members',
+    description: 'Heading of the member list section.',
+  },
+  membersIntro: {
+    id: 'studio.teamMembers.membersIntro',
+    defaultMessage:
+      'View who can access this team and the role assigned to each person.',
+    description: 'Introduction under the member list heading.',
+  },
+  memberCount: {
+    id: 'studio.teamMembers.memberCount',
+    defaultMessage: '{count, plural, one {# member} other {# members}}',
+    description: 'Badge counting how many members the team has.',
+  },
+  refreshTeamDetails: {
+    id: 'studio.teamMembers.refreshTeamDetails',
+    defaultMessage: 'Refresh team details',
+    description:
+      'Button re-reading team details after a change whose outcome is unknown.',
+  },
+  nameColumn: {
+    id: 'studio.teamMembers.nameColumn',
+    defaultMessage: 'Name',
+    description: "Member table column heading: the member's name.",
+  },
+  emailColumn: {
+    id: 'studio.teamMembers.emailColumn',
+    defaultMessage: 'Email',
+    description: "Member table column heading: the member's email address.",
+  },
+  roleColumn: {
+    id: 'studio.teamMembers.roleColumn',
+    defaultMessage: 'Role',
+    description: "Member table column heading: the member's team role.",
+  },
+  you: {
+    id: 'studio.teamMembers.you',
+    defaultMessage: '(you)',
+    description:
+      "Marker beside the signed-in researcher's own row in the member table.",
+  },
+  roleFor: {
+    id: 'studio.teamMembers.roleFor',
+    defaultMessage: 'Role for {name}',
+    description:
+      "Accessible name of a member row's role selector; {name} is the member's name.",
+  },
+  unsupportedRole: {
+    id: 'studio.teamMembers.unsupportedRole',
+    defaultMessage: 'Studio received an unsupported team role.',
+    description:
+      'Shown when the role selector produced a value Studio does not recognise.',
+  },
+  roleChangeUnconfirmedRefreshed: {
+    id: 'studio.teamMembers.roleChangeUnconfirmedRefreshed',
+    defaultMessage:
+      'Studio could not confirm whether the team role changed. Team details were refreshed; review the current role before making another change.',
+    description:
+      'Shown when a role change may or may not have landed but team details were re-read.',
+  },
+  roleChangeUnconfirmedNotRefreshed: {
+    id: 'studio.teamMembers.roleChangeUnconfirmedNotRefreshed',
+    defaultMessage:
+      'Studio could not confirm whether the team role changed, and team details could not be refreshed. Refresh them before making another change.',
+    description:
+      'Shown when a role change may or may not have landed and team details could not be re-read either.',
+  },
+  roleChangeRecovered: {
+    id: 'studio.teamMembers.roleChangeRecovered',
+    defaultMessage:
+      'Team details refreshed. Review the current role before making another change.',
+    description:
+      'Shown after a later refresh succeeded following an unconfirmed role change.',
+  },
+  roleUpdated: {
+    id: 'studio.teamMembers.roleUpdated',
+    defaultMessage: 'Team role updated.',
+    description: 'Confirmation after a role change landed.',
+  },
+  roleUpdatedNotRefreshed: {
+    id: 'studio.teamMembers.roleUpdatedNotRefreshed',
+    defaultMessage:
+      'Team role updated, but the latest team details could not be refreshed.',
+    description:
+      'Shown when a role change landed but the member list could not be re-read.',
+  },
+  roleUpdatedRecovered: {
+    id: 'studio.teamMembers.roleUpdatedRecovered',
+    defaultMessage: 'Team role updated. Team details refreshed.',
+    description:
+      'Shown after a later refresh succeeded following a role change.',
+  },
+  invitationCancelUnconfirmedRefreshed: {
+    id: 'studio.teamMembers.invitationCancelUnconfirmedRefreshed',
+    defaultMessage:
+      'Studio could not confirm whether the invitation was cancelled. Team details were refreshed; check the pending invitations before trying again.',
+    description:
+      'Shown when cancelling an invitation may or may not have landed but team details were re-read.',
+  },
+  invitationCancelUnconfirmedNotRefreshed: {
+    id: 'studio.teamMembers.invitationCancelUnconfirmedNotRefreshed',
+    defaultMessage:
+      'Studio could not confirm whether the invitation was cancelled, and team details could not be refreshed. Refresh them before trying again.',
+    description:
+      'Shown when cancelling an invitation may or may not have landed and team details could not be re-read either.',
+  },
+  invitationCancelRecovered: {
+    id: 'studio.teamMembers.invitationCancelRecovered',
+    defaultMessage:
+      'Team details refreshed. Check the pending invitations before trying again.',
+    description:
+      'Shown after a later refresh succeeded following an unconfirmed invitation change.',
+  },
+  invitationCancelled: {
+    id: 'studio.teamMembers.invitationCancelled',
+    defaultMessage: 'Invitation cancelled for {email}.',
+    description:
+      'Confirmation after cancelling an invitation; {email} is the invited address.',
+  },
+  invitationCancelledNotRefreshed: {
+    id: 'studio.teamMembers.invitationCancelledNotRefreshed',
+    defaultMessage:
+      'Invitation cancelled for {email}, but pending invitations could not be refreshed.',
+    description:
+      'Shown when cancelling landed but the invitation list could not be re-read; {email} is the invited address.',
+  },
+  invitationCancelledRecovered: {
+    id: 'studio.teamMembers.invitationCancelledRecovered',
+    defaultMessage: 'Invitation cancelled for {email}. Team details refreshed.',
+    description:
+      'Shown after a later refresh succeeded following a cancelled invitation; {email} is the invited address.',
+  },
+  invitationsHeading: {
+    id: 'studio.teamMembers.invitationsHeading',
+    defaultMessage: 'Invitations',
+    description: 'Heading of the invitations section.',
+  },
+  invitationsIntro: {
+    id: 'studio.teamMembers.invitationsIntro',
+    defaultMessage:
+      'Invite a collaborator and choose the role they will receive when they join.',
+    description: 'Introduction under the invitations heading.',
+  },
+  chooseValidRole: {
+    id: 'studio.teamMembers.chooseValidRole',
+    defaultMessage: 'Choose a valid role for this invitation.',
+    description:
+      'Form error when the invitation form was submitted without a recognised role.',
+  },
+  refreshBeforeInvite: {
+    id: 'studio.teamMembers.refreshBeforeInvite',
+    defaultMessage: 'Refresh team details before creating another invitation.',
+    description:
+      'Form error when an earlier change still needs its refresh before inviting again.',
+  },
+  waitForChange: {
+    id: 'studio.teamMembers.waitForChange',
+    defaultMessage: 'Wait for the current team change to finish.',
+    description: 'Form error when another team change is still in flight.',
+  },
+  inviteUnconfirmedNotRefreshed: {
+    id: 'studio.teamMembers.inviteUnconfirmedNotRefreshed',
+    defaultMessage:
+      'Studio could not confirm the invitation, and team details could not be refreshed.',
+    description:
+      'Shown when creating an invitation may or may not have landed and team details could not be re-read either.',
+  },
+  inviteUnconfirmedRefreshed: {
+    id: 'studio.teamMembers.inviteUnconfirmedRefreshed',
+    defaultMessage:
+      'Studio could not confirm the invitation. Pending invitations were refreshed; check the list before trying again.',
+    description:
+      'Form error when creating an invitation may or may not have landed but the list was re-read.',
+  },
+  inviteRetryAfterRefresh: {
+    id: 'studio.teamMembers.inviteRetryAfterRefresh',
+    defaultMessage:
+      'Refresh team details before trying to create another invitation.',
+    description:
+      'Form error when the invitation outcome is unknown and a refresh is needed first.',
+  },
+  invitationCreated: {
+    id: 'studio.teamMembers.invitationCreated',
+    defaultMessage: 'Invitation created for {email}. Email delivery is queued.',
+    description:
+      'Confirmation after creating an invitation; {email} is the invited address.',
+  },
+  invitationCreatedNotRefreshed: {
+    id: 'studio.teamMembers.invitationCreatedNotRefreshed',
+    defaultMessage:
+      'Invitation created for {email}. Email delivery is queued, but pending invitations could not be refreshed.',
+    description:
+      'Shown when creating landed but the invitation list could not be re-read; {email} is the invited address.',
+  },
+  invitationCreatedRecovered: {
+    id: 'studio.teamMembers.invitationCreatedRecovered',
+    defaultMessage: 'Invitation created for {email}. Team details refreshed.',
+    description:
+      'Shown after a later refresh succeeded following a created invitation; {email} is the invited address.',
+  },
+  inviteEmailLabel: {
+    id: 'studio.teamMembers.inviteEmailLabel',
+    defaultMessage: 'Email address',
+    description: "Label of the invitation form's email field.",
+  },
+  inviteEmailHint: {
+    id: 'studio.teamMembers.inviteEmailHint',
+    defaultMessage: 'The email address of the person you want to invite.',
+    description:
+      "Hint under the invitation form's email field when the value is not a valid address.",
+  },
+  inviteRoleLabel: {
+    id: 'studio.teamMembers.inviteRoleLabel',
+    defaultMessage: 'Team role',
+    description: "Label of the invitation form's role selector.",
+  },
+  inviteSubmit: {
+    id: 'studio.teamMembers.inviteSubmit',
+    defaultMessage: 'Invite user',
+    description: 'Submit button of the invitation form.',
+  },
+  onlyAdminsInvite: {
+    id: 'studio.teamMembers.onlyAdminsInvite',
+    defaultMessage:
+      'Only team owners and admins can invite people or change roles.',
+    description:
+      'Shown in place of the invitation form to a member who may not invite.',
+  },
+  noPendingInvitations: {
+    id: 'studio.teamMembers.noPendingInvitations',
+    defaultMessage: 'No pending invitations.',
+    description: 'Shown when the team has no outstanding invitations.',
+  },
+  expiresColumn: {
+    id: 'studio.teamMembers.expiresColumn',
+    defaultMessage: 'Expires',
+    description:
+      'Invitation table column heading: when the invitation expires.',
+  },
+  actionsColumn: {
+    id: 'studio.teamMembers.actionsColumn',
+    defaultMessage: 'Actions',
+    description: 'Invitation table column heading for the cancel action.',
+  },
+  cancelInvitationFor: {
+    id: 'studio.teamMembers.cancelInvitationFor',
+    defaultMessage: 'Cancel invitation for {email}',
+    description:
+      "Accessible name of an invitation row's cancel button; {email} is the invited address.",
+  },
+});
 
 function isTeamRole(value: unknown): value is TeamRole {
   return TEAM_ROLES.some((role) => role === value);
 }
 
 export default function TeamMembers({ teamId }: { teamId: string }) {
+  const intl = useAppIntl();
   const activeTeam = authClient.useActiveOrganization();
   const activeMember = authClient.useActiveMember();
   const refetchActiveTeam = activeTeam.refetch;
@@ -202,17 +484,17 @@ export default function TeamMembers({ teamId }: { teamId: string }) {
     <div className="tablet-portrait:p-8 mx-auto flex w-full max-w-5xl flex-col gap-6 p-4">
       <div>
         <Heading level="h1" margin="none" {...routeFocusTargetProps}>
-          Members
+          {intl.formatMessage(messages.heading)}
         </Heading>
         <Paragraph margin="none">
-          Who belongs to this team, and which invitations are still outstanding.
+          {intl.formatMessage(messages.intro)}
         </Paragraph>
       </div>
 
       {accessUnavailable ? (
         <Surface spacing="lg">
           <Alert variant="destructive">
-            Studio could not load this team and your access to it.
+            {intl.formatMessage(messages.accessUnavailable)}
           </Alert>
           <Button
             className="mt-4"
@@ -221,7 +503,7 @@ export default function TeamMembers({ teamId }: { teamId: string }) {
             disabled={retrying}
             onClick={() => void retryTeamAccess()}
           >
-            Retry team access
+            {intl.formatMessage(messages.retryAccess)}
           </Button>
         </Surface>
       ) : membershipMatchesTeam ? (
@@ -237,7 +519,9 @@ export default function TeamMembers({ teamId }: { teamId: string }) {
         <Surface spacing="lg">
           <div className="flex items-center gap-3" role="status">
             <Spinner size="sm" />
-            <Paragraph margin="none">Loading team access…</Paragraph>
+            <Paragraph margin="none">
+              {intl.formatMessage(messages.loadingAccess)}
+            </Paragraph>
           </div>
         </Surface>
       )}
@@ -252,6 +536,7 @@ function TeamManagement(props: {
   activeMemberId: string | undefined;
   activeMemberRole: string | undefined;
 }) {
+  const intl = useAppIntl();
   const activeTeam = authClient.useActiveOrganization();
   const activeMember = authClient.useActiveMember();
   const refreshTeamState = useTeamStateRefresh(activeTeam, activeMember);
@@ -275,9 +560,15 @@ function TeamManagement(props: {
   >();
   const canManage = canManageTeam(props.activeMemberRole);
   const canAssignOwner = teamRoles(props.activeMemberRole).includes('owner');
+  // Rebuilt per render so the labels follow the active locale; the role list
+  // itself is the contract's constant.
+  const teamRoleOptions = TEAM_ROLES.map((role) => ({
+    value: role,
+    label: roleLabel(intl, role),
+  }));
   const assignableRoles = canAssignOwner
-    ? TEAM_ROLE_OPTIONS
-    : TEAM_ROLE_OPTIONS.filter((role) => role.value !== 'owner');
+    ? teamRoleOptions
+    : teamRoleOptions.filter((role) => role.value !== 'owner');
   const pendingInvitations = team.invitations.filter(
     (invitation) =>
       invitation.status === 'pending' &&
@@ -333,30 +624,34 @@ function TeamManagement(props: {
         if (outcome.refreshed) {
           setMessage({
             kind: 'error',
-            text: 'Studio could not confirm whether the team role changed. Team details were refreshed; review the current role before making another change.',
+            text: intl.formatMessage(messages.roleChangeUnconfirmedRefreshed),
           });
         } else {
           setMessage({
             kind: 'error',
-            text: 'Studio could not confirm whether the team role changed, and team details could not be refreshed. Refresh them before making another change.',
+            text: intl.formatMessage(
+              messages.roleChangeUnconfirmedNotRefreshed,
+            ),
           });
           setRefreshRecovery({
-            recoveredText:
-              'Team details refreshed. Review the current role before making another change.',
+            recoveredText: intl.formatMessage(messages.roleChangeRecovered),
           });
         }
         return;
       }
 
       if (outcome.refreshed) {
-        setMessage({ kind: 'success', text: 'Team role updated.' });
+        setMessage({
+          kind: 'success',
+          text: intl.formatMessage(messages.roleUpdated),
+        });
       } else {
         setMessage({
           kind: 'success',
-          text: 'Team role updated, but the latest team details could not be refreshed.',
+          text: intl.formatMessage(messages.roleUpdatedNotRefreshed),
         });
         setRefreshRecovery({
-          recoveredText: 'Team role updated. Team details refreshed.',
+          recoveredText: intl.formatMessage(messages.roleUpdatedRecovered),
         });
       }
     } finally {
@@ -383,16 +678,21 @@ function TeamManagement(props: {
         if (outcome.refreshed) {
           setMessage({
             kind: 'error',
-            text: 'Studio could not confirm whether the invitation was cancelled. Team details were refreshed; check the pending invitations before trying again.',
+            text: intl.formatMessage(
+              messages.invitationCancelUnconfirmedRefreshed,
+            ),
           });
         } else {
           setMessage({
             kind: 'error',
-            text: 'Studio could not confirm whether the invitation was cancelled, and team details could not be refreshed. Refresh them before trying again.',
+            text: intl.formatMessage(
+              messages.invitationCancelUnconfirmedNotRefreshed,
+            ),
           });
           setRefreshRecovery({
-            recoveredText:
-              'Team details refreshed. Check the pending invitations before trying again.',
+            recoveredText: intl.formatMessage(
+              messages.invitationCancelRecovered,
+            ),
           });
         }
         return;
@@ -401,15 +701,20 @@ function TeamManagement(props: {
       if (outcome.refreshed) {
         setMessage({
           kind: 'success',
-          text: `Invitation cancelled for ${email}.`,
+          text: intl.formatMessage(messages.invitationCancelled, { email }),
         });
       } else {
         setMessage({
           kind: 'success',
-          text: `Invitation cancelled for ${email}, but pending invitations could not be refreshed.`,
+          text: intl.formatMessage(messages.invitationCancelledNotRefreshed, {
+            email,
+          }),
         });
         setRefreshRecovery({
-          recoveredText: `Invitation cancelled for ${email}. Team details refreshed.`,
+          recoveredText: intl.formatMessage(
+            messages.invitationCancelledRecovered,
+            { email },
+          ),
         });
       }
     } finally {
@@ -431,16 +736,16 @@ function TeamManagement(props: {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <Heading id="members-heading" level="h2" margin="none">
-              Team members
+              {intl.formatMessage(messages.membersHeading)}
             </Heading>
             <Paragraph className="text-sm" margin="none">
-              View who can access this team and the role assigned to each
-              person.
+              {intl.formatMessage(messages.membersIntro)}
             </Paragraph>
           </div>
           <Badge variant="secondary">
-            {team.members.length}{' '}
-            {team.members.length === 1 ? 'member' : 'members'}
+            {intl.formatMessage(messages.memberCount, {
+              count: team.members.length,
+            })}
           </Badge>
         </div>
 
@@ -458,7 +763,7 @@ function TeamManagement(props: {
                 disabled={refreshingTeamDetails}
                 onClick={() => void retryTeamRefresh()}
               >
-                Refresh team details
+                {intl.formatMessage(messages.refreshTeamDetails)}
               </Button>
             )}
           </Alert>
@@ -468,9 +773,11 @@ function TeamManagement(props: {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
+                <TableHead>{intl.formatMessage(messages.nameColumn)}</TableHead>
+                <TableHead>
+                  {intl.formatMessage(messages.emailColumn)}
+                </TableHead>
+                <TableHead>{intl.formatMessage(messages.roleColumn)}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -491,7 +798,9 @@ function TeamManagement(props: {
                     <TableCell>
                       {name}
                       {member.id === props.activeMemberId && (
-                        <span className="ml-2 text-sm opacity-70">(you)</span>
+                        <span className="ms-2 text-sm opacity-70">
+                          {intl.formatMessage(messages.you)}
+                        </span>
                       )}
                     </TableCell>
                     <TableCell>{member.user.email}</TableCell>
@@ -502,7 +811,7 @@ function TeamManagement(props: {
                             className="sr-only"
                             htmlFor={`member-role-${member.id}`}
                           >
-                            Role for {name}
+                            {intl.formatMessage(messages.roleFor, { name })}
                           </label>
                           <NativeSelectField
                             id={`member-role-${member.id}`}
@@ -515,7 +824,9 @@ function TeamManagement(props: {
                               if (!isTeamRole(value)) {
                                 setMessage({
                                   kind: 'error',
-                                  text: 'Studio received an unsupported team role.',
+                                  text: intl.formatMessage(
+                                    messages.unsupportedRole,
+                                  ),
                                 });
                                 return;
                               }
@@ -525,7 +836,7 @@ function TeamManagement(props: {
                         </>
                       ) : (
                         <Badge variant="outline">
-                          {teamRolesLabel(member.role)}
+                          {teamRolesLabel(intl, member.role)}
                         </Badge>
                       )}
                     </TableCell>
@@ -539,11 +850,10 @@ function TeamManagement(props: {
 
       <section aria-labelledby="invitations-heading">
         <Heading id="invitations-heading" level="h2" margin="none">
-          Invitations
+          {intl.formatMessage(messages.invitationsHeading)}
         </Heading>
         <Paragraph className="text-sm" margin="none">
-          Invite a collaborator and choose the role they will receive when they
-          join.
+          {intl.formatMessage(messages.invitationsIntro)}
         </Paragraph>
 
         {canManage ? (
@@ -558,21 +868,21 @@ function TeamManagement(props: {
               if (!isTeamRole(role)) {
                 return {
                   success: false,
-                  formErrors: ['Choose a valid role for this invitation.'],
+                  formErrors: [intl.formatMessage(messages.chooseValidRole)],
                 };
               }
               if (refreshRecovery) {
                 return {
                   success: false,
                   formErrors: [
-                    'Refresh team details before creating another invitation.',
+                    intl.formatMessage(messages.refreshBeforeInvite),
                   ],
                 };
               }
               if (!beginMutation()) {
                 return {
                   success: false,
-                  formErrors: ['Wait for the current team change to finish.'],
+                  formErrors: [intl.formatMessage(messages.waitForChange)],
                 };
               }
               setMessage(undefined);
@@ -590,19 +900,24 @@ function TeamManagement(props: {
                   if (!outcome.refreshed) {
                     setMessage({
                       kind: 'error',
-                      text: 'Studio could not confirm the invitation, and team details could not be refreshed.',
+                      text: intl.formatMessage(
+                        messages.inviteUnconfirmedNotRefreshed,
+                      ),
                     });
                     setRefreshRecovery({
-                      recoveredText:
-                        'Team details refreshed. Check the pending invitations before trying again.',
+                      recoveredText: intl.formatMessage(
+                        messages.invitationCancelRecovered,
+                      ),
                     });
                   }
                   return {
                     success: false,
                     formErrors: [
-                      outcome.refreshed
-                        ? 'Studio could not confirm the invitation. Pending invitations were refreshed; check the list before trying again.'
-                        : 'Refresh team details before trying to create another invitation.',
+                      intl.formatMessage(
+                        outcome.refreshed
+                          ? messages.inviteUnconfirmedRefreshed
+                          : messages.inviteRetryAfterRefresh,
+                      ),
                     ],
                   };
                 }
@@ -610,15 +925,23 @@ function TeamManagement(props: {
                 if (outcome.refreshed) {
                   setMessage({
                     kind: 'success',
-                    text: `Invitation created for ${email}. Email delivery is queued.`,
+                    text: intl.formatMessage(messages.invitationCreated, {
+                      email,
+                    }),
                   });
                 } else {
                   setMessage({
                     kind: 'success',
-                    text: `Invitation created for ${email}. Email delivery is queued, but pending invitations could not be refreshed.`,
+                    text: intl.formatMessage(
+                      messages.invitationCreatedNotRefreshed,
+                      { email },
+                    ),
                   });
                   setRefreshRecovery({
-                    recoveredText: `Invitation created for ${email}. Team details refreshed.`,
+                    recoveredText: intl.formatMessage(
+                      messages.invitationCreatedRecovered,
+                      { email },
+                    ),
                   });
                 }
                 focusClearedInviteFormRef.current = true;
@@ -631,66 +954,78 @@ function TeamManagement(props: {
           >
             <Field
               name="email"
-              label="Email address"
+              label={intl.formatMessage(messages.inviteEmailLabel)}
               component={InputField}
               type="email"
               autoComplete="email"
               required
               pattern={studioEmailPattern(
-                'The email address of the person you want to invite.',
+                intl,
+                intl.formatMessage(messages.inviteEmailHint),
               )}
             />
             <Field
               name="role"
-              label="Team role"
+              label={intl.formatMessage(messages.inviteRoleLabel)}
               component={NativeSelectField}
               options={assignableRoles}
               initialValue="member"
               required
             />
             <SubmitButton disabled={teamMutationBlocked}>
-              Invite user
+              {intl.formatMessage(messages.inviteSubmit)}
             </SubmitButton>
           </Form>
         ) : (
           <Alert className="mt-4">
-            Only team owners and admins can invite people or change roles.
+            {intl.formatMessage(messages.onlyAdminsInvite)}
           </Alert>
         )}
 
         {pendingInvitations.length === 0 ? (
-          <Paragraph className="mt-4">No pending invitations.</Paragraph>
+          <Paragraph className="mt-4">
+            {intl.formatMessage(messages.noPendingInvitations)}
+          </Paragraph>
         ) : (
           <Table className="mt-4">
             <TableHeader>
               <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Expires</TableHead>
-                {canManage && <TableHead>Actions</TableHead>}
+                <TableHead>
+                  {intl.formatMessage(messages.emailColumn)}
+                </TableHead>
+                <TableHead>{intl.formatMessage(messages.roleColumn)}</TableHead>
+                <TableHead>
+                  {intl.formatMessage(messages.expiresColumn)}
+                </TableHead>
+                {canManage && (
+                  <TableHead>
+                    {intl.formatMessage(messages.actionsColumn)}
+                  </TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
               {pendingInvitations.map((invitation) => (
                 <TableRow key={invitation.id}>
                   <TableCell>{invitation.email}</TableCell>
-                  <TableCell>{teamRolesLabel(invitation.role)}</TableCell>
-                  <TableCell>
-                    {invitation.expiresAt.toLocaleDateString()}
-                  </TableCell>
+                  <TableCell>{teamRolesLabel(intl, invitation.role)}</TableCell>
+                  <TableCell>{intl.formatDate(invitation.expiresAt)}</TableCell>
                   {canManage && (
                     <TableCell>
                       <Button
                         size="sm"
                         variant="text"
                         color="destructive"
-                        aria-label={`Cancel invitation for ${invitation.email}`}
+                        aria-label={intl.formatMessage(
+                          messages.cancelInvitationFor,
+                          { email: invitation.email },
+                        )}
                         disabled={teamMutationBlocked}
                         onClick={() =>
                           void cancelInvitation(invitation.id, invitation.email)
                         }
                       >
-                        Cancel
+                        {intl.formatMessage(commonMessages.cancel)}
                       </Button>
                     </TableCell>
                   )}

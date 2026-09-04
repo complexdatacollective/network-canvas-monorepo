@@ -1,7 +1,18 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 
 import { SIGN_OUT_FAILURE_MESSAGE, useSignOut } from './useSignOut.ts';
+
+const messages = defineMessages({
+  signOut: {
+    id: 'studio.shell.noTeamSignOut',
+    defaultMessage: 'Sign out',
+    description:
+      'Button on the no-team screen that ends the session — the only way off that screen.',
+  },
+});
 
 /**
  * The way off `/no-team`, and the only one a researcher there has.
@@ -23,12 +34,15 @@ import { SIGN_OUT_FAILURE_MESSAGE, useSignOut } from './useSignOut.ts';
  * `useSignOut` explains.
  */
 export default function NoTeamSignOut() {
+  const intl = useAppIntl();
   const { signOut, signOutFailed } = useSignOut('/no-team');
 
   return (
     <div className="flex flex-col gap-3">
       {signOutFailed && (
-        <Alert variant="destructive">{SIGN_OUT_FAILURE_MESSAGE}</Alert>
+        <Alert variant="destructive">
+          {intl.formatMessage(SIGN_OUT_FAILURE_MESSAGE)}
+        </Alert>
       )}
       <Button
         className="self-start"
@@ -36,7 +50,7 @@ export default function NoTeamSignOut() {
         variant="outline"
         onClick={signOut}
       >
-        Sign out
+        {intl.formatMessage(messages.signOut)}
       </Button>
     </div>
   );

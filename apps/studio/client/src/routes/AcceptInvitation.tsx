@@ -2,6 +2,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useState, type ReactNode } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -15,6 +17,106 @@ import { rpcClient } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
 import { invalidateMemberships } from '../lib/landing.ts';
 import { roleLabel } from '../lib/teamRoles.ts';
+
+const messages = defineMessages({
+  unavailableHeading: {
+    id: 'studio.invitation.unavailableHeading',
+    defaultMessage: 'Invitation unavailable',
+    description:
+      'Heading of the invitation screen when the invitation cannot be shown.',
+  },
+  invalidLink: {
+    id: 'studio.invitation.invalidLink',
+    defaultMessage:
+      'This invitation link is not valid. Ask the team owner for a new invitation.',
+    description:
+      'Shown when the invitation link the researcher followed is malformed.',
+  },
+  checkingAccount: {
+    id: 'studio.invitation.checkingAccount',
+    defaultMessage: 'Checking your account…',
+    description:
+      'Shown while the invitation screen resolves whether the visitor is signed in.',
+  },
+  accountCheckFailed: {
+    id: 'studio.invitation.accountCheckFailed',
+    defaultMessage:
+      'Studio could not check your account. Wait a moment and try again.',
+    description:
+      'Shown when the invitation screen could not read the session at all.',
+  },
+  acceptedHeading: {
+    id: 'studio.invitation.acceptedHeading',
+    defaultMessage: 'Invitation accepted',
+    description: 'Heading of the invitation screen after joining the team.',
+  },
+  joined: {
+    id: 'studio.invitation.joined',
+    defaultMessage: 'You joined {teamName} as {role}.',
+    description:
+      "Confirmation after joining a team; {teamName} is the team's name and {role} the granted role (Owner, Admin or Member).",
+  },
+  activationFailed: {
+    id: 'studio.invitation.activationFailed',
+    defaultMessage:
+      'The team was joined, but Studio could not make it active. You can select it from the team list.',
+    description:
+      'Shown when joining succeeded but making the new team the active one failed.',
+  },
+  openTeam: {
+    id: 'studio.invitation.openTeam',
+    defaultMessage: 'Open team',
+    description: 'Button opening the team the researcher just joined.',
+  },
+  acceptHeading: {
+    id: 'studio.invitation.acceptHeading',
+    defaultMessage: 'Accept team invitation',
+    description:
+      'Heading of the invitation screen while the invitation is still open.',
+  },
+  signInPrompt: {
+    id: 'studio.invitation.signInPrompt',
+    defaultMessage:
+      'Sign in with the email address that received this invitation. You will review it before joining the team.',
+    description: 'Shown to a signed-out visitor holding an invitation link.',
+  },
+  signInToContinue: {
+    id: 'studio.invitation.signInToContinue',
+    defaultMessage: 'Sign in to continue',
+    description:
+      'Button sending a signed-out invitation holder to the sign-in screen.',
+  },
+  signedInAs: {
+    id: 'studio.invitation.signedInAs',
+    defaultMessage:
+      'Signed in as {email}. Joining gives this team access according to the role chosen by its owner.',
+    description:
+      "What accepting will do; {email} is the signed-in account's address.",
+  },
+  acceptFailed: {
+    id: 'studio.invitation.acceptFailed',
+    defaultMessage:
+      'This invitation is not available for the signed-in account. It may have expired, been cancelled, or been sent to a different email address.',
+    description: 'Shown when accepting the invitation was refused.',
+  },
+  signOutFailed: {
+    id: 'studio.invitation.signOutFailed',
+    defaultMessage: 'Studio could not sign out. Wait a moment and try again.',
+    description:
+      'Shown when switching to a different account failed because sign-out failed.',
+  },
+  joinTeam: {
+    id: 'studio.invitation.joinTeam',
+    defaultMessage: 'Join team',
+    description: 'Button accepting the team invitation.',
+  },
+  useDifferentAccount: {
+    id: 'studio.invitation.useDifferentAccount',
+    defaultMessage: 'Use a different account',
+    description:
+      'Button signing out so the invitation can be accepted from another account.',
+  },
+});
 
 /**
  * This screen's `<h1>`, in whichever of its five states is showing.
@@ -37,6 +139,7 @@ type AcceptedInvitation = Awaited<
 >;
 
 export default function AcceptInvitation(props: { invitationId: string }) {
+  const intl = useAppIntl();
   const session = authClient.useSession();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -117,35 +220,42 @@ export default function AcceptInvitation(props: { invitationId: string }) {
       <Surface className="max-w-xl" spacing="lg">
         {!invitationId.success ? (
           <>
-            <ScreenHeading>Invitation unavailable</ScreenHeading>
+            <ScreenHeading>
+              {intl.formatMessage(messages.unavailableHeading)}
+            </ScreenHeading>
             <Alert variant="destructive">
-              This invitation link is not valid. Ask the team owner for a new
-              invitation.
+              {intl.formatMessage(messages.invalidLink)}
             </Alert>
           </>
         ) : session.isPending ? (
           <div className="flex items-center gap-3" role="status">
             <Spinner size="sm" />
-            <Paragraph margin="none">Checking your account…</Paragraph>
+            <Paragraph margin="none">
+              {intl.formatMessage(messages.checkingAccount)}
+            </Paragraph>
           </div>
         ) : session.error ? (
           <>
-            <ScreenHeading>Invitation unavailable</ScreenHeading>
+            <ScreenHeading>
+              {intl.formatMessage(messages.unavailableHeading)}
+            </ScreenHeading>
             <Alert variant="destructive">
-              Studio could not check your account. Wait a moment and try again.
+              {intl.formatMessage(messages.accountCheckFailed)}
             </Alert>
           </>
         ) : accepted ? (
           <>
-            <ScreenHeading>Invitation accepted</ScreenHeading>
+            <ScreenHeading>
+              {intl.formatMessage(messages.acceptedHeading)}
+            </ScreenHeading>
             <Paragraph role="status">
-              You joined {accepted.teamName} as {roleLabel(accepted.role)}.
+              {intl.formatMessage(messages.joined, {
+                teamName: accepted.teamName,
+                role: roleLabel(intl, accepted.role),
+              })}
             </Paragraph>
             {activationFailed && (
-              <Alert>
-                The team was joined, but Studio could not make it active. You
-                can select it from the team list.
-              </Alert>
+              <Alert>{intl.formatMessage(messages.activationFailed)}</Alert>
             )}
             <Button asChild>
               {/*
@@ -154,40 +264,40 @@ export default function AcceptInvitation(props: { invitationId: string }) {
                 that team pinned is its studies list. `/` is marketing.
               */}
               <Link to="/team/$teamId" params={{ teamId: accepted.teamId }}>
-                Open team
+                {intl.formatMessage(messages.openTeam)}
               </Link>
             </Button>
           </>
         ) : !session.data ? (
           <>
-            <ScreenHeading>Accept team invitation</ScreenHeading>
-            <Paragraph>
-              Sign in with the email address that received this invitation. You
-              will review it before joining the team.
-            </Paragraph>
+            <ScreenHeading>
+              {intl.formatMessage(messages.acceptHeading)}
+            </ScreenHeading>
+            <Paragraph>{intl.formatMessage(messages.signInPrompt)}</Paragraph>
             <Button asChild>
               <Link to="/sign-in" search={{ invitationId: invitationId.data }}>
-                Sign in to continue
+                {intl.formatMessage(messages.signInToContinue)}
               </Link>
             </Button>
           </>
         ) : (
           <>
-            <ScreenHeading>Accept team invitation</ScreenHeading>
+            <ScreenHeading>
+              {intl.formatMessage(messages.acceptHeading)}
+            </ScreenHeading>
             <Paragraph>
-              Signed in as {session.data.user.email}. Joining gives this team
-              access according to the role chosen by its owner.
+              {intl.formatMessage(messages.signedInAs, {
+                email: session.data.user.email,
+              })}
             </Paragraph>
             {error === 'accept' && (
               <Alert variant="destructive">
-                This invitation is not available for the signed-in account. It
-                may have expired, been cancelled, or been sent to a different
-                email address.
+                {intl.formatMessage(messages.acceptFailed)}
               </Alert>
             )}
             {error === 'signOut' && (
               <Alert variant="destructive">
-                Studio could not sign out. Wait a moment and try again.
+                {intl.formatMessage(messages.signOutFailed)}
               </Alert>
             )}
             <div className="flex flex-wrap gap-3">
@@ -197,7 +307,7 @@ export default function AcceptInvitation(props: { invitationId: string }) {
                 icon={accepting ? <Spinner size="xs" /> : undefined}
                 onClick={() => void accept()}
               >
-                Join team
+                {intl.formatMessage(messages.joinTeam)}
               </Button>
               <Button
                 variant="outline"
@@ -205,7 +315,7 @@ export default function AcceptInvitation(props: { invitationId: string }) {
                 aria-busy={switchingAccount}
                 onClick={() => void useDifferentAccount()}
               >
-                Use a different account
+                {intl.formatMessage(messages.useDifferentAccount)}
               </Button>
             </div>
           </>

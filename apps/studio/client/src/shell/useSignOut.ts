@@ -6,6 +6,8 @@ import {
 } from '@tanstack/react-router';
 import { useState } from 'react';
 
+import { defineMessage } from '@codaco/app-i18n/messages';
+
 import { closeStudioEditorSessions } from '../editor/sessionLifecycle.ts';
 import { authClient } from '../lib/auth.ts';
 import { createUuid } from '../lib/createUuid.ts';
@@ -68,8 +70,13 @@ function signOutAttemptOf(state: unknown): string | undefined {
   return typeof attempt === 'string' ? attempt : undefined;
 }
 
-/** Said once, because both callers say it. */
-export const SIGN_OUT_FAILURE_MESSAGE = 'Sign-out did not complete. Try again.';
+/** Said once, because both callers say it. Formatted where it renders. */
+export const SIGN_OUT_FAILURE_MESSAGE = defineMessage({
+  id: 'studio.shell.signOutFailure',
+  defaultMessage: 'Sign-out did not complete. Try again.',
+  description:
+    'Shown when ending the session failed and the researcher is still signed in.',
+});
 
 /**
  * Where the sequence's first navigation goes, which is per-shell rather than

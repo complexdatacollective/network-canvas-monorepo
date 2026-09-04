@@ -1,0 +1,1794 @@
+{
+  "studio.accountLanguage.automatic": {
+    "defaultMessage": "Automatic (browser language)",
+    "description": "The language-selector entry meaning \"follow the languages this browser asks for\" rather than a fixed choice."
+  },
+  "studio.accountLanguage.fieldLabel": {
+    "defaultMessage": "Studio language",
+    "description": "Label of the interface-language selector."
+  },
+  "studio.accountLanguage.followsDevice": {
+    "defaultMessage": "Automatic follows the languages your browser asks for, and can differ from device to device.",
+    "description": "Hint under the language selector explaining what the automatic entry does."
+  },
+  "studio.accountLanguage.heading": {
+    "defaultMessage": "Language",
+    "description": "Heading of the account screen where the researcher chooses Studio's own language."
+  },
+  "studio.accountLanguage.intro": {
+    "defaultMessage": "The language Studio speaks to you: its navigation, forms, and messages. This is a separate choice from the languages a protocol offers its participants, which each study sets for itself.",
+    "description": "Explanation under the language screen's heading, distinguishing the interface language from a protocol's participant languages."
+  },
+  "studio.accountLanguage.saveFailed": {
+    "defaultMessage": "Studio is using this language here, but could not save it to your account. It will not follow you to your other devices until you choose it again.",
+    "description": "Shown when the language was applied locally but storing it on the account failed."
+  },
+  "studio.accountLanguage.saved": {
+    "defaultMessage": "Language saved. It will follow you to your other devices.",
+    "description": "Confirmation after the language preference was stored on the account."
+  },
+  "studio.accountLanguage.saving": {
+    "defaultMessage": "Saving your language choice…",
+    "description": "Shown while the language preference is being stored."
+  },
+  "studio.appLayout.skipToMainContent": {
+    "defaultMessage": "Skip to main content",
+    "description": "The keyboard skip link that jumps past the app shell's header."
+  },
+  "studio.appLayout.teamSwitchFailure": {
+    "defaultMessage": "Studio could not switch to this team. Screens that depend on it will stay empty until it does.",
+    "description": "Shown above every screen when the active team could not follow the team in the URL."
+  },
+  "studio.deployment.billingManagedOnly": {
+    "defaultMessage": "Managed deployments only",
+    "description": "Shown on the disabled Billing sidebar row of a self-hosted instance, which does not serve billing at all."
+  },
+  "studio.deployment.billingNotEnabled": {
+    "defaultMessage": "Not enabled on this deployment",
+    "description": "Shown on the disabled Billing sidebar row of a deployment whose billing capability is not configured."
+  },
+  "studio.editor.access": {
+    "defaultMessage": "Access",
+    "description": "Inspector term for whether this researcher may currently change the screen."
+  },
+  "studio.editor.accessEditing": {
+    "defaultMessage": "Editing",
+    "description": "Inspector value shown when this researcher holds the screen lock and may change it."
+  },
+  "studio.editor.accessReadOnly": {
+    "defaultMessage": "Read-only",
+    "description": "Inspector value shown when this researcher may read the screen but not change it."
+  },
+  "studio.editor.addScreen": {
+    "defaultMessage": "Add",
+    "description": "Button that adds another interview screen to the protocol."
+  },
+  "studio.editor.addUnconfirmed": {
+    "defaultMessage": "Studio could not confirm whether the screen was added. Refresh the outline before trying again.",
+    "description": "Shown when adding an interview screen failed without saying whether it was created."
+  },
+  "studio.editor.addingScreen": {
+    "defaultMessage": "Adding a new screen…",
+    "description": "Status shown while a new interview screen is being created."
+  },
+  "studio.editor.assemblyFailed": {
+    "defaultMessage": "The protocol document could not be assembled.",
+    "description": "Validation problem shown when the draft could not be turned into a protocol document to check."
+  },
+  "studio.editor.assets": {
+    "defaultMessage": "Assets",
+    "description": "Name of the protocol's assets section, in the section selector and as the canvas heading."
+  },
+  "studio.editor.assetsBody": {
+    "defaultMessage": "Images, audio, and video used by this protocol will be managed here.",
+    "description": "Says what the assets section will do once it is built."
+  },
+  "studio.editor.changeHistory": {
+    "defaultMessage": "Change history",
+    "description": "Accessible name of the group holding Undo and Redo."
+  },
+  "studio.editor.changes": {
+    "defaultMessage": "Changes",
+    "description": "Inspector term for whether the screen has changes still being saved."
+  },
+  "studio.editor.changesPending": {
+    "defaultMessage": "{count, plural, one {# pending} other {# pending}}",
+    "description": "Inspector value counting the changes to the screen that are still being saved."
+  },
+  "studio.editor.changesSaved": {
+    "defaultMessage": "Saved",
+    "description": "Inspector value shown when every change to the screen has been saved."
+  },
+  "studio.editor.checkingProtocol": {
+    "defaultMessage": "Checking protocol",
+    "description": "Button reporting that the protocol is still being validated."
+  },
+  "studio.editor.checkingThisProtocol": {
+    "defaultMessage": "Checking this protocol…",
+    "description": "Shown while the protocol is still being validated."
+  },
+  "studio.editor.codebook": {
+    "defaultMessage": "Codebook",
+    "description": "Name of the protocol's codebook section, in the section selector and as the canvas heading."
+  },
+  "studio.editor.codebookBody": {
+    "defaultMessage": "People, connections, and participant variables will be managed here.",
+    "description": "Says what the codebook section will do once it is built."
+  },
+  "studio.editor.defaultScreenName": {
+    "defaultMessage": "Screen {number}",
+    "description": "Stands in for an interview screen the researcher has not named; {number} is its position in the interview, counting from one."
+  },
+  "studio.editor.discardConfirm": {
+    "defaultMessage": "Discard changes",
+    "description": "Button that abandons the unsaved values on the current interview screen."
+  },
+  "studio.editor.discardForLeaving": {
+    "defaultMessage": "The values in this screen have not been saved. Discard them and leave the protocol editor?",
+    "description": "Body of the discard dialog when the researcher is navigating away from the editor."
+  },
+  "studio.editor.discardForNewScreen": {
+    "defaultMessage": "The values in this screen have not been saved. Discard them and add a new screen?",
+    "description": "Body of the discard dialog when the researcher is adding another interview screen."
+  },
+  "studio.editor.discardForSection": {
+    "defaultMessage": "The values in this screen have not been saved. Discard them and open another section?",
+    "description": "Body of the discard dialog when the researcher is opening another section of the protocol."
+  },
+  "studio.editor.discardTitle": {
+    "defaultMessage": "Discard unsaved screen changes?",
+    "description": "Title of the dialog asking whether to abandon unsaved values on the current interview screen."
+  },
+  "studio.editor.draftEditor": {
+    "defaultMessage": "Draft editor",
+    "description": "Supporting line under the protocol name, naming what this screen edits."
+  },
+  "studio.editor.draftUnavailable": {
+    "defaultMessage": "This protocol draft could not be opened. Return to protocols and try again.",
+    "description": "Shown when the protocol draft itself could not be loaded into the editor."
+  },
+  "studio.editor.historyDisabled": {
+    "defaultMessage": "Save or discard your screen changes to use Undo and Redo.",
+    "description": "Explains why Undo and Redo are unavailable while the screen form holds unsaved values."
+  },
+  "studio.editor.inspector": {
+    "defaultMessage": "Inspector",
+    "description": "Heading of the panel showing access, change, and validation detail for the selected screen."
+  },
+  "studio.editor.interviewScreen": {
+    "defaultMessage": "Interview screen",
+    "description": "Supporting line used when the screen being edited carries no recognisable type."
+  },
+  "studio.editor.keepEditing": {
+    "defaultMessage": "Keep editing",
+    "description": "Button that dismisses the discard dialog and leaves the unsaved values in place."
+  },
+  "studio.editor.moveScreenDown": {
+    "defaultMessage": "Move {name} down",
+    "description": "Accessible name of the control that moves an interview screen one place later; {name} is the screen name."
+  },
+  "studio.editor.moveScreenUp": {
+    "defaultMessage": "Move {name} up",
+    "description": "Accessible name of the control that moves an interview screen one place earlier; {name} is the screen name."
+  },
+  "studio.editor.moveUnconfirmed": {
+    "defaultMessage": "Studio could not confirm the new screen order. Refresh the outline before moving another screen.",
+    "description": "Shown when reordering interview screens failed without saying whether the new order was kept."
+  },
+  "studio.editor.noScreens": {
+    "defaultMessage": "Add a screen to begin the interview flow.",
+    "description": "Shown when the protocol has no interview screens yet."
+  },
+  "studio.editor.noValidationProblems": {
+    "defaultMessage": "No validation problems.",
+    "description": "Shown when the protocol has no validation problems."
+  },
+  "studio.editor.openingEditor": {
+    "defaultMessage": "Opening protocol editor…",
+    "description": "Screen-reader status announced while the protocol editor is still loading."
+  },
+  "studio.editor.openingScreen": {
+    "defaultMessage": "Opening screen…",
+    "description": "Shown on the editing canvas while the selected interview screen is being opened."
+  },
+  "studio.editor.outlineRefreshFailedForAdd": {
+    "defaultMessage": "The outline could not be refreshed. Reload this editor before adding another screen.",
+    "description": "Shown when re-reading the protocol after an unconfirmed screen addition also failed."
+  },
+  "studio.editor.outlineRefreshFailedForMove": {
+    "defaultMessage": "The outline could not be refreshed. Reload this editor before moving another screen.",
+    "description": "Shown when re-reading the protocol after an unconfirmed screen reorder also failed."
+  },
+  "studio.editor.pageHeading": {
+    "defaultMessage": "Page heading",
+    "description": "Label of the field holding the heading a participant sees on this interview screen."
+  },
+  "studio.editor.protocolSections": {
+    "defaultMessage": "Protocol sections",
+    "description": "Heading and accessible name of the editor's own section selector."
+  },
+  "studio.editor.protocolSettings": {
+    "defaultMessage": "Protocol settings",
+    "description": "Canvas heading of the section holding the settings of the protocol itself."
+  },
+  "studio.editor.protocolValid": {
+    "defaultMessage": "Protocol valid",
+    "description": "Button reporting that the protocol currently has no validation problems."
+  },
+  "studio.editor.readOnlyScreen": {
+    "defaultMessage": "This screen is read-only while another editor holds its lock.",
+    "description": "Shown when somebody else is editing the screen, so this researcher can only read it."
+  },
+  "studio.editor.redo": {
+    "defaultMessage": "Redo",
+    "description": "Button that reapplies the change Undo reversed."
+  },
+  "studio.editor.refreshOrder": {
+    "defaultMessage": "Refresh order",
+    "description": "Button that re-reads the protocol after an unconfirmed screen reorder."
+  },
+  "studio.editor.refreshOutline": {
+    "defaultMessage": "Refresh outline",
+    "description": "Button that re-reads the protocol after an unconfirmed screen addition."
+  },
+  "studio.editor.saveFailed": {
+    "defaultMessage": "This screen could not be saved. Wait a moment and try again.",
+    "description": "Form error shown when saving an interview screen failed."
+  },
+  "studio.editor.saveScreen": {
+    "defaultMessage": "Save screen",
+    "description": "Submit button of the interview screen's form."
+  },
+  "studio.editor.screenName": {
+    "defaultMessage": "Screen name",
+    "description": "Label of the field naming an interview screen for the researcher, in the outline."
+  },
+  "studio.editor.screenTypeSummary": {
+    "defaultMessage": "{type} screen",
+    "description": "Supporting line naming the kind of interview screen being edited; {type} is the screen type recorded in the protocol."
+  },
+  "studio.editor.screens": {
+    "defaultMessage": "Screens",
+    "description": "Section selector group holding the interview screens of the protocol."
+  },
+  "studio.editor.selectScreen": {
+    "defaultMessage": "Select a screen to see access and change details.",
+    "description": "Shown in the inspector while no interview screen is selected."
+  },
+  "studio.editor.settings": {
+    "defaultMessage": "Settings",
+    "description": "Section selector entry for the protocol's own settings section."
+  },
+  "studio.editor.settingsBody": {
+    "defaultMessage": "Protocol metadata editing will use this canvas.",
+    "description": "Says what the protocol settings section will do once it is built."
+  },
+  "studio.editor.studyUnavailable": {
+    "defaultMessage": "This study could not be opened. Reload the page and try again.",
+    "description": "Shown when the study the editor URL names could not be read at all."
+  },
+  "studio.editor.studyUnreachable": {
+    "defaultMessage": "This study is not one of yours. Ask whoever sent you the link to give you access to it.",
+    "description": "Shown when the researcher has no access to the study the editor URL names."
+  },
+  "studio.editor.studyWithoutDraft": {
+    "defaultMessage": "This study has no protocol draft to edit.",
+    "description": "Shown when the study exists but carries no protocol draft for the editor to open."
+  },
+  "studio.editor.translations": {
+    "defaultMessage": "Translations",
+    "description": "Name of the protocol's translations section, in the section selector and as the canvas heading."
+  },
+  "studio.editor.translationsBody": {
+    "defaultMessage": "Translated protocol content will be managed here.",
+    "description": "Says what the translations section will do once it is built."
+  },
+  "studio.editor.undo": {
+    "defaultMessage": "Undo",
+    "description": "Button that reverses the last saved change to the screen."
+  },
+  "studio.editor.unknownScreenType": {
+    "defaultMessage": "Unknown screen",
+    "description": "Supporting line of an outline entry whose screen carries no recognisable type."
+  },
+  "studio.editor.validationHeading": {
+    "defaultMessage": "Validation",
+    "description": "Heading of the section listing the protocol’s validation problems."
+  },
+  "studio.editor.validationProblems": {
+    "defaultMessage": "{count, plural, one {# validation problem} other {# validation problems}}",
+    "description": "Button reporting how many validation problems the protocol currently has."
+  },
+  "studio.editorSession.changesSaved": {
+    "defaultMessage": "Changes saved.",
+    "description": "Shown when a change to the screen has been saved."
+  },
+  "studio.editorSession.lockLost": {
+    "defaultMessage": "Editing stopped because the screen lock was lost.",
+    "description": "Shown when editing stopped because the screen lock could no longer be held."
+  },
+  "studio.editorSession.lockNowAvailable": {
+    "defaultMessage": "The screen lock is available. You can edit this screen.",
+    "description": "Shown when a screen that opened read-only has since become editable."
+  },
+  "studio.editorSession.openFailed": {
+    "defaultMessage": "This screen could not be opened. Studio is trying again.",
+    "description": "Shown when opening the chosen interview screen failed and Studio is retrying by itself."
+  },
+  "studio.editorSession.openedReadOnly": {
+    "defaultMessage": "This screen is open read-only because someone else is editing it.",
+    "description": "Shown when somebody else holds the screen lock, so the screen opened read-only."
+  },
+  "studio.editorSession.readyToEdit": {
+    "defaultMessage": "This screen is ready to edit.",
+    "description": "Shown when the researcher holds the screen lock and may change the screen."
+  },
+  "studio.editorSession.saveStopped": {
+    "defaultMessage": "Editing stopped because Studio could not save this screen.",
+    "description": "Shown when editing stopped because a change to the screen could not be saved."
+  },
+  "studio.editorSession.screenRemoved": {
+    "defaultMessage": "The selected screen is no longer in this draft.",
+    "description": "Shown when the chosen interview screen has been deleted from the protocol draft."
+  },
+  "studio.editorSession.selectScreen": {
+    "defaultMessage": "Select a screen to edit.",
+    "description": "Shown on the editing canvas while no interview screen has been chosen."
+  },
+  "studio.emailValidation.invalid": {
+    "defaultMessage": "Enter a valid email address.",
+    "description": "Validation error under an email field whose value is not an email address."
+  },
+  "studio.errorScreen.heading": {
+    "defaultMessage": "Something went wrong",
+    "description": "Heading of the whole-route error screen shown when a screen could not load."
+  },
+  "studio.errorScreen.loadFailed": {
+    "defaultMessage": "This page could not be loaded. Reload to try again.",
+    "description": "Error-screen explanation for any failure other than an unreachable server."
+  },
+  "studio.errorScreen.reload": {
+    "defaultMessage": "Reload",
+    "description": "Button on the error screen that reloads the page."
+  },
+  "studio.errorScreen.serverUnreachable": {
+    "defaultMessage": "The server could not be reached. Check that it is running, then reload this page.",
+    "description": "Error-screen explanation when the Studio server did not answer at all."
+  },
+  "studio.everythingBar.chordHint": {
+    "defaultMessage": "Shortcut: {keys}",
+    "description": "What a result's keyboard chord means; {keys} is the formatted list of keys to press in order."
+  },
+  "studio.everythingBar.dialog": {
+    "defaultMessage": "Search and commands",
+    "description": "Accessible name of the everything-bar dialog."
+  },
+  "studio.everythingBar.error": {
+    "defaultMessage": "These results could not be loaded. Press Enter to try again.",
+    "description": "Shown, and retried on activation, when an everything-bar search failed."
+  },
+  "studio.everythingBar.footerClose": {
+    "defaultMessage": "Close",
+    "description": "Footer label naming what the everything bar's Escape key does."
+  },
+  "studio.everythingBar.footerNavigate": {
+    "defaultMessage": "Navigate",
+    "description": "Footer label naming what the everything bar's arrow keys do."
+  },
+  "studio.everythingBar.footerNavigateKeys": {
+    "defaultMessage": "Up and down arrow keys",
+    "description": "Names the arrow-key caps in the everything-bar footer for assistive technology."
+  },
+  "studio.everythingBar.footerSelect": {
+    "defaultMessage": "Select",
+    "description": "Footer label naming what the everything bar's Enter key does."
+  },
+  "studio.everythingBar.footerSelectKeys": {
+    "defaultMessage": "Enter key",
+    "description": "Names the Enter cap in the everything-bar footer for assistive technology."
+  },
+  "studio.everythingBar.groupCommands": {
+    "defaultMessage": "Commands",
+    "description": "Heading of the everything-bar result group listing commands."
+  },
+  "studio.everythingBar.groupDocumentation": {
+    "defaultMessage": "Documentation",
+    "description": "Heading of the everything-bar result group listing documentation."
+  },
+  "studio.everythingBar.groupGoTo": {
+    "defaultMessage": "Go to",
+    "description": "Heading of the everything-bar result group listing destinations."
+  },
+  "studio.everythingBar.noResults": {
+    "defaultMessage": "Nothing matches that search.",
+    "description": "Shown when a settled everything-bar query matched nothing."
+  },
+  "studio.everythingBar.pending": {
+    "defaultMessage": "Searching…",
+    "description": "Shown while an everything-bar provider's search is still running."
+  },
+  "studio.everythingBar.recents": {
+    "defaultMessage": "Recent",
+    "description": "Heading of the everything bar's recent-activations section."
+  },
+  "studio.everythingBar.resultCount": {
+    "defaultMessage": "{count, plural, one {# result} other {# results}}",
+    "description": "Politely announced result total under the everything-bar search input."
+  },
+  "studio.everythingBar.results": {
+    "defaultMessage": "Results",
+    "description": "Accessible name of the everything bar's results listbox."
+  },
+  "studio.everythingBar.searchLabel": {
+    "defaultMessage": "Search destinations, commands and documentation",
+    "description": "Accessible name of the everything bar's search input."
+  },
+  "studio.everythingBar.searchPlaceholder": {
+    "defaultMessage": "Find a place, a thing, an action, or an answer",
+    "description": "Placeholder shown in the everything bar's search input."
+  },
+  "studio.everythingBar.showMore": {
+    "defaultMessage": "Show more",
+    "description": "Row that reveals a result group's next slice in the everything bar."
+  },
+  "studio.everythingBar.triggerMac": {
+    "defaultMessage": "Search and commands (Command K)",
+    "description": "Accessible name of the everything-bar trigger on macOS, naming the Command K shortcut."
+  },
+  "studio.everythingBar.triggerOther": {
+    "defaultMessage": "Search and commands (Control K)",
+    "description": "Accessible name of the everything-bar trigger outside macOS, naming the Control K shortcut."
+  },
+  "studio.everythingBar.triggerPlaceholder": {
+    "defaultMessage": "Search Studio",
+    "description": "Placeholder shown in the header's everything-bar trigger."
+  },
+  "studio.invitation.acceptFailed": {
+    "defaultMessage": "This invitation is not available for the signed-in account. It may have expired, been cancelled, or been sent to a different email address.",
+    "description": "Shown when accepting the invitation was refused."
+  },
+  "studio.invitation.acceptHeading": {
+    "defaultMessage": "Accept team invitation",
+    "description": "Heading of the invitation screen while the invitation is still open."
+  },
+  "studio.invitation.acceptedHeading": {
+    "defaultMessage": "Invitation accepted",
+    "description": "Heading of the invitation screen after joining the team."
+  },
+  "studio.invitation.accountCheckFailed": {
+    "defaultMessage": "Studio could not check your account. Wait a moment and try again.",
+    "description": "Shown when the invitation screen could not read the session at all."
+  },
+  "studio.invitation.activationFailed": {
+    "defaultMessage": "The team was joined, but Studio could not make it active. You can select it from the team list.",
+    "description": "Shown when joining succeeded but making the new team the active one failed."
+  },
+  "studio.invitation.checkingAccount": {
+    "defaultMessage": "Checking your account…",
+    "description": "Shown while the invitation screen resolves whether the visitor is signed in."
+  },
+  "studio.invitation.invalidLink": {
+    "defaultMessage": "This invitation link is not valid. Ask the team owner for a new invitation.",
+    "description": "Shown when the invitation link the researcher followed is malformed."
+  },
+  "studio.invitation.joinTeam": {
+    "defaultMessage": "Join team",
+    "description": "Button accepting the team invitation."
+  },
+  "studio.invitation.joined": {
+    "defaultMessage": "You joined {teamName} as {role}.",
+    "description": "Confirmation after joining a team; {teamName} is the team's name and {role} the granted role (Owner, Admin or Member)."
+  },
+  "studio.invitation.openTeam": {
+    "defaultMessage": "Open team",
+    "description": "Button opening the team the researcher just joined."
+  },
+  "studio.invitation.signInPrompt": {
+    "defaultMessage": "Sign in with the email address that received this invitation. You will review it before joining the team.",
+    "description": "Shown to a signed-out visitor holding an invitation link."
+  },
+  "studio.invitation.signInToContinue": {
+    "defaultMessage": "Sign in to continue",
+    "description": "Button sending a signed-out invitation holder to the sign-in screen."
+  },
+  "studio.invitation.signOutFailed": {
+    "defaultMessage": "Studio could not sign out. Wait a moment and try again.",
+    "description": "Shown when switching to a different account failed because sign-out failed."
+  },
+  "studio.invitation.signedInAs": {
+    "defaultMessage": "Signed in as {email}. Joining gives this team access according to the role chosen by its owner.",
+    "description": "What accepting will do; {email} is the signed-in account's address."
+  },
+  "studio.invitation.unavailableHeading": {
+    "defaultMessage": "Invitation unavailable",
+    "description": "Heading of the invitation screen when the invitation cannot be shown."
+  },
+  "studio.invitation.useDifferentAccount": {
+    "defaultMessage": "Use a different account",
+    "description": "Button signing out so the invitation can be accepted from another account."
+  },
+  "studio.lockup.allStudies": {
+    "defaultMessage": "All studies in this team",
+    "description": "Link beneath the study switcher's list back to the owning team's study list."
+  },
+  "studio.lockup.chooseTeam": {
+    "defaultMessage": "Choose a team",
+    "description": "Shown on the team switcher when no listed team matches the current one."
+  },
+  "studio.lockup.studyAccessibleName": {
+    "defaultMessage": "Study {name}",
+    "description": "Accessible name of the study switcher's trigger while the study's state is unknown."
+  },
+  "studio.lockup.studyAccessibleNameWithState": {
+    "defaultMessage": "Study {name}, {state}",
+    "description": "Accessible name of the study switcher's trigger: the study's name and its lifecycle state (Draft, Live, Paused or Closed)."
+  },
+  "studio.lockup.studyKicker": {
+    "defaultMessage": "Study",
+    "description": "The word above the study's name in the header's team ▸ study switcher."
+  },
+  "studio.lockup.teamAdministration": {
+    "defaultMessage": "Team administration",
+    "description": "Link beneath the team switcher's list to the current team's settings."
+  },
+  "studio.lockup.teamKicker": {
+    "defaultMessage": "Team",
+    "description": "The word above the team's name in the header's team ▸ study switcher."
+  },
+  "studio.marketing.capabilitiesHeading": {
+    "defaultMessage": "What you can do with it",
+    "description": "Heading of the marketing page's three-capability section."
+  },
+  "studio.marketing.collectDescription": {
+    "defaultMessage": "Send participants a link. They answer in their own browser, on their own device, with no software to install.",
+    "description": "Body of the data-collection capability card."
+  },
+  "studio.marketing.collectTitle": {
+    "defaultMessage": "Collect from participants",
+    "description": "Title of the data-collection capability card."
+  },
+  "studio.marketing.createAccount": {
+    "defaultMessage": "Create an account",
+    "description": "The marketing page's primary call to action."
+  },
+  "studio.marketing.designDescription": {
+    "defaultMessage": "Build a protocol from the same interfaces Network Canvas has always used — name generators, sociograms, forms — and change it without starting again.",
+    "description": "Body of the protocol-design capability card."
+  },
+  "studio.marketing.designTitle": {
+    "defaultMessage": "Design the interview",
+    "description": "Title of the protocol-design capability card."
+  },
+  "studio.marketing.exportDescription": {
+    "defaultMessage": "Export the networks you collected in the formats analysis software reads, whenever you want them.",
+    "description": "Body of the data-export capability card."
+  },
+  "studio.marketing.exportTitle": {
+    "defaultMessage": "Take the data out",
+    "description": "Title of the data-export capability card."
+  },
+  "studio.marketing.intro": {
+    "defaultMessage": "Studio is where research teams design personal network interviews, run them with participants online, and keep the data they collect together in one study.",
+    "description": "The marketing page's one-sentence description of what Studio is."
+  },
+  "studio.marketing.seePlans": {
+    "defaultMessage": "See what a plan includes",
+    "description": "The marketing page's link to the pricing page."
+  },
+  "studio.marketing.selfHostBody": {
+    "defaultMessage": "Studio is open source. An institution that needs its participant data to stay on its own infrastructure can host the same software itself.",
+    "description": "Body of the marketing page's self-hosting section."
+  },
+  "studio.marketing.selfHostHeading": {
+    "defaultMessage": "Or run it yourself",
+    "description": "Heading of the marketing page's self-hosting section."
+  },
+  "studio.marketing.signIn": {
+    "defaultMessage": "Sign in",
+    "description": "The marketing page's sign-in link."
+  },
+  "studio.nav.apiTokens": {
+    "defaultMessage": "API tokens",
+    "description": "Navigation label for the account screen managing personal API tokens."
+  },
+  "studio.nav.backToStudy": {
+    "defaultMessage": "Back to study",
+    "description": "First row of the protocol editor's outline: the way back out of the editor to the study."
+  },
+  "studio.nav.context.account": {
+    "defaultMessage": "Account",
+    "description": "Everything-bar context line for the researcher's own account destinations."
+  },
+  "studio.nav.context.platform": {
+    "defaultMessage": "Platform",
+    "description": "Everything-bar context line for platform-level destinations (gallery, templates)."
+  },
+  "studio.nav.context.protocol": {
+    "defaultMessage": "Protocol",
+    "description": "Everything-bar context line for protocol editor destinations."
+  },
+  "studio.nav.context.study": {
+    "defaultMessage": "Study",
+    "description": "Everything-bar context line for study destinations."
+  },
+  "studio.nav.context.team": {
+    "defaultMessage": "Team",
+    "description": "Everything-bar context line for team destinations."
+  },
+  "studio.nav.editorAssets": {
+    "defaultMessage": "Assets",
+    "description": "Navigation label for the protocol editor's media assets screen."
+  },
+  "studio.nav.editorCodebook": {
+    "defaultMessage": "Codebook",
+    "description": "Navigation label for the protocol editor's codebook screen."
+  },
+  "studio.nav.editorPreview": {
+    "defaultMessage": "Preview",
+    "description": "Navigation label for the protocol editor's draft preview screen."
+  },
+  "studio.nav.editorStages": {
+    "defaultMessage": "Stages",
+    "description": "Navigation label for the protocol editor's stage list screen."
+  },
+  "studio.nav.editorTranslations": {
+    "defaultMessage": "Translations",
+    "description": "Navigation label for the protocol editor's translations screen."
+  },
+  "studio.nav.gallery": {
+    "defaultMessage": "Gallery",
+    "description": "Navigation label for the gallery of published protocols, in the header and everything bar."
+  },
+  "studio.nav.group.collect": {
+    "defaultMessage": "Collect",
+    "description": "Study sidebar group heading for data collection destinations."
+  },
+  "studio.nav.group.data": {
+    "defaultMessage": "Data",
+    "description": "Study sidebar group heading for collected-data destinations."
+  },
+  "studio.nav.group.design": {
+    "defaultMessage": "Design",
+    "description": "Study sidebar group heading for protocol design destinations."
+  },
+  "studio.nav.language": {
+    "defaultMessage": "Language",
+    "description": "Navigation label for the account screen where the researcher chooses the language Studio speaks."
+  },
+  "studio.nav.profile": {
+    "defaultMessage": "Profile",
+    "description": "Navigation label for the researcher's own profile screen in the account area."
+  },
+  "studio.nav.signInMethods": {
+    "defaultMessage": "Sign-in methods",
+    "description": "Navigation label for the account screen listing sign-in providers and sessions."
+  },
+  "studio.nav.studyEditor": {
+    "defaultMessage": "Editor",
+    "description": "Navigation label for a study's protocol editor."
+  },
+  "studio.nav.studyExport": {
+    "defaultMessage": "Export",
+    "description": "Navigation label for a study's data export screen."
+  },
+  "studio.nav.studyOverview": {
+    "defaultMessage": "Overview",
+    "description": "Navigation label for a study's overview dashboard."
+  },
+  "studio.nav.studyParticipants": {
+    "defaultMessage": "Participants",
+    "description": "Navigation label for a study's participants screen."
+  },
+  "studio.nav.studyRecruitment": {
+    "defaultMessage": "Recruitment",
+    "description": "Navigation label for a study's recruitment screen."
+  },
+  "studio.nav.studySchedule": {
+    "defaultMessage": "Schedule",
+    "description": "Navigation label for a study's schedule screen."
+  },
+  "studio.nav.studySessions": {
+    "defaultMessage": "Sessions",
+    "description": "Navigation label for a study's interview sessions screen."
+  },
+  "studio.nav.studySettings": {
+    "defaultMessage": "Study settings",
+    "description": "Navigation label for a study's settings screen."
+  },
+  "studio.nav.studyVersions": {
+    "defaultMessage": "Versions",
+    "description": "Navigation label for a study's published protocol versions screen."
+  },
+  "studio.nav.studyWaves": {
+    "defaultMessage": "Waves",
+    "description": "Navigation label for a study's collection timepoints (waves) screen."
+  },
+  "studio.nav.teamActivity": {
+    "defaultMessage": "Activity",
+    "description": "Navigation label for a team's audit activity log."
+  },
+  "studio.nav.teamBilling": {
+    "defaultMessage": "Billing",
+    "description": "Navigation label for a team's plan and invoices screen."
+  },
+  "studio.nav.teamMembers": {
+    "defaultMessage": "Members",
+    "description": "Navigation label for a team's membership and invitations screen."
+  },
+  "studio.nav.teamRoles": {
+    "defaultMessage": "Roles",
+    "description": "Navigation label for a team's role configuration screen."
+  },
+  "studio.nav.teamSettings": {
+    "defaultMessage": "Settings",
+    "description": "Navigation label for a team's settings screen."
+  },
+  "studio.nav.teamStudies": {
+    "defaultMessage": "Studies",
+    "description": "Navigation label for a team's list of studies."
+  },
+  "studio.nav.templates": {
+    "defaultMessage": "Templates",
+    "description": "Navigation label for the protocol template library, in the header and everything bar."
+  },
+  "studio.placeholder.unbuilt": {
+    "defaultMessage": "This screen has not been built yet. It is specified in {issue}.",
+    "description": "Shown on every not-yet-built screen; {issue} is a GitHub issue reference like #1253."
+  },
+  "studio.screens.accountIndexDescription": {
+    "defaultMessage": "The researcher's own name, email address and everything else Studio holds about them as a person rather than as a member of a team.",
+    "description": "What the Profile screen at /account will do, shown on it while it is not yet built."
+  },
+  "studio.screens.accountIndexTitle": {
+    "defaultMessage": "Profile",
+    "description": "Name of the Profile screen at /account, used as its heading."
+  },
+  "studio.screens.accountSignInMethodsDescription": {
+    "defaultMessage": "Which providers can sign this account in, and which sessions are signed in on it right now.",
+    "description": "What the Sign-in methods screen at /sign-in-methods will do, shown on it while it is not yet built."
+  },
+  "studio.screens.accountSignInMethodsTitle": {
+    "defaultMessage": "Sign-in methods",
+    "description": "Name of the Sign-in methods screen at /sign-in-methods, used as its heading."
+  },
+  "studio.screens.accountTokensDescription": {
+    "defaultMessage": "Personal tokens for reaching Studio's API as this researcher, and revoking one that should no longer work.",
+    "description": "What the API tokens screen at /tokens will do, shown on it while it is not yet built."
+  },
+  "studio.screens.accountTokensTitle": {
+    "defaultMessage": "API tokens",
+    "description": "Name of the API tokens screen at /tokens, used as its heading."
+  },
+  "studio.screens.editorAssetsDescription": {
+    "defaultMessage": "The images, videos, audio and network files this protocol shows participants.",
+    "description": "What the Assets screen at /assets will do, shown on it while it is not yet built."
+  },
+  "studio.screens.editorAssetsTitle": {
+    "defaultMessage": "Assets",
+    "description": "Name of the Assets screen at /assets, used as its heading."
+  },
+  "studio.screens.editorCodebookDescription": {
+    "defaultMessage": "The entities and variables this protocol collects, and the rules each of them follows.",
+    "description": "What the Codebook screen at /codebook will do, shown on it while it is not yet built."
+  },
+  "studio.screens.editorCodebookTitle": {
+    "defaultMessage": "Codebook",
+    "description": "Name of the Codebook screen at /codebook, used as its heading."
+  },
+  "studio.screens.editorPreviewDescription": {
+    "defaultMessage": "The draft run exactly as a participant would meet it, recording nothing.",
+    "description": "What the Preview screen at /preview will do, shown on it while it is not yet built."
+  },
+  "studio.screens.editorPreviewTitle": {
+    "defaultMessage": "Preview",
+    "description": "Name of the Preview screen at /preview, used as its heading."
+  },
+  "studio.screens.editorStageDescription": {
+    "defaultMessage": "One stage in detail: the interface it uses, the prompts it asks, and how a participant answers it.",
+    "description": "What the Stage screen at /stages/$stageId will do, shown on it while it is not yet built."
+  },
+  "studio.screens.editorStageTitle": {
+    "defaultMessage": "Stage",
+    "description": "Name of the Stage screen at /stages/$stageId, used as its heading."
+  },
+  "studio.screens.editorTranslationsDescription": {
+    "defaultMessage": "Every piece of text a participant will read, in each language this study offers them.",
+    "description": "What the Translations screen at /translations will do, shown on it while it is not yet built."
+  },
+  "studio.screens.editorTranslationsTitle": {
+    "defaultMessage": "Translations",
+    "description": "Name of the Translations screen at /translations, used as its heading."
+  },
+  "studio.screens.enterCompleteDescription": {
+    "defaultMessage": "Confirms the interview is finished and sends the participant wherever the study asked to return them.",
+    "description": "What the Interview complete screen at /enter/$token/complete will do, shown on it while it is not yet built."
+  },
+  "studio.screens.enterCompleteTitle": {
+    "defaultMessage": "Interview complete",
+    "description": "Name of the Interview complete screen at /enter/$token/complete, used as its heading."
+  },
+  "studio.screens.enterConsentDescription": {
+    "defaultMessage": "The study's consent text, and the participant's recorded decision about taking part in it.",
+    "description": "What the Consent screen at /enter/$token/consent will do, shown on it while it is not yet built."
+  },
+  "studio.screens.enterConsentTitle": {
+    "defaultMessage": "Consent",
+    "description": "Name of the Consent screen at /enter/$token/consent, used as its heading."
+  },
+  "studio.screens.enterDescription": {
+    "defaultMessage": "Where a participant's invitation link lands: the study's welcome, the language they will answer in, and anything they should read first.",
+    "description": "What the Welcome screen at /enter/$token will do, shown on it while it is not yet built."
+  },
+  "studio.screens.enterInterviewDescription": {
+    "defaultMessage": "The interview itself, run by the Network Canvas interview runtime and owning the whole viewport.",
+    "description": "What the Interview screen at /enter/$token/interview will do, shown on it while it is not yet built."
+  },
+  "studio.screens.enterInterviewTitle": {
+    "defaultMessage": "Interview",
+    "description": "Name of the Interview screen at /enter/$token/interview, used as its heading."
+  },
+  "studio.screens.enterTitle": {
+    "defaultMessage": "Welcome",
+    "description": "Name of the Welcome screen at /enter/$token, used as its heading."
+  },
+  "studio.screens.galleryDescription": {
+    "defaultMessage": "Protocols other researchers have published, to read, cite and copy into a team as the starting point for a study.",
+    "description": "What the Gallery screen at /gallery will do, shown on it while it is not yet built."
+  },
+  "studio.screens.galleryTemplateDescription": {
+    "defaultMessage": "One published protocol in full: what it collects, who made it, and where it came from.",
+    "description": "What the Gallery protocol screen at /gallery/$templateId will do, shown on it while it is not yet built."
+  },
+  "studio.screens.galleryTemplateTitle": {
+    "defaultMessage": "Gallery protocol",
+    "description": "Name of the Gallery protocol screen at /gallery/$templateId, used as its heading."
+  },
+  "studio.screens.galleryTitle": {
+    "defaultMessage": "Gallery",
+    "description": "Name of the Gallery screen at /gallery, used as its heading."
+  },
+  "studio.screens.legalDescription": {
+    "defaultMessage": "Studio's terms of service, privacy notice and data processing agreement, each addressed by name.",
+    "description": "What the Legal screen at /legal/$document will do, shown on it while it is not yet built."
+  },
+  "studio.screens.legalTitle": {
+    "defaultMessage": "Legal",
+    "description": "Name of the Legal screen at /legal/$document, used as its heading."
+  },
+  "studio.screens.noTeamDescription": {
+    "defaultMessage": "What a signed-in researcher who belongs to no team sees: how to create one, or what to expect while waiting for an invitation.",
+    "description": "What the No team yet screen at /no-team will do, shown on it while it is not yet built."
+  },
+  "studio.screens.noTeamTitle": {
+    "defaultMessage": "No team yet",
+    "description": "Name of the No team yet screen at /no-team, used as its heading."
+  },
+  "studio.screens.pricingDescription": {
+    "defaultMessage": "What each Studio plan includes and what it costs, so a research group can decide before they sign up.",
+    "description": "What the Pricing screen at /pricing will do, shown on it while it is not yet built."
+  },
+  "studio.screens.pricingTitle": {
+    "defaultMessage": "Pricing",
+    "description": "Name of the Pricing screen at /pricing, used as its heading."
+  },
+  "studio.screens.setupDescription": {
+    "defaultMessage": "Configures a freshly installed self-hosted instance: its first owner, its name, and how it sends mail and stores files.",
+    "description": "What the First-run setup screen at /setup will do, shown on it while it is not yet built."
+  },
+  "studio.screens.setupTitle": {
+    "defaultMessage": "First-run setup",
+    "description": "Name of the First-run setup screen at /setup, used as its heading."
+  },
+  "studio.screens.signUpCheckoutDescription": {
+    "defaultMessage": "Hands off to the payment provider's own checkout, so card details never reach Studio.",
+    "description": "What the Checkout screen at /sign-up/checkout will do, shown on it while it is not yet built."
+  },
+  "studio.screens.signUpCheckoutTitle": {
+    "defaultMessage": "Checkout",
+    "description": "Name of the Checkout screen at /sign-up/checkout, used as its heading."
+  },
+  "studio.screens.signUpCompleteDescription": {
+    "defaultMessage": "Where checkout returns: the subscription is confirmed, the team exists, and its first study is created.",
+    "description": "What the Account ready screen at /sign-up/complete will do, shown on it while it is not yet built."
+  },
+  "studio.screens.signUpCompleteTitle": {
+    "defaultMessage": "Account ready",
+    "description": "Name of the Account ready screen at /sign-up/complete, used as its heading."
+  },
+  "studio.screens.signUpDescription": {
+    "defaultMessage": "Where a researcher creates their Studio account, and the first step of the funnel that ends with a team and a first study.",
+    "description": "What the Create an account screen at /sign-up will do, shown on it while it is not yet built."
+  },
+  "studio.screens.signUpPlanDescription": {
+    "defaultMessage": "Which plan the new team starts on, and what that settles about seats and limits.",
+    "description": "What the Choose a plan screen at /sign-up/plan will do, shown on it while it is not yet built."
+  },
+  "studio.screens.signUpPlanTitle": {
+    "defaultMessage": "Choose a plan",
+    "description": "Name of the Choose a plan screen at /sign-up/plan, used as its heading."
+  },
+  "studio.screens.signUpTeamDescription": {
+    "defaultMessage": "Names the team the new account will own — the boundary every study, member and invoice belongs to.",
+    "description": "What the Name your team screen at /sign-up/team will do, shown on it while it is not yet built."
+  },
+  "studio.screens.signUpTeamTitle": {
+    "defaultMessage": "Name your team",
+    "description": "Name of the Name your team screen at /sign-up/team, used as its heading."
+  },
+  "studio.screens.signUpTitle": {
+    "defaultMessage": "Create an account",
+    "description": "Name of the Create an account screen at /sign-up, used as its heading."
+  },
+  "studio.screens.studyExportDescription": {
+    "defaultMessage": "Collected data out of Studio: the interchange formats analysis needs, and the archives a repository will take.",
+    "description": "What the Export screen at /export will do, shown on it while it is not yet built."
+  },
+  "studio.screens.studyExportTitle": {
+    "defaultMessage": "Export",
+    "description": "Name of the Export screen at /export, used as its heading."
+  },
+  "studio.screens.studyIndexDescription": {
+    "defaultMessage": "How collection on this study is going: what has come in, what is outstanding, and what needs attention.",
+    "description": "What the Overview screen at /study/$studyId will do, shown on it while it is not yet built."
+  },
+  "studio.screens.studyIndexTitle": {
+    "defaultMessage": "Overview",
+    "description": "Name of the Overview screen at /study/$studyId, used as its heading."
+  },
+  "studio.screens.studyParticipantsDescription": {
+    "defaultMessage": "The people taking part in this study, and the identifiers and attributes the study holds about them.",
+    "description": "What the Participants screen at /participants will do, shown on it while it is not yet built."
+  },
+  "studio.screens.studyParticipantsTitle": {
+    "defaultMessage": "Participants",
+    "description": "Name of the Participants screen at /participants, used as its heading."
+  },
+  "studio.screens.studyRecruitmentDescription": {
+    "defaultMessage": "How participants arrive: the links that let them in, the consent they are asked for, and what they meet on the way.",
+    "description": "What the Recruitment screen at /recruitment will do, shown on it while it is not yet built."
+  },
+  "studio.screens.studyRecruitmentTitle": {
+    "defaultMessage": "Recruitment",
+    "description": "Name of the Recruitment screen at /recruitment, used as its heading."
+  },
+  "studio.screens.studyScheduleDescription": {
+    "defaultMessage": "When this study contacts participants and runs its waves, and whether it is keeping to that.",
+    "description": "What the Schedule screen at /schedule will do, shown on it while it is not yet built."
+  },
+  "studio.screens.studyScheduleTitle": {
+    "defaultMessage": "Schedule",
+    "description": "Name of the Schedule screen at /schedule, used as its heading."
+  },
+  "studio.screens.studySessionDescription": {
+    "defaultMessage": "One session in detail: the network it collected, the answers it recorded, and how it was captured.",
+    "description": "What the Session screen at /sessions/$sessionId will do, shown on it while it is not yet built."
+  },
+  "studio.screens.studySessionTitle": {
+    "defaultMessage": "Session",
+    "description": "Name of the Session screen at /sessions/$sessionId, used as its heading."
+  },
+  "studio.screens.studySessionsDescription": {
+    "defaultMessage": "Every interview session this study has collected, finished or otherwise.",
+    "description": "What the Sessions screen at /sessions will do, shown on it while it is not yet built."
+  },
+  "studio.screens.studySessionsTitle": {
+    "defaultMessage": "Sessions",
+    "description": "Name of the Sessions screen at /sessions, used as its heading."
+  },
+  "studio.screens.studySettingsDescription": {
+    "defaultMessage": "The study's name, where it is in its lifecycle, how it is delivered, and how it is closed.",
+    "description": "What the Study settings screen at /settings will do, shown on it while it is not yet built."
+  },
+  "studio.screens.studySettingsTitle": {
+    "defaultMessage": "Study settings",
+    "description": "Name of the Study settings screen at /settings, used as its heading."
+  },
+  "studio.screens.studyVersionsDescription": {
+    "defaultMessage": "The protocol versions this study has published, and what changed between one and the next.",
+    "description": "What the Versions screen at /versions will do, shown on it while it is not yet built."
+  },
+  "studio.screens.studyVersionsTitle": {
+    "defaultMessage": "Versions",
+    "description": "Name of the Versions screen at /versions, used as its heading."
+  },
+  "studio.screens.studyWavesDescription": {
+    "defaultMessage": "The timepoints this study collects at, and how far each participant has progressed through them.",
+    "description": "What the Waves screen at /waves will do, shown on it while it is not yet built."
+  },
+  "studio.screens.studyWavesTitle": {
+    "defaultMessage": "Waves",
+    "description": "Name of the Waves screen at /waves, used as its heading."
+  },
+  "studio.screens.teamBillingDescription": {
+    "defaultMessage": "The team's plan, the seats it is paying for, and its invoices.",
+    "description": "What the Billing screen at /billing will do, shown on it while it is not yet built."
+  },
+  "studio.screens.teamBillingTitle": {
+    "defaultMessage": "Billing",
+    "description": "Name of the Billing screen at /billing, used as its heading."
+  },
+  "studio.screens.teamRolesDescription": {
+    "defaultMessage": "What each member is allowed to do, and who among them may see participant identifiers.",
+    "description": "What the Roles screen at /roles will do, shown on it while it is not yet built."
+  },
+  "studio.screens.teamRolesTitle": {
+    "defaultMessage": "Roles",
+    "description": "Name of the Roles screen at /roles, used as its heading."
+  },
+  "studio.screens.teamSettingsApiDescription": {
+    "defaultMessage": "The team's API credentials, what each one may reach, and when it was last used.",
+    "description": "What the API access screen at /settings/api will do, shown on it while it is not yet built."
+  },
+  "studio.screens.teamSettingsApiTitle": {
+    "defaultMessage": "API access",
+    "description": "Name of the API access screen at /settings/api, used as its heading."
+  },
+  "studio.screens.teamSettingsDescription": {
+    "defaultMessage": "The team's name, the defaults every new study inherits from it, and deleting the team.",
+    "description": "What the Team settings screen at /settings will do, shown on it while it is not yet built."
+  },
+  "studio.screens.teamSettingsMessagingDescription": {
+    "defaultMessage": "How this team reaches participants by email and SMS, and the sender they will see it come from.",
+    "description": "What the Messaging screen at /settings/messaging will do, shown on it while it is not yet built."
+  },
+  "studio.screens.teamSettingsMessagingTitle": {
+    "defaultMessage": "Messaging",
+    "description": "Name of the Messaging screen at /settings/messaging, used as its heading."
+  },
+  "studio.screens.teamSettingsTitle": {
+    "defaultMessage": "Team settings",
+    "description": "Name of the Team settings screen at /settings, used as its heading."
+  },
+  "studio.screens.teamSettingsWebhooksDescription": {
+    "defaultMessage": "Where Studio should tell another system that something happened in this team, and whether those messages are arriving.",
+    "description": "What the Webhooks screen at /settings/webhooks will do, shown on it while it is not yet built."
+  },
+  "studio.screens.teamSettingsWebhooksTitle": {
+    "defaultMessage": "Webhooks",
+    "description": "Name of the Webhooks screen at /settings/webhooks, used as its heading."
+  },
+  "studio.screens.templatesDescription": {
+    "defaultMessage": "The protocol templates this instance offers as starting points, and what each one is for.",
+    "description": "What the Templates screen at /templates will do, shown on it while it is not yet built."
+  },
+  "studio.screens.templatesTitle": {
+    "defaultMessage": "Templates",
+    "description": "Name of the Templates screen at /templates, used as its heading."
+  },
+  "studio.shell.accountMenuTrigger": {
+    "defaultMessage": "Account",
+    "description": "Accessible name of the header's account menu button (the person icon)."
+  },
+  "studio.shell.accountNavClose": {
+    "defaultMessage": "Close account navigation",
+    "description": "Accessible name of the control that closes the account sidebar drawer on narrow viewports."
+  },
+  "studio.shell.accountNavLabel": {
+    "defaultMessage": "Account",
+    "description": "Accessible name of the account area's sidebar navigation region."
+  },
+  "studio.shell.accountNavOpen": {
+    "defaultMessage": "Open account navigation",
+    "description": "Accessible name of the control that opens the account sidebar drawer on narrow viewports."
+  },
+  "studio.shell.noTeamSignOut": {
+    "defaultMessage": "Sign out",
+    "description": "Button on the no-team screen that ends the session — the only way off that screen."
+  },
+  "studio.shell.protocolOutlineNavClose": {
+    "defaultMessage": "Close protocol outline",
+    "description": "Accessible name of the control that closes the protocol outline drawer on narrow viewports."
+  },
+  "studio.shell.protocolOutlineNavLabel": {
+    "defaultMessage": "Protocol outline",
+    "description": "Accessible name of the protocol editor's outline navigation region."
+  },
+  "studio.shell.protocolOutlineNavOpen": {
+    "defaultMessage": "Open protocol outline",
+    "description": "Accessible name of the control that opens the protocol outline drawer on narrow viewports."
+  },
+  "studio.shell.signOut": {
+    "defaultMessage": "Sign out",
+    "description": "Menu item and button that ends the session."
+  },
+  "studio.shell.signOutFailure": {
+    "defaultMessage": "Sign-out did not complete. Try again.",
+    "description": "Shown when ending the session failed and the researcher is still signed in."
+  },
+  "studio.shell.studyNavClose": {
+    "defaultMessage": "Close study navigation",
+    "description": "Accessible name of the control that closes the study sidebar drawer on narrow viewports."
+  },
+  "studio.shell.studyNavLabel": {
+    "defaultMessage": "Study",
+    "description": "Accessible name of the study area's sidebar navigation region."
+  },
+  "studio.shell.studyNavOpen": {
+    "defaultMessage": "Open study navigation",
+    "description": "Accessible name of the control that opens the study sidebar drawer on narrow viewports."
+  },
+  "studio.shell.teamNavClose": {
+    "defaultMessage": "Close team navigation",
+    "description": "Accessible name of the control that closes the team sidebar drawer on narrow viewports."
+  },
+  "studio.shell.teamNavLabel": {
+    "defaultMessage": "Team",
+    "description": "Accessible name of the team area's sidebar navigation region."
+  },
+  "studio.shell.teamNavOpen": {
+    "defaultMessage": "Open team navigation",
+    "description": "Accessible name of the control that opens the team sidebar drawer on narrow viewports."
+  },
+  "studio.signIn.continueWithGoogle": {
+    "defaultMessage": "Continue with Google",
+    "description": "Button starting sign-in through Google."
+  },
+  "studio.signIn.continueWithMicrosoft": {
+    "defaultMessage": "Continue with Microsoft",
+    "description": "Button starting sign-in through Microsoft."
+  },
+  "studio.signIn.didNotComplete": {
+    "defaultMessage": "Sign-in did not complete. Try again.",
+    "description": "Shown when a sign-in attempt failed for an unspecified reason."
+  },
+  "studio.signIn.emailHint": {
+    "defaultMessage": "The address you use for Studio.",
+    "description": "Hint under the sign-in form's email field when the value is not a valid address."
+  },
+  "studio.signIn.emailLabel": {
+    "defaultMessage": "Email address",
+    "description": "Label of the sign-in form's email field."
+  },
+  "studio.signIn.heading": {
+    "defaultMessage": "Sign in",
+    "description": "Heading of the sign-in screen."
+  },
+  "studio.signIn.linkInvalid": {
+    "defaultMessage": "That sign-in link is no longer valid. Enter your email address to request a new one.",
+    "description": "Shown when a magic sign-in link the researcher followed has expired or was already used."
+  },
+  "studio.signIn.magicLinkIntro": {
+    "defaultMessage": "Enter your email address and we will send you a sign-in link.",
+    "description": "Introduction above the magic-link sign-in form."
+  },
+  "studio.signIn.magicLinkSendFailed": {
+    "defaultMessage": "The sign-in email could not be sent. Wait a moment and try again.",
+    "description": "Form error when requesting a magic sign-in link failed."
+  },
+  "studio.signIn.orDivider": {
+    "defaultMessage": "or",
+    "description": "Visual divider between the email sign-in form and the social sign-in buttons."
+  },
+  "studio.signIn.passwordIntro": {
+    "defaultMessage": "Enter your email address and password.",
+    "description": "Introduction above the password sign-in form."
+  },
+  "studio.signIn.passwordLabel": {
+    "defaultMessage": "Password",
+    "description": "Label of the sign-in form's password field."
+  },
+  "studio.signIn.sendLink": {
+    "defaultMessage": "Send sign-in link",
+    "description": "Submit button of the magic-link sign-in form."
+  },
+  "studio.signIn.sentTo": {
+    "defaultMessage": "We sent a sign-in link to {email}. Open it on this device to continue. The link expires in 5 minutes.",
+    "description": "Confirmation after a magic sign-in link was sent; {email} is the address it went to."
+  },
+  "studio.signIn.socialFailed": {
+    "defaultMessage": "Sign-in could not be started. Wait a moment and try again.",
+    "description": "Shown when handing off to a social sign-in provider failed."
+  },
+  "studio.signIn.submit": {
+    "defaultMessage": "Sign in",
+    "description": "Submit button of the password sign-in form."
+  },
+  "studio.signIn.unavailable": {
+    "defaultMessage": "Sign-in is not available on this server. Contact the person who runs it.",
+    "description": "Shown on a self-hosted instance whose administrator has configured no sign-in method."
+  },
+  "studio.signIn.useDifferentEmail": {
+    "defaultMessage": "Use a different email address",
+    "description": "Button returning from the sent-link confirmation to the email form."
+  },
+  "studio.signIn.useMagicLink": {
+    "defaultMessage": "Sign in with a magic link instead",
+    "description": "Toggle from the password form to the magic-link form."
+  },
+  "studio.signIn.usePassword": {
+    "defaultMessage": "Sign in with a password instead",
+    "description": "Toggle from the magic-link form to the password form."
+  },
+  "studio.signIn.wrongCredentials": {
+    "defaultMessage": "That email or password is not correct.",
+    "description": "Form error when the email and password did not match."
+  },
+  "studio.siteLayout.copyright": {
+    "defaultMessage": "© {year} Complex Data Collective",
+    "description": "The site footer's copyright line; {year} is the current year."
+  },
+  "studio.siteLayout.goToStudio": {
+    "defaultMessage": "Go to Studio",
+    "description": "The site header's entry into Studio for a signed-in researcher."
+  },
+  "studio.siteLayout.privacy": {
+    "defaultMessage": "Privacy",
+    "description": "Site footer link to Studio's privacy notice."
+  },
+  "studio.siteLayout.signIn": {
+    "defaultMessage": "Sign in",
+    "description": "The site header's entry into Studio for a visitor with no session."
+  },
+  "studio.siteLayout.socialGitHub": {
+    "defaultMessage": "Network Canvas on GitHub",
+    "description": "Accessible name of the site footer's GitHub organisation link."
+  },
+  "studio.siteLayout.socialX": {
+    "defaultMessage": "Network Canvas on X",
+    "description": "Accessible name of the site footer's X (formerly Twitter) link."
+  },
+  "studio.siteLayout.socialYouTube": {
+    "defaultMessage": "Network Canvas on YouTube",
+    "description": "Accessible name of the site footer's YouTube channel link."
+  },
+  "studio.siteLayout.terms": {
+    "defaultMessage": "Terms",
+    "description": "Site footer link to Studio's terms of service."
+  },
+  "studio.studyState.closed": {
+    "defaultMessage": "Closed",
+    "description": "Lifecycle state of a study whose collection is finished and archived."
+  },
+  "studio.studyState.draft": {
+    "defaultMessage": "Draft",
+    "description": "Lifecycle state of a study that is still being designed and not yet reachable by participants."
+  },
+  "studio.studyState.live": {
+    "defaultMessage": "Live",
+    "description": "Lifecycle state of a study participants can currently reach."
+  },
+  "studio.studyState.participantCount": {
+    "defaultMessage": "{count, plural, one {# participant} other {# participants}}",
+    "description": "How many participants a study has, shown beside its name."
+  },
+  "studio.studyState.paused": {
+    "defaultMessage": "Paused",
+    "description": "Lifecycle state of a study whose collection is temporarily stopped."
+  },
+  "studio.studyState.waveCount": {
+    "defaultMessage": "{count, plural, one {# wave} other {# waves}}",
+    "description": "How many collection timepoints a study has, shown beside its name."
+  },
+  "studio.teamActivity.actionColumn": {
+    "defaultMessage": "Action",
+    "description": "Activity table column heading: what was done."
+  },
+  "studio.teamActivity.actionFilterLabel": {
+    "defaultMessage": "Action",
+    "description": "Label of the filter form's action selector."
+  },
+  "studio.teamActivity.actorColumn": {
+    "defaultMessage": "Actor",
+    "description": "Activity table column heading: who performed the action."
+  },
+  "studio.teamActivity.actorFilterLabel": {
+    "defaultMessage": "Actor",
+    "description": "Label of the filter form's actor selector."
+  },
+  "studio.teamActivity.actorKindApiToken": {
+    "defaultMessage": "API token",
+    "description": "Kind label for an audit actor that is an API token."
+  },
+  "studio.teamActivity.actorKindSystem": {
+    "defaultMessage": "System",
+    "description": "Kind label for an audit actor that is Studio itself."
+  },
+  "studio.teamActivity.actorWithKind": {
+    "defaultMessage": "{name} ({kind})",
+    "description": "An audit actor with its kind; {name} is the actor's label and {kind} a kind label like API token."
+  },
+  "studio.teamActivity.allActions": {
+    "defaultMessage": "All actions",
+    "description": "Placeholder option meaning no action filter."
+  },
+  "studio.teamActivity.allActors": {
+    "defaultMessage": "All actors",
+    "description": "Placeholder option meaning no actor filter."
+  },
+  "studio.teamActivity.allCategories": {
+    "defaultMessage": "All categories",
+    "description": "Placeholder option meaning no category filter."
+  },
+  "studio.teamActivity.allOutcomes": {
+    "defaultMessage": "All outcomes",
+    "description": "Placeholder option meaning no outcome filter."
+  },
+  "studio.teamActivity.applyFilters": {
+    "defaultMessage": "Apply filters",
+    "description": "Submit button of the activity filter form."
+  },
+  "studio.teamActivity.backToStudies": {
+    "defaultMessage": "Back to this team’s studies",
+    "description": "Link from the activity log back to the team's study list."
+  },
+  "studio.teamActivity.beginning": {
+    "defaultMessage": "This is the beginning of the recorded activity for this team. Actions taken before activity recording was enabled are not available.",
+    "description": "Shown under the last page of the activity feed."
+  },
+  "studio.teamActivity.categoryAudit": {
+    "defaultMessage": "Activity log",
+    "description": "Audit category: reads of the activity log itself."
+  },
+  "studio.teamActivity.categoryCredential": {
+    "defaultMessage": "Credentials",
+    "description": "Audit category: API tokens and other credentials."
+  },
+  "studio.teamActivity.categoryDataEgress": {
+    "defaultMessage": "Data egress",
+    "description": "Audit category: exports and other data leaving Studio."
+  },
+  "studio.teamActivity.categoryIntegration": {
+    "defaultMessage": "Integrations",
+    "description": "Audit category: webhooks and external integrations."
+  },
+  "studio.teamActivity.categoryLabel": {
+    "defaultMessage": "Category",
+    "description": "Label of the filter form's category selector."
+  },
+  "studio.teamActivity.categoryParticipantData": {
+    "defaultMessage": "Participant data",
+    "description": "Audit category: reads and writes of participant data."
+  },
+  "studio.teamActivity.categoryProtocol": {
+    "defaultMessage": "Protocols",
+    "description": "Audit category: protocol design and publication."
+  },
+  "studio.teamActivity.categorySecurity": {
+    "defaultMessage": "Security",
+    "description": "Audit category: security-relevant events."
+  },
+  "studio.teamActivity.categoryStudy": {
+    "defaultMessage": "Studies",
+    "description": "Audit category: study lifecycle actions."
+  },
+  "studio.teamActivity.categoryTeamAccess": {
+    "defaultMessage": "Team access",
+    "description": "Audit category: membership, invitations and role changes."
+  },
+  "studio.teamActivity.clearFilters": {
+    "defaultMessage": "Clear filters",
+    "description": "Button resetting every activity filter."
+  },
+  "studio.teamActivity.detailActor": {
+    "defaultMessage": "Actor",
+    "description": "Event detail field: who performed the action."
+  },
+  "studio.teamActivity.detailActorId": {
+    "defaultMessage": "Actor ID",
+    "description": "Event detail field: the actor's identifier."
+  },
+  "studio.teamActivity.detailCategory": {
+    "defaultMessage": "Category",
+    "description": "Event detail field: which audit category the event is in."
+  },
+  "studio.teamActivity.detailEventType": {
+    "defaultMessage": "Event type",
+    "description": "Event detail field: the machine name of the event type."
+  },
+  "studio.teamActivity.detailOutcome": {
+    "defaultMessage": "Outcome",
+    "description": "Event detail field: how the action ended."
+  },
+  "studio.teamActivity.detailRequestId": {
+    "defaultMessage": "Request ID",
+    "description": "Event detail field: the request identifier for correlation."
+  },
+  "studio.teamActivity.detailResource": {
+    "defaultMessage": "Resource",
+    "description": "Event detail field: the resource the action touched."
+  },
+  "studio.teamActivity.detailSequence": {
+    "defaultMessage": "Sequence",
+    "description": "Event detail field: the event's position in the immutable log."
+  },
+  "studio.teamActivity.detailSubject": {
+    "defaultMessage": "Subject",
+    "description": "Event detail field: who or what the action was about."
+  },
+  "studio.teamActivity.detailTeam": {
+    "defaultMessage": "Team",
+    "description": "Event detail field: the team the event belongs to."
+  },
+  "studio.teamActivity.detailTime": {
+    "defaultMessage": "Time",
+    "description": "Event detail field: when the event happened, local time."
+  },
+  "studio.teamActivity.detailTimeUtc": {
+    "defaultMessage": "Time (UTC)",
+    "description": "Event detail field: when the event happened, in UTC."
+  },
+  "studio.teamActivity.detailsHeading": {
+    "defaultMessage": "Details",
+    "description": "Heading of the event detail dialog's extra-details list."
+  },
+  "studio.teamActivity.detailsSectionLabel": {
+    "defaultMessage": "Event details",
+    "description": "Accessible name of the event detail dialog's extra-details section."
+  },
+  "studio.teamActivity.entityWithType": {
+    "defaultMessage": "{name} ({type})",
+    "description": "A subject or resource with its wire-level type; {name} is its label and {type} the type's machine name."
+  },
+  "studio.teamActivity.eventLoadFailed": {
+    "defaultMessage": "The event could not be loaded.",
+    "description": "Shown when one event's detail could not be fetched."
+  },
+  "studio.teamActivity.eventTypeVersion": {
+    "defaultMessage": "{eventType} (version {version})",
+    "description": "The event type with its schema version; both values are machine names."
+  },
+  "studio.teamActivity.eventsShown": {
+    "defaultMessage": "{count, plural, one {# activity event shown.} other {# activity events shown.}}",
+    "description": "Politely announced count of activity events currently listed."
+  },
+  "studio.teamActivity.filterOptionsTruncated": {
+    "defaultMessage": "This team has taken more kinds of action, or has had more actors, than these menus can list. Some values are missing from them.",
+    "description": "Shown when the filter menus could not list every historical action or actor."
+  },
+  "studio.teamActivity.filtersLabel": {
+    "defaultMessage": "Activity filters",
+    "description": "Accessible name of the activity filter form."
+  },
+  "studio.teamActivity.forbidden": {
+    "defaultMessage": "Team activity is only available to team owners and admins. Ask a team owner if you need access to this record.",
+    "description": "Shown to a member whose role may not read the activity log."
+  },
+  "studio.teamActivity.fromDate": {
+    "defaultMessage": "From date",
+    "description": "Label of the filter form's start-date field."
+  },
+  "studio.teamActivity.heading": {
+    "defaultMessage": "Team activity",
+    "description": "Heading of a team's activity log screen."
+  },
+  "studio.teamActivity.intro": {
+    "defaultMessage": "The immutable record of actions taken in this team, newest first.",
+    "description": "Introduction under the activity log's heading."
+  },
+  "studio.teamActivity.loadFailed": {
+    "defaultMessage": "Team activity could not be loaded.",
+    "description": "Shown when the activity feed could not be fetched."
+  },
+  "studio.teamActivity.loadMore": {
+    "defaultMessage": "Load more",
+    "description": "Button loading the next page of activity events."
+  },
+  "studio.teamActivity.loading": {
+    "defaultMessage": "Loading team activity…",
+    "description": "Shown while the activity feed loads."
+  },
+  "studio.teamActivity.loadingEvent": {
+    "defaultMessage": "Loading event…",
+    "description": "Shown while one event's detail dialog loads."
+  },
+  "studio.teamActivity.loadingMore": {
+    "defaultMessage": "Loading more…",
+    "description": "Shown on the load-more button while a page is loading."
+  },
+  "studio.teamActivity.noMatches": {
+    "defaultMessage": "No activity matches these filters.",
+    "description": "Shown when the applied filters match no events."
+  },
+  "studio.teamActivity.noneRecorded": {
+    "defaultMessage": "No activity has been recorded for this team yet.",
+    "description": "Shown when the team has no recorded activity at all."
+  },
+  "studio.teamActivity.outcomeColumn": {
+    "defaultMessage": "Outcome",
+    "description": "Activity table column heading: how the action ended."
+  },
+  "studio.teamActivity.outcomeDenied": {
+    "defaultMessage": "Denied",
+    "description": "Audit outcome: the action was refused by authorization."
+  },
+  "studio.teamActivity.outcomeFailed": {
+    "defaultMessage": "Failed",
+    "description": "Audit outcome: the action was attempted and failed."
+  },
+  "studio.teamActivity.outcomeFilterLabel": {
+    "defaultMessage": "Outcome",
+    "description": "Label of the filter form's outcome selector."
+  },
+  "studio.teamActivity.outcomeSucceeded": {
+    "defaultMessage": "Succeeded",
+    "description": "Audit outcome: the action completed."
+  },
+  "studio.teamActivity.retry": {
+    "defaultMessage": "Retry",
+    "description": "Button retrying a failed activity read."
+  },
+  "studio.teamActivity.subjectColumn": {
+    "defaultMessage": "Subject or resource",
+    "description": "Activity table column heading: what the action was about."
+  },
+  "studio.teamActivity.toDate": {
+    "defaultMessage": "To date",
+    "description": "Label of the filter form's end-date field."
+  },
+  "studio.teamActivity.unrecognizedDetail": {
+    "defaultMessage": "Studio does not recognize this event type. It was likely recorded by a newer version of Studio; its identifying information is shown without further detail.",
+    "description": "Shown in the detail dialog of an event type this Studio version cannot render."
+  },
+  "studio.teamActivity.unrecognizedEvent": {
+    "defaultMessage": "Unrecognized event",
+    "description": "Badge on an event row whose type this Studio version cannot render."
+  },
+  "studio.teamActivity.whenColumn": {
+    "defaultMessage": "When",
+    "description": "Activity table column heading: when the event happened."
+  },
+  "studio.teamMembers.accessUnavailable": {
+    "defaultMessage": "Studio could not load this team and your access to it.",
+    "description": "Shown when neither the team nor the researcher's membership in it could be read."
+  },
+  "studio.teamMembers.actionsColumn": {
+    "defaultMessage": "Actions",
+    "description": "Invitation table column heading for the cancel action."
+  },
+  "studio.teamMembers.cancelInvitationFor": {
+    "defaultMessage": "Cancel invitation for {email}",
+    "description": "Accessible name of an invitation row's cancel button; {email} is the invited address."
+  },
+  "studio.teamMembers.chooseValidRole": {
+    "defaultMessage": "Choose a valid role for this invitation.",
+    "description": "Form error when the invitation form was submitted without a recognised role."
+  },
+  "studio.teamMembers.emailColumn": {
+    "defaultMessage": "Email",
+    "description": "Member table column heading: the member's email address."
+  },
+  "studio.teamMembers.expiresColumn": {
+    "defaultMessage": "Expires",
+    "description": "Invitation table column heading: when the invitation expires."
+  },
+  "studio.teamMembers.heading": {
+    "defaultMessage": "Members",
+    "description": "Heading of a team's members screen."
+  },
+  "studio.teamMembers.intro": {
+    "defaultMessage": "Who belongs to this team, and which invitations are still outstanding.",
+    "description": "Introduction under the members screen's heading."
+  },
+  "studio.teamMembers.invitationCancelRecovered": {
+    "defaultMessage": "Team details refreshed. Check the pending invitations before trying again.",
+    "description": "Shown after a later refresh succeeded following an unconfirmed invitation change."
+  },
+  "studio.teamMembers.invitationCancelUnconfirmedNotRefreshed": {
+    "defaultMessage": "Studio could not confirm whether the invitation was cancelled, and team details could not be refreshed. Refresh them before trying again.",
+    "description": "Shown when cancelling an invitation may or may not have landed and team details could not be re-read either."
+  },
+  "studio.teamMembers.invitationCancelUnconfirmedRefreshed": {
+    "defaultMessage": "Studio could not confirm whether the invitation was cancelled. Team details were refreshed; check the pending invitations before trying again.",
+    "description": "Shown when cancelling an invitation may or may not have landed but team details were re-read."
+  },
+  "studio.teamMembers.invitationCancelled": {
+    "defaultMessage": "Invitation cancelled for {email}.",
+    "description": "Confirmation after cancelling an invitation; {email} is the invited address."
+  },
+  "studio.teamMembers.invitationCancelledNotRefreshed": {
+    "defaultMessage": "Invitation cancelled for {email}, but pending invitations could not be refreshed.",
+    "description": "Shown when cancelling landed but the invitation list could not be re-read; {email} is the invited address."
+  },
+  "studio.teamMembers.invitationCancelledRecovered": {
+    "defaultMessage": "Invitation cancelled for {email}. Team details refreshed.",
+    "description": "Shown after a later refresh succeeded following a cancelled invitation; {email} is the invited address."
+  },
+  "studio.teamMembers.invitationCreated": {
+    "defaultMessage": "Invitation created for {email}. Email delivery is queued.",
+    "description": "Confirmation after creating an invitation; {email} is the invited address."
+  },
+  "studio.teamMembers.invitationCreatedNotRefreshed": {
+    "defaultMessage": "Invitation created for {email}. Email delivery is queued, but pending invitations could not be refreshed.",
+    "description": "Shown when creating landed but the invitation list could not be re-read; {email} is the invited address."
+  },
+  "studio.teamMembers.invitationCreatedRecovered": {
+    "defaultMessage": "Invitation created for {email}. Team details refreshed.",
+    "description": "Shown after a later refresh succeeded following a created invitation; {email} is the invited address."
+  },
+  "studio.teamMembers.invitationsHeading": {
+    "defaultMessage": "Invitations",
+    "description": "Heading of the invitations section."
+  },
+  "studio.teamMembers.invitationsIntro": {
+    "defaultMessage": "Invite a collaborator and choose the role they will receive when they join.",
+    "description": "Introduction under the invitations heading."
+  },
+  "studio.teamMembers.inviteEmailHint": {
+    "defaultMessage": "The email address of the person you want to invite.",
+    "description": "Hint under the invitation form's email field when the value is not a valid address."
+  },
+  "studio.teamMembers.inviteEmailLabel": {
+    "defaultMessage": "Email address",
+    "description": "Label of the invitation form's email field."
+  },
+  "studio.teamMembers.inviteRetryAfterRefresh": {
+    "defaultMessage": "Refresh team details before trying to create another invitation.",
+    "description": "Form error when the invitation outcome is unknown and a refresh is needed first."
+  },
+  "studio.teamMembers.inviteRoleLabel": {
+    "defaultMessage": "Team role",
+    "description": "Label of the invitation form's role selector."
+  },
+  "studio.teamMembers.inviteSubmit": {
+    "defaultMessage": "Invite user",
+    "description": "Submit button of the invitation form."
+  },
+  "studio.teamMembers.inviteUnconfirmedNotRefreshed": {
+    "defaultMessage": "Studio could not confirm the invitation, and team details could not be refreshed.",
+    "description": "Shown when creating an invitation may or may not have landed and team details could not be re-read either."
+  },
+  "studio.teamMembers.inviteUnconfirmedRefreshed": {
+    "defaultMessage": "Studio could not confirm the invitation. Pending invitations were refreshed; check the list before trying again.",
+    "description": "Form error when creating an invitation may or may not have landed but the list was re-read."
+  },
+  "studio.teamMembers.loadingAccess": {
+    "defaultMessage": "Loading team access…",
+    "description": "Shown while the members screen waits for the URL's team to become the active one."
+  },
+  "studio.teamMembers.memberCount": {
+    "defaultMessage": "{count, plural, one {# member} other {# members}}",
+    "description": "Badge counting how many members the team has."
+  },
+  "studio.teamMembers.membersHeading": {
+    "defaultMessage": "Team members",
+    "description": "Heading of the member list section."
+  },
+  "studio.teamMembers.membersIntro": {
+    "defaultMessage": "View who can access this team and the role assigned to each person.",
+    "description": "Introduction under the member list heading."
+  },
+  "studio.teamMembers.nameColumn": {
+    "defaultMessage": "Name",
+    "description": "Member table column heading: the member's name."
+  },
+  "studio.teamMembers.noPendingInvitations": {
+    "defaultMessage": "No pending invitations.",
+    "description": "Shown when the team has no outstanding invitations."
+  },
+  "studio.teamMembers.onlyAdminsInvite": {
+    "defaultMessage": "Only team owners and admins can invite people or change roles.",
+    "description": "Shown in place of the invitation form to a member who may not invite."
+  },
+  "studio.teamMembers.refreshBeforeInvite": {
+    "defaultMessage": "Refresh team details before creating another invitation.",
+    "description": "Form error when an earlier change still needs its refresh before inviting again."
+  },
+  "studio.teamMembers.refreshTeamDetails": {
+    "defaultMessage": "Refresh team details",
+    "description": "Button re-reading team details after a change whose outcome is unknown."
+  },
+  "studio.teamMembers.retryAccess": {
+    "defaultMessage": "Retry team access",
+    "description": "Button retrying the team and membership reads."
+  },
+  "studio.teamMembers.roleChangeRecovered": {
+    "defaultMessage": "Team details refreshed. Review the current role before making another change.",
+    "description": "Shown after a later refresh succeeded following an unconfirmed role change."
+  },
+  "studio.teamMembers.roleChangeUnconfirmedNotRefreshed": {
+    "defaultMessage": "Studio could not confirm whether the team role changed, and team details could not be refreshed. Refresh them before making another change.",
+    "description": "Shown when a role change may or may not have landed and team details could not be re-read either."
+  },
+  "studio.teamMembers.roleChangeUnconfirmedRefreshed": {
+    "defaultMessage": "Studio could not confirm whether the team role changed. Team details were refreshed; review the current role before making another change.",
+    "description": "Shown when a role change may or may not have landed but team details were re-read."
+  },
+  "studio.teamMembers.roleColumn": {
+    "defaultMessage": "Role",
+    "description": "Member table column heading: the member's team role."
+  },
+  "studio.teamMembers.roleFor": {
+    "defaultMessage": "Role for {name}",
+    "description": "Accessible name of a member row's role selector; {name} is the member's name."
+  },
+  "studio.teamMembers.roleUpdated": {
+    "defaultMessage": "Team role updated.",
+    "description": "Confirmation after a role change landed."
+  },
+  "studio.teamMembers.roleUpdatedNotRefreshed": {
+    "defaultMessage": "Team role updated, but the latest team details could not be refreshed.",
+    "description": "Shown when a role change landed but the member list could not be re-read."
+  },
+  "studio.teamMembers.roleUpdatedRecovered": {
+    "defaultMessage": "Team role updated. Team details refreshed.",
+    "description": "Shown after a later refresh succeeded following a role change."
+  },
+  "studio.teamMembers.unsupportedRole": {
+    "defaultMessage": "Studio received an unsupported team role.",
+    "description": "Shown when the role selector produced a value Studio does not recognise."
+  },
+  "studio.teamMembers.waitForChange": {
+    "defaultMessage": "Wait for the current team change to finish.",
+    "description": "Form error when another team change is still in flight."
+  },
+  "studio.teamMembers.you": {
+    "defaultMessage": "(you)",
+    "description": "Marker beside the signed-in researcher's own row in the member table."
+  },
+  "studio.teamRoles.admin": {
+    "defaultMessage": "Admin",
+    "description": "The team role that administers membership and studies."
+  },
+  "studio.teamRoles.member": {
+    "defaultMessage": "Member",
+    "description": "The ordinary team role."
+  },
+  "studio.teamRoles.owner": {
+    "defaultMessage": "Owner",
+    "description": "The team role with every permission, including billing."
+  },
+  "studio.teamRoles.unassigned": {
+    "defaultMessage": "Unassigned",
+    "description": "Shown where a membership record carries no role at all."
+  },
+  "studio.teamStudies.anonymousParticipants": {
+    "defaultMessage": "Anonymous participants",
+    "description": "Participation mode of a study whose participants arrive through an anonymous link."
+  },
+  "studio.teamStudies.create": {
+    "defaultMessage": "Create study",
+    "description": "Submit button of the study creation form."
+  },
+  "studio.teamStudies.createFailed": {
+    "defaultMessage": "The study could not be created. Wait a moment and try again.",
+    "description": "Form error when creating a study failed."
+  },
+  "studio.teamStudies.created": {
+    "defaultMessage": "Created {date}",
+    "description": "When a study was created; {date} is a formatted calendar date."
+  },
+  "studio.teamStudies.empty": {
+    "defaultMessage": "No studies have been created for this team.",
+    "description": "Shown when the team has no studies at all."
+  },
+  "studio.teamStudies.heading": {
+    "defaultMessage": "Studies",
+    "description": "Heading of a team's studies screen."
+  },
+  "studio.teamStudies.intro": {
+    "defaultMessage": "Every study this team owns, and where a new one starts.",
+    "description": "Introduction under the studies screen's heading."
+  },
+  "studio.teamStudies.listHeading": {
+    "defaultMessage": "This team’s studies",
+    "description": "Heading of the study list section."
+  },
+  "studio.teamStudies.loadFailed": {
+    "defaultMessage": "Studies could not be loaded. Try again.",
+    "description": "Shown when the team's study list could not be fetched."
+  },
+  "studio.teamStudies.managedParticipants": {
+    "defaultMessage": "Managed participants",
+    "description": "Participation mode of a study whose participants are individually known and invited."
+  },
+  "studio.teamStudies.nameLabel": {
+    "defaultMessage": "Study name",
+    "description": "Label of the creation form's study name field."
+  },
+  "studio.teamStudies.newStudyHeading": {
+    "defaultMessage": "New study",
+    "description": "Heading of the study creation section."
+  },
+  "studio.teamStudies.noProtocol": {
+    "defaultMessage": "No protocol to edit",
+    "description": "Shown on a study card whose study has no protocol yet."
+  },
+  "studio.teamStudies.onlyAdminsCreate": {
+    "defaultMessage": "Only team owners and admins can create studies.",
+    "description": "Shown in place of the creation form to a member who may not create studies."
+  },
+  "studio.teamStudies.openEditor": {
+    "defaultMessage": "Open the protocol editor",
+    "description": "Link on a study card into the study's protocol editor."
+  }
+}

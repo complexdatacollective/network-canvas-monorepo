@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet } from '@tanstack/react-router';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl, useAppLocale } from '@codaco/app-i18n/react';
 import { buttonVariants } from '@codaco/fresco-ui/Button';
 import SiteFooter from '@codaco/fresco-ui/navigation/SiteFooter';
 import type {
@@ -15,6 +17,7 @@ import type {
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
+import { siteLocaleFor } from '../i18n/siteLocale.ts';
 import {
   useLandingDestination,
   type LandingDestination,
@@ -29,7 +32,9 @@ import { sessionQueryOptions, useSessionRevalidation } from '../lib/session.ts';
  * by networkcanvas.com and the documentation site already. Studio adopts them
  * rather than growing a second site header, and supplies router links; the
  * item set, the ordering and the translated copy stay in the shared component,
- * where every site reads one copy of them.
+ * where every site reads one copy of them. Its locale is mapped from the
+ * active app locale (`siteLocaleFor`) — the two registries are different
+ * locale sets by design.
  *
  * There is no app header here and no session GUARD: a visitor who has never
  * signed in is the expected reader, and nothing on this branch may refuse
@@ -47,34 +52,53 @@ import { sessionQueryOptions, useSessionRevalidation } from '../lib/session.ts';
  * one name and one target in front of every visitor.
  */
 
-const SOCIAL_LINKS: readonly SiteFooterSocialLink[] = [
-  {
-    platform: 'youtube',
-    label: 'Network Canvas on YouTube',
-    href: 'https://www.youtube.com/@complexdatacollective2923',
+const messages = defineMessages({
+  socialYouTube: {
+    id: 'studio.siteLayout.socialYouTube',
+    defaultMessage: 'Network Canvas on YouTube',
+    description: "Accessible name of the site footer's YouTube channel link.",
   },
-  {
-    platform: 'twitter',
-    label: 'Network Canvas on X',
-    href: 'https://twitter.com/networkcanvas?lang=en',
+  socialX: {
+    id: 'studio.siteLayout.socialX',
+    defaultMessage: 'Network Canvas on X',
+    description:
+      "Accessible name of the site footer's X (formerly Twitter) link.",
   },
-  {
-    platform: 'github',
-    label: 'Network Canvas on GitHub',
-    href: 'https://github.com/complexdatacollective',
+  socialGitHub: {
+    id: 'studio.siteLayout.socialGitHub',
+    defaultMessage: 'Network Canvas on GitHub',
+    description:
+      "Accessible name of the site footer's GitHub organisation link.",
   },
-];
-
-/**
- * The legal documents are Studio's own routes, so they are same-origin — but
- * `SiteFooter` sends its links to another tab by default, which is right for
- * the outbound project links it was built for and wrong for these. Naming the
- * target here is what keeps them in the reader's current tab.
- */
-const FOOTER_LINKS: readonly SiteFooterLink[] = [
-  { label: 'Privacy', href: '/legal/privacy', target: '_self', rel: '' },
-  { label: 'Terms', href: '/legal/terms', target: '_self', rel: '' },
-];
+  privacy: {
+    id: 'studio.siteLayout.privacy',
+    defaultMessage: 'Privacy',
+    description: "Site footer link to Studio's privacy notice.",
+  },
+  terms: {
+    id: 'studio.siteLayout.terms',
+    defaultMessage: 'Terms',
+    description: "Site footer link to Studio's terms of service.",
+  },
+  copyright: {
+    id: 'studio.siteLayout.copyright',
+    defaultMessage: '© {year} Complex Data Collective',
+    description:
+      "The site footer's copyright line; {year} is the current year.",
+  },
+  signIn: {
+    id: 'studio.siteLayout.signIn',
+    defaultMessage: 'Sign in',
+    description:
+      "The site header's entry into Studio for a visitor with no session.",
+  },
+  goToStudio: {
+    id: 'studio.siteLayout.goToStudio',
+    defaultMessage: 'Go to Studio',
+    description:
+      "The site header's entry into Studio for a signed-in researcher.",
+  },
+});
 
 function renderSiteLink({
   children,
@@ -138,6 +162,7 @@ const ENTRY_CLASSES = cx(
  * an existing session through this same landing rule.
  */
 function StudioEntry({ closeMenu, view }: SiteNavigationUtilityRenderProps) {
+  const intl = useAppIntl();
   const session = useQuery(sessionQueryOptions);
   const signedIn = session.data === 'signedIn';
   const landing = useLandingDestination(signedIn);
@@ -152,7 +177,7 @@ function StudioEntry({ closeMenu, view }: SiteNavigationUtilityRenderProps) {
   if (!signedIn || landing === undefined) {
     return (
       <Link className={ENTRY_CLASSES} onClick={onClick} to="/sign-in">
-        Sign in
+        {intl.formatMessage(messages.signIn)}
       </Link>
     );
   }
@@ -170,10 +195,11 @@ function StudioDestinationLink({
   destination: LandingDestination;
   onClick: (() => void) | undefined;
 }) {
+  const intl = useAppIntl();
   if (destination.to === '/no-team') {
     return (
       <Link className={ENTRY_CLASSES} onClick={onClick} to="/no-team">
-        Go to Studio
+        {intl.formatMessage(messages.goToStudio)}
       </Link>
     );
   }
@@ -184,12 +210,14 @@ function StudioDestinationLink({
       params={destination.params}
       to="/team/$teamId"
     >
-      Go to Studio
+      {intl.formatMessage(messages.goToStudio)}
     </Link>
   );
 }
 
 export default function SiteLayout() {
+  const intl = useAppIntl();
+  const { locale } = useAppLocale();
   // Not a guard, and it must never become one: this branch refuses nobody.
   // But the header above reads the session, and on a managed deployment a
   // signed-in researcher can sit on `/pricing` or `/legal/*` while they sign
@@ -200,10 +228,48 @@ export default function SiteLayout() {
   // the branch that does have a guard.
   useSessionRevalidation();
 
+  const socialLinks: readonly SiteFooterSocialLink[] = [
+    {
+      platform: 'youtube',
+      label: intl.formatMessage(messages.socialYouTube),
+      href: 'https://www.youtube.com/@complexdatacollective2923',
+    },
+    {
+      platform: 'twitter',
+      label: intl.formatMessage(messages.socialX),
+      href: 'https://twitter.com/networkcanvas?lang=en',
+    },
+    {
+      platform: 'github',
+      label: intl.formatMessage(messages.socialGitHub),
+      href: 'https://github.com/complexdatacollective',
+    },
+  ];
+
+  // The legal documents are Studio's own routes, so they are same-origin —
+  // but `SiteFooter` sends its links to another tab by default, which is
+  // right for the outbound project links it was built for and wrong for
+  // these. Naming the target here is what keeps them in the reader's current
+  // tab.
+  const footerLinks: readonly SiteFooterLink[] = [
+    {
+      label: intl.formatMessage(messages.privacy),
+      href: '/legal/privacy',
+      target: '_self',
+      rel: '',
+    },
+    {
+      label: intl.formatMessage(messages.terms),
+      href: '/legal/terms',
+      target: '_self',
+      rel: '',
+    },
+  ];
+
   return (
     <div className="flex min-h-full flex-col">
       <SiteNavigation
-        locale="en-US"
+        locale={siteLocaleFor(locale)}
         site="external"
         renderLink={renderSiteLink}
         renderUtility={(props) => <StudioEntry {...props} />}
@@ -217,9 +283,13 @@ export default function SiteLayout() {
             Network Canvas Studio
           </span>
         }
-        links={FOOTER_LINKS}
-        copyright={`© ${new Date().getFullYear()} Complex Data Collective`}
-        socialLinks={SOCIAL_LINKS}
+        links={footerLinks}
+        copyright={intl.formatMessage(messages.copyright, {
+          // Through intl, not `getFullYear` interpolation: the year is a
+          // formatted number in the reader's locale and calendar.
+          year: intl.formatDate(new Date(), { year: 'numeric' }),
+        })}
+        socialLinks={socialLinks}
       />
     </div>
   );
