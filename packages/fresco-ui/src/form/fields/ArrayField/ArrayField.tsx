@@ -1,3 +1,5 @@
+'use client';
+
 import { GripVerticalIcon, PlusIcon } from 'lucide-react';
 import {
   AnimatePresence,

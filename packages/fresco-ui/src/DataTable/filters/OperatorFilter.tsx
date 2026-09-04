@@ -13,6 +13,7 @@ import Button, { IconButton } from '../../Button';
 import InputField from '../../form/fields/InputField';
 import SelectField from '../../form/fields/Select/Native';
 import Paragraph from '../../typography/Paragraph';
+import { formatFilterNumber } from './formatFilterNumber';
 import {
   type OperatorCondition,
   type OperatorFilterConfig,
@@ -196,7 +197,7 @@ export default function OperatorFilter({
               <div className="bg-surface-1 flex items-center justify-between gap-3 rounded-sm px-3 py-1.5">
                 <span className="text-sm">
                   {condition.entityLabel} {operatorSymbols[condition.operator]}{' '}
-                  {intl.formatNumber(condition.value)}
+                  {formatFilterNumber(intl, condition.value)}
                 </span>
                 <IconButton
                   size="sm"

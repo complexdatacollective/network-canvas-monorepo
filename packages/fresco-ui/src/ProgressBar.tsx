@@ -1,3 +1,5 @@
+'use client';
+
 import { Progress } from '@base-ui/react/progress';
 
 import { defineMessages } from '@codaco/app-i18n/messages';

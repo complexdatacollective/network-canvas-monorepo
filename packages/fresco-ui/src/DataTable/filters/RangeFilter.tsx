@@ -6,6 +6,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import Button from '../../Button';
+import { formatFilterNumber } from './formatFilterNumber';
 import { type RangeFilterConfig, type RangeFilterValue } from './types';
 
 const messages = defineMessages({
@@ -43,7 +44,8 @@ export default function RangeFilter({
   // are bare quantities and belong in the reader's digits and grouping rather
   // than the source language's.
   const formatLabel =
-    config.formatLabel ?? ((endpoint: number) => intl.formatNumber(endpoint));
+    config.formatLabel ??
+    ((endpoint: number) => formatFilterNumber(intl, endpoint));
 
   const isPresetActive = useCallback(
     (presetMin: number, presetMax: number) =>

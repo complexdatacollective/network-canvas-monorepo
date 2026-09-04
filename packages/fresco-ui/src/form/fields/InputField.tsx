@@ -1,3 +1,5 @@
+'use client';
+
 import { Minus, Plus } from 'lucide-react';
 import { forwardRef, type ReactNode, useCallback, useRef } from 'react';
 

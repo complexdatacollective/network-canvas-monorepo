@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
