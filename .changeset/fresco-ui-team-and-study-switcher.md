@@ -1,6 +1,7 @@
 ---
 '@codaco/fresco-ui': minor
 '@codaco/tailwind-config': minor
+'@codaco/interviewer': patch
 ---
 
 Two new components for naming where a researcher is: `IdentityMark` and
@@ -67,3 +68,9 @@ and a radius scale that now derives every step from `--radius-base`. That
 second change is a fix — only the bare `rounded` utility followed a theme
 before, so `rounded-sm` and the rest resolved at `:root` and every themed
 region got the default theme's numbers.
+
+Interviewer's update indicator takes the default pill size. It was the only
+caller asking for `sm` — Architect's equivalent asks for `md` — so the same
+indicator was drawn at two sizes in the two apps for no stated reason. It is
+`md` in both now. The patch is here rather than in a changeset of its own
+because the size it lands on is `Pill`'s, and the two move together.

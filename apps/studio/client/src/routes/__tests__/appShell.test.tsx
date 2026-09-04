@@ -151,6 +151,12 @@ vi.mock('../../lib/api.ts', () => ({
         }),
         key: () => ['study'],
       },
+      counts: {
+        queryOptions: () => ({
+          queryKey: ['study-counts'],
+          queryFn: () => ({ waves: 0, participants: 0, interviews: 0 }),
+        }),
+      },
       create: { mutationOptions: () => ({ mutationFn: vi.fn() }) },
     },
     protocols: {
@@ -201,6 +207,19 @@ function renderAt(path: string) {
     </QueryClientProvider>,
   );
   return router;
+}
+
+/**
+ * Fails when the route under the header did not compose.
+ *
+ * The header sits ABOVE the router's catch boundary, so a study route that
+ * throws still renders a complete switcher — and every assertion about it
+ * passes while the page beneath reads "Something went wrong". That is exactly
+ * what an unmocked `studies.counts` did here, silently, until review caught
+ * it.
+ */
+function expectRouteComposed(): void {
+  expect(screen.queryByText(/Something went wrong/i)).toBeNull();
 }
 
 /** Better Auth's list hook, for a list that has resolved. */
@@ -650,6 +669,7 @@ describe('the header switcher lockup', () => {
 
     const study = await screen.findByRole('combobox', { name: /^Study/ });
     await waitFor(() => expect(study).not.toHaveAttribute('aria-busy'));
+    expectRouteComposed();
     fireEvent.click(study);
 
     // The state first, then only the counts there are: a study nobody has
@@ -723,6 +743,7 @@ describe('the header switcher lockup', () => {
     // the point. While it is still running the name is a skeleton, so the
     // identifier appearing at all is the settled answer.
     expect(await screen.findByText('study-1')).toBeInTheDocument();
+    expectRouteComposed();
     expect(lockupSegments()).toBe(2);
 
     // A label in the frame, not a control: no sibling can be offered, because
