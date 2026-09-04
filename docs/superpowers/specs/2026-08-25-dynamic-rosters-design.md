@@ -80,8 +80,8 @@ Each decision records the alternative it displaced and why.
    a stable external ID in the response (kept the pipeline identical to
    static files instead; cross-wave identity was out of scope — see the
    2026-09-04 amendment below, which admits an optional id without
-   _requiring_ one). Because the
-   asset is refetched and servers may reorder rows, the existing
+   _requiring_ one). Because the asset is refetched and servers may reorder
+   rows, the existing
    content-plus-index hash would change every row's identity on reorder, so
    dynamic rosters hash row content only. Consequences, accepted: two
    byte-identical rows in one response collapse into one roster entry, and a
@@ -113,10 +113,9 @@ Each decision records the alternative it displaced and why.
    - An **id-bearing** element carries those same obligations **plus** one
      more — the id is non-empty, stable for that person across fetches and
      across waves, and unique to that person, so two different people never
-     share an id. Sending ids adds a contract; it
-     does not relax one. Server-side dedupe against the embedded network
-     remains the mechanism that keeps already-present people out of the
-     roster.
+     share an id. Sending ids adds a contract; it does not relax one.
+     Server-side dedupe against the embedded network remains the mechanism
+     that keeps already-present people out of the roster.
 
    Uniqueness is scoped to the interview network, per subject type: the parse
    pipeline keys an id-bearing node as `` `${subjectType}_${id}` ``, so two
@@ -1106,10 +1105,10 @@ only stages preceding the start stage (§5.9); `PreviewHost` passes it.
 - New page: _Building a dynamic roster endpoint_ — request anatomy,
   placeholder table, canonical response shape (including the optional
   per-node `id`, when to send one, and the stability and namespacing
-  obligations it carries — Decision 3 amendment),
-  CORS/preflight obligations,
-  no-redirect requirement (§5.4), idempotency requirement, key-visibility
-  warning (§6.6), and the sample-content privacy guidance (§6.11).
+  obligations it carries — Decision 3 amendment), CORS/preflight
+  obligations, no-redirect requirement (§5.4), idempotency requirement,
+  key-visibility warning (§6.6), and the sample-content privacy guidance
+  (§6.11).
 - `working-with-rosters.en.md`, `name-generator-roster.en.mdx`,
   `key-concepts/resources.en.mdx` — the new resource type and test-request
   flow.
