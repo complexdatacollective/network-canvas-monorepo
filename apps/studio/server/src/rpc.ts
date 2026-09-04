@@ -4,6 +4,7 @@ import type pg from 'pg';
 import { AUDIT_FACET_LIMIT, contract } from '@codaco/studio-rpc';
 import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
+import { updateUserLocale } from './account/commands.ts';
 import {
   appendAuditedEvent,
   auditActorEventContext,
@@ -439,12 +440,34 @@ export function createRpcRouter(
       email: context.principal.email,
       emailVerified: context.principal.emailVerified,
       name: context.principal.name,
+      // Already on the principal: the session lookup reads the user row, so
+      // the stored preference costs `me` no query of its own.
+      locale: context.principal.locale,
       // The same read `requireStudy` resolves a tenant over, and the same
       // index serves it. Better Auth's own team list drops the role, so this
       // is the only thing that can tell a researcher what they are in each of
       // their teams.
       teams: await auth.listMemberships(context.principal.userId),
     })),
+    account: {
+      updateLocale: os.account.updateLocale
+        .use(requireUser)
+        .handler(async ({ context, input }) => {
+          if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
+          // Deliberately not an audited command (localization design §5.2,
+          // decision 7): the audit log is study/team-scoped by design, and a
+          // personal presentation preference has no tenant — so this writes
+          // through the plain pool, like team.acceptInvitation.
+          const updated = await updateUserLocale(pool, {
+            userId: context.principal.userId,
+            locale: input.locale,
+          });
+          // A session can outlive its user row only by a hard-delete race;
+          // there is nothing left to store a preference on.
+          if (!updated) throw new ORPCError('NOT_FOUND');
+          return updated;
+        }),
+    },
     team: {
       acceptInvitation: os.team.acceptInvitation
         .use(requireUser)

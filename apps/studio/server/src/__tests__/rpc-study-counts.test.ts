@@ -40,6 +40,7 @@ const PRINCIPAL: SessionPrincipal = {
   email: 'counts@example.com',
   emailVerified: true,
   name: 'Counting Researcher',
+  locale: null,
   sessionId: 'counts-session',
 };
 

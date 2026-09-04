@@ -554,6 +554,47 @@ describe.skipIf(!db)('schema verification', () => {
   });
 });
 
+// The per-user UI-language preference (2026-09-04 localization design §5.2):
+// nullable — NULL means "no preference; negotiate from the browser" — with
+// the house 2–35 character bound on non-null tags.
+describe.skipIf(!db)('the user locale column', () => {
+  it('accepts NULL and plausible tags, refusing out-of-range lengths', async () => {
+    await withScratch(createScratchSchema, async (pool) => {
+      await provisionScratchSchema(pool);
+      const insert = (id: string, locale: string | null) =>
+        pool.query(
+          `INSERT INTO "user" (id, name, email, "emailVerified", locale)
+           VALUES ($1, $1, $1 || '@example.org', true, $2)`,
+          [id, locale],
+        );
+
+      await insert('locale-null', null);
+      await insert('locale-en', 'en');
+      await insert('locale-en-gb', 'en-GB');
+      // The widest tag the registry-shaped bound admits.
+      await insert('locale-max', 'a'.repeat(35));
+      await expect(insert('locale-short', 'e')).rejects.toMatchObject({
+        constraint: 'user_locale_length_check',
+      });
+      await expect(insert('locale-long', 'a'.repeat(36))).rejects.toMatchObject(
+        { constraint: 'user_locale_length_check' },
+      );
+
+      // The accepted values actually landed, distinguishably.
+      const stored = await pool.query<{ id: string; locale: string | null }>(
+        `select id, locale from "user"
+         where id like 'locale-%' order by id`,
+      );
+      expect(stored.rows).toEqual([
+        { id: 'locale-en', locale: 'en' },
+        { id: 'locale-en-gb', locale: 'en-GB' },
+        { id: 'locale-max', locale: 'a'.repeat(35) },
+        { id: 'locale-null', locale: null },
+      ]);
+    });
+  });
+});
+
 // drizzle-kit push introspects `public`, so these run in scratch databases.
 describe.skipIf(!db)('schema application', () => {
   it('keys accounts on (issuer, accountId), both required', async () => {

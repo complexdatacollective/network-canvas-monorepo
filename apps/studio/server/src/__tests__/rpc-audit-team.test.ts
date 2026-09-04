@@ -22,6 +22,7 @@ const PRINCIPAL: SessionPrincipal = {
   email: 'rpc-audit-owner@example.com',
   emailVerified: true,
   name: 'RPC Audit Owner',
+  locale: null,
   sessionId: 'rpc-audit-owner-session',
 };
 
@@ -204,6 +205,7 @@ describe.skipIf(!db)('audited team RPC', () => {
       email: 'rpc-audit-invitee@example.com',
       emailVerified: true,
       name: 'RPC Audit Invitee',
+      locale: null,
       sessionId: 'rpc-audit-invitee-session',
     };
     await pool.query(

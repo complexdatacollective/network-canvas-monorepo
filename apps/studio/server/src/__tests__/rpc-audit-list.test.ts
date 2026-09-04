@@ -31,6 +31,7 @@ function principal(userId: string, name: string): SessionPrincipal {
     email: `${userId}@example.com`,
     emailVerified: true,
     name,
+    locale: null,
     sessionId: `${userId}-session`,
   };
 }

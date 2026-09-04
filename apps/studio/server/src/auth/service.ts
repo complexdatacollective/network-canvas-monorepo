@@ -8,6 +8,13 @@ export type SessionPrincipal = {
   email: string;
   emailVerified: boolean;
   name: string;
+  /**
+   * The stored UI-language preference (user.locale, localization design
+   * §5.2); null until the researcher chooses one. On the principal because
+   * the session lookup already reads the user row, so `me` forwards it
+   * without a query of its own — and stays answerable database-free.
+   */
+  locale: string | null;
   sessionId: string;
 };
 

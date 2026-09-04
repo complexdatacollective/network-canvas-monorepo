@@ -126,6 +126,7 @@ function principal(person: Identity): SessionPrincipal {
     email: person.email,
     emailVerified: true,
     name: person.name,
+    locale: null,
     sessionId: `${person.userId}-session`,
   };
 }

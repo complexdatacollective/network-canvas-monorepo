@@ -14,19 +14,40 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
-const user = pgTable('user', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  email: text('email').notNull().unique(),
-  emailVerified: boolean('emailVerified').notNull(),
-  image: text('image'),
-  createdAt: timestamp('createdAt', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp('updatedAt', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+const user = pgTable(
+  'user',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    email: text('email').notNull().unique(),
+    emailVerified: boolean('emailVerified').notNull(),
+    image: text('image'),
+    // Studio's addition, not better-auth's: the per-user UI-language
+    // preference (2026-09-04 localization design §5.2). Declared to
+    // better-auth as user.additionalFields.locale with input disabled, so
+    // only the account.updateLocale RPC — which validates tags against the
+    // supported registry — ever writes it. NULL means "no preference;
+    // negotiate from the browser".
+    locale: text('locale'),
+    createdAt: timestamp('createdAt', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updatedAt', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    // The house locale bound (consent_documents_lengths_check,
+    // message_templates_locale_check): a plausible BCP 47 tag is 2–35
+    // characters. A NULL already passes a CHECK by SQL semantics; the IS NULL
+    // arm keeps the intent explicit for this nullable column.
+    check(
+      'user_locale_length_check',
+      sql`${table.locale} IS NULL
+          OR char_length(${table.locale}) BETWEEN 2 AND 35`,
+    ),
+  ],
+);
 
 const session = pgTable(
   'session',

@@ -67,6 +67,17 @@ export function createBetterAuthInstance(
     emailAndPassword: {
       enabled: true,
     },
+    user: {
+      // Studio's per-user UI-language preference, stored on the user row
+      // (db/auth-schema.ts, localization design §5.2). Declared so
+      // better-auth's adapter round-trips the column; `input: false` keeps
+      // better-auth's own endpoints (update-user and friends) from writing
+      // it — only the account.updateLocale RPC does, which is also where
+      // tags are validated against the supported registry.
+      additionalFields: {
+        locale: { type: 'string', required: false, input: false },
+      },
+    },
     account: {
       // A Google or Microsoft sign-in whose verified email matches an
       // existing (verified, e.g. magic-link) user joins that user rather
@@ -152,6 +163,7 @@ export function createBetterAuthService(
         email: result.user.email,
         emailVerified: result.user.emailVerified,
         name: result.user.name,
+        locale: result.user.locale ?? null,
         sessionId: result.session.id,
       };
     },
