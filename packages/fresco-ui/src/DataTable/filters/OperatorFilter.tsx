@@ -196,7 +196,7 @@ export default function OperatorFilter({
               <div className="bg-surface-1 flex items-center justify-between gap-3 rounded-sm px-3 py-1.5">
                 <span className="text-sm">
                   {condition.entityLabel} {operatorSymbols[condition.operator]}{' '}
-                  {condition.value}
+                  {intl.formatNumber(condition.value)}
                 </span>
                 <IconButton
                   size="sm"
@@ -248,7 +248,10 @@ export default function OperatorFilter({
             size="sm"
             value={inputValue}
             onChange={(val) => setInputValue(val ?? '')}
-            placeholder="0"
+            // A sample digit rather than copy, but a Western `0` beside the
+            // conditions above — which now carry the reader's digits — reads
+            // as a different numbering system.
+            placeholder={intl.formatNumber(0)}
           />
 
           <Button size="sm" className="shrink-0" onClick={handleAddCondition}>

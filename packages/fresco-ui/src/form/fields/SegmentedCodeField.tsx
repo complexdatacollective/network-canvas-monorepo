@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import {
   controlVariants,
   inputControlVariants,
@@ -76,6 +79,30 @@ const separatorVariants = cva({
   },
 });
 
+// The masked and unmasked segment names are two whole sentences rather than a
+// shared stem plus an appended ", hidden": where the mask is mentioned, and
+// whether it is a trailing clause at all, is a decision each translation makes.
+const messages = defineMessages({
+  codeInput: {
+    id: 'frescoUi.segmentedCodeField.codeInput',
+    defaultMessage: 'Code input',
+    description:
+      'Accessible name of the group of single-character boxes a code is typed into, when the caller describes it with nothing else.',
+  },
+  segment: {
+    id: 'frescoUi.segmentedCodeField.segment',
+    defaultMessage: 'Digit {position, number} of {total, number}',
+    description:
+      'Accessible name of one box in a segmented code field; {position} is its place in the code and {total} the number of boxes.',
+  },
+  sensitiveSegment: {
+    id: 'frescoUi.segmentedCodeField.sensitiveSegment',
+    defaultMessage: 'Digit {position, number} of {total, number}, hidden',
+    description:
+      'Accessible name of one box in a segmented code field whose characters are masked, as a PIN’s are.',
+  },
+});
+
 type CharacterSet = 'numeric' | 'alphanumeric' | 'hex' | 'alpha';
 
 const CHARACTER_SETS: Record<
@@ -106,6 +133,7 @@ type SegmentedCodeFieldProps = CreateFormFieldProps<
 >;
 
 function SegmentedCodeField(props: SegmentedCodeFieldProps) {
+  const intl = useAppIntl();
   const {
     segments,
     characterSet = 'numeric',
@@ -275,7 +303,11 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
   return (
     <fieldset
       className={cx(segmentGroupVariants({ size }), className)}
-      aria-label={rest['aria-describedby'] ? undefined : 'Code input'}
+      aria-label={
+        rest['aria-describedby']
+          ? undefined
+          : intl.formatMessage(messages.codeInput)
+      }
       data-testid={name ? `segmented-code-${name}` : undefined}
     >
       {Array.from({ length: segments }, (_, i) => (
@@ -297,11 +329,10 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
             placeholder={'\u00B7'}
             disabled={disabled}
             readOnly={readOnly}
-            aria-label={
-              sensitive
-                ? `Digit ${String(i + 1)} of ${String(segments)}, hidden`
-                : `Digit ${String(i + 1)} of ${String(segments)}`
-            }
+            aria-label={intl.formatMessage(
+              sensitive ? messages.sensitiveSegment : messages.segment,
+              { position: i + 1, total: segments },
+            )}
             aria-invalid={rest['aria-invalid']}
             aria-describedby={i === 0 ? rest['aria-describedby'] : undefined}
             aria-required={i === 0 ? rest['aria-required'] : undefined}

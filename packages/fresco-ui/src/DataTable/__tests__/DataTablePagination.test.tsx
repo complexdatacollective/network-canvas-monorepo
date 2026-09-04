@@ -1,57 +1,21 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { AppLocale } from '@codaco/app-i18n/locales';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 
+import {
+  ARABIC,
+  arabicNumber as arabic,
+  sourceTemplate,
+} from '../../__tests__/catalogFixtures';
 import { DataTablePagination } from '../DataTablePagination';
 
 type Row = { name: string };
 
 const PAGE_OF_ID = 'frescoUi.dataTablePagination.pageOf';
 
-const srcDir = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
-
-/**
- * The extracted source template for one id, which `catalogs.test.ts` keeps
- * equal to the descriptor in the component. Standing in for a translation of
- * it is what makes this a test of the descriptor: a translator copies the
- * arguments as the source declares them, so a bare `{page}` in the source is a
- * bare `{page}` in every catalog derived from it.
- */
-function sourceTemplate(id: string): string {
-  const extracted = JSON.parse(
-    readFileSync(join(srcDir, 'locales', 'en.json'), 'utf8'),
-  ) as Record<string, { defaultMessage: string }>;
-  const template = extracted[id]?.defaultMessage;
-  if (template === undefined) {
-    throw new Error(`no extracted message for "${id}"`);
-  }
-  return template;
-}
-
-// A locale whose digits are not the ones the source is written in, so a number
-// that reached the screen without going through the app's formatter is visible
-// as such. Its registry is local to this test: the shipped ecosystem list is
-// English-only, and what is under test is the component, not the set of
-// languages the apps currently offer.
-const ARABIC: AppLocale = {
-  locale: 'ar-EG',
-  label: 'العربية',
-  direction: 'rtl',
-};
-
-// react-intl formats an untranslated `defaultMessage` in the DEFAULT locale —
-// English text gets English digits, which is the coherent fallback — so only a
-// translated message can show whether the arguments carry a type.
 const CATALOG = { [PAGE_OF_ID]: sourceTemplate(PAGE_OF_ID) };
-
-const arabic = (value: number) => new Intl.NumberFormat('ar-EG').format(value);
 
 const Harness = () => {
   const table = useReactTable<Row>({

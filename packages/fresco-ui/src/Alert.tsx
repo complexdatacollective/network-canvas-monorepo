@@ -4,6 +4,12 @@ import type { LucideIcon } from 'lucide-react';
 import { motion, useAnimation, useReducedMotion } from 'motion/react';
 import * as React from 'react';
 
+import {
+  defineMessages,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import Icon from './Icon';
 import Surface from './layout/Surface';
 import Heading from './typography/Heading';
@@ -112,13 +118,52 @@ const variantRoles: Record<Variant, 'alert' | 'status'> = {
  * users get from color + icon. Prepended inside the content block to
  * avoid adding a flex slot (which would inherit the parent gap).
  */
-const variantContextLabels: Record<Variant, string> = {
-  default: 'Notice',
-  info: 'Information',
-  success: 'Success',
-  warning: 'Warning',
-  destructive: 'Error',
-  accent: 'Note',
+const messages = defineMessages({
+  contextDefault: {
+    id: 'frescoUi.alert.contextDefault',
+    defaultMessage: 'Notice',
+    description:
+      'Announced before a plain alert’s content, standing in for the colour and icon a sighted reader sees.',
+  },
+  contextInfo: {
+    id: 'frescoUi.alert.contextInfo',
+    defaultMessage: 'Information',
+    description:
+      'Announced before an informational alert’s content, standing in for the colour and icon a sighted reader sees.',
+  },
+  contextSuccess: {
+    id: 'frescoUi.alert.contextSuccess',
+    defaultMessage: 'Success',
+    description:
+      'Announced before a success alert’s content, standing in for the colour and icon a sighted reader sees.',
+  },
+  contextWarning: {
+    id: 'frescoUi.alert.contextWarning',
+    defaultMessage: 'Warning',
+    description:
+      'Announced before a warning alert’s content, standing in for the colour and icon a sighted reader sees.',
+  },
+  contextDestructive: {
+    id: 'frescoUi.alert.contextDestructive',
+    defaultMessage: 'Error',
+    description:
+      'Announced before an error alert’s content, standing in for the colour and icon a sighted reader sees.',
+  },
+  contextAccent: {
+    id: 'frescoUi.alert.contextAccent',
+    defaultMessage: 'Note',
+    description:
+      'Announced before a key-concept alert’s content, standing in for the colour and icon a sighted reader sees.',
+  },
+});
+
+const variantContextMessages: Record<Variant, MessageDescriptor> = {
+  default: messages.contextDefault,
+  info: messages.contextInfo,
+  success: messages.contextSuccess,
+  warning: messages.contextWarning,
+  destructive: messages.contextDestructive,
+  accent: messages.contextAccent,
 };
 
 const alertIconVariants = cva({
@@ -166,12 +211,15 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
     },
     ref,
   ) => {
+    const intl = useAppIntl();
     const animation = useAnimation();
     const shouldReduceMotion = useReducedMotion();
     const IconComponent =
       icon === false ? null : (icon ?? variantIcons[variant]);
     const iconStyle = icon == null ? variantIconStyles[variant] : undefined;
     const resolvedDensity: Density = density ?? 'default';
+    const announcedContext =
+      contextLabel ?? intl.formatMessage(variantContextMessages[variant]);
 
     return (
       <Surface
@@ -212,9 +260,7 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
           </motion.span>
         )}
         <div className="min-w-0 flex-1">
-          <span className="sr-only">
-            {contextLabel ?? variantContextLabels[variant]}:{' '}
-          </span>
+          <span className="sr-only">{announcedContext}: </span>
           {children}
         </div>
       </Surface>

@@ -38,7 +38,12 @@ export default function RangeFilter({
   const currentMin = value?.min ?? config.min;
   const currentMax = value?.max ?? config.max;
   const step = config.step ?? 1;
-  const formatLabel = config.formatLabel ?? String;
+  // A host that supplies `formatLabel` is naming its own units (currency, a
+  // duration, a category) and owns the whole string; with none, the endpoints
+  // are bare quantities and belong in the reader's digits and grouping rather
+  // than the source language's.
+  const formatLabel =
+    config.formatLabel ?? ((endpoint: number) => intl.formatNumber(endpoint));
 
   const isPresetActive = useCallback(
     (presetMin: number, presetMax: number) =>

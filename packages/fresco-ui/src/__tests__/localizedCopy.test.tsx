@@ -18,15 +18,19 @@ import { pseudoAppLocale, PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 
+import { Alert } from '../Alert';
 import { DndStoreProvider } from '../dnd/DndStoreProvider';
 import {
   getDropTargetDescription,
   getKeyboardDragAnnouncement,
 } from '../dnd/useAccessibilityAnnouncements';
 import { useDragSource } from '../dnd/useDragSource';
+import { BaseField } from '../form/Field/BaseField';
 import Field from '../form/Field/Field';
+import { fieldElementIds } from '../form/Field/fieldElements';
 import InputField from '../form/fields/InputField';
 import LikertScaleField from '../form/fields/LikertScale';
+import SegmentedCodeField from '../form/fields/SegmentedCodeField';
 import VisualAnalogScaleField from '../form/fields/VisualAnalogScale';
 import Form from '../form/Form';
 import useFormStore from '../form/hooks/useFormStore';
@@ -34,6 +38,7 @@ import FormStoreProvider from '../form/store/formStoreProvider';
 import SubmitButton from '../form/SubmitButton';
 import ProgressBar from '../ProgressBar';
 import { ResizableFlexPanel } from '../ResizableFlexPanel';
+import SplitButton from '../SplitButton';
 
 /** True only for a string the pseudo-locale formatter produced. */
 const wentThroughTheFormatter = (value: string | null | undefined) =>
@@ -133,6 +138,100 @@ describe('the accessible names the components supply themselves', () => {
     expect(
       wentThroughTheFormatter(slider?.getAttribute('aria-valuetext')),
     ).toBe(true);
+  });
+
+  it('announces an unanswered analog scale through the formatter', () => {
+    const { container } = render(
+      <Pseudo>
+        <VisualAnalogScaleField name="feeling" />
+      </Pseudo>,
+    );
+
+    // With no value the thumb rests on the midpoint, so what stops the scale
+    // sounding answered is this string rather than a number.
+    const slider = container.querySelector('[aria-valuetext]');
+    expect(
+      wentThroughTheFormatter(slider?.getAttribute('aria-valuetext')),
+    ).toBe(true);
+  });
+
+  it('names a code field, and every box in it, through the formatter', () => {
+    const { container } = render(
+      <Pseudo>
+        <SegmentedCodeField name="pin" segments={3} sensitive />
+      </Pseudo>,
+    );
+
+    expect(
+      wentThroughTheFormatter(
+        container.querySelector('fieldset')?.getAttribute('aria-label'),
+      ),
+    ).toBe(true);
+
+    // The masked boxes are the harder case: a name assembled as a shared stem
+    // plus an appended ", hidden" would leave that suffix outside the
+    // brackets, so this also holds the two variants to being whole messages.
+    const boxes = Array.from(container.querySelectorAll('input')).map((input) =>
+      input.getAttribute('aria-label'),
+    );
+    expect(boxes.length).toBe(3);
+    for (const box of boxes) {
+      expect(wentThroughTheFormatter(box)).toBe(true);
+    }
+  });
+
+  it('names the split button’s icon-only segment through the formatter', () => {
+    render(
+      <Pseudo>
+        <SplitButton
+          popover={{ content: <div>options</div> }}
+          segment={{ children: '', icon: <span aria-hidden="true">▾</span> }}
+        >
+          Save
+        </SplitButton>
+      </Pseudo>,
+    );
+
+    // The segment shows no text, so this fallback is the only name it has.
+    const named = screen
+      .getAllByRole('button')
+      .map((button) => button.getAttribute('aria-label'))
+      .filter((label) => label !== null);
+    expect(named.length).toBe(1);
+    expect(wentThroughTheFormatter(named[0])).toBe(true);
+  });
+});
+
+describe('the markers a field renders around its control', () => {
+  it('marks a required field through the formatter', () => {
+    const { container } = render(
+      <Pseudo>
+        <BaseField id="pet" label="Pet" required>
+          <input id="pet" />
+        </BaseField>
+      </Pseudo>,
+    );
+
+    const marker = container.querySelector(
+      `#${fieldElementIds('pet').required}`,
+    );
+    expect(wentThroughTheFormatter(marker?.textContent)).toBe(true);
+  });
+});
+
+describe('the kind an alert announces before its content', () => {
+  it('names the variant through the formatter', () => {
+    const { container } = render(
+      <Pseudo>
+        <Alert variant="warning">Careful</Alert>
+      </Pseudo>,
+    );
+
+    // Sighted readers get this from the colour and icon; the visually hidden
+    // prefix is where a screen-reader user gets it, separator and all.
+    expect(container.querySelector('.sr-only')?.textContent).toMatch(
+      /^\[.+\]: $/,
+    );
   });
 });
 

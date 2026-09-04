@@ -1,4 +1,28 @@
 {
+  "frescoUi.alert.contextAccent": {
+    "defaultMessage": "Note",
+    "description": "Announced before a key-concept alert’s content, standing in for the colour and icon a sighted reader sees."
+  },
+  "frescoUi.alert.contextDefault": {
+    "defaultMessage": "Notice",
+    "description": "Announced before a plain alert’s content, standing in for the colour and icon a sighted reader sees."
+  },
+  "frescoUi.alert.contextDestructive": {
+    "defaultMessage": "Error",
+    "description": "Announced before an error alert’s content, standing in for the colour and icon a sighted reader sees."
+  },
+  "frescoUi.alert.contextInfo": {
+    "defaultMessage": "Information",
+    "description": "Announced before an informational alert’s content, standing in for the colour and icon a sighted reader sees."
+  },
+  "frescoUi.alert.contextSuccess": {
+    "defaultMessage": "Success",
+    "description": "Announced before a success alert’s content, standing in for the colour and icon a sighted reader sees."
+  },
+  "frescoUi.alert.contextWarning": {
+    "defaultMessage": "Warning",
+    "description": "Announced before a warning alert’s content, standing in for the colour and icon a sighted reader sees."
+  },
   "frescoUi.appUpdateIndicator.availableSummaryKnownVersion": {
     "defaultMessage": "You are currently using version {currentVersion}. This update will install version {availableVersion}.",
     "description": "Update dialog summary when the incoming version number is known."
@@ -363,6 +387,10 @@
     "defaultMessage": "Select All",
     "description": "Button selecting every option in a faceted filter."
   },
+  "frescoUi.field.required": {
+    "defaultMessage": "Required",
+    "description": "Visually hidden marker announced alongside the label of a field that must be answered."
+  },
   "frescoUi.form.submitFailed": {
     "defaultMessage": "An error occurred while submitting the form.",
     "description": "Form-level error shown when the submit handler itself throws, so it produced no message of its own."
@@ -683,6 +711,18 @@
     "defaultMessage": "Undo",
     "description": "Accessible name of the undo button in the editor toolbar."
   },
+  "frescoUi.segmentedCodeField.codeInput": {
+    "defaultMessage": "Code input",
+    "description": "Accessible name of the group of single-character boxes a code is typed into, when the caller describes it with nothing else."
+  },
+  "frescoUi.segmentedCodeField.segment": {
+    "defaultMessage": "Digit {position, number} of {total, number}",
+    "description": "Accessible name of one box in a segmented code field; {position} is its place in the code and {total} the number of boxes."
+  },
+  "frescoUi.segmentedCodeField.sensitiveSegment": {
+    "defaultMessage": "Digit {position, number} of {total, number}, hidden",
+    "description": "Accessible name of one box in a segmented code field whose characters are masked, as a PIN’s are."
+  },
   "frescoUi.segmentedToolbar.moveToolbar": {
     "defaultMessage": "Move toolbar",
     "description": "Default accessible name of the toolbar drag handle."
@@ -714,6 +754,10 @@
   "frescoUi.selectField.placeholder": {
     "defaultMessage": "Select an option…",
     "description": "Default placeholder option of a native select."
+  },
+  "frescoUi.splitButton.openOptions": {
+    "defaultMessage": "Open options",
+    "description": "Accessible name of the split button’s smaller segment when it shows only an icon and the caller named it nothing else."
   },
   "frescoUi.storageRiskBanner.dismiss": {
     "defaultMessage": "Dismiss",
@@ -914,6 +958,10 @@
   "frescoUi.visualAnalogScale.sliderLabel": {
     "defaultMessage": "Visual analog scale value",
     "description": "Accessible name of the scale’s slider thumb, when the caller named neither the field nor the control."
+  },
+  "frescoUi.visualAnalogScale.unansweredValue": {
+    "defaultMessage": "No value chosen yet",
+    "description": "Announced in place of a number while the participant has not yet chosen a position on the scale."
   },
   "frescoUi.wizard.finish": {
     "defaultMessage": "Finish",
