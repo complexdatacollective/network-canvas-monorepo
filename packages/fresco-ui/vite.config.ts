@@ -7,6 +7,8 @@ import { globSync } from 'tinyglobby';
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
+import { appI18n } from '@codaco/app-i18n/vite';
+
 import { BUILD_GLOB_PATTERNS } from './scripts/exportsMap.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -113,6 +115,27 @@ export default defineConfig({
     emptyOutDir: true,
   },
   plugins: [
+    // Pre-parse this package's own messages — descriptor defaults and the
+    // locale catalogs alike — into the published output.
+    //
+    // An npm consumer running app-i18n's recommended production integration
+    // compiles its OWN sources and its OWN catalogs, and cannot reach these:
+    // the FormatJS source transform excludes node_modules, and the catalog
+    // compiler only ever matches `.json` module ids, by which point this
+    // package's catalogs are JavaScript. That same integration swaps in
+    // FormatJS's no-parser runtime, so anything left as an ICU string throws
+    // at format time and react-intl falls back to returning the raw source —
+    // a placeholder message renders as "Enter at most {max} characters." and
+    // a plural one as its entire `{count, plural, …}` body.
+    //
+    // The no-parser alias `appI18n()` also installs is inert here: react-intl
+    // arrives through the external `@codaco/app-i18n`, so this build resolves
+    // no parser to replace.
+    //
+    // Gated the way dts is, because only the published artifact needs it:
+    // Storybook and Vitest load this config too and resolve this package from
+    // source, where readable ICU strings and parse errors are the point.
+    !process.env.STORYBOOK && !process.env.VITEST && appI18n(),
     // Skip dts emission when this config is loaded by Storybook (preview
     // build) or Vitest. Storybook's CLI sets STORYBOOK=true; Vitest sets
     // VITEST=true.
