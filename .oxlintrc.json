@@ -1,6 +1,10 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["typescript", "unicorn", "oxc", "import", "promise"],
+  // ESLint-compatible plugins, run inside the same oxlint invocation. NOTE
+  // that a nested `.oxlintrc.json` REPLACES this list rather than extending
+  // it, so a package with its own config must repeat any plugin it needs.
+  "jsPlugins": ["eslint-plugin-formatjs"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn"
@@ -140,6 +144,22 @@
         "**/e2e/**"
       ],
       "rules": { "typescript/no-floating-promises": "off" }
+    },
+    {
+      // Message-descriptor hygiene, wherever descriptors are authored. A
+      // package that owns an `.oxlintrc.json` of its own is NOT reached from
+      // here — an override's `files` are matched against the config that
+      // declares them — so such a package repeats these five in its own
+      // config rather than appearing in this list, where they would silently
+      // do nothing.
+      "files": ["packages/app-i18n/src/**"],
+      "rules": {
+        "formatjs/enforce-description": "error",
+        "formatjs/enforce-default-message": "error",
+        "formatjs/no-invalid-icu": "error",
+        "formatjs/enforce-placeholders": "error",
+        "formatjs/no-multiple-whitespaces": "error"
+      }
     }
   ],
   "ignorePatterns": [

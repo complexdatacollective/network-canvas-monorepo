@@ -1,0 +1,9 @@
+{
+  "extends": "@codaco/tsconfig/web.json",
+  "compilerOptions": {
+    "composite": true,
+    "jsx": "react-jsx",
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
+  },
+  "include": ["*.ts", "scripts", "src", "src/**/*.json"]
+}
