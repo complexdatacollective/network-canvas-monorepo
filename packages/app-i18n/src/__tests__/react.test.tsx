@@ -142,6 +142,25 @@ describe('AppI18nProvider', () => {
     expect(document.documentElement.lang).toBe('en');
   });
 
+  it('does not keep a catalog chosen for the locale it fell back from', () => {
+    // The catalog belongs to the tag that was asked for. Rendering it under
+    // the registry default's `lang` would put one language's words behind
+    // another's — worse than the English default, because a screen reader and
+    // a translator would both be told the wrong thing.
+    const view = render(
+      <AppI18nProvider
+        locale="fr-CA"
+        locales={registry}
+        messages={{ 'demo.greeting': 'Bonjour {name}' }}
+      >
+        <Greeting name="Ada" />
+      </AppI18nProvider>,
+    );
+    expect(view.container.textContent).toContain('Hello Ada');
+    expect(view.container.textContent).not.toContain('Bonjour');
+    expect(document.documentElement.lang).toBe('en');
+  });
+
   it('leaves the document alone when manageDocument is false', () => {
     document.documentElement.lang = 'xx';
     render(

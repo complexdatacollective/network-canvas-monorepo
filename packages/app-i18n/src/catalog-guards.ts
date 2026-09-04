@@ -23,7 +23,7 @@ const MESSAGE_ID_PATTERN = /^[a-z][A-Za-z0-9]*(\.[A-Za-z0-9]+)+$/;
 
 const SOURCE_FILE_PATTERN = /\.(ts|tsx)$/;
 const EXCLUDED_FILE_PATTERN =
-  /(\.d\.ts$|\.test\.|\.stories\.|__tests__|__mocks__)/;
+  /(\.d\.ts$|\.test\.|\.spec\.|\.stories\.|__tests__|__mocks__)/;
 
 /**
  * Message-bearing source files under a directory: .ts/.tsx, excluding tests,

@@ -105,15 +105,25 @@ export function AppI18nProvider(props: AppI18nProviderProps) {
   if (locales.length === 0) {
     throw new Error('AppI18nProvider: the locale registry is empty');
   }
-  const active =
-    locales.find((entry) => entry.locale === locale) ?? locales[0]!;
+  const declared = locales.find((entry) => entry.locale === locale);
+  const active = declared ?? locales[0]!;
+  // The catalog was chosen for the locale that was asked for. When that tag
+  // is not declared and the registry default stands in for it, keeping the
+  // catalog would render one language's words under another's `lang` — so the
+  // fallback falls back completely, to the default's own descriptors.
+  const activeMessages = declared === undefined ? undefined : messages;
 
   const intl = useMemo(
     () =>
       active.locale === PSEUDO_LOCALE
-        ? createPseudoIntl({ messages, onError, timeZone })
-        : createAppIntl({ locale: active.locale, messages, onError, timeZone }),
-    [active.locale, messages, onError, timeZone],
+        ? createPseudoIntl({ messages: activeMessages, onError, timeZone })
+        : createAppIntl({
+            locale: active.locale,
+            messages: activeMessages,
+            onError,
+            timeZone,
+          }),
+    [active.locale, activeMessages, onError, timeZone],
   );
 
   const setLocale = useCallback(
