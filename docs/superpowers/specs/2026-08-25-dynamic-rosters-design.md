@@ -85,6 +85,23 @@ Each decision records the alternative it displaced and why.
    in the roster. The endpoint contract is therefore: return stable attribute
    payloads for a person within an interview session, and use the embedded
    current network (§5.3) to filter already-present people out server-side.
+
+   **Amendment (2026-09-04).** The response contract additionally admits an
+   **optional per-node stable id**: a node MAY carry an `id` alongside its
+   `attributes`, and when present the parse pipeline uses it as the node's
+   identity instead of the content hash. When absent, content-hash identity
+   applies exactly as decided above — the amendment changes nothing for
+   endpoints that do not send ids. Motivation: longitudinal prior-data
+   rosters (#1300, #1302), where Studio serves a participant's prior-wave
+   alters and an alter whose attributes changed between waves must not fork
+   into a new node — under pure content-hash identity such an alter is
+   re-offered as new, defeating cross-wave alter linkage. The "return stable
+   attribute payloads within a session" obligation and the server-side
+   dedupe against the embedded network remain in force for id-less
+   responses; an endpoint sending ids takes on the obligation that ids are
+   stable and unique per node instead. Amended by product-owner ruling
+   before implementation of #1451–#1456 began (epic #1457, tracker #1514).
+
 4. **Requests leave the participant's browser directly, on every host.**
    Rejected a Fresco server-side proxy (divergent per-host behaviour plus an
    SSRF surface to defend) and a shared proxy worker (routes participant data
@@ -409,6 +426,10 @@ test request and the interview runtime share it:
   export breaks long after the interview.
 - Unknown top-level keys (including `edges`) are ignored, matching the static
   JSON roster behaviour.
+- **Amendment (2026-09-04):** each element MAY additionally carry an optional
+  stable `id` (string), which the parse pipeline honors as the node's
+  identity; when absent, content-hash identity applies (see the Decision 3
+  amendment).
 
 The same schema also validates **stored sample bytes at every import
 boundary** — Architect opening a `.netcanvas`, Interviewer import, Fresco
