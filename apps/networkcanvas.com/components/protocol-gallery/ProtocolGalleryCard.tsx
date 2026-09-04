@@ -19,7 +19,7 @@ function CardFacetRow({ label, values }: { label: string; values: string[] }) {
       <Eyebrow render={<span />}>{label}</Eyebrow>
       <div className="flex flex-wrap gap-1.5">
         {values.map((value) => (
-          <Badge key={value} variant="outline">
+          <Badge key={value} color="platinum-dark">
             {value}
           </Badge>
         ))}
