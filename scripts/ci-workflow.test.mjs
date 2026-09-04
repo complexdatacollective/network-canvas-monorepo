@@ -496,6 +496,10 @@ test('short quality checks share one setup without joining the critical path', (
   assert.match(support, /pnpm check:changesets/);
   assert.match(support, /pnpm check:compat-protocols/);
   assert.match(support, /pnpm check:mapbox-tokens/);
+  assert.match(
+    support,
+    /pnpm --filter @codaco\/studio-server check:schema-docs/,
+  );
   assert.match(support, /pnpm test:scripts/);
   assert.match(support, /turbo run build --filter='\.\/packages\/\*'/);
   assert.match(support, /turbo run typecheck/);
@@ -703,6 +707,31 @@ test('release-sensitive app builds run before merge', () => {
   );
   assert.match(supportJob, /pnpm --filter=@codaco\/architect build/);
   assert.match(supportJob, /pnpm --filter=@codaco\/interviewer build/);
+});
+
+// Every check in quality-support is `continue-on-error`, so the job's own
+// conclusion says nothing about them: the final step is what fails the job.
+// A check added without a line there passes silently forever.
+test('every quality-support check is consulted by the step that fails the job', () => {
+  const steps = parsedWorkflow.jobs['quality-support'].steps;
+  const verify = steps.at(-1);
+  assert.equal(verify.name, 'Verify support checks passed');
+
+  const checks = steps.filter((step) => step['continue-on-error'] === true);
+  assert.ok(checks.length >= 8, 'quality-support runs the short checks');
+
+  for (const { id, name } of checks) {
+    assert.ok(id, `${name} has a step id`);
+    const outcome = Object.entries(verify.env).find(
+      ([, value]) => value === `\${{ steps.${id}.outcome }}`,
+    );
+    assert.ok(outcome, `${id}'s outcome reaches the verify step`);
+    assert.match(
+      verify.run,
+      new RegExp(`=\\$${escapeRegExp(outcome[0])}"`),
+      `${id}'s outcome is checked, not just passed in`,
+    );
+  }
 });
 
 test('changed public npm versions are checked against the registry before merge', () => {

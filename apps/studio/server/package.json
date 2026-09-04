@@ -21,6 +21,7 @@
     "protocol-demo": "node scripts/protocol-demo.ts",
     "generate:env-docs": "node scripts/generate-env-docs.ts",
     "generate:erd": "node scripts/generate-schema-docs.ts",
+    "check:schema-docs": "node scripts/check-schema-docs.ts",
     "start": "NODE_ENV=production CLIENT_DIST=../client/dist node --env-file-if-exists=.env dist/index.js",
     "typecheck": "tsc --build --noEmit",
     "test": "vitest run",
