@@ -14,16 +14,27 @@ export type { IntlShape, MessageDescriptor };
 export type AppIntlErrorHandler = NonNullable<IntlConfig['onError']>;
 
 /**
- * Missing translations are the designed fallback path (override locales are
- * sparse by policy; every descriptor carries its English defaultMessage), so
- * that error class is silenced. Everything else degrades to the default
- * message inside react-intl; hosts that want visibility pass `onError`.
+ * Missing translations are the designed fallback path — override locales are
+ * sparse by policy and every descriptor carries its English defaultMessage, so
+ * a locale would report on nearly every message it does not override. That
+ * class is dropped before anyone sees it, including a host handler.
+ *
+ * Every other class is a real defect: a value the message did not expect, ICU
+ * a translation broke. Those keep react-intl's own behaviour of reporting to
+ * the console, because configuring `onError` at all replaces its default
+ * reporter — filtering without putting something back is how a formatting
+ * failure ends up visible nowhere, in development included.
  */
 export const makeOnError =
   (onError?: AppIntlErrorHandler): AppIntlErrorHandler =>
   (error) => {
     if (error.code === 'MISSING_TRANSLATION') return;
-    onError?.(error);
+    if (onError === undefined) {
+      // oxlint-disable-next-line no-console -- Restores the reporting react-intl does by default; hosts that want the error routed elsewhere pass `onError`.
+      console.error(error);
+      return;
+    }
+    onError(error);
   };
 
 /**

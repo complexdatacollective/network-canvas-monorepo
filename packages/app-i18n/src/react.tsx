@@ -12,6 +12,7 @@ import { PSEUDO_LOCALE } from './locales.ts';
 import type { AppLocale, CatalogMessages } from './locales.ts';
 import { createAppIntl } from './messages.ts';
 import type { AppIntlErrorHandler } from './messages.ts';
+import { createPseudoIntl } from './pseudo.ts';
 
 type AppI18nContextValue = Readonly<{
   intl: IntlShape;
@@ -33,49 +34,6 @@ let sharedDefaultIntl: IntlShape | undefined;
 const getDefaultIntl = (): IntlShape => {
   sharedDefaultIntl ??= createAppIntl({ locale: 'en' });
   return sharedDefaultIntl;
-};
-
-const PSEUDO_MAP: Readonly<Record<string, string>> = {
-  a: 'á',
-  e: 'é',
-  i: 'î',
-  o: 'ö',
-  u: 'û',
-  y: 'ý',
-  A: 'Å',
-  E: 'É',
-  I: 'Î',
-  O: 'Ö',
-  U: 'Û',
-  Y: 'Ý',
-};
-
-const pseudoString = (value: string): string => {
-  const accented = value.replace(/[aeiouyAEIOUY]/g, (ch) => {
-    const mapped = PSEUDO_MAP[ch];
-    return mapped === undefined ? ch : mapped;
-  });
-  const padding = '·'.repeat(Math.max(1, Math.ceil(accented.length * 0.3)));
-  return `[${accented}${padding}]`;
-};
-
-const pseudoValue = (value: unknown): unknown => {
-  if (typeof value === 'string') return pseudoString(value);
-  if (Array.isArray(value)) {
-    return value.map((part) =>
-      typeof part === 'string' ? pseudoString(part) : part,
-    );
-  }
-  return value;
-};
-
-/** Wraps a formatter so message output is accented and expanded (en-XA). */
-const wrapIntlForPseudo = (intl: IntlShape): IntlShape => {
-  const formatMessage = ((descriptor, values, opts) =>
-    pseudoValue(
-      intl.formatMessage(descriptor, values, opts),
-    )) as IntlShape['formatMessage'];
-  return { ...intl, formatMessage };
 };
 
 export type AppI18nProviderProps = Readonly<{
@@ -121,10 +79,13 @@ export function AppI18nProvider(props: AppI18nProviderProps) {
   const active =
     locales.find((entry) => entry.locale === locale) ?? locales[0]!;
 
-  const intl = useMemo(() => {
-    const base = createAppIntl({ locale: active.locale, messages, onError });
-    return active.locale === PSEUDO_LOCALE ? wrapIntlForPseudo(base) : base;
-  }, [active.locale, messages, onError]);
+  const intl = useMemo(
+    () =>
+      active.locale === PSEUDO_LOCALE
+        ? createPseudoIntl({ messages, onError })
+        : createAppIntl({ locale: active.locale, messages, onError }),
+    [active.locale, messages, onError],
+  );
 
   const setLocale = useCallback(
     (next: string | null) => {

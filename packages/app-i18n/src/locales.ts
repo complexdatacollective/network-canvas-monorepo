@@ -12,7 +12,15 @@ export type AppLocale = Readonly<{
   direction: 'ltr' | 'rtl';
 }>;
 
-/** A locale's messages: ICU source strings or build-time pre-parsed AST. */
+/**
+ * A locale's messages. The two value forms are the two build modes, not a
+ * choice a host makes: ICU source strings under the dev server and vitest,
+ * pre-parsed AST in production, where `appI18n()` compiles every catalog and
+ * drops the ICU parser from the bundle. A catalog that reaches a production
+ * bundle as strings has nothing left to parse it, so a host that assembles one
+ * outside the `src/locales/<tag>.json` the plugin compiles has to compile it
+ * itself.
+ */
 export type CatalogMessages = Readonly<
   Record<string, string | MessageFormatElement[]>
 >;

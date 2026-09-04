@@ -24,6 +24,11 @@ const messages = defineMessages({
     defaultMessage: '{count, plural, one {# result} other {# results}}',
     description: 'Test plural.',
   },
+  guide: {
+    id: 'demo.guide',
+    defaultMessage: 'Read <link>the guide</link>',
+    description: 'Test rich text.',
+  },
 });
 
 function Greeting(props: { name: string }) {
@@ -160,6 +165,58 @@ describe('AppI18nProvider', () => {
     expect(paragraph.textContent?.length ?? 0).toBeGreaterThan(
       'Hello Ada'.length,
     );
+  });
+
+  it('leaves interpolated runtime values alone under the pseudo-locale', () => {
+    // The pseudo-locale exists to show which text is translatable. Accenting
+    // a participant's name proves nothing about the copy and makes the screen
+    // unreadable for the person checking it.
+    const view = render(
+      <AppI18nProvider
+        locale={pseudoAppLocale.locale}
+        locales={[...registry, pseudoAppLocale]}
+      >
+        <Greeting name="Ada" />
+      </AppI18nProvider>,
+    );
+    expect(view.container.textContent).toMatch(/Héllö/);
+    expect(view.container.textContent).toContain('Ada');
+  });
+
+  it('accents source text inside rich-text tags', () => {
+    function Guide() {
+      const intl = useAppIntl();
+      return (
+        <p>
+          {intl.formatMessage(messages.guide, {
+            link: (chunks) => <a href="/guide">{chunks}</a>,
+          })}
+        </p>
+      );
+    }
+    const view = render(
+      <AppI18nProvider
+        locale={pseudoAppLocale.locale}
+        locales={[...registry, pseudoAppLocale]}
+      >
+        <Guide />
+      </AppI18nProvider>,
+    );
+    // Text wrapped in a tag is still source copy, so it has to expand with the
+    // rest — a link label is exactly the sort of thing that clips.
+    expect(view.getByRole('link').textContent).toBe('thé gûîdé');
+  });
+
+  it('keeps plural selection working under the pseudo-locale', () => {
+    const view = render(
+      <AppI18nProvider
+        locale={pseudoAppLocale.locale}
+        locales={[...registry, pseudoAppLocale]}
+      >
+        <Count count={3} />
+      </AppI18nProvider>,
+    );
+    expect(view.getByText(/résûlts/).textContent).toContain('3');
   });
 });
 

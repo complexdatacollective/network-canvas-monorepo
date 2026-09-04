@@ -478,6 +478,16 @@ ahead of the framework plugin. It composes three pieces:
 - a build-only exact-match alias swapping
   `@formatjs/icu-messageformat-parser` for FormatJS's `no-parser` build.
 
+A workspace package that publishes messages of its own — `@codaco/app-i18n`
+with `common.*`, `@codaco/fresco-ui` with `frescoUi.*` — runs the same call in
+its library build as `appI18n({ build: 'library' })`: the two compiling
+plugins, without the alias. Its `dist` therefore carries pre-parsed messages,
+while whether a bundle keeps the parser stays the consuming application's
+decision. Publishing ICU source instead fails quietly, because a message the
+runtime cannot parse falls back to rendering its source verbatim, and source
+text with no placeholders is indistinguishable from the formatted result — so
+each package guards its own build configuration rather than its output text.
+
 Production bundles therefore carry no ICU parser (verified by asserting the
 parser's error identifiers are absent from built assets while react-intl's
 are present). The dev server and vitest keep the real parser, so string
