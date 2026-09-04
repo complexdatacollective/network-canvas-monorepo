@@ -1,3 +1,10 @@
+'use client';
+
+// The directive leads the file because a Next App Router Server Component may
+// import this module directly — Fresco's root layout is exactly that shape —
+// and without it Next treats the module as server code and rejects
+// `createContext` and the hooks below.
+
 import {
   createContext,
   useCallback,
@@ -73,6 +80,13 @@ export type AppI18nProviderProps = Readonly<{
   /** Write `<html lang>`/`<html dir>` for the active locale. Default true. */
   manageDocument?: boolean;
   onError?: AppIntlErrorHandler;
+  /**
+   * IANA zone for date and time arguments; see `createAppIntl`. A Next host
+   * must pass the same value here that its server formatter uses, or a
+   * timestamp near midnight renders one date on the server and another after
+   * hydration.
+   */
+  timeZone?: string;
   children: ReactNode;
 }>;
 
@@ -84,6 +98,7 @@ export function AppI18nProvider(props: AppI18nProviderProps) {
     onLocaleChange,
     manageDocument = true,
     onError,
+    timeZone,
     children,
   } = props;
 
@@ -96,9 +111,9 @@ export function AppI18nProvider(props: AppI18nProviderProps) {
   const intl = useMemo(
     () =>
       active.locale === PSEUDO_LOCALE
-        ? createPseudoIntl({ messages, onError })
-        : createAppIntl({ locale: active.locale, messages, onError }),
-    [active.locale, messages, onError],
+        ? createPseudoIntl({ messages, onError, timeZone })
+        : createAppIntl({ locale: active.locale, messages, onError, timeZone }),
+    [active.locale, messages, onError, timeZone],
   );
 
   const setLocale = useCallback(

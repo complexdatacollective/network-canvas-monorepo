@@ -163,10 +163,12 @@ const pseudoMessage = (
 export function createPseudoIntl(options: {
   messages?: CatalogMessages;
   onError?: AppIntlErrorHandler;
+  timeZone?: string;
 }): IntlShape {
   const intl = createAppIntl({
     locale: PSEUDO_LOCALE,
     onError: options.onError,
+    timeZone: options.timeZone,
   });
   const cache = new Map<string, MessageFormatElement[]>();
 

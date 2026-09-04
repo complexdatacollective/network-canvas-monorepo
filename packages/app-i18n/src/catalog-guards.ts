@@ -115,10 +115,16 @@ export async function extractMessages(
       );
     }
     const { defaultMessage, description } = entry;
-    if (typeof defaultMessage !== 'string' || defaultMessage === '') {
+    // Trimmed, matching how a translation is checked further down: a lone
+    // space is not copy, and accepting one puts a blank string in front of a
+    // reader with every guard still green.
+    if (typeof defaultMessage !== 'string' || defaultMessage.trim() === '') {
       throw new Error(`extractMessages: "${id}" has no defaultMessage`);
     }
-    if (description === undefined || description === '') {
+    if (
+      description === undefined ||
+      (typeof description === 'string' && description.trim() === '')
+    ) {
       throw new Error(
         `extractMessages: "${id}" has no description for translators`,
       );

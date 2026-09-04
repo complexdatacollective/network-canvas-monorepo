@@ -262,6 +262,34 @@ export const second = defineMessages({
     }
   });
 
+  it('rejects copy that is only whitespace', async () => {
+    // A lone space is not a message and not a description, but it is not the
+    // empty string either — so an exact-equality check let it through, and
+    // both the generated catalog and the freshness guard stayed green with a
+    // blank string on its way to a reader.
+    for (const [name, descriptor] of [
+      [
+        'message',
+        `id: 'demo.blank', defaultMessage: ' ', description: 'Real.'`,
+      ],
+      [
+        'description',
+        `id: 'demo.blank', defaultMessage: 'Real', description: '  '`,
+      ],
+    ] as const) {
+      const dir = mkdtempSync(join(tmpdir(), `app-i18n-blank-${name}-`));
+      writeFileSync(
+        join(dir, 'blank.ts'),
+        `import { defineMessages } from 'react-intl';
+export const messages = defineMessages({ blank: { ${descriptor} } });
+`,
+      );
+      await expect(extractMessages(collectSourceFiles(dir))).rejects.toThrow(
+        /has no (defaultMessage|description for translators)/,
+      );
+    }
+  });
+
   it('rejects FormatJS’s structured description form', async () => {
     // The extractor writes the object straight through, and en.json would then
     // fail its own freshness check on every run: two parses of the same object

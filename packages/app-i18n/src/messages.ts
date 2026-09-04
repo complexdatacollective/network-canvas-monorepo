@@ -46,10 +46,21 @@ export function createAppIntl(options: {
   locale: string;
   messages?: CatalogMessages;
   onError?: AppIntlErrorHandler;
+  /**
+   * IANA zone for `{…, date}` and `{…, time}` arguments. Left unset each
+   * formatter uses the zone of whatever process it runs in, which is a
+   * hydration mismatch waiting to happen on a Next host: the server renders a
+   * timestamp in the container's zone and the browser re-renders it in the
+   * reader's, so a message near midnight changes date between the two.
+   * Fresco is the host this matters for; a Vite SPA has only one process and
+   * can leave it alone.
+   */
+  timeZone?: string;
 }): IntlShape {
   return createIntl(
     {
       locale: options.locale,
+      timeZone: options.timeZone,
       // The reader's locale, NOT 'en'. react-intl formats a message through
       // `defaultLocale` whenever it falls back to the descriptor's
       // `defaultMessage` — which, with the sparse override catalogs this

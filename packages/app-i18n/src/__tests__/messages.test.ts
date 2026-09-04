@@ -73,10 +73,18 @@ describe('createAppIntl locale-aware fallback', () => {
     defaultMessage: '{total, number} items',
     description: 'A message whose grouping is locale-dependent.',
   };
+  // Named zone, not a hopeful instant: without one each formatter uses the
+  // process's zone, so this suite passed in UTC and failed anywhere west of
+  // it — `Due 01/01/20` in America/Los_Angeles, for the same correct en-GB
+  // formatting.
   const when = new Date(Date.UTC(2020, 0, 2));
 
   it('formats an uncatalogued message in the active locale', () => {
-    const intl = createAppIntl({ locale: 'en-GB', messages: {} });
+    const intl = createAppIntl({
+      locale: 'en-GB',
+      messages: {},
+      timeZone: 'UTC',
+    });
     // Day first, as en-GB writes it — not 1/2/20.
     expect(intl.formatMessage(DATED, { when })).toBe('Due 02/01/20');
   });
@@ -85,10 +93,15 @@ describe('createAppIntl locale-aware fallback', () => {
     // The bug this guards was visible as a disagreement between these two
     // paths: the same message formatted one way when translated and another
     // when it fell through.
-    const uncatalogued = createAppIntl({ locale: 'en-GB', messages: {} });
+    const uncatalogued = createAppIntl({
+      locale: 'en-GB',
+      messages: {},
+      timeZone: 'UTC',
+    });
     const catalogued = createAppIntl({
       locale: 'en-GB',
       messages: { [DATED.id]: DATED.defaultMessage },
+      timeZone: 'UTC',
     });
     expect(uncatalogued.formatMessage(DATED, { when })).toBe(
       catalogued.formatMessage(DATED, { when }),
@@ -96,8 +109,37 @@ describe('createAppIntl locale-aware fallback', () => {
   });
 
   it('still renders the source locale correctly', () => {
-    const intl = createAppIntl({ locale: 'en', messages: {} });
+    const intl = createAppIntl({ locale: 'en', messages: {}, timeZone: 'UTC' });
     expect(intl.formatMessage(DATED, { when })).toBe('Due 1/2/20');
     expect(intl.formatMessage(COUNTED, { total: 1234 })).toBe('1,234 items');
+  });
+});
+
+describe('createAppIntl time zone', () => {
+  const AT_MIDNIGHT = {
+    id: 'demo.midnight',
+    defaultMessage: 'Due {when, date, short}',
+    description:
+      'A timestamp that falls on different dates in different zones.',
+  };
+  const when = new Date(Date.UTC(2020, 0, 2));
+
+  it('renders one date for one instant, wherever the process is', () => {
+    // The reason this option exists: a Next host formats on the server and
+    // again after hydration, in two processes that need not share a zone. An
+    // instant at midnight UTC is 1 January in Los Angeles and 2 January in
+    // Tokyo, so without a named zone the two renders disagree and React
+    // reports a hydration mismatch on a date nobody typed.
+    const inTokyo = createAppIntl({
+      locale: 'en',
+      timeZone: 'Asia/Tokyo',
+    }).formatMessage(AT_MIDNIGHT, { when });
+    const inLosAngeles = createAppIntl({
+      locale: 'en',
+      timeZone: 'America/Los_Angeles',
+    }).formatMessage(AT_MIDNIGHT, { when });
+
+    expect(inTokyo).toBe('Due 1/2/20');
+    expect(inLosAngeles).toBe('Due 1/1/20');
   });
 });
