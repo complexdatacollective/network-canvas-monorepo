@@ -20,6 +20,25 @@ describe('STAGE_TYPE_COLORS', () => {
     }
   });
 
+  it('shares a base colour only between a tolerated pair of stage types', () => {
+    const byBase = new Map<string, string[]>();
+    for (const [stage, color] of Object.entries(STAGE_TYPE_COLORS)) {
+      const base = color.replace(/-dark$/, '');
+      byBase.set(base, [...(byBase.get(base) ?? []), stage]);
+    }
+    const shared = [...byBase.values()]
+      .filter((stages) => stages.length > 1)
+      .map((stages) => stages.sort());
+
+    expect(shared).toEqual([
+      ['NameGenerator', 'NameGeneratorRoster'],
+      ['AlterEdgeForm', 'AlterForm'],
+      ['Narrative', 'Sociogram'],
+      ['DyadCensus', 'OneToManyDyadCensus'],
+      ['FamilyPedigree', 'NarrativePedigree'],
+    ]);
+  });
+
   it('recognises schema stage types and nothing else', () => {
     expect(isStageType('Sociogram')).toBe(true);
     expect(isStageType('FutureInterface')).toBe(false);
