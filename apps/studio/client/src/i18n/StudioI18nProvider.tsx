@@ -155,14 +155,25 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
   // the moment it changes.
   const sessionState = useQuery(sessionQueryOptions).data;
 
-  // An unattributed marker is owned by "whoever this session turns out to be",
-  // and the session ending is the moment that stops being answerable: the next
-  // identity to arrive belongs to somebody else, and a marker that adopted
-  // them would refuse them their own preference for the rest of their visit.
-  // An attributed one needs no such rule — it names its account, and
-  // `applyServerPreference` drops it as soon as another one signs in.
+  // What a sign-out ends, in a provider whose refs outlive it. Sign-in by
+  // password completes inside the SPA (`SignIn` records the session and
+  // invalidates, with no document load to clear anything), so the next account
+  // can arrive with all of this still standing.
+  //
+  // A queued write, because it has not been sent yet: it would go out with the
+  // NEXT researcher's cookie and store this researcher's choice on their
+  // account. Bumping the generation supersedes every write still waiting its
+  // turn, the same way a newer choice does.
+  //
+  // An unattributed marker, because it is owned by "whoever this session turns
+  // out to be": the next identity to arrive belongs to somebody else, and a
+  // marker that adopted them would refuse them their own preference for the
+  // rest of their visit. An attributed one needs no such rule — it names its
+  // account, and `applyServerPreference` drops it as soon as another one
+  // signs in.
   useEffect(() => {
     if (sessionState !== 'signedOut') return;
+    writeGeneration.current += 1;
     if (pendingServerAck.current?.userId === null) {
       pendingServerAck.current = null;
     }

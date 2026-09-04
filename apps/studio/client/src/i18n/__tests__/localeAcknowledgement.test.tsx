@@ -262,6 +262,37 @@ describe('two choices in quick succession', () => {
     expect(harness.preference).toBe('en-GB');
   });
 
+  it('does not send one that is still waiting when the session ends', async () => {
+    // A queued write has not been sent yet, and the password form signs in
+    // inside the SPA — so a write left waiting here goes out with the NEXT
+    // researcher's cookie and stores this researcher's choice on their
+    // account.
+    const settle: ((value: { locale: string | null }) => void)[] = [];
+    updateLocale.mockImplementation(
+      () => new Promise((resolve) => settle.push(resolve)),
+    );
+    const queryClient = renderProvider({ signedIn: true, userId: 'user-1' });
+
+    act(() => harness.setLocale('en-GB'));
+    await waitFor(() => expect(settle).toHaveLength(1));
+    act(() => harness.setLocale('en'));
+
+    queryClient.setQueryData(sessionQueryOptions.queryKey, 'signedOut');
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // Somebody else signs in, and the first request finally answers — which is
+    // what lets the queued one take its turn.
+    queryClient.setQueryData(sessionQueryOptions.queryKey, 'signedIn');
+    await act(async () => {
+      settle[0]?.({ locale: 'en-GB' });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(updateLocale).toHaveBeenCalledTimes(1);
+  });
+
   it('does not send a choice the researcher has already replaced', async () => {
     // The queued write is a request the server would have to process and then
     // immediately overwrite, and while it is in flight the account holds a
