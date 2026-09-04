@@ -296,8 +296,13 @@ export default function StudioEverythingBar() {
   // offering it, and the one thing a launcher must never do.
   const commands = useMemo(
     () =>
-      createMockCommandsProvider({ teamId, studyId, canManageTeam: canManage }),
-    [teamId, studyId, canManage],
+      createMockCommandsProvider({
+        teamId,
+        studyId,
+        canManageTeam: canManage,
+        intl,
+      }),
+    [teamId, studyId, canManage, intl],
   );
   const documentation = useMemo(() => createMockDocumentationProvider(), []);
 

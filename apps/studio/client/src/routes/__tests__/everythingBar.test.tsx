@@ -532,6 +532,7 @@ describe('commands', () => {
       teamId: 'team-a',
       studyId: 'study-1',
       canManageTeam: true,
+      intl: createAppIntl({ locale: 'en' }),
     });
     if (!provider.local) throw new Error('the commands provider is local');
 
@@ -544,6 +545,32 @@ describe('commands', () => {
       expect(item.activate.kind).toBe('open');
       expect(registeredPathFor(router, item.activate.href)).toBeDefined();
     }
+  });
+
+  it('reads its rows out of the catalog, like every other string on screen', () => {
+    // The commands are invented, but they are copy a researcher reads, in the
+    // shipped bar. Left as literals they would stay English while the bar
+    // around them changed language — the destinations beside them resolve
+    // through the same formatter.
+    const provider = createMockCommandsProvider({
+      teamId: 'team-a',
+      studyId: 'study-1',
+      canManageTeam: true,
+      intl: createAppIntl({
+        locale: 'en',
+        messages: {
+          'studio.everythingBar.command.inviteMember': 'Ask somebody to join',
+          'studio.nav.context.team': 'Research team',
+        },
+      }),
+    });
+    if (!provider.local) throw new Error('the commands provider is local');
+
+    const invite = provider
+      .items()
+      .find((item) => item.id === 'team:team-a:members.invite');
+    expect(invite?.label).toBe('Ask somebody to join');
+    expect(invite?.context).toBe('Research team');
   });
 });
 

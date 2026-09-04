@@ -221,9 +221,11 @@ export const navLabelMessages = defineMessages({
 });
 
 /**
- * The bar's secondary line: which area a destination belongs to.
+ * The bar's secondary line: which area a destination or command belongs to.
+ * Exported because the commands provider labels its rows from the same set —
+ * two rows about the same team should not name it in two different words.
  */
-const navContextMessages = defineMessages({
+export const navContextMessages = defineMessages({
   platform: {
     id: 'studio.nav.context.platform',
     defaultMessage: 'Platform',

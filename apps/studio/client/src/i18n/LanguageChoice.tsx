@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, useLayoutEffect } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl, useAppLocale } from '@codaco/app-i18n/react';
@@ -68,8 +68,17 @@ const messages = defineMessages({
 export default function LanguageChoice() {
   const intl = useAppIntl();
   const { locales } = useAppLocale();
-  const { preference, saveState, setLocale } = useStudioLocale();
+  const { preference, saveState, setLocale, resetSaveState } =
+    useStudioLocale();
   const fieldId = useId();
+
+  // The result below belongs to a choice made HERE. The provider holds it and
+  // outlives every screen, so without this a researcher who saved a language
+  // earlier in the visit meets "Language saved" again the moment they come
+  // back — announced by the live region, about nothing they just did. Before
+  // paint, so the stale alert is never seen and never reaches the
+  // accessibility tree.
+  useLayoutEffect(resetSaveState, [resetSaveState]);
 
   return (
     <>

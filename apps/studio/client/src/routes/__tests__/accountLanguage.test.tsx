@@ -125,6 +125,7 @@ function renderAt(path: string) {
   );
   return {
     queryClient,
+    router,
     ...render(
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
@@ -299,6 +300,31 @@ describe('the language screen', () => {
     expect(languageSelect()).toHaveValue('en-GB');
     expect(document.documentElement.lang).toBe('en-GB');
     expect(window.localStorage.getItem(MIRROR_KEY)).toBe('en-GB');
+  });
+
+  it('does not report an earlier choice to whoever opens the screen next', async () => {
+    // The save state lives in the provider, which is mounted at the root and
+    // outlives every screen. Left alone it announces the result of a choice
+    // made earlier in the visit — through a live region, at somebody who has
+    // just arrived and chosen nothing.
+    const { router } = renderAt('/account/language');
+    await screen.findByRole('heading', { level: 1, name: 'Language' });
+
+    fireEvent.change(languageSelect(), { target: { value: 'en-GB' } });
+    await screen.findByText(/Language saved/, { selector: '[role=status]' });
+
+    await act(async () => {
+      await router.navigate({ to: '/account' });
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Profile' });
+    await act(async () => {
+      await router.navigate({ to: '/account/language' });
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Language' });
+
+    expect(screen.queryByText(/Language saved/)).not.toBeInTheDocument();
+    // The choice itself is untouched: what is forgotten is the report of it.
+    expect(languageSelect()).toHaveValue('en-GB');
   });
 });
 

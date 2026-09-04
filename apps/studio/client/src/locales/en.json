@@ -335,6 +335,22 @@
     "defaultMessage": "Shortcut: {keys}",
     "description": "What a result's keyboard chord means; {keys} is the formatted list of keys to press in order."
   },
+  "studio.everythingBar.command.createStudy": {
+    "defaultMessage": "Create a study",
+    "description": "Everything-bar command that opens the new-study form. A placeholder entry until the command registry exists (#1249)."
+  },
+  "studio.everythingBar.command.exportStudy": {
+    "defaultMessage": "Export this study",
+    "description": "Everything-bar command that opens the study's export screen. A placeholder entry until the command registry exists (#1324)."
+  },
+  "studio.everythingBar.command.inviteMember": {
+    "defaultMessage": "Invite a team member",
+    "description": "Everything-bar command that opens the team's invitation form. A placeholder entry until the command registry exists (#1263)."
+  },
+  "studio.everythingBar.command.openCodebook": {
+    "defaultMessage": "Open the codebook",
+    "description": "Everything-bar command that opens the protocol's codebook. A placeholder entry until the command registry exists (#1273)."
+  },
   "studio.everythingBar.dialog": {
     "defaultMessage": "Search and commands",
     "description": "Accessible name of the everything-bar dialog."

@@ -1,10 +1,14 @@
 import { BookMarked, Download, Plus, UserPlus } from 'lucide-react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
 import type {
   EverythingBarItem,
   EverythingBarProvider,
   EverythingBarSearchPage,
 } from '@codaco/fresco-ui/navigation/EverythingBar';
+
+import { navContextMessages } from './navigationManifest.ts';
 
 /**
  * MOCK EVERYTHING-BAR PROVIDERS — FIXTURES, NOT INTEGRATIONS.
@@ -53,6 +57,39 @@ export const MOCK_DOCUMENTATION_FAILING_QUERY = 'unavailable';
 /** Results per page, matching §3.4's default group bound. */
 const MOCK_DOCUMENTATION_PAGE_SIZE = 5;
 
+/**
+ * Invented copy, but copy a researcher reads: these rows are in the shipped
+ * bar, so they are written as descriptors and resolved at render like every
+ * other string on screen. The registry that replaces this file carries
+ * descriptors too, so nothing about the swap changes here.
+ */
+const mockCommandMessages = defineMessages({
+  exportStudy: {
+    id: 'studio.everythingBar.command.exportStudy',
+    defaultMessage: 'Export this study',
+    description:
+      "Everything-bar command that opens the study's export screen. A placeholder entry until the command registry exists (#1324).",
+  },
+  openCodebook: {
+    id: 'studio.everythingBar.command.openCodebook',
+    defaultMessage: 'Open the codebook',
+    description:
+      "Everything-bar command that opens the protocol's codebook. A placeholder entry until the command registry exists (#1273).",
+  },
+  inviteMember: {
+    id: 'studio.everythingBar.command.inviteMember',
+    defaultMessage: 'Invite a team member',
+    description:
+      "Everything-bar command that opens the team's invitation form. A placeholder entry until the command registry exists (#1263).",
+  },
+  createStudy: {
+    id: 'studio.everythingBar.command.createStudy',
+    defaultMessage: 'Create a study',
+    description:
+      'Everything-bar command that opens the new-study form. A placeholder entry until the command registry exists (#1249).',
+  },
+});
+
 type MockCommandContext = {
   /** The team the researcher is acting in, if one is known. */
   teamId?: string;
@@ -65,6 +102,13 @@ type MockCommandContext = {
    * cannot advertise an action the screen behind it refuses.
    */
   canManageTeam: boolean;
+  /**
+   * Resolves the descriptors above into the strings the bar renders, exactly
+   * as the destinations provider does. The caller's memo includes it, so a
+   * change of language re-creates the provider and the rows re-resolve rather
+   * than staying in the language they were built in.
+   */
+  intl: IntlShape;
 };
 
 /**
@@ -85,6 +129,7 @@ function mockCommandItems({
   teamId,
   studyId,
   canManageTeam,
+  intl,
 }: MockCommandContext): EverythingBarItem[] {
   return [
     ...(studyId === undefined
@@ -93,8 +138,8 @@ function mockCommandItems({
           {
             id: `study:${studyId}:export.start`,
             group: 'commands' as const,
-            label: 'Export this study',
-            context: 'Study',
+            label: intl.formatMessage(mockCommandMessages.exportStudy),
+            context: intl.formatMessage(navContextMessages.study),
             icon: Download,
             rank: { tier: 0, position: 0 },
             activate: {
@@ -106,8 +151,8 @@ function mockCommandItems({
           {
             id: `study:${studyId}:codebook.open`,
             group: 'commands' as const,
-            label: 'Open the codebook',
-            context: 'Protocol',
+            label: intl.formatMessage(mockCommandMessages.openCodebook),
+            context: intl.formatMessage(navContextMessages.protocol),
             icon: BookMarked,
             rank: { tier: 0, position: 1 },
             activate: {
@@ -123,8 +168,8 @@ function mockCommandItems({
           {
             id: `team:${teamId}:members.invite`,
             group: 'commands' as const,
-            label: 'Invite a team member',
-            context: 'Team',
+            label: intl.formatMessage(mockCommandMessages.inviteMember),
+            context: intl.formatMessage(navContextMessages.team),
             icon: UserPlus,
             rank: { tier: 1, position: 0 },
             activate: {
@@ -140,8 +185,8 @@ function mockCommandItems({
           {
             id: `team:${teamId}:studies.create`,
             group: 'commands' as const,
-            label: 'Create a study',
-            context: 'Team',
+            label: intl.formatMessage(mockCommandMessages.createStudy),
+            context: intl.formatMessage(navContextMessages.team),
             icon: Plus,
             rank: { tier: 1, position: 1 },
             activate: {

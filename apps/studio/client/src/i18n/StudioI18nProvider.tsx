@@ -56,6 +56,14 @@ type StudioLocaleContextValue = Readonly<{
    */
   setLocale: (locale: string | null) => void;
   /**
+   * Forgets what became of the last write. The provider outlives every screen,
+   * so the control calls this as it mounts: a result belongs to the choice that
+   * produced it, and announcing it again to whoever arrives next — through a
+   * live region, at somebody who has chosen nothing — describes a visit that is
+   * not theirs.
+   */
+  resetSaveState: () => void;
+  /**
    * `LocaleSync`'s entry point: the server-stored preference for `userId`,
    * applied unless a fresher local change by that same account is still
    * unacknowledged.
@@ -235,6 +243,8 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
     [queryClient],
   );
 
+  const resetSaveState = useCallback(() => setSaveState('idle'), []);
+
   const applyServerPreference = useCallback(
     (locale: string | null, userId: string) => {
       // A development aid outranks the account: the pseudo-locale is never
@@ -279,8 +289,14 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<StudioLocaleContextValue>(
-    () => ({ preference, saveState, setLocale, applyServerPreference }),
-    [preference, saveState, setLocale, applyServerPreference],
+    () => ({
+      preference,
+      saveState,
+      setLocale,
+      resetSaveState,
+      applyServerPreference,
+    }),
+    [preference, saveState, setLocale, resetSaveState, applyServerPreference],
   );
 
   return (
