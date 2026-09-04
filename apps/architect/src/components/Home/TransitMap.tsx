@@ -1,9 +1,14 @@
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef } from 'react';
 
+import {
+  stageTypeColorStyle,
+  stageTypeIcon,
+} from '@codaco/fresco-ui/stages/stageTypes';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
+import type { StageType } from '@codaco/protocol-validation';
 
-import { STAGE_META, type TimelineStop } from './timelineScript';
+import { type TimelineStop } from './timelineScript';
 
 // Internal SVG design coordinates. The outer container width controls the
 // actual rendered size; everything inside scales via viewBox so stations,
@@ -91,16 +96,6 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
               fill="url(#nc-timeline-fade)"
             />
           </mask>
-          {/* Forces the (default-black) icon shapes to solid white while
-              preserving their alpha — the SVG-native equivalent of the
-              `brightness-0 invert` CSS filter, which is reliable in Safari
-              where `<img>` inside `<foreignObject>` is not. */}
-          <filter id="nc-icon-white">
-            <feColorMatrix
-              type="matrix"
-              values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0"
-            />
-          </filter>
         </defs>
 
         <g mask="url(#nc-timeline-mask)">
@@ -113,7 +108,6 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
               if (i === 0) return null;
               const prev = stations[i - 1];
               if (!prev) return null;
-              const prevMeta = STAGE_META[prev.key];
               const y1 = prev.absoluteIndex * STATION_GAP;
               const y2 = s.absoluteIndex * STATION_GAP;
               const isNewSeg = s.absoluteIndex === newestAbs;
@@ -136,7 +130,7 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
                     mass: 2,
                     delay: segDelay,
                   }}
-                  stroke={prevMeta.color}
+                  style={{ stroke: stageTypeColorStyle(prev.type).color }}
                   strokeWidth={LINE_STROKE}
                   strokeLinecap="round"
                   opacity={0.9}
@@ -163,7 +157,6 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
 
             {stations.map((s, i) => {
               const y = s.absoluteIndex * STATION_GAP;
-              const meta = STAGE_META[s.key];
               const isNewest = s.absoluteIndex === newestAbs;
               const entryDelay = reducedMotion
                 ? undefined
@@ -177,7 +170,7 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
                   key={`station-${s.absoluteIndex}`}
                   x={STATION_X}
                   y={y}
-                  meta={meta}
+                  type={s.type}
                   label={s.label}
                   sub={s.sub}
                   isNewest={isNewest}
@@ -197,7 +190,7 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
 type StationProps = {
   x: number;
   y: number;
-  meta: (typeof STAGE_META)[keyof typeof STAGE_META];
+  type: StageType;
   label: string;
   sub: string;
   isNewest: boolean;
@@ -209,7 +202,7 @@ type StationProps = {
 function Station({
   x,
   y,
-  meta,
+  type,
   label,
   sub,
   isNewest,
@@ -217,6 +210,10 @@ function Station({
   index,
   entryDelay,
 }: StationProps) {
+  // Palette colours are CSS custom properties, which SVG presentation
+  // attributes do not resolve — they have to be set as style properties.
+  const { color, contrast } = stageTypeColorStyle(type);
+  const StageIcon = stageTypeIcon(type);
   const shouldEntry = entryDelay !== undefined;
   const baseDelay = entryDelay ?? 0;
   const stationSpring = {
@@ -254,7 +251,7 @@ function Station({
             cx={x}
             cy={y}
             fill="none"
-            stroke={meta.color}
+            style={{ stroke: color }}
             initial={{ r: STATION_R, opacity: 1, strokeWidth: 6 }}
             animate={{ r: HALO_R, opacity: 0, strokeWidth: 1.5 }}
             transition={{
@@ -265,15 +262,13 @@ function Station({
           />
         )}
         <circle cx={x} cy={y} r={STATION_R} fill="#fff" />
-        <circle cx={x} cy={y} r={STATION_INNER_R} fill={meta.color} />
-        <image
-          href={meta.icon}
+        <circle cx={x} cy={y} r={STATION_INNER_R} style={{ fill: color }} />
+        <StageIcon
           x={x - ICON_SIZE / 2}
           y={y - ICON_SIZE / 2}
           width={ICON_SIZE}
           height={ICON_SIZE}
-          preserveAspectRatio="xMidYMid meet"
-          filter="url(#nc-icon-white)"
+          style={{ stroke: contrast }}
         />
       </motion.g>
 
@@ -320,7 +315,7 @@ function Station({
                   className:
                     'mt-0.75 text-[12px] leading-none font-bold tracking-[0.16em]',
                 })}
-                style={{ color: meta.color }}
+                style={{ color }}
               >
                 {sub}
               </div>
