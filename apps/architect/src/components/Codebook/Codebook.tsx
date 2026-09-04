@@ -8,6 +8,7 @@ import CheckboxField from '@codaco/fresco-ui/form/fields/Checkbox';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Form from '@codaco/fresco-ui/form/Form';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
+import { Label } from '@codaco/fresco-ui/Label';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Section from '@codaco/fresco-ui/Section';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -79,19 +80,16 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
               value={unusedOnly}
               onChange={(value) => setUnusedOnly(Boolean(value))}
             />
-            <label
-              htmlFor={unusedOnlyId}
-              className="font-heading cursor-pointer text-base leading-snug font-bold"
-            >
+            <Label htmlFor={unusedOnlyId} className="cursor-pointer">
               Show unused only
-            </label>
+            </Label>
           </div>
         </div>
       </Surface>
 
       {!hasAnyContent && (
         <div className="bg-surface-2 border-outline mb-7 rounded border p-7">
-          <Paragraph className="text-center text-current/70">
+          <Paragraph emphasis="muted" className="text-center">
             There are currently no types or attributes defined in this protocol.
             Use the buttons below to create your first node or edge type, or add
             ego attributes.
@@ -126,7 +124,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
           </Button>
         </div>
         {nodes.length === 0 ? (
-          <Paragraph className="text-current/70">No node types yet.</Paragraph>
+          <Paragraph emphasis="muted">No node types yet.</Paragraph>
         ) : (
           <div>
             {nodes.map((node) => (
@@ -160,7 +158,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
           </Button>
         </div>
         {edges.length === 0 ? (
-          <Paragraph className="text-current/70">No edge types yet.</Paragraph>
+          <Paragraph emphasis="muted">No edge types yet.</Paragraph>
         ) : (
           <div>
             {edges.map((edge) => (

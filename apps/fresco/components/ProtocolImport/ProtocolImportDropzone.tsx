@@ -68,7 +68,12 @@ export default function ProtocolImportDropzone({
         <Heading level="h4" margin="none">
           {isDragActive ? 'Drop files here' : 'Import protocols'}
         </Heading>
-        <Paragraph margin="none" emphasis="muted" className="mt-1 text-sm">
+        <Paragraph
+          intent="smallText"
+          margin="none"
+          emphasis="muted"
+          className="mt-1"
+        >
           Drag & drop <code>{PROTOCOL_EXTENSION}</code> files here
         </Paragraph>
       </div>

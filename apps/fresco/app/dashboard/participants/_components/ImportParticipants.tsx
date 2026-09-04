@@ -158,7 +158,12 @@ export default function ImportParticipants() {
             <Heading level="h4" margin="none">
               {isDragActive ? 'Drop file here' : 'Import participants'}
             </Heading>
-            <Paragraph margin="none" emphasis="muted" className="mt-1 text-sm">
+            <Paragraph
+              intent="smallText"
+              margin="none"
+              emphasis="muted"
+              className="mt-1"
+            >
               Drag & drop a <code>.csv</code> file here
             </Paragraph>
           </div>

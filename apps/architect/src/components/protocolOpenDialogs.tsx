@@ -129,7 +129,7 @@ export const showProtocolOpenResultDialog = async ({
           >
             {result.message}
           </pre>
-          <Paragraph className="text-sm">
+          <Paragraph intent="smallText">
             If the problem persists, reach out on our&nbsp;
             <ExternalLink href="https://community.networkcanvas.com/">
               community website.
@@ -148,7 +148,7 @@ export const showProtocolOpenResultDialog = async ({
     children: (
       <>
         <Paragraph>{result.message}</Paragraph>
-        <Paragraph className="mt-4 text-sm">
+        <Paragraph intent="smallText" className="mt-4">
           If the problem persists, reach out on our&nbsp;
           <ExternalLink href="https://community.networkcanvas.com/">
             community website.

@@ -67,7 +67,7 @@ const Network = ({
   return (
     <>
       {isTruncated && (
-        <Paragraph className="mb-2 text-sm text-current/70">
+        <Paragraph intent="smallText" emphasis="muted" className="mb-2">
           Showing {ROW_LIMIT} of {totalRows.toLocaleString()} rows
         </Paragraph>
       )}

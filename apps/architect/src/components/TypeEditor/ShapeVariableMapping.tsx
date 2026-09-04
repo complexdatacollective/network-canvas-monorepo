@@ -438,7 +438,7 @@ const ShapeVariableMapping = ({
             onChange={handleToggle}
           />
         </div>
-        <Paragraph className="mt-1 text-sm text-current/70">
+        <Paragraph intent="smallText" emphasis="muted" className="mt-1">
           Override the default shape based on the value of a node&apos;s
           attribute.
         </Paragraph>

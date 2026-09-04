@@ -140,7 +140,7 @@ const Assets = ({
         className="!flex-none"
         viewportClassName="pr-3"
         emptyState={
-          <Paragraph margin="none" className="py-10 text-current/70">
+          <Paragraph emphasis="muted" margin="none" className="py-10">
             No resources to display.
           </Paragraph>
         }

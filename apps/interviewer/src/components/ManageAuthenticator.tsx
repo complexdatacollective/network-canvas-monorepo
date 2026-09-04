@@ -200,7 +200,11 @@ export function ChangePassphraseForm({
         disabled={busy}
       />
       {nextPhraseConfirm.length > 0 && nextPhrase !== nextPhraseConfirm && (
-        <Paragraph margin="none" className="text-destructive text-sm">
+        <Paragraph
+          intent="smallText"
+          margin="none"
+          className="text-destructive"
+        >
           Passphrases do not match.
         </Paragraph>
       )}

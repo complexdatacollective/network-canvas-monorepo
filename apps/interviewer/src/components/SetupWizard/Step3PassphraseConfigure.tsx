@@ -107,7 +107,11 @@ export function Step3PassphraseConfigureView({
         placeholder="Confirm passphrase"
       />
       {confirmValue.length > 0 && phrase !== confirmValue && (
-        <Paragraph margin="none" className="text-destructive text-sm">
+        <Paragraph
+          intent="smallText"
+          margin="none"
+          className="text-destructive"
+        >
           Passphrases do not match.
         </Paragraph>
       )}

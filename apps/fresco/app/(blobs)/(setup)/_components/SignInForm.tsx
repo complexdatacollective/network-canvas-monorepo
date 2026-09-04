@@ -345,7 +345,10 @@ export const SignInForm = () => {
           </Button>
 
           {passkeyError && (
-            <Paragraph className="text-destructive text-center text-sm">
+            <Paragraph
+              intent="smallText"
+              className="text-destructive text-center"
+            >
               {passkeyError}
             </Paragraph>
           )}

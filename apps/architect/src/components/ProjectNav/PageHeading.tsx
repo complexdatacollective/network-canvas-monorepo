@@ -23,7 +23,7 @@ const PageHeading = ({ title, description, actions }: PageHeadingProps) => (
         {actions ? <div className="flex shrink-0 gap-5">{actions}</div> : null}
       </div>
       {description ? (
-        <Paragraph intent="lead" margin="none" className="text-current/70">
+        <Paragraph intent="lead" emphasis="muted" margin="none">
           {description}
         </Paragraph>
       ) : null}

@@ -523,7 +523,11 @@ export default function StagesMenu({
       className="min-h-0 flex-1"
       viewportClassName={isHorizontal ? 'py-6' : 'py-4'}
       emptyState={
-        <Paragraph margin="none" className="text-text/70 p-8 text-sm">
+        <Paragraph
+          intent="smallText"
+          margin="none"
+          className="text-text/70 p-8"
+        >
           Nothing matched your search term.
         </Paragraph>
       }

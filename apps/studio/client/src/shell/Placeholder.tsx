@@ -56,7 +56,7 @@ export default function Placeholder({
         {title}
       </Heading>
       <Paragraph>{description}</Paragraph>
-      <Paragraph className="text-text/60 text-sm">
+      <Paragraph intent="smallText" className="text-text/60">
         This screen has not been built yet. It is specified in {issue}.
       </Paragraph>
       {action}

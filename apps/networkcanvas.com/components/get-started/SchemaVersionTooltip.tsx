@@ -40,7 +40,7 @@ export function SchemaVersionTooltip() {
         }
       />
       <TooltipContent className="text-text max-w-sm">
-        <Paragraph margin="none" className="text-sm leading-relaxed">
+        <Paragraph intent="smallText" margin="none" className="leading-relaxed">
           {t('shared.schemaVersionInfo')}
         </Paragraph>
         <NativeLink

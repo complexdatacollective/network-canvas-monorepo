@@ -57,11 +57,11 @@ const StageHeading = ({
       {/** *:data-[field-name=label] is because there's no way to add classes to the Field */}
       <div className="flex min-w-0 flex-col justify-center *:data-[field-name=label]:m-0">
         <Paragraph
+          emphasis="muted"
           className={headingVariants({
             level: 'label',
             variant: 'all-caps',
             margin: 'none',
-            className: 'text-current/70',
           })}
         >
           Stage {stageNumber} of {totalStages}

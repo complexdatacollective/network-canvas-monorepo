@@ -562,11 +562,7 @@ export function SummerUpdatePage() {
               >
                 {t('features.heading')}
               </Heading>
-              <Paragraph
-                intent="lead"
-                emphasis="muted"
-                className="max-w-3xl text-current/70"
-              >
+              <Paragraph intent="lead" emphasis="muted" className="max-w-3xl">
                 {t.rich('features.introduction', {
                   definition: renderProtocolSchema,
                 })}
@@ -715,7 +711,7 @@ export function SummerUpdatePage() {
                       <Heading level="h3" variant="subheading">
                         {activeInterface.name}
                       </Heading>
-                      <Paragraph emphasis="muted" className="text-current/70">
+                      <Paragraph emphasis="muted">
                         {activeInterface.summary}
                       </Paragraph>
                       <ul className="mt-5 space-y-3">
@@ -742,7 +738,6 @@ export function SummerUpdatePage() {
                               intent="smallText"
                               emphasis="muted"
                               margin="none"
-                              className="text-current/70"
                             >
                               {detail}
                             </Paragraph>

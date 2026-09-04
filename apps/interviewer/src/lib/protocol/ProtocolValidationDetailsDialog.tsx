@@ -125,8 +125,9 @@ function ProtocolValidationDetailsDialogFooter({
   return (
     <>
       <Paragraph
+        intent="smallText"
         aria-live="polite"
-        className="phone-landscape:mr-auto min-h-lh text-sm"
+        className="phone-landscape:mr-auto min-h-lh"
         emphasis={copyStatus === 'failed' ? 'default' : 'muted'}
         margin="none"
       >

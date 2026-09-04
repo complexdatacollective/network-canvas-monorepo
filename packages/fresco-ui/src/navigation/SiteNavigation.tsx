@@ -374,8 +374,9 @@ function SoftwareCard({
           {link.name}
         </span>
         <Paragraph
+          intent="smallText"
           margin="none"
-          className="text-text/85 mt-1.5 text-sm leading-snug"
+          className="text-text/85 mt-1.5 leading-snug"
         >
           {link.description}
         </Paragraph>

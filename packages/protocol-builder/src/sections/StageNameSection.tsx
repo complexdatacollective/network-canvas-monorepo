@@ -82,11 +82,11 @@ export default function StageNameSection({
       </span>
       {position && (
         <Paragraph
+          emphasis="muted"
           className={headingVariants({
             level: 'label',
             variant: 'all-caps',
             margin: 'none',
-            className: 'text-current/70',
           })}
         >
           {words.position(position.index, position.total)}

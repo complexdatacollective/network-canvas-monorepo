@@ -308,8 +308,9 @@ const Home = () => {
                   </Heading>
                   <Paragraph
                     intent="lead"
+                    emphasis="muted"
                     margin="none"
-                    className="hidden max-w-xl text-current/70 [@container_(height>760px)]:block"
+                    className="hidden max-w-xl [@container_(height>760px)]:block"
                   >
                     Architect is the protocol designer for Network Canvas.
                     Compose name generators, capture ordinal and categorical
