@@ -279,7 +279,17 @@ pnpm --filter @codaco/studio-server sync-fingerprint
 
 That command also regenerates the ERD, its sidecar summary, and the README
 section above. `generate:erd` is available when only the documentation artifact
-needs refreshing; the test suite rejects either generated artifact when stale.
+needs refreshing. CI re-runs the generator and rejects either committed
+artifact once it has drifted, which you can do yourself with:
+
+```bash
+pnpm --filter @codaco/studio-server check:schema-docs
+```
+
+It is a check of its own rather than a test case because rendering the diagram
+needs no database, and a per-test budget shared with the suites that do is the
+wrong bound for it. The test suite still holds the section to the current
+fingerprint and to naming every sidecar, both read from the committed files.
 
 A mismatch stops the server with the remedies: `apply-schema` reconciles the
 database in place, or

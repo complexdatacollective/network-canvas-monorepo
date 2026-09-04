@@ -11,7 +11,7 @@ import { TEAM_ROLES, type TeamRole } from '@codaco/studio-rpc';
 import { insertRows, type SeedRowValue } from './insert.ts';
 import { seedTime, seedUuid, shiftDays } from './rng.ts';
 
-export const SEED_ADMIN_NAME = 'Studio Admin';
+const SEED_ADMIN_NAME = 'Studio Admin';
 export const SEED_ADMIN_EMAIL = 'admin@studio.test';
 export const SEED_ADMIN_PASSWORD = 'studio-admin-not-for-production';
 
