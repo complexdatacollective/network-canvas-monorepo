@@ -115,15 +115,42 @@ describe('a choice that never reached the account', () => {
     expect(window.localStorage.getItem(MIRROR_KEY)).toBe('en');
   });
 
-  it('does not suppress it when identity has not resolved yet', () => {
-    // Signed in, but nobody to attribute the write to. Sending it anyway
-    // would produce a marker that answers for whichever account resolves.
+  it('is still written when identity has not resolved yet', async () => {
+    // Signed in, with nobody yet to attribute the write to. The request needs
+    // no identity — the session cookie carries it — so dropping it lost the
+    // choice outright: no write went out, no marker was left, and the `me`
+    // payload that arrived moments later put the researcher back on the
+    // language they had just moved off.
     renderProvider({ signedIn: true, userId: undefined });
 
     act(() => harness.setLocale('en-GB'));
-    expect(updateLocale).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(updateLocale).toHaveBeenCalledWith({ locale: 'en-GB' }),
+    );
 
     act(() => harness.applyServerPreference('en', 'user-1'));
+
+    expect(harness.preference).toBe('en-GB');
+  });
+
+  it('is dropped when the session ends before identity ever arrives', async () => {
+    // The write above is owned by "whoever this session turns out to be", and
+    // signing out is the moment that stops being answerable: the next identity
+    // belongs to somebody else, and a marker that adopted them would refuse
+    // them their own preference for the rest of their visit.
+    const queryClient = renderProvider({ signedIn: true, userId: undefined });
+
+    act(() => harness.setLocale('en-GB'));
+    await waitFor(() => expect(updateLocale).toHaveBeenCalledTimes(1));
+
+    queryClient.setQueryData(sessionQueryOptions.queryKey, 'signedOut');
+    // Query notifications reach their observers on a macrotask, so the
+    // provider learns the session ended one turn after the cache does.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    act(() => harness.applyServerPreference('en', 'user-2'));
 
     expect(harness.preference).toBe('en');
   });
@@ -176,10 +203,13 @@ describe('an unacknowledged write', () => {
 });
 
 describe('two choices in quick succession', () => {
-  it('lets only the newest write report its result', async () => {
-    // Independent requests can settle out of order. An older reply must not
-    // revive its own save state, nor acknowledge the newer locale as though
-    // the server had stored it.
+  it('reaches the server one at a time, newest last', async () => {
+    // Two requests in flight can settle in either order, and the server keeps
+    // whichever landed last — so an older request answering last leaves the
+    // account storing a language the researcher has already moved off, with
+    // this screen still reporting the newer one as saved. Only one write is on
+    // the wire at a time, which is what makes the order the server sees the
+    // order the researcher chose in.
     const settle: ((value: { locale: string | null }) => void)[] = [];
     updateLocale.mockImplementation(
       () => new Promise((resolve) => settle.push(resolve)),
@@ -187,19 +217,56 @@ describe('two choices in quick succession', () => {
     renderProvider({ signedIn: true, userId: 'user-1' });
 
     act(() => harness.setLocale('en-GB'));
-    act(() => harness.setLocale('en'));
-    await waitFor(() => expect(settle).toHaveLength(2));
+    await waitFor(() => expect(settle).toHaveLength(1));
 
-    // The FIRST request answers last, which is the whole hazard.
+    // The second choice arrives while the first request is still on the wire,
+    // and waits for it rather than racing it. The flush is what makes that
+    // assertable: a second request would go out on its own turn, not on this
+    // one, so asserting straight after the call would pass either way.
+    act(() => harness.setLocale('en'));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(updateLocale).toHaveBeenCalledTimes(1);
+
     await act(async () => {
       settle[0]?.({ locale: 'en-GB' });
       await Promise.resolve();
     });
 
+    // The older reply reports nothing: its choice is no longer the
+    // researcher's.
     expect(harness.saveState).toBe('saving');
-    // The stale reply must not have acknowledged the newer choice; the newer
-    // one is still outstanding, so a stale payload is still refused.
+    await waitFor(() => expect(settle).toHaveLength(2));
+    expect(updateLocale).toHaveBeenLastCalledWith({ locale: 'en' });
+
+    // The newer one is still outstanding, so a stale payload is still refused.
     act(() => harness.applyServerPreference('en-GB', 'user-1'));
     expect(harness.preference).toBe('en');
+  });
+
+  it('does not send a choice the researcher has already replaced', async () => {
+    // The queued write is a request the server would have to process and then
+    // immediately overwrite, and while it is in flight the account holds a
+    // language nothing on screen ever claimed.
+    const settle: ((value: { locale: string | null }) => void)[] = [];
+    updateLocale.mockImplementation(
+      () => new Promise((resolve) => settle.push(resolve)),
+    );
+    renderProvider({ signedIn: true, userId: 'user-1' });
+
+    act(() => harness.setLocale('en-GB'));
+    await waitFor(() => expect(settle).toHaveLength(1));
+    act(() => harness.setLocale(null));
+    act(() => harness.setLocale('en'));
+
+    await act(async () => {
+      settle[0]?.({ locale: 'en-GB' });
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(settle).toHaveLength(2));
+    expect(updateLocale).toHaveBeenCalledTimes(2);
+    expect(updateLocale).toHaveBeenLastCalledWith({ locale: 'en' });
   });
 });

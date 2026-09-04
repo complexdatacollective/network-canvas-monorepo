@@ -33,11 +33,12 @@ export type PlaceholderProps = {
   issue: `#${number}`;
   /**
    * Something the researcher can actually do here, for the rare route that
-   * owes them one before its screen exists — `/no-team`'s sign-out, which is
-   * the only way off a screen the whole app redirects to (§6.4).
+   * owes them one before its screen exists — `/no-team`'s sign-out and its
+   * language choice, the two things a session the whole app redirects there
+   * (§6.4) can otherwise reach nowhere else.
    *
-   * The exception proves the rule below rather than weakening it: this is a
-   * working control the shell owns, not a preview of the unbuilt screen's.
+   * The exception proves the rule below rather than weakening it: these are
+   * working controls the shell owns, not a preview of the unbuilt screen's.
    */
   action?: ReactNode;
 };

@@ -15,6 +15,7 @@ import AppArea from '@codaco/fresco-ui/layout/AppArea';
 import RouteFocus from '@codaco/fresco-ui/navigation/RouteFocus';
 import { TeamInvitationIdSchema } from '@codaco/studio-rpc';
 
+import LanguageChoice from './i18n/LanguageChoice.tsx';
 import LocaleSync from './i18n/LocaleSync.tsx';
 import { StudioI18nProvider } from './i18n/StudioI18nProvider.tsx';
 import { fetchDeploymentMode } from './lib/deployment.ts';
@@ -907,17 +908,27 @@ const noTeamRoute = createRoute({
     if (destination === undefined || destination.to === '/no-team') return;
     throw landingRedirect(destination);
   },
-  // The sign-out is not part of the unbuilt screen: it is the way OFF a route
-  // that is the terminus of every redirect this session can trigger. The guard
-  // above sends them here from `/sign-in`, the app shell's guard sends them
-  // here from everywhere else, and neither screen they can reach carries the
-  // account menu — so without it, signing in as somebody else means clearing
-  // the cookie by hand.
+  // Neither control is part of the unbuilt screen: they are what a terminus
+  // owes the session it holds. Every redirect this session can trigger ends
+  // here — the guard above from `/sign-in`, the app shell's guard from
+  // everywhere else — and no screen they can reach carries the account menu or
+  // the account area.
+  //
+  // So the sign-out, without which signing in as somebody else means clearing
+  // the cookie by hand. And so the language, which is a per-account preference
+  // with nothing to do with teams: `/account/language` is behind the same
+  // redirect, and a researcher waiting on an invitation would otherwise read
+  // this screen in a language they cannot change.
   component: screenPlaceholder({
     title: screens.noTeamTitle,
     description: screens.noTeamDescription,
     issue: '#1249',
-    action: <NoTeamSignOut />,
+    action: (
+      <>
+        <NoTeamSignOut />
+        <LanguageChoice />
+      </>
+    ),
   }),
 });
 

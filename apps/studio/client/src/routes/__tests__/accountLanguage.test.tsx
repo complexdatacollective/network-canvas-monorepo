@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAppRouter } from '../../router.tsx';
@@ -17,6 +23,12 @@ import { createAppRouter } from '../../router.tsx';
 
 const fixtures = vi.hoisted(() => ({
   meLocale: null as string | null,
+  /**
+   * Held open to stage the window before identity resolves: the app shell's
+   * guard reads the team list, not `me`, so the screen renders while identity
+   * is still in flight.
+   */
+  meGate: Promise.resolve(),
   updateLocale: vi.fn(),
   listTeams: vi.fn(),
   setActive: vi.fn(),
@@ -46,15 +58,17 @@ vi.mock('../../lib/api.ts', () => ({
     me: {
       queryOptions: () => ({
         queryKey: ['me'],
-        queryFn: () =>
-          Promise.resolve({
+        queryFn: async () => {
+          await fixtures.meGate;
+          return {
             userId: 'user-1',
             email: 'researcher@example.org',
             emailVerified: true,
             name: 'Researcher',
             locale: fixtures.meLocale,
             teams: [{ teamId: 'team-a', role: 'owner' }],
-          }),
+          };
+        },
       }),
       key: () => ['me'],
     },
@@ -101,19 +115,30 @@ vi.mock('../../lib/api.ts', () => ({
 
 const MIRROR_KEY = 'studio.locale';
 
-function renderLanguagePage() {
+function renderAt(path: string) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   const router = createAppRouter(
-    createMemoryHistory({ initialEntries: ['/account/language'] }),
+    createMemoryHistory({ initialEntries: [path] }),
     queryClient,
   );
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
-  );
+  return {
+    queryClient,
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    ),
+  };
+}
+
+function renderLanguagePage() {
+  return renderAt('/account/language');
+}
+
+function languageSelect() {
+  return screen.getByRole('combobox', { name: /Studio language/ });
 }
 
 beforeEach(() => {
@@ -121,6 +146,7 @@ beforeEach(() => {
   window.localStorage.clear();
   document.documentElement.lang = 'en';
   fixtures.meLocale = null;
+  fixtures.meGate = Promise.resolve();
   fixtures.updateLocale.mockResolvedValue({ locale: 'en-GB' });
   fixtures.listTeams.mockResolvedValue({
     data: [{ id: 'team-a', name: 'Alpha research team' }],
@@ -236,5 +262,76 @@ describe('the language screen', () => {
     // about the account, not about what this browser can render.
     expect(document.documentElement.lang).toBe('en-GB');
     expect(window.localStorage.getItem(MIRROR_KEY)).toBe('en-GB');
+  });
+
+  it('keeps a choice made before identity has answered, and stores it', async () => {
+    // The shell's guard reads the team list, not `me`, so this screen is on
+    // the page while identity is still in flight — and a researcher reading it
+    // has every reason to use it. A choice made in that window used to reach
+    // nothing at all: no request went out, and the payload that arrived a
+    // moment later put them back on the language they had just left.
+    fixtures.meLocale = 'en';
+    let admitIdentity = () => undefined as void;
+    fixtures.meGate = new Promise<void>((resolve) => {
+      admitIdentity = resolve;
+    });
+
+    const { queryClient } = renderAt('/account/language');
+    await screen.findByRole('heading', { level: 1, name: 'Language' });
+
+    fireEvent.change(languageSelect(), { target: { value: 'en-GB' } });
+    await waitFor(() => {
+      expect(fixtures.updateLocale).toHaveBeenCalledWith({ locale: 'en-GB' });
+    });
+
+    // Identity answers with the preference the account held BEFORE the write.
+    // Query notifications reach their observers on a macrotask, so the flush
+    // below is what lets the payload through `applyServerPreference` — without
+    // it this would assert on a screen the answer had not reached yet.
+    admitIdentity();
+    await waitFor(() => {
+      expect(queryClient.getQueryData(['me'])).toBeDefined();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(languageSelect()).toHaveValue('en-GB');
+    expect(document.documentElement.lang).toBe('en-GB');
+    expect(window.localStorage.getItem(MIRROR_KEY)).toBe('en-GB');
+  });
+});
+
+describe('a researcher who belongs to no team', () => {
+  beforeEach(() => {
+    fixtures.listTeams.mockResolvedValue({ data: [], error: null });
+    fixtures.useListOrganizations.mockReturnValue({
+      data: [],
+      isPending: false,
+      error: null,
+    });
+  });
+
+  it('can still choose the language, on the screen every route sends them to', async () => {
+    // Every app route redirects a teamless session to `/no-team` (§6.4), the
+    // account area included, so the language screen is one of the addresses
+    // they cannot open. The preference is theirs and has nothing to do with
+    // teams, which is why the control is on the screen they are held on —
+    // the same reason sign-out is.
+    renderAt('/account/language');
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'No team yet' }),
+    ).toBeInTheDocument();
+
+    fireEvent.change(languageSelect(), { target: { value: 'en-GB' } });
+
+    await waitFor(() => {
+      expect(document.documentElement.lang).toBe('en-GB');
+    });
+    expect(fixtures.updateLocale).toHaveBeenCalledWith({ locale: 'en-GB' });
+    expect(
+      await screen.findByText(/Language saved/, { selector: '[role=status]' }),
+    ).toBeInTheDocument();
   });
 });

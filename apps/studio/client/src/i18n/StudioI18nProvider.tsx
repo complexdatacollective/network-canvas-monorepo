@@ -1,8 +1,9 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -120,12 +121,44 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
   //     account that did not make it;
   //   - overwritten by a second choice, it lets the first write's late reply
   //     acknowledge the second.
+  //
+  // `userId` is `null` for a write issued before `me` answered: the request
+  // itself needs no identity — the session cookie carries it — so it goes out
+  // either way, and only the marker is left waiting. It names the account this
+  // session turns out to be, which `applyServerPreference` fills in with the
+  // first identity to arrive.
   const pendingServerAck = useRef<{
     locale: string | null;
-    userId: string;
+    userId: string | null;
     generation: number;
   } | null>(null);
   const writeGeneration = useRef(0);
+
+  // Account writes run one at a time. Two `updateLocale` requests in flight
+  // can settle in either order, and the account keeps whichever landed last —
+  // so an older request answering last leaves the server storing a language
+  // the researcher has already moved off, with the page still reporting the
+  // newer one as saved and nothing on this device disagreeing until their next
+  // visit.
+  const writeQueue = useRef<Promise<void>>(Promise.resolve());
+
+  // Read as a subscription rather than from the cache, because this one fact
+  // is about a TRANSITION: the query the guards already share, observed for
+  // the moment it changes.
+  const sessionState = useQuery(sessionQueryOptions).data;
+
+  // An unattributed marker is owned by "whoever this session turns out to be",
+  // and the session ending is the moment that stops being answerable: the next
+  // identity to arrive belongs to somebody else, and a marker that adopted
+  // them would refuse them their own preference for the rest of their visit.
+  // An attributed one needs no such rule — it names its account, and
+  // `applyServerPreference` drops it as soon as another one signs in.
+  useEffect(() => {
+    if (sessionState !== 'signedOut') return;
+    if (pendingServerAck.current?.userId === null) {
+      pendingServerAck.current = null;
+    }
+  }, [sessionState]);
 
   const setLocale = useCallback(
     (locale: string | null) => {
@@ -152,22 +185,36 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
         (locale === null || isSupportedStudioLocale(locale));
       const signedIn =
         queryClient.getQueryData(sessionQueryOptions.queryKey) === 'signedIn';
-      // Identity comes from the cache `LocaleSync` already populates. Without
-      // it there is nobody to attribute the write to, so it is not sent —
-      // rather than sent unattributably, which is what would let it answer for
-      // the next account.
-      const userId = queryClient.getQueryData(
-        orpc.me.queryOptions().queryKey,
-      )?.userId;
 
-      if (!storable || !signedIn || userId === undefined) {
+      if (!storable || !signedIn) {
         pendingServerAck.current = null;
         return;
       }
 
+      // Identity comes from the cache `LocaleSync` already populates, and is
+      // routinely not there yet: the app shell's guard reads the team list
+      // rather than `me`, so a screen is on the page — the language screen
+      // included — while identity is still in flight. Waiting for it would
+      // mean discarding a choice the researcher has just made and watching the
+      // payload that follows put them back on the old language.
+      const userId =
+        queryClient.getQueryData(orpc.me.queryOptions().queryKey)?.userId ??
+        null;
+
       pendingServerAck.current = { locale, userId, generation };
       setSaveState('saving');
-      void (async () => {
+      // Waits for the write before it rather than racing it. The `catch` is
+      // insurance rather than a path anything takes — the body below settles
+      // every outcome itself — but a predecessor that ever did reject would
+      // take the whole chain with it, and the researcher would get no further
+      // writes for the rest of the session with nothing to show for it.
+      const previousWrite = writeQueue.current;
+      writeQueue.current = (async () => {
+        await previousWrite.catch(() => undefined);
+        // Superseded before its turn came. The newer choice is queued behind
+        // this one, so sending this would only ask the account to hold, for as
+        // long as the round trip takes, a language nothing on screen claims.
+        if (writeGeneration.current !== generation) return;
         try {
           await rpcClient.account.updateLocale({ locale });
           if (writeGeneration.current !== generation) return;
@@ -197,17 +244,23 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
 
       const pending = pendingServerAck.current;
       if (pending !== null) {
-        if (pending.userId !== userId) {
-          // Another account's unacknowledged write. It has no standing here,
-          // and keeping it would lock this researcher out of their own
-          // preference for the rest of the session.
-          pendingServerAck.current = null;
-        } else {
+        // A write issued before identity resolved carries no account yet: it
+        // belongs to whichever one this session turns out to be, and this is
+        // that answer arriving. Adopting it here is what puts it under the
+        // ordinary rules below from now on — including having no standing once
+        // somebody else signs in.
+        const owner = pending.userId ?? userId;
+        if (owner === userId) {
           // Server wins over the mirror, but not over a fresher local change
           // the server has not acknowledged yet.
-          if (locale === pending.locale) pendingServerAck.current = null;
+          pendingServerAck.current =
+            locale === pending.locale ? null : { ...pending, userId };
           return;
         }
+        // Another account's unacknowledged write. It has no standing here,
+        // and keeping it would lock this researcher out of their own
+        // preference for the rest of the session.
+        pendingServerAck.current = null;
       }
       if (locale === preferenceRef.current) return;
       if (locale === null) {

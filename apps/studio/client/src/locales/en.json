@@ -1,16 +1,4 @@
 {
-  "studio.accountLanguage.automatic": {
-    "defaultMessage": "Automatic (browser language)",
-    "description": "The language-selector entry meaning \"follow the languages this browser asks for\" rather than a fixed choice."
-  },
-  "studio.accountLanguage.fieldLabel": {
-    "defaultMessage": "Studio language",
-    "description": "Label of the interface-language selector."
-  },
-  "studio.accountLanguage.followsDevice": {
-    "defaultMessage": "Automatic follows the languages your browser asks for, and can differ from device to device.",
-    "description": "Hint under the language selector explaining what the automatic entry does."
-  },
   "studio.accountLanguage.heading": {
     "defaultMessage": "Language",
     "description": "Heading of the account screen where the researcher chooses Studio's own language."
@@ -18,18 +6,6 @@
   "studio.accountLanguage.intro": {
     "defaultMessage": "The language Studio speaks to you: its navigation, forms, and messages. This is a separate choice from the languages a protocol offers its participants, which each study sets for itself.",
     "description": "Explanation under the language screen's heading, distinguishing the interface language from a protocol's participant languages."
-  },
-  "studio.accountLanguage.saveFailed": {
-    "defaultMessage": "Studio is using this language here, but could not save it to your account. It will not follow you to your other devices until you choose it again.",
-    "description": "Shown when the language was applied locally but storing it on the account failed."
-  },
-  "studio.accountLanguage.saved": {
-    "defaultMessage": "Language saved. It will follow you to your other devices.",
-    "description": "Confirmation after the language preference was stored on the account."
-  },
-  "studio.accountLanguage.saving": {
-    "defaultMessage": "Saving your language choice…",
-    "description": "Shown while the language preference is being stored."
   },
   "studio.appLayout.skipToMainContent": {
     "defaultMessage": "Skip to main content",
@@ -506,6 +482,30 @@
   "studio.invitation.useDifferentAccount": {
     "defaultMessage": "Use a different account",
     "description": "Button signing out so the invitation can be accepted from another account."
+  },
+  "studio.languageChoice.automatic": {
+    "defaultMessage": "Automatic (browser language)",
+    "description": "The language-selector entry meaning \"follow the languages this browser asks for\" rather than a fixed choice."
+  },
+  "studio.languageChoice.fieldLabel": {
+    "defaultMessage": "Studio language",
+    "description": "Label of the interface-language selector."
+  },
+  "studio.languageChoice.followsDevice": {
+    "defaultMessage": "Automatic follows the languages your browser asks for, and can differ from device to device.",
+    "description": "Hint under the language selector explaining what the automatic entry does."
+  },
+  "studio.languageChoice.saveFailed": {
+    "defaultMessage": "Studio is using this language here, but could not save it to your account. It will not follow you to your other devices until you choose it again.",
+    "description": "Shown when the language was applied locally but storing it on the account failed."
+  },
+  "studio.languageChoice.saved": {
+    "defaultMessage": "Language saved. It will follow you to your other devices.",
+    "description": "Confirmation after the language preference was stored on the account."
+  },
+  "studio.languageChoice.saving": {
+    "defaultMessage": "Saving your language choice…",
+    "description": "Shown while the language preference is being stored."
   },
   "studio.lockup.allStudies": {
     "defaultMessage": "All studies in this team",
