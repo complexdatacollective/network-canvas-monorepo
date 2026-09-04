@@ -85,12 +85,45 @@ export const MeSchema = z.object({
   ),
 });
 
-// A non-null preference must be a tag this build supports — unknown tags are
-// a validation error, not a silent store (client and server ship together, so
-// the list is always current). Null clears the preference back to browser
-// negotiation ("Automatic").
+/**
+ * BCP 47 tags are case-insensitive, so `EN-gb` and `en-GB` name one locale.
+ * Canonicalising before the allowlist is what makes the endpoint agree with
+ * that: matching the registry's exact spelling is a property of how the list
+ * happens to be written, not of the tag the caller meant.
+ *
+ * `Intl.getCanonicalLocales` rather than app-i18n's `canonicalizeAppLocale`,
+ * which is the same call: this package is the contract both planes import,
+ * and it carries no workspace dependencies so that staying cheap to import is
+ * not something a future edit has to remember. A tag that cannot be
+ * canonicalised is passed through unchanged and refused by the allowlist
+ * below, so malformed and unsupported fail identically.
+ */
+function canonicalLocaleTag(value: string): string {
+  try {
+    return Intl.getCanonicalLocales(value.trim())[0] ?? value;
+  } catch {
+    return value;
+  }
+}
+
+/**
+ * A non-null preference must be a tag this build supports — unknown tags are
+ * a validation error, not a silent store (client and server ship together, so
+ * the list is always current). Null clears the preference back to browser
+ * negotiation ("Automatic").
+ *
+ * The input type is `string | null` rather than the supported-locale union,
+ * which is the cost of accepting case variants. It is the same trade
+ * `MeSchema.locale` above already makes, and the client does not lean on the
+ * narrowing: it only ever sends tags from its own registry, having checked
+ * them with `isSupportedStudioLocale` first.
+ */
 export const UpdateAccountLocaleInputSchema = z.object({
-  locale: z.enum(SUPPORTED_STUDIO_LOCALES).nullable(),
+  locale: z
+    .string()
+    .nullable()
+    .transform((value) => (value === null ? null : canonicalLocaleTag(value)))
+    .pipe(z.enum(SUPPORTED_STUDIO_LOCALES).nullable()),
 });
 
 // A plain string on the way out, like `MeSchema.locale`: what came back from
