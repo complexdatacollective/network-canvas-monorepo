@@ -338,7 +338,14 @@ export function Collection<T extends Record<string, unknown>>({
         keyExtractor={keyExtractor}
         layout={layout}
         renderItem={renderItem as ItemRenderer<Record<string, unknown>>}
-        emptyState={emptyState ?? intl.formatMessage(messages.noItems)}
+        emptyState={
+          // `undefined` only, not nullish: `emptyState` is a ReactNode, and
+          // `null` is how a caller says "render no empty state at all" —
+          // which is what the default parameter this replaced meant too.
+          emptyState === undefined
+            ? intl.formatMessage(messages.noItems)
+            : emptyState
+        }
         className={className}
         id={id}
         aria-label={ariaLabel}

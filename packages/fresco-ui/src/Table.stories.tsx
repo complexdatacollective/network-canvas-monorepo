@@ -7,6 +7,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { useMemo, useState } from 'react';
+import { expect, within } from 'storybook/test';
 
 import { DataTableColumnHeader } from './DataTable/ColumnHeader';
 import { DataTable } from './DataTable/DataTable';
@@ -360,4 +361,65 @@ export const Responsive: Story = {
       </Table>
     </div>
   ),
+};
+
+function RightToLeftDataTableExample() {
+  const columns = useMemo<ColumnDef<(typeof rtlData)[number]>[]>(
+    () => [
+      { accessorKey: 'name', header: 'الاسم' },
+      { accessorKey: 'role', header: 'الدور' },
+    ],
+    [],
+  );
+
+  const table = useReactTable({
+    data: rtlData,
+    columns,
+    manualPagination: true,
+    pageCount: 12,
+    state: { pagination: { pageIndex: 3, pageSize: 25 } },
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  return <DataTable table={table} />;
+}
+
+const rtlData = [
+  { id: 1, name: 'ليلى منصور', role: 'مشرفة' },
+  { id: 2, name: 'كريم حداد', role: 'محرر' },
+];
+
+/**
+ * The table and its pagination bar in a right-to-left region. The controls
+ * move to the other side on their own, being a flex row — what does not is
+ * the arrows, which point along the reading order rather than at a fixed edge:
+ * "previous" is back towards the start of the table, and that is the right
+ * here.
+ */
+export const RightToLeft: Story = {
+  render: () => (
+    <div dir="rtl">
+      <RightToLeftDataTableExample />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const previous = canvas.getByRole('button', {
+      name: 'Go to previous page',
+    });
+    const next = canvas.getByRole('button', { name: 'Go to next page' });
+
+    await expect(getComputedStyle(previous).direction).toBe('rtl');
+
+    for (const button of [previous, next]) {
+      const glyph = button.querySelector('svg');
+      await expect(glyph).not.toBeNull();
+      await expect(getComputedStyle(glyph!).rotate).toBe('180deg');
+    }
+
+    // Reading order first: "previous" sits to the right of "next".
+    await expect(previous.getBoundingClientRect().left).toBeGreaterThan(
+      next.getBoundingClientRect().left,
+    );
+  },
 };

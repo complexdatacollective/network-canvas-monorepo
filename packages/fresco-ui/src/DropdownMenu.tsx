@@ -77,7 +77,10 @@ const DropdownMenuSubTrigger = React.forwardRef<
     {...props}
   >
     {children}
-    <ChevronRight className="ms-auto size-4" />
+    {/* Base UI opens a nested menu on the `inline-end` side, so in RTL it
+        arrives on the left and the cue has to point there too. A chevron is
+        its own mirror image, so a half turn is the whole flip. */}
+    <ChevronRight className="ms-auto size-4 rtl:rotate-180" />
   </Menu.SubmenuTrigger>
 ));
 DropdownMenuSubTrigger.displayName = 'DropdownMenuSubTrigger';

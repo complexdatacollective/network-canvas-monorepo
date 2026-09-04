@@ -102,6 +102,10 @@ export function DataTablePagination<TData>({
           })}
         </div>
       )}
+      {/* These arrows point along the reading order, not at a fixed edge:
+          "previous" is back towards the start of the table, which is the
+          right-hand side in an RTL locale. The row itself reverses on its
+          own, being a flex row. */}
       <div className="flex items-center space-x-2">
         <IconButton
           aria-label={intl.formatMessage(messages.firstPage)}
@@ -109,7 +113,7 @@ export function DataTablePagination<TData>({
           size="sm"
           onClick={() => table.setPageIndex(0)}
           disabled={!table.getCanPreviousPage()}
-          icon={<ChevronsLeft />}
+          icon={<ChevronsLeft className="rtl:rotate-180" />}
         />
         <IconButton
           aria-label={intl.formatMessage(messages.previousPage)}
@@ -117,7 +121,7 @@ export function DataTablePagination<TData>({
           size="sm"
           onClick={() => table.previousPage()}
           disabled={!table.getCanPreviousPage()}
-          icon={<ChevronLeft />}
+          icon={<ChevronLeft className="rtl:rotate-180" />}
         />
         <IconButton
           aria-label={intl.formatMessage(messages.nextPage)}
@@ -125,7 +129,7 @@ export function DataTablePagination<TData>({
           size="sm"
           onClick={() => table.nextPage()}
           disabled={!table.getCanNextPage()}
-          icon={<ChevronRight />}
+          icon={<ChevronRight className="rtl:rotate-180" />}
         />
         <IconButton
           aria-label={intl.formatMessage(messages.lastPage)}
@@ -133,7 +137,7 @@ export function DataTablePagination<TData>({
           size="sm"
           onClick={() => table.setPageIndex(table.getPageCount() - 1)}
           disabled={!table.getCanNextPage()}
-          icon={<ChevronsRight />}
+          icon={<ChevronsRight className="rtl:rotate-180" />}
         />
       </div>
     </div>

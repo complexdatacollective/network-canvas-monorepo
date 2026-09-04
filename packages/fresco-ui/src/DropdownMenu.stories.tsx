@@ -16,6 +16,7 @@ import {
   Users,
 } from 'lucide-react';
 import * as React from 'react';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { Button } from './Button';
 import {
@@ -34,6 +35,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from './DropdownMenu';
+import { PortalContainerProvider } from './PortalContainer';
 
 const meta = {
   title: 'Components/DropdownMenu',
@@ -477,6 +479,63 @@ export const Complex: Story = {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+    );
+  },
+};
+
+/**
+ * The menu in a right-to-left region. Base UI opens a nested menu on the
+ * `inline-end` side, which is the left here, so the disclosure chevron has to
+ * turn around with it — otherwise it points away from the submenu it opens.
+ *
+ * The portal container is inside the RTL wrapper on purpose: a menu popup is
+ * portalled, and in a real app it inherits the direction from `<html dir>`,
+ * which `AppI18nProvider` writes.
+ */
+export const RightToLeft: Story = {
+  render: () => (
+    <div dir="rtl">
+      <PortalContainerProvider>
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant="outline" />}>
+            ملف
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56">
+            <DropdownMenuItem>علامة تبويب جديدة</DropdownMenuItem>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <span>دعوة المستخدمين</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem>بريد إلكتروني</DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </PortalContainerProvider>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: 'ملف' }));
+
+    const subTrigger = await canvas.findByRole('menuitem', {
+      name: 'دعوة المستخدمين',
+    });
+    const chevron = subTrigger.querySelector('svg.lucide-chevron-right');
+    await expect(chevron).not.toBeNull();
+    await expect(getComputedStyle(chevron!).rotate).toBe('180deg');
+
+    // And the submenu really does arrive on that side, which is what the
+    // chevron is now agreeing with.
+    await userEvent.click(subTrigger);
+    const submenuItem = await canvas.findByRole('menuitem', {
+      name: 'بريد إلكتروني',
+    });
+    await waitFor(() =>
+      expect(submenuItem.getBoundingClientRect().left).toBeLessThan(
+        subTrigger.getBoundingClientRect().left,
+      ),
     );
   },
 };
