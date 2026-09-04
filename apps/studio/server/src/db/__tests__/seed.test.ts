@@ -21,15 +21,31 @@ import { sha256Hex } from '../seed/rng.ts';
 const db = await reachableDb();
 
 // Seeding the whole model takes seconds on a quiet machine and well over a
-// minute on the CI runner (see SEED_BUDGET_MS), and several cases below seed
-// twice.
+// minute on the CI runner (see SEED_BUDGET_MS).
 //
-// 360s, not 180s. Measured on the runner, the cases that PASS here take up to
-// 172s each — a 4% margin against the old bound, which is not a budget but a
-// coin flip, and it landed tails on a busy runner. Doubling it leaves the
-// bound doing its real job, which is failing a seed that has actually hung
-// rather than one that is merely sharing a machine.
+// Only two cases still seed the whole model, and both have to: the `beforeAll`
+// below, whose corpus every case in this block reads, and the determinism
+// case, which is only worth running against the corpus developers actually
+// get. The rest use SEEDING_ONLY, which took the file from 88s to 29s here.
+//
+// The bound stays at 360s rather than following that down. These cases
+// measured 72-172s on the runner where they measure seconds here, and the
+// bound exists to fail a seed that has actually hung rather than one sharing a
+// machine — it was already set too tight once, at 180s, where the slowest
+// passing case left a 4% margin. Tightening it again buys two minutes on a run
+// that is failing anyway.
 const SEEDING_TIMEOUT_MS = 360_000;
+
+/**
+ * For the cases that exercise seeding itself — signing in, the transaction
+ * around a part-way failure, the admin password option, the wipe before a
+ * re-seed — rather than the shape of the data it produces. `tiny` keeps every
+ * team, study, wave and table the demo corpus has and thins the sessions
+ * inside them, which takes the seed from about 6.8s to 1.0s here.
+ * `seedSessionsAndNetworks` is around 90% of a seed, and it is the count of
+ * sessions that drives it rather than the size of the networks in them.
+ */
+const SEEDING_ONLY = { scale: 'tiny' } as const;
 
 /**
  * A `demo` seed has to stay fast enough to run on every `pnpm dev` boot, where
@@ -266,17 +282,12 @@ describe.skipIf(!db)('the seeded dataset', () => {
     ).resolves.toBe(0);
   });
 
-  it('captures each session’s own version pin from its wave', async () => {
-    await expect(
-      count(
-        pool,
-        `select count(*)::int as n
-         from interview_sessions s
-         join study_waves w on w.id = s.wave_id and w.team_id = s.team_id
-         where s.protocol_version_id is distinct from w.protocol_version_id`,
-      ),
-    ).resolves.toBe(0);
-  });
+  // A session pinning anything but its wave's version was asserted here too,
+  // which `interview_sessions_version_wave_pin` already refuses on INSERT —
+  // and refuses more strictly, since it rejects the two-NULL pair that
+  // `IS DISTINCT FROM` accepts. The seed inserts every session, so a violation
+  // aborts the transaction and fails `beforeAll` rather than reaching a case.
+  // The trigger is proven where it lives, in study/__tests__/schema.test.ts.
 
   it('keeps anonymous studies single-wave, participant-free and unattributed', async () => {
     const anonymous = await pool.query<{
@@ -1066,7 +1077,7 @@ describe.skipIf(!db)('seed', () => {
       const { pool, dispose } = await createScratchSchema(db);
       try {
         await provisionScratchSchema(pool);
-        await seed(pool);
+        await seed(pool, SEEDING_ONLY);
 
         const admin = await pool.query<{
           id: string;
@@ -1134,7 +1145,7 @@ describe.skipIf(!db)('seed', () => {
       const { pool, dispose } = await createScratchSchema(db);
       try {
         await provisionScratchSchema(pool);
-        await seed(pool);
+        await seed(pool, SEEDING_ONLY);
         const before = await pool.query(
           `select id, name, slug from teams order by slug`,
         );
@@ -1156,7 +1167,9 @@ describe.skipIf(!db)('seed', () => {
         create trigger seed_test_fail before insert on team_members
           for each row execute function seed_test_fail();
       `);
-        await expect(seed(pool)).rejects.toThrow('seed_test_fail');
+        await expect(seed(pool, SEEDING_ONLY)).rejects.toThrow(
+          'seed_test_fail',
+        );
         await pool.query(`drop trigger seed_test_fail on team_members`);
 
         const after = await pool.query(
@@ -1181,7 +1194,10 @@ describe.skipIf(!db)('seed', () => {
       const { pool, dispose } = await createScratchSchema(db);
       try {
         await provisionScratchSchema(pool);
-        await seed(pool, { adminPassword: 'chosen-for-this-instance' });
+        await seed(pool, {
+          ...SEEDING_ONLY,
+          adminPassword: 'chosen-for-this-instance',
+        });
 
         const account = await pool.query<{ password: string }>(
           `select password from account
@@ -1210,7 +1226,7 @@ describe.skipIf(!db)('seed', () => {
       const { pool, dispose } = await createScratchSchema(db);
       try {
         await provisionScratchSchema(pool);
-        await seed(pool);
+        await seed(pool, SEEDING_ONLY);
         const firstRun = await pool.query(
           `select name, slug from teams order by slug`,
         );
@@ -1218,7 +1234,7 @@ describe.skipIf(!db)('seed', () => {
         // Re-seeding must not error on the unique constraints (team slug, user
         // email, token hash, participant code) a naive additive seed would
         // collide on the second time around.
-        await expect(seed(pool)).resolves.toBeUndefined();
+        await expect(seed(pool, SEEDING_ONLY)).resolves.toBeUndefined();
         const secondRun = await pool.query(
           `select name, slug from teams order by slug`,
         );

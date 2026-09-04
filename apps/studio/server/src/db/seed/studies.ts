@@ -206,6 +206,19 @@ function mintToken(teamId: string): { token: string; hash: Buffer } {
   return { token: `${teamId}.${secret}`, hash: sha256Bytes(secret) };
 }
 
+/**
+ * Scaling thins a corpus; it never empties one. A plan that asks for nobody
+ * keeps nobody, and every other count keeps at least one — so a smaller scale
+ * cannot leave a collecting wave with no sessions to roll up, or a managed
+ * study with no one enrolled, which are shapes the seed's own guards refuse.
+ *
+ * At `demo` and `large` the multiplier is a whole number, so this is exactly
+ * the multiplication it replaces.
+ */
+function scaled(count: number, multiplier: number): number {
+  return count === 0 ? 0 : Math.max(1, Math.round(count * multiplier));
+}
+
 export async function seedStudies(
   client: pg.PoolClient,
   team: SeedTeam,
@@ -299,10 +312,10 @@ export async function seedStudies(
     }
 
     const participants: SeedParticipant[] = [];
-    const participantCount =
-      plan.participantCount === 0
-        ? 0
-        : plan.participantCount * scale.participantMultiplier;
+    const participantCount = scaled(
+      plan.participantCount,
+      scale.participantMultiplier,
+    );
     for (let index = 0; index < participantCount; index++) {
       const code = participantCode(participantOrdinal++);
       const enrolledAt = shiftDays(createdAt, 15 + (index % 30));
@@ -432,8 +445,8 @@ export async function seedStudies(
       waves,
       participants,
       links,
-      sessionCounts: plan.sessionCounts.map(
-        (count) => count * scale.participantMultiplier,
+      sessionCounts: plan.sessionCounts.map((count) =>
+        scaled(count, scale.participantMultiplier),
       ),
     });
   }

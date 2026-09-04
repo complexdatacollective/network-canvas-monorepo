@@ -252,10 +252,13 @@ describe.skipIf(!db)('email/password sign-in', () => {
   // column (auth-schema.ts), because until this account existed nothing in
   // this suite ever queried that table by provider.
   //
-  // The whole model is seeded once for both cases. It takes seconds on a
-  // quiet machine and well over a minute on the CI runner, where every
-  // affected package's vitest workers share two vCPUs with the Postgres
-  // service container; neither case writes anything the other can see.
+  // Seeded once for every case here; none of them writes anything another can
+  // see. `tiny` because these cases need the admin, a team and that team's
+  // tenant data — not the demo corpus's volume — and a demo seed is most of a
+  // second here and well over a minute on the CI runner, where every affected
+  // package's vitest workers share two vCPUs with the Postgres service
+  // container. The bound stays generous: it is here to fail a seed that has
+  // hung, not one sharing a machine.
   const SEEDING_TIMEOUT_MS = 180_000;
 
   let scratch: Awaited<ReturnType<typeof createScratchSchema>> | undefined;
@@ -278,7 +281,7 @@ describe.skipIf(!db)('email/password sign-in', () => {
     if (!env.auth) throw new Error('dev env must configure auth');
     scratch = await createScratchSchema(db);
     await provisionScratchSchema(scratch.pool);
-    await seed(scratch.pool);
+    await seed(scratch.pool, { scale: 'tiny' });
     const auth = createBetterAuthService(env.auth, scratch.pool, {
       sendMagicLink: () => Promise.resolve(),
     });

@@ -57,8 +57,12 @@ import {
 // because this module is the seed's documented surface.
 export { SEED_ADMIN_EMAIL, SEED_ADMIN_NAME, SEED_ADMIN_PASSWORD };
 
-/** `demo` is what dev boot and the suites run; `large` is the load shape. */
-export type SeedScale = 'demo' | 'large';
+/**
+ * `demo` is what dev boot and most suites run; `large` is the load shape;
+ * `tiny` is the same corpus thinned, for the suites that exercise seeding
+ * itself rather than the data it produces.
+ */
+export type SeedScale = 'tiny' | 'demo' | 'large';
 
 export type SeedOptions = {
   /** Defaults to SEED_ADMIN_PASSWORD. */
@@ -87,11 +91,20 @@ const FAKER_SEED = 20260902;
  * comparable raw-tier totals in minutes instead of hours: measured at 1 520
  * sessions, 594 845 nodes and 6 423 695 edges in six minutes, against the
  * spike's 2.1 M nodes and 5.9 M edges.
+ *
+ * `tiny` goes the other way, and thins rather than narrows: the same five
+ * teams, twenty-six studies, forty-six waves and every table they populate,
+ * with a tenth of the participants and sessions inside them. That is the knob
+ * that matters, because `seedSessionsAndNetworks` is around 90% of a seed and
+ * it is the number of sessions rather than the width of each network that
+ * drives it — measured, 6.8s to 1.0s, where collapsing the node window alone
+ * only reached 5.8s.
  */
 const SCALES: Record<
   SeedScale,
   { participantMultiplier: number; nodeCount: { min: number; max: number } }
 > = {
+  tiny: { participantMultiplier: 0.1, nodeCount: { min: 1, max: 2 } },
   demo: { participantMultiplier: 1, nodeCount: { min: 2, max: 8 } },
   large: { participantMultiplier: 2, nodeCount: { min: 70, max: 95 } },
 };
