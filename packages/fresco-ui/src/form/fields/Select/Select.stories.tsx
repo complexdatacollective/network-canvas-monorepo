@@ -614,6 +614,13 @@ export const NumericValues: Story = {
  * sit on top of it.
  */
 export const RightToLeft: Story = {
+  // Direction comes from a wrapper here rather than the toolbar global, so
+  // the two halves can be compared side by side. Tailwind's `rtl:` variant
+  // matches `[dir="rtl"] *` as well as `:dir(rtl)`, so an `<html dir="rtl">`
+  // would hand RTL utilities to the LTR half too and there would be nothing
+  // left to compare against. A native select takes its direction from the
+  // CSS alone, so a wrapper is the whole of it — unlike a Base UI popup,
+  // which places itself from a direction context the DOM cannot reach.
   render: () => (
     <div className="flex flex-col gap-8">
       <div dir="ltr" className="w-72 space-y-3">
@@ -650,7 +657,11 @@ export const RightToLeft: Story = {
 
     const ltrStyles = getComputedStyle(ltr!);
     const rtlStyles = getComputedStyle(rtl!);
+
+    // Both halves, so a wrapper that stopped applying leaves nothing to
+    // compare and fails here rather than comparing two identical selects.
     await expect(rtlStyles.direction).toBe('rtl');
+    await expect(ltrStyles.direction).toBe('ltr');
 
     // The reserved space follows the direction, because it is written as
     // inline-end padding.

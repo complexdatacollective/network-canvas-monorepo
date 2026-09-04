@@ -397,19 +397,21 @@ const rtlData = [
  * here.
  */
 export const RightToLeft: Story = {
-  render: () => (
-    <div dir="rtl">
-      <RightToLeftDataTableExample />
-    </div>
-  ),
+  globals: { appDirection: 'rtl' },
+  // The toolbar global rather than a `dir` of this story's own, so the story
+  // sits in the same configuration a real RTL app does — the document's
+  // direction and Base UI's context together, not just the CSS.
+  render: () => <RightToLeftDataTableExample />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+
+    // Assert the global landed, so a story that silently lost it fails here
+    // rather than passing on an LTR layout.
+    await expect(document.documentElement.dir).toBe('rtl');
     const previous = canvas.getByRole('button', {
       name: 'Go to previous page',
     });
     const next = canvas.getByRole('button', { name: 'Go to next page' });
-
-    await expect(getComputedStyle(previous).direction).toBe('rtl');
 
     for (const button of [previous, next]) {
       const glyph = button.querySelector('svg');
