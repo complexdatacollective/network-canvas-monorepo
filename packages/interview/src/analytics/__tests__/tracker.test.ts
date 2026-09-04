@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { createEntityIdPseudonymiser } from '../entityIds';
 import { createTracker, NULL_TRACKER } from '../tracker';
 
 const baseSuperProps = {
@@ -23,7 +24,7 @@ describe('createTracker', () => {
     expect(client.capture).toHaveBeenCalledWith(
       'node_added',
       expect.objectContaining({
-        node_id: 'n1',
+        node_id: expect.any(String),
         node_type: 'person',
         app: 'Fresco',
         $app_name: 'Fresco',
@@ -67,6 +68,105 @@ describe('createTracker', () => {
         distinct_id: 'session-1',
       }),
     );
+  });
+
+  it('reports a session pseudonym for an entity id, never the id itself', () => {
+    const client = { capture: vi.fn(), captureException: vi.fn() };
+    const tracker = createTracker({
+      client: client as never,
+      superProperties: baseSuperProps,
+      distinctId: 'session-1',
+      ownsInstance: false,
+    });
+    // The shape `makeVariableUUIDReplacer` mints for an external-data row:
+    // recomputable by anyone holding the roster.
+    const rosterUid = 'person_pKqRz1sWm3';
+    tracker.track('node_added', { node_id: rosterUid, node_type: 'person' });
+    const props = client.capture.mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(props.node_id).toEqual(expect.any(String));
+    expect(props.node_id).not.toBe(rosterUid);
+  });
+
+  it('keeps one pseudonym per entity within a session, across events', () => {
+    const client = { capture: vi.fn(), captureException: vi.fn() };
+    const tracker = createTracker({
+      client: client as never,
+      superProperties: baseSuperProps,
+      distinctId: 'session-1',
+      ownsInstance: false,
+    });
+    tracker.track('node_added', { node_id: 'person_pKqRz1sWm3' });
+    tracker.track('node_added_to_prompt', { node_id: 'person_pKqRz1sWm3' });
+    tracker.track('node_added', { node_id: 'person_other' });
+    const [first, second, third] = client.capture.mock.calls.map(
+      (call) => (call[1] as Record<string, unknown>).node_id,
+    );
+    expect(second).toBe(first);
+    expect(third).not.toBe(first);
+  });
+
+  it('reports different pseudonyms for the same roster row in two sessions', () => {
+    const rosterUid = 'person_pKqRz1sWm3';
+    const capture = (distinctId: string) => {
+      const client = { capture: vi.fn(), captureException: vi.fn() };
+      createTracker({
+        client: client as never,
+        superProperties: baseSuperProps,
+        distinctId,
+        ownsInstance: false,
+      }).track('node_added', { node_id: rosterUid });
+      const props = client.capture.mock.calls[0]?.[1] as Record<
+        string,
+        unknown
+      >;
+      return props.node_id;
+    };
+    const first = capture('session-1');
+    expect(first).toEqual(expect.any(String));
+    expect(first).not.toBe(capture('session-2'));
+  });
+
+  it('reuses a supplied session pseudonymiser across rebuilt trackers', () => {
+    const pseudonymiseEntityId = createEntityIdPseudonymiser();
+    const rosterUid = 'person_pKqRz1sWm3';
+    const capture = () => {
+      const client = { capture: vi.fn(), captureException: vi.fn() };
+      createTracker({
+        client: client as never,
+        superProperties: baseSuperProps,
+        distinctId: 'session-1',
+        ownsInstance: false,
+        pseudonymiseEntityId,
+      }).track('node_added', { node_id: rosterUid });
+      const props = client.capture.mock.calls[0]?.[1] as Record<
+        string,
+        unknown
+      >;
+      return props.node_id;
+    };
+    const first = capture();
+    expect(first).toEqual(expect.any(String));
+    expect(first).toBe(capture());
+  });
+
+  it('pseudonymises entity ids on captured exceptions too', () => {
+    const client = { capture: vi.fn(), captureException: vi.fn() };
+    const tracker = createTracker({
+      client: client as never,
+      superProperties: baseSuperProps,
+      distinctId: 'session-1',
+      ownsInstance: false,
+    });
+    tracker.captureException(new Error('boom'), {
+      node_id: 'person_pKqRz1sWm3',
+    });
+    const props = client.captureException.mock.calls[0]?.[1] as Record<
+      string,
+      unknown
+    >;
+    expect(props.node_id).toEqual(expect.any(String));
+    expect(props.node_id).not.toBe('person_pKqRz1sWm3');
+    expect(props.distinct_id).toBe('session-1');
   });
 
   it('track swallows thrown errors from the client', () => {
