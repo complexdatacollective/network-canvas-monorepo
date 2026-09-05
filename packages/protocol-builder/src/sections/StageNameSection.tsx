@@ -51,16 +51,22 @@ export type StageNameSectionProps = Readonly<{
   /** A stage being created starts with its name focused. */
   autoFocus?: boolean;
   /**
-   * Propose a name for a stage being created, derived from what it is being
-   * configured to do, until the researcher names it themselves.
+   * What a proposed name is derived from, and whether to propose one at all.
    *
-   * Present means propose, so an editor opening an existing stage simply
-   * leaves it out: an existing stage's name is already the researcher's.
-   * `panels` is supplied by the editor rather than read from the draft,
-   * because a name generator's panels are held in the form as per-index
-   * leaves that only the section writing them can assemble.
+   * Whether to propose is the session's answer by default — only a stage being
+   * created is named automatically, and an existing stage's name is already the
+   * researcher's — so an editor that serves both cases leaves `propose` out and
+   * gets the right behaviour in each. `propose` overrides that answer, in
+   * either direction, for an editor that has a reason to.
+   *
+   * `panels` is supplied by the editor rather than read from the draft, because
+   * a name generator's panels are held in the form as per-index leaves that
+   * only the section writing them can assemble.
    */
-  autoName?: Readonly<{ panels?: readonly AutoStageNamePanel[] }>;
+  autoName?: Readonly<{
+    propose?: boolean;
+    panels?: readonly AutoStageNamePanel[];
+  }>;
   copy?: Partial<StageNameCopy>;
 }>;
 
@@ -78,13 +84,13 @@ export default function StageNameSection({
   autoName,
   copy,
 }: StageNameSectionProps) {
-  const { identity } = useStageEditorForm();
+  const { identity, creation } = useStageEditorForm();
   const words = { ...DEFAULT_COPY, ...copy };
   const { sectionId } = useOutlineSection(words.sectionTitle);
   const headingId = useId();
   const interfaceName = interfaceDisplayName(identity.type) ?? identity.type;
   const { onLabelBlur } = useAutoStageName({
-    isNewStage: autoName !== undefined,
+    isNewStage: autoName?.propose ?? creation !== undefined,
     panels: autoName?.panels,
   });
 

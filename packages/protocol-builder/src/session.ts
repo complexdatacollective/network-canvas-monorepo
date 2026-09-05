@@ -49,6 +49,22 @@ import {
 export type StageIdentity = Readonly<{ id: string; type: StageType }>;
 export type StageFormDraft = Readonly<SectionDoc>;
 
+/**
+ * A stage this session is CREATING rather than opening.
+ *
+ * Present only while the interview does not contain the stage yet, which is the
+ * one fact several parts of an editor need and none of them can work out for
+ * themselves: a new stage is the only one whose name may be proposed, and the
+ * only one whose place among the other stages is not in the stage order.
+ *
+ * The identity is settled before any of that — `createStageIdentity` fixes the
+ * id when the session opens, so a create session edits one stage under one id
+ * from its first keystroke — and `position` is where the host will insert it,
+ * counting from zero. Only the host knows that, so it says so when it opens
+ * the session.
+ */
+export type StageCreation = Readonly<{ position: number }>;
+
 export type ManifestRevision = Readonly<{
   sequence: bigint;
   hash: string;
@@ -105,6 +121,8 @@ export type ProtocolBuilderSnapshot = Readonly<{
     sectionId: ProtocolSectionId;
     identity: StageIdentity;
     fields: StageFormDraft;
+    /** Absent for a stage the interview already contains. */
+    creation?: StageCreation;
   }>;
   protocolSections: Readonly<Record<string, SectionDoc>>;
   protocolContext: ProtocolBuilderProtocolContext;
@@ -254,6 +272,11 @@ export type ProtocolBuilderSession = {
 export type ProtocolBuilderSessionOptions = Readonly<{
   identity: StageIdentity;
   fields: StageFormDraft;
+  /**
+   * Supplied when the host opens the session to CREATE this stage, and left out
+   * when it opens one the interview already contains. See {@link StageCreation}.
+   */
+  creation?: StageCreation;
   protocolSections: Readonly<Record<string, SectionDoc>>;
   manifestRevision: ManifestRevision;
   access: ProtocolBuilderAccess;
@@ -1348,6 +1371,11 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         }),
         identity: this.options.identity,
         fields: freezeDoc(params.fields),
+        // Settled when the session opened and never moved by an edit: whether
+        // this stage exists yet is the host's fact, not the draft's.
+        ...(this.options.creation === undefined
+          ? {}
+          : { creation: Object.freeze({ ...this.options.creation }) }),
       }),
       protocolSections,
       protocolContext,

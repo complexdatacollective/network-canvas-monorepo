@@ -21,6 +21,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { InMemoryCompoundHost } from '../compound-edit/InMemoryCompoundHost.ts';
 import { useStageEditorController } from '../controller.ts';
 import StageEditorShell from '../form/StageEditorShell.tsx';
+import { getInterfaceTemplate } from '../interfaces/templates.ts';
 import {
   InMemoryResourceGateway,
   type InMemoryResourceSeed,
@@ -30,6 +31,7 @@ import {
   type FinishRequest,
   type PendingCommandBatch,
   ProtocolBuilderSessionStore,
+  type StageCreation,
 } from '../session.ts';
 import type {
   StageEditorComponent,
@@ -129,36 +131,62 @@ export type StageEditorHarness = RenderResult &
     setReadOnly(readOnly?: boolean): void;
   }>;
 
-export type RenderStageEditorOptions = Readonly<{
-  /** Open this stage of the shared all-interfaces protocol. */
-  stageId?: string;
-  /** Or open a stage of this type holding these fields. */
-  stage?: Readonly<{ id?: string; type: StageType; fields: SectionDoc }>;
-  /**
-   * The named editor under test, which brings its own shell.
-   *
-   * Exactly one of `editor` and `sections` is given. Neither means the
-   * package's own dispatcher chooses, which is how a registry is tested.
-   */
-  editor?: StageEditorComponent;
-  /** Or the sections under test, which the harness puts in the shared shell. */
-  sections?: ReactNode;
-  /** The editors the dispatcher chooses from, when neither of the above is given. */
-  registry?: Partial<StageEditorRegistry>;
-  /**
-   * Extra manifest entries this stage may reference, keyed by asset id.
-   *
-   * They join the fixture's own assets in BOTH places a resource has to exist
-   * to be referenced — the protocol's manifest section and the gateway — so a
-   * stage seeded with a reference to one is a stage a host would accept,
-   * rather than one whose save is refused for a dangling reference.
-   */
-  assets?: Readonly<Record<string, SectionDoc>>;
-  /** Accessible name of the control that saves the stage. */
-  submitLabel?: string;
-  /** Open the stage as a spectator. */
-  readOnly?: boolean;
-}>;
+export type RenderStageEditorOptions<T extends StageType = StageType> =
+  Readonly<{
+    /** Open this stage of the shared all-interfaces protocol. */
+    stageId?: string;
+    /** Or open a stage of this type holding these fields. */
+    stage?: Readonly<{ id?: string; type: T; fields: SectionDoc }>;
+    /**
+     * Or CREATE a stage of this type, the way a host opens a new one: it starts
+     * from the interface's own template, it is not in the interview yet, and
+     * `position` is where the host will insert it, counting from zero.
+     *
+     * The session is opened with that creation, so everything a section derives
+     * from it — the proposed name, the destinations a skip may continue at — is
+     * exercised here exactly as it will be in the host.
+     */
+    create?: Readonly<{
+      type: T;
+      position: number;
+      /** Fields on top of the interface's template. */
+      fields?: SectionDoc;
+    }>;
+    /**
+     * The named editor under test, which brings its own shell.
+     *
+     * Typed for the stage this call opens rather than for every stage type, so
+     * a narrowly typed family editor — `StageEditorComponent<'Information'>` —
+     * is accepted directly. A component's props are contravariant, so the wide
+     * slot this used to be refused exactly the editors the harness exists to
+     * mount, and families had to go through `registry` to get around it.
+     *
+     * `stage` and `create` name the interface in the same call, so pairing one
+     * of them with an editor written for a different interface does not
+     * compile.
+     *
+     * Exactly one of `editor` and `sections` is given. Neither means the
+     * package's own dispatcher chooses, which is how a registry is tested.
+     */
+    editor?: StageEditorComponent<T>;
+    /** Or the sections under test, which the harness puts in the shared shell. */
+    sections?: ReactNode;
+    /** The editors the dispatcher chooses from, when neither of the above is given. */
+    registry?: Partial<StageEditorRegistry>;
+    /**
+     * Extra manifest entries this stage may reference, keyed by asset id.
+     *
+     * They join the fixture's own assets in BOTH places a resource has to exist
+     * to be referenced — the protocol's manifest section and the gateway — so a
+     * stage seeded with a reference to one is a stage a host would accept,
+     * rather than one whose save is refused for a dangling reference.
+     */
+    assets?: Readonly<Record<string, SectionDoc>>;
+    /** Accessible name of the control that saves the stage. */
+    submitLabel?: string;
+    /** Open the stage as a spectator. */
+    readOnly?: boolean;
+  }>;
 
 /**
  * Mounts a stage editor over a real editing session.
@@ -170,21 +198,28 @@ export type RenderStageEditorOptions = Readonly<{
  * accepts it, and a test that creates a codebook entity has proved the host
  * could apply both halves at once.
  */
-export function renderStageEditor(
-  options: RenderStageEditorOptions = {},
+export function renderStageEditor<T extends StageType = StageType>(
+  options: RenderStageEditorOptions<T> = {},
 ): StageEditorHarness {
   const seeded = seedFrom(options);
   const stageSectionId = sectionId({ kind: 'stage', stageId: seeded.id });
   const baseSections = fixtureProtocolSections();
+  const stageOrderSectionId = sectionId({ kind: 'stageOrder' });
   // A stage the fixture does not contain still has to be part of the protocol
-  // it is validated inside, or every save fails on the stage order.
-  const protocolSections: Record<string, SectionDoc> = {
-    ...baseSections,
-    [stageSectionId]: { id: seeded.id, type: seeded.type, ...seeded.fields },
-  };
-  protocolSections[sectionId({ kind: 'stageOrder' })] = {
-    stages: stageOrderWith(baseSections, seeded.id),
-  };
+  // it is validated inside, or every save fails on the stage order — unless it
+  // is being CREATED, which is exactly the case where the protocol does not
+  // hold it yet. See `candidateSections`.
+  const protocolSections: Record<string, SectionDoc> = { ...baseSections };
+  if (seeded.creation === undefined) {
+    protocolSections[stageSectionId] = {
+      id: seeded.id,
+      type: seeded.type,
+      ...seeded.fields,
+    };
+    protocolSections[stageOrderSectionId] = {
+      stages: stageOrderWith(baseSections, seeded.id),
+    };
+  }
   const assetManifest: Record<string, unknown> = {
     ...fixtureAssetManifest(),
     ...options.assets,
@@ -218,6 +253,7 @@ export function renderStageEditor(
   const session = new ProtocolBuilderSessionStore({
     identity: createStageIdentity(seeded.type, () => seeded.id),
     fields: seeded.fields,
+    ...(seeded.creation === undefined ? {} : { creation: seeded.creation }),
     protocolSections,
     manifestRevision,
     access:
@@ -225,10 +261,26 @@ export function renderStageEditor(
         ? { mode: 'readOnly', reason: 'spectator' }
         : { mode: 'editable', leaseOwner: OWNER, leaseEpoch: 1n },
     resourceGateway: gateway,
+    // A stage being created is validated where it is about to live: the host
+    // puts it into the stage order at its insertion position before it judges
+    // the protocol, so the draft is judged as the interview it is joining —
+    // and a skip destination naming a stage it would come AFTER is refused
+    // here rather than after the researcher has saved.
     buildCandidate: ({ stageDocument, protocolSections: sections }) =>
       assembleProtocolSections({
         ...sections,
         [stageSectionId]: stageDocument,
+        ...(seeded.creation === undefined
+          ? {}
+          : {
+              [stageOrderSectionId]: {
+                stages: stageOrderInserting(
+                  sections,
+                  seeded.id,
+                  seeded.creation.position,
+                ),
+              },
+            }),
       }),
     onCompoundEdit: (submission) => host.submit(submission),
     onFinish: (request) => {
@@ -357,7 +409,7 @@ export function renderStageEditor(
   };
 }
 
-function HarnessEditor({
+function HarnessEditor<T extends StageType>({
   session,
   submitLabel,
   editor: Editor,
@@ -366,19 +418,19 @@ function HarnessEditor({
 }: Readonly<{
   session: ProtocolBuilderSessionStore;
   submitLabel: string;
-  editor?: StageEditorComponent;
+  editor?: StageEditorComponent<T>;
   sections?: ReactNode;
   registry?: Partial<StageEditorRegistry>;
 }>) {
   const controller = useStageEditorController(session, STAGE_FORM_ID);
 
   if (Editor !== undefined) {
-    return (
-      <Editor
-        controller={controller}
-        stageType={controller.snapshot.editedSection.identity.type}
-      />
-    );
+    // The stage the session opened, as the editor's own stage type. They are
+    // the same interface by construction — `T` comes from this very call — but
+    // the session holds the type as a runtime string, and only the call site
+    // knows which literal it is.
+    const stageType = controller.snapshot.editedSection.identity.type as T;
+    return <Editor controller={controller} stageType={stageType} />;
   }
 
   if (sections === undefined) {
@@ -402,16 +454,35 @@ function HarnessEditor({
   );
 }
 
-function seedFrom(
-  options: RenderStageEditorOptions,
-): Readonly<{ id: string; type: StageType; fields: SectionDoc }> {
+type SeededStage = Readonly<{
+  id: string;
+  type: StageType;
+  fields: SectionDoc;
+  /** Set only for a stage the harness is CREATING. */
+  creation?: StageCreation;
+}>;
+
+function seedFrom<T extends StageType>(
+  options: RenderStageEditorOptions<T>,
+): SeededStage {
+  if (options.create !== undefined) {
+    const { type, position, fields } = options.create;
+    return {
+      id: 'stage-under-test',
+      type,
+      // What a host opens a create session with: the interface's own authored
+      // defaults, not a blank document and not a schema default.
+      fields: { ...getInterfaceTemplate(type), ...fields },
+      creation: { position },
+    };
+  }
   if (options.stage !== undefined) {
     const { id = 'stage-under-test', type, fields } = options.stage;
     return { id, type, fields };
   }
   if (options.stageId === undefined) {
     throw new Error(
-      'renderStageEditor needs a stage: pass `stageId` to open one from the all-interfaces protocol, or `stage` to build one.',
+      'renderStageEditor needs a stage: pass `stageId` to open one from the all-interfaces protocol, `stage` to build one, or `create` to open a new one.',
     );
   }
   return loadFixtureStage(options.stageId);
@@ -422,11 +493,28 @@ function stageOrderWith(
   sections: Readonly<Record<string, SectionDoc>>,
   stageId: string,
 ): string[] {
+  const stages = stageOrderOf(sections);
+  return stages.includes(stageId) ? stages : [...stages, stageId];
+}
+
+/** The interview's stage order with a stage being created inserted into it. */
+function stageOrderInserting(
+  sections: Readonly<Record<string, SectionDoc>>,
+  stageId: string,
+  position: number,
+): string[] {
+  const stages = stageOrderOf(sections).filter((entry) => entry !== stageId);
+  const index = Math.min(Math.max(position, 0), stages.length);
+  return [...stages.slice(0, index), stageId, ...stages.slice(index)];
+}
+
+function stageOrderOf(
+  sections: Readonly<Record<string, SectionDoc>>,
+): string[] {
   const order = sections[sectionId({ kind: 'stageOrder' })]?.stages;
-  const stages = Array.isArray(order)
+  return Array.isArray(order)
     ? order.filter((entry): entry is string => typeof entry === 'string')
     : [];
-  return stages.includes(stageId) ? stages : [...stages, stageId];
 }
 
 function patchedCodebook(
