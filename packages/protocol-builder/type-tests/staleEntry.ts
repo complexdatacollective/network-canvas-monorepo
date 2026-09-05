@@ -1,7 +1,5 @@
-import {
-  defineStageEditorPart,
-  type UnregisteredIn,
-} from '../src/stageEditorRegistry.ts';
+import { defineStageEditorPart } from '../src/stage-editor-contract.ts';
+import { type UnregisteredIn } from '../src/stageEditorRegistry.ts';
 import { InformationEditor } from './fixtures.ts';
 
 /**

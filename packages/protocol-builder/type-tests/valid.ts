@@ -1,7 +1,7 @@
+import { defineStageEditorPart } from '../src/stage-editor-contract.ts';
 import {
   type Assert,
   type AwaitingListIsComplete,
-  defineStageEditorPart,
   type PartsAreDisjoint,
   type RegisteredIn,
   type UnregisteredIn,

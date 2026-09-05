@@ -1,7 +1,14 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "extends": "@codaco/tsconfig/web.json",
+  // The package's own configuration, not the shared web preset: these probes
+  // are claims about how THIS package's types behave, and reaching the
+  // registry pulls the whole editor graph into the program with them. Compiled
+  // under different options, the files they drag in report errors the package
+  // itself does not have, and the probes are read by which files the compiler
+  // refused.
+  "extends": "../tsconfig.json",
   "compilerOptions": {
+    "composite": false,
     "noEmit": true,
     "incremental": false
   },
