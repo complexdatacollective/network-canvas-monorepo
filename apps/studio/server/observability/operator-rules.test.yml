@@ -5,15 +5,15 @@ tests:
   - name: Unready infrastructure does not inflate the application error ratio
     interval: 1m
     input_series:
-      - series: 'studio_http_requests_total{job="studio",instance="server",route="/readyz",status="503",method="GET"}'
+      - series: studio_http_requests_total{job="studio",instance="server",route="/readyz",status="503",method="GET"}
         values: 0+60x20
-      - series: 'studio_http_requests_total{job="studio",instance="server",route="/rpc/studies/list",status="200",method="POST"}'
+      - series: studio_http_requests_total{job="studio",instance="server",route="/rpc/studies/list",status="200",method="POST"}
         values: 0+60x20
-      - series: 'studio_http_requests_total{job="studio",instance="server",route="/rpc/studies/list",status="500",method="POST"}'
+      - series: studio_http_requests_total{job="studio",instance="server",route="/rpc/studies/list",status="500",method="POST"}
         values: 0+0x20
-      - series: 'studio_outbox_oldest_ready_seconds{job="studio",instance="server",queue="message_deliveries"}'
+      - series: studio_outbox_oldest_ready_seconds{job="studio",instance="server",queue="message_deliveries"}
         values: 0+0x20
-      - series: 'studio_outbox_jobs{job="studio",instance="server",queue="message_deliveries",state="uncertain"}'
+      - series: studio_outbox_jobs{job="studio",instance="server",queue="message_deliveries",state="uncertain"}
         values: 0+0x20
     alert_rule_test:
       - eval_time: 10m
@@ -28,11 +28,11 @@ tests:
   - name: Sustained failures and uncertain acknowledgements reach only operators
     interval: 1m
     input_series:
-      - series: 'studio_http_requests_total{job="studio",instance="server",route="/rpc/studies/list",status="500",method="POST"}'
+      - series: studio_http_requests_total{job="studio",instance="server",route="/rpc/studies/list",status="500",method="POST"}
         values: 0+60x20
-      - series: 'studio_outbox_oldest_ready_seconds{job="studio",instance="server",queue="message_deliveries"}'
+      - series: studio_outbox_oldest_ready_seconds{job="studio",instance="server",queue="message_deliveries"}
         values: 600+0x20
-      - series: 'studio_outbox_jobs{job="studio",instance="server",queue="message_deliveries",state="uncertain"}'
+      - series: studio_outbox_jobs{job="studio",instance="server",queue="message_deliveries",state="uncertain"}
         values: 1+0x20
     alert_rule_test:
       - eval_time: 4m
@@ -49,7 +49,9 @@ tests:
               severity: warning
             exp_annotations:
               summary: Studio has delivery or recompute work waiting to run
-              description: Check worker availability and delivery-provider health for the affected queue.
+              description:
+                Check worker availability and delivery-provider health for the
+                affected queue.
       - eval_time: 1m
         alertname: StudioUncertainDelivery
         exp_alerts:
@@ -62,7 +64,9 @@ tests:
               severity: warning
             exp_annotations:
               summary: Studio has delivery acknowledgements requiring reconciliation
-              description: The provider accepted a delivery but database finalization failed. Do not blindly resend uncertain work.
+              description:
+                The provider accepted a delivery but database finalization failed.
+                Do not blindly resend uncertain work.
       - eval_time: 10m
         alertname: StudioApplicationErrors
         exp_alerts:
@@ -73,4 +77,197 @@ tests:
               severity: critical
             exp_annotations:
               summary: Studio application requests are failing
-              description: Investigate request logs by request_id and the fixed route labels. Do not copy request payloads into an incident.
+              description:
+                Investigate request logs by request_id and the fixed route labels.
+                Do not copy request payloads into an incident.
+  - name:
+      'StudioQueueFailure: a zero counter observed before failure is a positive
+      control'
+    interval: 1m
+    input_series:
+      - series: studio_outbox_last_failure_timestamp_seconds{job="studio",instance="server",queue="team_invitation_deliveries"}
+        values: 0 60+0x10
+      - series: studio_outbox_dispatch_results_total{job="studio",instance="server",queue="team_invitation_deliveries",result="failed"}
+        values: 0 1+0x10
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: StudioQueueFailure
+        exp_alerts:
+          - &a1
+            exp_labels:
+              job: studio
+              instance: server
+              queue: team_invitation_deliveries
+              audience: operators
+              severity: warning
+            exp_annotations:
+              summary: A Studio queue has a recent terminal failure
+              description:
+                Investigate the affected queue through operator tooling without
+                including delivery payloads in alerts.
+  - name: 'StudioQueueFailure: the first failure precedes the first scrape'
+    interval: 1m
+    input_series:
+      - series: studio_outbox_last_failure_timestamp_seconds{job="studio",instance="server",queue="team_invitation_deliveries"}
+        values: _ 60+0x10
+      - series: studio_outbox_dispatch_results_total{job="studio",instance="server",queue="team_invitation_deliveries",result="failed"}
+        values: _ 1+0x10
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: StudioQueueFailure
+        exp_alerts:
+          - *a1
+  - name:
+      'StudioQueueFailure: a future failure timestamp remains actionable under
+      clock skew'
+    interval: 1m
+    input_series:
+      - series: studio_outbox_last_failure_timestamp_seconds{job="studio",instance="server",queue="team_invitation_deliveries"}
+        values: 600+0x10
+      - series: studio_outbox_dispatch_results_total{job="studio",instance="server",queue="team_invitation_deliveries",result="failed"}
+        values: 1+0x10
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: StudioQueueFailure
+        exp_alerts:
+          - *a1
+  - name: 'StudioQueueFailure: no recorded failure'
+    interval: 1m
+    input_series:
+      - series: studio_outbox_last_failure_timestamp_seconds{job="studio",instance="server",queue="team_invitation_deliveries"}
+        values: 0+0x10
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: StudioQueueFailure
+        exp_alerts: []
+  - name: 'StudioQueueFailure: absent metric before any failure'
+    interval: 1m
+    input_series: []
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: StudioQueueFailure
+        exp_alerts: []
+  - name: 'StudioQueueFailure: notice ages out without rewriting the retained
+      failure'
+    interval: 1m
+    input_series:
+      - series: studio_outbox_last_failure_timestamp_seconds{job="studio",instance="server",queue="team_invitation_deliveries"}
+        values: 60+0x10
+      - series: studio_outbox_dispatch_results_total{job="studio",instance="server",queue="team_invitation_deliveries",result="failed"}
+        values: 1+0x10
+      - series: studio_outbox_jobs{job="studio",instance="server",queue="team_invitation_deliveries",state="failed"}
+        values: 1+0x10
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: StudioQueueFailure
+        exp_alerts:
+          - *a1
+      - eval_time: 6m
+        alertname: StudioQueueFailure
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: StudioQueueFailure
+        exp_alerts: []
+  - name: 'StudioQueueFailure: restart discovers a recent durable failure with a
+      fresh zero counter'
+    interval: 1m
+    input_series:
+      - series: studio_outbox_last_failure_timestamp_seconds{job="studio",instance="server",queue="team_invitation_deliveries"}
+        values: _ _ 60+0x10
+      - series: studio_outbox_dispatch_results_total{job="studio",instance="server",queue="team_invitation_deliveries",result="failed"}
+        values: _ _ 0+0x10
+      - series: studio_outbox_jobs{job="studio",instance="server",queue="team_invitation_deliveries",state="failed"}
+        values: _ _ 1+0x10
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: StudioQueueFailure
+        exp_alerts:
+          - *a1
+  - name:
+      'StudioWorkerErrors: a zero counter observed before failure is a positive
+      control'
+    interval: 1m
+    input_series:
+      - series: studio_outbox_last_worker_error_timestamp_seconds{job="studio",instance="server",queue="team_invitation_deliveries"}
+        values: 0 60+0x10
+      - series: studio_outbox_errors_total{job="studio",instance="server",queue="team_invitation_deliveries",kind="worker_error"}
+        values: 0 1+0x10
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: StudioWorkerErrors
+        exp_alerts:
+          - &a2
+            exp_labels:
+              job: studio
+              instance: server
+              queue: team_invitation_deliveries
+              audience: operators
+              severity: warning
+            exp_annotations:
+              summary: A Studio worker could not complete its polling operation
+              description:
+                Inspect fixed operational diagnostic codes and dependency readiness
+                for the affected process.
+  - name: 'StudioWorkerErrors: the first failure precedes the first scrape'
+    interval: 1m
+    input_series:
+      - series: studio_outbox_last_worker_error_timestamp_seconds{job="studio",instance="server",queue="team_invitation_deliveries"}
+        values: _ 60+0x10
+      - series: studio_outbox_errors_total{job="studio",instance="server",queue="team_invitation_deliveries",kind="worker_error"}
+        values: _ 1+0x10
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: StudioWorkerErrors
+        exp_alerts:
+          - *a2
+  - name:
+      'StudioWorkerErrors: a future failure timestamp remains actionable under
+      clock skew'
+    interval: 1m
+    input_series:
+      - series: studio_outbox_last_worker_error_timestamp_seconds{job="studio",instance="server",queue="team_invitation_deliveries"}
+        values: 600+0x10
+      - series: studio_outbox_errors_total{job="studio",instance="server",queue="team_invitation_deliveries",kind="worker_error"}
+        values: 1+0x10
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: StudioWorkerErrors
+        exp_alerts:
+          - *a2
+  - name: 'StudioWorkerErrors: no recorded failure'
+    interval: 1m
+    input_series:
+      - series: studio_outbox_last_worker_error_timestamp_seconds{job="studio",instance="server",queue="team_invitation_deliveries"}
+        values: 0+0x10
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: StudioWorkerErrors
+        exp_alerts: []
+  - name: 'StudioWorkerErrors: absent metric before any failure'
+    interval: 1m
+    input_series: []
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: StudioWorkerErrors
+        exp_alerts: []
+  - name: 'StudioWorkerErrors: notice ages out without rewriting the retained
+      failure'
+    interval: 1m
+    input_series:
+      - series: studio_outbox_last_worker_error_timestamp_seconds{job="studio",instance="server",queue="team_invitation_deliveries"}
+        values: 60+0x10
+      - series: studio_outbox_errors_total{job="studio",instance="server",queue="team_invitation_deliveries",kind="worker_error"}
+        values: 1+0x10
+      - series: studio_outbox_jobs{job="studio",instance="server",queue="team_invitation_deliveries",state="failed"}
+        values: 1+0x10
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: StudioWorkerErrors
+        exp_alerts:
+          - *a2
+      - eval_time: 6m
+        alertname: StudioWorkerErrors
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: StudioWorkerErrors
+        exp_alerts: []

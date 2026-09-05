@@ -77,12 +77,14 @@ groups:
           summary: Studio has unreclaimed expired work leases
           description: Check whether a worker is running and can claim expired work.
       - alert: StudioQueueFailure
-        expr: increase(studio_outbox_dispatch_results_total{result="failed"}[5m]) > 0
+        expr: |
+          studio_outbox_last_failure_timestamp_seconds > 0
+          and (time() - studio_outbox_last_failure_timestamp_seconds < 300)
         labels:
           audience: operators
           severity: warning
         annotations:
-          summary: A Studio delivery exhausted its retry policy
+          summary: A Studio queue has a recent terminal failure
           description: Investigate the affected queue through operator tooling without including delivery payloads in alerts.
       - alert: StudioUncertainDelivery
         expr: studio_outbox_jobs{state="uncertain"} > 0
@@ -94,7 +96,9 @@ groups:
           summary: Studio has delivery acknowledgements requiring reconciliation
           description: The provider accepted a delivery but database finalization failed. Do not blindly resend uncertain work.
       - alert: StudioWorkerErrors
-        expr: increase(studio_outbox_errors_total{kind="worker_error"}[5m]) > 0
+        expr: |
+          studio_outbox_last_worker_error_timestamp_seconds > 0
+          and (time() - studio_outbox_last_worker_error_timestamp_seconds < 300)
         labels:
           audience: operators
           severity: warning

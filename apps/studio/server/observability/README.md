@@ -108,6 +108,8 @@ rule_files:
 | `studio_outbox_dispatch_results_total`                               | Shared dispatcher outcomes, including separate retried, failed and uncertain counts   |
 | `studio_outbox_dispatch_duration_seconds`                            | Shared dispatcher run histogram                                                       |
 | `studio_outbox_lease_renewals_total` / `studio_outbox_errors_total`  | Renewal outcomes and dispatcher/worker boundary errors                                |
+| `studio_outbox_last_failure_timestamp_seconds`                       | Newest retained terminal failure from database `failed_at`; zero for no failed rows   |
+| `studio_outbox_last_worker_error_timestamp_seconds`                  | Most recent worker polling error time in this process; absent before its first error  |
 
 Queue snapshots include `team_invitation_deliveries`, `audit_alert_outbox`,
 `audit_export_jobs`, `message_deliveries`, `webhook_deliveries`, and both
@@ -131,10 +133,33 @@ rate, pool saturation, event-loop lag, missing queue snapshots, stalled queues,
 expired leases, exhausted retries, uncertain acknowledgements and worker errors.
 Thresholds are starting values to tune from production measurements.
 
+Queue and worker failure notices use their last occurrence time, not an increase
+in a counter that might first be observed at one. Queue failure time comes from
+retained database `failed_at` values, so a restart still reports a recent failure.
+Worker failure time is process-local; restarting cannot recover an error that
+was never scraped. Counters remain available for rates and totals.
+
+Each notice stays eligible until five minutes after the recorded failure. Zero
+or absent timestamps are quiet. Positive future timestamps remain actionable:
+clock skew must not silently suppress a real failure. If a warning persists
+because its timestamp is ahead of the collector, investigate and correct the
+source clock. Collection failures remove the durable timestamps and activate
+`StudioQueueCollectionFailed` instead of replaying a stale snapshot.
+
+An alert aging out is not acknowledgement, reconciliation, or permission to
+retry a delivery. Retained terminal rows and their failed counts remain visible
+for the study's lifetime. Operators inspect the failure and record or silence
+the incident in their incident receiver or work log; they must not clear
+`failed_at`, delete a delivery, or blindly resend to dismiss a warning. Old
+failures that have already been reconciled therefore do not produce permanent
+pages, and no new acknowledgement state is added to the delivery schema.
+
 Validate the file with `promtool check rules operator-rules.yml` and run its
 positive and negative cases with `promtool test rules operator-rules.test.yml`
 from this directory. The tests cover the pending interval, uncertain delivery
-separation, and exclusion of readiness responses from application error rates.
+separation, exclusion of readiness responses from application error rates,
+first observations, recent durable failures after restart, notice aging,
+zero/absent timestamps, and conservative clock-skew handling.
 
 No rule contains recipient addresses or tenant data. Infrastructure failures
 must not go to researcher notifications. Team-configured research/audit alerts

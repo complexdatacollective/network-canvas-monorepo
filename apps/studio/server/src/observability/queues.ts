@@ -79,6 +79,7 @@ const queueSql = Object.entries(shapes)
     ${count(shape.lease && `${pending} AND ${shape.lease} > CURRENT_TIMESTAMP`)} AS leased,
     ${count(shape.lease && `${pending} AND ${shape.lease} <= CURRENT_TIMESTAMP`)} AS expired_leases,
     ${count(shape.failed && `${shape.failed} IS NOT NULL`)} AS failed,
+    ${shape.failed ? `COALESCE(EXTRACT(EPOCH FROM MAX(${shape.failed})), 0)::float8` : '0::float8'} AS last_failure_timestamp_seconds,
     ${count(shape.uncertain && `${shape.uncertain} IS NOT NULL`)} AS uncertain,
     ${count(shape.suppressed && `${shape.suppressed} IS NOT NULL`)} AS suppressed
     FROM ${queue}`;
@@ -93,6 +94,7 @@ export type QueueSnapshot = {
   leased: number;
   expired_leases: number;
   failed: number;
+  last_failure_timestamp_seconds: number;
   uncertain: number;
   suppressed: number;
 };
