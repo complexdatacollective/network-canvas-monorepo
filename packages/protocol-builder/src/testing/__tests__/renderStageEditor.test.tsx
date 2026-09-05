@@ -1,6 +1,9 @@
 import { screen } from '@testing-library/react';
+import { useEffect, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import { useResourceGateway } from '../../resources/context.tsx';
+import BuilderSection from '../../sections/BuilderSection.tsx';
 import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
@@ -15,6 +18,43 @@ const commonSections = (
     <InterviewerGuidanceSection />
   </>
 );
+
+/**
+ * A section that asks the gateway what is INSIDE a data file, the way a roster
+ * stage's card, sort and search sections do: the columns they offer a
+ * researcher are the roster's own attribute names, and nothing but the file
+ * can supply them. Seeded with a placeholder body instead, every one of those
+ * sections would test its "this file cannot be read" state rather than itself.
+ */
+function RosterColumnsSection({
+  resourceId,
+}: Readonly<{ resourceId: string }>) {
+  const gateway = useResourceGateway();
+  const [columns, setColumns] = useState<readonly string[]>([]);
+  const [unreadable, setUnreadable] = useState(false);
+
+  useEffect(() => {
+    let current = true;
+    void gateway.inspect(resourceId).then((result) => {
+      if (!current) return;
+      if (result.status === 'ok') setColumns(result.data.variableNames ?? []);
+      else setUnreadable(true);
+    });
+    return () => {
+      current = false;
+    };
+  }, [gateway, resourceId]);
+
+  return (
+    <BuilderSection title="Card details">
+      <p>
+        {unreadable || columns.length === 0
+          ? 'That roster could not be read.'
+          : `Columns: ${columns.join(', ')}`}
+      </p>
+    </BuilderSection>
+  );
+}
 
 describe('the stage-editor test harness', () => {
   it('opens a stage of the shared protocol over a real session', () => {
@@ -138,5 +178,52 @@ describe('the stage-editor test harness', () => {
 
     harness.setReadOnly(false);
     expect(harness.session.getSnapshot().access.mode).toBe('editable');
+  });
+});
+
+/**
+ * The protocol's asset manifest and the resource gateway are two halves of one
+ * fact: a stage may reference a resource only if the manifest lists it AND the
+ * host holds its bytes. The harness seeds both from the same manifest, so a
+ * stage seeded with a reference is one a host would accept — and a section that
+ * reads a data file gets the file, not a placeholder.
+ */
+describe('the resources a harnessed stage can reach', () => {
+  it('hands a section the columns of the roster the fixture ships', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-roster-1',
+      sections: <RosterColumnsSection resourceId="roster_data" />,
+    });
+
+    // The roster's own attributes, read out of the file beside the protocol.
+    expect(await screen.findByText('Columns: age, name')).toBeInTheDocument();
+    // And the gateway holds it as something the protocol already has, rather
+    // than as something this session staged.
+    const listed = await harness.gateway.list();
+    if (listed.status !== 'ok') throw new Error('the gateway refused to list');
+    expect(
+      listed.data.find((resource) => resource.id === 'roster_data'),
+    ).toMatchObject({ name: 'Roster', kind: 'network', status: 'committed' });
+  });
+
+  it('joins an extra asset to the manifest and the gateway together', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-roster-1',
+      assets: {
+        second_roster: {
+          name: 'Another roster',
+          type: 'network',
+          source: 'roster.json',
+        },
+      },
+      sections: <RosterColumnsSection resourceId="second_roster" />,
+    });
+
+    expect(await screen.findByText('Columns: age, name')).toBeInTheDocument();
+    const listed = await harness.gateway.list();
+    if (listed.status !== 'ok') throw new Error('the gateway refused to list');
+    expect(listed.data.map((resource) => resource.id)).toEqual(
+      expect.arrayContaining(['roster_data', 'second_roster']),
+    );
   });
 });

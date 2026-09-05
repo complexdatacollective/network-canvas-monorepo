@@ -1,7 +1,11 @@
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 
-import type { DialogArrayItemSelector } from '../../form/arrayFields/DialogArrayField.tsx';
+import { withoutAbsentValues } from '../../form/absentValues.ts';
+import type {
+  DialogArrayEditorValidate,
+  DialogArrayItemSelector,
+} from '../../form/arrayFields/DialogArrayField.tsx';
 import { DialogFormField } from '../../form/DialogForm.tsx';
 import type { RowEditorProps, RowPreviewProps } from '../rowRenderers.tsx';
 
@@ -209,4 +213,49 @@ export function collapseMediaItem(value: unknown): unknown {
   const draft = value[chosen];
   if (typeof draft === 'string') collapsed.content = draft;
   return collapsed;
+}
+
+/** The question the shared fixture protocol's name generator already asks. */
+export const SEEDED_QUESTION = 'Who are the people you know?';
+
+const textOf = (value: unknown): string => {
+  if (!isRow(value)) return '';
+  const text = value.text;
+  return typeof text === 'string' ? text : '';
+};
+
+/**
+ * A family's own rule about one prompt, checked when its dialog is submitted.
+ *
+ * The shape only `editorValidate` can serve: it needs the whole row AND the row
+ * as the dialog opened on it, because asking the same question twice is a
+ * refusal while the prompt that already asks it is not asking it twice.
+ */
+export const refuseADuplicateQuestion: DialogArrayEditorValidate = (
+  values,
+  context,
+) => {
+  const asked = typeof values.text === 'string' ? values.text.trim() : '';
+  if (asked !== SEEDED_QUESTION || textOf(context?.initialValues) === asked) {
+    return undefined;
+  }
+  return { text: 'Another prompt already asks this.' };
+};
+
+/**
+ * A family's own collapse of a saved prompt.
+ *
+ * It replaces the section's default rather than composing with it, so it does
+ * that rule's work too. What it adds is the part only the field owning the list
+ * can decide: the shared rule keeps an empty array, because it cannot tell
+ * "emptied on purpose" from "never used", and a prompt that assigns nothing
+ * should carry no key at all rather than an empty one.
+ */
+export function dropUnusedAssignments(row: unknown): unknown {
+  const collapsed = withoutAbsentValues(row);
+  if (!isRow(collapsed)) return collapsed;
+  const assigned = collapsed.additionalAttributes;
+  if (!Array.isArray(assigned) || assigned.length > 0) return collapsed;
+  const { additionalAttributes: _unused, ...rest } = collapsed;
+  return rest;
 }
