@@ -8,6 +8,7 @@ import {
   collectAssetReferences,
   CURRENT_SCHEMA_VERSION,
   CurrentProtocolSchema,
+  stageSchema,
 } from '@codaco/protocol-validation';
 
 import { type SectionDoc } from './apply.ts';
@@ -205,6 +206,46 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+/** Presence only: destination reference mapping remains the insertion contract. */
+function requireKindContent(
+  kind: TemplateArtifactManifest['template']['kind'],
+  sections: ReadonlyMap<string, SectionDoc>,
+): void {
+  if (kind === 'protocol') return;
+  const present = Array.from(sections).some(([id, doc]) => {
+    const reference = parseSectionId(id);
+    if (kind === 'stage') return reference.kind === 'stage';
+    if (kind === 'entity_definition' || kind === 'variable_set') {
+      const definition =
+        reference.kind === 'codebookNode' ||
+        reference.kind === 'codebookEdge' ||
+        reference.kind === 'codebookEgo';
+      return (
+        definition &&
+        (kind === 'entity_definition' ||
+          (isRecord(doc.variables) && Object.keys(doc.variables).length > 0))
+      );
+    }
+    if (reference.kind !== 'stage') return false;
+    const stage = stageSchema.parse(doc);
+    if (!('prompts' in stage) || stage.prompts.length === 0) return false;
+    if (
+      stage.type === 'NameGenerator' ||
+      stage.type === 'NameGeneratorQuickAdd' ||
+      stage.type === 'NameGeneratorRoster'
+    )
+      return true;
+    // Census prompts require createEdge; Sociogram can instead only display
+    // edges or collect layouts. A display-only prompt is not a generator.
+    return stage.prompts.some(
+      (prompt) =>
+        ('createEdge' in prompt && prompt.createEdge.length > 0) ||
+        ('edges' in prompt && Boolean(prompt.edges?.create)),
+    );
+  });
+  if (!present) throw new TemplateArtifactError('TEMPLATE_SECTIONS_INVALID');
+}
+
 async function verifyFiles(
   files: ReadonlyMap<string, Uint8Array>,
 ): Promise<VerifiedTemplateArtifact> {
@@ -265,6 +306,7 @@ async function verifyFiles(
       );
       sections.set(reference.id, doc);
     }
+    requireKindContent(manifest.template.kind, sections);
     if (manifest.template.kind === 'protocol') {
       const result = await CurrentProtocolSchema.safeParseAsync(
         assembleProtocolSections(Object.fromEntries(sections)),

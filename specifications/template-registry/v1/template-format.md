@@ -124,10 +124,24 @@ stage exactly once. Manifest sorting does not change interview stage order:
 execution order is authored in `stageOrder`.
 
 For kind `protocol`, the assembled document MUST also pass the complete current
-protocol schema validation. Partial kinds undergo per-section validation and
-asset reference validation; resolving their destination entities and variables
-when inserting them is the separate Studio insertion contract. A container
-MUST contain every referenced asset, including references in partial templates.
+protocol schema validation. Partial kinds MUST contain content matching their
+kind, in addition to passing per-section validation:
+
+- `stage`: at least one `stage:<id>` section.
+- `entity_definition`: at least one node, edge, or ego codebook section.
+- `variable_set`: at least one node, edge, or ego codebook section with a
+  nonempty `variables` object.
+- `generator_prompt_set`: at least one stage containing a nonempty generator
+  prompt set. In schema 8, these are `NameGenerator`, `NameGeneratorQuickAdd`,
+  or `NameGeneratorRoster` prompts, or a prompt with a nonempty `createEdge`
+  (the census interfaces) or `edges.create` (Sociogram) reference. Prompts that
+  only display edges or collect variable values do not satisfy this requirement.
+
+Supporting sections remain permitted. These are presence requirements;
+resolving destination entities and variables when inserting partial templates
+is the separate Studio insertion contract. Every kind also undergoes asset
+reference validation. A container MUST contain every referenced asset,
+including references in partial templates.
 
 Each strict asset reference contains:
 
