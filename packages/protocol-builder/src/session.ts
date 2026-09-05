@@ -37,6 +37,7 @@ import {
   mergeDraftValidationIssues,
   promotionContent,
   stageIndexForValidation,
+  type SessionResourceGateway,
   type StagedResourceDiscardFailure,
   type StagedResourceFinishOutcome,
   type StagedResourceTracker,
@@ -250,7 +251,7 @@ export type ProtocolBuilderSession = {
    * the session without one. The shell provides it to editors; nothing else
    * in the package reaches host storage.
    */
-  getResourceGateway(): ProtocolBuilderResourceGateway | undefined;
+  getResourceGateway(): SessionResourceGateway | undefined;
 };
 
 export type ProtocolBuilderSessionOptions = Readonly<{
@@ -807,7 +808,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     return result;
   }
 
-  getResourceGateway(): ProtocolBuilderResourceGateway | undefined {
+  getResourceGateway(): SessionResourceGateway | undefined {
     return this.resources?.gateway;
   }
 

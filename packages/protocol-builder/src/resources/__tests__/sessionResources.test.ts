@@ -84,6 +84,11 @@ type SessionFixtureOptions = Readonly<{
    */
   stagingGate?: Promise<void>;
   /**
+   * Holds every discard at the host until it resolves, so a test can act in
+   * the window between a discard being asked for and the host carrying it out.
+   */
+  discardGate?: Promise<void>;
+  /**
    * Runs inside the finish apply, where the promotion has moved the bytes and
    * nothing has committed the manifest yet.
    */
@@ -139,6 +144,7 @@ function createFixture(options: SessionFixtureOptions = {}) {
   // hooks a test uses to act from inside a call that is still in flight.
   const sessionGatewayPort: ProtocolBuilderResourceGateway =
     gate === undefined &&
+    options.discardGate === undefined &&
     options.duringInspect === undefined &&
     options.loseFirstPromotionAnswer !== true
       ? gateway
@@ -147,7 +153,10 @@ function createFixture(options: SessionFixtureOptions = {}) {
           list: (listOptions) => gateway.list(listOptions),
           download: (resourceId) => gateway.download(resourceId),
           resolvePreview: (resourceId) => gateway.resolvePreview(resourceId),
-          discardStaged: (resourceId) => gateway.discardStaged(resourceId),
+          discardStaged: async (resourceId) => {
+            await options.discardGate;
+            return gateway.discardStaged(resourceId);
+          },
           discardAllStaged: () => gateway.discardAllStaged(),
           promote: async (request) => {
             const result = await gateway.promote(request);
@@ -1147,5 +1156,101 @@ describe('a session that stages resources', () => {
         status: 'staged',
       },
     ]);
+  });
+});
+
+/**
+ * A discard and a selection are decisions about the same staged resource made
+ * in two different places — the field that is dropping it, and the field that
+ * is about to name it — and the host takes time to carry the discard out. The
+ * session is the only thing that sees both, so it is the only thing that can
+ * put them in an order.
+ */
+describe('a discard racing a field that would name the same resource', () => {
+  /** A discard the test releases, and the session it is held inside. */
+  function heldDiscard() {
+    let release = () => undefined as void;
+    const discardGate = new Promise<void>((resolve) => {
+      release = () => resolve();
+    });
+    return { ...createFixture({ discardGate }), release };
+  }
+
+  it('refuses a reference taken while that resource is being discarded', async () => {
+    const { session, release } = heldDiscard();
+    const roster = await stageRoster(session, 'request-roster');
+    const other = await stageRoster(session, 'request-other', 'Second roster');
+    const resources = sessionGateway(session);
+
+    const discarding = resources.discardStaged(roster.id);
+    const refused = expectFailure(resources.referenceStaged(roster.id));
+
+    // Without this the second field takes it, the discard resolves, and that
+    // field is left naming bytes the host has just deleted.
+    expect(refused.reason).toBe('not-found');
+    expect(refused.retryable).toBe(false);
+    expect(refused.resourceId).toBe(roster.id);
+    // Only the one that is leaving: a session that stopped taking references
+    // altogether would refuse every other field on the stage too.
+    expectOk(resources.referenceStaged(other.id));
+
+    release();
+    expectOk(await discarding);
+    expect(
+      session.getSnapshot().stagedResources.map((staged) => staged.id),
+    ).toEqual([other.id]);
+  });
+
+  it('refuses every reference from the moment a discard is asked for, whoever named it first', async () => {
+    const { session, release } = heldDiscard();
+    const roster = await stageRoster(session, 'request-roster');
+    const resources = sessionGateway(session);
+
+    // The other order: a field names it, and only then is the discard asked
+    // for. Whether that discard is allowed at all is the picker's question —
+    // it is the form that knows how many fields name the resource — but the
+    // instant it starts, nothing else may come to name it.
+    expectOk(resources.referenceStaged(roster.id));
+    const discarding = resources.discardStaged(roster.id);
+
+    expectFailure(resources.referenceStaged(roster.id));
+
+    release();
+    expectOk(await discarding);
+    expect(session.getSnapshot().stagedResources).toEqual([]);
+  });
+
+  it('takes references again for a resource the host would not discard', async () => {
+    const { gateway, session, release } = heldDiscard();
+    const roster = await stageRoster(session, 'request-roster');
+    const resources = sessionGateway(session);
+    gateway.failNext('discard', { reason: 'unavailable', retryable: true });
+
+    const discarding = resources.discardStaged(roster.id);
+    expectFailure(resources.referenceStaged(roster.id));
+    release();
+    expectFailure(await discarding);
+
+    // Refused at the host, so the resource is still staged and still a
+    // perfectly good thing for a field to choose. A mark left behind would
+    // make it unchoosable for the rest of the session.
+    expectOk(resources.referenceStaged(roster.id));
+    expect(
+      session.getSnapshot().stagedResources.map((staged) => staged.id),
+    ).toEqual([roster.id]);
+  });
+
+  it('refuses every reference once the session has been cancelled', async () => {
+    const { session } = createFixture();
+    const roster = await stageRoster(session, 'request-roster');
+    const resources = sessionGateway(session);
+
+    expectOk(await session.cancel());
+
+    // Not one discard but all of them: the host has been told to drop
+    // everything this session staged, so every id it staged is on its way out.
+    expect(expectFailure(resources.referenceStaged(roster.id)).reason).toBe(
+      'read-only',
+    );
   });
 });

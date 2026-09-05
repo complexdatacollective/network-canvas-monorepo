@@ -29,6 +29,37 @@ const ASSETS_SECTION = sectionId({ kind: 'assets' });
 const STAGE_ORDER_SECTION = sectionId({ kind: 'stageOrder' });
 
 /**
+ * The one decision a session's gateway makes that a host's cannot: whether a
+ * field may come to name a staged resource right now.
+ *
+ * **A staged resource stops accepting references from the moment its discard
+ * is asked for.** Discarding is asynchronous, so the "is anything else using
+ * this?" a picker asks before it discards is a fact about the past: a second
+ * field choosing the same resource from the browser while the first field's
+ * discard is in flight arrives after that question and before the host has
+ * answered, and neither side would ever notice. The discard therefore marks
+ * the resource as leaving before it asks the host, and a reference taken while
+ * it is leaving is refused — so at every instant exactly one of the two can
+ * happen, and a field can never end up naming bytes the host is deleting.
+ *
+ * The count of references belongs to the form rather than here — a field's
+ * value reaches the session only on submit — so the picker still decides
+ * whether a discard is allowed at all. This decides only the order.
+ */
+export type StagedResourceReferenceGuard = Readonly<{
+  /**
+   * Ok when a field may name this resource; a failure to show the researcher
+   * when it may not. Anything this session is not discarding is ok, including
+   * every committed resource, which it knows nothing about.
+   */
+  referenceStaged(resourceId: string): ResourceResult<undefined>;
+}>;
+
+/** The host's port plus the staging decisions only a session can make. */
+export type SessionResourceGateway = ProtocolBuilderResourceGateway &
+  StagedResourceReferenceGuard;
+
+/**
  * The staged resources of one editing session, and the gateway the session
  * hands to its editors.
  *
@@ -40,7 +71,7 @@ const STAGE_ORDER_SECTION = sectionId({ kind: 'stageOrder' });
  */
 export type StagedResourceTracker = Readonly<{
   /** The session-scoped gateway; the one the shell provides to editors. */
-  gateway: ProtocolBuilderResourceGateway;
+  gateway: SessionResourceGateway;
   /** Descriptors only, in staging order. Never secret material. */
   staged(): readonly ResourceDescriptor[];
   /** The opaque handle for a staged secret, for promotion. */
@@ -137,6 +168,11 @@ export function createStagedResourceTracker(
   const host = resultChannelGateway(options.gateway);
   /** Ids of a promotion that is in flight; they cannot be discarded. */
   const promoting = new Set<string>();
+  /**
+   * Ids a discard is deciding right now. They take no new references: see
+   * {@link StagedResourceReferenceGuard} for the rule and what it is for.
+   */
+  const leaving = new Set<string>();
   /** True once the session cancelled: nothing staged after it is kept. */
   let cancelled = false;
   /**
@@ -236,7 +272,7 @@ export function createStagedResourceTracker(
     if (changed) options.onStagedChanged();
   };
 
-  const gateway: ProtocolBuilderResourceGateway = {
+  const gateway: SessionResourceGateway = {
     secretStorage: host.secretStorage,
     list: (listOptions?: ResourceListOptions) => host.list(listOptions),
     inspect: (resourceId: string) => host.inspect(resourceId),
@@ -278,16 +314,31 @@ export function createStagedResourceTracker(
       if (promoting.has(resourceId)) {
         return saveInFlightFailure(resourceId);
       }
-      const result = await host.discardStaged(resourceId);
-      if (result.status === 'ok') forget([resourceId]);
-      return result;
+      // Marked before the host is asked, and unmarked however it answers: a
+      // discard the host refused leaves the resource staged and choosable
+      // again, and one it carried out has already been forgotten, so the mark
+      // has nothing left to protect either way.
+      leaving.add(resourceId);
+      try {
+        const result = await host.discardStaged(resourceId);
+        if (result.status === 'ok') forget([resourceId]);
+        return result;
+      } finally {
+        leaving.delete(resourceId);
+      }
     },
 
     async discardAllStaged(): Promise<ResourceResult<undefined>> {
       if (promoting.size > 0) return saveInFlightFailure();
-      const result = await host.discardAllStaged();
-      if (result.status === 'ok') forgetAllStaged();
-      return result;
+      const all = [...entries.keys()];
+      for (const resourceId of all) leaving.add(resourceId);
+      try {
+        const result = await host.discardAllStaged();
+        if (result.status === 'ok') forgetAllStaged();
+        return result;
+      } finally {
+        for (const resourceId of all) leaving.delete(resourceId);
+      }
     },
 
     async promote(
@@ -315,6 +366,15 @@ export function createStagedResourceTracker(
           promoting.delete(resourceId);
         }
       }
+    },
+
+    referenceStaged: (resourceId: string): ResourceResult<undefined> => {
+      // A cancelled session has told the host to drop everything it staged,
+      // so every staged id in it is on its way out whether or not one
+      // particular discard is still running.
+      if (cancelled) return sessionCancelledFailure();
+      if (leaving.has(resourceId)) return resourceLeavingFailure(resourceId);
+      return resourceOk(undefined);
     },
   };
 
@@ -824,6 +884,22 @@ function sessionCancelledFailure<T>(): ResourceResult<T> {
   return resourceFailure(
     'read-only',
     'this stage was discarded, so its resources can no longer be saved',
+  );
+}
+
+/**
+ * A reference refused because the resource is on its way out of the session.
+ *
+ * Reported as `not-found` because that is what the id is about to mean, and
+ * not retryable: asking again would only be waiting for the discard to finish
+ * making it true. The message offers the way out that always exists —
+ * something else — rather than describing the race.
+ */
+function resourceLeavingFailure<T>(resourceId: string): ResourceResult<T> {
+  return resourceFailure(
+    'not-found',
+    'That resource is being discarded, so it cannot be used here. Choose a different one.',
+    { resourceId },
   );
 }
 

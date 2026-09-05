@@ -1,6 +1,20 @@
 import { createContext, useContext, type ReactNode } from 'react';
 
 import type { ProtocolBuilderResourceGateway } from './gateway';
+import type { StagedResourceReferenceGuard } from './lifecycle.ts';
+
+/**
+ * A gateway as a control receives it: the host's port, and — when the editor
+ * is inside an editing session, which is how a host wires it — the session's
+ * own reference guard as well.
+ *
+ * Optional rather than required because a control can be rendered over a
+ * host's gateway directly, in a story or a test of the control alone. There is
+ * no session there to serialize a discard against, and nothing staged that
+ * outlives the surface, so a reference taken in that state is always its own.
+ */
+export type ProvidedResourceGateway = ProtocolBuilderResourceGateway &
+  Partial<StagedResourceReferenceGuard>;
 
 /**
  * The resource gateway a stage editor's resource pickers talk to. The host
@@ -9,7 +23,7 @@ import type { ProtocolBuilderResourceGateway } from './gateway';
  * `useResourceGateway`, never through a host store or storage API.
  */
 const ResourceGatewayContext = createContext<
-  ProtocolBuilderResourceGateway | undefined
+  ProvidedResourceGateway | undefined
 >(undefined);
 
 type ResourceGatewayProviderProps = Readonly<{
@@ -21,7 +35,7 @@ type ResourceGatewayProviderProps = Readonly<{
    * it — one editor nested in another would otherwise stage into the outer
    * session, which neither tracks nor cleans up what it staged.
    */
-  gateway: ProtocolBuilderResourceGateway | undefined;
+  gateway: ProvidedResourceGateway | undefined;
   children: ReactNode;
 }>;
 
@@ -36,7 +50,7 @@ export function ResourceGatewayProvider({
   );
 }
 
-export function useResourceGateway(): ProtocolBuilderResourceGateway {
+export function useResourceGateway(): ProvidedResourceGateway {
   const gateway = useContext(ResourceGatewayContext);
   if (gateway === undefined) {
     throw new Error(

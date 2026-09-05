@@ -148,6 +148,15 @@ export default function ResourcePickerControl({
   const handleSelect = (chosen: ResourceDescriptor) => {
     setBrowserOpen(false);
     setAskedForResource(false);
+    // Asked of the session rather than decided here: another field may have
+    // started discarding this very resource a moment ago, and only the session
+    // knows that a discard is in flight. Taking it anyway would leave this
+    // field naming bytes the host is in the middle of deleting.
+    const reference = gateway.referenceStaged?.(chosen.id);
+    if (reference?.status === 'failed') {
+      setRefusal(reference.failure.message);
+      return;
+    }
     setRefusal(undefined);
     action.clear();
     onChange?.(chosen.id);
@@ -372,15 +381,22 @@ export default function ResourcePickerControl({
               <div role="alert" className="text-destructive text-sm">
                 {refusal}
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={locked}
-                onClick={handleRemove}
-              >
-                Remove this resource
-              </Button>
+              {/* Offered only when there is something to remove. A refusal can
+                  also reach a field that holds nothing — one that tried to
+                  take a resource another field is discarding — and letting go
+                  of a resource this field never had is not a way out of
+                  anything. */}
+              {selectedId !== undefined && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={locked}
+                  onClick={handleRemove}
+                >
+                  Remove this resource
+                </Button>
+              )}
             </div>
           )}
 

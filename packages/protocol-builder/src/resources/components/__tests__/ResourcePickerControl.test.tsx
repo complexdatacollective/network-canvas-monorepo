@@ -1245,7 +1245,7 @@ describe('discarding a resource other fields may share', () => {
     );
   }
 
-  function renderItems(gateway: InMemoryResourceGateway) {
+  function renderItems(gateway: ProtocolBuilderResourceGateway) {
     const { formValues } = renderResourceEditor({
       gateway,
       fields: ASSET_ITEMS,
@@ -1350,6 +1350,59 @@ describe('discarding a resource other fields may share', () => {
     await waitFor(() => expect(contents()[0]).toBeUndefined());
     expect(within(first).queryByRole('alert')).toBeNull();
     expect(gateway.getStagingResidue()).toEqual([]);
+  });
+
+  it('will not let a second field take one whose discard is already under way', async () => {
+    const user = userEvent.setup();
+    const inner = new InMemoryResourceGateway();
+    const discard = deferred<void>();
+    const gateway = overrideGateway(inner, {
+      discardStaged: async (resourceId) => {
+        await discard.promise;
+        return inner.discardStaged(resourceId);
+      },
+    });
+    const contents = renderItems(gateway);
+
+    const first = await screen.findByRole('group', { name: 'First image' });
+    const second = screen.getByRole('group', { name: 'Second image' });
+    await importInto(user, first);
+    await waitFor(() => expect(contents()[0]).toBe('staged-resource-1'));
+
+    // No other field names it, so the discard is allowed and dispatched.
+    await user.click(
+      within(first).getByRole('button', { name: 'Discard this resource' }),
+    );
+    // While the host is still carrying it out, the second field browses —
+    // its own button, which the first field's discard does not disable — and
+    // the browser still lists the resource, because it is still staged.
+    await user.click(
+      within(second).getByRole('button', { name: 'Select an image' }),
+    );
+    await user.click(
+      await screen.findByRole('button', { name: 'skyline.png' }),
+    );
+    await act(flushPendingWork);
+
+    // The count the first field checked was true when it checked it and false
+    // by now. Taking the resource here is what leaves this field naming bytes
+    // the host is deleting — a stage that cannot be saved, reached by two
+    // actions each of which was allowed.
+    expect(within(second).getByRole('alert')).toHaveTextContent(
+      'That resource is being discarded, so it cannot be used here.',
+    );
+    // Untouched: still the empty string the item started as.
+    expect(contents()[1]).toBe('');
+    // Nothing to remove: this field never had it.
+    expect(
+      within(second).queryByRole('button', { name: 'Remove this resource' }),
+    ).toBeNull();
+
+    discard.settle(undefined);
+
+    await waitFor(() => expect(contents()[0]).toBeUndefined());
+    expect(contents()).toEqual([undefined, '']);
+    expect(inner.getStagingResidue()).toEqual([]);
   });
 });
 
