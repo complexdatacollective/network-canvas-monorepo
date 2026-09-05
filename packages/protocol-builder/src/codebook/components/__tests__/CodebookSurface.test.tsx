@@ -33,6 +33,7 @@ const context: ProtocolBuilderProtocolContext = {
       },
     },
   },
+  assets: {},
   orderedStages: [],
   issues: [
     {
@@ -129,6 +130,7 @@ describe('CodebookSurface', () => {
       <CodebookSurface
         context={{
           codebook: { node: {}, edge: {} },
+          assets: {},
           orderedStages: [],
           issues: [],
         }}
