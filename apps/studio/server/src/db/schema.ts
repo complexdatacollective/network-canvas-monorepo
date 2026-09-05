@@ -17,6 +17,7 @@ import {
   MONITORING_TABLES,
 } from '../monitoring/schema.ts';
 import { NETWORK_SIDECAR_SQL, NETWORK_TABLES } from '../network/schema.ts';
+import { PII_SIDECAR_SQL, PII_TABLES } from '../pii/schema.ts';
 import { PROTOCOL_SIDECAR_SQL, PROTOCOL_TABLES } from '../protocol/schema.ts';
 import { SCHEDULE_SIDECAR_SQL, SCHEDULE_TABLES } from '../schedule/schema.ts';
 import {
@@ -67,6 +68,7 @@ export const SCHEMA = {
   ...MONITORING_TABLES,
   ...AUDIT_TABLES,
   ...INVITATION_DELIVERY_TABLES,
+  ...PII_TABLES,
   schemaFingerprint,
 };
 
@@ -95,6 +97,7 @@ export const SIDECARS = [
   FEEDBACK_SIDECAR_SQL,
   MONITORING_SIDECAR_SQL,
   INVITATION_DELIVERY_SIDECAR_SQL,
+  PII_SIDECAR_SQL,
   AUDIT_SIDECAR_SQL,
 ];
 

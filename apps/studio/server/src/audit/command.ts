@@ -1,5 +1,6 @@
 import type pg from 'pg';
 
+import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import type { Principal } from '../auth/service.ts';
@@ -261,5 +262,78 @@ export async function runAuditedMutation<T>(
   return runAuditedCommand(context, async (client, auditContext) => {
     const mutation = await work(client, auditContext);
     return { status: 'succeeded', ...mutation };
+  });
+}
+
+type SystemAuditActor = 'Encryption maintenance' | 'Webhook delivery';
+
+export type SystemAuditEventContext<
+  Actor extends SystemAuditActor = SystemAuditActor,
+> = {
+  teamId: string;
+  teamLabel: string;
+  actorKind: 'system';
+  actorId: null;
+  actorLabel: Actor;
+  requestId: string;
+};
+
+/**
+ * The maintenance equivalent of an audited user command. It verifies the
+ * database role itself: a caller cannot obtain system authority by supplying
+ * an actor label, team ID, or application pool. Returning from this executor
+ * proves that its non-empty, context-bound event set committed with the work.
+ */
+export function runAuditedSystemMutation<T, Actor extends SystemAuditActor>(
+  context: {
+    tenantDb: TenantDb;
+    actorLabel: Actor;
+    requestId: string;
+  },
+  work: (
+    client: pg.PoolClient,
+    auditContext: SystemAuditEventContext<Actor>,
+  ) => Promise<AuditedMutationResult<T>>,
+): Promise<T> {
+  return context.tenantDb.transaction(async (client) => {
+    const role = await client.query<{ role: string }>(
+      'SELECT current_user AS role',
+    );
+    if (role.rows[0]?.role !== TENANT_ROLES.maintenance)
+      throw new Error('system audit requires the maintenance database role');
+    await lockAuditTeam(client, context.tenantDb.teamId);
+    const team = await client.query<{ name: string }>(
+      'SELECT name FROM teams WHERE id = $1 FOR UPDATE',
+      [context.tenantDb.teamId],
+    );
+    const name = team.rows[0]?.name.trim();
+    if (!name) throw new AuditCommandTeamNotFoundError();
+    const auditContext: SystemAuditEventContext<Actor> = {
+      teamId: context.tenantDb.teamId,
+      teamLabel: name.slice(0, 320),
+      actorKind: 'system',
+      actorId: null,
+      actorLabel: context.actorLabel,
+      requestId: context.requestId,
+    };
+    const mutation = await work(client, auditContext);
+    if (mutation.events.length === 0)
+      throw new Error('an audited system mutation must produce an event');
+    for (const event of mutation.events) {
+      if (
+        event.teamId !== auditContext.teamId ||
+        event.teamLabel !== auditContext.teamLabel ||
+        event.actorKind !== 'system' ||
+        event.actorId !== null ||
+        event.actorLabel !== auditContext.actorLabel ||
+        event.requestId !== auditContext.requestId ||
+        event.outcome !== 'succeeded'
+      )
+        throw new Error(
+          'audit event context does not match its system mutation',
+        );
+      await appendRequiredAuditEvent(client, event);
+    }
+    return mutation.result;
   });
 }

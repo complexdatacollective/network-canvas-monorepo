@@ -102,7 +102,6 @@ describe.skipIf(!db)('row-level security', () => {
       'nodes',
       'participant_consent_item_responses',
       'participant_consents',
-      'participant_contact_optouts',
       'participants',
       'protocol_drafts',
       'protocol_versions',
@@ -158,7 +157,13 @@ describe.skipIf(!db)('row-level security', () => {
     );
     const others = rows.rows.filter((row) => !expected.includes(row.table));
     expect(others.map((row) => row.table).toSorted()).toEqual(
-      [...authTables, 'schemaFingerprint'].toSorted(),
+      [
+        ...authTables,
+        'schemaFingerprint',
+        'encryption_key_verifications',
+        'credential_audit_events',
+        'participant_contact_optouts',
+      ].toSorted(),
     );
     for (const row of others) {
       expect(row).toMatchObject({

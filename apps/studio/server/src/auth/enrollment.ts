@@ -1,5 +1,5 @@
-import type { BetterAuthOptions } from 'better-auth';
 import { APIError } from 'better-auth/api';
+import type { BetterAuthOptions } from 'better-auth/types';
 import type pg from 'pg';
 
 /** One creation gate covers magic-link verification and every OAuth callback. */
@@ -10,6 +10,7 @@ export function selfHostedEnrollmentHooks(
     user: {
       create: {
         before: async (user) => {
+          // oxlint-disable-next-line typescript/no-unnecessary-boolean-literal-compare -- the provider trust boundary requires literal boolean true
           if (user.emailVerified === true) {
             const result = await pool.query<{ invited: boolean }>(
               `

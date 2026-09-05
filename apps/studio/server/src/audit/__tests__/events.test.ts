@@ -19,6 +19,12 @@ describe('audit event registry', () => {
   it('has a complete valid definition and fixture for every event type', () => {
     expect(Object.keys(AUDIT_EVENT_REGISTRY).toSorted()).toEqual([
       'audit.read_denied@1',
+      'participant.pii.denied@1',
+      'participant.pii.lookup@1',
+      'participant.pii.read@1',
+      'participant.pii.rotated@1',
+      'participant.pii.rotation_read@1',
+      'participant.pii.updated@1',
       'protocol.created@1',
       'protocol.draft.committed@1',
       'security.denied_attempts.rate_limited@1',
@@ -36,6 +42,9 @@ describe('audit event registry', () => {
       'team.member.role_change_denied@1',
       'team.member.role_change_failed@1',
       'team.member.role_changed@1',
+      'webhook.secret.read@1',
+      'webhook.secret.rotated@1',
+      'webhook.secret.updated@1',
     ]);
 
     const definitions = Object.entries(AUDIT_EVENT_REGISTRY);

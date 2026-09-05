@@ -128,7 +128,8 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
     template_id: templateId,
     kind: 'prompt',
     channel: 'email',
-    recipient_blind_index: hex(`recipient-${randomUUID()}`),
+    recipient_blind_index: Buffer.from(hex(`recipient-${randomUUID()}`), 'hex'),
+    blind_index_key_id: 'index-v1',
     rendered_body_hash: hex(`body-${randomUUID()}`),
     ...overrides,
   });
@@ -145,9 +146,9 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
   });
 
   const optoutRow = (overrides: Row = {}): Row => ({
-    team_id: TEAM_A,
     channel: 'email',
-    recipient_blind_index: hex(`optout-${randomUUID()}`),
+    recipient_blind_index: Buffer.from(hex(`optout-${randomUUID()}`), 'hex'),
+    blind_index_key_id: 'index-v1',
     source: 'participant_reply',
     ...overrides,
   });
@@ -1248,7 +1249,7 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
       for (const assignment of [
         `kind = 'reminder'`,
         `channel = 'sms'`,
-        `recipient_blind_index = '${hex('someone-else')}'`,
+        `recipient_blind_index = decode('${hex('someone-else')}', 'hex')`,
         `rendered_body_hash = '${hex('a different body')}'`,
         `occurrence_id = '${occurrenceId}'`,
         `participant_id = '${otherParticipantId}'`,
@@ -1616,8 +1617,8 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
       ).rejects.toMatchObject({ constraint });
     });
 
-    it('holds one opt-out per team, channel and blind index', async () => {
-      const blindIndex = hex('opted-out-recipient');
+    it('holds one global opt-out per channel and versioned blind index', async () => {
+      const blindIndex = Buffer.from(hex('opted-out-recipient'), 'hex');
       await insert(
         'participant_contact_optouts',
         optoutRow({ recipient_blind_index: blindIndex }),
@@ -1641,14 +1642,14 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
         ),
       ).resolves.toMatchObject({ rowCount: 1 });
 
-      // … and so is the same address in another team: opting out of one lab's
-      // study has not consented away another's.
+      // A distinct index version remains representable during an explicit
+      // index migration. Encryption-key rotation does not change this ID.
       await expect(
         insert(
           'participant_contact_optouts',
           optoutRow({
             recipient_blind_index: blindIndex,
-            team_id: TEAM_B,
+            blind_index_key_id: 'index-v2',
           }),
         ),
       ).resolves.toMatchObject({ rowCount: 1 });

@@ -90,6 +90,10 @@ class LoadedEncryptionKeys {
     return this.#namespaces[purpose].rootsByKeyId.has(id);
   }
 
+  ids(purpose: KeyPurpose): readonly string[] {
+    return [...this.#namespaces[purpose].rootsByKeyId.keys()];
+  }
+
   /** Internal to the encryption boundary; scope is an unambiguous tuple. */
   derive(purpose: KeyPurpose, id: string, scope: readonly string[]): KeyObject {
     const root = this.#namespaces[purpose].rootsByKeyId.get(id);

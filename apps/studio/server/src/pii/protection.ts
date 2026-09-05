@@ -162,7 +162,7 @@ async function auditedRead<Target>(
   }
 }
 
-/** Internal foundation: no RPC/REST, environment, or database wiring yet. */
+/** Internal engine; only the audited stores own its read boundaries. */
 export function createDataProtection(
   keys: EncryptionKeys,
   boundaries: {

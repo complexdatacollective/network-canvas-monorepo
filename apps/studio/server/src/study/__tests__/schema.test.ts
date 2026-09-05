@@ -982,6 +982,7 @@ describe.skipIf(!db)('study spine schema', () => {
       const row = participantRow(studyId, {
         email_ciphertext: emailCiphertext,
         email_index: emailIndex,
+        blind_index_key_id: 'index-1',
         pii_key_id: 'key-1',
         pii_algorithm: 'aes-256-gcm',
       });
