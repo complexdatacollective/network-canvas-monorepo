@@ -1,7 +1,10 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  loadFixtureStage,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { AlterFormStageEditor } from '../AlterFormStageEditor.tsx';
 import {
@@ -10,8 +13,8 @@ import {
   openField,
   personDefinition,
   removeRow,
+  stageNameInput,
 } from './formEditorHarness.tsx';
-import { newStageFields } from './newStageFields.ts';
 
 /** See `formEditorHarness.tsx` for why the rich-text editor is stood in for. */
 vi.mock('../../../fields/RichTextField.tsx', () => ({
@@ -39,6 +42,9 @@ const openFixture = () => ({
   stageId: 'alter-form-1',
   editor: mountedAs(AlterFormStageEditor),
 });
+
+/** Where a host would insert a new one: over the form the fixture holds. */
+const ALTER_FORM_INDEX = fixtureStageIds().indexOf('alter-form-1');
 
 describe('the editor for a form about each person', () => {
   it('composes the stage in the order the plan sets out', async () => {
@@ -123,17 +129,16 @@ describe('the editor for a form about each person', () => {
 
   it('starts a new stage from the interface template', async () => {
     const harness = renderStageEditor({
-      stage: {
-        id: 'alter-form-new',
-        type: 'AlterForm',
-        fields: newStageFields('AlterForm'),
-      },
+      create: { type: 'AlterForm', position: ALTER_FORM_INDEX },
       editor: mountedAs(AlterFormStageEditor),
     });
 
     // A per-alter form has no authored defaults, so a new one has no type
     // chosen — and its form cannot be written until one is, because there is
-    // no codebook for its fields to collect into.
+    // no codebook for its fields to collect into. Only the name arrives
+    // filled in, proposed because the session is creating the stage.
+    await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
+    expect(stageNameInput().value).toMatch(/^Per Alter Form/);
     expect(screen.getByRole('radio', { name: 'person' })).not.toBeChecked();
     await waitFor(() =>
       expect(
@@ -142,10 +147,8 @@ describe('the editor for a form about each person', () => {
       ).toBe('Not available yet'),
     );
 
-    await harness.user.type(
-      screen.getByRole('textbox', { name: 'Stage name' }),
-      'About each person',
-    );
+    await harness.user.clear(stageNameInput());
+    await harness.user.type(stageNameInput(), 'About each person');
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
     await harness.user.type(
       screen.getByRole('textbox', { name: 'Introduction heading' }),

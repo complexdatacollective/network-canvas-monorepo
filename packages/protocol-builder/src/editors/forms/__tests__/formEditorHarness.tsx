@@ -32,6 +32,16 @@ export const mountedAs = <T extends StageType>(
  * than producing text.
  */
 
+/**
+ * The stage's name control, as the input it is.
+ *
+ * A stage the session is CREATING opens with a name already proposed for it,
+ * so a create-mode test asks what the value looks like rather than what it
+ * equals — the proposal is deduplicated against the interview it is joining.
+ */
+export const stageNameInput = (): HTMLInputElement =>
+  screen.getByRole('textbox', { name: 'Stage name' });
+
 /** Opens a form field's dialog, and scopes queries to it. */
 export const openField = async (harness: Harness, name: string) => {
   await harness.user.click(screen.getByRole('button', { name }));

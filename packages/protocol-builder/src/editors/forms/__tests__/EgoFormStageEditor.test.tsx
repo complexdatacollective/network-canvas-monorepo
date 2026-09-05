@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { EgoFormStageEditor } from '../EgoFormStageEditor.tsx';
 import {
@@ -8,8 +9,8 @@ import {
   mountedAs,
   openField,
   removeRow,
+  stageNameInput,
 } from './formEditorHarness.tsx';
-import { newStageFields } from './newStageFields.ts';
 
 /** See `formEditorHarness.tsx` for why the rich-text editor is stood in for. */
 vi.mock('../../../fields/RichTextField.tsx', () => ({
@@ -37,6 +38,9 @@ const openFixture = () => ({
   stageId: 'ego-form-1',
   editor: mountedAs(EgoFormStageEditor),
 });
+
+/** Where a host would insert a new ego form: over the one the fixture holds. */
+const EGO_FORM_INDEX = fixtureStageIds().indexOf('ego-form-1');
 
 describe('the editor for a form about the participant', () => {
   it('composes the stage in the order the plan sets out', async () => {
@@ -80,25 +84,21 @@ describe('the editor for a form about the participant', () => {
 
   it('starts a new stage from the interface template', async () => {
     const harness = renderStageEditor({
-      stage: {
-        id: 'ego-form-new',
-        type: 'EgoForm',
-        fields: newStageFields('EgoForm'),
-      },
+      create: { type: 'EgoForm', position: EGO_FORM_INDEX },
       editor: mountedAs(EgoFormStageEditor),
     });
 
     // An ego form has no authored defaults, so a new one arrives empty and
-    // every required part of it is the researcher's to write.
-    expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue('');
+    // every required part of it is the researcher's to write — except the
+    // name, which the session proposes because it is creating the stage.
+    await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
+    expect(stageNameInput().value).toMatch(/^Ego Form/);
     expect(
       screen.getByRole('textbox', { name: 'Introduction heading' }),
     ).toHaveValue('');
 
-    await harness.user.type(
-      screen.getByRole('textbox', { name: 'Stage name' }),
-      'About you',
-    );
+    await harness.user.clear(stageNameInput());
+    await harness.user.type(stageNameInput(), 'About you');
     await harness.user.type(
       screen.getByRole('textbox', { name: 'Introduction heading' }),
       'About you',

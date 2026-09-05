@@ -3,10 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { InformationStageEditor } from '../InformationStageEditor.tsx';
-import { mountedAs } from './formEditorHarness.tsx';
-import { newStageFields } from './newStageFields.ts';
+import { mountedAs, stageNameInput } from './formEditorHarness.tsx';
 
 /**
  * The block editor's text control is a rich-text editor, and ProseMirror
@@ -41,6 +41,9 @@ const openFixture = () => ({
   stageId: 'information-1',
   editor: mountedAs(InformationStageEditor),
 });
+
+/** Where a host would insert a new page: over the one the fixture holds. */
+const INFORMATION_INDEX = fixtureStageIds().indexOf('information-1');
 
 const itemsOf = (document: SectionDoc): Record<string, unknown>[] => {
   const items = document.items;
@@ -88,26 +91,22 @@ describe('the editor for a page of content', () => {
 
   it('starts a new stage from the interface template', async () => {
     const harness = renderStageEditor({
-      stage: {
-        id: 'information-new',
-        type: 'Information',
-        fields: newStageFields('Information'),
-      },
+      create: { type: 'Information', position: INFORMATION_INDEX },
       editor: mountedAs(InformationStageEditor),
     });
 
     // An Information stage has no authored defaults, so a new one arrives
     // empty — and the editor has to be able to say so rather than showing a
-    // heading nobody wrote.
-    expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue('');
+    // heading nobody wrote. The exception is the name, which the session
+    // proposes because it is creating the stage.
+    await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
+    expect(stageNameInput().value).toMatch(/^Information/);
     expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
       '',
     );
 
-    await harness.user.type(
-      screen.getByRole('textbox', { name: 'Stage name' }),
-      'Welcome screen',
-    );
+    await harness.user.clear(stageNameInput());
+    await harness.user.type(stageNameInput(), 'Welcome screen');
     await harness.user.type(
       screen.getByRole('textbox', { name: 'Page heading' }),
       'Welcome',

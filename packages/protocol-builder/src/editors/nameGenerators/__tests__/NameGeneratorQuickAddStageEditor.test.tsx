@@ -4,8 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { getStageEditorInitialValues } from '../../../interfaces/initialValues.ts';
-import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
+import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { nameGeneratorStageEditors } from '../../nameGeneratorStageEditors.ts';
 
@@ -52,18 +51,18 @@ const mountFixture = () =>
     registry: nameGeneratorStageEditors,
   });
 
-/** A stage of this interface that does not exist yet, as a host creates one. */
-const newStage = () => {
-  const { type: _type, ...fields } = getStageEditorInitialValues({
-    interfaceType: 'NameGeneratorQuickAdd',
-    template: getInterfaceTemplate('NameGeneratorQuickAdd'),
-  });
-  return {
-    id: 'quick-add-being-created',
-    type: 'NameGeneratorQuickAdd' as const,
-    fields: fields as SectionDoc,
-  };
-};
+/** Where a host would insert a new one: over the stage the fixture holds. */
+const QUICK_ADD_INDEX = fixtureStageIds().indexOf('name-generator-quick-add-1');
+
+/**
+ * The stage's name control, as the input it is.
+ *
+ * A stage the session is CREATING opens with a name already proposed for it,
+ * so a create-mode test asks what the value looks like rather than what it
+ * equals — the proposal is deduplicated against the interview it is joining.
+ */
+const stageNameInput = (): HTMLInputElement =>
+  screen.getByRole('textbox', { name: 'Stage name' });
 
 const quickAddOptions = () =>
   within(screen.getByRole('combobox', { name: /Attribute filled in/ }))
@@ -105,14 +104,18 @@ describe('the quick-add name generator editor', () => {
    */
   it('saves a new stage once it has been given the minimum quick add needs', async () => {
     const harness = renderStageEditor({
-      stage: newStage(),
+      create: { type: 'NameGeneratorQuickAdd', position: QUICK_ADD_INDEX },
       registry: nameGeneratorStageEditors,
     });
 
-    await harness.user.type(
-      screen.getByRole('textbox', { name: 'Stage name' }),
-      'People you see often',
-    );
+    // A stage the session is CREATING opens with a name proposed for it —
+    // nothing else about this interface has an authored default, so the
+    // rest of what a host will store is written below.
+    await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
+    expect(stageNameInput().value).toMatch(/^Quick Add Name Generator/);
+
+    await harness.user.clear(stageNameInput());
+    await harness.user.type(stageNameInput(), 'People you see often');
     // The type first: everything below describes it, and choosing a different
     // one throws all of that away.
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));

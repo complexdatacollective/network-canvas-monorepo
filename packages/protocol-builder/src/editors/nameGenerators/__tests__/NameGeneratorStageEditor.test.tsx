@@ -1,10 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { SectionDoc } from '@codaco/studio-sync/apply';
-
-import { getStageEditorInitialValues } from '../../../interfaces/initialValues.ts';
-import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
+import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { nameGeneratorStageEditors } from '../../nameGeneratorStageEditors.ts';
 
@@ -49,18 +46,18 @@ const mountFixture = () =>
     registry: nameGeneratorStageEditors,
   });
 
-/** A stage of this interface that does not exist yet, as a host creates one. */
-const newStage = () => {
-  const { type: _type, ...fields } = getStageEditorInitialValues({
-    interfaceType: 'NameGenerator',
-    template: getInterfaceTemplate('NameGenerator'),
-  });
-  return {
-    id: 'name-generator-being-created',
-    type: 'NameGenerator' as const,
-    fields: fields as SectionDoc,
-  };
-};
+/** Where a host would insert a new one: over the stage the fixture holds. */
+const NAME_GENERATOR_INDEX = fixtureStageIds().indexOf('name-generator-1');
+
+/**
+ * The stage's name control, as the input it is.
+ *
+ * A stage the session is CREATING opens with a name already proposed for it,
+ * so a create-mode test asks what the value looks like rather than what it
+ * equals — the proposal is deduplicated against the interview it is joining.
+ */
+const stageNameInput = (): HTMLInputElement =>
+  screen.getByRole('textbox', { name: 'Stage name' });
 
 const openDialog = async (
   harness: ReturnType<typeof renderStageEditor>,
@@ -106,14 +103,18 @@ describe('the name generator editor', () => {
    */
   it('saves a new stage once it has been given the minimum a name generator needs', async () => {
     const harness = renderStageEditor({
-      stage: newStage(),
+      create: { type: 'NameGenerator', position: NAME_GENERATOR_INDEX },
       registry: nameGeneratorStageEditors,
     });
 
-    await harness.user.type(
-      screen.getByRole('textbox', { name: 'Stage name' }),
-      'Close friends',
-    );
+    // A stage the session is CREATING opens with a name proposed for it —
+    // nothing else about this interface has an authored default, so the
+    // rest of what a host will store is written below.
+    await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
+    expect(stageNameInput().value).toMatch(/^Form Name Generator/);
+
+    await harness.user.clear(stageNameInput());
+    await harness.user.type(stageNameInput(), 'Close friends');
     // The type first: everything below describes it, and choosing a different
     // one throws all of that away.
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
