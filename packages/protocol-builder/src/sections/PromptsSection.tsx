@@ -98,6 +98,17 @@ export type PromptsSectionProps = Readonly<{
    * instance, which describe the participant rather than a type.
    */
   requiresSubject?: boolean;
+  /**
+   * The row as the stage should hold it, given what the dialog collected.
+   *
+   * Defaults to dropping every control the researcher left empty. A family
+   * whose prompt carries an optional LIST supplies its own and drops that list
+   * when it is empty: the shared rule deliberately keeps empty arrays, because
+   * only the field that owns one can tell "emptied on purpose" from "never
+   * used", and a prompt that assigns nothing should carry no key at all rather
+   * than an empty one.
+   */
+  normalizeRow?: (row: unknown) => unknown;
   copy?: Partial<PromptsCopy>;
 }>;
 
@@ -118,6 +129,7 @@ export default function PromptsSection({
   PromptEditor,
   PromptPreview,
   requiresSubject = true,
+  normalizeRow = withoutAbsentValues,
   copy,
 }: PromptsSectionProps) {
   const words = { ...DEFAULT_COPY, ...copy };
@@ -151,7 +163,7 @@ export default function PromptsSection({
         editorFieldsComponent={editorFieldsComponent}
         previewComponent={previewComponent}
         editorDialogSize="editor"
-        normalizeItem={withoutAbsentValues}
+        normalizeItem={normalizeRow}
         sortable
         {...promptsValidation}
       />
