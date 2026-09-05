@@ -112,7 +112,9 @@ describe('the map a geospatial stage shows', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = openEditor();
 
-    await harness.roundTrip();
+    // The type the stage places on the map belongs to a section this mount
+    // does not include.
+    await harness.roundTrip({ unowned: ['subject'] });
   });
 
   /**
@@ -262,9 +264,20 @@ describe('a map resource a collaborator removes', () => {
     );
 
     expect(await harness.submit()).toBeNull();
+    // Said in both of the places a researcher could be looking: the outline
+    // names the section that refused, and the section itself spells the
+    // problem out. Nothing on the map options field can explain a reference to
+    // a resource that is not in the manifest, so the outline carries the
+    // session's own words.
+    const outline = screen.getByRole('navigation', { name: 'Stage sections' });
     expect(
-      await screen.findByText(MISSING_LAYER_MESSAGE, { exact: false }),
+      within(outline).getByText(MISSING_LAYER_MESSAGE, { exact: false }),
     ).toBeInTheDocument();
+    expect(
+      screen
+        .getAllByText(MISSING_LAYER_MESSAGE, { exact: false })
+        .filter((element) => !outline.contains(element)),
+    ).toHaveLength(1);
   });
 
   it('reports a removed key against the field that holds it', async () => {

@@ -54,7 +54,9 @@ describe('the ways of looking at the network a narrative stage offers', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor(openEditor());
 
-    await harness.roundTrip();
+    // The stage's name, the type it draws and what sits behind the nodes
+    // belong to sections this mount does not include.
+    await harness.roundTrip({ unowned: ['label', 'subject', 'background'] });
   });
 
   it('lists what the stage already holds', async () => {

@@ -137,7 +137,8 @@ describe('the pedigree’s own configuration', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor(openFixture());
 
-    await harness.roundTrip();
+    // The stage's name belongs to a section this mount does not include.
+    await harness.roundTrip({ unowned: ['label'] });
   });
 
   it('saves an edit to every key it owns', async () => {
@@ -174,12 +175,13 @@ describe('the pedigree’s own configuration', () => {
   });
 
   /**
-   * The pedigree's optional introductory screen has no section here yet: it is
-   * a heading-less list of the same content blocks an Information stage shows,
-   * and the shared `PageContentSection` owns `title` and `items` at the stage
-   * root rather than the `introScreen.items` this interface holds them under.
+   * The pedigree's optional introductory screen has no section here yet.
+   * `PageContentSection`'s `introScreen` variant now owns exactly the
+   * `introScreen.items` this interface holds them under, but it renders the
+   * family's own block fields, and the row editor for a content block belongs
+   * to the Information stage's family rather than this one.
    *
-   * Until that section can be composed, this pins the thing that would
+   * Until that editor can be composed in, this pins the thing that would
    * otherwise be lost silently: a stage that arrives with an intro screen must
    * still leave with one, whether or not anything on screen can edit it.
    */
@@ -199,7 +201,9 @@ describe('the pedigree’s own configuration', () => {
       sections: pedigreeSections,
     });
 
-    const request = await harness.roundTrip();
+    const request = await harness.roundTrip({
+      unowned: ['label', 'introScreen'],
+    });
     expect(request.stageDocument.introScreen).toEqual({
       items: [
         {
@@ -311,7 +315,8 @@ describe('the pedigree’s nomination prompts', () => {
   it('saves a list it opened, unchanged', async () => {
     const harness = renderStageEditor(openWithNominationPrompts());
 
-    await harness.roundTrip();
+    // The stage's name belongs to a section this mount does not include.
+    await harness.roundTrip({ unowned: ['label'] });
   });
 
   it('edits a prompt through its own dialog', async () => {

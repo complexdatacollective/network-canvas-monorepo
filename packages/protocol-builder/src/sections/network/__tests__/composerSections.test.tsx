@@ -46,13 +46,15 @@ describe('what a network composer lets the participant build', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor(openEditor());
 
-    await harness.roundTrip();
+    // The stage's name and the type it composes belong to sections this
+    // mount does not include.
+    await harness.roundTrip({ unowned: ['label', 'subject'] });
   });
 
   it('saves a stage whose connections are configured, unchanged', async () => {
     const harness = renderStageEditor(openWithConfiguredEdge());
 
-    await harness.roundTrip();
+    await harness.roundTrip({ unowned: ['label', 'subject'] });
   });
 
   it('lists what the stage already holds', async () => {

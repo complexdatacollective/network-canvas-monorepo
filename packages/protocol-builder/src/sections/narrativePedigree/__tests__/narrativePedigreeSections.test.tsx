@@ -140,7 +140,8 @@ describe('the pedigree a narrative pedigree draws', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor(openFixture());
 
-    await harness.roundTrip();
+    // The stage's name belongs to a section this mount does not include.
+    await harness.roundTrip({ unowned: ['label'] });
   });
 
   it('saves an edit to every key it owns', async () => {

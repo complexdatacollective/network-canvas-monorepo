@@ -67,7 +67,9 @@ describe('the tasks a sociogram sets', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor(openEditor());
 
-    await harness.roundTrip();
+    // The stage's name and the type it arranges belong to sections this
+    // mount does not include.
+    await harness.roundTrip({ unowned: ['label', 'subject'] });
   });
 
   it('lists what the stage already holds', async () => {

@@ -35,7 +35,11 @@ describe('what the participant sees behind the nodes', () => {
   it('saves the circles background it opened, unchanged', async () => {
     const harness = renderStageEditor(openCircles());
 
-    await harness.roundTrip();
+    // The stage's name, the type it draws, the views it offers and how it
+    // behaves belong to sections this mount does not include.
+    await harness.roundTrip({
+      unowned: ['label', 'subject', 'presets', 'behaviours'],
+    });
   });
 
   it('saves the image background it opened, unchanged', async () => {
@@ -44,7 +48,9 @@ describe('what the participant sees behind the nodes', () => {
     expect(
       await screen.findByRole('button', { name: 'Change the image' }),
     ).toBeVisible();
-    await harness.roundTrip();
+    await harness.roundTrip({
+      unowned: ['label', 'subject', 'presets', 'behaviours'],
+    });
   });
 
   it('offers no choice to a canvas that cannot draw an image', async () => {
