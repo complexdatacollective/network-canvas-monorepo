@@ -10,9 +10,9 @@ import SectionFrame from './SectionFrame';
 const chromeMessages = defineMessages({
   message: {
     id: 'architect.chrome.protocolSummary.stage.mapOptions.message',
-    defaultMessage: '{value1}, {value2}',
+    defaultMessage: '{latitude}, {longitude}',
     description:
-      'Researcher-facing explanatory text in lib / ProtocolSummary / components / Stage / MapOptions.',
+      'Initial map center in latitude, longitude order. Values are locale-formatted signed decimal degrees with four decimal places; use unambiguous punctuation for the locale.',
   },
 });
 const messages = defineMessages({
@@ -67,8 +67,16 @@ const MapOptions = ({ mapOptions = null }: MapOptionsProps) => {
   const styleLabel = style ? (mapboxStyleLabels[style] ?? style) : undefined;
   const centerDisplay = center
     ? intl.formatMessage(chromeMessages.message, {
-        value1: center[1].toFixed(4),
-        value2: center[0].toFixed(4),
+        latitude: intl.formatNumber(center[1], {
+          minimumFractionDigits: 4,
+          maximumFractionDigits: 4,
+          useGrouping: false,
+        }),
+        longitude: intl.formatNumber(center[0], {
+          minimumFractionDigits: 4,
+          maximumFractionDigits: 4,
+          useGrouping: false,
+        }),
       })
     : undefined;
 
@@ -86,7 +94,10 @@ const MapOptions = ({ mapOptions = null }: MapOptionsProps) => {
   if (initialZoom !== undefined) {
     configRows.push([
       intl.formatMessage(summaryMessages.initialZoom),
-      String(initialZoom),
+      intl.formatNumber(initialZoom, {
+        maximumFractionDigits: 20,
+        useGrouping: false,
+      }),
     ]);
   }
   if (color) {

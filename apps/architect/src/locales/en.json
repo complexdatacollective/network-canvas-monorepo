@@ -696,8 +696,8 @@
     "description": "Researcher-facing explanatory text in lib / ProtocolSummary / components / AssetBadge."
   },
   "architect.chrome.protocolSummary.stage.mapOptions.message": {
-    "defaultMessage": "{value1}, {value2}",
-    "description": "Researcher-facing explanatory text in lib / ProtocolSummary / components / Stage / MapOptions."
+    "defaultMessage": "{latitude}, {longitude}",
+    "description": "Initial map center in latitude, longitude order. Values are locale-formatted signed decimal degrees with four decimal places; use unambiguous punctuation for the locale."
   },
   "architect.chrome.protocolSummary.stage.quickAdd.unknown": {
     "defaultMessage": "Unknown",
@@ -1657,11 +1657,11 @@
   },
   "architect.final.components.sections.Form.FieldEditorPreview.attribute": {
     "defaultMessage": "Attribute label",
-    "description": "Researcher-facing Architect control or feedback."
+    "description": "Participant-preview fallback when no authored attribute label or name is available; the preview currently stays English until protocol-language support is enabled."
   },
   "architect.final.components.sections.Form.FieldEditorPreview.question": {
     "defaultMessage": "Your question will appear here.",
-    "description": "Researcher-facing Architect control or feedback."
+    "description": "Participant-preview fallback when no authored question is available; the preview currently stays English until protocol-language support is enabled."
   },
   "architect.final.components.sections.fields.SkipLogicDestinationField.untitledStage": {
     "defaultMessage": "Untitled stage",

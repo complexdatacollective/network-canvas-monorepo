@@ -94,6 +94,19 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'name', desc: false },
   ]);
+  const caseInsensitiveSort = useMemo<SortingFn<Variable>>(
+    () => (rowA, rowB, columnId) =>
+      normalizeSortValue(rowA.getValue(columnId)).localeCompare(
+        normalizeSortValue(rowB.getValue(columnId)),
+        intl.locale,
+      ),
+    [intl.locale],
+  );
+  // TanStack caches the sorted row model by data and sorting state, not by
+  // the column comparator. Refresh its data identity when collation changes
+  // while preserving both the authored row objects and the chosen direction.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
+  const localizedRows = useMemo(() => [...variables], [variables, intl.locale]);
 
   const handleDelete = useCallback(
     (id: string) => {
@@ -195,11 +208,11 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
         ),
       },
     ],
-    [handleDelete, intl],
+    [caseInsensitiveSort, handleDelete, intl],
   );
 
   const table = useReactTable({
-    data: variables,
+    data: localizedRows,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
@@ -221,10 +234,5 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
 
 const normalizeSortValue = (value: unknown) =>
   typeof value === 'string' ? value.toUpperCase() : String(value ?? '');
-
-const caseInsensitiveSort: SortingFn<Variable> = (rowA, rowB, columnId) =>
-  normalizeSortValue(rowA.getValue(columnId)).localeCompare(
-    normalizeSortValue(rowB.getValue(columnId)),
-  );
 
 export default Variables;

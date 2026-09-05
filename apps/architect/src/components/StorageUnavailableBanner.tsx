@@ -1,7 +1,11 @@
 import { createElement } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import {
+  AppErrorMessage,
+  AppMessage,
+  useAppIntl,
+} from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -83,18 +87,18 @@ const StorageUnavailableBanner = () => {
               .unwrap()
               .then(({ skippedAssets }) => {
                 if (skippedAssets.length === 0) return;
-                const assetList = skippedAssets
-                  .map((asset) => asset.name)
-                  .join(', ');
                 void openDialog({
                   type: 'acknowledge',
                   intent: 'warning',
                   title: createElement(AppMessage, {
                     message: messages.someAssetsCouldNotBeExported,
                   }),
-                  description: createElement(AppMessage, {
-                    message: finalMessages.skippedAssets,
-                    values: { assetList },
+                  description: createElement(AppErrorMessage, {
+                    error: createMessageError(finalMessages.skippedAssets, {
+                      assetList: {
+                        list: skippedAssets.map((asset) => asset.name),
+                      },
+                    }),
                   }),
                   actions: {
                     primary: {

@@ -172,7 +172,10 @@ const Asset = ({ id, size = null }: AssetProps) => {
               intl.formatMessage(summaryMessages.type),
               intl.formatMessage(summaryMessages.network),
             ],
-            [intl.formatMessage(summaryMessages.attributes), variables],
+            [
+              intl.formatMessage(summaryMessages.attributes),
+              intl.formatList(variables),
+            ],
           ]}
         />
       )}

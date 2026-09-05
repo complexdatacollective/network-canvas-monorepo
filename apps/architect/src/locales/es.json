@@ -173,7 +173,7 @@
   "architect.chrome.protocolLockBanner.thisProtocolHasBeenOpenedIn6aa3d": "Este protocolo se ha abierto en otra pestaña, que ahora controla la copia guardada. No se puede guardar ningún cambio que hagas aquí, incluidos los cambios sin guardar de esta etapa. Cierra la otra pestaña para seguir editando aquí, o descarta los cambios para pasar a una vista de solo lectura.",
   "architect.chrome.protocolLockBanner.thisProtocolIsOpenInAnother": "Este protocolo está abierto en otra pestaña, que controla la copia guardada. Aquí lo estás viendo en modo de solo lectura. Cierra la otra pestaña para seguir editando en esta.",
   "architect.chrome.protocolSummary.assetBadge.assetNotFound": "No se ha encontrado el recurso {id}",
-  "architect.chrome.protocolSummary.stage.mapOptions.message": "{value1}, {value2}",
+  "architect.chrome.protocolSummary.stage.mapOptions.message": "{latitude}; {longitude}",
   "architect.chrome.protocolSummary.stage.quickAdd.unknown": "Desconocido",
   "architect.chrome.query.rules.ruleEditor.enterARegularExpressionToCompare": "Introduce una expresión regular con la que comparar.",
   "architect.chrome.query.rules.ruleEditor.enterTheValueToCompareAgainst": "Introduce el valor con el que comparar. Puedes usar una expresión regular para buscar coincidencias con varios valores.",

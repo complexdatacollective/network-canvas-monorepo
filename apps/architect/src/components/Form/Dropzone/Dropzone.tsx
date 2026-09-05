@@ -9,11 +9,10 @@ import {
 } from 'react';
 import { useDropzone } from 'react-dropzone';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { AppErrorMessage, useAppIntl } from '@codaco/app-i18n/react';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { cva, cx } from '~/utils/cva';
-import type { LocalizedText } from '~/utils/protocolImportErrors';
 
 import { acceptsFiles, getRejectedExtensions } from './helpers';
 import useTimer from './useTimer';
@@ -44,7 +43,7 @@ type DropzoneState = {
   isLoading: boolean;
   isError: boolean;
   isHover: boolean;
-  error: LocalizedText | null;
+  error: string | null;
 };
 
 const initialState: DropzoneState = {
@@ -173,15 +172,12 @@ const Dropzone = ({
       if (fileRejections.length > 0) {
         const extensions = fileRejections.map((rejection: { file: File }) => {
           const match = /(\.[A-Za-z0-9]+)$/.exec(rejection.file.name);
-          return match ? match[1] : rejection.file.name;
+          return match?.[1] ?? rejection.file.name;
         });
-        const errorMessage = {
-          message: extraMessages.extensions,
-          values: {
-            extensions: extensions.join(', '),
-            supported: accepts.join(', '),
-          },
-        };
+        const errorMessage = createMessageError(extraMessages.extensions, {
+          extensions: { list: extensions },
+          supported: { list: accepts },
+        });
         setState((previousState) => ({
           ...previousState,
           isActive: false,
@@ -196,13 +192,10 @@ const Dropzone = ({
 
       if (!isAcceptable) {
         const extensions = getRejectedExtensions(accepts, acceptedFiles);
-        const errorMessage = {
-          message: extraMessages.extensions,
-          values: {
-            extensions: extensions.join(', '),
-            supported: accepts.join(', '),
-          },
-        };
+        const errorMessage = createMessageError(extraMessages.extensions, {
+          extensions: { list: extensions },
+          supported: { list: accepts },
+        });
         setState((previousState) => ({
           ...previousState,
           isActive: false,
@@ -229,7 +222,7 @@ const Dropzone = ({
             isActive: false,
             isLoading: false,
             isError: true,
-            error: { message: extraMessages.failed },
+            error: createMessageError(extraMessages.failed),
           }));
         });
     },
@@ -331,7 +324,7 @@ const Dropzone = ({
           className="bg-destructive text-destructive-contrast mt-2 flex items-center gap-2 overflow-hidden rounded px-4 py-2 opacity-100 transition-opacity duration-150"
         >
           <TriangleAlert aria-hidden />
-          {<AppMessage {...state.error} />}
+          <AppErrorMessage error={state.error} />
         </div>
       )}
     </div>

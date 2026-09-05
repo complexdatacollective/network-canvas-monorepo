@@ -101,7 +101,7 @@ export default function LanguageSettings() {
             setChanged(true);
           }}
         />
-        {changed && (
+        {changed && saved !== null && (
           <Paragraph role="status">
             {intl.formatMessage(saved ? messages.saved : messages.failed)}
           </Paragraph>

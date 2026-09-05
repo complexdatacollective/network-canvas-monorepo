@@ -25,9 +25,6 @@ type SortState = {
   desc: boolean;
 };
 
-// Natural sort, so "item2" sorts before "item10".
-const collator = new Intl.Collator(undefined, { numeric: true });
-
 const renderCellValue = (value: unknown): ReactNode => {
   if (typeof value === 'string' || typeof value === 'number') {
     return value;
@@ -67,6 +64,11 @@ const tableClasses = cx(
 
 const Table = ({ data, columns }: TableProps) => {
   const intl = useAppIntl();
+  // Natural collation follows the selected app language, including an already sorted table.
+  const collator = useMemo(
+    () => new Intl.Collator(intl.locale, { numeric: true }),
+    [intl.locale],
+  );
   const [sort, setSort] = useState<SortState | null>(null);
 
   // Cycle: unsorted -> asc -> desc -> unsorted.
@@ -95,7 +97,7 @@ const Table = ({ data, columns }: TableProps) => {
           String(rowB[sort.id] ?? ''),
         ),
     );
-  }, [data, sort]);
+  }, [data, sort, collator]);
 
   return (
     <table className={tableClasses}>

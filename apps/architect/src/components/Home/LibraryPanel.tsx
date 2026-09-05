@@ -14,9 +14,14 @@ import { commonMessages } from '@codaco/app-i18n/common';
 import {
   type IntlShape,
   type MessageDescriptor,
+  createMessageError,
   defineMessages,
 } from '@codaco/app-i18n/messages';
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import {
+  AppErrorMessage,
+  AppMessage,
+  useAppIntl,
+} from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
@@ -732,19 +737,17 @@ const LibraryPanel = ({
         // aborting the whole download, but the author must be told which ones
         // so a silently incomplete .netcanvas isn't shipped.
         if (skippedAssets.length > 0) {
-          const assetList = skippedAssets.map((asset) => asset.name).join(', ');
           void openDialog({
             type: 'acknowledge',
             intent: 'warning',
             title: createElement(AppMessage, {
               message: messages.someAssetsCouldNotBeIncluded,
             }),
-            description: createElement(AppMessage, {
-              message: messages.wasDownloadedButThese,
-              values: {
+            description: createElement(AppErrorMessage, {
+              error: createMessageError(messages.wasDownloadedButThese, {
                 value1: protocol.name,
-                assetList: assetList,
-              },
+                assetList: { list: skippedAssets.map((asset) => asset.name) },
+              }),
             }),
             actions: {
               primary: {

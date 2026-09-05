@@ -1,6 +1,7 @@
 import { get, omit, reduce } from 'es-toolkit/compat';
 import type { ComponentProps } from 'react';
 
+import { createAppIntl, type IntlShape } from '@codaco/app-i18n/messages';
 import type NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import type { VariablePropertyKey } from '@codaco/protocol-validation';
 import type { DialogArrayItemSelector } from '~/components/Form/arrayFields/DialogArrayField';
@@ -94,8 +95,7 @@ export const asValidationMap = (value: unknown): ValidationMap =>
       (value as NonNullable<ValidationMap>)
     : undefined;
 
-const byLabel = (a: { label: string }, b: { label: string }) =>
-  a.label.localeCompare(b.label);
+const defaultIntl = createAppIntl({ locale: 'en' });
 
 const toSelectOption = ({
   label,
@@ -130,7 +130,10 @@ const isControlGroup = (
 export const toSelectOptions = (
   options: InputControlList,
   { sorted = false }: { sorted?: boolean } = {},
+  intl: IntlShape = defaultIntl,
 ): SelectOptionOrGroup[] => {
+  const byLabel = (a: { label: string }, b: { label: string }) =>
+    a.label.localeCompare(b.label, intl.locale);
   const mapped = options.map((entry) => {
     if (!isControlGroup(entry)) return toSelectOption(entry);
     const grouped = entry.options.map(toSelectOption);

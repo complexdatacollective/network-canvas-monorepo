@@ -228,19 +228,13 @@ export const getUsageAsStageMeta = (
  * Helper function to be used with Array.sort. Sorts a collection of variable
  * definitions by the label property.
  *
- * @param {Object} a { label: string }
- * @param {Object} b { label: string }
- * @returns {number} -1 if a < b, 1 if a > b, 0 if a === b
+ * The caller supplies the researcher's current application locale.
  */
-export const sortByLabel = (a: UsageMeta, b: UsageMeta): number => {
-  if (a.label < b.label) {
-    return -1;
-  }
-  if (a.label > b.label) {
-    return 1;
-  }
-  return 0;
-};
+export const sortByLabel = (
+  a: UsageMeta,
+  b: UsageMeta,
+  intl: IntlShape = defaultIntl,
+): number => a.label.localeCompare(b.label, intl.locale);
 
 /**
  * Creates a selector that returns a function for getting entity usage data.
@@ -380,7 +374,7 @@ export const getEntityProperties = (
       getVariableUsageHits(state, id),
       typeMeta,
       intl,
-    ).toSorted(sortByLabel);
+    ).toSorted((a, b) => sortByLabel(a, b, intl));
 
     const usageString = usage
       .map(({ label }: UsageMeta) => label)

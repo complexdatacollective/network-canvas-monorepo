@@ -210,14 +210,14 @@ const VariableSpotlight = ({
   );
 
   const sortedAndFilteredItems = useMemo(() => {
-    const sortedOptions = [...options].toSorted(sortByLabel);
+    const sortedOptions = options.toSorted((a, b) => sortByLabel(a, b, intl));
     if (!filterTerm) {
       return sortedOptions;
     }
     return sortedOptions.filter((item) =>
       item.label.toLowerCase().includes(filterTerm.toLowerCase()),
     );
-  }, [filterTerm, options]);
+  }, [filterTerm, options, intl]);
 
   // Memoize subject to avoid creating new object on every render, which breaks selector memoization
   const subject = useMemo(

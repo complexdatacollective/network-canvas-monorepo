@@ -1,8 +1,8 @@
 import { useId, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
+import { createAppIntl, defineMessages } from '@codaco/app-i18n/messages';
+import { AppI18nProvider, useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Form from '@codaco/fresco-ui/form/Form';
@@ -11,6 +11,7 @@ import {
   useFormValue,
 } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import { PortalContainerProvider } from '@codaco/fresco-ui/PortalContainer';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -31,6 +32,7 @@ import {
   isOrdinalOrCategoricalType,
 } from '~/config/variables';
 import type { RootState } from '~/ducks/modules/root';
+import { architectProductionLocales } from '~/i18n/locales';
 import { getVariablesForSubjectSelector } from '~/selectors/codebook';
 import { getProtocol } from '~/selectors/protocol';
 
@@ -75,14 +77,23 @@ const finalMessages = defineMessages({
   attribute: {
     id: 'architect.final.components.sections.Form.FieldEditorPreview.attribute',
     defaultMessage: 'Attribute label',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Participant-preview fallback when no authored attribute label or name is available; the preview currently stays English until protocol-language support is enabled.',
   },
   question: {
     id: 'architect.final.components.sections.Form.FieldEditorPreview.question',
     defaultMessage: 'Your question will appear here.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Participant-preview fallback when no authored question is available; the preview currently stays English until protocol-language support is enabled.',
   },
 });
+
+// Match the full interview preview: participant copy remains English until
+// protocol-language support is enabled. Authored labels remain untouched.
+const participantIntl = createAppIntl({ locale: 'en' });
+const participantLocales = architectProductionLocales.filter(
+  ({ locale }) => locale === 'en',
+);
 
 const PREVIEW_DRAFT_FIELDS = [
   'variable',
@@ -187,8 +198,8 @@ const FieldEditorPreview = ({
         codebookVariable?.name ??
         asNonEmptyString(createNewVariable) ??
         variableId ??
-        intl.formatMessage(finalMessages.attribute))
-      : (prompt ?? intl.formatMessage(finalMessages.question));
+        participantIntl.formatMessage(finalMessages.attribute))
+      : (prompt ?? participantIntl.formatMessage(finalMessages.question));
 
   const stageSubject = useMemo<StageSubject | null>(() => {
     if (entity === 'ego') return { entity: 'ego' };
@@ -267,11 +278,21 @@ const FieldEditorPreview = ({
               key={`${field.type}:${field.component}`}
               onSubmit={passPreviewValidation}
             >
-              <ProtocolField
-                field={field}
-                name="preview-value"
-                validationContext={validationContext}
-              />
+              <div lang="en" dir="ltr">
+                <AppI18nProvider
+                  locale="en"
+                  locales={participantLocales}
+                  manageDocument={false}
+                >
+                  <PortalContainerProvider>
+                    <ProtocolField
+                      field={field}
+                      name="preview-value"
+                      validationContext={validationContext}
+                    />
+                  </PortalContainerProvider>
+                </AppI18nProvider>
+              </div>
               <div className="flex justify-end">
                 <Button type="submit">
                   {intl.formatMessage(messages.checkResponse)}

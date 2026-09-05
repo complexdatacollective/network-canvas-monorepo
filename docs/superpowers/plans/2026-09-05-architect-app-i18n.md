@@ -14,23 +14,23 @@ The existing app-i18n APIs, Studio implementation and PR #1651 were inspected.
 This table records the current implementation status; the dated checkpoints
 below preserve earlier results without promoting them to final evidence.
 
-| Surface / acceptance area                                 | Implementation and evidence                                                                                             | Status                                                                                                                      |
-| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Device preference, browser best fit, English fallback     | Synchronous preference resolver; browser es-MX, persisted es/en-GB, automatic, cross-tab and rejected-storage tests     | Implemented; unit and production browser evidence pass                                                                      |
-| Accessible language setting                               | Shared LocaleSelect with autonyms, automatic option, persisted status; white nav icon at the existing nav height        | Implemented; language and timeline browser suite passes 24/24 after nav correction                                          |
-| Root provider and document metadata                       | Main and preview shell providers, pre-restoration document lang/dir and boot status                                     | Implemented; startup-before-React and provider regression tests pass                                                        |
-| Research-data and participant-preview boundary            | Explicit English participant provider; research shell follows app locale; serialized protocol/resource values preserved | Implemented; production authoring/preview and live-switch tests pass                                                        |
-| Home, templates, open/import/download                     | Explicit researcher descriptors; authored sample content retained                                                       | Implemented, including reactive migration-note caller; its shared presenter export awaits approved prerequisite integration |
-| Navigation, history, updates, storage and locking         | Explicit app descriptors; queued copy resolves when rendered                                                            | Implemented; native workflow and queued-dialog tests pass                                                                   |
-| Stage chooser, editors, forms, validation                 | Localized metadata and whole actionable guidance; stable schemas and failed submissions preserved                       | Implemented; five exact shared repair-copy assertions await the later shared checkpoint                                     |
-| Codebook and resources                                    | Localized labels, counts, constraints and file guidance; filenames/IDs remain raw                                       | Implemented; source census, upload and data-preservation evidence pass                                                      |
-| Printable summary and codebook                            | Localized type/control/resource labels, numbered-stage messages, locale dates/numbers and authored values               | Implemented; all 11 intended PNG changes independently reviewed, repeated captures stable, final no-write check 2/2         |
-| Errors, dialogs, tooltips, accessible names, non-JSX copy | useAppIntl/AppMessage/AppErrorMessage; bounded SPA bridge for four imperative consumers                                 | Implemented; current-state and mutation evidence below                                                                      |
-| Catalogs and ecosystem locale subset                      | 1,827 architect IDs, complete es, 28 sparse en-GB; explicit en/en-GB/es registry and shared catalogs                    | Extracted, independently AI-reviewed; freshness/ICU/parity guards pass                                                      |
-| Development pseudo-locale                                 | Development-only registry option; never persisted as a production preference                                            | Implemented; production registry and invalid-preference tests pass                                                          |
-| Types, lint, Knip, units, Storybook, native/build         | Runnable checkpoint: types/lint/Knip/build pass, Storybook 15/15, native 169/169; later nav group 24/24                 | Final dependency integration remains blocked; do not treat earlier passing builds as verification of the pending API caller |
-| Visual baselines                                          | Canonical linux/amd64 captures, programmatic band review, second forced run and pre-app HEAD control                    | 11 reviewed PNGs adopted; remaining images and all 19 JSONs unchanged; no-write canonical check passes                      |
-| Changeset, commit, PR and clean current-head review       | Architect minor changeset passes lane guard; app-only PR based on prerequisite branch                                   | Commit/PR pending coordinated handoff; no merge or release authorized                                                       |
+| Surface / acceptance area                                 | Implementation and evidence                                                                                                        | Status                                                                                                                                      |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Device preference, browser best fit, English fallback     | Synchronous preference resolver; browser es-MX, persisted es/en-GB, automatic, cross-tab and rejected-storage tests                | Implemented; unit and production browser evidence pass                                                                                      |
+| Accessible language setting                               | Shared LocaleSelect; automatic/autonyms; neutral save feedback is distinct from actual failed writes                               | First Codex finding corrected; cross-tab, pseudo-locale and genuine storage-failure regressions pass                                        |
+| Root provider and document metadata                       | Main and preview shell providers, pre-restoration document lang/dir and boot status                                                | Implemented; startup-before-React and provider regression tests pass                                                                        |
+| Research-data and participant-preview boundary            | Full preview plus inline ProtocolField use fixed English; inline popup container also belongs to English DOM                       | Authored prompt/label/response and parent sentinel preserved; actual scale-popup, provider and nested-form mutation evidence below          |
+| Home, templates, open/import/download                     | Explicit researcher descriptors; authored sample content retained                                                                  | Implemented, including reactive migration-note caller; its shared presenter export awaits approved prerequisite integration                 |
+| Navigation, history, updates, storage and locking         | Explicit app descriptors; queued copy resolves when rendered                                                                       | Implemented; native workflow and queued-dialog tests pass                                                                                   |
+| Stage chooser, editors, forms, validation                 | Localized metadata and whole actionable guidance; stable schemas and failed submissions preserved                                  | Implemented; five exact shared repair-copy assertions await the later shared checkpoint                                                     |
+| Codebook and resources                                    | Localized labels, counts, constraints and file guidance; filenames/IDs remain raw                                                  | Implemented; source census, upload and data-preservation evidence pass                                                                      |
+| Printable summary and codebook                            | Localized labels, dates and quantities; map coordinates retain four decimals; loaded network attributes use locale list formatting | Earlier 11 PNGs reviewed; new list conjunctions and collation require a fresh integrated canonical run                                      |
+| Errors, dialogs, tooltips, accessible names, non-JSX copy | useAppIntl/AppMessage/AppErrorMessage; bounded SPA bridge for four imperative consumers                                            | Implemented; current-state and mutation evidence below                                                                                      |
+| Catalogs and ecosystem locale subset                      | 1,827 architect IDs, complete es, 28 sparse en-GB; explicit en/en-GB/es registry and shared catalogs                               | Extracted, independently AI-reviewed; freshness/ICU/parity guards pass                                                                      |
+| Development pseudo-locale                                 | Development-only registry option; never persisted as a production preference                                                       | Implemented; production registry and invalid-preference tests pass                                                                          |
+| Types, lint, Knip, units, Storybook, native/build         | Current correction: 2,496 units pass, six known dependency failures, three existing todo; focused 21/21                            | Shared integration still blocks final types/build/native/canonical/Storybook gates; earlier runnable checkpoints remain historical evidence |
+| Visual baselines                                          | Prior linux/amd64 captures adopted 11 reviewed PNGs; other 17 PNGs and all 19 JSONs retained                                       | Prior repeated 47-file captures do not cover the new printed-list/collation correction; rerun after integration                             |
+| Changeset, commit, PR and clean current-head review       | User-attributed 86aecd19299517386de51b372e6eded6f85e10c9 pushed; ready PR #1705 targets the shared branch                          | First current-head Codex review completed with two confirmed P2 findings; coherent fixes await lead review, push and a new review           |
 
 ## Deliberate scope boundaries
 
@@ -701,3 +701,179 @@ new migrationNotes test; its helper export exists on the verified prerequisite
 branch. No test is skipped or weakened to hide these integration failures.
 The final Home callback dependency cleanup removes an unused intl dependency
 only; the targeted final lint verifies that no locale warning remains there.
+
+### First PR review correction — 2026-09-05
+
+PR #1705 is ready for review at user request and targets
+`feat/app-i18n-spanish-prerequisites`. Its first reviewed head is
+`86aecd19299517386de51b372e6eded6f85e10c9`, authored and committed by Joshua
+Melville. The initial commit's 386 source hashes matched the lead-reviewed
+freeze after hooks. The prerequisite remains locally integrated only through
+`375b2ea73`; no later shared integration or PR merge has been performed.
+
+Codex review 5122911135 and summary 5554555553 completed on that exact head.
+Both P2 findings are verified and corrected in this round:
+
+- `PRRT_kwDOKqiw4s6fmwSr` / comment 3941999191: LanguageSettings now renders
+  local save feedback only when `saved !== null`. Cross-tab changes and the
+  intentionally unpersisted development locale remain neutral. A blocked
+  storage write still applies the selected language and announces the actual
+  failure. The real dialog had two failures before correction and all three
+  cases now pass; see `/private/tmp/architect-language-save-neutral-red.log`.
+- `PRRT_kwDOKqiw4s6fmwSt` / comment 3941999193: the inline ProtocolField uses
+  the same fixed-English provider pattern as the full preview, with
+  `manageDocument={false}` and local `lang=en`/`dir=ltr`. Authored labels,
+  questions, hints and responses remain raw. Only absent-label/question
+  fallback descriptors use the explicit fixed-English formatter. The parent
+  Architect heading, guidance and Check response action remain in the app
+  language. The two descriptor descriptions now state that boundary clearly;
+  their visible source/Spanish text did not change.
+- Lead inspection extended the second fix to the actual portaled scale
+  popup. The existing PortalContainerProvider is nested beneath the English
+  DOM and React boundary; the outer ThemedRegion and researcher actions retain
+  the app language. A real VisualAnalogScale keyboard interaction reproduced
+  `lang=es` on the popup before this fix and passes with `lang=en` afterwards.
+- A real parent sentinel and `useFormHasValue(['preview-value'], 'opaque')`
+  prove the response stays in the nested preview form. Removing that Form
+  fails four cases: the parent receives the preview field and/or submission,
+  while the unchanged sentinel remains visible. The restored seven-case
+  preview suite checks fallback copy, existing validation, authored
+  prompt/label/response, parent state, and a real popup.
+
+Relevant regression evidence:
+
+| Regression / mutation             | Observed result                                                                         | Log                                                             |
+| --------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Original inline preview           | Authored-preview fallback changed to Spanish after app switch; failure reproduced       | /private/tmp/architect-inline-preview-red.log                   |
+| English provider removed          | Three tests fail on real Spanish field guidance/scale formatting                        | /private/tmp/architect-inline-preview-provider-mutation-red.log |
+| Popup under outer container       | One failed, six passed; actual popup inherited document Spanish                         | /private/tmp/architect-inline-preview-portal-red.log            |
+| English portal ownership restored | Seven passed                                                                            | /private/tmp/architect-inline-preview-portal-green.log          |
+| Nested preview Form removed       | Four failed, three passed; opaque parent field ownership and submission assertions fail | /private/tmp/architect-preview-parent-boundary-mutation-red.log |
+| Complete restored correction set  | 21 passed across six files, including strengthened parent sentinel checks               | /private/tmp/architect-review-round1-final-targeted.log         |
+
+### Complete formatter and list call-site census
+
+The final pass searched every production Architect source for `toFixed`,
+`toLocale*`, `Intl.*`, `localeCompare` and `join`, and inspected each use.
+`/private/tmp/architect-formatting-callsite-census.txt` records exact paths.
+Build/test tooling and authored template data were separately classified;
+none is silently treated as researcher copy.
+
+| Surface / count                                                                  | Disposition                                                                                                                                                                                                                                                                                                                                                      |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MapOptions: two coordinates and one zoom                                         | `intl.formatNumber`; coordinates always four fractional digits with no grouping. Whole coordinate descriptor uses `{latitude}, {longitude}` in English and `{latitude}; {longitude}` in Spanish, so decimal commas cannot be mistaken for the coordinate separator. Zoom retains up to 20 fractional digits, without changing stored numbers.                    |
+| Assets/Table: one Intl.Collator constructor                                      | Collator follows `intl.locale`, retains numeric comparison and invalidates sorted rows when language changes. Chosen ascending/descending state and authored cells remain unchanged.                                                                                                                                                                             |
+| Codebook/Variables: one localeCompare comparator, used by name and usage columns | Explicit current locale; a shallow data-identity refresh invalidates TanStack's row cache, which otherwise ignores comparator changes. Original row objects and the researcher's chosen direction survive. The narrow exhaustive-deps suppression documents that intentionally additional locale dependency; comparator-only red evidence proves it is required. |
+| Codebook/helpers sortByLabel: two production callers                             | Injected IntlShape at the codebook usage selector and VariableSpotlight; the latter also invalidates its memo when locale changes. Provider-optional callers retain explicit English.                                                                                                                                                                            |
+| Form/helpers toSelectOptions: one production caller                              | VariableDefinitionFields passes intl. Sorting follows the selected locale only within groups or within a flat lookup; authored group order and unsorted new-variable progression remain unchanged.                                                                                                                                                               |
+| Partial exports: all three presentation paths                                    | LibraryPanel and StorageUnavailableBanner now match downloadActiveProtocol's late descriptor list values. An already-open warning switches English conjunctions to Spanish without changing filenames or exporting twice.                                                                                                                                        |
+| Dropzone: both rejection branches, two lists each                                | Rejected and supported extensions remain raw list items until AppErrorMessage renders. Library-level and additional-extension refusals remain live through a language switch; supported uploads still succeed afterwards.                                                                                                                                        |
+| Printable network attributes: useAssetData, one Asset consumer                   | Keep loaded raw CSV header names as an array; render with intl.formatList in Asset. Memoize the existing asset-variable reader so loading an array does not trigger repeated state reads. Names and source files are unchanged.                                                                                                                                  |
+| Already-correct toLocale calls: three                                            | VariablePill and Query/Rules/PreviewText pass intl.locale to case conversion; LibraryPanel constructs its Luxon DateTime with intl.locale before its one toLocaleString call.                                                                                                                                                                                    |
+| Intl.Segmenter: one constructor                                                  | Deliberately unchanged Unicode grapheme counting for validation; it is neither display formatting nor a language-dependent authored length rule.                                                                                                                                                                                                                 |
+| Dot-path joins: four                                                             | Three selectors/indexes paths and one ProtocolSummary/helper path identify schema locations and remain stable.                                                                                                                                                                                                                                                   |
+| Analytics joins: two                                                             | userActions and analyticsListener serialize technical error paths for telemetry.                                                                                                                                                                                                                                                                                 |
+| Diagnostic joins: three                                                          | protocolImportErrors and ProjectActions build explicitly labelled technical details; StageEditor/Interfaces constructs a developer exception for an unsupported stable interface type. Localized primary guidance remains separate.                                                                                                                              |
+| React/signature joins: six                                                       | PreviewHost conflict key; Validations field-error signature; three contradiction identity fragments; NodePanels registration signature. None is rendered as prose.                                                                                                                                                                                               |
+| Codebook usageString join: one                                                   | Internal uppercase sort/filter accessor only; the visible cell renders individual UsageColumn entries.                                                                                                                                                                                                                                                           |
+| NewStageScreen keyword join: one                                                 | Localized search index terms, rebuilt with intl; selected tag identifiers remain stable.                                                                                                                                                                                                                                                                         |
+| Dataset cell join: one                                                           | Existing raw array-cell preview representation, without researcher-language grammar.                                                                                                                                                                                                                                                                             |
+| Vite configuration join: one outside src                                         | Content-Security-Policy directives, kept as technical syntax.                                                                                                                                                                                                                                                                                                    |
+
+No production `toFixed` remains. All three current `localeCompare` calls
+receive the selected locale. No unclassified user-facing sentence/list join
+remains. The 18 retained production joins are the explicit data, identity,
+search and diagnostic exceptions above.
+
+Formatter regression evidence includes:
+
+- `/private/tmp/architect-formatting-census-red.log`: map punctuation/number
+  formatting and resource collation failed before correction.
+- `/private/tmp/architect-export-lists-red.log`: library and unsaved partial
+  export lists failed while the already-correct active export passed.
+- `/private/tmp/architect-collation-related-red.log` and
+  `/private/tmp/architect-collation-comparator-only-red.log`: codebook cache
+  invalidation requires more than changing the comparator.
+- `/private/tmp/architect-dropzone-list-mutation-red.log`: both rejection
+  branches fail when supported extensions are prejoined.
+- `/private/tmp/architect-table-numeric-mutation-red.log`: the real resource
+  table fails when numeric collation is disabled (`ñandú2`/`ñandú10`).
+- The new printable attribute-list regression failed against the original
+  comma-only string in `/private/tmp/architect-review-round1-red.log`. The
+  corrected English and Spanish list tests preserve every source header.
+
+The final catalog delta is
+`/private/tmp/architect-review-round1-catalog-delta.json`: one visible Map
+coordinate pair (lead AI reviewed) and two corrected participant-fallback
+metadata descriptions. Catalog size remains 1,827 English and 1,827 Spanish
+IDs; the sparse British English catalog is unchanged. Fresh extraction is
+recorded in `/private/tmp/architect-review-round1-extract.log`.
+
+### Exact-head CI and current gates
+
+The user-requested force-run dispatch is
+https://github.com/complexdatacollective/network-canvas-monorepo/actions/runs/33990397118
+on exact head `86aecd19299517386de51b372e6eded6f85e10c9`. It completed with
+failure. This ordinary feature-branch dispatch deliberately selects no E2E,
+even with force_run=true; its E2E report success is not native/pixel coverage.
+
+- Lint succeeded. Quality-support failed only at Architect's missing
+  `formatMigrationNotes` export during the actual build and typecheck;
+  `/private/tmp/architect-pr1705-quality-support.log` records both.
+- The Architect unit result was exactly 2,479 passed, six known dependency
+  failures, three existing todo. Other completed workspace test tasks passed.
+  `/private/tmp/architect-pr1705-units.log` records the failure section.
+- Fresco UI Storybook passed 1,318 tests; Interview then discovered
+  `react-intl/server` during optimization, reloaded, and lost the runner for
+  60 suites. `/private/tmp/architect-pr1705-storybook.log` reproduces the
+  already-verified shared optimizer fix that has not yet been integrated.
+
+For this corrective round, Node 24.18.0 full units passed 2,496 tests, with
+only the same six dependency failures and three existing todo (288 files,
+2,505 tests). See `/private/tmp/architect-review-round1-full-units.log`.
+The subsequent test-fixture type and parent-sentinel improvements passed the
+complete focused 21-test group. Typecheck again reports only the missing
+shared presenter. Lint, Knip, build, E2E types and final formatting outcomes
+are recorded in the final checkpoint below when their commands complete.
+
+Canonical risk is explicit: adding localized conjunctions changes printable
+network-attribute lists from `A, B, C` to `A, B, and C` in English and may
+change wrapping. Locale-aware ordering can change rows containing accented
+names. The new inline participant portal is also a rendering change. The
+prior repeated 47-file capture and 11 adopted PNGs do not verify this round.
+After authorized shared integration, rebuild and repeat the affected native
+and canonical visual suites; inspect every resulting difference before any
+baseline adoption. No baseline was altered during this corrective round.
+
+Next action: finish lead review of this frozen app correction, commit as the
+configured user, push normally, reply to and resolve the two addressed
+threads, and request a new completed Codex review on the resulting full SHA.
+Keep the pending shared integration explicit; after it is authorized,
+integrate normally and run the final types, full tests, optimized build,
+Storybook, native and canonical gates. No PR merge or release is authorized.
+
+### First review correction: frozen verification checkpoint
+
+All commands below use Node 24.18.0 via the explicit fnm installation PATH
+and pnpm `--config.verify-deps-before-run=false`; unit runs also set
+`NODE_OPTIONS=--no-experimental-webstorage`.
+
+| Gate                                                                     | Current result                                                                                                                    | Log                                                     |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `pnpm --filter @codaco/architect test`                                   | 2,496 passed / six documented dependency failures / three existing todo; no added skips                                           | /private/tmp/architect-review-round1-full-units.log     |
+| Six directly affected regression files                                   | 21/21 passed after final fixture typing and stronger parent-store oracle                                                          | /private/tmp/architect-review-round1-final-targeted.log |
+| `pnpm --filter @codaco/architect typecheck`                              | Only missing formatMigrationNotes export; no app-owned type errors remain                                                         | /private/tmp/architect-review-round1-final-types.log    |
+| `pnpm --filter @codaco/architect exec tsc -p e2e/tsconfig.json --noEmit` | Passed                                                                                                                            | /private/tmp/architect-review-round1-e2e-types.log      |
+| Actual app build with analytics/animations disabled                      | Failed only at missing formatMigrationNotes export; log confirms Node 24.18.0                                                     | /private/tmp/architect-review-round1-final-build.log    |
+| Type-aware Architect oxlint                                              | Passed, zero errors; the tested TanStack cache invalidation is narrowly documented/suppressed, no missing intl dependency remains | /private/tmp/architect-review-round1-final-lint.log     |
+| `knip --workspace @codaco/architect`                                     | Passed                                                                                                                            | /private/tmp/architect-review-round1-knip.log           |
+| Catalog extraction and full-suite locale guards                          | Passed; 1,827 en/es IDs, unchanged sparse en-GB; one reviewed visible pair and two metadata descriptions                          | /private/tmp/architect-review-round1-extract.log        |
+
+Lead independently read all 22 app files, the full helper consumer set, the
+21-test green group, and four failing parent-boundary mutation cases. Their
+frozen SHA256 set is `/private/tmp/nc-architect-round1-lead-frozen-hashes.json`;
+all 22 files still match before commit. Only this plan is additional. No
+PNG or JSON baseline changed. The shared dependency hold still prevents
+rebuilding/rerunning the final production-browser and canonical checkpoint.
+
+The normal-lane changeset guard also passes: `/private/tmp/architect-review-round1-changesets.log`. The existing Architect minor changeset covers this corrective round. Final formatter and `git diff --check` pass. The lead-approved app source remains unchanged after its freeze.

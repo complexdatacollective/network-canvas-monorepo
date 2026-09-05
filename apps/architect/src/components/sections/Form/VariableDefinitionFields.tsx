@@ -278,9 +278,13 @@ export const InputControlFields = ({ item, fields }: SharedProps) => {
         // variable's list is a lookup — the researcher knows what they want
         // and is finding it — so it is alphabetised (within each group,
         // since the list may still be grouped by type).
-        options={toSelectOptions(componentOptions, {
-          sorted: !isNewVariable,
-        })}
+        options={toSelectOptions(
+          componentOptions,
+          {
+            sorted: !isNewVariable,
+          },
+          intl,
+        )}
       />
       {isNewVariable && variableType && (
         <Alert variant="info" className="my-7">
