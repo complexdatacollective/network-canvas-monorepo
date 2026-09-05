@@ -115,6 +115,63 @@ describe('the questions a categorical bin asks', () => {
     }
   });
 
+  /**
+   * A group the researcher already used opens switched on, holding what they
+   * put in it.
+   *
+   * The other direction — a group that cannot be switched on until the bins
+   * are chosen — is tested above, and it is the direction that fails loudly.
+   * This one fails silently: a follow-up bin that opened switched off would
+   * look exactly like a prompt that never had one, and closing a `Section`
+   * clears the fields inside it, so a researcher who opened the prompt to
+   * change its wording and pressed Save would lose the bin, its label and its
+   * question without being told.
+   */
+  it('opens a prompt’s follow-up bin switched on, holding what it was saved with', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        type: 'CategoricalBin',
+        fields: {
+          label: 'Categorical Bin',
+          subject: { entity: 'node', type: 'person' },
+          prompts: [
+            {
+              id: 'prompt-a',
+              text: 'What kind of contact?',
+              variable: 'contactType',
+              otherVariable: 'relationship_to_ego',
+              otherOptionLabel: 'Other',
+              otherVariablePrompt: 'Which?',
+            },
+          ],
+        },
+      },
+      sections: <CategoricalBinPromptsSection />,
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await screen.findByRole('dialog');
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('switch', { name: 'A bin for anything else' }),
+      ).toBeChecked(),
+    );
+    expect(
+      screen.getByRole('combobox', {
+        name: 'Attribute the answer is stored in',
+      }),
+    ).toHaveValue('relationship_to_ego');
+    expect(
+      screen.getByRole('textbox', { name: 'Bin label' }),
+    ).toHaveTextContent('Other');
+    expect(
+      screen.getByRole('textbox', { name: 'Follow-up question' }),
+    ).toHaveTextContent('Which?');
+  });
+
   it('keeps each prompt’s identity when one is added and another moved', async () => {
     const harness = renderStageEditor({
       stage: {

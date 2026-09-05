@@ -98,6 +98,61 @@ describe('the questions an ordinal bin asks', () => {
     );
   });
 
+  /**
+   * A sort order the prompt already has opens switched on, holding its rules.
+   *
+   * The test above covers the direction that fails loudly — a group that
+   * cannot be switched on until the scale is chosen. This is the quiet one: a
+   * configured ordering that opened switched off would look exactly like a
+   * prompt that never had one, and closing a `Section` clears the fields
+   * inside it, so re-saving the prompt would drop the rules without saying so.
+   */
+  it('opens a prompt’s sort order switched on, holding the rule it was saved with', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        type: 'OrdinalBin',
+        fields: {
+          label: 'Ordinal Bin',
+          subject: { entity: 'node', type: 'person' },
+          prompts: [
+            {
+              id: 'prompt-a',
+              text: 'How often?',
+              variable: 'contactFreq',
+              color: 'ord-color-seq-1',
+              bucketSortOrder: [{ property: 'name', direction: 'asc' }],
+            },
+          ],
+        },
+      },
+      sections: <OrdinalBinPromptsSection />,
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await screen.findByRole('dialog');
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('switch', {
+          name: 'Order people are handed to the participant in',
+        }),
+      ).toBeChecked(),
+    );
+    expect(screen.getByRole('combobox', { name: 'Property' })).toHaveValue(
+      'name',
+    );
+    expect(screen.getByRole('combobox', { name: 'Direction' })).toHaveValue(
+      'asc',
+    );
+    // The ordering the prompt does NOT have stays switched off, so "already
+    // configured" is what opens a group rather than "the prompt was opened".
+    expect(
+      screen.getByRole('switch', { name: 'Order within each bin' }),
+    ).not.toBeChecked();
+  });
+
   it('saves a gradient and a sort rule the researcher chose', async () => {
     const harness = renderStageEditor(openEditor());
 
