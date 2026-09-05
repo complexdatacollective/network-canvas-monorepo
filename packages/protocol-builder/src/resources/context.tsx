@@ -13,7 +13,15 @@ const ResourceGatewayContext = createContext<
 >(undefined);
 
 type ResourceGatewayProviderProps = Readonly<{
-  gateway: ProtocolBuilderResourceGateway;
+  /**
+   * The session's gateway, or `undefined` for a session opened without one.
+   *
+   * `undefined` is provided rather than left alone on purpose: a session with
+   * no gateway must not fall through to whichever provider happens to be above
+   * it — one editor nested in another would otherwise stage into the outer
+   * session, which neither tracks nor cleans up what it staged.
+   */
+  gateway: ProtocolBuilderResourceGateway | undefined;
   children: ReactNode;
 }>;
 
@@ -32,7 +40,7 @@ export function useResourceGateway(): ProtocolBuilderResourceGateway {
   const gateway = useContext(ResourceGatewayContext);
   if (gateway === undefined) {
     throw new Error(
-      'useResourceGateway must be used inside a ResourceGatewayProvider',
+      'useResourceGateway must be used inside a ResourceGatewayProvider with a gateway: this editing session was opened without one, and a resource control cannot stage into another session',
     );
   }
   return gateway;

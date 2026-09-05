@@ -184,6 +184,37 @@ export function describeResourceGatewayContract(
       );
     });
 
+    it('keeps an upload and a secret that share a request id apart', async () => {
+      // A request id is unique to the picker that made it, not across pickers:
+      // two of them can hand the host the same id for entirely different work.
+      const upload = await stageImage('request-shared');
+      const secret = await stageSecret('request-shared');
+
+      expect(secret.descriptor.id).not.toBe(upload.id);
+
+      const retriedUpload = await stageImage('request-shared');
+      const retriedSecret = await stageSecret('request-shared');
+
+      // Each retry is its own operation's retry: an upload that came back as
+      // the secret's descriptor would put a key where a file belongs.
+      expect(retriedUpload.id).toBe(upload.id);
+      expect(retriedUpload.kind).toBe('image');
+      expect(retriedSecret.descriptor.id).toBe(secret.descriptor.id);
+      expect(String(retriedSecret.handle)).toBe(String(secret.handle));
+      expect(
+        expectOk(await gateway().list({ status: 'staged' }))
+          .map((descriptor) => descriptor.id)
+          .toSorted(),
+      ).toEqual([upload.id, secret.descriptor.id].toSorted());
+
+      // Discarding one must not take the other's retry identity with it.
+      expectOk(await gateway().discardStaged(upload.id));
+
+      expect((await stageSecret('request-shared')).descriptor.id).toBe(
+        secret.descriptor.id,
+      );
+    });
+
     it('stages a secret as an opaque handle and keeps the value off every surface', async () => {
       const secret = await stageSecret();
 
@@ -475,6 +506,49 @@ export function describeResourceGatewayContract(
         image.id,
       ]);
       expect(repeated.promoted.map((descriptor) => descriptor.id)).toEqual([
+        image.id,
+      ]);
+      expect(Object.keys(harness().committedManifest()).toSorted()).toEqual(
+        [RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id, image.id].toSorted(),
+      );
+      expect(harness().stagingResidue()).toEqual([]);
+    });
+
+    it('coalesces concurrent promotions of one id into a single apply', async () => {
+      const image = await stageImage();
+      let releaseApply: (() => void) | undefined;
+      const applyGate = new Promise<void>((resolve) => {
+        releaseApply = resolve;
+      });
+      let applies = 0;
+      // The second apply fails, so a gateway that runs it rolls back — and the
+      // rollback deletes what the first apply committed.
+      const applyManifest = vi.fn(async (): Promise<ManifestApplyOutcome> => {
+        applies += 1;
+        if (applies > 1) {
+          return {
+            status: 'failed',
+            retryable: true,
+            message: 'the protocol changed while finishing',
+          };
+        }
+        await applyGate;
+        return { status: 'applied' };
+      });
+      const promotion = {
+        id: 'promotion-concurrent',
+        resourceIds: [image.id],
+        applyManifest,
+      };
+
+      const first = gateway().promote(promotion);
+      const second = gateway().promote(promotion);
+      releaseApply?.();
+      const outcomes = [expectOk(await first), expectOk(await second)];
+
+      expect(applyManifest).toHaveBeenCalledTimes(1);
+      expect(outcomes[1]).toEqual(outcomes[0]);
+      expect(outcomes[0]?.promoted.map((descriptor) => descriptor.id)).toEqual([
         image.id,
       ]);
       expect(Object.keys(harness().committedManifest()).toSorted()).toEqual(

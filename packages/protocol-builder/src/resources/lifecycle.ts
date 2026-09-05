@@ -71,15 +71,19 @@ export type StagedResourceTracker = Readonly<{
    */
   cancel(): Promise<ResourceResult<undefined>>;
   /**
-   * Notes that a finish committed this session's staged resources.
+   * Closes this session's staging window and returns what the finish that is
+   * starting has to decide — the same instant, on purpose.
    *
-   * A finish promotes the resources the draft referenced *when it began*, so
-   * an upload or secret still in flight at that point is neither promoted nor
-   * discarded by it; keeping it would leave the host holding staging the
-   * finish already decided against. Staging started after the finish is an
-   * ordinary part of the next edit and is kept as usual.
+   * A finish promotes or discards exactly the resources it can see when it
+   * plans, so an upload or secret still in flight at that point is decided by
+   * nothing: keeping it would leave the host holding staging this session has
+   * already walked away from and will never look at again. Closing the window
+   * here rather than when the finish returns is what makes the plan complete —
+   * a result that lands while the promotion is in flight is discarded at the
+   * host, exactly as one landing after a cancel is. Staging started after this
+   * belongs to the next edit and is kept as usual.
    */
-  finished(): void;
+  finishing(): readonly ResourceDescriptor[];
 }>;
 
 export type StagedResourceTrackerOptions = Readonly<{
@@ -134,18 +138,26 @@ export function createStagedResourceTracker(
    * the call was in flight. Nothing else would ever drop such a resource — the
    * finish that ran promoted the resources it knew about, and a cancelled
    * session discards once — so it is dropped at the host here.
+   *
+   * Returns the failure the staging call must report, or `undefined` when the
+   * resource was kept. A host that refused the drop is reported as it
+   * answered: the resource really is still there, so saying it was not kept
+   * would be untrue, and a retryable failure is what the picker can act on.
    */
   const keepStagedResult = async (
     stagedDuring: number,
+    subject: 'file' | 'secret',
     descriptor: ResourceDescriptor,
     handle?: StagedSecretHandle,
-  ): Promise<boolean> => {
+  ): Promise<ResourceResult<never> | undefined> => {
     if (!cancelled && stagedDuring === stagingWindow) {
       remember(descriptor, handle);
-      return true;
+      return undefined;
     }
-    await host.discardStaged(descriptor.id);
-    return false;
+    const discarded = await host.discardStaged(descriptor.id);
+    return discarded.status === 'ok'
+      ? stagingEndedFailure(descriptor.id, subject)
+      : discarded;
   };
 
   const forget = (resourceIds: Iterable<string>): void => {
@@ -193,9 +205,9 @@ export function createStagedResourceTracker(
       const stagedDuring = stagingWindow;
       const result = await host.stageUpload(request);
       if (result.status !== 'ok') return result;
-      return (await keepStagedResult(stagedDuring, result.data))
-        ? result
-        : stagingEndedFailure(result.data.id, 'file');
+      return (
+        (await keepStagedResult(stagedDuring, 'file', result.data)) ?? result
+      );
     },
 
     async stageSecret(
@@ -205,13 +217,14 @@ export function createStagedResourceTracker(
       const stagedDuring = stagingWindow;
       const result = await host.stageSecret(request);
       if (result.status !== 'ok') return result;
-      return (await keepStagedResult(
-        stagedDuring,
-        result.data.descriptor,
-        result.data.handle,
-      ))
-        ? result
-        : stagingEndedFailure(result.data.descriptor.id, 'secret');
+      return (
+        (await keepStagedResult(
+          stagedDuring,
+          'secret',
+          result.data.descriptor,
+          result.data.handle,
+        )) ?? result
+      );
     },
 
     async discardStaged(
@@ -254,6 +267,13 @@ export function createStagedResourceTracker(
     },
   };
 
+  const stagedNow = (): readonly ResourceDescriptor[] =>
+    Object.freeze(
+      [...entries.values()]
+        .filter((entry) => !entry.promoted)
+        .map((entry) => entry.descriptor),
+    );
+
   return Object.freeze({
     gateway,
     cancel: async (): Promise<ResourceResult<undefined>> => {
@@ -266,15 +286,14 @@ export function createStagedResourceTracker(
       if (result.status === 'ok') forgetAllStaged();
       return result;
     },
-    finished: () => {
+    finishing: () => {
+      // Read before the bump and returned together with it, so there is no
+      // moment in which a caller holds the plan while the window is still open.
+      const staged = stagedNow();
       stagingWindow += 1;
+      return staged;
     },
-    staged: () =>
-      Object.freeze(
-        [...entries.values()]
-          .filter((entry) => !entry.promoted)
-          .map((entry) => entry.descriptor),
-      ),
+    staged: stagedNow,
     secretHandle: (resourceId: string) => entries.get(resourceId)?.handle,
     promotedAwaitingManifest: (manifestSection: SectionDoc | undefined) => {
       const awaiting: ResourceDescriptor[] = [];
@@ -324,11 +343,26 @@ export function planStagedResourceFinish(
   });
 }
 
+/**
+ * A staged resource the finish walked away from and could not drop.
+ *
+ * The stage itself is committed, so this is not a failed finish — but the host
+ * is still holding the bytes or the secret, and the resource is still staged
+ * here. Reported so the host can retry or clear it up rather than being told
+ * a cleanup happened that did not.
+ */
+export type StagedResourceDiscardFailure = Readonly<{
+  resourceId: string;
+  failure: ResourceGatewayFailure;
+}>;
+
 export type StagedResourceFinishOutcome =
   | Readonly<{
       status: 'finished';
       promoted: readonly ResourceDescriptor[];
       discarded: readonly string[];
+      /** Abandoned resources the host would not drop. Usually empty. */
+      discardFailures: readonly StagedResourceDiscardFailure[];
     }>
   /** The caller's own apply failed; nothing was promoted. Rethrow `error`. */
   | Readonly<{ status: 'apply-failed'; error: unknown }>
@@ -377,10 +411,11 @@ export async function finishStagedResources(
     } catch (error: unknown) {
       return Object.freeze({ status: 'apply-failed' as const, error });
     }
+    const cleanup = await discardEach(options.gateway, plan.discard);
     return Object.freeze({
       status: 'finished' as const,
       promoted: Object.freeze([]),
-      discarded: await discardEach(options.gateway, plan.discard),
+      ...cleanup,
     });
   }
 
@@ -423,10 +458,11 @@ export async function finishStagedResources(
       failure: result.failure,
     });
   }
+  const cleanup = await discardEach(options.gateway, plan.discard);
   return Object.freeze({
     status: 'finished' as const,
     promoted: result.data.promoted,
-    discarded: await discardEach(options.gateway, plan.discard),
+    ...cleanup,
   });
 }
 
@@ -535,16 +571,34 @@ export function mergeDraftValidationIssues(
   ]);
 }
 
+/**
+ * Drops each abandoned resource, and says which ones the host would not drop:
+ * a failure here leaves the resource staged, and a finish that reported only
+ * what it managed to discard would look like a clean one.
+ */
 async function discardEach(
   gateway: ProtocolBuilderResourceGateway,
   resourceIds: readonly string[],
-): Promise<readonly string[]> {
+): Promise<
+  Readonly<{
+    discarded: readonly string[];
+    discardFailures: readonly StagedResourceDiscardFailure[];
+  }>
+> {
   const discarded: string[] = [];
+  const discardFailures: StagedResourceDiscardFailure[] = [];
   for (const resourceId of resourceIds) {
     const result = await gateway.discardStaged(resourceId);
     if (result.status === 'ok') discarded.push(resourceId);
+    else
+      discardFailures.push(
+        Object.freeze({ resourceId, failure: result.failure }),
+      );
   }
-  return Object.freeze(discarded);
+  return Object.freeze({
+    discarded: Object.freeze(discarded),
+    discardFailures: Object.freeze(discardFailures),
+  });
 }
 
 function pathKey(path: readonly (string | number)[]): string {

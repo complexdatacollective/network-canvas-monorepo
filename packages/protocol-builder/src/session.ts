@@ -36,6 +36,7 @@ import {
   finishStagedResources,
   mergeDraftValidationIssues,
   stageIndexForValidation,
+  type StagedResourceDiscardFailure,
   type StagedResourceTracker,
 } from './resources/lifecycle.ts';
 import { collectStageResourceReferences } from './resources/references.ts';
@@ -285,6 +286,18 @@ export type ProtocolBuilderSessionOptions = Readonly<{
     request: CompoundEditSubmission,
   ): Promise<CompoundEditResult> | CompoundEditResult;
   onFinish?(request: FinishRequest): Promise<void> | void;
+  /**
+   * Staged resources a finish committed the stage without being able to drop.
+   *
+   * The save succeeded, so this is not a failed finish — but the host is still
+   * holding bytes or a secret the draft walked away from, and the session goes
+   * on listing them in {@link ProtocolBuilderSnapshot.stagedResources} so the
+   * next cleanup can still reach them. Reported because the alternative is a
+   * finish that claims a cleanup it did not manage.
+   */
+  onResourceCleanupFailed?(
+    failures: readonly StagedResourceDiscardFailure[],
+  ): void;
 }>;
 
 export type AuthoritativeUpdate = Readonly<{
@@ -697,7 +710,10 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       gateway: resources.gateway,
       promotionId: this.promotionId,
       stageDocument: document,
-      staged: resources.staged(),
+      // Closes the staging window as it reads it: an upload or secret that
+      // lands while this promotion is in flight is one this finish already
+      // decided against, and no later one would ever look at it.
+      staged: resources.finishing(),
       secretHandle: (resourceId) => resources.secretHandle(resourceId),
       applyStage,
     });
@@ -707,10 +723,14 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       throw new ResourcePromotionError(outcome.failure);
     }
     this.promotionId = undefined;
-    // The apply carried every pending batch, withheld ones included, so the
-    // host is no longer missing anything and later batches flow live again.
-    this.withheldFromBatchId = undefined;
-    resources.finished();
+    // Only the batches this apply actually carried are released. An edit made
+    // while the apply was in flight is not among them, and letting a later
+    // batch overtake it would leave the host holding a gap an acknowledgement
+    // would close over the missing edit.
+    this.releaseWithheldThrough(pendingCommands.at(-1)?.id ?? 0);
+    if (outcome.discardFailures.length > 0) {
+      this.options.onResourceCleanupFailed?.(outcome.discardFailures);
+    }
   }
 
   async cancel(): Promise<ResourceResult<undefined>> {
@@ -920,6 +940,25 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       validatedProtocol: null,
     });
     void this.runValidation();
+  }
+
+  /**
+   * Moves the hold past everything a finish apply carried to the host.
+   *
+   * What the apply carried is a prefix of the pending batches, so the hold
+   * either goes entirely (the host now has every withheld batch) or moves to
+   * the first batch it did not carry — an edit made while the apply was in
+   * flight. Those stay pending and withheld, in order, for the next finish to
+   * carry: releasing them here would send them after batches the host already
+   * has, and clearing the hold outright would let the batches that follow
+   * overtake them.
+   */
+  private releaseWithheldThrough(carriedThroughBatchId: number): void {
+    const withheldFrom = this.withheldFromBatchId;
+    if (withheldFrom === undefined) return;
+    this.withheldFromBatchId = this.snapshot.pendingCommands.find(
+      (batch) => batch.id >= withheldFrom && batch.id > carriedThroughBatchId,
+    )?.id;
   }
 
   /** Clears the hold once no withheld batch is pending any more. */

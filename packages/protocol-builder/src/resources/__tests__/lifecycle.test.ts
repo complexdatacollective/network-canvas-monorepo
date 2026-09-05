@@ -288,7 +288,7 @@ describe('staged resource tracker', () => {
     expect(host.getStagingResidue()).toEqual([]);
   });
 
-  it('discards an upload that lands after the finish that did not promote it', async () => {
+  it('discards an upload that lands after the finish selected what it promotes', async () => {
     const host = new InMemoryResourceGateway();
     const gated = gatedStagingHost(host);
     const { tracker } = createTracker(gated.gateway);
@@ -301,7 +301,7 @@ describe('staged resource tracker', () => {
       bytes: IMAGE_BYTES,
     });
 
-    tracker.finished();
+    expect(tracker.finishing()).toEqual([]);
     gated.release();
     const landed = await staging;
 
@@ -310,11 +310,54 @@ describe('staged resource tracker', () => {
     expect(host.getStagingResidue()).toEqual([]);
   });
 
+  it('reports the host refusing to drop an upload that landed too late', async () => {
+    const host = new InMemoryResourceGateway();
+    const gated = gatedStagingHost(host);
+    const { tracker } = createTracker(gated.gateway);
+    const staging = tracker.gateway.stageUpload({
+      requestId: 'request-in-flight',
+      kind: 'image',
+      name: 'Staged backdrop',
+      source: 'in-flight.png',
+      contentType: 'image/png',
+      bytes: IMAGE_BYTES,
+    });
+
+    expect(await tracker.cancel()).toMatchObject({ status: 'ok' });
+    host.failNext('discard', { reason: 'unavailable', retryable: true });
+    gated.release();
+    const landed = await staging;
+
+    // The host kept it, so 'not kept' would be untrue: the picker is told what
+    // the host said, and the resource really is still there.
+    expect(expectFailure(landed)).toMatchObject({
+      reason: 'unavailable',
+      retryable: true,
+    });
+    expect(tracker.staged()).toEqual([]);
+    expect(host.getStagingResidue()).not.toEqual([]);
+  });
+
+  it('hands the finish what is staged and closes the window in one step', async () => {
+    const host = new InMemoryResourceGateway();
+    const { tracker } = createTracker(host);
+    const image = await stageImage(tracker.gateway, 'request-planned');
+
+    // One step, because a list captured while the window is still open is a
+    // plan that can miss a resource nothing else will ever decide.
+    expect(tracker.finishing().map((descriptor) => descriptor.id)).toEqual([
+      image.id,
+    ]);
+    expect(tracker.staged().map((descriptor) => descriptor.id)).toEqual([
+      image.id,
+    ]);
+  });
+
   it('keeps staging that starts after a finish, which belongs to the next edit', async () => {
     const host = new InMemoryResourceGateway();
     const { tracker } = createTracker(host);
 
-    tracker.finished();
+    tracker.finishing();
     const image = await stageImage(tracker.gateway, 'request-after-finish');
 
     expect(tracker.staged().map((descriptor) => descriptor.id)).toEqual([
@@ -566,6 +609,64 @@ describe('finishStagedResources', () => {
     // No promotion, so no manifest rides with the stage's own commands.
     expect(applyStage).toHaveBeenCalledExactlyOnceWith();
     expect(host.getStagingResidue()).toEqual([]);
+  });
+
+  it('reports a discard that failed rather than counting it as discarded', async () => {
+    const host = new InMemoryResourceGateway();
+    const { tracker } = createTracker(host);
+    const promoted = await stageImage(tracker.gateway, 'request-promoted');
+    const abandoned = await stageImage(tracker.gateway, 'request-abandoned');
+    host.failNext('discard', { reason: 'unavailable', retryable: true });
+
+    const outcome = await finishStagedResources({
+      gateway: tracker.gateway,
+      promotionId: 'promotion-1',
+      stageDocument: informationStage(promoted.id),
+      staged: tracker.staged(),
+      secretHandle: (resourceId) => tracker.secretHandle(resourceId),
+      applyStage: () => Promise.resolve(),
+    });
+
+    // Counting it as discarded would report a finish that cleaned up when the
+    // host is still holding the bytes.
+    expect(outcome).toMatchObject({
+      status: 'finished',
+      discarded: [],
+      discardFailures: [
+        {
+          resourceId: abandoned.id,
+          failure: { reason: 'unavailable', retryable: true },
+        },
+      ],
+    });
+    expect(tracker.staged().map((descriptor) => descriptor.id)).toEqual([
+      abandoned.id,
+    ]);
+    expect(host.getStagingResidue()).not.toEqual([]);
+  });
+
+  it('reports a discard that failed when the finish promotes nothing', async () => {
+    const host = new InMemoryResourceGateway();
+    const { tracker } = createTracker(host);
+    const abandoned = await stageImage(tracker.gateway, 'request-abandoned');
+    host.failNext('discard', { reason: 'unavailable', retryable: true });
+
+    const outcome = await finishStagedResources({
+      gateway: tracker.gateway,
+      promotionId: 'promotion-1',
+      stageDocument: informationStage(),
+      staged: tracker.staged(),
+      secretHandle: (resourceId) => tracker.secretHandle(resourceId),
+      applyStage: () => Promise.resolve(),
+    });
+
+    expect(outcome).toMatchObject({
+      status: 'finished',
+      promoted: [],
+      discarded: [],
+      discardFailures: [{ resourceId: abandoned.id }],
+    });
+    expect(host.getStagingResidue()).not.toEqual([]);
   });
 
   it('keeps what a stage that promotes nothing abandoned when its apply fails', async () => {

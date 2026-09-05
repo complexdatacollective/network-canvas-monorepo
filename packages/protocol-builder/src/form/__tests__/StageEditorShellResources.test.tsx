@@ -6,7 +6,10 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { useStageEditorController } from '../../controller.ts';
-import { useResourceGateway } from '../../resources/context.tsx';
+import {
+  ResourceGatewayProvider,
+  useResourceGateway,
+} from '../../resources/context.tsx';
 import type { ProtocolBuilderResourceGateway } from '../../resources/gateway.ts';
 import { InMemoryResourceGateway } from '../../resources/InMemoryResourceGateway.ts';
 import BuilderSection from '../../sections/BuilderSection.tsx';
@@ -111,6 +114,35 @@ describe('StageEditorShell resource gateway', () => {
           <Editor session={session}>
             <Picker />
           </Editor>,
+        ),
+      ).toThrow(/useResourceGateway must be used inside/);
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
+  it('refuses an outer gateway when the host opened this session without one', () => {
+    const outer = new InMemoryResourceGateway();
+    const session = createSession();
+    function Picker() {
+      useResourceGateway();
+      return <p>Resource picker</p>;
+    }
+    // React reports the throw from the failed render as well.
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    try {
+      // A shell nested under another editor's provider: staging here would be
+      // staging in a session that neither tracks nor cleans it up.
+      expect(() =>
+        render(
+          <ResourceGatewayProvider gateway={outer}>
+            <Editor session={session}>
+              <Picker />
+            </Editor>
+          </ResourceGatewayProvider>,
         ),
       ).toThrow(/useResourceGateway must be used inside/);
     } finally {

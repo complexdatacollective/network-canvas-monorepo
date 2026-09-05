@@ -139,6 +139,7 @@ function createFixture(options: SessionFixtureOptions = {}) {
           },
         };
   const onCommands = vi.fn();
+  const onResourceCleanupFailed = vi.fn();
   let finishes = 0;
   const onFinish = vi.fn(
     async ({ pendingCommands, resourceManifest }: FinishRequest) => {
@@ -198,6 +199,7 @@ function createFixture(options: SessionFixtureOptions = {}) {
       assembleProtocolSections({ ...sections, [stageSection]: stageDocument }),
     onCommands,
     onFinish,
+    onResourceCleanupFailed,
   });
   sessionInstance = session;
 
@@ -206,6 +208,7 @@ function createFixture(options: SessionFixtureOptions = {}) {
     host,
     onCommands,
     onFinish,
+    onResourceCleanupFailed,
     session,
     resources: sessionGateway(session),
   };
@@ -567,6 +570,99 @@ describe('a session that stages resources', () => {
     // Nothing is being held back any more, so the next batch flows live again.
     session.dispatch([{ op: 'set', key: 'title', value: 'Renamed' }]);
     expect(onCommands).toHaveBeenCalledTimes(1);
+  });
+
+  it('goes on holding the batches the finish apply did not carry', async () => {
+    const { onCommands, onFinish, session } = createFixture({
+      duringApply: (current) => {
+        // Made after the apply captured the batches it carries: the host is
+        // committing batch 1 and will never be told about this one.
+        current.dispatch([
+          { op: 'set', key: 'title', value: 'Renamed mid-save' },
+        ]);
+        return Promise.resolve();
+      },
+    });
+    const staged = await stageImage(session, 'first');
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(staged.id) },
+    ]);
+
+    await session.finish();
+    session.dispatch([{ op: 'set', key: 'label', value: 'Renamed again' }]);
+
+    expect(
+      onFinish.mock.calls[0]?.[0].pendingCommands.map((batch) => batch.id),
+    ).toEqual([1]);
+    // Releasing the hold here would send batch 3 to a host that never saw
+    // batch 2, and acknowledging 3 would drop the user's edit for good.
+    expect(onCommands).not.toHaveBeenCalled();
+    expect(
+      session.getSnapshot().pendingCommands.map((batch) => batch.id),
+    ).toEqual([1, 2, 3]);
+  });
+
+  it('discards an upload that lands while the finish is deciding what to promote', async () => {
+    let release = (): void => undefined;
+    const stagingGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let staging: Promise<ResourceResult<ResourceDescriptor>> | undefined;
+    let landed: ResourceResult<ResourceDescriptor> | undefined;
+    const { gateway, session } = createFixture({
+      stagingGate,
+      duringApply: async () => {
+        release();
+        landed = await staging;
+      },
+    });
+    session.dispatch([{ op: 'set', key: 'title', value: 'Renamed' }]);
+    staging = sessionGateway(session).stageUpload({
+      requestId: 'in-flight',
+      kind: 'image',
+      name: 'Late backdrop',
+      source: 'in-flight.png',
+      contentType: 'image/png',
+      bytes: Uint8Array.from([1, 2, 3, 4]),
+    });
+
+    await session.finish();
+
+    // The finish decided from the resources it could see. Keeping this one
+    // would leave the host holding staging that nothing will ever decide.
+    if (landed === undefined) throw new Error('the upload never landed');
+    expect(expectFailure(landed).reason).toBe('not-found');
+    expect(session.getSnapshot().stagedResources).toEqual([]);
+    expect(gateway.getStagingResidue()).toEqual([]);
+  });
+
+  it('reports the staged resources a finish could not discard, and keeps them', async () => {
+    const { gateway, onResourceCleanupFailed, session } = createFixture();
+    const referenced = await stageImage(session, 'first');
+    const abandoned = await stageImage(session, 'second');
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(referenced.id) },
+    ]);
+    gateway.failNext('discard', { reason: 'unavailable', retryable: true });
+
+    await session.finish();
+
+    // The stage is committed, so this is not a failed save — but the host is
+    // still holding bytes the finish decided against, and saying nothing
+    // would leave them there with no one to drop them.
+    expect(onResourceCleanupFailed).toHaveBeenCalledWith([
+      {
+        resourceId: abandoned.id,
+        failure: expect.objectContaining({
+          reason: 'unavailable',
+          retryable: true,
+        }),
+      },
+    ]);
+    expect(
+      session.getSnapshot().stagedResources.map((descriptor) => descriptor.id),
+    ).toEqual([abandoned.id]);
+    expect(gateway.getStagingResidue()).toContain(`staged:${abandoned.id}`);
   });
 
   it('drops the withheld commands when the session is cancelled', async () => {
